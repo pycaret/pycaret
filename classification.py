@@ -1,15 +1,376 @@
 def setup(data, 
           target, 
-          split=0.7):
+          train_size=0.7,
+          sampling=True,
+          sample_estimator = None,
+          session_id = None):
     
+    """
+        
+    Description:
+    ------------
+    This function initialize the environment in pycaret. setup() must called before
+    executing any other function in pycaret. It takes two mandatory parameters i.e.
+    dataframe {array-like, sparse matrix} and name of the target column. 
+    
+    All other parameters are optional.
+
+        Example
+        -------
+        experiment_name = setup(data, 'target')
+
+        data is a pandas DataFrame and 'target' is the name of the column in dataframe.
+
+    Parameters
+    ----------
+
+    data : {array-like, sparse matrix}, shape (n_samples, n_features) where n_samples 
+    is the number of samples and n_features is the number of features.
+
+    target: string
+    Name of target column to be passed in as string.
+
+    train_size: float, default = 0.7
+    Size of training set. By default 70% of the data will be used for training and 
+    validation.
+
+    sampling: bool, default = True
+    When sample size exceed 25,000 samples, pycaret will build a base estimator at various
+    sample level of the original dataset. This will return the performance plot of
+    AUC, Accuracy and Recall at various sample level, that will help you decide sample
+    size for modeling. You are then required to enter the desired sample size that will 
+    be considered for training and validation in the pycaret environment. 1 - sample size 
+    will be discarded and not be used any further.
+    
+    sample_estimator: object, default = None
+    If None, Logistic Regression is used by default.
+
+
+    Returns:
+    --------
+
+    info grid:    Information grid is printed.
+    -----------      
+
+    environment:  This function returns various outputs that are stored in variable
+    -----------   as tuple. They are being used by other functions in pycaret.
+
+    Warnings:
+    ---------
+    None
+    
+    """
+    
+    #exception checking   
+    import sys
+    
+    #checking train size parameter
+    if type(train_size) is not float:
+        sys.exit('(Type Error): train_size parameter only accepts float value.')
+    
+    #checking sampling parameter
+    if type(sampling) is not bool:
+        sys.exit('(Type Error): sampling parameter only accepts True or False.')
+        
+    #checking sampling parameter
+    if target not in data.columns:
+        sys.exit('(Value Error): Target parameter doesnt exist in the data provided.')   
+
+    #checking session_id
+    if session_id is not None:
+        if type(session_id) is not int:
+            sys.exit('(Type Error): session_id parameter must be an integer.')   
+        
+    #pre-load libraries
+    import pandas as pd
+    import ipywidgets as ipw
+    from IPython.display import display, HTML, clear_output, update_display
+    import datetime, time
+   
+    #progress bar
+    if sampling:
+        max = 10 + 2
+    else:
+        max = 2
+        
+    progress = ipw.IntProgress(value=0, min=0, max=max, step=1 , description='Processing: ')
+    display(progress)
+    
+    timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
+    monitor = pd.DataFrame( [ ['Initiated' , '. . . . . . . . . . . . . . . . . .', timestampStr ], 
+                             ['Status' , '. . . . . . . . . . . . . . . . . .' , 'Loading Dependencies' ],
+                             ['ETC' , '. . . . . . . . . . . . . . . . . .',  'Calculating ETC'] ],
+                              columns=['', ' ', '   ']).set_index('')
+    
+    display(monitor, display_id = 'monitor')
+    
+    #general dependencies
+    import numpy as np
+    from sklearn.linear_model import LogisticRegression
     from sklearn.model_selection import train_test_split
+    from sklearn import metrics
+    import random
+    import seaborn as sns
+    import matplotlib.pyplot as plt
+
+    #ignore warnings
+    import warnings
+    warnings.filterwarnings('ignore') 
+    
+    #declaring global variables to be accessed by other functions
+    global X, y, X_train, X_test, y_train, y_test, seed, experiment__
+    
+    #generate seed to be used globally
+    if session_id is None:
+        seed = random.randint(150,9000)
+    else:
+        seed = session_id
+    
+    #create an empty list for pickling later.
+    experiment__ = []
+    
+    #sample estimator
+    if sample_estimator is None:
+        model = LogisticRegression()
+    else:
+        model = sample_estimator
+        
+    model_name = str(model).split("(")[0]
+        
+    #creating variables to be used later in the function
     X = data.drop(target,axis=1)
     y = data[target]
-    global X_train, X_test, y_train, y_test, seed
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=1-split)
-    import random
-    seed = random.randint(150,900)
-    return X_train, X_test, y_train, y_test, seed
+    
+    progress.value += 1
+    
+    if sampling is True and data.shape[0] > 20000:
+    
+        split_perc = [0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,0.99]
+        split_perc_text = ['10%','20%','30%','40%','50%','60%', '70%', '80%', '90%', '100%']
+        split_perc_tt = [0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,0.99]
+        split_perc_tt_total = []
+        split_percent = []
+
+        metric_results = []
+        metric_name = []
+        
+        counter = 0
+        
+        for i in split_perc:
+            
+            progress.value += 1
+            
+            t0 = time.time()
+            
+            '''
+            MONITOR UPDATE STARTS
+            '''
+            
+            perc_text = split_perc_text[counter]
+            monitor.iloc[1,1:] = 'Fitting Model on ' + perc_text + ' sample'
+            update_display(monitor, display_id = 'monitor')
+
+            '''
+            MONITOR UPDATE ENDS
+            '''
+    
+            X_, X__, y_, y__ = train_test_split(X, y, test_size=1-i, stratify=y)
+            X_train, X_test, y_train, y_test = train_test_split(X_, y_, test_size=0.3, stratify=y_, random_state=seed)
+            model.fit(X_train,y_train)
+            pred_ = model.predict(X_test)
+            pred_prob = model.predict_proba(X_test)[:,1]
+
+            acc = metrics.accuracy_score(y_test,pred_)
+            metric_results.append(acc)
+            metric_name.append('Accuracy')
+            split_percent.append(i)
+
+            auc = metrics.roc_auc_score(y_test,pred_prob)
+            metric_results.append(auc)
+            metric_name.append('AUC')
+            split_percent.append(i)
+
+            f1 = metrics.f1_score(y_test,pred_)
+            metric_results.append(f1)
+            metric_name.append('F1')
+            split_percent.append(i)
+            
+            t1 = time.time()
+                       
+            '''
+            Time calculation begins
+            '''
+          
+            tt = t1 - t0
+            total_tt = tt / i
+            split_perc_tt.pop(0)
+            
+            for remain in split_perc_tt:
+                ss = total_tt * remain
+                split_perc_tt_total.append(ss)
+                
+            ttt = sum(split_perc_tt_total) / 60
+            ttt = np.around(ttt, 2)
+        
+            if ttt < 1:
+                ttt = str(np.around((ttt * 60), 2))
+                ETC = ttt + ' Seconds Remaining'
+
+            else:
+                ttt = str (ttt)
+                ETC = ttt + ' Minutes Remaining'
+                
+            monitor.iloc[2,1:] = ETC
+            update_display(monitor, display_id = 'monitor')
+            
+            
+            '''
+            Time calculation Ends
+            '''
+            
+            split_perc_tt_total = []
+            counter += 1
+
+        model_results = pd.DataFrame({'Sample Size' : split_percent, 'Metric' : metric_results, 'Metric Name': metric_name})
+        
+        #fig, ax = plt.subplots(figsize=(8, 5))
+        plt.figure(figsize=(8, 5))
+        plt.grid(True, which='both')
+        plt.xlim(0,1)
+        plt.ylim(0,1)
+        plt.tick_params(axis='both', which='major', bottom=False)
+        #plt.majorticks_on()
+        sns.lineplot(x="Sample Size", y="Metric", hue="Metric Name", data=model_results, color='blue', lw=2).set_title('Metric of ' + model_name + ' at Different Sample Size', fontsize=15).set_style("normal")
+        #sns.set_style("whitegrid")
+        print(' ')
+        plt.show()
+        
+        
+        monitor.iloc[1,1:] = 'Waiting for input'
+        update_display(monitor, display_id = 'monitor')
+        
+        
+        print('Please Enter the sample % of data you would like to use for modeling. Example: Enter 0.3 for 30%.')
+        print('Press Enter if you would like to use 100% of the data.')
+        
+        print(' ')
+        
+        sample_size = input("Sample Size: ")
+        
+        if sample_size == '' or sample_size == '1':
+            
+            X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=1-train_size, stratify=y, random_state=seed)
+            
+            '''
+            Final display Starts
+            '''
+            clear_output()
+            print(' ')
+            print('Setup Succesfully Completed!')
+            functions = pd.DataFrame ( [ ['session_id', seed ],
+                                         ['Original Data',X.shape ], 
+                                         ['Sampled Data',X.shape ], 
+                                         ['Sample %',X.shape[0] / X.shape[0]], 
+                                         ['Training Set', X_train.shape ], 
+                                         ['Testing Set',X_test.shape ], 
+                                       ], columns = ['Description', 'Value'] )
+
+            functions_ = functions.style.hide_index()
+            display(functions_)
+            
+            '''
+            Final display Ends
+            '''   
+            
+            #log into experiment
+            experiment__.append(('Info', functions))
+            experiment__.append(('X_training Set', X_train))
+            experiment__.append(('y_training Set', y_train))
+            experiment__.append(('X_test Set', X_test))
+            experiment__.append(('y_test Set', y_test)) 
+        
+            return X, y, X_train, X_test, y_train, y_test, seed, experiment__
+        
+        else:
+            
+            sample_n = float(sample_size)
+            X_selected, X_discard, y_selected, y_discard = train_test_split(X, y, test_size=1-sample_n, stratify=y, 
+                                                                random_state=seed)
+            
+            X_train, X_test, y_train, y_test = train_test_split(X_selected, y_selected, test_size=1-train_size, stratify=y_selected, 
+                                                                random_state=seed)
+            clear_output()
+            
+            
+            '''
+            Final display Starts
+            '''
+            
+            clear_output()
+            print(' ')
+            print('Setup Succesfully Completed!')
+            functions = pd.DataFrame ( [ ['session_id', seed ],
+                                         ['Original Data',X.shape ], 
+                                         ['Sampled Data',X_selected.shape ], 
+                                         ['Sample %',X_selected.shape[0] / X.shape[0]], 
+                                         ['Training Set', X_train.shape ], 
+                                         ['Testing Set',X_test.shape ], 
+                                       ], columns = ['Description', 'Value'] )
+            
+            functions_ = functions.style.hide_index()
+            display(functions_)
+            
+            '''
+            Final display Ends
+            ''' 
+            
+            #log into experiment
+            experiment__.append(('Info', functions))
+            experiment__.append(('X_training Set', X_train))
+            experiment__.append(('y_training Set', y_train))
+            experiment__.append(('X_test Set', X_test))
+            experiment__.append(('y_test Set', y_test)) 
+            
+            return X, y, X_train, X_test, y_train, y_test, seed, experiment__
+
+    else:
+        
+        monitor.iloc[1,1:] = 'Splitting Data'
+        update_display(monitor, display_id = 'monitor')
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=1-train_size, stratify=y, random_state=seed)
+        progress.value += 1
+        
+        clear_output()
+        
+        '''
+        Final display Starts
+        '''
+        clear_output()
+        print(' ')
+        print('Setup Succesfully Completed!')
+        functions = pd.DataFrame ( [ ['session_id', seed ],
+                                     ['Original Data',X.shape ], 
+                                     ['Sampled Data',X.shape ], 
+                                     ['Sample %',X.shape[0] / X.shape[0]], 
+                                     ['Training Set', X_train.shape ], 
+                                     ['Testing Set',X_test.shape ], 
+                                   ], columns = ['Description', 'Value'] )
+        
+        functions_ = functions.style.hide_index()
+        display(functions_)
+            
+        '''
+        Final display Ends
+        '''   
+        
+        #log into experiment
+        experiment__.append(('Info', functions))
+        experiment__.append(('X_training Set', X_train))
+        experiment__.append(('y_training Set', y_train))
+        experiment__.append(('X_test Set', X_test))
+        experiment__.append(('y_test Set', y_test))      
+        
+        return X, y, X_train, X_test, y_train, y_test, seed, experiment__
 
 
 def create_model(estimator = None, 
@@ -22,77 +383,84 @@ def create_model(estimator = None,
      
     """  
      
-  Description:
-  ------------
-  This function creates a model and scores it using Stratified Cross Validation. 
-  The output prints the score grid that shows Accuracy, AUC, Recall, Precision, 
-  F1 and Kappa by fold (default CV fold = 10). 
-  
-  Function also returns a trained model object that can be used for further 
-  processing in pycaret or can be used to call any method available in sklearn. 
-  
-  setup() function must be called before using create_model()
-  
-    Example
-    -------
-    lr = create_model('lr')
-    
-    This will return trained Logistic Regression.
-  
-  Parameters
-  ----------
-  
-  estimator : string, default = None
-  
-  Enter abbreviated string of the estimator class. List of estimators supported:
-  
-  Estimator                   Abbreviated String     Original Implementation 
-  ---------                   ------------------     -----------------------
-  Logistic Regression         'lr'                   linear_model.LogisticRegression
-  K Nearest Neighbour         'knn'                  neighbors.KNeighborsClassifier
-  Naives Bayes                'nb'                   naive_bayes.GaussianNB
-  Decision Tree               'dt'                   tree.DecisionTreeClassifier
-  SVM (Linear)                'svm'                  linear_model.SGDClassifier
-  SVM (RBF)                   'rbfsvm'               svm.SVC
-  Gaussian Process            'gpc'                  gaussian_process.GPC
-  Multi Level Perceptron      'mlp'                  neural_network.MLPClassifier
-  Ridge Classifier            'ridge'                linear_model.RidgeClassifier
-  Random Forest               'rf'                   ensemble.RandomForestClassifier
-  Quadratic Disc. Analysis    'qda'                  discriminant_analysis.QDA
-  AdaBoost                    'ada'                  ensemble.AdaBoostClassifier
-  Gradient Boosting           'gbc'                  ensemble.GradientBoostingClassifier
-  Linear Disc. Analysis       'lda'                  discriminant_analysis.LDA
-  Extra Trees Classifier      'et'                   ensemble.ExtraTreesClassifier
-  
-  ensemble: Boolean, default = False
-  True would result in ensemble of estimator using the method parameter defined (see below). 
-  
-  method: String, 'Bagging' or 'Boosting', default = None.
-  method comes into effect only when ensemble = True. Default is set to None.
-  
-  fold: integer, default = 10
-  Number of folds will determine how many folds would be done in the Kfold cross validation.
-  
-  round: integer, default = 4
-  The number indicates the number of decimal places metrics will be rounded to. 
+    Description:
+    ------------
+    This function creates a model and scores it using Stratified Cross Validation. 
+    The output prints the score grid that shows Accuracy, AUC, Recall, Precision, 
+    F1 and Kappa by fold (default = 10 Fold). 
 
-  verbose: Boolean, default = True
-  Score grid is not printed when verbose is set to False.
-  
-  Returns:
-  --------
-  
-  score grid:   A table containing the scores of the model across the kfolds. 
-  -----------   Scoring metrics used are Accuracy, AUC, Recall, Precision, F1 
-                and Kappa. Mean and standard deviation of the scores across the 
-                folds is also returned.
-  
-  model:        trained model object
-  -----------
+    Function also returns a trained model object that can be used for further 
+    processing in pycaret or can be used to call any method available in sklearn. 
 
-  Warnings:
-  ---------
-  None
+    setup() function must be called before using create_model()
+
+        Example
+        -------
+        lr = create_model('lr')
+
+        This will return trained Logistic Regression.
+
+    Parameters
+    ----------
+
+    estimator : string, default = None
+
+    Enter abbreviated string of the estimator class. List of estimators supported:
+
+    Estimator                   Abbreviated String     Original Implementation 
+    ---------                   ------------------     -----------------------
+    Logistic Regression         'lr'                   linear_model.LogisticRegression
+    K Nearest Neighbour         'knn'                  neighbors.KNeighborsClassifier
+    Naives Bayes                'nb'                   naive_bayes.GaussianNB
+    Decision Tree               'dt'                   tree.DecisionTreeClassifier
+    SVM (Linear)                'svm'                  linear_model.SGDClassifier
+    SVM (RBF)                   'rbfsvm'               svm.SVC
+    Gaussian Process            'gpc'                  gaussian_process.GPC
+    Multi Level Perceptron      'mlp'                  neural_network.MLPClassifier
+    Ridge Classifier            'ridge'                linear_model.RidgeClassifier
+    Random Forest               'rf'                   ensemble.RandomForestClassifier
+    Quadratic Disc. Analysis    'qda'                  discriminant_analysis.QDA
+    AdaBoost                    'ada'                  ensemble.AdaBoostClassifier
+    Gradient Boosting           'gbc'                  ensemble.GradientBoostingClassifier
+    Linear Disc. Analysis       'lda'                  discriminant_analysis.LDA
+    Extra Trees Classifier      'et'                   ensemble.ExtraTreesClassifier
+
+    ensemble: Boolean, default = False
+    True would result in ensemble of estimator using the method parameter defined (see below). 
+
+    method: String, 'Bagging' or 'Boosting', default = None.
+    method must be defined when ensemble is set to True. Default method is set to None. 
+
+    fold: integer, default = 10
+    Number of folds to be used in Kfold CV. Must be at least 2. 
+
+    round: integer, default = 4
+    Number of decimal places metrics in score grid will be rounded to. 
+
+    verbose: Boolean, default = True
+    Score grid is not printed when verbose is set to False.
+
+    Returns:
+    --------
+
+    score grid:   A table containing the scores of the model across the kfolds. 
+    -----------   Scoring metrics used are Accuracy, AUC, Recall, Precision, F1 
+                  and Kappa. Mean and standard deviation of the scores across the 
+                  folds is also returned.
+
+    model:        trained model object
+    -----------
+
+    Warnings:
+    ---------
+
+    - 'svm' and 'ridge' doesn't support predict_proba method and hence AUC will be
+     returned as zero (0.0)
+
+    - 'rbfsvm' and 'gpc' uses non-linear kernel and hence the fit time complexity is more
+     than quadratic. These estimators are hard to scale on dataset with more than 10,000 
+     samples.
+  
   
     """
 
@@ -161,14 +529,22 @@ def create_model(estimator = None,
     import pandas as pd
     import ipywidgets as ipw
     from IPython.display import display, HTML, clear_output, update_display
-    import time
+    import datetime, time
         
     #progress bar
     progress = ipw.IntProgress(value=0, min=0, max=fold+3, step=1 , description='Processing: ')
     master_display = pd.DataFrame(columns=['Accuracy','AUC','Recall', 'Prec.', 'F1', 'Kappa'])
     display(progress)
-    ETC = 'Time to Completion : Calculating...'
-    display(ETC, display_id='ETC')
+    
+    #display monitor
+    timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
+    monitor = pd.DataFrame( [ ['Initiated' , '. . . . . . . . . . . . . . . . . .', timestampStr ], 
+                             ['Status' , '. . . . . . . . . . . . . . . . . .' , 'Loading Dependencies' ],
+                             ['ETC' , '. . . . . . . . . . . . . . . . . .',  'Calculating ETC'] ],
+                              columns=['', ' ', '   ']).set_index('')
+    
+    display(monitor, display_id = 'monitor')
+    
     if verbose:
         display_ = display(master_display, display_id=True)
         display_id = display_.display_id
@@ -204,6 +580,18 @@ def create_model(estimator = None,
     avgs_f1 =np.empty((0,0))
     avgs_kappa =np.empty((0,0))
     
+  
+    '''
+    MONITOR UPDATE STARTS
+    '''
+    
+    monitor.iloc[1,1:] = 'Selecting Estimator'
+    update_display(monitor, display_id = 'monitor')
+    
+    '''
+    MONITOR UPDATE ENDS
+    '''
+        
     if estimator == 'lr':
 
         from sklearn.linear_model import LogisticRegression
@@ -311,12 +699,37 @@ def create_model(estimator = None,
         
         from sklearn.ensemble import AdaBoostClassifier
         model = AdaBoostClassifier(model, random_state=seed)
-        
+    
+    
+    '''
+    MONITOR UPDATE STARTS
+    '''
+    
+    monitor.iloc[1,1:] = 'Initializing CV'
+    update_display(monitor, display_id = 'monitor')
+    
+    '''
+    MONITOR UPDATE ENDS
+    '''
+    
+    
     fold_num = 1
     
     for train_i , test_i in kf.split(data_X,data_y):
         
         t0 = time.time()
+        
+        '''
+        MONITOR UPDATE STARTS
+        '''
+    
+        monitor.iloc[1,1:] = 'Fitting Fold ' + str(fold_num) + ' of ' + str(fold)
+        update_display(monitor, display_id = 'monitor')
+
+        '''
+        MONITOR UPDATE ENDS
+        '''
+    
         
         Xtrain,Xtest = data_X.iloc[train_i], data_X.iloc[test_i]
         ytrain,ytest = data_y.iloc[train_i], data_y.iloc[test_i]
@@ -384,11 +797,22 @@ def create_model(estimator = None,
         
         if tt < 1:
             tt = str(np.around((tt * 60), 2))
-            ETC = 'Time to Completion : ' + tt + ' Seconds Remaining'
+            ETC = tt + ' Seconds Remaining'
                 
         else:
             tt = str (tt)
-            ETC = 'Time to Completion : ' + tt + ' Minutes Remaining'
+            ETC = tt + ' Minutes Remaining'
+            
+        '''
+        MONITOR UPDATE STARTS
+        '''
+
+        monitor.iloc[2,1:] = ETC
+        update_display(monitor, display_id = 'monitor')
+
+        '''
+        MONITOR UPDATE ENDS
+        '''
             
         fold_num += 1
         
@@ -398,7 +822,7 @@ def create_model(estimator = None,
         
         if verbose:
             update_display(master_display, display_id = display_id)
-            update_display(ETC, display_id = 'ETC')
+            
         
         '''
         
@@ -440,8 +864,16 @@ def create_model(estimator = None,
                      'F1' : avgs_f1, 'Kappa' : avgs_kappa},index=['Mean', 'SD'])
 
     model_results = model_results.append(model_avgs)
-    model_results = model_results.round(round)  
- 
+    model_results = model_results.round(round)
+    
+    #storing into experiment
+    tup = (full_name,model)
+    experiment__.append(tup)
+    nam = str(full_name) + ' Score Grid'
+    tup = (nam, model_results)
+    experiment__.append(tup)
+    
+    
     if verbose:
         clear_output()
         display(model_results)
@@ -449,6 +881,7 @@ def create_model(estimator = None,
     else:
         clear_output()
         return model
+
 
 def ensemble_model(estimator,
                    method = 'Bagging', 
@@ -458,66 +891,66 @@ def ensemble_model(estimator,
                    verbose = True):
     """
     
-  Description:
-  ------------
-  This function ensemble the trained base estimator using method defined in 'method' 
-  param. The output prints the score grid that shows Accuracy, AUC, Recall, Precision, 
-  F1 and Kappa by fold (default = 10). 
-  
-  Function also returns a trained model object that can be used for further 
-  processing in pycaret or can be used to call any method available in sklearn. 
-  
-  model must be created using create_model() or tune_model() in pycaret or using any
-  other package that returns sklearn object.
-  
-    Example:
-    --------
-    
-    ensembled_lr = ensemble_model(lr)
-    
-    This will return ensembled Logistic Regression.
-    variable 'lr' is created used lr = create_model('lr')
-    Using ensemble = True and method = 'Bagging' in create_model() is equivalent 
-    to using ensemble_model(lr) directly.
-    
-  
-  Parameters
-  ----------
-  
-  estimator : object, default = None
-     
-  method: String, default = 'Bagging' 
-  Bagging implementation is based on sklearn.ensemble.BaggingClassifier
-  Boosting implementation is based on sklearn.ensemble.AdaBoostClassifier
-  
-  fold: integer, default = 10
-  Number of folds will determine how many folds would be done in the Kfold cross validation.
-  
-  round: integer, default = 4
-  The number of decimal places metrics will be rounded to. 
+    Description:
+    ------------
+    This function ensemble the trained base estimator using method defined in 'method' 
+    param (by default method = 'Bagging'). The output prints the score grid that shows 
+    Accuracy, AUC, Recall, Precision, F1 and Kappa by fold (default = 10 Fold). 
 
-  n_estimators: integer, default = 10
-  The number of base estimators in the ensemble.
-  In case of perfect fit, the learning procedure is stopped early.
-  
-  verbose: Boolean, default = True
-  Score grid is not printed when verbose is set to False.
-  
-  
-  Returns:
-  --------
-  
-  score grid:   A table containing the scores of the model across the kfolds. 
-  -----------   Scoring metrics used are Accuracy, AUC, Recall, Precision, F1 
-                and Kappa. Mean and standard deviation of the scores across the 
-                folds is also returned.
-  
-  model:        trained ensembled model object
-  -----------
-  
-  Warnings:
-  ---------
-  None
+    Function also returns a trained model object that can be used for further 
+    processing in pycaret or can be used to call any method available in sklearn. 
+
+    Model must be created using create_model() or tune_model() in pycaret or using any
+    other package that returns sklearn object.
+
+        Example:
+        --------
+
+        ensembled_lr = ensemble_model(lr)
+
+        This will return ensembled Logistic Regression.
+        variable 'lr' is created used lr = create_model('lr')
+        Using ensemble = True and method = 'Bagging' in create_model() is equivalent 
+        to using ensemble_model(lr) directly.
+
+
+    Parameters
+    ----------
+
+    estimator : object, default = None
+
+    method: String, default = 'Bagging' 
+    Bagging implementation is based on sklearn.ensemble.BaggingClassifier
+    Boosting implementation is based on sklearn.ensemble.AdaBoostClassifier
+
+    fold: integer, default = 10
+    Number of folds to be used in Kfold CV. Must be at least 2.
+
+    round: integer, default = 4
+    Number of decimal places metrics in score grid will be rounded to.
+
+    n_estimators: integer, default = 10
+    The number of base estimators in the ensemble.
+    In case of perfect fit, the learning procedure is stopped early.
+
+    verbose: Boolean, default = True
+    Score grid is not printed when verbose is set to False.
+
+
+    Returns:
+    --------
+
+    score grid:   A table containing the scores of the model across the kfolds. 
+    -----------   Scoring metrics used are Accuracy, AUC, Recall, Precision, F1 
+                  and Kappa. Mean and standard deviation of the scores across the 
+                  folds is also returned.
+
+    model:        trained ensembled model object
+    -----------
+
+    Warnings:
+    ---------
+    None
       
     
     """
@@ -565,6 +998,7 @@ def ensemble_model(estimator,
     
     #pre-load libraries
     import pandas as pd
+    import datetime, time
     import ipywidgets as ipw
     from IPython.display import display, HTML, clear_output, update_display
     
@@ -572,6 +1006,16 @@ def ensemble_model(estimator,
     progress = ipw.IntProgress(value=0, min=0, max=fold+3, step=1 , description='Processing: ')
     master_display = pd.DataFrame(columns=['Accuracy','AUC','Recall', 'Prec.', 'F1', 'Kappa'])
     display(progress)
+    
+    #display monitor
+    timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
+    monitor = pd.DataFrame( [ ['Initiated' , '. . . . . . . . . . . . . . . . . .', timestampStr ], 
+                             ['Status' , '. . . . . . . . . . . . . . . . . .' , 'Loading Dependencies' ],
+                             ['ETC' , '. . . . . . . . . . . . . . . . . .',  'Calculating ETC'] ],
+                              columns=['', ' ', '   ']).set_index('')
+    
+    display(monitor, display_id = 'monitor')
+    
     if verbose:
         display_ = display(master_display, display_id=True)
         display_id = display_.display_id
@@ -593,7 +1037,18 @@ def ensemble_model(estimator,
     
     #defining estimator as model
     model = estimator
-     
+    
+    '''
+    MONITOR UPDATE STARTS
+    '''
+    
+    monitor.iloc[1,1:] = 'Selecting Estimator'
+    update_display(monitor, display_id = 'monitor')
+    
+    '''
+    MONITOR UPDATE ENDS
+    '''
+    
     if method == 'Bagging':
         from sklearn.ensemble import BaggingClassifier
         model = BaggingClassifier(model,bootstrap=True,n_estimators=n_estimators, random_state=seed)
@@ -603,6 +1058,17 @@ def ensemble_model(estimator,
         model = AdaBoostClassifier(model, n_estimators=n_estimators, random_state=seed)
     
     progress.value += 1
+    
+    '''
+    MONITOR UPDATE STARTS
+    '''
+    
+    monitor.iloc[1,1:] = 'Initializing CV'
+    update_display(monitor, display_id = 'monitor')
+    
+    '''
+    MONITOR UPDATE ENDS
+    '''
     
     kf = StratifiedKFold(fold, random_state=seed)
     
@@ -619,7 +1085,22 @@ def ensemble_model(estimator,
     avgs_f1 =np.empty((0,0))
     avgs_kappa =np.empty((0,0))
     
+    fold_num = 1 
+    
     for train_i , test_i in kf.split(data_X,data_y):
+        
+        t0 = time.time()
+        
+        '''
+        MONITOR UPDATE STARTS
+        '''
+    
+        monitor.iloc[1,1:] = 'Fitting Fold ' + str(fold_num) + ' of ' + str(fold)
+        update_display(monitor, display_id = 'monitor')
+
+        '''
+        MONITOR UPDATE ENDS
+        '''
         
         Xtrain,Xtest = data_X.iloc[train_i], data_X.iloc[test_i]
         ytrain,ytest = data_y.iloc[train_i], data_y.iloc[test_i]
@@ -676,6 +1157,46 @@ def ensemble_model(estimator,
         master_display = pd.concat([master_display, fold_results],ignore_index=True)
         fold_results = []
         
+        '''
+        
+        TIME CALCULATION SUB-SECTION STARTS HERE
+        
+        '''
+        t1 = time.time()
+        
+        tt = (t1 - t0) * (fold-fold_num) / 60
+        tt = np.around(tt, 2)
+        
+        if tt < 1:
+            tt = str(np.around((tt * 60), 2))
+            ETC = tt + ' Seconds Remaining'
+                
+        else:
+            tt = str (tt)
+            ETC = tt + ' Minutes Remaining'
+            
+        update_display(ETC, display_id = 'ETC')
+            
+        fold_num += 1
+        
+        
+        '''
+        MONITOR UPDATE STARTS
+        '''
+
+        monitor.iloc[2,1:] = ETC
+        update_display(monitor, display_id = 'monitor')
+
+        '''
+        MONITOR UPDATE ENDS
+        '''
+        
+        '''
+        
+        TIME CALCULATION ENDS HERE
+        
+        '''
+
         if verbose:
             update_display(master_display, display_id = display_id)
         
@@ -725,6 +1246,15 @@ def ensemble_model(estimator,
     
     model = model
     
+    #storing into experiment
+    model_name = str(model).split("(")[0]
+    tup = (model_name,model)
+    experiment__.append(tup)
+    
+    nam = str(model_name) + ' Score Grid'
+    tup = (nam, model_results)
+    experiment__.append(tup)
+    
     if verbose:
         clear_output()
         display(model_results)
@@ -733,66 +1263,77 @@ def ensemble_model(estimator,
         clear_output()
         return model
 
+
 def plot_model(estimator, 
                plot = 'auc'): 
     
+    
     """
-   
-  Description:
-  ------------
-  This function takes a trained model object and returns the plot on test set.
-  Model may get re-trained in the process, as required in certain cases.
-  See list of plots supported below. 
+          
+    Description:
+    ------------
+    This function takes a trained model object and returns the plot on test set.
+    Model may get re-trained in the process, as maybe required in certain cases.
+    See list of plots supported below. 
 
-    Example:
+        Example:
+        --------
+
+        plot_model(lr)
+
+        This will return AUC plot of trained Logistic Regression.
+        variable 'lr' is created used lr = create_model('lr')
+
+
+    Parameters
+    ----------
+
+    estimator : object, default = none
+
+    A trained model object should be passed as an estimator. 
+    Model must be created using create_model() or tune_model() in pycaret or using any
+    other package that returns sklearn object.
+
+    plot : string, default = auc
+    Enter abbreviation of type of plot. The current list of plots supported are:
+
+    Name                        Abbreviated String     Original Implementation 
+    ---------                   ------------------     -----------------------
+    Area Under the Curve         'auc'                 .. / rocauc.html
+    Discrimination Threshold     'threshold'           .. / threshold.html
+    Precision Recall Curve       'pr'                  .. / prcurve.html
+    Confusion Matrix             'confusion_matrix'    .. / confusion_matrix.html
+    Class Prediction Error       'error'               .. / class_prediction_error.html
+    Classification Report        'class_report'        .. / classification_report.html
+    Decision Boundary            'boundary'            .. / boundaries.html
+    Recursive Feat. Selection    'rfe'                 .. / rfecv.html
+    Learning Curve               'learning'            .. / learning_curve.html
+    Manifold Learning            'manifold'            .. / manifold.html
+    Calibration Curve            'calibration'         .. / calibration_curve.html
+    Validation Curve             'vc'                  .. / validation_curve.html
+    Dimension Learning           'dimension'           .. / radviz.html
+    Feature Importance           'feature'                   N/A 
+    Model Hyperparameter         'parameter'                 N/A 
+
+    ** https://www.scikit-yb.org/en/latest/api/classifier/<reference>
+
+    Returns:
     --------
-    
-    plot_model(lr)
-    
-    This will return AUC plot of trained Logistic Regression.
-    variable 'lr' is created used lr = create_model('lr')
 
-  
-  Parameters
-  ----------
-  
-  estimator : object, default = none
-  
-  A trained model object should be passed as an estimator. 
-  Model must be created using create_model() or tune_model() in pycaret or using any
-  other package that returns sklearn object.
-  
-  plot : string, default = auc
-  Enter abbreviation of type of plot. The current list of plots supported are:
-  
-  Name                        Abbreviated String     Original Implementation 
-  ---------                   ------------------     -----------------------
-  Area Under the Curve         'auc'                 .. / rocauc.html
-  Discrimination Threshold     'threshold'           .. / threshold.html
-  Precision Recall Curve       'pr'                  .. / prcurve.html
-  Confusion Matrix             'confusion_matrix'    .. / confusion_matrix.html
-  Class Prediction Error       'error'               .. / class_prediction_error.html
-  Classification Report        'class_report'        .. / classification_report.html
-  Decision Boundary            'boundary'            .. / boundaries.html
-  Recursive Feat. Selection    'rfe'                 .. / rfecv.html
-  Learning Curve               'learning'            .. / learning_curve.html
-  Manifold Learning            'manifold'            .. / manifold.html
-  Calibration Curve            'calibration'         .. / calibration_curve.html
-  Validation Curve             'vc'                  .. / validation_curve.html
-  Dimension Learning           'dimension'           .. / radviz.html
-  Feature Importance           'feature'             ..... N/A .....
-  
-  ** https://www.scikit-yb.org/en/latest/api/classifier/<reference>
+    Visual Plot:  Prints the visual plot. 
+    ------------
 
-  Returns:
-  --------
-  
-  Visual Plot:  Prints the visual plot. Returns an object of type None.  
-  
-  Warnings:
-  ---------
-  None
+    Warnings:
+    ---------
     
+    -  'svm' and 'ridge' doesn't support predict_proba method and hence AUC and 
+        calibration plot is not available for these estimators.
+       
+    -   When 'max_features' parameter of trained model object is not equal to # 
+        of samples in X train set, 'rfe' plot is not available.
+              
+       
+
     """  
     
     
@@ -807,7 +1348,7 @@ def plot_model(estimator,
     
     #checking plots (string)
     available_plots = ['auc', 'threshold', 'pr', 'confusion_matrix', 'error', 'class_report', 'boundary', 'rfe', 'learning',
-                       'manifold', 'calibration', 'vc', 'dimension', 'feature']
+                       'manifold', 'calibration', 'vc', 'dimension', 'feature', 'parameter']
     
     if plot not in available_plots:
         sys.exit('(Value Error): Plot Not Available. Please see docstring for list of available Plots.')
@@ -815,6 +1356,18 @@ def plot_model(estimator,
     #checking for auc plot
     if not hasattr(estimator, 'predict_proba') and plot == 'auc':
         sys.exit('(Type Error): AUC plot not available for estimators with no predict_proba attribute.')
+    
+    #checking for auc plot
+    if not hasattr(estimator, 'predict_proba') and plot == 'auc':
+        sys.exit('(Type Error): AUC plot not available for estimators with no predict_proba attribute.')
+    
+    #checking for calibration plot
+    if not hasattr(estimator, 'predict_proba') and plot == 'calibration':
+        sys.exit('(Type Error): Calibration plot not available for estimators with no predict_proba attribute.')
+     
+    #checking for rfe
+    if hasattr(estimator,'max_features') and plot == 'rfe' and estimator.max_features_ != X_train.shape[1]:
+        sys.exit('(Type Error): RFE plot not available when max_features parameter is not set to None.')
         
     #checking for feature plot
     if not ( hasattr(estimator, 'coef_') or hasattr(estimator,'feature_importances_') ) and plot == 'feature':
@@ -851,6 +1404,7 @@ def plot_model(estimator,
     
     progress.value += 1
     
+        
     if plot == 'auc':
         
         from yellowbrick.classifier import ROCAUC
@@ -891,7 +1445,7 @@ def plot_model(estimator,
         
         from yellowbrick.classifier import ConfusionMatrix
         progress.value += 1
-        visualizer = ConfusionMatrix(model, random_state=seed, fontsize=15, cmap="Greens")
+        visualizer = ConfusionMatrix(model, random_state=seed, fontsize = 15, cmap="Greens")
         visualizer.fit(X_train, y_train)
         progress.value += 1
         visualizer.score(X_test, y_test)
@@ -928,11 +1482,15 @@ def plot_model(estimator,
         from sklearn.preprocessing import StandardScaler
         from sklearn.decomposition import PCA
         from yellowbrick.contrib.classifier import DecisionViz        
+        from copy import deepcopy
+        model2 = deepcopy(estimator)
         
         progress.value += 1
         
-        X_train_transformed = X_train.select_dtypes(include='float64')
-        X_test_transformed = X_test.select_dtypes(include='float64')
+        X_train_transformed = X_train.copy()
+        X_test_transformed = X_test.copy()
+        X_train_transformed = X_train_transformed.select_dtypes(include='float64')
+        X_test_transformed = X_test_transformed.select_dtypes(include='float64')
         X_train_transformed = StandardScaler().fit_transform(X_train_transformed)
         X_test_transformed = StandardScaler().fit_transform(X_test_transformed)
         pca = PCA(n_components=2, random_state = seed)
@@ -941,17 +1499,17 @@ def plot_model(estimator,
         
         progress.value += 1
         
-        y_train_transformed = np.array(y_train)
-        y_test_transformed = np.array(y_test)
+        y_train_transformed = y_train.copy()
+        y_test_transformed = y_test.copy()
+        y_train_transformed = np.array(y_train_transformed)
+        y_test_transformed = np.array(y_test_transformed)
         
-        model_transformed = model
-        
-        viz = DecisionViz(model_transformed)
-        viz.fit(X_train_transformed, y_train_transformed, features=['Feature One', 'Feature Two'], classes=['A', 'B'])
-        viz.draw(X_test_transformed, y_test_transformed)
+        viz_ = DecisionViz(model2)
+        viz_.fit(X_train_transformed, y_train_transformed, features=['Feature One', 'Feature Two'], classes=['A', 'B'])
+        viz_.draw(X_test_transformed, y_test_transformed)
         progress.value += 1
         clear_output()
-        viz.poof()
+        viz_.poof()
         
     elif plot == 'rfe':
         
@@ -1136,87 +1694,112 @@ def plot_model(estimator,
         var_imp = sorted_df.reset_index(drop=True)
         var_imp_array = np.array(var_imp['Variable'])
         var_imp_array_top_n = var_imp_array[0:len(var_imp_array)]
+    
+    elif plot == 'parameter':
+        
+        clear_output()
+        param_df = pd.DataFrame.from_dict(estimator.get_params(estimator), orient='index', columns=['Parameters'])
+        display(param_df)
+
 
 def compare_models(blacklist = None,
                    fold = 10, 
                    round = 4, 
-                   sort = 'Accuracy'):
+                   sort = 'Accuracy',
+                   turbo = True):
     
     """
    
-  Description:
-  ------------
-  This function creates multiple model and scores it using Stratified Cross Validation. 
-  The output prints the score grid that shows Accuracy, AUC, Recall, Precision, 
-  F1 and Kappa by fold (default CV = 10) of all the available model in model library. 
+    Description:
+    ------------
+    This function creates all models in model library and scores it using Stratified 
+    Cross Validation. The output prints the score grid that shows Accuracy, AUC, Recall,
+    Precision, F1 and Kappa by fold (default CV = 10 Folds) of all the available model 
+    in model library.
+    
+    When turbo is set to True ('rbfsvm', 'gpc' and 'mlp') are excluded due to longer
+    training times. By default turbo param is set to True.
+
+    List of models in Model Library
+
+    Estimator                   Abbreviated String     sklearn Implementation 
+    ---------                   ------------------     -----------------------
+    Logistic Regression         'lr'                   linear_model.LogisticRegression
+    K Nearest Neighbour         'knn'                  neighbors.KNeighborsClassifier
+    Naives Bayes                'nb'                   naive_bayes.GaussianNB
+    Decision Tree               'dt'                   tree.DecisionTreeClassifier
+    SVM (Linear)                'svm'                  linear_model.SGDClassifier
+    SVM (RBF)                   'rbfsvm'               svm.SVC
+    Gaussian Process            'gpc'                  gaussian_process.GPC
+    Multi Level Perceptron      'mlp'                  neural_network.MLPClassifier
+    Ridge Classifier            'ridge'                linear_model.RidgeClassifier
+    Random Forest               'rf'                   ensemble.RandomForestClassifier
+    Quadratic Disc. Analysis    'qda'                  discriminant_analysis.QDA 
+    AdaBoost                    'ada'                  ensemble.AdaBoostClassifier
+    Gradient Boosting           'gbc'                  ensemble.GradientBoostingClassifier
+    Linear Disc. Analysis       'lda'                  discriminant_analysis.LDA 
+    Extra Trees Classifier      'et'                   ensemble.ExtraTreesClassifier
+
+        Example:
+        --------
+
+        compare_models() 
+
+        This will return the averaged score grid of all the models except 'rbfsvm', 'gpc' 
+        and 'mlp'. When turbo param is set to False, all models are included including
+        'rbfsvm', 'gpc' and 'mlp', However this may result in longer training times.
+        
+        compare_models( blacklist = [ 'knn', 'gbc' ] , turbo = False) 
+
+        This will return comparison of all models except K Nearest Neighbour and
+        Gradient Boosting Classifier.
+        
+        compare_models( blacklist = [ 'knn', 'gbc' ] , turbo = True) 
+
+        This will return comparison of all models except K Nearest Neighbour, 
+        Gradient Boosting Classifier, SVM (RBF), Gaussian Process Classifier and
+        Multi Level Perceptron.
+        
+
+    Parameters
+    ----------
+
+    blacklist: string, default = None
+    In order to omit certain models from the comparison, the abbreviation string 
+    of such models (see above list) can be passed as list of strings. This is 
+    normally done to be more efficient with time. 
+
+    fold: integer, default = 10
+    Number of folds to be used in Kfold CV. Must be at least 2. 
+
+    round: integer, default = 4
+    Number of decimal places metrics in score grid will be rounded to.
   
-  List of models in Model Library
-  
-  Estimator                   Abbreviated String     sklearn Implementation 
-  ---------                   ------------------     -----------------------
-  Logistic Regression         'lr'                   linear_model.LogisticRegression
-  K Nearest Neighbour         'knn'                  neighbors.KNeighborsClassifier
-  Naives Bayes                'nb'                   naive_bayes.GaussianNB
-  Decision Tree               'dt'                   tree.DecisionTreeClassifier
-  SVM (Linear)                'svm'                  linear_model.SGDClassifier
-  SVM (RBF)                   'rbfsvm'               svm.SVC
-  Gaussian Process            'gpc'                  gaussian_process.GPC
-  Multi Level Perceptron      'mlp'                  neural_network.MLPClassifier
-  Ridge Classifier            'ridge'                linear_model.RidgeClassifier
-  Random Forest               'rf'                   ensemble.RandomForestClassifier
-  Quadratic Disc. Analysis    'qda'                  discriminant_analysis.QDA 
-  AdaBoost                    'ada'                  ensemble.AdaBoostClassifier
-  Gradient Boosting           'gbc'                  ensemble.GradientBoostingClassifier
-  Linear Disc. Analysis       'lda'                  discriminant_analysis.LDA 
-  Extra Trees Classifier      'et'                   ensemble.ExtraTreesClassifier
-  
-    Example:
+    sort: string, default = 'Accuracy'
+    The scoring measure specified is used for sorting the average score grid
+    Other options are 'AUC', 'Recall', 'Precision', 'F1' and 'Kappa'.
+
+    turbo: Boolean, default = True
+    When turbo is set to True, it blacklists estimator that uses Radial Kernel.
+    
+    Returns:
     --------
-    
-    compare_models() 
-    
-    This will return the averaged score grid of all the models accross Kfold.
-    
-    compare_models( blacklist = [ 'rbfsvm', 'mlp' ] ) 
-    
-    This will return comparison of all models except Support Vector Machine (RBF) 
-    and Multi Level Perceptron.
-    
- 
-  Parameters
-  ----------
-  
-  blacklist: string, default = None
-  In order to omit certain models from the comparison, the abbreviation string 
-  of such models (see above list) can be passed as  list of strings. This is 
-  normally done to be more efficient with time. 
-  
-  fold: integer, default = 10
-  Number of folds will determine how many folds would be done in the Kfold CV.
-  
-  round: integer, default = 4
-  The number of decimal places metrics will be rounded to.
 
-  sort: string, default = 'Accuracy'
-  The scoring measure specified is used for sorting the models based on their 
-  performance score on the specified scoring measure. 
-  Other options are 'AUC', 'Recall', 'Precision', 'F1' and 'Kappa'
-  
- 
- Returns:
-  --------
-  
-  score grid:   A table containing the scores of the model across the kfolds. 
-  -----------   Scoring metrics used are Accuracy, AUC, Recall, Precision, F1 
-                and Kappa. Mean and standard deviation of the scores across the 
-                folds is also returned.
+    score grid:   A table containing the scores of the model across the kfolds. 
+    -----------   Scoring metrics used are Accuracy, AUC, Recall, Precision, F1 
+                  and Kappa. Mean and standard deviation of the scores across the 
+                  folds is also returned.
 
-  Warnings:
-  ---------
-  compare_models() though attractive, might be time consuming with large datasets
-  and you may want to limit the models you chose to compare by blacklisting 
-  certain models through blacklist parameter.
-  
+    Warnings:
+    ---------
+    
+    - compare_models() though attractive, might be time consuming with large 
+      datasets. By default turbo is set to True, that will blacklists model that
+      takes longer training time. Changing turbo parameter to False may result in 
+      very high training times with datasets where number of sample size exceed 
+      10,000.
+         
+           
     
     """
     
@@ -1260,15 +1843,38 @@ def compare_models(blacklist = None,
     
     #pre-load libraries
     import pandas as pd
+    import time, datetime
     import ipywidgets as ipw
     from IPython.display import display, HTML, clear_output, update_display
     
     #progress bar
-    progress = ipw.IntProgress(value=0, min=0, max=(fold*15)+5, step=1 , description='Processing: ')
+    if blacklist is None:
+        len_of_blacklist = 0
+    else:
+        len_of_blacklist = len(blacklist)
+        
+    if turbo:
+        len_mod = 12 - len_of_blacklist
+    else:
+        len_mod = 15 - len_of_blacklist
+        
+    progress = ipw.IntProgress(value=0, min=0, max=(fold*len_mod)+5, step=1 , description='Processing: ')
     master_display = pd.DataFrame(columns=['Model', 'Accuracy','AUC','Recall', 'Prec.', 'F1', 'Kappa'])
     display(progress)
+    
+    #display monitor
+    timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
+    monitor = pd.DataFrame( [ ['Initiated' , '. . . . . . . . . . . . . . . . . .', timestampStr ], 
+                             ['Status' , '. . . . . . . . . . . . . . . . . .' , 'Loading Dependencies' ],
+                             ['Estimator' , '. . . . . . . . . . . . . . . . . .' , 'Compiling Library' ],
+                             ['ETC' , '. . . . . . . . . . . . . . . . . .',  'Calculating ETC'] ],
+                              columns=['', ' ', '   ']).set_index('')
+    
+    display(monitor, display_id = 'monitor')
+    
     display_ = display(master_display, display_id=True)
     display_id = display_.display_id
+    
     
     #ignore warnings
     import warnings
@@ -1311,7 +1917,19 @@ def compare_models(blacklist = None,
         sort = 'Prec.'
     else:
         sort = sort
-        
+    
+    
+    '''
+    MONITOR UPDATE STARTS
+    '''
+    
+    monitor.iloc[1,1:] = 'Loading Estimator'
+    update_display(monitor, display_id = 'monitor')
+    
+    '''
+    MONITOR UPDATE ENDS
+    '''
+    
     #creating model object 
     lr = LogisticRegression(random_state=seed)
     knn = KNeighborsClassifier()
@@ -1334,13 +1952,72 @@ def compare_models(blacklist = None,
     model_library = [lr, knn, nb, dt, svm, rbfsvm, gpc, mlp, ridge, rf, qda, ada, gbc, lda, et]
 
     model_names = ['Logistic Regression',
+                   'K Neighbors Classifier',
+                   'Naive Bayes',
+                   'Decision Tree Classifier',
+                   'SVM - Linear Kernel',
+                   'SVM - Radial Kernel',
+                   'Gaussian Process Classifier',
+                   'MLP Classifier',
+                   'Ridge Classifier',
+                   'Random Forest Classifier',
+                   'Quadratic Discriminant Analysis',
+                   'Ada Boost Classifier',
+                   'Gradient Boosting Classifier',
+                   'Linear Discriminant Analysis',
+                   'Extra Trees Classifier']
+    
+    
+    #checking for blacklist models
+    
+    model_library_str = ['lr', 'knn', 'nb', 'dt', 'svm', 
+                         'rbfsvm', 'gpc', 'mlp', 'ridge', 
+                         'rf', 'qda', 'ada', 'gbc', 'lda', 
+                         'et']
+    
+    model_library_str_ = ['lr', 'knn', 'nb', 'dt', 'svm', 
+                          'rbfsvm', 'gpc', 'mlp', 'ridge', 
+                          'rf', 'qda', 'ada', 'gbc', 'lda', 
+                          'et']
+    
+    if blacklist is not None:
+        
+        if turbo:
+            internal_blacklist = ['rbfsvm', 'gpc', 'mlp']
+            compiled_blacklist = blacklist + internal_blacklist
+            blacklist = list(set(compiled_blacklist))
+            
+        else:
+            blacklist = blacklist
+        
+        for i in blacklist:
+            model_library_str_.remove(i)
+        
+        si = []
+        
+        for i in model_library_str_:
+            s = model_library_str.index(i)
+            si.append(s)
+        
+        model_library_ = []
+        model_names_= []
+        for i in si:
+            model_library_.append(model_library[i])
+            model_names_.append(model_names[i])
+            
+        model_library = model_library_
+        model_names = model_names_
+        
+        
+    if blacklist is None and turbo is True:
+        
+        model_library = [lr, knn, nb, dt, svm, ridge, rf, qda, ada, gbc, lda, et]
+
+        model_names = ['Logistic Regression',
                        'K Neighbors Classifier',
                        'Naive Bayes',
                        'Decision Tree Classifier',
                        'SVM - Linear Kernel',
-                       'SVM - Radial Kernel',
-                       'Gaussian Process Classifier',
-                       'MLP Classifier',
                        'Ridge Classifier',
                        'Random Forest Classifier',
                        'Quadratic Discriminant Analysis',
@@ -1348,25 +2025,21 @@ def compare_models(blacklist = None,
                        'Gradient Boosting Classifier',
                        'Linear Discriminant Analysis',
                        'Extra Trees Classifier']
-    
-    
-    #checking for blacklist models
-    if blacklist is not None:
         
-        model_library_str = ['lr', 'knn', 'nb', 'dt', 'svm', 'rbfsvm', 'gpc', 'mlp', 'ridge', 'rf', 'qda', 'ada', 
-                             'gbc', 'lda', 'et']
-        
-        black_list_position = []
-        
-        for b in blacklist:
-            s = model_library_str.index(b)
-            black_list_position.append(s)
-            
-        for i in black_list_position:
-            model_library.pop(i)
-            model_names.pop(i)
             
     progress.value += 1
+
+    
+    '''
+    MONITOR UPDATE STARTS
+    '''
+    
+    monitor.iloc[1,1:] = 'Initializing CV'
+    update_display(monitor, display_id = 'monitor')
+    
+    '''
+    MONITOR UPDATE ENDS
+    '''
     
     #cross validation setup starts here
     kf = StratifiedKFold(fold, random_state=seed)
@@ -1390,10 +2063,36 @@ def compare_models(blacklist = None,
     for model in model_library:
         
         progress.value += 1
- 
+        
+        '''
+        MONITOR UPDATE STARTS
+        '''
+        monitor.iloc[2,1:] = model_names[name_counter]
+        monitor.iloc[3,1:] = 'Calculating ETC'
+        update_display(monitor, display_id = 'monitor')
+
+        '''
+        MONITOR UPDATE ENDS
+        '''
+        
+        fold_num = 1
+        
         for train_i , test_i in kf.split(data_X,data_y):
         
             progress.value += 1
+            
+            t0 = time.time()
+            
+            '''
+            MONITOR UPDATE STARTS
+            '''
+                
+            monitor.iloc[1,1:] = 'Fitting Fold ' + str(fold_num) + ' of ' + str(fold)
+            update_display(monitor, display_id = 'monitor')
+            
+            '''
+            MONITOR UPDATE ENDS
+            '''            
      
             Xtrain,Xtest = data_X.iloc[train_i], data_X.iloc[test_i]
             ytrain,ytest = data_y.iloc[train_i], data_y.iloc[test_i]
@@ -1435,6 +2134,36 @@ def compare_models(blacklist = None,
                 score_precision = np.append(score_precision,precision)
                 score_f1 =np.append(score_f1,f1)
                 score_kappa =np.append(score_kappa,kappa) 
+                
+                
+            '''
+            TIME CALCULATION SUB-SECTION STARTS HERE
+            '''
+            t1 = time.time()
+        
+            tt = (t1 - t0) * (fold-fold_num) / 60
+            tt = np.around(tt, 2)
+        
+            if tt < 1:
+                tt = str(np.around((tt * 60), 2))
+                ETC = tt + ' Seconds Remaining'
+                
+            else:
+                tt = str (tt)
+                ETC = tt + ' Minutes Remaining'
+            
+            fold_num += 1
+            
+            '''
+            MONITOR UPDATE STARTS
+            '''
+
+            monitor.iloc[3,1:] = ETC
+            update_display(monitor, display_id = 'monitor')
+
+            '''
+            MONITOR UPDATE ENDS
+            '''
         
         avg_acc = np.append(avg_acc,np.mean(score_acc))
         avg_auc = np.append(avg_auc,np.mean(score_auc))
@@ -1471,6 +2200,11 @@ def compare_models(blacklist = None,
   
     progress.value += 1
     
+    #storing into experiment
+    model_name = 'Compare Models Score Grid'
+    tup = (model_name,master_display)
+    experiment__.append(tup)
+    
     def highlight_max(s):
         is_max = s == s.max()
         return ['background-color: yellow' if v else '' for v in is_max]
@@ -1497,98 +2231,100 @@ def tune_model(estimator = None,
     
       
     """
-    
-  Description:
-  ------------
-  This function tunes hyperparameter of a model and scores it using Stratified 
-  Cross Validation. The output prints the score grid that shows Accuracy, AUC,
-  Recall, Precision, F1 and Kappa by fold (by default CV = 10).
+        
+    Description:
+    ------------
+    This function tunes hyperparameter of a model and scores it using Stratified 
+    Cross Validation. The output prints the score grid that shows Accuracy, AUC,
+    Recall, Precision, F1 and Kappa by fold (by default = 10 Folds).
 
-  Function also return a trained model object that can be used for further 
-  processing in pycaret or can be used to call any method available in sklearn. 
-  
-  tune_model() accepts string parameter for estimator.
-  
-    Example
-    -------
-    tune_model('lr') 
+    Function also return a trained model object that can be used for further 
+    processing in pycaret or can be used to call any method available in sklearn. 
+
+    tune_model() accepts string parameter for estimator.
+
+        Example
+        -------
+        tune_model('lr') 
+
+        This will tune the hyperparameters of Logistic Regression.
+
+        tune_model('lr', ensemble = True, method = 'Bagging') 
+
+        This will tune the hyperparameters of Logistic Regression wrapped around 
+        Bagging Classifier. 
+
+
+    Parameters
+    ----------
+
+    estimator : string, default = None
+
+    Enter abbreviated name of the estimator class. List of estimators supported:
+
+    Estimator                   Abbreviated String     Original Implementation 
+    ---------                   ------------------     -----------------------
+    Logistic Regression         'lr'                   linear_model.LogisticRegression
+    K Nearest Neighbour         'knn'                  neighbors.KNeighborsClassifier
+    Naives Bayes                'nb'                   naive_bayes.GaussianNB
+    Decision Tree               'dt'                   tree.DecisionTreeClassifier
+    SVM (Linear)                'svm'                  linear_model.SGDClassifier
+    SVM (RBF)                   'rbfsvm'               svm.SVC
+    Gaussian Process            'gpc'                  gaussian_process.GPC
+    Multi Level Perceptron      'mlp'                  neural_network.MLPClassifier
+    Ridge Classifier            'ridge'                linear_model.RidgeClassifier
+    Random Forest               'rf'                   ensemble.RandomForestClassifier
+    Quadratic Disc. Analysis    'qda'                  discriminant_analysis.QDA 
+    AdaBoost                    'ada'                  ensemble.AdaBoostClassifier
+    Gradient Boosting           'gbc'                  ensemble.GradientBoostingClassifier
+    Linear Disc. Analysis       'lda'                  discriminant_analysis.LDA 
+    Extra Trees Classifier      'et'                   ensemble.ExtraTreesClassifier
+
+    fold: integer, default = 10
+    Number of folds to be used in Kfold CV. Must be at least 2. 
+
+    round: integer, default = 4
+    Number of decimal places metrics in score grid will be rounded to. 
+
+    n_iter: integer, default = 10
+    Number of iterations within the Random Grid Search. For every iteration, 
+    the model randomly selects one value from the pre-defined grid of hyperparameters.
+
+    optimize: string, default = 'accuracy'
+    Measure used to select the best model through the hyperparameter tuning.
+    The default scoring measure is 'accuracy'. Other common measures include
+    'f1', 'recall', 'precision', 'roc_auc'. Complete list available at:
+    https://scikit-learn.org/stable/modules/model_evaluation.html#scoring-parameter
+
+    ensemble: Boolean, default = None
+    True would enable ensembling of model through method defined in 'method' param.
+
+    method: String, 'Bagging' or 'Boosting', default = None
+    method comes into effect only when ensemble = True. Default is set to None. 
+
+    verbose: Boolean, default = True
+    Score grid is not printed when verbose is set to False.
+
+    Returns:
+    --------
+
+    score grid:   A table containing the scores of the model across the kfolds. 
+    -----------   Scoring metrics used are Accuracy, AUC, Recall, Precision, F1 
+                  and Kappa. Mean and standard deviation of the scores across the 
+                  folds is also returned.
+
+    model:        trained model object
+    -----------
+
+    Warnings:
+    ---------
     
-    This will tune the hyperparameters of Logistic Regression
-    
-    tune_model('lr', ensemble = True, method = 'Bagging') 
-    
-    This will tune the hyperparameters of Logistic Regression wrapped around 
-    Bagging Classifier. 
-    
-    
-  Parameters
-  ----------
-  
-  estimator : string, default = None
-  
-  Enter abbreviated name of the estimator class. List of estimators supported:
-  
-  Estimator                   Abbreviated String     Original Implementation 
-  ---------                   ------------------     -----------------------
-  Logistic Regression         'lr'                   linear_model.LogisticRegression
-  K Nearest Neighbour         'knn'                  neighbors.KNeighborsClassifier
-  Naives Bayes                'nb'                   naive_bayes.GaussianNB
-  Decision Tree               'dt'                   tree.DecisionTreeClassifier
-  SVM (Linear)                'svm'                  linear_model.SGDClassifier
-  SVM (RBF)                   'rbfsvm'               svm.SVC
-  Gaussian Process            'gpc'                  gaussian_process.GPC
-  Multi Level Perceptron      'mlp'                  neural_network.MLPClassifier
-  Ridge Classifier            'ridge'                linear_model.RidgeClassifier
-  Random Forest               'rf'                   ensemble.RandomForestClassifier
-  Quadratic Disc. Analysis    'qda'                  discriminant_analysis.QDA 
-  AdaBoost                    'ada'                  ensemble.AdaBoostClassifier
-  Gradient Boosting           'gbc'                  ensemble.GradientBoostingClassifier
-  Linear Disc. Analysis       'lda'                  discriminant_analysis.LDA 
-  Extra Trees Classifier      'et'                   ensemble.ExtraTreesClassifier
+    - estimator parameter takes an abbreviated string. passing a trained model object
+      returns an error. tune_model('lr') function internally calls create_model() before
+      tuning the hyperparameters.
    
-  fold: integer, default = 10
-  Number of folds will determine how many folds would be done in the Kfold CV.
-  
-  round: integer, default = 4
-  The number indicates the number of decimal places metrics will be rounded to. 
-
-  n_iter: integer, default = 10
-  Number of iterations within the Random Grid Search. For every iteration, 
-  the model randomly selects one value from the pre-defined grid of hyperparameters.
-
-  optimize: string, default = 'accuracy'
-  Measure used to select the best model through the hyperparameter tuning.
-  The default scoring measure is 'accuracy'. Other common measures include
-  'f1', 'recall', 'precision', 'roc_auc'. Complete list available at:
-  https://scikit-learn.org/stable/modules/model_evaluation.html#scoring-parameter
-
-  ensemble: Boolean, default = None
-  True would enable ensembling of models through Bagging/Boosting method to be defined by 'method'.
-  
-  method: String, 'Bagging' or 'Boosting', default = Bagging
-  method comes into effect only when ensemble = True. Default is set to Bagging. 
-
-  verbose: Boolean, default = True
-  Score grid is not printed when verbose is set to False.
-  
-  Returns:
-  --------
-  
-  score grid:   A table containing the scores of the model across the kfolds. 
-  -----------   Scoring metrics used are Accuracy, AUC, Recall, Precision, F1 
-                and Kappa. Mean and standard deviation of the scores across the 
-                folds is also returned.
-  
-  model:        trained model object
-  -----------
-
-  Warnings:
-  ---------
-  estimator parameter takes an abbreviated string. passing a trained model object
-  returns an error. tune_model('lr') function internally calls create_model() before
-  tuning the hyperparameters.
-  
-  
+     
+    
   """
  
 
@@ -1667,13 +2403,24 @@ def tune_model(estimator = None,
     
     #pre-load libraries
     import pandas as pd
+    import time, datetime
     import ipywidgets as ipw
     from IPython.display import display, HTML, clear_output, update_display
     
     #progress bar
     progress = ipw.IntProgress(value=0, min=0, max=fold+5, step=1 , description='Processing: ')
     master_display = pd.DataFrame(columns=['Accuracy','AUC','Recall', 'Prec.', 'F1', 'Kappa'])
-    display(progress)
+    display(progress)    
+    
+    #display monitor
+    timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
+    monitor = pd.DataFrame( [ ['Initiated' , '. . . . . . . . . . . . . . . . . .', timestampStr ], 
+                             ['Status' , '. . . . . . . . . . . . . . . . . .' , 'Loading Dependencies' ],
+                             ['ETC' , '. . . . . . . . . . . . . . . . . .',  'Calculating ETC'] ],
+                              columns=['', ' ', '   ']).set_index('')
+    
+    display(monitor, display_id = 'monitor')
+    
     if verbose:
         display_ = display(master_display, display_id=True)
         display_id = display_.display_id
@@ -1717,6 +2464,20 @@ def tune_model(estimator = None,
     avgs_f1 =np.empty((0,0))
     avgs_kappa =np.empty((0,0))
     
+    '''
+    MONITOR UPDATE STARTS
+    '''
+    
+    monitor.iloc[1,1:] = 'Tuning Hyperparameters'
+    update_display(monitor, display_id = 'monitor')
+    
+    '''
+    MONITOR UPDATE ENDS
+    '''
+    
+    #setting turbo parameters
+    cv = 3
+        
     if estimator == 'knn':
         
         from sklearn.neighbors import KNeighborsClassifier
@@ -1726,7 +2487,7 @@ def tune_model(estimator = None,
                  'metric':["euclidean", "manhattan"]
                      }        
         model_grid = RandomizedSearchCV(estimator=KNeighborsClassifier(), param_distributions=param_grid, 
-                                        scoring=optimize, n_iter=n_iter, cv=fold, random_state=seed,
+                                        scoring=optimize, n_iter=n_iter, cv=cv, random_state=seed,
                                        n_jobs=-1, iid=False)
 
         model_grid.fit(X_train,y_train)
@@ -1743,7 +2504,7 @@ def tune_model(estimator = None,
                   "class_weight": ["balanced", None]
                      }
         model_grid = RandomizedSearchCV(estimator=LogisticRegression(random_state=seed), 
-                                        param_distributions=param_grid, scoring=optimize, n_iter=n_iter, cv=fold, 
+                                        param_distributions=param_grid, scoring=optimize, n_iter=n_iter, cv=cv, 
                                         random_state=seed, iid=False,n_jobs=-1)
         model_grid.fit(X_train,y_train)
         model = model_grid.best_estimator_
@@ -1760,7 +2521,7 @@ def tune_model(estimator = None,
                   "criterion": ["gini", "entropy"]}
 
         model_grid = RandomizedSearchCV(estimator=DecisionTreeClassifier(random_state=seed), param_distributions=param_grid,
-                                       scoring=optimize, n_iter=n_iter, cv=fold, random_state=seed,
+                                       scoring=optimize, n_iter=n_iter, cv=cv, random_state=seed,
                                        iid=False, n_jobs=-1)
 
         model_grid.fit(X_train,y_train)
@@ -1780,7 +2541,7 @@ def tune_model(estimator = None,
                  }
 
         model_grid = RandomizedSearchCV(estimator=MLPClassifier(max_iter=1000, random_state=seed), 
-                                        param_distributions=param_grid, scoring=optimize, n_iter=n_iter, cv=fold, 
+                                        param_distributions=param_grid, scoring=optimize, n_iter=n_iter, cv=cv, 
                                         random_state=seed, iid=False, n_jobs=-1)
 
         model_grid.fit(X_train,y_train)
@@ -1795,7 +2556,7 @@ def tune_model(estimator = None,
         param_grid = {"max_iter_predict":[100,200,300,400,500,600,700,800,900,1000]}
 
         model_grid = RandomizedSearchCV(estimator=GaussianProcessClassifier(random_state=seed), param_distributions=param_grid,
-                                       scoring=optimize, n_iter=n_iter, cv=fold, random_state=seed,
+                                       scoring=optimize, n_iter=n_iter, cv=cv, random_state=seed,
                                        n_jobs=-1)
 
         model_grid.fit(X_train,y_train)
@@ -1812,7 +2573,7 @@ def tune_model(estimator = None,
 
         model_grid = RandomizedSearchCV(estimator=SVC(gamma='auto', C=1, probability=True, kernel='rbf', random_state=seed), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
-                                        cv=fold, random_state=seed, n_jobs=-1)
+                                        cv=cv, random_state=seed, n_jobs=-1)
 
         model_grid.fit(X_train,y_train)
         model = model_grid.best_estimator_
@@ -1828,7 +2589,7 @@ def tune_model(estimator = None,
 
         model_grid = RandomizedSearchCV(estimator=GaussianNB(), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
-                                        cv=fold, random_state=seed, n_jobs=-1)
+                                        cv=cv, random_state=seed, n_jobs=-1)
  
         model_grid.fit(X_train,y_train)
         model = model_grid.best_estimator_
@@ -1849,7 +2610,7 @@ def tune_model(estimator = None,
 
         model_grid = RandomizedSearchCV(estimator=SGDClassifier(loss='hinge', random_state=seed), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
-                                        cv=fold, random_state=seed, n_jobs=-1)
+                                        cv=cv, random_state=seed, n_jobs=-1)
 
         model_grid.fit(X_train,y_train)
         model = model_grid.best_estimator_
@@ -1867,7 +2628,7 @@ def tune_model(estimator = None,
 
         model_grid = RandomizedSearchCV(estimator=RidgeClassifier(random_state=seed), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
-                                        cv=fold, random_state=seed, n_jobs=-1)
+                                        cv=cv, random_state=seed, n_jobs=-1)
 
         model_grid.fit(X_train,y_train)
         model = model_grid.best_estimator_
@@ -1889,7 +2650,7 @@ def tune_model(estimator = None,
 
         model_grid = RandomizedSearchCV(estimator=RandomForestClassifier(random_state=seed), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
-                                        cv=fold, random_state=seed, n_jobs=-1)
+                                        cv=cv, random_state=seed, n_jobs=-1)
 
         model_grid.fit(X_train,y_train)
         model = model_grid.best_estimator_
@@ -1907,7 +2668,7 @@ def tune_model(estimator = None,
 
         model_grid = RandomizedSearchCV(estimator=AdaBoostClassifier(random_state=seed), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
-                                        cv=fold, random_state=seed, n_jobs=-1)
+                                        cv=cv, random_state=seed, n_jobs=-1)
 
         model_grid.fit(X_train,y_train)
         model = model_grid.best_estimator_
@@ -1930,7 +2691,7 @@ def tune_model(estimator = None,
 
         model_grid = RandomizedSearchCV(estimator=GradientBoostingClassifier(random_state=seed), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
-                                        cv=fold, random_state=seed, n_jobs=-1)
+                                        cv=cv, random_state=seed, n_jobs=-1)
 
         model_grid.fit(X_train,y_train)
         model = model_grid.best_estimator_
@@ -1945,7 +2706,7 @@ def tune_model(estimator = None,
 
         model_grid = RandomizedSearchCV(estimator=QuadraticDiscriminantAnalysis(), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
-                                        cv=fold, random_state=seed, n_jobs=-1)
+                                        cv=cv, random_state=seed, n_jobs=-1)
 
         model_grid.fit(X_train,y_train)
         model = model_grid.best_estimator_
@@ -1962,7 +2723,7 @@ def tune_model(estimator = None,
 
         model_grid = RandomizedSearchCV(estimator=LinearDiscriminantAnalysis(), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
-                                        cv=fold, random_state=seed, n_jobs=-1)
+                                        cv=cv, random_state=seed, n_jobs=-1)
 
         model_grid.fit(X_train,y_train)
         model = model_grid.best_estimator_
@@ -1984,7 +2745,7 @@ def tune_model(estimator = None,
 
         model_grid = RandomizedSearchCV(estimator=ExtraTreesClassifier(random_state=seed), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
-                                        cv=fold, random_state=seed, n_jobs=-1)
+                                        cv=cv, random_state=seed, n_jobs=-1)
 
         model_grid.fit(X_train,y_train)
         model = model_grid.best_estimator_
@@ -1992,6 +2753,17 @@ def tune_model(estimator = None,
         best_model_param = model_grid.best_params_          
     
     progress.value += 1
+    
+    '''
+    MONITOR UPDATE STARTS
+    '''
+    
+    monitor.iloc[1,1:] = 'Tuning Hyperparameters of Ensemble'
+    update_display(monitor, display_id = 'monitor')
+    
+    '''
+    MONITOR UPDATE ENDS
+    '''
     
     if estimator == 'dt' and ensemble == True and method == 'Bagging':
         
@@ -2013,7 +2785,7 @@ def tune_model(estimator = None,
 
 
         model_grid = RandomizedSearchCV(estimator=DecisionTreeClassifier(random_state=seed), param_distributions=param_grid_dt,
-                                       scoring=optimize, n_iter=n_iter, cv=fold, random_state=seed,
+                                       scoring=optimize, n_iter=n_iter, cv=cv, random_state=seed,
                                        iid=False, n_jobs=-1)
 
         model_grid.fit(X_train,y_train)
@@ -2025,7 +2797,7 @@ def tune_model(estimator = None,
 
         model_grid = RandomizedSearchCV(estimator=best_model, 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
-                                        cv=fold, random_state=seed, iid=False, n_jobs=-1)
+                                        cv=cv, random_state=seed, iid=False, n_jobs=-1)
 
         model_grid.fit(X_train,y_train)
         model = model_grid.best_estimator_
@@ -2049,7 +2821,7 @@ def tune_model(estimator = None,
 
         model_grid = RandomizedSearchCV(estimator=best_model, 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
-                                        cv=fold, random_state=seed, iid=False, n_jobs=-1)
+                                        cv=cv, random_state=seed, iid=False, n_jobs=-1)
 
         model_grid.fit(X_train,y_train)
         model = model_grid.best_estimator_
@@ -2068,12 +2840,40 @@ def tune_model(estimator = None,
 
         model_grid = RandomizedSearchCV(estimator=best_model, 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
-                                        cv=fold, random_state=seed, iid=False, n_jobs=-1)
+                                        cv=cv, random_state=seed, iid=False, n_jobs=-1)
 
     progress.value += 1
+
+    
+    '''
+    MONITOR UPDATE STARTS
+    '''
+    
+    monitor.iloc[1,1:] = 'Initializing CV'
+    update_display(monitor, display_id = 'monitor')
+    
+    '''
+    MONITOR UPDATE ENDS
+    '''
+    
+    fold_num = 1
     
     for train_i , test_i in kf.split(data_X,data_y):
+        
+        t0 = time.time()
+        
+        
+        '''
+        MONITOR UPDATE STARTS
+        '''
     
+        monitor.iloc[1,1:] = 'Fitting Fold ' + str(fold_num) + ' of ' + str(fold)
+        update_display(monitor, display_id = 'monitor')
+
+        '''
+        MONITOR UPDATE ENDS
+        '''
+        
         Xtrain,Xtest = data_X.iloc[train_i], data_X.iloc[test_i]
         ytrain,ytest = data_y.iloc[train_i], data_y.iloc[test_i]
     
@@ -2130,6 +2930,46 @@ def tune_model(estimator = None,
         master_display = pd.concat([master_display, fold_results],ignore_index=True)
         fold_results = []
         
+        '''
+        
+        TIME CALCULATION SUB-SECTION STARTS HERE
+        
+        '''
+        
+        t1 = time.time()
+        
+        tt = (t1 - t0) * (fold-fold_num) / 60
+        tt = np.around(tt, 2)
+        
+        if tt < 1:
+            tt = str(np.around((tt * 60), 2))
+            ETC = tt + ' Seconds Remaining'
+                
+        else:
+            tt = str (tt)
+            ETC = tt + ' Minutes Remaining'
+            
+        update_display(ETC, display_id = 'ETC')
+            
+        fold_num += 1
+        
+        '''
+        MONITOR UPDATE STARTS
+        '''
+
+        monitor.iloc[2,1:] = ETC
+        update_display(monitor, display_id = 'monitor')
+
+        '''
+        MONITOR UPDATE ENDS
+        '''
+       
+        '''
+        
+        TIME CALCULATION ENDS HERE
+        
+        '''
+        
         if verbose:
             update_display(master_display, display_id = display_id)
         
@@ -2179,6 +3019,16 @@ def tune_model(estimator = None,
 
     progress.value += 1
     
+    
+    #storing into experiment
+    model_name = 'Tuned ' + str(model).split("(")[0]
+    tup = (model_name,best_model)
+    experiment__.append(tup)
+    nam = str(model_name) + ' Score Grid'
+    tup = (nam, model_results)
+    experiment__.append(tup)
+    
+    
     if verbose:
         clear_output()
         display(model_results)
@@ -2191,101 +3041,170 @@ def tune_model(estimator = None,
 def blend_models(estimator_list = 'All', 
                  fold = 10, 
                  round = 4, 
-                 method = 'hard'):
+                 method = 'hard',
+                 turbo = True,
+                 verbose = True):
     
     """
-    
-  Description:
-  ------------
-  This function creates a Soft Voting / Majority Rule classifier for list of estimators
-  provided or for all estimators in model library and scores it using Stratified Cross 
-  Validation. The output prints the score grid that shows Accuracy, AUC, Recall, 
-  Precision, F1 and Kappa by fold (default = 10). 
+        
+    Description:
+    ------------
+    This function creates a Soft Voting / Majority Rule classifier for list of 
+    estimators provided or for all estimators in model library (excluding few when 
+    turbo is True)  or specific trained estimator passed as a list in estimator_list
+    param. It scores it using Stratified Cross Validation. The output prints the score
+    grid that shows Accuracy,  AUC, Recall, Precision, F1 and Kappa by fold 
+    (default CV = 10 Folds). 
 
-  Function also return a trained model object that can be used for further 
-  processing in pycaret or can be used to call any method available in sklearn. 
-  
-    Example:
+    Function also returns a trained model object that can be used for further 
+    processing in pycaret or can be used to call any method available in sklearn. 
+
+        Example:
+        --------
+
+        blend_models() 
+
+        This will result in VotingClassifier for all models in library except 'rbfsvm',
+        'gpc' and 'mlp'.
+        
+        blend_models(turbo=False) 
+
+        This will result in VotingClassifier for all models in library. Training time may
+        increase significantly.
+
+        For specific models, you can use:
+
+        lr = create_model( 'lr' )
+        rf = create_model( 'rf' )
+
+        blend_models( [ lr, rf ] )
+    
+        This will result in VotingClassifier of lr and rf.
+
+    Parameters
+    ----------
+
+    estimator_list : string ('All') or list of object, default = 'All'
+
+    fold: integer, default = 10
+    Number of folds to be used in Kfold CV. Must be at least 2. 
+
+    round: integer, default = 4
+    Number of decimal places metrics in score grid will be rounded to.
+
+    method: string, default = 'hard'
+    'hard' uses predicted class labels for majority rule voting.
+    'soft', predicts the class label based on the argmax of the sums 
+    of the predicted probabilities, which is recommended for an ensemble of 
+    well-calibrated classifiers. When estimator_list is set as 'All'. 
+    Method is forced to be 'hard' since not all models support predict_proba
+    function.
+
+    turbo: Boolean, default = True
+    When turbo is set to True, it blacklists estimator that uses Radial Kernel.
+
+    verbose: Boolean, default = True
+    Score grid is not printed when verbose is set to False.
+
+    Returns:
     --------
-    
-    blend_models() 
-    
-    This will result in VotingClassifier for all models in library.   
-    ** All other parameters are optional.
-    
-    For specific models, you can use:
-    
-    lr = create_model( 'lr' )
-    rf = create_model( 'rf' )
-    
-    blend_models( [ lr, rf ] )
-    
-    This will result in VotingClassifier of lr and rf.
-    
-  Parameters
-  ----------
-  
-  estimator_list : string ('All') or list of object, default = 'All'
 
-  fold: integer, default = 10
-  Number of folds will determine how many folds would be done in the Kfold CV.
-  
-  round: integer, default = 4
-  The number of decimal places metrics will be rounded to. 
+    score grid:   A table containing the scores of the model across the kfolds. 
+    -----------   Scoring metrics used are Accuracy, AUC, Recall, Precision, F1 
+                  and Kappa. Mean and standard deviation of the scores across the 
+                  folds is also returned.
 
-  method: string, default = 'hard'
-  
-  If 'hard', uses predicted class labels for majority rule voting. 
-  Else if 'soft', predicts the class label based on the argmax of the sums 
-  of the predicted probabilities, which is recommended for an ensemble of 
-  well-calibrated classifiers. When estimator_list is set as 'All'. 
-  Method is forced to be 'hard'. 
-  
-  Returns:
-  --------
-  
-  score grid:   A table containing the scores of the model across the kfolds. 
-  -----------   Scoring metrics used are Accuracy, AUC, Recall, Precision, F1 
-                and Kappa. Mean and standard deviation of the scores across the 
-                folds is also returned.
-  
-  model:        trained model object
-  -----------
+    model:        trained model object which is Voting Classifier. 
+    -----------
 
-  Warnings:
-  ---------
-  None
-  
+    Warnings:
+    ---------
+    - When passing estimator_list, method should only be set to 'soft' when all
+      the models in estimator_list has predict_proba function. 'svm' and 'ridge'
+      doesn't support predict_proba.
+     
+       
   
     """
+    
+    
+    '''
+    
+    ERROR HANDLING STARTS HERE
+    
+    '''
+    
+    #exception checking   
+    import sys
+    
+    #checking error for estimator_list (string)
+    
+    if estimator_list != 'All':
+        for i in estimator_list:
+            if 'sklearn' not in str(type(i)):
+                sys.exit("(Value Error): estimator_list parameter only accepts 'All' as string or trained model object")
+   
+    #checking fold parameter
+    if type(fold) is not int:
+        sys.exit('(Type Error): Fold parameter only accepts integer value.')
+    
+    #checking round parameter
+    if type(round) is not int:
+        sys.exit('(Type Error): Round parameter only accepts integer value.')
+ 
+    #checking method parameter
+    available_method = ['soft', 'hard']
+    if method not in available_method:
+        sys.exit("(Value Error): Method parameter only accepts 'soft' or 'hard' as a parameter. See Docstring for details.")
+    
+    #checking verbose parameter
+    if type(verbose) is not bool:
+        sys.exit('(Type Error): Verbose parameter can only take argument as True or False.') 
+        
+    '''
+    
+    ERROR HANDLING ENDS HERE
+    
+    '''
+    
+    #pre-load libraries
+    import pandas as pd
+    import time, datetime
+    import ipywidgets as ipw
+    from IPython.display import display, HTML, clear_output, update_display
     
     #progress bar
-    import ipywidgets as ipw
-    from IPython.display import display, HTML, clear_output
     progress = ipw.IntProgress(value=0, min=0, max=fold+3, step=1 , description='Processing: ')
+    master_display = pd.DataFrame(columns=['Accuracy','AUC','Recall', 'Prec.', 'F1', 'Kappa'])
     display(progress)
     
-    import numpy as np
-    import pandas as pd
-    import sys
-    from sklearn import metrics
+    #display monitor
+    timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
+    monitor = pd.DataFrame( [ ['Initiated' , '. . . . . . . . . . . . . . . . . .', timestampStr ], 
+                             ['Status' , '. . . . . . . . . . . . . . . . . .' , 'Loading Dependencies' ],
+                             ['ETC' , '. . . . . . . . . . . . . . . . . .',  'Calculating ETC'] ],
+                              columns=['', ' ', '   ']).set_index('')
     
-    #defining X_train and y_train called from setup() into variable data_X and data_y to be used in cross validation   
-    data_X = X_train
-    data_y = y_train
-
+    display(monitor, display_id = 'monitor')
+    
+    if verbose:
+        display_ = display(master_display, display_id=True)
+        display_id = display_.display_id
+        
     #ignore warnings
     import warnings
     warnings.filterwarnings('ignore') 
-
-    #general imports
+    
+    #general dependencies
     import numpy as np
-    import pandas as pd
-    import re
-    import sys #for exception handling  
     from sklearn import metrics
     from sklearn.model_selection import StratifiedKFold  
     from sklearn.ensemble import VotingClassifier
+    import re
+    
+    #Storing X_train and y_train in data_X and data_y parameter
+    data_X = X_train
+    data_y = y_train
     
     progress.value += 1
     
@@ -2309,7 +3228,18 @@ def blend_models(estimator_list = 'All',
     avg_kappa = np.empty((0,0))
 
     kf = StratifiedKFold(fold, random_state=seed)
-        
+    
+    '''
+    MONITOR UPDATE STARTS
+    '''
+    
+    monitor.iloc[1,1:] = 'Compiling Estimators'
+    update_display(monitor, display_id = 'monitor')
+    
+    '''
+    MONITOR UPDATE ENDS
+    '''
+    
     if estimator_list == 'All':
 
         from sklearn.linear_model import LogisticRegression
@@ -2347,15 +3277,17 @@ def blend_models(estimator_list = 'All',
 
         progress.value += 1
         
-        estimator_list = [lr,knn,nb,dt,svm,rbfsvm,gpc,mlp,ridge,rf,qda,ada,gbc,lda,et]
-        voting = 'hard'
+        if turbo:
+            estimator_list = [lr,knn,nb,dt,svm,ridge,rf,qda,ada,gbc,lda,et]
+            voting = 'hard'
+        else:
+            estimator_list = [lr,knn,nb,dt,svm,rbfsvm,gpc,mlp,ridge,rf,qda,ada,gbc,lda,et]
+            voting = 'hard'
 
     else:
 
         estimator_list = estimator_list
         voting = method  
-        
-        progress.value += 1
         
     model_names = []
 
@@ -2407,7 +3339,35 @@ def blend_models(estimator_list = 'All',
     
     progress.value += 1
     
+    '''
+    MONITOR UPDATE STARTS
+    '''
+    
+    monitor.iloc[1,1:] = 'Initializing CV'
+    update_display(monitor, display_id = 'monitor')
+    
+    '''
+    MONITOR UPDATE ENDS
+    '''
+    
+    fold_num = 1
+    
     for train_i , test_i in kf.split(data_X,data_y):
+        
+        progress.value += 1
+        
+        t0 = time.time()
+        
+        '''
+        MONITOR UPDATE STARTS
+        '''
+    
+        monitor.iloc[1,1:] = 'Fitting Fold ' + str(fold_num) + ' of ' + str(fold)
+        update_display(monitor, display_id = 'monitor')
+
+        '''
+        MONITOR UPDATE ENDS
+        '''
     
         Xtrain,Xtest = data_X.iloc[train_i], data_X.iloc[test_i]
         ytrain,ytest = data_y.iloc[train_i], data_y.iloc[test_i]    
@@ -2450,7 +3410,61 @@ def blend_models(estimator_list = 'All',
             score_f1 =np.append(score_f1,f1)
             score_kappa =np.append(score_kappa,kappa)
     
-    progress.value += 1
+    
+        '''
+        
+        This section handles time calculation and is created to update_display() as code loops through 
+        the fold defined.
+        
+        '''
+        
+        fold_results = pd.DataFrame({'Accuracy':[sca], 'AUC': [sc], 'Recall': [recall], 
+                                     'Prec.': [precision], 'F1': [f1], 'Kappa': [kappa]}).round(round)
+        master_display = pd.concat([master_display, fold_results],ignore_index=True)
+        fold_results = []
+        
+        '''
+        TIME CALCULATION SUB-SECTION STARTS HERE
+        '''
+        t1 = time.time()
+        
+        tt = (t1 - t0) * (fold-fold_num) / 60
+        tt = np.around(tt, 2)
+        
+        if tt < 1:
+            tt = str(np.around((tt * 60), 2))
+            ETC = tt + ' Seconds Remaining'
+                
+        else:
+            tt = str (tt)
+            ETC = tt + ' Minutes Remaining'
+            
+        fold_num += 1
+        
+        '''
+        MONITOR UPDATE STARTS
+        '''
+
+        monitor.iloc[2,1:] = ETC
+        update_display(monitor, display_id = 'monitor')
+
+        '''
+        MONITOR UPDATE ENDS
+        '''
+        
+        '''
+        TIME CALCULATION ENDS HERE
+        '''
+        
+        if verbose:
+            update_display(master_display, display_id = display_id)
+            
+        
+        '''
+        
+        Update_display() ends here
+        
+        '''
     
     mean_acc=np.mean(score_acc)
     mean_auc=np.mean(score_auc)
@@ -2490,9 +3504,22 @@ def blend_models(estimator_list = 'All',
     
     progress.value += 1
     
-    clear_output()
-    display(model_results)
-    return model
+    #storing into experiment
+    model_name = 'Voting Classifier'
+    tup = (model_name,model)
+    experiment__.append(tup)
+    nam = str(model_name) + ' Score Grid'
+    tup = (nam, model_results)
+    experiment__.append(tup)
+    
+    if verbose:
+        clear_output()
+        display(model_results)
+        return model
+    
+    else:
+        clear_output()
+        return model
 
 def stack_models(estimator_list, 
                  meta_model = None, 
@@ -2500,109 +3527,185 @@ def stack_models(estimator_list,
                  round = 4, 
                  method = 'hard', 
                  restack = False, 
-                 plot = False):
+                 plot = False,
+                 verbose = True):
     
     """
-     
-  Description:
-  ------------
-  This function creates a meta model and scores it using Stratified Cross Validation,
-  the prediction from base level models passed as estimator_list parameter is used
-  as input feature for meta model. Restacking parameter control the ability to expose
-  raw features to meta model when set to True (default = False). 
+            
+    Description:
+    ------------
+    This function creates a meta model and scores it using Stratified Cross Validation,
+    the prediction from base level models passed as estimator_list parameter is used
+    as input feature for meta model. Restacking parameter control the ability to expose
+    raw features to meta model when set to True (default = False). 
 
-  The output prints the score grid that shows Accuracy, AUC, Recall, Precision, 
-  F1 and Kappa by fold (default = 10). Function returns a container which is the 
-  list of all models. 
-  
-  This is an original implementation of pycaret.
-  
-    Example:
+    The output prints the score grid that shows Accuracy, AUC, Recall, Precision, 
+    F1 and Kappa by fold (default = 10 Folds). Function returns a container which is the 
+    list of all models. 
+
+    This is an original implementation of pycaret.
+
+        Example:
+        --------
+
+        nb = create_model('nb')
+        rf = create_model('rf')
+        ada = create_model('ada')
+        ridge = create_model('ridge')
+        knn = create_model('knn')
+
+        stack_models( [ nb, rf, ada, ridge, knn ] )
+
+        This will result in creation of meta model that will use the predictions of 
+        all the models provided as an input feature of meta model By default meta model 
+        is Logistic Regression but can be changed with meta_model param.
+
+    Parameters
+    ----------
+
+    estimator_list : list of object
+
+    meta_model : object, default = None
+    if set to None, Logistic Regression is used as a meta model.
+
+    fold: integer, default = 10
+    Number of folds to be used in Kfold CV. Must be at least 2. 
+
+    round: integer, default = 4
+    Number of decimal places metrics in score grid will be rounded to.
+
+    method: string, default = 'hard'
+    'hard', uses predicted class labels as input to meta model. 
+    'soft', uses predicted probabilities as input to meta model.
+
+    restack: Boolean, default = False
+    When restack is set to True, raw data will be exposed to meta model when
+    making predictions, otherwise when False, only the predicted label or
+    probabilities is passed to meta model when making final predictions.
+
+    plot: Boolean, default = False
+    When plot is set to True, it will return the correlation plot of prediction
+    from all base models provided in estimator_list.
+    
+    verbose: Boolean, default = True
+    Score grid is not printed when verbose is set to False.
+
+    Returns:
     --------
-    
-    nb = create_model('nb')
-    rf = create_model('rf')
-    ada = create_model('ada')
-    ridge = create_model('ridge')
-    knn = create_model('knn')
-    
-    stack_models( [ nb, rf, ada, ridge, knn ] )
-    
-    This will result in creation of meta model that will use the predictions of 
-    all the models provided as an input feature of meta model By default meta model 
-    is Logistic Regression but can be changed with meta_model param.
-    
-  Parameters
-  ----------
-  
-  estimator_list : list of object
-  
-  meta_model : object, default = None
-  if set to None, Logistic Regression is used as a meta model.
 
-  fold: integer, default = 10
-  Number of folds will determine how many folds would be done in the Kfold CV.
-  
-  round: integer, default = 4
-  The number of decimal places metrics will be rounded to. 
+    score grid:   A table containing the scores of the model across the kfolds. 
+    -----------   Scoring metrics used are Accuracy, AUC, Recall, Precision, F1 
+                  and Kappa. Mean and standard deviation of the scores across the 
+                  folds is also returned.
 
-  method: string, default = 'hard'
-  'hard', uses predicted class labels as input to meta model. 
-  'soft', uses predicted probabilities as input to meta model.
-  
-  restack: Boolean, default = False
-  When restack is set to True, it will expose raw data to meta model.
-  
-  plot: Boolean, default = False
-  When plot is set to True, it will return the correlation plot of prediction
-  from all base models provided in estimator_list.
-  
-  Returns:
-  --------
-  
-  score grid:   A table containing the scores of the model across the kfolds. 
-  -----------   Scoring metrics used are Accuracy, AUC, Recall, Precision, F1 
-                and Kappa. Mean and standard deviation of the scores across the 
-                folds is also returned.
-  
-  model:        trained model object
-  -----------
-  
-  Warnings:
-  ---------
-  When estimator doesn't support 'predict_proba' (for example: ridge) and method is 
-  forced to 'soft', stack_models() will return an error. 
-   
-  
-  """
+    container:    list of all models where last element is meta model.
+    ----------
+
+    Warnings:
+    ---------
+    
+    - 'svm' and 'ridge' doesn't support predict_proba method and hence when stacking
+       estimator list that contains 'svm' or 'ridge', method param can only be 'hard'.
+        
+           
+          
+    """
+    
+    '''
+    
+    ERROR HANDLING STARTS HERE
+    
+    '''
+    
+    #exception checking   
+    import sys
+    
+    #checking error for estimator_list
+    for i in estimator_list:
+        if 'sklearn' not in str(type(i)):
+            sys.exit("(Value Error): estimator_list parameter only trained model object")
+            
+    #checking meta model
+    if meta_model is not None:
+        if 'sklearn' not in str(type(meta_model)):
+            sys.exit("(Value Error): estimator_list parameter only trained model object")
+    
+    #checking fold parameter
+    if type(fold) is not int:
+        sys.exit('(Type Error): Fold parameter only accepts integer value.')
+    
+    #checking round parameter
+    if type(round) is not int:
+        sys.exit('(Type Error): Round parameter only accepts integer value.')
+ 
+    #checking method parameter
+    available_method = ['soft', 'hard']
+    if method not in available_method:
+        sys.exit("(Value Error): Method parameter only accepts 'soft' or 'hard' as a parameter. See Docstring for details.")
+    
+    #checking restack parameter
+    if type(restack) is not bool:
+        sys.exit('(Type Error): Restack parameter can only take argument as True or False.')    
+    
+    #checking plot parameter
+    if type(restack) is not bool:
+        sys.exit('(Type Error): Plot parameter can only take argument as True or False.')  
+        
+    #checking verbose parameter
+    if type(verbose) is not bool:
+        sys.exit('(Type Error): Verbose parameter can only take argument as True or False.') 
+        
+    '''
+    
+    ERROR HANDLING ENDS HERE
+    
+    '''
+    
+    #pre-load libraries
+    import pandas as pd
+    import ipywidgets as ipw
+    from IPython.display import display, HTML, clear_output, update_display
+    import time, datetime
     
     #progress bar
-    import ipywidgets as ipw
-    from IPython.display import display, HTML, clear_output
     max_progress = len(estimator_list) + fold + 4
     progress = ipw.IntProgress(value=0, min=0, max=max_progress, step=1 , description='Processing: ')
+    master_display = pd.DataFrame(columns=['Accuracy','AUC','Recall', 'Prec.', 'F1', 'Kappa'])
     display(progress)
+    
+    #display monitor
+    timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
+    monitor = pd.DataFrame( [ ['Initiated' , '. . . . . . . . . . . . . . . . . .', timestampStr ], 
+                             ['Status' , '. . . . . . . . . . . . . . . . . .' , 'Loading Dependencies' ],
+                             ['ETC' , '. . . . . . . . . . . . . . . . . .',  'Calculating ETC'] ],
+                              columns=['', ' ', '   ']).set_index('')
+    
+    display(monitor, display_id = 'monitor')
+    
+    if verbose:
+        display_ = display(master_display, display_id=True)
+        display_id = display_.display_id
+        
+    #ignore warnings
+    import warnings
+    warnings.filterwarnings('ignore') 
     
     #dependencies
     import numpy as np
-    import pandas as pd
     from sklearn import metrics
     from sklearn.model_selection import StratifiedKFold
     from sklearn.model_selection import cross_val_predict
     import seaborn as sns
-    import sys
     
     progress.value += 1
     
     #Capturing the method of stacking required by user. method='soft' means 'predict_proba' else 'predict'
-    
     if method == 'soft':
         predict_method = 'predict_proba'
     elif method == 'hard':
         predict_method = 'predict'
     
     #Defining meta model. Logistic Regression hardcoded for now
-    
     if meta_model == None:
         from sklearn.linear_model import LogisticRegression
         meta_model = LogisticRegression()
@@ -2610,20 +3713,28 @@ def stack_models(estimator_list,
         meta_model = meta_model
     
     #defining model_library model names
-    
     model_names = np.zeros(0)
     for item in estimator_list:
         model_names = np.append(model_names, str(item).split("(")[0])
-    
-    ##########################
-    ##########################
-    ##########################
     
     base_array = np.zeros((0,0))
     base_prediction = pd.DataFrame(y_train)
     base_prediction = base_prediction.reset_index(drop=True)
     
+    counter = 0
+    
     for model in estimator_list:
+        
+        '''
+        MONITOR UPDATE STARTS
+        '''
+
+        monitor.iloc[1,1:] = 'Evaluating ' + model_names[counter]
+        update_display(monitor, display_id = 'monitor')
+
+        '''
+        MONITOR UPDATE ENDS
+        '''
         
         progress.value += 1
         
@@ -2635,6 +3746,8 @@ def stack_models(estimator_list,
         base_array_df = pd.DataFrame(base_array)
         base_prediction = pd.concat([base_prediction,base_array_df],axis=1)
         base_array = np.empty((0,0))
+        
+        counter += 1
         
     #defining column names now
     target_col_name = np.array(base_prediction.columns[0])
@@ -2661,7 +3774,7 @@ def stack_models(estimator_list,
     #Meta Modeling Starts Here
     
     model = meta_model #this defines model to be used below as model = meta_model (as captured above)
-
+    
     kf = StratifiedKFold(fold, random_state=seed) #capturing fold requested by user
 
     score_auc =np.empty((0,0))
@@ -2679,7 +3792,22 @@ def stack_models(estimator_list,
     
     progress.value += 1
     
+    fold_num = 1
+    
     for train_i , test_i in kf.split(data_X,data_y):
+        
+        t0 = time.time()
+        
+        '''
+        MONITOR UPDATE STARTS
+        '''
+    
+        monitor.iloc[1,1:] = 'Fitting Meta Model Fold ' + str(fold_num) + ' of ' + str(fold)
+        update_display(monitor, display_id = 'monitor')
+
+        '''
+        MONITOR UPDATE ENDS
+        '''
         
         progress.value += 1
         
@@ -2702,6 +3830,72 @@ def stack_models(estimator_list,
         score_precision = np.append(score_precision,precision)
         score_f1 =np.append(score_f1,f1)
         score_kappa =np.append(score_kappa,kappa)
+        
+        
+        '''
+        
+        This section handles time calculation and is created to update_display() as code loops through 
+        the fold defined.
+        
+        '''
+        
+        fold_results = pd.DataFrame({'Accuracy':[sca], 'AUC': [sc], 'Recall': [recall], 
+                                     'Prec.': [precision], 'F1': [f1], 'Kappa': [kappa]}).round(round)
+        master_display = pd.concat([master_display, fold_results],ignore_index=True)
+        fold_results = []
+        
+        
+        '''
+        
+        TIME CALCULATION SUB-SECTION STARTS HERE
+        
+        '''
+        
+        t1 = time.time()
+        
+        tt = (t1 - t0) * (fold-fold_num) / 60
+        tt = np.around(tt, 2)
+        
+        if tt < 1:
+            tt = str(np.around((tt * 60), 2))
+            ETC = 'Time to Completion : ' + tt + ' Seconds Remaining'
+                
+        else:
+            tt = str (tt)
+            ETC = 'Time to Completion : ' + tt + ' Minutes Remaining'
+        
+        '''
+        MONITOR UPDATE STARTS
+        '''
+
+        monitor.iloc[2,1:] = ETC
+        
+        update_display(monitor, display_id = 'monitor')
+
+        '''
+        MONITOR UPDATE ENDS
+        '''
+        
+        #update_display(ETC, display_id = 'ETC')
+            
+        fold_num += 1
+        
+        
+        '''
+        
+        TIME CALCULATION ENDS HERE
+        
+        '''
+        
+        if verbose:
+            update_display(master_display, display_id = display_id)
+            
+        
+        '''
+        
+        Update_display() ends here
+        
+        '''
      
     mean_acc=np.mean(score_acc)
     mean_auc=np.mean(score_auc)
@@ -2745,14 +3939,26 @@ def stack_models(estimator_list,
     
     models.append(meta_model)
     
+    
+    #storing into experiment
+    model_name = 'Stacking Classifier (Single Layer)'
+    tup = (model_name,models)
+    experiment__.append(tup)
+    nam = str(model_name) + ' Score Grid'
+    tup = (nam, model_results)
+    experiment__.append(tup)
+    
     if plot:
         clear_output()
-        ax = sns.heatmap(base_prediction_cor, vmin=-0.5, vmax=1, center=0,cmap='magma', square=True, annot=True, 
+        ax = sns.heatmap(base_prediction_cor, vmin=1, vmax=1, center=0,cmap='magma', square=True, annot=True, 
                          linewidths=1)
     
-    else:
+    if verbose:
         clear_output()
         display(model_results)
+        return models
+    else:
+        clear_output()
         return models
 
 def create_stacknet(estimator_list,
@@ -2760,88 +3966,187 @@ def create_stacknet(estimator_list,
                     fold = 10,
                     round = 4,
                     method = 'hard',
-                    restack = False):
+                    restack = False,
+                    verbose = True):
+    
     """
-     
-  Description:
-  ------------
-  This function creates a sequential stack net using cross validated predictions at
-  each layer. The final score grid is predictions from meta model using Stratified 
-  Cross Validation. Base level models can be passed as estimator_list parameter, the
-  layers can be organized as a sub list within the estimator_list object. Restacking 
-  parameter control the ability to expose raw features to meta model when set to True. 
+         
+    Description:
+    ------------
+    This function creates a sequential stack net using cross validated predictions at
+    each layer. The final score grid is predictions from meta model using Stratified 
+    Cross Validation. Base level models can be passed as estimator_list param, the
+    layers can be organized as a sub list within the estimator_list object. 
+    Restacking param control the ability to expose raw features to meta model.
+
+        Example:
+        --------
+
+        nb = create_model( 'nb' )
+        rf = create_model( 'rf' )
+        ada = create_model( 'ada' )
+        ridge = create_model( 'ridge' )
+        knn = create_model( 'knn' )
+
+        create_stacknet( [ [ nb, rf ], [ ada, ridge, knn] ] )
+
+        This will result in stacking of models in multiple layers. The first layer 
+        contains nb and rf, the predictions of which is used by models in second layer
+        to produce predictions which is used by meta model to generate final predictions.
+        By default meta model is Logistic Regression but can be changed with meta_model
+        param.
+
+    Parameters
+    ----------
+
+    estimator_list : nested list of objects
+
+    meta_model : object, default = None
+    if set to None, Logistic Regression is used as a meta model.
+
+    fold: integer, default = 10
+    Number of folds to be used in Kfold CV. Must be at least 2. 
+
+    round: integer, default = 4
+    Number of decimal places metrics in score grid will be rounded to.
   
-    Example:
+    method: string, default = 'hard'
+    'hard', uses predicted class labels as input to meta model. 
+    'soft', uses predicted probabilities as input to meta model.
+    
+    restack: Boolean, default = False
+    When restack is set to True, raw data will be exposed to meta model when
+    making predictions, otherwise when False, only the predicted label or
+    probabilities is passed to meta model when making final predictions.
+
+    verbose: Boolean, default = True
+    Score grid is not printed when verbose is set to False.
+
+    Returns:
     --------
-    
-    nb = create_model( 'nb' )
-    rf = create_model( 'rf' )
-    ada = create_model( 'ada' )
-    ridge = create_model( 'ridge' )
-    knn = create_model( 'knn' )
-    
-    create_stacknet( [ [ nb, rf ], [ ada, ridge, knn] ] )
-    
-    This will result in stacking of models in multiple layers. The first layer 
-    contains nb and rf, the predictions of which is used by models in second layer
-    to produce predictions which is used by meta model to generate final predictions.
-    By default meta model is Logistic Regression but can be changed with meta_model.
-    
-  Parameters
-  ----------
-  
-  estimator_list : nested list of object
-  
-  meta_model : object, default = None
-  if set to None, Logistic Regression is used as a meta model.
 
-  fold: integer, default = 10
-  Number of folds will determine how many folds would be done in the Kfold CV.
-  
-  round: integer, default = 4
-  The number indicates the number of decimal places metrics will be rounded to. 
+    score grid:   A table containing the scores of the model across the kfolds. 
+    -----------   Scoring metrics used are Accuracy, AUC, Recall, Precision, F1 
+                  and Kappa. Mean and standard deviation of the scores across the 
+                  folds is also returned.
 
-  method: string, default = 'hard'
-  'hard', uses predicted class labels as input to meta model. 
-  'soft', uses predicted probabilities as input to meta model.
-  
-  restack: Boolean, default = False
-  When restack is set to True, it will expose raw data to meta model.
-  
-  Attributes
-  ----------
-  All original attributes available in sklearn for a given estimator.
-  
-  Returns:
-  --------
-  
-  score grid:   A table containing the scores of the model across the kfolds. 
-  -----------   Scoring metrics used are Accuracy, AUC, Recall, Precision, F1 
-                and Kappa. Mean and standard deviation of the scores across the 
-                folds is also returned.
-  
-  model:        trained model object
-  -----------
-  
-  Warnings:
-  ---------
-  When estimator doesn't support 'predict_proba' (for example: ridge) and method is 
-  forced to 'soft', stack_models() will return an error. 
-  
+    container:    list of all models where last element is meta model.
+    ----------
+
+    Warnings:
+    ---------
+    
+    - 'svm' and 'ridge' doesn't support predict_proba method and hence when stacking
+       estimator list that contains 'svm' or 'ridge', method param can only be 'hard'.
+    
+    
+    
     """
 
-    #dependencies
-    import numpy as np
+    
+    
+    '''
+    
+    ERROR HANDLING STARTS HERE
+    
+    '''
+    
+    #exception checking   
+    import sys
+    
+    #checking error for estimator_list
+    for i in estimator_list:
+        for j in i:
+            if 'sklearn' not in str(type(j)):
+                sys.exit("(Value Error): estimator_list parameter only trained model object")
+            
+    #checking meta model
+    if meta_model is not None:
+        if 'sklearn' not in str(type(meta_model)):
+            sys.exit("(Value Error): estimator_list parameter only trained model object")
+    
+    #checking fold parameter
+    if type(fold) is not int:
+        sys.exit('(Type Error): Fold parameter only accepts integer value.')
+    
+    #checking round parameter
+    if type(round) is not int:
+        sys.exit('(Type Error): Round parameter only accepts integer value.')
+ 
+    #checking method parameter
+    available_method = ['soft', 'hard']
+    if method not in available_method:
+        sys.exit("(Value Error): Method parameter only accepts 'soft' or 'hard' as a parameter. See Docstring for details.")
+    
+    #checking restack parameter
+    if type(restack) is not bool:
+        sys.exit('(Type Error): Restack parameter can only take argument as True or False.')    
+    
+    #checking verbose parameter
+    if type(verbose) is not bool:
+        sys.exit('(Type Error): Verbose parameter can only take argument as True or False.') 
+        
+    '''
+    
+    ERROR HANDLING ENDS HERE
+    
+    '''
+    
+    #pre-load libraries
     import pandas as pd
+    import ipywidgets as ipw
+    from IPython.display import display, HTML, clear_output, update_display
+    import time, datetime
+    
+    #progress bar
+    max_progress = len(estimator_list) + fold + 4
+    progress = ipw.IntProgress(value=0, min=0, max=max_progress, step=1 , description='Processing: ')
+    display(progress)
+    
+    #display monitor
+    timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
+    monitor = pd.DataFrame( [ ['Initiated' , '. . . . . . . . . . . . . . . . . .', timestampStr ], 
+                             ['Status' , '. . . . . . . . . . . . . . . . . .' , 'Loading Dependencies' ],
+                             ['ETC' , '. . . . . . . . . . . . . . . . . .',  'Calculating ETC'] ],
+                              columns=['', ' ', '   ']).set_index('')
+    
+    display(monitor, display_id = 'monitor')
+    
+    if verbose:
+        master_display = pd.DataFrame(columns=['Accuracy','AUC','Recall', 'Prec.', 'F1', 'Kappa'])
+        display_ = display(master_display, display_id=True)
+        display_id = display_.display_id
+    
+    #ignore warnings
+    import warnings
+    warnings.filterwarnings('ignore') 
+    
+    #general dependencies
+    import numpy as np
     from sklearn import metrics
     from sklearn.model_selection import StratifiedKFold
     from sklearn.model_selection import cross_val_predict
-    import sys
+
+    progress.value += 1
     
     #global base_array_df
-    
+    global base_level_names, base_level
     base_level = estimator_list[0]
+    base_level_names = []
+    
+    #defining base_level_names
+    for item in base_level:
+            base_level_names = np.append(base_level_names, str(item).split("(")[0])
+    
     inter_level = estimator_list[1:]
+    inter_level_names = []
+   
+    #defining inter_level names
+    for item in inter_level:
+        for m in item:
+            inter_level_names = np.append(inter_level_names, str(m).split("(")[0])    
+    
+    #defining data_X and data_y
     data_X = X_train
     data_y = y_train
     
@@ -2854,7 +4159,6 @@ def create_stacknet(estimator_list,
         meta_model = meta_model
     
     #Capturing the method of stacking required by user. method='soft' means 'predict_proba' else 'predict'
-    
     if method == 'soft':
         predict_method = 'predict_proba'
     elif method == 'hard':
@@ -2866,7 +4170,22 @@ def create_stacknet(estimator_list,
     base_prediction = pd.DataFrame(y_train)
     base_prediction = base_prediction.reset_index(drop=True)
     
+    base_counter = 0
+    
     for model in base_level:
+        
+        '''
+        MONITOR UPDATE STARTS
+        '''
+
+        monitor.iloc[1,1:] = 'Evaluating ' + base_level_names[base_counter]
+        update_display(monitor, display_id = 'monitor')
+
+        '''
+        MONITOR UPDATE ENDS
+        '''
+        
+        progress.value += 1
                      
         base_array = cross_val_predict(model,X_train,y_train,cv=fold, method=predict_method)
         if method == 'soft':
@@ -2877,10 +4196,25 @@ def create_stacknet(estimator_list,
         base_array_df = pd.concat([base_array_df, base_array], axis=1)
         base_array = np.empty((0,0))  
         
+        base_counter += 1
+    
+    inter_counter = 0
+    
     for level in inter_level:
         
         for model in level:
             
+            '''
+            MONITOR UPDATE STARTS
+            '''
+
+            monitor.iloc[1,1:] = 'Evaluating ' + inter_level_names[inter_counter]
+            update_display(monitor, display_id = 'monitor')
+
+            '''
+            MONITOR UPDATE ENDS
+            '''
+        
             base_array = cross_val_predict(model,base_array_df,base_prediction,cv=fold, method=predict_method)
             if method == 'soft':
                 base_array = base_array[:,1]
@@ -2889,6 +4223,8 @@ def create_stacknet(estimator_list,
             base_array = pd.DataFrame(base_array)
             base_array_df = pd.concat([base_array, base_array_df], axis=1)
             base_array = np.empty((0,0))
+            
+            inter_counter += 1
         
         if restack == False:
             base_array_df = base_array_df.iloc[:,:len(level)]
@@ -2912,11 +4248,26 @@ def create_stacknet(estimator_list,
     avgs_f1 =np.empty((0,0))
     avgs_kappa =np.empty((0,0))
     
+    fold_num = 1
+    
     for train_i , test_i in kf.split(data_X,data_y):
+        
+        t0 = time.time()
+        
+        '''
+        MONITOR UPDATE STARTS
+        '''
+    
+        monitor.iloc[1,1:] = 'Fitting Meta Model Fold ' + str(fold_num) + ' of ' + str(fold)
+        update_display(monitor, display_id = 'monitor')
+
+        '''
+        MONITOR UPDATE ENDS
+        '''
         
         Xtrain,Xtest = data_X.iloc[train_i], data_X.iloc[test_i]
         ytrain,ytest = data_y.iloc[train_i], data_y.iloc[test_i]
-
+        
         model.fit(Xtrain,ytrain)
         pred_prob = model.predict_proba(Xtest)
         pred_prob = pred_prob[:,1]
@@ -2933,7 +4284,67 @@ def create_stacknet(estimator_list,
         score_precision = np.append(score_precision,precision)
         score_f1 =np.append(score_f1,f1)
         score_kappa =np.append(score_kappa,kappa)
-     
+
+        progress.value += 1
+        
+        '''
+        
+        This section handles time calculation and is created to update_display() as code loops through 
+        the fold defined.
+        
+        '''
+        
+        fold_results = pd.DataFrame({'Accuracy':[sca], 'AUC': [sc], 'Recall': [recall], 
+                                     'Prec.': [precision], 'F1': [f1], 'Kappa': [kappa]}).round(round)
+        
+        if verbose:
+            master_display = pd.concat([master_display, fold_results],ignore_index=True)
+        
+        fold_results = []
+        
+        '''
+        TIME CALCULATION SUB-SECTION STARTS HERE
+        '''
+        t1 = time.time()
+        
+        tt = (t1 - t0) * (fold-fold_num) / 60
+        tt = np.around(tt, 2)
+        
+        if tt < 1:
+            tt = str(np.around((tt * 60), 2))
+            ETC = tt + ' Seconds Remaining'
+                
+        else:
+            tt = str (tt)
+            ETC = tt + ' Minutes Remaining'
+            
+        fold_num += 1
+        
+        '''
+        MONITOR UPDATE STARTS
+        '''
+
+        monitor.iloc[2,1:] = ETC
+        update_display(monitor, display_id = 'monitor')
+
+        '''
+        MONITOR UPDATE ENDS
+        '''
+        
+        '''
+        TIME CALCULATION ENDS HERE
+        '''
+        
+        if verbose:
+            update_display(master_display, display_id = display_id)
+            
+        
+        '''
+        
+        Update_display() ends here
+        
+        '''
+        
     mean_acc=np.mean(score_acc)
     mean_auc=np.mean(score_auc)
     mean_recall=np.mean(score_recall)
@@ -2959,7 +4370,9 @@ def create_stacknet(estimator_list,
     avgs_f1 = np.append(avgs_f1, std_f1)
     avgs_kappa = np.append(avgs_kappa, mean_kappa)
     avgs_kappa = np.append(avgs_kappa, std_kappa)
-      
+    
+    progress.value += 1
+    
     model_results = pd.DataFrame({'Accuracy': score_acc, 'AUC': score_auc, 'Recall' : score_recall, 'Prec.' : score_precision , 
                      'F1' : score_f1, 'Kappa' : score_kappa})
     model_avgs = pd.DataFrame({'Accuracy': avgs_acc, 'AUC': avgs_auc, 'Recall' : avgs_recall, 'Prec.' : avgs_precision , 
@@ -2968,67 +4381,102 @@ def create_stacknet(estimator_list,
     model_results = model_results.append(model_avgs)
     model_results = model_results.round(round)      
     
-    display(model_results)
+    progress.value += 1
+        
+    models_ = []
+    
+    for i in estimator_list:
+        models_.append(i)
+        
+    models_.append(meta_model)
+    
+    #storing into experiment
+    model_name = 'Stacking Classifier (Multi Layer)'
+    tup = (model_name,models_)
+    experiment__.append(tup)
+    nam = str(model_name) + ' Score Grid'
+    tup = (nam, model_results)
+    experiment__.append(tup)
+    
+    if verbose:
+        clear_output()
+        display(model_results)
+        return models_
+    
+    else:
+        clear_output()
+        return models_ 
 
 def automl(qualifier = 5,
            target_metric = 'Accuracy',
            fold = 10, 
-           round = 4):
+           round = 4,
+           turbo = True):
+    
     
     """
-      
-  Description:
-  ------------
-  This function is an original implementation of pycaret. It sequentially creates
-  various model and apply different techniques for Ensembling and Stacking. It returns
-  the best model based on 'target_metric' parameter defined. To limit the processing
-  time, 'qualifier' param can be reduced (by default = 5).  
-  
-    Example:
+         
+    Description:
+    ------------
+    This function is an original implementation of pycaret. It sequentially creates
+    various model and apply different techniques for Ensembling and Stacking. It 
+    returns the best model based on 'target_metric' param defined. To limit the 
+    processing time, 'qualifier' param can be reduced (by default = 5). Turbo param 
+    is used for blacklisting certain models ('rbfsvm', 'gpc', 'mlp') to become 
+    part of automl(). By default turbo is set to True.
+
+        Example:
+        --------
+
+        automl_1 = automl()
+
+        ** All parameters are optional
+
+    Parameters
+    ----------
+
+    qualifier : integer, default = None
+    Number of top models considered for experimentation to return the best model.
+    Higher number will result in longer training time.
+
+    target_metric : String, default = 'Accuracy'
+    Metric to use for qualifying models and tuning the hyperparameters.
+    Other available values are 'AUC', 'Recall', 'Precision', 'F1', 'Kappa'.
+
+    fold: integer, default = 10
+    Number of folds to be used in Kfold CV. Must be at least 2. 
+
+    round: integer, default = 4
+    Number of decimal places metrics in score grid will be rounded to.
+
+    turbo: Boolean, default = True
+    When turbo is set to True, it blacklists estimator that uses Radial Kernel.
+
+    Returns:
     --------
-    
-    automl = automl()
-    
-    ** All parameters are optional
-    
-  Parameters
-  ----------
-  
-  qualifier : integer, default = None
-  Number of top models considered for further processing to return the best model.
-  Higher number will result in longer process times.
-  
-  target_metric : String, default = 'Accuracy'
-  Metric to use for qualifying models and tuning the hyperparameters.
 
-  fold: integer, default = 10
-  Number of folds will determine how many folds would be done in the Kfold CV.
-  
-  round: integer, default = 4
-  The number indicates the number of decimal places metrics will be rounded to. 
+    score grid:   A table containing the averaged Kfold scores of all the models
+    -----------   Scoring metrics used are Accuracy, AUC, Recall, Precision, F1 
+                  and Kappa. 
+ 
+    model:        trained model object (best model selected using target_metric param)
+    -------
 
-  Attributes
-  ----------
-  All original attributes available in sklearn for a given estimator.
-  
-  Returns:
-  --------
-  
-  score grid:   A table containing the averaged Kfold scores of all the models
-  -----------   Scoring metrics used are Accuracy, AUC, Recall, Precision, F1 
-                and Kappa. 
-  
-  model:        trained model object (best model selected using target metric param)
-  -----------
-  
-  Warnings:
-  ---------
-  None
-    
+    Warnings:
+    ---------
+    - 'svm' and 'ridge' doesn't support predict_proba method and hence AUC will be
+      returned as zero (0.0)
+     
+    - estimators that doesn't support 'predict_proba' method or 'class_weights' cannot
+      be used for boosting ensemble. Even if the estimator is part qualifier, boosting
+      is skipped for those particular estimators.
+        
+       
     """
     
     #base dependencies
     from IPython.display import clear_output, update_display
+    import time, datetime
     import numpy as np
     import pandas as pd
     import random
@@ -3048,6 +4496,18 @@ def automl(qualifier = 5,
                      (qualifier*fold) + (qualifier*fold)) + 37
     progress = ipw.IntProgress(value=0, min=0, max=max_progress, step=1 , description='Processing: ')
     display(progress)
+    
+    
+    #display monitor
+    timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
+    monitor = pd.DataFrame( [ ['Initiated' , '. . . . . . . . . . . . . . . . . .', timestampStr ], 
+                             ['Status' , '. . . . . . . . . . . . . . . . . .' , 'Loading Dependencies' ],
+                             ['Estimator' , '. . . . . . . . . . . . . . . . . .' , 'Compiling Library' ],
+                             ['ETC' , '. . . . . . . . . . . . . . . . . .',  'Calculating ETC'] ],
+                              columns=['', ' ', '   ']).set_index('')
+    
+    display(monitor, display_id = 'monitor')
+    
     display_ = display(master_display, display_id=True)
     display_id = display_.display_id
     
@@ -3090,6 +4550,18 @@ def automl(qualifier = 5,
     #defining X_train and y_train
     data_X = X_train
     data_y=y_train
+    
+    
+    '''
+    MONITOR UPDATE STARTS
+    '''
+    
+    monitor.iloc[1,1:] = 'Loading Estimator'
+    update_display(monitor, display_id = 'monitor')
+    
+    '''
+    MONITOR UPDATE ENDS
+    '''
     
     #sklearn dependencies
     from sklearn.linear_model import LogisticRegression
@@ -3142,25 +4614,46 @@ def automl(qualifier = 5,
     lda = LinearDiscriminantAnalysis()
     et = ExtraTreesClassifier(random_state=seed)
     
-    #defining model library 
-    model_library = [lr, knn, nb, dt, svm, rbfsvm, gpc, mlp, ridge, rf, qda, ada, gbc, lda, et]
+    if turbo:
+        
+        model_library = [lr, knn, nb, dt, svm, ridge, rf, qda, ada, gbc, lda, et]
 
-    #defining model names
-    model_names = ['Logistic Regression',
-                   'K Neighbors Classifier',
-                   'Naive Bayes',
-                   'Decision Tree Classifier',
-                   'SVM - Linear Kernel',
-                   'SVM - Radial Kernel',
-                   'Gaussian Process Classifier',
-                   'MLP Classifier',
-                   'Ridge Classifier',
-                   'Random Forest Classifier',
-                   'Quadratic Discriminant Analysis',
-                   'Ada Boost Classifier',
-                   'Gradient Boosting Classifier',
-                   'Linear Discriminant Analysis',
-                   'Extra Trees Classifier']
+        #defining model names
+        model_names = ['Logistic Regression',
+                       'K Neighbors Classifier',
+                       'Naive Bayes',
+                       'Decision Tree Classifier',
+                       'SVM - Linear Kernel',
+                       'Ridge Classifier',
+                       'Random Forest Classifier',
+                       'Quadratic Discriminant Analysis',
+                       'Ada Boost Classifier',
+                       'Gradient Boosting Classifier',
+                       'Linear Discriminant Analysis',
+                       'Extra Trees Classifier']
+        
+    else:    
+        
+        #defining model library 
+        model_library = [lr, knn, nb, dt, svm, rbfsvm, gpc, mlp, ridge, rf, qda, ada, gbc, lda, et]
+
+        #defining model names
+        model_names = ['Logistic Regression',
+                       'K Neighbors Classifier',
+                       'Naive Bayes',
+                       'Decision Tree Classifier',
+                       'SVM - Linear Kernel',
+                       'SVM - Radial Kernel',
+                       'Gaussian Process Classifier',
+                       'MLP Classifier',
+                       'Ridge Classifier',
+                       'Random Forest Classifier',
+                       'Quadratic Discriminant Analysis',
+                       'Ada Boost Classifier',
+                       'Gradient Boosting Classifier',
+                       'Linear Discriminant Analysis',
+                       'Extra Trees Classifier']
+        
         
     #PROGRESS # 3 : Models and name list compiled
     progress.value += 1
@@ -3170,6 +4663,18 @@ def automl(qualifier = 5,
     Step 1 - Run all the models in model library.
     This function is equivalent to compare_models() without any blacklist model
 
+    '''
+    
+    
+    '''
+    MONITOR UPDATE STARTS
+    '''
+    
+    monitor.iloc[1,1:] = 'Initializing CV'
+    update_display(monitor, display_id = 'monitor')
+    
+    '''
+    MONITOR UPDATE ENDS
     '''
     
     #cross validation
@@ -3196,11 +4701,37 @@ def automl(qualifier = 5,
     
     for model in model_library:
         
+        '''
+        MONITOR UPDATE STARTS
+        '''
+        monitor.iloc[2,1:] = model_names[name_counter]
+        monitor.iloc[3,1:] = 'Calculating ETC'
+        update_display(monitor, display_id = 'monitor')
+
+        '''
+        MONITOR UPDATE ENDS
+        '''
+        
         #PROGRESS # 5 : Loop Counter (15x)
         progress.value += 1
- 
-        for train_i , test_i in kf.split(data_X,data_y):
         
+        fold_num = 1
+        
+        for train_i , test_i in kf.split(data_X,data_y):
+            
+            t0 = time.time()
+            
+            '''
+            MONITOR UPDATE STARTS
+            '''
+                
+            monitor.iloc[1,1:] = 'Fitting Fold ' + str(fold_num) + ' of ' + str(fold)
+            update_display(monitor, display_id = 'monitor')
+            
+            '''
+            MONITOR UPDATE ENDS
+            '''  
+            
             #PROGRESS # 6 : Loop Counter (xfold)
             progress.value += 1
      
@@ -3244,6 +4775,37 @@ def automl(qualifier = 5,
                 score_precision = np.append(score_precision,precision)
                 score_f1 =np.append(score_f1,f1)
                 score_kappa =np.append(score_kappa,kappa)
+                
+            t1 = time.time()
+            
+            '''
+            TIME CALCULATION SUB-SECTION STARTS HERE
+            '''
+            t1 = time.time()
+        
+            tt = (t1 - t0) * (fold-fold_num) / 60
+            tt = np.around(tt, 2)
+        
+            if tt < 1:
+                tt = str(np.around((tt * 60), 2))
+                ETC = tt + ' Seconds Remaining'
+                
+            else:
+                tt = str (tt)
+                ETC = tt + ' Minutes Remaining'
+            
+            fold_num += 1
+            
+            '''
+            MONITOR UPDATE STARTS
+            '''
+
+            monitor.iloc[3,1:] = ETC
+            update_display(monitor, display_id = 'monitor')
+
+            '''
+            MONITOR UPDATE ENDS
+            '''
         
         avg_acc = np.append(avg_acc,np.mean(score_acc))
         avg_auc = np.append(avg_auc,np.mean(score_auc))
@@ -3296,6 +4858,18 @@ def automl(qualifier = 5,
     replaced by already created object for efficiency purpose).
     
     '''
+    
+    '''
+    MONITOR UPDATE STARTS
+    '''
+    monitor.iloc[2,1:] = 'Compiling Top Models'
+    monitor.iloc[3,1:] = 'Calculating ETC'
+    update_display(monitor, display_id = 'monitor')
+
+    '''
+    MONITOR UPDATE ENDS
+    '''
+    
     top_n_models = []
     
     for i in top_n_model_names:
@@ -3410,6 +4984,17 @@ def automl(qualifier = 5,
     
     for i in top_n_models:
         
+        '''
+        MONITOR UPDATE STARTS
+        '''
+        monitor.iloc[2,1:] = bagging_model_names[name_counter]
+        monitor.iloc[3,1:] = 'Calculating ETC'
+        update_display(monitor, display_id = 'monitor')
+
+        '''
+        MONITOR UPDATE ENDS
+        '''
+        
         #PROGRESS # 11 : Loop Counter (top_n X)
         progress.value += 1
        
@@ -3433,7 +5018,23 @@ def automl(qualifier = 5,
         avgs_f1 =np.empty((0,0))
         avgs_kappa =np.empty((0,0))
         
+        fold_num = 1
+        
         for train_i , test_i in kf.split(data_X,data_y):
+            
+            t0 = time.time()
+            
+            '''
+            MONITOR UPDATE STARTS
+            '''
+                
+            monitor.iloc[1,1:] = 'Fitting Fold ' + str(fold_num) + ' of ' + str(fold)
+            update_display(monitor, display_id = 'monitor')
+            
+            '''
+            MONITOR UPDATE ENDS
+            '''  
+            
             
             #PROGRESS # 11 : Loop Counter (xfold)
             progress.value += 1
@@ -3478,7 +5079,39 @@ def automl(qualifier = 5,
                 score_precision = np.append(score_precision,precision)
                 score_f1 =np.append(score_f1,f1)
                 score_kappa =np.append(score_kappa,kappa)
+   
+            t1 = time.time()
+            
+            '''
+            TIME CALCULATION SUB-SECTION STARTS HERE
+            '''
+            t1 = time.time()
+        
+            tt = (t1 - t0) * (fold-fold_num) / 60
+            tt = np.around(tt, 2)
+        
+            if tt < 1:
+                tt = str(np.around((tt * 60), 2))
+                ETC = tt + ' Seconds Remaining'
+                
+            else:
+                tt = str (tt)
+                ETC = tt + ' Minutes Remaining'
+            
+            fold_num += 1
+            
+            '''
+            MONITOR UPDATE STARTS
+            '''
 
+            monitor.iloc[3,1:] = ETC
+            update_display(monitor, display_id = 'monitor')
+
+            '''
+            MONITOR UPDATE ENDS
+            '''
+                
+                
         mean_acc=np.mean(score_acc)
         mean_auc=np.mean(score_auc)
         mean_recall=np.mean(score_recall)
@@ -3546,6 +5179,17 @@ def automl(qualifier = 5,
         
     for i in top_n_models:
         
+        '''
+        MONITOR UPDATE STARTS
+        '''
+        monitor.iloc[2,1:] = boosting_model_names[name_counter]
+        monitor.iloc[3,1:] = 'Calculating ETC'
+        update_display(monitor, display_id = 'monitor')
+
+        '''
+        MONITOR UPDATE ENDS
+        '''
+        
         #PROGRESS # 14 : Model Creation (qualifier x based on top_n_model parameter)
         progress.value += 1
        
@@ -3572,7 +5216,22 @@ def automl(qualifier = 5,
         avgs_f1 =np.empty((0,0))
         avgs_kappa =np.empty((0,0))
         
+        fold_num = 1
+        
         for train_i , test_i in kf.split(data_X,data_y):
+            
+            t0 = time.time()
+            
+            '''
+            MONITOR UPDATE STARTS
+            '''
+                
+            monitor.iloc[1,1:] = 'Fitting Fold ' + str(fold_num) + ' of ' + str(fold)
+            update_display(monitor, display_id = 'monitor')
+            
+            '''
+            MONITOR UPDATE ENDS
+            '''  
             
             #PROGRESS # 15 : Loop Counter (xfold)
             progress.value += 1
@@ -3617,6 +5276,38 @@ def automl(qualifier = 5,
                 score_precision = np.append(score_precision,precision)
                 score_f1 =np.append(score_f1,f1)
                 score_kappa =np.append(score_kappa,kappa) 
+                
+                
+            t1 = time.time()
+            
+            '''
+            TIME CALCULATION SUB-SECTION STARTS HERE
+            '''
+            t1 = time.time()
+        
+            tt = (t1 - t0) * (fold-fold_num) / 60
+            tt = np.around(tt, 2)
+        
+            if tt < 1:
+                tt = str(np.around((tt * 60), 2))
+                ETC = tt + ' Seconds Remaining'
+                
+            else:
+                tt = str (tt)
+                ETC = tt + ' Minutes Remaining'
+            
+            fold_num += 1
+            
+            '''
+            MONITOR UPDATE STARTS
+            '''
+
+            monitor.iloc[3,1:] = ETC
+            update_display(monitor, display_id = 'monitor')
+
+            '''
+            MONITOR UPDATE ENDS
+            '''
 
         mean_acc=np.mean(score_acc)
         mean_auc=np.mean(score_auc)
@@ -3670,9 +5361,17 @@ def automl(qualifier = 5,
     
     #4.1 Store tuned model objects in the list 'top_n_tuned_models'
     
+    cv = 3
+    
     top_n_tuned_models = []
     
+    name_counter = 0 
+    
     for i in top_n_model_names:
+        
+        monitor.iloc[1,1:] = 'Hyperparameter Grid Search'
+        monitor.iloc[2,1:] = top_n_model_names[name_counter]
+        update_display(monitor, display_id = 'monitor')
         
         #PROGRESS # 17 : Model Creation (qualifier x based on top_n_model parameter)
         progress.value += 1
@@ -3686,7 +5385,7 @@ def automl(qualifier = 5,
 
             model_grid = RandomizedSearchCV(estimator=RidgeClassifier(random_state=seed), 
                                             param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
-                                            cv=fold, random_state=seed, n_jobs=-1)
+                                            cv=cv, random_state=seed, n_jobs=-1)
 
             model_grid.fit(X_train,y_train)
             model = model_grid.best_estimator_
@@ -3701,7 +5400,7 @@ def automl(qualifier = 5,
                       "class_weight": ["balanced", None]
                          }
             model_grid = RandomizedSearchCV(estimator=LogisticRegression(random_state=seed), 
-                                            param_distributions=param_grid, scoring=optimize, n_iter=n_iter, cv=fold, 
+                                            param_distributions=param_grid, scoring=optimize, n_iter=n_iter, cv=cv, 
                                             random_state=seed, iid=False,n_jobs=-1)
             model_grid.fit(X_train,y_train)
             model = model_grid.best_estimator_
@@ -3723,7 +5422,7 @@ def automl(qualifier = 5,
 
             model_grid = RandomizedSearchCV(estimator=GradientBoostingClassifier(random_state=seed), 
                                             param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
-                                            cv=fold, random_state=seed, n_jobs=-1)
+                                            cv=cv, random_state=seed, n_jobs=-1)
 
             model_grid.fit(X_train,y_train)
             model = model_grid.best_estimator_
@@ -3739,7 +5438,7 @@ def automl(qualifier = 5,
 
             model_grid = RandomizedSearchCV(estimator=LinearDiscriminantAnalysis(), 
                                             param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
-                                            cv=fold, random_state=seed, n_jobs=-1)
+                                            cv=cv, random_state=seed, n_jobs=-1)
 
             model_grid.fit(X_train,y_train)
             model = model_grid.best_estimator_
@@ -3756,7 +5455,7 @@ def automl(qualifier = 5,
 
             model_grid = RandomizedSearchCV(estimator=AdaBoostClassifier(random_state=seed), 
                                             param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
-                                            cv=fold, random_state=seed, n_jobs=-1)
+                                            cv=cv, random_state=seed, n_jobs=-1)
 
             model_grid.fit(X_train,y_train)
             model = model_grid.best_estimator_
@@ -3777,7 +5476,7 @@ def automl(qualifier = 5,
 
             model_grid = RandomizedSearchCV(estimator=RandomForestClassifier(random_state=seed), 
                                             param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
-                                            cv=fold, random_state=seed, n_jobs=-1)
+                                            cv=cv, random_state=seed, n_jobs=-1)
 
             model_grid.fit(X_train,y_train)
             model = model_grid.best_estimator_
@@ -3793,7 +5492,7 @@ def automl(qualifier = 5,
                       "criterion": ["gini", "entropy"]}
 
             model_grid = RandomizedSearchCV(estimator=DecisionTreeClassifier(random_state=seed), param_distributions=param_grid,
-                                           scoring=optimize, n_iter=n_iter, cv=fold, random_state=seed,
+                                           scoring=optimize, n_iter=n_iter, cv=cv, random_state=seed,
                                            iid=False, n_jobs=-1)
 
             model_grid.fit(X_train,y_train)
@@ -3812,7 +5511,7 @@ def automl(qualifier = 5,
                      }
 
             model_grid = RandomizedSearchCV(estimator=MLPClassifier(max_iter=1000, random_state=seed), 
-                                            param_distributions=param_grid, scoring=optimize, n_iter=n_iter, cv=fold, 
+                                            param_distributions=param_grid, scoring=optimize, n_iter=n_iter, cv=cv, 
                                             random_state=seed, iid=False, n_jobs=-1)
 
             model_grid.fit(X_train,y_train)
@@ -3835,7 +5534,7 @@ def automl(qualifier = 5,
 
             model_grid = RandomizedSearchCV(estimator=ExtraTreesClassifier(random_state=seed), 
                                             param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
-                                            cv=fold, random_state=seed, n_jobs=-1)
+                                            cv=cv, random_state=seed, n_jobs=-1)
 
             model_grid.fit(X_train,y_train)
             model = model_grid.best_estimator_
@@ -3848,7 +5547,7 @@ def automl(qualifier = 5,
             param_grid = {"max_iter_predict":[100,200,300,400,500,600,700,800,900,1000]}
 
             model_grid = RandomizedSearchCV(estimator=GaussianProcessClassifier(random_state=seed), param_distributions=param_grid,
-                                           scoring=optimize, n_iter=n_iter, cv=fold, random_state=seed,
+                                           scoring=optimize, n_iter=n_iter, cv=cv, random_state=seed,
                                            n_jobs=-1)
 
             model_grid.fit(X_train,y_train)
@@ -3864,7 +5563,7 @@ def automl(qualifier = 5,
                      'metric':["euclidean", "manhattan"]
                          }        
             model_grid = RandomizedSearchCV(estimator=KNeighborsClassifier(), param_distributions=param_grid, 
-                                            scoring=optimize, n_iter=n_iter, cv=fold, random_state=seed,
+                                            scoring=optimize, n_iter=n_iter, cv=cv, random_state=seed,
                                            n_jobs=-1, iid=False)
 
             model_grid.fit(X_train,y_train)
@@ -3880,7 +5579,7 @@ def automl(qualifier = 5,
 
             model_grid = RandomizedSearchCV(estimator=GaussianNB(), 
                                             param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
-                                            cv=fold, random_state=seed, n_jobs=-1)
+                                            cv=cv, random_state=seed, n_jobs=-1)
 
             model_grid.fit(X_train,y_train)
             model = model_grid.best_estimator_
@@ -3895,7 +5594,7 @@ def automl(qualifier = 5,
 
             model_grid = RandomizedSearchCV(estimator=SVC(gamma='auto', C=1, probability=True, kernel='rbf', random_state=seed), 
                                             param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
-                                            cv=fold, random_state=seed, n_jobs=-1)
+                                            cv=cv, random_state=seed, n_jobs=-1)
 
             model_grid.fit(X_train,y_train)
             model = model_grid.best_estimator_
@@ -3909,7 +5608,7 @@ def automl(qualifier = 5,
 
             model_grid = RandomizedSearchCV(estimator=QuadraticDiscriminantAnalysis(), 
                                             param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
-                                            cv=fold, random_state=seed, n_jobs=-1)
+                                            cv=cv, random_state=seed, n_jobs=-1)
 
             model_grid.fit(X_train,y_train)
             model = model_grid.best_estimator_
@@ -3929,13 +5628,15 @@ def automl(qualifier = 5,
 
             model_grid = RandomizedSearchCV(estimator=SGDClassifier(loss='hinge', random_state=seed), 
                                             param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
-                                            cv=fold, random_state=seed, n_jobs=-1)
+                                            cv=cv, random_state=seed, n_jobs=-1)
 
             model_grid.fit(X_train,y_train)
             model = model_grid.best_estimator_
             best_model = model_grid.best_estimator_
             best_model_param = model_grid.best_params_
             top_n_tuned_models.append(best_model)
+            
+        name_counter += 1
             
     master.append(top_n_tuned_models)
     
@@ -3965,6 +5666,17 @@ def automl(qualifier = 5,
     
     for i in top_n_tuned_models:
         
+        '''
+        MONITOR UPDATE STARTS
+        '''
+        monitor.iloc[2,1:] = tuning_model_names[name_counter]
+        monitor.iloc[3,1:] = 'Calculating ETC'
+        update_display(monitor, display_id = 'monitor')
+
+        '''
+        MONITOR UPDATE ENDS
+        '''
+        
         #PROGRESS # 20 : Model Creation (qualifier x based on top_n_model parameter)
         progress.value += 1 
         
@@ -3986,7 +5698,24 @@ def automl(qualifier = 5,
         avgs_f1 =np.empty((0,0))
         avgs_kappa =np.empty((0,0))
         
+        fold_num = 1
+        
         for train_i , test_i in kf.split(data_X,data_y):
+
+            
+            t0 = time.time()
+            
+            '''
+            MONITOR UPDATE STARTS
+            '''
+                
+            monitor.iloc[1,1:] = 'Fitting Fold ' + str(fold_num) + ' of ' + str(fold)
+            update_display(monitor, display_id = 'monitor')
+            
+            '''
+            MONITOR UPDATE ENDS
+            '''  
+            
             
             #PROGRESS # 21 : Loop Counter (xfold)
             progress.value += 1
@@ -4031,6 +5760,38 @@ def automl(qualifier = 5,
                 score_precision = np.append(score_precision,precision)
                 score_f1 =np.append(score_f1,f1)
                 score_kappa =np.append(score_kappa,kappa) 
+                
+            
+            t1 = time.time()
+            
+            '''
+            TIME CALCULATION SUB-SECTION STARTS HERE
+            '''
+            t1 = time.time()
+        
+            tt = (t1 - t0) * (fold-fold_num) / 60
+            tt = np.around(tt, 2)
+        
+            if tt < 1:
+                tt = str(np.around((tt * 60), 2))
+                ETC = tt + ' Seconds Remaining'
+                
+            else:
+                tt = str (tt)
+                ETC = tt + ' Minutes Remaining'
+            
+            fold_num += 1
+            
+            '''
+            MONITOR UPDATE STARTS
+            '''
+
+            monitor.iloc[3,1:] = ETC
+            update_display(monitor, display_id = 'monitor')
+
+            '''
+            MONITOR UPDATE ENDS
+            '''
 
         mean_acc=np.mean(score_acc)
         mean_auc=np.mean(score_auc)
@@ -4092,6 +5853,17 @@ def automl(qualifier = 5,
     
     for i in top_n_tuned_models:
         
+        '''
+        MONITOR UPDATE STARTS
+        '''
+        monitor.iloc[2,1:] = ensemble_tuned_model_names[name_counter]
+        monitor.iloc[3,1:] = 'Calculating ETC'
+        update_display(monitor, display_id = 'monitor')
+
+        '''
+        MONITOR UPDATE ENDS
+        '''
+        
         #PROGRESS # 23 : Model Creation (qualifier x based on top_n_model parameter)
         progress.value += 1 
         
@@ -4114,10 +5886,27 @@ def automl(qualifier = 5,
         avgs_f1 =np.empty((0,0))
         avgs_kappa =np.empty((0,0))
         
+        fold_num = 1
+        
         for train_i , test_i in kf.split(data_X,data_y):
             
             #PROGRESS # 24 : Loop Counter (xfold)
             progress.value += 1
+            
+            
+            t0 = time.time()
+            
+            '''
+            MONITOR UPDATE STARTS
+            '''
+                
+            monitor.iloc[1,1:] = 'Fitting Fold ' + str(fold_num) + ' of ' + str(fold)
+            update_display(monitor, display_id = 'monitor')
+            
+            '''
+            MONITOR UPDATE ENDS
+            '''  
+            
     
             Xtrain,Xtest = data_X.iloc[train_i], data_X.iloc[test_i]
             ytrain,ytest = data_y.iloc[train_i], data_y.iloc[test_i]
@@ -4159,6 +5948,37 @@ def automl(qualifier = 5,
                 score_precision = np.append(score_precision,precision)
                 score_f1 =np.append(score_f1,f1)
                 score_kappa =np.append(score_kappa,kappa) 
+                    
+            t1 = time.time()
+            
+            '''
+            TIME CALCULATION SUB-SECTION STARTS HERE
+            '''
+            t1 = time.time()
+        
+            tt = (t1 - t0) * (fold-fold_num) / 60
+            tt = np.around(tt, 2)
+        
+            if tt < 1:
+                tt = str(np.around((tt * 60), 2))
+                ETC = tt + ' Seconds Remaining'
+                
+            else:
+                tt = str (tt)
+                ETC = tt + ' Minutes Remaining'
+            
+            fold_num += 1
+            
+            '''
+            MONITOR UPDATE STARTS
+            '''
+
+            monitor.iloc[3,1:] = ETC
+            update_display(monitor, display_id = 'monitor')
+
+            '''
+            MONITOR UPDATE ENDS
+            '''               
 
         mean_acc=np.mean(score_acc)
         mean_auc=np.mean(score_auc)
@@ -4212,7 +6032,20 @@ def automl(qualifier = 5,
     object 'master'.
     
     '''
-    
+                
+    '''
+    MONITOR UPDATE STARTS
+    '''
+
+    monitor.iloc[1,1:] = 'Unpacking Master List'
+    monitor.iloc[2,1:] = 'Compiling'
+    monitor.iloc[3,1:] = 'Calculating ETC'
+    update_display(monitor, display_id = 'monitor')
+
+    '''
+    MONITOR UPDATE ENDS
+    '''  
+            
     master_unpack = []
     for i in master:
         for k in i:
@@ -4258,10 +6091,26 @@ def automl(qualifier = 5,
     top_n_voting_models = []
     top_n_voting_model_results = pd.DataFrame(columns=['Model', 'Accuracy','AUC','Recall', 'Prec.', 'F1', 'Kappa'])
     
+    voting_counter = 1
+    
     for i,j in zip(mix,mix_names):
         
         #PROGRESS # 28 : Model Creation (qualifier x based on top_n_model parameter)
         progress.value += 1 
+        
+        
+        '''
+        MONITOR UPDATE STARTS
+        '''
+        monitor.iloc[2,1:] = 'Voting Classifier # ' + str(voting_counter)
+        monitor.iloc[3,1:] = 'Calculating ETC'
+        update_display(monitor, display_id = 'monitor')
+
+        '''
+        MONITOR UPDATE ENDS
+        '''
+        
+        voting_counter += 1
         
         estimator_list = zip(j, i)
         estimator_list = list(estimator_list)    
@@ -4284,10 +6133,26 @@ def automl(qualifier = 5,
         avgs_f1 =np.empty((0,0))
         avgs_kappa =np.empty((0,0))
         
+        fold_num = 1
+        
         for train_i , test_i in kf.split(data_X,data_y):
             
             #PROGRESS # 29 : Loop Counter (xfold)
             progress.value += 1 
+            
+                    
+            t0 = time.time()
+
+            '''
+            MONITOR UPDATE STARTS
+            '''
+
+            monitor.iloc[1,1:] = 'Fitting Fold ' + str(fold_num) + ' of ' + str(fold)
+            update_display(monitor, display_id = 'monitor')
+
+            '''
+            MONITOR UPDATE ENDS
+            '''  
             
             Xtrain,Xtest = data_X.iloc[train_i], data_X.iloc[test_i]
             ytrain,ytest = data_y.iloc[train_i], data_y.iloc[test_i]
@@ -4308,6 +6173,37 @@ def automl(qualifier = 5,
             score_precision = np.append(score_precision,precision)
             score_f1 =np.append(score_f1,f1)
             score_kappa =np.append(score_kappa,kappa) 
+            
+            t1 = time.time()
+            
+            '''
+            TIME CALCULATION SUB-SECTION STARTS HERE
+            '''
+            t1 = time.time()
+        
+            tt = (t1 - t0) * (fold-fold_num) / 60
+            tt = np.around(tt, 2)
+        
+            if tt < 1:
+                tt = str(np.around((tt * 60), 2))
+                ETC = tt + ' Seconds Remaining'
+                
+            else:
+                tt = str (tt)
+                ETC = tt + ' Minutes Remaining'
+            
+            fold_num += 1
+            
+            '''
+            MONITOR UPDATE STARTS
+            '''
+
+            monitor.iloc[3,1:] = ETC
+            update_display(monitor, display_id = 'monitor')
+
+            '''
+            MONITOR UPDATE ENDS
+            '''
         
         mean_acc=np.mean(score_acc)
         mean_auc=np.mean(score_auc)
@@ -4358,7 +6254,7 @@ def automl(qualifier = 5,
     This is equivalent to stack_models()
 
     '''    
-    
+        
     top_n_stacking_models = []
     top_n_stacking_model_results = pd.DataFrame(columns=['Model', 'Accuracy','AUC','Recall', 'Prec.', 'F1', 'Kappa'])
     
@@ -4366,8 +6262,24 @@ def automl(qualifier = 5,
     
     #PROGRESS # 31 : Meta Model Defined for Stacking
     progress.value += 1
+
+    stack_counter = 1
     
     for i in mix:
+            
+        '''
+        MONITOR UPDATE STARTS
+        '''
+        monitor.iloc[1,1:] = 'Compiling Base Estimators'
+        monitor.iloc[2,1:] = 'Stacking Classifier # ' + str(stack_counter)
+        monitor.iloc[3,1:] = 'Calculating ETC'
+        update_display(monitor, display_id = 'monitor')
+
+        '''
+        MONITOR UPDATE ENDS
+        '''
+        
+        stack_counter += 1
         
         #PROGRESS # 32 : Model Creation (qualifier x based on top_n_model parameter)
         progress.value += 1
@@ -4416,12 +6328,27 @@ def automl(qualifier = 5,
         avgs_precision =np.empty((0,0))
         avgs_f1 =np.empty((0,0))
         avgs_kappa =np.empty((0,0))
-
+        
+        fold_num = 1
+        
         for train_i , test_i in kf.split(data_X,data_y):
             
             #PROGRESS # 33 : Loop Counter (xfold)
             progress.value += 1
-            
+                                
+            t0 = time.time()
+
+            '''
+            MONITOR UPDATE STARTS
+            '''
+
+            monitor.iloc[1,1:] = 'Fitting Fold ' + str(fold_num) + ' of ' + str(fold)
+            update_display(monitor, display_id = 'monitor')
+
+            '''
+            MONITOR UPDATE ENDS
+            '''  
+
             Xtrain,Xtest = data_X.iloc[train_i], data_X.iloc[test_i]
             ytrain,ytest = data_y.iloc[train_i], data_y.iloc[test_i]
 
@@ -4441,6 +6368,38 @@ def automl(qualifier = 5,
             score_precision = np.append(score_precision,precision)
             score_f1 =np.append(score_f1,f1)
             score_kappa =np.append(score_kappa,kappa)
+            
+            
+            t1 = time.time()
+            
+            '''
+            TIME CALCULATION SUB-SECTION STARTS HERE
+            '''
+            t1 = time.time()
+        
+            tt = (t1 - t0) * (fold-fold_num) / 60
+            tt = np.around(tt, 2)
+        
+            if tt < 1:
+                tt = str(np.around((tt * 60), 2))
+                ETC = tt + ' Seconds Remaining'
+                
+            else:
+                tt = str (tt)
+                ETC = tt + ' Minutes Remaining'
+            
+            fold_num += 1
+            
+            '''
+            MONITOR UPDATE STARTS
+            '''
+
+            monitor.iloc[3,1:] = ETC
+            update_display(monitor, display_id = 'monitor')
+
+            '''
+            MONITOR UPDATE ENDS
+            '''
             
         mean_acc=np.mean(score_acc)
         mean_auc=np.mean(score_auc)
@@ -4497,7 +6456,21 @@ def automl(qualifier = 5,
     
     THIS IS THE FINAL UNPACKING.
     
-    ''' 
+    '''
+    
+    
+    '''
+    MONITOR UPDATE STARTS
+    '''
+    monitor.iloc[1,1:] = 'Finalizing Results'
+    monitor.iloc[2,1:] = 'Compiling Masterlist'
+    monitor.iloc[3,1:] = 'Calculating ETC'
+    update_display(monitor, display_id = 'monitor')
+
+    '''
+    MONITOR UPDATE ENDS
+    '''
+
     #global master_final
     master_final = []
     for i in master:
@@ -4533,6 +6506,294 @@ def automl(qualifier = 5,
     #PROGRESS # 36 : Final Sorting completed
     progress.value += 1
     
+    #storing into experiment
+    model_name = 'AutoML (best model)'
+    tup = (model_name,best_model)
+    experiment__.append(tup)
+    
+    model_name = 'AutoML Results'
+    tup = (model_name,master_display)
+    experiment__.append(tup)
+ 
     clear_output()    
     display(master_display_)
     return best_model
+
+def interpret_model(estimator,
+                   type = 'summary',
+                   feature = None, 
+                   observation = None):
+    
+    
+    """
+          
+    Description:
+    ------------
+    This function takes a trained model object and returns the interpretation plot on
+    test set. This function only supports tree based algorithm. 
+
+    This function is implemented based on original implementation in package 'shap'.
+    SHAP (SHapley Additive exPlanations) is a unified approach to explain the output 
+    of any machine learning model. SHAP connects game theory with local explanations.
+
+    For more information : https://shap.readthedocs.io/en/latest/
+
+        Example:
+        --------
+
+        dt = create_model('dt')
+        interpret_model(dt)
+
+        This will return the summary interpretation plot of Decision Tree model.
+
+    Parameters
+    ----------
+
+    estimator : object, default = none
+    A trained tree based model object should be passed as an estimator. 
+    Model must be created using create_model() or tune_model() in pycaret or using 
+    any other package that returns sklearn object.
+
+    type : string, default = 'summary'
+    other available options are 'correlation' and 'reason'.
+
+    feature: string, default = None
+    This parameter is only needed when type = 'correlation'. By default feature is set
+    to None which means the first column of dataset will be used as a variable. 
+    To change feature param must be passed. 
+
+    observation: integer, default = None
+    This parameter only comes in effect when type is set to 'reason'. If no observation
+    number is provided, by default the it will return the analysis of all observations 
+    with option to select the feature  on x and y axis through drop down interactivity. 
+    For analysis at sample level, observation parameter must be passed with index value 
+    of observation in test set. 
+
+    Returns:
+    --------
+
+    Visual Plot:  Returns the visual plot.
+    -----------   Returns the interactive JS plot when type = 'reason'.
+
+    Warnings:
+    ---------
+    None    
+       
+         
+    """
+    
+    
+    
+    '''
+    Error Checking starts here
+    
+    '''
+    
+    import sys
+    
+    #allowed models
+    allowed_models = ['RandomForestClassifier',
+                      'DecisionTreeClassifier',
+                      'ExtraTreesClassifier',
+                      'GradientBoostingClassifier']
+    
+    model_name = str(estimator).split("(")[0]
+    
+    if model_name not in allowed_models:
+        sys.exit('(Type Error): This function only supports tree based models.')
+        
+    #plot type
+    allowed_types = ['summary', 'correlation', 'reason']
+    if type not in allowed_types:
+        sys.exit("(Value Error): type parameter only accepts 'summary', 'correlation' or 'reason'.")   
+           
+    
+    '''
+    Error Checking Ends here
+    
+    '''
+        
+    
+    #general dependencies
+    import numpy as np
+    import pandas as pd
+    import shap
+    
+    #storing estimator in model variable
+    model = estimator
+
+    
+    #defining type of classifier
+    type1 = ['RandomForestClassifier','DecisionTreeClassifier','ExtraTreesClassifier']
+    type2 = ['GradientBoostingClassifier']
+    
+    if type == 'summary':
+        
+        if model_name in type1:
+        
+            explainer = shap.TreeExplainer(model)
+            shap_values = explainer.shap_values(X_test)
+            shap.summary_plot(shap_values, X_test)
+            
+        elif model_name in type2:
+            
+            explainer = shap.TreeExplainer(model)
+            shap_values = explainer.shap_values(X_test)
+            shap.summary_plot(shap_values, X_test)
+                              
+    elif type == 'correlation':
+        
+        if feature == None:
+            
+            dependence = X_test.columns[0]
+            
+        else:
+            
+            dependence = feature
+        
+        if model_name in type1:
+                
+            explainer = shap.TreeExplainer(model)
+            shap_values = explainer.shap_values(X_test)
+            shap.dependence_plot(dependence, shap_values[1], X_test)
+        
+        elif model_name in type2:
+            
+            explainer = shap.TreeExplainer(model)
+            shap_values = explainer.shap_values(X_test) 
+            shap.dependence_plot(dependence, shap_values, X_test)
+        
+    elif type == 'reason':
+        
+        if model_name in type1:
+            
+            if observation is None:
+                
+                explainer = shap.TreeExplainer(model)
+                shap_values = explainer.shap_values(X_test)
+                shap.initjs()
+                return shap.force_plot(explainer.expected_value[1], shap_values[1], X_test)
+            
+            else: 
+                
+                row_to_show = observation
+                data_for_prediction = X_test.iloc[row_to_show]
+                explainer = shap.TreeExplainer(model)
+                shap_values = explainer.shap_values(data_for_prediction)
+                shap.initjs()
+                return shap.force_plot(explainer.expected_value[1], shap_values[1], data_for_prediction)        
+
+            
+        elif model_name in type2:
+
+            if observation is None:
+                
+                explainer = shap.TreeExplainer(model)
+                shap_values = explainer.shap_values(X_test)
+                shap.initjs()
+                return shap.force_plot(explainer.expected_value, shap_values, X_test)
+            
+            else:
+                
+                row_to_show = observation
+                data_for_prediction = X_test.iloc[row_to_show]
+                explainer = shap.TreeExplainer(model)
+                shap_values = explainer.shap_values(X_test)
+                shap.initjs()
+                return shap.force_plot(explainer.expected_value, shap_values[row_to_show,:], X_test.iloc[row_to_show,:])
+
+def evaluate_model(estimator):
+        
+    from ipywidgets import widgets
+    from ipywidgets.widgets import interact, fixed, interact_manual
+
+    a = widgets.ToggleButtons(
+                            options=[('Hyperparameters', 'parameter'),
+                                     ('AUC', 'auc'), 
+                                     ('Confusion Matrix', 'confusion_matrix'), 
+                                     ('Threshold', 'threshold'),
+                                     ('Precision Recall', 'pr'),
+                                     ('Error', 'error'),
+                                     ('Class Report', 'class_report'),
+                                     ('Feature Selection', 'rfe'),
+                                     ('Learning Curve', 'learning'),
+                                     ('Manifold Learning', 'manifold'),
+                                     ('Calibration Curve', 'calibration'),
+                                     ('Validation Curve', 'vc'),
+                                     ('Dimensions', 'dimension'),
+                                     ('Feature Importance', 'feature'),
+                                     ('Decision Boundary', 'boundary')
+                                    ],
+
+                            description='Plot Type:',
+
+                            disabled=False,
+
+                            button_style='', # 'success', 'info', 'warning', 'danger' or ''
+
+                            tooltips=['Description of slow', 'Description of regular', 'Description of fast'],
+
+                            icons=['']
+    )
+    
+  
+    d = interact(plot_model, estimator = fixed(estimator), plot = a)
+
+
+def save_model(model, model_name):
+    import joblib
+    model_name = model_name + '.pkl'
+    joblib.dump(model, model_name)
+
+def load_model(model_name):
+    import joblib
+    model_name = model_name + '.pkl'
+    return joblib.load(model_name)
+
+def save_experiment(experiment_name=None):
+    
+    #general dependencies
+    import joblib
+    global experiment__
+    
+    #defining experiment name
+    if experiment_name is None:
+        experiment_name = 'experiment_' + str(seed)
+        
+    else:
+        experiment_name = experiment_name  
+        
+    experiment_name = experiment_name + '.pkl'
+    joblib.dump(experiment__, experiment_name)
+
+def load_experiment(experiment_name):
+    
+    #general dependencies
+    import joblib
+    import pandas as pd
+    
+    experiment_name = experiment_name + '.pkl'
+    temp = joblib.load(experiment_name)
+    
+    name = []
+    exp = []
+
+    for i in temp:
+        name.append(i[0])
+        exp.append(i[-1])
+
+    ind = pd.DataFrame(name, columns=['Object'])
+    display(ind)
+
+    return exp
+
+def finalize_model(estimator):
+    model = estimator.fit(X,y)
+    
+    #storing into experiment
+    model_name = str(estimator).split("(")[0]
+    model_name = 'Final ' + model_name
+    tup = (model_name,model)
+    experiment__.append(tup)
+    
+    return model
