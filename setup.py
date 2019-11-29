@@ -23,6 +23,6 @@ setup(
     ],
     packages=["pycaret"],
     include_package_data=True,
-    install_requires=["sys", "warnings", "pandas", "numpy", "seaborn", "matplotlib", "IPython", "joblib", 
-                     "sklearn", "shap", "ipywidgets", "random", "time", "datetime"]
+    install_requires=["pandas", "numpy", "seaborn", "matplotlib", "IPython", "joblib", 
+                     "sklearn", "shap", "ipywidgets"]
 )
