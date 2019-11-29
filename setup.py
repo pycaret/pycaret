@@ -8,7 +8,7 @@ def readme():
 
 setup(
     name="pycaret",
-    version="0.0.1",
+    version="0.0.2",
     description="A Python package for supervised and unsupervised machine learning.",
     long_description=readme(),
     long_description_content_type="text/markdown",
@@ -24,5 +24,5 @@ setup(
     packages=["pycaret"],
     include_package_data=True,
     install_requires=["pandas", "numpy", "seaborn", "matplotlib", "IPython", "joblib", 
-                     "sklearn", "shap", "ipywidgets"]
+                     "sklearn", "shap", "ipywidgets", "yellowbrick"]
 )
