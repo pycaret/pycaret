@@ -1,0 +1,43 @@
+24/12/2019
+
+Release of pycaret beta 0.0.6 
+(pip install --upgrade pycaret)
+
+pycaret beta 0.0.6 has been released. We have made fundamental progress in last few days. Some of the key achievements and updates are as follows:
+
+1. NEW MODULES
+==============
+
+- pycaret.nlp is now publicly available. pycaret's NLP module is one of it's kind for combining supervised and unsupervised machine learning. It supports more than 6 different kind of topic models along with library of 40+ estimators to choose from (when learning is set to semi-supervised). plot_model function in NLP is completely interactive and makes the best use of plotly interface in python. 
+
+-pycaret.datasets is now created. It's a big data respository hosted as github.com/pycaret/pycaret. This will allows to directly get data from our git without ever downloading and storing csv files. Example:
+
+from pycaret.datasets import get_data
+data = get_data('credit')
+
+to view index, please see get_data('index')
+
+2. XGBOOST AND LIGHTGBM NOW AVAILABLE
+=====================================
+- xgboost and Microsoft's lightgbm is now generally available in classification and regression modules. For beta release 0.0.7 and 0.0.8 we are hoping catboost will be included.
+
+3. PRE-PROCESS MODULE
+=====================
+- Great progress has been made for pre-processing module. Will be release in beta 0.0.9
+
+4. BUG FIX
+==========
+With our first major release of 0.0.4, couple of bugs have been identified which are fixed now.
+- AutoML regression was ignoring boosting models - FIXED
+- AutoML classification boosting conflict - FIXED
+- pycaret.classification setup sampling value fixed to 25000 from 20000 in previous version.
+- documentation added for evaluate_model(), save_model(), load_model(), save_experiment(), load_experiment()
+
+5. DOCUMENTATION
+================
+- README documentation is now updated at https://github.com/pycaret/pycaret
+- Web development started. Targetted for 2nd week of January 2020.
+
+6. DEFAULT CHANGES
+=================
+- Default metric in Regression is now set to R2 from 'MAE' in previous versions.
