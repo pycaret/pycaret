@@ -45,7 +45,12 @@ def setup(data,
     sample_estimator: object, default = None
     If None, Logistic Regression is used by default.
 
-
+    session_id: int, default = None
+    If None, random seed is generated and returned in Information grid. The unique 
+    number is then distributed as a seed in all other functions used during experiment.
+    This can be used later for reproducibility of entire experiment.
+    
+    
     Returns:
     --------
 
@@ -89,11 +94,11 @@ def setup(data,
    
     #progress bar
     if sampling:
-        max = 10 + 2
+        max_steps = 10 + 2
     else:
-        max = 2
+        max_steps = 2
         
-    progress = ipw.IntProgress(value=0, min=0, max=max, step=1 , description='Processing: ')
+    progress = ipw.IntProgress(value=0, min=0, max=max_steps, step=1 , description='Processing: ')
     display(progress)
     
     timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
@@ -143,7 +148,7 @@ def setup(data,
     
     progress.value += 1
     
-    if sampling is True and data.shape[0] > 20000:
+    if sampling is True and data.shape[0] > 25000:
     
         split_perc = [0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,0.99]
         split_perc_text = ['10%','20%','30%','40%','50%','60%', '70%', '80%', '90%', '100%']
@@ -372,7 +377,6 @@ def setup(data,
         
         return X, y, X_train, X_test, y_train, y_test, seed, experiment__
 
-
 def create_model(estimator = None, 
                  ensemble = False, 
                  method = None, 
@@ -424,6 +428,8 @@ def create_model(estimator = None,
     Gradient Boosting           'gbc'                  ensemble.GradientBoostingClassifier
     Linear Disc. Analysis       'lda'                  discriminant_analysis.LDA
     Extra Trees Classifier      'et'                   ensemble.ExtraTreesClassifier
+    Extreme Gradient Boosting   'xgboost'              xgboost.readthedocs.io
+    Light Gradient Boosting     'lightgbm'             github.com/microsoft/LightGBM
 
     ensemble: Boolean, default = False
     True would result in ensemble of estimator using the method parameter defined (see below). 
@@ -476,7 +482,7 @@ def create_model(estimator = None,
     
     #checking error for estimator (string)
     available_estimators = ['lr', 'knn', 'nb', 'dt', 'svm', 'rbfsvm', 'gpc', 'mlp', 'ridge', 'rf', 'qda', 'ada', 
-                            'gbc', 'lda', 'et']
+                            'gbc', 'lda', 'et', 'xgboost', 'lightgbm']
     if estimator not in available_estimators:
         sys.exit('(Value Error): Estimator Not Available. Please see docstring for list of available estimators.')
         
@@ -682,6 +688,19 @@ def create_model(estimator = None,
         model = ExtraTreesClassifier(random_state=seed)
         full_name = 'Extra Trees Classifier'
 
+    elif estimator == 'xgboost':
+
+        from xgboost import XGBClassifier
+        model = XGBClassifier(random_state=seed, n_jobs=-1, verbosity=0)
+        full_name = 'Extreme Gradient Boosting'
+        
+    elif estimator == 'lightgbm':
+        
+        import lightgbm as lgb
+        model = lgb.LGBMClassifier(random_state=seed)
+        full_name = 'Light Gradient Boosting Machine'
+        
+        
     else:
         model = estimator
         full_name = str(model).split("(")[0]
@@ -698,7 +717,7 @@ def create_model(estimator = None,
     elif method == 'Boosting':
         
         from sklearn.ensemble import AdaBoostClassifier
-        model = AdaBoostClassifier(model, random_state=seed)
+        model = AdaBoostClassifier(model, n_estimators=10, random_state=seed)
     
     
     '''
@@ -971,8 +990,12 @@ def ensemble_model(estimator,
         sys.exit("(Value Error): Method parameter only accepts two values 'Bagging' or 'Boosting'.")
     
     #checking boosting conflict with estimators
-    if ( not hasattr(estimator,'predict_proba') or not hasattr(estimator,'class_weight') ) and method is 'Boosting':
-        sys.exit("(Type Error): Estimator does not provide class_weights or predict_proba function and hence not supported for the Boosting method. Change the estimator or method to 'Bagging'.") 
+    if method == 'Boosting':
+        if hasattr(estimator,'get_xgb_params'):
+            pass
+        else:
+            if not hasattr(estimator, 'predict_proba') or not hasattr(estimator, 'class_weight'):
+                sys.exit("(Type Error): Estimator does not provide class_weights or predict_proba function and hence not supported for the Boosting method. Change the estimator or method to 'Bagging'.") 
         
     #checking fold parameter
     if type(fold) is not int:
@@ -1262,7 +1285,6 @@ def ensemble_model(estimator,
     else:
         clear_output()
         return model
-
 
 def plot_model(estimator, 
                plot = 'auc'): 
@@ -1679,6 +1701,9 @@ def plot_model(estimator,
         col_names = np.array(X_train.columns)
         coef_df = pd.DataFrame({'Variable': X_train.columns, 'Value': variables})
         sorted_df = coef_df.sort_values(by='Value')
+        sorted_df = sorted_df.sort_values(by='Value', ascending=False)
+        sorted_df = sorted_df.head(10)
+        sorted_df = sorted_df.sort_values(by='Value')
         my_range=range(1,len(sorted_df.index)+1)
         progress.value += 1
         plt.figure(figsize=(8,5))
@@ -1687,20 +1712,19 @@ def plot_model(estimator,
         progress.value += 1
         plt.yticks(my_range, sorted_df['Variable'])
         plt.title("Feature Importance Plot")
+        plt.xlabel('Variable Importance')
+        plt.ylabel('Features')
         progress.value += 1
         clear_output()
-        plt.xlabel('Variable Importance')
-        plt.ylabel('Features') 
-        var_imp = sorted_df.reset_index(drop=True)
-        var_imp_array = np.array(var_imp['Variable'])
-        var_imp_array_top_n = var_imp_array[0:len(var_imp_array)]
+        #var_imp = sorted_df.reset_index(drop=True)
+        #var_imp_array = np.array(var_imp['Variable'])
+        #var_imp_array_top_n = var_imp_array[0:len(var_imp_array)]
     
     elif plot == 'parameter':
         
         clear_output()
         param_df = pd.DataFrame.from_dict(estimator.get_params(estimator), orient='index', columns=['Parameters'])
         display(param_df)
-
 
 def compare_models(blacklist = None,
                    fold = 10, 
@@ -1739,6 +1763,8 @@ def compare_models(blacklist = None,
     Gradient Boosting           'gbc'                  ensemble.GradientBoostingClassifier
     Linear Disc. Analysis       'lda'                  discriminant_analysis.LDA 
     Extra Trees Classifier      'et'                   ensemble.ExtraTreesClassifier
+    Extreme Gradient Boosting   'xgboost'              xgboost.readthedocs.io
+    Light Gradient Boosting     'lightgbm'             github.com/microsoft/LightGBM
 
         Example:
         --------
@@ -1814,7 +1840,7 @@ def compare_models(blacklist = None,
     
     #checking error for blacklist (string)
     available_estimators = ['lr', 'knn', 'nb', 'dt', 'svm', 'rbfsvm', 'gpc', 'mlp', 'ridge', 'rf', 'qda', 'ada', 
-                            'gbc', 'lda', 'et']
+                            'gbc', 'lda', 'et', 'xgboost', 'lightgbm']
     
     if blacklist != None:
         for i in blacklist:
@@ -1854,11 +1880,11 @@ def compare_models(blacklist = None,
         len_of_blacklist = len(blacklist)
         
     if turbo:
-        len_mod = 12 - len_of_blacklist
+        len_mod = 14 - len_of_blacklist
     else:
-        len_mod = 15 - len_of_blacklist
+        len_mod = 17 - len_of_blacklist
         
-    progress = ipw.IntProgress(value=0, min=0, max=(fold*len_mod)+5, step=1 , description='Processing: ')
+    progress = ipw.IntProgress(value=0, min=0, max=(fold*len_mod)+15, step=1 , description='Processing: ')
     master_display = pd.DataFrame(columns=['Model', 'Accuracy','AUC','Recall', 'Prec.', 'F1', 'Kappa'])
     display(progress)
     
@@ -1909,6 +1935,8 @@ def compare_models(blacklist = None,
     from sklearn.ensemble import GradientBoostingClassifier
     from sklearn.discriminant_analysis import LinearDiscriminantAnalysis 
     from sklearn.ensemble import ExtraTreesClassifier
+    from xgboost import XGBClassifier
+    import lightgbm as lgb
    
     progress.value += 1
     
@@ -1946,10 +1974,12 @@ def compare_models(blacklist = None,
     gbc = GradientBoostingClassifier(random_state=seed)
     lda = LinearDiscriminantAnalysis()
     et = ExtraTreesClassifier(random_state=seed)
+    xgboost = XGBClassifier(random_state=seed, n_jobs=-1, verbosity=0)
+    lgb.LGBMClassifier(random_state=seed)
     
     progress.value += 1
     
-    model_library = [lr, knn, nb, dt, svm, rbfsvm, gpc, mlp, ridge, rf, qda, ada, gbc, lda, et]
+    model_library = [lr, knn, nb, dt, svm, rbfsvm, gpc, mlp, ridge, rf, qda, ada, gbc, lda, et, xgboost, lightgbm]
 
     model_names = ['Logistic Regression',
                    'K Neighbors Classifier',
@@ -1965,7 +1995,9 @@ def compare_models(blacklist = None,
                    'Ada Boost Classifier',
                    'Gradient Boosting Classifier',
                    'Linear Discriminant Analysis',
-                   'Extra Trees Classifier']
+                   'Extra Trees Classifier',
+                   'Extreme Gradient Boosting',
+                   'Light Gradient Boosting Machine']
     
     
     #checking for blacklist models
@@ -1973,12 +2005,12 @@ def compare_models(blacklist = None,
     model_library_str = ['lr', 'knn', 'nb', 'dt', 'svm', 
                          'rbfsvm', 'gpc', 'mlp', 'ridge', 
                          'rf', 'qda', 'ada', 'gbc', 'lda', 
-                         'et']
+                         'et', 'xgboost', 'lightgbm']
     
     model_library_str_ = ['lr', 'knn', 'nb', 'dt', 'svm', 
                           'rbfsvm', 'gpc', 'mlp', 'ridge', 
                           'rf', 'qda', 'ada', 'gbc', 'lda', 
-                          'et']
+                          'et', 'xgboost', 'lightgbm']
     
     if blacklist is not None:
         
@@ -2011,7 +2043,7 @@ def compare_models(blacklist = None,
         
     if blacklist is None and turbo is True:
         
-        model_library = [lr, knn, nb, dt, svm, ridge, rf, qda, ada, gbc, lda, et]
+        model_library = [lr, knn, nb, dt, svm, ridge, rf, qda, ada, gbc, lda, et, xgboost, lightgbm]
 
         model_names = ['Logistic Regression',
                        'K Neighbors Classifier',
@@ -2024,7 +2056,9 @@ def compare_models(blacklist = None,
                        'Ada Boost Classifier',
                        'Gradient Boosting Classifier',
                        'Linear Discriminant Analysis',
-                       'Extra Trees Classifier']
+                       'Extra Trees Classifier',
+                       'Extreme Gradient Boosting',
+                       'Light Gradient Boosting Machine']
         
             
     progress.value += 1
@@ -2279,6 +2313,8 @@ def tune_model(estimator = None,
     Gradient Boosting           'gbc'                  ensemble.GradientBoostingClassifier
     Linear Disc. Analysis       'lda'                  discriminant_analysis.LDA 
     Extra Trees Classifier      'et'                   ensemble.ExtraTreesClassifier
+    Extreme Gradient Boosting   'xgboost'              xgboost.readthedocs.io
+    Light Gradient Boosting     'lightgbm'             github.com/microsoft/LightGBM
 
     fold: integer, default = 10
     Number of folds to be used in Kfold CV. Must be at least 2. 
@@ -2340,7 +2376,7 @@ def tune_model(estimator = None,
     
     #checking error for estimator (string)
     available_estimators = ['lr', 'knn', 'nb', 'dt', 'svm', 'rbfsvm', 'gpc', 'mlp', 'ridge', 'rf', 'qda', 'ada', 
-                            'gbc', 'lda', 'et']
+                            'gbc', 'lda', 'et', 'xgboost', 'lightgbm']
     if estimator not in available_estimators:
         sys.exit('(Value Error): Estimator Not Available. Please see docstring for list of available estimators.')
         
@@ -2750,7 +2786,54 @@ def tune_model(estimator = None,
         model_grid.fit(X_train,y_train)
         model = model_grid.best_estimator_
         best_model = model_grid.best_estimator_
-        best_model_param = model_grid.best_params_          
+        best_model_param = model_grid.best_params_ 
+        
+        
+    elif estimator == 'xgboost':
+        
+        from xgboost import XGBClassifier
+        
+        param_grid = {'learning_rate': [0.01, 0.02, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1], 
+                      'n_estimators':[10, 30, 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000], 
+                      'subsample': [0.1, 0.2, 0.3, 0.5, 0.7, 0.9, 1],
+                      'max_depth': [int(x) for x in np.linspace(10, 110, num = 11)], 
+                      'colsample_bytree': [0.5, 0.7, 0.9, 1],
+                      'min_child_weight': [1, 2, 3, 4]
+                     }
+
+        model_grid = RandomizedSearchCV(estimator=XGBClassifier(random_state=seed, n_jobs=-1, verbosity=0), 
+                                        param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
+                                        cv=cv, random_state=seed, n_jobs=-1)
+
+        model_grid.fit(X_train,y_train)
+        model = model_grid.best_estimator_
+        best_model = model_grid.best_estimator_
+        best_model_param = model_grid.best_params_ 
+        
+        
+    elif estimator == 'lightgbm':
+        
+        import lightgbm as lgb
+        
+        param_grid = {#'boosting_type' : ['gbdt', 'dart', 'goss', 'rf'],
+                      'num_leaves': [10,20,30,40,50,60,70,80,90,100,150,200],
+                      'max_depth': [int(x) for x in np.linspace(10, 110, num = 11)],
+                      'learning_rate': [0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1],
+                      'n_estimators': [10, 30, 50, 70, 90, 100, 120, 150, 170, 200], 
+                      'min_split_gain' : [0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],
+                      'reg_alpha': [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9],
+                      'reg_lambda': [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
+                      }
+    
+        model_grid = RandomizedSearchCV(estimator=lgb.LGBMClassifier(random_state=seed), 
+                                        param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
+                                        cv=cv, random_state=seed, n_jobs=-1)
+
+        model_grid.fit(X_train,y_train)
+        model = model_grid.best_estimator_
+        best_model = model_grid.best_estimator_
+        best_model_param = model_grid.best_params_ 
+        
     
     progress.value += 1
     
@@ -3037,7 +3120,6 @@ def tune_model(estimator = None,
         clear_output()
         return best_model
 
-
 def blend_models(estimator_list = 'All', 
                  fold = 10, 
                  round = 4, 
@@ -3257,7 +3339,9 @@ def blend_models(estimator_list = 'All',
         from sklearn.ensemble import GradientBoostingClassifier    
         from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
         from sklearn.ensemble import ExtraTreesClassifier
-        from sklearn.ensemble import BaggingClassifier     
+        from sklearn.ensemble import BaggingClassifier 
+        from xgboost import XGBClassifier
+        import lightgbm as lgb
 
         lr = LogisticRegression(random_state=seed)
         knn = KNeighborsClassifier()
@@ -3273,15 +3357,17 @@ def blend_models(estimator_list = 'All',
         ada = AdaBoostClassifier(random_state=seed)
         gbc = GradientBoostingClassifier(random_state=seed)
         lda = LinearDiscriminantAnalysis()
-        et = ExtraTreesClassifier(random_state=seed)  
-
+        et = ExtraTreesClassifier(random_state=seed)
+        xgboost = XGBClassifier(random_state=seed, n_jobs=-1, verbosity=0)
+        lightgbm = lgb.LGBMClassifier(random_state=seed)
+        
         progress.value += 1
         
         if turbo:
-            estimator_list = [lr,knn,nb,dt,svm,ridge,rf,qda,ada,gbc,lda,et]
+            estimator_list = [lr,knn,nb,dt,svm,ridge,rf,qda,ada,gbc,lda,et,xgboost,lightgbm]
             voting = 'hard'
         else:
-            estimator_list = [lr,knn,nb,dt,svm,rbfsvm,gpc,mlp,ridge,rf,qda,ada,gbc,lda,et]
+            estimator_list = [lr,knn,nb,dt,svm,rbfsvm,gpc,mlp,ridge,rf,qda,ada,gbc,lda,et,xgboost,lightgbm]
             voting = 'hard'
 
     else:
@@ -3858,11 +3944,11 @@ def stack_models(estimator_list,
         
         if tt < 1:
             tt = str(np.around((tt * 60), 2))
-            ETC = 'Time to Completion : ' + tt + ' Seconds Remaining'
+            ETC = tt + ' Seconds Remaining'
                 
         else:
             tt = str (tt)
-            ETC = 'Time to Completion : ' + tt + ' Minutes Remaining'
+            ETC = tt + ' Minutes Remaining'
         
         '''
         MONITOR UPDATE STARTS
@@ -4197,7 +4283,15 @@ def create_stacknet(estimator_list,
         base_array = np.empty((0,0))  
         
         base_counter += 1
-    
+        
+        #changing column names to avoid xgboost failure
+        name_col = []
+        for i in range(0,len(base_array_df.columns)):
+            n = 'model_' + str(i)
+            name_col.append(n)
+            
+        base_array_df.columns = name_col
+            
     inter_counter = 0
     
     for level in inter_level:
@@ -4223,6 +4317,14 @@ def create_stacknet(estimator_list,
             base_array = pd.DataFrame(base_array)
             base_array_df = pd.concat([base_array, base_array_df], axis=1)
             base_array = np.empty((0,0))
+            
+            #changing column names to avoid xgboost failure
+            name_col = []
+            for i in range(0,len(base_array_df.columns)):
+                n = 'model_' + str(i)
+                name_col.append(n)
+            
+            base_array_df.columns = name_col
             
             inter_counter += 1
         
@@ -4473,6 +4575,8 @@ def automl(qualifier = 5,
         
        
     """
+    #for testing only
+    #no active test
     
     #base dependencies
     from IPython.display import clear_output, update_display
@@ -4491,9 +4595,13 @@ def automl(qualifier = 5,
     
     #progress bar
     import ipywidgets as ipw
-    max_progress = ((15*fold) + qualifier + (qualifier*fold) + 
-                     (qualifier*fold) + qualifier + (qualifier*fold) + (qualifier*fold) +
-                     (qualifier*fold) + (qualifier*fold)) + 37
+    
+    if turbo:
+        cand_num = 12+1
+    else:
+        cand_num = 15+1
+        
+    max_progress =  (cand_num*fold) + (7*qualifier*fold) + 30
     progress = ipw.IntProgress(value=0, min=0, max=max_progress, step=1 , description='Processing: ')
     display(progress)
     
@@ -4582,6 +4690,8 @@ def automl(qualifier = 5,
     from sklearn.ensemble import ExtraTreesClassifier    
     from sklearn.ensemble import GradientBoostingClassifier
     from sklearn.ensemble import RandomForestClassifier
+    from xgboost import XGBClassifier
+    import lightgbm as lgb
     
     #sklearn ensembling dependencies
     from sklearn.ensemble import BaggingClassifier
@@ -4613,10 +4723,12 @@ def automl(qualifier = 5,
     gbc = GradientBoostingClassifier(random_state=seed)
     lda = LinearDiscriminantAnalysis()
     et = ExtraTreesClassifier(random_state=seed)
+    xgboost = XGBClassifier(random_state=seed, n_jobs=-1, verbosity=0)
+    lightgbm = lgb.LGBMClassifier(random_state=seed)
     
     if turbo:
         
-        model_library = [lr, knn, nb, dt, svm, ridge, rf, qda, ada, gbc, lda, et]
+        model_library = [lr, knn, nb, dt, svm, ridge, rf, qda, ada, gbc, lda, et, xgboost, lightgbm]
 
         #defining model names
         model_names = ['Logistic Regression',
@@ -4630,12 +4742,14 @@ def automl(qualifier = 5,
                        'Ada Boost Classifier',
                        'Gradient Boosting Classifier',
                        'Linear Discriminant Analysis',
-                       'Extra Trees Classifier']
+                       'Extra Trees Classifier',
+                       'Extreme Gradient Boosting',
+                       'Light Gradient Boosting Machine']
         
     else:    
         
         #defining model library 
-        model_library = [lr, knn, nb, dt, svm, rbfsvm, gpc, mlp, ridge, rf, qda, ada, gbc, lda, et]
+        model_library = [lr, knn, nb, dt, svm, rbfsvm, gpc, mlp, ridge, rf, qda, ada, gbc, lda, et, xgboost, lightgbm]
 
         #defining model names
         model_names = ['Logistic Regression',
@@ -4652,7 +4766,9 @@ def automl(qualifier = 5,
                        'Ada Boost Classifier',
                        'Gradient Boosting Classifier',
                        'Linear Discriminant Analysis',
-                       'Extra Trees Classifier']
+                       'Extra Trees Classifier',
+                       'Extreme Gradient Boosting',
+                       'Light Gradient Boosting Machine']
         
         
     #PROGRESS # 3 : Models and name list compiled
@@ -4952,7 +5068,16 @@ def automl(qualifier = 5,
             model = RidgeClassifier(random_state=seed)
             top_n_models.append(model)
     
-    
+        elif i == 'Extreme Gradient Boosting':
+            
+            model = XGBClassifier(random_state=seed, n_jobs=-1, verbosity=0)
+            top_n_models.append(model)
+            
+        elif i == 'Light Gradient Boosting Machine':
+            
+            model = lgb.LGBMClassifier(random_state=seed)
+            top_n_models.append(model)            
+            
     master.append(top_n_models) #appending top_n models to master list
     
     #PROGRESS # 9 : Sub-section completed
@@ -5163,21 +5288,49 @@ def automl(qualifier = 5,
     
     '''        
     
+    boosting_model_names = []
+    boosting_model_names_monitor = []
+    
     top_n_boosted_models = []
     top_n_boosted_model_results = pd.DataFrame(columns=['Model','Accuracy','AUC','Recall', 'Prec.', 'F1', 'Kappa'])
     
-    boosting_model_names = []
+    """
+    filtering top_n list for models where boosting not available
+    """
+
+    not_allowed_boosting = ['Linear Discriminant Analysis', 'Quadratic Discriminant Analysis', 'Ridge Classifier',
+                        'MLP Classifier', 'Gaussian Process Classifier', 'SVM - Linear Kernel', 'K Neighbors Classifier']
+    allowed_boosting_index = []
+
     for i in top_n_model_names:
+        if i not in not_allowed_boosting:
+            i = top_n_model_names.index(i)
+            allowed_boosting_index.append(i)
+
+    top_n_model_names_boosting_only = []
+    for i in allowed_boosting_index:
+        s = top_n_model_names[i]
+        top_n_model_names_boosting_only.append(s)
+
+    top_n_models_boosting_only = []
+    for i in allowed_boosting_index:
+        s = top_n_models[i]
+        top_n_models_boosting_only.append(s)
+    
+    #naming
+    for i in top_n_model_names_boosting_only:
         s = 'Ensemble ' + i + ' (Boosting)'
         boosting_model_names.append(s)
    
     #PROGRESS # 13 : Name Defined for Boosting
     progress.value += 1
     
+
+    
     #counter for naming
     name_counter = 0 
         
-    for i in top_n_models:
+    for i in top_n_models_boosting_only:
         
         '''
         MONITOR UPDATE STARTS
@@ -5192,14 +5345,11 @@ def automl(qualifier = 5,
         
         #PROGRESS # 14 : Model Creation (qualifier x based on top_n_model parameter)
         progress.value += 1
-       
-        if hasattr(i,'predict_proba') and hasattr(i,'class_weight'):
-            model = AdaBoostClassifier(i, random_state=seed)
-            top_n_boosted_models.append(model)
-            
-        else:
-            continue
-    
+        
+        
+        model = AdaBoostClassifier(i, random_state=seed)
+        top_n_boosted_models.append(model)
+        
         #setting cross validation
         kf = StratifiedKFold(fold, random_state=seed)
 
@@ -5636,6 +5786,50 @@ def automl(qualifier = 5,
             best_model_param = model_grid.best_params_
             top_n_tuned_models.append(best_model)
             
+        elif i == 'Extreme Gradient Boosting':
+            
+            param_grid = {'learning_rate': [0.01, 0.02, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1], 
+                          'n_estimators':[10, 30, 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000], 
+                          'subsample': [0.1, 0.2, 0.3, 0.5, 0.7, 0.9, 1],
+                          'max_depth': [int(x) for x in np.linspace(10, 110, num = 11)], 
+                          'colsample_bytree': [0.5, 0.7, 0.9, 1],
+                          'min_child_weight': [1, 2, 3, 4]
+                         }
+
+            model_grid = RandomizedSearchCV(estimator=XGBClassifier(random_state=seed), 
+                        param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
+                        cv=cv, random_state=seed, n_jobs=-1)
+
+            model_grid.fit(X_train,y_train)
+            model = model_grid.best_estimator_
+            best_model = model_grid.best_estimator_
+            best_model_param = model_grid.best_params_
+            top_n_tuned_models.append(best_model)
+            
+            
+        elif i == 'Light Gradient Boosting Machine':
+            
+            param_grid = {#'boosting_type' : ['gbdt', 'dart', 'goss', 'rf'],
+                          'num_leaves': [10,20,30,40,50,60,70,80,90,100,150,200],
+                          'max_depth': [int(x) for x in np.linspace(10, 110, num = 11)],
+                          'learning_rate': [0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1],
+                          'n_estimators': [10, 30, 50, 70, 90, 100, 120, 150, 170, 200], 
+                          'min_split_gain' : [0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],
+                          'reg_alpha': [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9],
+                          'reg_lambda': [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
+                          }
+
+            model_grid = RandomizedSearchCV(estimator=lgb.LGBMClassifier(random_state=seed), 
+                        param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
+                        cv=cv, random_state=seed, n_jobs=-1)
+
+            model_grid.fit(X_train,y_train)
+            model = model_grid.best_estimator_
+            best_model = model_grid.best_estimator_
+            best_model_param = model_grid.best_params_
+            top_n_tuned_models.append(best_model)            
+            
+            
         name_counter += 1
             
     master.append(top_n_tuned_models)
@@ -6070,7 +6264,7 @@ def automl(qualifier = 5,
     while count_while < top_n:
         sub_list = []
         sub_list_names = []
-        generator = random.sample(range(len(master_results)), random.randint(3,len(master_results)))
+        generator = random.sample(range(len(master_results)-1), random.randint(3,len(master_results)-1))
         for r in generator:
             sub_list.append(master_unpack[r])
             sub_list_names.append(master_results.iloc[r]['Model'])
@@ -6520,7 +6714,7 @@ def automl(qualifier = 5,
     return best_model
 
 def interpret_model(estimator,
-                   type = 'summary',
+                   plot = 'summary',
                    feature = None, 
                    observation = None):
     
@@ -6554,16 +6748,16 @@ def interpret_model(estimator,
     Model must be created using create_model() or tune_model() in pycaret or using 
     any other package that returns sklearn object.
 
-    type : string, default = 'summary'
+    plot : string, default = 'summary'
     other available options are 'correlation' and 'reason'.
 
     feature: string, default = None
-    This parameter is only needed when type = 'correlation'. By default feature is set
+    This parameter is only needed when plot = 'correlation'. By default feature is set
     to None which means the first column of dataset will be used as a variable. 
     To change feature param must be passed. 
 
     observation: integer, default = None
-    This parameter only comes in effect when type is set to 'reason'. If no observation
+    This parameter only comes in effect when plot is set to 'reason'. If no observation
     number is provided, by default the it will return the analysis of all observations 
     with option to select the feature  on x and y axis through drop down interactivity. 
     For analysis at sample level, observation parameter must be passed with index value 
@@ -6573,7 +6767,7 @@ def interpret_model(estimator,
     --------
 
     Visual Plot:  Returns the visual plot.
-    -----------   Returns the interactive JS plot when type = 'reason'.
+    -----------   Returns the interactive JS plot when plot = 'reason'.
 
     Warnings:
     ---------
@@ -6595,7 +6789,9 @@ def interpret_model(estimator,
     allowed_models = ['RandomForestClassifier',
                       'DecisionTreeClassifier',
                       'ExtraTreesClassifier',
-                      'GradientBoostingClassifier']
+                      'GradientBoostingClassifier',
+                      'XGBClassifier',
+                      'LGBMClassifier']
     
     model_name = str(estimator).split("(")[0]
     
@@ -6604,7 +6800,7 @@ def interpret_model(estimator,
         
     #plot type
     allowed_types = ['summary', 'correlation', 'reason']
-    if type not in allowed_types:
+    if plot not in allowed_types:
         sys.exit("(Value Error): type parameter only accepts 'summary', 'correlation' or 'reason'.")   
            
     
@@ -6624,10 +6820,10 @@ def interpret_model(estimator,
 
     
     #defining type of classifier
-    type1 = ['RandomForestClassifier','DecisionTreeClassifier','ExtraTreesClassifier']
-    type2 = ['GradientBoostingClassifier']
+    type1 = ['RandomForestClassifier','DecisionTreeClassifier','ExtraTreesClassifier', 'LGBMClassifier']
+    type2 = ['GradientBoostingClassifier', 'XGBClassifier']
     
-    if type == 'summary':
+    if plot == 'summary':
         
         if model_name in type1:
         
@@ -6641,7 +6837,7 @@ def interpret_model(estimator,
             shap_values = explainer.shap_values(X_test)
             shap.summary_plot(shap_values, X_test)
                               
-    elif type == 'correlation':
+    elif plot == 'correlation':
         
         if feature == None:
             
@@ -6663,7 +6859,7 @@ def interpret_model(estimator,
             shap_values = explainer.shap_values(X_test) 
             shap.dependence_plot(dependence, shap_values, X_test)
         
-    elif type == 'reason':
+    elif plot == 'reason':
         
         if model_name in type1:
             
@@ -6676,12 +6872,23 @@ def interpret_model(estimator,
             
             else: 
                 
-                row_to_show = observation
-                data_for_prediction = X_test.iloc[row_to_show]
-                explainer = shap.TreeExplainer(model)
-                shap_values = explainer.shap_values(data_for_prediction)
-                shap.initjs()
-                return shap.force_plot(explainer.expected_value[1], shap_values[1], data_for_prediction)        
+                if model_name == 'LGBMClassifier':
+                    
+                    row_to_show = observation
+                    data_for_prediction = X_test.iloc[row_to_show]
+                    explainer = shap.TreeExplainer(model)
+                    shap_values = explainer.shap_values(X_test)
+                    shap.initjs()
+                    return shap.force_plot(explainer.expected_value[1], shap_values[0][row_to_show], data_for_prediction)    
+                
+                else:
+                    
+                    row_to_show = observation
+                    data_for_prediction = X_test.iloc[row_to_show]
+                    explainer = shap.TreeExplainer(model)
+                    shap_values = explainer.shap_values(data_for_prediction)
+                    shap.initjs()
+                    return shap.force_plot(explainer.expected_value[1], shap_values[1], data_for_prediction)        
 
             
         elif model_name in type2:
@@ -6691,8 +6898,8 @@ def interpret_model(estimator,
                 explainer = shap.TreeExplainer(model)
                 shap_values = explainer.shap_values(X_test)
                 shap.initjs()
-                return shap.force_plot(explainer.expected_value, shap_values, X_test)
-            
+                return shap.force_plot(explainer.expected_value, shap_values, X_test)  
+                
             else:
                 
                 row_to_show = observation
@@ -6703,6 +6910,42 @@ def interpret_model(estimator,
                 return shap.force_plot(explainer.expected_value, shap_values[row_to_show,:], X_test.iloc[row_to_show,:])
 
 def evaluate_model(estimator):
+    
+    """
+          
+    Description:
+    ------------
+    This function displays user interface for all the available plots for 
+    a given estimator. It internally uses plot_model() function. 
+    
+        Example:
+        --------
+        
+        dt = create_model('dt')
+        evaluate_model(dt)
+        
+        This will display the User Interface for all the plots for given
+        estimator, in this case decision tree passed as 'dt'.
+
+    Parameters
+    ----------
+
+    estimator : object, default = none
+    A trained model object should be passed as an estimator. 
+
+    Returns:
+    --------
+
+    User Interface:  Displays the user interface for plotting.
+    --------------
+
+    Warnings:
+    ---------
+    None    
+       
+         
+    """
+        
         
     from ipywidgets import widgets
     from ipywidgets.widgets import interact, fixed, interact_manual
@@ -6731,8 +6974,6 @@ def evaluate_model(estimator):
 
                             button_style='', # 'success', 'info', 'warning', 'danger' or ''
 
-                            tooltips=['Description of slow', 'Description of regular', 'Description of fast'],
-
                             icons=['']
     )
     
@@ -6740,17 +6981,181 @@ def evaluate_model(estimator):
     d = interact(plot_model, estimator = fixed(estimator), plot = a)
 
 
+def finalize_model(estimator):
+    
+    """
+          
+    Description:
+    ------------
+    This function fits the estimator on complete dataset as passed into setup() 
+    stage. The purpose of this function is to prepare for deployment. After 
+    experimentation, one should be able to choose the final model for deployment.
+    
+        Example:
+        --------
+        
+        dt = create_model('dt')
+        model_for_deployment = finalize_model(dt)
+        
+        This will return the final model object fitted to complete dataset. 
+
+    Parameters
+    ----------
+
+    estimator : object, default = none
+    A trained model object should be passed as an estimator. 
+    Model must be created using any function in pycaret that returns trained model
+    object. 
+
+    Returns:
+    --------
+
+    Model:  Trained model object fitted on complete dataset.
+    ------   
+
+    Warnings:
+    ---------
+    None    
+       
+         
+    """
+        
+    
+    model = estimator.fit(X,y)
+    
+    #storing into experiment
+    model_name = str(estimator).split("(")[0]
+    model_name = 'Final ' + model_name
+    tup = (model_name,model)
+    experiment__.append(tup)
+    
+    return model
+
 def save_model(model, model_name):
+    
+    """
+          
+    Description:
+    ------------
+    This function saves the trained model object in current active directory
+    as a pickle file for later use. 
+    
+        Example:
+        --------
+        
+        lr = create_model('lr')
+        save_model(lr, 'lr_model_23122019')
+        
+        This will save the model as binary pickle file in current directory. 
+
+    Parameters
+    ----------
+
+    model : object, default = none
+    A trained model object should be passed as an estimator. 
+    
+    model_name : string, default = none
+    Name of pickle file to be passed as a string.
+
+    Returns:
+    --------    
+    Success Message
+    
+
+    Warnings:
+    ---------
+    None    
+       
+         
+    """
+    
     import joblib
     model_name = model_name + '.pkl'
     joblib.dump(model, model_name)
+    print('Model Succesfully Saved')
 
 def load_model(model_name):
+    
+    """
+          
+    Description:
+    ------------
+    This function loads the prior saved model from current active directory into
+    current python notebook. Load object must be a pickle file.
+    
+        Example:
+        --------
+        
+        saved_lr = load_model('lr_model_23122019')
+        
+        This will call the trained model in saved_lr variable using model_name param.
+        The file must be in current directory.
+
+    Parameters
+    ----------
+    
+    model_name : string, default = none
+    Name of pickle file to be passed as a string.
+
+    Returns:
+    --------    
+    Success Message
+    
+
+    Warnings:
+    ---------
+    None    
+       
+         
+    """
+        
+        
     import joblib
     model_name = model_name + '.pkl'
+    print('Model Sucessfully Loaded')
     return joblib.load(model_name)
 
 def save_experiment(experiment_name=None):
+    
+        
+    """
+          
+    Description:
+    ------------
+    This function saves the entire experiment in current active directory. All 
+    the outputs using pycaret are internally saved into a binary list which is
+    pickilized when save_experiment() is used. 
+    
+        Example:
+        --------
+        
+        save_experiment()
+        
+        This will save the entire experiment in current active directory. By 
+        default name of experiment will use session_id generated during setup().
+        To use custom name, experiment_name param has to be passed as string.
+        
+        For example:
+        
+        save_experiment('experiment_23122019')
+
+    Parameters
+    ----------
+    
+    experiment_name : string, default = none
+    Name of pickle file to be passed as a string.
+
+    Returns:
+    --------    
+    Success Message
+    
+
+    Warnings:
+    ---------
+    None    
+       
+         
+    """
     
     #general dependencies
     import joblib
@@ -6765,8 +7170,45 @@ def save_experiment(experiment_name=None):
         
     experiment_name = experiment_name + '.pkl'
     joblib.dump(experiment__, experiment_name)
+    
+    print('Experiment Succesfully Saved')
+
 
 def load_experiment(experiment_name):
+    
+    """
+          
+    Description:
+    ------------
+    This function loads the prior saved experiment from current active directory 
+    into current python notebook. Load object must be a pickle file.
+    
+        Example:
+        --------
+        
+        saved_experiment = load_experiment('experiment_23122019')
+        
+        This will load the entire experiment pipeline into object saved_experiment
+        using experiment_name param. The experiment file must be in current directory.
+        
+        
+    Parameters
+    ----------
+    
+    experiment_name : string, default = none
+    Name of pickle file to be passed as a string.
+
+    Returns:
+    --------    
+    Information Grid containing details of saved objects in experiment pipeline.
+    
+
+    Warnings:
+    ---------
+    None    
+       
+         
+    """
     
     #general dependencies
     import joblib
@@ -6787,13 +7229,3 @@ def load_experiment(experiment_name):
 
     return exp
 
-def finalize_model(estimator):
-    model = estimator.fit(X,y)
-    
-    #storing into experiment
-    model_name = str(estimator).split("(")[0]
-    model_name = 'Final ' + model_name
-    tup = (model_name,model)
-    experiment__.append(tup)
-    
-    return model
