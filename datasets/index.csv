@@ -16,3 +16,5 @@ bike,Multivariate,Regression,cnt,17379,15,N
 boston,Multivariate,Regression,medv,506,14,N
 diamond,Multivariate,Regression,Price,6000,8,N
 gold,Multivariate,Regression,Gold_T+22,2558,121,N
+germany,Multivariate,Association Rule Mining,"InvoiceNo, Description",9495,8,N
+france,Multivariate,Association Rule Mining,"InvoiceNo, Description",8557,8,N
