@@ -10,7 +10,7 @@ pycaret is the free software and open source machine learning library for python
 * Cloud Ready
 
 ## Current Release
-The current release is beta 0.0.4 (as of 23/12/2019). A full release for public is targetted to be available by 31/12/2020.
+The current release is beta 0.0.5 (as of 23/12/2019). A full release for public is targetted to be available by 31/12/2020.
 
 ## Installation
 
@@ -25,7 +25,7 @@ pip install pycaret
 ```
 
 ## Quick Start
-As of beta 0.0.4 classification, regression and nlp modules are available. Future release will be include Anamoly Detection, Association Rules, Clustering, Recommender System and Time Series.
+As of beta 0.0.5 classification, regression and nlp modules are available. Future release will be include Anamoly Detection, Association Rules, Clustering, Recommender System and Time Series.
 
 ### Classification
 
@@ -171,7 +171,12 @@ m = load_model('lr_23122019')
 e = load_experiment('expname1')
 ```
 
-14. AutoML
+14. Compare all Models
+```python
+compare_models()
+```
+
+15. AutoML
 ```python
 aml1 = automl()
 ```
