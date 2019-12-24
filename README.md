@@ -6,16 +6,16 @@ The current release is beta 0.0.6 (as of 24/12/2019). A full release is targette
 
 ## Features Currently Available
 As per beta 0.0.6 following modules are generally available:
-*pycaret.classification
-*pycaret.regression
-*pycaret.nlp
-*pycaret.arules
+* pycaret.classification <br/>
+* pycaret.regression <br/>
+* pycaret.nlp <br/>
+* pycaret.arules <br/>
 
 ## Future Release
 Following features are targetted for future release (beta 0.0.7 & beta 0.0.8):
-*pycaret.anamoly
-*pycaret.clustering
-*pycaret.preprocess
+* pycaret.anamoly <br/>
+* pycaret.clustering <br/>
+* pycaret.preprocess <br/>
 
 ## Installation
 
