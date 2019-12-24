@@ -49,23 +49,23 @@ lr = create_model('lr')
 
 List of available estimators:
 
-Logistic Regression (lr)
-K Nearest Neighbour (knn)
-Naive Bayes (nb)
-Decision Tree (dt)
-Support Vector Machine - Linear (svm)
-SVM Radial Function (rbfsvm)
-Gaussian Process Classifier (gpc)
-Multi Level Perceptron (mlp)
-Ridge Classifier (ridge)
-Random Forest (rf)
-Quadtratic Discriminant Analysis (qda)
-Adaboost (ada)
-Gradient Boosting Classifier (gbc)
-Linear Discriminant Analysis (lda)
-Extra Trees Classifier (et)
-Extreme Gradient Boosting - xgboost (xgboost)
-Light Gradient Boosting - Microsoft LightGBM (lightgbm)
+Logistic Regression (lr) <br/>
+K Nearest Neighbour (knn) <br/>
+Naive Bayes (nb) <br/>
+Decision Tree (dt) <br/>
+Support Vector Machine - Linear (svm) <br/>
+SVM Radial Function (rbfsvm) <br/>
+Gaussian Process Classifier (gpc) <br/>
+Multi Level Perceptron (mlp) <br/>
+Ridge Classifier (ridge) <br/>
+Random Forest (rf) <br/>
+Quadtratic Discriminant Analysis (qda) <br/>
+Adaboost (ada) <br/>
+Gradient Boosting Classifier (gbc) <br/>
+Linear Discriminant Analysis (lda) <br/>
+Extra Trees Classifier (et) <br/>
+Extreme Gradient Boosting - xgboost (xgboost) <br/>
+Light Gradient Boosting - Microsoft LightGBM (lightgbm) <br/>
 
 3. Tuning a model using inbuilt grids.
 ```python
@@ -126,21 +126,21 @@ plot_model(lr, plot='auc')
 ```
 List of available plots:
 
-Area Under the Curve (auc) 
-Discrimination Threshold (threshold)
-Precision Recall Curve (pr)
-Confusion Matrix (confusion_matrix)
-Class Prediction Error (error)
-Classification Report (class_report) 
-Decision Boundary (boundary)
-Recursive Feature Selection (rfe)
-Learning Curve (learning)
-Manifold Learning (manifold)
-Calibration Curve (calibration)
-Validation Curve (vc)
-Dimension Learning (dimension)
-Feature Importance (feature) 
-Model Hyperparameter (parameter)
+Area Under the Curve (auc) <br/>
+Discrimination Threshold (threshold) <br/>
+Precision Recall Curve (pr) <br/>
+Confusion Matrix (confusion_matrix) <br/>
+Class Prediction Error (error) <br/>
+Classification Report (class_report) <br/>
+Decision Boundary (boundary) <br/>
+Recursive Feature Selection (rfe) <br/>
+Learning Curve (learning) <br/>
+Manifold Learning (manifold) <br/>
+Calibration Curve (calibration) <br/>
+Validation Curve (vc) <br/>
+Dimension Learning (dimension) <br/>
+Feature Importance (feature) <br/>
+Model Hyperparameter (parameter) <br/>
 
 9. Evaluate Model
 ```python
