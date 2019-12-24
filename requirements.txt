@@ -4,7 +4,7 @@ seaborn
 matplotlib
 IPython
 joblib
-sklearn
+scikit-learn
 shap
 ipywidgets
 yellowbrick
@@ -19,3 +19,4 @@ pyLDAvis
 gensim
 spacy
 nltk
+mlxtend
