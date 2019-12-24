@@ -42,7 +42,7 @@ def get_data(dataset):
     data = pd.read_csv(complete_address)
     
     if dataset == 'index':
-        return display(data)
+        display(data)
     
     else:
         display(data.head())
