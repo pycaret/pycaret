@@ -1975,7 +1975,7 @@ def compare_models(blacklist = None,
     lda = LinearDiscriminantAnalysis()
     et = ExtraTreesClassifier(random_state=seed)
     xgboost = XGBClassifier(random_state=seed, n_jobs=-1, verbosity=0)
-    lgb.LGBMClassifier(random_state=seed)
+    lightgbm = lgb.LGBMClassifier(random_state=seed)
     
     progress.value += 1
     

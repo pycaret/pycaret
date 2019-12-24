@@ -1,33 +1,21 @@
-def get_data(data):
+def get_data(dataset):
     
     """
       
     Description:
     ------------
-    This function loads the sample dataset available at pycaret git repository.
+    This function loads the sample dataset available at pycaret git repository. To view
+    the full list of available datasets and their description, index can be called.
 
         Example
         -------
-        data = get_data(data, 'target')
+        data = get_data('index')
 
-        data is a pandas DataFrame and 'target' is the name of the column in dataframe.
+        This will display the list of available datasets that can be loaded using 
+        get_data() function. For example to load credit dataset:
         
+        credit_data = get_data('credit')
         
-    Available datasets
-    ------------------
-    
-    data        type              target         shape
-    -------     -------           ------         -----    
-    juice       classification    Purchase       1070 x 15
-    credit      classification    default        24000 x 24
-    cancer      classification    Class          683 x 10
-    iris        classification    Class          100 x 5
-    gold        regression        Gold_T+22      2558 x 121
-    boston      regression        medv           506 x 14
-    bike        regression        cnt            17379 x 15
-    diamond     regression        Price          6000 x 8
-    kiva        NLP / classf.     en / status    6818 x 7
-
     
     Returns:
     --------
@@ -47,12 +35,15 @@ def get_data(data):
     
     address = 'https://raw.githubusercontent.com/pycaret/pycaret/master/datasets/'
     extension = '.csv'
-    filename = data
+    filename = dataset
     
-    complete_address = address + str(data) + extension
+    complete_address = address + str(dataset) + extension
     
     data = pd.read_csv(complete_address)
     
-    display(data.head())
+    if dataset == 'index':
+        return display(data)
     
-    return data
+    else:
+        display(data.head())
+        return data
