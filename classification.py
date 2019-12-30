@@ -7556,8 +7556,8 @@ def calibrate_model(estimator,
     estimator : object
     
     method : string, default = 'sigmoid'
-    The method to use for calibration. Can be ‘sigmoid’ which corresponds to Platt’s method
-    or ‘isotonic’ which is a non-parametric approach. It is not advised to use isotonic 
+    The method to use for calibration. Can be 'sigmoid' which corresponds to Platt's method
+    or 'isotonic' which is a non-parametric approach. It is not advised to use isotonic 
     calibration with too few calibration samples
 
     fold: integer, default = 10
