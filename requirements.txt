@@ -20,3 +20,5 @@ gensim
 spacy
 nltk
 mlxtend
+pyod
+catboost==0.20.2
