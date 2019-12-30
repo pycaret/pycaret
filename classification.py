@@ -8,7 +8,7 @@ def setup(data,
     """
         
     Description:
-    ------------
+    ------------    
     This function initialize the environment in pycaret. setup() must called before
     executing any other function in pycaret. It takes two mandatory parameters i.e.
     dataframe {array-like, sparse matrix} and name of the target column. 
@@ -17,7 +17,7 @@ def setup(data,
 
         Example
         -------
-        experiment_name = setup(data, 'target')
+        experiment_name = setup(data = data, target = 'target')
 
         data is a pandas DataFrame and 'target' is the name of the column in dataframe.
 
@@ -28,7 +28,9 @@ def setup(data,
     is the number of samples and n_features is the number of features.
 
     target: string
-    Name of target column to be passed in as string.
+    Name of target column to be passed in as string. Target variable could be binary
+    or multiclass. In case of multiclass all estimators are wrapper with OneVsRest
+    classifier.
 
     train_size: float, default = 0.7
     Size of training set. By default 70% of the data will be used for training and 
@@ -131,9 +133,15 @@ def setup(data,
     else:
         seed = session_id
     
-    #create an empty list for pickling later.
-    experiment__ = []
     
+    #create an empty list for pickling later.
+    try:
+        experiment__.append('dummy')
+        experiment__.pop()
+    
+    except:
+        experiment__ = []
+        
     #sample estimator
     if sample_estimator is None:
         model = LogisticRegression()
@@ -145,6 +153,12 @@ def setup(data,
     #creating variables to be used later in the function
     X = data.drop(target,axis=1)
     y = data[target]
+    
+    #determining target type
+    if y.value_counts().count() > 2:
+        target_type = 'Multiclass'
+    else:
+        target_type = 'Binary'
     
     progress.value += 1
     
@@ -273,6 +287,7 @@ def setup(data,
             print(' ')
             print('Setup Succesfully Completed!')
             functions = pd.DataFrame ( [ ['session_id', seed ],
+                                         ['Target Type', target_type],
                                          ['Original Data',X.shape ], 
                                          ['Sampled Data',X.shape ], 
                                          ['Sample %',X.shape[0] / X.shape[0]], 
@@ -310,11 +325,13 @@ def setup(data,
             '''
             Final display Starts
             '''
-            
+
+                
             clear_output()
             print(' ')
             print('Setup Succesfully Completed!')
             functions = pd.DataFrame ( [ ['session_id', seed ],
+                                         ['Target Type', target_type],
                                          ['Original Data',X.shape ], 
                                          ['Sampled Data',X_selected.shape ], 
                                          ['Sample %',X_selected.shape[0] / X.shape[0]], 
@@ -354,6 +371,7 @@ def setup(data,
         print(' ')
         print('Setup Succesfully Completed!')
         functions = pd.DataFrame ( [ ['session_id', seed ],
+                                     ['Target Type', target_type],
                                      ['Original Data',X.shape ], 
                                      ['Sampled Data',X.shape ], 
                                      ['Sample %',X.shape[0] / X.shape[0]], 
@@ -369,13 +387,14 @@ def setup(data,
         '''   
         
         #log into experiment
-        experiment__.append(('Info', functions))
+        experiment__.append(('Classification Info', functions))
         experiment__.append(('X_training Set', X_train))
         experiment__.append(('y_training Set', y_train))
         experiment__.append(('X_test Set', X_test))
         experiment__.append(('y_test Set', y_test))      
         
         return X, y, X_train, X_test, y_train, y_test, seed, experiment__
+
 
 def create_model(estimator = None, 
                  ensemble = False, 
@@ -409,7 +428,8 @@ def create_model(estimator = None,
 
     estimator : string, default = None
 
-    Enter abbreviated string of the estimator class. List of estimators supported:
+    Enter abbreviated string of the estimator class. All estimators support binary or 
+    multiclass problem. List of estimators supported:
 
     Estimator                   Abbreviated String     Original Implementation 
     ---------                   ------------------     -----------------------
@@ -430,6 +450,7 @@ def create_model(estimator = None,
     Extra Trees Classifier      'et'                   ensemble.ExtraTreesClassifier
     Extreme Gradient Boosting   'xgboost'              xgboost.readthedocs.io
     Light Gradient Boosting     'lightgbm'             github.com/microsoft/LightGBM
+    CatBoost Classifier         'catboost'             https://catboost.ai
 
     ensemble: Boolean, default = False
     True would result in ensemble of estimator using the method parameter defined (see below). 
@@ -461,11 +482,14 @@ def create_model(estimator = None,
     ---------
 
     - 'svm' and 'ridge' doesn't support predict_proba method and hence AUC will be
-     returned as zero (0.0)
+      returned as zero (0.0)
+     
+    - If target variable is multiclass (more than 2 classes), AUC will be returned as
+      zero (0.0)
 
     - 'rbfsvm' and 'gpc' uses non-linear kernel and hence the fit time complexity is more
-     than quadratic. These estimators are hard to scale on dataset with more than 10,000 
-     samples.
+      than quadratic. These estimators are hard to scale on dataset with more than 10,000 
+      samples.
   
   
     """
@@ -482,7 +506,7 @@ def create_model(estimator = None,
     
     #checking error for estimator (string)
     available_estimators = ['lr', 'knn', 'nb', 'dt', 'svm', 'rbfsvm', 'gpc', 'mlp', 'ridge', 'rf', 'qda', 'ada', 
-                            'gbc', 'lda', 'et', 'xgboost', 'lightgbm']
+                            'gbc', 'lda', 'et', 'xgboost', 'lightgbm', 'catboost']
     if estimator not in available_estimators:
         sys.exit('(Value Error): Estimator Not Available. Please see docstring for list of available estimators.')
         
@@ -518,7 +542,7 @@ def create_model(estimator = None,
         sys.exit('(Type Error): Verbose parameter can only take argument as True or False.') 
         
     #checking boosting conflict with estimators
-    boosting_not_supported = ['lda','qda','ridge','mlp','gpc','svm','knn']
+    boosting_not_supported = ['lda','qda','ridge','mlp','gpc','svm','knn', 'catboost']
     if method is 'Boosting' and estimator in boosting_not_supported:
         sys.exit("(Type Error): Estimator does not provide class_weights or predict_proba function and hence not supported for the Boosting method. Change the estimator or method to 'Bagging'.")
     
@@ -605,7 +629,7 @@ def create_model(estimator = None,
         full_name = 'Logistic Regression'
 
     elif estimator == 'knn':
-
+        
         from sklearn.neighbors import KNeighborsClassifier
         model = KNeighborsClassifier()
         full_name = 'K Nearest Neighbours'
@@ -700,6 +724,10 @@ def create_model(estimator = None,
         model = lgb.LGBMClassifier(random_state=seed)
         full_name = 'Light Gradient Boosting Machine'
         
+    elif estimator == 'catboost':
+        from catboost import CatBoostClassifier
+        model = CatBoostClassifier(random_state=seed, silent=True) # Silent is True to suppress CatBoost iteration results 
+        full_name = 'CatBoost Classifier'
         
     else:
         model = estimator
@@ -718,6 +746,12 @@ def create_model(estimator = None,
         
         from sklearn.ensemble import AdaBoostClassifier
         model = AdaBoostClassifier(model, n_estimators=10, random_state=seed)
+    
+    
+    #multiclass checking
+    if y.value_counts().count() > 2:
+        from sklearn.multiclass import OneVsRestClassifier
+        model = OneVsRestClassifier(model)
     
     
     '''
@@ -760,11 +794,14 @@ def create_model(estimator = None,
             pred_prob = pred_prob[:,1]
             pred_ = model.predict(Xtest)
             sca = metrics.accuracy_score(ytest,pred_)
-            sc = metrics.roc_auc_score(ytest,pred_prob)
-            recall = metrics.recall_score(ytest,pred_)
-            precision = metrics.precision_score(ytest,pred_)
+            try:
+                sc = metrics.roc_auc_score(ytest,pred_prob,average='weighted')
+            except:
+                sc = 0
+            recall = metrics.recall_score(ytest,pred_, average='weighted')
+            precision = metrics.precision_score(ytest,pred_, average = 'weighted')
             kappa = metrics.cohen_kappa_score(ytest,pred_)
-            f1 = metrics.f1_score(ytest,pred_)
+            f1 = metrics.f1_score(ytest,pred_, average='weighted')
             score_acc = np.append(score_acc,sca)
             score_auc = np.append(score_auc,sc)
             score_recall = np.append(score_recall,recall)
@@ -780,10 +817,10 @@ def create_model(estimator = None,
             pred_ = model.predict(Xtest)
             sca = metrics.accuracy_score(ytest,pred_)
             sc = 0.00
-            recall = metrics.recall_score(ytest,pred_)
-            precision = metrics.precision_score(ytest,pred_) #change pred_prob to pred_
+            recall = metrics.recall_score(ytest,pred_,average='weighted')
+            precision = metrics.precision_score(ytest,pred_,average='weighted') #change pred_prob to pred_
             kappa = metrics.cohen_kappa_score(ytest,pred_)
-            f1 = metrics.f1_score(ytest,pred_)
+            f1 = metrics.f1_score(ytest,pred_,average='weighted')
             score_acc = np.append(score_acc,sca)
             score_auc = np.append(score_auc,sc)
             score_recall = np.append(score_recall,recall)
@@ -901,7 +938,6 @@ def create_model(estimator = None,
         clear_output()
         return model
 
-
 def ensemble_model(estimator,
                    method = 'Bagging', 
                    fold = 10,
@@ -969,7 +1005,9 @@ def ensemble_model(estimator,
 
     Warnings:
     ---------
-    None
+    
+    - If target variable is multiclass (more than 2 classes), AUC will be returned 
+      as zero (0.0)
       
     
     """
@@ -1354,7 +1392,8 @@ def plot_model(estimator,
     -   When 'max_features' parameter of trained model object is not equal to # 
         of samples in X train set, 'rfe' plot is not available.
               
-       
+    -   'calibration', 'threshold', 'manifold' and 'rfe' plot not available for
+         multiclass problems.
 
     """  
     
@@ -1375,6 +1414,16 @@ def plot_model(estimator,
     if plot not in available_plots:
         sys.exit('(Value Error): Plot Not Available. Please see docstring for list of available Plots.')
     
+    #multiclass plot exceptions:
+    multiclass_not_available = ['calibration', 'threshold', 'manifold', 'rfe']
+    if y.value_counts().count() > 2:
+        if plot in multiclass_not_available:
+            sys.exit('(Value Error): Plot Not Available for multiclass problems. Please see docstring for list of available Plots.')
+        
+    #exception for CatBoost
+    if 'CatBoostClassifier' in str(type(estimator)):
+        sys.exit('(Estimator Error): CatBoost estimator is not compatible with plot_model function, try using Catboost with interpret_model instead.')
+        
     #checking for auc plot
     if not hasattr(estimator, 'predict_proba') and plot == 'auc':
         sys.exit('(Type Error): AUC plot not available for estimators with no predict_proba attribute.')
@@ -1393,7 +1442,7 @@ def plot_model(estimator,
         
     #checking for feature plot
     if not ( hasattr(estimator, 'coef_') or hasattr(estimator,'feature_importances_') ) and plot == 'feature':
-        sys.exit('(Type Error): Feature Importance plot not available for estimators with coef_ attribute.')
+        sys.exit('(Type Error): Feature Importance plot not available for estimators that doesnt support coef_ or feature_importances_ attribute.')
     
     '''
     
@@ -1655,7 +1704,9 @@ def plot_model(estimator,
             param_name='max_iter_predict'
             param_range = np.arange(100,1000,100)        
         
-        
+        else:
+            clear_output()
+            sys.exit('(Type Error): Plot not supported for this estimator. Try different estimator.')
         #max_iter_predict
             
         progress.value += 1
@@ -1684,7 +1735,8 @@ def plot_model(estimator,
         pca = PCA(n_components=features, random_state=seed)
         X_train_transformed = pca.fit_transform(X_train_transformed)
         progress.value += 1
-        classes = ["1", "0"]
+        #classes = ["1", "0"]
+        classes = y_train.unique().tolist()
         visualizer = RadViz(classes=classes, alpha=0.25)
         visualizer.fit(X_train_transformed, y_train_transformed)     
         visualizer.transform(X_train_transformed)
@@ -1744,7 +1796,7 @@ def compare_models(blacklist = None,
     When turbo is set to True ('rbfsvm', 'gpc' and 'mlp') are excluded due to longer
     training times. By default turbo param is set to True.
 
-    List of models in Model Library
+    List of models that support binary or multiclass problems in Model Library:
 
     Estimator                   Abbreviated String     sklearn Implementation 
     ---------                   ------------------     -----------------------
@@ -1765,6 +1817,7 @@ def compare_models(blacklist = None,
     Extra Trees Classifier      'et'                   ensemble.ExtraTreesClassifier
     Extreme Gradient Boosting   'xgboost'              xgboost.readthedocs.io
     Light Gradient Boosting     'lightgbm'             github.com/microsoft/LightGBM
+    CatBoost Classifier         'catboost'             https://catboost.ai
 
         Example:
         --------
@@ -1824,7 +1877,9 @@ def compare_models(blacklist = None,
       takes longer training time. Changing turbo parameter to False may result in 
       very high training times with datasets where number of sample size exceed 
       10,000.
-         
+      
+    - If target variable is multiclass (more than 2 classes), AUC will be returned as
+      zero (0.0)
            
     
     """
@@ -1840,7 +1895,7 @@ def compare_models(blacklist = None,
     
     #checking error for blacklist (string)
     available_estimators = ['lr', 'knn', 'nb', 'dt', 'svm', 'rbfsvm', 'gpc', 'mlp', 'ridge', 'rf', 'qda', 'ada', 
-                            'gbc', 'lda', 'et', 'xgboost', 'lightgbm']
+                            'gbc', 'lda', 'et', 'xgboost', 'lightgbm', 'catboost']
     
     if blacklist != None:
         for i in blacklist:
@@ -1860,7 +1915,11 @@ def compare_models(blacklist = None,
     if sort not in allowed_sort:
         sys.exit('(Value Error): Sort method not supported. See docstring for list of available parameters.')
     
-    
+    #checking optimize parameter for multiclass
+    if y.value_counts().count() > 2:
+        if sort == 'AUC':
+            sys.exit('(Type Error): AUC metric not supported for multiclass problems. See docstring for list of other optimization parameters.')
+            
     '''
     
     ERROR HANDLING ENDS HERE
@@ -1880,11 +1939,11 @@ def compare_models(blacklist = None,
         len_of_blacklist = len(blacklist)
         
     if turbo:
-        len_mod = 14 - len_of_blacklist
+        len_mod = 15 - len_of_blacklist
     else:
-        len_mod = 17 - len_of_blacklist
+        len_mod = 18 - len_of_blacklist
         
-    progress = ipw.IntProgress(value=0, min=0, max=(fold*len_mod)+15, step=1 , description='Processing: ')
+    progress = ipw.IntProgress(value=0, min=0, max=(fold*len_mod)+20, step=1 , description='Processing: ')
     master_display = pd.DataFrame(columns=['Model', 'Accuracy','AUC','Recall', 'Prec.', 'F1', 'Kappa'])
     display(progress)
     
@@ -1937,6 +1996,7 @@ def compare_models(blacklist = None,
     from sklearn.ensemble import ExtraTreesClassifier
     from xgboost import XGBClassifier
     import lightgbm as lgb
+    from catboost import CatBoostClassifier
    
     progress.value += 1
     
@@ -1976,10 +2036,11 @@ def compare_models(blacklist = None,
     et = ExtraTreesClassifier(random_state=seed)
     xgboost = XGBClassifier(random_state=seed, n_jobs=-1, verbosity=0)
     lightgbm = lgb.LGBMClassifier(random_state=seed)
+    catboost = CatBoostClassifier(random_state=seed, silent = True) 
     
     progress.value += 1
     
-    model_library = [lr, knn, nb, dt, svm, rbfsvm, gpc, mlp, ridge, rf, qda, ada, gbc, lda, et, xgboost, lightgbm]
+    model_library = [lr, knn, nb, dt, svm, rbfsvm, gpc, mlp, ridge, rf, qda, ada, gbc, lda, et, xgboost, lightgbm, catboost]
 
     model_names = ['Logistic Regression',
                    'K Neighbors Classifier',
@@ -1997,7 +2058,8 @@ def compare_models(blacklist = None,
                    'Linear Discriminant Analysis',
                    'Extra Trees Classifier',
                    'Extreme Gradient Boosting',
-                   'Light Gradient Boosting Machine']
+                   'Light Gradient Boosting Machine',
+                   'CatBoost Classifier']
     
     
     #checking for blacklist models
@@ -2005,12 +2067,12 @@ def compare_models(blacklist = None,
     model_library_str = ['lr', 'knn', 'nb', 'dt', 'svm', 
                          'rbfsvm', 'gpc', 'mlp', 'ridge', 
                          'rf', 'qda', 'ada', 'gbc', 'lda', 
-                         'et', 'xgboost', 'lightgbm']
+                         'et', 'xgboost', 'lightgbm', 'catboost']
     
     model_library_str_ = ['lr', 'knn', 'nb', 'dt', 'svm', 
                           'rbfsvm', 'gpc', 'mlp', 'ridge', 
                           'rf', 'qda', 'ada', 'gbc', 'lda', 
-                          'et', 'xgboost', 'lightgbm']
+                          'et', 'xgboost', 'lightgbm', 'catboost']
     
     if blacklist is not None:
         
@@ -2043,7 +2105,7 @@ def compare_models(blacklist = None,
         
     if blacklist is None and turbo is True:
         
-        model_library = [lr, knn, nb, dt, svm, ridge, rf, qda, ada, gbc, lda, et, xgboost, lightgbm]
+        model_library = [lr, knn, nb, dt, svm, ridge, rf, qda, ada, gbc, lda, et, xgboost, lightgbm, catboost]
 
         model_names = ['Logistic Regression',
                        'K Neighbors Classifier',
@@ -2058,7 +2120,8 @@ def compare_models(blacklist = None,
                        'Linear Discriminant Analysis',
                        'Extra Trees Classifier',
                        'Extreme Gradient Boosting',
-                       'Light Gradient Boosting Machine']
+                       'Light Gradient Boosting Machine',
+                       'CatBoost Classifier']
         
             
     progress.value += 1
@@ -2138,11 +2201,14 @@ def compare_models(blacklist = None,
                 pred_prob = pred_prob[:,1]
                 pred_ = model.predict(Xtest)
                 sca = metrics.accuracy_score(ytest,pred_)
-                sc = metrics.roc_auc_score(ytest,pred_prob)
-                recall = metrics.recall_score(ytest,pred_)
-                precision = metrics.precision_score(ytest,pred_)
+                try:
+                    sc = metrics.roc_auc_score(ytest,pred_prob)
+                except:
+                    sc = 0
+                recall = metrics.recall_score(ytest,pred_, average='weighted')
+                precision = metrics.precision_score(ytest,pred_, average='weighted')
                 kappa = metrics.cohen_kappa_score(ytest,pred_)
-                f1 = metrics.f1_score(ytest,pred_)
+                f1 = metrics.f1_score(ytest,pred_, average='weighted')
                 score_acc = np.append(score_acc,sca)
                 score_auc = np.append(score_auc,sc)
                 score_recall = np.append(score_recall,recall)
@@ -2158,10 +2224,10 @@ def compare_models(blacklist = None,
                 pred_ = model.predict(Xtest)
                 sca = metrics.accuracy_score(ytest,pred_)
                 sc = 0.00
-                recall = metrics.recall_score(ytest,pred_)
-                precision = metrics.precision_score(ytest,pred_) #change pred_prob to pred_
+                recall = metrics.recall_score(ytest,pred_, average='weighted')
+                precision = metrics.precision_score(ytest,pred_, average='weighted') #change pred_prob to pred_
                 kappa = metrics.cohen_kappa_score(ytest,pred_)
-                f1 = metrics.f1_score(ytest,pred_)
+                f1 = metrics.f1_score(ytest,pred_, average='weighted')
                 score_acc = np.append(score_acc,sca)
                 score_auc = np.append(score_auc,sc)
                 score_recall = np.append(score_recall,recall)
@@ -2242,8 +2308,16 @@ def compare_models(blacklist = None,
     def highlight_max(s):
         is_max = s == s.max()
         return ['background-color: yellow' if v else '' for v in is_max]
-
-    compare_models_ = master_display.style.apply(highlight_max,subset=['Accuracy','AUC','Recall',
+    
+    
+    if y.value_counts().count() > 2:
+        
+        compare_models_ = master_display.style.apply(highlight_max,subset=['Accuracy','Recall',
+                      'Prec.','F1','Kappa'])
+    
+    else:
+        
+        compare_models_ = master_display.style.apply(highlight_max,subset=['Accuracy','AUC','Recall',
                       'Prec.','F1','Kappa'])
     compare_models_ = compare_models_.set_properties(**{'text-align': 'left'})
     compare_models_ = compare_models_.set_table_styles([dict(selector='th', props=[('text-align', 'left')])])
@@ -2258,7 +2332,7 @@ def tune_model(estimator = None,
                fold = 10, 
                round = 4, 
                n_iter = 10, 
-               optimize = 'accuracy',
+               optimize = 'Accuracy',
                ensemble = False, 
                method = None,
                verbose = True):
@@ -2315,6 +2389,7 @@ def tune_model(estimator = None,
     Extra Trees Classifier      'et'                   ensemble.ExtraTreesClassifier
     Extreme Gradient Boosting   'xgboost'              xgboost.readthedocs.io
     Light Gradient Boosting     'lightgbm'             github.com/microsoft/LightGBM
+    CatBoost Classifier         'catboost'             https://catboost.ai
 
     fold: integer, default = 10
     Number of folds to be used in Kfold CV. Must be at least 2. 
@@ -2328,9 +2403,8 @@ def tune_model(estimator = None,
 
     optimize: string, default = 'accuracy'
     Measure used to select the best model through the hyperparameter tuning.
-    The default scoring measure is 'accuracy'. Other common measures include
-    'f1', 'recall', 'precision', 'roc_auc'. Complete list available at:
-    https://scikit-learn.org/stable/modules/model_evaluation.html#scoring-parameter
+    The default scoring measure is 'Accuracy'. Other measures include 'AUC',
+    'Recall', 'Precision', 'F1'. 
 
     ensemble: Boolean, default = None
     True would enable ensembling of model through method defined in 'method' param.
@@ -2359,7 +2433,11 @@ def tune_model(estimator = None,
       returns an error. tune_model('lr') function internally calls create_model() before
       tuning the hyperparameters.
    
-     
+    - If target variable is multiclass (more than 2 classes), optimize param 'AUC' is 
+      not acceptable.
+      
+    - If target variable is multiclass (more than 2 classes), AUC will be returned as
+      zero (0.0)
     
   """
  
@@ -2376,7 +2454,7 @@ def tune_model(estimator = None,
     
     #checking error for estimator (string)
     available_estimators = ['lr', 'knn', 'nb', 'dt', 'svm', 'rbfsvm', 'gpc', 'mlp', 'ridge', 'rf', 'qda', 'ada', 
-                            'gbc', 'lda', 'et', 'xgboost', 'lightgbm']
+                            'gbc', 'lda', 'et', 'xgboost', 'lightgbm', 'catboost']
     if estimator not in available_estimators:
         sys.exit('(Value Error): Estimator Not Available. Please see docstring for list of available estimators.')
         
@@ -2412,9 +2490,15 @@ def tune_model(estimator = None,
         sys.exit('(Type Error): n_iter parameter only accepts integer value.')
 
     #checking optimize parameter
-    allowed_optimize = ['accuracy', 'recall', 'precision', 'f1', 'roc_auc']
+    allowed_optimize = ['Accuracy', 'Recall', 'Precision', 'F1', 'AUC']
     if optimize not in allowed_optimize:
         sys.exit('(Value Error): Optimization method not supported. See docstring for list of available parameters.')
+    
+    #checking optimize parameter for multiclass
+    if y.value_counts().count() > 2:
+        if optimize == 'AUC':
+            sys.exit('(Type Error): AUC metric not supported for multiclass problems. See docstring for list of other optimization parameters.')
+    
     
     if type(n_iter) is not int:
         sys.exit('(Type Error): n_iter parameter only accepts integer value.')
@@ -2424,7 +2508,7 @@ def tune_model(estimator = None,
         sys.exit('(Type Error): Verbose parameter can only take argument as True or False.') 
         
     #checking boosting conflict with estimators
-    boosting_not_supported = ['lda','qda','ridge','mlp','gpc','svm','knn']
+    boosting_not_supported = ['lda','qda','ridge','mlp','gpc','svm','knn', 'catboost']
     if method is 'Boosting' and estimator in boosting_not_supported:
         sys.exit("(Type Error): Estimator does not provide class_weights or predict_proba function and hence not supported for the Boosting method. Change the estimator or method to 'Bagging'.")
     
@@ -2474,8 +2558,7 @@ def tune_model(estimator = None,
     data_y = y_train
 
     progress.value += 1
-    
-    
+            
     #general dependencies
     import random
     import numpy as np
@@ -2483,6 +2566,22 @@ def tune_model(estimator = None,
     from sklearn.model_selection import StratifiedKFold
     from sklearn.model_selection import RandomizedSearchCV
     
+    #setting optimize parameter   
+    if optimize == 'Accuracy':
+        optimize = 'accuracy'
+        
+    elif optimize == 'AUC':
+        optimize = 'roc_auc'
+        
+    elif optimize == 'Recall':
+        optimize = metrics.make_scorer(metrics.recall_score, average = 'weighted')
+
+    elif optimize == 'Precision':
+        optimize = metrics.make_scorer(metrics.precision_score, average = 'weighted')
+   
+    elif optimize == 'F1':
+        optimize = metrics.make_scorer(metrics.f1_score, average = 'weighted')
+        
     progress.value += 1
     
     kf = StratifiedKFold(fold, random_state=seed)
@@ -2714,8 +2813,8 @@ def tune_model(estimator = None,
     elif estimator == 'gbc':
         
         from sklearn.ensemble import GradientBoostingClassifier
-        
-        param_grid = {'loss': ['deviance', 'exponential'],
+
+        param_grid = {#'loss': ['deviance', 'exponential'],
                       'n_estimators': [10, 40, 70, 80, 90, 100, 120, 140, 150],
                       'learning_rate': [0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1],
                       'subsample' : [0.1,0.3,0.5,0.7,0.9,1],
@@ -2725,6 +2824,7 @@ def tune_model(estimator = None,
                       'max_features' : ['auto', 'sqrt', 'log2']
                      }    
 
+            
         model_grid = RandomizedSearchCV(estimator=GradientBoostingClassifier(random_state=seed), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
                                         cv=cv, random_state=seed, n_jobs=-1)
@@ -2793,18 +2893,32 @@ def tune_model(estimator = None,
         
         from xgboost import XGBClassifier
         
-        param_grid = {'learning_rate': [0.01, 0.02, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1], 
-                      'n_estimators':[10, 30, 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000], 
-                      'subsample': [0.1, 0.2, 0.3, 0.5, 0.7, 0.9, 1],
-                      'max_depth': [int(x) for x in np.linspace(10, 110, num = 11)], 
-                      'colsample_bytree': [0.5, 0.7, 0.9, 1],
-                      'min_child_weight': [1, 2, 3, 4]
-                     }
+        num_class = y.value_counts().count()
+        
+        if y.value_counts().count() > 2:
+            
+            param_grid = {'learning_rate': [0.01, 0.02, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1], 
+                          'n_estimators':[10, 30, 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000], 
+                          'subsample': [0.1, 0.2, 0.3, 0.5, 0.7, 0.9, 1],
+                          'max_depth': [int(x) for x in np.linspace(10, 110, num = 11)], 
+                          'colsample_bytree': [0.5, 0.7, 0.9, 1],
+                          'min_child_weight': [1, 2, 3, 4],
+                          'num_class' : [num_class, num_class]
+                         }
+        else:
+            param_grid = {'learning_rate': [0.01, 0.02, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1], 
+                          'n_estimators':[10, 30, 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000], 
+                          'subsample': [0.1, 0.2, 0.3, 0.5, 0.7, 0.9, 1],
+                          'max_depth': [int(x) for x in np.linspace(10, 110, num = 11)], 
+                          'colsample_bytree': [0.5, 0.7, 0.9, 1],
+                          'min_child_weight': [1, 2, 3, 4],
+                          #'num_class' : [num_class, num_class]
+                         }
 
         model_grid = RandomizedSearchCV(estimator=XGBClassifier(random_state=seed, n_jobs=-1, verbosity=0), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
                                         cv=cv, random_state=seed, n_jobs=-1)
-
+        
         model_grid.fit(X_train,y_train)
         model = model_grid.best_estimator_
         best_model = model_grid.best_estimator_
@@ -2834,7 +2948,29 @@ def tune_model(estimator = None,
         best_model = model_grid.best_estimator_
         best_model_param = model_grid.best_params_ 
         
-    
+        
+    elif estimator == 'catboost':
+        
+        from catboost import CatBoostClassifier
+        
+        param_grid = {'depth':[3,1,2,6,4,5,7,8,9,10],
+                      'iterations':[250,100,500,1000], 
+                      'learning_rate':[0.03,0.001,0.01,0.1,0.2,0.3], 
+                      'l2_leaf_reg':[3,1,5,10,100], 
+                      'border_count':[32,5,10,20,50,100,200], 
+                      #'ctr_border_count':[50,5,10,20,100,200]
+                      }
+        
+        model_grid = RandomizedSearchCV(estimator=CatBoostClassifier(random_state=seed, silent = True), 
+                                        param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
+                                        cv=cv, random_state=seed, n_jobs=-1)
+
+        model_grid.fit(X_train,y_train)
+        model = model_grid.best_estimator_
+        best_model = model_grid.best_estimator_
+        best_model_param = model_grid.best_params_ 
+        
+        
     progress.value += 1
     
     '''
@@ -2928,6 +3064,12 @@ def tune_model(estimator = None,
     progress.value += 1
 
     
+        
+    #multiclass checking
+    if y.value_counts().count() > 2:
+        from sklearn.multiclass import OneVsRestClassifier
+        model = OneVsRestClassifier(model)
+        
     '''
     MONITOR UPDATE STARTS
     '''
@@ -2967,11 +3109,14 @@ def tune_model(estimator = None,
             pred_prob = pred_prob[:,1]
             pred_ = model.predict(Xtest)
             sca = metrics.accuracy_score(ytest,pred_)
-            sc = metrics.roc_auc_score(ytest,pred_prob)
-            recall = metrics.recall_score(ytest,pred_)
-            precision = metrics.precision_score(ytest,pred_)
+            try:
+                sc = metrics.roc_auc_score(ytest,pred_prob, average='weighted')
+            except:
+                sc = 0
+            recall = metrics.recall_score(ytest,pred_, average='weighted')
+            precision = metrics.precision_score(ytest,pred_, average='weighted')
             kappa = metrics.cohen_kappa_score(ytest,pred_)
-            f1 = metrics.f1_score(ytest,pred_)
+            f1 = metrics.f1_score(ytest,pred_, average='weighted')
             score_acc = np.append(score_acc,sca)
             score_auc = np.append(score_auc,sc)
             score_recall = np.append(score_recall,recall)
@@ -2987,10 +3132,10 @@ def tune_model(estimator = None,
             pred_ = model.predict(Xtest)
             sca = metrics.accuracy_score(ytest,pred_)
             sc = 0.00
-            recall = metrics.recall_score(ytest,pred_)
-            precision = metrics.precision_score(ytest,pred_) #change pred_prob to pred_
+            recall = metrics.recall_score(ytest,pred_, average='weighted')
+            precision = metrics.precision_score(ytest,pred_, average='weighted') #change pred_prob to pred_
             kappa = metrics.cohen_kappa_score(ytest,pred_)
-            f1 = metrics.f1_score(ytest,pred_)
+            f1 = metrics.f1_score(ytest,pred_, average='weighted')
             score_acc = np.append(score_acc,sca)
             score_auc = np.append(score_auc,sc)
             score_recall = np.append(score_recall,recall)
@@ -3204,8 +3349,12 @@ def blend_models(estimator_list = 'All',
     - When passing estimator_list, method should only be set to 'soft' when all
       the models in estimator_list has predict_proba function. 'svm' and 'ridge'
       doesn't support predict_proba.
+      
+    - CatBoost Classifier not supported in blend_models().
+    
+    - If target variable is multiclass (more than 2 classes), AUC will be returned as
+      zero (0.0)
      
-       
   
     """
     
@@ -3223,7 +3372,7 @@ def blend_models(estimator_list = 'All',
     
     if estimator_list != 'All':
         for i in estimator_list:
-            if 'sklearn' not in str(type(i)):
+            if 'sklearn' not in str(type(i)) and 'CatBoostClassifier' not in str(type(i)):
                 sys.exit("(Value Error): estimator_list parameter only accepts 'All' as string or trained model object")
    
     #checking fold parameter
@@ -3239,6 +3388,10 @@ def blend_models(estimator_list = 'All',
     if method not in available_method:
         sys.exit("(Value Error): Method parameter only accepts 'soft' or 'hard' as a parameter. See Docstring for details.")
     
+    #checking verbose parameter
+    if type(turbo) is not bool:
+        sys.exit('(Type Error): Turbo parameter can only take argument as True or False.') 
+        
     #checking verbose parameter
     if type(verbose) is not bool:
         sys.exit('(Type Error): Verbose parameter can only take argument as True or False.') 
@@ -3342,7 +3495,9 @@ def blend_models(estimator_list = 'All',
         from sklearn.ensemble import BaggingClassifier 
         from xgboost import XGBClassifier
         import lightgbm as lgb
-
+        #from catboost import CatBoostClassifier
+        
+        #creating CatBoost estimator
         lr = LogisticRegression(random_state=seed)
         knn = KNeighborsClassifier()
         nb = GaussianNB()
@@ -3360,6 +3515,7 @@ def blend_models(estimator_list = 'All',
         et = ExtraTreesClassifier(random_state=seed)
         xgboost = XGBClassifier(random_state=seed, n_jobs=-1, verbosity=0)
         lightgbm = lgb.LGBMClassifier(random_state=seed)
+        #catboost = CatBoostClassifier(random_state=seed, silent = True)
         
         progress.value += 1
         
@@ -3392,8 +3548,6 @@ def blend_models(estimator_list = 'All',
         
         model_names_modified.append(putSpace(i))
         model_names = model_names_modified
-
-    global model_names_final
     
     model_names_final = []
   
@@ -3462,14 +3616,13 @@ def blend_models(estimator_list = 'All',
         
             model.fit(Xtrain,ytrain)
             pred_prob = 0.0
-            pred_prob = 0.0
             pred_ = model.predict(Xtest)
             sca = metrics.accuracy_score(ytest,pred_)
             sc = 0.0
-            recall = metrics.recall_score(ytest,pred_)
-            precision = metrics.precision_score(ytest,pred_)
+            recall = metrics.recall_score(ytest,pred_, average='weighted')
+            precision = metrics.precision_score(ytest,pred_, average='weighted')
             kappa = metrics.cohen_kappa_score(ytest,pred_)
-            f1 = metrics.f1_score(ytest,pred_)
+            f1 = metrics.f1_score(ytest,pred_, average='weighted')
             score_acc = np.append(score_acc,sca)
             score_auc = np.append(score_auc,sc)
             score_recall = np.append(score_recall,recall)
@@ -3484,11 +3637,14 @@ def blend_models(estimator_list = 'All',
             pred_prob = pred_prob[:,1]
             pred_ = model.predict(Xtest)
             sca = metrics.accuracy_score(ytest,pred_)
-            sc = metrics.roc_auc_score(ytest,pred_prob)
-            recall = metrics.recall_score(ytest,pred_)
-            precision = metrics.precision_score(ytest,pred_)
+            try:
+                sc = metrics.roc_auc_score(ytest,pred_prob)
+            except:
+                sc = 0
+            recall = metrics.recall_score(ytest,pred_, average='weighted')
+            precision = metrics.precision_score(ytest,pred_, average='weighted')
             kappa = metrics.cohen_kappa_score(ytest,pred_)
-            f1 = metrics.f1_score(ytest,pred_)
+            f1 = metrics.f1_score(ytest,pred_, average='weighted')
             score_acc = np.append(score_acc,sca)
             score_auc = np.append(score_auc,sc)
             score_recall = np.append(score_recall,recall)
@@ -3693,7 +3849,8 @@ def stack_models(estimator_list,
     - 'svm' and 'ridge' doesn't support predict_proba method and hence when stacking
        estimator list that contains 'svm' or 'ridge', method param can only be 'hard'.
         
-           
+    - If target variable is multiclass (more than 2 classes), AUC will be returned as
+      zero (0.0)     
           
     """
     
@@ -3708,12 +3865,12 @@ def stack_models(estimator_list,
     
     #checking error for estimator_list
     for i in estimator_list:
-        if 'sklearn' not in str(type(i)):
+        if 'sklearn' not in str(type(i)) and 'CatBoostClassifier' not in str(type(i)):
             sys.exit("(Value Error): estimator_list parameter only trained model object")
             
     #checking meta model
     if meta_model is not None:
-        if 'sklearn' not in str(type(meta_model)):
+        if 'sklearn' not in str(type(meta_model)) and 'CatBoostClassifier' not in str(type(meta_model)):
             sys.exit("(Value Error): estimator_list parameter only trained model object")
     
     #checking fold parameter
@@ -3905,11 +4062,14 @@ def stack_models(estimator_list,
         pred_prob = pred_prob[:,1]
         pred_ = model.predict(Xtest)
         sca = metrics.accuracy_score(ytest,pred_)
-        sc = metrics.roc_auc_score(ytest,pred_prob)
-        recall = metrics.recall_score(ytest,pred_)
-        precision = metrics.average_precision_score(ytest,pred_prob)
+        try: 
+            sc = metrics.roc_auc_score(ytest,pred_prob,average='weighted')
+        except:
+            sc = 0
+        recall = metrics.recall_score(ytest,pred_,average='weighted')
+        precision = metrics.precision_score(ytest,pred_,average='weighted')
         kappa = metrics.cohen_kappa_score(ytest,pred_)
-        f1 = metrics.f1_score(ytest,pred_)
+        f1 = metrics.f1_score(ytest,pred_,average='weighted')
         score_acc = np.append(score_acc,sca)
         score_auc = np.append(score_auc,sc)
         score_recall = np.append(score_recall,recall)
@@ -4125,7 +4285,8 @@ def create_stacknet(estimator_list,
     - 'svm' and 'ridge' doesn't support predict_proba method and hence when stacking
        estimator list that contains 'svm' or 'ridge', method param can only be 'hard'.
     
-    
+    - If target variable is multiclass (more than 2 classes), AUC will be returned as
+      zero (0.0)
     
     """
 
@@ -4143,12 +4304,12 @@ def create_stacknet(estimator_list,
     #checking error for estimator_list
     for i in estimator_list:
         for j in i:
-            if 'sklearn' not in str(type(j)):
+            if 'sklearn' not in str(type(j)) and 'CatBoostClassifier' not in str(type(j)):
                 sys.exit("(Value Error): estimator_list parameter only trained model object")
             
     #checking meta model
     if meta_model is not None:
-        if 'sklearn' not in str(type(meta_model)):
+        if 'sklearn' not in str(type(meta_model)) and 'CatBoostClassifier' not in str(type(meta_model)):
             sys.exit("(Value Error): estimator_list parameter only trained model object")
     
     #checking fold parameter
@@ -4216,7 +4377,7 @@ def create_stacknet(estimator_list,
     progress.value += 1
     
     #global base_array_df
-    global base_level_names, base_level
+    #global base_level_names, base_level
     base_level = estimator_list[0]
     base_level_names = []
     
@@ -4375,11 +4536,14 @@ def create_stacknet(estimator_list,
         pred_prob = pred_prob[:,1]
         pred_ = model.predict(Xtest)
         sca = metrics.accuracy_score(ytest,pred_)
-        sc = metrics.roc_auc_score(ytest,pred_prob)
-        recall = metrics.recall_score(ytest,pred_)
-        precision = metrics.average_precision_score(ytest,pred_prob)
+        try:
+            sc = metrics.roc_auc_score(ytest,pred_prob)
+        except:
+            sc = 0
+        recall = metrics.recall_score(ytest,pred_,average='weighted')
+        precision = metrics.precision_score(ytest,pred_,average='weighted')
         kappa = metrics.cohen_kappa_score(ytest,pred_)
-        f1 = metrics.f1_score(ytest,pred_)
+        f1 = metrics.f1_score(ytest,pred_,average='weighted')
         score_acc = np.append(score_acc,sca)
         score_auc = np.append(score_auc,sc)
         score_recall = np.append(score_recall,recall)
@@ -4570,13 +4734,16 @@ def automl(qualifier = 5,
       returned as zero (0.0)
      
     - estimators that doesn't support 'predict_proba' method or 'class_weights' cannot
-      be used for boosting ensemble. Even if the estimator is part qualifier, boosting
-      is skipped for those particular estimators.
+      be used for boosting ensemble. Even if the estimator is part of qualifier, it will
+      skip the boosting for those estimators.
+      
+    - If target variable is multiclass (more than 2 classes), AUC will be returned as
+      zero (0.0)
         
        
     """
     #for testing only
-    #no active test
+    #global master_unpack, mix, mix_names, mix_orignal, mix_names_orignal, master_results, master, master_display, top_n_model_names, top_n_model_results, master_unpack
     
     #base dependencies
     from IPython.display import clear_output, update_display
@@ -4585,10 +4752,43 @@ def automl(qualifier = 5,
     import pandas as pd
     import random
     import sys
+    from sklearn import metrics
+    
+    """
+    error handling
+    """
+    
+    #checking target_metric
+    allowed_metrics = ['Accuracy', 'AUC', 'Recall', 'Precision', 'F1', 'Kappa']
+    if target_metric not in allowed_metrics:
+        sys.exit('(Value Error): target_metric not valid. See docstring for list of metrics that can be optimized.')
+
+    #checking optimize parameter for multiclass
+    if y.value_counts().count() > 2:
+        if target_metric == 'AUC':
+            sys.exit('(Type Error): AUC metric not supported for multiclass problems. See docstring for list of other optimization parameters.')
+    
+    #checking fold parameter
+    if type(fold) is not int:
+        sys.exit('(Type Error): Fold parameter only accepts integer value.')
+    
+    #checking round parameter
+    if type(round) is not int:
+        sys.exit('(Type Error): Round parameter only accepts integer value.')
+        
+    #checking verbose parameter
+    if type(turbo) is not bool:
+        sys.exit('(Type Error): Turbo parameter can only take argument as True or False.') 
+        
+    
+    """
+    error handling ends here
+    """
+    
     
     #master collector
     #This is being used for appending throughout the process
-    global master, master_results, master_display, progress
+    #global master, master_results, master_display, progress
     master = []
     master_results = pd.DataFrame(columns=['Model', 'Accuracy','AUC','Recall', 'Prec.', 'F1', 'Kappa'])
     master_display = pd.DataFrame(columns=['Model', 'Accuracy','AUC','Recall', 'Prec.', 'F1', 'Kappa']) 
@@ -4597,9 +4797,9 @@ def automl(qualifier = 5,
     import ipywidgets as ipw
     
     if turbo:
-        cand_num = 12+1
+        cand_num = 14
     else:
-        cand_num = 15+1
+        cand_num = 17
         
     max_progress =  (cand_num*fold) + (7*qualifier*fold) + 30
     progress = ipw.IntProgress(value=0, min=0, max=max_progress, step=1 , description='Processing: ')
@@ -4627,23 +4827,23 @@ def automl(qualifier = 5,
         sort = 'Accuracy'
         
     elif target_metric == 'AUC':
-        optimize = 'roc_auc'
+        optimize = 'accuracy'
         sort = 'AUC'     
         
     elif target_metric == 'Recall':
-        optimize = target_metric.lower()
+        optimize = metrics.make_scorer(metrics.recall_score, average = 'weighted')
         sort = 'Recall'        
 
     elif target_metric == 'Precision':
-        optimize = target_metric.lower()
+        optimize = metrics.make_scorer(metrics.precision_score, average = 'weighted')
         sort = 'Prec.'
    
     elif target_metric == 'F1':
-        optimize = target_metric.lower()
+        optimize = optimize = metrics.make_scorer(metrics.f1_score, average = 'weighted')
         sort = 'F1'
         
     elif target_metric == 'Kappa':
-        optimize = 'roc_auc'
+        optimize = 'accuracy'
         sort = 'Kappa'
         
     n_iter = 10 #number of iteration for tuning
@@ -4692,6 +4892,7 @@ def automl(qualifier = 5,
     from sklearn.ensemble import RandomForestClassifier
     from xgboost import XGBClassifier
     import lightgbm as lgb
+    from catboost import CatBoostClassifier
     
     #sklearn ensembling dependencies
     from sklearn.ensemble import BaggingClassifier
@@ -4725,10 +4926,11 @@ def automl(qualifier = 5,
     et = ExtraTreesClassifier(random_state=seed)
     xgboost = XGBClassifier(random_state=seed, n_jobs=-1, verbosity=0)
     lightgbm = lgb.LGBMClassifier(random_state=seed)
+    catboost = CatBoostClassifier(random_state=seed, silent = True)
     
     if turbo:
         
-        model_library = [lr, knn, nb, dt, svm, ridge, rf, qda, ada, gbc, lda, et, xgboost, lightgbm]
+        model_library = [lr, knn, nb, dt, svm, ridge, rf, qda, ada, gbc, lda, et, xgboost, lightgbm, catboost]
 
         #defining model names
         model_names = ['Logistic Regression',
@@ -4744,12 +4946,13 @@ def automl(qualifier = 5,
                        'Linear Discriminant Analysis',
                        'Extra Trees Classifier',
                        'Extreme Gradient Boosting',
-                       'Light Gradient Boosting Machine']
+                       'Light Gradient Boosting Machine',
+                       'CatBoost Classifier']
         
     else:    
         
         #defining model library 
-        model_library = [lr, knn, nb, dt, svm, rbfsvm, gpc, mlp, ridge, rf, qda, ada, gbc, lda, et, xgboost, lightgbm]
+        model_library = [lr, knn, nb, dt, svm, rbfsvm, gpc, mlp, ridge, rf, qda, ada, gbc, lda, et, xgboost, lightgbm, catboost]
 
         #defining model names
         model_names = ['Logistic Regression',
@@ -4768,7 +4971,8 @@ def automl(qualifier = 5,
                        'Linear Discriminant Analysis',
                        'Extra Trees Classifier',
                        'Extreme Gradient Boosting',
-                       'Light Gradient Boosting Machine']
+                       'Light Gradient Boosting Machine',
+                       'CatBoost Classifier']
         
         
     #PROGRESS # 3 : Models and name list compiled
@@ -4861,11 +5065,14 @@ def automl(qualifier = 5,
                 pred_prob = pred_prob[:,1]
                 pred_ = model.predict(Xtest)
                 sca = metrics.accuracy_score(ytest,pred_)
-                sc = metrics.roc_auc_score(ytest,pred_prob)
-                recall = metrics.recall_score(ytest,pred_)
-                precision = metrics.precision_score(ytest,pred_)
+                try:
+                    sc = metrics.roc_auc_score(ytest,pred_prob)
+                except: 
+                    sc = 0
+                recall = metrics.recall_score(ytest,pred_,average='weighted')
+                precision = metrics.precision_score(ytest,pred_,average='weighted')
                 kappa = metrics.cohen_kappa_score(ytest,pred_)
-                f1 = metrics.f1_score(ytest,pred_)
+                f1 = metrics.f1_score(ytest,pred_,average='weighted')
                 score_acc = np.append(score_acc,sca)
                 score_auc = np.append(score_auc,sc)
                 score_recall = np.append(score_recall,recall)
@@ -4881,10 +5088,10 @@ def automl(qualifier = 5,
                 pred_ = model.predict(Xtest)
                 sca = metrics.accuracy_score(ytest,pred_)
                 sc = 0.00
-                recall = metrics.recall_score(ytest,pred_)
-                precision = metrics.precision_score(ytest,pred_) #change pred_prob to pred_
+                recall = metrics.recall_score(ytest,pred_,average='weighted')
+                precision = metrics.precision_score(ytest,pred_,average='weighted') #change pred_prob to pred_
                 kappa = metrics.cohen_kappa_score(ytest,pred_)
-                f1 = metrics.f1_score(ytest,pred_)
+                f1 = metrics.f1_score(ytest,pred_,average='weighted')
                 score_acc = np.append(score_acc,sca)
                 score_auc = np.append(score_auc,sc)
                 score_recall = np.append(score_recall,recall)
@@ -5076,7 +5283,12 @@ def automl(qualifier = 5,
         elif i == 'Light Gradient Boosting Machine':
             
             model = lgb.LGBMClassifier(random_state=seed)
-            top_n_models.append(model)            
+            top_n_models.append(model)    
+                    
+        elif i == 'CatBoost Classifier':
+            
+            model = CatBoostClassifier(random_state=seed, silent = True)
+            top_n_models.append(model)    
             
     master.append(top_n_models) #appending top_n models to master list
     
@@ -5174,11 +5386,14 @@ def automl(qualifier = 5,
                 pred_prob = pred_prob[:,1]
                 pred_ = model.predict(Xtest)
                 sca = metrics.accuracy_score(ytest,pred_)
-                sc = metrics.roc_auc_score(ytest,pred_prob)
-                recall = metrics.recall_score(ytest,pred_)
-                precision = metrics.precision_score(ytest,pred_)
+                try:
+                    sc = metrics.roc_auc_score(ytest,pred_prob)
+                except:
+                    sc = 0
+                recall = metrics.recall_score(ytest,pred_,average='weighted')
+                precision = metrics.precision_score(ytest,pred_,average='weighted')
                 kappa = metrics.cohen_kappa_score(ytest,pred_)
-                f1 = metrics.f1_score(ytest,pred_)
+                f1 = metrics.f1_score(ytest,pred_,average='weighted')
                 score_acc = np.append(score_acc,sca)
                 score_auc = np.append(score_auc,sc)
                 score_recall = np.append(score_recall,recall)
@@ -5194,10 +5409,10 @@ def automl(qualifier = 5,
                 pred_ = model.predict(Xtest)
                 sca = metrics.accuracy_score(ytest,pred_)
                 sc = 0.00
-                recall = metrics.recall_score(ytest,pred_)
-                precision = metrics.precision_score(ytest,pred_) #change pred_prob to pred_
+                recall = metrics.recall_score(ytest,pred_,average='weighted')
+                precision = metrics.precision_score(ytest,pred_,average='weighted') #change pred_prob to pred_
                 kappa = metrics.cohen_kappa_score(ytest,pred_)
-                f1 = metrics.f1_score(ytest,pred_)
+                f1 = metrics.f1_score(ytest,pred_,average='weighted')
                 score_acc = np.append(score_acc,sca)
                 score_auc = np.append(score_auc,sc)
                 score_recall = np.append(score_recall,recall)
@@ -5299,7 +5514,9 @@ def automl(qualifier = 5,
     """
 
     not_allowed_boosting = ['Linear Discriminant Analysis', 'Quadratic Discriminant Analysis', 'Ridge Classifier',
-                        'MLP Classifier', 'Gaussian Process Classifier', 'SVM - Linear Kernel', 'K Neighbors Classifier']
+                        'MLP Classifier', 'Gaussian Process Classifier', 'SVM - Linear Kernel', 'K Neighbors Classifier', 
+                        'CatBoost Classifier']
+    
     allowed_boosting_index = []
 
     for i in top_n_model_names:
@@ -5396,11 +5613,14 @@ def automl(qualifier = 5,
                 pred_prob = pred_prob[:,1]
                 pred_ = model.predict(Xtest)
                 sca = metrics.accuracy_score(ytest,pred_)
-                sc = metrics.roc_auc_score(ytest,pred_prob)
-                recall = metrics.recall_score(ytest,pred_)
-                precision = metrics.precision_score(ytest,pred_)
+                try:
+                    sc = metrics.roc_auc_score(ytest,pred_prob)
+                except:
+                    sc = 0
+                recall = metrics.recall_score(ytest,pred_,average='weighted')
+                precision = metrics.precision_score(ytest,pred_,average='weighted')
                 kappa = metrics.cohen_kappa_score(ytest,pred_)
-                f1 = metrics.f1_score(ytest,pred_)
+                f1 = metrics.f1_score(ytest,pred_,average='weighted')
                 score_acc = np.append(score_acc,sca)
                 score_auc = np.append(score_auc,sc)
                 score_recall = np.append(score_recall,recall)
@@ -5416,10 +5636,10 @@ def automl(qualifier = 5,
                 pred_ = model.predict(Xtest)
                 sca = metrics.accuracy_score(ytest,pred_)
                 sc = 0.00
-                recall = metrics.recall_score(ytest,pred_)
-                precision = metrics.precision_score(ytest,pred_) #change pred_prob to pred_
+                recall = metrics.recall_score(ytest,pred_,average='weighted')
+                precision = metrics.precision_score(ytest,pred_,average='weighted') #change pred_prob to pred_
                 kappa = metrics.cohen_kappa_score(ytest,pred_)
-                f1 = metrics.f1_score(ytest,pred_)
+                f1 = metrics.f1_score(ytest,pred_,average='weighted')
                 score_acc = np.append(score_acc,sca)
                 score_auc = np.append(score_auc,sc)
                 score_recall = np.append(score_recall,recall)
@@ -5521,6 +5741,7 @@ def automl(qualifier = 5,
         
         monitor.iloc[1,1:] = 'Hyperparameter Grid Search'
         monitor.iloc[2,1:] = top_n_model_names[name_counter]
+        monitor.iloc[3,1:] = 'Calculating ETC'
         update_display(monitor, display_id = 'monitor')
         
         #PROGRESS # 17 : Model Creation (qualifier x based on top_n_model parameter)
@@ -5560,7 +5781,7 @@ def automl(qualifier = 5,
         
         elif i == 'Gradient Boosting Classifier':
             
-            param_grid = {'loss': ['deviance', 'exponential'],
+            param_grid = {#'loss': ['deviance', 'exponential'],
                           'n_estimators': [10, 40, 70, 80, 90, 100, 120, 140, 150],
                           'learning_rate': [0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1],
                           'subsample' : [0.1,0.3,0.5,0.7,0.9,1],
@@ -5788,13 +6009,29 @@ def automl(qualifier = 5,
             
         elif i == 'Extreme Gradient Boosting':
             
-            param_grid = {'learning_rate': [0.01, 0.02, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1], 
-                          'n_estimators':[10, 30, 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000], 
-                          'subsample': [0.1, 0.2, 0.3, 0.5, 0.7, 0.9, 1],
-                          'max_depth': [int(x) for x in np.linspace(10, 110, num = 11)], 
-                          'colsample_bytree': [0.5, 0.7, 0.9, 1],
-                          'min_child_weight': [1, 2, 3, 4]
-                         }
+            num_class = y.value_counts().count()
+            
+            if y.value_counts().count() > 2:
+                
+                param_grid = {'learning_rate': [0.01, 0.02, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1], 
+                              'n_estimators':[10, 30, 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000], 
+                              'subsample': [0.1, 0.2, 0.3, 0.5, 0.7, 0.9, 1],
+                              'max_depth': [int(x) for x in np.linspace(10, 110, num = 11)], 
+                              'colsample_bytree': [0.5, 0.7, 0.9, 1],
+                              'min_child_weight': [1, 2, 3, 4],
+                              'num_class' : [num_class, num_class]
+                             }
+                
+            else:
+                
+                param_grid = {'learning_rate': [0.01, 0.02, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1], 
+                              'n_estimators':[10, 30, 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000], 
+                              'subsample': [0.1, 0.2, 0.3, 0.5, 0.7, 0.9, 1],
+                              'max_depth': [int(x) for x in np.linspace(10, 110, num = 11)], 
+                              'colsample_bytree': [0.5, 0.7, 0.9, 1],
+                              'min_child_weight': [1, 2, 3, 4],
+                              #'num_class' : [num_class, num_class]
+                             }                
 
             model_grid = RandomizedSearchCV(estimator=XGBClassifier(random_state=seed), 
                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
@@ -5827,7 +6064,28 @@ def automl(qualifier = 5,
             model = model_grid.best_estimator_
             best_model = model_grid.best_estimator_
             best_model_param = model_grid.best_params_
-            top_n_tuned_models.append(best_model)            
+            top_n_tuned_models.append(best_model)     
+            
+            
+        elif i == 'CatBoost Classifier':
+            
+            param_grid = {'depth':[3,1,2,6,4,5,7,8,9,10],
+                          'iterations':[250,100,500,1000], 
+                          'learning_rate':[0.03,0.001,0.01,0.1,0.2,0.3], 
+                          'l2_leaf_reg':[3,1,5,10,100], 
+                          'border_count':[32,5,10,20,50,100,200], 
+                          #'ctr_border_count':[50,5,10,20,100,200]
+                          }
+
+            model_grid = RandomizedSearchCV(estimator=CatBoostClassifier(random_state=seed, silent=True), 
+                        param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
+                        cv=cv, random_state=seed, n_jobs=-1)
+
+            model_grid.fit(X_train,y_train)
+            model = model_grid.best_estimator_
+            best_model = model_grid.best_estimator_
+            best_model_param = model_grid.best_params_
+            top_n_tuned_models.append(best_model)         
             
             
         name_counter += 1
@@ -5924,11 +6182,14 @@ def automl(qualifier = 5,
                 pred_prob = pred_prob[:,1]
                 pred_ = model.predict(Xtest)
                 sca = metrics.accuracy_score(ytest,pred_)
-                sc = metrics.roc_auc_score(ytest,pred_prob)
-                recall = metrics.recall_score(ytest,pred_)
-                precision = metrics.precision_score(ytest,pred_)
+                try:
+                    sc = metrics.roc_auc_score(ytest,pred_prob)
+                except:
+                    sc = 0
+                recall = metrics.recall_score(ytest,pred_,average='weighted')
+                precision = metrics.precision_score(ytest,pred_,average='weighted')
                 kappa = metrics.cohen_kappa_score(ytest,pred_)
-                f1 = metrics.f1_score(ytest,pred_)
+                f1 = metrics.f1_score(ytest,pred_,average='weighted')
                 score_acc = np.append(score_acc,sca)
                 score_auc = np.append(score_auc,sc)
                 score_recall = np.append(score_recall,recall)
@@ -5944,10 +6205,10 @@ def automl(qualifier = 5,
                 pred_ = model.predict(Xtest)
                 sca = metrics.accuracy_score(ytest,pred_)
                 sc = 0.00
-                recall = metrics.recall_score(ytest,pred_)
-                precision = metrics.precision_score(ytest,pred_) #change pred_prob to pred_
+                recall = metrics.recall_score(ytest,pred_,average='weighted')
+                precision = metrics.precision_score(ytest,pred_,average='weighted') #change pred_prob to pred_
                 kappa = metrics.cohen_kappa_score(ytest,pred_)
-                f1 = metrics.f1_score(ytest,pred_)
+                f1 = metrics.f1_score(ytest,pred_,average='weighted')
                 score_acc = np.append(score_acc,sca)
                 score_auc = np.append(score_auc,sc)
                 score_recall = np.append(score_recall,recall)
@@ -6112,11 +6373,14 @@ def automl(qualifier = 5,
                 pred_prob = pred_prob[:,1]
                 pred_ = model.predict(Xtest)
                 sca = metrics.accuracy_score(ytest,pred_)
-                sc = metrics.roc_auc_score(ytest,pred_prob)
-                recall = metrics.recall_score(ytest,pred_)
-                precision = metrics.precision_score(ytest,pred_)
+                try:
+                    sc = metrics.roc_auc_score(ytest,pred_prob)
+                except:
+                    sc = 0
+                recall = metrics.recall_score(ytest,pred_,average='weighted')
+                precision = metrics.precision_score(ytest,pred_,average='weighted')
                 kappa = metrics.cohen_kappa_score(ytest,pred_)
-                f1 = metrics.f1_score(ytest,pred_)
+                f1 = metrics.f1_score(ytest,pred_,average='weighted')
                 score_acc = np.append(score_acc,sca)
                 score_auc = np.append(score_auc,sc)
                 score_recall = np.append(score_recall,recall)
@@ -6132,10 +6396,10 @@ def automl(qualifier = 5,
                 pred_ = model.predict(Xtest)
                 sca = metrics.accuracy_score(ytest,pred_)
                 sc = 0.00
-                recall = metrics.recall_score(ytest,pred_)
-                precision = metrics.precision_score(ytest,pred_) #change pred_prob to pred_
+                recall = metrics.recall_score(ytest,pred_,average='weighted')
+                precision = metrics.precision_score(ytest,pred_,average='weighted') #change pred_prob to pred_
                 kappa = metrics.cohen_kappa_score(ytest,pred_)
-                f1 = metrics.f1_score(ytest,pred_)
+                f1 = metrics.f1_score(ytest,pred_,average='weighted')
                 score_acc = np.append(score_acc,sca)
                 score_auc = np.append(score_auc,sc)
                 score_recall = np.append(score_recall,recall)
@@ -6258,6 +6522,7 @@ def automl(qualifier = 5,
     '''
     
     count_while = 0
+    drop_list = ['CatBoost Classifier', 'Tuned CatBoost Classifier']
     
     mix = []
     mix_names = []
@@ -6268,10 +6533,23 @@ def automl(qualifier = 5,
         for r in generator:
             sub_list.append(master_unpack[r])
             sub_list_names.append(master_results.iloc[r]['Model'])
+            
+            #dropping catboost
+            for i in sub_list:
+                if hasattr(i, 'get_cat_feature_indices'):
+                    sub_list.remove(i)
+                    
+            for i in sub_list_names:
+                if i in drop_list:
+                    sub_list_names.remove(i)
+                
         mix.append(sub_list)
         mix_names.append(sub_list_names)
         count_while += 1
     
+    mix_orignal = mix.copy()
+    mix_names_orignal = mix_names.copy()
+        
     #PROGRESS # 27 : Sampling Completed
     progress.value += 1
     
@@ -6353,14 +6631,13 @@ def automl(qualifier = 5,
             
             model.fit(Xtrain,ytrain)
             pred_prob = 0.00
-            pred_prob = 0.00
             pred_ = model.predict(Xtest)
             sca = metrics.accuracy_score(ytest,pred_)
             sc = 0.00
-            recall = metrics.recall_score(ytest,pred_)
-            precision = metrics.precision_score(ytest,pred_) #change pred_prob to pred_
+            recall = metrics.recall_score(ytest,pred_,average='weighted')
+            precision = metrics.precision_score(ytest,pred_,average='weighted') #change pred_prob to pred_
             kappa = metrics.cohen_kappa_score(ytest,pred_)
-            f1 = metrics.f1_score(ytest,pred_)
+            f1 = metrics.f1_score(ytest,pred_,average='weighted')
             score_acc = np.append(score_acc,sca)
             score_auc = np.append(score_auc,sc)
             score_recall = np.append(score_recall,recall)
@@ -6551,11 +6828,14 @@ def automl(qualifier = 5,
             pred_prob = pred_prob[:,1]
             pred_ = model.predict(Xtest)
             sca = metrics.accuracy_score(ytest,pred_)
-            sc = metrics.roc_auc_score(ytest,pred_prob)
-            recall = metrics.recall_score(ytest,pred_)
-            precision = metrics.average_precision_score(ytest,pred_prob)
+            try:
+                sc = metrics.roc_auc_score(ytest,pred_prob)
+            except:
+                sc = 0
+            recall = metrics.recall_score(ytest,pred_,average='weighted')
+            precision = metrics.precision_score(ytest,pred_,average='weighted')
             kappa = metrics.cohen_kappa_score(ytest,pred_)
-            f1 = metrics.f1_score(ytest,pred_)
+            f1 = metrics.f1_score(ytest,pred_,average='weighted')
             score_acc = np.append(score_acc,sca)
             score_auc = np.append(score_auc,sc)
             score_recall = np.append(score_recall,recall)
@@ -6693,7 +6973,12 @@ def automl(qualifier = 5,
         return ['background-color: yellow' if v else '' for v in is_max]
     
     master_display = master_display.sort_values(by=sort, ascending=False).reset_index(drop=True)
-    master_display_ = master_display.style.apply(highlight_max,subset=['Accuracy','AUC','Recall','Prec.','F1','Kappa'])
+    
+    if y.value_counts().count() > 2:
+        master_display_ = master_display.style.apply(highlight_max,subset=['Accuracy','Recall','Prec.','F1','Kappa'])
+    else:
+        master_display_ = master_display.style.apply(highlight_max,subset=['Accuracy','AUC','Recall','Prec.','F1','Kappa'])
+    
     master_display_ = master_display_.set_properties(**{'text-align': 'left'})
     master_display_ = master_display_.set_table_styles([dict(selector='th', props=[('text-align', 'left')])])
     
@@ -6771,7 +7056,8 @@ def interpret_model(estimator,
 
     Warnings:
     ---------
-    None    
+    
+    - interpret_model doesn't support multiclass problems.
        
          
     """
@@ -6783,6 +7069,8 @@ def interpret_model(estimator,
     
     '''
     
+    #global model_name
+    
     import sys
     
     #allowed models
@@ -6791,12 +7079,17 @@ def interpret_model(estimator,
                       'ExtraTreesClassifier',
                       'GradientBoostingClassifier',
                       'XGBClassifier',
-                      'LGBMClassifier']
+                      'LGBMClassifier',
+                      'CatBoostClassifier']
     
     model_name = str(estimator).split("(")[0]
     
+    #Statement to find CatBoost and change name :
+    if model_name.find("catboost.core.CatBoostClassifier") != -1:
+        model_name = 'CatBoostClassifier'
+    
     if model_name not in allowed_models:
-        sys.exit('(Type Error): This function only supports tree based models.')
+        sys.exit('(Type Error): This function only supports tree based models for binary classification.')
         
     #plot type
     allowed_types = ['summary', 'correlation', 'reason']
@@ -6821,7 +7114,7 @@ def interpret_model(estimator,
     
     #defining type of classifier
     type1 = ['RandomForestClassifier','DecisionTreeClassifier','ExtraTreesClassifier', 'LGBMClassifier']
-    type2 = ['GradientBoostingClassifier', 'XGBClassifier']
+    type2 = ['GradientBoostingClassifier', 'XGBClassifier', 'CatBoostClassifier']
     
     if plot == 'summary':
         
@@ -7173,7 +7466,6 @@ def save_experiment(experiment_name=None):
     
     print('Experiment Succesfully Saved')
 
-
 def load_experiment(experiment_name):
     
     """
@@ -7228,4 +7520,684 @@ def load_experiment(experiment_name):
     display(ind)
 
     return exp
+
+def calibrate_model(estimator,
+                    method = 'sigmoid',
+                    fold=10,
+                    round=4,
+                    verbose=True):
+    
+    """  
+     
+    Description:
+    ------------
+    This function takes input of trained estimator and performs probability calibration
+    with sigmoid or isotonic regression. The output prints the score grid that shows 
+    Accuracy, AUC, Recall, Precision, F1 and Kappa by fold (default = 10 Fold). The ouput 
+    of original estimator and calibrated estimator (created using this function) will not 
+    differ  much. In order to see the calibration, use 'calibration' plot in plot_model 
+    to see the difference before and after calibration.
+
+    Function also returns a trained model object that can be used for further 
+    processing in pycaret or can be used to call any method available in sklearn. 
+
+    Estimator must be created using create_model() or tune_model().
+
+        Example
+        -------
+        lr = create_model('lr')
+        lr_calibrated = calibrate_model(lr)
+
+        This will return Calibrated Logistic Regression.
+
+    Parameters
+    ----------
+
+    estimator : object
+    
+    method : string, default = 'sigmoid'
+    The method to use for calibration. Can be ‘sigmoid’ which corresponds to Platt’s method
+    or ‘isotonic’ which is a non-parametric approach. It is not advised to use isotonic 
+    calibration with too few calibration samples
+
+    fold: integer, default = 10
+    Number of folds to be used in Kfold CV. Must be at least 2. 
+
+    round: integer, default = 4
+    Number of decimal places metrics in score grid will be rounded to. 
+
+    verbose: Boolean, default = True
+    Score grid is not printed when verbose is set to False.
+
+    Returns:
+    --------
+
+    score grid:   A table containing the scores of the model across the kfolds. 
+    -----------   Scoring metrics used are Accuracy, AUC, Recall, Precision, F1 
+                  and Kappa. Mean and standard deviation of the scores across the 
+                  folds is also returned.
+
+    model:        trained model object
+    -----------
+
+    Warnings:
+    ---------
+
+    - Avoid isotonic calibration with too few calibration samples (<<1000) since it 
+      tends to overfit.
+      
+    - calibration plot not available for multiclass problems.
+  
+  
+    """
+
+
+    '''
+    
+    ERROR HANDLING STARTS HERE
+    
+    '''
+    
+    #exception checking   
+    import sys
+    
+    #Statement to find CatBoost and change name
+    
+    model_name = str(estimator).split("(")[0]
+    if model_name.find("catboost.core.CatBoostClassifier") != -1:
+        model_name = 'CatBoostClassifier'
+
+    #catboost not allowed
+    not_allowed = ['CatBoostClassifier']
+    if model_name in not_allowed:
+        sys.exit('(Type Error): calibrate_model doesnt support CatBoost Classifier. Try different estimator.')
+    
+    #checking fold parameter
+    if type(fold) is not int:
+        sys.exit('(Type Error): Fold parameter only accepts integer value.')
+    
+    #checking round parameter
+    if type(round) is not int:
+        sys.exit('(Type Error): Round parameter only accepts integer value.')
+ 
+    #checking verbose parameter
+    if type(verbose) is not bool:
+        sys.exit('(Type Error): Verbose parameter can only take argument as True or False.') 
+        
+    
+    '''
+    
+    ERROR HANDLING ENDS HERE
+    
+    '''
+    
+    
+    #pre-load libraries
+    import pandas as pd
+    import ipywidgets as ipw
+    from IPython.display import display, HTML, clear_output, update_display
+    import datetime, time
+        
+    #progress bar
+    progress = ipw.IntProgress(value=0, min=0, max=fold+3, step=1 , description='Processing: ')
+    master_display = pd.DataFrame(columns=['Accuracy','AUC','Recall', 'Prec.', 'F1', 'Kappa'])
+    display(progress)
+    
+    #display monitor
+    timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
+    monitor = pd.DataFrame( [ ['Initiated' , '. . . . . . . . . . . . . . . . . .', timestampStr ], 
+                             ['Status' , '. . . . . . . . . . . . . . . . . .' , 'Loading Dependencies' ],
+                             ['ETC' , '. . . . . . . . . . . . . . . . . .',  'Calculating ETC'] ],
+                              columns=['', ' ', '   ']).set_index('')
+    
+    display(monitor, display_id = 'monitor')
+    
+    if verbose:
+        display_ = display(master_display, display_id=True)
+        display_id = display_.display_id
+    
+    #ignore warnings
+    import warnings
+    warnings.filterwarnings('ignore') 
+    
+    #Storing X_train and y_train in data_X and data_y parameter
+    data_X = X_train
+    data_y = y_train
+  
+    #general dependencies
+    import numpy as np
+    from sklearn import metrics
+    from sklearn.model_selection import StratifiedKFold
+    from sklearn.calibration import CalibratedClassifierCV
+    
+    progress.value += 1
+    
+    #cross validation setup starts here
+    kf = StratifiedKFold(fold, random_state=seed)
+
+    score_auc =np.empty((0,0))
+    score_acc =np.empty((0,0))
+    score_recall =np.empty((0,0))
+    score_precision =np.empty((0,0))
+    score_f1 =np.empty((0,0))
+    score_kappa =np.empty((0,0))
+    avgs_auc =np.empty((0,0))
+    avgs_acc =np.empty((0,0))
+    avgs_recall =np.empty((0,0))
+    avgs_precision =np.empty((0,0))
+    avgs_f1 =np.empty((0,0))
+    avgs_kappa =np.empty((0,0))
+    
+  
+    '''
+    MONITOR UPDATE STARTS
+    '''
+    
+    monitor.iloc[1,1:] = 'Selecting Estimator'
+    update_display(monitor, display_id = 'monitor')
+    
+    '''
+    MONITOR UPDATE ENDS
+    '''
+    
+    #calibrating estimator
+            
+    model = CalibratedClassifierCV(base_estimator=estimator, method=method, cv=fold)
+    full_name = str(model).split("(")[0]
+    
+    progress.value += 1
+    
+    
+    '''
+    MONITOR UPDATE STARTS
+    '''
+    
+    monitor.iloc[1,1:] = 'Initializing CV'
+    update_display(monitor, display_id = 'monitor')
+    
+    '''
+    MONITOR UPDATE ENDS
+    '''
+    
+    
+    fold_num = 1
+    
+    for train_i , test_i in kf.split(data_X,data_y):
+        
+        t0 = time.time()
+        
+        '''
+        MONITOR UPDATE STARTS
+        '''
+    
+        monitor.iloc[1,1:] = 'Fitting Fold ' + str(fold_num) + ' of ' + str(fold)
+        update_display(monitor, display_id = 'monitor')
+
+        '''
+        MONITOR UPDATE ENDS
+        '''
+    
+        
+        Xtrain,Xtest = data_X.iloc[train_i], data_X.iloc[test_i]
+        ytrain,ytest = data_y.iloc[train_i], data_y.iloc[test_i]
+    
+        if hasattr(model, 'predict_proba'):
+        
+            model.fit(Xtrain,ytrain)
+            pred_prob = model.predict_proba(Xtest)
+            pred_prob = pred_prob[:,1]
+            pred_ = model.predict(Xtest)
+            sca = metrics.accuracy_score(ytest,pred_)
+            try:
+                sc = metrics.roc_auc_score(ytest,pred_prob,average='weighted')
+            except:
+                sc = 0
+            recall = metrics.recall_score(ytest,pred_, average='weighted')
+            precision = metrics.precision_score(ytest,pred_, average = 'weighted')
+            kappa = metrics.cohen_kappa_score(ytest,pred_)
+            f1 = metrics.f1_score(ytest,pred_, average='weighted')
+            score_acc = np.append(score_acc,sca)
+            score_auc = np.append(score_auc,sc)
+            score_recall = np.append(score_recall,recall)
+            score_precision = np.append(score_precision,precision)
+            score_f1 =np.append(score_f1,f1)
+            score_kappa =np.append(score_kappa,kappa)
+
+        else:
+            
+            model.fit(Xtrain,ytrain)
+            pred_prob = 0.00
+            pred_prob = 0.00
+            pred_ = model.predict(Xtest)
+            sca = metrics.accuracy_score(ytest,pred_)
+            sc = 0.00
+            recall = metrics.recall_score(ytest,pred_,average='weighted')
+            precision = metrics.precision_score(ytest,pred_,average='weighted') #change pred_prob to pred_
+            kappa = metrics.cohen_kappa_score(ytest,pred_)
+            f1 = metrics.f1_score(ytest,pred_,average='weighted')
+            score_acc = np.append(score_acc,sca)
+            score_auc = np.append(score_auc,sc)
+            score_recall = np.append(score_recall,recall)
+            score_precision = np.append(score_precision,precision)
+            score_f1 =np.append(score_f1,f1)
+            score_kappa =np.append(score_kappa,kappa) 
+       
+        progress.value += 1
+        
+        
+        '''
+        
+        This section handles time calculation and is created to update_display() as code loops through 
+        the fold defined.
+        
+        '''
+        
+        fold_results = pd.DataFrame({'Accuracy':[sca], 'AUC': [sc], 'Recall': [recall], 
+                                     'Prec.': [precision], 'F1': [f1], 'Kappa': [kappa]}).round(round)
+        master_display = pd.concat([master_display, fold_results],ignore_index=True)
+        fold_results = []
+        
+        '''
+        TIME CALCULATION SUB-SECTION STARTS HERE
+        '''
+        t1 = time.time()
+        
+        tt = (t1 - t0) * (fold-fold_num) / 60
+        tt = np.around(tt, 2)
+        
+        if tt < 1:
+            tt = str(np.around((tt * 60), 2))
+            ETC = tt + ' Seconds Remaining'
+                
+        else:
+            tt = str (tt)
+            ETC = tt + ' Minutes Remaining'
+            
+        '''
+        MONITOR UPDATE STARTS
+        '''
+
+        monitor.iloc[2,1:] = ETC
+        update_display(monitor, display_id = 'monitor')
+
+        '''
+        MONITOR UPDATE ENDS
+        '''
+            
+        fold_num += 1
+        
+        '''
+        TIME CALCULATION ENDS HERE
+        '''
+        
+        if verbose:
+            update_display(master_display, display_id = display_id)
+            
+        
+        '''
+        
+        Update_display() ends here
+        
+        '''
+            
+    mean_acc=np.mean(score_acc)
+    mean_auc=np.mean(score_auc)
+    mean_recall=np.mean(score_recall)
+    mean_precision=np.mean(score_precision)
+    mean_f1=np.mean(score_f1)
+    mean_kappa=np.mean(score_kappa)
+    std_acc=np.std(score_acc)
+    std_auc=np.std(score_auc)
+    std_recall=np.std(score_recall)
+    std_precision=np.std(score_precision)
+    std_f1=np.std(score_f1)
+    std_kappa=np.std(score_kappa)
+    
+    avgs_acc = np.append(avgs_acc, mean_acc)
+    avgs_acc = np.append(avgs_acc, std_acc) 
+    avgs_auc = np.append(avgs_auc, mean_auc)
+    avgs_auc = np.append(avgs_auc, std_auc)
+    avgs_recall = np.append(avgs_recall, mean_recall)
+    avgs_recall = np.append(avgs_recall, std_recall)
+    avgs_precision = np.append(avgs_precision, mean_precision)
+    avgs_precision = np.append(avgs_precision, std_precision)
+    avgs_f1 = np.append(avgs_f1, mean_f1)
+    avgs_f1 = np.append(avgs_f1, std_f1)
+    avgs_kappa = np.append(avgs_kappa, mean_kappa)
+    avgs_kappa = np.append(avgs_kappa, std_kappa)
+    
+    progress.value += 1
+    
+    model_results = pd.DataFrame({'Accuracy': score_acc, 'AUC': score_auc, 'Recall' : score_recall, 'Prec.' : score_precision , 
+                     'F1' : score_f1, 'Kappa' : score_kappa})
+    model_avgs = pd.DataFrame({'Accuracy': avgs_acc, 'AUC': avgs_auc, 'Recall' : avgs_recall, 'Prec.' : avgs_precision , 
+                     'F1' : avgs_f1, 'Kappa' : avgs_kappa},index=['Mean', 'SD'])
+
+    model_results = model_results.append(model_avgs)
+    model_results = model_results.round(round)
+    
+    #storing into experiment
+    tup = (full_name,model)
+    experiment__.append(tup)
+    nam = str(full_name) + ' Score Grid'
+    tup = (nam, model_results)
+    experiment__.append(tup)
+    
+    
+    if verbose:
+        clear_output()
+        display(model_results)
+        return model
+    else:
+        clear_output()
+        return model
+
+def help():
+    
+    print(
+    """
+    pycaret.classification
+    ----------------------
+    This module is used for binary and multiclass classification problems.
+    
+    
+    get_data()
+    ----------
+    get_data imports the dataset from pycaret git repository. To see list of available datasets:
+
+    from pycaret.datasets import get_data
+    get_data('index')
+
+    To import dataset:
+    data = get_data(data='juice')
+
+                                                * * *
+
+    setup
+    -------
+    setup initialize the pycaret environment. It takes two mandatory inputs. (i) Dataframe and 
+    (ii) Name of target column. 
+
+    s = setup(data=data, target='Purchase')
+
+                                                * * *
+
+    create_model
+    ------------
+    create_model takes an abbreviated string of model name as input param and trains an estimator given
+    in estimator param.  It will also evaluate model performance on 10 fold stratified cross validation.
+    It evaluates and returns model performance on Accuracy, AUC, Recall, Precision, F1 and Kappa. 
+
+    lr = create_model(estimator='lr')
+
+    This will train and evaulate Logistic Regression estimator. See the docstring for create_model() to
+    see list of available estimators and their abbreviated string to be passed in the function.
+
+    You can also ensemble the model during create stage. 
+
+    lr_bagging = create_model(estimator = 'lr', ensemble = True, method = 'Bagging')
+
+    For boosting change the method param to 'Boosting'.
+
+    Other parameters that can be passed in create_model:
+    fold : defines the number of folds to be used in CV (default = 10)
+    round : defines the decimal places metrics in score grid will be rounded to (default = 4)
+    verbose : controls the printing of output. 
+
+
+                                                * * *
+
+    ensemble_model
+    --------------
+    ensemble_model takes a trained estimator and ensemble it using 'Bagging' or 'Boosting' as defined in 
+    method param. 
+
+    lr = create_model(estimator = 'lr')
+    lr_bagging = ensemble_model(lr, method = 'Bagging')
+
+    lr_bagging is equivalent create_model when ensemble and method param is passed in create_model. The results
+    will be identical.
+
+
+                                                 * * *
+    
+    
+    tune_model
+    ----------
+    tune_model takes an abbreviated string of model name as input param and tunes the hyperparameter of the 
+    estimator over a predefined search space. 
+    
+    tuned_lr = tune_model('lr', optimize='Accuracy')
+    
+    This will train and optimize hyperparameter of Logistic Regression estimator. Optimize parameter defines
+    the objective function of iterator. By default is set to 'Accuracy'. Other possible values are 'AUC',
+    'Recall', 'Precision' and 'F1'.
+    
+    Other parameters that can be passed in tune_model:
+    fold : defines the number of folds to be used in CV (default = 10)
+    round : defines the decimal places metrics in score grid will be rounded to (default = 4)
+    n_iter : number of iterations for tuning the estimator. (default = 10)
+    optimize : Objective function of iterator. Possible values 'Accuracy', AUC', 'Recall', 'Precision', 'F1'.
+    ensemble = True will also tune the hyperparameter of wrapper as defined by method param (default = False)
+    method = 'Bagging' or 'Boosting'. Only accepts the value when ensemble is True.
+    verbose : controls the printing of output. 
+    
+    
+                                                 * * *
+    
+    
+    plot_model
+    ----------
+    plot_model takes a trained estimator as in input and returns the plot as defined in plot parameter.
+    
+    lr = create_model('lr')
+    plot_model(lr, plot='auc')
+    
+    by default plot is set to 'auc'. See docstring of plot_model to see complete list of available plot.
+    
+    
+    
+                                                * * *
+                                                
+    compare_models
+    --------------
+    compare_model doesn't take any mandatory input parameter.
+    
+    compare_models()
+    
+    This will train all the estimators in the library and evaluate the 10 Fold CV performance. 
+    
+    Other parameters that can be passed in compare_models:
+    fold : defines the number of folds to be used in CV (default = 10)
+    round : defines the decimal places metrics in score grid will be rounded to (default = 4)
+    sort : sorting parameter of score grid so that best place comes on top. Acceptable values are
+           'Accuracy', 'AUC', 'Recall', 'Precision', 'F1', 'Kappa'. (default = 'Accuracy').
+    turbo : when turbo is set to True it will blacklist models that take longer training times. 
+    blacklist : list of abbreviated strings to be passed to blacklist certain models. For Example:
+    
+    compare_models( blacklist = ['lr', 'svm', 'catboost'] )
+    
+    This will return all models except Logistic Regression, Support Vector Machine and CatBoost.
+    
+    
+                                                
+                                                * * *
+                                                
+    blend_models
+    ------------
+    blend_models doesn't take any mandatory input parameters. 
+    
+    blend_models()
+    
+    This will return trained voting classifier based on all models in the library. If specific 
+    models need to be blend, it can be passed as a list of trained estimators. For Example
+    
+    lr = create_model('lr')
+    nb = create_model('nb')
+    xgboost = create_model('xgboost')
+    
+    blend_models(estimator_list = [ lr, nb, xgboost] )
+    
+    This will train the voting classifier based on trained estimators passed as a list in
+    estimator_list param. 
+    
+    Other parameters that can be passed in blend_models:
+    fold : defines the number of folds to be used in CV (default = 10)
+    round : defines the decimal places metrics in score grid will be rounded to (default = 4)
+    method : 'hard' or 'soft' (default = 'hard').
+    turbo : when turbo is set to True it will blacklist models that take longer training times.
+    verbose : controls the printing of output. 
+    
+    
+                                                 * * *
+                                                 
+    stack_models
+    ------------
+    stack_models takes an input parameter of list of trained estimators for stacking. It will
+    then use meta_model to do the final prediction based on output from base level models.
+    
+    xgboost = create_model('xgboost')
+    svm = create_model('svm')
+    nb = create_model('nb')
+    lr = create_model('lr')
+    
+    stack_models(estimator_list = [xgboost,svm,nb], meta_model = lr)
+    
+    This will create a stacker of three models with Logistic Regression as meta model.
+    
+    Other parameters that can be passed in stack_models:
+    fold : defines the number of folds to be used in CV (default = 10)
+    round : defines the decimal places metrics in score grid will be rounded to (default = 4)
+    method : 'hard' or 'soft' (default = 'hard').
+    restack : 'True' or 'False'. (default = False)
+    plot : True or False (default = False). Set True for correlation plot of predictions.
+    verbose : controls the printing of output. 
+    
+    
+                                                 * * *
+                                                 
+                                                 
+    create_stacknet
+    ---------------
+    This function is similar to stack_models except that it stacks in multiple layers. Instead
+    of passing a single list as estimator_list, nested list is expected in this function.
+    
+    nb = create_model('nb')
+    rf = create_model('rf')
+    ada = create_model('ada')
+    ridge = create_model('ridge')
+    knn = create_model('knn')
+    lr = create_model ('lr')
+
+    create_stacknet( estimator_list = [[nb,rf],[ada,ridge,knn]], meta_model = lr)
+    
+    Other parameters that can be passed in stack_models:
+    fold : defines the number of folds to be used in CV (default = 10)
+    round : defines the decimal places metrics in score grid will be rounded to (default = 4)
+    method : 'hard' or 'soft' (default = 'hard').
+    restack : 'True' or 'False'. (default = False)
+    plot : True or False (default = False). Set True for correlation plot of predictions.
+    verbose : controls the printing of output. 
+    
+    This will create a stacknet with two layers and use Logistic Regression (lr) as a meta model
+  
+    
+                                                * * *
+                                                
+    interpret_model
+    ---------------
+    This function takes a trained model object and returns the interpretation plot on
+    test set. This function only supports tree based algorithm. This function is implemented based 
+    SHapley Additive exPlanations (Shap Values).
+    
+    dt = create_model('dt')
+    interpret_model(estimator = dt)
+    
+    Other parameters that can be passed in interpret_model:
+    plot : 'summary', 'correlation', 'reason' - three types of plot (default = 'summary')
+    feature : when plot is 'correlation', feature name as string can be passed.
+    observation : when plot type is 'reason', observation # on test set may be passed.
+    
+    
+                                                * * *
+                                                
+    calibrate_model
+    ---------------
+    This functions takes an trained estimator as an input and calibrate the probability of classifier
+    using 'sigmoid' or 'isotonic' regression. 
+    
+    lr = create_model('lr')
+    calibrate_model(lr, method = 'sigmoid')
+    
+    This will calibrate the probability of Logistic Regression using sigmoid method and returns a
+    calibrated classifier.
+    
+    Other parameters that can be passed in method_model:
+    fold : defines the number of folds to be used in CV (default = 10)
+    round : defines the decimal places metrics in score grid will be rounded to (default = 4)
+    method : 'sigmoid' or 'isotonic' (default = 'sigmoid')
+    verbose : controls the printing of output. 
+    
+    
+                                                * * *
+                                                                                            
+    evaluate_model
+    --------------
+    This function takes an trained estimator as an input and returns the interactive user interface for
+    plotting. This is equivalent to plot_model(estimator, plot = 'XXX')
+
+    lr = create_model('lr')
+    evaluate_model(lr)
+    
+    
+                                                * * *
+        
+    save_model
+    ----------
+    This function takes a trained model estimator and name as string to be saved as pickle file.
+    
+    lr = create_model('lr')
+    save_model(lr, 'lr_30122019')
+        
+        
+                                                * * *
+        
+    load_model
+    ----------
+    This function loads the saved model into Jupyter environment. You must be your current directory
+    to perform this function.
+    
+    lr = load_model('lr_30122019')
+    
+        
+        
+                                                * * *
+        
+    save_experiment
+    ---------------
+    Similar to save_model, this function will save all the outputs including model and score grids generated
+    during the experiment. The experiment starts when you call setup() to initialize. 
+    
+    save_experiment('experiment_30122019')
+    
+    This will save all the objects as pickled list in current directory.
+    
+    
+    
+                                                    * * *
+        
+    load_experiment
+    ---------------
+    This function loads the saved experiment into Jupyter environment. You must be in your current directory
+    to perform this function.
+    
+    experiment_30122019 = load_experiment('experiment_30122019')
+    
+    
+    
+    """
+   
+                                               
+    
+    )
 

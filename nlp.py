@@ -164,7 +164,12 @@ def setup(data,
     global text, id2word, corpus, data_, seed, target_, experiment__
     
     #create an empty list for pickling later.
-    experiment__ = []
+    try:
+        experiment__.append('dummy')
+        experiment__.pop()
+    
+    except:
+        experiment__ = []
     
     #converting to dataframe if list provided
     if type(data) is list:
@@ -480,6 +485,7 @@ def setup(data,
 
     return text, data_, corpus, id2word, seed, target_, experiment__
 
+
 def create_model(model=None,
                  multi_core=False,
                  num_topics = None,
@@ -723,13 +729,13 @@ def create_model(model=None,
     progress.value += 1
     
     #storing into experiment
-    tup = (topic_model_name,model)
-    experiment__.append(tup)    
-    
     if verbose:
         clear_output()
+        tup = (topic_model_name,model)
+        experiment__.append(tup)  
     
     return model
+
 
 def assign_model(model,
                  verbose=True):
@@ -1050,20 +1056,13 @@ def assign_model(model,
         if verbose:
             clear_output()
         
+    #storing into experiment
+    if verbose:
+        clear_output()
+        mod__ = str(mod_type) + ' Topic Assignment'
+        tup = (mod__,bb_)
+        experiment__.append(tup) 
         #return bb_
-    
-    #storing into experiment
-    mod__ = str(mod_type) + ' Topic Assignment'
-    tup = (mod__,bb_)
-    experiment__.append(tup)    
-    
-    return bb_
-
-
-    #storing into experiment
-    mod__ = str(mod_type) + ' Topic Assignment'
-    tup = (mod__,bb_)
-    experiment__.append(tup)    
     
     return bb_
 
@@ -2769,3 +2768,4 @@ def load_experiment(experiment_name):
     display(ind)
 
     return exp
+
