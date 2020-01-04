@@ -132,6 +132,7 @@ def setup(data,
         seed = random.randint(150,9000)
     else:
         seed = session_id
+        
     
     
     #create an empty list for pickling later.
@@ -562,7 +563,7 @@ def create_model(estimator = None,
     import datetime, time
         
     #progress bar
-    progress = ipw.IntProgress(value=0, min=0, max=fold+3, step=1 , description='Processing: ')
+    progress = ipw.IntProgress(value=0, min=0, max=fold+4, step=1 , description='Processing: ')
     master_display = pd.DataFrame(columns=['Accuracy','AUC','Recall', 'Prec.', 'F1', 'Kappa'])
     display(progress)
     
@@ -584,8 +585,12 @@ def create_model(estimator = None,
     warnings.filterwarnings('ignore') 
     
     #Storing X_train and y_train in data_X and data_y parameter
-    data_X = X_train
-    data_y = y_train
+    data_X = X_train.copy()
+    data_y = y_train.copy()
+    
+    #reset index
+    data_X.reset_index(drop=True, inplace=True)
+    data_y.reset_index(drop=True, inplace=True)
   
     #general dependencies
     import numpy as np
@@ -783,7 +788,6 @@ def create_model(estimator = None,
         MONITOR UPDATE ENDS
         '''
     
-        
         Xtrain,Xtest = data_X.iloc[train_i], data_X.iloc[test_i]
         ytrain,ytest = data_y.iloc[train_i], data_y.iloc[test_i]
     
@@ -922,13 +926,20 @@ def create_model(estimator = None,
     model_results = model_results.append(model_avgs)
     model_results = model_results.round(round)
     
+    #refitting the model on complete X_train, y_train
+    monitor.iloc[1,1:] = 'Compiling Final Model'
+    update_display(monitor, display_id = 'monitor')
+    
+    model.fit(data_X, data_y)
+    
+    progress.value += 1
+    
     #storing into experiment
     tup = (full_name,model)
     experiment__.append(tup)
     nam = str(full_name) + ' Score Grid'
     tup = (nam, model_results)
     experiment__.append(tup)
-    
     
     if verbose:
         clear_output()
@@ -1064,7 +1075,7 @@ def ensemble_model(estimator,
     from IPython.display import display, HTML, clear_output, update_display
     
     #progress bar
-    progress = ipw.IntProgress(value=0, min=0, max=fold+3, step=1 , description='Processing: ')
+    progress = ipw.IntProgress(value=0, min=0, max=fold+4, step=1 , description='Processing: ')
     master_display = pd.DataFrame(columns=['Accuracy','AUC','Recall', 'Prec.', 'F1', 'Kappa'])
     display(progress)
     
@@ -1090,10 +1101,14 @@ def ensemble_model(estimator,
     import warnings
     warnings.filterwarnings('ignore')    
     
-    #Storing X_train and y_train in data_X and data_y parameter  
-    data_X = X_train
-    data_y = y_train
-      
+    #Storing X_train and y_train in data_X and data_y parameter
+    data_X = X_train.copy()
+    data_y = y_train.copy()
+    
+    #reset index
+    data_X.reset_index(drop=True, inplace=True)
+    data_y.reset_index(drop=True, inplace=True)
+    
     progress.value += 1
     
     #defining estimator as model
@@ -1305,7 +1320,15 @@ def ensemble_model(estimator,
     
     progress.value += 1
     
-    model = model
+    #refitting the model on complete X_train, y_train
+    
+    #refitting the model on complete X_train, y_train
+    monitor.iloc[1,1:] = 'Compiling Final Model'
+    update_display(monitor, display_id = 'monitor')
+    
+    model.fit(data_X, data_y)
+    
+    progress.value += 1
     
     #storing into experiment
     model_name = str(model).split("(")[0]
@@ -1768,9 +1791,6 @@ def plot_model(estimator,
         plt.ylabel('Features')
         progress.value += 1
         clear_output()
-        #var_imp = sorted_df.reset_index(drop=True)
-        #var_imp_array = np.array(var_imp['Variable'])
-        #var_imp_array_top_n = var_imp_array[0:len(var_imp_array)]
     
     elif plot == 'parameter':
         
@@ -1880,6 +1900,8 @@ def compare_models(blacklist = None,
       
     - If target variable is multiclass (more than 2 classes), AUC will be returned as
       zero (0.0)
+      
+    - This function doesn't return model object.
            
     
     """
@@ -2528,7 +2550,7 @@ def tune_model(estimator = None,
     from IPython.display import display, HTML, clear_output, update_display
     
     #progress bar
-    progress = ipw.IntProgress(value=0, min=0, max=fold+5, step=1 , description='Processing: ')
+    progress = ipw.IntProgress(value=0, min=0, max=fold+6, step=1 , description='Processing: ')
     master_display = pd.DataFrame(columns=['Accuracy','AUC','Recall', 'Prec.', 'F1', 'Kappa'])
     display(progress)    
     
@@ -2554,9 +2576,13 @@ def tune_model(estimator = None,
     warnings.filterwarnings('ignore')    
 
     #Storing X_train and y_train in data_X and data_y parameter
-    data_X = X_train
-    data_y = y_train
-
+    data_X = X_train.copy()
+    data_y = y_train.copy()
+    
+    #reset index
+    data_X.reset_index(drop=True, inplace=True)
+    data_y.reset_index(drop=True, inplace=True)
+    
     progress.value += 1
             
     #general dependencies
@@ -3247,6 +3273,13 @@ def tune_model(estimator = None,
 
     progress.value += 1
     
+    #refitting the model on complete X_train, y_train
+    monitor.iloc[1,1:] = 'Compiling Final Model'
+    update_display(monitor, display_id = 'monitor')
+    
+    best_model.fit(data_X, data_y)
+    
+    progress.value += 1
     
     #storing into experiment
     model_name = 'Tuned ' + str(model).split("(")[0]
@@ -3409,7 +3442,7 @@ def blend_models(estimator_list = 'All',
     from IPython.display import display, HTML, clear_output, update_display
     
     #progress bar
-    progress = ipw.IntProgress(value=0, min=0, max=fold+3, step=1 , description='Processing: ')
+    progress = ipw.IntProgress(value=0, min=0, max=fold+4, step=1 , description='Processing: ')
     master_display = pd.DataFrame(columns=['Accuracy','AUC','Recall', 'Prec.', 'F1', 'Kappa'])
     display(progress)
     
@@ -3438,8 +3471,12 @@ def blend_models(estimator_list = 'All',
     import re
     
     #Storing X_train and y_train in data_X and data_y parameter
-    data_X = X_train
-    data_y = y_train
+    data_X = X_train.copy()
+    data_y = y_train.copy()
+    
+    #reset index
+    data_X.reset_index(drop=True, inplace=True)
+    data_y.reset_index(drop=True, inplace=True)
     
     progress.value += 1
     
@@ -3575,7 +3612,11 @@ def blend_models(estimator_list = 'All',
         estimator_list_ = set(estimator_list_)
         estimator_list_ = list(estimator_list_)
     
-        model = VotingClassifier(estimators=estimator_list_, voting=voting, n_jobs=-1)
+        try:
+            model = VotingClassifier(estimators=estimator_list_, voting=voting, n_jobs=-1)
+            model.fit(Xtrain,ytrain)
+        except:
+            model = VotingClassifier(estimators=estimator_list_, voting=voting)
     
     progress.value += 1
     
@@ -3746,6 +3787,14 @@ def blend_models(estimator_list = 'All',
     
     progress.value += 1
     
+    #refitting the model on complete X_train, y_train
+    monitor.iloc[1,1:] = 'Compiling Final Model'
+    update_display(monitor, display_id = 'monitor')
+    
+    model.fit(data_X, data_y)
+    
+    progress.value += 1
+    
     #storing into experiment
     model_name = 'Voting Classifier'
     tup = (model_name,model)
@@ -3770,6 +3819,7 @@ def stack_models(estimator_list,
                  method = 'hard', 
                  restack = False, 
                  plot = False,
+                 finalize = False,
                  verbose = True):
     
     """
@@ -3846,11 +3896,14 @@ def stack_models(estimator_list,
     Warnings:
     ---------
     
-    - 'svm' and 'ridge' doesn't support predict_proba method and hence when stacking
-       estimator list that contains 'svm' or 'ridge', method param can only be 'hard'.
+    -  When method is forced to be 'soft' and estimator_list param includes estimators
+       that donot support predict_proba method such as 'svm' or 'ridge', predict value
+       for those specific estimators only are used instead of probability when building
+       meta_model. The same rule applies when stacker is used under predict_model() 
+       function.
         
-    - If target variable is multiclass (more than 2 classes), AUC will be returned as
-      zero (0.0)     
+    -  If target variable is multiclass (more than 2 classes), AUC will be returned as
+       zero (0.0)     
           
     """
     
@@ -3859,6 +3912,9 @@ def stack_models(estimator_list,
     ERROR HANDLING STARTS HERE
     
     '''
+    
+    #testing
+    #no active tests
     
     #exception checking   
     import sys
@@ -3871,7 +3927,7 @@ def stack_models(estimator_list,
     #checking meta model
     if meta_model is not None:
         if 'sklearn' not in str(type(meta_model)) and 'CatBoostClassifier' not in str(type(meta_model)):
-            sys.exit("(Value Error): estimator_list parameter only trained model object")
+            sys.exit("(Value Error): estimator_list parameter only accepts trained model object")
     
     #checking fold parameter
     if type(fold) is not int:
@@ -3955,13 +4011,47 @@ def stack_models(estimator_list,
     else:
         meta_model = meta_model
     
+    #defining data_X and data_y
+    if finalize:
+        data_X = X.copy()
+        data_y = y.copy()
+    else:       
+        data_X = X_train.copy()
+        data_y = y_train.copy()
+        
+    #reset index
+    data_X.reset_index(drop=True,inplace=True)
+    data_y.reset_index(drop=True,inplace=True)
+    
+    #models_ for appending
+    models_ = []
+    
     #defining model_library model names
     model_names = np.zeros(0)
     for item in estimator_list:
         model_names = np.append(model_names, str(item).split("(")[0])
+     
+    model_names_fixed = []
+    
+    for i in model_names:
+        if 'CatBoostClassifier' in i:
+            a = 'CatBoostClassifier'
+            model_names_fixed.append(a)
+        else:
+            model_names_fixed.append(i)
+            
+    model_names = model_names_fixed
+    
+    model_names_fixed = []
+    
+    counter = 0
+    for i in model_names:
+        s = str(i) + '_' + str(counter)
+        model_names_fixed.append(s)
+        counter += 1
     
     base_array = np.zeros((0,0))
-    base_prediction = pd.DataFrame(y_train)
+    base_prediction = pd.DataFrame(data_y) #changed to data_y
     base_prediction = base_prediction.reset_index(drop=True)
     
     counter = 0
@@ -3979,11 +4069,21 @@ def stack_models(estimator_list,
         MONITOR UPDATE ENDS
         '''
         
+        #fitting and appending
+        model.fit(data_X, data_y)
+        models_.append(model)
+        
         progress.value += 1
         
-        base_array = cross_val_predict(model,X_train,y_train,cv=fold, method=predict_method)
+        try:
+            base_array = cross_val_predict(model,data_X,data_y,cv=fold, method=predict_method)
+        except:
+            base_array = cross_val_predict(model,data_X,data_y,cv=fold, method='predict')
         if method == 'soft':
-            base_array = base_array[:,1]
+            try:
+                base_array = base_array[:,1]
+            except:
+                base_array = base_array
         elif method == 'hard':
             base_array = base_array
         base_array_df = pd.DataFrame(base_array)
@@ -3994,29 +4094,30 @@ def stack_models(estimator_list,
         
     #defining column names now
     target_col_name = np.array(base_prediction.columns[0])
-    model_names = np.append(target_col_name, model_names)
+    model_names = np.append(target_col_name, model_names_fixed) #added fixed here
     base_prediction.columns = model_names #defining colum names now
     
     #defining data_X and data_y dataframe to be used in next stage.
     
+    #drop column from base_prediction
+    base_prediction.drop(base_prediction.columns[0],axis=1,inplace=True)
+    
     if restack:
-        data_X_ = X_train
-        data_X_ = data_X_.reset_index(drop=True)
-        data_X = base_prediction.drop(base_prediction.columns[0],axis=1)
-        data_X = pd.concat([data_X_,data_X],axis=1)
+        data_X = pd.concat([data_X, base_prediction], axis=1)
         
-    elif restack == False:
-        data_X = base_prediction.drop(base_prediction.columns[0],axis=1)
-        
-    data_y = base_prediction[base_prediction.columns[0]]
+    else:
+        data_X = base_prediction
     
     #Correlation matrix of base_prediction
     base_prediction_cor = base_prediction.drop(base_prediction.columns[0],axis=1)
     base_prediction_cor = base_prediction_cor.corr()
     
     #Meta Modeling Starts Here
-    
     model = meta_model #this defines model to be used below as model = meta_model (as captured above)
+    
+    #appending in models
+    model.fit(data_X, data_y)
+    models_.append(model)
     
     kf = StratifiedKFold(fold, random_state=seed) #capturing fold requested by user
 
@@ -4058,8 +4159,12 @@ def stack_models(estimator_list,
         ytrain,ytest = data_y.iloc[train_i], data_y.iloc[test_i]
 
         model.fit(Xtrain,ytrain)
-        pred_prob = model.predict_proba(Xtest)
-        pred_prob = pred_prob[:,1]
+        
+        try:
+            pred_prob = model.predict_proba(Xtest)
+            pred_prob = pred_prob[:,1]
+        except:
+            pass
         pred_ = model.predict(Xtest)
         sca = metrics.accuracy_score(ytest,pred_)
         try: 
@@ -4179,16 +4284,12 @@ def stack_models(estimator_list,
     
     progress.value += 1
     
-    models = []
-    for i in estimator_list:
-        models.append(i)
-    
-    models.append(meta_model)
-    
+    #appending method into models_
+    models_.append(method)
     
     #storing into experiment
     model_name = 'Stacking Classifier (Single Layer)'
-    tup = (model_name,models)
+    tup = (model_name,models_)
     experiment__.append(tup)
     nam = str(model_name) + ' Score Grid'
     tup = (nam, model_results)
@@ -4202,10 +4303,10 @@ def stack_models(estimator_list,
     if verbose:
         clear_output()
         display(model_results)
-        return models
+        return models_
     else:
         clear_output()
-        return models
+        return models_
 
 def create_stacknet(estimator_list,
                     meta_model = None,
@@ -4213,6 +4314,7 @@ def create_stacknet(estimator_list,
                     round = 4,
                     method = 'hard',
                     restack = False,
+                    finalize = False,
                     verbose = True):
     
     """
@@ -4282,11 +4384,14 @@ def create_stacknet(estimator_list,
     Warnings:
     ---------
     
-    - 'svm' and 'ridge' doesn't support predict_proba method and hence when stacking
-       estimator list that contains 'svm' or 'ridge', method param can only be 'hard'.
+    -  When method is forced to be 'soft' and estimator_list param includes estimators
+       that donot support predict_proba method such as 'svm' or 'ridge', predict value
+       for those specific estimators only are used instead of probability when building
+       meta_model. The same rule applies when stacker is used under predict_model() 
+       function.
     
-    - If target variable is multiclass (more than 2 classes), AUC will be returned as
-      zero (0.0)
+    -  If target variable is multiclass (more than 2 classes), AUC will be returned as
+       zero (0.0)
     
     """
 
@@ -4297,6 +4402,9 @@ def create_stacknet(estimator_list,
     ERROR HANDLING STARTS HERE
     
     '''
+    
+    #testing
+    #no active tests
     
     #exception checking   
     import sys
@@ -4368,6 +4476,9 @@ def create_stacknet(estimator_list,
     import warnings
     warnings.filterwarnings('ignore') 
     
+    #models_ list
+    models_ = []
+    
     #general dependencies
     import numpy as np
     from sklearn import metrics
@@ -4376,14 +4487,31 @@ def create_stacknet(estimator_list,
 
     progress.value += 1
     
-    #global base_array_df
-    #global base_level_names, base_level
     base_level = estimator_list[0]
     base_level_names = []
     
     #defining base_level_names
     for item in base_level:
-            base_level_names = np.append(base_level_names, str(item).split("(")[0])
+        base_level_names = np.append(base_level_names, str(item).split("(")[0])
+        
+    base_level_fixed = []
+    
+    for i in base_level_names:
+        if 'CatBoostClassifier' in i:
+            a = 'CatBoostClassifier'
+            base_level_fixed.append(a)
+    else:
+        base_level_fixed.append(i)
+        
+    base_level_fixed_2 = []
+    
+    counter = 0
+    for i in base_level_names:
+        s = str(i) + '_' + 'BaseLevel_' + str(counter)
+        base_level_fixed_2.append(s)
+        counter += 1
+    
+    base_level_fixed = base_level_fixed_2
     
     inter_level = estimator_list[1:]
     inter_level_names = []
@@ -4394,12 +4522,20 @@ def create_stacknet(estimator_list,
             inter_level_names = np.append(inter_level_names, str(m).split("(")[0])    
     
     #defining data_X and data_y
-    data_X = X_train
-    data_y = y_train
+    if finalize:
+        data_X = X.copy()
+        data_y = y.copy()
+    else:       
+        data_X = X_train.copy()
+        data_y = y_train.copy()
+    
+    #reset index
+    data_X.reset_index(drop=True, inplace=True)
+    data_y.reset_index(drop=True, inplace=True)
     
     #defining meta model
     
-    if meta_model == None:
+    if meta_model is None:
         from sklearn.linear_model import LogisticRegression
         meta_model = LogisticRegression()
     else:
@@ -4411,15 +4547,18 @@ def create_stacknet(estimator_list,
     elif method == 'hard':
         predict_method = 'predict'
         
-        
     base_array = np.zeros((0,0))
     base_array_df = pd.DataFrame()
-    base_prediction = pd.DataFrame(y_train)
+    base_prediction = pd.DataFrame(data_y) #change to data_y
     base_prediction = base_prediction.reset_index(drop=True)
     
     base_counter = 0
     
+    base_models_ = []
+    
     for model in base_level:
+        
+        base_models_.append(model.fit(data_X,data_y)) #changed to data_X and data_y
         
         '''
         MONITOR UPDATE STARTS
@@ -4433,29 +4572,40 @@ def create_stacknet(estimator_list,
         '''
         
         progress.value += 1
-                     
-        base_array = cross_val_predict(model,X_train,y_train,cv=fold, method=predict_method)
+        
         if method == 'soft':
-            base_array = base_array[:,1]
-        elif method == 'hard':
-            base_array = base_array
+            try:
+                base_array = cross_val_predict(model,data_X,data_y,cv=fold, method=predict_method)
+                base_array = base_array[:,1]
+            except:
+                base_array = cross_val_predict(model,data_X,data_y,cv=fold, method='predict')
+        else:
+            base_array = cross_val_predict(model,data_X,data_y,cv=fold, method='predict')
+            
         base_array = pd.DataFrame(base_array)
         base_array_df = pd.concat([base_array_df, base_array], axis=1)
         base_array = np.empty((0,0))  
         
-        base_counter += 1
         
-        #changing column names to avoid xgboost failure
-        name_col = []
-        for i in range(0,len(base_array_df.columns)):
-            n = 'model_' + str(i)
-            name_col.append(n)
+        
+        base_counter += 1
             
-        base_array_df.columns = name_col
-            
+    base_array_df.columns = base_level_fixed
+    
+    if restack:
+        base_array_df = pd.concat([data_X,base_array_df], axis=1)
+        
+    early_break = base_array_df.copy()
+    
+    
+    models_.append(base_models_)
+    
     inter_counter = 0
     
     for level in inter_level:
+        inter_inner = []
+        model_counter = 0
+        inter_array_df = pd.DataFrame()
         
         for model in level:
             
@@ -4469,32 +4619,58 @@ def create_stacknet(estimator_list,
             '''
             MONITOR UPDATE ENDS
             '''
-        
-            base_array = cross_val_predict(model,base_array_df,base_prediction,cv=fold, method=predict_method)
+            
+            model = model.fit(X = base_array_df, y = data_y) #changed to data_y
+            inter_inner.append(model)
+            
             if method == 'soft':
-                base_array = base_array[:,1]
-            elif method == 'hard':
-                base_array = base_array
+                try:
+                    base_array = cross_val_predict(model, X = base_array_df, y = data_y, cv=fold, method=predict_method)
+                    base_array = base_array[:,1]
+                except:
+                    base_array = cross_val_predict(model, X = base_array_df, y = data_y, cv=fold, method='predict')
+                    
+            
+            else:
+                base_array = cross_val_predict(model, X = base_array_df, y = data_y, cv=fold, method='predict')
+                
             base_array = pd.DataFrame(base_array)
-            base_array_df = pd.concat([base_array, base_array_df], axis=1)
+            
+            """
+            defining columns
+            """
+            
+            col = str(model).split("(")[0]
+            if 'CatBoostClassifier' in col:
+                col = 'CatBoostClassifier'
+            col = col + '_InterLevel_' + str(inter_counter) + '_' + str(model_counter)
+            base_array.columns = [col]
+            
+            """
+            defining columns end here
+            """
+            
+            inter_array_df = pd.concat([inter_array_df, base_array], axis=1)
             base_array = np.empty((0,0))
             
-            #changing column names to avoid xgboost failure
-            name_col = []
-            for i in range(0,len(base_array_df.columns)):
-                n = 'model_' + str(i)
-                name_col.append(n)
+            model_counter += 1
             
-            base_array_df.columns = name_col
+        base_array_df = pd.concat([base_array_df,inter_array_df], axis=1)
             
-            inter_counter += 1
-        
-        if restack == False:
-            base_array_df = base_array_df.iloc[:,:len(level)]
-        else:
-            base_array_df = base_array_df
+        models_.append(inter_inner)
     
+        if restack == False:
+            i = base_array_df.shape[1] - len(level)
+            base_array_df = base_array_df.iloc[:,i:]
+        
+        inter_counter += 1
+        
     model = meta_model
+    
+    #redefine data_X and data_y
+    data_X = base_array_df.copy()
+    
+    meta_model_ = model.fit(data_X,data_y)
     
     kf = StratifiedKFold(fold, random_state=seed) #capturing fold requested by user
 
@@ -4532,8 +4708,11 @@ def create_stacknet(estimator_list,
         ytrain,ytest = data_y.iloc[train_i], data_y.iloc[test_i]
         
         model.fit(Xtrain,ytrain)
-        pred_prob = model.predict_proba(Xtest)
-        pred_prob = pred_prob[:,1]
+        try:
+            pred_prob = model.predict_proba(Xtest)
+            pred_prob = pred_prob[:,1]
+        except:
+            pass
         pred_ = model.predict(Xtest)
         sca = metrics.accuracy_score(ytest,pred_)
         try:
@@ -4649,12 +4828,12 @@ def create_stacknet(estimator_list,
     
     progress.value += 1
         
-    models_ = []
     
-    for i in estimator_list:
-        models_.append(i)
+    #appending meta_model into models_
+    models_.append(meta_model_)
         
-    models_.append(meta_model)
+    #appending method into models_
+    models_.append([str(method)])
     
     #storing into experiment
     model_name = 'Stacking Classifier (Multi Layer)'
@@ -4743,7 +4922,7 @@ def automl(qualifier = 5,
        
     """
     #for testing only
-    #global master_unpack, mix, mix_names, mix_orignal, mix_names_orignal, master_results, master, master_display, top_n_model_names, top_n_model_results, master_unpack
+    #no active tests
     
     #base dependencies
     from IPython.display import clear_output, update_display
@@ -4788,7 +4967,7 @@ def automl(qualifier = 5,
     
     #master collector
     #This is being used for appending throughout the process
-    #global master, master_results, master_display, progress
+    
     master = []
     master_results = pd.DataFrame(columns=['Model', 'Accuracy','AUC','Recall', 'Prec.', 'F1', 'Kappa'])
     master_display = pd.DataFrame(columns=['Model', 'Accuracy','AUC','Recall', 'Prec.', 'F1', 'Kappa']) 
@@ -4855,10 +5034,17 @@ def automl(qualifier = 5,
     import warnings
     warnings.filterwarnings('ignore') 
 
-    #defining X_train and y_train
-    data_X = X_train
-    data_y=y_train
+    #Storing X_train and y_train in data_X and data_y parameter
+    data_X = X_train.copy()
+    data_y = y_train.copy()
+    data_X_original = X_train.copy()
+    data_y_original = y_train.copy()
     
+    #reset index
+    data_X.reset_index(drop=True, inplace=True)
+    data_y.reset_index(drop=True, inplace=True)
+    data_X_original.reset_index(drop=True, inplace=True)
+    data_y_original.reset_index(drop=True, inplace=True)
     
     '''
     MONITOR UPDATE STARTS
@@ -6585,8 +6771,14 @@ def automl(qualifier = 5,
         voting_counter += 1
         
         estimator_list = zip(j, i)
-        estimator_list = list(estimator_list)    
-        model = VotingClassifier(estimators=estimator_list, voting='hard', n_jobs=-1)
+        estimator_list = list(estimator_list) 
+        
+        try:
+            model = VotingClassifier(estimators=estimator_list, voting='hard', n_jobs=-1)
+            model.fit(Xtrain,ytrain)
+        except:
+            model = VotingClassifier(estimators=estimator_list, voting='hard')
+            
         top_n_voting_models.append(model)
     
         #setting cross validation
@@ -6725,18 +6917,18 @@ def automl(qualifier = 5,
     This is equivalent to stack_models()
 
     '''    
-        
+    
     top_n_stacking_models = []
     top_n_stacking_model_results = pd.DataFrame(columns=['Model', 'Accuracy','AUC','Recall', 'Prec.', 'F1', 'Kappa'])
-    
-    meta_model = LogisticRegression()
-    
+       
     #PROGRESS # 31 : Meta Model Defined for Stacking
     progress.value += 1
 
     stack_counter = 1
     
     for i in mix:
+        
+        stacker = []
             
         '''
         MONITOR UPDATE STARTS
@@ -6756,34 +6948,56 @@ def automl(qualifier = 5,
         progress.value += 1
         
         estimator_list = i
-        top_n_stacking_models.append(i)
         
-        #defining model_library model names
+        for model in estimator_list:
+            model.fit(data_X_original,data_y_original)
+            stacker.append(model)
+
+        #defining model_library model names        
         model_names = np.zeros(0)
         for item in estimator_list:
             model_names = np.append(model_names, str(item).split("(")[0])
+            
+        model_names_fixed = []
+    
+        for i in model_names:
+            if 'CatBoostClassifier' in i:
+                a = 'CatBoostClassifier'
+                model_names_fixed.append(a)
+            else:
+                model_names_fixed.append(i)
+
+        model_names = model_names_fixed
+
+        model_names_fixed = []
+
+        counter = 0
+        for i in model_names:
+            s = str(i) + '_' + str(counter)
+            model_names_fixed.append(s)
+            counter += 1
     
         base_array = np.zeros((0,0))
-        base_prediction = pd.DataFrame(y_train)
+        base_prediction = pd.DataFrame(data_y_original)
         base_prediction = base_prediction.reset_index(drop=True)
     
         for model in estimator_list:
-            base_array = cross_val_predict(model,X_train,y_train,cv=fold, method='predict')
-            base_array = base_array
+            base_array = cross_val_predict(model,data_X_original,data_y_original,cv=fold, method='predict')
             base_array_df = pd.DataFrame(base_array)
             base_prediction = pd.concat([base_prediction,base_array_df],axis=1)
             base_array = np.empty((0,0))
         
+        
         #defining column names now
         target_col_name = np.array(base_prediction.columns[0])
-        model_names = np.append(target_col_name, model_names)
-        base_prediction.columns = model_names #defining colum names now
-        data_X = base_prediction.drop(base_prediction.columns[0],axis=1)
-        data_y = base_prediction[base_prediction.columns[0]]
-
+        model_names = np.append(target_col_name, model_names_fixed)
+        base_prediction.columns = model_names #defining colum names now #added model_names_fixed here
+        base_prediction_X = base_prediction.drop(base_prediction.columns[0],axis=1)
+        data_y_final = base_prediction[base_prediction.columns[0]]
+        data_X_final = pd.concat([data_X_original, base_prediction_X], axis=1)
+        
+        
         #Meta Modeling Starts Here
-
-        model = meta_model 
         
         kf = StratifiedKFold(fold, random_state=seed)
 
@@ -6802,7 +7016,7 @@ def automl(qualifier = 5,
         
         fold_num = 1
         
-        for train_i , test_i in kf.split(data_X,data_y):
+        for train_i , test_i in kf.split(data_X_final,data_y_final):
             
             #PROGRESS # 33 : Loop Counter (xfold)
             progress.value += 1
@@ -6820,13 +7034,15 @@ def automl(qualifier = 5,
             MONITOR UPDATE ENDS
             '''  
 
-            Xtrain,Xtest = data_X.iloc[train_i], data_X.iloc[test_i]
-            ytrain,ytest = data_y.iloc[train_i], data_y.iloc[test_i]
-
-            model.fit(Xtrain,ytrain)
-            pred_prob = model.predict_proba(Xtest)
+            Xtrain,Xtest = data_X_final.iloc[train_i], data_X_final.iloc[test_i]
+            ytrain,ytest = data_y_final.iloc[train_i], data_y_final.iloc[test_i]
+            
+            meta_model = LogisticRegression()
+            
+            meta_model.fit(Xtrain,ytrain)
+            pred_prob = meta_model.predict_proba(Xtest)
             pred_prob = pred_prob[:,1]
-            pred_ = model.predict(Xtest)
+            pred_ = meta_model.predict(Xtest)
             sca = metrics.accuracy_score(ytest,pred_)
             try:
                 sc = metrics.roc_auc_score(ytest,pred_prob)
@@ -6914,7 +7130,15 @@ def automl(qualifier = 5,
         avg_kappa = np.empty((0,0))
         
         top_n_stacking_model_results = pd.concat([top_n_stacking_model_results, model_results],ignore_index=True)
-        top_n_stacking_model_results = top_n_stacking_model_results.round(round)  
+        top_n_stacking_model_results = top_n_stacking_model_results.round(round)
+        
+        #model = meta_model fitting
+        #meta_model = LogisticRegression()
+        #meta_model.fit(data_X_final,data_y_final)
+        stacker.append(meta_model)
+        stacker.append('hard')
+        
+        top_n_stacking_models.append(stacker)
 
     master_results = master_results.append(top_n_stacking_model_results)
     master_results = master_results.reset_index(drop=True)
@@ -6945,7 +7169,6 @@ def automl(qualifier = 5,
     MONITOR UPDATE ENDS
     '''
 
-    #global master_final
     master_final = []
     for i in master:
         for k in i:
@@ -6967,6 +7190,13 @@ def automl(qualifier = 5,
     ''' 
     best_model_position = master_results.sort_values(by=sort,ascending=False).index[0]
     best_model = master[best_model_position]
+    
+    #fitting best model on entire dataset
+    
+    try:
+        best_model.fit(data_X_original, data_y_original)
+    except:
+        pass
 
     def highlight_max(s):
         is_max = s == s.max()
@@ -6997,7 +7227,6 @@ def automl(qualifier = 5,
     clear_output()    
     display(master_display_)
     return best_model
-
 def interpret_model(estimator,
                    plot = 'summary',
                    feature = None, 
@@ -7068,8 +7297,6 @@ def interpret_model(estimator,
     Error Checking starts here
     
     '''
-    
-    #global model_name
     
     import sys
     
@@ -7202,325 +7429,6 @@ def interpret_model(estimator,
                 shap.initjs()
                 return shap.force_plot(explainer.expected_value, shap_values[row_to_show,:], X_test.iloc[row_to_show,:])
 
-def evaluate_model(estimator):
-    
-    """
-          
-    Description:
-    ------------
-    This function displays user interface for all the available plots for 
-    a given estimator. It internally uses plot_model() function. 
-    
-        Example:
-        --------
-        
-        dt = create_model('dt')
-        evaluate_model(dt)
-        
-        This will display the User Interface for all the plots for given
-        estimator, in this case decision tree passed as 'dt'.
-
-    Parameters
-    ----------
-
-    estimator : object, default = none
-    A trained model object should be passed as an estimator. 
-
-    Returns:
-    --------
-
-    User Interface:  Displays the user interface for plotting.
-    --------------
-
-    Warnings:
-    ---------
-    None    
-       
-         
-    """
-        
-        
-    from ipywidgets import widgets
-    from ipywidgets.widgets import interact, fixed, interact_manual
-
-    a = widgets.ToggleButtons(
-                            options=[('Hyperparameters', 'parameter'),
-                                     ('AUC', 'auc'), 
-                                     ('Confusion Matrix', 'confusion_matrix'), 
-                                     ('Threshold', 'threshold'),
-                                     ('Precision Recall', 'pr'),
-                                     ('Error', 'error'),
-                                     ('Class Report', 'class_report'),
-                                     ('Feature Selection', 'rfe'),
-                                     ('Learning Curve', 'learning'),
-                                     ('Manifold Learning', 'manifold'),
-                                     ('Calibration Curve', 'calibration'),
-                                     ('Validation Curve', 'vc'),
-                                     ('Dimensions', 'dimension'),
-                                     ('Feature Importance', 'feature'),
-                                     ('Decision Boundary', 'boundary')
-                                    ],
-
-                            description='Plot Type:',
-
-                            disabled=False,
-
-                            button_style='', # 'success', 'info', 'warning', 'danger' or ''
-
-                            icons=['']
-    )
-    
-  
-    d = interact(plot_model, estimator = fixed(estimator), plot = a)
-
-
-def finalize_model(estimator):
-    
-    """
-          
-    Description:
-    ------------
-    This function fits the estimator on complete dataset as passed into setup() 
-    stage. The purpose of this function is to prepare for deployment. After 
-    experimentation, one should be able to choose the final model for deployment.
-    
-        Example:
-        --------
-        
-        dt = create_model('dt')
-        model_for_deployment = finalize_model(dt)
-        
-        This will return the final model object fitted to complete dataset. 
-
-    Parameters
-    ----------
-
-    estimator : object, default = none
-    A trained model object should be passed as an estimator. 
-    Model must be created using any function in pycaret that returns trained model
-    object. 
-
-    Returns:
-    --------
-
-    Model:  Trained model object fitted on complete dataset.
-    ------   
-
-    Warnings:
-    ---------
-    None    
-       
-         
-    """
-        
-    
-    model = estimator.fit(X,y)
-    
-    #storing into experiment
-    model_name = str(estimator).split("(")[0]
-    model_name = 'Final ' + model_name
-    tup = (model_name,model)
-    experiment__.append(tup)
-    
-    return model
-
-def save_model(model, model_name):
-    
-    """
-          
-    Description:
-    ------------
-    This function saves the trained model object in current active directory
-    as a pickle file for later use. 
-    
-        Example:
-        --------
-        
-        lr = create_model('lr')
-        save_model(lr, 'lr_model_23122019')
-        
-        This will save the model as binary pickle file in current directory. 
-
-    Parameters
-    ----------
-
-    model : object, default = none
-    A trained model object should be passed as an estimator. 
-    
-    model_name : string, default = none
-    Name of pickle file to be passed as a string.
-
-    Returns:
-    --------    
-    Success Message
-    
-
-    Warnings:
-    ---------
-    None    
-       
-         
-    """
-    
-    import joblib
-    model_name = model_name + '.pkl'
-    joblib.dump(model, model_name)
-    print('Model Succesfully Saved')
-
-def load_model(model_name):
-    
-    """
-          
-    Description:
-    ------------
-    This function loads the prior saved model from current active directory into
-    current python notebook. Load object must be a pickle file.
-    
-        Example:
-        --------
-        
-        saved_lr = load_model('lr_model_23122019')
-        
-        This will call the trained model in saved_lr variable using model_name param.
-        The file must be in current directory.
-
-    Parameters
-    ----------
-    
-    model_name : string, default = none
-    Name of pickle file to be passed as a string.
-
-    Returns:
-    --------    
-    Success Message
-    
-
-    Warnings:
-    ---------
-    None    
-       
-         
-    """
-        
-        
-    import joblib
-    model_name = model_name + '.pkl'
-    print('Model Sucessfully Loaded')
-    return joblib.load(model_name)
-
-def save_experiment(experiment_name=None):
-    
-        
-    """
-          
-    Description:
-    ------------
-    This function saves the entire experiment in current active directory. All 
-    the outputs using pycaret are internally saved into a binary list which is
-    pickilized when save_experiment() is used. 
-    
-        Example:
-        --------
-        
-        save_experiment()
-        
-        This will save the entire experiment in current active directory. By 
-        default name of experiment will use session_id generated during setup().
-        To use custom name, experiment_name param has to be passed as string.
-        
-        For example:
-        
-        save_experiment('experiment_23122019')
-
-    Parameters
-    ----------
-    
-    experiment_name : string, default = none
-    Name of pickle file to be passed as a string.
-
-    Returns:
-    --------    
-    Success Message
-    
-
-    Warnings:
-    ---------
-    None    
-       
-         
-    """
-    
-    #general dependencies
-    import joblib
-    global experiment__
-    
-    #defining experiment name
-    if experiment_name is None:
-        experiment_name = 'experiment_' + str(seed)
-        
-    else:
-        experiment_name = experiment_name  
-        
-    experiment_name = experiment_name + '.pkl'
-    joblib.dump(experiment__, experiment_name)
-    
-    print('Experiment Succesfully Saved')
-
-def load_experiment(experiment_name):
-    
-    """
-          
-    Description:
-    ------------
-    This function loads the prior saved experiment from current active directory 
-    into current python notebook. Load object must be a pickle file.
-    
-        Example:
-        --------
-        
-        saved_experiment = load_experiment('experiment_23122019')
-        
-        This will load the entire experiment pipeline into object saved_experiment
-        using experiment_name param. The experiment file must be in current directory.
-        
-        
-    Parameters
-    ----------
-    
-    experiment_name : string, default = none
-    Name of pickle file to be passed as a string.
-
-    Returns:
-    --------    
-    Information Grid containing details of saved objects in experiment pipeline.
-    
-
-    Warnings:
-    ---------
-    None    
-       
-         
-    """
-    
-    #general dependencies
-    import joblib
-    import pandas as pd
-    
-    experiment_name = experiment_name + '.pkl'
-    temp = joblib.load(experiment_name)
-    
-    name = []
-    exp = []
-
-    for i in temp:
-        name.append(i[0])
-        exp.append(i[-1])
-
-    ind = pd.DataFrame(name, columns=['Object'])
-    display(ind)
-
-    return exp
-
 def calibrate_model(estimator,
                     method = 'sigmoid',
                     fold=10,
@@ -7556,8 +7464,8 @@ def calibrate_model(estimator,
     estimator : object
     
     method : string, default = 'sigmoid'
-    The method to use for calibration. Can be 'sigmoid' which corresponds to Platt's method
-    or 'isotonic' which is a non-parametric approach. It is not advised to use isotonic 
+    The method to use for calibration. Can be ‘sigmoid’ which corresponds to Platt’s method
+    or ‘isotonic’ which is a non-parametric approach. It is not advised to use isotonic 
     calibration with too few calibration samples
 
     fold: integer, default = 10
@@ -7639,7 +7547,7 @@ def calibrate_model(estimator,
     import datetime, time
         
     #progress bar
-    progress = ipw.IntProgress(value=0, min=0, max=fold+3, step=1 , description='Processing: ')
+    progress = ipw.IntProgress(value=0, min=0, max=fold+4, step=1 , description='Processing: ')
     master_display = pd.DataFrame(columns=['Accuracy','AUC','Recall', 'Prec.', 'F1', 'Kappa'])
     display(progress)
     
@@ -7661,8 +7569,12 @@ def calibrate_model(estimator,
     warnings.filterwarnings('ignore') 
     
     #Storing X_train and y_train in data_X and data_y parameter
-    data_X = X_train
-    data_y = y_train
+    data_X = X_train.copy()
+    data_y = y_train.copy()
+    
+    #reset index
+    data_X.reset_index(drop=True, inplace=True)
+    data_y.reset_index(drop=True, inplace=True)
   
     #general dependencies
     import numpy as np
@@ -7876,6 +7788,14 @@ def calibrate_model(estimator,
     model_results = model_results.append(model_avgs)
     model_results = model_results.round(round)
     
+    #refitting the model on complete X_train, y_train
+    monitor.iloc[1,1:] = 'Compiling Final Model'
+    update_display(monitor, display_id = 'monitor')
+    
+    model.fit(data_X, data_y)
+    
+    progress.value += 1
+    
     #storing into experiment
     tup = (full_name,model)
     experiment__.append(tup)
@@ -7891,6 +7811,795 @@ def calibrate_model(estimator,
     else:
         clear_output()
         return model
+
+def evaluate_model(estimator):
+    
+    """
+          
+    Description:
+    ------------
+    This function displays user interface for all the available plots for 
+    a given estimator. It internally uses plot_model() function. 
+    
+        Example:
+        --------
+        
+        dt = create_model('dt')
+        evaluate_model(dt)
+        
+        This will display the User Interface for all the plots for given
+        estimator, in this case decision tree passed as 'dt'.
+
+    Parameters
+    ----------
+
+    estimator : object, default = none
+    A trained model object should be passed as an estimator. 
+
+    Returns:
+    --------
+
+    User Interface:  Displays the user interface for plotting.
+    --------------
+
+    Warnings:
+    ---------
+    None    
+       
+         
+    """
+        
+        
+    from ipywidgets import widgets
+    from ipywidgets.widgets import interact, fixed, interact_manual
+
+    a = widgets.ToggleButtons(
+                            options=[('Hyperparameters', 'parameter'),
+                                     ('AUC', 'auc'), 
+                                     ('Confusion Matrix', 'confusion_matrix'), 
+                                     ('Threshold', 'threshold'),
+                                     ('Precision Recall', 'pr'),
+                                     ('Error', 'error'),
+                                     ('Class Report', 'class_report'),
+                                     ('Feature Selection', 'rfe'),
+                                     ('Learning Curve', 'learning'),
+                                     ('Manifold Learning', 'manifold'),
+                                     ('Calibration Curve', 'calibration'),
+                                     ('Validation Curve', 'vc'),
+                                     ('Dimensions', 'dimension'),
+                                     ('Feature Importance', 'feature'),
+                                     ('Decision Boundary', 'boundary')
+                                    ],
+
+                            description='Plot Type:',
+
+                            disabled=False,
+
+                            button_style='', # 'success', 'info', 'warning', 'danger' or ''
+
+                            icons=['']
+    )
+    
+  
+    d = interact(plot_model, estimator = fixed(estimator), plot = a)
+
+
+def finalize_model(estimator):
+    
+    """
+          
+    Description:
+    ------------
+    This function fits the estimator on complete dataset as passed into setup() 
+    stage. The purpose of this function is to prepare for deployment. After 
+    experimentation, one should be able to choose the final model for deployment.
+    
+        Example:
+        --------
+        
+        dt = create_model('dt')
+        model_for_deployment = finalize_model(dt)
+        
+        This will return the final model object fitted to complete dataset. 
+
+    Parameters
+    ----------
+
+    estimator : object, default = none
+    A trained model object should be passed as an estimator. 
+    Model must be created using any function in pycaret that returns trained model
+    object. 
+
+    Returns:
+    --------
+
+    Model:  Trained model object fitted on complete dataset.
+    ------   
+
+    Warnings:
+    ---------
+    None    
+       
+         
+    """
+        
+    if type(estimator) is list:
+        
+        if type(estimator[0]) is not list:
+            
+            """
+            Single Layer Stacker
+            """
+            
+            stacker_final = estimator.copy()
+            stack_method_final = stacker_final.pop()
+            stack_meta_final = stacker_final.pop()
+            
+            model_final = stack_models(estimator_list = stacker_final, 
+                                       meta_model = stack_meta_final, 
+                                       method = stack_method_final, 
+                                       finalize=True, 
+                                       verbose=False)
+            
+        else:
+            
+            """
+            multiple layer stacknet
+            """
+            
+            stacker_final = estimator.copy()
+            stack_method_final = stacker.pop()
+            stack_meta_final = stacker.pop()
+            
+            model_final = create_stacknet(estimator_list = stacker_final,
+                                          meta_model = stack_meta_final,
+                                          method = stack_method_final,
+                                          finalize = True,
+                                          verbose = False)
+
+    else:
+        model_final = estimator.fit(X,y)
+    
+    #storing into experiment
+    model_name = str(estimator).split("(")[0]
+    model_name = 'Final ' + model_name
+    tup = (model_name,model_final)
+    experiment__.append(tup)
+    
+    return model_final
+
+def save_model(model, model_name):
+    
+    """
+          
+    Description:
+    ------------
+    This function saves the trained model object in current active directory
+    as a pickle file for later use. 
+    
+        Example:
+        --------
+        
+        lr = create_model('lr')
+        save_model(lr, 'lr_model_23122019')
+        
+        This will save the model as binary pickle file in current directory. 
+
+    Parameters
+    ----------
+
+    model : object, default = none
+    A trained model object should be passed as an estimator. 
+    
+    model_name : string, default = none
+    Name of pickle file to be passed as a string.
+
+    Returns:
+    --------    
+    Success Message
+    
+
+    Warnings:
+    ---------
+    None    
+       
+         
+    """
+    
+    import joblib
+    model_name = model_name + '.pkl'
+    joblib.dump(model, model_name)
+    print('Model Succesfully Saved')
+
+def load_model(model_name):
+    
+    """
+          
+    Description:
+    ------------
+    This function loads the prior saved model from current active directory into
+    current python notebook. Load object must be a pickle file.
+    
+        Example:
+        --------
+        
+        saved_lr = load_model('lr_model_23122019')
+        
+        This will call the trained model in saved_lr variable using model_name param.
+        The file must be in current directory.
+
+    Parameters
+    ----------
+    
+    model_name : string, default = none
+    Name of pickle file to be passed as a string.
+
+    Returns:
+    --------    
+    Success Message
+    
+
+    Warnings:
+    ---------
+    None    
+       
+         
+    """
+        
+        
+    import joblib
+    model_name = model_name + '.pkl'
+    print('Model Sucessfully Loaded')
+    return joblib.load(model_name)
+
+def save_experiment(experiment_name=None):
+    
+        
+    """
+          
+    Description:
+    ------------
+    This function saves the entire experiment in current active directory. All 
+    the outputs using pycaret are internally saved into a binary list which is
+    pickilized when save_experiment() is used. 
+    
+        Example:
+        --------
+        
+        save_experiment()
+        
+        This will save the entire experiment in current active directory. By 
+        default name of experiment will use session_id generated during setup().
+        To use custom name, experiment_name param has to be passed as string.
+        
+        For example:
+        
+        save_experiment('experiment_23122019')
+
+    Parameters
+    ----------
+    
+    experiment_name : string, default = none
+    Name of pickle file to be passed as a string.
+
+    Returns:
+    --------    
+    Success Message
+    
+
+    Warnings:
+    ---------
+    None    
+       
+         
+    """
+    
+    #general dependencies
+    import joblib
+    global experiment__
+    
+    #defining experiment name
+    if experiment_name is None:
+        experiment_name = 'experiment_' + str(seed)
+        
+    else:
+        experiment_name = experiment_name  
+        
+    experiment_name = experiment_name + '.pkl'
+    joblib.dump(experiment__, experiment_name)
+    
+    print('Experiment Succesfully Saved')
+
+def load_experiment(experiment_name):
+    
+    """
+          
+    Description:
+    ------------
+    This function loads the prior saved experiment from current active directory 
+    into current python notebook. Load object must be a pickle file.
+    
+        Example:
+        --------
+        
+        saved_experiment = load_experiment('experiment_23122019')
+        
+        This will load the entire experiment pipeline into object saved_experiment
+        using experiment_name param. The experiment file must be in current directory.
+        
+        
+    Parameters
+    ----------
+    
+    experiment_name : string, default = none
+    Name of pickle file to be passed as a string.
+
+    Returns:
+    --------    
+    Information Grid containing details of saved objects in experiment pipeline.
+    
+
+    Warnings:
+    ---------
+    None    
+       
+         
+    """
+    
+    #general dependencies
+    import joblib
+    import pandas as pd
+    
+    experiment_name = experiment_name + '.pkl'
+    temp = joblib.load(experiment_name)
+    
+    name = []
+    exp = []
+
+    for i in temp:
+        name.append(i[0])
+        exp.append(i[-1])
+
+    ind = pd.DataFrame(name, columns=['Object'])
+    display(ind)
+
+    return exp
+
+def predict_model(estimator, 
+                  data=None):
+    
+    """
+    docstring
+    """
+    
+    #testing
+    #no active tests
+    
+    #general dependencies
+    import numpy as np
+    import pandas as pd
+    import re
+    from sklearn import metrics
+    
+    #dataset
+    if data is None:
+        Xtest = X_test
+        ytest = y_test
+        model = estimator
+    else:
+        Xtest = data
+        model = finalize_model(estimator)
+        
+    Xtest.reset_index(drop=True, inplace=True)
+    ytest.reset_index(drop=True, inplace=True)
+    
+    #copy X_test
+    X_test_ = X_test.copy()
+    X_test_ = X_test_.reset_index(drop=True)
+    y_test_ = y_test.copy()
+    y_test_ = y_test_.reset_index(drop=True)
+        
+    
+    if type(estimator) is list:
+        
+        if type(estimator[0]) is list:
+        
+            """
+            Multiple Layer Stacking
+            """
+            
+            #utility
+            stacker = model.copy()
+            stacker_method = stacker.pop(-1)
+            stacker_method = stacker_method[0]
+            stacker_meta = stacker.pop(-1)
+            stacker_base = stacker.pop(0)
+
+            #base model names
+            base_model_names = []
+
+            #defining base_level_names
+            for i in stacker_base:
+                b = str(i).split("(")[0]
+                base_model_names.append(b)
+
+            base_level_fixed = []
+
+            for i in base_model_names:
+                if 'CatBoostClassifier' in i:
+                    a = 'CatBoostClassifier'
+                    base_level_fixed.append(a)
+                else:
+                    base_level_fixed.append(i)
+
+            base_level_fixed_2 = []
+
+            counter = 0
+            for i in base_level_fixed:
+                s = str(i) + '_' + 'BaseLevel_' + str(counter)
+                base_level_fixed_2.append(s)
+                counter += 1
+
+            base_level_fixed = base_level_fixed_2
+
+            """
+            base level predictions
+            """
+            base_pred = []
+            for i in stacker_base:
+                if stacker_method == 'soft':
+                    try:
+                        a = i.predict_proba(X_test)
+                        a = a[:,1]
+                    except:
+                        a = i.predict(X_test)
+                else:
+                    a = i.predict(X_test)
+                base_pred.append(a)
+
+            base_pred_df = pd.DataFrame()
+            for i in base_pred:
+                a = pd.DataFrame(i)
+                base_pred_df = pd.concat([base_pred_df, a], axis=1)
+
+            base_pred_df.columns = base_level_fixed
+            
+            base_pred_df_no_restack = base_pred_df.copy()
+            base_pred_df = pd.concat([Xtest,base_pred_df], axis=1)
+            
+
+            """
+            inter level predictions
+            """
+
+            inter_pred = []
+            combined_df = pd.DataFrame(base_pred_df)
+
+            inter_counter = 0
+
+            for level in stacker:
+
+                inter_pred_df = pd.DataFrame()
+
+                model_counter = 0 
+
+                for model in level:
+                    try:
+                        if inter_counter == 0:
+                            if stacker_method == 'soft':
+                                try:
+                                    p = model.predict_proba(base_pred_df)
+                                    p = p[:,1]
+                                except:
+                                    try:
+                                        p = model.predict_proba(base_pred_df_no_restack)
+                                        p = p[:,1]                                    
+                                    except:
+                                        try:
+                                            p = model.predict(base_pred_df)
+                                        except:
+                                            p = model.predict(base_pred_df_no_restack)
+                            else:
+                                p = model.predict(base_pred_df)
+                        else:
+                            if stacker_method == 'soft':
+                                try:
+                                    p = model.predict_proba(last_level_df)
+                                    p = p[:,1]
+                                except:
+                                    p = model.predict(last_level_df)
+                            else:
+                                p = model.predict(last_level_df)
+                    except:
+                        if stacker_method == 'soft':
+                            try:
+                                p = model.predict_proba(combined_df)
+                                p = p[:,1]
+                            except:
+                                p = model.predict(combined_df)
+                    p = pd.DataFrame(p)
+
+                    col = str(model).split("(")[0]
+                    if 'CatBoostClassifier' in col:
+                        col = 'CatBoostClassifier'
+                    col = col + '_InterLevel_' + str(inter_counter) + '_' + str(model_counter)
+                    p.columns = [col]
+
+                    inter_pred_df = pd.concat([inter_pred_df, p], axis=1)
+
+                    model_counter += 1
+
+                last_level_df = inter_pred_df.copy()
+
+                inter_counter += 1
+
+                combined_df = pd.concat([combined_df,inter_pred_df], axis=1)
+
+            """
+            meta final predictions
+            """
+
+            #final meta predictions
+            try:
+                pred_ = stacker_meta.predict(combined_df)
+            except:
+                pred_ = stacker_meta.predict(inter_pred_df)
+
+            try:
+                pred_prob = stacker_meta.predict_proba(combined_df)
+                pred_prob = pred_prob[:,1]
+            except:
+                try:
+                    pred_prob = stacker_meta.predict_proba(inter_pred_df)
+                    pred_prob = pred_prob[:,1]
+                except:
+                    pass
+
+            #print('Success')
+
+            #if data is None:
+            sca = metrics.accuracy_score(ytest,pred_)
+
+            try:
+                sc = metrics.roc_auc_score(ytest,pred_prob,average='weighted')
+            except:
+                sc = 0
+
+            recall = metrics.recall_score(ytest,pred_, average='weighted')
+            precision = metrics.precision_score(ytest,pred_, average = 'weighted')
+            kappa = metrics.cohen_kappa_score(ytest,pred_)
+            f1 = metrics.f1_score(ytest,pred_, average='weighted')
+
+            df_score = pd.DataFrame( {'Model' : 'Stacking Classifier', 'Accuracy' : [sca], 'AUC' : [sc], 'Recall' : [recall], 'Prec.' : [precision],
+                                'F1' : [f1], 'Kappa' : [kappa]})
+            df_score = df_score.round(4)
+            display(df_score)
+        
+            label = pd.DataFrame(pred_)
+            label.columns = ['Label']
+            label['Label']=label['Label'].astype(int)
+
+            if data is None:
+                X_test_ = pd.concat([X_test_,y_test_], axis=1)
+
+            X_test_ = pd.concat([X_test_,label], axis=1)
+
+            if hasattr(model,'predict_proba'):
+                try:
+                    score = pd.DataFrame(pred_prob)
+                    score.columns = ['Score']
+                    score = score.round(4)
+                    X_test_ = pd.concat([X_test_,score], axis=1)
+                except:
+                    pass
+
+        else:
+            
+            """
+            Single Layer Stacking
+            """
+            
+            #copy
+            stacker = model.copy()
+
+            #method
+            method = stacker[-1]
+            stacker.pop()
+
+            #separate metamodel
+            meta_model = stacker[-1]
+            stacker.pop()
+
+            model_names = []
+            for i in stacker:
+                model_names = np.append(model_names, str(i).split("(")[0])
+
+            model_names_fixed = []
+
+            for i in model_names:
+                if 'CatBoostClassifier' in i:
+                    a = 'CatBoostClassifier'
+                    model_names_fixed.append(a)
+                else:
+                    model_names_fixed.append(i)
+
+            model_names = model_names_fixed
+
+            model_names_fixed = []
+            counter = 0
+
+            for i in model_names:
+                s = str(i) + '_' + str(counter)
+                model_names_fixed.append(s)
+                counter += 1
+
+            model_names = model_names_fixed
+
+            base_pred = []
+
+            for i in stacker:
+                if method == 'hard':
+                    #print('done')
+                    p = i.predict(X_test)
+                else:
+                    try:
+                        p = i.predict_proba(X_test)
+                        p = p[:,1]
+                    except:
+                        p = i.predict(X_test)
+
+                base_pred.append(p)
+
+            df = pd.DataFrame()
+            for i in base_pred:
+                i = pd.DataFrame(i)
+                df = pd.concat([df,i], axis=1)
+
+            df.columns = model_names
+            
+            df_restack = pd.concat([X_test_,df], axis=1)
+
+            ytest = y_test
+
+            #meta predictions starts here
+
+            #restacking check
+            try:
+                pred_ = meta_model.predict(df)
+            except:
+                pred_ = meta_model.predict(df_restack) 
+                
+            try:
+                pred_prob = meta_model.predict_proba(df)
+                pred_prob = pred_prob[:,1]
+
+            except:
+                try:
+                    pred_prob = meta_model.predict_proba(df_restack)
+                    pred_prob = pred_prob[:,1]
+                except:
+                    pass
+
+            if data is None:
+                sca = metrics.accuracy_score(ytest,pred_)
+
+                try:
+                    sc = metrics.roc_auc_score(ytest,pred_prob,average='weighted')
+                except:
+                    sc = 0
+
+                recall = metrics.recall_score(ytest,pred_, average='weighted')
+                precision = metrics.precision_score(ytest,pred_, average = 'weighted')
+                kappa = metrics.cohen_kappa_score(ytest,pred_)
+                f1 = metrics.f1_score(ytest,pred_, average='weighted')
+
+                df_score = pd.DataFrame( {'Model' : 'Stacking Classifier', 'Accuracy' : [sca], 'AUC' : [sc], 'Recall' : [recall], 'Prec.' : [precision],
+                                    'F1' : [f1], 'Kappa' : [kappa]})
+                df_score = df_score.round(4)
+                display(df_score)
+
+            else:
+                pass
+
+            label = pd.DataFrame(pred_)
+            label.columns = ['Label']
+            label['Label']=label['Label'].astype(int)
+
+            if data is None:
+                X_test_ = pd.concat([X_test_,y_test_], axis=1)
+
+            X_test_ = pd.concat([X_test_,label], axis=1)
+
+            if hasattr(meta_model,'predict_proba'):
+                try:
+                    score = pd.DataFrame(pred_prob)
+                    score.columns = ['Score']
+                    score = score.round(4)
+                    X_test_ = pd.concat([X_test_,score], axis=1)
+                except:
+                    pass
+
+    else:
+        
+        #model name
+        full_name = str(model).split("(")[0]
+        def putSpace(input):
+            words = re.findall('[A-Z][a-z]*', input)
+            words = ' '.join(words)
+            return words  
+        full_name = putSpace(full_name)
+
+        if full_name == 'Gaussian N B':
+            full_name = 'Naive Bayes'
+
+        elif full_name == 'M L P Classifier':
+            full_name = 'MLP Classifier'
+
+        elif full_name == 'S G D Classifier':
+            full_name = 'SVM - Linear Kernel'
+
+        elif full_name == 'S V C':
+            full_name = 'SVM - Radial Kernel'
+
+        elif full_name == 'X G B Classifier':
+            full_name = 'Extreme Gradient Boosting'
+
+        elif full_name == 'L G B M Classifier':
+            full_name = 'Light Gradient Boosting Machine'
+
+        elif 'Cat Boost Classifier' in full_name:
+            full_name = 'CatBoost Classifier'
+
+        #prediction starts here
+        try:
+            pred_prob = model.predict_proba(Xtest)
+            pred_prob = pred_prob[:,1]
+        except:
+            pass
+
+        pred_ = model.predict(Xtest)
+        
+        if data is None:
+            sca = metrics.accuracy_score(ytest,pred_)
+
+            try:
+                sc = metrics.roc_auc_score(ytest,pred_prob,average='weighted')
+            except:
+                sc = 0
+
+            recall = metrics.recall_score(ytest,pred_, average='weighted')
+            precision = metrics.precision_score(ytest,pred_, average = 'weighted')
+            kappa = metrics.cohen_kappa_score(ytest,pred_)
+            f1 = metrics.f1_score(ytest,pred_, average='weighted')
+
+            df_score = pd.DataFrame( {'Model' : [full_name], 'Accuracy' : [sca], 'AUC' : [sc], 'Recall' : [recall], 'Prec.' : [precision],
+                                'F1' : [f1], 'Kappa' : [kappa]})
+            df_score = df_score.round(4)
+            display(df_score)
+        
+        else:
+            pass
+            
+        label = pd.DataFrame(pred_)
+        label.columns = ['Label']
+        label['Label']=label['Label'].astype(int)
+        
+        if data is None:
+            X_test_ = pd.concat([X_test_,y_test_], axis=1)
+        
+        X_test_ = pd.concat([X_test_,label], axis=1)
+        
+        if hasattr(model,'predict_proba'):
+            try:
+                score = pd.DataFrame(pred_prob)
+                score.columns = ['Score']
+                score = score.round(4)
+                X_test_ = pd.concat([X_test_,score], axis=1)
+            except:
+                pass
+            
+
+    return X_test_
 
 def help():
     
