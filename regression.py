@@ -3,7 +3,8 @@ def setup(data,
           train_size=0.7,
           sampling=True,
           sample_estimator = None,
-          session_id = None):
+          session_id = None,
+          profile = False):
     
     """
         
@@ -50,6 +51,9 @@ def setup(data,
     number is then distributed as a seed in all other functions used during experiment.
     This can be used later for reproducibility of entire experiment.
 
+    profile: bool, default = False
+    If set to true, it will display data profile for Exploratory Data Analysis in 
+    interactive HTML report. 
 
     Returns:
     --------
@@ -85,6 +89,10 @@ def setup(data,
     if session_id is not None:
         if type(session_id) is not int:
             sys.exit('(Type Error): session_id parameter must be an integer.')   
+    
+    #checking sampling parameter
+    if type(profile) is not bool:
+        sys.exit('(Type Error): profile parameter only accepts True or False.')
         
     #pre-load libraries
     import pandas as pd
@@ -117,7 +125,13 @@ def setup(data,
     import random
     import seaborn as sns
     import matplotlib.pyplot as plt
-
+    import plotly.express as px
+    
+    #cufflinks
+    import cufflinks as cf
+    cf.go_offline()
+    cf.set_config_file(offline=False, world_readable=True)
+    
     #ignore warnings
     import warnings
     warnings.filterwarnings('ignore') 
@@ -141,6 +155,9 @@ def setup(data,
         model = sample_estimator
         
     model_name = str(model).split("(")[0]
+    
+    if 'CatBoostRegressor' in model_name:
+        model_name = 'CatBoostRegressor'
         
     #creating variables to be used later in the function
     X = data.drop(target,axis=1)
@@ -148,7 +165,7 @@ def setup(data,
     
     progress.value += 1
     
-    if sampling is True and data.shape[0] > 25000:
+    if sampling is True and data.shape[0] > 25000: #change back to 25000
     
         split_perc = [0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,0.99]
         split_perc_text = ['10%','20%','30%','40%','50%','60%', '70%', '80%', '90%', '100%']
@@ -226,19 +243,13 @@ def setup(data,
             counter += 1
 
         model_results = pd.DataFrame({'Sample Size' : split_percent, 'Metric' : metric_results, 'Metric Name': metric_name})
-        
-        #fig, ax = plt.subplots(figsize=(8, 5))
-        plt.figure(figsize=(8, 5))
-        plt.grid(True, which='both')
-        plt.xlim(0,1)
-        plt.ylim(-1,1)
-        plt.tick_params(axis='both', which='major', bottom=False)
-        #plt.majorticks_on()
-        sns.lineplot(x="Sample Size", y="Metric", hue="Metric Name", data=model_results, color='blue', lw=2).set_title('Metric of ' + model_name + ' at Different Sample Size', fontsize=15).set_style("normal")
-        #sns.set_style("whitegrid")
-        print(' ')
-        plt.show()
-        
+
+        model_results = pd.DataFrame({'Sample Size' : split_percent, 'Metric' : metric_results, 'Metric Name': metric_name})
+        fig = px.line(model_results, x='Sample Size', y='Metric', color='Metric Name', line_shape='linear', range_y = [0,1])
+        fig.update_layout(plot_bgcolor='rgb(245,245,245)')
+        title= str(model_name) + ' Metric and Fraction %'
+        fig.update_layout(title={'text': title, 'y':0.95,'x':0.45,'xanchor': 'center','yanchor': 'top'})
+        fig.show()
         
         monitor.iloc[1,1:] = 'Waiting for input'
         update_display(monitor, display_id = 'monitor')
@@ -341,7 +352,10 @@ def setup(data,
         '''
         clear_output()
         print(' ')
-        print('Setup Succesfully Completed!')
+        if profile:
+            print('Setup Succesfully Completed! Loading Profile Now... Please Wait!')
+        else:
+            print('Setup Succesfully Completed!')
         functions = pd.DataFrame ( [ ['session_id', seed ],
                                      ['Original Data',X.shape ], 
                                      ['Sampled Data',X.shape ], 
@@ -353,19 +367,24 @@ def setup(data,
         functions_ = functions.style.hide_index()
         display(functions_)
             
+        if profile:
+            import pandas_profiling
+            pf = pandas_profiling.ProfileReport(data)
+            clear_output()
+            display(pf)
+            
         '''
         Final display Ends
         '''   
         
         #log into experiment
-        experiment__.append(('Info', functions))
+        experiment__.append(('Regression Info', functions))
         experiment__.append(('X_training Set', X_train))
         experiment__.append(('y_training Set', y_train))
         experiment__.append(('X_test Set', X_test))
         experiment__.append(('y_test Set', y_test))      
         
         return X, y, X_train, X_test, y_train, y_test, seed, experiment__
-
 
 def create_model(estimator = None, 
                  ensemble = False, 
@@ -427,6 +446,7 @@ def create_model(estimator = None,
     Multi Level Perceptron        'mlp'                  neural_network.MLPRegressor
     Extreme Gradient Boosting     'xgboost'              xgboost.readthedocs.io
     Light Gradient Boosting       'lightgbm'             github.com/microsoft/LightGBM
+    CatBoost Regressor            'catboost'             https://catboost.ai
 
     ensemble: Boolean, default = False
     True would result in ensemble of estimator using the method parameter defined (see below). 
@@ -474,7 +494,7 @@ def create_model(estimator = None,
     #checking error for estimator (string)
     available_estimators = ['lr', 'lasso', 'ridge', 'en', 'lar', 'llar', 'omp', 'br', 'ard', 'par', 
                             'ransac', 'tr', 'huber', 'kr', 'svm', 'knn', 'dt', 'rf', 'et', 'ada', 'gbr', 
-                            'mlp', 'xgboost', 'lightgbm']
+                            'mlp', 'xgboost', 'lightgbm', 'catboost']
     
     if estimator not in available_estimators:
         sys.exit('(Value Error): Estimator Not Available. Please see docstring for list of available estimators.')
@@ -524,7 +544,7 @@ def create_model(estimator = None,
     import datetime, time
         
     #progress bar
-    progress = ipw.IntProgress(value=0, min=0, max=fold+3, step=1 , description='Processing: ')
+    progress = ipw.IntProgress(value=0, min=0, max=fold+4, step=1 , description='Processing: ')
     master_display = pd.DataFrame(columns=['MAE','MSE','RMSE', 'R2', 'ME'])
     display(progress)
     
@@ -544,11 +564,15 @@ def create_model(estimator = None,
     #ignore warnings
     import warnings
     warnings.filterwarnings('ignore') 
-    
+
     #Storing X_train and y_train in data_X and data_y parameter
-    data_X = X_train
-    data_y = y_train
-  
+    data_X = X_train.copy()
+    data_y = y_train.copy()
+    
+    #reset index
+    data_X.reset_index(drop=True, inplace=True)
+    data_y.reset_index(drop=True, inplace=True)
+    
     #general dependencies
     import numpy as np
     from sklearn import metrics
@@ -724,6 +748,11 @@ def create_model(estimator = None,
         model = lgb.LGBMRegressor(random_state=seed)
         full_name = 'Light Gradient Boosting Machine'
         
+    elif estimator == 'catboost':
+        from catboost import CatBoostRegressor
+        model = CatBoostRegressor(random_state=seed, silent = True)
+        full_name = 'CatBoost Regressor'
+        
     else:
         model = estimator
         full_name = str(model).split("(")[0]
@@ -877,6 +906,14 @@ def create_model(estimator = None,
     model_results = model_results.append(model_avgs)
     model_results = model_results.round(round)
     
+    #refitting the model on complete X_train, y_train
+    monitor.iloc[1,1:] = 'Compiling Final Model'
+    update_display(monitor, display_id = 'monitor')
+    
+    model.fit(data_X, data_y)
+    
+    progress.value += 1
+    
     #storing into experiment
     tup = (full_name,model)
     experiment__.append(tup)
@@ -1008,7 +1045,7 @@ def ensemble_model(estimator,
     from IPython.display import display, HTML, clear_output, update_display
     
     #progress bar
-    progress = ipw.IntProgress(value=0, min=0, max=fold+3, step=1 , description='Processing: ')
+    progress = ipw.IntProgress(value=0, min=0, max=fold+4, step=1 , description='Processing: ')
     master_display = pd.DataFrame(columns=['MAE','MSE','RMSE', 'R2', 'ME'])
     display(progress)
     
@@ -1034,9 +1071,13 @@ def ensemble_model(estimator,
     import warnings
     warnings.filterwarnings('ignore')    
     
-    #Storing X_train and y_train in data_X and data_y parameter  
-    data_X = X_train
-    data_y = y_train
+    #Storing X_train and y_train in data_X and data_y parameter
+    data_X = X_train.copy()
+    data_y = y_train.copy()
+    
+    #reset index
+    data_X.reset_index(drop=True, inplace=True)
+    data_y.reset_index(drop=True, inplace=True)
       
     progress.value += 1
     
@@ -1217,7 +1258,13 @@ def ensemble_model(estimator,
     
     progress.value += 1
     
-    model = model
+    #refitting the model on complete X_train, y_train
+    monitor.iloc[1,1:] = 'Compiling Final Model'
+    update_display(monitor, display_id = 'monitor')
+    
+    model.fit(data_X, data_y)
+    
+    progress.value += 1
     
     #storing into experiment
     model_name = str(model).split("(")[0]
@@ -1281,6 +1328,7 @@ def compare_models(blacklist = None,
     Multi Level Perceptron        'mlp'                  neural_network.MLPRegressor
     Extreme Gradient Boosting     'xgboost'              xgboost.readthedocs.io
     Light Gradient Boosting       'lightgbm'             github.com/microsoft/LightGBM
+    CatBoost Regressor            'catboost'             https://catboost.ai
 
         Example:
         --------
@@ -1340,8 +1388,9 @@ def compare_models(blacklist = None,
       takes longer training time. Changing turbo parameter to False may result in 
       very high training times with datasets where number of sample size exceed 
       10,000.
-         
-           
+
+    - This function doesn't return model object.
+             
     
     """
     
@@ -1357,7 +1406,7 @@ def compare_models(blacklist = None,
     #checking error for blacklist (string)
     available_estimators = ['lr', 'lasso', 'ridge', 'en', 'lar', 'llar', 'omp', 'br', 'ard', 'par', 
                             'ransac', 'tr', 'huber', 'kr', 'svm', 'knn', 'dt', 'rf', 'et', 'ada', 'gbr', 
-                            'mlp', 'xgboost', 'lightgbm']
+                            'mlp', 'xgboost', 'lightgbm', 'catboost']
 
     if blacklist != None:
         for i in blacklist:
@@ -1397,11 +1446,11 @@ def compare_models(blacklist = None,
         len_of_blacklist = len(blacklist)
         
     if turbo:
-        len_mod = 21 - len_of_blacklist
+        len_mod = 22 - len_of_blacklist
     else:
-        len_mod = 24 - len_of_blacklist
+        len_mod = 25 - len_of_blacklist
         
-    progress = ipw.IntProgress(value=0, min=0, max=(fold*len_mod)+20, step=1 , description='Processing: ')
+    progress = ipw.IntProgress(value=0, min=0, max=(fold*len_mod)+25, step=1 , description='Processing: ')
     master_display = pd.DataFrame(columns=['Model', 'MAE','MSE','RMSE', 'R2', 'ME'])
     display(progress)
     
@@ -1430,9 +1479,13 @@ def compare_models(blacklist = None,
     from sklearn.model_selection import KFold
     import pandas.io.formats.style
     
-    #defining X_train and y_train as data_X and data_y
-    data_X = X_train
-    data_y=y_train
+    #Storing X_train and y_train in data_X and data_y parameter
+    data_X = X_train.copy()
+    data_y = y_train.copy()
+    
+    #reset index
+    data_X.reset_index(drop=True, inplace=True)
+    data_y.reset_index(drop=True, inplace=True)
     
     progress.value += 1
     
@@ -1461,6 +1514,7 @@ def compare_models(blacklist = None,
     from sklearn.neural_network import MLPRegressor
     from xgboost import XGBRegressor
     import lightgbm as lgb
+    from catboost import CatBoostRegressor
    
     progress.value += 1
 
@@ -1501,11 +1555,12 @@ def compare_models(blacklist = None,
     mlp = MLPRegressor(random_state=seed)
     xgboost = XGBRegressor(random_state=seed, n_jobs=-1, verbosity=0)
     lightgbm = lgb.LGBMRegressor(random_state=seed)
+    catboost = CatBoostRegressor(random_state=seed, silent = True)
     
     progress.value += 1
     
     model_library = [lr, lasso, ridge, en, lar, llar, omp, br, ard, par, ransac, tr, huber, kr, 
-                     svm, knn, dt, rf, et, ada, gbr, mlp, xgboost, lightgbm]
+                     svm, knn, dt, rf, et, ada, gbr, mlp, xgboost, lightgbm, catboost]
     
     model_names = ['Linear Regression',
                    'Lasso Regression',
@@ -1530,18 +1585,19 @@ def compare_models(blacklist = None,
                    'Gradient Boosting Regressor',
                    'Multi Level Perceptron',
                    'Extreme Gradient Boosting',
-                   'Light Gradient Boosting Machine']
+                   'Light Gradient Boosting Machine',
+                   'CatBoost Regressor']
     
     
     #checking for blacklist models
     
     model_library_str = ['lr', 'lasso', 'ridge', 'en', 'lar', 'llar', 'omp', 'br', 'ard',
                          'par', 'ransac', 'tr', 'huber', 'kr', 'svm', 'knn', 'dt', 'rf', 
-                         'et', 'ada', 'gbr', 'mlp', 'xgboost', 'lightgbm']
+                         'et', 'ada', 'gbr', 'mlp', 'xgboost', 'lightgbm', 'catboost']
     
     model_library_str_ = ['lr', 'lasso', 'ridge', 'en', 'lar', 'llar', 'omp', 'br', 'ard',
                          'par', 'ransac', 'tr', 'huber', 'kr', 'svm', 'knn', 'dt', 'rf', 
-                         'et', 'ada', 'gbr', 'mlp', 'xgboost', 'lightgbm']
+                         'et', 'ada', 'gbr', 'mlp', 'xgboost', 'lightgbm', 'catboost']
     
     if blacklist is not None:
         
@@ -1575,7 +1631,7 @@ def compare_models(blacklist = None,
     if blacklist is None and turbo is True:
         
         model_library = [lr, lasso, ridge, en, lar, llar, omp, br, par, ransac, tr, huber, 
-                         svm, knn, dt, rf, et, ada, gbr, xgboost, lightgbm]
+                         svm, knn, dt, rf, et, ada, gbr, xgboost, lightgbm, catboost]
     
         model_names = ['Linear Regression',
                        'Lasso Regression',
@@ -1597,7 +1653,8 @@ def compare_models(blacklist = None,
                        'AdaBoost Regressor',
                        'Gradient Boosting Regressor',
                        'Extreme Gradient Boosting',
-                       'Light Gradient Boosting Machine']
+                       'Light Gradient Boosting Machine',
+                       'CatBoost Regressor']
     
         
             
@@ -1850,6 +1907,9 @@ def blend_models(estimator_list = 'All',
     
     '''
     
+    #testing
+    #no active tests
+    
     #exception checking   
     import sys
     
@@ -1857,7 +1917,7 @@ def blend_models(estimator_list = 'All',
     
     if estimator_list != 'All':
         for i in estimator_list:
-            if 'sklearn' not in str(type(i)):
+            if 'sklearn' not in str(type(i)) and 'CatBoostRegressor' not in str(type(i)):
                 sys.exit("(Value Error): estimator_list parameter only accepts 'All' as string or trained model object")
    
     #checking fold parameter
@@ -1878,6 +1938,8 @@ def blend_models(estimator_list = 'All',
     
     '''
     
+
+    
     #pre-load libraries
     import pandas as pd
     import time, datetime
@@ -1885,7 +1947,7 @@ def blend_models(estimator_list = 'All',
     from IPython.display import display, HTML, clear_output, update_display
     
     #progress bar
-    progress = ipw.IntProgress(value=0, min=0, max=fold+3, step=1 , description='Processing: ')
+    progress = ipw.IntProgress(value=0, min=0, max=fold+4, step=1 , description='Processing: ')
     master_display = pd.DataFrame(columns=['MAE','MSE','RMSE', 'R2', 'ME'])
     display(progress)
     
@@ -1914,8 +1976,12 @@ def blend_models(estimator_list = 'All',
     import re
     
     #Storing X_train and y_train in data_X and data_y parameter
-    data_X = X_train
-    data_y = y_train
+    data_X = X_train.copy()
+    data_y = y_train.copy()
+    
+    #reset index
+    data_X.reset_index(drop=True, inplace=True)
+    data_y.reset_index(drop=True, inplace=True)
     
     progress.value += 1
     
@@ -1969,6 +2035,7 @@ def blend_models(estimator_list = 'All',
         from sklearn.neural_network import MLPRegressor
         from xgboost import XGBRegressor
         import lightgbm as lgb
+        from catboost import CatBoostRegressor
 
         lr = LinearRegression()
         lasso = Lasso(random_state=seed)
@@ -1994,18 +2061,19 @@ def blend_models(estimator_list = 'All',
         mlp = MLPRegressor(random_state=seed)
         xgboost = XGBRegressor(random_state=seed, n_jobs=-1, verbosity=0)
         lightgbm = lgb.LGBMRegressor(random_state=seed)
+        catboost = CatBoostRegressor(random_state=seed, silent = True)
 
         progress.value += 1
         
         if turbo:
             
             estimator_list = [lr, lasso, ridge, en, lar, llar, omp, br, par, ransac, tr, huber, 
-                             svm, knn, dt, rf, et, ada, gbr, xgboost, lightgbm]
+                             svm, knn, dt, rf, et, ada, gbr, xgboost, lightgbm, catboost]
 
         else:
             
             estimator_list = [lr, lasso, ridge, en, lar, llar, omp, br, ard, par, ransac, tr, huber, kr, 
-                             svm, knn, dt, rf, et, ada, gbr, mlp, xgboost, lightgbm]
+                             svm, knn, dt, rf, et, ada, gbr, mlp, xgboost, lightgbm, catboost]
             
 
     else:
@@ -2017,6 +2085,16 @@ def blend_models(estimator_list = 'All',
     for names in estimator_list:
 
         model_names = np.append(model_names, str(names).split("(")[0])
+        
+    model_names_fixed = []
+    
+    for i in model_names:
+        if 'CatBoostRegressor' in i:
+            model_names_fixed.append('CatBoost Regressor')
+        else:
+            model_names_fixed.append(i)
+        
+    model_names = model_names_fixed
 
     def putSpace(input):
         words = re.findall('[A-Z][a-z]*', input)
@@ -2029,8 +2107,6 @@ def blend_models(estimator_list = 'All',
         
         model_names_modified.append(putSpace(i))
         model_names = model_names_modified
-
-    global model_names_final
     
     model_names_final = []
   
@@ -2050,15 +2126,25 @@ def blend_models(estimator_list = 'All',
             
         elif j == 'Lars':
             model_names_final.append('Least Angle Regression')
+            
+        elif j == 'X G B Regressor':
+            model_names_final.append('Extreme Gradient Boosting Regressor')
 
+        elif j == 'L G B M Regressor':
+            model_names_final.append('Light Gradient Boosting Machine')
+            
+        elif j == 'Cat Boost Regressor':
+            model_names_final.append('CatBoost Regressor')        
+            
         else: 
             model_names_final.append(j)
             
         model_names = model_names_final
         estimator_list = estimator_list
+        
 
         estimator_list_ = zip(model_names, estimator_list)
-        estimator_list_ = set(estimator_list_)
+        #estimator_list_ = set(estimator_list_) #in order to accomodate catboost set is switched off
         estimator_list_ = list(estimator_list_)
         
         try:
@@ -2204,6 +2290,15 @@ def blend_models(estimator_list = 'All',
     
     progress.value += 1
     
+    #refitting the model on complete X_train, y_train
+    monitor.iloc[1,1:] = 'Compiling Final Model'
+    update_display(monitor, display_id = 'monitor')
+    
+    model.fit(data_X, data_y)
+    
+    progress.value += 1
+    
+    
     #storing into experiment
     model_name = 'Voting Regressor'
     tup = (model_name,model)
@@ -2263,32 +2358,33 @@ def tune_model(estimator = None,
 
     Enter abbreviated name of the estimator class. List of estimators supported:
 
-    Estimator                     Abbreviated String     Original Implementation 
-    ---------                     ------------------     -----------------------
-    Linear Regression             'lr'                   linear_model.LinearRegression
-    Lasso Regression              'lasso'                linear_model.Lasso
-    Ridge Regression              'ridge'                linear_model.Ridge
-    Elastic Net                   'en'                   linear_model.ElasticNet
-    Least Angle Regression        'lar'                  linear_model.Lars
-    Lasso Least Angle Regression  'llar'                 linear_model.LassoLars
-    Orthogonal Matching Pursuit   'omp'                  linear_model.OMP
-    Bayesian Ridge                'br'                   linear_model.BayesianRidge
-    Automatic Relevance Determ.   'ard'                  linear_model.ARDRegression
-    Passive Aggressive Regressor  'par'                  linear_model.PAR
-    Random Sample Consensus       'ransac'               linear_model.RANSACRegressor
-    TheilSen Regressor            'tr'                   linear_model.TheilSenRegressor
-    Huber Regressor               'huber'                linear_model.HuberRegressor 
-    Kernel Ridge                  'kr'                   kernel_ridge.KernelRidge
-    Support Vector Machine        'svm'                  svm.SVR
-    K Neighbors Regressor         'knn'                  neighbors.KNeighborsRegressor 
-    Decision Tree                 'dt'                   tree.DecisionTreeRegressor
-    Random Forest                 'rf'                   ensemble.RandomForestRegressor
-    Extra Trees Regressor         'et'                   ensemble.ExtraTreesRegressor
-    AdaBoost Regressor            'ada'                  ensemble.AdaBoostRegressor
-    Gradient Boosting             'gbr'                  ensemble.GradientBoostingRegressor 
-    Multi Level Perceptron        'mlp'                  neural_network.MLPRegressor
-    Extreme Gradient Boosting     'xgboost'              xgboost.readthedocs.io
-    Light Gradient Boosting       'lightgbm'             github.com/microsoft/LightGBM
+    Estimator                     Abbreviated String    Original Implementation 
+    ---------                     ------------------    -----------------------
+    Linear Regression             'lr'                  linear_model.LinearRegression
+    Lasso Regression              'lasso'               linear_model.Lasso
+    Ridge Regression              'ridge'               linear_model.Ridge
+    Elastic Net                   'en'                  linear_model.ElasticNet
+    Least Angle Regression        'lar'                 linear_model.Lars
+    Lasso Least Angle Regression  'llar'                linear_model.LassoLars
+    Orthogonal Matching Pursuit   'omp'                 linear_model.OMP
+    Bayesian Ridge                'br'                  linear_model.BayesianRidge
+    Automatic Relevance Determ.   'ard'                 linear_model.ARDRegression
+    Passive Aggressive Regressor  'par'                 linear_model.PAR
+    Random Sample Consensus       'ransac'              linear_model.RANSACRegressor
+    TheilSen Regressor            'tr'                  linear_model.TheilSenRegressor
+    Huber Regressor               'huber'               linear_model.HuberRegressor 
+    Kernel Ridge                  'kr'                  kernel_ridge.KernelRidge
+    Support Vector Machine        'svm'                 svm.SVR
+    K Neighbors Regressor         'knn'                 neighbors.KNeighborsRegressor 
+    Decision Tree                 'dt'                  tree.DecisionTreeRegressor
+    Random Forest                 'rf'                  ensemble.RandomForestRegressor
+    Extra Trees Regressor         'et'                  ensemble.ExtraTreesRegressor
+    AdaBoost Regressor            'ada'                 ensemble.AdaBoostRegressor
+    Gradient Boosting             'gbr'                 ensemble.GradientBoostingRegressor 
+    Multi Level Perceptron        'mlp'                 neural_network.MLPRegressor
+    Extreme Gradient Boosting     'xgboost'             xgboost.readthedocs.io
+    Light Gradient Boosting       'lightgbm'            github.com/microsoft/LightGBM
+    CatBoost Regressor            'catboost'            https://catboost.ai
 
     fold: integer, default = 10
     Number of folds to be used in Kfold CV. Must be at least 2. 
@@ -2302,9 +2398,8 @@ def tune_model(estimator = None,
 
     optimize: string, default = 'r2'
     Measure used to select the best model through the hyperparameter tuning.
-    The default scoring measure is 'mae'. Other common measures include
-    'mae', 'mse' 'me'. Complete list available at:
-    https://scikit-learn.org/stable/modules/model_evaluation.html#scoring-parameter
+    The default scoring measure is 'r2'. Other measures that can be used includes
+    'mae', 'mse' 'me'. 
 
     ensemble: Boolean, default = None
     True would enable ensembling of model through method defined in 'method' param.
@@ -2351,7 +2446,7 @@ def tune_model(estimator = None,
     #checking error for estimator (string)
     available_estimators = ['lr', 'lasso', 'ridge', 'en', 'lar', 'llar', 'omp', 'br', 'ard', 'par', 
                             'ransac', 'tr', 'huber', 'kr', 'svm', 'knn', 'dt', 'rf', 'et', 'ada', 'gbr', 
-                            'mlp', 'xgboost', 'lightgbm']
+                            'mlp', 'xgboost', 'lightgbm', 'catboost']
     
     if estimator not in available_estimators:
         sys.exit('(Value Error): Estimator Not Available. Please see docstring for list of available estimators.')
@@ -2414,7 +2509,7 @@ def tune_model(estimator = None,
     from IPython.display import display, HTML, clear_output, update_display
     
     #progress bar
-    progress = ipw.IntProgress(value=0, min=0, max=fold+5, step=1 , description='Processing: ')
+    progress = ipw.IntProgress(value=0, min=0, max=fold+6, step=1 , description='Processing: ')
     master_display = pd.DataFrame(columns=['MAE','MSE','RMSE', 'R2', 'ME'])
     display(progress)    
     
@@ -2440,8 +2535,12 @@ def tune_model(estimator = None,
     warnings.filterwarnings('ignore')    
 
     #Storing X_train and y_train in data_X and data_y parameter
-    data_X = X_train
-    data_y = y_train
+    data_X = X_train.copy()
+    data_y = y_train.copy()
+    
+    #reset index
+    data_X.reset_index(drop=True, inplace=True)
+    data_y.reset_index(drop=True, inplace=True)
 
     #define optimizer
       #defining optimizer
@@ -2968,7 +3067,27 @@ def tune_model(estimator = None,
         model = model_grid.best_estimator_
         best_model = model_grid.best_estimator_
         best_model_param = model_grid.best_params_   
+
+    elif estimator == 'catboost':
+        
+        from catboost import CatBoostRegressor
+        
+        param_grid = {'depth':[3,1,2,6,4,5,7,8,9,10],
+                      'iterations':[250,100,500,1000], 
+                      'learning_rate':[0.03,0.001,0.01,0.1,0.2,0.3], 
+                      'l2_leaf_reg':[3,1,5,10,100], 
+                      'border_count':[32,5,10,20,50,100,200], 
+                      #'ctr_border_count':[50,5,10,20,100,200]
+                      }
             
+        model_grid = RandomizedSearchCV(estimator=CatBoostRegressor(random_state=seed, silent=True), 
+                                        param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
+                                        cv=cv, random_state=seed, n_jobs=-1)
+
+        model_grid.fit(X_train,y_train)
+        model = model_grid.best_estimator_
+        best_model = model_grid.best_estimator_
+        best_model_param = model_grid.best_params_ 
     
     progress.value += 1
     
@@ -3214,6 +3333,14 @@ def tune_model(estimator = None,
 
     progress.value += 1
     
+    #refitting the model on complete X_train, y_train
+    monitor.iloc[1,1:] = 'Compiling Final Model'
+    update_display(monitor, display_id = 'monitor')
+    
+    best_model.fit(data_X, data_y)
+    
+    progress.value += 1
+    
     
     #storing into experiment
     model_name = 'Tuned ' + str(model).split("(")[0]
@@ -3238,6 +3365,7 @@ def stack_models(estimator_list,
                  round = 4, 
                  restack = False, 
                  plot = False,
+                 finalize = False,
                  verbose = True):
     
     """
@@ -3292,6 +3420,12 @@ def stack_models(estimator_list,
     When plot is set to True, it will return the correlation plot of prediction
     from all base models provided in estimator_list.
     
+    finalize: Boolean, default = False
+    When finalize is set to True, it will fit the stacker on entire dataset
+    including holdout sample created during setup() stage. It is not recommended
+    to set this to True here, if you would like to fit the stacker on entire
+    dataset including the holdout, use finalize_model().
+    
     verbose: Boolean, default = True
     Score grid is not printed when verbose is set to False.
 
@@ -3326,12 +3460,12 @@ def stack_models(estimator_list,
     
     #checking error for estimator_list
     for i in estimator_list:
-        if 'sklearn' not in str(type(i)):
+        if 'sklearn' not in str(type(i)) and 'CatBoostRegressor' not in str(type(i)):
             sys.exit("(Value Error): estimator_list parameter only trained model object")
             
     #checking meta model
     if meta_model is not None:
-        if 'sklearn' not in str(type(meta_model)):
+        if 'sklearn' not in str(type(meta_model)) and 'CatBoostRegressor' not in str(type(meta_model)):
             sys.exit("(Value Error): estimator_list parameter only trained model object")
     
     #checking fold parameter
@@ -3359,6 +3493,8 @@ def stack_models(estimator_list,
     ERROR HANDLING ENDS HERE
     
     '''
+    #testing
+    #no active tests
     
     #pre-load libraries
     import pandas as pd
@@ -3405,13 +3541,47 @@ def stack_models(estimator_list,
     else:
         meta_model = meta_model
     
+    #defining data_X and data_y
+    if finalize:
+        data_X = X.copy()
+        data_y = y.copy()
+    else:       
+        data_X = X_train.copy()
+        data_y = y_train.copy()
+
+    #reset index
+    data_X.reset_index(drop=True,inplace=True)
+    data_y.reset_index(drop=True,inplace=True)
+    
+    #models_ for appending
+    models_ = []
+    
     #defining model_library model names
     model_names = np.zeros(0)
     for item in estimator_list:
         model_names = np.append(model_names, str(item).split("(")[0])
     
+    model_names_fixed = []
+    
+    for i in model_names:
+        if 'CatBoostRegressor' in i:
+            a = 'CatBoostRegressor'
+            model_names_fixed.append(a)
+        else:
+            model_names_fixed.append(i)
+            
+    model_names = model_names_fixed
+    
+    model_names_fixed = []
+    
+    counter = 0
+    for i in model_names:
+        s = str(i) + '_' + str(counter)
+        model_names_fixed.append(s)
+        counter += 1
+    
     base_array = np.zeros((0,0))
-    base_prediction = pd.DataFrame(y_train)
+    base_prediction = pd.DataFrame(data_y) #changed to data_y
     base_prediction = base_prediction.reset_index(drop=True)
     
     counter = 0
@@ -3429,33 +3599,36 @@ def stack_models(estimator_list,
         MONITOR UPDATE ENDS
         '''
         
+        #fitting and appending
+        model.fit(data_X, data_y)
+        models_.append(model)
+        
         progress.value += 1
         
-        base_array = cross_val_predict(model,X_train,y_train,cv=fold, method='predict')
-        base_array = base_array
+        base_array = cross_val_predict(model,data_X,data_y,cv=fold, method='predict')
         base_array_df = pd.DataFrame(base_array)
         base_prediction = pd.concat([base_prediction,base_array_df],axis=1)
         base_array = np.empty((0,0))
         
         counter += 1
-        
+    
     #defining column names now
     target_col_name = np.array(base_prediction.columns[0])
-    model_names = np.append(target_col_name, model_names)
+    model_names = np.append(target_col_name, model_names_fixed) #adding fixed column names now
     base_prediction.columns = model_names #defining colum names now
     
     #defining data_X and data_y dataframe to be used in next stage.
     
+    #drop column from base_prediction
+    base_prediction.drop(base_prediction.columns[0],axis=1,inplace=True)
+    
     if restack:
-        data_X_ = X_train
-        data_X_ = data_X_.reset_index(drop=True)
-        data_X = base_prediction.drop(base_prediction.columns[0],axis=1)
-        data_X = pd.concat([data_X_,data_X],axis=1)
+        data_X = pd.concat([data_X, base_prediction], axis=1)
         
-    elif restack == False:
-        data_X = base_prediction.drop(base_prediction.columns[0],axis=1)
+    else:
+        data_X = base_prediction
         
-    data_y = base_prediction[base_prediction.columns[0]]
+    #data_y = base_prediction[base_prediction.columns[0]]
     
     #Correlation matrix of base_prediction
     base_prediction_cor = base_prediction.drop(base_prediction.columns[0],axis=1)
@@ -3464,6 +3637,10 @@ def stack_models(estimator_list,
     #Meta Modeling Starts Here
     
     model = meta_model #this defines model to be used below as model = meta_model (as captured above)
+    
+    #appending in models
+    model.fit(data_X, data_y)
+    models_.append(model)
     
     kf = KFold(fold, random_state=seed) #capturing fold requested by user
 
@@ -3542,11 +3719,11 @@ def stack_models(estimator_list,
         
         if tt < 1:
             tt = str(np.around((tt * 60), 2))
-            ETC = 'Time to Completion : ' + tt + ' Seconds Remaining'
+            ETC = tt + ' Seconds Remaining'
                 
         else:
             tt = str (tt)
-            ETC = 'Time to Completion : ' + tt + ' Minutes Remaining'
+            ETC = tt + ' Minutes Remaining'
         
         '''
         MONITOR UPDATE STARTS
@@ -3592,7 +3769,6 @@ def stack_models(estimator_list,
     std_r2=np.std(score_r2)
     std_max_error=np.std(score_max_error)
     
-    
     avgs_mae = np.append(avgs_mae, mean_mae)
     avgs_mae = np.append(avgs_mae, std_mae) 
     avgs_mse = np.append(avgs_mse, mean_mse)
@@ -3614,16 +3790,12 @@ def stack_models(estimator_list,
     
     progress.value += 1
     
-    models = []
-    for i in estimator_list:
-        models.append(i)
-    
-    models.append(meta_model)
-    
+    #appending method into models_
+    models_.append(restack)
     
     #storing into experiment
     model_name = 'Stacking Regressor (Single Layer)'
-    tup = (model_name,models)
+    tup = (model_name,models_)
     experiment__.append(tup)
     nam = str(model_name) + ' Score Grid'
     tup = (nam, model_results)
@@ -3637,16 +3809,17 @@ def stack_models(estimator_list,
     if verbose:
         clear_output()
         display(model_results)
-        return models
+        return models_
     else:
         clear_output()
-        return models
+        return models_
 
 def create_stacknet(estimator_list,
                     meta_model = None,
                     fold = 10,
                     round = 4,
                     restack = False,
+                    finalize = False,
                     verbose = True):
     
     """
@@ -3694,7 +3867,13 @@ def create_stacknet(estimator_list,
     When restack is set to True, raw data will be exposed to meta model when
     making predictions, otherwise when False, only the predicted values are
     passed to meta model when making final predictions.
-
+    
+    finalize: Boolean, default = False
+    When finalize is set to True, it will fit the stacker on entire dataset
+    including holdout sample created during setup() stage. It is not recommended
+    to set this to True here, if you would like to fit the stacker on entire
+    dataset including the holdout, use finalize_model().
+    
     verbose: Boolean, default = True
     Score grid is not printed when verbose is set to False.
 
@@ -3734,12 +3913,12 @@ def create_stacknet(estimator_list,
     #checking error for estimator_list
     for i in estimator_list:
         for j in i:
-            if 'sklearn' not in str(type(j)):
+            if 'sklearn' not in str(type(j)) and 'CatBoostRegressor' not in str(type(j)):
                 sys.exit("(Value Error): estimator_list parameter only trained model object")
             
     #checking meta model
     if meta_model is not None:
-        if 'sklearn' not in str(type(meta_model)):
+        if 'sklearn' not in str(type(meta_model)) and 'CatBoostRegressor' not in str(type(meta_model)):
             sys.exit("(Value Error): estimator_list parameter only trained model object")
     
     #checking fold parameter
@@ -3798,29 +3977,62 @@ def create_stacknet(estimator_list,
     from sklearn import metrics
     from sklearn.model_selection import KFold
     from sklearn.model_selection import cross_val_predict
+    
+    #models_ list
+    models_ = []
 
     progress.value += 1
     
-    #global base_array_df
-    global base_level_names, base_level
     base_level = estimator_list[0]
     base_level_names = []
     
     #defining base_level_names
     for item in base_level:
             base_level_names = np.append(base_level_names, str(item).split("(")[0])
+
+    base_level_fixed = []
+    
+    for i in base_level_names:
+        if 'CatBoostRegressor' in i:
+            a = 'CatBoostRegressor'
+            base_level_fixed.append(a)
+    else:
+        base_level_fixed.append(i)
+        
+    base_level_fixed_2 = []
+    
+    counter = 0
+    for i in base_level_names:
+        s = str(i) + '_' + 'BaseLevel_' + str(counter)
+        base_level_fixed_2.append(s)
+        counter += 1
+    
+    base_level_fixed = base_level_fixed_2
     
     inter_level = estimator_list[1:]
     inter_level_names = []
-   
+    
     #defining inter_level names
     for item in inter_level:
         for m in item:
             inter_level_names = np.append(inter_level_names, str(m).split("(")[0])    
-    
+            
+    #defining inter_level names
+    for item in inter_level:
+        for m in item:
+            inter_level_names = np.append(inter_level_names, str(m).split("(")[0])  
+            
     #defining data_X and data_y
-    data_X = X_train
-    data_y = y_train
+    if finalize:
+        data_X = X.copy()
+        data_y = y.copy()
+    else:       
+        data_X = X_train.copy()
+        data_y = y_train.copy()
+        
+    #reset index
+    data_X.reset_index(drop=True, inplace=True)
+    data_y.reset_index(drop=True, inplace=True)
     
     #defining meta model
     
@@ -3832,12 +4044,16 @@ def create_stacknet(estimator_list,
         
     base_array = np.zeros((0,0))
     base_array_df = pd.DataFrame()
-    base_prediction = pd.DataFrame(y_train)
+    base_prediction = pd.DataFrame(data_y) #changed to data_y
     base_prediction = base_prediction.reset_index(drop=True)
     
     base_counter = 0
     
+    base_models_ = []
+
     for model in base_level:
+        
+        base_models_.append(model.fit(data_X,data_y)) #changed to data_X and data_y
         
         '''
         MONITOR UPDATE STARTS
@@ -3852,25 +4068,29 @@ def create_stacknet(estimator_list,
         
         progress.value += 1
                      
-        base_array = cross_val_predict(model,X_train,y_train,cv=fold, method='predict')
+        base_array = cross_val_predict(model,data_X,data_y,cv=fold, method='predict')
         base_array = base_array
         base_array = pd.DataFrame(base_array)
         base_array_df = pd.concat([base_array_df, base_array], axis=1)
         base_array = np.empty((0,0))
         
-        #changing column names to avoid xgboost failure
-        name_col = []
-        for i in range(0,len(base_array_df.columns)):
-            n = 'model_' + str(i)
-            name_col.append(n)
-
-        base_array_df.columns = name_col
-        
         base_counter += 1
+        
+    base_array_df.columns = base_level_fixed
+    
+    if restack:
+        base_array_df = pd.concat([data_X,base_array_df], axis=1)
+        
+    early_break = base_array_df.copy()
+    
+    models_.append(base_models_)
     
     inter_counter = 0
     
     for level in inter_level:
+        inter_inner = []
+        model_counter = 0
+        inter_array_df = pd.DataFrame()
         
         for model in level:
             
@@ -3884,29 +4104,49 @@ def create_stacknet(estimator_list,
             '''
             MONITOR UPDATE ENDS
             '''
-        
-            base_array = cross_val_predict(model,base_array_df,base_prediction,cv=fold, method='predict')
-            base_array = base_array
+            
+            model = model.fit(X = base_array_df, y = data_y) #changed to data_y
+            inter_inner.append(model)
+            
+            base_array = cross_val_predict(model,X = base_array_df, y = data_y,cv=fold, method='predict')
             base_array = pd.DataFrame(base_array)
-            base_array_df = pd.concat([base_array, base_array_df], axis=1)
+            
+            """
+            defining columns
+            """
+            
+            col = str(model).split("(")[0]
+            if 'CatBoostRegressor' in col:
+                col = 'CatBoostRegressor'
+            col = col + '_InterLevel_' + str(inter_counter) + '_' + str(model_counter)
+            base_array.columns = [col]
+            
+            """
+            defining columns end here
+            """
+            
+            inter_array_df = pd.concat([inter_array_df, base_array], axis=1)
             base_array = np.empty((0,0))
             
-            #changing column names to avoid xgboost failure
-            name_col = []
-            for i in range(0,len(base_array_df.columns)):
-                n = 'model_' + str(i)
-                name_col.append(n)
-                
-            base_array_df.columns = name_col
+            model_counter += 1
     
-            inter_counter += 1
-        
+        base_array_df = pd.concat([base_array_df,inter_array_df], axis=1)
+            
+        models_.append(inter_inner)
+    
         if restack == False:
-            base_array_df = base_array_df.iloc[:,:len(level)]
-        else:
-            base_array_df = base_array_df
+            i = base_array_df.shape[1] - len(level)
+            base_array_df = base_array_df.iloc[:,i:]
+        
+        inter_counter += 1
     
     model = meta_model
+    
+    #redefine data_X and data_y
+    data_X = base_array_df.copy()
+    
+    
+    meta_model_ = model.fit(data_X,data_y)
     
     kf = KFold(fold, random_state=seed) #capturing fold requested by user
 
@@ -4025,7 +4265,6 @@ def create_stacknet(estimator_list,
     std_r2=np.std(score_r2)
     std_max_error=np.std(score_max_error)
     
-    
     avgs_mae = np.append(avgs_mae, mean_mae)
     avgs_mae = np.append(avgs_mae, std_mae) 
     avgs_mse = np.append(avgs_mse, mean_mse)
@@ -4047,12 +4286,11 @@ def create_stacknet(estimator_list,
     
     progress.value += 1
         
-    models_ = []
+    #appending meta_model into models_
+    models_.append(meta_model_)
     
-    for i in estimator_list:
-        models_.append(i)
-        
-    models_.append(meta_model)
+    #appending restack param
+    models_.append(restack)
     
     #storing into experiment
     model_name = 'Stacking Regressor (Multi Layer)'
@@ -4151,6 +4389,10 @@ def plot_model(estimator,
     
     if plot not in available_plots:
         sys.exit('(Value Error): Plot Not Available. Please see docstring for list of available Plots.')
+
+    #exception for CatBoost
+    if 'CatBoostRegressor' in str(type(estimator)):
+        sys.exit('(Estimator Error): CatBoost estimator is not compatible with plot_model function, try using Catboost with interpret_model instead.')
         
     #checking for feature plot
     if not ( hasattr(estimator, 'coef_') or hasattr(estimator,'feature_importances_') ) and (plot == 'feature' or plot == 'rfe'):
@@ -4340,7 +4582,6 @@ def plot_model(estimator,
         else:
             variables = abs(model.feature_importances_)
         col_names = np.array(X_train.columns)
-        global coef_df
         coef_df = pd.DataFrame({'Variable': X_train.columns, 'Value': variables})
         progress.value += 1
         sorted_df = coef_df.sort_values(by='Value', ascending=False)
@@ -4355,18 +4596,14 @@ def plot_model(estimator,
         plt.title("Feature Importance Plot")
         plt.xlabel('Variable Importance')
         plt.ylabel('Features') 
-        #var_imp = sorted_df.reset_index(drop=True)
-        #var_imp_array = np.array(var_imp['Variable'])
         progress.value += 1
         clear_output()
-        #var_imp_array_top_n = var_imp_array[0:len(var_imp_array)]
    
     elif plot == 'parameter':
         
         clear_output()
         param_df = pd.DataFrame.from_dict(estimator.get_params(estimator), orient='index', columns=['Parameters'])
         display(param_df)
-
 
 def interpret_model(estimator,
                    plot = 'summary',
@@ -4446,9 +4683,14 @@ def interpret_model(estimator,
                       'ExtraTreesRegressor',
                       'GradientBoostingRegressor',
                       'XGBRegressor',
-                      'LGBMRegressor']
+                      'LGBMRegressor',
+                      'CatBoostRegressor']
     
     model_name = str(estimator).split("(")[0]
+
+    #Statement to find CatBoost and change name :
+    if model_name.find("catboost.core.CatBoostRegressor") != -1:
+        model_name = 'CatBoostRegressor'
     
     if model_name not in allowed_models:
         sys.exit('(Type Error): This function only supports tree based models.')
@@ -4580,7 +4822,6 @@ def evaluate_model(estimator):
 
 def finalize_model(estimator):
     
-        
     """
           
     Description:
@@ -4613,21 +4854,64 @@ def finalize_model(estimator):
 
     Warnings:
     ---------
-    None    
+
+    - Model returned by finalize_model(), if used on predict_model() without passing
+      new unseen dataset, then information grid printed is misleading as the model is
+      trained on the complete dataset including holdout sample when finalize_model() 
+      is used. Once finalize_model() is used, the model is considered ready for 
+      deployment and should be used on new unseen dataset only.
        
          
     """
     
+    #import depedencies
+    from copy import deepcopy
     
-    model = estimator.fit(X,y)
+    if type(estimator) is list:
+        
+        if type(estimator[0]) is not list:
+            
+            """
+            Single Layer Stacker
+            """
+            
+            stacker_final = deepcopy(estimator)
+            stack_restack = stacker_final.pop()
+            stack_meta_final = stacker_final.pop()
+            
+            model_final = stack_models(estimator_list = stacker_final, 
+                                       meta_model = stack_meta_final, 
+                                       restack = stack_restack,
+                                       finalize=True, 
+                                       verbose=False)
+            
+        else:
+            
+            """
+            multiple layer stacknet
+            """
+            
+            stacker_final = deepcopy(estimator)
+            stack_restack = stacker_final.pop()
+            stack_meta_final = stacker_final.pop()
+            
+            model_final = create_stacknet(estimator_list = stacker_final,
+                                          meta_model = stack_meta_final,
+                                          restack = stack_restack,
+                                          finalize = True,
+                                          verbose = False)
+
+    else:
+        model_final = deepcopy(estimator)
+        model_final.fit(X,y)
     
     #storing into experiment
     model_name = str(estimator).split("(")[0]
     model_name = 'Final ' + model_name
-    tup = (model_name,model)
+    tup = (model_name,model_final)
     experiment__.append(tup)
     
-    return model
+    return model_final
 
 def save_model(model, model_name):
     
@@ -4826,6 +5110,386 @@ def load_experiment(experiment_name):
 
     return exp
 
+def predict_model(estimator, 
+                  data=None,
+                  round=4):
+    
+    """
+       
+    Description:
+    ------------
+    This function is used to predict new data using trained estimator. It accepts
+    estimator created using one of the function in pycaret that returns trained 
+    model object or list of trained model objects created using stack_models() or 
+    create_stacknet(). data param can be passed for new unseen data, if data is
+    not passed, test / holdout sample separated at the time of setup() is being
+    used for prediction. 
+    
+        Example:
+        --------
+        
+        lr = create_model('lr')
+        lr_predictions = predict_model(lr)
+        
+        
+    Parameters
+    ----------
+    
+    estimator : object or list of objects, default = None
+    
+    data : {array-like, sparse matrix}, shape (n_samples, n_features) where n_samples 
+    is the number of samples and n_features is the number of features. Data shape and
+    column names must match with dataset passed in setup().
+    
+    round: integer, default = 4
+    Number of decimal places metrics in score grid will be rounded to.
+    
+    Returns:
+    --------
+
+    info grid:    Information grid is printed when data is None.
+    ----------      
+    
+
+    Warnings:
+    ---------
+    - if the estimator passed is generated using finalize_model() then metrics printed
+      in info grid maybe misleading as the model is trained on the complete dataset
+      including holdout sample when finalize_model() is used. Once finalize_model() is
+      used, the model is considered ready for deployment and should be used on new 
+      unseen dataset only.
+      
+    
+    
+    """
+    
+    #testing
+    #no active tests
+    
+    #general dependencies
+    import numpy as np
+    import pandas as pd
+    import re
+    from sklearn import metrics
+    
+    #dataset
+    if data is None:
+        Xtest = X_test
+        ytest = y_test
+        model = estimator
+    else:
+        Xtest = data
+        model = finalize_model(estimator)
+        
+    Xtest.reset_index(drop=True, inplace=True)
+    ytest.reset_index(drop=True, inplace=True)
+    
+    #copy X_test
+    X_test_ = X_test.copy()
+    X_test_ = X_test_.reset_index(drop=True)
+    y_test_ = y_test.copy()
+    y_test_ = y_test_.reset_index(drop=True)
+        
+    
+    if type(estimator) is list:
+        
+        if type(estimator[0]) is list:
+        
+            """
+            Multiple Layer Stacking
+            """
+            
+            #utility
+            stacker = model.copy()
+            restack = stacker.pop()
+            #stacker_method = stacker.pop()
+            #stacker_method = stacker_method[0]
+            stacker_meta = stacker.pop()
+            stacker_base = stacker.pop(0)
+
+            #base model names
+            base_model_names = []
+
+            #defining base_level_names
+            for i in stacker_base:
+                b = str(i).split("(")[0]
+                base_model_names.append(b)
+
+            base_level_fixed = []
+
+            for i in base_model_names:
+                if 'CatBoostRegressor' in i:
+                    a = 'CatBoostRegressor'
+                    base_level_fixed.append(a)
+                else:
+                    base_level_fixed.append(i)
+
+            base_level_fixed_2 = []
+
+            counter = 0
+            for i in base_level_fixed:
+                s = str(i) + '_' + 'BaseLevel_' + str(counter)
+                base_level_fixed_2.append(s)
+                counter += 1
+
+            base_level_fixed = base_level_fixed_2
+
+            """
+            base level predictions
+            """
+            base_pred = []
+            for i in stacker_base:
+                a = i.predict(X_test)
+                base_pred.append(a)
+
+            base_pred_df = pd.DataFrame()
+            for i in base_pred:
+                a = pd.DataFrame(i)
+                base_pred_df = pd.concat([base_pred_df, a], axis=1)
+
+            base_pred_df.columns = base_level_fixed
+            
+            base_pred_df_no_restack = base_pred_df.copy()
+            base_pred_df = pd.concat([Xtest,base_pred_df], axis=1)
+            
+
+            """
+            inter level predictions
+            """
+
+            inter_pred = []
+            combined_df = pd.DataFrame(base_pred_df)
+
+            inter_counter = 0
+
+            for level in stacker:
+
+                inter_pred_df = pd.DataFrame()
+
+                model_counter = 0 
+
+                for model in level:
+                    try:
+                        if inter_counter == 0:
+                            try:
+                                p = model.predict(base_pred_df)
+                            except:
+                                p = model.predict(base_pred_df_no_restack)
+                            
+                        else:
+                            p = model.predict(last_level_df)
+            
+                    except:
+                        p = model.predict(combined_df)
+
+                    p = pd.DataFrame(p)
+
+                    col = str(model).split("(")[0]
+                    if 'CatBoostRegressor' in col:
+                        col = 'CatBoostRegressor'
+                    col = col + '_InterLevel_' + str(inter_counter) + '_' + str(model_counter)
+                    p.columns = [col]
+
+                    inter_pred_df = pd.concat([inter_pred_df, p], axis=1)
+
+                    model_counter += 1
+
+                last_level_df = inter_pred_df.copy()
+
+                inter_counter += 1
+
+                combined_df = pd.concat([combined_df,inter_pred_df], axis=1)
+
+            """
+            meta final predictions
+            """
+
+            #final meta predictions
+            try:
+                pred_ = stacker_meta.predict(combined_df)
+            except:
+                pred_ = stacker_meta.predict(inter_pred_df)
+
+            if data is None:
+                mae = metrics.mean_absolute_error(ytest,pred_)
+                mse = metrics.mean_squared_error(ytest,pred_)
+                rmse = np.sqrt(mse)
+                r2 = metrics.r2_score(ytest,pred_)
+                max_error_ = metrics.max_error(ytest,pred_)
+
+
+                df_score = pd.DataFrame( {'Model' : 'Stacking Regressor', 'MAE' : [mae], 'MSE' : [mse], 'RMSE' : [rmse], 
+                                          'R2' : [r2], 'ME' : [max_error_]})
+                df_score = df_score.round(4)
+                display(df_score)
+        
+            label = pd.DataFrame(pred_)
+            label = label.round(round)
+            label.columns = ['Label']
+            label['Label']=label['Label']
+
+            if data is None:
+                X_test_ = pd.concat([X_test_,y_test_], axis=1)
+
+            X_test_ = pd.concat([X_test_,label], axis=1)
+
+        else:
+            
+            """
+            Single Layer Stacking
+            """
+            
+            #copy
+            stacker = model.copy()
+            
+            #restack
+            restack = stacker.pop()
+
+            #separate metamodel
+            meta_model = stacker.pop()
+
+            model_names = []
+            for i in stacker:
+                model_names = np.append(model_names, str(i).split("(")[0])
+
+            model_names_fixed = []
+
+            for i in model_names:
+                if 'CatBoostRegressor' in i:
+                    a = 'CatBoostRegressor'
+                    model_names_fixed.append(a)
+                else:
+                    model_names_fixed.append(i)
+
+            model_names = model_names_fixed
+
+            model_names_fixed = []
+            counter = 0
+
+            for i in model_names:
+                s = str(i) + '_' + str(counter)
+                model_names_fixed.append(s)
+                counter += 1
+
+            model_names = model_names_fixed
+
+            base_pred = []
+
+            for i in stacker:
+                p = i.predict(X_test)
+                base_pred.append(p)
+
+            df = pd.DataFrame()
+            for i in base_pred:
+                i = pd.DataFrame(i)
+                df = pd.concat([df,i], axis=1)
+
+            df.columns = model_names
+            
+            df_restack = pd.concat([X_test_,df], axis=1)
+
+            ytest = y_test
+
+            #meta predictions starts here
+
+            #restacking check
+            try:
+                pred_ = meta_model.predict(df)
+            except:
+                pred_ = meta_model.predict(df_restack) 
+                
+
+            if data is None:
+                mae = metrics.mean_absolute_error(ytest,pred_)
+                mse = metrics.mean_squared_error(ytest,pred_)
+                rmse = np.sqrt(mse)
+                r2 = metrics.r2_score(ytest,pred_)
+                max_error_ = metrics.max_error(ytest,pred_)
+
+
+                df_score = pd.DataFrame( {'Model' : 'Stacking Regressor', 'MAE' : [mae], 'MSE' : [mse], 'RMSE' : [rmse], 
+                                          'R2' : [r2], 'ME' : [max_error_]})
+                df_score = df_score.round(4)
+                display(df_score)
+                
+            label = pd.DataFrame(pred_)
+            label = label.round(round)
+            label.columns = ['Label']
+            label['Label']=label['Label']
+
+            if data is None:
+                X_test_ = pd.concat([X_test_,y_test_], axis=1)
+
+            X_test_ = pd.concat([X_test_,label], axis=1)
+
+
+    else:
+        
+        #model name
+        full_name = str(model).split("(")[0]
+        def putSpace(input):
+            words = re.findall('[A-Z][a-z]*', input)
+            words = ' '.join(words)
+            return words  
+        full_name = putSpace(full_name)
+
+        if full_name == 'A R D Regression':
+            full_name = 'Automatic Relevance Determination'
+
+        elif full_name == 'M L P Regressor':
+            full_name = 'MLP Regressor'
+
+        elif full_name == 'R A N S A C Regressor':
+            full_name = 'RANSAC Regressor'
+
+        elif full_name == 'S V R':
+            full_name = 'Support Vector Regressor'
+            
+        elif full_name == 'Lars':
+            full_name = 'Least Angle Regression'
+            
+        elif full_name == 'X G B Regressor':
+            full_name = 'Extreme Gradient Boosting Regressor'
+
+        elif full_name == 'L G B M Regressor':
+            full_name = 'Light Gradient Boosting Machine'
+
+        elif 'Cat Boost Regressor' in full_name:
+            full_name = 'CatBoost Regressor'
+
+        #prediction starts here
+        pred_ = model.predict(Xtest)
+        
+        if data is None:
+            mae = metrics.mean_absolute_error(ytest,pred_)
+            mse = metrics.mean_squared_error(ytest,pred_)
+            rmse = np.sqrt(mse)
+            r2 = metrics.r2_score(ytest,pred_)
+            max_error_ = metrics.max_error(ytest,pred_)
+
+            
+            df_score = pd.DataFrame( {'Model' : 'Stacking Regressor', 'MAE' : [mae], 'MSE' : [mse], 'RMSE' : [rmse], 
+                                      'R2' : [r2], 'ME' : [max_error_]})
+            df_score = df_score.round(4)
+            display(df_score)
+        
+            label = pd.DataFrame(pred_)
+            label = label.round(round)
+            label.columns = ['Label']
+            label['Label']=label['Label']
+
+        label = pd.DataFrame(pred_)
+        label = label.round(round)
+        label.columns = ['Label']
+        label['Label']=label['Label']
+        
+        if data is None:
+            X_test_ = pd.concat([X_test_,y_test_], axis=1)
+        
+        X_test_ = pd.concat([X_test_,label], axis=1)
+
+    return X_test_
+
 def automl(qualifier = 5,
            target_metric = 'R2',
            fold = 10, 
@@ -4888,7 +5552,7 @@ def automl(qualifier = 5,
     """
     
     #for checking only
-    #NO ACTIVE TEST
+    #no active tests
     
     #base dependencies
     from IPython.display import clear_output, update_display
@@ -4900,7 +5564,7 @@ def automl(qualifier = 5,
     
     #master collector
     #This is being used for appending throughout the process
-    global master, master_results, master_display, progress
+    #global master, master_results, master_display, progress
     master = []
     master_results = pd.DataFrame(columns=['Model', 'MAE','MSE','RMSE', 'R2', 'ME'])
     master_display = pd.DataFrame(columns=['Model', 'MAE','MSE','RMSE', 'R2', 'ME']) 
@@ -4962,9 +5626,17 @@ def automl(qualifier = 5,
     import warnings
     warnings.filterwarnings('ignore') 
 
-    #defining X_train and y_train
-    data_X = X_train
-    data_y=y_train
+    #Storing X_train and y_train in data_X and data_y parameter
+    data_X = X_train.copy()
+    data_y = y_train.copy()
+    data_X_original = X_train.copy()
+    data_y_original = y_train.copy()
+    
+    #reset index
+    data_X.reset_index(drop=True, inplace=True)
+    data_y.reset_index(drop=True, inplace=True)
+    data_X_original.reset_index(drop=True, inplace=True)
+    data_y_original.reset_index(drop=True, inplace=True)
     
     
     '''
@@ -6660,7 +7332,7 @@ def automl(qualifier = 5,
     while count_while < top_n:
         sub_list = []
         sub_list_names = []
-        generator = random.sample(range(len(master_results)-1), random.randint(3,len(master_results)-1))
+        generator = random.sample(range(len(master_results)-1), random.randint(3,10)) #changed to restrict n sample between 3 to 10
         for r in generator:
             sub_list.append(master_unpack[r])
             sub_list_names.append(master_results.iloc[r]['Model'])
@@ -6859,6 +7531,8 @@ def automl(qualifier = 5,
     stack_counter = 1
     
     for i in mix:
+        
+        stacker = []
             
         '''
         MONITOR UPDATE STARTS
@@ -6878,31 +7552,53 @@ def automl(qualifier = 5,
         progress.value += 1
         
         estimator_list = i
-        top_n_stacking_models.append(i)
         
-        #defining model_library model names
+        for model in estimator_list:
+            model.fit(data_X_original,data_y_original)
+            stacker.append(model)
+            
+        #defining model_library model names        
         model_names = np.zeros(0)
         for item in estimator_list:
             model_names = np.append(model_names, str(item).split("(")[0])
+            
+        model_names_fixed = []
+    
+        for i in model_names:
+            if 'CatBoostRegressor' in i:
+                a = 'CatBoostRegressor'
+                model_names_fixed.append(a)
+            else:
+                model_names_fixed.append(i)
+
+        model_names = model_names_fixed
+
+        model_names_fixed = []
+        
+        counter = 0
+        for i in model_names:
+            s = str(i) + '_' + str(counter)
+            model_names_fixed.append(s)
+            counter += 1
     
         base_array = np.zeros((0,0))
         base_prediction = pd.DataFrame(y_train)
         base_prediction = base_prediction.reset_index(drop=True)
     
         for model in estimator_list:
-            base_array = cross_val_predict(model,X_train,y_train,cv=fold, method='predict')
-            base_array = base_array
+            base_array = cross_val_predict(model,data_X_original,data_y_original,cv=fold, method='predict')
             base_array_df = pd.DataFrame(base_array)
             base_prediction = pd.concat([base_prediction,base_array_df],axis=1)
             base_array = np.empty((0,0))
         
         #defining column names now
         target_col_name = np.array(base_prediction.columns[0])
-        model_names = np.append(target_col_name, model_names)
+        model_names = np.append(target_col_name, model_names_fixed)
         base_prediction.columns = model_names #defining colum names now
-        data_X = base_prediction.drop(base_prediction.columns[0],axis=1)
-        data_y = base_prediction[base_prediction.columns[0]]
-
+        base_prediction_X = base_prediction.drop(base_prediction.columns[0],axis=1)
+        data_y_final = base_prediction[base_prediction.columns[0]]
+        data_X_final = pd.concat([data_X_original, base_prediction_X], axis=1)
+        
         #Meta Modeling Starts Here
 
         model = meta_model 
@@ -6923,7 +7619,7 @@ def automl(qualifier = 5,
         
         fold_num = 1
         
-        for train_i , test_i in kf.split(data_X,data_y):
+        for train_i , test_i in kf.split(data_X_final,data_y_final):
             
             #PROGRESS # 33 : Loop Counter (xfold)
             progress.value += 1
@@ -6941,11 +7637,14 @@ def automl(qualifier = 5,
             MONITOR UPDATE ENDS
             '''  
 
-            Xtrain,Xtest = data_X.iloc[train_i], data_X.iloc[test_i]
-            ytrain,ytest = data_y.iloc[train_i], data_y.iloc[test_i]
-
-            model.fit(Xtrain,ytrain)
-            pred_ = model.predict(Xtest)
+            Xtrain,Xtest = data_X_final.iloc[train_i], data_X_final.iloc[test_i]
+            ytrain,ytest = data_y_final.iloc[train_i], data_y_final.iloc[test_i]
+            
+            meta_model = LinearRegression()
+            
+            meta_model.fit(Xtrain,ytrain)
+            
+            pred_ = meta_model.predict(Xtest)
             mae = metrics.mean_absolute_error(ytest,pred_)
             mse = metrics.mean_squared_error(ytest,pred_)
             rmse = np.sqrt(mse)
@@ -6994,13 +7693,6 @@ def automl(qualifier = 5,
         mean_rmse=np.mean(score_rmse)
         mean_r2=np.mean(score_r2)
         mean_max_error=np.mean(score_max_error)
-        
-        #std_acc=np.std(score_acc)
-        #std_auc=np.std(score_auc)
-        #std_recall=np.std(score_recall)
-        #std_precision=np.std(score_precision)
-        #std_f1=np.std(score_f1)
-        #std_kappa=np.std(score_kappa)
 
         avg_mae = np.append(avg_mae, mean_mae)
         avg_mse = np.append(avg_mse, mean_mse)
@@ -7033,6 +7725,11 @@ def automl(qualifier = 5,
         top_n_stacking_model_results = pd.concat([top_n_stacking_model_results, model_results],ignore_index=True)
         top_n_stacking_model_results = top_n_stacking_model_results.round(round)  
 
+        stacker.append(meta_model)
+        stacker.append(False) #restacking criteria
+        
+        top_n_stacking_models.append(stacker)
+        
     master_results = master_results.append(top_n_stacking_model_results)
     master_results = master_results.reset_index(drop=True)
     master.append(top_n_stacking_models)
@@ -7113,3 +7810,4 @@ def automl(qualifier = 5,
     clear_output()    
     display(master_display_)
     return best_model
+

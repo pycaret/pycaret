@@ -3,7 +3,8 @@ def setup(data,
           train_size=0.7,
           sampling=True,
           sample_estimator = None,
-          session_id = None):
+          session_id = None,
+          profile = False):
     
     """
         
@@ -52,6 +53,9 @@ def setup(data,
     number is then distributed as a seed in all other functions used during experiment.
     This can be used later for reproducibility of entire experiment.
     
+    profile: bool, default = False
+    If set to true, it will display data profile for Exploratory Data Analysis in 
+    interactive HTML report. 
     
     Returns:
     --------
@@ -67,6 +71,9 @@ def setup(data,
     None
     
     """
+    
+    #testing
+    #no active testing
     
     #exception checking   
     import sys
@@ -87,6 +94,10 @@ def setup(data,
     if session_id is not None:
         if type(session_id) is not int:
             sys.exit('(Type Error): session_id parameter must be an integer.')   
+    
+    #checking sampling parameter
+    if type(profile) is not bool:
+        sys.exit('(Type Error): profile parameter only accepts True or False.')
         
     #pre-load libraries
     import pandas as pd
@@ -119,6 +130,12 @@ def setup(data,
     import random
     import seaborn as sns
     import matplotlib.pyplot as plt
+    import plotly.express as px
+    
+    #cufflinks
+    import cufflinks as cf
+    cf.go_offline()
+    cf.set_config_file(offline=False, world_readable=True)
 
     #ignore warnings
     import warnings
@@ -150,6 +167,8 @@ def setup(data,
         model = sample_estimator
         
     model_name = str(model).split("(")[0]
+    if 'CatBoostClassifier' in model_name:
+        model_name = 'CatBoostClassifier'
         
     #creating variables to be used later in the function
     X = data.drop(target,axis=1)
@@ -163,7 +182,7 @@ def setup(data,
     
     progress.value += 1
     
-    if sampling is True and data.shape[0] > 25000:
+    if sampling is True and data.shape[0] > 25000: #change this back to 25000
     
         split_perc = [0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,0.99]
         split_perc_text = ['10%','20%','30%','40%','50%','60%', '70%', '80%', '90%', '100%']
@@ -198,21 +217,69 @@ def setup(data,
             X_train, X_test, y_train, y_test = train_test_split(X_, y_, test_size=0.3, stratify=y_, random_state=seed)
             model.fit(X_train,y_train)
             pred_ = model.predict(X_test)
-            pred_prob = model.predict_proba(X_test)[:,1]
-
+            try:
+                pred_prob = model.predict_proba(X_test)[:,1]
+            except:
+                pred_prob = 0
+            
+            #accuracy
             acc = metrics.accuracy_score(y_test,pred_)
             metric_results.append(acc)
             metric_name.append('Accuracy')
             split_percent.append(i)
+            
+            #auc
+            if y.value_counts().count() > 2:
+                pass
+            else:
+                try:
+                    auc = metrics.roc_auc_score(y_test,pred_prob)
+                    metric_results.append(auc)
+                    metric_name.append('AUC')
+                    split_percent.append(i)
+                except:
+                    pass
+                
+            #recall
+            if y.value_counts().count() > 2:
+                recall = metrics.recall_score(y_test,pred_, average='macro')
+                metric_results.append(recall)
+                metric_name.append('Recall')
+                split_percent.append(i)
+            else:    
+                recall = metrics.recall_score(y_test,pred_)
+                metric_results.append(recall)
+                metric_name.append('Recall')
+                split_percent.append(i)
+                
+            #recall
+            if y.value_counts().count() > 2:
+                precision = metrics.precision_score(y_test,pred_, average='weighted')
+                metric_results.append(precision)
+                metric_name.append('Precision')
+                split_percent.append(i)
+            else:    
+                precision = metrics.precision_score(y_test,pred_)
+                metric_results.append(precision)
+                metric_name.append('Precision')
+                split_percent.append(i)                
 
-            auc = metrics.roc_auc_score(y_test,pred_prob)
-            metric_results.append(auc)
-            metric_name.append('AUC')
-            split_percent.append(i)
-
-            f1 = metrics.f1_score(y_test,pred_)
-            metric_results.append(f1)
-            metric_name.append('F1')
+            #F1
+            if y.value_counts().count() > 2:
+                f1 = metrics.f1_score(y_test,pred_, average='weighted')
+                metric_results.append(f1)
+                metric_name.append('F1')
+                split_percent.append(i)
+            else:    
+                f1 = metrics.precision_score(y_test,pred_)
+                metric_results.append(f1)
+                metric_name.append('F1')
+                split_percent.append(i)
+                
+            #Kappa
+            kappa = metrics.cohen_kappa_score(y_test,pred_)
+            metric_results.append(kappa)
+            metric_name.append('Kappa')
             split_percent.append(i)
             
             t1 = time.time()
@@ -252,19 +319,11 @@ def setup(data,
             counter += 1
 
         model_results = pd.DataFrame({'Sample Size' : split_percent, 'Metric' : metric_results, 'Metric Name': metric_name})
-        
-        #fig, ax = plt.subplots(figsize=(8, 5))
-        plt.figure(figsize=(8, 5))
-        plt.grid(True, which='both')
-        plt.xlim(0,1)
-        plt.ylim(0,1)
-        plt.tick_params(axis='both', which='major', bottom=False)
-        #plt.majorticks_on()
-        sns.lineplot(x="Sample Size", y="Metric", hue="Metric Name", data=model_results, color='blue', lw=2).set_title('Metric of ' + model_name + ' at Different Sample Size', fontsize=15).set_style("normal")
-        #sns.set_style("whitegrid")
-        print(' ')
-        plt.show()
-        
+        fig = px.line(model_results, x='Sample Size', y='Metric', color='Metric Name', line_shape='linear', range_y = [0,1])
+        fig.update_layout(plot_bgcolor='rgb(245,245,245)')
+        title= str(model_name) + ' Metrics and Fraction %'
+        fig.update_layout(title={'text': title, 'y':0.95,'x':0.45,'xanchor': 'center','yanchor': 'top'})
+        fig.show()
         
         monitor.iloc[1,1:] = 'Waiting for input'
         update_display(monitor, display_id = 'monitor')
@@ -370,7 +429,10 @@ def setup(data,
         '''
         clear_output()
         print(' ')
-        print('Setup Succesfully Completed!')
+        if profile:
+            print('Setup Succesfully Completed! Loading Profile Now... Please Wait!')
+        else:
+            print('Setup Succesfully Completed!')
         functions = pd.DataFrame ( [ ['session_id', seed ],
                                      ['Target Type', target_type],
                                      ['Original Data',X.shape ], 
@@ -382,6 +444,12 @@ def setup(data,
         
         functions_ = functions.style.hide_index()
         display(functions_)
+        
+        if profile:
+            import pandas_profiling
+            pf = pandas_profiling.ProfileReport(data)
+            clear_output()
+            display(pf)
             
         '''
         Final display Ends
@@ -798,14 +866,23 @@ def create_model(estimator = None,
             pred_prob = pred_prob[:,1]
             pred_ = model.predict(Xtest)
             sca = metrics.accuracy_score(ytest,pred_)
-            try:
-                sc = metrics.roc_auc_score(ytest,pred_prob,average='weighted')
-            except:
+            
+            if y.value_counts().count() > 2:
                 sc = 0
-            recall = metrics.recall_score(ytest,pred_, average='weighted')
-            precision = metrics.precision_score(ytest,pred_, average = 'weighted')
+                recall = metrics.recall_score(ytest,pred_, average='macro')                
+                precision = metrics.precision_score(ytest,pred_, average = 'weighted')
+                f1 = metrics.f1_score(ytest,pred_, average='weighted')
+                
+            else:
+                try:
+                    sc = metrics.roc_auc_score(ytest,pred_prob)
+                except:
+                    sc = 0
+                recall = metrics.recall_score(ytest,pred_)                
+                precision = metrics.precision_score(ytest,pred_)
+                f1 = metrics.f1_score(ytest,pred_)
+                
             kappa = metrics.cohen_kappa_score(ytest,pred_)
-            f1 = metrics.f1_score(ytest,pred_, average='weighted')
             score_acc = np.append(score_acc,sca)
             score_auc = np.append(score_auc,sc)
             score_recall = np.append(score_recall,recall)
@@ -817,14 +894,25 @@ def create_model(estimator = None,
             
             model.fit(Xtrain,ytrain)
             pred_prob = 0.00
-            pred_prob = 0.00
             pred_ = model.predict(Xtest)
             sca = metrics.accuracy_score(ytest,pred_)
-            sc = 0.00
-            recall = metrics.recall_score(ytest,pred_,average='weighted')
-            precision = metrics.precision_score(ytest,pred_,average='weighted') #change pred_prob to pred_
+            
+            if y.value_counts().count() > 2:
+                sc = 0
+                recall = metrics.recall_score(ytest,pred_, average='macro')                
+                precision = metrics.precision_score(ytest,pred_, average = 'weighted')
+                f1 = metrics.f1_score(ytest,pred_, average='weighted')
+
+            else:
+                try:
+                    sc = metrics.roc_auc_score(ytest,pred_prob)
+                except:
+                    sc = 0
+                recall = metrics.recall_score(ytest,pred_)                
+                precision = metrics.precision_score(ytest,pred_)
+                f1 = metrics.f1_score(ytest,pred_)
+
             kappa = metrics.cohen_kappa_score(ytest,pred_)
-            f1 = metrics.f1_score(ytest,pred_,average='weighted')
             score_acc = np.append(score_acc,sca)
             score_auc = np.append(score_auc,sc)
             score_recall = np.append(score_recall,recall)
@@ -949,6 +1037,7 @@ def create_model(estimator = None,
         clear_output()
         return model
 
+
 def ensemble_model(estimator,
                    method = 'Bagging', 
                    fold = 10,
@@ -1038,13 +1127,26 @@ def ensemble_model(estimator,
     if method not in available_method:
         sys.exit("(Value Error): Method parameter only accepts two values 'Bagging' or 'Boosting'.")
     
-    #checking boosting conflict with estimators
+    
+    #check boosting conflict
     if method == 'Boosting':
-        if hasattr(estimator,'get_xgb_params'):
-            pass
-        else:
-            if not hasattr(estimator, 'predict_proba') or not hasattr(estimator, 'class_weight'):
-                sys.exit("(Type Error): Estimator does not provide class_weights or predict_proba function and hence not supported for the Boosting method. Change the estimator or method to 'Bagging'.") 
+        
+        from sklearn.ensemble import AdaBoostClassifier
+        
+        
+        try:
+            if hasattr(estimator,'n_classes_'):
+                if estimator.n_classes_ > 2:
+                    check_model = estimator.estimator
+                    check_model = AdaBoostClassifier(check_model, n_estimators=10, random_state=seed)
+                    from sklearn.multiclass import OneVsRestClassifier
+                    check_model = OneVsRestClassifier(check_model)
+                    check_model.fit(X_train, y_train)
+            else:
+                check_model = AdaBoostClassifier(estimator, n_estimators=10, random_state=seed)
+                check_model.fit(X_train, y_train)
+        except:
+            sys.exit("(Type Error): Estimator does not provide class_weights or predict_proba function and hence not supported for the Boosting method. Change the estimator or method to 'Bagging'.") 
         
     #checking fold parameter
     if type(fold) is not int:
@@ -1125,6 +1227,10 @@ def ensemble_model(estimator,
     MONITOR UPDATE ENDS
     '''
     
+    if hasattr(estimator,'n_classes_'):
+        if estimator.n_classes_ > 2:
+            model = estimator.estimator
+            
     if method == 'Bagging':
         from sklearn.ensemble import BaggingClassifier
         model = BaggingClassifier(model,bootstrap=True,n_estimators=n_estimators, random_state=seed)
@@ -1133,6 +1239,10 @@ def ensemble_model(estimator,
         from sklearn.ensemble import AdaBoostClassifier
         model = AdaBoostClassifier(model, n_estimators=n_estimators, random_state=seed)
     
+    if y.value_counts().count() > 2:
+        from sklearn.multiclass import OneVsRestClassifier
+        model = OneVsRestClassifier(model)
+        
     progress.value += 1
     
     '''
@@ -1188,30 +1298,53 @@ def ensemble_model(estimator,
             pred_prob = pred_prob[:,1]
             pred_ = model.predict(Xtest)
             sca = metrics.accuracy_score(ytest,pred_)
-            sc = metrics.roc_auc_score(ytest,pred_prob)
-            recall = metrics.recall_score(ytest,pred_)
-            precision = metrics.precision_score(ytest,pred_)
+            
+            if y.value_counts().count() > 2:
+                sc = 0
+                recall = metrics.recall_score(ytest,pred_, average='macro')                
+                precision = metrics.precision_score(ytest,pred_, average = 'weighted')
+                f1 = metrics.f1_score(ytest,pred_, average='weighted')
+                
+            else:
+                try:
+                    sc = metrics.roc_auc_score(ytest,pred_prob)
+                except:
+                    sc = 0
+                recall = metrics.recall_score(ytest,pred_)                
+                precision = metrics.precision_score(ytest,pred_)
+                f1 = metrics.f1_score(ytest,pred_)
+                
             kappa = metrics.cohen_kappa_score(ytest,pred_)
-            f1 = metrics.f1_score(ytest,pred_)
             score_acc = np.append(score_acc,sca)
             score_auc = np.append(score_auc,sc)
             score_recall = np.append(score_recall,recall)
             score_precision = np.append(score_precision,precision)
             score_f1 =np.append(score_f1,f1)
             score_kappa =np.append(score_kappa,kappa)
-        
+
         else:
-        
+            
             model.fit(Xtrain,ytrain)
-            pred_prob = 0.00
             pred_prob = 0.00
             pred_ = model.predict(Xtest)
             sca = metrics.accuracy_score(ytest,pred_)
-            sc = 0.00
-            recall = metrics.recall_score(ytest,pred_)
-            precision = metrics.precision_score(ytest,pred_) #change pred_prob to pred_
+            
+            if y.value_counts().count() > 2:
+                sc = 0
+                recall = metrics.recall_score(ytest,pred_, average='macro')                
+                precision = metrics.precision_score(ytest,pred_, average = 'weighted')
+                f1 = metrics.f1_score(ytest,pred_, average='weighted')
+
+            else:
+                try:
+                    sc = metrics.roc_auc_score(ytest,pred_prob)
+                except:
+                    sc = 0
+                recall = metrics.recall_score(ytest,pred_)                
+                precision = metrics.precision_score(ytest,pred_)
+                f1 = metrics.f1_score(ytest,pred_)
+
             kappa = metrics.cohen_kappa_score(ytest,pred_)
-            f1 = metrics.f1_score(ytest,pred_)
             score_acc = np.append(score_acc,sca)
             score_auc = np.append(score_auc,sc)
             score_recall = np.append(score_recall,recall)
@@ -1321,8 +1454,6 @@ def ensemble_model(estimator,
     progress.value += 1
     
     #refitting the model on complete X_train, y_train
-    
-    #refitting the model on complete X_train, y_train
     monitor.iloc[1,1:] = 'Compiling Final Model'
     update_display(monitor, display_id = 'monitor')
     
@@ -1346,6 +1477,7 @@ def ensemble_model(estimator,
     else:
         clear_output()
         return model
+
 
 def plot_model(estimator, 
                plot = 'auc'): 
@@ -1798,6 +1930,7 @@ def plot_model(estimator,
         param_df = pd.DataFrame.from_dict(estimator.get_params(estimator), orient='index', columns=['Parameters'])
         display(param_df)
 
+
 def compare_models(blacklist = None,
                    fold = 10, 
                    round = 4, 
@@ -2216,40 +2349,60 @@ def compare_models(blacklist = None,
             Xtrain,Xtest = data_X.iloc[train_i], data_X.iloc[test_i]
             ytrain,ytest = data_y.iloc[train_i], data_y.iloc[test_i]
         
-            if hasattr(model, 'predict_proba'):               
-        
+            if hasattr(model, 'predict_proba'):
+
                 model.fit(Xtrain,ytrain)
                 pred_prob = model.predict_proba(Xtest)
                 pred_prob = pred_prob[:,1]
                 pred_ = model.predict(Xtest)
                 sca = metrics.accuracy_score(ytest,pred_)
-                try:
-                    sc = metrics.roc_auc_score(ytest,pred_prob)
-                except:
+
+                if y.value_counts().count() > 2:
                     sc = 0
-                recall = metrics.recall_score(ytest,pred_, average='weighted')
-                precision = metrics.precision_score(ytest,pred_, average='weighted')
+                    recall = metrics.recall_score(ytest,pred_, average='macro')                
+                    precision = metrics.precision_score(ytest,pred_, average = 'weighted')
+                    f1 = metrics.f1_score(ytest,pred_, average='weighted')
+
+                else:
+                    try:
+                        sc = metrics.roc_auc_score(ytest,pred_prob)
+                    except:
+                        sc = 0
+                    recall = metrics.recall_score(ytest,pred_)                
+                    precision = metrics.precision_score(ytest,pred_)
+                    f1 = metrics.f1_score(ytest,pred_)
+
                 kappa = metrics.cohen_kappa_score(ytest,pred_)
-                f1 = metrics.f1_score(ytest,pred_, average='weighted')
                 score_acc = np.append(score_acc,sca)
                 score_auc = np.append(score_auc,sc)
                 score_recall = np.append(score_recall,recall)
                 score_precision = np.append(score_precision,precision)
                 score_f1 =np.append(score_f1,f1)
-                score_kappa =np.append(score_kappa,kappa)              
-        
-            else:        
+                score_kappa =np.append(score_kappa,kappa)
+
+            else:
 
                 model.fit(Xtrain,ytrain)
                 pred_prob = 0.00
-                pred_prob = 0.00
                 pred_ = model.predict(Xtest)
                 sca = metrics.accuracy_score(ytest,pred_)
-                sc = 0.00
-                recall = metrics.recall_score(ytest,pred_, average='weighted')
-                precision = metrics.precision_score(ytest,pred_, average='weighted') #change pred_prob to pred_
+
+                if y.value_counts().count() > 2:
+                    sc = 0
+                    recall = metrics.recall_score(ytest,pred_, average='macro')                
+                    precision = metrics.precision_score(ytest,pred_, average = 'weighted')
+                    f1 = metrics.f1_score(ytest,pred_, average='weighted')
+
+                else:
+                    try:
+                        sc = metrics.roc_auc_score(ytest,pred_prob)
+                    except:
+                        sc = 0
+                    recall = metrics.recall_score(ytest,pred_)                
+                    precision = metrics.precision_score(ytest,pred_)
+                    f1 = metrics.f1_score(ytest,pred_)
+
                 kappa = metrics.cohen_kappa_score(ytest,pred_)
-                f1 = metrics.f1_score(ytest,pred_, average='weighted')
                 score_acc = np.append(score_acc,sca)
                 score_auc = np.append(score_auc,sc)
                 score_recall = np.append(score_recall,recall)
@@ -2349,6 +2502,7 @@ def compare_models(blacklist = None,
     clear_output()
 
     return compare_models_
+
 
 def tune_model(estimator = None, 
                fold = 10, 
@@ -2600,13 +2754,22 @@ def tune_model(estimator = None,
         optimize = 'roc_auc'
         
     elif optimize == 'Recall':
-        optimize = metrics.make_scorer(metrics.recall_score, average = 'weighted')
+        if y.value_counts().count() > 2:
+            optimize = metrics.make_scorer(metrics.recall_score, average = 'macro')
+        else:
+            optimize = 'recall'
 
     elif optimize == 'Precision':
-        optimize = metrics.make_scorer(metrics.precision_score, average = 'weighted')
+        if y.value_counts().count() > 2:
+            optimize = metrics.make_scorer(metrics.precision_score, average = 'weighted')
+        else:
+            optimize = 'precision'
    
     elif optimize == 'F1':
-        optimize = metrics.make_scorer(metrics.f1_score, average = 'weighted')
+        if y.value_counts().count() > 2:
+            optimize = metrics.make_scorer(metrics.f1_score, average = 'weighted')
+        else:
+            optimize = optimize = 'f1'
         
     progress.value += 1
     
@@ -3128,47 +3291,66 @@ def tune_model(estimator = None,
         Xtrain,Xtest = data_X.iloc[train_i], data_X.iloc[test_i]
         ytrain,ytest = data_y.iloc[train_i], data_y.iloc[test_i]
     
-        if hasattr(best_model, 'predict_proba'):  
+        if hasattr(model, 'predict_proba'):
         
             model.fit(Xtrain,ytrain)
             pred_prob = model.predict_proba(Xtest)
             pred_prob = pred_prob[:,1]
             pred_ = model.predict(Xtest)
             sca = metrics.accuracy_score(ytest,pred_)
-            try:
-                sc = metrics.roc_auc_score(ytest,pred_prob, average='weighted')
-            except:
+            
+            if y.value_counts().count() > 2:
                 sc = 0
-            recall = metrics.recall_score(ytest,pred_, average='weighted')
-            precision = metrics.precision_score(ytest,pred_, average='weighted')
+                recall = metrics.recall_score(ytest,pred_, average='macro')                
+                precision = metrics.precision_score(ytest,pred_, average = 'weighted')
+                f1 = metrics.f1_score(ytest,pred_, average='weighted')
+                
+            else:
+                try:
+                    sc = metrics.roc_auc_score(ytest,pred_prob)
+                except:
+                    sc = 0
+                recall = metrics.recall_score(ytest,pred_)                
+                precision = metrics.precision_score(ytest,pred_)
+                f1 = metrics.f1_score(ytest,pred_)
+                
             kappa = metrics.cohen_kappa_score(ytest,pred_)
-            f1 = metrics.f1_score(ytest,pred_, average='weighted')
             score_acc = np.append(score_acc,sca)
             score_auc = np.append(score_auc,sc)
             score_recall = np.append(score_recall,recall)
             score_precision = np.append(score_precision,precision)
             score_f1 =np.append(score_f1,f1)
             score_kappa =np.append(score_kappa,kappa)
-        
+
         else:
-        
+            
             model.fit(Xtrain,ytrain)
-            pred_prob = 0.00
             pred_prob = 0.00
             pred_ = model.predict(Xtest)
             sca = metrics.accuracy_score(ytest,pred_)
-            sc = 0.00
-            recall = metrics.recall_score(ytest,pred_, average='weighted')
-            precision = metrics.precision_score(ytest,pred_, average='weighted') #change pred_prob to pred_
+            
+            if y.value_counts().count() > 2:
+                sc = 0
+                recall = metrics.recall_score(ytest,pred_, average='macro')                
+                precision = metrics.precision_score(ytest,pred_, average = 'weighted')
+                f1 = metrics.f1_score(ytest,pred_, average='weighted')
+
+            else:
+                try:
+                    sc = metrics.roc_auc_score(ytest,pred_prob)
+                except:
+                    sc = 0
+                recall = metrics.recall_score(ytest,pred_)                
+                precision = metrics.precision_score(ytest,pred_)
+                f1 = metrics.f1_score(ytest,pred_)
+
             kappa = metrics.cohen_kappa_score(ytest,pred_)
-            f1 = metrics.f1_score(ytest,pred_, average='weighted')
             score_acc = np.append(score_acc,sca)
             score_auc = np.append(score_auc,sc)
             score_recall = np.append(score_recall,recall)
             score_precision = np.append(score_precision,precision)
             score_f1 =np.append(score_f1,f1)
-            score_kappa =np.append(score_kappa,kappa)
-            
+            score_kappa =np.append(score_kappa,kappa)             
         
         progress.value += 1
             
@@ -3297,6 +3479,8 @@ def tune_model(estimator = None,
     else:
         clear_output()
         return best_model
+
+
 
 def blend_models(estimator_list = 'All', 
                  fold = 10, 
@@ -3660,10 +3844,16 @@ def blend_models(estimator_list = 'All',
             pred_ = model.predict(Xtest)
             sca = metrics.accuracy_score(ytest,pred_)
             sc = 0.0
-            recall = metrics.recall_score(ytest,pred_, average='weighted')
-            precision = metrics.precision_score(ytest,pred_, average='weighted')
+            if y.value_counts().count() > 2:
+                recall = metrics.recall_score(ytest,pred_, average='macro')
+                precision = metrics.precision_score(ytest,pred_, average='weighted')
+                f1 = metrics.f1_score(ytest,pred_, average='weighted')    
+            else:
+                recall = metrics.recall_score(ytest,pred_)
+                precision = metrics.precision_score(ytest,pred_)
+                f1 = metrics.f1_score(ytest,pred_) 
+                
             kappa = metrics.cohen_kappa_score(ytest,pred_)
-            f1 = metrics.f1_score(ytest,pred_, average='weighted')
             score_acc = np.append(score_acc,sca)
             score_auc = np.append(score_auc,sc)
             score_recall = np.append(score_recall,recall)
@@ -3674,18 +3864,28 @@ def blend_models(estimator_list = 'All',
         else:
         
             model.fit(Xtrain,ytrain)
-            pred_prob = model.predict_proba(Xtest)
-            pred_prob = pred_prob[:,1]
             pred_ = model.predict(Xtest)
             sca = metrics.accuracy_score(ytest,pred_)
-            try:
-                sc = metrics.roc_auc_score(ytest,pred_prob)
-            except:
+            
+            if y.value_counts().count() > 2:
+                pred_prob = 0
                 sc = 0
-            recall = metrics.recall_score(ytest,pred_, average='weighted')
-            precision = metrics.precision_score(ytest,pred_, average='weighted')
+                recall = metrics.recall_score(ytest,pred_, average='macro')
+                precision = metrics.precision_score(ytest,pred_, average='weighted')
+                f1 = metrics.f1_score(ytest,pred_, average='weighted')
+            else:
+                try:
+                    pred_prob = model.predict_proba(Xtest)
+                    pred_prob = pred_prob[:,1]
+                    sc = metrics.roc_auc_score(ytest,pred_prob)
+                except:
+                    sc = 0
+                recall = metrics.recall_score(ytest,pred_)
+                precision = metrics.precision_score(ytest,pred_)
+                f1 = metrics.f1_score(ytest,pred_)
+                
             kappa = metrics.cohen_kappa_score(ytest,pred_)
-            f1 = metrics.f1_score(ytest,pred_, average='weighted')
+            
             score_acc = np.append(score_acc,sca)
             score_auc = np.append(score_auc,sc)
             score_recall = np.append(score_recall,recall)
@@ -3812,6 +4012,8 @@ def blend_models(estimator_list = 'All',
         clear_output()
         return model
 
+
+
 def stack_models(estimator_list, 
                  meta_model = None, 
                  fold = 10,
@@ -3879,6 +4081,12 @@ def stack_models(estimator_list,
     When plot is set to True, it will return the correlation plot of prediction
     from all base models provided in estimator_list.
     
+    finalize: Boolean, default = False
+    When finalize is set to True, it will fit the stacker on entire dataset
+    including holdout sample created during setup() stage. It is not recommended
+    to set this to True here, if you would like to fit the stacker on entire
+    dataset including the holdout, use finalize_model().
+    
     verbose: Boolean, default = True
     Score grid is not printed when verbose is set to False.
 
@@ -3929,6 +4137,11 @@ def stack_models(estimator_list,
         if 'sklearn' not in str(type(meta_model)) and 'CatBoostClassifier' not in str(type(meta_model)):
             sys.exit("(Value Error): estimator_list parameter only accepts trained model object")
     
+    #stacking with multiclass
+    if y.value_counts().count() > 2:
+        if method == 'soft':
+            sys.exit("(Type Error): method 'soft' not supported for multiclass problems.")
+            
     #checking fold parameter
     if type(fold) is not int:
         sys.exit('(Type Error): Fold parameter only accepts integer value.')
@@ -4168,13 +4381,21 @@ def stack_models(estimator_list,
         pred_ = model.predict(Xtest)
         sca = metrics.accuracy_score(ytest,pred_)
         try: 
-            sc = metrics.roc_auc_score(ytest,pred_prob,average='weighted')
+            sc = metrics.roc_auc_score(ytest,pred_prob)
         except:
             sc = 0
-        recall = metrics.recall_score(ytest,pred_,average='weighted')
-        precision = metrics.precision_score(ytest,pred_,average='weighted')
+            
+        if y.value_counts().count() > 2:
+            recall = metrics.recall_score(ytest,pred_,average='macro')
+            precision = metrics.precision_score(ytest,pred_,average='weighted')
+            f1 = metrics.f1_score(ytest,pred_,average='weighted')
+            
+        else:
+            recall = metrics.recall_score(ytest,pred_)
+            precision = metrics.precision_score(ytest,pred_)
+            f1 = metrics.f1_score(ytest,pred_)
+            
         kappa = metrics.cohen_kappa_score(ytest,pred_)
-        f1 = metrics.f1_score(ytest,pred_,average='weighted')
         score_acc = np.append(score_acc,sca)
         score_auc = np.append(score_auc,sc)
         score_recall = np.append(score_recall,recall)
@@ -4286,6 +4507,7 @@ def stack_models(estimator_list,
     
     #appending method into models_
     models_.append(method)
+    models_.append(restack)
     
     #storing into experiment
     model_name = 'Stacking Classifier (Single Layer)'
@@ -4307,6 +4529,8 @@ def stack_models(estimator_list,
     else:
         clear_output()
         return models_
+
+
 
 def create_stacknet(estimator_list,
                     meta_model = None,
@@ -4366,7 +4590,13 @@ def create_stacknet(estimator_list,
     When restack is set to True, raw data will be exposed to meta model when
     making predictions, otherwise when False, only the predicted label or
     probabilities is passed to meta model when making final predictions.
-
+    
+    finalize: Boolean, default = False
+    When finalize is set to True, it will fit the stacker on entire dataset
+    including holdout sample created during setup() stage. It is not recommended
+    to set this to True here, if you would like to fit the stacker on entire
+    dataset including the holdout, use finalize_model().
+    
     verbose: Boolean, default = True
     Score grid is not printed when verbose is set to False.
 
@@ -4392,7 +4622,10 @@ def create_stacknet(estimator_list,
     
     -  If target variable is multiclass (more than 2 classes), AUC will be returned as
        zero (0.0)
+       
+    -  method 'soft' not supported for when target is multiclass.
     
+      
     """
 
     
@@ -4404,7 +4637,7 @@ def create_stacknet(estimator_list,
     '''
     
     #testing
-    #no active tests
+    #no active testing
     
     #exception checking   
     import sys
@@ -4420,6 +4653,11 @@ def create_stacknet(estimator_list,
         if 'sklearn' not in str(type(meta_model)) and 'CatBoostClassifier' not in str(type(meta_model)):
             sys.exit("(Value Error): estimator_list parameter only trained model object")
     
+    #stacknet with multiclass
+    if y.value_counts().count() > 2:
+        if method == 'soft':
+            sys.exit("(Type Error): method 'soft' not supported for multiclass problems.")
+        
     #checking fold parameter
     if type(fold) is not int:
         sys.exit('(Type Error): Fold parameter only accepts integer value.')
@@ -4586,8 +4824,6 @@ def create_stacknet(estimator_list,
         base_array_df = pd.concat([base_array_df, base_array], axis=1)
         base_array = np.empty((0,0))  
         
-        
-        
         base_counter += 1
             
     base_array_df.columns = base_level_fixed
@@ -4596,7 +4832,6 @@ def create_stacknet(estimator_list,
         base_array_df = pd.concat([data_X,base_array_df], axis=1)
         
     early_break = base_array_df.copy()
-    
     
     models_.append(base_models_)
     
@@ -4719,10 +4954,18 @@ def create_stacknet(estimator_list,
             sc = metrics.roc_auc_score(ytest,pred_prob)
         except:
             sc = 0
-        recall = metrics.recall_score(ytest,pred_,average='weighted')
-        precision = metrics.precision_score(ytest,pred_,average='weighted')
+            
+        if y.value_counts().count() > 2:
+            recall = metrics.recall_score(ytest,pred_,average='macro')
+            precision = metrics.precision_score(ytest,pred_,average='weighted')
+            f1 = metrics.f1_score(ytest,pred_,average='weighted')
+            
+        else:
+            recall = metrics.recall_score(ytest,pred_)
+            precision = metrics.precision_score(ytest,pred_)
+            f1 = metrics.f1_score(ytest,pred_) 
+            
         kappa = metrics.cohen_kappa_score(ytest,pred_)
-        f1 = metrics.f1_score(ytest,pred_,average='weighted')
         score_acc = np.append(score_acc,sca)
         score_auc = np.append(score_auc,sc)
         score_recall = np.append(score_recall,recall)
@@ -4835,6 +5078,9 @@ def create_stacknet(estimator_list,
     #appending method into models_
     models_.append([str(method)])
     
+    #appending restack param
+    models_.append(restack)
+    
     #storing into experiment
     model_name = 'Stacking Classifier (Multi Layer)'
     tup = (model_name,models_)
@@ -4851,6 +5097,8 @@ def create_stacknet(estimator_list,
     else:
         clear_output()
         return models_ 
+
+
 
 def automl(qualifier = 5,
            target_metric = 'Accuracy',
@@ -4922,7 +5170,7 @@ def automl(qualifier = 5,
        
     """
     #for testing only
-    #no active tests
+    #no active testing
     
     #base dependencies
     from IPython.display import clear_output, update_display
@@ -5006,20 +5254,37 @@ def automl(qualifier = 5,
         sort = 'Accuracy'
         
     elif target_metric == 'AUC':
-        optimize = 'accuracy'
-        sort = 'AUC'     
+        
+        if y.value_counts().count() > 2:
+            optimize = 'accuracy' #for multiclass since no AUC, instead accuracy is optimized
+            sort = 'AUC'
+        else:
+            optimize = 'roc_auc'
+            sort = 'AUC'
         
     elif target_metric == 'Recall':
-        optimize = metrics.make_scorer(metrics.recall_score, average = 'weighted')
-        sort = 'Recall'        
+        if y.value_counts().count() > 2:
+            optimize = metrics.make_scorer(metrics.recall_score, average = 'macro')
+            sort = 'Recall'
+        else:
+            optimize = 'recall'
+            sort = 'Recall'
 
     elif target_metric == 'Precision':
-        optimize = metrics.make_scorer(metrics.precision_score, average = 'weighted')
-        sort = 'Prec.'
+        if y.value_counts().count() > 2:
+            optimize = metrics.make_scorer(metrics.precision_score, average = 'weighted')
+            sort = 'Prec.'
+        else:
+            optimize = 'precision'
+            sort = 'Prec.'
    
     elif target_metric == 'F1':
-        optimize = optimize = metrics.make_scorer(metrics.f1_score, average = 'weighted')
-        sort = 'F1'
+        if y.value_counts().count() > 2:
+            optimize = optimize = metrics.make_scorer(metrics.f1_score, average = 'weighted')
+            sort = 'F1'
+        else:
+            optimize = 'f1'
+            sort = 'F1'
         
     elif target_metric == 'Kappa':
         optimize = 'accuracy'
@@ -5244,46 +5509,66 @@ def automl(qualifier = 5,
             Xtrain,Xtest = data_X.iloc[train_i], data_X.iloc[test_i]
             ytrain,ytest = data_y.iloc[train_i], data_y.iloc[test_i]
         
-            if hasattr(model, 'predict_proba'):               
-        
+            if hasattr(model, 'predict_proba'):
+
                 model.fit(Xtrain,ytrain)
                 pred_prob = model.predict_proba(Xtest)
                 pred_prob = pred_prob[:,1]
                 pred_ = model.predict(Xtest)
                 sca = metrics.accuracy_score(ytest,pred_)
-                try:
-                    sc = metrics.roc_auc_score(ytest,pred_prob)
-                except: 
-                    sc = 0
-                recall = metrics.recall_score(ytest,pred_,average='weighted')
-                precision = metrics.precision_score(ytest,pred_,average='weighted')
-                kappa = metrics.cohen_kappa_score(ytest,pred_)
-                f1 = metrics.f1_score(ytest,pred_,average='weighted')
-                score_acc = np.append(score_acc,sca)
-                score_auc = np.append(score_auc,sc)
-                score_recall = np.append(score_recall,recall)
-                score_precision = np.append(score_precision,precision)
-                score_f1 =np.append(score_f1,f1)
-                score_kappa =np.append(score_kappa,kappa)              
-        
-            else:        
 
-                model.fit(Xtrain,ytrain)
-                pred_prob = 0.00
-                pred_prob = 0.00
-                pred_ = model.predict(Xtest)
-                sca = metrics.accuracy_score(ytest,pred_)
-                sc = 0.00
-                recall = metrics.recall_score(ytest,pred_,average='weighted')
-                precision = metrics.precision_score(ytest,pred_,average='weighted') #change pred_prob to pred_
+                if y.value_counts().count() > 2:
+                    sc = 0
+                    recall = metrics.recall_score(ytest,pred_, average='macro')                
+                    precision = metrics.precision_score(ytest,pred_, average = 'weighted')
+                    f1 = metrics.f1_score(ytest,pred_, average='weighted')
+
+                else:
+                    try:
+                        sc = metrics.roc_auc_score(ytest,pred_prob)
+                    except:
+                        sc = 0
+                    recall = metrics.recall_score(ytest,pred_)                
+                    precision = metrics.precision_score(ytest,pred_)
+                    f1 = metrics.f1_score(ytest,pred_)
+
                 kappa = metrics.cohen_kappa_score(ytest,pred_)
-                f1 = metrics.f1_score(ytest,pred_,average='weighted')
                 score_acc = np.append(score_acc,sca)
                 score_auc = np.append(score_auc,sc)
                 score_recall = np.append(score_recall,recall)
                 score_precision = np.append(score_precision,precision)
                 score_f1 =np.append(score_f1,f1)
                 score_kappa =np.append(score_kappa,kappa)
+
+            else:
+
+                model.fit(Xtrain,ytrain)
+                pred_prob = 0.00
+                pred_ = model.predict(Xtest)
+                sca = metrics.accuracy_score(ytest,pred_)
+
+                if y.value_counts().count() > 2:
+                    sc = 0
+                    recall = metrics.recall_score(ytest,pred_, average='macro')                
+                    precision = metrics.precision_score(ytest,pred_, average = 'weighted')
+                    f1 = metrics.f1_score(ytest,pred_, average='weighted')
+
+                else:
+                    try:
+                        sc = metrics.roc_auc_score(ytest,pred_prob)
+                    except:
+                        sc = 0
+                    recall = metrics.recall_score(ytest,pred_)                
+                    precision = metrics.precision_score(ytest,pred_)
+                    f1 = metrics.f1_score(ytest,pred_)
+
+                kappa = metrics.cohen_kappa_score(ytest,pred_)
+                score_acc = np.append(score_acc,sca)
+                score_auc = np.append(score_auc,sc)
+                score_recall = np.append(score_recall,recall)
+                score_precision = np.append(score_precision,precision)
+                score_f1 =np.append(score_f1,f1)
+                score_kappa =np.append(score_kappa,kappa) 
                 
             t1 = time.time()
             
@@ -5352,7 +5637,9 @@ def automl(qualifier = 5,
 
     master_results = master_display.sort_values(by=sort, ascending=False).reset_index(drop=True)
     master_results = master_results.round(round)
-    top_n_model_names = list(master_results.iloc[0:top_n]['Model'])
+    top_n_model_names = master_results.iloc[0:top_n]['Model'].tolist()
+    #top_n_model_names = master_results.iloc[0:top_n]['Model']
+    #top_n_model_names = list(top_n_model_names)
     top_n_model_results = master_results[:top_n]
     master_results = master_results[:top_n]
 
@@ -5566,20 +5853,29 @@ def automl(qualifier = 5,
             ytrain,ytest = data_y.iloc[train_i], data_y.iloc[test_i]
         
             if hasattr(model, 'predict_proba'):
-        
+
                 model.fit(Xtrain,ytrain)
                 pred_prob = model.predict_proba(Xtest)
                 pred_prob = pred_prob[:,1]
                 pred_ = model.predict(Xtest)
                 sca = metrics.accuracy_score(ytest,pred_)
-                try:
-                    sc = metrics.roc_auc_score(ytest,pred_prob)
-                except:
+
+                if y.value_counts().count() > 2:
                     sc = 0
-                recall = metrics.recall_score(ytest,pred_,average='weighted')
-                precision = metrics.precision_score(ytest,pred_,average='weighted')
+                    recall = metrics.recall_score(ytest,pred_, average='macro')                
+                    precision = metrics.precision_score(ytest,pred_, average = 'weighted')
+                    f1 = metrics.f1_score(ytest,pred_, average='weighted')
+
+                else:
+                    try:
+                        sc = metrics.roc_auc_score(ytest,pred_prob)
+                    except:
+                        sc = 0
+                    recall = metrics.recall_score(ytest,pred_)                
+                    precision = metrics.precision_score(ytest,pred_)
+                    f1 = metrics.f1_score(ytest,pred_)
+
                 kappa = metrics.cohen_kappa_score(ytest,pred_)
-                f1 = metrics.f1_score(ytest,pred_,average='weighted')
                 score_acc = np.append(score_acc,sca)
                 score_auc = np.append(score_auc,sc)
                 score_recall = np.append(score_recall,recall)
@@ -5588,23 +5884,34 @@ def automl(qualifier = 5,
                 score_kappa =np.append(score_kappa,kappa)
 
             else:
-            
+
                 model.fit(Xtrain,ytrain)
-                pred_prob = 0.00
                 pred_prob = 0.00
                 pred_ = model.predict(Xtest)
                 sca = metrics.accuracy_score(ytest,pred_)
-                sc = 0.00
-                recall = metrics.recall_score(ytest,pred_,average='weighted')
-                precision = metrics.precision_score(ytest,pred_,average='weighted') #change pred_prob to pred_
+
+                if y.value_counts().count() > 2:
+                    sc = 0
+                    recall = metrics.recall_score(ytest,pred_, average='macro')                
+                    precision = metrics.precision_score(ytest,pred_, average = 'weighted')
+                    f1 = metrics.f1_score(ytest,pred_, average='weighted')
+
+                else:
+                    try:
+                        sc = metrics.roc_auc_score(ytest,pred_prob)
+                    except:
+                        sc = 0
+                    recall = metrics.recall_score(ytest,pred_)                
+                    precision = metrics.precision_score(ytest,pred_)
+                    f1 = metrics.f1_score(ytest,pred_)
+
                 kappa = metrics.cohen_kappa_score(ytest,pred_)
-                f1 = metrics.f1_score(ytest,pred_,average='weighted')
                 score_acc = np.append(score_acc,sca)
                 score_auc = np.append(score_auc,sc)
                 score_recall = np.append(score_recall,recall)
                 score_precision = np.append(score_precision,precision)
                 score_f1 =np.append(score_f1,f1)
-                score_kappa =np.append(score_kappa,kappa)
+                score_kappa =np.append(score_kappa,kappa) 
    
             t1 = time.time()
             
@@ -5793,20 +6100,29 @@ def automl(qualifier = 5,
             ytrain,ytest = data_y.iloc[train_i], data_y.iloc[test_i]
         
             if hasattr(model, 'predict_proba'):
-        
+
                 model.fit(Xtrain,ytrain)
                 pred_prob = model.predict_proba(Xtest)
                 pred_prob = pred_prob[:,1]
                 pred_ = model.predict(Xtest)
                 sca = metrics.accuracy_score(ytest,pred_)
-                try:
-                    sc = metrics.roc_auc_score(ytest,pred_prob)
-                except:
+
+                if y.value_counts().count() > 2:
                     sc = 0
-                recall = metrics.recall_score(ytest,pred_,average='weighted')
-                precision = metrics.precision_score(ytest,pred_,average='weighted')
+                    recall = metrics.recall_score(ytest,pred_, average='macro')                
+                    precision = metrics.precision_score(ytest,pred_, average = 'weighted')
+                    f1 = metrics.f1_score(ytest,pred_, average='weighted')
+
+                else:
+                    try:
+                        sc = metrics.roc_auc_score(ytest,pred_prob)
+                    except:
+                        sc = 0
+                    recall = metrics.recall_score(ytest,pred_)                
+                    precision = metrics.precision_score(ytest,pred_)
+                    f1 = metrics.f1_score(ytest,pred_)
+
                 kappa = metrics.cohen_kappa_score(ytest,pred_)
-                f1 = metrics.f1_score(ytest,pred_,average='weighted')
                 score_acc = np.append(score_acc,sca)
                 score_auc = np.append(score_auc,sc)
                 score_recall = np.append(score_recall,recall)
@@ -5815,17 +6131,28 @@ def automl(qualifier = 5,
                 score_kappa =np.append(score_kappa,kappa)
 
             else:
-            
+
                 model.fit(Xtrain,ytrain)
-                pred_prob = 0.00
                 pred_prob = 0.00
                 pred_ = model.predict(Xtest)
                 sca = metrics.accuracy_score(ytest,pred_)
-                sc = 0.00
-                recall = metrics.recall_score(ytest,pred_,average='weighted')
-                precision = metrics.precision_score(ytest,pred_,average='weighted') #change pred_prob to pred_
+
+                if y.value_counts().count() > 2:
+                    sc = 0
+                    recall = metrics.recall_score(ytest,pred_, average='macro')                
+                    precision = metrics.precision_score(ytest,pred_, average = 'weighted')
+                    f1 = metrics.f1_score(ytest,pred_, average='weighted')
+
+                else:
+                    try:
+                        sc = metrics.roc_auc_score(ytest,pred_prob)
+                    except:
+                        sc = 0
+                    recall = metrics.recall_score(ytest,pred_)                
+                    precision = metrics.precision_score(ytest,pred_)
+                    f1 = metrics.f1_score(ytest,pred_)
+
                 kappa = metrics.cohen_kappa_score(ytest,pred_)
-                f1 = metrics.f1_score(ytest,pred_,average='weighted')
                 score_acc = np.append(score_acc,sca)
                 score_auc = np.append(score_auc,sc)
                 score_recall = np.append(score_recall,recall)
@@ -6362,20 +6689,29 @@ def automl(qualifier = 5,
             ytrain,ytest = data_y.iloc[train_i], data_y.iloc[test_i]
         
             if hasattr(model, 'predict_proba'):
-        
+
                 model.fit(Xtrain,ytrain)
                 pred_prob = model.predict_proba(Xtest)
                 pred_prob = pred_prob[:,1]
                 pred_ = model.predict(Xtest)
                 sca = metrics.accuracy_score(ytest,pred_)
-                try:
-                    sc = metrics.roc_auc_score(ytest,pred_prob)
-                except:
+
+                if y.value_counts().count() > 2:
                     sc = 0
-                recall = metrics.recall_score(ytest,pred_,average='weighted')
-                precision = metrics.precision_score(ytest,pred_,average='weighted')
+                    recall = metrics.recall_score(ytest,pred_, average='macro')                
+                    precision = metrics.precision_score(ytest,pred_, average = 'weighted')
+                    f1 = metrics.f1_score(ytest,pred_, average='weighted')
+
+                else:
+                    try:
+                        sc = metrics.roc_auc_score(ytest,pred_prob)
+                    except:
+                        sc = 0
+                    recall = metrics.recall_score(ytest,pred_)                
+                    precision = metrics.precision_score(ytest,pred_)
+                    f1 = metrics.f1_score(ytest,pred_)
+
                 kappa = metrics.cohen_kappa_score(ytest,pred_)
-                f1 = metrics.f1_score(ytest,pred_,average='weighted')
                 score_acc = np.append(score_acc,sca)
                 score_auc = np.append(score_auc,sc)
                 score_recall = np.append(score_recall,recall)
@@ -6384,17 +6720,28 @@ def automl(qualifier = 5,
                 score_kappa =np.append(score_kappa,kappa)
 
             else:
-            
+
                 model.fit(Xtrain,ytrain)
-                pred_prob = 0.00
                 pred_prob = 0.00
                 pred_ = model.predict(Xtest)
                 sca = metrics.accuracy_score(ytest,pred_)
-                sc = 0.00
-                recall = metrics.recall_score(ytest,pred_,average='weighted')
-                precision = metrics.precision_score(ytest,pred_,average='weighted') #change pred_prob to pred_
+
+                if y.value_counts().count() > 2:
+                    sc = 0
+                    recall = metrics.recall_score(ytest,pred_, average='macro')                
+                    precision = metrics.precision_score(ytest,pred_, average = 'weighted')
+                    f1 = metrics.f1_score(ytest,pred_, average='weighted')
+
+                else:
+                    try:
+                        sc = metrics.roc_auc_score(ytest,pred_prob)
+                    except:
+                        sc = 0
+                    recall = metrics.recall_score(ytest,pred_)                
+                    precision = metrics.precision_score(ytest,pred_)
+                    f1 = metrics.f1_score(ytest,pred_)
+
                 kappa = metrics.cohen_kappa_score(ytest,pred_)
-                f1 = metrics.f1_score(ytest,pred_,average='weighted')
                 score_acc = np.append(score_acc,sca)
                 score_auc = np.append(score_auc,sc)
                 score_recall = np.append(score_recall,recall)
@@ -6553,20 +6900,29 @@ def automl(qualifier = 5,
             ytrain,ytest = data_y.iloc[train_i], data_y.iloc[test_i]
         
             if hasattr(model, 'predict_proba'):
-        
+
                 model.fit(Xtrain,ytrain)
                 pred_prob = model.predict_proba(Xtest)
                 pred_prob = pred_prob[:,1]
                 pred_ = model.predict(Xtest)
                 sca = metrics.accuracy_score(ytest,pred_)
-                try:
-                    sc = metrics.roc_auc_score(ytest,pred_prob)
-                except:
+
+                if y.value_counts().count() > 2:
                     sc = 0
-                recall = metrics.recall_score(ytest,pred_,average='weighted')
-                precision = metrics.precision_score(ytest,pred_,average='weighted')
+                    recall = metrics.recall_score(ytest,pred_, average='macro')                
+                    precision = metrics.precision_score(ytest,pred_, average = 'weighted')
+                    f1 = metrics.f1_score(ytest,pred_, average='weighted')
+
+                else:
+                    try:
+                        sc = metrics.roc_auc_score(ytest,pred_prob)
+                    except:
+                        sc = 0
+                    recall = metrics.recall_score(ytest,pred_)                
+                    precision = metrics.precision_score(ytest,pred_)
+                    f1 = metrics.f1_score(ytest,pred_)
+
                 kappa = metrics.cohen_kappa_score(ytest,pred_)
-                f1 = metrics.f1_score(ytest,pred_,average='weighted')
                 score_acc = np.append(score_acc,sca)
                 score_auc = np.append(score_auc,sc)
                 score_recall = np.append(score_recall,recall)
@@ -6575,17 +6931,28 @@ def automl(qualifier = 5,
                 score_kappa =np.append(score_kappa,kappa)
 
             else:
-            
+
                 model.fit(Xtrain,ytrain)
-                pred_prob = 0.00
                 pred_prob = 0.00
                 pred_ = model.predict(Xtest)
                 sca = metrics.accuracy_score(ytest,pred_)
-                sc = 0.00
-                recall = metrics.recall_score(ytest,pred_,average='weighted')
-                precision = metrics.precision_score(ytest,pred_,average='weighted') #change pred_prob to pred_
+
+                if y.value_counts().count() > 2:
+                    sc = 0
+                    recall = metrics.recall_score(ytest,pred_, average='macro')                
+                    precision = metrics.precision_score(ytest,pred_, average = 'weighted')
+                    f1 = metrics.f1_score(ytest,pred_, average='weighted')
+
+                else:
+                    try:
+                        sc = metrics.roc_auc_score(ytest,pred_prob)
+                    except:
+                        sc = 0
+                    recall = metrics.recall_score(ytest,pred_)                
+                    precision = metrics.precision_score(ytest,pred_)
+                    f1 = metrics.f1_score(ytest,pred_)
+
                 kappa = metrics.cohen_kappa_score(ytest,pred_)
-                f1 = metrics.f1_score(ytest,pred_,average='weighted')
                 score_acc = np.append(score_acc,sca)
                 score_auc = np.append(score_auc,sc)
                 score_recall = np.append(score_recall,recall)
@@ -6715,7 +7082,7 @@ def automl(qualifier = 5,
     while count_while < top_n:
         sub_list = []
         sub_list_names = []
-        generator = random.sample(range(len(master_results)-1), random.randint(3,len(master_results)-1))
+        generator = random.sample(range(len(master_results)-1), random.randint(3,10)) #changed to restrict n sample between 3 to 10
         for r in generator:
             sub_list.append(master_unpack[r])
             sub_list_names.append(master_results.iloc[r]['Model'])
@@ -6822,20 +7189,34 @@ def automl(qualifier = 5,
             ytrain,ytest = data_y.iloc[train_i], data_y.iloc[test_i]
             
             model.fit(Xtrain,ytrain)
-            pred_prob = 0.00
             pred_ = model.predict(Xtest)
             sca = metrics.accuracy_score(ytest,pred_)
-            sc = 0.00
-            recall = metrics.recall_score(ytest,pred_,average='weighted')
-            precision = metrics.precision_score(ytest,pred_,average='weighted') #change pred_prob to pred_
+            
+            if y.value_counts().count() > 2:
+                pred_prob = 0
+                sc = 0
+                recall = metrics.recall_score(ytest,pred_, average='macro')
+                precision = metrics.precision_score(ytest,pred_, average='weighted')
+                f1 = metrics.f1_score(ytest,pred_, average='weighted')
+            else:
+                try:
+                    pred_prob = model.predict_proba(Xtest)
+                    pred_prob = pred_prob[:,1]
+                    sc = metrics.roc_auc_score(ytest,pred_prob)
+                except:
+                    sc = 0
+                recall = metrics.recall_score(ytest,pred_)
+                precision = metrics.precision_score(ytest,pred_)
+                f1 = metrics.f1_score(ytest,pred_)
+                
             kappa = metrics.cohen_kappa_score(ytest,pred_)
-            f1 = metrics.f1_score(ytest,pred_,average='weighted')
+            
             score_acc = np.append(score_acc,sca)
             score_auc = np.append(score_auc,sc)
             score_recall = np.append(score_recall,recall)
             score_precision = np.append(score_precision,precision)
             score_f1 =np.append(score_f1,f1)
-            score_kappa =np.append(score_kappa,kappa) 
+            score_kappa =np.append(score_kappa,kappa)
             
             t1 = time.time()
             
@@ -7040,18 +7421,30 @@ def automl(qualifier = 5,
             meta_model = LogisticRegression()
             
             meta_model.fit(Xtrain,ytrain)
-            pred_prob = meta_model.predict_proba(Xtest)
-            pred_prob = pred_prob[:,1]
+
+            try:
+                pred_prob = meta_model.predict_proba(Xtest)
+                pred_prob = pred_prob[:,1]
+            except:
+                pass
             pred_ = meta_model.predict(Xtest)
             sca = metrics.accuracy_score(ytest,pred_)
-            try:
+            try: 
                 sc = metrics.roc_auc_score(ytest,pred_prob)
             except:
                 sc = 0
-            recall = metrics.recall_score(ytest,pred_,average='weighted')
-            precision = metrics.precision_score(ytest,pred_,average='weighted')
+
+            if y.value_counts().count() > 2:
+                recall = metrics.recall_score(ytest,pred_,average='macro')
+                precision = metrics.precision_score(ytest,pred_,average='weighted')
+                f1 = metrics.f1_score(ytest,pred_,average='weighted')
+
+            else:
+                recall = metrics.recall_score(ytest,pred_)
+                precision = metrics.precision_score(ytest,pred_)
+                f1 = metrics.f1_score(ytest,pred_)
+
             kappa = metrics.cohen_kappa_score(ytest,pred_)
-            f1 = metrics.f1_score(ytest,pred_,average='weighted')
             score_acc = np.append(score_acc,sca)
             score_auc = np.append(score_auc,sc)
             score_recall = np.append(score_recall,recall)
@@ -7132,11 +7525,9 @@ def automl(qualifier = 5,
         top_n_stacking_model_results = pd.concat([top_n_stacking_model_results, model_results],ignore_index=True)
         top_n_stacking_model_results = top_n_stacking_model_results.round(round)
         
-        #model = meta_model fitting
-        #meta_model = LogisticRegression()
-        #meta_model.fit(data_X_final,data_y_final)
         stacker.append(meta_model)
-        stacker.append('hard')
+        stacker.append('hard') #method
+        stacker.append(False) #restacking criteria
         
         top_n_stacking_models.append(stacker)
 
@@ -7227,6 +7618,9 @@ def automl(qualifier = 5,
     clear_output()    
     display(master_display_)
     return best_model
+
+
+
 def interpret_model(estimator,
                    plot = 'summary',
                    feature = None, 
@@ -7428,6 +7822,8 @@ def interpret_model(estimator,
                 shap_values = explainer.shap_values(X_test)
                 shap.initjs()
                 return shap.force_plot(explainer.expected_value, shap_values[row_to_show,:], X_test.iloc[row_to_show,:])
+
+
 
 def calibrate_model(estimator,
                     method = 'sigmoid',
@@ -7660,14 +8056,23 @@ def calibrate_model(estimator,
             pred_prob = pred_prob[:,1]
             pred_ = model.predict(Xtest)
             sca = metrics.accuracy_score(ytest,pred_)
-            try:
-                sc = metrics.roc_auc_score(ytest,pred_prob,average='weighted')
-            except:
+            
+            if y.value_counts().count() > 2:
                 sc = 0
-            recall = metrics.recall_score(ytest,pred_, average='weighted')
-            precision = metrics.precision_score(ytest,pred_, average = 'weighted')
+                recall = metrics.recall_score(ytest,pred_, average='macro')                
+                precision = metrics.precision_score(ytest,pred_, average = 'weighted')
+                f1 = metrics.f1_score(ytest,pred_, average='weighted')
+                
+            else:
+                try:
+                    sc = metrics.roc_auc_score(ytest,pred_prob)
+                except:
+                    sc = 0
+                recall = metrics.recall_score(ytest,pred_)                
+                precision = metrics.precision_score(ytest,pred_)
+                f1 = metrics.f1_score(ytest,pred_)
+                
             kappa = metrics.cohen_kappa_score(ytest,pred_)
-            f1 = metrics.f1_score(ytest,pred_, average='weighted')
             score_acc = np.append(score_acc,sca)
             score_auc = np.append(score_auc,sc)
             score_recall = np.append(score_recall,recall)
@@ -7679,14 +8084,25 @@ def calibrate_model(estimator,
             
             model.fit(Xtrain,ytrain)
             pred_prob = 0.00
-            pred_prob = 0.00
             pred_ = model.predict(Xtest)
             sca = metrics.accuracy_score(ytest,pred_)
-            sc = 0.00
-            recall = metrics.recall_score(ytest,pred_,average='weighted')
-            precision = metrics.precision_score(ytest,pred_,average='weighted') #change pred_prob to pred_
+            
+            if y.value_counts().count() > 2:
+                sc = 0
+                recall = metrics.recall_score(ytest,pred_, average='macro')                
+                precision = metrics.precision_score(ytest,pred_, average = 'weighted')
+                f1 = metrics.f1_score(ytest,pred_, average='weighted')
+
+            else:
+                try:
+                    sc = metrics.roc_auc_score(ytest,pred_prob)
+                except:
+                    sc = 0
+                recall = metrics.recall_score(ytest,pred_)                
+                precision = metrics.precision_score(ytest,pred_)
+                f1 = metrics.f1_score(ytest,pred_)
+
             kappa = metrics.cohen_kappa_score(ytest,pred_)
-            f1 = metrics.f1_score(ytest,pred_,average='weighted')
             score_acc = np.append(score_acc,sca)
             score_auc = np.append(score_auc,sc)
             score_recall = np.append(score_recall,recall)
@@ -7812,6 +8228,7 @@ def calibrate_model(estimator,
         clear_output()
         return model
 
+
 def evaluate_model(estimator):
     
     """
@@ -7884,6 +8301,7 @@ def evaluate_model(estimator):
     d = interact(plot_model, estimator = fixed(estimator), plot = a)
 
 
+
 def finalize_model(estimator):
     
     """
@@ -7918,11 +8336,19 @@ def finalize_model(estimator):
 
     Warnings:
     ---------
-    None    
+
+    - Model returned by finalize_model(), if used on predict_model() without passing
+      new unseen dataset, then information grid printed is misleading as the model is
+      trained on the complete dataset including holdout sample when finalize_model() 
+      is used. Once finalize_model() is used, the model is considered ready for 
+      deployment and should be used on new unseen dataset only.
        
          
     """
-        
+    
+    #import depedencies
+    from copy import deepcopy
+    
     if type(estimator) is list:
         
         if type(estimator[0]) is not list:
@@ -7931,13 +8357,15 @@ def finalize_model(estimator):
             Single Layer Stacker
             """
             
-            stacker_final = estimator.copy()
+            stacker_final = deepcopy(estimator)
+            stack_restack = stacker_final.pop()
             stack_method_final = stacker_final.pop()
             stack_meta_final = stacker_final.pop()
             
             model_final = stack_models(estimator_list = stacker_final, 
                                        meta_model = stack_meta_final, 
-                                       method = stack_method_final, 
+                                       method = stack_method_final,
+                                       restack = stack_restack,
                                        finalize=True, 
                                        verbose=False)
             
@@ -7947,18 +8375,21 @@ def finalize_model(estimator):
             multiple layer stacknet
             """
             
-            stacker_final = estimator.copy()
-            stack_method_final = stacker.pop()
-            stack_meta_final = stacker.pop()
+            stacker_final = deepcopy(estimator)
+            stack_restack = stacker_final.pop()
+            stack_method_final = stacker_final.pop()[0]
+            stack_meta_final = stacker_final.pop()
             
             model_final = create_stacknet(estimator_list = stacker_final,
                                           meta_model = stack_meta_final,
                                           method = stack_method_final,
+                                          restack = stack_restack,
                                           finalize = True,
                                           verbose = False)
 
     else:
-        model_final = estimator.fit(X,y)
+        model_final = deepcopy(estimator)
+        model_final.fit(X,y)
     
     #storing into experiment
     model_name = str(estimator).split("(")[0]
@@ -7967,6 +8398,8 @@ def finalize_model(estimator):
     experiment__.append(tup)
     
     return model_final
+
+
 
 def save_model(model, model_name):
     
@@ -8011,6 +8444,8 @@ def save_model(model, model_name):
     joblib.dump(model, model_name)
     print('Model Succesfully Saved')
 
+
+
 def load_model(model_name):
     
     """
@@ -8051,6 +8486,7 @@ def load_model(model_name):
     model_name = model_name + '.pkl'
     print('Model Sucessfully Loaded')
     return joblib.load(model_name)
+
 
 def save_experiment(experiment_name=None):
     
@@ -8110,6 +8546,8 @@ def save_experiment(experiment_name=None):
     
     print('Experiment Succesfully Saved')
 
+
+
 def load_experiment(experiment_name):
     
     """
@@ -8165,11 +8603,54 @@ def load_experiment(experiment_name):
 
     return exp
 
+
 def predict_model(estimator, 
                   data=None):
     
     """
-    docstring
+       
+    Description:
+    ------------
+    This function is used to predict new data using trained estimator. It accepts
+    estimator created using one of the function in pycaret that returns trained 
+    model object or list of trained model objects created using stack_models() or 
+    create_stacknet(). data param can be passed for new unseen data, if data is
+    not passed, test / holdout sample separated at the time of setup() is being
+    used for prediction. 
+    
+        Example:
+        --------
+        
+        lr = create_model('lr')
+        lr_predictions = predict_model(lr)
+        
+        
+    Parameters
+    ----------
+    
+    estimator : object or list of objects, default = None
+    
+    data : {array-like, sparse matrix}, shape (n_samples, n_features) where n_samples 
+    is the number of samples and n_features is the number of features. Data shape and
+    column names must match with dataset passed in setup().
+    
+    Returns:
+    --------
+
+    info grid:    Information grid is printed when data is None.
+    ----------      
+    
+
+    Warnings:
+    ---------
+    - if the estimator passed is generated using finalize_model() then metrics printed
+      in info grid maybe misleading as the model is trained on the complete dataset
+      including holdout sample when finalize_model() is used. Once finalize_model() is
+      used, the model is considered ready for deployment and should be used on new 
+      unseen dataset only.
+      
+    
+    
     """
     
     #testing
@@ -8210,9 +8691,10 @@ def predict_model(estimator,
             
             #utility
             stacker = model.copy()
-            stacker_method = stacker.pop(-1)
-            stacker_method = stacker_method[0]
-            stacker_meta = stacker.pop(-1)
+            restack = stacker.pop()
+            stacker_method = stacker.pop()
+            #stacker_method = stacker_method[0]
+            stacker_meta = stacker.pop()
             stacker_base = stacker.pop(0)
 
             #base model names
@@ -8300,7 +8782,10 @@ def predict_model(estimator,
                                         except:
                                             p = model.predict(base_pred_df_no_restack)
                             else:
-                                p = model.predict(base_pred_df)
+                                try:
+                                    p = model.predict(base_pred_df)
+                                except:
+                                    p = model.predict(base_pred_df_no_restack)
                         else:
                             if stacker_method == 'soft':
                                 try:
@@ -8364,12 +8849,19 @@ def predict_model(estimator,
                 sc = metrics.roc_auc_score(ytest,pred_prob,average='weighted')
             except:
                 sc = 0
-
-            recall = metrics.recall_score(ytest,pred_, average='weighted')
-            precision = metrics.precision_score(ytest,pred_, average = 'weighted')
+            
+            if y.value_counts().count() > 2:
+                recall = metrics.recall_score(ytest,pred_, average='macro')
+                precision = metrics.precision_score(ytest,pred_, average = 'weighted')
+                f1 = metrics.f1_score(ytest,pred_, average='weighted')
+                
+            else:
+                recall = metrics.recall_score(ytest,pred_)
+                precision = metrics.precision_score(ytest,pred_)
+                f1 = metrics.f1_score(ytest,pred_)  
+                
             kappa = metrics.cohen_kappa_score(ytest,pred_)
-            f1 = metrics.f1_score(ytest,pred_, average='weighted')
-
+            
             df_score = pd.DataFrame( {'Model' : 'Stacking Classifier', 'Accuracy' : [sca], 'AUC' : [sc], 'Recall' : [recall], 'Prec.' : [precision],
                                 'F1' : [f1], 'Kappa' : [kappa]})
             df_score = df_score.round(4)
@@ -8401,14 +8893,15 @@ def predict_model(estimator,
             
             #copy
             stacker = model.copy()
-
+            
+            #restack
+            restack = stacker.pop()
+            
             #method
-            method = stacker[-1]
-            stacker.pop()
+            method = stacker.pop()
 
             #separate metamodel
-            meta_model = stacker[-1]
-            stacker.pop()
+            meta_model = stacker.pop()
 
             model_names = []
             for i in stacker:
@@ -8484,14 +8977,20 @@ def predict_model(estimator,
                 sca = metrics.accuracy_score(ytest,pred_)
 
                 try:
-                    sc = metrics.roc_auc_score(ytest,pred_prob,average='weighted')
+                    sc = metrics.roc_auc_score(ytest,pred_prob)
                 except:
                     sc = 0
 
-                recall = metrics.recall_score(ytest,pred_, average='weighted')
-                precision = metrics.precision_score(ytest,pred_, average = 'weighted')
+                if y.value_counts().count() > 2:
+                    recall = metrics.recall_score(ytest,pred_, average='macro')
+                    precision = metrics.precision_score(ytest,pred_, average = 'weighted')
+                    f1 = metrics.f1_score(ytest,pred_, average='weighted')
+                else:
+                    recall = metrics.recall_score(ytest,pred_)
+                    precision = metrics.precision_score(ytest,pred_)
+                    f1 = metrics.f1_score(ytest,pred_)
+                    
                 kappa = metrics.cohen_kappa_score(ytest,pred_)
-                f1 = metrics.f1_score(ytest,pred_, average='weighted')
 
                 df_score = pd.DataFrame( {'Model' : 'Stacking Classifier', 'Accuracy' : [sca], 'AUC' : [sc], 'Recall' : [recall], 'Prec.' : [precision],
                                     'F1' : [f1], 'Kappa' : [kappa]})
@@ -8563,14 +9062,21 @@ def predict_model(estimator,
             sca = metrics.accuracy_score(ytest,pred_)
 
             try:
-                sc = metrics.roc_auc_score(ytest,pred_prob,average='weighted')
+                sc = metrics.roc_auc_score(ytest,pred_prob)
             except:
                 sc = 0
-
-            recall = metrics.recall_score(ytest,pred_, average='weighted')
-            precision = metrics.precision_score(ytest,pred_, average = 'weighted')
+            
+            if y.value_counts().count() > 2:
+                recall = metrics.recall_score(ytest,pred_, average='macro')
+                precision = metrics.precision_score(ytest,pred_, average = 'weighted')
+                f1 = metrics.f1_score(ytest,pred_, average='weighted')
+            else:
+                recall = metrics.recall_score(ytest,pred_)
+                precision = metrics.precision_score(ytest,pred_)
+                f1 = metrics.f1_score(ytest,pred_)                
+                
             kappa = metrics.cohen_kappa_score(ytest,pred_)
-            f1 = metrics.f1_score(ytest,pred_, average='weighted')
+            
 
             df_score = pd.DataFrame( {'Model' : [full_name], 'Accuracy' : [sca], 'AUC' : [sc], 'Recall' : [recall], 'Prec.' : [precision],
                                 'F1' : [f1], 'Kappa' : [kappa]})
@@ -8600,6 +9106,7 @@ def predict_model(estimator,
             
 
     return X_test_
+
 
 def help():
     

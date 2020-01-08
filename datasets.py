@@ -1,4 +1,4 @@
-def get_data(dataset):
+def get_data(dataset, save_copy=False, profile = False):
     
     """
       
@@ -16,6 +16,19 @@ def get_data(dataset):
         
         credit_data = get_data('credit')
         
+    Parameters
+    ----------
+    
+    dataset : string 
+    index value of dataset
+    
+    save_copy : bool, default = False
+    When set to true, it saves the copy of dataset in your local active directory.
+    
+    profile: bool, default = False
+    If set to true, it will display data profile for Exploratory Data Analysis in 
+    interactive HTML report. 
+    
     
     Returns:
     --------
@@ -25,7 +38,7 @@ def get_data(dataset):
 
     Warnings:
     ---------
-    Use of get_date() requires internet connection.
+    - Use of get_data() requires internet connection.
     
   
        
@@ -41,9 +54,20 @@ def get_data(dataset):
     
     data = pd.read_csv(complete_address)
     
+    if save_copy:
+        save_name = str(dataset) + str(extension)
+        data.to_csv(save_name)
+        
     if dataset == 'index':
         display(data)
     
     else:
-        display(data.head())
+        if profile:
+            import pandas_profiling
+            pf = pandas_profiling.ProfileReport(data)
+            display(pf)
+            
+        else:
+            display(data.head())
+        
         return data
