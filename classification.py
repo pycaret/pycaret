@@ -321,7 +321,7 @@ def setup(data,
         model_results = pd.DataFrame({'Sample Size' : split_percent, 'Metric' : metric_results, 'Metric Name': metric_name})
         fig = px.line(model_results, x='Sample Size', y='Metric', color='Metric Name', line_shape='linear', range_y = [0,1])
         fig.update_layout(plot_bgcolor='rgb(245,245,245)')
-        title= str(model_name) + ' Metrics and Fraction %'
+        title= str(model_name) + ' Metrics and Sample %'
         fig.update_layout(title={'text': title, 'y':0.95,'x':0.45,'xanchor': 'center','yanchor': 'top'})
         fig.show()
         
@@ -5099,7 +5099,6 @@ def create_stacknet(estimator_list,
         return models_ 
 
 
-
 def automl(qualifier = 5,
            target_metric = 'Accuracy',
            fold = 10, 
@@ -5130,7 +5129,8 @@ def automl(qualifier = 5,
 
     qualifier : integer, default = None
     Number of top models considered for experimentation to return the best model.
-    Higher number will result in longer training time.
+    Higher number will result in longer training time. qualifier param has to be 
+    greater than 3.
 
     target_metric : String, default = 'Accuracy'
     Metric to use for qualifying models and tuning the hyperparameters.
@@ -5194,7 +5194,12 @@ def automl(qualifier = 5,
     if y.value_counts().count() > 2:
         if target_metric == 'AUC':
             sys.exit('(Type Error): AUC metric not supported for multiclass problems. See docstring for list of other optimization parameters.')
-    
+
+    #checking qualifier parameter
+    if qualifier <3: 
+        sys.exit('(Value Error): Qualifier parameter cannot be less than 3.')
+        
+            
     #checking fold parameter
     if type(fold) is not int:
         sys.exit('(Type Error): Fold parameter only accepts integer value.')
@@ -7620,7 +7625,6 @@ def automl(qualifier = 5,
     return best_model
 
 
-
 def interpret_model(estimator,
                    plot = 'summary',
                    feature = None, 
@@ -8664,23 +8668,32 @@ def predict_model(estimator,
     
     #dataset
     if data is None:
-        Xtest = X_test
-        ytest = y_test
+        
+        Xtest = X_test.copy()
+        ytest = y_test.copy()
+        X_test_ = X_test.copy()
+        y_test_ = y_test.copy()
+        
+        Xtest.reset_index(drop=True, inplace=True)
+        ytest.reset_index(drop=True, inplace=True)
+        X_test_.reset_index(drop=True, inplace=True)
+        y_test_.reset_index(drop=True, inplace=True)
+        
         model = estimator
+        
     else:
-        Xtest = data
-        model = finalize_model(estimator)
         
-    Xtest.reset_index(drop=True, inplace=True)
-    ytest.reset_index(drop=True, inplace=True)
-    
-    #copy X_test
-    X_test_ = X_test.copy()
-    X_test_ = X_test_.reset_index(drop=True)
-    y_test_ = y_test.copy()
-    y_test_ = y_test_.reset_index(drop=True)
+        Xtest = data.copy()
+        X_test_ = data.copy()
         
-    
+        Xtest.reset_index(drop=True, inplace=True)
+        X_test_.reset_index(drop=True, inplace=True)
+        
+        try:
+            model = finalize_model(estimator)
+        except:
+            model = estimator
+
     if type(estimator) is list:
         
         if type(estimator[0]) is list:
@@ -8731,12 +8744,12 @@ def predict_model(estimator,
             for i in stacker_base:
                 if stacker_method == 'soft':
                     try:
-                        a = i.predict_proba(X_test)
+                        a = i.predict_proba(Xtest) #change
                         a = a[:,1]
                     except:
-                        a = i.predict(X_test)
+                        a = i.predict(Xtest) #change
                 else:
-                    a = i.predict(X_test)
+                    a = i.predict(Xtest) #change
                 base_pred.append(a)
 
             base_pred_df = pd.DataFrame()
@@ -8842,41 +8855,41 @@ def predict_model(estimator,
 
             #print('Success')
 
-            #if data is None:
-            sca = metrics.accuracy_score(ytest,pred_)
+            if data is None:
+                sca = metrics.accuracy_score(ytest,pred_)
 
-            try:
-                sc = metrics.roc_auc_score(ytest,pred_prob,average='weighted')
-            except:
-                sc = 0
-            
-            if y.value_counts().count() > 2:
-                recall = metrics.recall_score(ytest,pred_, average='macro')
-                precision = metrics.precision_score(ytest,pred_, average = 'weighted')
-                f1 = metrics.f1_score(ytest,pred_, average='weighted')
-                
-            else:
-                recall = metrics.recall_score(ytest,pred_)
-                precision = metrics.precision_score(ytest,pred_)
-                f1 = metrics.f1_score(ytest,pred_)  
-                
-            kappa = metrics.cohen_kappa_score(ytest,pred_)
-            
-            df_score = pd.DataFrame( {'Model' : 'Stacking Classifier', 'Accuracy' : [sca], 'AUC' : [sc], 'Recall' : [recall], 'Prec.' : [precision],
-                                'F1' : [f1], 'Kappa' : [kappa]})
-            df_score = df_score.round(4)
-            display(df_score)
+                try:
+                    sc = metrics.roc_auc_score(ytest,pred_prob,average='weighted')
+                except:
+                    sc = 0
+
+                if y.value_counts().count() > 2:
+                    recall = metrics.recall_score(ytest,pred_, average='macro')
+                    precision = metrics.precision_score(ytest,pred_, average = 'weighted')
+                    f1 = metrics.f1_score(ytest,pred_, average='weighted')
+
+                else:
+                    recall = metrics.recall_score(ytest,pred_)
+                    precision = metrics.precision_score(ytest,pred_)
+                    f1 = metrics.f1_score(ytest,pred_)  
+
+                kappa = metrics.cohen_kappa_score(ytest,pred_)
+
+                df_score = pd.DataFrame( {'Model' : 'Stacking Classifier', 'Accuracy' : [sca], 'AUC' : [sc], 'Recall' : [recall], 'Prec.' : [precision],
+                                    'F1' : [f1], 'Kappa' : [kappa]})
+                df_score = df_score.round(4)
+                display(df_score)
         
             label = pd.DataFrame(pred_)
             label.columns = ['Label']
             label['Label']=label['Label'].astype(int)
 
             if data is None:
-                X_test_ = pd.concat([X_test_,y_test_], axis=1)
+                X_test_ = pd.concat([Xtest,ytest,label], axis=1)
+            else:
+                X_test_ = pd.concat([Xtest,label], axis=1)
 
-            X_test_ = pd.concat([X_test_,label], axis=1)
-
-            if hasattr(model,'predict_proba'):
+            if hasattr(stacker_meta,'predict_proba'):
                 try:
                     score = pd.DataFrame(pred_prob)
                     score.columns = ['Score']
@@ -8933,13 +8946,14 @@ def predict_model(estimator,
             for i in stacker:
                 if method == 'hard':
                     #print('done')
-                    p = i.predict(X_test)
+                    p = i.predict(Xtest) #change
+                    
                 else:
                     try:
-                        p = i.predict_proba(X_test)
+                        p = i.predict_proba(Xtest) #change
                         p = p[:,1]
                     except:
-                        p = i.predict(X_test)
+                        p = i.predict(Xtest) #change
 
                 base_pred.append(p)
 
@@ -8950,9 +8964,9 @@ def predict_model(estimator,
 
             df.columns = model_names
             
-            df_restack = pd.concat([X_test_,df], axis=1)
+            df_restack = pd.concat([Xtest,df], axis=1) #change
 
-            ytest = y_test
+            #ytest = ytest #change
 
             #meta predictions starts here
 
@@ -8974,6 +8988,7 @@ def predict_model(estimator,
                     pass
 
             if data is None:
+                
                 sca = metrics.accuracy_score(ytest,pred_)
 
                 try:
@@ -8997,18 +9012,15 @@ def predict_model(estimator,
                 df_score = df_score.round(4)
                 display(df_score)
 
-            else:
-                pass
-
             label = pd.DataFrame(pred_)
             label.columns = ['Label']
             label['Label']=label['Label'].astype(int)
 
             if data is None:
-                X_test_ = pd.concat([X_test_,y_test_], axis=1)
-
-            X_test_ = pd.concat([X_test_,label], axis=1)
-
+                X_test_ = pd.concat([Xtest,ytest,label], axis=1) #changed
+            else:
+                X_test_ = pd.concat([Xtest,label], axis=1) #changed
+      
             if hasattr(meta_model,'predict_proba'):
                 try:
                     score = pd.DataFrame(pred_prob)
@@ -9082,18 +9094,15 @@ def predict_model(estimator,
                                 'F1' : [f1], 'Kappa' : [kappa]})
             df_score = df_score.round(4)
             display(df_score)
-        
-        else:
-            pass
             
         label = pd.DataFrame(pred_)
         label.columns = ['Label']
         label['Label']=label['Label'].astype(int)
         
         if data is None:
-            X_test_ = pd.concat([X_test_,y_test_], axis=1)
-        
-        X_test_ = pd.concat([X_test_,label], axis=1)
+            X_test_ = pd.concat([Xtest,ytest,label], axis=1)
+        else:
+            X_test_ = pd.concat([Xtest,label], axis=1)
         
         if hasattr(model,'predict_proba'):
             try:

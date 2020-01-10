@@ -247,7 +247,7 @@ def setup(data,
         model_results = pd.DataFrame({'Sample Size' : split_percent, 'Metric' : metric_results, 'Metric Name': metric_name})
         fig = px.line(model_results, x='Sample Size', y='Metric', color='Metric Name', line_shape='linear', range_y = [0,1])
         fig.update_layout(plot_bgcolor='rgb(245,245,245)')
-        title= str(model_name) + ' Metric and Fraction %'
+        title= str(model_name) + ' Metric and Sample %'
         fig.update_layout(title={'text': title, 'y':0.95,'x':0.45,'xanchor': 'center','yanchor': 'top'})
         fig.show()
         
@@ -5110,6 +5110,7 @@ def load_experiment(experiment_name):
 
     return exp
 
+
 def predict_model(estimator, 
                   data=None,
                   round=4):
@@ -5174,21 +5175,31 @@ def predict_model(estimator,
     
     #dataset
     if data is None:
-        Xtest = X_test
-        ytest = y_test
-        model = estimator
-    else:
-        Xtest = data
-        model = finalize_model(estimator)
         
-    Xtest.reset_index(drop=True, inplace=True)
-    ytest.reset_index(drop=True, inplace=True)
-    
-    #copy X_test
-    X_test_ = X_test.copy()
-    X_test_ = X_test_.reset_index(drop=True)
-    y_test_ = y_test.copy()
-    y_test_ = y_test_.reset_index(drop=True)
+        Xtest = X_test.copy()
+        ytest = y_test.copy()
+        X_test_ = X_test.copy()
+        y_test_ = y_test.copy()
+        
+        Xtest.reset_index(drop=True, inplace=True)
+        ytest.reset_index(drop=True, inplace=True)
+        X_test_.reset_index(drop=True, inplace=True)
+        y_test_.reset_index(drop=True, inplace=True)
+        
+        model = estimator
+        
+    else:
+        
+        Xtest = data.copy()
+        X_test_ = data.copy()
+        
+        Xtest.reset_index(drop=True, inplace=True)
+        X_test_.reset_index(drop=True, inplace=True)
+        
+        try:
+            model = finalize_model(estimator)
+        except:
+            model = estimator
         
     
     if type(estimator) is list:
@@ -5239,7 +5250,7 @@ def predict_model(estimator,
             """
             base_pred = []
             for i in stacker_base:
-                a = i.predict(X_test)
+                a = i.predict(Xtest) #change
                 base_pred.append(a)
 
             base_pred_df = pd.DataFrame()
@@ -5320,7 +5331,7 @@ def predict_model(estimator,
 
                 df_score = pd.DataFrame( {'Model' : 'Stacking Regressor', 'MAE' : [mae], 'MSE' : [mse], 'RMSE' : [rmse], 
                                           'R2' : [r2], 'ME' : [max_error_]})
-                df_score = df_score.round(4)
+                df_score = df_score.round(round)
                 display(df_score)
         
             label = pd.DataFrame(pred_)
@@ -5329,9 +5340,9 @@ def predict_model(estimator,
             label['Label']=label['Label']
 
             if data is None:
-                X_test_ = pd.concat([X_test_,y_test_], axis=1)
-
-            X_test_ = pd.concat([X_test_,label], axis=1)
+                X_test_ = pd.concat([Xtest,ytest,label], axis=1)
+            else:
+                X_test_ = pd.concat([Xtest,label], axis=1)
 
         else:
             
@@ -5376,7 +5387,7 @@ def predict_model(estimator,
             base_pred = []
 
             for i in stacker:
-                p = i.predict(X_test)
+                p = i.predict(Xtest) #change
                 base_pred.append(p)
 
             df = pd.DataFrame()
@@ -5386,9 +5397,9 @@ def predict_model(estimator,
 
             df.columns = model_names
             
-            df_restack = pd.concat([X_test_,df], axis=1)
+            df_restack = pd.concat([Xtest,df], axis=1) #change
 
-            ytest = y_test
+            #ytest = y_test
 
             #meta predictions starts here
 
@@ -5409,7 +5420,7 @@ def predict_model(estimator,
 
                 df_score = pd.DataFrame( {'Model' : 'Stacking Regressor', 'MAE' : [mae], 'MSE' : [mse], 'RMSE' : [rmse], 
                                           'R2' : [r2], 'ME' : [max_error_]})
-                df_score = df_score.round(4)
+                df_score = df_score.round(round)
                 display(df_score)
                 
             label = pd.DataFrame(pred_)
@@ -5418,9 +5429,9 @@ def predict_model(estimator,
             label['Label']=label['Label']
 
             if data is None:
-                X_test_ = pd.concat([X_test_,y_test_], axis=1)
-
-            X_test_ = pd.concat([X_test_,label], axis=1)
+                X_test_ = pd.concat([Xtest,ytest,label], axis=1)
+            else:
+                X_test_ = pd.concat([Xtest,label], axis=1)
 
 
     else:
@@ -5484,11 +5495,12 @@ def predict_model(estimator,
         label['Label']=label['Label']
         
         if data is None:
-            X_test_ = pd.concat([X_test_,y_test_], axis=1)
-        
-        X_test_ = pd.concat([X_test_,label], axis=1)
+            X_test_ = pd.concat([Xtest,ytest,label], axis=1)
+        else:
+            X_test_ = pd.concat([Xtest,label], axis=1)
 
     return X_test_
+
 
 def automl(qualifier = 5,
            target_metric = 'R2',
@@ -5561,6 +5573,37 @@ def automl(qualifier = 5,
     import pandas as pd
     import random
     import sys
+    from sklearn import metrics
+
+    """
+    error handling
+    """
+    
+    #checking target_metric
+    allowed_metrics = ['MAE', 'MSE', 'RMSE', 'R2', 'ME']
+    if target_metric not in allowed_metrics:
+        sys.exit('(Value Error): target_metric not valid. See docstring for list of metrics that can be optimized.')
+
+    #checking qualifier parameter
+    if qualifier <3: 
+        sys.exit('(Value Error): Qualifier parameter cannot be less than 3.')
+        
+    #checking fold parameter
+    if type(fold) is not int:
+        sys.exit('(Type Error): Fold parameter only accepts integer value.')
+    
+    #checking round parameter
+    if type(round) is not int:
+        sys.exit('(Type Error): Round parameter only accepts integer value.')
+        
+    #checking verbose parameter
+    if type(turbo) is not bool:
+        sys.exit('(Type Error): Turbo parameter can only take argument as True or False.') 
+        
+    
+    """
+    error handling ends here
+    """
     
     #master collector
     #This is being used for appending throughout the process
