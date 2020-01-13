@@ -8,7 +8,7 @@ def readme():
 
 setup(
     name="pycaret",
-    version="0.0.13",
+    version="0.0.14",
     description="A Python package for supervised and unsupervised machine learning.",
     long_description=readme(),
     long_description_content_type="text/markdown",
@@ -25,7 +25,8 @@ setup(
     include_package_data=True,
     install_requires=["pandas", "numpy", "seaborn", "matplotlib", "IPython", "joblib", 
                      "scikit-learn", "shap", "ipywidgets", "yellowbrick", "xgboost==0.90",
-                     "wordcloud", "textblob", "plotly==4.4.1", "cufflinks", "umap-learn",
+                     "wordcloud", "textblob", "plotly==4.4.1", "cufflinks==0.0.17", "umap-learn",
                      "lightgbm==2.3.1", "pyLDAvis", "gensim", "spacy", "nltk", "mlxtend",
-                     "pyod", "catboost==0.20.2", "pandas-profiling==2.3.0"]
+                     "pyod", "catboost==0.20.2", "pandas-profiling==2.3.0", "kmodes==0.10.1",
+                     "spherecluster==0.1.7"]
 )

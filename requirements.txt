@@ -13,7 +13,7 @@ lightgbm==2.3.1
 plotly==4.4.1
 wordcloud
 textblob
-cufflinks
+cufflinks==0.0.17
 umap-learn
 pyLDAvis
 gensim
@@ -23,3 +23,5 @@ mlxtend
 pyod
 catboost==0.20.2
 pandas-profiling==2.3.0
+kmodes==0.10.1
+spherecluster==0.1.7
