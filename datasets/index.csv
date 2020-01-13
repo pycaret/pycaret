@@ -8,9 +8,12 @@ income,Multivariate,Classification,income >50K,32561,14,Y
 iris,Multivariate,Classification,Class,100,5,N
 juice,Multivariate,Classification,Purchase,1070,15,N
 heart_disease,Multivariate,Classification,Disease,270,14,N
-glass,Multivariate,Multiclass Classification,Type,214,10,N
-satellite,Multivariate,Multiclass Classification,Class,6435,37,N
-poker,Multivariate,Multiclass Classification,CLASS,100000,11,N
+glass,Multivariate,Classification (Multiclass),Type,214,10,N
+satellite,Multivariate,Classification (Multiclass),Class,6435,37,N
+poker,Multivariate,Classification (Multiclass),CLASS,100000,11,N
+jewellery,Multivariate,Clustering,None,505,4,N
+perfume,Multivariate,Clustering,None,20,29,N
+seeds,Multivariate,Clustering,None,210,7,N
 automobile,Multivariate,Regression,price,202,26,Y
 bike,Multivariate,Regression,cnt,17379,15,N
 boston,Multivariate,Regression,medv,506,14,N
