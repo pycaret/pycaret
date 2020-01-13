@@ -13,7 +13,7 @@ lightgbm==2.3.1
 plotly==4.4.1
 wordcloud
 textblob
-cufflinks==0.0.17
+cufflinks==0.17.0
 umap-learn
 pyLDAvis
 gensim
