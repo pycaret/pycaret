@@ -63,9 +63,21 @@ def setup(data,
       status bar. To switch off the warnings, you may consider the following code 
       in your anaconda terminal. 
     
-      jupyter notebook --NotebookApp.iopub_data_rate_limit=1.0e10
+         jupyter notebook --NotebookApp.iopub_data_rate_limit=1.0e10
+      
+      
+    - Some functionalities in pycaret.nlp requires you to have english language model. 
+      The language model is not downloaded automatically when you install pycaret. 
+      You will have to download two models using your Anaconda Prompt or python 
+      command line interface.  To download the model, please type the following in 
+      your command line:
+      
+         python -m spacy download en_core_web_sm
+         python -m textblob.download_corpora
     
-    
+      Once downloaded, please restart your kernel and re-run the setup.
+        
+          
     
     """
     
@@ -106,7 +118,14 @@ def setup(data,
         if type(session_id) is not int:
             sys.exit('(Type Error): session_id parameter must be an integer.')  
             
-            
+    #chcek if spacy is loaded 
+    try:
+        import spacy
+        sp = spacy.load('en_core_web_sm', disable=['parser', 'ner'])
+    except:
+        sys.exit('(Type Error): spacy english model is not yet downloaded. See the documentation of setup to see installation guide.')
+    
+    
     """
     error handling ends here
     """
@@ -203,6 +222,12 @@ def setup(data,
     """
     DEFINE STOPWORDS
     """
+    try:
+        import nltk
+        nltk.download('stopwords')
+    except:
+        pass
+
     from nltk.corpus import stopwords
     stop_words = stopwords.words('english')
     
@@ -484,6 +509,7 @@ def setup(data,
     experiment__.append(('Text', text))
 
     return text, data_, corpus, id2word, seed, target_, experiment__
+
 
 
 def create_model(model=None,
@@ -1066,6 +1092,7 @@ def assign_model(model,
     
     return bb_
 
+
 def plot_model(model = None,
                plot = 'frequency',
                topic_num = None):
@@ -1614,6 +1641,7 @@ def plot_model(model = None,
         umap.fit(docs, ["c{}".format(c) for c in clusters.labels_])
         umap.show()
 
+
 def tune_model(model=None,
                multi_core=False,
                supervised_target=None,
@@ -1621,10 +1649,10 @@ def tune_model(model=None,
                optimize=None,
                auto_fe = True,
                fold=10):
-    
-    
+
+
     """
-        
+
     Description:
     ------------
     This function is only applicable for topic models created using create_model().
@@ -1634,13 +1662,13 @@ def tune_model(model=None,
     is considered as objective function to maximize. This function allows to select
     estimator from a large library available in pycaret (see below). By default 
     supervised estimator is Linear. 
-    
+
     This function returns the topic model with K number of topics that are considered
     best using optimize param.
-    
+
     setup() function must be called prior to using this function.
-    
-    
+
+
         Example
         -------
         tuned_lda = tune_model('lda', supervised_target = 'status', optimize='AUC') 
@@ -1650,12 +1678,12 @@ def tune_model(model=None,
         default optimize param is 'Accuracy' for classification tasks and 'R2' for
         regression tasks. Task is determined automatically based on supervised_target
         param.
-        
-        
+
+
         Alternatively, 
-        
+
         tuned_lda_us = tune_model('lda')
-        
+
         This will return trained Latent Dirichlet Allocation model with k number of 
         topics that is optimized to improve coherence value of model, since no 
         supervised_target param is passed.
@@ -1667,7 +1695,7 @@ def tune_model(model=None,
     model : string, default = None
 
     Enter abbreviated name of the model. List of available models supported: 
-    
+
     Model                              Abbreviated String   Original Implementation 
     ---------                          ------------------   -----------------------
     Latent Dirichlet Allocation        'lda'                gensim/models/ldamodel.html
@@ -1679,11 +1707,11 @@ def tune_model(model=None,
     multi_core: Boolean, default = False
     True would utilize all CPU cores to parallelize and speed up model training. Only
     available for 'lda'. For all other models, multi_core parameter is ignored.
-    
+
     supervised_target: string, default = None
     Name of target column for supervised learning. If None model coherence value is used
     as objective function.
-    
+
     estimator: string, default = None
 
     Estimator                     Abbreviated String     Task 
@@ -1705,6 +1733,7 @@ def tune_model(model=None,
     Extra Trees Classifier        'et'                   Classification
     Extreme Gradient Boosting     'xgboost'              Classification
     Light Gradient Boosting       'lightgbm'             Classification
+    CatBoost Classifier           'catboost'             Classification
     Linear Regression             'lr'                   Regression
     Lasso Regression              'lasso'                Regression
     Ridge Regression              'ridge'                Regression
@@ -1729,81 +1758,82 @@ def tune_model(model=None,
     Multi Level Perceptron        'mlp'                  Regression
     Extreme Gradient Boosting     'xgboost'              Regression
     Light Gradient Boosting       'lightgbm'             Regression
-    
+    CatBoost Regressor            'catboost'             Regression
+
     If set to None, by default Linear model is used for both classification
     and regression tasks.
-    
+
     optimize: string, default = None
-    
+
     For Classification tasks:
     Accuracy, AUC, Recall, Precision, F1, Kappa
-    
+
     For Regression tasks:
     MAE, MSE, RMSE, R2, ME
-    
+
     If set to None, default is 'Accuracy' for classification and 'R2' for 
     regression tasks.
-    
+
     auto_fe: boolean, default = True
     Automatic text feature engineering. Only used when supervised_target is
     passed. When set to true, it will generate text based features such as 
     polarity, subjectivity, wordcounts to be used in supervised learning.
     Ignored when supervised_target is set to None.
-    
+
     fold: integer, default = 10
     Number of folds to be used in Kfold CV. Must be at least 2. 
 
-    
+
     Returns:
     --------
 
     visual plot:  Visual plot with k number of topics on x-axis with metric to
     -----------   optimize on y-axis. Coherence is used when learning is 
                   unsupervised. Also, prints the best model metric.
-    
+
     model:        trained model object with best K number of topics.
     -----------
 
     Warnings:
     ---------
-    
+
     - Random Projections ('rp') and Non Negative Matrix Factorization ('nmf')
       is not available for unsupervised learning. Error is raised when 'rp' or
       'nmf' is passed without supervised_target.
-      
-      
+
+
     - Estimators using kernel based methods such as Kernel Ridge Regressor, 
       Automatic Relevance Determinant, Gaussian Process Classifier, Radial Basis
       Support Vector Machine and Multi Level Perceptron may take longer training 
       times.
-           
-         
-    
-          
+
+
+
+
     """
-    
-    
-    
+
+
+
     """
     exception handling starts here
     """
-    
+
     #ignore warnings
     import warnings
     warnings.filterwarnings('ignore') 
-    
+
     import sys
-    
+
     #checking for model parameter
     if model is None:
         sys.exit('(Value Error): Model parameter Missing. Please see docstring for list of available models.')
-        
+
     #checking for allowed models
     allowed_models = ['lda', 'lsi', 'hdp', 'rp', 'nmf']
-    
+
     if model not in allowed_models:
         sys.exit('(Value Error): Model Not Available. Please see docstring for list of available models.')
-        
+
     #checking multicore type:
     if type(multi_core) is not bool:
         sys.exit('(Type Error): multi_core parameter can only take argument as True or False.')
@@ -1815,86 +1845,86 @@ def tune_model(model=None,
         all_col.remove(target)
         if supervised_target not in all_col:
             sys.exit('(Value Error): supervised_target not recognized. It can only be one of the following: ' + str(all_col))
-    
+
     #supervised target exception handling
     if supervised_target is None:
         models_not_allowed = ['rp', 'nmf']
-        
+
         if model in models_not_allowed:
             sys.exit('(Type Error): Model not supported for unsupervised tuning. Either supervised_target param has to be passed or different model has to be used. Please see docstring for available models.')
-    
-    
-    
+
+
+
     #checking estimator:
     if estimator is not None:
-        
+
         available_estimators = ['lr', 'knn', 'nb', 'dt', 'svm', 'rbfsvm', 'gpc', 'mlp', 'ridge', 'rf', 'qda', 'ada', 
                             'gbc', 'lda', 'et', 'lasso', 'ridge', 'en', 'lar', 'llar', 'omp', 'br', 'ard', 'par', 
                             'ransac', 'tr', 'huber', 'kr', 'svm', 'knn', 'dt', 'rf', 'et', 'ada', 'gbr', 
-                            'mlp', 'xgboost', 'lightgbm']
-                
+                            'mlp', 'xgboost', 'lightgbm', 'catboost']
+
         if estimator not in available_estimators:
             sys.exit('(Value Error): Estimator Not Available. Please see docstring for list of available estimators.')
-    
-    
+
+
     #checking optimize parameter
     if optimize is not None:
-        
+
         available_optimizers = ['MAE', 'MSE', 'RMSE', 'R2', 'ME', 'Accuracy', 'AUC', 'Recall', 'Precision', 'F1', 'Kappa']
-        
+
         if optimize not in available_optimizers:
             sys.exit('(Value Error): optimize parameter Not Available. Please see docstring for list of available parameters.')
-    
+
     #checking auto_fe:
     if type(auto_fe) is not bool:
         sys.exit('(Type Error): auto_fe parameter can only take argument as True or False.')
-    
-    
+
+
     #checking fold parameter
     if type(fold) is not int:
         sys.exit('(Type Error): Fold parameter only accepts integer value.')
-    
-    
+
+
     """
     exception handling ends here
     """
-    
+
     #pre-load libraries
     import pandas as pd
     import ipywidgets as ipw
     from IPython.display import display, HTML, clear_output, update_display
     import datetime, time
-    
+
     #progress bar
     max_steps = 25
 
     progress = ipw.IntProgress(value=0, min=0, max=max_steps, step=1 , description='Processing: ')
     display(progress)
-    
+
     timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
-    
+
     monitor = pd.DataFrame( [ ['Initiated' , '. . . . . . . . . . . . . . . . . .', timestampStr ], 
                              ['Status' , '. . . . . . . . . . . . . . . . . .' , 'Loading Dependencies'],
                              ['Step' , '. . . . . . . . . . . . . . . . . .',  'Initializing' ] ],
                               columns=['', ' ', '   ']).set_index('')
-    
+
     display(monitor, display_id = 'monitor')
-        
-    
+
+
     #General Dependencies
     from sklearn.linear_model import LogisticRegression
     from sklearn.model_selection import cross_val_predict
     from sklearn import metrics
     import numpy as np
     import plotly.express as px
-    
+
     #setting up cufflinks
     import cufflinks as cf
     cf.go_offline()
     cf.set_config_file(offline=False, world_readable=True)
-    
+
     progress.value += 1 
-    
+
     #define the problem
     if supervised_target is None:
         problem ='unsupervised'
@@ -1902,7 +1932,7 @@ def tune_model(model=None,
         problem = 'classification'
     else:
         problem = 'regression'
-    
+
     #define topic_model_name
     if model == 'lda':
         topic_model_name = 'Latent Dirichlet Allocation'
@@ -1914,7 +1944,7 @@ def tune_model(model=None,
         topic_model_name = 'Non-Negative Matrix Factorization'
     elif model == 'rp':
         topic_model_name = 'Random Projections'
-        
+
     #defining estimator:
     if problem == 'classification' and estimator is None:
         estimator = 'lr'
@@ -1922,7 +1952,7 @@ def tune_model(model=None,
         estimator = 'lr'        
     else:
         estimator = estimator
-    
+
     #defining optimizer:
     if optimize is None and problem == 'classification':
         optimize = 'Accuracy'
@@ -1930,42 +1960,42 @@ def tune_model(model=None,
         optimize = 'R2'
     else:
         optimize=optimize
-    
+
     progress.value += 1 
-    
+
     #creating sentiments
-                             
+
     if problem == 'classification' or problem == 'regression':
-                             
+
         if auto_fe:
-            
+
             monitor.iloc[1,1:] = 'Feature Engineering'
             update_display(monitor, display_id = 'monitor')
-                             
+
             from textblob import TextBlob
-            
+
             monitor.iloc[2,1:] = 'Extracting Polarity'
             update_display(monitor, display_id = 'monitor')
-                             
+
             polarity = data_[target_].map(lambda text: TextBlob(text).sentiment.polarity)
-                             
+
             monitor.iloc[2,1:] = 'Extracting Subjectivity'
             update_display(monitor, display_id = 'monitor')
-                             
+
             subjectivity = data_[target_].map(lambda text: TextBlob(text).sentiment.subjectivity)
-                             
+
             monitor.iloc[2,1:] = 'Extracting Wordcount'
             update_display(monitor, display_id = 'monitor')
-                             
+
             word_count = [len(i) for i in text]
-            
+
             progress.value += 1 
-            
+
     #defining tuning grid
     param_grid = [2,4,8,16,32,64,100,200,300,400] 
-    
+
     master = []; master_df = []
-    
+
     monitor.iloc[1,1:] = 'Creating Topic Model'
     update_display(monitor, display_id = 'monitor')
 
@@ -1973,7 +2003,7 @@ def tune_model(model=None,
         progress.value += 1                      
         monitor.iloc[2,1:] = 'Fitting Model With ' + str(i) + ' Topics'
         update_display(monitor, display_id = 'monitor')
-                             
+
         #create and assign the model to dataset d
         m = create_model(model=model, multi_core=multi_core, num_topics=i, verbose=False)
         d = assign_model(m, verbose=False)
@@ -1987,40 +2017,40 @@ def tune_model(model=None,
         master_df.append(d)
 
         #topic model creation end's here
-    
+
     if problem == 'unsupervised':
-                             
+
         monitor.iloc[1,1:] = 'Evaluating Topic Model'
         update_display(monitor, display_id = 'monitor')
-        
+
         from gensim.models import CoherenceModel
 
         coherence = []
         metric = []
-        
+
         counter = 0
-        
+
         for i in master:
             progress.value += 1 
             monitor.iloc[2,1:] = 'Evaluating Coherence With ' + str(param_grid[counter]) + ' Topics'
             update_display(monitor, display_id = 'monitor')
-                             
+
             model = CoherenceModel(model=i, texts=text, dictionary=id2word, coherence='c_v')
             model_coherence = model.get_coherence()
             coherence.append(model_coherence)
             metric.append('Coherence')
             counter += 1
-        
+
         monitor.iloc[1,1:] = 'Compiling Results'
         monitor.iloc[1,1:] = 'Finalizing'
         update_display(monitor, display_id = 'monitor')
-                             
+
         df = pd.DataFrame({'# Topics': param_grid, 'Score' : coherence, 'Metric': metric})
         df.columns = ['# Topics', 'Score', 'Metric']
-        
+
         sorted_df = df.sort_values(by='Score', ascending=False)
         ival = sorted_df.index[0]
-        
+
         best_model = master[ival]
         best_model_df = master_df[ival]
 
@@ -2028,28 +2058,28 @@ def tune_model(model=None,
                       title= 'Coherence Value and # of Topics', color='Metric')
 
         fig.update_layout(plot_bgcolor='rgb(245,245,245)')
-        
+
         clear_output()
-        
+
         fig.show()
-        
+
         best_k = np.array(sorted_df.head(1)['# Topics'])[0]
         best_m = round(np.array(sorted_df.head(1)['Score'])[0],4)
         p = 'Best Model: ' + topic_model_name + ' |' + ' # Topics: ' + str(best_k) + ' | ' + 'Coherence: ' + str(best_m)
         print(p)
 
-    
+
     elif problem == 'classification':
-        
+
         """
-        
+
         defining estimator
-        
+
         """
-        
+
         monitor.iloc[1,1:] = 'Evaluating Topic Model'
         update_display(monitor, display_id = 'monitor')
-                             
+
         if estimator == 'lr':
 
             from sklearn.linear_model import LogisticRegression
@@ -2139,36 +2169,40 @@ def tune_model(model=None,
             from sklearn.ensemble import ExtraTreesClassifier 
             model = ExtraTreesClassifier(random_state=seed)
             full_name = 'Extra Trees Classifier'
-            
+
         elif estimator == 'xgboost':
-            
+
             from xgboost import XGBClassifier
             model = XGBClassifier(random_state=seed, n_jobs=-1, verbosity=0)
             full_name = 'Extreme Gradient Boosting'
-            
+
         elif estimator == 'lightgbm':
-            
+
             import lightgbm as lgb
             model = lgb.LGBMClassifier(random_state=seed)
             full_name = 'Light Gradient Boosting Machine'
-        
-        
+
+        elif estimator == 'catboost':
+            from catboost import CatBoostClassifier
+            model = CatBoostClassifier(random_state=seed, silent=True) # Silent is True to suppress CatBoost iteration results 
+            full_name = 'CatBoost Classifier'
+
         progress.value += 1 
-        
+
         """
         start model building here
 
         """
-                             
+
         acc = [];  auc = []; recall = []; prec = []; kappa = []; f1 = []
 
         for i in range(0,len(master_df)):
             progress.value += 1 
             param_grid_val = param_grid[i]
-            
+
             monitor.iloc[2,1:] = 'Evaluating Classifier With ' + str(param_grid_val) + ' Topics'
             update_display(monitor, display_id = 'monitor')                
-                             
+
             #prepare the dataset for supervised problem
             d = master_df[i]
             d.dropna(axis=0, inplace=True) #droping rows where Dominant_Topic is blank
@@ -2209,14 +2243,14 @@ def tune_model(model=None,
             else:
                 auc.append(0)
 
-                             
+
         monitor.iloc[1,1:] = 'Compiling Results'
         monitor.iloc[1,1:] = 'Finalizing'
         update_display(monitor, display_id = 'monitor')
-                             
+
         df = pd.DataFrame({'# Topics': param_grid, 'Accuracy' : acc, 'AUC' : auc, 'Recall' : recall, 
                    'Precision' : prec, 'F1' : f1, 'Kappa' : kappa})
-        
+
         sorted_df = df.sort_values(by=optimize, ascending=False)
         ival = sorted_df.index[0]
 
@@ -2230,33 +2264,33 @@ def tune_model(model=None,
         fig.update_layout(plot_bgcolor='rgb(245,245,245)')
         title= str(full_name) + ' Metrics and # of Topics'
         fig.update_layout(title={'text': title, 'y':0.95,'x':0.45,'xanchor': 'center','yanchor': 'top'})
-        
+
         clear_output()
 
         fig.show()
-        
+
         best_k = np.array(sorted_df.head(1)['# Topics'])[0]
         best_m = round(np.array(sorted_df.head(1)[optimize])[0],4)
         p = 'Best Model: ' + topic_model_name + ' |' + ' # Topics: ' + str(best_k) + ' | ' + str(optimize) + ' : ' + str(best_m)
         print(p)
 
     elif problem == 'regression':
-        
+
         """
-        
+
         defining estimator
-        
+
         """
-        
+
         monitor.iloc[1,1:] = 'Evaluating Topic Model'
         update_display(monitor, display_id = 'monitor')
-                                    
+
         if estimator == 'lr':
-        
+
             from sklearn.linear_model import LinearRegression
             model = LinearRegression()
             full_name = 'Linear Regression'
-        
+
         elif estimator == 'lasso':
 
             from sklearn.linear_model import Lasso
@@ -2381,36 +2415,41 @@ def tune_model(model=None,
             from sklearn.neural_network import MLPRegressor
             model = MLPRegressor(random_state=seed)
             full_name = 'MLP Regressor'
-            
+
         elif estimator == 'xgboost':
-            
+
             from xgboost import XGBRegressor
             model = XGBRegressor(random_state=seed, n_jobs=-1, verbosity=0)
             full_name = 'Extreme Gradient Boosting Regressor'
-            
+
         elif estimator == 'lightgbm':
-            
+
             import lightgbm as lgb
             model = lgb.LGBMRegressor(random_state=seed)
             full_name = 'Light Gradient Boosting Machine'
             
+        elif estimator == 'catboost':
+            from catboost import CatBoostRegressor
+            model = CatBoostRegressor(random_state=seed, silent = True)
+            full_name = 'CatBoost Regressor'
+
         progress.value += 1 
-        
+
         """
         start model building here
 
         """
-        
+
         score = []
         metric = []
-        
+
         for i in range(0,len(master_df)):
             progress.value += 1 
             param_grid_val = param_grid[i]
-            
+
             monitor.iloc[2,1:] = 'Evaluating Regressor With ' + str(param_grid_val) + ' Topics'
             update_display(monitor, display_id = 'monitor')    
-                             
+
             #prepare the dataset for supervised problem
             d = master_df[i]
             d.dropna(axis=0, inplace=True) #droping rows where Dominant_Topic is blank
@@ -2430,7 +2469,7 @@ def tune_model(model=None,
             if optimize == 'R2':
                 r2_ = metrics.r2_score(y,pred)
                 score.append(r2_)
-                
+
             elif optimize == 'MAE':          
                 mae_ = metrics.mean_absolute_error(y,pred)
                 score.append(mae_)
@@ -2438,31 +2477,31 @@ def tune_model(model=None,
             elif optimize == 'MSE':
                 mse_ = metrics.mean_squared_error(y,pred)
                 score.append(mse_)
-                
+
             elif optimize == 'RMSE':
                 mse_ = metrics.mean_squared_error(y,pred)        
                 rmse_ = np.sqrt(mse_)
                 score.append(rmse_)
-            
+
             elif optimize == 'ME':
                 max_error_ = metrics.max_error(y,pred)
                 score.append(max_error_)
-                
+
             metric.append(str(optimize))
-        
+
         monitor.iloc[1,1:] = 'Compiling Results'
         monitor.iloc[1,1:] = 'Finalizing'
         update_display(monitor, display_id = 'monitor')                    
-         
+
         df = pd.DataFrame({'# Topics': param_grid, 'Score' : score, 'Metric': metric})
         df.columns = ['# Topics', optimize, 'Metric']
-        
+
         #sorting to return best model
         if optimize == 'R2':
             sorted_df = df.sort_values(by=optimize, ascending=False)
         else: 
             sorted_df = df.sort_values(by=optimize, ascending=True)
-            
+
         ival = sorted_df.index[0]
 
         best_model = master[ival]
@@ -2474,19 +2513,20 @@ def tune_model(model=None,
         fig.update_layout(plot_bgcolor='rgb(245,245,245)')
         progress.value += 1 
         clear_output()
-        
+
         fig.show()
         best_k = np.array(sorted_df.head(1)['# Topics'])[0]
         best_m = round(np.array(sorted_df.head(1)[optimize])[0],4)
         p = 'Best Model: ' + topic_model_name + ' |' + ' # Topics: ' + str(best_k) + ' | ' + str(optimize) + ' : ' + str(best_m)
         print(p)
-        
+
     #storing into experiment
     tup = ('Best Model',best_model)
     experiment__.append(tup)    
-        
+
     return best_model
-    
+
+
 
 def evaluate_model(model):
     
@@ -2572,6 +2612,7 @@ def evaluate_model(model):
     
     d = interact_manual(plot_model, model = fixed(model), plot = a, topic_num=b)
 
+
 def save_model(model, model_name):
     
     """
@@ -2615,6 +2656,8 @@ def save_model(model, model_name):
     joblib.dump(model, model_name)
     print('Model Succesfully Saved')
 
+
+
 def load_model(model_name):
     
     """
@@ -2655,6 +2698,7 @@ def load_model(model_name):
     model_name = model_name + '.pkl'
     print('Model Sucessfully Loaded')
     return joblib.load(model_name)
+
 
 def save_experiment(experiment_name=None):
     
@@ -2713,6 +2757,7 @@ def save_experiment(experiment_name=None):
     joblib.dump(experiment__, experiment_name)
     
     print('Experiment Succesfully Saved')
+
 
 def load_experiment(experiment_name):
     
@@ -2783,4 +2828,3 @@ def get_topics(data, text, model=None, num_topics=4):
     c = create_model(model=model, num_topics=num_topics, verbose=False)
     dataset = assign_model(c, verbose=False)
     return dataset
-
