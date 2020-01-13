@@ -1823,6 +1823,8 @@ def compare_models(blacklist = None,
 
     return compare_models_
 
+
+
 def blend_models(estimator_list = 'All', 
                  fold = 10, 
                  round = 4, 
@@ -1908,7 +1910,7 @@ def blend_models(estimator_list = 'All',
     '''
     
     #testing
-    #no active tests
+    global model_names
     
     #exception checking   
     import sys
@@ -2139,19 +2141,29 @@ def blend_models(estimator_list = 'All',
         else: 
             model_names_final.append(j)
             
-        model_names = model_names_final
-        estimator_list = estimator_list
-        
+    model_names = model_names_final
 
-        estimator_list_ = zip(model_names, estimator_list)
-        #estimator_list_ = set(estimator_list_) #in order to accomodate catboost set is switched off
-        estimator_list_ = list(estimator_list_)
+    model_names_n = []
+    counter = 0
+    
+    for i in model_names:
+        mn = str(i) + '_' + str(counter)
+        model_names_n.append(mn)
+        counter += 1
         
-        try:
-            model = VotingRegressor(estimators=estimator_list_, n_jobs=-1)
-            model.fit(Xtrain,ytrain)
-        except:
-            model = VotingRegressor(estimators=estimator_list_)
+    model_names = model_names_n
+
+    estimator_list = estimator_list
+    
+    estimator_list_ = zip(model_names, estimator_list)
+    #estimator_list_ = set(estimator_list_) #in order to accomodate catboost set is switched off
+    estimator_list_ = list(estimator_list_)
+
+    try:
+        model = VotingRegressor(estimators=estimator_list_, n_jobs=-1)
+        model.fit(Xtrain,ytrain)
+    except:
+        model = VotingRegressor(estimators=estimator_list_)
     
     progress.value += 1
     
@@ -2315,6 +2327,8 @@ def blend_models(estimator_list = 'All',
     else:
         clear_output()
         return model
+
+
 
 def tune_model(estimator = None, 
                fold = 10, 

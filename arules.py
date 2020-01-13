@@ -71,7 +71,8 @@ def setup(data,
     import random
     import pandas as pd
     import numpy as np
-
+    from IPython.display import display, HTML, clear_output, update_display
+    
     global X, txid, iid, ignore_list, seed, experiment__
     
     #create an empty list for pickling later.
@@ -110,6 +111,7 @@ def setup(data,
     display(functions_)
     
     return X, txid, iid, ignore_list, seed, experiment__
+
 
 
 def create_model(metric='confidence',
@@ -187,6 +189,7 @@ def create_model(metric='confidence',
     
     #loading dependencies
     import pandas as pd
+    from IPython.display import display, HTML, clear_output, update_display
     from mlxtend.frequent_patterns import apriori
     from mlxtend.frequent_patterns import association_rules
     
@@ -271,6 +274,7 @@ def plot_model(model,
     import numpy as np
     import pandas as pd
     import plotly.express as px
+    from IPython.display import display, HTML, clear_output, update_display
         
     #import cufflinks
     import cufflinks as cf
@@ -328,6 +332,7 @@ def plot_model(model,
                       color='antecedent support', title='3d Plot for Rule Mining', opacity=0.7, width=900, height=800,
                            hover_data = ['antecedents', 'consequents' ])
         fig.show()   
+
 
 def save_experiment(experiment_name=None):
     
@@ -387,6 +392,7 @@ def save_experiment(experiment_name=None):
     
     print('Experiment Succesfully Saved')
 
+
 def load_experiment(experiment_name):
     
     """
@@ -441,3 +447,4 @@ def load_experiment(experiment_name):
     display(ind)
 
     return exp
+

@@ -201,6 +201,8 @@ def setup(data,
 
     return X, data_, seed, experiment__
 
+
+
 def create_model(model = None, 
                  num_clusters = None,
                  verbose=True):
@@ -241,6 +243,8 @@ def create_model(model = None,
     Density-Based Spatial Clustering   'dbscan'             sklearn.cluster.DBSCAN.html
     OPTICS Clustering                  'optics'             sklearn.cluster.OPTICS.html
     Birch Clustering                   'birch'              sklearn.cluster.Birch.html
+    K-Modes clustering                 'kmodes'             git/nicodv/kmodes
+    Spherical K-Means clustering       'skmeans'            git/jasonlaska/spherecluster
     
     num_clusters: int, default = None
     Number of clusters to be made in the dataset. if None num_clusters is set to 4. 
@@ -285,7 +289,7 @@ def create_model(model = None,
         sys.exit('(Value Error): Model parameter Missing. Please see docstring for list of available models.')
         
     #checking for allowed models
-    allowed_models = ['kmeans', 'ap', 'meanshift', 'sc', 'hclust', 'dbscan', 'optics', 'birch']
+    allowed_models = ['kmeans', 'ap', 'meanshift', 'sc', 'hclust', 'dbscan', 'optics', 'birch', 'kmodes', 'skmeans']
     
     #check num_clusters parameter:
     if num_clusters is not None:
@@ -380,7 +384,22 @@ def create_model(model = None,
         from sklearn.cluster import Birch
         model = Birch(n_clusters=num_clusters)
         full_name = 'Birch Clustering'
-
+        
+    elif model == 'kmodes':
+        from kmodes.kmodes import KModes
+        model = KModes(n_clusters=num_clusters, n_jobs=-1, random_state=seed)
+        full_name = 'K-Modes Clustering'
+        
+    elif model == 'kprototypes':
+        from kmodes.kprototypes import KPrototypes
+        model = KPrototypes(n_clusters=num_clusters, n_jobs=-1, random_state=seed)
+        full_name = 'K-Prototypes Clustering'
+        
+    elif model == 'skmeans':
+        from spherecluster import SphericalKMeans
+        model = SphericalKMeans(n_clusters=num_clusters, n_jobs=-1, random_state=seed)
+        full_name = 'Spherical K-Means Clustering'
+        
     #monitor update
     monitor.iloc[1,1:] = 'Fitting ' + str(full_name) + ' Model'
     progress.value += 1
@@ -401,6 +420,7 @@ def create_model(model = None,
         clear_output()
 
     return model
+
 
 def assign_model(model,
                  verbose=True):
@@ -461,7 +481,7 @@ def assign_model(model,
     mod_type = str(type(model))
     
     #checking for allowed models
-    if 'sklearn' not in mod_type:
+    if 'sklearn' not in mod_type and 'KModes' not in mod_type and 'SphericalKMeans' not in mod_type:
         sys.exit('(Value Error): Model Not Recognized. Please see docstring for list of available models.') 
         
     #checking verbose parameter
@@ -572,6 +592,8 @@ def tune_model(model=None,
     Spectral Clustering                'sc'                 SpectralClustering.html
     Agglomerative Clustering           'hclust'             AgglomerativeClustering.html
     Birch Clustering                   'birch'              sklearn.cluster.Birch.html
+    K-Modes clustering                 'kmodes'             git/nicodv/kmodes
+    Spherical K-Means clustering       'skmeans'            git/jasonlaska/spherecluster
     
     supervised_target: string
     Name of target column for supervised learning. It cannot be None.
@@ -597,6 +619,7 @@ def tune_model(model=None,
     Extra Trees Classifier        'et'                   Classification
     Extreme Gradient Boosting     'xgboost'              Classification
     Light Gradient Boosting       'lightgbm'             Classification
+    CatBoost Classifier           'catboost'             Classification
     Linear Regression             'lr'                   Regression
     Lasso Regression              'lasso'                Regression
     Ridge Regression              'ridge'                Regression
@@ -621,6 +644,7 @@ def tune_model(model=None,
     Multi Level Perceptron        'mlp'                  Regression
     Extreme Gradient Boosting     'xgboost'              Regression
     Light Gradient Boosting       'lightgbm'             Regression
+    CatBoost Classifier           'catboost'             Regression
     
     If set to None, by default Linear model is used for both classification
     and regression tasks.
@@ -679,11 +703,15 @@ def tune_model(model=None,
         sys.exit('(Value Error): Model parameter Missing. Please see docstring for list of available models.')
         
     #checking for allowed models
-    allowed_models = ['kmeans', 'sc', 'hclust', 'birch']
+    allowed_models = ['kmeans', 'sc', 'hclust', 'birch', 'kmodes', 'skmeans']
     
     if model not in allowed_models:
         sys.exit('(Value Error): Model Not Available for Tuning. Please see docstring for list of available models.')
-        
+    
+    #check if supervised target is None:
+    if supervised_target is None:
+        sys.exit('(Value Error): supervised_target cannot be None. A column name must be given for estimator.')
+    
     #check supervised target:
     if supervised_target is not None:
         all_col = list(data_.columns)
@@ -698,7 +726,7 @@ def tune_model(model=None,
         available_estimators = ['lr', 'knn', 'nb', 'dt', 'svm', 'rbfsvm', 'gpc', 'mlp', 'ridge', 'rf', 'qda', 'ada', 
                             'gbc', 'lda', 'et', 'lasso', 'ridge', 'en', 'lar', 'llar', 'omp', 'br', 'ard', 'par', 
                             'ransac', 'tr', 'huber', 'kr', 'svm', 'knn', 'dt', 'rf', 'et', 'ada', 'gbr', 
-                            'mlp', 'xgboost', 'lightgbm']
+                            'mlp', 'xgboost', 'lightgbm', 'catboost']
                 
         if estimator not in available_estimators:
             sys.exit('(Value Error): Estimator Not Available. Please see docstring for list of available estimators.')
@@ -783,6 +811,10 @@ def tune_model(model=None,
         model_name = 'OPTICS Clustering'
     elif model == 'birch':
         model_name = 'Birch Clustering'
+    elif model == 'kmodes':
+        model_name = 'K-Modes Clustering'
+    elif model == 'skmeans':
+        model_name = 'Spherical K-Means Clustering'
     
     #defining estimator:
     if problem == 'classification' and estimator is None:
@@ -952,6 +984,11 @@ def tune_model(model=None,
             import lightgbm as lgb
             model = lgb.LGBMClassifier(random_state=seed)
             full_name = 'Light Gradient Boosting Machine'
+            
+        elif estimator == 'catboost':
+            from catboost import CatBoostClassifier
+            model = CatBoostClassifier(random_state=seed, silent=True) # Silent is True to suppress CatBoost iteration results 
+            full_name = 'CatBoost Classifier'
         
         
         progress.value += 1 
@@ -1245,6 +1282,12 @@ def tune_model(model=None,
             model = lgb.LGBMRegressor(random_state=seed)
             full_name = 'Light Gradient Boosting Machine'
             
+        elif estimator == 'catboost':
+            
+            from catboost import CatBoostRegressor
+            model = CatBoostRegressor(random_state=seed, silent = True)
+            full_name = 'CatBoost Regressor'
+            
         progress.value += 1 
         
         """
@@ -1355,7 +1398,7 @@ def tune_model(model=None,
         update_display(monitor, display_id = 'monitor')                    
          
         df = pd.DataFrame({'Clusters': param_grid_with_zero, 'Score' : score, 'Metric': metric})
-        df.columns = ['Clusters', optimize, 'Metric']
+        df.columns = ['# of Clusters', optimize, 'Metric']
         
         #sorting to return best model
         if optimize == 'R2':
@@ -1368,7 +1411,7 @@ def tune_model(model=None,
         best_model = master[ival]
         best_model_df = master_df[ival]
 
-        fig = px.line(df, x='Clusters', y=optimize, line_shape='linear', 
+        fig = px.line(df, x='# of Clusters', y=optimize, line_shape='linear', 
                       title= str(full_name) + ' Metrics and Number of Clusters', color='Metric')
 
         fig.update_layout(plot_bgcolor='rgb(245,245,245)')
@@ -1376,7 +1419,7 @@ def tune_model(model=None,
         clear_output()
         
         fig.show()
-        best_k = np.array(sorted_df.head(1)['Clusters'])[0]
+        best_k = np.array(sorted_df.head(1)['# of Clusters'])[0]
         best_m = round(np.array(sorted_df.head(1)[optimize])[0],4)
         p = 'Best Model: ' + model_name + ' |' + ' Number of Clusters: ' + str(best_k) + ' | ' + str(optimize) + ' : ' + str(best_m)
         print(p)
@@ -1488,6 +1531,7 @@ def plot_model(model, plot='cluster', feature=None):
         pca_ = pd.DataFrame(pca_)
         pca_ = pca_.rename(columns={0: "PCA1", 1: "PCA2"})
         pca_['Cluster'] = cluster
+        pca_.sort_values(by='Cluster', inplace=True) #sorting for legend
         
         fig = px.scatter(pca_, x="PCA1", y="PCA2", color='Cluster', opacity=0.5)
 
@@ -1506,6 +1550,7 @@ def plot_model(model, plot='cluster', feature=None):
         import plotly.express as px
         
         d = assign_model(model)
+        d.sort_values(by='Cluster', inplace=True)
         
         if feature is None:
             x_col = 'Cluster'
@@ -1529,6 +1574,7 @@ def plot_model(model, plot='cluster', feature=None):
         X_embedded = TSNE(n_components=3).fit_transform(b)
         X_embedded = pd.DataFrame(X_embedded)
         X_embedded['Cluster'] = cluster
+        X_embedded.sort_values(by='Cluster', inplace=True) #sorting values for legend
         
         import plotly.express as px
         df = X_embedded
@@ -1538,9 +1584,12 @@ def plot_model(model, plot='cluster', feature=None):
         
     elif plot == 'elbow':
         
+        from copy import deepcopy
+        model_ = deepcopy(model)
+        
         try: 
             from yellowbrick.cluster import KElbowVisualizer
-            visualizer = KElbowVisualizer(model,timings=False)
+            visualizer = KElbowVisualizer(model_,timings=False)
             visualizer.fit(X)
             visualizer.poof()
             
@@ -1766,3 +1815,16 @@ def load_experiment(experiment_name):
 
     return exp
 
+def get_clusters(data, model=None, num_clusters=4):
+    
+    """
+    Magic function to get clusters in Power Query / Power BI.
+    """
+    
+    if model is None:
+        model = 'kmeans'
+        
+    s = setup(data, normalize=True, verbose=False)
+    c = create_model(model=model, num_clusters=num_clusters, verbose=False)
+    dataset = assign_model(c, verbose=False)
+    return dataset

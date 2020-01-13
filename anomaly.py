@@ -187,6 +187,8 @@ def setup(data,
 
     return X, data_, seed, experiment__
 
+
+
 def create_model(model = None, 
                  fraction = 0.05,
                  verbose = True):
@@ -403,6 +405,7 @@ def create_model(model = None,
 
     return model
 
+
 def assign_model(model,
                  score=True,
                  verbose=True):
@@ -538,6 +541,7 @@ def assign_model(model,
         
     return data__
 
+
 def tune_model(model=None,
                supervised_target=None,
                method = 'drop',
@@ -625,6 +629,7 @@ def tune_model(model=None,
     Extra Trees Classifier        'et'                   Classification
     Extreme Gradient Boosting     'xgboost'              Classification
     Light Gradient Boosting       'lightgbm'             Classification
+    CatBoost Classifier           'catboost'             Classification
     Linear Regression             'lr'                   Regression
     Lasso Regression              'lasso'                Regression
     Ridge Regression              'ridge'                Regression
@@ -649,6 +654,7 @@ def tune_model(model=None,
     Multi Level Perceptron        'mlp'                  Regression
     Extreme Gradient Boosting     'xgboost'              Regression
     Light Gradient Boosting       'lightgbm'             Regression
+    CatBoost Regressor            'catboost'             Regression
     
     If set to None, by default Linear model is used for both classification
     and regression tasks.
@@ -715,6 +721,10 @@ def tune_model(model=None,
     allowed_methods = ['drop', 'surrogate']
     if method not in allowed_methods:
         sys.exit('(Value Error): Method not recognized. See docstring for list of available methods.')
+     
+    #check if supervised target is None:
+    if supervised_target is None:
+        sys.exit('(Value Error): supervised_target cannot be None. A column name must be given for estimator.')
         
     #check supervised target:
     if supervised_target is not None:
@@ -730,7 +740,7 @@ def tune_model(model=None,
         available_estimators = ['lr', 'knn', 'nb', 'dt', 'svm', 'rbfsvm', 'gpc', 'mlp', 'ridge', 'rf', 'qda', 'ada', 
                             'gbc', 'lda', 'et', 'lasso', 'ridge', 'en', 'lar', 'llar', 'omp', 'br', 'ard', 'par', 
                             'ransac', 'tr', 'huber', 'kr', 'svm', 'knn', 'dt', 'rf', 'et', 'ada', 'gbr', 
-                            'mlp', 'xgboost', 'lightgbm']
+                            'mlp', 'xgboost', 'lightgbm', 'catboost']
                 
         if estimator not in available_estimators:
             sys.exit('(Value Error): Estimator Not Available. Please see docstring for list of available estimators.')
@@ -992,7 +1002,11 @@ def tune_model(model=None,
             import lightgbm as lgb
             model = lgb.LGBMClassifier(random_state=seed)
             full_name = 'Light Gradient Boosting Machine'
-        
+    
+        elif estimator == 'catboost':
+            from catboost import CatBoostClassifier
+            model = CatBoostClassifier(random_state=seed, silent=True) # Silent is True to suppress CatBoost iteration results 
+            full_name = 'CatBoost Classifier'
         
         progress.value += 1 
         
@@ -1292,6 +1306,12 @@ def tune_model(model=None,
             model = lgb.LGBMRegressor(random_state=seed)
             full_name = 'Light Gradient Boosting Machine'
             
+        elif estimator == 'catboost':
+            
+            from catboost import CatBoostRegressor
+            model = CatBoostRegressor(random_state=seed, silent = True)
+            full_name = 'CatBoost Regressor'
+            
         progress.value += 1 
         
         """
@@ -1303,7 +1323,7 @@ def tune_model(model=None,
         metric = []
         
         #build model without clustering
-        monitor.iloc[2,1:] = 'Evaluating Regressor Without Clustering'
+        monitor.iloc[2,1:] = 'Evaluating Regressor Without Anomaly'
         update_display(monitor, display_id = 'monitor')   
 
         d = master_df[1].copy()
@@ -1409,7 +1429,7 @@ def tune_model(model=None,
         update_display(monitor, display_id = 'monitor')                    
          
         df = pd.DataFrame({'Fraction': param_grid_with_zero, 'Score' : score, 'Metric': metric})
-        df.columns = ['Fraction', optimize, 'Metric']
+        df.columns = ['Fraction %', optimize, 'Metric']
         
         #sorting to return best model
         if optimize == 'R2':
@@ -1422,7 +1442,7 @@ def tune_model(model=None,
         best_model = master[ival]
         best_model_df = master_df[ival]
 
-        fig = px.line(df, x='Fraction', y=optimize, line_shape='linear', 
+        fig = px.line(df, x='Fraction %', y=optimize, line_shape='linear', 
                       title= str(full_name) + ' Metrics and Fraction %', color='Metric')
 
         fig.update_layout(plot_bgcolor='rgb(245,245,245)')
@@ -1430,7 +1450,7 @@ def tune_model(model=None,
         clear_output()
         
         fig.show()
-        best_k = np.array(sorted_df.head(1)['Fraction'])[0]
+        best_k = np.array(sorted_df.head(1)['Fraction %'])[0]
         best_m = round(np.array(sorted_df.head(1)[optimize])[0],4)
         p = 'Best Model: ' + model_name + ' |' + ' Fraction %: ' + str(best_k) + ' | ' + str(optimize) + ' : ' + str(best_m)
         print(p)
@@ -1565,6 +1585,7 @@ def plot_model(model,
                       color='Label', title='uMAP Plot for Outliers', opacity=0.7, width=900, height=800)
         fig.show() 
 
+
 def save_model(model, model_name):
     
     """
@@ -1607,6 +1628,7 @@ def save_model(model, model_name):
     model_name = model_name + '.pkl'
     joblib.dump(model, model_name)
     print('Model Succesfully Saved')
+
 
 def load_model(model_name):
     
@@ -1707,6 +1729,7 @@ def save_experiment(experiment_name=None):
     
     print('Experiment Succesfully Saved')
 
+
 def load_experiment(experiment_name):
     
     """
@@ -1761,3 +1784,18 @@ def load_experiment(experiment_name):
     display(ind)
 
     return exp
+
+
+def get_outliers(data, model=None, fraction=0.05):
+    
+    """
+    Magic function to get outliers in Power Query / Power BI.
+    """
+    
+    if model is None:
+        model = 'knn'
+        
+    s = setup(data, normalize=True, verbose=False)
+    c = create_model(model=model, fraction=fraction, verbose=False)
+    dataset = assign_model(c, verbose=False)
+    return dataset

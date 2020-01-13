@@ -2769,3 +2769,18 @@ def load_experiment(experiment_name):
 
     return exp
 
+
+def get_topics(data, text, model=None, num_topics=4):
+    
+    """
+    Magic function to get topic model in Power Query / Power BI.
+    """
+    
+    if model is None:
+        model = 'lda'
+        
+    s = setup(data=data, target=text)
+    c = create_model(model=model, num_topics=num_topics, verbose=False)
+    dataset = assign_model(c, verbose=False)
+    return dataset
+

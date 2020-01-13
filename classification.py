@@ -3481,7 +3481,6 @@ def tune_model(estimator = None,
         return best_model
 
 
-
 def blend_models(estimator_list = 'All', 
                  fold = 10, 
                  round = 4, 
@@ -3618,6 +3617,9 @@ def blend_models(estimator_list = 'All',
     ERROR HANDLING ENDS HERE
     
     '''
+    
+    #testing
+    #no active testing
     
     #pre-load libraries
     import pandas as pd
@@ -3785,22 +3787,41 @@ def blend_models(estimator_list = 'All',
 
         elif j == 'S V C':
             model_names_final.append('SVM - Radial Kernel')
-
+        
+        elif j == 'X G B Classifier':
+            model_names_final.append('Extreme Gradient Boosting')
+        
+        elif j == 'L G B M Classifier':
+            model_names_final.append('Light Gradient Boosting Machine')
+            
         else: 
             model_names_final.append(j)
             
-        model_names = model_names_final
-        estimator_list = estimator_list
-
-        estimator_list_ = zip(model_names, estimator_list)
-        estimator_list_ = set(estimator_list_)
-        estimator_list_ = list(estimator_list_)
+    model_names = model_names_final
     
-        try:
-            model = VotingClassifier(estimators=estimator_list_, voting=voting, n_jobs=-1)
-            model.fit(Xtrain,ytrain)
-        except:
-            model = VotingClassifier(estimators=estimator_list_, voting=voting)
+    #adding n in model_names to avoid duplicate exception when custom list is passed for eg. BaggingClassifier
+    
+    model_names_n = []
+    counter = 0
+    
+    for i in model_names:
+        mn = str(i) + '_' + str(counter)
+        model_names_n.append(mn)
+        counter += 1
+        
+    model_names = model_names_n
+
+    estimator_list = estimator_list
+
+    estimator_list_ = zip(model_names, estimator_list)
+    estimator_list_ = set(estimator_list_)
+    estimator_list_ = list(estimator_list_)
+    
+    try:
+        model = VotingClassifier(estimators=estimator_list_, voting=voting, n_jobs=-1)
+        model.fit(Xtrain,ytrain)
+    except:
+        model = VotingClassifier(estimators=estimator_list_, voting=voting)
     
     progress.value += 1
     
