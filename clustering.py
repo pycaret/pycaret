@@ -546,6 +546,7 @@ def assign_model(model,
         
     return data__
 
+
 def tune_model(model=None,
                supervised_target=None,
                estimator=None,
@@ -1102,7 +1103,7 @@ def tune_model(model=None,
         monitor.iloc[1,1:] = 'Finalizing'
         update_display(monitor, display_id = 'monitor')
                              
-        df = pd.DataFrame({'Clusters': param_grid_with_zero, 'Accuracy' : acc, 'AUC' : auc, 'Recall' : recall, 
+        df = pd.DataFrame({'# of Clusters': param_grid_with_zero, 'Accuracy' : acc, 'AUC' : auc, 'Recall' : recall, 
                    'Precision' : prec, 'F1' : f1, 'Kappa' : kappa})
         
         sorted_df = df.sort_values(by=optimize, ascending=False)
@@ -1111,10 +1112,10 @@ def tune_model(model=None,
         best_model = master[ival]
         best_model_df = master_df[ival]
         progress.value += 1 
-        sd = pd.melt(df, id_vars=['Clusters'], value_vars=['Accuracy', 'AUC', 'Recall', 'Precision', 'F1', 'Kappa'], 
+        sd = pd.melt(df, id_vars=['# of Clusters'], value_vars=['Accuracy', 'AUC', 'Recall', 'Precision', 'F1', 'Kappa'], 
                      var_name='Metric', value_name='Score')
 
-        fig = px.line(sd, x='Clusters', y='Score', color='Metric', line_shape='linear', range_y = [0,1])
+        fig = px.line(sd, x='# of Clusters', y='Score', color='Metric', line_shape='linear', range_y = [0,1])
         fig.update_layout(plot_bgcolor='rgb(245,245,245)')
         title= str(full_name) + ' Metrics and Number of Clusters'
         fig.update_layout(title={'text': title, 'y':0.95,'x':0.45,'xanchor': 'center','yanchor': 'top'})
@@ -1123,7 +1124,7 @@ def tune_model(model=None,
 
         fig.show()
         
-        best_k = np.array(sorted_df.head(1)['Clusters'])[0]
+        best_k = np.array(sorted_df.head(1)['# of Clusters'])[0]
         best_m = round(np.array(sorted_df.head(1)[optimize])[0],4)
         p = 'Best Model: ' + model_name + ' |' + ' Number of Clusters : ' + str(best_k) + ' | ' + str(optimize) + ' : ' + str(best_m)
         print(p)
@@ -1430,6 +1431,7 @@ def tune_model(model=None,
         
     return best_model
     
+
 
 def plot_model(model, plot='cluster', feature=None):
     
