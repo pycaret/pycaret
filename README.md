@@ -1,11 +1,11 @@
-﻿## pycaret
-pycaret is the free software and open source machine learning library for python programming language. It is built around several popular machine learning libraries in python. Its primary objective is to reduce the cycle time of hypothesis to insights by providing an easy to use high level unified API. pycaret's vision is to become defacto standard for teaching machine learning and data science. Our strength is in our easy to use unified interface for both supervised and unsupervised machine learning problems. It saves time and effort that citizen data scientists, students and researchers spent on coding or learning to code using different interfaces, so that now they can focus on business problem and value creation. 
+﻿## PyCaret
+PyCaret is end-to-end open source machine learning library for python programming language. Its primary objective is to reduce the cycle time of hypothesis to insights by providing an easy to use high level unified API. PyCaret's vision is to become defacto standard for teaching machine learning and data science. Our strength is in our easy to use unified interface for both supervised and unsupervised learning. It saves time and effort that citizen data scientists, students and researchers spent on coding or learning to code using different interfaces, so that now they can focus on business problem.
 
 ## Current Release
-The current release is beta 0.0.15 (as of 13/01/2020). A full release is targetted to be available by 31/01/2020.
+The current release is beta 0.0.17 (as of 15/01/2020). A full release is targetted in the first week of February 2020.
 
 ## Features Currently Available
-As per beta 0.0.15 following modules are generally available:
+As per beta 0.0.17 following modules are generally available:
 * pycaret.datasets <br/>
 * pycaret.classification (binary and multiclass) <br/>
 * pycaret.regression <br/>
@@ -15,8 +15,7 @@ As per beta 0.0.15 following modules are generally available:
 * pycaret.clustering <br/>
 
 ## Future Release
-Following features are targetted for future release (beta 0.0.16 & beta 0.0.17):
-* pycaret.preprocess <br/>
+Full public release is targetted to be released in first week of Feb 2020.
 
 ## Installation
 
@@ -31,7 +30,7 @@ pip install pycaret
 ```
 
 ## Quick Start
-As of beta 0.0.15 classification, regression, nlp, arules, anomaly and clustering modules are available. Future release will be include Preprocessing, Time Series and Recommender System. 
+As of beta 0.0.17 classification, regression, nlp, arules, anomaly and clustering modules are available.
 
 ### Classification / Regression
 
@@ -184,18 +183,6 @@ m = load_model('lr_23122019')
 e = load_experiment('expname1')
 ```
 
-## AutoML
-All modules also have AutoML module built-in. It is very easy to run AutoML. 
-
-```python
-from pycaret.datasets import get_data
-juice = get_data('juice')
-
-from pycaret.classification import *
-exp1 = setup(data, 'Purchase')
-
-aml1 = automl() #same for regression
-```
 
 ## Getting Started Tutorials
 Tutorials are work in progress. Will be uploaded on our git page by 07/01/2020.
@@ -208,8 +195,7 @@ Contributions are most welcome. To make contribution please reach out moez.ali@q
 
 ## License
 
-Copyright 2020 PyCaret
-Copyright 2020 Moez Ali
+Copyright 2020 PyCaret / Copyright 2020 Moez Ali
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
 
