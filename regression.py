@@ -163,6 +163,9 @@ def setup(data,
     X = data.drop(target,axis=1)
     y = data[target]
     
+    #copy original data for pandas profiler
+    data_before_preprocess = data.copy()
+    
     progress.value += 1
     
     if sampling is True and data.shape[0] > 25000: #change back to 25000
@@ -271,7 +274,12 @@ def setup(data,
             '''
             clear_output()
             print(' ')
-            print('Setup Succesfully Completed!')
+
+            if profile:
+                print('Setup Succesfully Completed! Loading Profile Now... Please Wait!')
+            else:
+                print('Setup Succesfully Completed!')    
+        
             functions = pd.DataFrame ( [ ['session_id', seed ],
                                          ['Original Data',X.shape ], 
                                          ['Sampled Data',X.shape ], 
@@ -282,6 +290,15 @@ def setup(data,
 
             functions_ = functions.style.hide_index()
             display(functions_)
+            
+            if profile:
+                try:
+                    import pandas_profiling
+                    pf = pandas_profiling.ProfileReport(data_before_preprocess)
+                    clear_output()
+                    display(pf)
+                except:
+                    print('Data Profiler Failed. No output to show, please continue with Modeling.')
             
             '''
             Final display Ends
@@ -313,7 +330,12 @@ def setup(data,
             
             clear_output()
             print(' ')
-            print('Setup Succesfully Completed!')
+            
+            if profile:
+                print('Setup Succesfully Completed! Loading Profile Now... Please Wait!')
+            else:
+                print('Setup Succesfully Completed!')
+            
             functions = pd.DataFrame ( [ ['session_id', seed ],
                                          ['Original Data',X.shape ], 
                                          ['Sampled Data',X_selected.shape ], 
@@ -324,6 +346,15 @@ def setup(data,
             
             functions_ = functions.style.hide_index()
             display(functions_)
+            
+            if profile:
+                try:
+                    import pandas_profiling
+                    pf = pandas_profiling.ProfileReport(data_before_preprocess)
+                    clear_output()
+                    display(pf)
+                except:
+                    print('Data Profiler Failed. No output to show, please continue with Modeling.')
             
             '''
             Final display Ends
@@ -368,10 +399,13 @@ def setup(data,
         display(functions_)
             
         if profile:
-            import pandas_profiling
-            pf = pandas_profiling.ProfileReport(data)
-            clear_output()
-            display(pf)
+            try:
+                import pandas_profiling
+                pf = pandas_profiling.ProfileReport(data_before_preprocess)
+                clear_output()
+                display(pf)
+            except:
+                print('Data Profiler Failed. No output to show, please continue with Modeling.')
             
         '''
         Final display Ends
@@ -385,6 +419,8 @@ def setup(data,
         experiment__.append(('y_test Set', y_test))      
         
         return X, y, X_train, X_test, y_train, y_test, seed, experiment__
+
+
 
 def create_model(estimator = None, 
                  ensemble = False, 

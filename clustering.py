@@ -387,17 +387,12 @@ def create_model(model = None,
         
     elif model == 'kmodes':
         from kmodes.kmodes import KModes
-        model = KModes(n_clusters=num_clusters, n_jobs=-1, random_state=seed)
+        model = KModes(n_clusters=num_clusters, n_jobs=1, random_state=seed)
         full_name = 'K-Modes Clustering'
-        
-    elif model == 'kprototypes':
-        from kmodes.kprototypes import KPrototypes
-        model = KPrototypes(n_clusters=num_clusters, n_jobs=-1, random_state=seed)
-        full_name = 'K-Prototypes Clustering'
         
     elif model == 'skmeans':
         from spherecluster import SphericalKMeans
-        model = SphericalKMeans(n_clusters=num_clusters, n_jobs=-1, random_state=seed)
+        model = SphericalKMeans(n_clusters=num_clusters, n_jobs=1, random_state=seed)
         full_name = 'Spherical K-Means Clustering'
         
     #monitor update

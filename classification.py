@@ -174,6 +174,9 @@ def setup(data,
     X = data.drop(target,axis=1)
     y = data[target]
     
+    #copy original data for pandas profiler
+    data_before_preprocess = data.copy()
+    
     #determining target type
     if y.value_counts().count() > 2:
         target_type = 'Multiclass'
@@ -345,7 +348,11 @@ def setup(data,
             '''
             clear_output()
             print(' ')
-            print('Setup Succesfully Completed!')
+            if profile:
+                print('Setup Succesfully Completed! Loading Profile Now... Please Wait!')
+            else:
+                print('Setup Succesfully Completed!')
+            
             functions = pd.DataFrame ( [ ['session_id', seed ],
                                          ['Target Type', target_type],
                                          ['Original Data',X.shape ], 
@@ -357,6 +364,15 @@ def setup(data,
 
             functions_ = functions.style.hide_index()
             display(functions_)
+            
+            if profile:
+                try:
+                    import pandas_profiling
+                    pf = pandas_profiling.ProfileReport(data_before_preprocess)
+                    clear_output()
+                    display(pf)
+                except:
+                    print('Data Profiler Failed. No output to show, please continue with Modeling.')
             
             '''
             Final display Ends
@@ -389,7 +405,11 @@ def setup(data,
                 
             clear_output()
             print(' ')
-            print('Setup Succesfully Completed!')
+            if profile:
+                print('Setup Succesfully Completed! Loading Profile Now... Please Wait!')
+            else:
+                print('Setup Succesfully Completed!')
+                
             functions = pd.DataFrame ( [ ['session_id', seed ],
                                          ['Target Type', target_type],
                                          ['Original Data',X.shape ], 
@@ -401,6 +421,15 @@ def setup(data,
             
             functions_ = functions.style.hide_index()
             display(functions_)
+            
+            if profile:
+                try:
+                    import pandas_profiling
+                    pf = pandas_profiling.ProfileReport(data_before_preprocess)
+                    clear_output()
+                    display(pf)
+                except:
+                    print('Data Profiler Failed. No output to show, please continue with Modeling.')
             
             '''
             Final display Ends
@@ -446,10 +475,13 @@ def setup(data,
         display(functions_)
         
         if profile:
-            import pandas_profiling
-            pf = pandas_profiling.ProfileReport(data)
-            clear_output()
-            display(pf)
+            try:
+                import pandas_profiling
+                pf = pandas_profiling.ProfileReport(data_before_preprocess)
+                clear_output()
+                display(pf)
+            except:
+                print('Data Profiler Failed. No output to show, please continue with Modeling.')
             
         '''
         Final display Ends
@@ -3481,6 +3513,7 @@ def tune_model(estimator = None,
         return best_model
 
 
+
 def blend_models(estimator_list = 'All', 
                  fold = 10, 
                  round = 4, 
@@ -3591,6 +3624,21 @@ def blend_models(estimator_list = 'All',
             if 'sklearn' not in str(type(i)) and 'CatBoostClassifier' not in str(type(i)):
                 sys.exit("(Value Error): estimator_list parameter only accepts 'All' as string or trained model object")
    
+    #checking method param with estimator list
+    if estimator_list != 'All':
+        if method == 'soft':
+            
+            check = 0
+            
+            for i in estimator_list:
+                if hasattr(i, 'predict_proba'):
+                    pass
+                else:
+                    check += 1
+            
+            if check >= 1:
+                sys.exit('(Type Error): Estimator list contains estimator that doesnt support probabilities and method is forced to soft. Either change the method or drop the estimator.')
+    
     #checking fold parameter
     if type(fold) is not int:
         sys.exit('(Type Error): Fold parameter only accepts integer value.')
@@ -3743,12 +3791,20 @@ def blend_models(estimator_list = 'All',
         progress.value += 1
         
         if turbo:
-            estimator_list = [lr,knn,nb,dt,svm,ridge,rf,qda,ada,gbc,lda,et,xgboost,lightgbm]
-            voting = 'hard'
+            if method == 'hard':
+                estimator_list = [lr,knn,nb,dt,svm,ridge,rf,qda,ada,gbc,lda,et,xgboost,lightgbm]
+                voting = 'hard'
+            elif method == 'soft':
+                estimator_list = [lr,knn,nb,dt,rf,qda,ada,gbc,lda,et,xgboost,lightgbm]
+                voting = 'soft'
         else:
-            estimator_list = [lr,knn,nb,dt,svm,rbfsvm,gpc,mlp,ridge,rf,qda,ada,gbc,lda,et,xgboost,lightgbm]
-            voting = 'hard'
-
+            if method == 'hard':
+                estimator_list = [lr,knn,nb,dt,svm,rbfsvm,gpc,mlp,ridge,rf,qda,ada,gbc,lda,et,xgboost,lightgbm]
+                voting = 'hard'
+            elif method == 'soft':
+                estimator_list = [lr,knn,nb,dt,rbfsvm,gpc,mlp,rf,qda,ada,gbc,lda,et,xgboost,lightgbm]
+                voting = 'soft'
+                
     else:
 
         estimator_list = estimator_list
