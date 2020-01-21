@@ -1812,6 +1812,8 @@ def load_experiment(experiment_name):
 
     return exp
 
+
+
 def get_clusters(data, model=None, num_clusters=4):
     
     """
@@ -1822,6 +1824,9 @@ def get_clusters(data, model=None, num_clusters=4):
         model = 'kmeans'
         
     s = setup(data, normalize=True, verbose=False)
-    c = create_model(model=model, num_clusters=num_clusters, verbose=False)
+    try:
+        c = create_model(model=model, num_clusters=num_clusters, verbose=False)
+    except:
+        c = create_model(model=model, verbose=False)
     dataset = assign_model(c, verbose=False)
     return dataset
