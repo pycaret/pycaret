@@ -8,6 +8,7 @@ income,Multivariate,Classification,income >50K,32561,14,Y
 iris,Multivariate,Classification,Class,100,5,N
 juice,Multivariate,Classification,Purchase,1070,15,N
 heart_disease,Multivariate,Classification,Disease,270,14,N
+electrical_grid,Multivariate,Classification,stabf,10000,14,N
 glass,Multivariate,Classification (Multiclass),Type,214,10,N
 satellite,Multivariate,Classification (Multiclass),Class,6435,37,N
 poker,Multivariate,Classification (Multiclass),CLASS,100000,11,N
@@ -19,6 +20,7 @@ bike,Multivariate,Regression,cnt,17379,15,N
 boston,Multivariate,Regression,medv,506,14,N
 diamond,Multivariate,Regression,Price,6000,8,N
 gold,Multivariate,Regression,Gold_T+22,2558,121,N
+house,Multivariate,Regression,SalePrice,1458,198,N
 tweets,Text,NLP,tweet,8594,2,N
 amazon,Text,NLP / Classification,reviewText,20000,2,N
 kiva,Text,NLP / Classification,en,6818,7,N
