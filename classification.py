@@ -1,3 +1,8 @@
+# Module: Classification
+# Author: Moez Ali <moez.ali@queensu.ca>
+# License: MIT
+
+
 def setup(data, 
           target, 
           train_size = 0.7,
@@ -3807,6 +3812,7 @@ def tune_model(estimator = None,
         return best_model
 
 
+
 def blend_models(estimator_list = 'All', 
                  fold = 10, 
                  round = 4, 
@@ -3930,6 +3936,12 @@ def blend_models(estimator_list = 'All',
             
             if check >= 1:
                 sys.exit('(Type Error): Estimator list contains estimator that doesnt support probabilities and method is forced to soft. Either change the method or drop the estimator.')
+    
+    #checking catboost:
+    if estimator_list != 'All':
+        for i in estimator_list:
+            if 'CatBoostClassifier' in str(i):
+                sys.exit('(Type Error): CatBoost Classifier not supported in this function.')
     
     #checking fold parameter
     if type(fold) is not int:
@@ -4383,6 +4395,8 @@ def blend_models(estimator_list = 'All',
         return model
 
 
+
+
 def stack_models(estimator_list, 
                  meta_model = None, 
                  fold = 10,
@@ -4580,6 +4594,7 @@ def stack_models(estimator_list,
     from sklearn.model_selection import StratifiedKFold
     from sklearn.model_selection import cross_val_predict
     import seaborn as sns
+    from copy import deepcopy
     
     progress.value += 1
     
@@ -4589,12 +4604,15 @@ def stack_models(estimator_list,
     elif method == 'hard':
         predict_method = 'predict'
     
+    #copy estimator_list
+    estimator_list = deepcopy(estimator_list)
+    
     #Defining meta model. Logistic Regression hardcoded for now
     if meta_model == None:
         from sklearn.linear_model import LogisticRegression
         meta_model = LogisticRegression()
     else:
-        meta_model = meta_model
+        meta_model = deepcopy(meta_model)
     
     #defining data_X and data_y
     if finalize:
@@ -4903,6 +4921,8 @@ def stack_models(estimator_list,
         return models_
 
 
+
+
 def create_stacknet(estimator_list,
                     meta_model = None,
                     fold = 10,
@@ -5095,8 +5115,12 @@ def create_stacknet(estimator_list,
     from sklearn import metrics
     from sklearn.model_selection import StratifiedKFold
     from sklearn.model_selection import cross_val_predict
-
+    from copy import deepcopy
+    
     progress.value += 1
+    
+    #copy estimator_list
+    estimator_list = deepcopy(estimator_list)
     
     base_level = estimator_list[0]
     base_level_names = []
@@ -5150,7 +5174,7 @@ def create_stacknet(estimator_list,
         from sklearn.linear_model import LogisticRegression
         meta_model = LogisticRegression()
     else:
-        meta_model = meta_model
+        meta_model = deepcopy(meta_model)
     
     #Capturing the method of stacking required by user. method='soft' means 'predict_proba' else 'predict'
     if method == 'soft':
@@ -5470,6 +5494,10 @@ def create_stacknet(estimator_list,
     else:
         clear_output()
         return models_ 
+
+
+
+
 
 
 def interpret_model(estimator,
@@ -6462,6 +6490,7 @@ def load_experiment(experiment_name):
     return exp
 
 
+
 def predict_model(estimator, 
                   data=None):
     
@@ -6538,7 +6567,7 @@ def predict_model(estimator,
         X_test_.reset_index(drop=True, inplace=True)
         y_test_.reset_index(drop=True, inplace=True)
         
-        model = estimator
+        model = deepcopy(estimator)
         
     else:
         
@@ -6555,19 +6584,19 @@ def predict_model(estimator,
             else:
                 
                 prep_pipe_transformer = prep_pipe
-                model = estimator
-                estimator = estimator
+                model = deepcopy(estimator)
+                estimator = deepcopy(estimator)
             
         else:
             
             prep_pipe_transformer = prep_pipe
-            model = estimator
-            estimator = estimator
+            model = deepcopy(estimator)
+            estimator = deepcopy(estimator)
         
         try:
             model = finalize_model(estimator)
         except:
-            model = estimator
+            model = deepcopy(estimator)
             
         Xtest = prep_pipe_transformer.transform(data)                     
         X_test_ = data.copy() #original concater
@@ -6584,7 +6613,7 @@ def predict_model(estimator,
             """
             
             #utility
-            stacker = model.copy()
+            stacker = deepcopy(model)
             restack = stacker.pop()
             stacker_method = stacker.pop()
             #stacker_method = stacker_method[0]
@@ -6786,7 +6815,7 @@ def predict_model(estimator,
             """
             
             #copy
-            stacker = model.copy()
+            stacker = deepcopy(model)
             
             #restack
             restack = stacker.pop()
@@ -6828,7 +6857,7 @@ def predict_model(estimator,
                 if method == 'hard':
                     #print('done')
                     p = i.predict(Xtest) #change
-                    
+
                 else:
                     try:
                         p = i.predict_proba(Xtest) #change
@@ -6996,4 +7025,3 @@ def predict_model(estimator,
             
 
     return X_test_
-

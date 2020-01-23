@@ -1,3 +1,7 @@
+# Module: Regression
+# Author: Moez Ali <moez.ali@queensu.ca>
+# License: MIT
+
 def setup(data, 
           target, 
           train_size=0.7,
@@ -3707,464 +3711,6 @@ def tune_model(estimator = None,
 
 
 
-def stack_models(estimator_list, 
-                 meta_model = None, 
-                 fold = 10,
-                 round = 4, 
-                 restack = False, 
-                 plot = False,
-                 finalize = False,
-                 verbose = True):
-    
-    """
-      
-            
-    Description:
-    ------------
-    This function creates a meta model and scores it using Kfold Cross Validation.
-    The predictions from the base level models as passed in the estimator_list param 
-    are used as input features for the meta model. The restacking parameter controls
-    the ability to expose raw features to the meta model when set to True
-    (default = False).
-
-    The output prints a score grid that shows MAE, MSE, RMSE, R2 and ME by fold 
-    (default = 10 Folds).
-    
-    This function returns a container which is the list of all models in stacking. 
-
-        Example:
-        --------
-        from pycaret.datasets import get_data
-        boston = get_data('boston')
-        experiment_name = setup(data = boston,  target = 'medv')
-        dt = create_model('dt')
-        rf = create_model('rf')
-        ada = create_model('ada')
-        ridge = create_model('ridge')
-        knn = create_model('knn')
-
-        stacked_models = stack_models(estimator_list=[dt,rf,ada,ridge,knn])
-
-        This will create a meta model that will use the predictions of all the 
-        models provided in estimator_list param. By default, the meta model is 
-        Linear Regression but can be changed with meta_model param.
-
-    Parameters
-    ----------
-    estimator_list : list of object
-
-    meta_model : object, default = None
-    if set to None, Linear Regression is used as a meta model.
-
-    fold: integer, default = 10
-    Number of folds to be used in Kfold CV. Must be at least 2. 
-
-    round: integer, default = 4
-    Number of decimal places the metrics in the score grid will be rounded to.
-
-    restack: Boolean, default = False
-    When restack is set to True, raw data will be exposed to meta model when
-    making predictions, otherwise when False, only the predicted label is passed 
-    to meta model when making final predictions.
-
-    plot: Boolean, default = False
-    When plot is set to True, it will return the correlation plot of prediction
-    from all base models provided in estimator_list.
-    
-    finalize: Boolean, default = False
-    When finalize is set to True, it will fit the stacker on entire dataset
-    including the hold-out sample created during the setup() stage. It is not 
-    recommended to set this to True here, If you would like to fit the stacker 
-    on the entire dataset including the hold-out, use finalize_model().
-    
-    verbose: Boolean, default = True
-    Score grid is not printed when verbose is set to False.
-
-    Returns:
-    --------
-
-    score grid:   A table containing the scores of the model across the kfolds. 
-    -----------   Scoring metrics used are MAE, MSE, RMSE, R2 and ME. Mean and
-                  standard deviation of the scores across the folds are also 
-                  returned.
-
-    container:    list of all the models where last element is meta model.
-    ----------
-
-    Warnings:
-    ---------
-    None
-      
-             
-          
-    """
-    
-    '''
-    
-    ERROR HANDLING STARTS HERE
-    
-    '''
-    
-    #exception checking   
-    import sys
-    
-    #checking error for estimator_list
-    for i in estimator_list:
-        if 'sklearn' not in str(type(i)) and 'CatBoostRegressor' not in str(type(i)):
-            sys.exit("(Value Error): estimator_list parameter only trained model object")
-            
-    #checking meta model
-    if meta_model is not None:
-        if 'sklearn' not in str(type(meta_model)) and 'CatBoostRegressor' not in str(type(meta_model)):
-            sys.exit("(Value Error): estimator_list parameter only trained model object")
-    
-    #checking fold parameter
-    if type(fold) is not int:
-        sys.exit('(Type Error): Fold parameter only accepts integer value.')
-    
-    #checking round parameter
-    if type(round) is not int:
-        sys.exit('(Type Error): Round parameter only accepts integer value.')
-
-    #checking restack parameter
-    if type(restack) is not bool:
-        sys.exit('(Type Error): Restack parameter can only take argument as True or False.')    
-    
-    #checking plot parameter
-    if type(restack) is not bool:
-        sys.exit('(Type Error): Plot parameter can only take argument as True or False.')  
-        
-    #checking verbose parameter
-    if type(verbose) is not bool:
-        sys.exit('(Type Error): Verbose parameter can only take argument as True or False.') 
-        
-    '''
-    
-    ERROR HANDLING ENDS HERE
-    
-    '''
-    #testing
-    #no active tests
-    
-    #pre-load libraries
-    import pandas as pd
-    import ipywidgets as ipw
-    from IPython.display import display, HTML, clear_output, update_display
-    import time, datetime
-    
-    #progress bar
-    max_progress = len(estimator_list) + fold + 4
-    progress = ipw.IntProgress(value=0, min=0, max=max_progress, step=1 , description='Processing: ')
-    master_display = pd.DataFrame(columns=['MAE','MSE','RMSE', 'R2', 'ME'])
-    display(progress)
-    
-    #display monitor
-    timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
-    monitor = pd.DataFrame( [ ['Initiated' , '. . . . . . . . . . . . . . . . . .', timestampStr ], 
-                             ['Status' , '. . . . . . . . . . . . . . . . . .' , 'Loading Dependencies' ],
-                             ['ETC' , '. . . . . . . . . . . . . . . . . .',  'Calculating ETC'] ],
-                              columns=['', ' ', '   ']).set_index('')
-    
-    display(monitor, display_id = 'monitor')
-    
-    if verbose:
-        display_ = display(master_display, display_id=True)
-        display_id = display_.display_id
-        
-    #ignore warnings
-    import warnings
-    warnings.filterwarnings('ignore') 
-    
-    #dependencies
-    import numpy as np
-    from sklearn import metrics
-    from sklearn.model_selection import KFold
-    from sklearn.model_selection import cross_val_predict
-    import seaborn as sns
-    
-    progress.value += 1
-    
-    #Defining meta model. Linear Regression hardcoded for now
-    if meta_model == None:
-        from sklearn.linear_model import LinearRegression
-        meta_model = LinearRegression()
-    else:
-        meta_model = meta_model
-    
-    #defining data_X and data_y
-    if finalize:
-        data_X = X.copy()
-        data_y = y.copy()
-    else:       
-        data_X = X_train.copy()
-        data_y = y_train.copy()
-
-    #reset index
-    data_X.reset_index(drop=True,inplace=True)
-    data_y.reset_index(drop=True,inplace=True)
-    
-    #models_ for appending
-    models_ = []
-    
-    #defining model_library model names
-    model_names = np.zeros(0)
-    for item in estimator_list:
-        model_names = np.append(model_names, str(item).split("(")[0])
-    
-    model_names_fixed = []
-    
-    for i in model_names:
-        if 'CatBoostRegressor' in i:
-            a = 'CatBoostRegressor'
-            model_names_fixed.append(a)
-        else:
-            model_names_fixed.append(i)
-            
-    model_names = model_names_fixed
-    
-    model_names_fixed = []
-    
-    counter = 0
-    for i in model_names:
-        s = str(i) + '_' + str(counter)
-        model_names_fixed.append(s)
-        counter += 1
-    
-    base_array = np.zeros((0,0))
-    base_prediction = pd.DataFrame(data_y) #changed to data_y
-    base_prediction = base_prediction.reset_index(drop=True)
-    
-    counter = 0
-    
-    for model in estimator_list:
-        
-        '''
-        MONITOR UPDATE STARTS
-        '''
-
-        monitor.iloc[1,1:] = 'Evaluating ' + model_names[counter]
-        update_display(monitor, display_id = 'monitor')
-
-        '''
-        MONITOR UPDATE ENDS
-        '''
-        
-        #fitting and appending
-        model.fit(data_X, data_y)
-        models_.append(model)
-        
-        progress.value += 1
-        
-        base_array = cross_val_predict(model,data_X,data_y,cv=fold, method='predict')
-        base_array_df = pd.DataFrame(base_array)
-        base_prediction = pd.concat([base_prediction,base_array_df],axis=1)
-        base_array = np.empty((0,0))
-        
-        counter += 1
-    
-    #defining column names now
-    target_col_name = np.array(base_prediction.columns[0])
-    model_names = np.append(target_col_name, model_names_fixed) #adding fixed column names now
-    base_prediction.columns = model_names #defining colum names now
-    
-    #defining data_X and data_y dataframe to be used in next stage.
-    
-    #drop column from base_prediction
-    base_prediction.drop(base_prediction.columns[0],axis=1,inplace=True)
-    
-    if restack:
-        data_X = pd.concat([data_X, base_prediction], axis=1)
-        
-    else:
-        data_X = base_prediction
-        
-    #data_y = base_prediction[base_prediction.columns[0]]
-    
-    #Correlation matrix of base_prediction
-    base_prediction_cor = base_prediction.drop(base_prediction.columns[0],axis=1)
-    base_prediction_cor = base_prediction_cor.corr()
-    
-    #Meta Modeling Starts Here
-    
-    model = meta_model #this defines model to be used below as model = meta_model (as captured above)
-    
-    #appending in models
-    model.fit(data_X, data_y)
-    models_.append(model)
-    
-    kf = KFold(fold, random_state=seed) #capturing fold requested by user
-
-    score_mae =np.empty((0,0))
-    score_mse =np.empty((0,0))
-    score_rmse =np.empty((0,0))
-    score_r2 =np.empty((0,0))
-    score_max_error =np.empty((0,0))
-    avgs_mae =np.empty((0,0))
-    avgs_mse =np.empty((0,0))
-    avgs_rmse =np.empty((0,0))
-    avgs_r2 =np.empty((0,0))
-    avgs_max_error =np.empty((0,0))  
-    
-    progress.value += 1
-    
-    fold_num = 1
-    
-    for train_i , test_i in kf.split(data_X,data_y):
-        
-        t0 = time.time()
-        
-        '''
-        MONITOR UPDATE STARTS
-        '''
-    
-        monitor.iloc[1,1:] = 'Fitting Meta Model Fold ' + str(fold_num) + ' of ' + str(fold)
-        update_display(monitor, display_id = 'monitor')
-
-        '''
-        MONITOR UPDATE ENDS
-        '''
-        
-        progress.value += 1
-        
-        Xtrain,Xtest = data_X.iloc[train_i], data_X.iloc[test_i]
-        ytrain,ytest = data_y.iloc[train_i], data_y.iloc[test_i]
-
-        model.fit(Xtrain,ytrain)
-        pred_ = model.predict(Xtest)
-        mae = metrics.mean_absolute_error(ytest,pred_)
-        mse = metrics.mean_squared_error(ytest,pred_)
-        rmse = np.sqrt(mse)
-        r2 = metrics.r2_score(ytest,pred_)
-        max_error_ = metrics.max_error(ytest,pred_)
-        score_mae = np.append(score_mae,mae)
-        score_mse = np.append(score_mse,mse)
-        score_rmse = np.append(score_rmse,rmse)
-        score_r2 =np.append(score_r2,r2)
-        score_max_error = np.append(score_max_error,max_error_)
-        
-        
-        '''
-        
-        This section handles time calculation and is created to update_display() as code loops through 
-        the fold defined.
-        
-        '''
-        
-        fold_results = pd.DataFrame({'MAE':[mae], 'MSE': [mse], 'RMSE': [rmse], 
-                                     'R2': [r2], 'ME': [max_error_]}).round(round)
-        master_display = pd.concat([master_display, fold_results],ignore_index=True)
-        fold_results = []
-        
-        
-        '''
-        
-        TIME CALCULATION SUB-SECTION STARTS HERE
-        
-        '''
-        
-        t1 = time.time()
-        
-        tt = (t1 - t0) * (fold-fold_num) / 60
-        tt = np.around(tt, 2)
-        
-        if tt < 1:
-            tt = str(np.around((tt * 60), 2))
-            ETC = tt + ' Seconds Remaining'
-                
-        else:
-            tt = str (tt)
-            ETC = tt + ' Minutes Remaining'
-        
-        '''
-        MONITOR UPDATE STARTS
-        '''
-
-        monitor.iloc[2,1:] = ETC
-        
-        update_display(monitor, display_id = 'monitor')
-
-        '''
-        MONITOR UPDATE ENDS
-        '''
-        
-        #update_display(ETC, display_id = 'ETC')
-            
-        fold_num += 1
-        
-        
-        '''
-        
-        TIME CALCULATION ENDS HERE
-        
-        '''
-        
-        if verbose:
-            update_display(master_display, display_id = display_id)
-            
-        
-        '''
-        
-        Update_display() ends here
-        
-        '''
-     
-    mean_mae=np.mean(score_mae)
-    mean_mse=np.mean(score_mse)
-    mean_rmse=np.mean(score_rmse)
-    mean_r2=np.mean(score_r2)
-    mean_max_error=np.mean(score_max_error)
-    std_mae=np.std(score_mae)
-    std_mse=np.std(score_mse)
-    std_rmse=np.std(score_rmse)
-    std_r2=np.std(score_r2)
-    std_max_error=np.std(score_max_error)
-    
-    avgs_mae = np.append(avgs_mae, mean_mae)
-    avgs_mae = np.append(avgs_mae, std_mae) 
-    avgs_mse = np.append(avgs_mse, mean_mse)
-    avgs_mse = np.append(avgs_mse, std_mse)
-    avgs_rmse = np.append(avgs_rmse, mean_rmse)
-    avgs_rmse = np.append(avgs_rmse, std_rmse)
-    avgs_r2 = np.append(avgs_r2, mean_r2)
-    avgs_r2 = np.append(avgs_r2, std_r2)
-    avgs_max_error = np.append(avgs_max_error, mean_max_error)
-    avgs_max_error = np.append(avgs_max_error, std_max_error)
-      
-    model_results = pd.DataFrame({'MAE': score_mae, 'MSE': score_mse, 'RMSE' : score_rmse, 'R2' : score_r2 , 
-                     'ME' : score_max_error})
-    model_avgs = pd.DataFrame({'MAE': avgs_mae, 'MSE': avgs_mse, 'RMSE' : avgs_rmse, 'R2' : avgs_r2, 
-                     'ME' : avgs_max_error},index=['Mean', 'SD'])
-  
-    model_results = model_results.append(model_avgs)
-    model_results = model_results.round(round)  
-    
-    progress.value += 1
-    
-    #appending method into models_
-    models_.append(restack)
-    
-    #storing into experiment
-    model_name = 'Stacking Regressor (Single Layer)'
-    tup = (model_name,models_)
-    experiment__.append(tup)
-    nam = str(model_name) + ' Score Grid'
-    tup = (nam, model_results)
-    experiment__.append(tup)
-    
-    if plot:
-        clear_output()
-        ax = sns.heatmap(base_prediction_cor, vmin=1, vmax=1, center=0,cmap='magma', square=True, annot=True, 
-                         linewidths=1)
-    
-    if verbose:
-        clear_output()
-        display(model_results)
-        return models_
-    else:
-        clear_output()
-        return models_
-
-
 
 def create_stacknet(estimator_list,
                     meta_model = None,
@@ -4331,11 +3877,15 @@ def create_stacknet(estimator_list,
     from sklearn import metrics
     from sklearn.model_selection import KFold
     from sklearn.model_selection import cross_val_predict
+    from copy import deepcopy
     
     #models_ list
     models_ = []
 
     progress.value += 1
+    
+    #copy estimator_list
+    estimator_list = deepcopy(estimator_list)
     
     base_level = estimator_list[0]
     base_level_names = []
@@ -4343,7 +3893,7 @@ def create_stacknet(estimator_list,
     #defining base_level_names
     for item in base_level:
             base_level_names = np.append(base_level_names, str(item).split("(")[0])
-
+    
     base_level_fixed = []
     
     for i in base_level_names:
@@ -4352,9 +3902,9 @@ def create_stacknet(estimator_list,
             base_level_fixed.append(a)
     else:
         base_level_fixed.append(i)
-    
+        
     base_level_names = base_level_fixed
-    
+        
     base_level_fixed_2 = []
     
     counter = 0
@@ -4396,7 +3946,7 @@ def create_stacknet(estimator_list,
         from sklearn.linear_model import LinearRegression
         meta_model = LinearRegression()
     else:
-        meta_model = meta_model
+        meta_model = deepcopy(meta_model)
         
     base_array = np.zeros((0,0))
     base_array_df = pd.DataFrame()
@@ -4664,6 +4214,8 @@ def create_stacknet(estimator_list,
     else:
         clear_output()
         return models_ 
+
+
 
 
 def plot_model(estimator, 
@@ -5481,7 +5033,6 @@ def load_experiment(experiment_name):
 
 
 
-
 def predict_model(estimator, 
                   data=None,
                   round=4):
@@ -5562,7 +5113,7 @@ def predict_model(estimator,
         X_test_.reset_index(drop=True, inplace=True)
         y_test_.reset_index(drop=True, inplace=True)
         
-        model = estimator
+        model = deepcopy(estimator)
         
     else:
         
@@ -5579,19 +5130,19 @@ def predict_model(estimator,
             else:
                 
                 prep_pipe_transformer = prep_pipe
-                model = estimator
-                estimator = estimator
+                model = deepcopy(estimator)
+                estimator = deepcopy(estimator)
             
         else:
             
             prep_pipe_transformer = prep_pipe
-            model = estimator
-            estimator = estimator
+            model = deepcopy(estimator)
+            estimator = deepcopy(estimator)
         
         try:
             model = finalize_model(estimator)
         except:
-            model = estimator
+            model = deepcopy(estimator)
             
         Xtest = prep_pipe_transformer.transform(data)                     
         X_test_ = data.copy() #original concater
@@ -5609,7 +5160,7 @@ def predict_model(estimator,
             """
             
             #utility
-            stacker = model.copy()
+            stacker = deepcopy(model)
             restack = stacker.pop()
             #stacker_method = stacker.pop()
             #stacker_method = stacker_method[0]
@@ -5749,7 +5300,7 @@ def predict_model(estimator,
             """
             
             #copy
-            stacker = model.copy()
+            stacker = deepcopy(model)
             
             #restack
             restack = stacker.pop()
@@ -5898,3 +5449,5 @@ def predict_model(estimator,
             X_test_ = pd.concat([X_test_,label], axis=1)
 
     return X_test_
+
+

@@ -1,3 +1,7 @@
+# Module: Preprocess
+# Author: Fahad Akbar <m.akbar@queensu.ca>
+# License: MIT
+
 import pandas as pd
 import numpy as np
 import ipywidgets as wg 

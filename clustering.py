@@ -1,3 +1,7 @@
+# Module: Clustering
+# Author: Moez Ali <moez.ali@queensu.ca>
+# License: MIT
+
 def setup(data, 
           categorical_features = None,
           categorical_imputation = 'constant',

@@ -1,3 +1,8 @@
+# Module: Datasets
+# Author: Moez Ali <moez.ali@queensu.ca>
+# License: MIT
+
+
 def get_data(dataset, save_copy=False, profile = False):
     
     """

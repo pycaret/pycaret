@@ -1,3 +1,8 @@
+# Module: Natural Language Processing
+# Author: Moez Ali <moez.ali@queensu.ca>
+# License: MIT
+
+
 def setup(data, 
           target=None,
           custom_stopwords=None,

@@ -1,3 +1,8 @@
+# Module: Association Rules Mining
+# Author: Moez Ali <moez.ali@queensu.ca>
+# License: MIT
+
+
 def setup(data, 
           transaction_id, 
           item_id,
@@ -334,3 +339,21 @@ def plot_model(model,
         fig.show()   
 
 
+
+def get_rules(data, 
+              transaction_id, 
+              item_id,
+              ignore_items = None,
+              metric='confidence',
+              threshold = 0.5,
+              min_support = 0.05):
+    
+    """
+    Magic function to get Association Rules in Power Query / Power BI.    
+    
+    """
+    
+    s = setup(data=data, transaction_id=transaction_id, item_id=item_id, ignore_items = ignore_items)
+    dataset = create_model(metric=metric, threshold=threshold, min_support=min_support, round=4)
+    
+    return dataset
