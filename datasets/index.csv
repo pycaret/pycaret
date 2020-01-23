@@ -1,30 +1,40 @@
 ﻿Dataset,Data Types,Default Task,Target Variable,# Instances,# Attributes,Missing Values
-cancer,Multivariate,Classification,Class,683,10,N
-credit,Multivariate,Classification,default,24000,24,N
-employee,Multivariate,Classification,left,14999,10,N
-heart,Multivariate,Classification,DEATH,200,17,N
-hepatitis,Multivariate,Classification,Class,154,32,Y
-income,Multivariate,Classification,income >50K,32561,14,Y
-iris,Multivariate,Classification,Class,100,5,N
-juice,Multivariate,Classification,Purchase,1070,15,N
-heart_disease,Multivariate,Classification,Disease,270,14,N
-electrical_grid,Multivariate,Classification,stabf,10000,14,N
-wine,Multivariate,Classification,type,6498,13,N
+anomaly,Multivariate,Anomaly Detection,None,1000,10,N
+france,Multivariate,Association Rule Mining,"InvoiceNo, Description",8557,8,N
+germany,Multivariate,Association Rule Mining,"InvoiceNo, Description",9495,8,N
+bank,Multivariate,Classification (Binary),deposit,45211,17,N
+cancer,Multivariate,Classification (Binary),Class,683,10,N
+credit,Multivariate,Classification (Binary),default,24000,24,N
+electrical_grid,Multivariate,Classification (Binary),stabf,10000,14,N
+employee,Multivariate,Classification (Binary),left,14999,10,N
+heart,Multivariate,Classification (Binary),DEATH,200,17,N
+heart_disease,Multivariate,Classification (Binary),Disease,270,14,N
+hepatitis,Multivariate,Classification (Binary),Class,154,32,Y
+income,Multivariate,Classification (Binary),income >50K,32561,14,Y
+iris,Multivariate,Classification (Binary),Class,100,5,N
+juice,Multivariate,Classification (Binary),Purchase,1070,15,N
+wine,Multivariate,Classification (Binary),type,6498,13,N
 glass,Multivariate,Classification (Multiclass),Type,214,10,N
-satellite,Multivariate,Classification (Multiclass),Class,6435,37,N
 poker,Multivariate,Classification (Multiclass),CLASS,100000,11,N
+satellite,Multivariate,Classification (Multiclass),Class,6435,37,N
+questions,Multivariate,Classification (Multiclass),Next_Question,499,4,N
+elections,Multivariate,Clustering,None,3195,54,Y
+facebook,Multivariate,Clustering,None,7050,12,N
+ipl,Multivariate,Clustering,None,153,25,N
 jewellery,Multivariate,Clustering,None,505,4,N
+mice,Multivariate,Clustering,None,1080,82,Y
 perfume,Multivariate,Clustering,None,20,29,N
+pokemon,Multivariate,Clustering,None,800,13,Y
 seeds,Multivariate,Clustering,None,210,7,N
+wholesale,Multivariate,Clustering,None,440,8,N
+tweets,Text,NLP,tweet,8594,2,N
+amazon,Text,NLP / Classification,reviewText,20000,2,N
+kiva,Text,NLP / Classification,en,6818,7,N
+spx,Text,NLP / Regression,text,874,4,N
 automobile,Multivariate,Regression,price,202,26,Y
 bike,Multivariate,Regression,cnt,17379,15,N
 boston,Multivariate,Regression,medv,506,14,N
 diamond,Multivariate,Regression,Price,6000,8,N
 gold,Multivariate,Regression,Gold_T+22,2558,121,N
 house,Multivariate,Regression,SalePrice,1461,81,Y
-tweets,Text,NLP,tweet,8594,2,N
-amazon,Text,NLP / Classification,reviewText,20000,2,N
-kiva,Text,NLP / Classification,en,6818,7,N
-spx,Text,NLP / Regression,text,874,4,N
-germany,Multivariate,Association Rule Mining,"InvoiceNo, Description",9495,8,N
-france,Multivariate,Association Rule Mining,"InvoiceNo, Description",8557,8,N
+traffic,Multivariate,Regression,traffic_volume,48204,8,N
