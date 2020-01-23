@@ -24,4 +24,6 @@ pyod
 catboost==0.20.2
 pandas-profiling==2.3.0
 kmodes==0.10.1
-spherecluster==0.1.7
+datefinder==0.7.0
+datetime
+DateTime==4.3
