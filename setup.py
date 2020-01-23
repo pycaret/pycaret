@@ -1,3 +1,29 @@
+# Copyright (C) 2019-2020 Moez Ali <moez.ali@queensu.ca>
+# License: MIT, moez.ali@queensu.ca
+
+"""
+  
+PyCaret - An end-to-end open source machine learning library
+
+Module Author:
+--------------
+pycaret.anomaly, Moez Ali <moez.ali@queensu.ca>
+pycaret.classification, Moez Ali <moez.ali@queensu.ca>
+pycaret.clustering, Moez Ali <moez.ali@queensu.ca>
+pycaret.datasets, Moez Ali <moez.ali@queensu.ca>
+pycaret.nlp, Moez Ali <moez.ali@queensu.ca>
+pycaret.preprocess, Fahad Akbar <M.akbar@queensu.ca>
+pycaret.regression, Moez Ali <moez.ali@queensu.ca>
+
+All modules except pycaret.preprocess licensed under:
+Copyright (C) 2019-2020 Moez Ali <moez.ali@queensu.ca>
+
+pycaret.preprocess licensed under:
+Copyright (C) 2019-2020 Fahad Akbar <M.akbar@queensu.ca>
+
+
+"""
+
 from setuptools import setup
 
 def readme():
@@ -8,7 +34,7 @@ def readme():
 
 setup(
     name="pycaret",
-    version="0.0.20",
+    version="0.0.21",
     description="A Python package for supervised and unsupervised machine learning.",
     long_description=readme(),
     long_description_content_type="text/markdown",
