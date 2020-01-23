@@ -1,38 +1,133 @@
 def setup(data, 
-          session_id = None, 
+          categorical_features = None,
+          categorical_imputation = 'constant',
+          numeric_features = None,
+          numeric_imputation = 'mean',
+          date_features = None,
+          ignore_features = None,
           normalize = False,
+          normalize_method = 'zscore',
+          transformation = False,
+          transformation_method = 'yeo-johnson',
+          pca = False,
+          pca_components = 0.99,
+          supervised = False,
+          supervised_target = None,
+          session_id = None,
+          profile = False,
           verbose=True):
     
     """
         
     Description:
     ------------
-    This function initialize the environment in pycaret. setup() must called before
-    executing any other function in pycaret. It takes one mandatory parameters i.e.
+    This function initializes the environment in pycaret. setup() must called before
+    executing any other function in pycaret. It takes one mandatory parameter:
     dataframe {array-like, sparse matrix}. 
 
         Example
         -------
-        experiment_name = setup(data)
+        from pycaret.datasets import get_data
+        jewellery = get_data('jewellery')
 
-        data is a pandas DataFrame.
+        experiment_name = setup(data = jewellery, normalize = True)
+        
+        'jewellery' is a pandas Dataframe.
 
     Parameters
     ----------
-
     data : {array-like, sparse matrix}, shape (n_samples, n_features) where n_samples 
-    is the number of samples and n_features is the number of features or object of type
-    list with n length.
+    is the number of samples and n_features is the number of features in dataframe.
+    
+    categorical_features: string, default = None
+    If the inferred data types are not correct, categorical_features can be used to
+    overwrite the inferred type. For example upon running setup if type of column1
+    is inferred as numeric instead of categorical, this parameter can be used to 
+    overwrite by passing categorical_features = 'column1'
+    
+    categorical_imputation: string, default = 'constant'
+    If missing values are found in categorical features, it will be imputed with a
+    constant 'not_available' value. Other option available is 'mode' in which case
+    imputation is done by most frequent value.
+    
+    numeric_features: string, default = None
+    If the inferred data types are not correct, numeric_features can be used to
+    overwrite the inferred type. For example upon running setup if type of column1
+    is inferred as categorical instead of numeric, this parameter can be used to 
+    overwrite by passing numeric_features = 'column1'    
 
-    session_id: int, default = None
-    If None, random seed is generated and returned in Information grid. The unique number 
-    is then distributed as a seed in all other functions used during experiment. This can
-    be used later for reproducibility of entire experiment.
+    numeric_imputation: string, default = 'mean'
+    If missing values are found in numeric features, it will be imputed with mean
+    value of feature. Other option available is 'median' in which case imputation
+    will be done by median value.
+    
+    date_features: string, default = None
+    If data has DateTime column and is not automatically detected when running
+    setup, this parameter can be used to define date_feature by passing
+    data_features = 'date_column_name'. It can work with multiple date columns.
+    Date columns is not used in modeling, instead feature extraction is performed
+    and date column is dropped from the dataset. Incase the date column as time
+    stamp, it will also extract features related to time / hours.
+    
+    ignore_features: string, default = None
+    If any feature has to be ignored for modeling, it can be passed in the param
+    ignore_features. ID and DateTime column when inferred, is automatically set
+    ignore for modeling. 
     
     normalize: bool, default = False
-    scaling of feature set using MinMaxScaler. by default normalize is set to False. 
+    When set to True, transform feature space using normalize_method param defined.
+    Normally, linear algorithms perform better with normalized data. However, the
+    results may vary and it is advised to run multiple experiments to evaluate the
+    benefit of normalization.
+    
+    normalize_method: string, default = 'zscore'
+    Defines the method to be used for normalization. By default, normalize method
+    is set to 'zscore'. The other available option is 'minmax'.
+    
+    transformation: bool, default = False
+    When set to True, apply a power transformation to make data more Gaussian-like
+    This is useful for modeling issues related to heteroscedasticity or other 
+    situations where normality is desired. The optimal parameter for stabilizing 
+    variance and minimizing skewness is estimated through maximum likelihood.
+    
+    transformation_method: string, default = 'yeo-johnson'
+    Defines the method for transformation. By default, transformation method is set
+    to 'yeo-johnson'. The other available option is 'quantile' transformation. Both 
+    the transformation transforms the feature set to follow Gaussian-like or normal
+    distribution. Note that quantile transformer is non-linear and may distort linear 
+    correlations between variables measured at the same scale.
+    
+    pca: bool, default = False
+    When set to True, it will perform Linear dimensionality reduction using Singular 
+    Value Decomposition of the data to project it to a lower dimensional space. It 
+    is recommended when dataset has mix of categorical and numeric features.
+    
+    pca_components: int/float, default = 0.99
+    Number of components to keep. if pca_components is a float, it is treated as 
+    goal percentage for information retention. When pca_components param is integer
+    it is treated as number of features to be kept. pca_components must be strictly
+    less than the original features in dataset.
+    
+    supervised: bool, default = False
+    When set to True, supervised_target column is ignored for transformation. This
+    param is only for internal use. 
+    
+    supervised_target: string, default = None
+    Name of supervised_target column that will be ignored for transformation. Only
+    applciable when tune_model() function is used. This param is only for internal use.
 
+    session_id: int, default = None
+    If None, a random seed is generated and returned in the Information grid. The 
+    unique number is then distributed as a seed in all functions used during the 
+    experiment. This can be used for later reproducibility of the entire experiment.
+    
+    profile: bool, default = False
+    If set to true, a data profile for Exploratory Data Analysis will be displayed 
+    in an interactive HTML report. 
 
+    verbose: Boolean, default = True
+    Information grid is not printed when verbose is set to False.
+    
     Returns:
     --------
 
@@ -40,23 +135,17 @@ def setup(data,
     -----------      
 
     environment:  This function returns various outputs that are stored in variable
-    -----------   as tuple. They are being used by other functions in pycaret.
+    -----------   as tuple. They are used by other functions in pycaret.
 
     Warnings:
     ---------
-    
-    - None
-    
-    
-    
+    None
+      
+          
     """
     
     #exception checking   
     import sys
-    
-    #ignore warnings
-    import warnings
-    warnings.filterwarnings('ignore') 
     
     
     """
@@ -72,7 +161,66 @@ def setup(data,
         if type(session_id) is not int:
             sys.exit('(Type Error): session_id parameter must be an integer.')  
             
-            
+    #checking normalize parameter
+    if type(normalize) is not bool:
+        sys.exit('(Type Error): normalize parameter only accepts True or False.')
+        
+    #checking transformation parameter
+    if type(transformation) is not bool:
+        sys.exit('(Type Error): transformation parameter only accepts True or False.')
+        
+    #checking categorical imputation
+    allowed_categorical_imputation = ['constant', 'mode']
+    if categorical_imputation not in allowed_categorical_imputation:
+        sys.exit("(Value Error): categorical_imputation param only accepts 'constant' or 'mode' ")
+        
+    #checking numeric imputation
+    allowed_numeric_imputation = ['mean', 'median']
+    if numeric_imputation not in allowed_numeric_imputation:
+        sys.exit("(Value Error): numeric_imputation param only accepts 'mean' or 'median' ")
+        
+    #checking normalize method
+    allowed_normalize_method = ['zscore', 'minmax']
+    if normalize_method not in allowed_normalize_method:
+        sys.exit("(Value Error): normalize_method param only accepts 'zscore' or 'minxmax' ")        
+    
+    #checking transformation method
+    allowed_transformation_method = ['yeo-johnson', 'quantile']
+    if transformation_method not in allowed_transformation_method:
+        sys.exit("(Value Error): transformation_method param only accepts 'yeo-johnson' or 'quantile' ")        
+        
+    #forced type check
+    all_cols = list(data.columns)
+    
+    #categorical
+    if categorical_features is not None:
+        for i in categorical_features:
+            if i not in all_cols:
+                sys.exit("(Value Error): Column type forced is either target column or doesn't exist in the dataset.")
+        
+    #numeric
+    if numeric_features is not None:
+        for i in numeric_features:
+            if i not in all_cols:
+                sys.exit("(Value Error): Column type forced is either target column or doesn't exist in the dataset.")    
+    
+    #date features
+    if date_features is not None:
+        for i in date_features:
+            if i not in all_cols:
+                sys.exit("(Value Error): Column type forced is either target column or doesn't exist in the dataset.")      
+    
+    #drop features
+    if ignore_features is not None:
+        for i in ignore_features:
+            if i not in all_cols:
+                sys.exit("(Value Error): Feature ignored is either target column or doesn't exist in the dataset.")     
+    
+    #checking pca parameter
+    if type(pca) is not bool:
+        sys.exit('(Type Error): pca parameter only accepts True or False.')
+        
+    
     """
     error handling ends here
     """
@@ -82,13 +230,9 @@ def setup(data,
     import ipywidgets as ipw
     from IPython.display import display, HTML, clear_output, update_display
     import datetime, time
-
-    '''
-    generate monitor starts 
-    '''
     
     #progress bar
-    max_steps = 3
+    max_steps = 4
         
     progress = ipw.IntProgress(value=0, min=0, max=max_steps, step=1 , description='Processing: ')
     
@@ -103,60 +247,181 @@ def setup(data,
         display(progress)
         display(monitor, display_id = 'monitor')
     
-    '''
-    generate monitor end
-    '''
-    
     #general dependencies
     import numpy as np
     import pandas as pd
     import random
     
+    #ignore warnings
+    import warnings
+    warnings.filterwarnings('ignore') 
+    
     #defining global variables
-    global X, data_, experiment__, seed
+    global data_, X, seed, prep_pipe, prep_param, experiment__
+    
+    #copy original data for pandas profiler
+    data_before_preprocess = data.copy()
     
     #copying data
     data_ = data.copy()
     
-    #create an empty list for pickling later.
-    try:
-        experiment__.append('dummy')
-        experiment__.pop()
+    #data without target
+    if supervised:
+        data_without_target = data.copy()
+        data_without_target.drop(supervised_target, axis=1, inplace=True)
     
-    except:
-        experiment__ = []
-    
+    if supervised:
+        data_for_preprocess = data_without_target.copy()
+    else:
+        data_for_preprocess = data_.copy()
+        
     #generate seed to be used globally
     if session_id is None:
         seed = random.randint(150,9000)
     else:
-        seed = session_id
+        seed = session_id    
+
+    """
+    preprocessing starts here
+    """
     
+    pd.set_option('display.max_columns', 500)
+    pd.set_option('display.max_rows', 500)
+
+    monitor.iloc[1,1:] = 'Preparing Data for Modeling'
+    update_display(monitor, display_id = 'monitor')
+            
+    #define parameters for preprocessor
+    
+    #categorical features
+    if categorical_features is None:
+        cat_features_pass = []
+    else:
+        cat_features_pass = categorical_features
+    
+    #numeric features
+    if numeric_features is None:
+        numeric_features_pass = []
+    else:
+        numeric_features_pass = numeric_features
+     
+    #drop features
+    if ignore_features is None:
+        ignore_features_pass = []
+    else:
+        ignore_features_pass = ignore_features
+     
+    #date features
+    if date_features is None:
+        date_features_pass = []
+    else:
+        date_features_pass = date_features
+        
+    #categorical imputation strategy
+    if categorical_imputation == 'constant':
+        categorical_imputation_pass = 'not_available'
+    elif categorical_imputation == 'mode':
+        categorical_imputation_pass = 'most frequent'
+    
+    #transformation method strategy
+    if transformation_method == 'yeo-johnson':
+        trans_method_pass = 'yj'
+    elif transformation_method == 'quantile':
+        trans_method_pass = 'quantile'
+    
+    #display dtypes
+    if supervised is False:
+        display_types_pass = True
+    else:
+        display_types_pass = False
+    
+    #import library
+    from pycaret import preprocess
+    
+    X = preprocess.Preprocess_Path_Two(train_data = data_for_preprocess, 
+                                       categorical_features = cat_features_pass,
+                                       numerical_features = numeric_features_pass,
+                                       time_features = date_features_pass,
+                                       features_todrop = ignore_features_pass,
+                                       display_types = display_types_pass,
+                                       numeric_imputation_strategy = numeric_imputation,
+                                       categorical_imputation_strategy = categorical_imputation_pass,
+                                       scale_data = normalize,
+                                       scaling_method = normalize_method,
+                                       Power_transform_data = transformation,
+                                       Power_transform_method = trans_method_pass,
+                                       apply_pca = pca,
+                                       pca_variance_retained=pca_components,
+                                       random_state = seed)
+        
     progress.value += 1
     
-    #monitor update
-    monitor.iloc[1,1:] = 'Scaling the Data'
-    if verbose:
-        update_display(monitor, display_id = 'monitor')
-        
-    #scaling
-    if normalize:
-        
-        from sklearn.preprocessing import MinMaxScaler
-        scaler = MinMaxScaler()
-        X = pd.get_dummies(data_)
-        scaler = scaler.fit(X)
-        
-        #append to experiment__
-        experiment__.append(('Scaler',scaler))
-        
-        X = scaler.transform(X)
-        X = pd.DataFrame(X)
-        
-    else:
-        X = data_.copy()
-        X = pd.get_dummies(data_)
+    try:
+        res_type = ['quit','Quit','exit','EXIT','q','Q','e','E','QUIT','Exit']
+        res = preprocess.dtypes.response
+        if res in res_type:
+            sys.exit("(Process Exit): setup has been interupted with user command 'quit'. setup must rerun." )
+    except:
+        pass
+    
 
+    
+    #save prep pipe
+    prep_pipe = preprocess.pipe
+    prep_param = preprocess
+    
+    #generate values for grid show
+    missing_values = data_before_preprocess.isna().sum().sum()
+    if missing_values > 0:
+        missing_flag = 'True'
+    else:
+        missing_flag = 'False'
+    
+    if normalize is True:
+        normalize_grid = normalize_method
+    else:
+        normalize_grid = 'None'
+        
+    if transformation is True:
+        transformation_grid = transformation_method
+    else:
+        transformation_grid = 'None'
+    
+    pca_grid = pca
+    
+    if pca_grid is False:
+        pca_comp_grid = None
+    else:
+        pca_comp_grid = pca_components
+    
+    learned_types = preprocess.dtypes.learent_dtypes
+    #learned_types.drop(target, inplace=True)
+
+    float_type = 0 
+    cat_type = 0
+
+    for i in preprocess.dtypes.learent_dtypes:
+        if 'float' in str(i):
+            float_type += 1
+        elif 'object' in str(i):
+            cat_type += 1
+        elif 'int' in str(i):
+            float_type += 1
+       
+    
+    """
+    preprocessing ends here
+    """
+    
+    #reset pandas option
+    pd.reset_option("display.max_rows") 
+    pd.reset_option("display.max_columns")
+    
+    #create an empty list for pickling later.
+    if supervised is False:
+        experiment__ = []
+    else:
+        pass
     
     progress.value += 1
     
@@ -170,15 +435,22 @@ def setup(data,
     '''
     
     shape = data.shape
+    shape_transformed = X.shape
     
-    if normalize:
-        scaling = 'True'
-    else:
-        scaling = 'False'
-    
-    functions = pd.DataFrame ( [ ['session_id', seed ],
-                                 ['Scaling', scaling],
-                                 ['Shape', shape ], 
+    functions = pd.DataFrame ( [ ['session_id ', seed ],
+                                 ['Original Data ', shape ],
+                                 ['Transformed Data ', shape_transformed ],
+                                 ['Categorical Features ', cat_type ],
+                                 ['Numeric Features ', float_type ],
+                                 ['Normalize ', normalize ],
+                                 ['Normalize Method ', normalize_grid ],
+                                 ['Transformation ', transformation ],
+                                 ['Transformation Method ', transformation_grid ],
+                                 ['Missing Values ', missing_flag],
+                                 ['PCA ', pca_grid],
+                                 ['PCA components ', pca_comp_grid],
+                                 ['Numeric Imputer ', numeric_imputation],
+                                 ['Categorical Imputer ', categorical_imputation],
                                ], columns = ['Description', 'Value'] )
 
     functions_ = functions.style.hide_index()
@@ -186,20 +458,40 @@ def setup(data,
     progress.value += 1
     
     if verbose:
-        clear_output()
-        display(functions_)
+        if profile:
+            clear_output()
+            print('')
+            print('Setup Succesfully Completed! Loading Profile Now... Please Wait!')
+            display(functions_)
+        else:
+            clear_output()
+            print('')
+            print('Setup Succesfully Completed!')
+            display(functions_)            
+        
+    if profile:    
+        try:
+            import pandas_profiling
+            pf = pandas_profiling.ProfileReport(data_before_preprocess)
+            clear_output()
+            display(pf)
+        except:
+            print('Data Profiler Failed. No output to show, please continue with Modeling.')
 
     '''
     Final display Ends
     '''   
-
+    
     #log into experiment
     if verbose:
         experiment__.append(('Clustering Info', functions))
-        experiment__.append(('Dataset', data_))
-        experiment__.append(('Normalized Dataset', X))
+        experiment__.append(('Orignal Dataset', data_))
+        experiment__.append(('Transformed Dataset', X))
+        experiment__.append(('Transformation Pipeline', prep_pipe))
+    
+    
+    return X, data_, seed, prep_pipe, prep_param, experiment__
 
-    return X, data_, seed, experiment__
 
 
 
@@ -213,25 +505,26 @@ def create_model(model = None,
      
     Description:
     ------------
-    This function creates a model using training data passed during setup stage. 
-    Hence dataset doesn't need to be specified during create_model. This Function 
-    returns trained model object can then be used for inference the training data 
-    or new unseen data. 
+    This function creates a model on the dataset passed as a data param during 
+    the setup stage. setup() function must be called before using create_model().
 
-    setup() function must be called before using create_model()
+    This function returns a trained model object. 
 
         Example
         -------
-        knn = create_model('kmeans')
+        from pycaret.datasets import get_data
+        jewellery = get_data('jewellery')
+        experiment_name = setup(data = jewellery, normalize = True)
+        
+        kmeans = create_model('kmeans')
 
-        This will return trained K-Means clustering model.
+        This will return a trained K-Means clustering model.
 
     Parameters
     ----------
-
     model : string, default = None
 
-    Enter abbreviated string of the model class. List of model supported:
+    Enter abbreviated string of the model class. List of available models supported:
 
     Model                              Abbreviated String   Original Implementation 
     ---------                          ------------------   -----------------------
@@ -244,10 +537,9 @@ def create_model(model = None,
     OPTICS Clustering                  'optics'             sklearn.cluster.OPTICS.html
     Birch Clustering                   'birch'              sklearn.cluster.Birch.html
     K-Modes clustering                 'kmodes'             git/nicodv/kmodes
-    Spherical K-Means clustering       'skmeans'            git/jasonlaska/spherecluster
     
     num_clusters: int, default = None
-    Number of clusters to be made in the dataset. if None num_clusters is set to 4. 
+    Number of clusters to be generated with the dataset. If None, num_clusters is set to 4. 
 
     verbose: Boolean, default = True
     Status update is not printed when verbose is set to False.
@@ -260,14 +552,21 @@ def create_model(model = None,
 
     Warnings:
     ---------
-
-    - num_clusters not required for Affinity Propagation, Mean shift clustering, 
-      Density-Based Spatial Clustering and OPTICS Clustering. num_clusters is
-      automatically determined.
+    - num_clusters not required for Affinity Propagation ('ap'), Mean shift 
+      clustering ('meanshift'), Density-Based Spatial Clustering ('dbscan')
+      and OPTICS Clustering ('optics'). num_clusters param for these models 
+      are automatically determined.
       
-    - OPTICS ('optics') clustering may take longer training times on large datasets.
-  
-     
+    - When fit doesn't converge in Affinity Propagation ('ap') model, all 
+      datapoints are labelled as -1.
+      
+    - Noisy samples are given the label -1, when using Density-Based Spatial 
+      ('dbscan') or OPTICS Clustering ('optics'). 
+      
+    - OPTICS ('optics') clustering may take longer training times on large 
+      datasets.
+    
+       
     """
     
     #testing
@@ -289,7 +588,7 @@ def create_model(model = None,
         sys.exit('(Value Error): Model parameter Missing. Please see docstring for list of available models.')
         
     #checking for allowed models
-    allowed_models = ['kmeans', 'ap', 'meanshift', 'sc', 'hclust', 'dbscan', 'optics', 'birch', 'kmodes', 'skmeans']
+    allowed_models = ['kmeans', 'ap', 'meanshift', 'sc', 'hclust', 'dbscan', 'optics', 'birch', 'kmodes']
     
     #check num_clusters parameter:
     if num_clusters is not None:
@@ -390,10 +689,10 @@ def create_model(model = None,
         model = KModes(n_clusters=num_clusters, n_jobs=1, random_state=seed)
         full_name = 'K-Modes Clustering'
         
-    elif model == 'skmeans':
-        from spherecluster import SphericalKMeans
-        model = SphericalKMeans(n_clusters=num_clusters, n_jobs=1, random_state=seed)
-        full_name = 'Spherical K-Means Clustering'
+    #elif model == 'skmeans':
+    #    from spherecluster import SphericalKMeans
+    #    model = SphericalKMeans(n_clusters=num_clusters, n_jobs=1, random_state=seed)
+    #    full_name = 'Spherical K-Means Clustering'
         
     #monitor update
     monitor.iloc[1,1:] = 'Fitting ' + str(full_name) + ' Model'
@@ -405,8 +704,9 @@ def create_model(model = None,
     model.fit(X)
     
     #storing in experiment__
+    full_name_ = str(full_name) + ' Model'
     if verbose:
-        tup = (full_name,model)
+        tup = (full_name_,model)
         experiment__.append(tup)  
     
     progress.value += 1
@@ -417,45 +717,51 @@ def create_model(model = None,
     return model
 
 
-def assign_model(model,
+
+def assign_model(model, 
+                 transformation=False,
                  verbose=True):
     
     """  
      
     Description:
     ------------
-    This function is used for inference of clusters on training data passed in setup
-    function using trained model created using create_model function. The function 
-    returns dataframe with assigned clusters by instance. 
-
-    create_model() function must be called before using assign_model()
+    This function assigns each of the data point in the dataset passed during setup
+    stage to one of the clusters using trained model object passed as model param.
+    create_model() function must be called before using assign_model().
+    
+    This function returns a pandas Dataframe.
 
         Example
         -------
+        from pycaret.datasets import get_data
+        jewellery = get_data('jewellery')
+        experiment_name = setup(data = jewellery, normalize = True)
         kmeans = create_model('kmeans')
         
         kmeans_df = assign_model(kmeans)
 
-        This will return dataframe with inferred clusters using trained model passed
-        as model param. 
+        This will return a dataframe with inferred clusters using trained model.
 
     Parameters
     ----------
-
-    model : trained model object, default = None
-
+    model: trained model object, default = None
+    
+    transformation: bool, default = False
+    When set to True, assigned clusters are returned on transformed dataset instead 
+    of original dataset passed during setup().
+    
     verbose: Boolean, default = True
     Status update is not printed when verbose is set to False.
 
     Returns:
     --------
 
-    dataframe:   Returns dataframe with assigned clusters using trained model.
+    dataframe:   Returns a dataframe with assigned clusters using a trained model.
     ---------
 
     Warnings:
     ---------
-
     None
   
     """
@@ -467,7 +773,6 @@ def assign_model(model,
     import warnings
     warnings.filterwarnings('ignore') 
     
-    
     """
     error handling starts here
     """
@@ -478,6 +783,10 @@ def assign_model(model,
     #checking for allowed models
     if 'sklearn' not in mod_type and 'KModes' not in mod_type and 'SphericalKMeans' not in mod_type:
         sys.exit('(Value Error): Model Not Recognized. Please see docstring for list of available models.') 
+        
+    #checking transformation parameter
+    if type(transformation) is not bool:
+        sys.exit('(Type Error): Transformation parameter can only take argument as True or False.')    
         
     #checking verbose parameter
     if type(verbose) is not bool:
@@ -496,7 +805,10 @@ def assign_model(model,
     import datetime, time
     
     #copy data_
-    data__ = data_.copy()
+    if transformation:
+        data__ = X.copy()
+    else:
+        data__ = data_.copy()
     
     #progress bar and monitor control 
     timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
@@ -530,7 +842,39 @@ def assign_model(model,
     
     progress.value += 1
     
-    name_ = mod_type + ' Clustering'
+    mod_type = str(model).split("(")[0]
+    
+    if 'KMeans' in mod_type:
+        name_ = 'K-Means Clustering' 
+        
+    elif 'AffinityPropagation' in mod_type:
+        name_ = 'Affinity Propagation'
+        
+    elif 'MeanShift' in mod_type:
+        name_ = 'Mean Shift Clustering'        
+        
+    elif 'SpectralClustering' in mod_type:
+        name_ = 'Spectral Clustering'
+        
+    elif 'AgglomerativeClustering' in mod_type:
+        name_ = 'Agglomerative Clustering'
+        
+    elif 'DBSCAN' in mod_type:
+        name_ = 'Density-Based Spatial Clustering'
+        
+    elif 'OPTICS' in mod_type:
+        name_ = 'OPTICS Clustering'
+        
+    elif 'Birch' in mod_type:
+        name_ = 'Birch Clustering'
+        
+    elif 'KModes' in mod_type:
+        name_ = 'K-Modes Clustering'
+    
+    else:
+        name_ = 'Unknown Clustering'
+        
+    name_ = 'Assigned ' + str(name_)
     #storing in experiment__
     if verbose:
         tup = (name_,data__)
@@ -540,6 +884,7 @@ def assign_model(model,
         clear_output()
         
     return data__
+
 
 
 def tune_model(model=None,
@@ -553,31 +898,25 @@ def tune_model(model=None,
         
     Description:
     ------------
-    This function tunes the num_clusters model parameter using predefined diverse grid 
-    with objective to optimize supervised learning metric as defined in optimize param. 
-    This function cannot be used unsupervised. It allows to select estimator from a large
-    library available in pycaret. By default supervised estimator is Linear. 
+    This function tunes the num_clusters model parameter using a predefined grid with
+    the objective of optimizing a supervised learning metric as defined in the optimize
+    param. You can choose the supervised estimator from a large library available in pycaret.
+    By default, supervised estimator is Linear. 
     
-    This function returns the num_clusters param that are considered best using optimize 
-    param.
-    
-    setup() function must be called prior to using this function.
-    
+    This function returns the tuned model object.
     
         Example
         -------
-        tuned_kmeans = tune_model('kmeans', supervised_target = 'medv', optimize='R2') 
+        from pycaret.datasets import get_data
+        boston = get_data('boston')
+        experiment_name = setup(data = boston, normalize = True)
+        
+        tuned_kmeans = tune_model(model = 'kmeans', supervised_target = 'medv', optimize = 'R2') 
 
-        This will return trained K Means Clustering Model with num_clusters param 
-        that is optimized to improve 'R2' as defined in optimize param. By 
-        default optimize param is 'Accuracy' for classification tasks and 'R2' for
-        regression tasks. Task is determined automatically based on supervised_target
-        param.
-
+        This will return tuned K Means Clustering Model.
 
     Parameters
     ----------
-
     model : string, default = None
 
     Enter abbreviated name of the model. List of available models supported: 
@@ -589,10 +928,9 @@ def tune_model(model=None,
     Agglomerative Clustering           'hclust'             AgglomerativeClustering.html
     Birch Clustering                   'birch'              sklearn.cluster.Birch.html
     K-Modes clustering                 'kmodes'             git/nicodv/kmodes
-    Spherical K-Means clustering       'skmeans'            git/jasonlaska/spherecluster
     
     supervised_target: string
-    Name of target column for supervised learning. It cannot be None.
+    Name of target column for supervised learning.
     
     estimator: string, default = None
 
@@ -642,7 +980,7 @@ def tune_model(model=None,
     Light Gradient Boosting       'lightgbm'             Regression
     CatBoost Classifier           'catboost'             Regression
     
-    If set to None, by default Linear model is used for both classification
+    If set to None, default is Linear model for both classification
     and regression tasks.
     
     optimize: string, default = None
@@ -673,7 +1011,7 @@ def tune_model(model=None,
     ---------
     
     - Affinity Propagation, Mean shift clustering, Density-Based Spatial Clustering
-      and OPTICS Clustering cannot be used in this module since they donot support
+      and OPTICS Clustering cannot be used in this function since they donot support
       num_clusters param.
            
           
@@ -685,8 +1023,10 @@ def tune_model(model=None,
     exception handling starts here
     """
     
+    global data_, X
+    
     #testing
-    global master_df, sorted_df, ival, master
+    #no active testing
     
     #ignore warnings
     import warnings
@@ -699,7 +1039,7 @@ def tune_model(model=None,
         sys.exit('(Value Error): Model parameter Missing. Please see docstring for list of available models.')
         
     #checking for allowed models
-    allowed_models = ['kmeans', 'sc', 'hclust', 'birch', 'kmodes', 'skmeans']
+    allowed_models = ['kmeans', 'sc', 'hclust', 'birch', 'kmodes']
     
     if model not in allowed_models:
         sys.exit('(Value Error): Model Not Available for Tuning. Please see docstring for list of available models.')
@@ -708,11 +1048,9 @@ def tune_model(model=None,
     if supervised_target is None:
         sys.exit('(Value Error): supervised_target cannot be None. A column name must be given for estimator.')
     
-    #check supervised target:
+    #check supervised target
     if supervised_target is not None:
         all_col = list(data_.columns)
-        #target = str(supervised_target)
-        #all_col.remove(target)
         if supervised_target not in all_col:
             sys.exit('(Value Error): supervised_target not recognized. It can only be one of the following: ' + str(all_col))
     
@@ -773,9 +1111,22 @@ def tune_model(model=None,
     from sklearn import metrics
     import numpy as np
     import plotly.express as px
-    #from sklearn.preprocessing import MinMaxScaler
-    #scaler = MinMaxScaler()
+    from copy import deepcopy
     
+    a = data_.copy()
+    b = X.copy()
+    c = deepcopy(prep_pipe)
+    
+    def retain_original(a,b,c):
+        
+        global data_, X, prep_pipe
+        
+        data_ = a.copy()
+        X = b.copy()
+        prep_pipe = deepcopy(c)
+
+        return data_, X, prep_pipe
+            
     #setting up cufflinks
     import cufflinks as cf
     cf.go_offline()
@@ -809,8 +1160,6 @@ def tune_model(model=None,
         model_name = 'Birch Clustering'
     elif model == 'kmodes':
         model_name = 'K-Modes Clustering'
-    elif model == 'skmeans':
-        model_name = 'Spherical K-Means Clustering'
     
     #defining estimator:
     if problem == 'classification' and estimator is None:
@@ -839,11 +1188,90 @@ def tune_model(model=None,
     monitor.iloc[1,1:] = 'Creating Clustering Model'
     update_display(monitor, display_id = 'monitor')
     
+    """
+    preprocess starts here
+    """
+    
     #removing target variable from data by defining new setup
-    target_ = pd.DataFrame(data_[supervised_target])
-    data_without_target = data_.copy()
-    data_without_target.drop([supervised_target], axis=1, inplace=True)
-    setup_without_target = setup(data_without_target, verbose=False, session_id=seed)
+    _data_ = data_.copy()
+    target_ = pd.DataFrame(_data_[supervised_target])
+    from sklearn.preprocessing import LabelEncoder
+    le = LabelEncoder()
+    target_ = le.fit_transform(target_)
+    
+    cat_pass = prep_param.dtypes.categorical_features
+    num_pass = prep_param.dtypes.numerical_features
+    time_pass = prep_param.dtypes.time_features
+    ignore_pass = prep_param.dtypes.features_todrop
+    
+    if 'Empty' in str(prep_param.pca): 
+        pca_pass = False
+    else:
+        pca_pass = True
+        
+    if pca_pass is True:
+        pca_comp_pass = prep_param.pca.variance_retained
+    else:
+        pca_comp_pass = 0.99
+    
+    if 'not_available' in prep_param.imputer.categorical_strategy:
+        cat_impute_pass = 'constant'
+    elif 'most frequent' in prep_param.imputer.categorical_strategy:
+        cat_impute_pass = 'mode'
+    
+    num_impute_pass = prep_param.imputer.numeric_strategy
+    
+    if 'Empty' in str(prep_param.scaling):
+        normalize_pass = False
+    else:
+        normalize_pass = True
+        
+    if normalize_pass is True:
+        normalize_method_pass = prep_param.scaling.function_to_apply
+    else:
+        normalize_method_pass = 'zscore'
+    
+    if 'Empty' in str(prep_param.P_transform):
+        transformation_pass = False
+    else:
+        transformation_pass = True
+        
+    if transformation_pass is True:
+        
+        if 'yj' in prep_param.P_transform.function_to_apply:
+            transformation_method_pass = 'yeo-johnson'
+        elif 'quantile' in prep_param.P_transform.function_to_apply:
+            transformation_method_pass = 'quantile'
+            
+    else:
+        transformation_method_pass = 'yeo-johnson'
+    
+    global setup_without_target
+    
+    setup_without_target = setup(data = data_,
+                                 categorical_features = cat_pass,
+                                 categorical_imputation = cat_impute_pass,
+                                 numeric_features = num_pass,
+                                 numeric_imputation = num_impute_pass,
+                                 date_features = time_pass,
+                                 ignore_features = ignore_pass,
+                                 normalize = normalize_pass,
+                                 normalize_method = normalize_method_pass,
+                                 transformation = transformation_pass,
+                                 transformation_method = transformation_method_pass,
+                                 pca = pca_pass,
+                                 pca_components = pca_comp_pass,
+                                 supervised = True,
+                                 supervised_target = supervised_target,
+                                 session_id = seed,
+                                 profile=False,
+                                 verbose=False)
+    
+    data_without_target = setup_without_target[0]
+    
+    """
+    preprocess ends here
+    """
     
     #adding dummy model in master
     master.append('No Model Required')
@@ -856,7 +1284,7 @@ def tune_model(model=None,
                              
         #create and assign the model to dataset d
         m = create_model(model=model, num_clusters=i, verbose=False)
-        d = assign_model(m, verbose=False)
+        d = assign_model(m, transformation=True, verbose=False)
         d[str(supervised_target)] = target_
 
         master.append(m)
@@ -1423,9 +1851,12 @@ def tune_model(model=None,
     #storing into experiment
     tup = ('Best Model',best_model)
     experiment__.append(tup)    
-        
+    
+    org = retain_original(a,b,c)
+    
     return best_model
     
+
 
 
 def plot_model(model, plot='cluster', feature=None):
@@ -1435,27 +1866,28 @@ def plot_model(model, plot='cluster', feature=None):
           
     Description:
     ------------
-    This function takes a trained model object and returns the plot on inferred 
-    training dataset. This function internally calls assign_model before generating
-    a plot.  
+    This function takes a trained model object and returns a plot on the dataset 
+    passed during setup stage. This function internally calls assign_model before 
+    generating a plot.  
 
         Example:
         --------
-        
+        from pycaret.datasets import get_data
+        jewellery = get_data('jewellery')
+        experiment_name = setup(data = jewellery, normalize = True)
         kmeans = create_model('kmeans')
+        
         plot_model(kmeans)
 
-        This will return cluster scatter plot (by default). 
-
+        This will return a cluster scatter plot (by default). 
 
     Parameters
     ----------
-
     model : object, default = none
     A trained model object can be passed. Model must be created using create_model().
 
     plot : string, default = 'cluster'
-    Enter abbreviation of type of plot. The current list of plots supported are:
+    Enter abbreviation for type of plot. The current list of plots supported are:
 
     Name                           Abbreviated String     
     ---------                      ------------------     
@@ -1465,8 +1897,11 @@ def plot_model(model, plot='cluster', feature=None):
     Silhouette Plot                'silhouette'
     Distance Plot                  'distance'
     Distribution Plot              'distribution'
-
-
+    
+    feature : string, default = None
+    Name of feature column for x-axis of distribution plot. It only comes in effect
+    when plot = 'distribution'.
+    
     Returns:
     --------
 
@@ -1475,8 +1910,7 @@ def plot_model(model, plot='cluster', feature=None):
 
     Warnings:
     ---------
-    
-    -  None
+    None
               
 
     """  
@@ -1516,19 +1950,43 @@ def plot_model(model, plot='cluster', feature=None):
     
     if plot == 'cluster':
         
-        b = assign_model(model, verbose=False)
-        b.dropna(axis=0, inplace=True) #droping NA's
+        b = assign_model(model, verbose=False, transformation=True)       
+        
+        """
+        sorting
+        """
+        clus_num = []
+        for i in b.Cluster:
+            a = int(i.split()[1])
+            clus_num.append(a)
+
+        b['cnum'] = clus_num
+        b.sort_values(by='cnum', inplace=True)
+        b.reset_index(inplace=True, drop=True)
+        
+        clus_label = []
+        for i in b.cnum:
+            a = 'Cluster ' + str(i)
+            clus_label.append(a)
+        
+        b.drop(['Cluster', 'cnum'], inplace=True, axis=1)
+        b['Cluster'] = clus_label
+        
+        """
+        sorting ends
+        """
+            
         cluster = b['Cluster']
         b.drop(['Cluster'], axis=1, inplace=True)
         b = pd.get_dummies(b) #casting categorical variable
+        c = b.copy()
         
         from sklearn.decomposition import PCA
-        pca = PCA(n_components=2)
+        pca = PCA(n_components=2, random_state=seed)
         pca_ = pca.fit_transform(b)
         pca_ = pd.DataFrame(pca_)
         pca_ = pca_.rename(columns={0: "PCA1", 1: "PCA2"})
         pca_['Cluster'] = cluster
-        pca_.sort_values(by='Cluster', inplace=True) #sorting for legend
         
         fig = px.scatter(pca_, x="PCA1", y="PCA2", color='Cluster', opacity=0.5)
 
@@ -1542,12 +2000,80 @@ def plot_model(model, plot='cluster', feature=None):
 
         fig.show()
         
+        
+    elif plot == 'tsne':
+        
+        b = assign_model(model, verbose=False, transformation=True)
+        
+        """
+        sorting
+        """
+        clus_num = []
+        for i in b.Cluster:
+            a = int(i.split()[1])
+            clus_num.append(a)
+
+        b['cnum'] = clus_num
+        b.sort_values(by='cnum', inplace=True)
+        b.reset_index(inplace=True, drop=True)
+        
+        clus_label = []
+        for i in b.cnum:
+            a = 'Cluster ' + str(i)
+            clus_label.append(a)
+        
+        b.drop(['Cluster', 'cnum'], inplace=True, axis=1)
+        b['Cluster'] = clus_label
+        
+        """
+        sorting ends
+        """
+    
+        cluster = b['Cluster']
+        b.drop(['Cluster'], axis=1, inplace=True)
+        
+        from sklearn.manifold import TSNE
+        X_embedded = TSNE(n_components=3, random_state=seed).fit_transform(b)
+        X_embedded = pd.DataFrame(X_embedded)
+        X_embedded['Cluster'] = cluster
+        
+        import plotly.express as px
+        df = X_embedded
+        fig = px.scatter_3d(df, x=0, y=1, z=2,
+                      color='Cluster', title='3d TSNE Plot for Clusters', opacity=0.7, width=900, height=800)
+        fig.show()
+        
+        
     elif plot == 'distribution':
         
         import plotly.express as px
         
         d = assign_model(model)
-        d.sort_values(by='Cluster', inplace=True)
+        
+        """
+        sorting
+        """
+        clus_num = []
+        for i in d.Cluster:
+            a = int(i.split()[1])
+            clus_num.append(a)
+
+        d['cnum'] = clus_num
+        d.sort_values(by='cnum', inplace=True)
+        d.reset_index(inplace=True, drop=True)
+        
+        clus_label = []
+        for i in d.cnum:
+            a = 'Cluster ' + str(i)
+            clus_label.append(a)
+        
+        d.drop(['Cluster', 'cnum'], inplace=True, axis=1)
+        d['Cluster'] = clus_label
+        
+        """
+        sorting ends
+        """
+        
         
         if feature is None:
             x_col = 'Cluster'
@@ -1559,26 +2085,7 @@ def plot_model(model, plot='cluster', feature=None):
                    hover_data=d.columns)
         fig.show()
 
-    elif plot == 'tsne':
-        
-        b = assign_model(model, verbose=False)
-        b.dropna(axis=0, inplace=True) #droping NA's
-        cluster = b['Cluster']
-        b.drop(['Cluster'], axis=1, inplace=True)
-        b = pd.get_dummies(b) #casting categorical variable
-        
-        from sklearn.manifold import TSNE
-        X_embedded = TSNE(n_components=3).fit_transform(b)
-        X_embedded = pd.DataFrame(X_embedded)
-        X_embedded['Cluster'] = cluster
-        X_embedded.sort_values(by='Cluster', inplace=True) #sorting values for legend
-        
-        import plotly.express as px
-        df = X_embedded
-        fig = px.scatter_3d(df, x=0, y=1, z=2,
-                      color='Cluster', title='3d TSNE Plot for Clusters', opacity=0.7, width=900, height=800)
-        fig.show()
-        
+
     elif plot == 'elbow':
         
         from copy import deepcopy
@@ -1615,26 +2122,32 @@ def plot_model(model, plot='cluster', feature=None):
         except:
             sys.exit('(Type Error): Plot Type not supported for this model.')
 
-def save_model(model, model_name):
+
+
+
+def save_model(model, model_name, verbose=True):
     
     """
           
     Description:
     ------------
-    This function saves the trained model object in current active directory
-    as a pickle file for later use. 
+    This function saves the transformation pipeline and trained model object 
+    into the current active directory as a pickle file for later use. 
     
         Example:
         --------
-        
+        from pycaret.datasets import get_data
+        jewellery = get_data('jewellery')
+        experiment_name = setup(data = jewellery, normalize = True)
         kmeans = create_model('kmeans')
+        
         save_model(kmeans, 'kmeans_model_23122019')
         
-        This will save the model as binary pickle file in current directory. 
+        This will save the transformation pipeline and model as a binary pickle
+        file in the current directory. 
 
     Parameters
     ----------
-
     model : object, default = none
     A trained model object should be passed.
     
@@ -1644,7 +2157,6 @@ def save_model(model, model_name):
     Returns:
     --------    
     Success Message
-    
 
     Warnings:
     ---------
@@ -1653,38 +2165,43 @@ def save_model(model, model_name):
          
     """
     
+    model_ = []
+    model_.append(prep_pipe)
+    model_.append(model)
+    
     import joblib
     model_name = model_name + '.pkl'
-    joblib.dump(model, model_name)
-    print('Model Succesfully Saved')
+    joblib.dump(model_, model_name)
+    if verbose:
+        print('Transformation Pipeline and Model Succesfully Saved')
 
-def load_model(model_name):
+
+
+def load_model(model_name, verbose=True):
     
     """
           
     Description:
     ------------
-    This function loads the prior saved model from current active directory into
-    current python notebook. Load object must be a pickle file.
+    This function loads a previously saved transformation pipeline and model 
+    from the current active directory into the current python environment. 
+    Load object must be a pickle file.
     
         Example:
         --------
-        
         saved_kmeans = load_model('kmeans_model_23122019')
         
-        This will call the trained model in saved_abod variable using model_name param.
-        The file must be in current directory.
+        This will load the previously saved model in saved_lr variable. The file 
+        must be in the current directory.
 
     Parameters
     ----------
-    
     model_name : string, default = none
     Name of pickle file to be passed as a string.
 
     Returns:
     --------    
     Success Message
-    
 
     Warnings:
     ---------
@@ -1696,8 +2213,11 @@ def load_model(model_name):
         
     import joblib
     model_name = model_name + '.pkl'
-    print('Model Sucessfully Loaded')
+    if verbose:
+        print('Transformation Pipeline and Model Sucessfully Loaded')
     return joblib.load(model_name)
+
+
 
 def save_experiment(experiment_name=None):
     
@@ -1706,26 +2226,23 @@ def save_experiment(experiment_name=None):
           
     Description:
     ------------
-    This function saves the entire experiment in current active directory. All 
-    the outputs using pycaret are internally saved into a binary list which is
+    This function saves the entire experiment into the current active directory. 
+    All outputs using pycaret are internally saved into a binary list which is
     pickilized when save_experiment() is used. 
     
         Example:
         --------
-        
         save_experiment()
         
-        This will save the entire experiment in current active directory. By 
-        default name of experiment will use session_id generated during setup().
-        To use custom name, experiment_name param has to be passed as string.
-        
-        For example:
+        This will save the entire experiment into the current active directory. By 
+        default, the name of the experiment will use the session_id generated during 
+        setup(). To use a custom name, a string must be passed to the experiment_name 
+        param. For example:
         
         save_experiment('experiment_23122019')
 
     Parameters
     ----------
-    
     experiment_name : string, default = none
     Name of pickle file to be passed as a string.
 
@@ -1733,7 +2250,6 @@ def save_experiment(experiment_name=None):
     --------    
     Success Message
     
-
     Warnings:
     ---------
     None    
@@ -1757,27 +2273,26 @@ def save_experiment(experiment_name=None):
     
     print('Experiment Succesfully Saved')
 
+
+
 def load_experiment(experiment_name):
     
     """
           
     Description:
     ------------
-    This function loads the prior saved experiment from current active directory 
-    into current python notebook. Load object must be a pickle file.
+    This function loads a previously saved experiment from the current active 
+    directory into current python environment. Load object must be a pickle file.
     
         Example:
         --------
-        
         saved_experiment = load_experiment('experiment_23122019')
         
-        This will load the entire experiment pipeline into object saved_experiment
-        using experiment_name param. The experiment file must be in current directory.
-        
+        This will load the entire experiment pipeline into the object saved_experiment.
+        The experiment file must be in current directory.
         
     Parameters
-    ----------
-    
+    ---------- 
     experiment_name : string, default = none
     Name of pickle file to be passed as a string.
 
@@ -1785,7 +2300,6 @@ def load_experiment(experiment_name):
     --------    
     Information Grid containing details of saved objects in experiment pipeline.
     
-
     Warnings:
     ---------
     None    
@@ -1813,20 +2327,147 @@ def load_experiment(experiment_name):
     return exp
 
 
-
-def get_clusters(data, model=None, num_clusters=4):
+def predict_model(model, 
+                  data):
     
     """
-    Magic function to get clusters in Power Query / Power BI.
+       
+    Description:
+    ------------
+    This function is used to predict new data using a trained model. It requires a
+    trained model object created using one of the function in pycaret that returns 
+    a trained model object. New data must be passed to data param as pandas Dataframe. 
+    
+        Example:
+        --------
+        from pycaret.datasets import get_data
+        jewellery = get_data('jewellery')
+        experiment_name = setup(data = jewellery)
+        kmeans = create_model('kmeans')
+        
+        kmeans_predictions = predict_model(model = kmeans, data = jewellery)
+        
+    Parameters
+    ----------
+    model : object, default = None
+    
+    data : {array-like, sparse matrix}, shape (n_samples, n_features) where n_samples 
+    is the number of samples and n_features is the number of features. All features 
+    used during training must be present in the new dataset.
+    
+    Returns:
+    --------
+
+    info grid:  Information grid is printed when data is None.
+    ----------      
+
+    Warnings:
+    ---------
+    - Models that donot support 'predict' function cannot be used in predict_model(). 
+  
+             
+    
+    """
+    
+    #testing
+    #no active tests
+    
+    #general dependencies
+    import numpy as np
+    import pandas as pd
+    import re
+    from sklearn import metrics
+    from copy import deepcopy
+    import sys
+    
+    #copy data and model
+    data__ = data.copy()
+    model_ = deepcopy(model)
+    
+    #check if estimator is string, then load model
+    if type(model) is str:
+        model_ = load_model(model, verbose=False)
+        
+    #separate prep_data pipeline
+    if type(model_) is list:
+        prep_pipe_transformer = model_[0]
+        model = model_[1]
+        
+    else:
+        try: 
+            prep_pipe_transformer = prep_pipe
+        except:
+            sys.exit('Transformation Pipeline Missing')
+    
+    #exception checking for predict param
+    if hasattr(model, 'predict'):
+        pass
+    else:
+        sys.exit("(Type Error): Model doesn't support predict parameter.")
+    
+    
+    #predictions start here
+    _data_ = prep_pipe_transformer.transform(data__)
+    pred = model.predict(_data_)
+    
+    pred_ = []
+    
+    for i in pred:
+        a = 'Cluster ' + str(i)
+        pred_.append(a)
+        
+    data__['Cluster'] = pred_
+    
+    return data__
+
+
+def get_clusters(data, 
+                 model = None, 
+                 num_clusters = 4, 
+                 ignore_features = None, 
+                 normalize = True, 
+                 transformation = False,
+                 pca = False,
+                 pca_components = 0.99):
+    
+    """
+    Magic function to get clusters in Power Query / Power BI.    
+    
     """
     
     if model is None:
         model = 'kmeans'
         
-    s = setup(data, normalize=True, verbose=False)
+    if ignore_features is None:
+        ignore_features_pass = []
+    else:
+        ignore_features_pass = ignore_features
+    
+    global X, data_, seed
+    
+    data_ = data.copy()
+    
+    seed = 99
+    
+    from pycaret import preprocess
+    
+    X = preprocess.Preprocess_Path_Two(train_data = data, 
+                                       features_todrop = ignore_features_pass,
+                                       display_types = False,
+                                       scale_data = normalize,
+                                       scaling_method = 'zscore',
+                                       Power_transform_data = transformation,
+                                       Power_transform_method = 'yj',
+                                       apply_pca = pca,
+                                       pca_variance_retained=pca_components,
+                                       random_state = seed)
+    
+    
     try:
         c = create_model(model=model, num_clusters=num_clusters, verbose=False)
     except:
         c = create_model(model=model, verbose=False)
     dataset = assign_model(c, verbose=False)
     return dataset
+
+

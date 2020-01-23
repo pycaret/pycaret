@@ -8,22 +8,23 @@ def setup(data,
       
     Description:
     ------------
-    This function initialize the environment in pycaret. setup() must called before
-    executing any other function in pycaret. It takes three mandatory parameters i.e.
+    This function initializes the environment in pycaret. setup() must called before
+    executing any other function in pycaret. It takes three mandatory parameters:
     (i) dataframe {array-like, sparse matrix}, (ii) transaction_id param identifying 
     basket and (iii) item_id param used to create rules. These three params are 
     normally found in any transactional dataset. pycaret will internally convert the
-    dataframe into sparse matrix required for association rules mining.
+    dataframe into a sparse matrix which is required for association rules mining.
     
         Example
         -------
-        experiment_name = setup(data, 'InvoiceNo', 'ProductName')
+        from pycaret.datasets import get_data
+        france get_data('france')
         
-        where data is of type dataframe. 
+        experiment_name = setup(data = data, transaction_id = 'InvoiceNo', 
+                                item_id = 'ProductName')
         
     Parameters
     ----------
-
     data : {array-like, sparse matrix}, shape (n_samples, n_features) where n_samples 
     is the number of samples and n_features is the number of features.
 
@@ -38,10 +39,9 @@ def setup(data,
     list of strings to be ignored when considering rule mining.
 
     session_id: int, default = None
-    If None, random seed is generated and returned in Information grid. The unique number 
-    is then distributed as a seed in all other functions used during experiment. This can
-    be used later for reproducibility of entire experiment.
-
+    If None, a random seed is generated and returned in the Information grid. The 
+    unique number is then distributed as a seed in all functions used during the 
+    experiment. This can be used for later reproducibility of the entire experiment.
 
     Returns:
     --------
@@ -50,11 +50,10 @@ def setup(data,
     -----------      
 
     environment:  This function returns various outputs that are stored in variable
-    -----------   as tuple. They are being used by other functions in pycaret.
+    -----------   as tuple. They are used by other functions in pycaret.
 
     Warnings:
     ---------
-    
     None
     
     
@@ -123,23 +122,23 @@ def create_model(metric='confidence',
      
     Description:
     ------------
-    This function creates a association rule model using data and identified passed
-    at setup stage. This function internally transforms the data for association
-    rule mining.
+    This function creates an association rules model using data and identifiers 
+    passed at setup stage. This function internally transforms the data for 
+    association rule mining.
 
     setup() function must be called before using create_model()
 
         Example
         -------
-        arule = create_model()
+        from pycaret.datasets import get_data
+        france get_data('france')        
+        experiment_name = setup(data = data, transaction_id = 'InvoiceNo', 
+                                item_id = 'ProductName')
 
-        This will return dataframe containing rules sorted by metric param. It will
-        include antecedents and consequens of rule along with support, confidence,
-        lift, leverage and conviction.
+        This will return dataframe containing rules sorted by metric param. 
 
     Parameters
     ----------
-
     metric : string, default = 'confidence'
     Metric to evaluate if a rule is of interest. Default is set to confidence. 
     Other available metrics include 'support', 'lift', 'leverage', 'conviction'. 
@@ -224,6 +223,7 @@ def create_model(metric='confidence',
     
     
     return(rules)
+
 
 
 def plot_model(model,
@@ -333,118 +333,4 @@ def plot_model(model,
                            hover_data = ['antecedents', 'consequents' ])
         fig.show()   
 
-
-def save_experiment(experiment_name=None):
-    
-        
-    """
-          
-    Description:
-    ------------
-    This function saves the entire experiment in current active directory. All 
-    the outputs using pycaret are internally saved into a binary list which is
-    pickilized when save_experiment() is used. 
-    
-        Example:
-        --------
-        
-        save_experiment()
-        
-        This will save the entire experiment in current active directory. By 
-        default name of experiment will use session_id generated during setup().
-        To use custom name, experiment_name param has to be passed as string.
-        
-        For example:
-        
-        save_experiment('experiment_23122019')
-
-    Parameters
-    ----------
-    
-    experiment_name : string, default = none
-    Name of pickle file to be passed as a string.
-
-    Returns:
-    --------    
-    Success Message
-    
-
-    Warnings:
-    ---------
-    None    
-       
-         
-    """
-    
-    #general dependencies
-    import joblib
-    global experiment__
-    
-    #defining experiment name
-    if experiment_name is None:
-        experiment_name = 'experiment_' + str(seed)
-        
-    else:
-        experiment_name = experiment_name  
-        
-    experiment_name = experiment_name + '.pkl'
-    joblib.dump(experiment__, experiment_name)
-    
-    print('Experiment Succesfully Saved')
-
-
-def load_experiment(experiment_name):
-    
-    """
-          
-    Description:
-    ------------
-    This function loads the prior saved experiment from current active directory 
-    into current python notebook. Load object must be a pickle file.
-    
-        Example:
-        --------
-        
-        saved_experiment = load_experiment('experiment_23122019')
-        
-        This will load the entire experiment pipeline into object saved_experiment
-        using experiment_name param. The experiment file must be in current directory.
-        
-        
-    Parameters
-    ----------
-    
-    experiment_name : string, default = none
-    Name of pickle file to be passed as a string.
-
-    Returns:
-    --------    
-    Information Grid containing details of saved objects in experiment pipeline.
-    
-
-    Warnings:
-    ---------
-    None    
-       
-         
-    """
-    
-    #general dependencies
-    import joblib
-    import pandas as pd
-    
-    experiment_name = experiment_name + '.pkl'
-    temp = joblib.load(experiment_name)
-    
-    name = []
-    exp = []
-
-    for i in temp:
-        name.append(i[0])
-        exp.append(i[-1])
-
-    ind = pd.DataFrame(name, columns=['Object'])
-    display(ind)
-
-    return exp
 

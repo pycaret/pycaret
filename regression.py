@@ -3,7 +3,6 @@ def setup(data,
           train_size=0.7,
           sampling=True,
           sample_estimator = None,
-          session_id = None,
           categorical_features = None,
           categorical_imputation = 'constant',
           numeric_features = None,
@@ -14,6 +13,7 @@ def setup(data,
           normalize_method = 'zscore',
           transformation = False,
           transformation_method = 'yeo-johnson',
+          session_id = None,
           profile = False):
     
     """
@@ -59,11 +59,6 @@ def setup(data,
     
     sample_estimator: object, default = None
     If None, Linear Regression is used by default.
-
-    session_id: int, default = None
-    If None, a random seed is generated and returned in the Information grid. The 
-    unique number is then distributed as a seed in all functions used during the 
-    experiment. This can be used for later reproducibility of the entire experiment.
     
     categorical_features: string, default = None
     If the inferred data types are not correct, categorical_features can be used to
@@ -123,6 +118,11 @@ def setup(data,
     the transformation transforms the feature set to follow Gaussian-like or normal
     distribution. Note that quantile transformer is non-linear and may distort linear 
     correlations between variables measured at the same scale.
+
+    session_id: int, default = None
+    If None, a random seed is generated and returned in the Information grid. The 
+    unique number is then distributed as a seed in all functions used during the 
+    experiment. This can be used for later reproducibility of the entire experiment.
     
     profile: bool, default = False
     If set to true, a data profile for Exploratory Data Analysis will be displayed 
@@ -993,7 +993,7 @@ def create_model(estimator = None,
     elif estimator == 'ransac':
         
         from sklearn.linear_model import RANSACRegressor
-        model = RANSACRegressor(random_state=seed)
+        model = RANSACRegressor(min_samples=0.5, random_state=seed)
         full_name = 'Random Sample Consensus'   
         
     elif estimator == 'tr':
@@ -1615,6 +1615,7 @@ def ensemble_model(estimator,
         return model
 
 
+
 def compare_models(blacklist = None,
                    fold = 10, 
                    round = 4, 
@@ -1880,7 +1881,7 @@ def compare_models(blacklist = None,
     br = BayesianRidge()
     ard = ARDRegression()
     par = PassiveAggressiveRegressor(random_state=seed)
-    ransac = RANSACRegressor(random_state=seed)
+    ransac = RANSACRegressor(min_samples=0.5, random_state=seed)
     tr = TheilSenRegressor(random_state=seed)
     huber = HuberRegressor()
     kr = KernelRidge()
@@ -2163,6 +2164,7 @@ def compare_models(blacklist = None,
     return compare_models_
 
 
+
 def blend_models(estimator_list = 'All', 
                  fold = 10, 
                  round = 4, 
@@ -2386,7 +2388,7 @@ def blend_models(estimator_list = 'All',
         br = BayesianRidge()
         ard = ARDRegression()
         par = PassiveAggressiveRegressor(random_state=seed)
-        ransac = RANSACRegressor(random_state=seed)
+        ransac = RANSACRegressor(min_samples=0.5, random_state=seed)
         tr = TheilSenRegressor(random_state=seed)
         huber = HuberRegressor()
         kr = KernelRidge()
@@ -2664,6 +2666,7 @@ def blend_models(estimator_list = 'All',
     else:
         clear_output()
         return model
+
 
 
 def tune_model(estimator = None, 
@@ -5478,6 +5481,7 @@ def load_experiment(experiment_name):
 
 
 
+
 def predict_model(estimator, 
                   data=None,
                   round=4):
@@ -5873,7 +5877,7 @@ def predict_model(estimator,
             max_error_ = metrics.max_error(ytest,pred_)
 
             
-            df_score = pd.DataFrame( {'Model' : 'Stacking Regressor', 'MAE' : [mae], 'MSE' : [mse], 'RMSE' : [rmse], 
+            df_score = pd.DataFrame( {'Model' : [full_name], 'MAE' : [mae], 'MSE' : [mse], 'RMSE' : [rmse], 
                                       'R2' : [r2], 'ME' : [max_error_]})
             df_score = df_score.round(4)
             display(df_score)
@@ -5894,5 +5898,3 @@ def predict_model(estimator,
             X_test_ = pd.concat([X_test_,label], axis=1)
 
     return X_test_
-
-

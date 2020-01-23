@@ -3,7 +3,6 @@ def setup(data,
           train_size = 0.7,
           sampling = True,
           sample_estimator = None,
-          session_id = None,
           categorical_features = None,
           categorical_imputation = 'constant',
           numeric_features = None,
@@ -14,6 +13,7 @@ def setup(data,
           normalize_method = 'zscore',
           transformation = False,
           transformation_method = 'yeo-johnson',
+          session_id = None,
           profile = False):
     
     """
@@ -62,11 +62,6 @@ def setup(data,
     
     sample_estimator: object, default = None
     If None, Logistic Regression is used by default.
-
-    session_id: int, default = None
-    If None, a random seed is generated and returned in the Information grid. The 
-    unique number is then distributed as a seed in all functions used during the 
-    experiment. This can be used for later reproducibility of the entire experiment.
     
     categorical_features: string, default = None
     If the inferred data types are not correct, categorical_features can be used to
@@ -126,6 +121,11 @@ def setup(data,
     the transformation transforms the feature set to follow Gaussian-like or normal
     distribution. Note that quantile transformer is non-linear and may distort linear 
     correlations between variables measured at the same scale.
+    
+    session_id: int, default = None
+    If None, a random seed is generated and returned in the Information grid. The 
+    unique number is then distributed as a seed in all functions used during the 
+    experiment. This can be used for later reproducibility of the entire experiment.
     
     profile: bool, default = False
     If set to true, a data profile for Exploratory Data Analysis will be displayed 
@@ -408,8 +408,7 @@ def setup(data,
     #reset pandas option
     pd.reset_option("display.max_rows") 
     pd.reset_option("display.max_columns")
-    
-        
+      
     #create an empty list for pickling later.
     experiment__ = []
         
