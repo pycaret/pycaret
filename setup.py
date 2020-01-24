@@ -15,13 +15,6 @@ pycaret.nlp, Moez Ali <moez.ali@queensu.ca>
 pycaret.preprocess, Fahad Akbar <M.akbar@queensu.ca>
 pycaret.regression, Moez Ali <moez.ali@queensu.ca>
 
-All modules except pycaret.preprocess licensed under:
-Copyright (C) 2019-2020 Moez Ali <moez.ali@queensu.ca>
-
-pycaret.preprocess licensed under:
-Copyright (C) 2019-2020 Fahad Akbar <M.akbar@queensu.ca>
-
-
 """
 
 from setuptools import setup
@@ -34,7 +27,7 @@ def readme():
 
 setup(
     name="pycaret",
-    version="0.0.21",
+    version="0.0.22",
     description="A Python package for supervised and unsupervised machine learning.",
     long_description=readme(),
     long_description_content_type="text/markdown",
