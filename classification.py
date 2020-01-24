@@ -3,6 +3,7 @@
 # License: MIT
 
 
+
 def setup(data, 
           target, 
           train_size = 0.7,
@@ -13,7 +14,7 @@ def setup(data,
           numeric_features = None,
           numeric_imputation = 'mean',
           date_features = None,
-          drop_features = None,
+          ignore_features = None,
           normalize = False,
           normalize_method = 'zscore',
           transformation = False,
@@ -58,12 +59,13 @@ def setup(data,
 
     sampling: bool, default = True
     When sample size exceeds 25,000 samples, pycaret will build a base estimator at 
-    various sample levels of the original dataset. This will return a performance 
-    plot of AUC, Accuracy and Recall values at various sample levels, that will 
-    assist you in deciding the preferred sample size for modeling. You are then 
-    required to enter the desired  sample size that will  be considered for training 
-    and validation in the pycaret environment. 1 - sample size will be discarded and 
-    not be used any further.
+    various sample size of the original dataset. This will return a performance 
+    plot of AUC, Accuracy, Recall, Precision, Kappa and F1 values at various sample 
+    levels, that will assist you in deciding the preferred sample size for modeling. 
+    You are then required to enter the desired sample size that will be considered for 
+    training and validation in the pycaret environment. When sample_size entered is less 
+    than 1, the remaining dataset (1 - sample) is used in fitting the model only when 
+    finalize_model() is called.
     
     sample_estimator: object, default = None
     If None, Logistic Regression is used by default.
@@ -98,11 +100,10 @@ def setup(data,
     and date column is dropped from the dataset. Incase the date column as time
     stamp, it will also extract features related to time / hours.
     
-    drop_features: string, default = None
+    ignore_features: string, default = None
     If any feature has to be ignored for modeling, it can be passed in the param
-    drop_features. Inferred ID column and DateTime column is automatically set to 
-    drop from the dataset. Incase ID column is not correctly detected, it is 
-    recommended to drop ID  column using drop_features. 
+    ignore_features. ID and DateTime column when inferred, is automatically set
+    ignore for modeling. 
     
     normalize: bool, default = False
     When set to True, transform feature space using normalize_method param defined.
@@ -207,8 +208,8 @@ def setup(data,
         sys.exit("(Value Error): transformation_method param only accepts 'yeo-johnson' or 'quantile' ")        
         
     #cannot drop target
-    if drop_features is not None:
-        if target in drop_features:
+    if ignore_features is not None:
+        if target in ignore_features:
             sys.exit("(Value Error): cannot drop target column. ")  
         
     #forced type check
@@ -234,10 +235,10 @@ def setup(data,
                 sys.exit("(Value Error): Column type forced is either target column or doesn't exist in the dataset.")      
     
     #drop features
-    if drop_features is not None:
-        for i in drop_features:
+    if ignore_features is not None:
+        for i in ignore_features:
             if i not in all_cols:
-                sys.exit("(Value Error): Column type forced is either target column or doesn't exist in the dataset.") 
+                sys.exit("(Value Error): Feature ignored is either target column or doesn't exist in the dataset.") 
                 
     #pre-load libraries
     import pandas as pd
@@ -315,10 +316,10 @@ def setup(data,
         numeric_features_pass = numeric_features
      
     #drop features
-    if drop_features is None:
-        drop_features_pass = []
+    if ignore_features is None:
+        ignore_features_pass = []
     else:
-        drop_features_pass = drop_features
+        ignore_features_pass = ignore_features
      
     #date features
     if date_features is None:
@@ -346,7 +347,7 @@ def setup(data,
                                           categorical_features = cat_features_pass,
                                           numerical_features = numeric_features_pass,
                                           time_features = date_features_pass,
-                                          features_todrop = drop_features_pass,
+                                          features_todrop = ignore_features_pass,
                                           numeric_imputation_strategy = numeric_imputation,
                                           categorical_imputation_strategy = categorical_imputation_pass,
                                           scale_data = normalize,
@@ -4396,7 +4397,6 @@ def blend_models(estimator_list = 'All',
 
 
 
-
 def stack_models(estimator_list, 
                  meta_model = None, 
                  fold = 10,
@@ -4559,12 +4559,28 @@ def stack_models(estimator_list,
     
     '''
     
+    #testing
+    #no active test
+    
     #pre-load libraries
     import pandas as pd
     import ipywidgets as ipw
     from IPython.display import display, HTML, clear_output, update_display
     import time, datetime
+    from copy import deepcopy
     
+    #copy estimator_list
+    estimator_list = deepcopy(estimator_list)
+    
+    #Defining meta model.
+    if meta_model == None:
+        from sklearn.linear_model import LogisticRegression
+        meta_model = LogisticRegression()
+    else:
+        meta_model = deepcopy(meta_model)
+        
+    clear_output()
+        
     #progress bar
     max_progress = len(estimator_list) + fold + 4
     progress = ipw.IntProgress(value=0, min=0, max=max_progress, step=1 , description='Processing: ')
@@ -4594,7 +4610,7 @@ def stack_models(estimator_list,
     from sklearn.model_selection import StratifiedKFold
     from sklearn.model_selection import cross_val_predict
     import seaborn as sns
-    from copy import deepcopy
+    
     
     progress.value += 1
     
@@ -4604,19 +4620,10 @@ def stack_models(estimator_list,
     elif method == 'hard':
         predict_method = 'predict'
     
-    #copy estimator_list
-    estimator_list = deepcopy(estimator_list)
-    
-    #Defining meta model. Logistic Regression hardcoded for now
-    if meta_model == None:
-        from sklearn.linear_model import LogisticRegression
-        meta_model = LogisticRegression()
-    else:
-        meta_model = deepcopy(meta_model)
     
     #defining data_X and data_y
     if finalize:
-        data_X = X.copy()
+        data_X = X_.copy()
         data_y = y.copy()
     else:       
         data_X = X_train.copy()
@@ -4695,6 +4702,9 @@ def stack_models(estimator_list,
         
         counter += 1
         
+    #fill nas for base_prediction
+    base_prediction.fillna(value=0, inplace=True)
+    
     #defining column names now
     target_col_name = np.array(base_prediction.columns[0])
     model_names = np.append(target_col_name, model_names_fixed) #added fixed here
@@ -5030,7 +5040,7 @@ def create_stacknet(estimator_list,
     '''
     
     #testing
-    #no active testing
+    #no active test
     
     #exception checking   
     import sys
@@ -5083,6 +5093,19 @@ def create_stacknet(estimator_list,
     import ipywidgets as ipw
     from IPython.display import display, HTML, clear_output, update_display
     import time, datetime
+    from copy import deepcopy
+    
+    #copy estimator_list
+    estimator_list = deepcopy(estimator_list)
+    
+    #copy meta_model
+    if meta_model is None:
+        from sklearn.linear_model import LogisticRegression
+        meta_model = LogisticRegression()
+    else:
+        meta_model = deepcopy(meta_model)
+        
+    clear_output()
     
     #progress bar
     max_progress = len(estimator_list) + fold + 4
@@ -5115,12 +5138,8 @@ def create_stacknet(estimator_list,
     from sklearn import metrics
     from sklearn.model_selection import StratifiedKFold
     from sklearn.model_selection import cross_val_predict
-    from copy import deepcopy
     
     progress.value += 1
-    
-    #copy estimator_list
-    estimator_list = deepcopy(estimator_list)
     
     base_level = estimator_list[0]
     base_level_names = []
@@ -5168,13 +5187,6 @@ def create_stacknet(estimator_list,
     data_X.reset_index(drop=True, inplace=True)
     data_y.reset_index(drop=True, inplace=True)
     
-    #defining meta model
-    
-    if meta_model is None:
-        from sklearn.linear_model import LogisticRegression
-        meta_model = LogisticRegression()
-    else:
-        meta_model = deepcopy(meta_model)
     
     #Capturing the method of stacking required by user. method='soft' means 'predict_proba' else 'predict'
     if method == 'soft':
@@ -5222,7 +5234,8 @@ def create_stacknet(estimator_list,
         base_array = np.empty((0,0))  
         
         base_counter += 1
-            
+    
+    base_array_df.fillna(value=0, inplace=True) #fill na's with zero
     base_array_df.columns = base_level_fixed
     
     if restack:
@@ -5288,7 +5301,8 @@ def create_stacknet(estimator_list,
             model_counter += 1
             
         base_array_df = pd.concat([base_array_df,inter_array_df], axis=1)
-            
+        base_array_df.fillna(value=0, inplace=True) #fill na's with zero
+        
         models_.append(inter_inner)
     
         if restack == False:
@@ -5494,8 +5508,6 @@ def create_stacknet(estimator_list,
     else:
         clear_output()
         return models_ 
-
-
 
 
 
@@ -6491,6 +6503,7 @@ def load_experiment(experiment_name):
 
 
 
+
 def predict_model(estimator, 
                   data=None):
     
@@ -6549,6 +6562,10 @@ def predict_model(estimator,
     import re
     from sklearn import metrics
     from copy import deepcopy
+    from IPython.display import clear_output, update_display
+    
+    estimator = deepcopy(estimator)
+    clear_output()
     
     #check if estimator is string, then load model
     if type(estimator) is str:
@@ -6567,11 +6584,11 @@ def predict_model(estimator,
         X_test_.reset_index(drop=True, inplace=True)
         y_test_.reset_index(drop=True, inplace=True)
         
-        model = deepcopy(estimator)
+        model = estimator
         
     else:
         
-        estimator_ = deepcopy(estimator)
+        estimator_ = estimator
         
         if type(estimator_) is list:
             
@@ -6584,19 +6601,19 @@ def predict_model(estimator,
             else:
                 
                 prep_pipe_transformer = prep_pipe
-                model = deepcopy(estimator)
-                estimator = deepcopy(estimator)
+                model = estimator
+                estimator = estimator
             
         else:
             
             prep_pipe_transformer = prep_pipe
-            model = deepcopy(estimator)
-            estimator = deepcopy(estimator)
+            model = estimator
+            estimator = estimator
         
         try:
             model = finalize_model(estimator)
         except:
-            model = deepcopy(estimator)
+            model = estimator
             
         Xtest = prep_pipe_transformer.transform(data)                     
         X_test_ = data.copy() #original concater
@@ -6613,7 +6630,7 @@ def predict_model(estimator,
             """
             
             #utility
-            stacker = deepcopy(model)
+            stacker = model
             restack = stacker.pop()
             stacker_method = stacker.pop()
             #stacker_method = stacker_method[0]
@@ -6815,7 +6832,7 @@ def predict_model(estimator,
             """
             
             #copy
-            stacker = deepcopy(model)
+            stacker = model
             
             #restack
             restack = stacker.pop()
@@ -6879,6 +6896,9 @@ def predict_model(estimator,
             #ytest = ytest #change
 
             #meta predictions starts here
+            
+            df.fillna(value=0,inplace=True)
+            df_restack.fillna(value=0,inplace=True)
 
             #restacking check
             try:
