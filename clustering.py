@@ -915,7 +915,7 @@ def tune_model(model=None,
         boston = get_data('boston')
         experiment_name = setup(data = boston, normalize = True)
         
-        tuned_kmeans = tune_model(model = 'kmeans', supervised_target = 'medv', optimize = 'R2') 
+        tuned_kmeans = tune_model(model = 'kmeans', supervised_target = 'medv') 
 
         This will return tuned K Means Clustering Model.
 
@@ -934,7 +934,7 @@ def tune_model(model=None,
     K-Modes clustering                 'kmodes'             git/nicodv/kmodes
     
     supervised_target: string
-    Name of target column for supervised learning.
+    Name of the target column for supervised learning.
     
     estimator: string, default = None
 
@@ -984,7 +984,7 @@ def tune_model(model=None,
     Light Gradient Boosting       'lightgbm'             Regression
     CatBoost Classifier           'catboost'             Regression
     
-    If set to None, default is Linear model for both classification
+    If set to None, Linear model is used by default for both classification
     and regression tasks.
     
     optimize: string, default = None

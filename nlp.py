@@ -3,6 +3,7 @@
 # License: MIT
 
 
+
 def setup(data, 
           target=None,
           custom_stopwords=None,
@@ -12,29 +13,23 @@ def setup(data,
         
     Description:
     ------------
-    This function initialize the environment in pycaret. setup() must called before
-    executing any other function in pycaret. It takes one mandatory parameters i.e.
-    dataframe {array-like, sparse matrix} or object of type list. If dataframe is 
+    This function initializes the environment in pycaret. setup() must called before
+    executing any other function in pycaret. It takes one mandatory parameter:
+    dataframe {array-like, sparse matrix} or object of type list. If a dataframe is 
     passed, target column containing text must be specified. When data passed is of 
     type list, no target parameter is required. All other parameters are optional. 
     This module only supports English Language at this time.
 
         Example
         -------
-        experiment_name = setup(data, 'text_column')
+        from pycaret.datasets import get_data
+        kiva = get_data('kiva')
+        experiment_name = setup(data = kiva, target = 'en')
 
-        data is a pandas DataFrame and 'text_column' is the name of the column in 
-        dataframe containing text values.
+        'kiva' is a pandas Dataframe.
         
-        OR
-        
-        experiment_name = setup(data)
-        
-        where data is of type list containing text elements of n length.
-
     Parameters
     ----------
-
     data : {array-like, sparse matrix}, shape (n_samples, n_features) where n_samples 
     is the number of samples and n_features is the number of features or object of type
     list with n length.
@@ -47,9 +42,9 @@ def setup(data,
     list containing custom stopwords.
 
     session_id: int, default = None
-    If None, random seed is generated and returned in Information grid. The unique number 
-    is then distributed as a seed in all other functions used during experiment. This can
-    be used later for reproducibility of entire experiment.
+    If None, a random seed is generated and returned in the Information grid. The 
+    unique number is then distributed as a seed in all functions used during the 
+    experiment. This can be used for later reproducibility of the entire experiment.
 
 
     Returns:
@@ -59,14 +54,14 @@ def setup(data,
     -----------      
 
     environment:  This function returns various outputs that are stored in variable
-    -----------   as tuple. They are being used by other functions in pycaret.
+    -----------   as tuple. They are used by other functions in pycaret.
 
     Warnings:
     ---------
     
-    - If dataset is large, Jupyter Notebook may return data update warnings due to 
-      status bar. To switch off the warnings, you may consider the following code 
-      in your anaconda terminal. 
+    - If the dataset is large, Jupyter Notebook may return data update warnings due 
+      to the status bar. To switch off the warnings, you may consider the following 
+      code in your python terminal. 
     
          jupyter notebook --NotebookApp.iopub_data_rate_limit=1.0e10
       
@@ -536,22 +531,23 @@ def create_model(model=None,
      
     Description:
     ------------
-    This function creates a model using training corpus and dictionary compiled
-    during setup stage. Hence corpus and dictionary doesn't need to be specified
-    during create_model. This Function also returns trained model object can then
-    be used for inference the training data or new unseen data. 
+    This function creates a model on the dataset passed as a data param during 
+    the setup stage. setup() function must be called before using create_model().
 
-    setup() function must be called before using create_model()
+    This function returns a trained model object. 
 
         Example
         -------
+        from pycaret.datasets import get_data
+        kiva = get_data('kiva')
+        experiment_name = setup(data = kiva, target = 'en')
+        
         lda = create_model('lda')
 
         This will return trained Latent Dirichlet Allocation model.
 
     Parameters
     ----------
-
     model : string, default = None
 
     Enter abbreviated string of the model class. List of models supported:
@@ -566,7 +562,7 @@ def create_model(model=None,
    
     multi_core: Boolean, default = False
     True would utilize all CPU cores to parallelize and speed up model training. Only
-    available for 'lda'. For all other models, multi_core parameter is ignored.
+    available for 'lda'. For all other models, the multi_core parameter is ignored.
 
     num_topics: integer, default = 4
     Number of topics to be created. If None, default is set to 4.
@@ -577,14 +573,14 @@ def create_model(model=None,
     Returns:
     --------
 
-    model:        trained model object
+    model:   trained model object
     ------
 
     Warnings:
     ---------
-
     None
-  
+      
+    
      
     """
     
@@ -786,26 +782,26 @@ def assign_model(model,
      
     Description:
     ------------
-    This function is used for inference of topics on training corpus using trained 
-    model object created using create_model. The function returns dataframe with 
-    topic weights, dominant topic by document and % of dominant topic (if applicable)
-    on the original dataset passed during setup stage. If list was passed during 
-    setup, an internal dataframe is created.
-
-    create_model() function must be called before using assign_model()
+    This function assigns each of the data point in the dataset passed during setup
+    stage to one of the topic using trained model object passed as model param.
+    create_model() function must be called before using assign_model().
+    
+    This function returns dataframe with topic weights, dominant topic and % of the
+    dominant topic (where applicable).
 
         Example
         -------
+        from pycaret.datasets import get_data
+        kiva = get_data('kiva')
+        experiment_name = setup(data = kiva, target = 'en')        
         lda = create_model('lda')
         
         lda_df = assign_model(lda)
-
-        This will return dataframe with inferred topics using trained model object 
-        passed as model param.
+        
+        This will return a dataframe with inferred topics using trained model.
 
     Parameters
     ----------
-
     model : trained model object, default = None
 
     verbose: Boolean, default = True
@@ -819,9 +815,9 @@ def assign_model(model,
 
     Warnings:
     ---------
-
     None
-  
+      
+    
     """
     
     #determine model type
@@ -1108,6 +1104,7 @@ def assign_model(model,
     return bb_
 
 
+
 def plot_model(model = None,
                plot = 'frequency',
                topic_num = None):
@@ -1117,44 +1114,46 @@ def plot_model(model = None,
           
     Description:
     ------------
-    This function takes a trained model object (optional) and returns the plot on
-    inferred dataset. This function internally calls assign_model before generating
-    a plot. Where model parameter is not passed. It will still return a plot but on
-    entire dataset instead at topic level. Hence, plot_model can be used with or 
-    without model. All plots with model parameter passed as a trained model object
-    will return the plot on first topic i.e. 'Topic 0'. This can be changed using
-    topic_num param. 
+    This function takes a trained model object (optional) and returns a plot based 
+    on the inferred dataset by internally calling assign_model before generating a
+    plot. Where a model parameter is not passed, a plot on the entire dataset will 
+    be returned instead of one at the topic level. As such, plot_model can be used 
+    with or without model. All plots with a model parameter passed as a trained 
+    model object will return a plot based on the first topic i.e.  'Topic 0'. This 
+    can be changed using the topic_num param. 
 
         Example:
         --------
-        
+        from pycaret.datasets import get_data
+        kiva = get_data('kiva')
+        experiment_name = setup(data = kiva, target = 'en')        
         lda = create_model('lda')
-        plot_model(lda, plot='frequency')
+        
+        plot_model(lda, plot = 'frequency')
 
-        This will return frequency plot on trained Latent Dirichlet Allocation model
-        for all documents in 'Topic 0'. Topic number can be changed as follows:
+        This will return a frequency plot on a trained Latent Dirichlet Allocation 
+        model for all documents in 'Topic 0'. The topic number can be changed as 
+        follows:
         
-        plot_model(lda, plot='frequency', topic_num = 'Topic 1')
+        plot_model(lda, plot = 'frequency', topic_num = 'Topic 1')
         
-        This will now return frequency plot on trained LDA model for all documents
-        inferred in 'Topic 1'.
+        This will now return a frequency plot on a trained LDA model for all 
+        documents inferred in 'Topic 1'.
         
         Alternatively, if following is used:
         
-        plot_model(plot='frequency')
+        plot_model(plot = 'frequency')
         
-        This will return frequency plot on entire training corpus compiled during 
-        setup stage.
-
+        This will return frequency plot on the entire training corpus compiled 
+        during setup stage.
 
     Parameters
     ----------
-
     model : object, default = none
     A trained model object can be passed. Model must be created using create_model().
 
     plot : string, default = 'frequency'
-    Enter abbreviation of type of plot. The current list of plots supported are:
+    Enter abbreviation for type of plot. The current list of plots supported are:
 
     Name                           Abbreviated String     
     ---------                      ------------------     
@@ -1170,10 +1169,9 @@ def plot_model(model = None,
     Wordcloud                      'wordcloud'
     UMAP Dimensionality Plot       'umap'
 
-
     topic_num : string, default = None
-    Topic number to be passed as string. If set to None, default generation will be 
-    on 'Topic 0'
+    Topic number to be passed as a string. If set to None, default generation will 
+    be on 'Topic 0'
     
     Returns:
     --------
@@ -1183,13 +1181,13 @@ def plot_model(model = None,
 
     Warnings:
     ---------
-    
-    -  'pos' and 'umap' plot not available at model level. Hence model parameter is 
-       ignored. The result will always be based on entire training corpus.
+    -  'pos' and 'umap' plot not available at model level. Hence the model parameter is 
+       ignored. The result will always be based on the entire training corpus.
     
     -  'topic_model' plot is based on pyLDAVis implementation. Hence its not available
        for model = 'lsi', 'rp' and 'nmf'.
-              
+         
+                
 
     """  
     
@@ -1657,6 +1655,7 @@ def plot_model(model = None,
         umap.show()
 
 
+
 def tune_model(model=None,
                multi_core=False,
                supervised_target=None,
@@ -1670,43 +1669,25 @@ def tune_model(model=None,
 
     Description:
     ------------
-    This function is only applicable for topic models created using create_model().
-    It is used for tuning number of topics using a pre-defined diverse grid with
-    objective to optimize supervised learning metric as defined in optimize param.
-    It can also be used completely unsupervised in which case model coherence value
-    is considered as objective function to maximize. This function allows to select
-    estimator from a large library available in pycaret (see below). By default 
-    supervised estimator is Linear. 
+    This function tunes the num_topics model parameter using a predefined grid with
+    the objective of optimizing a supervised learning metric as defined in the optimize
+    param. You can choose the supervised estimator from a large library available in 
+    pycaret. By default, supervised estimator is Linear. 
 
-    This function returns the topic model with K number of topics that are considered
-    best using optimize param.
-
-    setup() function must be called prior to using this function.
-
+    This function returns the tuned model object.
 
         Example
         -------
-        tuned_lda = tune_model('lda', supervised_target = 'status', optimize='AUC') 
+        from pycaret.datasets import get_data
+        kiva = get_data('kiva')
+        experiment_name = setup(data = kiva, target = 'en')        
+        
+        tuned_lda = tune_model(model = 'lda', supervised_target = 'status') 
 
-        This will return trained Latent Dirichlet Allocation model with k number of 
-        topics that is optimized to improve AUC as defined in optimize param. By 
-        default optimize param is 'Accuracy' for classification tasks and 'R2' for
-        regression tasks. Task is determined automatically based on supervised_target
-        param.
-
-
-        Alternatively, 
-
-        tuned_lda_us = tune_model('lda')
-
-        This will return trained Latent Dirichlet Allocation model with k number of 
-        topics that is optimized to improve coherence value of model, since no 
-        supervised_target param is passed.
-
+        This will return trained Latent Dirichlet Allocation model. 
 
     Parameters
     ----------
-
     model : string, default = None
 
     Enter abbreviated name of the model. List of available models supported: 
@@ -1723,9 +1704,9 @@ def tune_model(model=None,
     True would utilize all CPU cores to parallelize and speed up model training. Only
     available for 'lda'. For all other models, multi_core parameter is ignored.
 
-    supervised_target: string, default = None
-    Name of target column for supervised learning. If None model coherence value is used
-    as objective function.
+    supervised_target: string
+    Name of the target column for supervised learning. If None, the mdel coherence value
+    is used as the objective function.
 
     estimator: string, default = None
 
@@ -1775,17 +1756,17 @@ def tune_model(model=None,
     Light Gradient Boosting       'lightgbm'             Regression
     CatBoost Regressor            'catboost'             Regression
 
-    If set to None, by default Linear model is used for both classification
+    If set to None, Linear model is used by default for both classification
     and regression tasks.
-
+    
     optimize: string, default = None
-
+    
     For Classification tasks:
     Accuracy, AUC, Recall, Precision, F1, Kappa
-
+    
     For Regression tasks:
     MAE, MSE, RMSE, R2, ME
-
+    
     If set to None, default is 'Accuracy' for classification and 'R2' for 
     regression tasks.
 
@@ -1797,7 +1778,6 @@ def tune_model(model=None,
 
     fold: integer, default = 10
     Number of folds to be used in Kfold CV. Must be at least 2. 
-
 
     Returns:
     --------
@@ -1811,20 +1791,16 @@ def tune_model(model=None,
 
     Warnings:
     ---------
-
     - Random Projections ('rp') and Non Negative Matrix Factorization ('nmf')
       is not available for unsupervised learning. Error is raised when 'rp' or
       'nmf' is passed without supervised_target.
 
-
     - Estimators using kernel based methods such as Kernel Ridge Regressor, 
       Automatic Relevance Determinant, Gaussian Process Classifier, Radial Basis
-      Support Vector Machine and Multi Level Perceptron may take longer training 
+      Support Vector Machine and Multi Level Perceptron may have longer training 
       times.
-
-
-
-
+     
+    
     """
 
 
@@ -2549,21 +2525,23 @@ def evaluate_model(model):
           
     Description:
     ------------
-    This function displays user interface for all the available plots for 
-    a given model. It internally uses plot_model() function. 
+    This function displays the user interface for all the available plots 
+    for a given model. It internally uses the plot_model() function. 
     
         Example:
         --------
-        
+        from pycaret.datasets import get_data
+        kiva = get_data('kiva')
+        experiment_name = setup(data = kiva, target = 'en')     
         lda = create_model('lda')
+        
         evaluate_model(lda)
         
-        This will display the User Interface for all the plots for given
-        model, in this case Latent Dirichlet Allocation passed as 'lda'. 
+        This will display the User Interface for all of the plots for 
+        given model. 
 
     Parameters
     ----------
-
     model : object, default = none
     A trained model object should be passed. 
 
@@ -2576,8 +2554,8 @@ def evaluate_model(model):
     Warnings:
     ---------
     None    
-       
-         
+      
+           
     """
         
         
@@ -2628,26 +2606,30 @@ def evaluate_model(model):
     d = interact_manual(plot_model, model = fixed(model), plot = a, topic_num=b)
 
 
+
 def save_model(model, model_name):
     
     """
           
     Description:
     ------------
-    This function saves the trained model object in current active directory
-    as a pickle file for later use. 
+    This function saves the trained model object into the current active 
+    directory as a pickle file for later use. 
     
         Example:
         --------
-        
+        from pycaret.datasets import get_data
+        kiva = get_data('kiva')
+        experiment_name = setup(data = kiva, target = 'en')
         lda = create_model('lda')
+        
         save_model(lda, 'lda_model_23122019')
         
-        This will save the model as binary pickle file in current directory. 
+        This will save the model as a binary pickle file in the current 
+        directory. 
 
     Parameters
     ----------
-
     model : object, default = none
     A trained model object should be passed.
     
@@ -2657,7 +2639,6 @@ def save_model(model, model_name):
     Returns:
     --------    
     Success Message
-    
 
     Warnings:
     ---------
@@ -2679,27 +2660,24 @@ def load_model(model_name):
           
     Description:
     ------------
-    This function loads the prior saved model from current active directory into
-    current python notebook. Load object must be a pickle file.
+    This function loads a previously saved model from the current active directory 
+    into the current python environment. Load object must be a pickle file.
     
         Example:
         --------
-        
-        saved_lr = load_model('lda_model_23122019')
+        saved_lda = load_model('lda_model_23122019')
         
         This will call the trained model in saved_lr variable using model_name param.
         The file must be in current directory.
 
     Parameters
     ----------
-    
     model_name : string, default = none
     Name of pickle file to be passed as a string.
 
     Returns:
     --------    
     Success Message
-    
 
     Warnings:
     ---------
@@ -2715,6 +2693,7 @@ def load_model(model_name):
     return joblib.load(model_name)
 
 
+
 def save_experiment(experiment_name=None):
     
         
@@ -2722,39 +2701,35 @@ def save_experiment(experiment_name=None):
           
     Description:
     ------------
-    This function saves the entire experiment in current active directory. All 
-    the outputs using pycaret are internally saved into a binary list which is
+    This function saves the entire experiment into the current active directory. 
+    All outputs using pycaret are internally saved into a binary list which is
     pickilized when save_experiment() is used. 
     
         Example:
         --------
-        
         save_experiment()
         
-        This will save the entire experiment in current active directory. By 
-        default name of experiment will use session_id generated during setup().
-        To use custom name, experiment_name param has to be passed as string.
-        
-        For example:
+        This will save the entire experiment into the current active directory. 
+        By default, the name of the experiment will use the session_id generated 
+        during setup(). To use a custom name, a string must be passed to the 
+        experiment_name param. For example:
         
         save_experiment('experiment_23122019')
 
     Parameters
     ----------
-    
     experiment_name : string, default = none
     Name of pickle file to be passed as a string.
 
     Returns:
     --------    
     Success Message
-    
 
     Warnings:
     ---------
-    None    
-       
-         
+    None
+      
+          
     """
     
     #general dependencies
@@ -2774,27 +2749,25 @@ def save_experiment(experiment_name=None):
     print('Experiment Succesfully Saved')
 
 
+
 def load_experiment(experiment_name):
     
     """
           
     Description:
     ------------
-    This function loads the prior saved experiment from current active directory 
-    into current python notebook. Load object must be a pickle file.
+    This function loads a previously saved experiment from the current active 
+    directory into current python environment. Load object must be a pickle file.
     
         Example:
         --------
-        
         saved_experiment = load_experiment('experiment_23122019')
         
-        This will load the entire experiment pipeline into object saved_experiment
-        using experiment_name param. The experiment file must be in current directory.
-        
+        This will load the entire experiment pipeline into the object 
+        saved_experiment. The experiment file must be in current directory.
         
     Parameters
     ----------
-    
     experiment_name : string, default = none
     Name of pickle file to be passed as a string.
 
@@ -2802,12 +2775,11 @@ def load_experiment(experiment_name):
     --------    
     Information Grid containing details of saved objects in experiment pipeline.
     
-
     Warnings:
     ---------
-    None    
-       
-         
+    None  
+      
+          
     """
     
     #general dependencies
@@ -2830,6 +2802,7 @@ def load_experiment(experiment_name):
     return exp
 
 
+
 def get_topics(data, text, model=None, num_topics=4):
     
     """
@@ -2843,3 +2816,5 @@ def get_topics(data, text, model=None, num_topics=4):
     c = create_model(model=model, num_topics=num_topics, verbose=False)
     dataset = assign_model(c, verbose=False)
     return dataset
+
+

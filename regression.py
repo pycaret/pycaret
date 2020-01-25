@@ -4178,7 +4178,6 @@ def stack_models(estimator_list,
 
 
 
-
 def create_stacknet(estimator_list,
                     meta_model = None,
                     fold = 10,
@@ -4371,14 +4370,15 @@ def create_stacknet(estimator_list,
     for item in base_level:
             base_level_names = np.append(base_level_names, str(item).split("(")[0])
     
+    
     base_level_fixed = []
     
     for i in base_level_names:
         if 'CatBoostRegressor' in i:
             a = 'CatBoostRegressor'
             base_level_fixed.append(a)
-    else:
-        base_level_fixed.append(i)
+        else:
+            base_level_fixed.append(i)
         
     base_level_names = base_level_fixed
         
@@ -4684,6 +4684,7 @@ def create_stacknet(estimator_list,
     else:
         clear_output()
         return models_ 
+
 
 
 

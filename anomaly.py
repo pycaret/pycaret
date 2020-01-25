@@ -932,7 +932,7 @@ def tune_model(model=None,
         
     Description:
     ------------
-   This function tunes the fraction parameter using a predefined grid with
+    This function tunes the fraction parameter using a predefined grid with
     the objective of optimizing a supervised learning metric as defined in 
     the optimize param. You can choose the supervised estimator from a large 
     library available in pycaret. By default, supervised estimator is Linear. 
@@ -945,7 +945,7 @@ def tune_model(model=None,
         boston = get_data('boston')
         experiment_name = setup(data = boston, normalize = True)
         
-        tuned_knn = tune_model(model = 'knn', supervised_target = 'medv', optimize = 'R2') 
+        tuned_knn = tune_model(model = 'knn', supervised_target = 'medv') 
         
         This will return tuned k-Nearest Neighbors model.
 
@@ -971,7 +971,7 @@ def tune_model(model=None,
     Stochastic Outlier Selection       'sos'                module-pyod.models.sos
     
     supervised_target: string
-    Name of target column for supervised learning. It cannot be None.
+    Name of the target column for supervised learning.
     
     method: string, default = 'drop'
     When method set to drop, it will drop the outlier rows from training dataset 
@@ -1027,7 +1027,7 @@ def tune_model(model=None,
     Light Gradient Boosting       'lightgbm'             Regression
     CatBoost Regressor            'catboost'             Regression
     
-    If set to None, default is Linear model for both classification
+    If set to None, Linear model is used by default for both classification
     and regression tasks.
     
     optimize: string, default = None
