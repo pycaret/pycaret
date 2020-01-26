@@ -4623,7 +4623,7 @@ def stack_models(estimator_list,
     
     #defining data_X and data_y
     if finalize:
-        data_X = X_.copy()
+        data_X = X.copy()
         data_y = y.copy()
     else:       
         data_X = X_train.copy()
@@ -6350,7 +6350,11 @@ def save_model(model, model_name, verbose=True):
         print('Transformation Pipeline and Model Succesfully Saved')
 
 
-def load_model(model_name, verbose=True):
+
+def load_model(model_name, 
+               platform = None, 
+               authentication = None,
+               verbose=True):
     
     """
           
@@ -6371,6 +6375,16 @@ def load_model(model_name, verbose=True):
     ----------
     model_name : string, default = none
     Name of pickle file to be passed as a string.
+      
+    platform: string, default = None
+    Name of platform, if loading model from cloud. Current available options are:
+    'aws'.
+    
+    authentication : dict
+    dictionary of applicable authentication tokens. 
+    
+     When platform = 'aws': 
+     {'bucket' : 'Name of Bucket on S3'}
     
     verbose: Boolean, default = True
     Success message is not printed when verbose is set to False.
@@ -6385,8 +6399,29 @@ def load_model(model_name, verbose=True):
        
          
     """
+    #exception checking
+    import sys
+    
+    if platform is not None:
+        if authentication is None:
+            sys.exit("(Value Error): Authentication is missing.")
         
+    #cloud provider
+    if platform == 'aws':
         
+        import boto3
+        bucketname = authentication.get('bucket')
+        filename = str(model_name) + '.pkl'
+        s3 = boto3.resource('s3')
+        s3.Bucket(bucketname).download_file(filename, filename)
+        filename = str(model_name)
+        model = load_model(filename, verbose=False)
+        
+        if verbose:
+            print('Transformation Pipeline and Model Sucessfully Loaded')
+            
+        return model
+
     import joblib
     model_name = model_name + '.pkl'
     if verbose:
@@ -6504,8 +6539,103 @@ def load_experiment(experiment_name):
 
 
 
+def deploy_model(model, 
+                 model_name, 
+                 authentication,
+                 platform = 'aws'):
+    
+    """
+       
+    Description:
+    ------------
+    This function deploys the transformation pipeline and trained model object 
+    for production use. Platform of deployment can be defined under platform
+    param along with applicable authentication tokens to be passed as dictionary
+    in authentication param.
+    
+        Example:
+        --------
+        from pycaret.datasets import get_data
+        juice = get_data('juice')
+        experiment_name = setup(data = juice,  target = 'Purchase')
+        lr = create_model('lr')
+        
+        deploy_model(model = lr, model_name = 'deploy_lr', platform = 'aws', 
+                     authentication = {'bucket' : 'pycaret-test'})
+        
+        This will deploy the model on AWS S3 account under bucket 'pycaret-test'
+        
+        For AWS users:
+        --------------
+        Before deploying a model to AWS S3 ('aws'), environment variables must be 
+        configured using command line interface. To configure AWS environment variables, 
+        type aws configure in your python command line, it requires following information
+        that can be generated using Identity and Access Management (IAM) portal of your
+        amazon console account:
+        
+           - AWS Access Key ID
+           - AWS Secret Key Access
+           - Default Region Name (can be seen under Global settings on your AWS console)
+           - Default output format (must be left blank)
+
+    Parameters
+    ----------
+    model : object
+    A trained model object should be passed as an estimator. 
+    
+    model_name : string
+    Name of model to be passed as a string.
+    
+    authentication : dict
+    dictionary of applicable authentication tokens. 
+      
+     When platform = 'aws': 
+     {'bucket' : 'Name of Bucket on S3'}
+    
+    platform: string, default = 'aws'
+    Name of platform for deployment. Current available options are: 'aws'.
+
+    Returns:
+    --------    
+    Success Message
+    
+    Warnings:
+    ---------
+    None    
+    
+    """
+    
+    #general dependencies
+    import ipywidgets as ipw
+    import pandas as pd
+    from IPython.display import clear_output, update_display
+        
+    try:
+        model = finalize_model(model)
+    except:
+        pass
+    
+    if platform == 'aws':
+        
+        import boto3
+        
+        save_model(model, model_name = model_name, verbose=False)
+        
+        #initiaze s3
+        s3 = boto3.client('s3')
+        filename = str(model_name)+'.pkl'
+        key = str(model_name)+'.pkl'
+        bucket_name = authentication.get('bucket')
+        s3.upload_file(filename,bucket_name,key)
+        clear_output()
+        print("Model Succesfully Deployed on AWS S3")
+
+
+
 def predict_model(estimator, 
-                  data=None):
+                  data=None,
+                  platform=None,
+                  authentication=None):
     
     """
        
@@ -6529,11 +6659,23 @@ def predict_model(estimator,
         
     Parameters
     ----------
-    estimator : object or list of objects, default = None
-    
+    estimator : object or list of objects / string,  default = None
+    When estimator is passed as string, load_model() is called internally to load the
+    pickle file from active directory or cloud platform when platform param is passed.
+     
     data : {array-like, sparse matrix}, shape (n_samples, n_features) where n_samples 
     is the number of samples and n_features is the number of features. All features 
     used during training must be present in the new dataset.
+    
+    platform: string, default = None
+    Name of platform, if loading model from cloud. Current available options are:
+    'aws'.
+    
+    authentication : dict
+    dictionary of applicable authentication tokens. 
+    
+     When platform = 'aws': 
+     {'bucket' : 'Name of Bucket on S3'}
     
     Returns:
     --------
@@ -6564,12 +6706,39 @@ def predict_model(estimator,
     from copy import deepcopy
     from IPython.display import clear_output, update_display
     
+    if type(estimator) is str:
+        if platform == 'aws':
+            estimator = load_model(str(estimator), platform='aws', 
+                                   authentication={'bucket': authentication.get('bucket')},
+                                   verbose=False)
+            
+        else:
+            estimator = load_model(str(estimator), verbose=False)
+            
     estimator = deepcopy(estimator)
+    estimator_ = estimator
     clear_output()
     
-    #check if estimator is string, then load model
-    if type(estimator) is str:
-        estimator = load_model(estimator, verbose=False)
+    if type(estimator_) is list:
+
+        if 'sklearn.pipeline.Pipeline' in str(type(estimator_[0])):
+
+            prep_pipe_transformer = estimator_.pop(0)
+            model = estimator_[0]
+            estimator = estimator_[0]
+                
+        else:
+
+            prep_pipe_transformer = prep_pipe
+            model = estimator
+            estimator = estimator
+            
+    else:
+
+        prep_pipe_transformer = prep_pipe
+        model = estimator
+        estimator = estimator
+        
         
     #dataset
     if data is None:
@@ -6584,42 +6753,25 @@ def predict_model(estimator,
         X_test_.reset_index(drop=True, inplace=True)
         y_test_.reset_index(drop=True, inplace=True)
         
-        model = estimator
+        estimator_ = estimator
         
     else:
         
-        estimator_ = estimator
-        
-        if type(estimator_) is list:
-            
-            if 'sklearn.pipeline.Pipeline' in str(type(estimator_[0])):
-            
-                prep_pipe_transformer = estimator_.pop(0)
-                model = estimator_[0]
-                estimator = estimator_[0]
-                
-            else:
-                
-                prep_pipe_transformer = prep_pipe
-                model = estimator
-                estimator = estimator
-            
-        else:
-            
-            prep_pipe_transformer = prep_pipe
-            model = estimator
-            estimator = estimator
-        
-        try:
-            model = finalize_model(estimator)
-        except:
-            model = estimator
-            
         Xtest = prep_pipe_transformer.transform(data)                     
         X_test_ = data.copy() #original concater
-        
+
         Xtest.reset_index(drop=True, inplace=True)
         X_test_.reset_index(drop=True, inplace=True)
+    
+        estimator_ = estimator
+        
+        
+    #try:
+    #    model = finalize_model(estimator)
+    #except:
+    #    model = estimator
+            
+
 
     if type(estimator) is list:
         
@@ -7045,3 +7197,4 @@ def predict_model(estimator,
             
 
     return X_test_
+

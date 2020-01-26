@@ -2105,8 +2105,10 @@ def save_model(model, model_name, verbose=True):
 
 
 
-
-def load_model(model_name, verbose=True):
+def load_model(model_name, 
+               platform = None,
+               authentication = None,
+               verbose=True):
     
     """
           
@@ -2139,6 +2141,28 @@ def load_model(model_name, verbose=True):
          
     """
         
+    #exception checking
+    import sys
+    
+    if platform is not None:
+        if authentication is None:
+            sys.exit("(Value Error): Authentication is missing.")
+        
+    #cloud provider
+    if platform == 'aws':
+        
+        import boto3
+        bucketname = authentication.get('bucket')
+        filename = str(model_name) + '.pkl'
+        s3 = boto3.resource('s3')
+        s3.Bucket(bucketname).download_file(filename, filename)
+        filename = str(model_name)
+        model = load_model(filename, verbose=False)
+        
+        if verbose:
+            print('Transformation Pipeline and Model Sucessfully Loaded')
+            
+        return model
         
     import joblib
     model_name = model_name + '.pkl'
@@ -2259,8 +2283,105 @@ def load_experiment(experiment_name):
 
 
 
+def deploy_model(model, 
+                 model_name, 
+                 authentication,
+                 platform = 'aws'):
+    
+    """
+       
+    Description:
+    ------------
+    This function deploys the transformation pipeline and trained model object 
+    for production use. Platform of deployment can be defined under platform
+    param along with applicable authentication tokens to be passed as dictionary
+    in authentication param.
+    
+        Example:
+        --------
+        from pycaret.datasets import get_data
+        anomaly = get_data('anomaly')
+        experiment_name = setup(data = anomaly, normalize=True)
+        knn = create_model('knn')
+        
+        deploy_model(model = knn, model_name = 'deploy_knn', platform = 'aws', 
+                     authentication = {'bucket' : 'pycaret-test'})
+        
+        This will deploy the model on AWS S3 account under bucket 'pycaret-test'
+        
+        For AWS users:
+        --------------
+        Before deploying a model to AWS S3 ('aws'), environment variables must be 
+        configured using command line interface. To configure AWS environment variables, 
+        type aws configure in your python command line, it requires following information
+        that can be generated using Identity and Access Management (IAM) portal of your
+        amazon console account:
+        
+           - AWS Access Key ID
+           - AWS Secret Key Access
+           - Default Region Name (can be seen under Global settings on your AWS console)
+           - Default output format (must be left blank)
+
+    Parameters
+    ----------
+    model : object
+    A trained model object should be passed as an estimator. 
+    
+    model_name : string
+    Name of model to be passed as a string.
+    
+    authentication : dict
+    dictionary of applicable authentication tokens. 
+      
+     When platform = 'aws': 
+     {'bucket' : 'Name of Bucket on S3'}
+    
+    platform: string, default = 'aws'
+    Name of platform for deployment. Current available options are: 'aws'.
+
+    Returns:
+    --------    
+    Success Message
+    
+    Warnings:
+    ---------
+    None
+      
+       
+    """
+    
+    #general dependencies
+    import ipywidgets as ipw
+    import pandas as pd
+    from IPython.display import clear_output, update_display
+        
+    try:
+        model = finalize_model(model)
+    except:
+        pass
+    
+    if platform == 'aws':
+        
+        import boto3
+        
+        save_model(model, model_name = model_name, verbose=False)
+        
+        #initiaze s3
+        s3 = boto3.client('s3')
+        filename = str(model_name)+'.pkl'
+        key = str(model_name)+'.pkl'
+        bucket_name = authentication.get('bucket')
+        s3.upload_file(filename,bucket_name,key)
+        clear_output()
+        print("Model Succesfully Deployed on AWS S3")
+
+
+
+
 def predict_model(model, 
-                  data):
+                  data,
+                  platform=None,
+                  authentication=None):
     
     """
        
@@ -2281,7 +2402,9 @@ def predict_model(model,
         
     Parameters
     ----------
-    model : object, default = None
+    model : object / string,  default = None
+    When model is passed as string, load_model() is called internally to load the
+    pickle file from active directory or cloud platform when platform param is passed.
     
     data : {array-like, sparse matrix}, shape (n_samples, n_features) where n_samples 
     is the number of samples and n_features is the number of features. All features 
@@ -2305,6 +2428,7 @@ def predict_model(model,
     #no active tests
     
     #general dependencies
+    from IPython.display import clear_output, update_display
     import numpy as np
     import pandas as pd
     import re
@@ -2315,10 +2439,17 @@ def predict_model(model,
     #copy data and model
     data__ = data.copy()
     model_ = deepcopy(model)
+    clear_output()
     
-    #check if estimator is string, then load model
     if type(model) is str:
-        model_ = load_model(model, verbose=False)
+        if platform == 'aws':
+            model_ = load_model(str(model), platform='aws', 
+                                   authentication={'bucket': authentication.get('bucket')},
+                                   verbose=False)
+            
+        else:
+            model_ = load_model(str(model), verbose=False)
+            
         
     #separate prep_data pipeline
     if type(model_) is list:
@@ -2341,8 +2472,10 @@ def predict_model(model,
     #predictions start here
     _data_ = prep_pipe_transformer.transform(data__)
     pred = model.predict(_data_)
+    pred_score = model.decision_scores_
         
     data__['Label'] = pred
+    data__['Score'] = pred_score
     
     return data__
 
