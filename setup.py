@@ -27,7 +27,7 @@ def readme():
 
 setup(
     name="pycaret",
-    version="0.0.24",
+    version="0.0.25",
     description="A Python package for supervised and unsupervised machine learning.",
     long_description=readme(),
     long_description_content_type="text/markdown",
