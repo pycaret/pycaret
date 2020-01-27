@@ -5300,6 +5300,7 @@ def finalize_model(estimator):
     return model_final
 
 
+
 def save_model(model, model_name, verbose=True):
     
     """
@@ -5343,11 +5344,16 @@ def save_model(model, model_name, verbose=True):
             
     """
     
+    model_ = []
+    model_.append(prep_pipe)
+    model_.append(model)
+    
     import joblib
     model_name = model_name + '.pkl'
-    joblib.dump(model, model_name)
+    joblib.dump(model_, model_name)
     if verbose:
         print('Transformation Pipeline and Model Succesfully Saved')
+
 
 
 
@@ -5706,6 +5712,7 @@ def predict_model(estimator,
     #no active tests
     
     #general dependencies
+    import sys
     import numpy as np
     import pandas as pd
     import re
@@ -5713,19 +5720,22 @@ def predict_model(estimator,
     from copy import deepcopy
     from IPython.display import clear_output, update_display
     
+    estimator = deepcopy(estimator)
+    clear_output()
+    
     if type(estimator) is str:
         if platform == 'aws':
-            estimator = load_model(str(estimator), platform='aws', 
+            estimator_ = load_model(str(estimator), platform='aws', 
                                    authentication={'bucket': authentication.get('bucket')},
                                    verbose=False)
             
         else:
-            estimator = load_model(str(estimator), verbose=False)
-            
-    estimator = deepcopy(estimator)
-    estimator_ = estimator
-    clear_output()
-
+            estimator_ = load_model(str(estimator), verbose=False)
+    
+    else:
+        
+        estimator_ = estimator
+        
     if type(estimator_) is list:
 
         if 'sklearn.pipeline.Pipeline' in str(type(estimator_[0])):
@@ -5735,16 +5745,28 @@ def predict_model(estimator,
             estimator = estimator_[0]
 
         else:
+            
+            try:
+
+                prep_pipe_transformer = prep_pipe
+                model = estimator
+                estimator = estimator
+                
+            except:
+                
+                sys.exit("(Type Error): Transformation Pipe Missing. ")
+            
+    else:
+        
+        try:
 
             prep_pipe_transformer = prep_pipe
             model = estimator
             estimator = estimator
-
-    else:
-
-        prep_pipe_transformer = prep_pipe
-        model = estimator
-        estimator = estimator
+            
+        except:
+            
+            sys.exit("(Type Error): Transformation Pipe Missing. ")
             
     #dataset
     if data is None:
@@ -5771,7 +5793,6 @@ def predict_model(estimator,
         X_test_.reset_index(drop=True, inplace=True)
         
         estimator_ = estimator
-        
 
     #try:
     #    model = finalize_model(estimator)

@@ -6699,6 +6699,7 @@ def predict_model(estimator,
     #no active tests
     
     #general dependencies
+    import sys
     import numpy as np
     import pandas as pd
     import re
@@ -6706,19 +6707,22 @@ def predict_model(estimator,
     from copy import deepcopy
     from IPython.display import clear_output, update_display
     
+    estimator = deepcopy(estimator)
+    clear_output()
+    
     if type(estimator) is str:
         if platform == 'aws':
-            estimator = load_model(str(estimator), platform='aws', 
+            estimator_ = load_model(str(estimator), platform='aws', 
                                    authentication={'bucket': authentication.get('bucket')},
                                    verbose=False)
             
         else:
-            estimator = load_model(str(estimator), verbose=False)
+            estimator_ = load_model(str(estimator), verbose=False)
             
-    estimator = deepcopy(estimator)
-    estimator_ = estimator
-    clear_output()
-    
+    else:
+        
+        estimator_ = estimator
+
     if type(estimator_) is list:
 
         if 'sklearn.pipeline.Pipeline' in str(type(estimator_[0])):
@@ -6728,17 +6732,28 @@ def predict_model(estimator,
             estimator = estimator_[0]
                 
         else:
+            
+            try:
+
+                prep_pipe_transformer = prep_pipe
+                model = estimator
+                estimator = estimator
+                
+            except:
+                
+                sys.exit("(Type Error): Transformation Pipe Missing. ")
+            
+    else:
+        
+        try:
 
             prep_pipe_transformer = prep_pipe
             model = estimator
             estimator = estimator
             
-    else:
-
-        prep_pipe_transformer = prep_pipe
-        model = estimator
-        estimator = estimator
-        
+        except:
+            
+            sys.exit("(Type Error): Transformation Pipe Missing. ")
         
     #dataset
     if data is None:
@@ -6753,6 +6768,7 @@ def predict_model(estimator,
         X_test_.reset_index(drop=True, inplace=True)
         y_test_.reset_index(drop=True, inplace=True)
         
+        model = estimator
         estimator_ = estimator
         
     else:
@@ -6765,13 +6781,10 @@ def predict_model(estimator,
     
         estimator_ = estimator
         
-        
     #try:
     #    model = finalize_model(estimator)
     #except:
     #    model = estimator
-            
-
 
     if type(estimator) is list:
         
@@ -7197,4 +7210,5 @@ def predict_model(estimator,
             
 
     return X_test_
+
 
