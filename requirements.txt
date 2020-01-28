@@ -4,7 +4,7 @@ seaborn
 matplotlib
 IPython
 joblib
-scikit-learn
+scikit-learn==0.22
 shap==0.32.1
 ipywidgets
 yellowbrick==1.0.1
@@ -28,5 +28,7 @@ datefinder==0.7.0
 datetime
 DateTime==4.3
 tqdm==4.36.1
-awscli
+awscli==1.17.9
 boto3
+s3transfer==0.3.2
+botocore==1.14.9
