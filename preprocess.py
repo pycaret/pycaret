@@ -10,10 +10,17 @@ from ipywidgets import Layout
 from sklearn.base import BaseEstimator , TransformerMixin
 from sklearn.preprocessing import StandardScaler
 from sklearn.preprocessing import MinMaxScaler
+from sklearn.preprocessing import RobustScaler
+from sklearn.preprocessing import MaxAbsScaler
 from sklearn.preprocessing import PowerTransformer
 from sklearn.preprocessing import QuantileTransformer
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.decomposition import PCA
+from sklearn.decomposition import KernelPCA
+from sklearn.cross_decomposition import PLSRegression
+from sklearn.manifold import TSNE
+from sklearn.decomposition import IncrementalPCA
+from sklearn.preprocessing import KBinsDiscretizer
 import sys 
 from sklearn.pipeline import Pipeline
 from sklearn import metrics
@@ -105,7 +112,7 @@ class DataTypes_Auto_infer(BaseEstimator,TransformerMixin):
             max_number = max(data[i])
             arr = np.arange(min_number,max_number+1,1)
             try:
-              all_match = sum(data[i] == arr)
+              all_match = sum(data[i].sort_values() == arr)
               if all_match == len_samples:
                 self.id_columns.append(i) 
             except:
@@ -533,6 +540,187 @@ class Surrogate_Imputer(BaseEstimator,TransformerMixin):
     data= self.fit(data)
     return(self.transform(data))
 # _______________________________________________________________________________________________________________________
+# Zero and Near Zero Variance
+class Zroe_NearZero_Variance(BaseEstimator,TransformerMixin):
+  '''
+    - it eliminates the features having zero variance
+    - it eliminates the features haveing near zero variance
+    - Near zero variance is determined by 
+      -1) Count of unique points divided by the total length of the feature has to be lower than a pre sepcified threshold 
+      -2) Most common point(count) divided by the second most common point(count) in the feature is greater than a pre specified threshold
+      Once both conditions are met , the feature is dropped  
+    -Ignores target variable
+      
+      Args: 
+        threshold_1: float (between 0.0 to 1.0) , default is .10 
+        threshold_2: int (between 1 to 100), default is 20 
+        tatget variable : string, name of the target variable
+
+  '''
+
+  def __init__(self,target,threshold_1=0.1,threshold_2=20):
+    self.threshold_1 = threshold_1
+    self.threshold_2 = threshold_2
+    self.target = target
+  
+  def fit(self,dataset,y=None): # from training data set we are going to learn what columns to drop
+    data = dataset.copy()
+    self.to_drop= []
+    self.sampl_len = len(data[self.target])
+    for i in data.drop(self.target,axis=1).columns:
+      # get the number of unique counts
+      u = pd.DataFrame( data[i].value_counts()).sort_values(by=i,ascending=False, inplace=False)
+      # take len of u and divided it by the total sample numbers, so this will check the 1st rule , has to be low say 10%
+      #import pdb; pdb.set_trace()
+      first=len(u)/self.sampl_len
+      # then check if most common divided by 2nd most common ratio is 20 or more
+      if len(u[i]) == 1: # this means that if column is non variance , automatically make the number big to drop it
+        second=100
+      else:
+        second = u.iloc[0,0]/u.iloc[1,0]
+    # if both conditions are true then drop the column, however, we dont want to alter column that indicate NA's
+      if ((first <= 0.10) and (second >=20) and (i[-10:]!='_surrogate')):
+        self.to_drop.append(i) 
+    # now drop if the column has zero variance
+      if (((second ==100) and (i[-10:]!='_surrogate'))):
+        self.to_drop.append(i) 
+
+  
+  def transform(self,dataset,y=None): # since it is only for training data set , nothing here
+    data= dataset.copy()
+    data.drop(self.to_drop,axis=1,inplace=True)
+    return(data)
+  
+  def fit_transform(self,dataset,y=None):
+    data= dataset.copy()
+    self.fit(data)
+    return(self.transform(data))
+#____________________________________________________________________________________________________________________________
+# rare catagorical variables
+class Catagorical_variables_With_Rare_levels(BaseEstimator,TransformerMixin):
+  '''
+    -Merges levels in catagorical features with more frequent level  if they appear less than a threshold count 
+      e.g. Col=[a,a,a,a,b,b,c,c]
+      if threshold is set to 2 , then c will be mrged with b because both are below threshold
+      There has to be atleast two levels belwo threshold for this to work 
+      the process will keep going until all the levels have atleast 2(threshold) counts
+    -Only handles catagorical features
+    -It is recommended to run the Zroe_NearZero_Variance and Define_dataTypes first
+    -Ignores target variable 
+      Args: 
+        threshold: int , default 10
+        target: string , name of the target variable
+        new_level_name: string , name given to the new level generated, default 'others'
+
+  '''
+
+  def __init__(self,target,new_level_name='others_infrequent',threshold=.05):
+    self.threshold = threshold
+    self.target = target
+    self.new_level_name = new_level_name
+  def fit(self,dataset,y=None): # we will learn for what columnns what are the level to merge as others
+    # every level of the catagorical feature has to be more than threshols, if not they will be clubed togather as "others"
+    # in order to apply, there should be atleast two levels belwo the threshold ! 
+    # creat a place holder
+    data = dataset.copy()
+    self.ph = pd.DataFrame(columns=data.drop(self.target,axis=1).select_dtypes(include="object").columns)
+    #ph.columns = df.columns# catagorical only 
+    for i in data[self.ph.columns].columns:
+        # determine the infrequebt count
+        v_c = data[i].value_counts()
+        count_th = round(v_c.quantile(self.threshold))
+        a = np.sum(pd.DataFrame(data[i].value_counts().sort_values()) [i]  <= count_th)
+        if a >= 2: # rare levels has to be atleast two
+          count = pd.DataFrame( data[i].value_counts().sort_values())
+          count.columns = ['fre']
+          count = count[count['fre']<=count_th]
+          to_club = list(count.index)
+          self.ph.loc[0,i] = to_club
+        else:
+          self.ph.loc[0,i] = []
+    # # also need to make a place holder that keep records of all the levels , and in case a new level appears in test we will change it to others
+    # self.ph_level = pd.DataFrame(columns=data.drop(self.target,axis=1).select_dtypes(include="object").columns)
+    # for i in self.ph_level.columns:
+    #   self.ph_level.loc[0,i] = list(data[i].value_counts().sort_values().index)
+
+  
+  def transform(self,dataset,y=None): # 
+    # transorm 
+    data = dataset.copy()
+    for i in data[self.ph.columns].columns:
+      t_replace = self.ph.loc[0,i]
+      data[i].replace(to_replace=t_replace,value=self.new_level_name,inplace=True)
+    return(data)
+  
+  def fit_transform(self,dataset,y=None):
+    data = dataset.copy()
+    self.fit(data)
+    return(self.transform(data))
+
+
+#____________________________________________________________________________________________________________________________________________________________________
+# Binning for Continious
+class Binning(BaseEstimator,TransformerMixin):
+  '''
+    - Converts numerical variables to catagorical variable through binning
+    - Number of binns are automitically determined through Sturges method
+    - Once discretize, original feature will be dropped
+        Args:
+            features_to_discretize: list of featur names to be binned
+
+  '''
+
+  def __init__(self, features_to_discretize):
+    self.features_to_discretize =features_to_discretize
+    return(None)
+
+  def fit(self,data,y=None):
+    return(None)
+
+  def transform(self,dataset,y=None):
+    data = dataset.copy()
+    #only do if features are provided
+    if len(self.features_to_discretize) > 0:
+      data_t = self.disc.transform(np.array(data[self.features_to_discretize]).reshape(-1,self.len_columns))
+      # make pandas data frame
+      data_t = pd.DataFrame(data_t,columns=self.features_to_discretize,index=data.index)
+      # all these columns are catagorical
+      data_t = data_t.astype(str)
+      # drop original columns
+      data.drop(self.features_to_discretize,axis=1,inplace=True)
+      # add newly created columns
+      data = pd.concat((data,data_t),axis=1)
+    return(data)
+
+  def fit_transform(self,dataset,y=None):
+    data = dataset.copy()
+    # only do if features are given
+
+    if len(self.features_to_discretize) > 0:
+
+      # place holder for all the features for their binns  
+      self.binns = []
+      for i in self.features_to_discretize:
+        # get numbr of binns
+        hist, bin_edg = np.histogram(data[i],bins='sturges')
+        self.binns.append(len(hist))
+
+      # how many colums to deal with
+      self.len_columns = len(self.features_to_discretize)
+      # now do fit transform 
+      self.disc = KBinsDiscretizer(n_bins=self.binns, encode='ordinal', strategy='kmeans')
+      data_t = self.disc.fit_transform(np.array(data[self.features_to_discretize]).reshape(-1,self.len_columns))
+      # make pandas data frame
+      data_t = pd.DataFrame(data_t,columns=self.features_to_discretize,index=data.index)
+      # all these columns are catagorical
+      data_t = data_t.astype(str)
+      # drop original columns
+      data.drop(self.features_to_discretize,axis=1,inplace=True)
+      # add newly created columns
+      data = pd.concat((data,data_t),axis=1)
+
+    return(data)
+# ______________________________________________________________________________________________________________________
 # Scaling & Power Transform
 class Scaling_and_Power_transformation(BaseEstimator,TransformerMixin):
   '''
@@ -541,14 +729,16 @@ class Scaling_and_Power_transformation(BaseEstimator,TransformerMixin):
     - ignores target variable 
       Args: 
         target: string , name of the target variable
-        function_to_apply: string , default 'zscore' (standard scaler), all other {'minmaxm','yj','quantile'} ( min max,yeo-johnson & quantile power transformation )
+        function_to_apply: string , default 'zscore' (standard scaler), all other {'minmaxm','yj','quantile','robust','maxabs'} ( min max,yeo-johnson & quantile power transformation, robust and MaxAbs scaler )
 
   '''
 
-  def __init__(self,target,function_to_apply='zscore',random_state_quantile=42):
+  def __init__(self,target,function_to_apply='zscore',random_state_quantile=42, transform_target=False,ml_usecase='ignore'):
     self.target = target
     self.function_to_apply = function_to_apply
     self.random_state_quantile = random_state_quantile
+    self.transform_target = transform_target
+    self.ml_usecase = ml_usecase
   
   def fit(self,dataset,y=None):
     data = dataset.copy()
@@ -567,12 +757,18 @@ class Scaling_and_Power_transformation(BaseEstimator,TransformerMixin):
       elif  self.function_to_apply == 'quantile':
         self.scale_and_power = QuantileTransformer(random_state=self.random_state_quantile,output_distribution='normal')
         self.scale_and_power.fit(data[self.numeric_features])
-      
+      elif  self.function_to_apply == 'robust':
+        self.scale_and_power = RobustScaler()
+        self.scale_and_power.fit(data[self.numeric_features])
+      elif  self.function_to_apply == 'maxabs':
+        self.scale_and_power = MaxAbsScaler()
+        self.scale_and_power.fit(data[self.numeric_features])
 
       else:
         return(None)
     else:
       return(None)
+    
 
   
   def transform(self,dataset,y=None):
@@ -590,8 +786,15 @@ class Scaling_and_Power_transformation(BaseEstimator,TransformerMixin):
     else:
       return(data) 
 
-  def fit_transform(self,data,y=None):
+  def fit_transform(self,dataset,y=None):
+    data = dataset.copy()
     self.fit(data)
+    # convert target if appropriate
+    # default behavious is quantile transformer
+    if ((self.ml_usecase == 'regression') and (self.transform_target == True)):
+      self.scale_and_power_target = QuantileTransformer(random_state=self.random_state_quantile,output_distribution='normal')
+      data[self.target]=self.scale_and_power_target.fit_transform(np.array(data[self.target]).reshape(-1,1))
+      
     return(self.transform(data))
 # __________________________________________________________________________________________________________________________
 # Time feature extractor
@@ -816,17 +1019,20 @@ class Empty(BaseEstimator,TransformerMixin):
   def fit_transform(self,data,y=None):
     return(self.transform(data))
 #____________________________________________________________________________________________________________________________________________________________________
-# Simple Liner PCA transformer
-class Liner_PCA(BaseEstimator,TransformerMixin):
+# reduce feature space
+class Reduce_Dimensions_For_Unsupervised_Path(BaseEstimator,TransformerMixin):
   '''
-    - Takes DF, return same DF with PCA 
+    - Takes DF, return same DF with different types of dimensionality reduction modles (pca_liner , pca_kernal, tsne , incremental)
+    - except pca_liner, every other method takes integer as number of components 
     - only takes numeric variables (float & One Hot Encoded)
+    - it is intended to solve unsupervised ML usecases , such as Clustering / Anomaly detection (so it only applies to transform one hot encoded data)
   '''
 
-  def __init__(self, target, variance_retained=.99, random_state=42):
+  def __init__(self, target, method='pca_liner', variance_retained_or_number_of_components=.99, random_state=42):
     self.target= target
-    self.variance_retained = variance_retained
+    self.variance_retained = variance_retained_or_number_of_components
     self.random_state= random_state
+    self.method = method
     return(None)
 
   def fit(self,data,y=None):
@@ -848,7 +1054,117 @@ class Liner_PCA(BaseEstimator,TransformerMixin):
     if self.is_categ > 0:
       # We are only running this if 
       # define
+      if self.method == 'pca_liner':
+        self.pca = PCA(self.variance_retained,random_state=self.random_state)
+        # fit transform
+        data_pca = self.pca.fit_transform(dataset.drop(self.target,axis=1))
+        data_pca = pd.DataFrame(data_pca)
+        data_pca.columns = ["Component_"+str(i) for i in np.arange(1,len(data_pca.columns)+1)]
+        data_pca.index = dataset.index
+        data_pca[self.target] = dataset[self.target]
+        return(data_pca)
+      elif self.method == 'pca_kernal': # take number of components only
+        self.pca = KernelPCA(self.variance_retained,kernel='rbf',random_state=self.random_state,n_jobs=-1)
+        # fit transform
+        data_pca = self.pca.fit_transform(dataset.drop(self.target,axis=1))
+        data_pca = pd.DataFrame(data_pca)
+        data_pca.columns = ["Component_"+str(i) for i in np.arange(1,len(data_pca.columns)+1)]
+        data_pca.index = dataset.index
+        data_pca[self.target] = dataset[self.target]
+        return(data_pca)
+      elif self.method == 'tsne': # take number of components only
+        self.pca = TSNE(self.variance_retained,random_state=self.random_state)
+        # fit transform
+        data_pca = self.pca.fit_transform(dataset.drop(self.target,axis=1))
+        data_pca = pd.DataFrame(data_pca)
+        data_pca.columns = ["Component_"+str(i) for i in np.arange(1,len(data_pca.columns)+1)]
+        data_pca.index = dataset.index
+        data_pca[self.target] = dataset[self.target]
+        return(data_pca)
+      elif self.method == 'incremental': # take number of components only
+        self.pca = IncrementalPCA(self.variance_retained)
+        # fit transform
+        data_pca = self.pca.fit_transform(dataset.drop(self.target,axis=1))
+        data_pca = pd.DataFrame(data_pca)
+        data_pca.columns = ["Component_"+str(i) for i in np.arange(1,len(data_pca.columns)+1)]
+        data_pca.index = dataset.index
+        data_pca[self.target] = dataset[self.target]
+        return(data_pca)
+      else:
+        return(dataset)
+    
+    else:
+      return(dataset)
+#____________________________________________________________________________________________________________________________________________________________________
+# reduce feature space
+class Reduce_Dimensions_For_Supervised_Path(BaseEstimator,TransformerMixin):
+  '''
+    - Takes DF, return same DF with different types of dimensionality reduction modles (pca_liner , pca_kernal, tsne , pls, incremental)
+    - except pca_liner, every other method takes integer as number of components 
+    - only takes numeric variables (float & One Hot Encoded)
+    - it is intended to solve supervised ML usecases , such as classification / regression
+  '''
+
+  def __init__(self, target, method='pca_liner', variance_retained_or_number_of_components=.99, random_state=42):
+    self.target= target
+    self.variance_retained = variance_retained_or_number_of_components
+    self.random_state= random_state
+    self.method = method
+    return(None)
+
+  def fit(self,data,y=None):
+    return(None)
+
+  def transform(self,dataset,y=None):
+    if self.method in ['pca_liner' , 'pca_kernal', 'tsne' , 'pls', 'incremental']:
+      data_pca = self.pca.transform(dataset)
+      data_pca = pd.DataFrame(data_pca)
+      data_pca.columns = ["Component_"+str(i) for i in np.arange(1,len(data_pca.columns)+1)]
+      data_pca.index = dataset.index
+      return(data_pca)
+    else:
+      return(dataset)
+
+  def fit_transform(self,dataset,y=None):
+
+    if self.method == 'pca_liner':
       self.pca = PCA(self.variance_retained,random_state=self.random_state)
+      # fit transform
+      data_pca = self.pca.fit_transform(dataset.drop(self.target,axis=1))
+      data_pca = pd.DataFrame(data_pca)
+      data_pca.columns = ["Component_"+str(i) for i in np.arange(1,len(data_pca.columns)+1)]
+      data_pca.index = dataset.index
+      data_pca[self.target] = dataset[self.target]
+      return(data_pca)
+    elif self.method == 'pca_kernal': # take number of components only
+      self.pca = KernelPCA(self.variance_retained,kernel='rbf',random_state=self.random_state,n_jobs=-1)
+      # fit transform
+      data_pca = self.pca.fit_transform(dataset.drop(self.target,axis=1))
+      data_pca = pd.DataFrame(data_pca)
+      data_pca.columns = ["Component_"+str(i) for i in np.arange(1,len(data_pca.columns)+1)]
+      data_pca.index = dataset.index
+      data_pca[self.target] = dataset[self.target]
+      return(data_pca)
+    elif self.method == 'pls': # take number of components only
+      self.pca = PLSRegression(self.variance_retained,scale=False)
+      # fit transform
+      data_pca = self.pca.fit_transform(dataset.drop(self.target,axis=1),dataset[self.target])[0] 
+      data_pca = pd.DataFrame(data_pca)
+      data_pca.columns = ["Component_"+str(i) for i in np.arange(1,len(data_pca.columns)+1)]
+      data_pca.index = dataset.index
+      data_pca[self.target] = dataset[self.target]
+      return(data_pca)
+    elif self.method == 'tsne': # take number of components only
+      self.pca = TSNE(self.variance_retained,random_state=self.random_state)
+      # fit transform
+      data_pca = self.pca.fit_transform(dataset.drop(self.target,axis=1))
+      data_pca = pd.DataFrame(data_pca)
+      data_pca.columns = ["Component_"+str(i) for i in np.arange(1,len(data_pca.columns)+1)]
+      data_pca.index = dataset.index
+      data_pca[self.target] = dataset[self.target]
+      return(data_pca)
+    elif self.method == 'incremental': # take number of components only
+      self.pca = IncrementalPCA(self.variance_retained)
       # fit transform
       data_pca = self.pca.fit_transform(dataset.drop(self.target,axis=1))
       data_pca = pd.DataFrame(data_pca)
@@ -862,10 +1178,14 @@ class Liner_PCA(BaseEstimator,TransformerMixin):
 
 #___________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________
 # preprocess_all_in_one
-def Preprocess_Path_One(train_data,target_variable,ml_usecase=None,test_data =None,categorical_features=[],numerical_features=[],time_features=[],features_todrop=[],
-                               imputation_type = "simple imputer" ,numeric_imputation_strategy='mean',categorical_imputation_strategy='not_available',
+def Preprocess_Path_One(train_data,target_variable,ml_usecase=None,test_data =None,categorical_features=[],numerical_features=[],time_features=[],features_todrop=[],display_types=True,
+                                imputation_type = "simple imputer" ,numeric_imputation_strategy='mean',categorical_imputation_strategy='not_available',
+                                apply_zero_nearZero_variance = False,
+                                club_rare_levels = False, rara_level_threshold_percentage =0.05,
+                                apply_binning=False, features_to_binn =[],
                                 scale_data= False, scaling_method='zscore',
-                                Power_transform_data = False, Power_transform_method ='quantile',
+                                Power_transform_data = False, Power_transform_method ='quantile', target_transformation= False,
+                                apply_pca = False , pca_method = 'pca_liner',pca_variance_retained_or_number_of_components =.99 ,
                                 random_state=42
 
                                ):
@@ -874,9 +1194,15 @@ def Preprocess_Path_One(train_data,target_variable,ml_usecase=None,test_data =No
     Follwoing preprocess steps are taken:
       - 1) Auto infer data types 
       - 2) Impute (simple or with surrogate columns)
-      - 3) Scales & Power Transform (zscore,minmax,yeo-johnson,quantile)
-      - 4) Remove special characters from column names such as commas, square brackets etc to make it competible with jason dependednt models
-      - 3) One Hot / Dummy encoding
+      - 3) Generate sub features from time feature such as 'month','weekday',is_month_end','is_month_start' & 'hour'
+      - 4) Drop categorical variables that have zero variance or near zero variance
+      - 5) Club categorical variables levels togather as a new level (other_infrequent) that are rare / at the bottom 5% of the variable distribution
+      - 6) Apply binning to continious variable when numeric features are provided as a list 
+      - 7) Scales & Power Transform (zscore,minmax,yeo-johnson,quantile,maxabs,robust) , including option to transform target variable
+      - 8) Remove special characters from column names such as commas, square brackets etc to make it competible with jason dependednt models
+      - 9) One Hot / Dummy encoding
+      -10) Apply diamension reduction techniques such as pca_liner, pca_kernal, incremental, tsne & pls
+          - except for pca_liner, all other method only takes number of component (as integer) i.e no variance explaination metohd available  
   '''
 
   # WE NEED TO AUTO INFER the ml use case
@@ -892,7 +1218,7 @@ def Preprocess_Path_One(train_data,target_variable,ml_usecase=None,test_data =No
   
   
   global dtypes 
-  dtypes = DataTypes_Auto_infer(target=target_variable,ml_usecase=ml_usecase,categorical_features=categorical_features,numerical_features=numerical_features,time_features=time_features,features_todrop=features_todrop)
+  dtypes = DataTypes_Auto_infer(target=target_variable,ml_usecase=ml_usecase,categorical_features=categorical_features,numerical_features=numerical_features,time_features=time_features,features_todrop=features_todrop,display_types=display_types)
 
   
   # for imputation
@@ -901,15 +1227,38 @@ def Preprocess_Path_One(train_data,target_variable,ml_usecase=None,test_data =No
     imputer = Simple_Imputer(numeric_strategy=numeric_imputation_strategy, target_variable= target_variable,categorical_strategy=categorical_imputation_strategy)
   else:
     imputer = Surrogate_Imputer(numeric_strategy=numeric_imputation_strategy,categorical_strategy=categorical_imputation_strategy,target_variable=target_variable)
+  
+  # for zero_near_zero
+  global znz
+  if apply_zero_nearZero_variance == True:
+    znz = Zroe_NearZero_Variance(target=target_variable)
+  else:
+    znz = Empty()
+
+  # for rare levels clubbing:
+  global club_R_L
+  if club_rare_levels == True:
+    club_R_L = Catagorical_variables_With_Rare_levels(target=target_variable,threshold=rara_level_threshold_percentage)
+  else:
+    club_R_L= Empty()
+
+  # binning 
+  global binn
+
+  if apply_binning == True:
+    binn = Binning(features_to_discretize=features_to_binn)
+  else:
+    binn = Empty()
+
 
   global scaling ,P_transform
   if scale_data == True:
-    scaling = Scaling_and_Power_transformation(target=target_variable,function_to_apply=scaling_method)
+    scaling = Scaling_and_Power_transformation(target=target_variable,function_to_apply=scaling_method,random_state_quantile=random_state)
   else: 
     scaling = Empty()
   
   if Power_transform_data== True:
-    P_transform = Scaling_and_Power_transformation(target=target_variable,function_to_apply=Power_transform_method,random_state_quantile=random_state)
+    P_transform = Scaling_and_Power_transformation(target=target_variable,function_to_apply=Power_transform_method,random_state_quantile=random_state,transform_target=target_transformation,ml_usecase=ml_usecase)
   else:
     P_transform= Empty()
 
@@ -922,16 +1271,27 @@ def Preprocess_Path_One(train_data,target_variable,ml_usecase=None,test_data =No
   # clean column names for special char
   clean_names =Clean_Colum_Names()
   
+  
+  # apply pca
+  global pca
+  if apply_pca == True:
+    pca = Reduce_Dimensions_For_Supervised_Path(target=target_variable,method = pca_method ,variance_retained_or_number_of_components=pca_variance_retained_or_number_of_components, random_state=random_state)
+  else:
+    pca= Empty()
 
   global pipe
   pipe = Pipeline([
                  ('dtypes',dtypes),
                  ('imputer',imputer),
+                 ('znz',znz),
+                 ('club_R_L',club_R_L),
+                 ('binn',binn),
                  ('feature_time',feature_time),
                  ('scaling',scaling),
                  ('P_transform',P_transform),
                  ('dummy',dummy),
-                 ('clean_names',clean_names)
+                 ('clean_names',clean_names),
+                 ('pca',pca)
                  ])
   
   if test_data is not None:
@@ -944,22 +1304,31 @@ def Preprocess_Path_One(train_data,target_variable,ml_usecase=None,test_data =No
 # ______________________________________________________________________________________________________________________________________________________
 # preprocess_all_in_one_unsupervised
 def Preprocess_Path_Two(train_data,ml_usecase=None,test_data =None,categorical_features=[],numerical_features=[],time_features=[],features_todrop=[],display_types=False,
-                               imputation_type = "simple imputer" ,numeric_imputation_strategy='mean',categorical_imputation_strategy='not_available',
+                                imputation_type = "simple imputer" ,numeric_imputation_strategy='mean',categorical_imputation_strategy='not_available',
+                                apply_zero_nearZero_variance = True,
+                                club_rare_levels = True, rara_level_threshold_percentage =0.05,
+                                apply_binning=False, features_to_binn =[],
                                 scale_data= False, scaling_method='zscore',
-                                Power_transform_data = False, Power_transform_method ='quantile',
-                                apply_pca = True , pca_variance_retained =.99 , 
+                                Power_transform_data = False, Power_transform_method ='quantile', target_transformation= False,
+                                apply_pca = True , pca_method = 'pca_liner',pca_variance_retained_or_number_of_components =.99 , 
                                 random_state=42
 
                                ):
   
   '''
     Follwoing preprocess steps are taken:
-      - THIS IS BUILD OF UNSUPERVISED LEARNING , FOLLOWES SAME PATH AS PATH ONE
+      - THIS IS BUILt FOR UNSUPERVISED LEARNING , FOLLOWES SAME PATH AS Path_One
       - 1) Auto infer data types 
       - 2) Impute (simple or with surrogate columns)
-      - 3) Scales & Power Transform (zscore,minmax,yeo-johnson,quantile)
-      - 4) Remove special characters from column names such as commas, square brackets etc to make it competible with jason dependednt models
-      - 3) One Hot / Dummy encoding
+      - 3) Generate sub features from time feature such as 'month','weekday',is_month_end','is_month_start' & 'hour'
+      - 4) Drop categorical variables that have zero variance or near zero variance
+      - 5) Club categorical variables levels togather as a new level (other_infrequent) that are rare / at the bottom 5% of the variable distribution
+      - 6) Apply binning to continious variable when numeric features are provided as a list 
+      - 7) Scales & Power Transform (zscore,minmax,yeo-johnson,quantile,maxabs,robust) , including option to transform target variable
+      - 8) Remove special characters from column names such as commas, square brackets etc to make it competible with jason dependednt models
+      - 9) One Hot / Dummy encoding
+      -10) Apply diamension reduction techniques such as pca_liner, pca_kernal, incremental, tsne & pls
+          - except for pca_liner, all other method only takes number of component (as integer) i.e no variance explaination metohd available  
   '''
   
   # just make a dummy target variable
@@ -985,15 +1354,38 @@ def Preprocess_Path_Two(train_data,ml_usecase=None,test_data =None,categorical_f
     imputer = Simple_Imputer(numeric_strategy=numeric_imputation_strategy, target_variable= target_variable,categorical_strategy=categorical_imputation_strategy)
   else:
     imputer = Surrogate_Imputer(numeric_strategy=numeric_imputation_strategy,categorical_strategy=categorical_imputation_strategy,target_variable=target_variable)
+  
+  # for zero_near_zero
+  global znz
+  if apply_zero_nearZero_variance == True:
+    znz = Zroe_NearZero_Variance(target=target_variable)
+  else:
+    znz = Empty()
+ 
+  # for rare levels clubbing:
+  global club_R_L
+  if club_rare_levels == True:
+    club_R_L = Catagorical_variables_With_Rare_levels(target=target_variable,threshold=rara_level_threshold_percentage)
+  else:
+    club_R_L= Empty()
+  
+  # binning 
+  global binn
 
+  if apply_binning == True:
+    binn = Binning(features_to_discretize=features_to_binn)
+  else:
+    binn = Empty()
+  
+  # for scaling
   global scaling ,P_transform
   if scale_data == True:
-    scaling = Scaling_and_Power_transformation(target=target_variable,function_to_apply=scaling_method)
+    scaling = Scaling_and_Power_transformation(target=target_variable,function_to_apply=scaling_method,random_state_quantile=random_state)
   else: 
     scaling = Empty()
   
   if Power_transform_data== True:
-    P_transform = Scaling_and_Power_transformation(target=target_variable,function_to_apply=Power_transform_method,random_state_quantile=random_state)
+    P_transform = Scaling_and_Power_transformation(target=target_variable,function_to_apply=Power_transform_method,random_state_quantile=random_state,transform_target=target_transformation,ml_usecase=ml_usecase,)
   else:
     P_transform= Empty()
 
@@ -1009,7 +1401,8 @@ def Preprocess_Path_Two(train_data,ml_usecase=None,test_data =None,categorical_f
   # apply pca
   global pca
   if apply_pca == True:
-    pca = Liner_PCA(target=target_variable, variance_retained=pca_variance_retained, random_state=random_state)
+    pca = Reduce_Dimensions_For_Supervised_Path(target=target_variable,method = pca_method ,variance_retained_or_number_of_components=pca_variance_retained_or_number_of_components, random_state=random_state)
+  
   else:
     pca= Empty()
 
@@ -1017,6 +1410,9 @@ def Preprocess_Path_Two(train_data,ml_usecase=None,test_data =None,categorical_f
   pipe = Pipeline([
                  ('dtypes',dtypes),
                  ('imputer',imputer),
+                 ('znz',znz),
+                 ('club_R_L',club_R_L),
+                 ('binn',binn),
                  ('feature_time',feature_time),
                  ('scaling',scaling),
                  ('P_transform',P_transform),
@@ -1032,3 +1428,4 @@ def Preprocess_Path_Two(train_data,ml_usecase=None,test_data =None,categorical_f
   else:
     train_t = pipe.fit_transform(train_data)
     return(train_t.drop(target_variable,axis=1))
+

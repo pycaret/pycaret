@@ -18,6 +18,13 @@ def setup(data,
           normalize_method = 'zscore',
           transformation = False,
           transformation_method = 'yeo-johnson',
+          pca = False, #new
+          pca_method = 'linear', #new
+          pca_components = None, #new
+          ignore_low_variance = False, #new
+          combine_rare_levels = False, #new
+          rare_level_threshold = 0.10, #new
+          bin_numeric_features = None, #new
           session_id = None,
           profile = False):
     
@@ -39,8 +46,7 @@ def setup(data,
         
         experiment_name = setup(data = boston,  target = 'medv')
 
-        'boston' is a pandas DataFrame and 'medv' is the continuous target column in
-         the dataframe.
+        'boston' is a pandas DataFrame and 'medv' is the name of target column.
 
     Parameters
     ----------
@@ -52,78 +58,141 @@ def setup(data,
     
     train_size: float, default = 0.7
     Size of the training set. By default, 70% of the data will be used for training 
-    and validation. Remaining data will be used for test / hold-out set.
+    and validation. The remaining data will be used for test / hold-out set.
 
     sampling: bool, default = True
-    When sample size exceeds 25,000 samples, pycaret will build a base estimator 
+    When the sample size exceeds 25,000 samples, pycaret will build a base estimator
     at various sample size of the original dataset. This will return a performance 
-    R2 at various sample levels, that will assist you in deciding the preferred 
-    sample size for modeling. You are then required to enter the desired sample 
-    size that will be considered for training and validation in the pycaret environment. 
-    When sample_size entered is less than 1, the remaining dataset (1 - sample) is 
-    used in fitting the model only when finalize_model() is called.
+    plot of AUC, Accuracy, Recall, Precision, Kappa and F1 values at various sample 
+    levels, that will assist you in deciding the preferred sample size for modeling. 
+    You are then required to enter the desired sample size that will be considered 
+    for training and validation in the pycaret environment. When sample_size entered 
+    is less than 1, the remaining dataset (1 - sample) is used for fitting the model 
+    only when finalize_model() is called.
     
     sample_estimator: object, default = None
-    If None, Linear Regression is used by default.
+    If None, Logistic Regression is used by default.
     
     categorical_features: string, default = None
     If the inferred data types are not correct, categorical_features can be used to
-    overwrite the inferred type. For example upon running setup if type of column1
-    is inferred as numeric instead of categorical, this parameter can be used to 
-    overwrite by passing categorical_features = 'column1'
+    overwrite the inferred type. If when running setup the type of 'column1' is
+    is inferred as numeric instead of categorical, then this parameter can be used 
+    to overwrite the type by passing categorical_features = ['column1'].
     
     categorical_imputation: string, default = 'constant'
-    If missing values are found in categorical features, it will be imputed with a
-    constant 'not_available' value. Other option available is 'mode' in which case
-    imputation is done by most frequent value.
+    If missing values are found in categorical features, they will be imputed with
+    a constant 'not_available' value. The other available option available is 'mode' 
+    which imputes the value using most frequent value in the training dataset. 
     
     numeric_features: string, default = None
     If the inferred data types are not correct, numeric_features can be used to
-    overwrite the inferred type. For example upon running setup if type of column1
-    is inferred as categorical instead of numeric, this parameter can be used to 
-    overwrite by passing numeric_features = 'column1'    
+    overwrite the inferred type. If when running setup the type of 'column1' is
+    inferred as categorical instead of numeric, then this parameter can be used 
+    to overwrite by passing numeric_features = ['column1'].    
 
     numeric_imputation: string, default = 'mean'
-    If missing values are found in numeric features, it will be imputed with mean
-    value of feature. Other option available is 'median' in which case imputation
-    will be done by median value.
+    If missing values are found in numeric features, they will be imputed with the 
+    mean value of the feature. The other available option is 'median' which imputes 
+    the value using median value in the training dataset. 
     
     date_features: string, default = None
     If data has DateTime column and is not automatically detected when running
-    setup, this parameter can be used to define date_feature by passing
+    setup, this parameter can be used to define date_feature by passing 
     data_features = 'date_column_name'. It can work with multiple date columns.
-    Date columns is not used in modeling, instead feature extraction is performed
-    and date column is dropped from the dataset. Incase the date column as time
-    stamp, it will also extract features related to time / hours.
+    Date columns are not used in modeling. Instead, feature extraction is performed
+    and date columns are dropped from the dataset. If the date column includes time 
+    stamp, it will also extract features related to time.
     
     ignore_features: string, default = None
-    If any feature has to be ignored for modeling, it can be passed in the param
-    ignore_features. ID and DateTime column when inferred, is automatically set
-    ignore for modeling. 
+    If any feature should be ignored for modeling, it can be passed in the param
+    ignore_features. The ID and DateTime columns when inferred, are automatically 
+    set to ignore for modeling. 
     
     normalize: bool, default = False
-    When set to True, transform feature space using normalize_method param defined.
-    Normally, linear algorithms perform better with normalized data. However, the
-    results may vary and it is advised to run multiple experiments to evaluate the
-    benefit of normalization.
+    When set to True, the feature space is transformed using the normalized_method
+    param defined. Generally, linear algorithms perform better with normalized data. 
+    However, the results may vary and it is advised to run multiple experiments to 
+    evaluate the benefit of normalization.
     
     normalize_method: string, default = 'zscore'
     Defines the method to be used for normalization. By default, normalize method
-    is set to 'zscore'. The other available option is 'minmax'.
+    is set to 'zscore'. The standard zscore is calculated as z = (x - u) / s. The
+    other available options are:
+    
+    'minmax'    : scales and translates each feature individually such that it is in 
+                  the range of 0 - 1.
+    
+    'maxabs'    : scales and translates each feature individually such that the maximal 
+                  absolute value of each feature will be 1.0. It does not shift/center 
+                  the data, and thus does not destroy any sparsity.
+    
+    'robust'    : scales and translates each feature according to the Interquartile range.
+                  When dataset consists of ourliers, robust scaler often gives better
+                  results.
     
     transformation: bool, default = False
-    When set to True, apply a power transformation to make data more Gaussian-like
-    This is useful for modeling issues related to heteroscedasticity or other 
-    situations where normality is desired. The optimal parameter for stabilizing 
+    When set to True, a power transformation is applied to make the data more normal /
+    Gaussian-like. This is useful for modeling issues related to heteroscedasticity or 
+    other situations where normality is desired. The optimal parameter for stabilizing 
     variance and minimizing skewness is estimated through maximum likelihood.
     
     transformation_method: string, default = 'yeo-johnson'
-    Defines the method for transformation. By default, transformation method is set
+    Defines the method for transformation. By default, the transformation method is set
     to 'yeo-johnson'. The other available option is 'quantile' transformation. Both 
     the transformation transforms the feature set to follow Gaussian-like or normal
     distribution. Note that quantile transformer is non-linear and may distort linear 
     correlations between variables measured at the same scale.
 
+    pca: bool, default = False
+    When set to True, dimensionality reduction is applied to project the data into 
+    lower dimensional space using the method defined in pca_method param. Generally,
+    in a supervised learning, pca is performed when dealing with very high feature
+    space and memory is a constraint. Note that, not all datasets can be decomposed
+    efficiently using linear PCA technique and applying PCA may result is loss of
+    information. As such, it is advised to run multiple experiments with different 
+    pca_methods to evaluate the impact. 
+
+    pca_method: string, default = 'linear'
+    'linear' method performs Linear dimensionality reduction using Singular Value 
+    Decomposition. The other available options are:
+    
+    kernel      : dimensionality reduction through the use of RVF kernel.  
+    
+    incremental : replacement for 'linear' pca when the dataset to be decomposed is 
+                  too large to fit in memory
+    
+    pls         : dimensionality reduction through supervised PLSregression technique.
+    
+    pca_components: int/float, default = 0.99
+    Number of components to keep. if pca_components is a float, it is treated as 
+    goal percentage for information retention. When pca_components param is integer
+    it is treated as number of features to be kept. pca_components must be strictly
+    less than the original features in dataset.
+    
+    ignore_low_variance: bool, default = False
+    When set to True, All categorical features with statistically insignificant variances 
+    are removed from the dataset. The variance is calculated using ratio of unique values 
+    to number of samples and ratio of most common value to the frequency of second most 
+    common value.
+    
+    combine_rare_levels: bool, default = False
+    When set to True, All levels in categorical features below the threshold defined in
+    rare_level_threshold param is combined together as a single level. rare_level_threshold
+    represents the percentile distribution of specific level. Generally, this features is 
+    applied to limit the sparse matrix caused by high number of levels in categorical 
+    features. 
+    
+    rare_level_threshold: float, default = 0.1
+    percentile distribution below which rare categories are combined. Only comes in effect
+    when combine_rare_levels is set to True.
+    
+    bin_numeric_features: list, default = None
+    When a list of numeric features are passed, they are transformed into categorical
+    features using KMeans, where values in each bin have the same nearest center of a 
+    1D k-means cluster. Number of clusters are determined based on 'sturges' method. 
+    It is only optimal for gaussian data and underestimates number of bins for large 
+    non-gaussian datasets.
+    
     session_id: int, default = None
     If None, a random seed is generated and returned in the Information grid. The 
     unique number is then distributed as a seed in all functions used during the 
@@ -192,15 +261,67 @@ def setup(data,
         sys.exit("(Value Error): numeric_imputation param only accepts 'mean' or 'median' ")
         
     #checking normalize method
-    allowed_normalize_method = ['zscore', 'minmax']
+    allowed_normalize_method = ['zscore', 'minmax', 'maxabs', 'robust']
     if normalize_method not in allowed_normalize_method:
-        sys.exit("(Value Error): normalize_method param only accepts 'zscore' or 'minxmax' ")        
+        sys.exit("(Value Error): normalize_method param only accepts 'zscore', 'minxmax', 'maxabs' or 'robust'. ")      
     
     #checking transformation method
     allowed_transformation_method = ['yeo-johnson', 'quantile']
     if transformation_method not in allowed_transformation_method:
         sys.exit("(Value Error): transformation_method param only accepts 'yeo-johnson' or 'quantile' ")        
         
+    #check pca
+    if type(pca) is not bool:
+        sys.exit('(Type Error): PCA parameter only accepts True or False.')
+        
+    #pca method check
+    allowed_pca_methods = ['linear', 'kernel', 'incremental', 'pls']
+    if pca_method not in allowed_pca_methods:
+        sys.exit("(Value Error): pca method param only accepts 'linear', 'kernel', 'incremental', or 'pls'. ")    
+    
+    #pca components check
+    if pca is True:
+        if pca_method is not 'linear':
+            if pca_components is not None:
+                if(type(pca_components)) is not int:
+                    sys.exit("(Type Error): pca_components parameter must be integer when pca_method is not 'linear'. ")
+
+    #pca components check 2
+    if pca is True:
+        if pca_method is not 'linear':
+            if pca_components is not None:
+                if pca_components > len(data.columns)-1:
+                    sys.exit("(Type Error): pca_components parameter cannot be greater than original features space.")                
+ 
+    #pca components check 3
+    if pca is True:
+        if pca_method is 'linear':
+            if pca_components is not None:
+                if type(pca_components) is not float:
+                    if pca_components > len(data.columns)-1: 
+                        sys.exit("(Type Error): pca_components parameter cannot be greater than original features space or float between 0 - 1.")      
+    
+    #check ignore_low_variance
+    if type(ignore_low_variance) is not bool:
+        sys.exit('(Type Error): ignore_low_variance parameter only accepts True or False.')
+        
+    #check ignore_low_variance
+    if type(combine_rare_levels) is not bool:
+        sys.exit('(Type Error): combine_rare_levels parameter only accepts True or False.')
+        
+    #check rare_level_threshold
+    if type(rare_level_threshold) is not float:
+        sys.exit('(Type Error): rare_level_threshold must be a float between 0 and 1. ')
+    
+    #bin numeric features
+    if bin_numeric_features is not None:
+        all_cols = list(data.columns)
+        all_cols.remove(target)
+        
+        for i in bin_numeric_features:
+            if i not in all_cols:
+                sys.exit("(Value Error): Column type forced is either target column or doesn't exist in the dataset.")
+                
     #cannot drop target
     if ignore_features is not None:
         if target in ignore_features:
@@ -334,6 +455,41 @@ def setup(data,
     elif transformation_method == 'quantile':
         trans_method_pass = 'quantile'
     
+    #pass method
+    if pca_method == 'linear':
+        pca_method_pass = 'pca_liner'
+            
+    elif pca_method == 'kernel':
+        pca_method_pass = 'pca_kernal'
+            
+    elif pca_method == 'incremental':
+        pca_method_pass = 'incremental'
+            
+    elif pca_method == 'pls':
+        pca_method_pass = 'pls'
+        
+    #pca components
+    if pca is True:
+        if pca_components is None:
+            if pca_method == 'linear':
+                pca_components_pass = 0.99
+            else:
+                pca_components_pass = int((len(data.columns)-1)*0.5)
+                
+        else:
+            pca_components_pass = pca_components
+            
+    else:
+        pca_components_pass = 0.99
+        
+    if bin_numeric_features is None:
+        apply_binning_pass = False
+        features_to_bin_pass = []
+    
+    else:
+        apply_binning_pass = True
+        features_to_bin_pass = bin_numeric_features
+        
     #import library
     from pycaret import preprocess
     
@@ -349,6 +505,16 @@ def setup(data,
                                           scaling_method = normalize_method,
                                           Power_transform_data = transformation,
                                           Power_transform_method = trans_method_pass,
+                                          apply_pca = pca, #new
+                                          pca_method = pca_method_pass, #new
+                                          pca_variance_retained_or_number_of_components = pca_components_pass, #new
+                                          apply_zero_nearZero_variance = ignore_low_variance, #new
+                                          club_rare_levels = combine_rare_levels, #new
+                                          rara_level_threshold_percentage = rare_level_threshold, #new
+                                          apply_binning = apply_binning_pass, #new
+                                          features_to_binn = features_to_bin_pass, #new
+                                          display_types = True, #this is for inferred input box
+                                          target_transformation = False, #to be dealt later
                                           random_state = seed)
 
     progress.value += 1
@@ -388,6 +554,26 @@ def setup(data,
     else:
         transformation_grid = 'None'
     
+    if pca is True:
+        pca_method_grid = pca_method
+    else:
+        pca_method_grid = 'None'
+   
+    if pca is True:
+        pca_components_grid = pca_components_pass
+    else:
+        pca_components_grid = 'None'
+    
+    if combine_rare_levels:
+        rare_level_threshold_grid = rare_level_threshold
+    else:
+        rare_level_threshold_grid = 'None'
+    
+    if bin_numeric_features is None:
+        numeric_bin_grid = 'False'
+    else:
+        numeric_bin_grid = 'True'
+        
     learned_types = preprocess.dtypes.learent_dtypes
     learned_types.drop(target, inplace=True)
 
@@ -462,7 +648,7 @@ def setup(data,
             MONITOR UPDATE ENDS
             '''
     
-            X_, X__, y_, y__ = train_test_split(X, y, test_size=1-i)
+            X_, X__, y_, y__ = train_test_split(X, y, test_size=1-i, random_state=seed)
             X_train, X_test, y_train, y_test = train_test_split(X_, y_, test_size=0.3, random_state=seed)
             model.fit(X_train,y_train)
             pred_ = model.predict(X_test)
@@ -544,17 +730,24 @@ def setup(data,
                 print('Setup Succesfully Completed!')    
         
             functions = pd.DataFrame ( [ ['session_id', seed ],
-                                         ['Original Data',X.shape ], 
-                                         ['Sampled Data',X.shape ], 
-                                         ['Sample %',X.shape[0] / X.shape[0]], 
-                                         ['Training Set', X_train.shape ], 
-                                         ['Test / Hold-out Set',X_test.shape ], 
-                                         ['Categorical Features ', cat_type ],
+                                         ['Original Data',data_before_preprocess.shape ], 
                                          ['Numeric Features ', float_type ],
+                                         ['Categorical Features ', cat_type ],
+                                         ['Sampled Data', '(' + str(X_train.shape[0] + X_test.shape[0]) + ', ' + str(data_before_preprocess.shape[1]) + ')' ], 
+                                         ['Transformed Train Set', X_train.shape ], 
+                                         ['Transformed Test Set',X_test.shape ], 
                                          ['Normalize ', normalize ],
                                          ['Normalize Method ', normalize_grid ],
                                          ['Transformation ', transformation ],
                                          ['Transformation Method ', transformation_grid ],
+                                         ['PCA ', pca],
+                                         ['PCA Method ', pca_method_grid],
+                                         ['PCA Components ', pca_components_grid],
+                                         ['Ignore Low Variance ', ignore_low_variance],
+                                         ['Combine Rare Levels ', combine_rare_levels],
+                                         ['Rare Level Threshold ', rare_level_threshold_grid],
+                                         ['Numeric Binning ', numeric_bin_grid],
+                                         ['Missing Values ', missing_flag],
                                          ['Missing Values ', missing_flag],
                                          ['Numeric Imputer ', numeric_imputation],
                                          ['Categorical Imputer ', categorical_imputation],
@@ -610,17 +803,24 @@ def setup(data,
                 print('Setup Succesfully Completed!')
             
             functions = pd.DataFrame ( [ ['session_id', seed ],
-                                         ['Original Data',X.shape ], 
-                                         ['Sampled Data',X_selected.shape ], 
-                                         ['Sample %',X_selected.shape[0] / X.shape[0]], 
-                                         ['Training Set', X_train.shape ], 
-                                         ['Test / Hold-out Set',X_test.shape ], 
-                                         ['Categorical Features ', cat_type ],
+                                         ['Original Data',data_before_preprocess.shape ], 
                                          ['Numeric Features ', float_type ],
+                                         ['Categorical Features ', cat_type ],
+                                         ['Sampled Data', '(' + str(X_train.shape[0] + X_test.shape[0]) + ', ' + str(data_before_preprocess.shape[1]) + ')' ], 
+                                         ['Transformed Train Set', X_train.shape ], 
+                                         ['Transformed Test Set',X_test.shape ], 
                                          ['Normalize ', normalize ],
                                          ['Normalize Method ', normalize_grid ],
                                          ['Transformation ', transformation ],
                                          ['Transformation Method ', transformation_grid ],
+                                         ['PCA ', pca],
+                                         ['PCA Method ', pca_method_grid],
+                                         ['PCA Components ', pca_components_grid],
+                                         ['Ignore Low Variance ', ignore_low_variance],
+                                         ['Combine Rare Levels ', combine_rare_levels],
+                                         ['Rare Level Threshold ', rare_level_threshold_grid],
+                                         ['Numeric Binning ', numeric_bin_grid],
+                                         ['Missing Values ', missing_flag],
                                          ['Missing Values ', missing_flag],
                                          ['Numeric Imputer ', numeric_imputation],
                                          ['Categorical Imputer ', categorical_imputation],
@@ -671,17 +871,24 @@ def setup(data,
         else:
             print('Setup Succesfully Completed!')
         functions = pd.DataFrame ( [ ['session_id', seed ],
-                                     ['Original Data',X.shape ], 
-                                     ['Sampled Data',X.shape ], 
-                                     ['Sample %',X.shape[0] / X.shape[0]], 
-                                     ['Training Set', X_train.shape ], 
-                                     ['Test / Hold-out Set',X_test.shape ], 
-                                     ['Categorical Features ', cat_type ],
+                                     ['Original Data',data_before_preprocess.shape ],
                                      ['Numeric Features ', float_type ],
+                                     ['Categorical Features ', cat_type ],
+                                     ['Sampled Data', '(' + str(X_train.shape[0] + X_test.shape[0]) + ', ' + str(data_before_preprocess.shape[1]) + ')' ], 
+                                     ['Transformed Train Set', X_train.shape ], 
+                                     ['Transformed Test Set',X_test.shape ], 
                                      ['Normalize ', normalize ],
                                      ['Normalize Method ', normalize_grid ],
                                      ['Transformation ', transformation ],
                                      ['Transformation Method ', transformation_grid ],
+                                     ['PCA ', pca],
+                                     ['PCA Method ', pca_method_grid],
+                                     ['PCA Components ', pca_components_grid],
+                                     ['Ignore Low Variance ', ignore_low_variance],
+                                     ['Combine Rare Levels ', combine_rare_levels],
+                                     ['Rare Level Threshold ', rare_level_threshold_grid],
+                                     ['Numeric Binning ', numeric_bin_grid],
+                                     ['Missing Values ', missing_flag],
                                      ['Missing Values ', missing_flag],
                                      ['Numeric Imputer ', numeric_imputation],
                                      ['Categorical Imputer ', categorical_imputation],
@@ -5207,6 +5414,7 @@ def evaluate_model(estimator):
 
 
 
+
 def finalize_model(estimator):
     
     """
@@ -5249,6 +5457,10 @@ def finalize_model(estimator):
        
          
     """
+    
+    #ignore warnings
+    import warnings
+    warnings.filterwarnings('ignore') 
     
     #import depedencies
     from copy import deepcopy
@@ -5344,6 +5556,10 @@ def save_model(model, model_name, verbose=True):
             
     """
     
+    #ignore warnings
+    import warnings
+    warnings.filterwarnings('ignore') 
+    
     model_ = []
     model_.append(prep_pipe)
     model_.append(model)
@@ -5353,7 +5569,6 @@ def save_model(model, model_name, verbose=True):
     joblib.dump(model_, model_name)
     if verbose:
         print('Transformation Pipeline and Model Succesfully Saved')
-
 
 
 
@@ -5405,6 +5620,10 @@ def load_model(model_name,
       
         
     """
+    
+    #ignore warnings
+    import warnings
+    warnings.filterwarnings('ignore') 
     
     #exception checking
     import sys
@@ -5477,6 +5696,10 @@ def save_experiment(experiment_name=None):
          
     """
     
+    #ignore warnings
+    import warnings
+    warnings.filterwarnings('ignore') 
+    
     #general dependencies
     import joblib
     global experiment__
@@ -5492,6 +5715,7 @@ def save_experiment(experiment_name=None):
     joblib.dump(experiment__, experiment_name)
     
     print('Experiment Succesfully Saved')
+
 
 
 def load_experiment(experiment_name):
@@ -5526,6 +5750,10 @@ def load_experiment(experiment_name):
           
     """
     
+    #ignore warnings
+    import warnings
+    warnings.filterwarnings('ignore') 
+    
     #general dependencies
     import joblib
     import pandas as pd
@@ -5544,101 +5772,6 @@ def load_experiment(experiment_name):
     display(ind)
 
     return exp
-
-
-
-
-def deploy_model(model, 
-                 model_name, 
-                 authentication,
-                 platform = 'aws'):
-    
-    """
-       
-    Description:
-    ------------
-    This function deploys the transformation pipeline and trained model object 
-    for production use. Platform of deployment can be defined under platform
-    param along with applicable authentication tokens to be passed as dictionary
-    in authentication param.
-    
-        Example:
-        --------
-        from pycaret.datasets import get_data
-        boston = get_data('boston')
-        experiment_name = setup(data = boston,  target = 'medv')
-        lr = create_model('lr')
-        
-        deploy_model(model = lr, model_name = 'deploy_lr', platform = 'aws', 
-                     authentication = {'bucket' : 'pycaret-test'})
-        
-        This will deploy the model on AWS S3 account under bucket 'pycaret-test'
-        
-        For AWS users:
-        --------------
-        Before deploying a model to AWS S3 ('aws'), environment variables must be 
-        configured using command line interface. To configure AWS environment variables, 
-        type aws configure in your python command line, it requires following information
-        that can be generated using Identity and Access Management (IAM) portal of your
-        amazon console account:
-        
-           - AWS Access Key ID
-           - AWS Secret Key Access
-           - Default Region Name (can be seen under Global settings on your AWS console)
-           - Default output format (must be left blank)
-
-    Parameters
-    ----------
-    model : object
-    A trained model object should be passed as an estimator. 
-    
-    model_name : string
-    Name of model to be passed as a string.
-    
-    authentication : dict
-    dictionary of applicable authentication tokens. 
-      
-     When platform = 'aws': 
-     {'bucket' : 'Name of Bucket on S3'}
-    
-    platform: string, default = 'aws'
-    Name of platform for deployment. Current available options are: 'aws'.
-
-    Returns:
-    --------    
-    Success Message
-    
-    Warnings:
-    ---------
-    None    
-    
-    """
-    
-    #general dependencies
-    import ipywidgets as ipw
-    import pandas as pd
-    from IPython.display import clear_output, update_display
-        
-    try:
-        model = finalize_model(model)
-    except:
-        pass
-    
-    if platform == 'aws':
-        
-        import boto3
-        
-        save_model(model, model_name = model_name, verbose=False)
-        
-        #initiaze s3
-        s3 = boto3.client('s3')
-        filename = str(model_name)+'.pkl'
-        key = str(model_name)+'.pkl'
-        bucket_name = authentication.get('bucket')
-        s3.upload_file(filename,bucket_name,key)
-        clear_output()
-        print("Model Succesfully Deployed on AWS S3")
-
 
 
 def predict_model(estimator, 
@@ -5708,6 +5841,10 @@ def predict_model(estimator,
     
     """
     
+    #ignore warnings
+    import warnings
+    warnings.filterwarnings('ignore') 
+    
     #testing
     #no active tests
     
@@ -5731,11 +5868,11 @@ def predict_model(estimator,
             
         else:
             estimator_ = load_model(str(estimator), verbose=False)
-    
+            
     else:
         
         estimator_ = estimator
-        
+            
     if type(estimator_) is list:
 
         if 'sklearn.pipeline.Pipeline' in str(type(estimator_[0])):
@@ -6097,4 +6234,106 @@ def predict_model(estimator,
             X_test_ = pd.concat([X_test_,label], axis=1)
 
     return X_test_
+
+
+
+def deploy_model(model, 
+                 model_name, 
+                 authentication,
+                 platform = 'aws'):
+    
+    """
+       
+    Description:
+    ------------
+    This function deploys the transformation pipeline and trained model object for
+    production use. The platform of deployment can be defined under the platform
+    param along with the applicable authentication tokens which are passed as a
+    dictionary to the authentication param.
+    
+        Example:
+        --------
+        from pycaret.datasets import get_data
+        boston = get_data('boston')
+        experiment_name = setup(data = boston,  target = 'medv')
+        lr = create_model('lr')
+        
+        deploy_model(model = lr, model_name = 'deploy_lr', platform = 'aws', 
+                     authentication = {'bucket' : 'pycaret-test'})
+        
+        This will deploy the model on AWS S3 account under bucket 'pycaret-test'
+        
+        For AWS users:
+        --------------
+        Before deploying a model to an AWS S3 ('aws'), environment variables must be 
+        configured using the command line interface. To configure AWS env. variables, 
+        type aws configure in your python command line. The following information is
+        required which can be generated using the Identity and Access Management (IAM) 
+        portal of your amazon console account:
+    
+           - AWS Access Key ID
+           - AWS Secret Key Access
+           - Default Region Name (can be seen under Global settings on your AWS console)
+           - Default output format (must be left blank)
+
+    Parameters
+    ----------
+    model : object
+    A trained model object should be passed as an estimator. 
+    
+    model_name : string
+    Name of model to be passed as a string.
+    
+    authentication : dict
+    dictionary of applicable authentication tokens. 
+      
+     When platform = 'aws': 
+     {'bucket' : 'Name of Bucket on S3'}
+    
+    platform: string, default = 'aws'
+    Name of platform for deployment. Current available options are: 'aws'.
+
+    Returns:
+    --------    
+    Success Message
+    
+    Warnings:
+    ---------
+    - This function uses file storage services to deploy the model on cloud platform. 
+      As such, this is efficient for batch-use. Where the production objective is to 
+      obtain prediction at an instance level, this may not be the efficient choice as 
+      it transmits the binary pickle file between your local python environment and
+      the platform. 
+        
+      
+    """
+    
+    #ignore warnings
+    import warnings
+    warnings.filterwarnings('ignore') 
+    
+    #general dependencies
+    import ipywidgets as ipw
+    import pandas as pd
+    from IPython.display import clear_output, update_display
+        
+    try:
+        model = finalize_model(model)
+    except:
+        pass
+    
+    if platform == 'aws':
+        
+        import boto3
+        
+        save_model(model, model_name = model_name, verbose=False)
+        
+        #initiaze s3
+        s3 = boto3.client('s3')
+        filename = str(model_name)+'.pkl'
+        key = str(model_name)+'.pkl'
+        bucket_name = authentication.get('bucket')
+        s3.upload_file(filename,bucket_name,key)
+        clear_output()
+        print("Model Succesfully Deployed on AWS S3")
 
