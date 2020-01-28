@@ -2,10 +2,10 @@
 PyCaret is end-to-end open source machine learning library for python programming language. Its primary objective is to reduce the cycle time of hypothesis to insights by providing an easy to use high level unified API. PyCaret's vision is to become defacto standard for teaching machine learning and data science. Our strength is in our easy to use unified interface for both supervised and unsupervised learning. It saves time and effort that citizen data scientists, students and researchers spent on coding or learning to code using different interfaces, so that now they can focus on business problem.
 
 ## Current Release
-The current release is beta 0.0.26 (as of 27/01/2020). A full release is targetted in the first week of February 2020.
+The current release is beta 0.0.27 (as of 28/01/2020). A full release is targetted in the first week of February 2020.
 
 ## Features Currently Available
-As per beta 0.0.26 following modules are generally available:
+As per beta 0.0.27 following modules are generally available:
 * pycaret.datasets <br/>
 * pycaret.classification (binary and multiclass) <br/>
 * pycaret.regression <br/>
@@ -31,7 +31,7 @@ pip install pycaret
 ```
 
 ## Quick Start
-As of beta 0.0.26 classification, regression, nlp, arules, anomaly and clustering modules are available.
+As of beta 0.0.27 classification, regression, nlp, arules, anomaly and clustering modules are available.
 
 ### Classification / Regression
 

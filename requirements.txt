@@ -28,7 +28,5 @@ datefinder==0.7.0
 datetime
 DateTime==4.3
 tqdm==4.36.1
-awscli==1.17.9
+awscli
 boto3
-s3transfer==0.3.2
-botocore==1.14.9
