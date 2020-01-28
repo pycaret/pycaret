@@ -1,4 +1,4 @@
-age, workclass, education, education-num, marital-status, occupation, relationship, race, sex, capital-gain, capital-loss, hours-per-week, native-country,income >50K
+age,workclass,education,education-num,marital-status,occupation,relationship,race,sex,capital-gain,capital-loss,hours-per-week,native-country,income >50K
 39, State-gov, Bachelors,13, Never-married, Adm-clerical, Not-in-family, White, Male,2174,0,40, United-States,0
 50, Self-emp-not-inc, Bachelors,13, Married-civ-spouse, Exec-managerial, Husband, White, Male,0,0,13, United-States,0
 38, Private, HS-grad,9, Divorced, Handlers-cleaners, Not-in-family, White, Male,0,0,40, United-States,0
