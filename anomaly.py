@@ -2095,7 +2095,8 @@ def tune_model(model=None,
 
 
 def plot_model(model,
-               plot = 'tsne'):
+               plot = 'tsne',
+               feature = None):
     
     
     """
@@ -2129,6 +2130,9 @@ def plot_model(model,
     t-SNE (3d) Dimension Plot      'tsne'
     UMAP Dimensionality Plot       'umap'
 
+    feature : string, default = None
+    feature column is used as a hoverover tooltip. By default, first of column of the
+    dataset is chosen as hoverover tooltip, when no feature is passed.
     
     Returns:
     --------
@@ -2190,11 +2194,19 @@ def plot_model(model,
 
         X = pd.DataFrame(X_embedded)
         X['Label'] = Label
+        
+        if feature is not None: 
+            X['Feature'] = data_[feature]
+        else:
+            X['Feature'] = data_[data_.columns[0]]
 
         import plotly.express as px
         df = X
-        fig = px.scatter_3d(df, x=0, y=1, z=2,
-                      color='Label', title='3d TSNE Plot for Outliers', opacity=0.7, width=900, height=800)
+            
+        fig = px.scatter_3d(df, x=0, y=1, z=2, hover_data=['Feature'], color='Label', title='3d TSNE Plot for Outliers', 
+                                opacity=0.7, width=900, height=800)
+            
+            
         fig.show()
         
     elif plot == 'umap':
@@ -2213,8 +2225,15 @@ def plot_model(model,
         import plotly.express as px
         df = X
         df['Label'] = Label
+        
+        if feature is not None: 
+            df['Feature'] = data_[feature]
+        else:
+            df['Feature'] = data_[data_.columns[0]]
+            
         fig = px.scatter(df, x=0, y=1,
-                      color='Label', title='uMAP Plot for Outliers', opacity=0.7, width=900, height=800)
+                      color='Label', title='uMAP Plot for Outliers', hover_data=['Feature'], opacity=0.7, 
+                         width=900, height=800)
         fig.show() 
 
 
@@ -2577,6 +2596,8 @@ def deploy_model(model,
        
     Description:
     ------------
+    (In Preview)
+
     This function deploys the transformation pipeline and trained model object for
     production use. The platform of deployment can be defined under the platform
     param along with the applicable authentication tokens which are passed as a
@@ -2704,7 +2725,7 @@ def get_outliers(data,
                                        Power_transform_data = transformation,
                                        Power_transform_method = 'yj',
                                        apply_pca = pca,
-                                       pca_variance_retained=pca_components,
+                                       pca_variance_retained_or_number_of_components=pca_components,
                                        random_state = seed)
     
     
@@ -2714,4 +2735,3 @@ def get_outliers(data,
     dataset = assign_model(c, verbose=False)
     
     return dataset
-

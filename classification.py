@@ -25,6 +25,12 @@ def setup(data,
           combine_rare_levels = False, #new
           rare_level_threshold = 0.10, #new
           bin_numeric_features = None, #new
+          remove_outliers = False, #new
+          outliers_threshold = 0.05, #new
+          remove_multicollinearity = False, #new
+          multicollinearity_threshold = 0.9, #new
+          create_clusters = False, #new
+          cluster_iter = 20, #new
           session_id = None,
           profile = False):
     
@@ -163,8 +169,6 @@ def setup(data,
     incremental : replacement for 'linear' pca when the dataset to be decomposed is 
                   too large to fit in memory
     
-    pls         : dimensionality reduction through supervised PLSregression technique.
-    
     pca_components: int/float, default = 0.99
     Number of components to keep. if pca_components is a float, it is treated as 
     goal percentage for information retention. When pca_components param is integer
@@ -194,6 +198,36 @@ def setup(data,
     1D k-means cluster. Number of clusters are determined based on 'sturges' method. 
     It is only optimal for gaussian data and underestimates number of bins for large 
     non-gaussian datasets.
+    
+    remove_outliers: bool, default = False
+    When set to True, outliers from the training data is removed using ensemble of 
+    Isolation Forest, K Nearest Neighbour and PCA Outlier detector. All of them are
+    unsupervised techniques. The contamination percentage is defined using the
+    outliers_threshold parameter.
+    
+    outliers_threshold: float, default = 0.05
+    The percentage / proportion of outliers in the dataset can be defined using
+    outliers_threshold param. By default, 0.05 is used which means 0.025 on each
+    side of distribution tail is dropped from training data.
+    
+    remove_multicollinearity: bool, default = False
+    When set to True, it drops the variables with inter-correlations higher than
+    the threshold defined under multicollinearity_threshold param. When two features
+    are highly correlated with each other, feature with less correlation with target
+    variable is dropped.
+    
+    multicollinearity_threshold: float, default = 0.9
+    Threshold used for dropping the correlated features. Only comes into effect when 
+    remove_multicollinearity is set to True.
+    
+    create_clusters: bool, default = False
+    When set to True, an additional feature is created where each instance is assigned
+    to a cluster. Number of clusters is determined using combination of Calinski-Harabasz 
+    Silhouette criterion. 
+    
+    cluster_iter: int, default = 20
+    Number of iterations for creating cluster. Each iteration represent cluster size.
+    Only comes into effect when create_clusters param is set to True.
     
     session_id: int, default = None
     If None, a random seed is generated and returned in the Information grid. The 
@@ -279,9 +313,9 @@ def setup(data,
         sys.exit('(Type Error): PCA parameter only accepts True or False.')
         
     #pca method check
-    allowed_pca_methods = ['linear', 'kernel', 'incremental', 'pls']
+    allowed_pca_methods = ['linear', 'kernel', 'incremental']
     if pca_method not in allowed_pca_methods:
-        sys.exit("(Value Error): pca method param only accepts 'linear', 'kernel', 'incremental', or 'pls'. ")    
+        sys.exit("(Value Error): pca method param only accepts 'linear', 'kernel', or 'incremental'. ")    
     
     #pca components check
     if pca is True:
@@ -325,6 +359,35 @@ def setup(data,
         for i in bin_numeric_features:
             if i not in all_cols:
                 sys.exit("(Value Error): Column type forced is either target column or doesn't exist in the dataset.")
+
+    #remove_outliers
+    if type(remove_outliers) is not bool:
+        sys.exit('(Type Error): remove_outliers parameter only accepts True or False.')    
+    
+    #outliers_threshold
+    if type(outliers_threshold) is not float:
+        sys.exit('(Type Error): outliers_threshold must be a float between 0 and 1. ')   
+        
+    #remove_multicollinearity
+    if type(remove_multicollinearity) is not bool:
+        sys.exit('(Type Error): remove_multicollinearity parameter only accepts True or False.')
+        
+    #multicollinearity_threshold
+    if type(multicollinearity_threshold) is not float:
+        sys.exit('(Type Error): multicollinearity_threshold must be a float between 0 and 1. ')  
+        
+    #multicollinearity and multiclass check
+    if data[target].value_counts().count() > 2:
+        if remove_multicollinearity is True:
+            sys.exit('(Type Error): remove_multicollinearity cannot be used when target is multiclass. ')  
+    
+    #create_clusters
+    if type(create_clusters) is not bool:
+        sys.exit('(Type Error): create_clusters parameter only accepts True or False.')
+        
+    #cluster_iter
+    if type(cluster_iter) is not int:
+        sys.exit('(Type Error): cluster_iter must be a integer greater than 1. ')                 
 
     #cannot drop target
     if ignore_features is not None:
@@ -516,8 +579,14 @@ def setup(data,
                                           rara_level_threshold_percentage = rare_level_threshold, #new
                                           apply_binning = apply_binning_pass, #new
                                           features_to_binn = features_to_bin_pass, #new
+                                          remove_outliers = remove_outliers, #new
+                                          outlier_contamination_percentage = outliers_threshold, #new
+                                          remove_multicollinearity = remove_multicollinearity, #new
+                                          maximum_correlation_between_features = multicollinearity_threshold, #new
+                                          cluster_entire_data = create_clusters, #new
+                                          range_of_clusters_to_try = cluster_iter, #new
                                           display_types = True, #this is for inferred input box
-                                          target_transformation = False, #to be dealt later
+                                          target_transformation = False, #not needed for classification
                                           random_state = seed)
 
     progress.value += 1
@@ -530,10 +599,10 @@ def setup(data,
 
     else:
         label_encoded = 'None'
-
-
+    
     res_type = ['quit','Quit','exit','EXIT','q','Q','e','E','QUIT','Exit']
     res = preprocess.dtypes.response
+        
     if res in res_type:
         sys.exit("(Process Exit): setup has been interupted with user command 'quit'. setup must rerun." )
     
@@ -577,6 +646,21 @@ def setup(data,
     else:
         numeric_bin_grid = 'True'
     
+    if remove_outliers is False:
+        outliers_threshold_grid = None
+    else:
+        outliers_threshold_grid = outliers_threshold
+    
+    if remove_multicollinearity is False:
+        multicollinearity_threshold_grid = None
+    else:
+        multicollinearity_threshold_grid = multicollinearity_threshold
+    
+    if create_clusters is False:
+        cluster_iter_grid = None
+    else:
+        cluster_iter_grid = cluster_iter
+        
     learned_types = preprocess.dtypes.learent_dtypes
     learned_types.drop(target, inplace=True)
 
@@ -812,6 +896,12 @@ def setup(data,
                                          ['Combine Rare Levels ', combine_rare_levels],
                                          ['Rare Level Threshold ', rare_level_threshold_grid],
                                          ['Numeric Binning ', numeric_bin_grid],
+                                         ['Remove Outliers ', remove_outliers],
+                                         ['Outliers Threshold ', outliers_threshold_grid],
+                                         ['Remove Multicollinearity ', remove_multicollinearity],
+                                         ['Multicollinearity Threshold ', multicollinearity_threshold_grid],
+                                         ['Clustering ', create_clusters],
+                                         ['Clustering Iteration ', cluster_iter_grid],
                                          ['Missing Values ', missing_flag],
                                          ['Numeric Imputer ', numeric_imputation],
                                          ['Categorical Imputer ', categorical_imputation],
@@ -834,7 +924,7 @@ def setup(data,
             '''   
             
             #log into experiment
-            experiment__.append(('Info', functions))
+            experiment__.append(('Classification Setup Config', functions))
             experiment__.append(('X_training Set', X_train))
             experiment__.append(('y_training Set', y_train))
             experiment__.append(('X_test Set', X_test))
@@ -886,6 +976,12 @@ def setup(data,
                                          ['Combine Rare Levels ', combine_rare_levels],
                                          ['Rare Level Threshold ', rare_level_threshold_grid],
                                          ['Numeric Binning ', numeric_bin_grid],
+                                         ['Remove Outliers ', remove_outliers],
+                                         ['Outliers Threshold ', outliers_threshold_grid],
+                                         ['Remove Multicollinearity ', remove_multicollinearity],
+                                         ['Multicollinearity Threshold ', multicollinearity_threshold_grid],
+                                         ['Clustering ', create_clusters],
+                                         ['Clustering Iteration ', cluster_iter_grid],
                                          ['Missing Values ', missing_flag],
                                          ['Numeric Imputer ', numeric_imputation],
                                          ['Categorical Imputer ', categorical_imputation],
@@ -908,7 +1004,7 @@ def setup(data,
             ''' 
             
             #log into experiment
-            experiment__.append(('Info', functions))
+            experiment__.append(('Classification Setup Config', functions))
             experiment__.append(('X_training Set', X_train))
             experiment__.append(('y_training Set', y_train))
             experiment__.append(('X_test Set', X_test))
@@ -955,6 +1051,12 @@ def setup(data,
                                      ['Combine Rare Levels ', combine_rare_levels],
                                      ['Rare Level Threshold ', rare_level_threshold_grid],
                                      ['Numeric Binning ', numeric_bin_grid],
+                                     ['Remove Outliers ', remove_outliers],
+                                     ['Outliers Threshold ', outliers_threshold_grid],
+                                     ['Remove Multicollinearity ', remove_multicollinearity],
+                                     ['Multicollinearity Threshold ', multicollinearity_threshold_grid],
+                                     ['Clustering ', create_clusters],
+                                     ['Clustering Iteration ', cluster_iter_grid],
                                      ['Missing Values ', missing_flag],
                                      ['Numeric Imputer ', numeric_imputation],
                                      ['Categorical Imputer ', categorical_imputation],
@@ -977,7 +1079,7 @@ def setup(data,
         '''   
         
         #log into experiment
-        experiment__.append(('Classification Info', functions))
+        experiment__.append(('Classification Setup Config', functions))
         experiment__.append(('X_training Set', X_train))
         experiment__.append(('y_training Set', y_train))
         experiment__.append(('X_test Set', X_test))
@@ -985,6 +1087,7 @@ def setup(data,
         experiment__.append(('Transformation Pipeline', prep_pipe))
         
         return X, y, X_train, X_test, y_train, y_test, seed, prep_pipe, experiment__
+
 
 
 
@@ -3373,7 +3476,7 @@ def tune_model(estimator = None,
         
         from sklearn.tree import DecisionTreeClassifier
         
-        param_grid = {"max_depth": np.random.randint(3, (len(X_train.columns)*.85),4),
+        param_grid = {"max_depth": np.random.randint(1, (len(X_train.columns)*.85),4),
                   "max_features": np.random.randint(3, len(X_train.columns),4),
                   "min_samples_leaf": [2,3,4],
                   "criterion": ["gini", "entropy"]}
@@ -7353,6 +7456,8 @@ def deploy_model(model,
        
     Description:
     ------------
+    (In Preview)
+
     This function deploys the transformation pipeline and trained model object for
     production use. The platform of deployment can be defined under the platform
     param along with the applicable authentication tokens which are passed as a

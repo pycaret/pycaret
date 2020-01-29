@@ -25,6 +25,14 @@ def setup(data,
           combine_rare_levels = False, #new
           rare_level_threshold = 0.10, #new
           bin_numeric_features = None, #new
+          remove_outliers = False, #new
+          outliers_threshold = 0.05, #new
+          remove_multicollinearity = False, #new
+          multicollinearity_threshold = 0.9, #new
+          create_clusters = False, #new
+          cluster_iter = 20, #new
+          transform_target = False, #new
+          transform_target_method = 'box-cox', #new
           session_id = None,
           profile = False):
     
@@ -161,8 +169,6 @@ def setup(data,
     incremental : replacement for 'linear' pca when the dataset to be decomposed is 
                   too large to fit in memory
     
-    pls         : dimensionality reduction through supervised PLSregression technique.
-    
     pca_components: int/float, default = 0.99
     Number of components to keep. if pca_components is a float, it is treated as 
     goal percentage for information retention. When pca_components param is integer
@@ -183,8 +189,8 @@ def setup(data,
     features. 
     
     rare_level_threshold: float, default = 0.1
-    percentile distribution below which rare categories are combined. Only comes in effect
-    when combine_rare_levels is set to True.
+    percentile distribution below which rare categories are combined. Only comes in 
+    effect when combine_rare_levels is set to True.
     
     bin_numeric_features: list, default = None
     When a list of numeric features are passed, they are transformed into categorical
@@ -192,6 +198,47 @@ def setup(data,
     1D k-means cluster. Number of clusters are determined based on 'sturges' method. 
     It is only optimal for gaussian data and underestimates number of bins for large 
     non-gaussian datasets.
+    
+    remove_outliers: bool, default = False
+    When set to True, outliers from the training data is removed using ensemble of 
+    Isolation Forest, K Nearest Neighbour and PCA Outlier detector. All of them are
+    unsupervised techniques. The contamination percentage is defined using the
+    outliers_threshold parameter.
+    
+    outliers_threshold: float, default = 0.05
+    The percentage / proportion of outliers in the dataset can be defined using
+    outliers_threshold param. By default, 0.05 is used which means 0.025 on each
+    side of distribution tail is dropped from training data.
+    
+    remove_multicollinearity: bool, default = False
+    When set to True, it drops the variables with inter-correlations higher than
+    the threshold defined under multicollinearity_threshold param. When two features
+    are highly correlated with each other, feature with less correlation with target
+    variable is dropped.
+    
+    multicollinearity_threshold: float, default = 0.9
+    Threshold used for dropping the correlated features. Only comes into effect when 
+    remove_multicollinearity is set to True.
+    
+    create_clusters: bool, default = False
+    When set to True, an additional feature is created where each instance is assigned
+    to a cluster. Number of clusters is determined using combination of Calinski-Harabasz 
+    Silhouette criterion. 
+    
+    cluster_iter: int, default = 20
+    Number of iterations for creating cluster. Each iteration represent cluster size.
+    Only comes into effect when create_clusters param is set to True.
+          
+    transform_target: bool, default = False
+    When set to True, target variable is transformed using the method defined in
+    transform_target_method param. Target transformation is applied separately from 
+    feature transformations. 
+    
+    transform_target_method: string, default = 'box-cox'
+    'Box-cox' and 'yeo-johnson' methods are supported. Box-Cox requires input data to 
+    be strictly positive, while Yeo-Johnson supports both positive or negative data.
+    When transform_target_method is 'box-cox' and target variable contains negative
+    values, method is internally forced to 'yeo-johnson' to avoid exceptions.
     
     session_id: int, default = None
     If None, a random seed is generated and returned in the Information grid. The 
@@ -275,9 +322,9 @@ def setup(data,
         sys.exit('(Type Error): PCA parameter only accepts True or False.')
         
     #pca method check
-    allowed_pca_methods = ['linear', 'kernel', 'incremental', 'pls']
+    allowed_pca_methods = ['linear', 'kernel', 'incremental',]
     if pca_method not in allowed_pca_methods:
-        sys.exit("(Value Error): pca method param only accepts 'linear', 'kernel', 'incremental', or 'pls'. ")    
+        sys.exit("(Value Error): pca method param only accepts 'linear', 'kernel', or 'incremental'. ")    
     
     #pca components check
     if pca is True:
@@ -321,7 +368,40 @@ def setup(data,
         for i in bin_numeric_features:
             if i not in all_cols:
                 sys.exit("(Value Error): Column type forced is either target column or doesn't exist in the dataset.")
-                
+    
+    #check transform_target
+    if type(transform_target) is not bool:
+        sys.exit('(Type Error): transform_target parameter only accepts True or False.')
+        
+    #transform_target_method
+    allowed_transform_target_method = ['box-cox', 'yeo-johnson']
+    if transform_target_method not in allowed_transform_target_method:
+        sys.exit("(Value Error): transform_target_method param only accepts 'box-cox' or 'yeo-johnson'. ") 
+    
+    #remove_outliers
+    if type(remove_outliers) is not bool:
+        sys.exit('(Type Error): remove_outliers parameter only accepts True or False.')    
+    
+    #outliers_threshold
+    if type(outliers_threshold) is not float:
+        sys.exit('(Type Error): outliers_threshold must be a float between 0 and 1. ')   
+        
+    #remove_multicollinearity
+    if type(remove_multicollinearity) is not bool:
+        sys.exit('(Type Error): remove_multicollinearity parameter only accepts True or False.')
+        
+    #multicollinearity_threshold
+    if type(multicollinearity_threshold) is not float:
+        sys.exit('(Type Error): multicollinearity_threshold must be a float between 0 and 1. ')  
+        
+    #create_clusters
+    if type(create_clusters) is not bool:
+        sys.exit('(Type Error): create_clusters parameter only accepts True or False.')
+        
+    #cluster_iter
+    if type(cluster_iter) is not int:
+        sys.exit('(Type Error): cluster_iter must be a integer greater than 1. ') 
+        
     #cannot drop target
     if ignore_features is not None:
         if target in ignore_features:
@@ -401,7 +481,7 @@ def setup(data,
     data_before_preprocess = data.copy()
     
     #declaring global variables to be accessed by other functions
-    global X, y, X_train, X_test, y_train, y_test, seed, prep_pipe, experiment__
+    global X, y, X_train, X_test, y_train, y_test, seed, prep_pipe, target_inverse_transformer, experiment__, preprocess
     
     #generate seed to be used globally
     if session_id is None:
@@ -489,6 +569,12 @@ def setup(data,
     else:
         apply_binning_pass = True
         features_to_bin_pass = bin_numeric_features
+    
+    #transform target method
+    if transform_target_method == 'box-cox':
+        transform_target_method_pass = 'bc'
+    elif transform_target_method == 'yeo-johnson':
+        transform_target_method_pass = 'yj'
         
     #import library
     from pycaret import preprocess
@@ -513,8 +599,15 @@ def setup(data,
                                           rara_level_threshold_percentage = rare_level_threshold, #new
                                           apply_binning = apply_binning_pass, #new
                                           features_to_binn = features_to_bin_pass, #new
-                                          display_types = True, #this is for inferred input box
-                                          target_transformation = False, #to be dealt later
+                                          remove_outliers = remove_outliers, #new
+                                          outlier_contamination_percentage = outliers_threshold, #new
+                                          remove_multicollinearity = remove_multicollinearity, #new
+                                          maximum_correlation_between_features = multicollinearity_threshold, #new
+                                          cluster_entire_data = create_clusters, #new
+                                          range_of_clusters_to_try = cluster_iter, #new
+                                          display_types = True, #new #to be parameterized in setup later.
+                                          target_transformation = transform_target, #new
+                                          target_transformation_method = transform_target_method_pass, #new
                                           random_state = seed)
 
     progress.value += 1
@@ -536,6 +629,12 @@ def setup(data,
     
     #save prep pipe
     prep_pipe = preprocess.pipe
+    
+    #save target inverse transformer
+    try:
+        target_inverse_transformer = preprocess.pt_target.p_transform_target
+    except:
+        target_inverse_transformer = None
     
     #generate values for grid show
     missing_values = data_before_preprocess.isna().sum().sum()
@@ -573,7 +672,22 @@ def setup(data,
         numeric_bin_grid = 'False'
     else:
         numeric_bin_grid = 'True'
-        
+    
+    if remove_outliers is False:
+        outliers_threshold_grid = None
+    else:
+        outliers_threshold_grid = outliers_threshold
+    
+    if remove_multicollinearity is False:
+        multicollinearity_threshold_grid = None
+    else:
+        multicollinearity_threshold_grid = multicollinearity_threshold
+    
+    if create_clusters is False:
+        cluster_iter_grid = None
+    else:
+        cluster_iter_grid = cluster_iter
+    
     learned_types = preprocess.dtypes.learent_dtypes
     learned_types.drop(target, inplace=True)
 
@@ -588,12 +702,18 @@ def setup(data,
         elif 'int' in str(i):
             float_type += 1
     
+    #target transformation method
+    if transform_target is False:
+        transform_target_method_grid = None
+    else:
+        transform_target_method_grid = preprocess.pt_target.function_to_apply
+    
     """
     preprocessing ends here
     """
     
     #reset pandas option
-    pd.reset_option("display.max_rows") 
+    pd.reset_option("display.max_rows") #switch back on 
     pd.reset_option("display.max_columns")
     
     
@@ -747,7 +867,14 @@ def setup(data,
                                          ['Combine Rare Levels ', combine_rare_levels],
                                          ['Rare Level Threshold ', rare_level_threshold_grid],
                                          ['Numeric Binning ', numeric_bin_grid],
-                                         ['Missing Values ', missing_flag],
+                                         ['Remove Outliers ', remove_outliers],
+                                         ['Outliers Threshold ', outliers_threshold_grid],
+                                         ['Remove Multicollinearity ', remove_multicollinearity],
+                                         ['Multicollinearity Threshold ', multicollinearity_threshold_grid],
+                                         ['Clustering ', create_clusters],
+                                         ['Clustering Iteration ', cluster_iter_grid],
+                                         ['Transform Target ', transform_target],
+                                         ['Transform Target Method', transform_target_method_grid],
                                          ['Missing Values ', missing_flag],
                                          ['Numeric Imputer ', numeric_imputation],
                                          ['Categorical Imputer ', categorical_imputation],
@@ -770,14 +897,18 @@ def setup(data,
             '''   
             
             #log into experiment
-            experiment__.append(('Info', functions))
+            experiment__.append(('Regression Setup Config', functions))
             experiment__.append(('X_training Set', X_train))
             experiment__.append(('y_training Set', y_train))
             experiment__.append(('X_test Set', X_test))
             experiment__.append(('y_test Set', y_test))
             experiment__.append(('Transformation Pipeline', prep_pipe))
-        
-            return X, y, X_train, X_test, y_train, y_test, seed, prep_pipe, experiment__
+            try:
+                experiment__.append(('Target Inverse Transformer', target_inverse_transformer))
+            except:
+                pass
+            
+            return X, y, X_train, X_test, y_train, y_test, seed, prep_pipe, target_inverse_transformer, experiment__
         
         else:
             
@@ -820,7 +951,14 @@ def setup(data,
                                          ['Combine Rare Levels ', combine_rare_levels],
                                          ['Rare Level Threshold ', rare_level_threshold_grid],
                                          ['Numeric Binning ', numeric_bin_grid],
-                                         ['Missing Values ', missing_flag],
+                                         ['Remove Outliers ', remove_outliers],
+                                         ['Outliers Threshold ', outliers_threshold_grid],
+                                         ['Remove Multicollinearity ', remove_multicollinearity],
+                                         ['Multicollinearity Threshold ', multicollinearity_threshold_grid],
+                                         ['Clustering ', create_clusters],
+                                         ['Clustering Iteration ', cluster_iter_grid],
+                                         ['Transform Target ', transform_target],
+                                         ['Transform Target Method', transform_target_method_grid],
                                          ['Missing Values ', missing_flag],
                                          ['Numeric Imputer ', numeric_imputation],
                                          ['Categorical Imputer ', categorical_imputation],
@@ -843,14 +981,18 @@ def setup(data,
             ''' 
             
             #log into experiment
-            experiment__.append(('Info', functions))
+            experiment__.append(('Regression Setup Config', functions))
             experiment__.append(('X_training Set', X_train))
             experiment__.append(('y_training Set', y_train))
             experiment__.append(('X_test Set', X_test))
             experiment__.append(('y_test Set', y_test))
             experiment__.append(('Transformation Pipeline', prep_pipe))
+            try:
+                experiment__.append(('Target Inverse Transformer', target_inverse_transformer))
+            except:
+                pass
             
-            return X, y, X_train, X_test, y_train, y_test, seed, prep_pipe, experiment__
+            return X, y, X_train, X_test, y_train, y_test, seed, prep_pipe, target_inverse_transformer, experiment__
 
     else:
         
@@ -888,7 +1030,14 @@ def setup(data,
                                      ['Combine Rare Levels ', combine_rare_levels],
                                      ['Rare Level Threshold ', rare_level_threshold_grid],
                                      ['Numeric Binning ', numeric_bin_grid],
-                                     ['Missing Values ', missing_flag],
+                                     ['Remove Outliers ', remove_outliers],
+                                     ['Outliers Threshold ', outliers_threshold_grid],
+                                     ['Remove Multicollinearity ', remove_multicollinearity],
+                                     ['Multicollinearity Threshold ', multicollinearity_threshold_grid],
+                                     ['Clustering ', create_clusters],
+                                     ['Clustering Iteration ', cluster_iter_grid],
+                                     ['Transform Target ', transform_target],
+                                     ['Transform Target Method', transform_target_method_grid],
                                      ['Missing Values ', missing_flag],
                                      ['Numeric Imputer ', numeric_imputation],
                                      ['Categorical Imputer ', categorical_imputation],
@@ -911,14 +1060,18 @@ def setup(data,
         '''   
         
         #log into experiment
-        experiment__.append(('Regression Info', functions))
+        experiment__.append(('Regression Setup Config', functions))
         experiment__.append(('X_training Set', X_train))
         experiment__.append(('y_training Set', y_train))
         experiment__.append(('X_test Set', X_test))
         experiment__.append(('y_test Set', y_test))
         experiment__.append(('Transformation Pipeline', prep_pipe))
+        try:
+            experiment__.append(('Target Inverse Transformer', target_inverse_transformer))
+        except:
+            pass
         
-        return X, y, X_train, X_test, y_train, y_test, seed, prep_pipe, experiment__
+        return X, y, X_train, X_test, y_train, y_test, seed, prep_pipe, target_inverse_transformer, experiment__
 
 
 
@@ -936,7 +1089,7 @@ def create_model(estimator = None,
     ------------
     This function creates a model and scores it using Kfold Cross Validation. 
     (default = 10 Fold). The output prints a score grid that shows MAE, MSE, 
-    RMSE, R2 and Max Error (ME). 
+    RMSE, RMSLE, R2 and MAPE.
 
     This function returns a trained model object. 
 
@@ -1005,8 +1158,9 @@ def create_model(estimator = None,
     --------
 
     score grid:   A table containing the scores of the model across the kfolds. 
-    -----------   Scoring metrics used are MAE, MSE, RMSE, R2 and ME. Mean and 
-                  standard deviation of the scores across the folds are also returned.
+    -----------   Scoring metrics used are MAE, MSE, RMSE, RMSLE, R2 and MAPE. 
+                  Mean and standard deviation of the scores across the folds are 
+                  also returned.
 
     model:        trained model object
     -----------
@@ -1080,10 +1234,12 @@ def create_model(estimator = None,
     import ipywidgets as ipw
     from IPython.display import display, HTML, clear_output, update_display
     import datetime, time
-        
+    
+    #pd.set_option("display.colheader_justify","centre")
+    
     #progress bar
     progress = ipw.IntProgress(value=0, min=0, max=fold+4, step=1 , description='Processing: ')
-    master_display = pd.DataFrame(columns=['MAE','MSE','RMSE', 'R2', 'ME'])
+    master_display = pd.DataFrame(columns=['MAE','MSE','RMSE', 'R2', 'RMSLE', 'MAPE'])
     display(progress)
     
     #display monitor
@@ -1124,13 +1280,19 @@ def create_model(estimator = None,
     score_mae =np.empty((0,0))
     score_mse =np.empty((0,0))
     score_rmse =np.empty((0,0))
+    score_rmsle =np.empty((0,0))
     score_r2 =np.empty((0,0))
-    score_max_error =np.empty((0,0))
+    score_mape =np.empty((0,0))
     avgs_mae =np.empty((0,0))
     avgs_mse =np.empty((0,0))
     avgs_rmse =np.empty((0,0))
     avgs_r2 =np.empty((0,0))
-    avgs_max_error =np.empty((0,0))    
+    avgs_mape =np.empty((0,0)) 
+    avgs_rmsle =np.empty((0,0))
+    
+    def calculate_mape(actual, prediction):
+        mask = actual != 0
+        return (np.fabs(actual - prediction)/actual)[mask].mean()
   
     '''
     MONITOR UPDATE STARTS
@@ -1343,16 +1505,29 @@ def create_model(estimator = None,
         ytrain,ytest = data_y.iloc[train_i], data_y.iloc[test_i]  
         model.fit(Xtrain,ytrain)
         pred_ = model.predict(Xtest)
+        
+        try:
+            pred_ = target_inverse_transformer.inverse_transform(np.array(pred_).reshape(-1,1))
+            ytest = target_inverse_transformer.inverse_transform(np.array(ytest).reshape(-1,1))
+            pred_ = np.nan_to_num(pred_)
+            ytest = np.nan_to_num(ytest)
+            
+        except:
+            pass
+        
         mae = metrics.mean_absolute_error(ytest,pred_)
         mse = metrics.mean_squared_error(ytest,pred_)
         rmse = np.sqrt(mse)
+        rmsle = np.sqrt(np.mean(np.power(np.log(np.array(abs(pred_))+1) - np.log(np.array(abs(ytest))+1), 2)))
         r2 = metrics.r2_score(ytest,pred_)
-        max_error_ = metrics.max_error(ytest,pred_)
+        mape = calculate_mape(ytest,pred_)
+        #max_error_ = metrics.max_error(ytest,pred_)
         score_mae = np.append(score_mae,mae)
         score_mse = np.append(score_mse,mse)
         score_rmse = np.append(score_rmse,rmse)
+        score_rmsle = np.append(score_rmsle,rmsle)
         score_r2 =np.append(score_r2,r2)
-        score_max_error = np.append(score_max_error,max_error_)
+        score_mape = np.append(score_mape,mape)
        
         progress.value += 1
         
@@ -1364,8 +1539,8 @@ def create_model(estimator = None,
         
         '''
         
-        fold_results = pd.DataFrame({'MAE':[mae], 'MSE': [mse], 'RMSE': [rmse], 
-                                     'R2': [r2], 'ME': [max_error_] }).round(round)
+        fold_results = pd.DataFrame({'MAE':[mae], 'MSE': [mse], 'RMSE': [rmse], 'R2': [r2],
+                                     'RMSLE' : [rmsle], 'MAPE': [mape] }).round(round)
         master_display = pd.concat([master_display, fold_results],ignore_index=True)
         fold_results = []
         
@@ -1415,13 +1590,15 @@ def create_model(estimator = None,
     mean_mae=np.mean(score_mae)
     mean_mse=np.mean(score_mse)
     mean_rmse=np.mean(score_rmse)
+    mean_rmsle=np.mean(score_rmsle)
     mean_r2=np.mean(score_r2)
-    mean_max_error=np.mean(score_max_error)
+    mean_mape=np.mean(score_mape)
     std_mae=np.std(score_mae)
     std_mse=np.std(score_mse)
     std_rmse=np.std(score_rmse)
+    std_rmsle=np.std(score_rmsle)
     std_r2=np.std(score_r2)
-    std_max_error=np.std(score_max_error)
+    std_mape=np.std(score_mape)
 
     avgs_mae = np.append(avgs_mae, mean_mae)
     avgs_mae = np.append(avgs_mae, std_mae) 
@@ -1429,17 +1606,19 @@ def create_model(estimator = None,
     avgs_mse = np.append(avgs_mse, std_mse)
     avgs_rmse = np.append(avgs_rmse, mean_rmse)
     avgs_rmse = np.append(avgs_rmse, std_rmse)
+    avgs_rmsle = np.append(avgs_rmsle, mean_rmsle)
+    avgs_rmsle = np.append(avgs_rmsle, std_rmsle)
     avgs_r2 = np.append(avgs_r2, mean_r2)
     avgs_r2 = np.append(avgs_r2, std_r2)
-    avgs_max_error = np.append(avgs_max_error, mean_max_error)
-    avgs_max_error = np.append(avgs_max_error, std_max_error)
+    avgs_mape = np.append(avgs_mape, mean_mape)
+    avgs_mape = np.append(avgs_mape, std_mape)
     
     progress.value += 1
     
-    model_results = pd.DataFrame({'MAE': score_mae, 'MSE': score_mse, 'RMSE' : score_rmse, 'R2' : score_r2, 
-                     'ME' : score_max_error})
-    model_avgs = pd.DataFrame({'MAE': avgs_mae, 'MSE': avgs_mse, 'RMSE' : avgs_rmse, 'R2' : avgs_r2 , 
-                     'ME' : avgs_max_error},index=['Mean', 'SD'])
+    model_results = pd.DataFrame({'MAE': score_mae, 'MSE': score_mse, 'RMSE' : score_rmse, 'R2' : score_r2,
+                                  'RMSLE' : score_rmsle, 'MAPE' : score_mape})
+    model_avgs = pd.DataFrame({'MAE': avgs_mae, 'MSE': avgs_mse, 'RMSE' : avgs_rmse, 'R2' : avgs_r2,
+                                'RMSLE' : avgs_rmsle, 'MAPE' : avgs_mape},index=['Mean', 'SD'])
 
     model_results = model_results.append(model_avgs)
     model_results = model_results.round(round)
@@ -1468,7 +1647,6 @@ def create_model(estimator = None,
         return model
 
 
-
 def ensemble_model(estimator,
                    method = 'Bagging', 
                    fold = 10,
@@ -1481,7 +1659,7 @@ def ensemble_model(estimator,
     ------------
     This function ensembles the trained base estimator using the method defined 
     in 'method' param (default = 'Bagging'). The output prints a score grid that 
-    shows MAE, MSE, RMSE, R2 and Max Error (ME) by fold (default CV = 10 Folds).
+    shows MAE, MSE, RMSE, R2, RMSLE and MAPE by fold (default CV = 10 Folds).
 
     This function returns a trained model object.  
 
@@ -1529,9 +1707,9 @@ def ensemble_model(estimator,
     --------
 
     score grid:   A table containing the scores of the model across the kfolds. 
-    -----------   Scoring metrics used are MAE, MSE, RMSE, R2 and ME. Mean and
-                  standard deviation of the scores across the folds are also
-                  returned.
+    -----------   Scoring metrics used are MAE, MSE, RMSE, R2, RMSLE and MAPE.
+                  Mean and standard deviation of the scores across the folds are 
+                  also returned.
 
     model:        trained ensembled model object
     -----------
@@ -1589,7 +1767,7 @@ def ensemble_model(estimator,
     
     #progress bar
     progress = ipw.IntProgress(value=0, min=0, max=fold+4, step=1 , description='Processing: ')
-    master_display = pd.DataFrame(columns=['MAE','MSE','RMSE', 'R2', 'ME'])
+    master_display = pd.DataFrame(columns=['MAE','MSE','RMSE', 'R2', 'RMSLE', 'MAPE'])
     display(progress)
     
     #display monitor
@@ -1666,13 +1844,19 @@ def ensemble_model(estimator,
     score_mae =np.empty((0,0))
     score_mse =np.empty((0,0))
     score_rmse =np.empty((0,0))
+    score_rmsle =np.empty((0,0))
     score_r2 =np.empty((0,0))
-    score_max_error =np.empty((0,0))
+    score_mape =np.empty((0,0))
     avgs_mae =np.empty((0,0))
     avgs_mse =np.empty((0,0))
     avgs_rmse =np.empty((0,0))
+    avgs_rmsle =np.empty((0,0))
     avgs_r2 =np.empty((0,0))
-    avgs_max_error =np.empty((0,0))
+    avgs_mape =np.empty((0,0))
+    
+    def calculate_mape(actual, prediction):
+        mask = actual != 0
+        return (np.fabs(actual - prediction)/actual)[mask].mean()
     
     fold_num = 1 
     
@@ -1695,16 +1879,28 @@ def ensemble_model(estimator,
         ytrain,ytest = data_y.iloc[train_i], data_y.iloc[test_i]
         model.fit(Xtrain,ytrain)
         pred_ = model.predict(Xtest)
+        
+        try:
+            pred_ = target_inverse_transformer.inverse_transform(np.array(pred_).reshape(-1,1))
+            ytest = target_inverse_transformer.inverse_transform(np.array(ytest).reshape(-1,1))
+            pred_ = np.nan_to_num(pred_)
+            ytest = np.nan_to_num(ytest)
+            
+        except:
+            pass
+        
         mae = metrics.mean_absolute_error(ytest,pred_)
         mse = metrics.mean_squared_error(ytest,pred_)
         rmse = np.sqrt(mse)
+        rmsle = np.sqrt(np.mean(np.power(np.log(np.array(abs(pred_))+1) - np.log(np.array(abs(ytest))+1), 2)))
         r2 = metrics.r2_score(ytest,pred_)
-        max_error_ = metrics.max_error(ytest,pred_)
+        mape = calculate_mape(ytest,pred_)
         score_mae = np.append(score_mae,mae)
         score_mse = np.append(score_mse,mse)
         score_rmse = np.append(score_rmse,rmse)
+        score_rmsle = np.append(score_rmsle,rmsle)
         score_r2 =np.append(score_r2,r2)
-        score_max_error = np.append(score_max_error,max_error_)
+        score_mape = np.append(score_mape,mape)
         
         progress.value += 1
         
@@ -1716,7 +1912,7 @@ def ensemble_model(estimator,
         '''
         
         fold_results = pd.DataFrame({'MAE':[mae], 'MSE': [mse], 'RMSE': [rmse], 
-                                     'R2': [r2], 'ME': [max_error_]}).round(round)
+                                     'R2': [r2], 'RMSLE': [rmsle], 'MAPE': [mape]}).round(round)
         master_display = pd.concat([master_display, fold_results],ignore_index=True)
         fold_results = []
         
@@ -1772,13 +1968,15 @@ def ensemble_model(estimator,
     mean_mae=np.mean(score_mae)
     mean_mse=np.mean(score_mse)
     mean_rmse=np.mean(score_rmse)
+    mean_rmsle=np.mean(score_rmsle)
     mean_r2=np.mean(score_r2)
-    mean_max_error=np.mean(score_max_error)
+    mean_mape=np.mean(score_mape)
     std_mae=np.std(score_mae)
     std_mse=np.std(score_mse)
     std_rmse=np.std(score_rmse)
+    std_rmsle=np.std(score_rmsle)
     std_r2=np.std(score_r2)
-    std_max_error=np.std(score_max_error)
+    std_mape=np.std(score_mape)
 
     avgs_mae = np.append(avgs_mae, mean_mae)
     avgs_mae = np.append(avgs_mae, std_mae) 
@@ -1786,15 +1984,17 @@ def ensemble_model(estimator,
     avgs_mse = np.append(avgs_mse, std_mse)
     avgs_rmse = np.append(avgs_rmse, mean_rmse)
     avgs_rmse = np.append(avgs_rmse, std_rmse)
+    avgs_rmsle = np.append(avgs_rmsle, mean_rmsle)
+    avgs_rmsle = np.append(avgs_rmsle, std_rmsle)
     avgs_r2 = np.append(avgs_r2, mean_r2)
     avgs_r2 = np.append(avgs_r2, std_r2)
-    avgs_max_error = np.append(avgs_max_error, mean_max_error)
-    avgs_max_error = np.append(avgs_max_error, std_max_error)
+    avgs_mape = np.append(avgs_mape, mean_mape)
+    avgs_mape = np.append(avgs_mape, std_mape)
 
     model_results = pd.DataFrame({'MAE': score_mae, 'MSE': score_mse, 'RMSE' : score_rmse, 'R2' : score_r2 , 
-                     'ME' : score_max_error})
+                                 'RMSLE' : score_rmsle, 'MAPE' : score_mape})
     model_avgs = pd.DataFrame({'MAE': avgs_mae, 'MSE': avgs_mse, 'RMSE' : avgs_rmse, 'R2' : avgs_r2 , 
-                     'ME' : avgs_max_error},index=['Mean', 'SD'])
+                               'RMSLE' : avgs_rmsle, 'MAPE' : avgs_mape},index=['Mean', 'SD'])
 
     model_results = model_results.append(model_avgs)
     model_results = model_results.round(round)  
@@ -1841,8 +2041,8 @@ def compare_models(blacklist = None,
     ------------
     This function uses all models in the model library and scores them using  
     Kfold Cross Validation. The output prints a score grid that shows MAE, MSE, 
-    RMSE, R2 and ME by fold (default CV = 10 Folds) of all the available models
-    in model library.
+    RMSE, R2, RMSLE and MAPE by fold (default CV = 10 Folds) of all the available
+    models in model library.
     
     When turbo is set to True ('kr', 'ard' and 'mlp') are excluded due to longer
     training times. By default turbo param is set to True.
@@ -1915,7 +2115,7 @@ def compare_models(blacklist = None,
   
     sort: string, default = 'MAE'
     The scoring measure specified is used for sorting the average score grid
-    Other options are 'MAE', 'MSE', 'RMSE', 'R2' and 'ME'.
+    Other options are 'MAE', 'MSE', 'RMSE', 'R2', 'RMSLE' and 'MAPE'.
 
     turbo: Boolean, default = True
     When turbo is set to True, it blacklists estimators that have longer
@@ -1925,7 +2125,7 @@ def compare_models(blacklist = None,
     --------
 
     score grid:   A table containing the scores of the model across the kfolds. 
-    -----------   Scoring metrics used are MAE, MSE, RMSE, R2 and Max Error (ME) 
+    -----------   Scoring metrics used are MAE, MSE, RMSE, R2, RMSLE and MAPE
                   Mean and standard deviation of the scores across the folds is
                   also returned.
 
@@ -1971,7 +2171,7 @@ def compare_models(blacklist = None,
         sys.exit('(Type Error): Round parameter only accepts integer value.')
  
     #checking sort parameter
-    allowed_sort = ['MAE', 'MSE', 'RMSE', 'R2', 'ME']
+    allowed_sort = ['MAE', 'MSE', 'RMSE', 'R2', 'RMSLE', 'MAPE']
     if sort not in allowed_sort:
         sys.exit('(Value Error): Sort method not supported. See docstring for list of available parameters.')
     
@@ -2000,7 +2200,7 @@ def compare_models(blacklist = None,
         len_mod = 25 - len_of_blacklist
         
     progress = ipw.IntProgress(value=0, min=0, max=(fold*len_mod)+25, step=1 , description='Processing: ')
-    master_display = pd.DataFrame(columns=['Model', 'MAE','MSE','RMSE', 'R2', 'ME'])
+    master_display = pd.DataFrame(columns=['Model', 'MAE','MSE','RMSE', 'R2', 'RMSLE', 'MAPE'])
     display(progress)
     
     #display monitor
@@ -2230,13 +2430,19 @@ def compare_models(blacklist = None,
     score_mae =np.empty((0,0))
     score_mse =np.empty((0,0))
     score_rmse =np.empty((0,0))
+    score_rmsle =np.empty((0,0))
     score_r2 =np.empty((0,0))
-    score_max_error =np.empty((0,0))
+    score_mape =np.empty((0,0))
     avgs_mae =np.empty((0,0))
     avgs_mse =np.empty((0,0))
     avgs_rmse =np.empty((0,0))
+    avgs_rmsle =np.empty((0,0))
     avgs_r2 =np.empty((0,0))
-    avgs_max_error =np.empty((0,0))  
+    avgs_mape =np.empty((0,0))  
+    
+    def calculate_mape(actual, prediction):
+        mask = actual != 0
+        return (np.fabs(actual - prediction)/actual)[mask].mean()
     
     name_counter = 0
       
@@ -2278,16 +2484,29 @@ def compare_models(blacklist = None,
             ytrain,ytest = data_y.iloc[train_i], data_y.iloc[test_i]
             model.fit(Xtrain,ytrain)
             pred_ = model.predict(Xtest)
+            
+            try:
+                pred_ = target_inverse_transformer.inverse_transform(np.array(pred_).reshape(-1,1))
+                ytest = target_inverse_transformer.inverse_transform(np.array(ytest).reshape(-1,1))
+                pred_ = np.nan_to_num(pred_)
+                ytest = np.nan_to_num(ytest)
+
+            except:
+                pass
+        
             mae = metrics.mean_absolute_error(ytest,pred_)
             mse = metrics.mean_squared_error(ytest,pred_)
             rmse = np.sqrt(mse)
             r2 = metrics.r2_score(ytest,pred_)
-            max_error_ = metrics.max_error(ytest,pred_)
+            rmsle = np.sqrt(np.mean(np.power(np.log(np.array(abs(pred_))+1) - np.log(np.array(abs(ytest))+1), 2)))
+            mape = calculate_mape(ytest,pred_)
+            #max_error_ = metrics.max_error(ytest,pred_)
             score_mae = np.append(score_mae,mae)
             score_mse = np.append(score_mse,mse)
             score_rmse = np.append(score_rmse,rmse)
+            score_rmsle = np.append(score_rmsle,rmsle)
             score_r2 =np.append(score_r2,r2)
-            score_max_error = np.append(score_max_error,max_error_)            
+            score_mape = np.append(score_mape,mape)            
                 
                 
             '''
@@ -2322,12 +2541,12 @@ def compare_models(blacklist = None,
         avgs_mae = np.append(avgs_mae,np.mean(score_mae))
         avgs_mse = np.append(avgs_mse,np.mean(score_mse))
         avgs_rmse = np.append(avgs_rmse,np.mean(score_rmse))
+        avgs_rmsle = np.append(avgs_rmsle,np.mean(score_rmsle))
         avgs_r2 = np.append(avgs_r2,np.mean(score_r2))
-        avgs_max_error = np.append(avgs_max_error,np.mean(score_max_error))
+        avgs_mape = np.append(avgs_mape,np.mean(score_mape))
         
         compare_models_ = pd.DataFrame({'Model':model_names[name_counter], 'MAE':avgs_mae, 'MSE':avgs_mse, 
-                           'RMSE':avgs_rmse, 'R2':avgs_r2, 
-                           'ME':avgs_max_error})
+                           'RMSE':avgs_rmse, 'R2':avgs_r2, 'RMSLE':avgs_rmsle, 'MAPE':avgs_mape})
         master_display = pd.concat([master_display, compare_models_],ignore_index=True)
         master_display = master_display.round(round)
         
@@ -2343,14 +2562,16 @@ def compare_models(blacklist = None,
         score_mae =np.empty((0,0))
         score_mse =np.empty((0,0))
         score_rmse =np.empty((0,0))
+        score_rmsle =np.empty((0,0))
         score_r2 =np.empty((0,0))
-        score_max_error =np.empty((0,0))
+        score_mape =np.empty((0,0))
         
         avgs_mae = np.empty((0,0))
         avgs_mse = np.empty((0,0))
         avgs_rmse = np.empty((0,0))
+        avgs_rmsle = np.empty((0,0))
         avgs_r2 = np.empty((0,0))
-        avgs_max_error = np.empty((0,0))
+        avgs_mape = np.empty((0,0))
         
         name_counter += 1
   
@@ -2365,7 +2586,7 @@ def compare_models(blacklist = None,
         is_min = s == s.min()
         return ['background-color: yellow' if v else '' for v in is_min]
 
-    compare_models_ = master_display.style.apply(highlight_min,subset=['MAE','MSE','RMSE','ME'])
+    compare_models_ = master_display.style.apply(highlight_min,subset=['MAE','MSE','RMSE','RMSLE','MAPE' ])
     compare_models_ = compare_models_.set_properties(**{'text-align': 'left'})
     compare_models_ = compare_models_.set_table_styles([dict(selector='th', props=[('text-align', 'left')])])
     
@@ -2389,10 +2610,11 @@ def blend_models(estimator_list = 'All',
     ------------
     This function creates an ensemble meta-estimator that fits a base regressor on 
     the whole dataset. It then averages the predictions to form a final prediction. 
-    By default, this function will use all estimators in the model library (excluding 
-    the few estimators when turbo is True) or a specific trained estimator passed as a
-    list in estimator_list param. It scores it using Kfold Cross Validation. The output
-    prints the score grid that shows MAE, MSE, RMSE, R2 and ME by fold (default = 10 Fold). 
+    By default, this function will use all estimators in the model library (excl. 
+    the few estimators when turbo is True) or a specific trained estimator passed 
+    as a list in estimator_list param. It scores it using Kfold Cross Validation. 
+    The output prints the score grid that shows MAE, MSE, RMSE, R2, RMSLE and MAPE 
+    by fold (default = 10 Fold). 
 
     This function returns a trained model object.  
 
@@ -2437,9 +2659,9 @@ def blend_models(estimator_list = 'All',
     --------
 
     score grid:   A table containing the scores of the model across the kfolds. 
-    -----------   Scoring metrics used are MAE, MSE, RMSE, R2 and ME. Mean and
-                  standard deviation of the scores across the folds are also 
-                  returned.
+    -----------   Scoring metrics used are MAE, MSE, RMSE, R2, RMSLE and MAPE. 
+                  Mean and standard deviation of the scores across the folds are 
+                  also returned.
 
     model:        trained Voting Regressor model object. 
     -----------
@@ -2461,7 +2683,7 @@ def blend_models(estimator_list = 'All',
     '''
     
     #testing
-    global model_names
+    #global model_names
     
     #exception checking   
     import sys
@@ -2501,7 +2723,7 @@ def blend_models(estimator_list = 'All',
     
     #progress bar
     progress = ipw.IntProgress(value=0, min=0, max=fold+4, step=1 , description='Processing: ')
-    master_display = pd.DataFrame(columns=['MAE','MSE','RMSE', 'R2', 'ME'])
+    master_display = pd.DataFrame(columns=['MAE','MSE','RMSE', 'R2', 'RMSLE', 'MAPE'])
     display(progress)
     
     #display monitor
@@ -2541,13 +2763,19 @@ def blend_models(estimator_list = 'All',
     score_mae =np.empty((0,0))
     score_mse =np.empty((0,0))
     score_rmse =np.empty((0,0))
+    score_rmsle =np.empty((0,0))
     score_r2 =np.empty((0,0))
-    score_max_error =np.empty((0,0))
+    score_mape =np.empty((0,0))
     avgs_mae =np.empty((0,0))
     avgs_mse =np.empty((0,0))
     avgs_rmse =np.empty((0,0))
+    avgs_rmsle =np.empty((0,0))
     avgs_r2 =np.empty((0,0))
-    avgs_max_error =np.empty((0,0))
+    avgs_mape =np.empty((0,0))
+    
+    def calculate_mape(actual, prediction):
+        mask = actual != 0
+        return (np.fabs(actual - prediction)/actual)[mask].mean()
 
     kf = KFold(fold, random_state=seed)
     
@@ -2752,16 +2980,29 @@ def blend_models(estimator_list = 'All',
         ytrain,ytest = data_y.iloc[train_i], data_y.iloc[test_i]      
         model.fit(Xtrain,ytrain)
         pred_ = model.predict(Xtest)
+        
+        try:
+            pred_ = target_inverse_transformer.inverse_transform(np.array(pred_).reshape(-1,1))
+            ytest = target_inverse_transformer.inverse_transform(np.array(ytest).reshape(-1,1))
+            pred_ = np.nan_to_num(pred_)
+            ytest = np.nan_to_num(ytest)
+            
+        except:
+            pass
+        
         mae = metrics.mean_absolute_error(ytest,pred_)
         mse = metrics.mean_squared_error(ytest,pred_)
         rmse = np.sqrt(mse)
+        rmsle = np.sqrt(np.mean(np.power(np.log(np.array(abs(pred_))+1) - np.log(np.array(abs(ytest))+1), 2)))
         r2 = metrics.r2_score(ytest,pred_)
-        max_error_ = metrics.max_error(ytest,pred_)
+        mape = calculate_mape(ytest,pred_)
+        #max_error_ = metrics.max_error(ytest,pred_)
         score_mae = np.append(score_mae,mae)
         score_mse = np.append(score_mse,mse)
         score_rmse = np.append(score_rmse,rmse)
+        score_rmsle = np.append(score_rmsle,rmsle)
         score_r2 =np.append(score_r2,r2)
-        score_max_error = np.append(score_max_error,max_error_)
+        score_mape = np.append(score_mape,mape)
     
         '''
         
@@ -2771,7 +3012,7 @@ def blend_models(estimator_list = 'All',
         '''
         
         fold_results = pd.DataFrame({'MAE':[mae], 'MSE': [mse], 'RMSE': [rmse], 
-                                     'R2': [r2], 'ME': [max_error_]}).round(round)
+                                     'R2': [r2], 'RMSLE': [rmsle], 'MAPE': [mape]}).round(round)
         master_display = pd.concat([master_display, fold_results],ignore_index=True)
         fold_results = []
         
@@ -2821,13 +3062,15 @@ def blend_models(estimator_list = 'All',
     mean_mae=np.mean(score_mae)
     mean_mse=np.mean(score_mse)
     mean_rmse=np.mean(score_rmse)
+    mean_rmsle=np.mean(score_rmsle)
     mean_r2=np.mean(score_r2)
-    mean_max_error=np.mean(score_max_error)
+    mean_mape=np.mean(score_mape)
     std_mae=np.std(score_mae)
     std_mse=np.std(score_mse)
     std_rmse=np.std(score_rmse)
+    std_rmsle=np.std(score_rmsle)
     std_r2=np.std(score_r2)
-    std_max_error=np.std(score_max_error)
+    std_mape=np.std(score_mape)
     
     avgs_mae = np.append(avgs_mae, mean_mae)
     avgs_mae = np.append(avgs_mae, std_mae) 
@@ -2835,18 +3078,20 @@ def blend_models(estimator_list = 'All',
     avgs_mse = np.append(avgs_mse, std_mse)
     avgs_rmse = np.append(avgs_rmse, mean_rmse)
     avgs_rmse = np.append(avgs_rmse, std_rmse)
+    avgs_rmsle = np.append(avgs_rmsle, mean_rmsle)
+    avgs_rmsle = np.append(avgs_rmsle, std_rmsle)
     avgs_r2 = np.append(avgs_r2, mean_r2)
     avgs_r2 = np.append(avgs_r2, std_r2)
-    avgs_max_error = np.append(avgs_max_error, mean_max_error)
-    avgs_max_error = np.append(avgs_max_error, std_max_error)
+    avgs_mape = np.append(avgs_mape, mean_mape)
+    avgs_mape = np.append(avgs_mape, std_mape)
     
     
     progress.value += 1
     
     model_results = pd.DataFrame({'MAE': score_mae, 'MSE': score_mse, 'RMSE' : score_rmse, 'R2' : score_r2, 
-                     'ME' : score_max_error})
+                                  'RMSLE' : score_rmsle, 'MAPE' : score_mape})
     model_avgs = pd.DataFrame({'MAE': avgs_mae, 'MSE': avgs_mse, 'RMSE' : avgs_rmse, 'R2' : avgs_r2, 
-                     'ME' : avgs_max_error},index=['Mean', 'SD'])
+                                'RMSLE' : avgs_rmsle, 'MAPE' : avgs_mape},index=['Mean', 'SD'])
 
     model_results = model_results.append(model_avgs)
     model_results = model_results.round(round)
@@ -2881,6 +3126,7 @@ def blend_models(estimator_list = 'All',
 
 
 
+
 def tune_model(estimator = None, 
                fold = 10, 
                round = 4, 
@@ -2897,7 +3143,7 @@ def tune_model(estimator = None,
     ------------
     This function tunes the hyperparameters of a model and scores it using Kfold 
     Cross Validation. The output prints the score grid that shows MAE, MSE, RMSE, 
-    R2 and ME by fold (by default = 10 Folds).
+    R2, RMSLE and MAPE by fold (by default = 10 Folds).
 
     This function returns a trained model object.  
 
@@ -2959,7 +3205,7 @@ def tune_model(estimator = None,
 
     optimize: string, default = 'r2'
     Measure used to select the best model through hyperparameter tuning.
-    The default scoring measure is 'r2'. Other measures include 'mae', 'mse' and 'me'.
+    The default scoring measure is 'r2'. Other measures include 'mae', 'mse'.
 
     ensemble: Boolean, default = None
     True enables ensembling of the model through the method defined in 'method' param.
@@ -2974,9 +3220,9 @@ def tune_model(estimator = None,
     --------
 
     score grid:   A table containing the scores of the model across the kfolds. 
-    -----------   Scoring metrics used are MAE, MSE, RMSE, R2 and ME. Mean and 
-                  standard deviation of the scores across the folds are also 
-                  returned.
+    -----------   Scoring metrics used are MAE, MSE, RMSE, R2, RMSLE and MAPE.
+                  Mean and standard deviation of the scores across the folds are 
+                  also returned.
 
     model:        trained model object
     -----------
@@ -3041,7 +3287,7 @@ def tune_model(estimator = None,
         sys.exit('(Type Error): n_iter parameter only accepts integer value.')
 
     #checking optimize parameter
-    allowed_optimize = ['mae', 'mse', 'r2', 'me']
+    allowed_optimize = ['mae', 'mse', 'r2']
     if optimize not in allowed_optimize:
         sys.exit('(Value Error): Optimization method not supported. See docstring for list of available parameters.')
     
@@ -3068,7 +3314,7 @@ def tune_model(estimator = None,
     
     #progress bar
     progress = ipw.IntProgress(value=0, min=0, max=fold+6, step=1 , description='Processing: ')
-    master_display = pd.DataFrame(columns=['MAE','MSE','RMSE', 'R2', 'ME'])
+    master_display = pd.DataFrame(columns=['MAE','MSE','RMSE', 'R2', 'RMSLE', 'MAPE'])
     display(progress)    
     
     #display monitor
@@ -3128,13 +3374,19 @@ def tune_model(estimator = None,
     score_mae =np.empty((0,0))
     score_mse =np.empty((0,0))
     score_rmse =np.empty((0,0))
+    score_rmsle =np.empty((0,0))
     score_r2 =np.empty((0,0))
-    score_max_error =np.empty((0,0))
+    score_mape =np.empty((0,0))
     avgs_mae =np.empty((0,0))
     avgs_mse =np.empty((0,0))
     avgs_rmse =np.empty((0,0))
+    avgs_rmsle =np.empty((0,0))
     avgs_r2 =np.empty((0,0))
-    avgs_max_error =np.empty((0,0))
+    avgs_mape =np.empty((0,0))
+    
+    def calculate_mape(actual, prediction):
+        mask = actual != 0
+        return (np.fabs(actual - prediction)/actual)[mask].mean()
     
     '''
     MONITOR UPDATE STARTS
@@ -3453,7 +3705,7 @@ def tune_model(estimator = None,
 
         from sklearn.tree import DecisionTreeRegressor
 
-        param_grid = {"max_depth": np.random.randint(3, (len(X_train.columns)*.85),4),
+        param_grid = {"max_depth": np.random.randint(1, (len(X_train.columns)*.85),4),
                       "max_features": np.random.randint(3, len(X_train.columns),4),
                       "min_samples_leaf": [0.1,0.2,0.3,0.4,0.5],
                       "min_samples_split" : [0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],
@@ -3780,16 +4032,29 @@ def tune_model(estimator = None,
         ytrain,ytest = data_y.iloc[train_i], data_y.iloc[test_i]  
         model.fit(Xtrain,ytrain)
         pred_ = model.predict(Xtest)
+        
+        try:
+            pred_ = target_inverse_transformer.inverse_transform(np.array(pred_).reshape(-1,1))
+            ytest = target_inverse_transformer.inverse_transform(np.array(ytest).reshape(-1,1))
+            pred_ = np.nan_to_num(pred_)
+            ytest = np.nan_to_num(ytest)
+            
+        except:
+            pass
+        
         mae = metrics.mean_absolute_error(ytest,pred_)
         mse = metrics.mean_squared_error(ytest,pred_)
         rmse = np.sqrt(mse)
         r2 = metrics.r2_score(ytest,pred_)
-        max_error_ = metrics.max_error(ytest,pred_)
+        rmsle = np.sqrt(np.mean(np.power(np.log(np.array(abs(pred_))+1) - np.log(np.array(abs(ytest))+1), 2)))
+        mape = calculate_mape(ytest,pred_)
+        #max_error_ = metrics.max_error(ytest,pred_)
         score_mae = np.append(score_mae,mae)
         score_mse = np.append(score_mse,mse)
         score_rmse = np.append(score_rmse,rmse)
+        score_rmsle = np.append(score_rmsle,rmsle)
         score_r2 =np.append(score_r2,r2)
-        score_max_error = np.append(score_max_error,max_error_)
+        score_mape = np.append(score_mape,mape)
             
         progress.value += 1
             
@@ -3801,7 +4066,7 @@ def tune_model(estimator = None,
         '''
         
         fold_results = pd.DataFrame({'MAE':[mae], 'MSE': [mse], 'RMSE': [rmse], 
-                                     'R2': [r2], 'ME': [max_error_]}).round(round)
+                                     'R2': [r2], 'RMSLE': [rmsle], 'MAPE': [mape]}).round(round)
         master_display = pd.concat([master_display, fold_results],ignore_index=True)
         fold_results = []
         
@@ -3859,13 +4124,15 @@ def tune_model(estimator = None,
     mean_mae=np.mean(score_mae)
     mean_mse=np.mean(score_mse)
     mean_rmse=np.mean(score_rmse)
+    mean_rmsle=np.mean(score_rmsle)
     mean_r2=np.mean(score_r2)
-    mean_me=np.mean(score_max_error)
+    mean_mape=np.mean(score_mape)
     std_mae=np.std(score_mae)
     std_mse=np.std(score_mse)
     std_rmse=np.std(score_rmse)
+    std_rmsle=np.std(score_rmsle)
     std_r2=np.std(score_r2)
-    std_me=np.std(score_max_error)
+    std_mape=np.std(score_mape)
 
     avgs_mae = np.append(avgs_mae, mean_mae)
     avgs_mae = np.append(avgs_mae, std_mae) 
@@ -3873,18 +4140,20 @@ def tune_model(estimator = None,
     avgs_mse = np.append(avgs_mse, std_mse)
     avgs_rmse = np.append(avgs_rmse, mean_rmse)
     avgs_rmse = np.append(avgs_rmse, std_rmse)
+    avgs_rmsle = np.append(avgs_rmsle, mean_rmsle)
+    avgs_rmsle = np.append(avgs_rmsle, std_rmsle)
     avgs_r2 = np.append(avgs_r2, mean_r2)
     avgs_r2 = np.append(avgs_r2, std_r2)
-    avgs_max_error = np.append(avgs_max_error, mean_me)
-    avgs_max_error = np.append(avgs_max_error, std_me)
+    avgs_mape = np.append(avgs_mape, mean_mape)
+    avgs_mape = np.append(avgs_mape, std_mape)
     
 
     progress.value += 1
     
     model_results = pd.DataFrame({'MAE': score_mae, 'MSE': score_mse, 'RMSE' : score_rmse, 'R2' : score_r2 , 
-                     'ME' : score_max_error})
+                                  'RMSLE' : score_rmsle, 'MAPE' : score_mape})
     model_avgs = pd.DataFrame({'MAE': avgs_mae, 'MSE': avgs_mse, 'RMSE' : avgs_rmse, 'R2' : avgs_r2, 
-                     'ME' : avgs_max_error},index=['Mean', 'SD'])
+                                'RMSLE' : avgs_rmsle, 'MAPE' : avgs_mape},index=['Mean', 'SD'])
 
     model_results = model_results.append(model_avgs)
     model_results = model_results.round(round)
@@ -3918,7 +4187,6 @@ def tune_model(estimator = None,
         return best_model
 
 
-
 def stack_models(estimator_list, 
                  meta_model = None, 
                  fold = 10,
@@ -3939,8 +4207,8 @@ def stack_models(estimator_list,
     the ability to expose raw features to the meta model when set to True
     (default = False).
 
-    The output prints a score grid that shows MAE, MSE, RMSE, R2 and ME by fold 
-    (default = 10 Folds).
+    The output prints a score grid that shows MAE, MSE, RMSE, R2, RMSLE and MAPE by 
+    fold (default = 10 Folds).
     
     This function returns a container which is the list of all models in stacking. 
 
@@ -3996,9 +4264,9 @@ def stack_models(estimator_list,
     --------
 
     score grid:   A table containing the scores of the model across the kfolds. 
-    -----------   Scoring metrics used are MAE, MSE, RMSE, R2 and ME. Mean and
-                  standard deviation of the scores across the folds are also 
-                  returned.
+    -----------   Scoring metrics used are MAE, MSE, RMSE, R2, RMSLE and MAPE.
+                  Mean and standard deviation of the scores across the folds are 
+                  also returned.
 
     container:    list of all the models where last element is meta model.
     ----------
@@ -4080,7 +4348,7 @@ def stack_models(estimator_list,
     #progress bar
     max_progress = len(estimator_list) + fold + 4
     progress = ipw.IntProgress(value=0, min=0, max=max_progress, step=1 , description='Processing: ')
-    master_display = pd.DataFrame(columns=['MAE','MSE','RMSE', 'R2', 'ME'])
+    master_display = pd.DataFrame(columns=['MAE','MSE','RMSE', 'R2', 'RMSLE', 'MAPE'])
     display(progress)
     
     #display monitor
@@ -4216,13 +4484,20 @@ def stack_models(estimator_list,
     score_mae =np.empty((0,0))
     score_mse =np.empty((0,0))
     score_rmse =np.empty((0,0))
+    score_rmsle =np.empty((0,0))
     score_r2 =np.empty((0,0))
-    score_max_error =np.empty((0,0))
+    score_mape =np.empty((0,0))
     avgs_mae =np.empty((0,0))
     avgs_mse =np.empty((0,0))
     avgs_rmse =np.empty((0,0))
+    avgs_rmsle =np.empty((0,0))
     avgs_r2 =np.empty((0,0))
-    avgs_max_error =np.empty((0,0))  
+    avgs_mape =np.empty((0,0))  
+    
+    def calculate_mape(actual, prediction):
+        mask = actual != 0
+        return (np.fabs(actual - prediction)/actual)[mask].mean()
+
     
     progress.value += 1
     
@@ -4250,16 +4525,29 @@ def stack_models(estimator_list,
 
         model.fit(Xtrain,ytrain)
         pred_ = model.predict(Xtest)
+        
+        try:
+            pred_ = target_inverse_transformer.inverse_transform(np.array(pred_).reshape(-1,1))
+            ytest = target_inverse_transformer.inverse_transform(np.array(ytest).reshape(-1,1))
+            pred_ = np.nan_to_num(pred_)
+            ytest = np.nan_to_num(ytest)
+            
+        except:
+            pass
+        
         mae = metrics.mean_absolute_error(ytest,pred_)
         mse = metrics.mean_squared_error(ytest,pred_)
         rmse = np.sqrt(mse)
         r2 = metrics.r2_score(ytest,pred_)
-        max_error_ = metrics.max_error(ytest,pred_)
+        rmsle = np.sqrt(np.mean(np.power(np.log(np.array(abs(pred_))+1) - np.log(np.array(abs(ytest))+1), 2)))
+        mape = calculate_mape(ytest,pred_)
+        #max_error_ = metrics.max_error(ytest,pred_)
         score_mae = np.append(score_mae,mae)
         score_mse = np.append(score_mse,mse)
         score_rmse = np.append(score_rmse,rmse)
+        score_rmsle = np.append(score_rmsle,rmsle)
         score_r2 =np.append(score_r2,r2)
-        score_max_error = np.append(score_max_error,max_error_)
+        score_mape = np.append(score_mape,mape)
         
         
         '''
@@ -4270,7 +4558,7 @@ def stack_models(estimator_list,
         '''
         
         fold_results = pd.DataFrame({'MAE':[mae], 'MSE': [mse], 'RMSE': [rmse], 
-                                     'R2': [r2], 'ME': [max_error_]}).round(round)
+                                     'R2': [r2], 'RMSLE': [rmsle], 'MAPE': [mape]}).round(round)
         master_display = pd.concat([master_display, fold_results],ignore_index=True)
         fold_results = []
         
@@ -4330,13 +4618,15 @@ def stack_models(estimator_list,
     mean_mae=np.mean(score_mae)
     mean_mse=np.mean(score_mse)
     mean_rmse=np.mean(score_rmse)
+    mean_rmsle=np.mean(score_rmsle)
     mean_r2=np.mean(score_r2)
-    mean_max_error=np.mean(score_max_error)
+    mean_mape=np.mean(score_mape)
     std_mae=np.std(score_mae)
     std_mse=np.std(score_mse)
     std_rmse=np.std(score_rmse)
+    std_rmsle=np.std(score_rmsle)
     std_r2=np.std(score_r2)
-    std_max_error=np.std(score_max_error)
+    std_mape=np.std(score_mape)
     
     avgs_mae = np.append(avgs_mae, mean_mae)
     avgs_mae = np.append(avgs_mae, std_mae) 
@@ -4344,15 +4634,17 @@ def stack_models(estimator_list,
     avgs_mse = np.append(avgs_mse, std_mse)
     avgs_rmse = np.append(avgs_rmse, mean_rmse)
     avgs_rmse = np.append(avgs_rmse, std_rmse)
+    avgs_rmsle = np.append(avgs_rmsle, mean_rmsle)
+    avgs_rmsle = np.append(avgs_rmsle, std_rmsle)
     avgs_r2 = np.append(avgs_r2, mean_r2)
     avgs_r2 = np.append(avgs_r2, std_r2)
-    avgs_max_error = np.append(avgs_max_error, mean_max_error)
-    avgs_max_error = np.append(avgs_max_error, std_max_error)
+    avgs_mape = np.append(avgs_mape, mean_mape)
+    avgs_mape = np.append(avgs_mape, std_mape)
       
     model_results = pd.DataFrame({'MAE': score_mae, 'MSE': score_mse, 'RMSE' : score_rmse, 'R2' : score_r2 , 
-                     'ME' : score_max_error})
+                                 'RMSLE' : score_rmsle, 'MAPE' : score_mape})
     model_avgs = pd.DataFrame({'MAE': avgs_mae, 'MSE': avgs_mse, 'RMSE' : avgs_rmse, 'R2' : avgs_r2, 
-                     'ME' : avgs_max_error},index=['Mean', 'SD'])
+                               'RMSLE' : avgs_rmsle, 'MAPE' : avgs_mape},index=['Mean', 'SD'])
   
     model_results = model_results.append(model_avgs)
     model_results = model_results.round(round)  
@@ -4454,9 +4746,9 @@ def create_stacknet(estimator_list,
     --------
 
     score grid:   A table containing the scores of the model across the kfolds. 
-    -----------   Scoring metrics used are MAE, MSE, RMSE, R2 and ME. Mean and 
-                  standard deviation of the scores across the folds are also 
-                  returned.
+    -----------   Scoring metrics used are MAE, MSE, RMSE, R2, RMSLE and MAPE.
+                  Mean and standard deviation of the scores across the folds are 
+                  also returned.
 
     container:    list of all models where the last element is the meta model.
     ----------
@@ -4550,7 +4842,7 @@ def create_stacknet(estimator_list,
     display(monitor, display_id = 'monitor')
     
     if verbose:
-        master_display = pd.DataFrame(columns=['MAE','MSE','RMSE', 'R2', 'ME'])
+        master_display = pd.DataFrame(columns=['MAE','MSE','RMSE', 'R2', 'RMSLE', 'MAPE'])
         display_ = display(master_display, display_id=True)
         display_id = display_.display_id
     
@@ -4736,13 +5028,20 @@ def create_stacknet(estimator_list,
     score_mae =np.empty((0,0))
     score_mse =np.empty((0,0))
     score_rmse =np.empty((0,0))
+    score_rmsle =np.empty((0,0))
     score_r2 =np.empty((0,0))
-    score_max_error =np.empty((0,0))
+    score_mape =np.empty((0,0))
     avgs_mae =np.empty((0,0))
     avgs_mse =np.empty((0,0))
     avgs_rmse =np.empty((0,0))
+    avgs_rmsle =np.empty((0,0))
     avgs_r2 =np.empty((0,0))
-    avgs_max_error =np.empty((0,0))  
+    avgs_mape =np.empty((0,0))  
+    
+    def calculate_mape(actual, prediction):
+        mask = actual != 0
+        return (np.fabs(actual - prediction)/actual)[mask].mean()
+    
     
     fold_num = 1
     
@@ -4766,16 +5065,29 @@ def create_stacknet(estimator_list,
         
         model.fit(Xtrain,ytrain)
         pred_ = model.predict(Xtest)
+        
+        try:
+            pred_ = target_inverse_transformer.inverse_transform(np.array(pred_).reshape(-1,1))
+            ytest = target_inverse_transformer.inverse_transform(np.array(ytest).reshape(-1,1))
+            pred_ = np.nan_to_num(pred_)
+            ytest = np.nan_to_num(ytest)
+            
+        except:
+            pass
+        
         mae = metrics.mean_absolute_error(ytest,pred_)
         mse = metrics.mean_squared_error(ytest,pred_)
         rmse = np.sqrt(mse)
         r2 = metrics.r2_score(ytest,pred_)
-        max_error_ = metrics.max_error(ytest,pred_)
+        rmsle = np.sqrt(np.mean(np.power(np.log(np.array(abs(pred_))+1) - np.log(np.array(abs(ytest))+1), 2)))
+        mape = calculate_mape(ytest,pred_)
+        #max_error_ = metrics.max_error(ytest,pred_)
         score_mae = np.append(score_mae,mae)
         score_mse = np.append(score_mse,mse)
         score_rmse = np.append(score_rmse,rmse)
+        score_rmsle = np.append(score_rmsle,rmsle)
         score_r2 =np.append(score_r2,r2)
-        score_max_error = np.append(score_max_error,max_error_)
+        score_mape = np.append(score_mape,mape)
 
         progress.value += 1
         
@@ -4787,7 +5099,7 @@ def create_stacknet(estimator_list,
         '''
         
         fold_results = pd.DataFrame({'MAE':[mae], 'MSE': [mse], 'RMSE': [rmse], 
-                                     'R2': [r2], 'ME': [max_error_]}).round(round)
+                                     'R2': [r2], 'RMSLE' : [rmsle], 'MAPE': [mape]}).round(round)
         
         if verbose:
             master_display = pd.concat([master_display, fold_results],ignore_index=True)
@@ -4840,13 +5152,15 @@ def create_stacknet(estimator_list,
     mean_mae=np.mean(score_mae)
     mean_mse=np.mean(score_mse)
     mean_rmse=np.mean(score_rmse)
+    mean_rmsle=np.mean(score_rmsle)
     mean_r2=np.mean(score_r2)
-    mean_max_error=np.mean(score_max_error)
+    mean_mape=np.mean(score_mape)
     std_mae=np.std(score_mae)
     std_mse=np.std(score_mse)
     std_rmse=np.std(score_rmse)
+    std_rmsle=np.std(score_rmsle)
     std_r2=np.std(score_r2)
-    std_max_error=np.std(score_max_error)
+    std_mape=np.std(score_mape)
     
     avgs_mae = np.append(avgs_mae, mean_mae)
     avgs_mae = np.append(avgs_mae, std_mae) 
@@ -4854,15 +5168,17 @@ def create_stacknet(estimator_list,
     avgs_mse = np.append(avgs_mse, std_mse)
     avgs_rmse = np.append(avgs_rmse, mean_rmse)
     avgs_rmse = np.append(avgs_rmse, std_rmse)
+    avgs_rmsle = np.append(avgs_rmsle, mean_rmsle)
+    avgs_rmsle = np.append(avgs_rmsle, std_rmsle)
     avgs_r2 = np.append(avgs_r2, mean_r2)
     avgs_r2 = np.append(avgs_r2, std_r2)
-    avgs_max_error = np.append(avgs_max_error, mean_max_error)
-    avgs_max_error = np.append(avgs_max_error, std_max_error)
+    avgs_mape = np.append(avgs_mape, mean_mape)
+    avgs_mape = np.append(avgs_mape, std_mape)
       
     model_results = pd.DataFrame({'MAE': score_mae, 'MSE': score_mse, 'RMSE' : score_rmse, 'R2' : score_r2 , 
-                     'ME' : score_max_error})
+                                  'RMSLE' : score_rmsle, 'MAPE' : score_mape})
     model_avgs = pd.DataFrame({'MAE': avgs_mae, 'MSE': avgs_mse, 'RMSE' : avgs_rmse, 'R2' : avgs_r2, 
-                     'ME' : avgs_max_error},index=['Mean', 'SD'])
+                                'RMSLE' : avgs_rmsle, 'MAPE' : avgs_mape},index=['Mean', 'SD'])
   
     model_results = model_results.append(model_avgs)
     model_results = model_results.round(round)      
@@ -4891,8 +5207,6 @@ def create_stacknet(estimator_list,
     else:
         clear_output()
         return models_ 
-
-
 
 
 
@@ -5563,6 +5877,7 @@ def save_model(model, model_name, verbose=True):
     model_ = []
     model_.append(prep_pipe)
     model_.append(model)
+    model_.append(target_inverse_transformer)
     
     import joblib
     model_name = model_name + '.pkl'
@@ -5774,6 +6089,7 @@ def load_experiment(experiment_name):
     return exp
 
 
+
 def predict_model(estimator, 
                   data=None,
                   platform=None,
@@ -5846,7 +6162,7 @@ def predict_model(estimator,
     warnings.filterwarnings('ignore') 
     
     #testing
-    #no active tests
+    #global pred_, target_transformer
     
     #general dependencies
     import sys
@@ -5856,6 +6172,10 @@ def predict_model(estimator,
     from sklearn import metrics
     from copy import deepcopy
     from IPython.display import clear_output, update_display
+    
+    def calculate_mape(actual, prediction):
+        mask = actual != 0
+        return (np.fabs(actual - prediction)/actual)[mask].mean()
     
     estimator = deepcopy(estimator)
     clear_output()
@@ -5880,30 +6200,33 @@ def predict_model(estimator,
             prep_pipe_transformer = estimator_.pop(0)
             model = estimator_[0]
             estimator = estimator_[0]
+            target_transformer = estimator_[1]
 
         else:
             
             try:
 
                 prep_pipe_transformer = prep_pipe
+                target_transformer = target_inverse_transformer
                 model = estimator
                 estimator = estimator
                 
             except:
                 
-                sys.exit("(Type Error): Transformation Pipe Missing. ")
+                sys.exit("(Type Error): Transformation Pipeline Missing. ")
             
     else:
-        
+
         try:
 
             prep_pipe_transformer = prep_pipe
+            target_transformer = target_inverse_transformer
             model = estimator
             estimator = estimator
             
         except:
             
-            sys.exit("(Type Error): Transformation Pipe Missing. ")
+            sys.exit("(Type Error): Transformation Pipeline Missing. ")
             
     #dataset
     if data is None:
@@ -6054,17 +6377,34 @@ def predict_model(estimator,
                 pred_ = stacker_meta.predict(combined_df)
             except:
                 pred_ = stacker_meta.predict(inter_pred_df)
-
+            
+            try:
+                pred_ = target_transformer.inverse_transform(np.array(pred_).reshape(-1,1))
+                pred_ = np.nan_to_num(pred_)
+                
+            except:
+                pred_ = np.nan_to_num(pred_)
+                
             if data is None:
+                
+                try:
+                    ytest = target_transformer.inverse_transform(np.array(ytest).reshape(-1,1))
+                    ytest = pd.DataFrame(np.nan_to_num(ytest))
+                    
+                except:
+                    pass
+                
                 mae = metrics.mean_absolute_error(ytest,pred_)
                 mse = metrics.mean_squared_error(ytest,pred_)
                 rmse = np.sqrt(mse)
+                rmsle = np.sqrt(np.mean(np.power(np.log(np.array(abs(pred_))+1) - np.log(np.array(abs(ytest))+1), 2)))
                 r2 = metrics.r2_score(ytest,pred_)
-                max_error_ = metrics.max_error(ytest,pred_)
+                mape = calculate_mape(ytest,pred_)
+                #max_error_ = metrics.max_error(ytest,pred_)
 
 
                 df_score = pd.DataFrame( {'Model' : 'Stacking Regressor', 'MAE' : [mae], 'MSE' : [mse], 'RMSE' : [rmse], 
-                                          'R2' : [r2], 'ME' : [max_error_]})
+                                          'R2' : [r2], 'RMSLE' : [rmsle], 'MAPE' : mape})
                 df_score = df_score.round(round)
                 display(df_score)
         
@@ -6143,17 +6483,37 @@ def predict_model(estimator,
             except:
                 pred_ = meta_model.predict(df_restack) 
                 
-
+            try:
+                pred_ = target_transformer.inverse_transform(np.array(pred_).reshape(-1,1))
+                pred_ = np.nan_to_num(pred_)
+                
+            except:
+                pred_ = np.nan_to_num(pred_)
+            
             if data is None:
+                
+                try:
+                    ytest = target_transformer.inverse_transform(np.array(ytest).reshape(-1,1))
+                    ytest = pd.DataFrame(np.nan_to_num(ytest))
+                    
+                except:
+                    pass
+                
+                global moez, mehreen
+                moez = pred_.copy()
+                mehreen = ytest.copy()
+                
                 mae = metrics.mean_absolute_error(ytest,pred_)
                 mse = metrics.mean_squared_error(ytest,pred_)
                 rmse = np.sqrt(mse)
+                rmsle = np.sqrt(np.mean(np.power(np.log(np.array(abs(pred_))+1) - np.log(np.array(abs(ytest))+1), 2)))
                 r2 = metrics.r2_score(ytest,pred_)
-                max_error_ = metrics.max_error(ytest,pred_)
+                mape = calculate_mape(ytest,pred_)
+                #max_error_ = metrics.max_error(ytest,pred_)
 
 
                 df_score = pd.DataFrame( {'Model' : 'Stacking Regressor', 'MAE' : [mae], 'MSE' : [mse], 'RMSE' : [rmse], 
-                                          'R2' : [r2], 'ME' : [max_error_]})
+                                          'R2' : [r2], 'RMSLE' : [rmsle], 'MAPE' : mape})
                 df_score = df_score.round(round)
                 display(df_score)
                 
@@ -6205,16 +6565,34 @@ def predict_model(estimator,
         #prediction starts here
         pred_ = model.predict(Xtest)
         
+        try:
+            pred_ = target_transformer.inverse_transform(np.array(pred_).reshape(-1,1))
+            pred_ = np.nan_to_num(pred_)
+        
+        except:
+            pred_ = np.nan_to_num(pred_)
+            
         if data is None:
+            
+            try:
+                ytest = target_transformer.inverse_transform(np.array(ytest).reshape(-1,1))
+                ytest = pd.DataFrame(np.nan_to_num(ytest))
+
+            except:
+                pass
+                
             mae = metrics.mean_absolute_error(ytest,pred_)
             mse = metrics.mean_squared_error(ytest,pred_)
             rmse = np.sqrt(mse)
+            rmsle = np.sqrt(np.mean(np.power(np.log(np.array(abs(pred_))+1) - np.log(np.array(abs(ytest))+1), 2)))
             r2 = metrics.r2_score(ytest,pred_)
-            max_error_ = metrics.max_error(ytest,pred_)
+            mape = calculate_mape(ytest,pred_)
+            
+            #max_error_ = metrics.max_error(ytest,pred_)
 
             
             df_score = pd.DataFrame( {'Model' : [full_name], 'MAE' : [mae], 'MSE' : [mse], 'RMSE' : [rmse], 
-                                      'R2' : [r2], 'ME' : [max_error_]})
+                                      'R2' : [r2], 'RMSLE' : [rmsle], 'MAPE' : mape })
             df_score = df_score.round(4)
             display(df_score)
         
@@ -6246,6 +6624,8 @@ def deploy_model(model,
        
     Description:
     ------------
+    (In Preview)
+    
     This function deploys the transformation pipeline and trained model object for
     production use. The platform of deployment can be defined under the platform
     param along with the applicable authentication tokens which are passed as a
@@ -6336,4 +6716,5 @@ def deploy_model(model,
         s3.upload_file(filename,bucket_name,key)
         clear_output()
         print("Model Succesfully Deployed on AWS S3")
+
 

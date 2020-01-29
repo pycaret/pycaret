@@ -2032,7 +2032,7 @@ def tune_model(model=None,
     
 
 
-def plot_model(model, plot='cluster', feature=None):
+def plot_model(model, plot='cluster', feature = None, label = False):
     
     
     """
@@ -2072,8 +2072,13 @@ def plot_model(model, plot='cluster', feature=None):
     Distribution Plot              'distribution'
     
     feature : string, default = None
-    Name of feature column for x-axis of distribution plot. It only comes in effect
-    when plot = 'distribution'.
+    Name of feature column for x-axis of when plot = 'distribution'. When plot is
+    'cluster' or 'tsne' feature column is used as a hoverover tooltip and/or label
+    when label is set to True. If no feature name is passed in 'cluster' or 'tsne'
+    by default the first of column of dataset is chosen as hoverover tooltip.
+    
+    label : bool, default = False
+    When set to True, data labels are shown in 'cluster' and 'tsne' plot.
     
     Returns:
     --------
@@ -2087,7 +2092,7 @@ def plot_model(model, plot='cluster', feature=None):
               
 
     """  
-        
+    
     #exception checking   
     import sys
     
@@ -2099,7 +2104,17 @@ def plot_model(model, plot='cluster', feature=None):
     allowed_plots = ['cluster', 'tsne', 'elbow', 'silhouette', 'distance', 'distribution']  
     if plot not in allowed_plots:
         sys.exit('(Value Error): Plot Not Available. Please see docstring for list of available plots.')
-     
+        
+    if type(label) is not bool:
+        sys.exit('(Type Error): Label param only accepts True or False. ')
+        
+    if feature is not None:
+        if type(feature) is not str:
+            sys.exit('(Type Error): feature parameter must be string containing column name of dataset. ') 
+    
+    
+    
+    
     #specific disallowed plots
     
     """
@@ -2161,7 +2176,18 @@ def plot_model(model, plot='cluster', feature=None):
         pca_ = pca_.rename(columns={0: "PCA1", 1: "PCA2"})
         pca_['Cluster'] = cluster
         
-        fig = px.scatter(pca_, x="PCA1", y="PCA2", color='Cluster', opacity=0.5)
+        if feature is not None: 
+            pca_['Feature'] = data_[feature]
+        else:
+            pca_['Feature'] = data_[data_.columns[0]]
+            
+        if label:
+                pca_['Label'] = pca_['Feature']
+
+        if label:
+            fig = px.scatter(pca_, x="PCA1", y="PCA2", text='Label', color='Cluster', opacity=0.5)
+        else:
+            fig = px.scatter(pca_, x="PCA1", y="PCA2", hover_data=['Feature'], color='Cluster', opacity=0.5)
 
         fig.update_traces(textposition='top center')
         fig.update_layout(plot_bgcolor='rgb(240,240,240)')
@@ -2210,10 +2236,26 @@ def plot_model(model, plot='cluster', feature=None):
         X_embedded = pd.DataFrame(X_embedded)
         X_embedded['Cluster'] = cluster
         
+        if feature is not None: 
+            X_embedded['Feature'] = data_[feature]
+        else:
+            X_embedded['Feature'] = data_[data_.columns[0]]
+            
+        if label:
+                X_embedded['Label'] = X_embedded['Feature']
+                
         import plotly.express as px
         df = X_embedded
-        fig = px.scatter_3d(df, x=0, y=1, z=2,
-                      color='Cluster', title='3d TSNE Plot for Clusters', opacity=0.7, width=900, height=800)
+        
+        if label:
+            
+            fig = px.scatter_3d(df, x=0, y=1, z=2, color='Cluster', title='3d TSNE Plot for Clusters', 
+                    text = 'Label', opacity=0.7, width=900, height=800)
+            
+        else:
+            fig = px.scatter_3d(df, x=0, y=1, z=2, color='Cluster', title='3d TSNE Plot for Clusters', 
+                                hover_data = ['Feature'], opacity=0.7, width=900, height=800)
+        
         fig.show()
         
         
@@ -2294,6 +2336,8 @@ def plot_model(model, plot='cluster', feature=None):
             
         except:
             sys.exit('(Type Error): Plot Type not supported for this model.')
+
+
 
 
 def save_model(model, model_name, verbose=True):
@@ -2683,6 +2727,8 @@ def deploy_model(model,
        
     Description:
     ------------
+    (In Preview)
+
     This function deploys the transformation pipeline and trained model object for
     production use. The platform of deployment can be defined under the platform
     param along with the applicable authentication tokens which are passed as a
@@ -2808,7 +2854,7 @@ def get_clusters(data,
                                        Power_transform_data = transformation,
                                        Power_transform_method = 'yj',
                                        apply_pca = pca,
-                                       pca_variance_retained=pca_components,
+                                       pca_variance_retained_or_number_of_components=pca_components,
                                        random_state = seed)
     
     
@@ -2818,4 +2864,3 @@ def get_clusters(data,
         c = create_model(model=model, verbose=False)
     dataset = assign_model(c, verbose=False)
     return dataset
-
