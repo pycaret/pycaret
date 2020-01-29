@@ -2,6 +2,7 @@
 # Author: Fahad Akbar <m.akbar@queensu.ca>
 # License: MIT
 
+
 import pandas as pd
 import numpy as np
 import ipywidgets as wg 
@@ -21,6 +22,10 @@ from sklearn.cross_decomposition import PLSRegression
 from sklearn.manifold import TSNE
 from sklearn.decomposition import IncrementalPCA
 from sklearn.preprocessing import KBinsDiscretizer
+from pyod.models.knn import KNN
+from pyod.models.iforest import IForest
+from pyod.models.pca import PCA as PCA_od
+from sklearn import cluster
 import sys 
 from sklearn.pipeline import Pipeline
 from sklearn import metrics
@@ -733,15 +738,16 @@ class Scaling_and_Power_transformation(BaseEstimator,TransformerMixin):
 
   '''
 
-  def __init__(self,target,function_to_apply='zscore',random_state_quantile=42, transform_target=False,ml_usecase='ignore'):
+  def __init__(self,target,function_to_apply='zscore',random_state_quantile=42):
     self.target = target
     self.function_to_apply = function_to_apply
     self.random_state_quantile = random_state_quantile
-    self.transform_target = transform_target
-    self.ml_usecase = ml_usecase
+    # self.transform_target = transform_target
+    # self.ml_usecase = ml_usecase
   
   def fit(self,dataset,y=None):
-    data = dataset.copy()
+    
+    data=dataset.copy()
     # we only want to apply if there are numeric columns
     self.numeric_features = data.drop(self.target,axis=1,errors='ignore').select_dtypes(include=["float64",'int64']).columns
     if len(self.numeric_features) > 0:
@@ -791,11 +797,49 @@ class Scaling_and_Power_transformation(BaseEstimator,TransformerMixin):
     self.fit(data)
     # convert target if appropriate
     # default behavious is quantile transformer
-    if ((self.ml_usecase == 'regression') and (self.transform_target == True)):
-      self.scale_and_power_target = QuantileTransformer(random_state=self.random_state_quantile,output_distribution='normal')
-      data[self.target]=self.scale_and_power_target.fit_transform(np.array(data[self.target]).reshape(-1,1))
+    # if ((self.ml_usecase == 'regression') and (self.transform_target == True)):
+    #   self.scale_and_power_target = QuantileTransformer(random_state=self.random_state_quantile,output_distribution='normal')
+    #   data[self.target]=self.scale_and_power_target.fit_transform(np.array(data[self.target]).reshape(-1,1))
       
     return(self.transform(data))
+
+# ______________________________________________________________________________________________________________________
+# Scaling & Power Transform
+class Target_Transformation(BaseEstimator,TransformerMixin):
+  '''
+    - Applies Power Transformation (yeo-johnson , Box-Cox) to target variable (Applicable to Regression only)
+      - 'bc' for Box_Coc & 'yj' for yeo-johnson, default is Box-Cox
+    - if target containes negtive / zero values , yeo-johnson is automatically selected 
+    
+  '''
+
+  def __init__(self,target,function_to_apply='bc'):
+    self.target = target
+    self.function_to_apply = function_to_apply
+    if self.function_to_apply == 'bc':
+      self.function_to_apply = 'box-cox'
+    else:
+      self.function_to_apply = 'yeo-johnson'
+
+  
+  def fit(self,dataset,y=None):
+    return(None)
+    
+
+  
+  def transform(self,dataset,y=None):
+    return(dataset) 
+
+  def fit_transform(self,dataset,y=None):
+    data = dataset.copy()
+    # if target has zero or negative values use yj instead
+    if any(data[self.target]<= 0):
+      self.function_to_apply = 'yeo-johnson'
+    # apply transformation
+    self.p_transform_target = PowerTransformer(method=self.function_to_apply)
+    data[self.target]=self.p_transform_target.fit_transform(np.array(data[self.target]).reshape(-1,1))
+      
+    return(data)
 # __________________________________________________________________________________________________________________________
 # Time feature extractor
 class Make_Time_Features(BaseEstimator,TransformerMixin):
@@ -975,6 +1019,64 @@ class Dummify(BaseEstimator,TransformerMixin):
     else:
       return(data)
 
+# _______________________________________________________________________________________________________________________
+# Outlier
+class Outlier(BaseEstimator,TransformerMixin):
+  '''
+    - Removes outlier using ABOD,KNN,IFO,PCA & HOBS using hard voting
+    - Only takes numerical / One Hot Encoded features
+  '''
+
+  def __init__(self,target,contamination=.20, random_state=42):
+    self.target = target
+    self.contamination = contamination
+    self.random_state = random_state
+    self.knn = KNN(contamination=self.contamination)
+    self.iso = IForest(contamination=self.contamination,random_state=self.random_state,behaviour='new')
+    self.pca = PCA_od(contamination=self.contamination,random_state=self.random_state)
+
+    return(None)
+
+  def fit(self,data,y=None):
+    #self.abod.fit(data)
+    return(None)
+
+  def transform(self,data,y=None):
+    return(data)
+
+  def fit_transform(self,dataset,y=None):
+
+    # dummify if there are any obects 
+    if len(dataset.select_dtypes(include='object').columns)>0:
+      self.dummy = Dummify(self.target)
+      data = self.dummy.fit_transform(dataset)
+    else:
+      data = dataset.copy()
+
+    # reduce data size for faster processing
+    # try:
+    #   data = data.astype('float16')
+    # except:
+    #   None
+
+    self.knn.fit(data.drop(self.target,axis=1))
+    knn_predict = self.knn.predict(data.drop(self.target,axis=1))
+    
+    self.iso.fit(data.drop(self.target,axis=1))
+    iso_predict = self.iso.predict(data.drop(self.target,axis=1))
+
+    self.pca.fit(data.drop(self.target,axis=1))
+    pca_predict = self.pca.predict(data.drop(self.target,axis=1))
+
+    data['knn'] = knn_predict
+    data['iso'] = iso_predict
+    data['pca'] = pca_predict
+
+    data['vote_outlier'] =  data['knn']  + data['iso'] + data['pca'] 
+    self.outliers = data[data['vote_outlier']==3]
+    
+    return(dataset[[True if i not in self.outliers.index else False for i in dataset.index]])
+
 
 #____________________________________________________________________________________________________________________________________________________________________
 # Column Name cleaner transformer
@@ -998,7 +1100,280 @@ class Clean_Colum_Names(BaseEstimator,TransformerMixin):
     data= dataset.copy()
     data.columns= data.columns.str.replace('[,}{\]\[\:\"\']','')
     return(data)
+#__________________________________________________________________________________________________________________________________________________________________________
+# Clustering entire data
+class Cluster_Entire_Data(BaseEstimator,TransformerMixin):
+  '''
+    - Applies kmeans clustering to the entire data set and produce clusters
+    - Highly recommended to run the DataTypes_Auto_infer class first
+      Args:
+          target_variable: target variable (integer or numerical only)
+          check_clusters_upto: to determine optimum number of kmeans clusters, set the uppler limit of clusters
+  '''
 
+  def __init__(self, target_variable, check_clusters_upto=20, random_state=42):
+    self.target = target_variable
+    self.check_clusters = check_clusters_upto +1
+    self.random_state = random_state
+    
+    
+
+  def fit(self,data,y=None):
+    return(None)
+
+  def transform(self,data,y=None):
+    # first convert to dummy
+    if len(data.select_dtypes(include='object').columns)>0:
+      data_t1 = self.dummy.transform(data)
+    else:
+      data_t1 = data.copy()
+
+    # # now make PLS 
+    data_t1 = self.pls.transform(data_t1)
+    # now predict with the clustes
+    predict =pd.DataFrame(self.k_object.predict(data_t1),index=data.index)
+    data['data_cluster'] = predict
+    data['data_cluster'] = data['data_cluster'].astype('object')
+    return(data)
+
+  def fit_transform(self,data,y=None):
+    # first convert to dummy (if there are objects in data set)
+    if len(data.select_dtypes(include='object').columns)>0:
+      self.dummy = Dummify(self.target)
+      data_t1 = self.dummy.fit_transform(data)
+    else:
+      data_t1 = data.copy()
+    
+    # now make PLS 
+    self.pls = PLSRegression(n_components=len(data_t1.columns)-1)
+    data_t1 = self.pls.fit_transform(data_t1.drop(self.target,axis=1),data_t1[self.target])[0]
+    
+    # we are goign to make a place holder , for 2 to 20 clusters
+    self.ph = pd.DataFrame(np.arange(2,self.check_clusters,1), columns= ['clusters']) 
+    self.ph['Silhouette'] = float(0)
+    self.ph['calinski'] = float(0)
+
+    # Now start making clusters
+    for k in self.ph.index:
+        c =  self.ph['clusters'][k]
+        self.k_object =  cluster.KMeans(n_clusters= c,init='k-means++',precompute_distances='auto',n_init=10,random_state=self.random_state)
+        self.k_object.fit(data_t1)
+        self.ph.iloc[k,1] = metrics.silhouette_score(data_t1,self.k_object.labels_)
+        self.ph.iloc[k,2] = metrics.calinski_harabaz_score(data_t1,self.k_object.labels_)
+    
+    # now standardize the scores and make a total column
+    m = MinMaxScaler((-1,1))
+    self.ph['calinski'] = m.fit_transform(np.array(self.ph['calinski']).reshape(-1,1))
+    self.ph['Silhouette'] = m.fit_transform(np.array(self.ph['Silhouette']).reshape(-1,1))
+    self.ph['total']= self.ph['Silhouette'] + self.ph['calinski']
+    # sort it by total column and take the first row column 0 , that would represent the optimal clusters
+    self.clusters = int(self.ph[self.ph['total'] == max(self.ph['total'])]['clusters'])
+    # Now make the final cluster object
+    self.k_object =  cluster.KMeans(n_clusters= self.clusters,init='k-means++',precompute_distances='auto',n_init=10,random_state=self.random_state)
+    # now do fit predict
+    predict =pd.DataFrame(self.k_object.fit_predict(data_t1),index=data.index)
+    data['data_cluster'] = predict
+    data['data_cluster'] = data['data_cluster'].astype('object')
+
+    return(data)
+
+#_________________________________________________________________________________________________________________________________________
+class Fix_multicollinearity(BaseEstimator,TransformerMixin):
+  """
+          Fixes multicollinearity between predictor variables , also considering the correlation between target variable.
+          Only applies to regression or two class classification ML use case
+          Takes numerical and one hot encoded variables only
+            Args:
+              threshold (float): The utmost absolute pearson correlation tolerated beyween featres from 0.0 to 1.0
+              target_variable (str): The target variable/column name
+              correlation_with_target_threshold: minimum absolute correlation required between every feature and the target variable , default 1.0 (0.0 to 1.0)
+              correlation_with_target_preference: float (0.0 to 1.0), default .08 ,while choosing between a pair of features w.r.t multicol & correlation target , this gives 
+              the option to favour one measur to another. e.g. if value is .6 , during feature selection tug of war, correlation target measure will have a higher say.
+              A value of .5 means both measure have equal say 
+  """
+  # mamke a constructer
+  
+  def __init__ (self,threshold,target_variable,correlation_with_target_threshold= 0.0,correlation_with_target_preference=1.0):
+      self.threshold = threshold
+      self.target_variable = target_variable
+      self.correlation_with_target_threshold= correlation_with_target_threshold
+      self.target_corr_weight = correlation_with_target_preference
+      self.multicol_weight = 1-correlation_with_target_preference
+  
+  # Make fit method
+  
+  def fit (self,data,y=None):
+    '''
+        Args:
+            data = takes preprocessed data frame
+        Returns:
+            None
+    '''
+      
+    #global data1
+    self.data1 = data.copy()
+    # try:
+    #   self.data1 = self.data1.astype('float16')
+    # except:
+    #   None
+    # make an correlation db with abs correlation db
+    # self.data_c = self.data1.T.drop_duplicates()
+    # self.data1 = self.data_c.T
+    corr = pd.DataFrame(np.corrcoef(self.data1.T))
+    corr.columns = self.data1.columns
+    corr.index = self.data1.columns
+    # self.corr_matrix = abs(self.data1.corr())
+    self.corr_matrix = abs(corr)
+
+    # for every diagonal value, make it Nan
+    self.corr_matrix.values[tuple([np.arange(self.corr_matrix.shape[0])]*2)] = np.NaN
+    
+    # Now Calculate the average correlation of every feature with other, and get a pandas data frame
+    self.avg_cor = pd.DataFrame(self.corr_matrix.mean())
+    self.avg_cor['feature']= self.avg_cor.index
+    self.avg_cor.reset_index(drop=True, inplace=True)
+    self.avg_cor.columns =  ['avg_cor','features']
+    
+    # Calculate the correlation with the target
+    self.targ_cor = pd.DataFrame(self.corr_matrix[self.target_variable].dropna())
+    self.targ_cor['feature']= self.targ_cor.index
+    self.targ_cor.reset_index(drop=True, inplace=True)
+    self.targ_cor.columns =  ['target_variable','features']
+    
+    # Now, add a column for variable name and drop index
+    self.corr_matrix['column'] = self.corr_matrix.index
+    self.corr_matrix.reset_index(drop=True,inplace=True)
+    
+    # now we need to melt it , so that we can correlation pair wise , with two columns 
+    self.cols =self.corr_matrix.column
+    self.melt = self.corr_matrix.melt(id_vars= ['column'],value_vars=self.cols).sort_values(by='value',ascending=False).dropna()
+
+    # now bring in the avg correlation for first of the pair
+    self.merge = pd.merge(self.melt,self.avg_cor,left_on='column',right_on='features').drop('features',axis=1)
+
+    # now bring in the avg correlation for second of the pair
+    self.merge = pd.merge(self.merge,self.avg_cor,left_on='variable',right_on='features').drop('features',axis=1)
+
+    # now bring in the target correlation for first of the pair
+    self.merge = pd.merge(self.merge,self.targ_cor,left_on='column',right_on='features').drop('features',axis=1)
+
+    # now bring in the avg correlation for second of the pair
+    self.merge = pd.merge(self.merge,self.targ_cor,left_on='variable',right_on='features').drop('features',axis=1)
+
+    # sort and save
+    self.merge = self.merge.sort_values(by='value',ascending=False)
+
+    # we need to now eleminate all the pairs that are actually duplicate e.g cor(x,y) = cor(y,x) , they are the same , we need to find these and drop them
+    self.merge['all_columns'] = self.merge['column'] + self.merge['variable']
+
+    # this puts all the coresponding pairs of features togather , so that we can only take one, since they are just the duplicates
+    self.merge['all_columns'] = [sorted(i) for i in self.merge['all_columns'] ]
+
+    # now sort by new column
+    self.merge = self.merge.sort_values(by='all_columns')
+
+    # take every second colums
+    self.merge = self.merge.iloc[::2, :]
+
+    # make a ranking column to eliminate features
+    self.merge['rank_x'] = round(self.multicol_weight*(self.merge['avg_cor_y']- self.merge['avg_cor_x']) +  self.target_corr_weight*(self.merge['target_variable_x'] - self.merge['target_variable_y']),6) # round it to 6 digits
+    self.merge1 = self.merge # delete here
+    ## Now there will be rows where the rank will be exactly zero, these is where the value (corelartion between features) is exactly one ( like price and price^2)
+    ## so in that case , we can simply pick one of the variable
+    # but since , features can be in either column, we will drop one column (say 'column') , only if the feature is not in the second column (in variable column)
+    # both equations below will return the list of columns to drop from here 
+    # this is how it goes
+
+    ## For the portion where correlation is exactly one !
+    self.one = self.merge[self.merge['rank_x']==0]
+
+    # this portion is complicated 
+    # table one have all the paired variable having corelation of 1
+    # in a nutshell, we can take any column (one side of pair) and delete the other columns (other side of the pair)
+    # however one varibale can appear more than once on any of the sides , so we will run for loop to find all pairs...
+    # here it goes
+    # take a list of all (but unique ) variables that have correlation 1 for eachother, we will make two copies
+    self.u_all = list(pd.unique(pd.concat((self.one['column'],self.one['variable']),axis=0)))
+    self.u_all_1 = list(pd.unique(pd.concat((self.one['column'],self.one['variable']),axis=0)))
+    # take a list of features (unique) for the first side of the pair
+    self.u_column  = pd.unique(self.one['column'])
+    
+    # now we are going to start picking each variable from one column (one side of the pair) , check it against the other column (other side of the pair)
+    # to pull all coresponding / paired variables  , and delete thoes newly varibale names from all unique list
+    
+    for i in self.u_column:
+      #print(i)
+      r = self.one[self.one['column']==i]['variable'].values
+      for q in r:
+        if q in self.u_all:
+          #print("_"+q)
+          self.u_all.remove(q)
+
+    # now the unique column contains the varibales that should remain, so in order to get the variables that should be deleted :
+    self.to_drop =(list(set(self.u_all_1)-set(self.u_all)))
+
+
+    # self.to_drop_a =(list(set(self.one['column'])-set(self.one['variable'])))
+    # self.to_drop_b =(list(set(self.one['variable'])-set(self.one['column'])))
+    # self.to_drop = self.to_drop_a + self.to_drop_b
+
+    ## now we are to treat where rank is not Zero and Value (correlation) is greater than a specific threshold
+    self.non_zero = self.merge[(self.merge['rank_x']!= 0.0) & (self.merge['value'] >= self.threshold)]
+
+    # pick the column to delete
+    self.non_zero_list = list(np.where(self.non_zero['rank_x'] < 0 , self.non_zero['column'], self.non_zero['variable']))
+
+    # add two list
+    self.to_drop = self.to_drop + self.non_zero_list
+
+    #make sure that target column is not a part of the list
+    try:
+        self.to_drop.remove(self.target_variable)
+    except:
+        self.to_drop
+    
+    self.to_drop = self.to_drop
+
+    # now we want to keep only the columns that have more correlation with traget by a threshold
+    self.to_drop_taret_correlation=[] 
+    if self.correlation_with_target_threshold != 0.0:
+      corr = pd.DataFrame(np.corrcoef(data.drop(self.to_drop,axis=1).T),columns= data.drop(self.to_drop,axis=1).columns,index=data.drop(self.to_drop,axis=1).columns)
+      self.to_drop_taret_correlation = corr[self.target_variable].abs()
+      # self.to_drop_taret_correlation = data.drop(self.to_drop,axis=1).corr()[self.target_variable].abs()
+      self.to_drop_taret_correlation = self.to_drop_taret_correlation [self.to_drop_taret_correlation < self.correlation_with_target_threshold ]
+      self.to_drop_taret_correlation = list(self.to_drop_taret_correlation.index)
+      #self.to_drop = self.corr + self.to_drop
+      try:
+        self.to_drop_taret_correlation.remove(self.target_variable)
+      except:
+        self.to_drop_taret_correlation
+      
+
+  # now Transform
+  def transform(self,dataset,y=None):
+    '''
+        Args:f
+            data = takes preprocessed data frame
+        Returns:
+            data frame
+    '''
+    data = dataset.copy()
+    data.drop(self.to_drop,axis=1,inplace=True)
+    # now drop less correlated data
+    data.drop(self.to_drop_taret_correlation,axis=1,inplace=True,errors='ignore')
+    return(data)
+  
+  # fit_transform
+  def fit_transform(self,data, y=None):
+    
+    '''
+        Args:
+            data = takes preprocessed data frame
+        Returns:
+            data frame
+    '''
+    self.fit(data)
+    return(self.transform(data))
 
 #____________________________________________________________________________________________________________________________________________________________________
 # Empty transformer
@@ -1018,84 +1393,8 @@ class Empty(BaseEstimator,TransformerMixin):
 
   def fit_transform(self,data,y=None):
     return(self.transform(data))
-#____________________________________________________________________________________________________________________________________________________________________
-# reduce feature space
-class Reduce_Dimensions_For_Unsupervised_Path(BaseEstimator,TransformerMixin):
-  '''
-    - Takes DF, return same DF with different types of dimensionality reduction modles (pca_liner , pca_kernal, tsne , incremental)
-    - except pca_liner, every other method takes integer as number of components 
-    - only takes numeric variables (float & One Hot Encoded)
-    - it is intended to solve unsupervised ML usecases , such as Clustering / Anomaly detection (so it only applies to transform one hot encoded data)
-  '''
 
-  def __init__(self, target, method='pca_liner', variance_retained_or_number_of_components=.99, random_state=42):
-    self.target= target
-    self.variance_retained = variance_retained_or_number_of_components
-    self.random_state= random_state
-    self.method = method
-    return(None)
-
-  def fit(self,data,y=None):
-    return(None)
-
-  def transform(self,dataset,y=None):
-    if self.is_categ > 0:
-      data_pca = self.pca.transform(dataset)
-      data_pca = pd.DataFrame(data_pca)
-      data_pca.columns = ["Component_"+str(i) for i in np.arange(1,len(data_pca.columns)+1)]
-      data_pca.index = dataset.index
-      return(data_pca)
-    else:
-      return(dataset)
-
-  def fit_transform(self,dataset,y=None):
-    self.is_categ = len([i for i in dataset.columns if len(dataset[i].unique()) == 2 and dataset[i].unique()[0] in [0,1] and dataset[i].unique()[1] in [0,1]])
-    # we will only apply this if there are catagorical variables
-    if self.is_categ > 0:
-      # We are only running this if 
-      # define
-      if self.method == 'pca_liner':
-        self.pca = PCA(self.variance_retained,random_state=self.random_state)
-        # fit transform
-        data_pca = self.pca.fit_transform(dataset.drop(self.target,axis=1))
-        data_pca = pd.DataFrame(data_pca)
-        data_pca.columns = ["Component_"+str(i) for i in np.arange(1,len(data_pca.columns)+1)]
-        data_pca.index = dataset.index
-        data_pca[self.target] = dataset[self.target]
-        return(data_pca)
-      elif self.method == 'pca_kernal': # take number of components only
-        self.pca = KernelPCA(self.variance_retained,kernel='rbf',random_state=self.random_state,n_jobs=-1)
-        # fit transform
-        data_pca = self.pca.fit_transform(dataset.drop(self.target,axis=1))
-        data_pca = pd.DataFrame(data_pca)
-        data_pca.columns = ["Component_"+str(i) for i in np.arange(1,len(data_pca.columns)+1)]
-        data_pca.index = dataset.index
-        data_pca[self.target] = dataset[self.target]
-        return(data_pca)
-      elif self.method == 'tsne': # take number of components only
-        self.pca = TSNE(self.variance_retained,random_state=self.random_state)
-        # fit transform
-        data_pca = self.pca.fit_transform(dataset.drop(self.target,axis=1))
-        data_pca = pd.DataFrame(data_pca)
-        data_pca.columns = ["Component_"+str(i) for i in np.arange(1,len(data_pca.columns)+1)]
-        data_pca.index = dataset.index
-        data_pca[self.target] = dataset[self.target]
-        return(data_pca)
-      elif self.method == 'incremental': # take number of components only
-        self.pca = IncrementalPCA(self.variance_retained)
-        # fit transform
-        data_pca = self.pca.fit_transform(dataset.drop(self.target,axis=1))
-        data_pca = pd.DataFrame(data_pca)
-        data_pca.columns = ["Component_"+str(i) for i in np.arange(1,len(data_pca.columns)+1)]
-        data_pca.index = dataset.index
-        data_pca[self.target] = dataset[self.target]
-        return(data_pca)
-      else:
-        return(dataset)
-    
-    else:
-      return(dataset)
-#____________________________________________________________________________________________________________________________________________________________________
+#____________________________________________________________________________________________________________________________________
 # reduce feature space
 class Reduce_Dimensions_For_Supervised_Path(BaseEstimator,TransformerMixin):
   '''
@@ -1184,7 +1483,11 @@ def Preprocess_Path_One(train_data,target_variable,ml_usecase=None,test_data =No
                                 club_rare_levels = False, rara_level_threshold_percentage =0.05,
                                 apply_binning=False, features_to_binn =[],
                                 scale_data= False, scaling_method='zscore',
-                                Power_transform_data = False, Power_transform_method ='quantile', target_transformation= False,
+                                Power_transform_data = False, Power_transform_method ='quantile',
+                                target_transformation= False,target_transformation_method ='bc',
+                                remove_outliers = False, outlier_contamination_percentage= 0.01,
+                                remove_multicollinearity = False, maximum_correlation_between_features= 0.90,
+                                cluster_entire_data= False, range_of_clusters_to_try=20, 
                                 apply_pca = False , pca_method = 'pca_liner',pca_variance_retained_or_number_of_components =.99 ,
                                 random_state=42
 
@@ -1194,17 +1497,20 @@ def Preprocess_Path_One(train_data,target_variable,ml_usecase=None,test_data =No
     Follwoing preprocess steps are taken:
       - 1) Auto infer data types 
       - 2) Impute (simple or with surrogate columns)
-      - 3) Generate sub features from time feature such as 'month','weekday',is_month_end','is_month_start' & 'hour'
-      - 4) Drop categorical variables that have zero variance or near zero variance
-      - 5) Club categorical variables levels togather as a new level (other_infrequent) that are rare / at the bottom 5% of the variable distribution
-      - 6) Apply binning to continious variable when numeric features are provided as a list 
-      - 7) Scales & Power Transform (zscore,minmax,yeo-johnson,quantile,maxabs,robust) , including option to transform target variable
-      - 8) Remove special characters from column names such as commas, square brackets etc to make it competible with jason dependednt models
-      - 9) One Hot / Dummy encoding
-      -10) Apply diamension reduction techniques such as pca_liner, pca_kernal, incremental, tsne & pls
+      - 3) Drop categorical variables that have zero variance or near zero variance
+      - 4) Club categorical variables levels togather as a new level (other_infrequent) that are rare / at the bottom 5% of the variable distribution
+      - 5) Generate sub features from time feature such as 'month','weekday',is_month_end','is_month_start' & 'hour'
+      - 6) Scales & Power Transform (zscore,minmax,yeo-johnson,quantile,maxabs,robust) , including option to transform target variable
+      - 7) Apply binning to continious variable when numeric features are provided as a list 
+      - 8) Detect & remove outliers using isolation forest, knn and PCA
+      - 9) Apply clusters to segment entire data
+      -10) One Hot / Dummy encoding
+      -11) Remove special characters from column names such as commas, square brackets etc to make it competible with jason dependednt models
+      -12) Fix multicollinearity
+      -13) Apply diamension reduction techniques such as pca_liner, pca_kernal, incremental, tsne & pls
           - except for pca_liner, all other method only takes number of component (as integer) i.e no variance explaination metohd available  
   '''
-
+  global c2, subcase
   # WE NEED TO AUTO INFER the ml use case
   c1 = train_data[target_variable].dtype == 'int64'
   c2 = len(train_data[target_variable].unique()) <= 20
@@ -1216,65 +1522,99 @@ def Preprocess_Path_One(train_data,target_variable,ml_usecase=None,test_data =No
     else:
       ml_usecase ='regression'
   
+  if ((len(train_data[target_variable].unique()) > 2) and (ml_usecase != 'regression')):
+    subcase = 'multiclass'
+  else:
+    subcase = 'binary'
   
   global dtypes 
   dtypes = DataTypes_Auto_infer(target=target_variable,ml_usecase=ml_usecase,categorical_features=categorical_features,numerical_features=numerical_features,time_features=time_features,features_todrop=features_todrop,display_types=display_types)
 
   
   # for imputation
-  global imputer
   if imputation_type == "simple imputer":
+    global imputer
     imputer = Simple_Imputer(numeric_strategy=numeric_imputation_strategy, target_variable= target_variable,categorical_strategy=categorical_imputation_strategy)
   else:
     imputer = Surrogate_Imputer(numeric_strategy=numeric_imputation_strategy,categorical_strategy=categorical_imputation_strategy,target_variable=target_variable)
   
   # for zero_near_zero
-  global znz
   if apply_zero_nearZero_variance == True:
+    global znz
     znz = Zroe_NearZero_Variance(target=target_variable)
   else:
     znz = Empty()
 
   # for rare levels clubbing:
-  global club_R_L
+  
   if club_rare_levels == True:
+    global club_R_L
     club_R_L = Catagorical_variables_With_Rare_levels(target=target_variable,threshold=rara_level_threshold_percentage)
   else:
     club_R_L= Empty()
 
   # binning 
-  global binn
-
   if apply_binning == True:
+    global binn
     binn = Binning(features_to_discretize=features_to_binn)
   else:
     binn = Empty()
 
-
-  global scaling ,P_transform
+  # scaling & power transform
   if scale_data == True:
+    global scaling 
     scaling = Scaling_and_Power_transformation(target=target_variable,function_to_apply=scaling_method,random_state_quantile=random_state)
   else: 
     scaling = Empty()
   
   if Power_transform_data== True:
-    P_transform = Scaling_and_Power_transformation(target=target_variable,function_to_apply=Power_transform_method,random_state_quantile=random_state,transform_target=target_transformation,ml_usecase=ml_usecase)
+    global P_transform
+    P_transform = Scaling_and_Power_transformation(target=target_variable,function_to_apply=Power_transform_method,random_state_quantile=random_state)
   else:
     P_transform= Empty()
+  
+  # target transformation
+  if ((target_transformation == True) and (ml_usecase == 'regression')):
+    global pt_target
+    pt_target = Target_Transformation(target=target_variable,function_to_apply=target_transformation_method)
+  else:
+    pt_target = Empty()
+
 
   # for Time Variables
   global feature_time
   feature_time = Make_Time_Features()
   global dummy
   dummy = Dummify(target_variable)
+
+  # remove putliers
+  if remove_outliers == True:
+    global rem_outliers
+    rem_outliers= Outlier(target=target_variable,contamination=outlier_contamination_percentage,random_state=random_state )
+  else:
+    rem_outliers = Empty()
+  
+  # cluster all data:
+  if cluster_entire_data ==True:
+    global cluster_all
+    cluster_all = Cluster_Entire_Data(target_variable=target_variable,check_clusters_upto=range_of_clusters_to_try, random_state = random_state )
+  else:
+    cluster_all = Empty()
   
   # clean column names for special char
   clean_names =Clean_Colum_Names()
   
+  # removing multicollinearity
+  if remove_multicollinearity == True and subcase != 'multiclass':
+    global fix_multi
+    fix_multi = Fix_multicollinearity(target_variable=target_variable,threshold=maximum_correlation_between_features)
+  else:
+    fix_multi = Empty()
+
   
   # apply pca
-  global pca
   if apply_pca == True:
+    global pca
     pca = Reduce_Dimensions_For_Supervised_Path(target=target_variable,method = pca_method ,variance_retained_or_number_of_components=pca_variance_retained_or_number_of_components, random_state=random_state)
   else:
     pca= Empty()
@@ -1285,12 +1625,16 @@ def Preprocess_Path_One(train_data,target_variable,ml_usecase=None,test_data =No
                  ('imputer',imputer),
                  ('znz',znz),
                  ('club_R_L',club_R_L),
-                 ('binn',binn),
                  ('feature_time',feature_time),
                  ('scaling',scaling),
                  ('P_transform',P_transform),
+                 ('pt_target',pt_target),
+                 ('binn',binn),
+                 ('rem_outliers',rem_outliers),
+                 ('cluster_all',cluster_all),
                  ('dummy',dummy),
                  ('clean_names',clean_names),
+                 ('fix_multi',fix_multi),
                  ('pca',pca)
                  ])
   
@@ -1305,12 +1649,14 @@ def Preprocess_Path_One(train_data,target_variable,ml_usecase=None,test_data =No
 # preprocess_all_in_one_unsupervised
 def Preprocess_Path_Two(train_data,ml_usecase=None,test_data =None,categorical_features=[],numerical_features=[],time_features=[],features_todrop=[],display_types=False,
                                 imputation_type = "simple imputer" ,numeric_imputation_strategy='mean',categorical_imputation_strategy='not_available',
-                                apply_zero_nearZero_variance = True,
-                                club_rare_levels = True, rara_level_threshold_percentage =0.05,
+                                apply_zero_nearZero_variance = False,
+                                club_rare_levels = False, rara_level_threshold_percentage =0.05,
                                 apply_binning=False, features_to_binn =[],
                                 scale_data= False, scaling_method='zscore',
-                                Power_transform_data = False, Power_transform_method ='quantile', target_transformation= False,
-                                apply_pca = True , pca_method = 'pca_liner',pca_variance_retained_or_number_of_components =.99 , 
+                                Power_transform_data = False, Power_transform_method ='quantile',
+                                remove_outliers = False, outlier_contamination_percentage= 0.01,
+                                remove_multicollinearity = False, maximum_correlation_between_features= 0.90,  
+                                apply_pca = False , pca_method = 'pca_liner',pca_variance_retained_or_number_of_components =.99 , 
                                 random_state=42
 
                                ):
@@ -1320,21 +1666,25 @@ def Preprocess_Path_Two(train_data,ml_usecase=None,test_data =None,categorical_f
       - THIS IS BUILt FOR UNSUPERVISED LEARNING , FOLLOWES SAME PATH AS Path_One
       - 1) Auto infer data types 
       - 2) Impute (simple or with surrogate columns)
-      - 3) Generate sub features from time feature such as 'month','weekday',is_month_end','is_month_start' & 'hour'
-      - 4) Drop categorical variables that have zero variance or near zero variance
-      - 5) Club categorical variables levels togather as a new level (other_infrequent) that are rare / at the bottom 5% of the variable distribution
-      - 6) Apply binning to continious variable when numeric features are provided as a list 
-      - 7) Scales & Power Transform (zscore,minmax,yeo-johnson,quantile,maxabs,robust) , including option to transform target variable
-      - 8) Remove special characters from column names such as commas, square brackets etc to make it competible with jason dependednt models
+      - 3) Drop categorical variables that have zero variance or near zero variance
+      - 4) Club categorical variables levels togather as a new level (other_infrequent) that are rare / at the bottom 5% of the variable distribution
+      - 5) Generate sub features from time feature such as 'month','weekday',is_month_end','is_month_start' & 'hour'
+      - 6) Scales & Power Transform (zscore,minmax,yeo-johnson,quantile,maxabs,robust) , including option to transform target variable
+      - 7) Apply binning to continious variable when numeric features are provided as a list 
+      - 8) Detect & remove outliers using isolation forest, knn and PCA
       - 9) One Hot / Dummy encoding
-      -10) Apply diamension reduction techniques such as pca_liner, pca_kernal, incremental, tsne & pls
+      -10) Remove special characters from column names such as commas, square brackets etc to make it competible with jason dependednt models
+      -11) Fix multicollinearity
+      -12) Apply diamension reduction techniques such as pca_liner, pca_kernal, incremental, tsne & pls
           - except for pca_liner, all other method only takes number of component (as integer) i.e no variance explaination metohd available  
   '''
   
   # just make a dummy target variable
   target_variable = 'dummy_target'
   train_data[target_variable] = 2
-
+  # just to add diversified values to target
+  train_data.loc[0:3,target_variable] = 3
+ 
   # WE NEED TO AUTO INFER the ml use case
   c1 = train_data[target_variable].dtype == 'int64'
   c2 = len(train_data[target_variable].unique()) <= 20
@@ -1385,7 +1735,7 @@ def Preprocess_Path_Two(train_data,ml_usecase=None,test_data =None,categorical_f
     scaling = Empty()
   
   if Power_transform_data== True:
-    P_transform = Scaling_and_Power_transformation(target=target_variable,function_to_apply=Power_transform_method,random_state_quantile=random_state,transform_target=target_transformation,ml_usecase=ml_usecase,)
+    P_transform = Scaling_and_Power_transformation(target=target_variable,function_to_apply=Power_transform_method,random_state_quantile=random_state)
   else:
     P_transform= Empty()
 
@@ -1395,8 +1745,22 @@ def Preprocess_Path_Two(train_data,ml_usecase=None,test_data =None,categorical_f
   global dummy
   dummy = Dummify(target_variable)
   
+  # remove putliers
+  if remove_outliers == True:
+    global rem_outliers
+    rem_outliers= Outlier(target=target_variable,contamination=outlier_contamination_percentage,random_state=random_state )
+  else:
+    rem_outliers = Empty()
+
   # clean column names for special char
   clean_names =Clean_Colum_Names()
+
+  # removing multicollinearity
+  if remove_multicollinearity == True: 
+    global fix_multi
+    fix_multi = Fix_multicollinearity(target_variable=target_variable,threshold=maximum_correlation_between_features,correlation_with_target_preference=0.0)
+  else:
+    fix_multi = Empty()
 
   # apply pca
   global pca
@@ -1412,12 +1776,14 @@ def Preprocess_Path_Two(train_data,ml_usecase=None,test_data =None,categorical_f
                  ('imputer',imputer),
                  ('znz',znz),
                  ('club_R_L',club_R_L),
-                 ('binn',binn),
                  ('feature_time',feature_time),
                  ('scaling',scaling),
                  ('P_transform',P_transform),
+                 ('binn',binn),
+                 ('rem_outliers',rem_outliers),
                  ('dummy',dummy),
                  ('clean_names',clean_names),
+                 ('fix_multi',fix_multi),
                  ('pca',pca)
                  ])
   
