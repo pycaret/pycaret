@@ -3,7 +3,6 @@
 # License: MIT
 
 
-
 def setup(data,  
           target,   
           train_size = 0.7, 
@@ -11,6 +10,7 @@ def setup(data,
           sample_estimator = None,
           categorical_features = None,
           categorical_imputation = 'constant',
+          ordinal_features = None,
           numeric_features = None,
           numeric_imputation = 'mean',
           date_features = None,
@@ -46,6 +46,7 @@ def setup(data,
           feature_ratio = False, #new                        #create checking exceptions and docstring
           interaction_threshold = 0.01,    #new              #create checking exceptions and docstring
           session_id = None,
+          silent=False,
           profile = False):
     
     """
@@ -105,6 +106,13 @@ def setup(data,
     If missing values are found in categorical features, they will be imputed with
     a constant 'not_available' value. The other available option available is 'mode' 
     which imputes the value using most frequent value in the training dataset. 
+    
+    ordinal_features: dictionary, default = None
+    When data contains ordinal features, they must be encoded differently using 
+    ordinal_features param. For example if data has categorical variable with values
+    of 'low', 'medium', 'high' and it is known that low < medium < high, they can be 
+    passed as ordinal_features = { 'column_name' : ['low', 'medium', 'high'] }. 
+    Sequence of list must be in increasing order of lowest to highest.
     
     numeric_features: string, default = None
     If the inferred data types are not correct, numeric_features can be used to
@@ -320,6 +328,11 @@ def setup(data,
     unique number is then distributed as a seed in all functions used during the 
     experiment. This can be used for later reproducibility of the entire experiment.
     
+    silent: bool, default = False
+    When set to True, confirmation of data types is not required. All preprocessing will 
+    be performed assuming data types inferred automatically. Not recommended for direct use 
+    except for established pipelines.
+    
     profile: bool, default = False
     If set to true, a data profile for Exploratory Data Analysis will be displayed 
     in an interactive HTML report. 
@@ -340,7 +353,7 @@ def setup(data,
     """
     
     #testing
-    #no active testing
+    #no active test
     
     #exception checking   
     import sys
@@ -378,7 +391,34 @@ def setup(data,
     allowed_categorical_imputation = ['constant', 'mode']
     if categorical_imputation not in allowed_categorical_imputation:
         sys.exit("(Value Error): categorical_imputation param only accepts 'constant' or 'mode' ")
-        
+     
+    #ordinal_features
+    if ordinal_features is not None:
+        if type(ordinal_features) is not dict:
+            sys.exit("(Type Error): ordinal_features must be of type dictionary with column name as key and ordered values as list. ")
+    
+    #ordinal features check
+    if ordinal_features is not None:
+        data_cols = data.columns
+        data_cols = data_cols.drop(target)
+        ord_keys = ordinal_features.keys()
+
+        for k in ord_keys:
+            if len(data[k].unique()) != len(ordinal_features.get(k)):
+                sys.exit("(Value Error) Levels passed in ordinal_features param doesnt match with levels in data. ")
+                
+        for i in ord_keys:
+            if i not in data_cols:
+                sys.exit("(Value Error) Column name passed as a key in ordinal_features param doesnt exist. ")
+
+        for i in ord_keys:
+            value_in_keys = ordinal_features.get(i)
+            value_in_data = list(data[i].unique())
+            for j in value_in_keys:
+                if j not in value_in_data:
+                    text =  "Column name '" + str(i) + "' doesnt contain any level named '" + str(j) + "'."
+                    sys.exit(text)
+    
     #checking numeric imputation
     allowed_numeric_imputation = ['mean', 'median']
     if numeric_imputation not in allowed_numeric_imputation:
@@ -558,7 +598,11 @@ def setup(data,
         for i in ignore_features:
             if i not in all_cols:
                 sys.exit("(Value Error): Feature ignored is either target column or doesn't exist in the dataset.") 
-                
+    
+    #silent
+    if type(silent) is not bool:
+        sys.exit("(Type Error): silent parameter only accepts True or False. ")
+    
     #pre-load libraries
     import pandas as pd
     import ipywidgets as ipw
@@ -592,6 +636,11 @@ def setup(data,
     import matplotlib.pyplot as plt
     import plotly.express as px
     
+    #define highlight function for function grid to display
+    def highlight_max(s):
+        is_max = s == True
+        return ['background-color: lightgreen' if v else '' for v in is_max]
+        
     #cufflinks
     import cufflinks as cf
     cf.go_offline()
@@ -749,11 +798,27 @@ def setup(data,
     if feature_ratio:
         interactions_to_apply_pass.append('divide')
     
-    #uknown categorical
+    #unknown categorical
     if unknown_categorical_method == 'least_frequent':
         unknown_categorical_method_pass = 'least frequent'
     elif unknown_categorical_method == 'most_frequent':
         unknown_categorical_method_pass = 'most frequent'
+    
+    #ordinal_features
+    if ordinal_features is not None:
+        apply_ordinal_encoding_pass = True
+    else:
+        apply_ordinal_encoding_pass = False
+        
+    if apply_ordinal_encoding_pass is True:
+        ordinal_columns_and_categories_pass = ordinal_features
+    else:
+        ordinal_columns_and_categories_pass = {}
+    
+    if silent:
+        display_dtypes_pass = False
+    else:
+        display_dtypes_pass = True
         
     #import library
     from pycaret import preprocess
@@ -761,6 +826,8 @@ def setup(data,
     data = preprocess.Preprocess_Path_One(train_data = data, 
                                           target_variable = target,
                                           categorical_features = cat_features_pass,
+                                          apply_ordinal_encoding = apply_ordinal_encoding_pass, #new
+                                          ordinal_columns_and_categories = ordinal_columns_and_categories_pass, #new
                                           numerical_features = numeric_features_pass,
                                           time_features = date_features_pass,
                                           features_todrop = ignore_features_pass,
@@ -799,11 +866,12 @@ def setup(data,
                                           apply_feature_interactions = apply_feature_interactions_pass, #new
                                           feature_interactions_to_apply = interactions_to_apply_pass, #new
                                           feature_interactions_top_features_to_select_percentage=interaction_threshold, #new
-                                          display_types = True, #this is for inferred input box
+                                          display_types = display_dtypes_pass, #this is for inferred input box
                                           target_transformation = False, #not needed for classification
                                           random_state = seed)
 
     progress.value += 1
+    
 
     if hasattr(preprocess.dtypes, 'replacement'):
             label_encoded = preprocess.dtypes.replacement
@@ -814,12 +882,16 @@ def setup(data,
     else:
         label_encoded = 'None'
     
-    res_type = ['quit','Quit','exit','EXIT','q','Q','e','E','QUIT','Exit']
-    res = preprocess.dtypes.response
+    try:
+        res_type = ['quit','Quit','exit','EXIT','q','Q','e','E','QUIT','Exit']
+        res = preprocess.dtypes.response
+
+        if res in res_type:
+            sys.exit("(Process Exit): setup has been interupted with user command 'quit'. setup must rerun." )
+            
+    except:
+        pass
         
-    if res in res_type:
-        sys.exit("(Process Exit): setup has been interupted with user command 'quit'. setup must rerun." )
-    
     #save prep pipe
     prep_pipe = preprocess.pipe
     
@@ -874,7 +946,37 @@ def setup(data,
         cluster_iter_grid = None
     else:
         cluster_iter_grid = cluster_iter
+    
+    if polynomial_features:
+        polynomial_degree_grid = polynomial_degree
+    else:
+        polynomial_degree_grid = None
+    
+    if polynomial_features or trigonometry_features:
+        polynomial_threshold_grid = polynomial_threshold
+    else:
+        polynomial_threshold_grid = None
+    
+    if feature_selection:
+        feature_selection_threshold_grid = feature_selection_threshold
+    else:
+        feature_selection_threshold_grid = None
+    
+    if feature_interaction or feature_ratio:
+        interaction_threshold_grid = interaction_threshold
+    else:
+        interaction_threshold_grid = None
         
+    if ordinal_features is not None:
+        ordinal_features_grid = True
+    else:
+        ordinal_features_grid = False
+        
+    if handle_unknown_categorical:
+        unknown_categorical_method_grid = unknown_categorical_method
+    else:
+        unknown_categorical_method_grid = None
+    
     learned_types = preprocess.dtypes.learent_dtypes
     learned_types.drop(target, inplace=True)
 
@@ -894,8 +996,8 @@ def setup(data,
     """
     
     #reset pandas option
-    pd.reset_option("display.max_rows") 
-    pd.reset_option("display.max_columns")
+    #pd.reset_option("display.max_rows") 
+    #pd.reset_option("display.max_columns")
       
     #create an empty list for pickling later.
     experiment__ = []
@@ -1094,11 +1196,15 @@ def setup(data,
                                          ['Target Type', target_type],
                                          ['Label Encoded', label_encoded],
                                          ['Original Data', data_before_preprocess.shape ],
+                                         ['Missing Values ', missing_flag],
                                          ['Numeric Features ', float_type ],
                                          ['Categorical Features ', cat_type ],
+                                         ['Ordinal Features ', ordinal_features_grid], #new
                                          ['Sampled Data', '(' + str(X_train.shape[0] + X_test.shape[0]) + ', ' + str(data_before_preprocess.shape[1]) + ')' ], 
                                          ['Transformed Train Set', X_train.shape ], 
                                          ['Transformed Test Set',X_test.shape ],
+                                         ['Numeric Imputer ', numeric_imputation],
+                                         ['Categorical Imputer ', categorical_imputation],
                                          ['Normalize ', normalize ],
                                          ['Normalize Method ', normalize_grid ],
                                          ['Transformation ', transformation ],
@@ -1116,12 +1222,20 @@ def setup(data,
                                          ['Multicollinearity Threshold ', multicollinearity_threshold_grid],
                                          ['Clustering ', create_clusters],
                                          ['Clustering Iteration ', cluster_iter_grid],
-                                         ['Missing Values ', missing_flag],
-                                         ['Numeric Imputer ', numeric_imputation],
-                                         ['Categorical Imputer ', categorical_imputation],
+                                         ['Polynomial Features ', polynomial_features], #new
+                                         ['Polynomial Degree ', polynomial_degree_grid], #new
+                                         ['Trignometry Features ', trigonometry_features], #new
+                                         ['Polynomial Threshold ', polynomial_threshold_grid], #new
+                                         ['Group Features ', group_features], #new
+                                         ['Feature Selection ', feature_selection], #new
+                                         ['Features Selection Threshold ', feature_selection_threshold_grid], #new
+                                         ['Feature Interaction ', feature_interaction], #new
+                                         ['Feature Ratio ', feature_ratio], #new
+                                         ['Interaction Threshold ', interaction_threshold_grid], #new
                                        ], columns = ['Description', 'Value'] )
 
-            functions_ = functions.style.hide_index()
+            #functions_ = functions.style.hide_index()
+            functions_ = functions.style.apply(highlight_max)
             display(functions_)
             
             if profile:
@@ -1173,12 +1287,16 @@ def setup(data,
             functions = pd.DataFrame ( [ ['session_id', seed ],
                                          ['Target Type', target_type],
                                          ['Label Encoded', label_encoded],
-                                         ['Original Data', data_before_preprocess.shape ], 
+                                         ['Original Data', data_before_preprocess.shape ],
+                                         ['Missing Values ', missing_flag],
                                          ['Numeric Features ', float_type ],
                                          ['Categorical Features ', cat_type ],
+                                         ['Ordinal Features ', ordinal_features_grid], #new
                                          ['Sampled Data', '(' + str(X_train.shape[0] + X_test.shape[0]) + ', ' + str(data_before_preprocess.shape[1]) + ')' ], 
                                          ['Transformed Train Set', X_train.shape ], 
-                                         ['Transformed Test Set',X_test.shape ], 
+                                         ['Transformed Test Set',X_test.shape ],
+                                         ['Numeric Imputer ', numeric_imputation],
+                                         ['Categorical Imputer ', categorical_imputation],
                                          ['Normalize ', normalize ],
                                          ['Normalize Method ', normalize_grid ],
                                          ['Transformation ', transformation ],
@@ -1196,12 +1314,20 @@ def setup(data,
                                          ['Multicollinearity Threshold ', multicollinearity_threshold_grid],
                                          ['Clustering ', create_clusters],
                                          ['Clustering Iteration ', cluster_iter_grid],
-                                         ['Missing Values ', missing_flag],
-                                         ['Numeric Imputer ', numeric_imputation],
-                                         ['Categorical Imputer ', categorical_imputation],
+                                         ['Polynomial Features ', polynomial_features], #new
+                                         ['Polynomial Degree ', polynomial_degree_grid], #new
+                                         ['Trignometry Features ', trigonometry_features], #new
+                                         ['Polynomial Threshold ', polynomial_threshold_grid], #new
+                                         ['Group Features ', group_features], #new
+                                         ['Feature Selection ', feature_selection], #new
+                                         ['Features Selection Threshold ', feature_selection_threshold_grid], #new
+                                         ['Feature Interaction ', feature_interaction], #new
+                                         ['Feature Ratio ', feature_ratio], #new
+                                         ['Interaction Threshold ', interaction_threshold_grid], #new
                                        ], columns = ['Description', 'Value'] )
             
-            functions_ = functions.style.hide_index()
+            #functions_ = functions.style.hide_index()
+            functions_ = functions.style.apply(highlight_max)
             display(functions_)
             
             if profile:
@@ -1245,15 +1371,20 @@ def setup(data,
             print('Setup Succesfully Completed! Loading Profile Now... Please Wait!')
         else:
             print('Setup Succesfully Completed!')
+            
         functions = pd.DataFrame ( [ ['session_id', seed ],
                                      ['Target Type', target_type],
                                      ['Label Encoded', label_encoded],
-                                     ['Original Data', data_before_preprocess.shape ], 
-                                     ['Numeric Features ', float_type ],   
+                                     ['Original Data', data_before_preprocess.shape ],
+                                     ['Missing Values ', missing_flag],
+                                     ['Numeric Features ', float_type ],
                                      ['Categorical Features ', cat_type ],
+                                     ['Ordinal Features ', ordinal_features_grid], #new
                                      ['Sampled Data', '(' + str(X_train.shape[0] + X_test.shape[0]) + ', ' + str(data_before_preprocess.shape[1]) + ')' ], 
                                      ['Transformed Train Set', X_train.shape ], 
                                      ['Transformed Test Set',X_test.shape ],
+                                     ['Numeric Imputer ', numeric_imputation],
+                                     ['Categorical Imputer ', categorical_imputation],
                                      ['Normalize ', normalize ],
                                      ['Normalize Method ', normalize_grid ],
                                      ['Transformation ', transformation ],
@@ -1271,12 +1402,20 @@ def setup(data,
                                      ['Multicollinearity Threshold ', multicollinearity_threshold_grid],
                                      ['Clustering ', create_clusters],
                                      ['Clustering Iteration ', cluster_iter_grid],
-                                     ['Missing Values ', missing_flag],
-                                     ['Numeric Imputer ', numeric_imputation],
-                                     ['Categorical Imputer ', categorical_imputation],
+                                     ['Polynomial Features ', polynomial_features], #new
+                                     ['Polynomial Degree ', polynomial_degree_grid], #new
+                                     ['Trignometry Features ', trigonometry_features], #new
+                                     ['Polynomial Threshold ', polynomial_threshold_grid], #new
+                                     ['Group Features ', group_features], #new
+                                     ['Feature Selection ', feature_selection], #new
+                                     ['Features Selection Threshold ', feature_selection_threshold_grid], #new
+                                     ['Feature Interaction ', feature_interaction], #new
+                                     ['Feature Ratio ', feature_ratio], #new
+                                     ['Interaction Threshold ', interaction_threshold_grid], #new
                                    ], columns = ['Description', 'Value'] )
         
-        functions_ = functions.style.hide_index()
+        #functions = functions.style.hide_index()
+        functions_ = functions.style.apply(highlight_max)
         display(functions_)
         
         if profile:
@@ -1301,6 +1440,7 @@ def setup(data,
         experiment__.append(('Transformation Pipeline', prep_pipe))
         
         return X, y, X_train, X_test, y_train, y_test, seed, prep_pipe, experiment__
+
 
 
 
@@ -5027,7 +5167,7 @@ def stack_models(estimator_list,
     '''
     
     #testing
-    #no active tests
+    #no active test
     
     #exception checking   
     import sys
@@ -5129,7 +5269,7 @@ def stack_models(estimator_list,
     from sklearn.model_selection import StratifiedKFold
     from sklearn.model_selection import cross_val_predict
     import seaborn as sns
-    
+    import matplotlib.pyplot as plt
     
     progress.value += 1
     
@@ -5241,8 +5381,8 @@ def stack_models(estimator_list,
         data_X = base_prediction
     
     #Correlation matrix of base_prediction
-    base_prediction_cor = base_prediction.drop(base_prediction.columns[0],axis=1)
-    base_prediction_cor = base_prediction_cor.corr()
+    #base_prediction_cor = base_prediction.drop(base_prediction.columns[0],axis=1)
+    base_prediction_cor = base_prediction.corr()
     
     #Meta Modeling Starts Here
     model = meta_model #this defines model to be used below as model = meta_model (as captured above)
@@ -5438,9 +5578,11 @@ def stack_models(estimator_list,
     
     if plot:
         clear_output()
-        ax = sns.heatmap(base_prediction_cor, vmin=1, vmax=1, center=0,cmap='magma', square=True, annot=True, 
+        plt.subplots(figsize=(15,7))
+        ax = sns.heatmap(base_prediction_cor, vmin=0.2, vmax=1, center=0,cmap='magma', square=True, annot=True, 
                          linewidths=1)
-    
+        ax.set_ylim(sorted(ax.get_xlim(), reverse=True))
+
     if verbose:
         clear_output()
         display(model_results)
@@ -5448,7 +5590,6 @@ def stack_models(estimator_list,
     else:
         clear_output()
         return models_
-
 
 
 
@@ -5564,6 +5705,10 @@ def create_stacknet(estimator_list,
     #exception checking   
     import sys
     
+    #checking estimator_list
+    if type(estimator_list[0]) is not list:
+        sys.exit("(Type Error): estimator_list parameter must be list of list. ")
+
     #checking error for estimator_list
     for i in estimator_list:
         for j in i:

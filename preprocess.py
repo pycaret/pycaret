@@ -16,6 +16,7 @@ from sklearn.preprocessing import MaxAbsScaler
 from sklearn.preprocessing import PowerTransformer
 from sklearn.preprocessing import QuantileTransformer
 from sklearn.preprocessing import OneHotEncoder
+from sklearn.preprocessing import OrdinalEncoder
 from sklearn.decomposition import PCA
 from sklearn.decomposition import KernelPCA
 from sklearn.cross_decomposition import PLSRegression
@@ -1060,7 +1061,45 @@ class Make_Time_Features(BaseEstimator,TransformerMixin):
 
     return(data)
 
+ #____________________________________________________________________________________________________________________________________________________________________
+# Ordinal transformer
+class Ordinal(BaseEstimator,TransformerMixin):
+  '''
+    - converts categorical features into ordinal values 
+    - takes a dataframe , and information about column names and ordered categories as dict
+    - returns float panda data frame
+  '''
 
+  def __init__(self, info_as_dict):
+    self.info_as_dict = info_as_dict
+    return(None)
+
+  def fit(self,data,y=None):
+    return(None)
+
+  def transform(self,dataset,y=None):
+    data = dataset.copy()
+    new_data_test = pd.DataFrame(self.enc.transform(data[self.info_as_dict.keys()]),columns= self.info_as_dict.keys(),index= data.index)
+    for i in self.info_as_dict.keys():
+      data[i] = new_data_test[i]
+    return(data)
+
+  def fit_transform(self,dataset,y=None):
+    data = dataset.copy()
+    # creat categories from given keys in the data set
+    cat_list = []
+    for i in self.info_as_dict.values():
+      i = [np.array(i)]
+      cat_list = cat_list + i
+    
+    # now do fit transform 
+    self.enc = OrdinalEncoder(cat_list)
+    new_data_train = pd.DataFrame(self.enc.fit_transform(data.loc[:,self.info_as_dict.keys()]),columns=self.info_as_dict,index= data.index )
+    # new_data = pd.DataFrame(self.enc.fit_transform(data.loc[:,self.info_as_dict.keys()]))
+    for i in self.info_as_dict.keys():
+      data[i] = new_data_train[i]
+      
+    return(data)
 # _______________________________________________________________________________________________________________________
 
 # make dummy variables
@@ -1482,8 +1521,8 @@ class Advanced_Feature_Selection_Classic(BaseEstimator,TransformerMixin):
   def transform(self,dataset,y=None):
     # return the data with onlys specific columns
     data= dataset.copy()
-    self.selected_columns.remove(self.target)
-    return(data[self.selected_columns])
+    # self.selected_columns.remove(self.target)
+    return(data[self.selected_columns_test])
     # return(data)
 
   def fit_transform(self,dataset,y=None):
@@ -1547,7 +1586,7 @@ class Advanced_Feature_Selection_Classic(BaseEstimator,TransformerMixin):
 
     self.selected_columns = list(set([self.target]+list(dummy_all_columns_RF) + list(corr) +list(dummy_all_columns_LGBM)))
     
-    del(dummy_all)
+    self.selected_columns_test = dataset[self.selected_columns].drop(self.target,axis=1).columns
     return(dataset[self.selected_columns])
 #_
 
@@ -2034,7 +2073,8 @@ def Preprocess_Path_One(train_data,target_variable,ml_usecase=None,test_data =No
                                 imputation_type = "simple imputer" ,numeric_imputation_strategy='mean',categorical_imputation_strategy='not_available',
                                 apply_zero_nearZero_variance = False,
                                 club_rare_levels = False, rara_level_threshold_percentage =0.05,
-                                apply_untrained_levels_treatment= False,untrained_levels_treatment_method = 'least frequent', 
+                                apply_untrained_levels_treatment= False,untrained_levels_treatment_method = 'least frequent',
+                                apply_ordinal_encoding = False, ordinal_columns_and_categories= {},
                                 apply_binning=False, features_to_binn =[],
                                 apply_grouping= False , group_name=[] , features_to_group_ListofList=[[]],
                                 apply_polynomial_trigonometry_features = False, max_polynomial=2,trigonometry_calculations=['sin','cos','tan'], top_poly_trig_features_to_select_percentage=.20,
@@ -2117,6 +2157,13 @@ def Preprocess_Path_One(train_data,target_variable,ml_usecase=None,test_data =No
     new_levels = New_Catagorical_Levels_in_TestData(target=target_variable,replacement_strategy=untrained_levels_treatment_method)
   else:
     new_levels= Empty()
+
+  # ordinal coding
+  if apply_ordinal_encoding == True:
+    global ordinal
+    ordinal = Ordinal(info_as_dict=ordinal_columns_and_categories)
+  else:
+    ordinal = Empty()
 
   # grouping
   if apply_grouping == True:
@@ -2221,6 +2268,7 @@ def Preprocess_Path_One(train_data,target_variable,ml_usecase=None,test_data =No
                  ('znz',znz),
                  ('club_R_L',club_R_L),
                  ('new_levels',new_levels),
+                 ('ordinal',ordinal),
                  ('feature_time',feature_time),
                  ('group',group),
                  ('nonliner',nonliner),
@@ -2251,7 +2299,8 @@ def Preprocess_Path_Two(train_data,ml_usecase=None,test_data =None,categorical_f
                                 imputation_type = "simple imputer" ,numeric_imputation_strategy='mean',categorical_imputation_strategy='not_available',
                                 apply_zero_nearZero_variance = False,
                                 club_rare_levels = False, rara_level_threshold_percentage =0.05,
-                                apply_untrained_levels_treatment= False,untrained_levels_treatment_method = 'least frequent', 
+                                apply_untrained_levels_treatment= False,untrained_levels_treatment_method = 'least frequent',
+                                apply_ordinal_encoding = False, ordinal_columns_and_categories= {}, 
                                 apply_binning=False, features_to_binn =[],
                                 apply_grouping= False , group_name=[] , features_to_group_ListofList=[[]],
                                 scale_data= False, scaling_method='zscore',
@@ -2328,6 +2377,13 @@ def Preprocess_Path_Two(train_data,ml_usecase=None,test_data =None,categorical_f
   else:
     new_levels= Empty()
   
+  # ordinal coding
+  if apply_ordinal_encoding == True:
+    global ordinal
+    ordinal = Ordinal(info_as_dict=ordinal_columns_and_categories)
+  else:
+    ordinal = Empty()
+  
   # grouping
   if apply_grouping == True:
     global group
@@ -2394,6 +2450,7 @@ def Preprocess_Path_Two(train_data,ml_usecase=None,test_data =None,categorical_f
                  ('znz',znz),
                  ('club_R_L',club_R_L),
                  ('new_levels',new_levels),
+                 ('ordinal',ordinal),
                  ('feature_time',feature_time),
                  ('group',group),
                  ('scaling',scaling),
