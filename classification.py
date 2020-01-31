@@ -3,6 +3,7 @@
 # License: MIT
 
 
+
 def setup(data,  
           target,   
           train_size = 0.7, 
@@ -18,6 +19,8 @@ def setup(data,
           normalize_method = 'zscore',
           transformation = False,
           transformation_method = 'yeo-johnson',
+          handle_unknown_categorical = True, #new             #create docstring and exception
+          unknown_categorical_method = 'least_frequent', #new  #create docstring and exception
           pca = False, #new
           pca_method = 'linear', #new
           pca_components = None, #new
@@ -31,6 +34,17 @@ def setup(data,
           multicollinearity_threshold = 0.9, #new
           create_clusters = False, #new
           cluster_iter = 20, #new
+          polynomial_features = False, #new                  #create checking exceptions and docstring
+          polynomial_degree = 2, #new                        #create checking exceptions and docstring
+          trigonometry_features = False, #new                #create checking exceptions and docstring
+          polynomial_threshold = 0.1, #new                   #create checking exceptions and docstring
+          group_features = None, #new                        #create checking exceptions and docstring
+          group_names = None, #new                           #create checking exceptions and docstring
+          feature_selection = False, #new                    #create checking exceptions and docstring
+          feature_selection_threshold = 0.8, #new            #create checking exceptions and docstring
+          feature_interaction = False, #new                  #create checking exceptions and docstring
+          feature_ratio = False, #new                        #create checking exceptions and docstring
+          interaction_threshold = 0.01,    #new              #create checking exceptions and docstring
           session_id = None,
           profile = False):
     
@@ -150,7 +164,16 @@ def setup(data,
     the transformation transforms the feature set to follow Gaussian-like or normal
     distribution. Note that quantile transformer is non-linear and may distort linear 
     correlations between variables measured at the same scale.
-
+    
+    handle_unknown_categorical: bool, default = True
+    When set to True, unknown categorical levels in new / unseen data is replaced by
+    most or least frequent level in as learned in training data. The method is defined 
+    under unknown_categorical_method param.
+    
+    unknown_categorical_method: string, default = 'least_frequent'
+    Method to be used to replace unknown categorical level in unseen data. Method can
+    be 'least_frequent' or 'most_frequent'.
+    
     pca: bool, default = False
     When set to True, dimensionality reduction is applied to project the data into 
     lower dimensional space using the method defined in pca_method param. Generally,
@@ -182,10 +205,11 @@ def setup(data,
     common value.
     
     combine_rare_levels: bool, default = False
-    When set to True, All levels in categorical features below the threshold defined in
-    rare_level_threshold param is combined together as a single level. rare_level_threshold
-    represents the percentile distribution of specific level. Generally, this features is 
-    applied to limit the sparse matrix caused by high number of levels in categorical 
+    When set to True, All levels in categorical features below the threshold defined 
+    in rare_level_threshold param is combined together as a single level. There must be 
+    atleast two levels under threshold for this to take effect. rare_level_threshold
+    represents the percentile distribution of level frequency. Generally, this features 
+    is applied to limit the sparse matrix caused by high number of levels in categorical 
     features. 
     
     rare_level_threshold: float, default = 0.1
@@ -200,10 +224,8 @@ def setup(data,
     non-gaussian datasets.
     
     remove_outliers: bool, default = False
-    When set to True, outliers from the training data is removed using ensemble of 
-    Isolation Forest, K Nearest Neighbour and PCA Outlier detector. All of them are
-    unsupervised techniques. The contamination percentage is defined using the
-    outliers_threshold parameter.
+    When set to True, outliers from the training data is removed using PCA linear
+    dimensionality reduction using Singular Value Decomposition technique.
     
     outliers_threshold: float, default = 0.05
     The percentage / proportion of outliers in the dataset can be defined using
@@ -228,6 +250,70 @@ def setup(data,
     cluster_iter: int, default = 20
     Number of iterations for creating cluster. Each iteration represent cluster size.
     Only comes into effect when create_clusters param is set to True.
+    
+    polynomial_features: bool, default = False
+    When set to True, it creates new features of all polynomial combinations of existing
+    numeric features in dataset with degree defined in polynomial_degree param.
+    
+    polynomial_degree: int, default = 2
+    Degree of polynomial features. For example, if an input sample is two dimensional and
+    of the form [a, b], polynomial features with degree = 2 are: [1, a, b, a^2, ab, b^2].
+    
+    trigonometry_features: bool, default = False
+    When set to True, it creates new features of all trigonometric combinations of existing
+    numeric features in dataset with degree defined in polynomial_degree param.
+    
+    polynomial_threshold: float, default = 0.1
+    This is used to compress the sparse matrix of polynomial and trigonometric features.
+    Polynomial and trigonometric features whose feature importance based on the combination
+    of Random Forest, AdaBoost and Linear correlation is within the percentile of threshold
+    defined are kept in the dataset, remaining features are dropped before further processing.
+    
+    group_features: list or list of list, default = None
+    When data contains features that contains related characteristics, it can be used for 
+    statistical feature extraction. For example, if dataset has numeric features that are 
+    related with each other such as 'Column1', 'Column2', 'Column3', a list containing 
+    column names can be passed under group_features to extract statistical information
+    such as mean, median, mode and standard deviation.
+    
+    group_names: list, default = None
+    When group_features is passed, a name of the group can be passed in group_names param
+    as a list containing string. The length of group_names list must equal to the length 
+    of group_features. When the length doesn't match or name is not passed, new features
+    are sequentially named such as group_1, group_2 etc.
+    
+    feature_selection: bool, default = False
+    When set to True, subset of features are selected using combination of various
+    permutation importance techniques including Random Forest, Adaboost and Linear 
+    correlation with target variable. The size of subset is dependent on the 
+    feature_selection_param. Generally, this is used to constraint the feature 
+    space for efficiency in modeling. When polynomial_features and feature_interaction
+    is used, it is highly recommended to use feature_selection with lower values of 
+    feature_selection_threshold.
+
+    feature_selection_threshold: float, default = 0.8
+    Threshold used for feature selection (including the newly created polynomial features)
+    Higher value will result in high feature space. It is recommended to do multiple trials
+    with different feature_selection_threshold specially in case where polynomial_features 
+    and feature_interaction is used. Setting very low value may be efficient but may result
+    in under-fitting.
+    
+    feature_interaction: bool, default = False 
+    When set to True, it will create new features by interacting (a * b) all numeric 
+    variables in the dataset (including polynomial and trigonometric (if created). 
+    This feature is not scalable and may not work as expected on dataset with high 
+    feature space.
+    
+    feature_ratio: bool, default = False
+    When set to True, it will create new features by calculating ratios (a / b) all numeric 
+    variables in the dataset. This feature is not scalable and may not work as expected on 
+    dataset with high feature space.
+    
+    interaction_threshold: bool, default = 0.01
+    Similar to polynomial_threshold, It is used to compress the sparse matrix of newly 
+    features through interaction. Features whose importance based on the combination of 
+    Random Forest, AdaBoost and Linear correlation is within the percentile of threshold
+    defined are kept in the dataset, remaining features are dropped before further processing.
     
     session_id: int, default = None
     If None, a random seed is generated and returned in the Information grid. The 
@@ -308,6 +394,16 @@ def setup(data,
     if transformation_method not in allowed_transformation_method:
         sys.exit("(Value Error): transformation_method param only accepts 'yeo-johnson' or 'quantile'. ")        
     
+    #handle unknown categorical
+    if type(handle_unknown_categorical) is not bool:
+        sys.exit('(Type Error): handle_unknown_categorical parameter only accepts True or False.')
+        
+    #unknown categorical method
+    unknown_categorical_method_available = ['least_frequent', 'most_frequent']
+    
+    if unknown_categorical_method not in unknown_categorical_method_available:
+        sys.exit("(Type Error): unknown_categorical_method only accepts 'least_frequent' or 'most_frequent'.")
+    
     #check pca
     if type(pca) is not bool:
         sys.exit('(Type Error): PCA parameter only accepts True or False.')
@@ -375,11 +471,6 @@ def setup(data,
     #multicollinearity_threshold
     if type(multicollinearity_threshold) is not float:
         sys.exit('(Type Error): multicollinearity_threshold must be a float between 0 and 1. ')  
-        
-    #multicollinearity and multiclass check
-    if data[target].value_counts().count() > 2:
-        if remove_multicollinearity is True:
-            sys.exit('(Type Error): remove_multicollinearity cannot be used when target is multiclass. ')  
     
     #create_clusters
     if type(create_clusters) is not bool:
@@ -389,10 +480,56 @@ def setup(data,
     if type(cluster_iter) is not int:
         sys.exit('(Type Error): cluster_iter must be a integer greater than 1. ')                 
 
+    #polynomial_features
+    if type(polynomial_features) is not bool:
+        sys.exit('(Type Error): polynomial_features only accepts True or False. ')   
+    
+    #polynomial_degree
+    if type(polynomial_degree) is not int:
+        sys.exit('(Type Error): polynomial_degree must be an integer. ')
+        
+    #polynomial_features
+    if type(trigonometry_features) is not bool:
+        sys.exit('(Type Error): trigonometry_features only accepts True or False. ')    
+        
+    #polynomial threshold
+    if type(polynomial_threshold) is not float:
+        sys.exit('(Type Error): polynomial_threshold must be a float between 0 and 1. ')      
+        
+    #group features
+    if group_features is not None:
+        if type(group_features) is not list:
+            sys.exit('(Type Error): group_features must be of type list. ')     
+    
+    if group_names is not None:
+        if type(group_names) is not list:
+            sys.exit('(Type Error): group_names must be of type list. ')         
+    
     #cannot drop target
     if ignore_features is not None:
         if target in ignore_features:
             sys.exit("(Value Error): cannot drop target column. ")  
+                
+    #feature_selection
+    if type(feature_selection) is not bool:
+        sys.exit('(Type Error): feature_selection only accepts True or False. ')   
+        
+    #feature_selection_threshold
+    if type(feature_selection_threshold) is not float:
+        sys.exit('(Type Error): feature_selection_threshold must be a float between 0 and 1. ')  
+        
+    #feature_interaction
+    if type(feature_interaction) is not bool:
+        sys.exit('(Type Error): feature_interaction only accepts True or False. ')  
+        
+    #feature_ratio
+    if type(feature_ratio) is not bool:
+        sys.exit('(Type Error): feature_ratio only accepts True or False. ')     
+        
+    #interaction_threshold
+    if type(interaction_threshold) is not float:
+        sys.exit('(Type Error): interaction_threshold must be a float between 0 and 1. ')  
+        
         
     #forced type check
     all_cols = list(data.columns)
@@ -555,6 +692,68 @@ def setup(data,
     else:
         apply_binning_pass = True
         features_to_bin_pass = bin_numeric_features
+    
+    #trignometry
+    if trigonometry_features is False:
+        trigonometry_features_pass = []
+    else:
+        trigonometry_features_pass = ['sin', 'cos', 'tan']
+    
+    #group features
+    #=============#
+    
+    #apply grouping
+    if group_features is not None:
+        apply_grouping_pass = True
+    else:
+        apply_grouping_pass = False
+    
+    #group features listing
+    if apply_grouping_pass is True:
+        
+        if type(group_features[0]) is str:
+            group_features_pass = []
+            group_features_pass.append(group_features)
+        else:
+            group_features_pass = group_features
+            
+    else:
+        
+        group_features_pass = [[]]
+    
+    #group names
+    if apply_grouping_pass is True:
+
+        if (group_names is None) or (len(group_names) != len(group_features_pass)):
+            group_names_pass = list(np.arange(len(group_features_pass)))
+            group_names_pass = ['group_' + str(i) for i in group_names_pass]
+
+        else:
+            group_names_pass = group_names
+            
+    else:
+        group_names_pass = []
+    
+    #feature interactions
+    
+    if feature_interaction or feature_ratio:
+        apply_feature_interactions_pass = True
+    else:
+        apply_feature_interactions_pass = False
+    
+    interactions_to_apply_pass = []
+    
+    if feature_interaction:
+        interactions_to_apply_pass.append('multiply')
+    
+    if feature_ratio:
+        interactions_to_apply_pass.append('divide')
+    
+    #uknown categorical
+    if unknown_categorical_method == 'least_frequent':
+        unknown_categorical_method_pass = 'least frequent'
+    elif unknown_categorical_method == 'most_frequent':
+        unknown_categorical_method_pass = 'most frequent'
         
     #import library
     from pycaret import preprocess
@@ -571,6 +770,8 @@ def setup(data,
                                           scaling_method = normalize_method,
                                           Power_transform_data = transformation,
                                           Power_transform_method = trans_method_pass,
+                                          apply_untrained_levels_treatment= handle_unknown_categorical, #new
+                                          untrained_levels_treatment_method = unknown_categorical_method_pass, #new
                                           apply_pca = pca, #new
                                           pca_method = pca_method_pass, #new
                                           pca_variance_retained_or_number_of_components = pca_components_pass, #new
@@ -581,10 +782,23 @@ def setup(data,
                                           features_to_binn = features_to_bin_pass, #new
                                           remove_outliers = remove_outliers, #new
                                           outlier_contamination_percentage = outliers_threshold, #new
+                                          outlier_methods = ['pca'], #pca hardcoded
                                           remove_multicollinearity = remove_multicollinearity, #new
                                           maximum_correlation_between_features = multicollinearity_threshold, #new
                                           cluster_entire_data = create_clusters, #new
                                           range_of_clusters_to_try = cluster_iter, #new
+                                          apply_polynomial_trigonometry_features = polynomial_features, #new
+                                          max_polynomial = polynomial_degree, #new
+                                          trigonometry_calculations = trigonometry_features_pass, #new
+                                          top_poly_trig_features_to_select_percentage = polynomial_threshold, #new
+                                          apply_grouping = apply_grouping_pass, #new
+                                          features_to_group_ListofList = group_features_pass, #new
+                                          group_name = group_names_pass, #new
+                                          apply_feature_selection = feature_selection, #new
+                                          feature_selection_top_features_percentage = feature_selection_threshold, #new
+                                          apply_feature_interactions = apply_feature_interactions_pass, #new
+                                          feature_interactions_to_apply = interactions_to_apply_pass, #new
+                                          feature_interactions_top_features_to_select_percentage=interaction_threshold, #new
                                           display_types = True, #this is for inferred input box
                                           target_transformation = False, #not needed for classification
                                           random_state = seed)

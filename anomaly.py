@@ -555,7 +555,12 @@ def setup(data,
     if supervised is False:
         experiment__ = []
     else:
-        pass
+        try:
+            experiment__.append('dummy')
+            experiment__.remove('dummy')
+        except:
+            experiment__ = []
+	
     
     progress.value += 1
     
