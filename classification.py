@@ -402,14 +402,14 @@ def setup(data,
         data_cols = data.columns
         data_cols = data_cols.drop(target)
         ord_keys = ordinal_features.keys()
-
-        for k in ord_keys:
-            if len(data[k].unique()) != len(ordinal_features.get(k)):
-                sys.exit("(Value Error) Levels passed in ordinal_features param doesnt match with levels in data. ")
-                
+                        
         for i in ord_keys:
             if i not in data_cols:
                 sys.exit("(Value Error) Column name passed as a key in ordinal_features param doesnt exist. ")
+                
+        for k in ord_keys:
+            if len(data[k].unique()) != len(ordinal_features.get(k)):
+                sys.exit("(Value Error) Levels passed in ordinal_features param doesnt match with levels in data. ")
 
         for i in ord_keys:
             value_in_keys = ordinal_features.get(i)
@@ -898,9 +898,9 @@ def setup(data,
     #generate values for grid show
     missing_values = data_before_preprocess.isna().sum().sum()
     if missing_values > 0:
-        missing_flag = 'True'
+        missing_flag = True
     else:
-        missing_flag = 'False'
+        missing_flag = False
     
     if normalize is True:
         normalize_grid = normalize_method
@@ -928,9 +928,9 @@ def setup(data,
         rare_level_threshold_grid = 'None'
     
     if bin_numeric_features is None:
-        numeric_bin_grid = 'False'
+        numeric_bin_grid = False
     else:
-        numeric_bin_grid = 'True'
+        numeric_bin_grid = True
     
     if remove_outliers is False:
         outliers_threshold_grid = None
@@ -976,6 +976,11 @@ def setup(data,
         unknown_categorical_method_grid = unknown_categorical_method
     else:
         unknown_categorical_method_grid = None
+    
+    if group_features is not None:
+        group_features_grid = True
+    else:
+        group_features_grid = False
     
     learned_types = preprocess.dtypes.learent_dtypes
     learned_types.drop(target, inplace=True)
@@ -1226,7 +1231,7 @@ def setup(data,
                                          ['Polynomial Degree ', polynomial_degree_grid], #new
                                          ['Trignometry Features ', trigonometry_features], #new
                                          ['Polynomial Threshold ', polynomial_threshold_grid], #new
-                                         ['Group Features ', group_features], #new
+                                         ['Group Features ', group_features_grid], #new
                                          ['Feature Selection ', feature_selection], #new
                                          ['Features Selection Threshold ', feature_selection_threshold_grid], #new
                                          ['Feature Interaction ', feature_interaction], #new
@@ -1318,7 +1323,7 @@ def setup(data,
                                          ['Polynomial Degree ', polynomial_degree_grid], #new
                                          ['Trignometry Features ', trigonometry_features], #new
                                          ['Polynomial Threshold ', polynomial_threshold_grid], #new
-                                         ['Group Features ', group_features], #new
+                                         ['Group Features ', group_features_grid], #new
                                          ['Feature Selection ', feature_selection], #new
                                          ['Features Selection Threshold ', feature_selection_threshold_grid], #new
                                          ['Feature Interaction ', feature_interaction], #new
@@ -1406,7 +1411,7 @@ def setup(data,
                                      ['Polynomial Degree ', polynomial_degree_grid], #new
                                      ['Trignometry Features ', trigonometry_features], #new
                                      ['Polynomial Threshold ', polynomial_threshold_grid], #new
-                                     ['Group Features ', group_features], #new
+                                     ['Group Features ', group_features_grid], #new
                                      ['Feature Selection ', feature_selection], #new
                                      ['Features Selection Threshold ', feature_selection_threshold_grid], #new
                                      ['Feature Interaction ', feature_interaction], #new
@@ -1440,7 +1445,6 @@ def setup(data,
         experiment__.append(('Transformation Pipeline', prep_pipe))
         
         return X, y, X_train, X_test, y_train, y_test, seed, prep_pipe, experiment__
-
 
 
 

@@ -6,6 +6,7 @@
 def setup(data, 
           categorical_features = None,
           categorical_imputation = 'constant',
+          ordinal_features = None, #new
           numeric_features = None,
           numeric_imputation = 'mean',
           date_features = None,
@@ -14,13 +15,19 @@ def setup(data,
           normalize_method = 'zscore',
           transformation = False,
           transformation_method = 'yeo-johnson',
+          handle_unknown_categorical = True, #new             
+          unknown_categorical_method = 'least_frequent', #new 
           pca = False,
-          pca_method = 'linear', #new
+          pca_method = 'linear',
           pca_components = None,
-          ignore_low_variance = False, #new
-          combine_rare_levels = False, #new
-          rare_level_threshold = 0.10, #new
-          bin_numeric_features = None, #new
+          ignore_low_variance = False, 
+          combine_rare_levels = False, 
+          rare_level_threshold = 0.10, 
+          bin_numeric_features = None, 
+          remove_multicollinearity = False, #new
+          multicollinearity_threshold = 0.9, #new
+          group_features = None, #new
+          group_names = None, #new  
           supervised = False,
           supervised_target = None,
           session_id = None,
@@ -59,6 +66,13 @@ def setup(data,
     If missing values are found in categorical features, they will be imputed with
     a constant 'not_available' value. The other available option available is 'mode' 
     which imputes the value using most frequent value in the training dataset. 
+    
+    ordinal_features: dictionary, default = None
+    When data contains ordinal features, they must be encoded differently using 
+    ordinal_features param. For example if data has categorical variable with values
+    of 'low', 'medium', 'high' and it is known that low < medium < high, they can be 
+    passed as ordinal_features = { 'column_name' : ['low', 'medium', 'high'] }. 
+    Sequence of list must be in increasing order of lowest to highest.
     
     numeric_features: string, default = None
     If the inferred data types are not correct, numeric_features can be used to
@@ -119,6 +133,15 @@ def setup(data,
     distribution. Note that quantile transformer is non-linear and may distort linear 
     correlations between variables measured at the same scale.
 
+    handle_unknown_categorical: bool, default = True
+    When set to True, unknown categorical levels in new / unseen data is replaced by
+    most or least frequent level in as learned in training data. The method is defined 
+    under unknown_categorical_method param.
+    
+    unknown_categorical_method: string, default = 'least_frequent'
+    Method to be used to replace unknown categorical level in unseen data. Method can
+    be 'least_frequent' or 'most_frequent'.
+    
     pca: bool, default = False
     When set to True, dimensionality reduction is applied to project the data into 
     lower dimensional space using the method defined in pca_method param. Generally,
@@ -142,6 +165,54 @@ def setup(data,
     goal percentage for information retention. When pca_components param is integer
     it is treated as number of features to be kept. pca_components must be strictly
     less than the original features in dataset.
+    
+    ignore_low_variance: bool, default = False
+    When set to True, All categorical features with statistically insignificant variances 
+    are removed from the dataset. The variance is calculated using ratio of unique values 
+    to number of samples and ratio of most common value to the frequency of second most 
+    common value.
+    
+    combine_rare_levels: bool, default = False
+    When set to True, All levels in categorical features below the threshold defined 
+    in rare_level_threshold param is combined together as a single level. There must be 
+    atleast two levels under threshold for this to take effect. rare_level_threshold
+    represents the percentile distribution of level frequency. Generally, this features 
+    is applied to limit the sparse matrix caused by high number of levels in categorical 
+    features. 
+    
+    rare_level_threshold: float, default = 0.1
+    percentile distribution below which rare categories are combined. Only comes in effect
+    when combine_rare_levels is set to True.
+    
+    bin_numeric_features: list, default = None
+    When a list of numeric features are passed, they are transformed into categorical
+    features using KMeans, where values in each bin have the same nearest center of a 
+    1D k-means cluster. Number of clusters are determined based on 'sturges' method. 
+    It is only optimal for gaussian data and underestimates number of bins for large 
+    non-gaussian datasets.
+    
+    remove_multicollinearity: bool, default = False
+    When set to True, it drops the variables with inter-correlations higher than
+    the threshold defined under multicollinearity_threshold param. When two features
+    are highly correlated with each other, feature with less correlation with target
+    variable is dropped.
+    
+    multicollinearity_threshold: float, default = 0.9
+    Threshold used for dropping the correlated features. Only comes into effect when 
+    remove_multicollinearity is set to True.
+    
+    group_features: list or list of list, default = None
+    When data contains features that contains related characteristics, it can be used for 
+    statistical feature extraction. For example, if dataset has numeric features that are 
+    related with each other such as 'Column1', 'Column2', 'Column3', a list containing 
+    column names can be passed under group_features to extract statistical information
+    such as mean, median, mode and standard deviation.
+    
+    group_names: list, default = None
+    When group_features is passed, a name of the group can be passed in group_names param
+    as a list containing string. The length of group_names list must equal to the length 
+    of group_features. When the length doesn't match or name is not passed, new features
+    are sequentially named such as group_1, group_2 etc.
     
     supervised: bool, default = False
     When set to True, supervised_target column is ignored for transformation. This
@@ -208,7 +279,34 @@ def setup(data,
     allowed_categorical_imputation = ['constant', 'mode']
     if categorical_imputation not in allowed_categorical_imputation:
         sys.exit("(Value Error): categorical_imputation param only accepts 'constant' or 'mode' ")
-        
+    
+    #ordinal_features
+    if ordinal_features is not None:
+        if type(ordinal_features) is not dict:
+            sys.exit("(Type Error): ordinal_features must be of type dictionary with column name as key and ordered values as list. ")
+    
+    #ordinal features check
+    if ordinal_features is not None:
+        data_cols = data.columns
+        #data_cols = data_cols.drop(target)
+        ord_keys = ordinal_features.keys()
+
+        for i in ord_keys:
+            if i not in data_cols:
+                sys.exit("(Value Error) Column name passed as a key in ordinal_features param doesnt exist. ")
+                
+        for k in ord_keys:
+            if len(data[k].unique()) != len(ordinal_features.get(k)):
+                sys.exit("(Value Error) Levels passed in ordinal_features param doesnt match with levels in data. ")
+                
+        for i in ord_keys:
+            value_in_keys = ordinal_features.get(i)
+            value_in_data = list(data[i].unique())
+            for j in value_in_keys:
+                if j not in value_in_data:
+                    text =  "Column name '" + str(i) + "' doesnt contain any level named '" + str(j) + "'."
+                    sys.exit(text)
+    
     #checking numeric imputation
     allowed_numeric_imputation = ['mean', 'median']
     if numeric_imputation not in allowed_numeric_imputation:
@@ -223,7 +321,14 @@ def setup(data,
     allowed_transformation_method = ['yeo-johnson', 'quantile']
     if transformation_method not in allowed_transformation_method:
         sys.exit("(Value Error): transformation_method param only accepts 'yeo-johnson' or 'quantile' ")        
+    
+    #handle unknown categorical
+    if type(handle_unknown_categorical) is not bool:
+        sys.exit('(Type Error): handle_unknown_categorical parameter only accepts True or False.')
         
+    #unknown categorical method
+    unknown_categorical_method_available = ['least_frequent', 'most_frequent']
+    
     #forced type check
     all_cols = list(data.columns)
     
@@ -231,8 +336,7 @@ def setup(data,
     if categorical_features is not None:
         for i in categorical_features:
             if i not in all_cols:
-                sys.exit("(Value Error): Column type forced is either target column or doesn't exist in the dataset.")
-        
+                sys.exit("(Value Error): Column type forced is either target column or doesn't exist in the dataset.") 
     #numeric
     if numeric_features is not None:
         for i in numeric_features:
@@ -301,6 +405,23 @@ def setup(data,
         for i in bin_numeric_features:
             if i not in all_cols:
                 sys.exit("(Value Error): Column type forced is either target column or doesn't exist in the dataset.")
+    
+    #remove_multicollinearity
+    if type(remove_multicollinearity) is not bool:
+        sys.exit('(Type Error): remove_multicollinearity parameter only accepts True or False.')
+        
+    #multicollinearity_threshold
+    if type(multicollinearity_threshold) is not float:
+        sys.exit('(Type Error): multicollinearity_threshold must be a float between 0 and 1. ')  
+    
+    #group features
+    if group_features is not None:
+        if type(group_features) is not list:
+            sys.exit('(Type Error): group_features must be of type list. ')     
+    
+    if group_names is not None:
+        if type(group_names) is not list:
+            sys.exit('(Type Error): group_names must be of type list. ')        
 
     
     """
@@ -333,6 +454,11 @@ def setup(data,
     import numpy as np
     import pandas as pd
     import random
+    
+    #define highlight function for function grid to display
+    def highlight_max(s):
+        is_max = s == True
+        return ['background-color: lightgreen' if v else '' for v in is_max]
     
     #ignore warnings
     import warnings
@@ -445,7 +571,61 @@ def setup(data,
     else:
         apply_binning_pass = True
         features_to_bin_pass = bin_numeric_features
+    
+    #group features
+    #=============#
+    
+    #apply grouping
+    if group_features is not None:
+        apply_grouping_pass = True
+    else:
+        apply_grouping_pass = False
+    
+    #group features listing
+    if apply_grouping_pass is True:
         
+        if type(group_features[0]) is str:
+            group_features_pass = []
+            group_features_pass.append(group_features)
+        else:
+            group_features_pass = group_features
+            
+    else:
+        
+        group_features_pass = [[]]
+    
+    #group names
+    if apply_grouping_pass is True:
+
+        if (group_names is None) or (len(group_names) != len(group_features_pass)):
+            group_names_pass = list(np.arange(len(group_features_pass)))
+            group_names_pass = ['group_' + str(i) for i in group_names_pass]
+
+        else:
+            group_names_pass = group_names
+            
+    else:
+        group_names_pass = []
+        
+
+    #unknown categorical
+    if unknown_categorical_method == 'least_frequent':
+        unknown_categorical_method_pass = 'least frequent'
+    elif unknown_categorical_method == 'most_frequent':
+        unknown_categorical_method_pass = 'most frequent'
+    
+    #ordinal_features
+    if ordinal_features is not None:
+        apply_ordinal_encoding_pass = True
+    else:
+        apply_ordinal_encoding_pass = False
+        
+    if apply_ordinal_encoding_pass is True:
+        ordinal_columns_and_categories_pass = ordinal_features
+    else:
+        ordinal_columns_and_categories_pass = {}
+        
+    
     #display dtypes
     if supervised is False:
         display_types_pass = True
@@ -457,6 +637,8 @@ def setup(data,
     
     X = preprocess.Preprocess_Path_Two(train_data = data_for_preprocess, 
                                        categorical_features = cat_features_pass,
+                                       apply_ordinal_encoding = apply_ordinal_encoding_pass, #new
+                                       ordinal_columns_and_categories = ordinal_columns_and_categories_pass,
                                        numerical_features = numeric_features_pass,
                                        time_features = date_features_pass,
                                        features_todrop = ignore_features_pass,
@@ -467,6 +649,8 @@ def setup(data,
                                        scaling_method = normalize_method,
                                        Power_transform_data = transformation,
                                        Power_transform_method = trans_method_pass,
+                                       apply_untrained_levels_treatment= handle_unknown_categorical, #new
+                                       untrained_levels_treatment_method = unknown_categorical_method_pass, #new
                                        apply_pca = pca,
                                        pca_method = pca_method_pass, #new
                                        pca_variance_retained_or_number_of_components = pca_components_pass, #new
@@ -475,6 +659,11 @@ def setup(data,
                                        rara_level_threshold_percentage = rare_level_threshold, #new
                                        apply_binning = apply_binning_pass, #new
                                        features_to_binn = features_to_bin_pass, #new
+                                       remove_multicollinearity = remove_multicollinearity, #new
+                                       maximum_correlation_between_features = multicollinearity_threshold, #new
+                                       apply_grouping = apply_grouping_pass, #new
+                                       features_to_group_ListofList = group_features_pass, #new
+                                       group_name = group_names_pass, #new
                                        random_state = seed)
         
     progress.value += 1
@@ -488,7 +677,6 @@ def setup(data,
         pass
     
 
-    
     #save prep pipe
     prep_pipe = preprocess.pipe
     prep_param = preprocess
@@ -496,9 +684,9 @@ def setup(data,
     #generate values for grid show
     missing_values = data_before_preprocess.isna().sum().sum()
     if missing_values > 0:
-        missing_flag = 'True'
+        missing_flag = True
     else:
-        missing_flag = 'False'
+        missing_flag = False
     
     if normalize is True:
         normalize_grid = normalize_method
@@ -526,10 +714,25 @@ def setup(data,
         rare_level_threshold_grid = 'None'
     
     if bin_numeric_features is None:
-        numeric_bin_grid = 'False'
+        numeric_bin_grid = False
     else:
-        numeric_bin_grid = 'True'
+        numeric_bin_grid = True
 
+    if ordinal_features is not None:
+        ordinal_features_grid = True
+    else:
+        ordinal_features_grid = False
+    
+    if remove_multicollinearity is False:
+        multicollinearity_threshold_grid = None
+    else:
+        multicollinearity_threshold_grid = multicollinearity_threshold
+     
+    if group_features is not None:
+        group_features_grid = True
+    else:
+        group_features_grid = False
+        
     learned_types = preprocess.dtypes.learent_dtypes
     #learned_types.drop(target, inplace=True)
 
@@ -550,8 +753,8 @@ def setup(data,
     """
     
     #reset pandas option
-    pd.reset_option("display.max_rows") 
-    pd.reset_option("display.max_columns")
+    #pd.reset_option("display.max_rows") 
+    #pd.reset_option("display.max_columns")
     
     #create an empty list for pickling later.
     if supervised is False:
@@ -579,14 +782,17 @@ def setup(data,
     
     functions = pd.DataFrame ( [ ['session_id ', seed ],
                                  ['Original Data ', shape ],
-                                 ['Transformed Data ', shape_transformed ],
+                                 ['Missing Values ', missing_flag],
                                  ['Numeric Features ', float_type-1 ],
                                  ['Categorical Features ', cat_type ],
+                                 ['Ordinal Features ', ordinal_features_grid],
+                                 ['Transformed Data ', shape_transformed ],
+                                 ['Numeric Imputer ', numeric_imputation],
+                                 ['Categorical Imputer ', categorical_imputation],
                                  ['Normalize ', normalize ],
                                  ['Normalize Method ', normalize_grid ],
                                  ['Transformation ', transformation ],
                                  ['Transformation Method ', transformation_grid ],
-                                 ['Missing Values ', missing_flag],
                                  ['PCA ', pca],
                                  ['PCA Method ', pca_method_grid],
                                  ['PCA components ', pca_components_grid],
@@ -594,11 +800,12 @@ def setup(data,
                                  ['Combine Rare Levels ', combine_rare_levels],
                                  ['Rare Level Threshold ', rare_level_threshold_grid],
                                  ['Numeric Binning ', numeric_bin_grid],
-                                 ['Numeric Imputer ', numeric_imputation],
-                                 ['Categorical Imputer ', categorical_imputation],
+                                 ['Remove Multicollinearity ', remove_multicollinearity],
+                                 ['Multicollinearity Threshold ', multicollinearity_threshold_grid],
+                                 ['Group Features ', group_features_grid],
                                ], columns = ['Description', 'Value'] )
 
-    functions_ = functions.style.hide_index()
+    functions_ = functions.style.apply(highlight_max)
     
     progress.value += 1
     
@@ -629,13 +836,15 @@ def setup(data,
     
     #log into experiment
     if verbose:
-        experiment__.append(('Clustering Info', functions))
+        experiment__.append(('Clustering Setup Config', functions))
         experiment__.append(('Orignal Dataset', data_))
         experiment__.append(('Transformed Dataset', X))
         experiment__.append(('Transformation Pipeline', prep_pipe))
     
     
     return X, data_, seed, prep_pipe, prep_param, experiment__
+
+
 
 
 def create_model(model = None, 
@@ -1132,7 +1341,7 @@ def tune_model(model=None,
     Accuracy, AUC, Recall, Precision, F1, Kappa
     
     For Regression tasks:
-    MAE, MSE, RMSE, R2, ME
+    MAE, MSE, RMSE, R2, RMSLE, MAPE
     
     If set to None, default is 'Accuracy' for classification and 'R2' for 
     regression tasks.
@@ -1152,7 +1361,6 @@ def tune_model(model=None,
 
     Warnings:
     ---------
-    
     - Affinity Propagation, Mean shift clustering, Density-Based Spatial Clustering
       and OPTICS Clustering cannot be used in this function since they donot support
       num_clusters param.
@@ -1169,7 +1377,7 @@ def tune_model(model=None,
     global data_, X
     
     #testing
-    #no active testing
+    global target_, master_df
     
     #ignore warnings
     import warnings
@@ -1212,7 +1420,7 @@ def tune_model(model=None,
     #checking optimize parameter
     if optimize is not None:
         
-        available_optimizers = ['MAE', 'MSE', 'RMSE', 'R2', 'ME', 'Accuracy', 'AUC', 'Recall', 'Precision', 'F1', 'Kappa']
+        available_optimizers = ['MAE', 'MSE', 'RMSE', 'R2', 'RMSLE', 'MAPE', 'Accuracy', 'AUC', 'Recall', 'Precision', 'F1', 'Kappa']
         
         if optimize not in available_optimizers:
             sys.exit('(Value Error): optimize parameter Not Available. Please see docstring for list of available parameters.')
@@ -1347,6 +1555,8 @@ def tune_model(model=None,
     time_pass = prep_param.dtypes.time_features
     ignore_pass = prep_param.dtypes.features_todrop
     
+    #PCA
+    #---# 
     if 'Empty' in str(prep_param.pca): 
         pca_pass = False
         pca_method_pass = 'linear'
@@ -1366,6 +1576,8 @@ def tune_model(model=None,
     else:
         pca_comp_pass = 0.99
     
+    #IMPUTATION
+    #----------# 
     if 'not_available' in prep_param.imputer.categorical_strategy:
         cat_impute_pass = 'constant'
     elif 'most frequent' in prep_param.imputer.categorical_strategy:
@@ -1373,6 +1585,8 @@ def tune_model(model=None,
     
     num_impute_pass = prep_param.imputer.numeric_strategy
     
+    #NORMALIZE
+    #---------#  
     if 'Empty' in str(prep_param.scaling):
         normalize_pass = False
     else:
@@ -1383,6 +1597,8 @@ def tune_model(model=None,
     else:
         normalize_method_pass = 'zscore'
     
+    #FEATURE TRANSFORMATION
+    #---------------------#  
     if 'Empty' in str(prep_param.P_transform):
         transformation_pass = False
     else:
@@ -1398,6 +1614,8 @@ def tune_model(model=None,
     else:
         transformation_method_pass = 'yeo-johnson'
     
+    #BIN NUMERIC FEATURES
+    #--------------------#  
     if 'Empty' in str(prep_param.binn):
         features_to_bin_pass = []
         apply_binning_pass = False
@@ -1405,7 +1623,9 @@ def tune_model(model=None,
     else:
         features_to_bin_pass = prep_param.binn.features_to_discretize
         apply_binning_pass = True
-        
+    
+    #COMBINE RARE LEVELS
+    #-------------------#  
     if 'Empty' in str(prep_param.club_R_L):
         combine_rare_levels_pass = False
         combine_rare_threshold_pass = 0.1
@@ -1413,17 +1633,74 @@ def tune_model(model=None,
         combine_rare_levels_pass = True
         combine_rare_threshold_pass = prep_param.club_R_L.threshold
         
+    #ZERO NERO ZERO VARIANCE
+    #----------------------#  
     if 'Empty' in str(prep_param.znz):
         ignore_low_variance_pass = False
     else:
         ignore_low_variance_pass = True
+    
+    #MULTI-COLLINEARITY
+    #------------------#
+    if 'Empty' in str(prep_param.fix_multi):
+        remove_multicollinearity_pass = False
+    else:
+        remove_multicollinearity_pass = True
         
+    if remove_multicollinearity_pass is True:
+        multicollinearity_threshold_pass = prep_param.fix_multi.threshold
+    else:
+        multicollinearity_threshold_pass = 0.9
+    
+    #UNKNOWN CATEGORICAL LEVEL
+    #------------------------#
+    if 'Empty' in str(prep_param.new_levels):
+        handle_unknown_categorical_pass = False
+    else:
+        handle_unknown_categorical_pass = True
         
+    if handle_unknown_categorical_pass is True:
+        unknown_level_preprocess = prep_param.new_levels.replacement_strategy
+        if unknown_level_preprocess == 'least frequent':
+            unknown_categorical_method_pass = 'least_frequent'
+        elif unknown_level_preprocess == 'most frequent':
+            unknown_categorical_method_pass = 'most_frequent'
+        else:
+            unknown_categorical_method_pass = 'least_frequent'
+    else:
+        unknown_categorical_method_pass = 'least_frequent'
+    
+    #GROUP FEATURES
+    #--------------#
+    if 'Empty' in str(prep_param.group):
+        apply_grouping_pass = False
+    else:
+        apply_grouping_pass = True
+        
+    if apply_grouping_pass is True:
+        group_features_pass = prep_param.group.list_of_similar_features
+    else:
+        group_features_pass = None
+        
+    if apply_grouping_pass is True:
+        group_names_pass = prep_param.group.group_name
+    else:
+        group_names_pass = None
+    
+    #ORDINAL FEATURES
+    #----------------#
+    
+    if 'Empty' in str(prep_param.ordinal):
+        ordinal_features_pass = None
+    else:
+        ordinal_features_pass = prep_param.ordinal.info_as_dict
+    
     global setup_without_target
     
     setup_without_target = setup(data = data_,
                                  categorical_features = cat_pass,
                                  categorical_imputation = cat_impute_pass,
+                                 ordinal_features = ordinal_features_pass, #new
                                  numeric_features = num_pass,
                                  numeric_imputation = num_impute_pass,
                                  date_features = time_pass,
@@ -1432,6 +1709,8 @@ def tune_model(model=None,
                                  normalize_method = normalize_method_pass,
                                  transformation = transformation_pass,
                                  transformation_method = transformation_method_pass,
+                                 handle_unknown_categorical = handle_unknown_categorical_pass, #new
+                                 unknown_categorical_method = unknown_categorical_method_pass, #new
                                  pca = pca_pass,
                                  pca_components = pca_comp_pass, #new
                                  pca_method = pca_method_pass, #new
@@ -1439,6 +1718,10 @@ def tune_model(model=None,
                                  combine_rare_levels = combine_rare_levels_pass, #new
                                  rare_level_threshold = combine_rare_threshold_pass, #new
                                  bin_numeric_features = features_to_bin_pass, #new
+                                 remove_multicollinearity = remove_multicollinearity_pass, #new
+                                 multicollinearity_threshold = multicollinearity_threshold_pass, #new
+                                 group_features = group_features_pass, #new
+                                 group_names = group_names_pass, #new
                                  supervised = True,
                                  supervised_target = supervised_target,
                                  session_id = seed,
@@ -1940,9 +2223,18 @@ def tune_model(model=None,
             rmse_ = np.sqrt(mse_)
             score.append(rmse_)
 
-        elif optimize == 'ME':
-            max_error_ = metrics.max_error(y,pred)
-            score.append(max_error_)
+        elif optimize == 'RMSLE':
+            rmsle = np.sqrt(np.mean(np.power(np.log(np.array(abs(pred))+1) - np.log(np.array(abs(y))+1), 2)))
+            score.append(rmsle)
+            
+        elif optimize == 'MAPE':
+            
+            def calculate_mape(actual, prediction):
+                mask = actual != 0
+                return (np.fabs(actual - prediction)/actual)[mask].mean()
+            
+            mape = calculate_mape(y,pred)
+            score.append(mape)            
 
         metric.append(str(optimize))
         
@@ -1989,9 +2281,18 @@ def tune_model(model=None,
                 rmse_ = np.sqrt(mse_)
                 score.append(rmse_)
             
-            elif optimize == 'ME':
-                max_error_ = metrics.max_error(y,pred)
-                score.append(max_error_)
+            elif optimize == 'RMSLE':
+                rmsle = np.sqrt(np.mean(np.power(np.log(np.array(abs(pred))+1) - np.log(np.array(abs(y))+1), 2)))
+                score.append(rmsle)
+
+            elif optimize == 'MAPE':
+
+                def calculate_mape(actual, prediction):
+                    mask = actual != 0
+                    return (np.fabs(actual - prediction)/actual)[mask].mean()
+                
+                mape = calculate_mape(y,pred)
+                score.append(mape)
                 
             metric.append(str(optimize))
         
@@ -2034,6 +2335,7 @@ def tune_model(model=None,
     
     return best_model
     
+
 
 
 def plot_model(model, plot='cluster', feature = None, label = False):
@@ -2820,6 +3122,7 @@ def deploy_model(model,
         print("Model Succesfully Deployed on AWS S3")
 
 
+
 def get_clusters(data, 
                  model = None, 
                  num_clusters = 4, 
@@ -2827,7 +3130,12 @@ def get_clusters(data,
                  normalize = True, 
                  transformation = False,
                  pca = False,
-                 pca_components = 0.99):
+                 pca_components = 0.99,
+                 ignore_low_variance=False,
+                 combine_rare_levels=False,
+                 rare_level_threshold=0.1,
+                 remove_multicollinearity=False,
+                 multicollinearity_threshold=0.9):
     
     """
     Magic function to get clusters in Power Query / Power BI.    
@@ -2858,10 +3166,14 @@ def get_clusters(data,
                                        Power_transform_data = transformation,
                                        Power_transform_method = 'yj',
                                        apply_pca = pca,
-                                       pca_variance_retained_or_number_of_components=pca_components,
+                                       pca_variance_retained_or_number_of_components = pca_components,
+                                       apply_zero_nearZero_variance = ignore_low_variance,
+                                       club_rare_levels=combine_rare_levels,
+                                       rara_level_threshold_percentage=rare_level_threshold,
+                                       remove_multicollinearity=remove_multicollinearity,
+                                       maximum_correlation_between_features=multicollinearity_threshold,
                                        random_state = seed)
-    
-    
+      
     try:
         c = create_model(model=model, num_clusters=num_clusters, verbose=False)
     except:
