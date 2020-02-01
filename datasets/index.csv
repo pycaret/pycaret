@@ -49,5 +49,6 @@ energy,Multivariate,Regression,Heating Load / Cooling Load,768,10,N
 forest,Multivariate,Regression,area,517,13,N
 gold,Multivariate,Regression,Gold_T+22,2558,121,N
 house,Multivariate,Regression,SalePrice,1461,81,Y
+insurance,Multivariate,Regression,charges,1338,7,N
 parkinsons,Multivariate,Regression,PPE,5875,22,N
 traffic,Multivariate,Regression,traffic_volume,48204,8,N
