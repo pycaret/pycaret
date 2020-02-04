@@ -59,50 +59,50 @@ def setup(data,
     categorical_features: string, default = None
     If the inferred data types are not correct, categorical_features can be used to
     overwrite the inferred type. If when running setup the type of 'column1' is
-    is inferred as numeric instead of categorical, then this parameter can be used 
+    inferred as numeric instead of categorical, then this parameter can be used 
     to overwrite the type by passing categorical_features = ['column1'].
     
     categorical_imputation: string, default = 'constant'
     If missing values are found in categorical features, they will be imputed with
-    a constant 'not_available' value. The other available option available is 'mode' 
-    which imputes the value using most frequent value in the training dataset. 
+    a constant 'not_available' value. The other available option is 'mode' which 
+    imputes the missing value using most frequent value in the training dataset. 
     
     ordinal_features: dictionary, default = None
-    When data contains ordinal features, they must be encoded differently using 
-    ordinal_features param. For example if data has categorical variable with values
-    of 'low', 'medium', 'high' and it is known that low < medium < high, they can be 
-    passed as ordinal_features = { 'column_name' : ['low', 'medium', 'high'] }. 
-    Sequence of list must be in increasing order of lowest to highest.
+    When the data contains ordinal features, they must be encoded differently using 
+    the ordinal_features param. If the data has a categorical variable with values
+    of 'low', 'medium', 'high' and it is known that low < medium < high, then it can 
+    be passed as ordinal_features = { 'column_name' : ['low', 'medium', 'high'] }. 
+    The list sequence must be in increasing order from lowest to highest.
     
     numeric_features: string, default = None
     If the inferred data types are not correct, numeric_features can be used to
-    overwrite the inferred type. If when running setup the type of 'column1' is
-    inferred as categorical instead of numeric, then this parameter can be used 
+    overwrite the inferred type. If when running setup the type of 'column1' is 
+    inferred as a categorical instead of numeric, then this parameter can be used 
     to overwrite by passing numeric_features = ['column1'].    
 
     numeric_imputation: string, default = 'mean'
     If missing values are found in numeric features, they will be imputed with the 
     mean value of the feature. The other available option is 'median' which imputes 
-    the value using median value in the training dataset. 
+    the value using the median value in the training dataset. 
     
     date_features: string, default = None
-    If data has DateTime column and is not automatically detected when running
-    setup, this parameter can be used to define date_feature by passing 
-    data_features = 'date_column_name'. It can work with multiple date columns.
-    Date columns are not used in modeling. Instead, feature extraction is performed
-    and date columns are dropped from the dataset. If the date column includes time 
-    stamp, it will also extract features related to time.
+    If the data has a DateTime column that is not automatically detected when running
+    setup, this parameter can be used by passing date_features = 'date_column_name'. 
+    It can work with multiple date columns. Date columns are not used in modeling. 
+    Instead, feature extraction is performed and date columns are dropped from the 
+    dataset. If the date column includes a time stamp, features related to time will 
+    also be extracted.
     
     ignore_features: string, default = None
-    If any feature should be ignored for modeling, it can be passed in the param
+    If any feature should be ignored for modeling, it can be passed to the param
     ignore_features. The ID and DateTime columns when inferred, are automatically 
     set to ignore for modeling. 
     
     normalize: bool, default = False
     When set to True, the feature space is transformed using the normalized_method
-    param defined. Generally, linear algorithms perform better with normalized data. 
-    However, the results may vary and it is advised to run multiple experiments to 
-    evaluate the benefit of normalization.
+    param. Generally, linear algorithms perform better with normalized data however, 
+    the results may vary and it is advised to run multiple experiments to evaluate
+    the benefit of normalization.
     
     normalize_method: string, default = 'zscore'
     Defines the method to be used for normalization. By default, normalize method
@@ -117,7 +117,7 @@ def setup(data,
                   the data, and thus does not destroy any sparsity.
     
     'robust'    : scales and translates each feature according to the Interquartile range.
-                  When dataset consists of ourliers, robust scaler often gives better
+                  When the dataset contains outliers, robust scaler often gives better
                   results.
     
     transformation: bool, default = False
@@ -129,30 +129,30 @@ def setup(data,
     transformation_method: string, default = 'yeo-johnson'
     Defines the method for transformation. By default, the transformation method is set
     to 'yeo-johnson'. The other available option is 'quantile' transformation. Both 
-    the transformation transforms the feature set to follow Gaussian-like or normal
-    distribution. Note that quantile transformer is non-linear and may distort linear 
+    the transformation transforms the feature set to follow a Gaussian-like or normal
+    distribution. Note that the quantile transformer is non-linear and may distort linear 
     correlations between variables measured at the same scale.
-
+    
     handle_unknown_categorical: bool, default = True
-    When set to True, unknown categorical levels in new / unseen data is replaced by
-    most or least frequent level in as learned in training data. The method is defined 
-    under unknown_categorical_method param.
+    When set to True, unknown categorical levels in new / unseen data are replaced by
+    the most or least frequent level as learned in the training data. The method is 
+    defined under the unknown_categorical_method param.
     
     unknown_categorical_method: string, default = 'least_frequent'
-    Method to be used to replace unknown categorical level in unseen data. Method can
-    be 'least_frequent' or 'most_frequent'.
+    Method used to replace unknown categorical levels in unseen data. Method can be
+    set to 'least_frequent' or 'most_frequent'.
     
     pca: bool, default = False
     When set to True, dimensionality reduction is applied to project the data into 
-    lower dimensional space using the method defined in pca_method param. Generally,
-    in a supervised learning, pca is performed when dealing with very high feature
-    space and memory is a constraint. Note that, not all datasets can be decomposed
-    efficiently using linear PCA technique and applying PCA may result is loss of
-    information. As such, it is advised to run multiple experiments with different 
+    a lower dimensional space using the method defined in pca_method param. In 
+    supervised learning pca is generally performed when dealing with high feature
+    space and memory is a constraint. Note that not all datasets can be decomposed
+    efficiently using a linear PCA technique and that applying PCA may result in loss 
+    of information. As such, it is advised to run multiple experiments with different 
     pca_methods to evaluate the impact. 
 
     pca_method: string, default = 'linear'
-    'linear' method performs Linear dimensionality reduction using Singular Value 
+    The 'linear' method performs Linear dimensionality reduction using Singular Value 
     Decomposition. The other available options are:
     
     kernel      : dimensionality reduction through the use of RVF kernel.  
@@ -161,58 +161,58 @@ def setup(data,
                   too large to fit in memory
     
     pca_components: int/float, default = 0.99
-    Number of components to keep. if pca_components is a float, it is treated as 
-    goal percentage for information retention. When pca_components param is integer
-    it is treated as number of features to be kept. pca_components must be strictly
-    less than the original features in dataset.
+    Number of components to keep. if pca_components is a float, it is treated as a 
+    target percentage for information retention. When pca_components is an integer
+    it is treated as the number of features to be kept. pca_components must be strictly
+    less than the original number of features in the dataset.
     
     ignore_low_variance: bool, default = False
-    When set to True, All categorical features with statistically insignificant variances 
-    are removed from the dataset. The variance is calculated using ratio of unique values 
-    to number of samples and ratio of most common value to the frequency of second most 
-    common value.
+    When set to True, all categorical features with statistically insignificant variances 
+    are removed from the dataset. The variance is calculated using the ratio of unique 
+    values to the number of samples, and the ratio of the most common value to the 
+    frequency of the second most common value.
     
     combine_rare_levels: bool, default = False
-    When set to True, All levels in categorical features below the threshold defined 
-    in rare_level_threshold param is combined together as a single level. There must be 
-    atleast two levels under threshold for this to take effect. rare_level_threshold
-    represents the percentile distribution of level frequency. Generally, this features 
-    is applied to limit the sparse matrix caused by high number of levels in categorical 
+    When set to True, all levels in categorical features below the threshold defined 
+    in rare_level_threshold param are combined together as a single level. There must be 
+    atleast two levels under the threshold for this to take effect. rare_level_threshold
+    represents the percentile distribution of level frequency. Generally, this technique 
+    is applied to limit a sparse matrix caused by high numbers of levels in categorical 
     features. 
     
     rare_level_threshold: float, default = 0.1
-    percentile distribution below which rare categories are combined. Only comes in effect
-    when combine_rare_levels is set to True.
+    Percentile distribution below which rare categories are combined. Only comes into
+    effect when combine_rare_levels is set to True.
     
     bin_numeric_features: list, default = None
-    When a list of numeric features are passed, they are transformed into categorical
+    When a list of numeric features is passed they are transformed into categorical
     features using KMeans, where values in each bin have the same nearest center of a 
-    1D k-means cluster. Number of clusters are determined based on 'sturges' method. 
-    It is only optimal for gaussian data and underestimates number of bins for large 
-    non-gaussian datasets.
+    1D k-means cluster. The number of clusters are determined based on the 'sturges' 
+    method. It is only optimal for gaussian data and underestimates the number of bins 
+    for large non-gaussian datasets.
     
     remove_multicollinearity: bool, default = False
-    When set to True, it drops the variables with inter-correlations higher than
-    the threshold defined under multicollinearity_threshold param. When two features
-    are highly correlated with each other, feature with less correlation with target
-    variable is dropped.
+    When set to True, the variables with inter-correlations higher than the threshold
+    defined under the multicollinearity_threshold param are dropped. When two features
+    are highly correlated with each other, the feature with less average correlation in 
+    the feature space is dropped. 
     
     multicollinearity_threshold: float, default = 0.9
     Threshold used for dropping the correlated features. Only comes into effect when 
     remove_multicollinearity is set to True.
     
     group_features: list or list of list, default = None
-    When data contains features that contains related characteristics, it can be used for 
-    statistical feature extraction. For example, if dataset has numeric features that are 
-    related with each other such as 'Column1', 'Column2', 'Column3', a list containing 
-    column names can be passed under group_features to extract statistical information
-    such as mean, median, mode and standard deviation.
+    When a dataset contains features that have related characteristics, the group_features
+    param can be used for statistical feature extraction. For example, if a dataset has 
+    numeric features that are related with each other (i.e 'Col1', 'Col2', 'Col3'), a list 
+    containing the column names can be passed under group_features to extract statistical 
+    information such as the mean, median, mode and standard deviation.
     
     group_names: list, default = None
-    When group_features is passed, a name of the group can be passed in group_names param
-    as a list containing string. The length of group_names list must equal to the length 
-    of group_features. When the length doesn't match or name is not passed, new features
-    are sequentially named such as group_1, group_2 etc.
+    When group_features is passed, a name of the group can be passed into the group_names 
+    param as a list containing strings. The length of a group_names list must equal to the 
+    length  of group_features. When the length doesn't match or the name is not passed, new 
+    features are sequentially named such as group_1, group_2 etc.
     
     supervised: bool, default = False
     When set to True, supervised_target column is ignored for transformation. This

@@ -4,7 +4,6 @@
 
 
 
-
 def setup(data, 
           target, 
           train_size=0.7,
@@ -87,64 +86,63 @@ def setup(data,
 
     sampling: bool, default = True
     When the sample size exceeds 25,000 samples, pycaret will build a base estimator
-    at various sample size of the original dataset. This will return a performance 
-    plot of AUC, Accuracy, Recall, Precision, Kappa and F1 values at various sample 
-    levels, that will assist you in deciding the preferred sample size for modeling. 
-    You are then required to enter the desired sample size that will be considered 
-    for training and validation in the pycaret environment. When sample_size entered 
+    at various sample sizes from the original dataset. This will return a performance 
+    plot of R2 values at various sample levels, that will assist in deciding the 
+    preferred sample size for modeling.  The desired sample size must then be entered 
+    for training and validation in the  pycaret environment. When sample_size entered 
     is less than 1, the remaining dataset (1 - sample) is used for fitting the model 
     only when finalize_model() is called.
     
     sample_estimator: object, default = None
-    If None, Logistic Regression is used by default.
+    If None, Linear Regression is used by default.
     
     categorical_features: string, default = None
     If the inferred data types are not correct, categorical_features can be used to
     overwrite the inferred type. If when running setup the type of 'column1' is
-    is inferred as numeric instead of categorical, then this parameter can be used 
+    inferred as numeric instead of categorical, then this parameter can be used 
     to overwrite the type by passing categorical_features = ['column1'].
     
     categorical_imputation: string, default = 'constant'
     If missing values are found in categorical features, they will be imputed with
-    a constant 'not_available' value. The other available option available is 'mode' 
-    which imputes the value using most frequent value in the training dataset. 
+    a constant 'not_available' value. The other available option is 'mode' which 
+    imputes the missing value using most frequent value in the training dataset. 
     
     ordinal_features: dictionary, default = None
-    When data contains ordinal features, they must be encoded differently using 
-    ordinal_features param. For example if data has categorical variable with values
-    of 'low', 'medium', 'high' and it is known that low < medium < high, they can be 
-    passed as ordinal_features = { 'column_name' : ['low', 'medium', 'high'] }. 
-    Sequence of list must be in increasing order of lowest to highest.
+    When the data contains ordinal features, they must be encoded differently using 
+    the ordinal_features param. If the data has a categorical variable with values
+    of 'low', 'medium', 'high' and it is known that low < medium < high, then it can 
+    be passed as ordinal_features = { 'column_name' : ['low', 'medium', 'high'] }. 
+    The list sequence must be in increasing order from lowest to highest.
     
     numeric_features: string, default = None
     If the inferred data types are not correct, numeric_features can be used to
-    overwrite the inferred type. If when running setup the type of 'column1' is
-    inferred as categorical instead of numeric, then this parameter can be used 
+    overwrite the inferred type. If when running setup the type of 'column1' is 
+    inferred as a categorical instead of numeric, then this parameter can be used 
     to overwrite by passing numeric_features = ['column1'].    
 
     numeric_imputation: string, default = 'mean'
     If missing values are found in numeric features, they will be imputed with the 
     mean value of the feature. The other available option is 'median' which imputes 
-    the value using median value in the training dataset. 
+    the value using the median value in the training dataset. 
     
     date_features: string, default = None
-    If data has DateTime column and is not automatically detected when running
-    setup, this parameter can be used to define date_feature by passing 
-    data_features = 'date_column_name'. It can work with multiple date columns.
-    Date columns are not used in modeling. Instead, feature extraction is performed
-    and date columns are dropped from the dataset. If the date column includes time 
-    stamp, it will also extract features related to time.
+    If the data has a DateTime column that is not automatically detected when running
+    setup, this parameter can be used by passing date_features = 'date_column_name'. 
+    It can work with multiple date columns. Date columns are not used in modeling. 
+    Instead, feature extraction is performed and date columns are dropped from the 
+    dataset. If the date column includes a time stamp, features related to time will 
+    also be extracted.
     
     ignore_features: string, default = None
-    If any feature should be ignored for modeling, it can be passed in the param
+    If any feature should be ignored for modeling, it can be passed to the param
     ignore_features. The ID and DateTime columns when inferred, are automatically 
     set to ignore for modeling. 
     
     normalize: bool, default = False
     When set to True, the feature space is transformed using the normalized_method
-    param defined. Generally, linear algorithms perform better with normalized data. 
-    However, the results may vary and it is advised to run multiple experiments to 
-    evaluate the benefit of normalization.
+    param. Generally, linear algorithms perform better with normalized data however, 
+    the results may vary and it is advised to run multiple experiments to evaluate
+    the benefit of normalization.
     
     normalize_method: string, default = 'zscore'
     Defines the method to be used for normalization. By default, normalize method
@@ -159,7 +157,7 @@ def setup(data,
                   the data, and thus does not destroy any sparsity.
     
     'robust'    : scales and translates each feature according to the Interquartile range.
-                  When dataset consists of ourliers, robust scaler often gives better
+                  When the dataset contains outliers, robust scaler often gives better
                   results.
     
     transformation: bool, default = False
@@ -171,30 +169,30 @@ def setup(data,
     transformation_method: string, default = 'yeo-johnson'
     Defines the method for transformation. By default, the transformation method is set
     to 'yeo-johnson'. The other available option is 'quantile' transformation. Both 
-    the transformation transforms the feature set to follow Gaussian-like or normal
-    distribution. Note that quantile transformer is non-linear and may distort linear 
+    the transformation transforms the feature set to follow a Gaussian-like or normal
+    distribution. Note that the quantile transformer is non-linear and may distort linear 
     correlations between variables measured at the same scale.
-
+    
     handle_unknown_categorical: bool, default = True
-    When set to True, unknown categorical levels in new / unseen data is replaced by
-    most or least frequent level in as learned in training data. The method is defined 
-    under unknown_categorical_method param.
+    When set to True, unknown categorical levels in new / unseen data are replaced by
+    the most or least frequent level as learned in the training data. The method is 
+    defined under the unknown_categorical_method param.
     
     unknown_categorical_method: string, default = 'least_frequent'
-    Method to be used to replace unknown categorical level in unseen data. Method can
-    be 'least_frequent' or 'most_frequent'.
+    Method used to replace unknown categorical levels in unseen data. Method can be
+    set to 'least_frequent' or 'most_frequent'.
     
     pca: bool, default = False
     When set to True, dimensionality reduction is applied to project the data into 
-    lower dimensional space using the method defined in pca_method param. Generally,
-    in a supervised learning, pca is performed when dealing with very high feature
-    space and memory is a constraint. Note that, not all datasets can be decomposed
-    efficiently using linear PCA technique and applying PCA may result is loss of
-    information. As such, it is advised to run multiple experiments with different 
+    a lower dimensional space using the method defined in pca_method param. In 
+    supervised learning pca is generally performed when dealing with high feature
+    space and memory is a constraint. Note that not all datasets can be decomposed
+    efficiently using a linear PCA technique and that applying PCA may result in loss 
+    of information. As such, it is advised to run multiple experiments with different 
     pca_methods to evaluate the impact. 
 
     pca_method: string, default = 'linear'
-    'linear' method performs Linear dimensionality reduction using Singular Value 
+    The 'linear' method performs Linear dimensionality reduction using Singular Value 
     Decomposition. The other available options are:
     
     kernel      : dimensionality reduction through the use of RVF kernel.  
@@ -203,51 +201,50 @@ def setup(data,
                   too large to fit in memory
     
     pca_components: int/float, default = 0.99
-    Number of components to keep. if pca_components is a float, it is treated as 
-    goal percentage for information retention. When pca_components param is integer
-    it is treated as number of features to be kept. pca_components must be strictly
-    less than the original features in dataset.
+    Number of components to keep. if pca_components is a float, it is treated as a 
+    target percentage for information retention. When pca_components is an integer
+    it is treated as the number of features to be kept. pca_components must be strictly
+    less than the original number of features in the dataset.
     
     ignore_low_variance: bool, default = False
-    When set to True, All categorical features with statistically insignificant variances 
-    are removed from the dataset. The variance is calculated using ratio of unique values 
-    to number of samples and ratio of most common value to the frequency of second most 
-    common value.
+    When set to True, all categorical features with statistically insignificant variances 
+    are removed from the dataset. The variance is calculated using the ratio of unique 
+    values to the number of samples, and the ratio of the most common value to the 
+    frequency of the second most common value.
     
     combine_rare_levels: bool, default = False
-    When set to True, All levels in categorical features below the threshold defined in
-    rare_level_threshold param is combined together as a single level. rare_level_threshold
-    represents the percentile distribution of specific level. Generally, this features is 
-    applied to limit the sparse matrix caused by high number of levels in categorical 
+    When set to True, all levels in categorical features below the threshold defined 
+    in rare_level_threshold param are combined together as a single level. There must be 
+    atleast two levels under the threshold for this to take effect. rare_level_threshold
+    represents the percentile distribution of level frequency. Generally, this technique 
+    is applied to limit a sparse matrix caused by high numbers of levels in categorical 
     features. 
     
     rare_level_threshold: float, default = 0.1
-    percentile distribution below which rare categories are combined. Only comes in 
+    Percentile distribution below which rare categories are combined. Only comes into
     effect when combine_rare_levels is set to True.
     
     bin_numeric_features: list, default = None
-    When a list of numeric features are passed, they are transformed into categorical
+    When a list of numeric features is passed they are transformed into categorical
     features using KMeans, where values in each bin have the same nearest center of a 
-    1D k-means cluster. Number of clusters are determined based on 'sturges' method. 
-    It is only optimal for gaussian data and underestimates number of bins for large 
-    non-gaussian datasets.
+    1D k-means cluster. The number of clusters are determined based on the 'sturges' 
+    method. It is only optimal for gaussian data and underestimates the number of bins 
+    for large non-gaussian datasets.
     
     remove_outliers: bool, default = False
-    When set to True, outliers from the training data is removed using ensemble of 
-    Isolation Forest, K Nearest Neighbour and PCA Outlier detector. All of them are
-    unsupervised techniques. The contamination percentage is defined using the
-    outliers_threshold parameter.
+    When set to True, outliers from the training data are removed using PCA linear
+    dimensionality reduction using the Singular Value Decomposition technique.
     
     outliers_threshold: float, default = 0.05
     The percentage / proportion of outliers in the dataset can be defined using
-    outliers_threshold param. By default, 0.05 is used which means 0.025 on each
-    side of distribution tail is dropped from training data.
+    the outliers_threshold param. By default, 0.05 is used which means 0.025 of the 
+    values on each side of the distribution's tail are dropped from training data.
     
     remove_multicollinearity: bool, default = False
-    When set to True, it drops the variables with inter-correlations higher than
-    the threshold defined under multicollinearity_threshold param. When two features
-    are highly correlated with each other, feature with less correlation with target
-    variable is dropped.
+    When set to True, the variables with inter-correlations higher than the threshold
+    defined under the multicollinearity_threshold param are dropped. When two features
+    are highly correlated with each other, the feature that is less correlated with 
+    the target variable is dropped. 
     
     multicollinearity_threshold: float, default = 0.9
     Threshold used for dropping the correlated features. Only comes into effect when 
@@ -255,76 +252,81 @@ def setup(data,
     
     create_clusters: bool, default = False
     When set to True, an additional feature is created where each instance is assigned
-    to a cluster. Number of clusters is determined using combination of Calinski-Harabasz 
-    Silhouette criterion. 
+    to a cluster. The number of clusters is determined using a combination of 
+    Calinski-Harabasz and Silhouette criterion. 
     
     cluster_iter: int, default = 20
-    Number of iterations for creating cluster. Each iteration represent cluster size.
-    Only comes into effect when create_clusters param is set to True.
+    Number of iterations used to create a cluster. Each iteration represents cluster 
+    size. Only comes into effect when create_clusters param is set to True.
     
     polynomial_features: bool, default = False
-    When set to True, it creates new features of all polynomial combinations of existing
-    numeric features in dataset with degree defined in polynomial_degree param.
+    When set to True, new features are created based on all polynomial combinations 
+    that exist within the numeric features in a dataset to the degree defined in 
+    polynomial_degree param. 
     
     polynomial_degree: int, default = 2
-    Degree of polynomial features. For example, if an input sample is two dimensional and
-    of the form [a, b], polynomial features with degree = 2 are: [1, a, b, a^2, ab, b^2].
+    Degree of polynomial features. For example, if an input sample is two dimensional 
+    and of the form [a, b], the polynomial features with degree = 2 are: 
+    [1, a, b, a^2, ab, b^2].
     
     trigonometry_features: bool, default = False
-    When set to True, it creates new features of all trigonometric combinations of existing
-    numeric features in dataset with degree defined in polynomial_degree param.
+    When set to True, new features are created based on all trigonometric combinations 
+    that exist within the numeric features in a dataset to the degree defined in the
+    polynomial_degree param.
     
     polynomial_threshold: float, default = 0.1
-    This is used to compress the sparse matrix of polynomial and trigonometric features.
-    Polynomial and trigonometric features whose feature importance based on the combination
-    of Random Forest, AdaBoost and Linear correlation is within the percentile of threshold
-    defined are kept in the dataset, remaining features are dropped before further processing.
+    This is used to compress a sparse matrix of polynomial and trigonometric features.
+    Polynomial and trigonometric features whose feature importance based on the 
+    combination of Random Forest, AdaBoost and Linear correlation falls within the 
+    percentile of the defined threshold are kept in the dataset. Remaining features 
+    are dropped before further processing.
     
     group_features: list or list of list, default = None
-    When data contains features that contains related characteristics, it can be used for 
-    statistical feature extraction. For example, if dataset has numeric features that are 
-    related with each other such as 'Column1', 'Column2', 'Column3', a list containing 
-    column names can be passed under group_features to extract statistical information
-    such as mean, median, mode and standard deviation.
+    When a dataset contains features that have related characteristics, the group_features
+    param can be used for statistical feature extraction. For example, if a dataset has 
+    numeric features that are related with each other (i.e 'Col1', 'Col2', 'Col3'), a list 
+    containing the column names can be passed under group_features to extract statistical 
+    information such as the mean, median, mode and standard deviation.
     
     group_names: list, default = None
-    When group_features is passed, a name of the group can be passed in group_names param
-    as a list containing string. The length of group_names list must equal to the length 
-    of group_features. When the length doesn't match or name is not passed, new features
-    are sequentially named such as group_1, group_2 etc.
+    When group_features is passed, a name of the group can be passed into the group_names 
+    param as a list containing strings. The length of a group_names list must equal to the 
+    length  of group_features. When the length doesn't match or the name is not passed, new 
+    features are sequentially named such as group_1, group_2 etc.
     
     feature_selection: bool, default = False
-    When set to True, subset of features are selected using combination of various
+    When set to True, a subset of features are selected using a combination of various
     permutation importance techniques including Random Forest, Adaboost and Linear 
-    correlation with target variable. The size of subset is dependent on the 
-    feature_selection_param. Generally, this is used to constraint the feature 
-    space for efficiency in modeling. When polynomial_features and feature_interaction
-    is used, it is highly recommended to use feature_selection with lower values of 
-    feature_selection_threshold.
+    correlation with target variable. The size of the subset is dependent on the 
+    feature_selection_param. Generally, this is used to constrain the feature space 
+    in order to improve efficiency in modeling. When polynomial_features and 
+    feature_interaction  are used, it is highly recommended to define the 
+    feature_selection_threshold param with a lower value.
 
     feature_selection_threshold: float, default = 0.8
-    Threshold used for feature selection (including the newly created polynomial features)
-    Higher value will result in high feature space. It is recommended to do multiple trials
-    with different feature_selection_threshold specially in case where polynomial_features 
-    and feature_interaction is used. Setting very low value may be efficient but may result
-    in under-fitting.
+    Threshold used for feature selection (including newly created polynomial features).
+    A higher value will result in a higher feature space. It is recommended to do multiple
+    trials with different values of feature_selection_threshold specially in cases where 
+    polynomial_features and feature_interaction are used. Setting a very low value may be 
+    efficient but could result in under-fitting.
     
     feature_interaction: bool, default = False 
-    When set to True, it will create new features by interacting (a * b) all numeric 
-    variables in the dataset (including polynomial and trigonometric (if created). 
-    This feature is not scalable and may not work as expected on dataset with high 
+    When set to True, it will create new features by interacting (a * b) for all numeric 
+    variables in the dataset including polynomial and trigonometric features (if created). 
+    This feature is not scalable and may not work as expected on datasets with large 
     feature space.
     
     feature_ratio: bool, default = False
-    When set to True, it will create new features by calculating ratios (a / b) all numeric 
-    variables in the dataset. This feature is not scalable and may not work as expected on 
-    dataset with high feature space.
+    When set to True, it will create new features by calculating the ratios (a / b) of all 
+    numeric variables in the dataset. This feature is not scalable and may not work as 
+    expected on datasets with large feature space.
     
     interaction_threshold: bool, default = 0.01
-    Similar to polynomial_threshold, It is used to compress the sparse matrix of newly 
-    features through interaction. Features whose importance based on the combination of 
-    Random Forest, AdaBoost and Linear correlation is within the percentile of threshold
-    defined are kept in the dataset, remaining features are dropped before further processing.
+    Similar to polynomial_threshold, It is used to compress a sparse matrix of newly 
+    created features through interaction. Features whose importance based on the 
+    combination  of  Random Forest, AdaBoost and Linear correlation falls within the 
+    percentile of the  defined threshold are kept in the dataset. Remaining features 
+    are dropped before further processing.
     
     transform_target: bool, default = False
     When set to True, target variable is transformed using the method defined in
@@ -344,7 +346,7 @@ def setup(data,
     
     silent: bool, default = False
     When set to True, confirmation of data types is not required. All preprocessing will 
-    be performed assuming data types inferred automatically. Not recommended for direct use 
+    be performed assuming automatically inferred data types. Not recommended for direct use 
     except for established pipelines.
     
     profile: bool, default = False
@@ -363,7 +365,8 @@ def setup(data,
     Warnings:
     ---------
     None
-    
+      
+      
     """
     
     #exception checking   
@@ -1437,6 +1440,7 @@ def setup(data,
             pass
         
         return X, y, X_train, X_test, y_train, y_test, seed, prep_pipe, target_inverse_transformer, experiment__
+
 
 
 

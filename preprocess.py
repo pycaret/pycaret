@@ -39,8 +39,8 @@ import datefinder
 from datetime import datetime
 import calendar
 from sklearn.preprocessing import LabelEncoder
-pd.set_option('display.max_columns', 500)
-pd.set_option('display.max_rows', 500)
+# pd.set_option('display.max_columns', 500)
+# pd.set_option('display.max_rows', 500)
 
 #ignore warnings
 import warnings
@@ -1284,29 +1284,33 @@ class Cluster_Entire_Data(BaseEstimator,TransformerMixin):
   def fit(self,data,y=None):
     return(None)
 
-  def transform(self,data,y=None):
+  def transform(self,dataset,y=None):
+    data = dataset.copy()
     # first convert to dummy
     if len(data.select_dtypes(include='object').columns)>0:
       data_t1 = self.dummy.transform(data)
     else:
       data_t1 = data.copy()
 
-    # # now make PLS 
-    # data_t1 = self.pls.transform(data_t1)
-    # data_t1 = self.pca.transform(data_t1)
-    # now predict with the clustes
+    # # # now make PLS 
+    # # data_t1 = self.pls.transform(data_t1)
+    # # data_t1 = self.pca.transform(data_t1)
+    # # now predict with the clustes
     predict =pd.DataFrame(self.k_object.predict(data_t1),index=data.index)
     data['data_cluster'] = predict
     data['data_cluster'] = data['data_cluster'].astype('object')
     return(data)
 
-  def fit_transform(self,data,y=None):
+  def fit_transform(self,dataset,y=None):
+    data = dataset.copy()
     # first convert to dummy (if there are objects in data set)
     if len(data.select_dtypes(include='object').columns)>0:
       self.dummy = Dummify(self.target)
       data_t1 = self.dummy.fit_transform(data)
+      data_t1 = data_t1.drop(self.target,axis=1)
     else:
-      data_t1 = data.copy()
+      data_t1 = data.drop(self.target,axis=1).copy()
+      
     
     # now make PLS 
     # self.pls = PLSRegression(n_components=len(data_t1.columns)-1)
@@ -1333,7 +1337,10 @@ class Cluster_Entire_Data(BaseEstimator,TransformerMixin):
     self.ph['Silhouette'] = m.fit_transform(np.array(self.ph['Silhouette']).reshape(-1,1))
     self.ph['total']= self.ph['Silhouette'] + self.ph['calinski']
     # sort it by total column and take the first row column 0 , that would represent the optimal clusters
-    self.clusters = int(self.ph[self.ph['total'] == max(self.ph['total'])]['clusters'])
+    try:
+      self.clusters = int(self.ph[self.ph['total'] == max(self.ph['total'])]['clusters'])
+    except: # in case there isnt a decisive measure , take calinski as yeard stick
+      self.clusters= int(self.ph[self.ph['calinski'] == max(self.ph['calinski'])]['clusters'])
     # Now make the final cluster object
     self.k_object =  cluster.KMeans(n_clusters= self.clusters,init='k-means++',precompute_distances='auto',n_init=10,random_state=self.random_state)
     # now do fit predict
