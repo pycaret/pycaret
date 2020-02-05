@@ -2102,17 +2102,23 @@ def Preprocess_Path_One(train_data,target_variable,ml_usecase=None,test_data =No
     Follwoing preprocess steps are taken:
       - 1) Auto infer data types 
       - 2) Impute (simple or with surrogate columns)
-      - 3) Drop categorical variables that have zero variance or near zero variance
-      - 4) Club categorical variables levels togather as a new level (other_infrequent) that are rare / at the bottom 5% of the variable distribution
-      - 5) Generate sub features from time feature such as 'month','weekday',is_month_end','is_month_start' & 'hour'
-      - 6) Scales & Power Transform (zscore,minmax,yeo-johnson,quantile,maxabs,robust) , including option to transform target variable
-      - 7) Apply binning to continious variable when numeric features are provided as a list 
-      - 8) Detect & remove outliers using isolation forest, knn and PCA
-      - 9) Apply clusters to segment entire data
-      -10) One Hot / Dummy encoding
-      -11) Remove special characters from column names such as commas, square brackets etc to make it competible with jason dependednt models
-      -12) Fix multicollinearity
-      -13) Apply diamension reduction techniques such as pca_liner, pca_kernal, incremental, tsne & pls
+      - 3) Ordinal Encoder
+      - 4) Drop categorical variables that have zero variance or near zero variance
+      - 5) Club categorical variables levels togather as a new level (other_infrequent) that are rare / at the bottom 5% of the variable distribution
+      - 6) Club unseen levels in test dataset with most/least frequent levels in train dataset 
+      - 7) Generate sub features from time feature such as 'month','weekday',is_month_end','is_month_start' & 'hour'
+      - 8) Group features by calculating min, max, mean, median & sd of similar features
+      - 9) Make nonliner features (polynomial, sin , cos & tan)
+      -10) Scales & Power Transform (zscore,minmax,yeo-johnson,quantile,maxabs,robust) , including option to transform target variable
+      -11) Apply binning to continious variable when numeric features are provided as a list 
+      -12) Detect & remove outliers using isolation forest, knn and PCA
+      -13) Apply clusters to segment entire data
+      -14) One Hot / Dummy encoding
+      -15) Remove special characters from column names such as commas, square brackets etc to make it competible with jason dependednt models
+      -16) Feature Selection throuh Random Forest , LightGBM and Pearson Correlation
+      -17) Fix multicollinearity
+      -18) Feature Interaction (DFS) , multiply , divided , add and substract features
+      -19) Apply diamension reduction techniques such as pca_liner, pca_kernal, incremental, tsne 
           - except for pca_liner, all other method only takes number of component (as integer) i.e no variance explaination metohd available  
   '''
   global c2, subcase
@@ -2272,10 +2278,10 @@ def Preprocess_Path_One(train_data,target_variable,ml_usecase=None,test_data =No
   pipe = Pipeline([
                  ('dtypes',dtypes),
                  ('imputer',imputer),
+                 ('ordinal',ordinal),
                  ('znz',znz),
                  ('club_R_L',club_R_L),
                  ('new_levels',new_levels),
-                 ('ordinal',ordinal),
                  ('feature_time',feature_time),
                  ('group',group),
                  ('nonliner',nonliner),
@@ -2321,20 +2327,23 @@ def Preprocess_Path_Two(train_data,ml_usecase=None,test_data =None,categorical_f
   
   '''
     Follwoing preprocess steps are taken:
-      - THIS IS BUILt FOR UNSUPERVISED LEARNING , FOLLOWES SAME PATH AS Path_One
+      - THIS IS BUILt FOR UNSUPERVISED LEARNING
       - 1) Auto infer data types 
       - 2) Impute (simple or with surrogate columns)
-      - 3) Drop categorical variables that have zero variance or near zero variance
-      - 4) Club categorical variables levels togather as a new level (other_infrequent) that are rare / at the bottom 5% of the variable distribution
-      - 5) Generate sub features from time feature such as 'month','weekday',is_month_end','is_month_start' & 'hour'
-      - 6) Scales & Power Transform (zscore,minmax,yeo-johnson,quantile,maxabs,robust) , including option to transform target variable
-      - 7) Apply binning to continious variable when numeric features are provided as a list 
-      - 8) Detect & remove outliers using isolation forest, knn and PCA
-      - 9) One Hot / Dummy encoding
-      -10) Remove special characters from column names such as commas, square brackets etc to make it competible with jason dependednt models
-      -11) Fix multicollinearity
-      -12) Apply diamension reduction techniques such as pca_liner, pca_kernal, incremental, tsne & pls
-          - except for pca_liner, all other method only takes number of component (as integer) i.e no variance explaination metohd available  
+      - 3) Ordinal Encoder
+      - 4) Drop categorical variables that have zero variance or near zero variance
+      - 5) Club categorical variables levels togather as a new level (other_infrequent) that are rare / at the bottom 5% of the variable distribution
+      - 6) Club unseen levels in test dataset with most/least frequent levels in train dataset 
+      - 7) Generate sub features from time feature such as 'month','weekday',is_month_end','is_month_start' & 'hour'
+      - 8) Group features by calculating min, max, mean, median & sd of similar features
+      - 9) Scales & Power Transform (zscore,minmax,yeo-johnson,quantile,maxabs,robust) , including option to transform target variable
+      -10) Apply binning to continious variable when numeric features are provided as a list 
+      -11) Detect & remove outliers using isolation forest, knn and PCA
+      -12) One Hot / Dummy encoding
+      -13) Remove special characters from column names such as commas, square brackets etc to make it competible with jason dependednt models
+      -14) Fix multicollinearity
+      -15) Apply diamension reduction techniques such as pca_liner, pca_kernal, incremental, tsne 
+          - except for pca_liner, all other method only takes number of component (as integer) i.e no variance explaination metohd available 
   '''
   
   # just make a dummy target variable
@@ -2454,10 +2463,10 @@ def Preprocess_Path_Two(train_data,ml_usecase=None,test_data =None,categorical_f
   pipe = Pipeline([
                  ('dtypes',dtypes),
                  ('imputer',imputer),
+                 ('ordinal',ordinal),
                  ('znz',znz),
                  ('club_R_L',club_R_L),
                  ('new_levels',new_levels),
-                 ('ordinal',ordinal),
                  ('feature_time',feature_time),
                  ('group',group),
                  ('scaling',scaling),

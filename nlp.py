@@ -3,7 +3,6 @@
 # License: MIT
 
 
-
 def setup(data, 
           target=None,
           custom_stopwords=None,
@@ -58,18 +57,10 @@ def setup(data,
 
     Warnings:
     ---------
-    
-    - If the dataset is large, Jupyter Notebook may return data update warnings due 
-      to the status bar. To switch off the warnings, you may consider the following 
-      code in your python terminal. 
-    
-         jupyter notebook --NotebookApp.iopub_data_rate_limit=1.0e10
-      
-      
     - Some functionalities in pycaret.nlp requires you to have english language model. 
       The language model is not downloaded automatically when you install pycaret. 
       You will have to download two models using your Anaconda Prompt or python 
-      command line interface.  To download the model, please type the following in 
+      command line interface. To download the model, please type the following in 
       your command line:
       
          python -m spacy download en_core_web_sm
@@ -152,8 +143,8 @@ def setup(data,
     except:
         max_sub = len(data)
         
-    sub_progress = ipw.IntProgress(value=0, min=0, max=max_sub, step=1, bar_style='', description='Sub Process: ')
-    display(sub_progress)
+    #sub_progress = ipw.IntProgress(value=0, min=0, max=max_sub, step=1, bar_style='', description='Sub Process: ')
+    #display(sub_progress)
     
     timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
     monitor = pd.DataFrame( [ ['Initiated' , '. . . . . . . . . . . . . . . . . .', timestampStr ], 
@@ -265,9 +256,9 @@ def setup(data,
         review = re.sub("\d+", "", str(text[i]))
         text_step1.append(review)
         
-        sub_progress.value += 1
+        #sub_progress.value += 1
         
-    sub_progress.value = 0
+    #sub_progress.value = 0
 
     text = text_step1 #re-assigning
     del(text_step1)
@@ -293,9 +284,9 @@ def setup(data,
         review = re.sub(r'\s+', ' ', review)
         text_step2.append(review)
         
-        sub_progress.value += 1
+        #sub_progress.value += 1
         
-    sub_progress.value = 0
+    #sub_progress.value = 0
     
     text = text_step2 #re-assigning
     del(text_step2)
@@ -316,9 +307,9 @@ def setup(data,
         review = gensim.utils.simple_preprocess(str(i), deacc=True)
         text_step3.append(review)
         
-        sub_progress.value += 1
+        #sub_progress.value += 1
         
-    sub_progress.value = 0
+    #sub_progress.value = 0
     
     text = text_step3
     del(text_step3)
@@ -342,12 +333,12 @@ def setup(data,
                 ii.append(word)
         text_step4.append(ii)
         
-        sub_progress.value += 1
+        #sub_progress.value += 1
         
     text = text_step4
     del(text_step4)
         
-    sub_progress.value = 0
+    #sub_progress.value = 0
             
     progress.value += 1
     
@@ -366,12 +357,12 @@ def setup(data,
     
     for i in text:
         text_step5.append(bigram_mod[i])
-        sub_progress.value += 1
+        #sub_progress.value += 1
         
     text = text_step5
     del(text_step5)
         
-    sub_progress.value = 0
+    #sub_progress.value = 0
     
     progress.value += 1
     
@@ -390,9 +381,9 @@ def setup(data,
 
     for i in text:
         text_step6.append(trigram_mod[bigram_mod[i]])
-        sub_progress.value += 1
+        #sub_progress.value += 1
     
-    sub_progress.value = 0
+    #sub_progress.value = 0
     
     text = text_step6
     del(text_step6)
@@ -416,9 +407,9 @@ def setup(data,
         doc = nlp(" ".join(i))
         text_step7.append([token.lemma_ for token in doc if token.pos_ in allowed_postags])
         
-        sub_progress.value += 1
+        #sub_progress.value += 1
         
-    sub_progress.value = 0
+    #sub_progress.value = 0
     text = text_step7
     del(text_step7)
     
@@ -442,12 +433,12 @@ def setup(data,
                 ii.append(word)
         text_step8.append(ii)
         
-        sub_progress.value += 1
+        #sub_progress.value += 1
         
     text = text_step8
     del(text_step8)
         
-    sub_progress.value = 0
+    #sub_progress.value = 0
             
     progress.value += 1
     
@@ -470,9 +461,9 @@ def setup(data,
         d = id2word.doc2bow(i)
         corpus.append(d)
         
-        sub_progress.value += 1
+        #sub_progress.value += 1
         
-    sub_progress.value = 0
+    #sub_progress.value = 0
         
     progress.value += 1
     
@@ -519,6 +510,7 @@ def setup(data,
     experiment__.append(('Text', text))
 
     return text, data_, corpus, id2word, seed, target_, experiment__
+
 
 
 

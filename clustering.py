@@ -3,6 +3,7 @@
 # License: MIT
 
 
+
 def setup(data, 
           categorical_features = None,
           categorical_imputation = 'constant',
@@ -301,7 +302,7 @@ def setup(data,
                 
         for i in ord_keys:
             value_in_keys = ordinal_features.get(i)
-            value_in_data = list(data[i].unique())
+            value_in_data = list(data[i].unique().astype(str))
             for j in value_in_keys:
                 if j not in value_in_data:
                     text =  "Column name '" + str(i) + "' doesnt contain any level named '" + str(j) + "'."

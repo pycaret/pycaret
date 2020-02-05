@@ -45,11 +45,11 @@ def setup(data,
         Example
         -------
         from pycaret.datasets import get_data
-        jewellery = get_data('jewellery')
+        anomaly = get_data('anomaly')
 
-        experiment_name = setup(data = jewellery, normalize = True)
+        experiment_name = setup(data = anomaly, normalize = True)
         
-        'jewellery' is a pandas Dataframe.
+        'anomaly' is a pandas Dataframe.
 
     Parameters
     ----------
@@ -301,7 +301,7 @@ def setup(data,
                 
         for i in ord_keys:
             value_in_keys = ordinal_features.get(i)
-            value_in_data = list(data[i].unique())
+            value_in_data = list(data[i].unique().astype(str))
             for j in value_in_keys:
                 if j not in value_in_data:
                     text =  "Column name '" + str(i) + "' doesnt contain any level named '" + str(j) + "'."
@@ -843,6 +843,7 @@ def setup(data,
     
     
     return X, data_, seed, prep_pipe, prep_param, experiment__
+
 
 
 

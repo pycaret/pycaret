@@ -3,7 +3,6 @@
 # License: MIT
 
 
-
 def setup(data, 
           target, 
           train_size=0.7,
@@ -427,7 +426,7 @@ def setup(data,
 
         for i in ord_keys:
             value_in_keys = ordinal_features.get(i)
-            value_in_data = list(data[i].unique())
+            value_in_data = list(data[i].unique().astype(str))
             for j in value_in_keys:
                 if j not in value_in_data:
                     text =  "Column name '" + str(i) + "' doesnt contain any level named '" + str(j) + "'."
@@ -1440,9 +1439,6 @@ def setup(data,
             pass
         
         return X, y, X_train, X_test, y_train, y_test, seed, prep_pipe, target_inverse_transformer, experiment__
-
-
-
 
 
 
