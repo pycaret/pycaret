@@ -635,7 +635,11 @@ def setup(data,
     import ipywidgets as ipw
     from IPython.display import display, HTML, clear_output, update_display
     import datetime, time
-   
+
+    #pandas option
+    pd.set_option('display.max_columns', 500)
+    pd.set_option('display.max_rows', 500)
+    
     #progress bar
     if sampling:
         max = 10 + 3
@@ -1045,8 +1049,8 @@ def setup(data,
     """
     
     #reset pandas option
-    #pd.reset_option("display.max_rows") #switch back on 
-    #pd.reset_option("display.max_columns")
+    pd.reset_option("display.max_rows") #switch back on 
+    pd.reset_option("display.max_columns")
     
     #create an empty list for pickling later.
     experiment__ = []
@@ -4555,12 +4559,11 @@ def tune_model(estimator = None,
 
 
 
-
 def stack_models(estimator_list, 
                  meta_model = None, 
                  fold = 10,
                  round = 4, 
-                 restack = False, 
+                 restack = True, 
                  plot = False,
                  finalize = False,
                  verbose = True):
@@ -4611,7 +4614,7 @@ def stack_models(estimator_list,
     round: integer, default = 4
     Number of decimal places the metrics in the score grid will be rounded to.
 
-    restack: Boolean, default = False
+    restack: Boolean, default = True
     When restack is set to True, raw data will be exposed to meta model when
     making predictions, otherwise when False, only the predicted label is passed 
     to meta model when making final predictions.
@@ -5049,12 +5052,11 @@ def stack_models(estimator_list,
 
 
 
-
 def create_stacknet(estimator_list,
                     meta_model = None,
                     fold = 10,
                     round = 4,
-                    restack = False,
+                    restack = True,
                     finalize = False,
                     verbose = True):
     
@@ -5100,7 +5102,7 @@ def create_stacknet(estimator_list,
     round: integer, default = 4
     Number of decimal places the metrics in the score grid will be rounded to.
   
-    restack: Boolean, default = False
+    restack: Boolean, default = True
     When restack is set to True, raw data and prediction of all layers will be 
     exposed to the meta model when making predictions. When set to False, only 
     the predicted label of last layer is passed to meta model when making final 
@@ -5143,7 +5145,7 @@ def create_stacknet(estimator_list,
     '''
     
     #for checking only
-    #No active test
+    global inter_level_names
     
     #exception checking   
     import sys
@@ -5151,7 +5153,11 @@ def create_stacknet(estimator_list,
     #checking estimator_list
     if type(estimator_list[0]) is not list:
         sys.exit("(Type Error): estimator_list parameter must be list of list. ")
-
+        
+    #blocking stack_models usecase
+    if len(estimator_list) == 1:
+        sys.exit("(Type Error): Single Layer stacking must be performed using stack_models(). ")
+        
     #checking error for estimator_list
     for i in estimator_list:
         for j in i:
@@ -5185,12 +5191,15 @@ def create_stacknet(estimator_list,
     
     '''
     
+    global inter_level_names
+    
     #pre-load libraries
     import pandas as pd
     import ipywidgets as ipw
     from IPython.display import display, HTML, clear_output, update_display
     import time, datetime
     from copy import deepcopy
+    from sklearn.base import clone
     
     #copy estimator_list
     estimator_list = deepcopy(estimator_list)
@@ -5238,7 +5247,6 @@ def create_stacknet(estimator_list,
 
     progress.value += 1
     
-    
     base_level = estimator_list[0]
     base_level_names = []
     
@@ -5273,13 +5281,14 @@ def create_stacknet(estimator_list,
     
     #defining inter_level names
     for item in inter_level:
+        level_list=[]
         for m in item:
-            inter_level_names = np.append(inter_level_names, str(m).split("(")[0])    
+            if 'CatBoostRegressor' in str(m).split("(")[0]:
+                level_list.append('CatBoostRegressor')
+            else:
+                level_list.append(str(m).split("(")[0])
+        inter_level_names.append(level_list)
             
-    #defining inter_level names
-    for item in inter_level:
-        for m in item:
-            inter_level_names = np.append(inter_level_names, str(m).split("(")[0])  
             
     #defining data_X and data_y
     if finalize:
@@ -5350,15 +5359,17 @@ def create_stacknet(estimator_list,
             MONITOR UPDATE STARTS
             '''
 
-            monitor.iloc[1,1:] = 'Evaluating ' + inter_level_names[inter_counter]
+            monitor.iloc[1,1:] = 'Evaluating ' + inter_level_names[inter_counter][model_counter]
             update_display(monitor, display_id = 'monitor')
 
             '''
             MONITOR UPDATE ENDS
             '''
             
-            model = model.fit(X = base_array_df, y = data_y) #changed to data_y
-            inter_inner.append(model)
+            model = clone(model)
+            inter_inner.append(model.fit(X = base_array_df, y = data_y)) #changed to data_y 
+            #model = model.fit(X = base_array_df, y = data_y) #changed to data_y
+            #inter_inner.append(model)
             
             base_array = cross_val_predict(model,X = base_array_df, y = data_y,cv=fold, method='predict')
             base_array = pd.DataFrame(base_array)
@@ -5391,6 +5402,7 @@ def create_stacknet(estimator_list,
             base_array_df = base_array_df.iloc[:,i:]
         
         inter_counter += 1
+        progress.value += 1
     
     model = meta_model
     
@@ -5584,6 +5596,7 @@ def create_stacknet(estimator_list,
     else:
         clear_output()
         return models_ 
+
 
 
 
@@ -6467,6 +6480,7 @@ def load_experiment(experiment_name):
 
 
 
+
 def predict_model(estimator, 
                   data=None,
                   platform=None,
@@ -6989,6 +7003,7 @@ def predict_model(estimator,
             X_test_ = pd.concat([X_test_,label], axis=1)
 
     return X_test_
+
 
 
 

@@ -29,4 +29,3 @@ datetime
 DateTime==4.3
 tqdm==4.36.1
 awscli
-boto3

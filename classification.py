@@ -613,6 +613,10 @@ def setup(data,
     import ipywidgets as ipw
     from IPython.display import display, HTML, clear_output, update_display
     import datetime, time
+    
+    #pandas option
+    pd.set_option('display.max_columns', 500)
+    pd.set_option('display.max_rows', 500)
    
     #progress bar
     if sampling:
@@ -1006,8 +1010,8 @@ def setup(data,
     """
     
     #reset pandas option
-    #pd.reset_option("display.max_rows") 
-    #pd.reset_option("display.max_columns")
+    pd.reset_option("display.max_rows") 
+    pd.reset_option("display.max_columns")
       
     #create an empty list for pickling later.
     experiment__ = []
@@ -1450,7 +1454,6 @@ def setup(data,
         experiment__.append(('Transformation Pipeline', prep_pipe))
         
         return X, y, X_train, X_test, y_train, y_test, seed, prep_pipe, experiment__
-
 
 
 
@@ -5069,8 +5072,8 @@ def stack_models(estimator_list,
                  meta_model = None, 
                  fold = 10,
                  round = 4, 
-                 method = 'hard', 
-                 restack = False, 
+                 method = 'soft', 
+                 restack = True, 
                  plot = False,
                  finalize = False,
                  verbose = True):
@@ -5120,11 +5123,11 @@ def stack_models(estimator_list,
     round: integer, default = 4
     Number of decimal places the metrics in the score grid will be rounded to.
 
-    method: string, default = 'hard'
-    'hard', uses predicted class labels as an input to the meta model. 
+    method: string, default = 'soft'
     'soft', uses predicted probabilities as an input to the meta model.
+    'hard', uses predicted class labels as an input to the meta model. 
 
-    restack: Boolean, default = False
+    restack: Boolean, default = True
     When restack is set to True, raw data will be exposed to meta model when
     making predictions, otherwise when False, only the predicted label or
     probabilities is passed to meta model when making final predictions.
@@ -5236,6 +5239,7 @@ def stack_models(estimator_list,
     from IPython.display import display, HTML, clear_output, update_display
     import time, datetime
     from copy import deepcopy
+    from sklearn.base import clone
     
     #copy estimator_list
     estimator_list = deepcopy(estimator_list)
@@ -5606,8 +5610,8 @@ def create_stacknet(estimator_list,
                     meta_model = None,
                     fold = 10,
                     round = 4,
-                    method = 'hard',
-                    restack = False,
+                    method = 'soft',
+                    restack = True,
                     finalize = False,
                     verbose = True):
     
@@ -5654,11 +5658,11 @@ def create_stacknet(estimator_list,
     round: integer, default = 4
     Number of decimal places the metrics in the score grid will be rounded to.
   
-    method: string, default = 'hard'
-    'hard', uses predicted class labels as an input to the meta model. 
+    method: string, default = 'soft'
     'soft', uses predicted probabilities as an input to the meta model.
+    'hard', uses predicted class labels as an input to the meta model. 
     
-    restack: Boolean, default = False
+    restack: Boolean, default = True
     When restack is set to True, raw data and prediction of all layers will be 
     exposed to the meta model when making predictions. When set to False, only 
     the predicted label or probabilities of last layer is passed to meta model 
@@ -5709,7 +5713,7 @@ def create_stacknet(estimator_list,
     '''
     
     #testing
-    #no active test
+    #global inter_level_names
     
     #exception checking   
     import sys
@@ -5717,13 +5721,17 @@ def create_stacknet(estimator_list,
     #checking estimator_list
     if type(estimator_list[0]) is not list:
         sys.exit("(Type Error): estimator_list parameter must be list of list. ")
-
+        
+    #blocking stack_models usecase
+    if len(estimator_list) == 1:
+        sys.exit("(Type Error): Single Layer stacking must be performed using stack_models(). ")
+        
     #checking error for estimator_list
     for i in estimator_list:
         for j in i:
             if 'sklearn' not in str(type(j)) and 'CatBoostClassifier' not in str(type(j)):
                 sys.exit("(Value Error): estimator_list parameter only trained model object")
-            
+    
     #checking meta model
     if meta_model is not None:
         if 'sklearn' not in str(type(meta_model)) and 'CatBoostClassifier' not in str(type(meta_model)):
@@ -5767,6 +5775,7 @@ def create_stacknet(estimator_list,
     from IPython.display import display, HTML, clear_output, update_display
     import time, datetime
     from copy import deepcopy
+    from sklearn.base import clone
     
     #copy estimator_list
     estimator_list = deepcopy(estimator_list)
@@ -5845,8 +5854,13 @@ def create_stacknet(estimator_list,
    
     #defining inter_level names
     for item in inter_level:
+        level_list=[]
         for m in item:
-            inter_level_names = np.append(inter_level_names, str(m).split("(")[0])    
+            if 'CatBoostClassifier' in str(m).split("(")[0]:
+                level_list.append('CatBoostClassifier')
+            else:
+                level_list.append(str(m).split("(")[0])
+        inter_level_names.append(level_list)
     
     #defining data_X and data_y
     if finalize:
@@ -5931,15 +5945,15 @@ def create_stacknet(estimator_list,
             MONITOR UPDATE STARTS
             '''
 
-            monitor.iloc[1,1:] = 'Evaluating ' + inter_level_names[inter_counter]
+            monitor.iloc[1,1:] = 'Evaluating ' + inter_level_names[inter_counter][model_counter]
             update_display(monitor, display_id = 'monitor')
 
             '''
             MONITOR UPDATE ENDS
             '''
             
-            model = model.fit(X = base_array_df, y = data_y) #changed to data_y
-            inter_inner.append(model)
+            model = clone(model)
+            inter_inner.append(model.fit(X = base_array_df, y = data_y)) #changed to data_y
             
             if method == 'soft':
                 try:
@@ -5983,6 +5997,7 @@ def create_stacknet(estimator_list,
             base_array_df = base_array_df.iloc[:,i:]
         
         inter_counter += 1
+        progress.value += 1
         
     model = meta_model
     
@@ -6180,7 +6195,7 @@ def create_stacknet(estimator_list,
     
     else:
         clear_output()
-        return models_ 
+        return models_  
 
 
 
@@ -7295,7 +7310,7 @@ def predict_model(estimator,
     """
     
     #testing
-    #no active tests
+    #global base_pred_df, base_pred_df_no_restack, df, df_restack, stacker_method, combined_df, inter_pred_df
     
     #ignore warnings
     import warnings
@@ -7437,7 +7452,7 @@ def predict_model(estimator,
             """
             base_pred = []
             for i in stacker_base:
-                if stacker_method == 'soft':
+                if 'soft' in stacker_method:
                     try:
                         a = i.predict_proba(Xtest) #change
                         a = a[:,1]
@@ -7456,7 +7471,7 @@ def predict_model(estimator,
             
             base_pred_df_no_restack = base_pred_df.copy()
             base_pred_df = pd.concat([Xtest,base_pred_df], axis=1)
-            
+
 
             """
             inter level predictions
@@ -7468,15 +7483,16 @@ def predict_model(estimator,
             inter_counter = 0
 
             for level in stacker:
-
+                
                 inter_pred_df = pd.DataFrame()
 
                 model_counter = 0 
 
                 for model in level:
+                    
                     try:
                         if inter_counter == 0:
-                            if stacker_method == 'soft':
+                            if 'soft' in stacker_method: #changed
                                 try:
                                     p = model.predict_proba(base_pred_df)
                                     p = p[:,1]
@@ -7495,7 +7511,7 @@ def predict_model(estimator,
                                 except:
                                     p = model.predict(base_pred_df_no_restack)
                         else:
-                            if stacker_method == 'soft':
+                            if 'soft' in stacker_method:
                                 try:
                                     p = model.predict_proba(last_level_df)
                                     p = p[:,1]
@@ -7504,14 +7520,15 @@ def predict_model(estimator,
                             else:
                                 p = model.predict(last_level_df)
                     except:
-                        if stacker_method == 'soft':
+                        if 'soft' in stacker_method:
                             try:
                                 p = model.predict_proba(combined_df)
                                 p = p[:,1]
                             except:
-                                p = model.predict(combined_df)
+                                p = model.predict(combined_df)        
+                    
                     p = pd.DataFrame(p)
-
+                    
                     col = str(model).split("(")[0]
                     if 'CatBoostClassifier' in col:
                         col = 'CatBoostClassifier'
@@ -7533,6 +7550,7 @@ def predict_model(estimator,
             """
 
             #final meta predictions
+            
             try:
                 pred_ = stacker_meta.predict(combined_df)
             except:
@@ -7644,6 +7662,7 @@ def predict_model(estimator,
                     p = i.predict(Xtest) #change
 
                 else:
+                    
                     try:
                         p = i.predict_proba(Xtest) #change
                         p = p[:,1]
@@ -7667,7 +7686,7 @@ def predict_model(estimator,
             
             df.fillna(value=0,inplace=True)
             df_restack.fillna(value=0,inplace=True)
-
+            
             #restacking check
             try:
                 pred_ = meta_model.predict(df)
@@ -7684,7 +7703,7 @@ def predict_model(estimator,
                     pred_prob = pred_prob[:,1]
                 except:
                     pass
-
+            
             if data is None:
                 
                 sca = metrics.accuracy_score(ytest,pred_)
@@ -7813,6 +7832,7 @@ def predict_model(estimator,
             
 
     return X_test_
+
 
 
 def deploy_model(model, 

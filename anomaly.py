@@ -3,12 +3,13 @@
 # License: MIT
 
 
+
 def setup(data, 
           categorical_features = None,
           categorical_imputation = 'constant',
           ordinal_features = None, #new
           numeric_features = None,
-          numeric_imputation = 'mean',
+          numeric_imputation = 'mean',m
           date_features = None,
           ignore_features = None,
           normalize = False,
@@ -194,8 +195,8 @@ def setup(data,
     remove_multicollinearity: bool, default = False
     When set to True, the variables with inter-correlations higher than the threshold
     defined under the multicollinearity_threshold param are dropped. When two features
-    are highly correlated with each other, the feature with less average correlation in 
-    the feature space is dropped. 
+    are highly correlated with each other, the feature with higher average correlation 
+    in the feature space is dropped. 
     
     multicollinearity_threshold: float, default = 0.9
     Threshold used for dropping the correlated features. Only comes into effect when 
@@ -433,6 +434,10 @@ def setup(data,
     import ipywidgets as ipw
     from IPython.display import display, HTML, clear_output, update_display
     import datetime, time
+    
+    #pandas option
+    pd.set_option('display.max_columns', 500)
+    pd.set_option('display.max_rows', 500)
     
     #progress bar
     max_steps = 4
@@ -753,8 +758,8 @@ def setup(data,
     """
     
     #reset pandas option
-    #pd.reset_option("display.max_rows") 
-    #pd.reset_option("display.max_columns")
+    pd.reset_option("display.max_rows") 
+    pd.reset_option("display.max_columns")
     
     #create an empty list for pickling later.
     if supervised is False:
