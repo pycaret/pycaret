@@ -11,6 +11,8 @@ def setup(data,
           categorical_features = None,
           categorical_imputation = 'constant',
           ordinal_features = None,
+          high_cardinality_features = None, #latest
+          high_cardinality_method = 'frequency', #latest
           numeric_features = None,
           numeric_imputation = 'mean',
           date_features = None,
@@ -113,6 +115,19 @@ def setup(data,
     be passed as ordinal_features = { 'column_name' : ['low', 'medium', 'high'] }. 
     The list sequence must be in increasing order from lowest to highest.
     
+    high_cardinality_features: string, default = None
+    When the data containts features with high cardinality, they can be compressed
+    into fewer levels by passing them as a list of column names with high cardinality.
+    Features are compressed using method defined in high_cardinality_method param.
+    
+    high_cardinality_method: string, default = 'frequency'
+    When method set to 'frequency' it will replace the original value of feature
+    with the frequency distribution and convert the feature into numeric. Other
+    available method is 'clustering' which performs the clustering on statistical
+    attribute of data and replaces the original value of feature with cluster label.
+    The number of clusters is determined using a combination of Calinski-Harabasz and 
+    Silhouette criterion. 
+          
     numeric_features: string, default = None
     If the inferred data types are not correct, numeric_features can be used to
     overwrite the inferred type. If when running setup the type of 'column1' is 
@@ -424,6 +439,23 @@ def setup(data,
                     text =  "Column name '" + str(i) + "' doesnt contain any level named '" + str(j) + "'."
                     sys.exit(text)
     
+    #high_cardinality_features
+    if high_cardinality_features is not None:
+        if type(high_cardinality_features) is not list:
+            sys.exit("(Type Error): high_cardinality_features param only accepts name of columns as a list. ")
+        
+    if high_cardinality_features is not None:
+        data_cols = data.columns
+        data_cols = data_cols.drop(target)
+        for i in high_cardinality_features:
+            if i not in data_cols:
+                sys.exit("(Value Error): Column type forced is either target column or doesn't exist in the dataset.")
+                
+    #high_cardinality_methods
+    high_cardinality_allowed_methods = ['frequency', 'clustering']     
+    if high_cardinality_method not in high_cardinality_allowed_methods:
+        sys.exit("(Value Error): high_cardinality_method param only accepts 'frequency' or 'clustering' ")
+        
     #checking numeric imputation
     allowed_numeric_imputation = ['mean', 'median']
     if numeric_imputation not in allowed_numeric_imputation:
@@ -824,6 +856,21 @@ def setup(data,
     else:
         ordinal_columns_and_categories_pass = {}
     
+    if high_cardinality_features is not None:
+        apply_cardinality_reduction_pass = True
+    else:
+        apply_cardinality_reduction_pass = False
+        
+    if high_cardinality_method == 'frequency':
+        cardinal_method_pass = 'count'
+    elif high_cardinality_method == 'clustering':
+        cardinal_method_pass = 'cluster'
+        
+    if apply_cardinality_reduction_pass:
+        cardinal_features_pass = high_cardinality_features
+    else:
+        cardinal_features_pass = []
+    
     if silent:
         display_dtypes_pass = False
     else:
@@ -837,6 +884,9 @@ def setup(data,
                                           categorical_features = cat_features_pass,
                                           apply_ordinal_encoding = apply_ordinal_encoding_pass, #new
                                           ordinal_columns_and_categories = ordinal_columns_and_categories_pass, #new
+                                          apply_cardinality_reduction = apply_cardinality_reduction_pass, #latest
+                                          cardinal_method = cardinal_method_pass, #latest
+                                          cardinal_features = cardinal_features_pass, #latest
                                           numerical_features = numeric_features_pass,
                                           time_features = date_features_pass,
                                           features_todrop = ignore_features_pass,
@@ -990,6 +1040,16 @@ def setup(data,
         group_features_grid = True
     else:
         group_features_grid = False
+    
+    if high_cardinality_features is not None:
+        high_cardinality_features_grid = True
+    else:
+        high_cardinality_features_grid = False
+    
+    if high_cardinality_features_grid:
+        high_cardinality_method_grid = high_cardinality_method
+    else:
+        high_cardinality_method_grid = None
     
     learned_types = preprocess.dtypes.learent_dtypes
     learned_types.drop(target, inplace=True)
@@ -1174,8 +1234,8 @@ def setup(data,
             split_perc_tt_total = []
             counter += 1
 
-        model_results = pd.DataFrame({'Sample %' : split_percent, 'Metric' : metric_results, 'Metric Name': metric_name})
-        fig = px.line(model_results, x='Sample %', y='Metric', color='Metric Name', line_shape='linear', range_y = [0,1])
+        model_results = pd.DataFrame({'Sample' : split_percent, 'Metric' : metric_results, 'Metric Name': metric_name})
+        fig = px.line(model_results, x='Sample', y='Metric', color='Metric Name', line_shape='linear', range_y = [0,1])
         fig.update_layout(plot_bgcolor='rgb(245,245,245)')
         title= str(model_name) + ' Metrics and Sample %'
         fig.update_layout(title={'text': title, 'y':0.95,'x':0.45,'xanchor': 'center','yanchor': 'top'})
@@ -1211,9 +1271,11 @@ def setup(data,
                                          ['Label Encoded', label_encoded],
                                          ['Original Data', data_before_preprocess.shape ],
                                          ['Missing Values ', missing_flag],
-                                         ['Numeric Features ', float_type ],
-                                         ['Categorical Features ', cat_type ],
+                                         ['Numeric Features ', str(float_type) ],
+                                         ['Categorical Features ', str(cat_type) ],
                                          ['Ordinal Features ', ordinal_features_grid], #new
+                                         ['High Cardinality Features ', high_cardinality_features_grid], #latest
+                                         ['High Cardinality Method ', high_cardinality_method_grid], #latest
                                          ['Sampled Data', '(' + str(X_train.shape[0] + X_test.shape[0]) + ', ' + str(data_before_preprocess.shape[1]) + ')' ], 
                                          ['Transformed Train Set', X_train.shape ], 
                                          ['Transformed Test Set',X_test.shape ],
@@ -1303,9 +1365,11 @@ def setup(data,
                                          ['Label Encoded', label_encoded],
                                          ['Original Data', data_before_preprocess.shape ],
                                          ['Missing Values ', missing_flag],
-                                         ['Numeric Features ', float_type ],
-                                         ['Categorical Features ', cat_type ],
+                                         ['Numeric Features ', str(float_type) ],
+                                         ['Categorical Features ', str(cat_type) ],
                                          ['Ordinal Features ', ordinal_features_grid], #new
+                                         ['High Cardinality Features ', high_cardinality_features_grid],
+                                         ['High Cardinality Method ', high_cardinality_method_grid], #latest
                                          ['Sampled Data', '(' + str(X_train.shape[0] + X_test.shape[0]) + ', ' + str(data_before_preprocess.shape[1]) + ')' ], 
                                          ['Transformed Train Set', X_train.shape ], 
                                          ['Transformed Test Set',X_test.shape ],
@@ -1391,9 +1455,11 @@ def setup(data,
                                      ['Label Encoded', label_encoded],
                                      ['Original Data', data_before_preprocess.shape ],
                                      ['Missing Values ', missing_flag],
-                                     ['Numeric Features ', float_type ],
-                                     ['Categorical Features ', cat_type ],
+                                     ['Numeric Features ', str(float_type) ],
+                                     ['Categorical Features ', str(cat_type) ],
                                      ['Ordinal Features ', ordinal_features_grid], #new
+                                     ['High Cardinality Features ', high_cardinality_features_grid],
+                                     ['High Cardinality Method ', high_cardinality_method_grid], #latest
                                      ['Sampled Data', '(' + str(X_train.shape[0] + X_test.shape[0]) + ', ' + str(data_before_preprocess.shape[1]) + ')' ], 
                                      ['Transformed Train Set', X_train.shape ], 
                                      ['Transformed Test Set',X_test.shape ],
@@ -1454,6 +1520,7 @@ def setup(data,
         experiment__.append(('Transformation Pipeline', prep_pipe))
         
         return X, y, X_train, X_test, y_train, y_test, seed, prep_pipe, experiment__
+
 
 
 
@@ -3509,6 +3576,8 @@ def compare_models(blacklist = None,
     return compare_models_
 
 
+
+
 def tune_model(estimator = None, 
                fold = 10, 
                round = 4, 
@@ -3749,6 +3818,9 @@ def tune_model(estimator = None,
     from sklearn.model_selection import StratifiedKFold
     from sklearn.model_selection import RandomizedSearchCV
     
+    #setting numpy seed
+    np.random.seed(seed)
+    
     #setting optimize parameter   
     if optimize == 'Accuracy':
         optimize = 'accuracy'
@@ -3826,7 +3898,7 @@ def tune_model(estimator = None,
         
         from sklearn.linear_model import LogisticRegression
 
-        param_grid = {'C': [1,5,10,25,50,100],
+        param_grid = {'C': np.arange(0, 10, 0.001), #[1,5,10,25,50,100],
                   "penalty": [ 'l1', 'l2'],
                   "class_weight": ["balanced", None]
                      }
@@ -3842,10 +3914,11 @@ def tune_model(estimator = None,
         
         from sklearn.tree import DecisionTreeClassifier
         
-        param_grid = {"max_depth": np.random.randint(1, (len(X_train.columns)*.85),4),
-                  "max_features": np.random.randint(3, len(X_train.columns),4),
-                  "min_samples_leaf": [2,3,4],
-                  "criterion": ["gini", "entropy"]}
+        param_grid = {"max_depth": np.random.randint(1, (len(X_train.columns)*.85),20),
+                  "max_features": np.random.randint(3, len(X_train.columns),20),
+                  "min_samples_leaf": [2,3,4,5,6],
+                  "criterion": ["gini", "entropy"],
+                     }
 
         model_grid = RandomizedSearchCV(estimator=DecisionTreeClassifier(random_state=seed), param_distributions=param_grid,
                                        scoring=optimize, n_iter=n_iter, cv=cv, random_state=seed,
@@ -3862,8 +3935,8 @@ def tune_model(estimator = None,
         
         param_grid = {'learning_rate': ['constant', 'invscaling', 'adaptive'],
                  'solver' : ['lbfgs', 'sgd', 'adam'],
-                 'alpha': [0.0001, 0.05],
-                 'hidden_layer_sizes': np.random.randint(5,15,5),
+                 'alpha': np.arange(0, 1, 0.0001), #[0.0001, 0.05],
+                 'hidden_layer_sizes': [(50,50,50), (50,100,50), (100,), (100,50,100), (100,100,100)], #np.random.randint(5,15,5),
                  'activation': ["tanh", "identity", "logistic","relu"]
                  }
 
@@ -3895,7 +3968,7 @@ def tune_model(estimator = None,
         
         from sklearn.svm import SVC
         
-        param_grid = {'C': [.5,1,10,50,100],
+        param_grid = {'C': np.arange(0, 50, 0.01), #[.5,1,10,50,100],
                 "class_weight": ["balanced", None]}
 
         model_grid = RandomizedSearchCV(estimator=SVC(gamma='auto', C=1, probability=True, kernel='rbf', random_state=seed), 
@@ -3911,8 +3984,11 @@ def tune_model(estimator = None,
         
         from sklearn.naive_bayes import GaussianNB
 
-        param_grid = {'var_smoothing': [0.000000001, 0.0000001, 0.00001, 0.001, 0.002, 0.003, 0.004, 0.005, 0.006, 0.007,
-                                        0.008, 0.009, 0.01, 0.1, 1]}
+        param_grid = {'var_smoothing': [0.000000001, 0.000000002, 0.000000005, 0.000000008, 0.000000009,
+                                        0.0000001, 0.0000002, 0.0000003, 0.0000005, 0.0000007, 0.0000009, 
+                                        0.00001, 0.001, 0.002, 0.003, 0.004, 0.005, 0.007, 0.009,
+                                        0.004, 0.005, 0.006, 0.007,0.008, 0.009, 0.01, 0.1, 1]
+                     }
 
         model_grid = RandomizedSearchCV(estimator=GaussianNB(), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
@@ -3928,7 +4004,7 @@ def tune_model(estimator = None,
         from sklearn.linear_model import SGDClassifier
         
         param_grid = {'penalty': ['l2', 'l1','elasticnet'],
-                      'l1_ratio': [0,0.1,0.15,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1],
+                      'l1_ratio': np.arange(0,1,0.01), #[0,0.1,0.15,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1],
                       'alpha': [0.0001, 0.001, 0.01, 0.0002, 0.002, 0.02, 0.0005, 0.005, 0.05],
                       'fit_intercept': [True, False],
                       'learning_rate': ['constant', 'optimal', 'invscaling', 'adaptive'],
@@ -3948,7 +4024,7 @@ def tune_model(estimator = None,
         
         from sklearn.linear_model import RidgeClassifier
         
-        param_grid = {'alpha': [0.0001,0.001,0.1,0.15,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1],
+        param_grid = {'alpha': np.arange(0,1,0.001), #[0.0001,0.001,0.1,0.15,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1],
                       'fit_intercept': [True, False],
                       'normalize': [True, False]
                      }    
@@ -3988,8 +4064,8 @@ def tune_model(estimator = None,
         
         from sklearn.ensemble import AdaBoostClassifier        
 
-        param_grid = {'n_estimators': [10, 40, 70, 80, 90, 100, 120, 140, 150],
-                      'learning_rate': [0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1],
+        param_grid = {'n_estimators':  np.arange(10,200,5), #[10, 40, 70, 80, 90, 100, 120, 140, 150],
+                      'learning_rate': np.arange(0,1,0.01), #[0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1],
                       'algorithm' : ["SAMME", "SAMME.R"]
                      }    
 
@@ -4007,9 +4083,9 @@ def tune_model(estimator = None,
         from sklearn.ensemble import GradientBoostingClassifier
 
         param_grid = {#'loss': ['deviance', 'exponential'],
-                      'n_estimators': [10, 40, 70, 80, 90, 100, 120, 140, 150],
-                      'learning_rate': [0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1],
-                      'subsample' : [0.1,0.3,0.5,0.7,0.9,1],
+                      'n_estimators': np.arange(10,200,5), #[10, 40, 70, 80, 90, 100, 120, 140, 150],
+                      'learning_rate': np.arange(0,1,0.01), #[0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1],
+                      'subsample' : np.arange(0.1,1,0.05), #[0.1,0.3,0.5,0.7,0.9,1],
                       'min_samples_split' : [2,4,5,7,9,10],
                       'min_samples_leaf' : [1,2,3,4,5],
                       'max_depth': [int(x) for x in np.linspace(10, 110, num = 11)],
@@ -4030,7 +4106,8 @@ def tune_model(estimator = None,
         
         from sklearn.discriminant_analysis import QuadraticDiscriminantAnalysis
 
-        param_grid = {'reg_param': [0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1]}    
+        param_grid = {'reg_param': np.arange(0,1,0.01), #[0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1]
+                     }    
 
         model_grid = RandomizedSearchCV(estimator=QuadraticDiscriminantAnalysis(), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
@@ -4046,7 +4123,7 @@ def tune_model(estimator = None,
         from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 
         param_grid = {'solver' : ['lsqr', 'eigen'],
-                      'shrinkage': [0.0001, 0.001, 0.01, 0.0005, 0.005, 0.05, 0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1]
+                      'shrinkage': [None, 0.0001, 0.001, 0.01, 0.0005, 0.005, 0.05, 0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1]
                      }    
 
         model_grid = RandomizedSearchCV(estimator=LinearDiscriminantAnalysis(), 
@@ -4062,7 +4139,7 @@ def tune_model(estimator = None,
         
         from sklearn.ensemble import ExtraTreesClassifier
 
-        param_grid = {'n_estimators': [10, 20, 30, 40, 50, 60, 70, 80, 90, 100],
+        param_grid = {'n_estimators': np.arange(10,200,5), #[10, 20, 30, 40, 50, 60, 70, 80, 90, 100],
                       'criterion': ['gini', 'entropy'],
                       'max_depth': [int(x) for x in np.linspace(10, 110, num = 11)],
                       'min_samples_split': [2, 5, 7, 9, 10],
@@ -4089,8 +4166,8 @@ def tune_model(estimator = None,
         
         if y.value_counts().count() > 2:
             
-            param_grid = {'learning_rate': [0.01, 0.02, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1], 
-                          'n_estimators':[10, 30, 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000], 
+            param_grid = {'learning_rate': np.arange(0,1,0.01), #[0.01, 0.02, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1], 
+                          'n_estimators': np.arange(10,500,20), #[10, 30, 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000], 
                           'subsample': [0.1, 0.2, 0.3, 0.5, 0.7, 0.9, 1],
                           'max_depth': [int(x) for x in np.linspace(10, 110, num = 11)], 
                           'colsample_bytree': [0.5, 0.7, 0.9, 1],
@@ -4098,7 +4175,7 @@ def tune_model(estimator = None,
                           'num_class' : [num_class, num_class]
                          }
         else:
-            param_grid = {'learning_rate': [0.01, 0.02, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1], 
+            param_grid = {'learning_rate': np.arange(0,1,0.01), #[0.01, 0.02, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1], 
                           'n_estimators':[10, 30, 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000], 
                           'subsample': [0.1, 0.2, 0.3, 0.5, 0.7, 0.9, 1],
                           'max_depth': [int(x) for x in np.linspace(10, 110, num = 11)], 
@@ -4183,14 +4260,12 @@ def tune_model(estimator = None,
         #when using normal BaggingClassifier() DT estimator raise's an exception for max_features parameter. Hence a separate 
         #call has been made for estimator='dt' and method = 'Bagging' where max_features has been removed from param_grid_dt.
     
-        param_grid = {'n_estimators': [10,15,20,25,30],
-                     'max_samples': [0.3,0.5,0.6,0.7,0.8,0.9],
-                     'max_features':[0.3,0.5,0.6,0.7,0.8,0.9],
+        param_grid = {'n_estimators': np.arange(10,300,10), #[10,15,20,25,30],
                      'bootstrap': [True, False],
                      'bootstrap_features': [True, False],
                      }
 
-        param_grid_dt = {"max_depth": np.random.randint(3, (len(X_train.columns)*.85),4),
+        param_grid_dt = {"max_depth": np.random.randint(3, (len(X_train.columns)*.85),20),
                       "min_samples_leaf": [2,3,4],
                       "criterion": ["gini", "entropy"]}
 
@@ -4221,9 +4296,7 @@ def tune_model(estimator = None,
         
         from sklearn.ensemble import BaggingClassifier
     
-        param_grid = {'n_estimators': [10,15,20,25,30],
-                     'max_samples': [0.3,0.5,0.6,0.7,0.8,0.9],
-                     'max_features':[0.3,0.5,0.6,0.7,0.8,0.9],
+        param_grid = {'n_estimators': np.arange(10,300,10), #[10,15,20,25,30],
                      'bootstrap': [True, False],
                      'bootstrap_features': [True, False],
                      }
@@ -4243,8 +4316,8 @@ def tune_model(estimator = None,
         
         from sklearn.ensemble import AdaBoostClassifier
         
-        param_grid = {'n_estimators': [25,35,50,60,70,75],
-                     'learning_rate': [1,0.9,0.8,0.7,0.6,0.5,0.4,0.3,0.2],
+        param_grid = {'n_estimators': np.arange(10,200,10), #[25,35,50,60,70,75],
+                     'learning_rate': np.arange(0,1,0.01), #[1,0.9,0.8,0.7,0.6,0.5,0.4,0.3,0.2],
                      }        
 
         best_model = AdaBoostClassifier(best_model, random_state=seed)
@@ -4255,7 +4328,6 @@ def tune_model(estimator = None,
 
     progress.value += 1
 
-    
         
     #multiclass checking
     if y.value_counts().count() > 2:

@@ -2553,28 +2553,24 @@ def evaluate_model(model):
         
     from ipywidgets import widgets
     from ipywidgets.widgets import interact, fixed, interact_manual
+    import numpy as np
     
     """
     generate sorted list
     
     """
     
-    assigned_df = assign_model(model)
-    dd = list(assigned_df['Dominant_Topic'].unique())
-
-    dd2 = []
-    for i in dd:
-        dd2.append(i.split())
-
-    dd3 = []
-    for i in dd2:
-        dd3.append(int(i[1]))
-
-    dd3.sort()
+    try:
+        n_topic_assigned = len(model.show_topics())
+    except:
+        try:
+            n_topic_assigned = model.num_topics
+        except:
+            n_topic_assigned = model.n_components
 
     final_list = []
-    for i in dd3:
-        final_list.append('Topic '+str(i))
+    for i in range(0,n_topic_assigned):
+        final_list.append('Topic ' +str(i))
 
     a = widgets.ToggleButtons(
                             options=[('Frequency Plot', 'frequency'),

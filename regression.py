@@ -11,6 +11,8 @@ def setup(data,
           categorical_features = None,
           categorical_imputation = 'constant',
           ordinal_features = None,
+          high_cardinality_features = None, #latest
+          high_cardinality_method = 'frequency', #latest
           numeric_features = None,
           numeric_imputation = 'mean',
           date_features = None,
@@ -112,6 +114,19 @@ def setup(data,
     of 'low', 'medium', 'high' and it is known that low < medium < high, then it can 
     be passed as ordinal_features = { 'column_name' : ['low', 'medium', 'high'] }. 
     The list sequence must be in increasing order from lowest to highest.
+    
+    high_cardinality_features: string, default = None
+    When the data containts features with high cardinality, they can be compressed
+    into fewer levels by passing them as a list of column names with high cardinality.
+    Features are compressed using method defined in high_cardinality_method param.
+    
+    high_cardinality_method: string, default = 'frequency'
+    When method set to 'frequency' it will replace the original value of feature
+    with the frequency distribution and convert the feature into numeric. Other
+    available method is 'clustering' which performs the clustering on statistical
+    attribute of data and replaces the original value of feature with cluster label.
+    The number of clusters is determined using a combination of Calinski-Harabasz and 
+    Silhouette criterion. 
     
     numeric_features: string, default = None
     If the inferred data types are not correct, numeric_features can be used to
@@ -431,7 +446,19 @@ def setup(data,
                 if j not in value_in_data:
                     text =  "Column name '" + str(i) + "' doesnt contain any level named '" + str(j) + "'."
                     sys.exit(text)
-                    
+           
+    #high_cardinality_features
+    if high_cardinality_features is not None:
+        if type(high_cardinality_features) is not list:
+            sys.exit("(Type Error): high_cardinality_features param only accepts name of columns as a list. ")
+        
+    if high_cardinality_features is not None:
+        data_cols = data.columns
+        data_cols = data_cols.drop(target)
+        for i in high_cardinality_features:
+            if i not in data_cols:
+                sys.exit("(Value Error): Column type forced is either target column or doesn't exist in the dataset.")
+                
     #checking numeric imputation
     allowed_numeric_imputation = ['mean', 'median']
     if numeric_imputation not in allowed_numeric_imputation:
@@ -847,6 +874,21 @@ def setup(data,
     else:
         ordinal_columns_and_categories_pass = {}
     
+    if high_cardinality_features is not None:
+        apply_cardinality_reduction_pass = True
+    else:
+        apply_cardinality_reduction_pass = False
+        
+    if high_cardinality_method == 'frequency':
+        cardinal_method_pass = 'count'
+    elif high_cardinality_method == 'clustering':
+        cardinal_method_pass = 'cluster'
+        
+    if apply_cardinality_reduction_pass:
+        cardinal_features_pass = high_cardinality_features
+    else:
+        cardinal_features_pass = []
+        
     if silent:
         display_dtypes_pass = False
     else:
@@ -866,6 +908,9 @@ def setup(data,
                                           categorical_features = cat_features_pass,
                                           apply_ordinal_encoding = apply_ordinal_encoding_pass, #new
                                           ordinal_columns_and_categories = ordinal_columns_and_categories_pass, #new
+                                          apply_cardinality_reduction = apply_cardinality_reduction_pass, #latest
+                                          cardinal_method = cardinal_method_pass, #latest
+                                          cardinal_features = cardinal_features_pass, #latest
                                           numerical_features = numeric_features_pass,
                                           time_features = date_features_pass,
                                           features_todrop = ignore_features_pass,
@@ -1024,6 +1069,16 @@ def setup(data,
     else:
         group_features_grid = False
         
+    if high_cardinality_features is not None:
+        high_cardinality_features_grid = True
+    else:
+        high_cardinality_features_grid = False
+    
+    if high_cardinality_features_grid:
+        high_cardinality_method_grid = high_cardinality_method
+    else:
+        high_cardinality_method_grid = None
+        
     learned_types = preprocess.dtypes.learent_dtypes
     learned_types.drop(target, inplace=True)
 
@@ -1151,8 +1206,8 @@ def setup(data,
 
         #model_results = pd.DataFrame({'Sample %' : split_percent, 'Metric' : metric_results, 'Metric Name': metric_name})
 
-        model_results = pd.DataFrame({'Sample %' : split_percent, 'Metric' : metric_results, 'Metric Name': metric_name})
-        fig = px.line(model_results, x='Sample %', y='Metric', color='Metric Name', line_shape='linear', range_y = [0,1])
+        model_results = pd.DataFrame({'Sample' : split_percent, 'Metric' : metric_results, 'Metric Name': metric_name})
+        fig = px.line(model_results, x='Sample', y='Metric', color='Metric Name', line_shape='linear', range_y = [0,1])
         fig.update_layout(plot_bgcolor='rgb(245,245,245)')
         title= str(model_name) + ' Metric and Sample %'
         fig.update_layout(title={'text': title, 'y':0.95,'x':0.45,'xanchor': 'center','yanchor': 'top'})
@@ -1189,9 +1244,11 @@ def setup(data,
                                          ['Transform Target Method', transform_target_method_grid],
                                          ['Original Data', data_before_preprocess.shape ],
                                          ['Missing Values ', missing_flag],
-                                         ['Numeric Features ', float_type ],
-                                         ['Categorical Features ', cat_type ],
+                                         ['Numeric Features ', str(float_type) ],
+                                         ['Categorical Features ', str(cat_type) ],
                                          ['Ordinal Features ', ordinal_features_grid], #new
+                                         ['High Cardinality Features ', high_cardinality_features_grid],
+                                         ['High Cardinality Method ', high_cardinality_method_grid], #latest
                                          ['Sampled Data', '(' + str(X_train.shape[0] + X_test.shape[0]) + ', ' + str(data_before_preprocess.shape[1]) + ')' ], 
                                          ['Transformed Train Set', X_train.shape ], 
                                          ['Transformed Test Set',X_test.shape ],
@@ -1285,9 +1342,11 @@ def setup(data,
                                          ['Transform Target Method', transform_target_method_grid],
                                          ['Original Data', data_before_preprocess.shape ],
                                          ['Missing Values ', missing_flag],
-                                         ['Numeric Features ', float_type ],
-                                         ['Categorical Features ', cat_type ],
+                                         ['Numeric Features ', str(float_type) ],
+                                         ['Categorical Features ', str(cat_type) ],
                                          ['Ordinal Features ', ordinal_features_grid], #new
+                                         ['High Cardinality Features ', high_cardinality_features_grid],
+                                         ['High Cardinality Method ', high_cardinality_method_grid], #latest
                                          ['Sampled Data', '(' + str(X_train.shape[0] + X_test.shape[0]) + ', ' + str(data_before_preprocess.shape[1]) + ')' ], 
                                          ['Transformed Train Set', X_train.shape ], 
                                          ['Transformed Test Set',X_test.shape ],
@@ -1376,9 +1435,11 @@ def setup(data,
                                      ['Transform Target Method', transform_target_method_grid],
                                      ['Original Data', data_before_preprocess.shape ],
                                      ['Missing Values ', missing_flag],
-                                     ['Numeric Features ', float_type ],
-                                     ['Categorical Features ', cat_type ],
+                                     ['Numeric Features ', str(float_type) ],
+                                     ['Categorical Features ', str(cat_type) ],
                                      ['Ordinal Features ', ordinal_features_grid], #new
+                                     ['High Cardinality Features ', high_cardinality_features_grid],
+                                     ['High Cardinality Method ', high_cardinality_method_grid], #latest
                                      ['Sampled Data', '(' + str(X_train.shape[0] + X_test.shape[0]) + ', ' + str(data_before_preprocess.shape[1]) + ')' ], 
                                      ['Transformed Train Set', X_train.shape ], 
                                      ['Transformed Test Set',X_test.shape ],
@@ -3497,7 +3558,6 @@ def blend_models(estimator_list = 'All',
 
 
 
-
 def tune_model(estimator = None, 
                fold = 10, 
                round = 4, 
@@ -3730,13 +3790,15 @@ def tune_model(estimator = None,
     
     progress.value += 1
     
-    
     #general dependencies
     import random
     import numpy as np
     from sklearn import metrics
     from sklearn.model_selection import KFold
     from sklearn.model_selection import RandomizedSearchCV
+    
+    #setting numpy seed
+    np.random.seed(seed)
     
     progress.value += 1
     
@@ -3792,7 +3854,7 @@ def tune_model(estimator = None,
 
         from sklearn.linear_model import Lasso
 
-        param_grid = {'alpha': [0.0001, 0.001, 0.01, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9],
+        param_grid = {'alpha': np.arange(0,1,0.001), #[0.0001, 0.001, 0.01, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9],
                       'fit_intercept': [True, False],
                       'normalize' : [True, False],
                      }
@@ -3809,7 +3871,7 @@ def tune_model(estimator = None,
 
         from sklearn.linear_model import Ridge
 
-        param_grid = {"alpha": [0.0001, 0.001, 0.01, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9],
+        param_grid = {"alpha": np.arange(0,1,0.001), #[0.0001, 0.001, 0.01, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9],
                       "fit_intercept": [True, False],
                       "normalize": [True, False],
                       }
@@ -3827,8 +3889,8 @@ def tune_model(estimator = None,
 
         from sklearn.linear_model import ElasticNet
 
-        param_grid = {'alpha': [0.0001,0.001,0.1,0.15,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],
-                      'l1_ratio' : [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1],
+        param_grid = {'alpha': np.arange(0,1,0.01), #[0.0001,0.001,0.1,0.15,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],
+                      'l1_ratio' : np.arange(0,1,0.01), #[0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1],
                       'fit_intercept': [True, False],
                       'normalize': [True, False]
                      } 
@@ -3944,12 +4006,12 @@ def tune_model(estimator = None,
 
         from sklearn.linear_model import PassiveAggressiveRegressor
 
-        param_grid = {'C': [0.01, 0.005, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1],
+        param_grid = {'C': np.arange(0,1,0.01), #[0.01, 0.005, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1],
                       'fit_intercept': [True, False],
                       'early_stopping' : [True, False],
                       #'validation_fraction': [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1],
                       'loss' : ['epsilon_insensitive', 'squared_epsilon_insensitive'],
-                      'epsilon' : [0.1, 0.2, 0.3, 0.4, 0.5, 0.6],
+                      'epsilon' : [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9],
                       'shuffle' : [True, False]
                      }    
 
@@ -3966,11 +4028,11 @@ def tune_model(estimator = None,
 
         from sklearn.linear_model import RANSACRegressor
 
-        param_grid = {'min_samples': [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1],
-                      'max_trials': [1,2,3,4,5,6,7,8,9,10],
-                      'max_skips': [1,2,3,4,5,6,7,8,9,10],
-                      'stop_n_inliers': [1,2,3,4,5,6,7,8,9,10],
-                      'stop_probability': [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1],
+        param_grid = {'min_samples': np.arange(0,1,0.05), #[0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1],
+                      'max_trials': np.arange(1,20,1), #[1,2,3,4,5,6,7,8,9,10,11,12,13,14],
+                      'max_skips': np.arange(1,20,1), #[1,2,3,4,5,6,7,8,9,10],
+                      'stop_n_inliers': np.arange(1,25,1), #[1,2,3,4,5,6,7,8,9,10],
+                      'stop_probability': np.arange(0,1,0.01), #[0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1],
                       'loss' : ['absolute_loss', 'squared_loss'],
                      }    
 
@@ -4005,7 +4067,7 @@ def tune_model(estimator = None,
         from sklearn.linear_model import HuberRegressor
 
         param_grid = {'epsilon': [1.1, 1.2, 1.3, 1.35, 1.4, 1.5, 1.55, 1.6, 1.7, 1.8, 1.9],
-                      'alpha': [0.00001, 0.0001, 0.0003, 0.005, 0.05, 0.1, 0.0005, 0.15],
+                      'alpha': np.arange(0,1,0.0001), #[0.00001, 0.0001, 0.0003, 0.005, 0.05, 0.1, 0.0005, 0.15],
                       'fit_intercept' : [True, False]
                      }    
 
@@ -4022,7 +4084,7 @@ def tune_model(estimator = None,
 
         from sklearn.kernel_ridge import KernelRidge
 
-        param_grid = {'alpha': [0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1] }    
+        param_grid = {'alpha': np.arange(0,1,0.01) }    
 
         model_grid = RandomizedSearchCV(estimator=KernelRidge(), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
@@ -4039,7 +4101,7 @@ def tune_model(estimator = None,
 
         param_grid = {#'kernel': ['linear', 'poly', 'rbf', 'sigmoid', 'precomputed'],
                       #'float' : [0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1],
-                      'C' : [0.01, 0.005, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1],
+                      'C' : np.arange(0, 10, 0.001), # [0.01, 0.005, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1],
                       'epsilon' : [1.1, 1.2, 1.3, 1.35, 1.4, 1.5, 1.55, 1.6, 1.7, 1.8, 1.9],
                       'shrinking': [True, False]
                      }    
@@ -4076,14 +4138,10 @@ def tune_model(estimator = None,
 
         from sklearn.tree import DecisionTreeRegressor
 
-        param_grid = {"max_depth": np.random.randint(1, (len(X_train.columns)*.85),4),
-                      "max_features": np.random.randint(3, len(X_train.columns),4),
-                      "min_samples_leaf": [0.1,0.2,0.3,0.4,0.5],
-                      "min_samples_split" : [0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],
-                      "min_weight_fraction_leaf" : [0.1,0.2,0.3,0.4,0.5],
-                      "min_impurity_decrease" : [0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],
+        param_grid = {"max_depth": np.random.randint(1, (len(X_train.columns)*.85),20),
+                      "max_features": np.random.randint(3, len(X_train.columns),20),
+                      "min_samples_leaf": [2,3,4,5,6],
                       "criterion": ["mse", "mae", "friedman_mse"],
-                      #"max_leaf_nodes" : [1,2,3,4,5,6,7,8,9,10,None]
                      } 
 
         model_grid = RandomizedSearchCV(estimator=DecisionTreeRegressor(random_state=seed), 
@@ -4100,11 +4158,11 @@ def tune_model(estimator = None,
         from sklearn.ensemble import RandomForestRegressor
 
 
-        param_grid = {'n_estimators': [10, 20, 30, 40, 50, 60, 70, 80, 90, 100],
+        param_grid = {'n_estimators': np.arange(10,300,10), #[10, 20, 30, 40, 50, 60, 70, 80, 90, 100],
                       'criterion': ['mse', 'mae'],
                       'max_depth': [int(x) for x in np.linspace(10, 110, num = 11)],
                       'min_samples_split': [2, 5, 7, 9, 10],
-                      'min_samples_leaf' : [1, 2, 4],
+                      'min_samples_leaf' : [1, 2, 4, 7, 9],
                       'max_features' : ['auto', 'sqrt', 'log2'],
                       'bootstrap': [True, False]
                       }
@@ -4123,11 +4181,11 @@ def tune_model(estimator = None,
 
         from sklearn.ensemble import ExtraTreesRegressor
 
-        param_grid = {'n_estimators': [10, 20, 30, 40, 50, 60, 70, 80, 90, 100],
+        param_grid = {'n_estimators': np.arange(10,300,10), #[10, 20, 30, 40, 50, 60, 70, 80, 90, 100],
                       'criterion': ['mse', 'mae'],
                       'max_depth': [int(x) for x in np.linspace(10, 110, num = 11)],
                       'min_samples_split': [2, 5, 7, 9, 10],
-                      'min_samples_leaf' : [1, 2, 4],
+                      'min_samples_leaf' : [1, 2, 4, 5, 7, 9],
                       'max_features' : ['auto', 'sqrt', 'log2'],
                       'bootstrap': [True, False]
                       }  
@@ -4145,8 +4203,8 @@ def tune_model(estimator = None,
 
         from sklearn.ensemble import AdaBoostRegressor
 
-        param_grid = {'n_estimators': [10, 40, 70, 80, 90, 100, 120, 140, 150],
-                      'learning_rate': [0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1],
+        param_grid = {'n_estimators': np.arange(10,200,5), #[10, 40, 70, 80, 90, 100, 120, 140, 150],
+                      'learning_rate': np.arange(0,1,0.01), #[0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1],
                       'loss' : ["linear", "square", "exponential"]
                      }    
 
@@ -4164,12 +4222,12 @@ def tune_model(estimator = None,
         from sklearn.ensemble import GradientBoostingRegressor
 
         param_grid = {'loss': ['ls', 'lad', 'huber', 'quantile'],
-                      'n_estimators': [10, 40, 70, 80, 90, 100, 120, 140, 150],
-                      'learning_rate': [0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1],
+                      'n_estimators': np.arange(10,200,5), #[10, 40, 70, 80, 90, 100, 120, 140, 150],
+                      'learning_rate': np.arange(0,1,0.01), # [0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1],
                       'subsample' : [0.1,0.3,0.5,0.7,0.9,1],
                       'criterion' : ['friedman_mse', 'mse', 'mae'],
                       'min_samples_split' : [2,4,5,7,9,10],
-                      'min_samples_leaf' : [1,2,3,4,5],
+                      'min_samples_leaf' : [1,2,3,4,5,7],
                       'max_depth': [int(x) for x in np.linspace(10, 110, num = 11)],
                       'max_features' : ['auto', 'sqrt', 'log2']
                      }     
@@ -4189,8 +4247,8 @@ def tune_model(estimator = None,
 
         param_grid = {'learning_rate': ['constant', 'invscaling', 'adaptive'],
                       'solver' : ['lbfgs', 'adam'],
-                      'alpha': [0.0001, 0.001, 0.01, 0.00001, 0.003, 0.0003, 0.0005, 0.005, 0.05],
-                      'hidden_layer_sizes': np.random.randint(50,150,10),
+                      'alpha': np.arange(0, 1, 0.0001), #[0.0001, 0.001, 0.01, 0.00001, 0.003, 0.0003, 0.0005, 0.005, 0.05],
+                      'hidden_layer_sizes': [(50,50,50), (50,100,50), (100,), (100,50,100), (100,100,100)], #np.random.randint(50,150,10),
                       'activation': ["tanh", "identity", "logistic","relu"]
                       }    
 
@@ -4291,19 +4349,13 @@ def tune_model(estimator = None,
         from sklearn.tree import DecisionTreeRegressor
         from sklearn.ensemble import BaggingRegressor
 
-        param_grid = {'n_estimators': [10,15,20,25,30],
-                     'max_samples': [0.3,0.5,0.6,0.7,0.8,0.9],
-                     'max_features':[0.3,0.5,0.6,0.7,0.8,0.9],
+        param_grid = {'n_estimators': np.arange(10,300,10), #[10,15,20,25,30],
                      'bootstrap': [True, False],
                      'bootstrap_features': [True, False],
                      }
 
-        param_grid_dt = {"max_depth": np.random.randint(3, (len(X_train.columns)*.85),4),
-                         "min_samples_leaf": [2,3,4],
-                         "min_samples_leaf": [0.1,0.2,0.3,0.4,0.5],
-                         "min_samples_split" : [0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],
-                         "min_weight_fraction_leaf" : [0.1,0.2,0.3,0.4,0.5],
-                         "min_impurity_decrease" : [0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],
+        param_grid_dt = {"max_depth": np.random.randint(3, (len(X_train.columns)*.85),20),
+                         "min_samples_leaf": [2,3,4,5,6],
                          "criterion": ["mse", "mae", "friedman_mse"]}
 
 
@@ -4331,9 +4383,7 @@ def tune_model(estimator = None,
     
         from sklearn.ensemble import BaggingRegressor
 
-        param_grid = {'n_estimators': [10,15,20,25,30],
-                     'max_samples': [0.3,0.5,0.6,0.7,0.8,0.9],
-                     'max_features':[0.3,0.5,0.6,0.7,0.8,0.9],
+        param_grid = {'n_estimators': np.arange(10,300,10), #[10,15,20,25,30],
                      'bootstrap': [True, False],
                      'bootstrap_features': [True, False],
                      }
@@ -4348,14 +4398,13 @@ def tune_model(estimator = None,
         model = model_grid.best_estimator_
         best_model = model_grid.best_estimator_
         best_model_param = model_grid.best_params_    
-  
       
     elif ensemble and method =='Boosting':
     
         from sklearn.ensemble import AdaBoostRegressor
 
-        param_grid = {'n_estimators': [10, 40, 70, 80, 90, 100, 120, 140, 150],
-                      'learning_rate': [0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1],
+        param_grid = {'n_estimators': np.arange(10,200,10), #[10, 40, 70, 80, 90, 100, 120, 140, 150],
+                      'learning_rate': np.arange(0,1,0.01), #[0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1],
                       'loss' : ["linear", "square", "exponential"]
                      }          
 
@@ -4556,6 +4605,8 @@ def tune_model(estimator = None,
     else:
         clear_output()
         return best_model
+
+
 
 
 

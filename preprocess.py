@@ -39,8 +39,8 @@ import datefinder
 from datetime import datetime
 import calendar
 from sklearn.preprocessing import LabelEncoder
-# pd.set_option('display.max_columns', 500)
-# pd.set_option('display.max_rows', 500)
+#pd.set_option('display.max_columns', 500)
+#pd.set_option('display.max_rows', 500)
 
 #ignore warnings
 import warnings
@@ -1349,6 +1349,146 @@ class Cluster_Entire_Data(BaseEstimator,TransformerMixin):
     data['data_cluster'] = data['data_cluster'].astype('object')
 
     return(data)
+#__________________________________________________________________________________________________________________________________________
+# Clustering catagorical data
+class Reduce_Cardinality_with_Clustering(BaseEstimator,TransformerMixin):
+  '''
+    - Reduces the level of catagorical column / cardinality through clustering 
+    - Highly recommended to run the DataTypes_Auto_infer class first
+      Args:
+          target_variable: target variable (integer or numerical only)
+          catagorical_feature: list of features on which clustering  is to be applied / cardinality to be reduced
+          check_clusters_upto: to determine optimum number of kmeans clusters, set the uppler limit of clusters
+  '''
+
+  def __init__(self, target_variable, catagorical_feature=[], check_clusters_upto=30,random_state=42):
+    self.target = target_variable
+    self.feature = catagorical_feature
+    self.check_clusters = check_clusters_upto + 1
+    self.random= random_state
+    
+    
+
+  def fit(self,data,y=None):
+    return(None)
+
+  def transform(self,dataset,y=None):
+    data= dataset.copy()
+    # we already know which leval belongs to whihc cluster , so all w need is to replace levels with clusters we already have from training data set
+    for i,z in zip(self.feature,self.ph_data):
+      data[i] = data[i].replace(list(z['levels']),z['cluster'])
+    
+    return(data)
+
+  def fit_transform(self,dataset,y=None):
+    data = dataset.copy()
+    # first convert to dummy
+    if len(data.select_dtypes(include='object').columns)>0:
+      self.dummy = Dummify(self.target)
+      data_t = self.dummy.fit_transform(data.drop(self.feature,axis=1))
+      #data_t1 = data_t1.drop(self.target,axis=1)
+    else:
+      data_t = data.drop(self.feature,axis=1).copy()
+
+    # now make PLS 
+    self.pls = PLSRegression(n_components=2) # since we are only using two componenets to group #PLSRegression(n_components=len(data_t1.columns)-1)
+    data_pls = self.pls.fit_transform(data_t.drop(self.target,axis=1),data_t[self.target])[0]
+
+    # # now we will take one component and then we calculate mean, median, min, max and sd of that one component grouped by the catagorical levels
+    self.ph_data = []
+    self.ph_clusters = []
+    for i in self.feature:
+      data_t1 = pd.DataFrame(dict(levels=data[i],comp1=data_pls[:,0],comp2=data_pls[:,1]),index=data.index)
+      # now group by feature
+      data_t1 = data_t1.groupby('levels')
+      data_t1 = data_t1[['comp1','comp2']].agg(['mean', 'median','min','max','std']) #this gives us a df with only numeric columns (min , max ) and level as index
+      # some time if a level has only one record  its std will come up as NaN, so convert NaN to 1
+      data_t1.fillna(1,inplace=True)
+      
+      # now number of clusters cant be more than the number of samples in aggregated data , so
+      self.check_clusters = min (self.check_clusters,len(data_t1)) 
+
+      # # we are goign to make a place holder , for 2 to 20 clusters
+      self.ph = pd.DataFrame(np.arange(2,self.check_clusters,1), columns= ['clusters']) 
+      self.ph['Silhouette'] = float(0)
+      self.ph['calinski'] = float(0)
+
+    # Now start making clusters
+      for k in self.ph.index:
+          c =  self.ph['clusters'][k]
+          self.k_object =  cluster.KMeans(n_clusters= c,init='k-means++',precompute_distances='auto',n_init=10,random_state=self.random)
+          self.k_object.fit(data_t1)
+          self.ph.iloc[k,1] = metrics.silhouette_score(data_t1,self.k_object.labels_)
+          self.ph.iloc[k,2] = metrics.calinski_harabasz_score(data_t1,self.k_object.labels_)
+      
+      # now standardize the scores and make a total column
+      m = MinMaxScaler((-1,1))
+      self.ph['calinski'] = m.fit_transform(np.array(self.ph['calinski']).reshape(-1,1))
+      self.ph['Silhouette'] = m.fit_transform(np.array(self.ph['Silhouette']).reshape(-1,1))
+      self.ph['total']= self.ph['Silhouette'] + self.ph['calinski']
+      # sort it by total column and take the first row column 0 , that would represent the optimal clusters
+      try:
+        self.clusters = int(self.ph[self.ph['total'] == max(self.ph['total'])]['clusters'])
+      except: # in case there isnt a decisive measure , take calinski as yeard stick
+        self.clusters= int(self.ph[self.ph['calinski'] == max(self.ph['calinski'])]['clusters'])
+      self.ph_clusters.append(self.ph)
+      # Now make the final cluster object
+      self.k_object =  cluster.KMeans(n_clusters= self.clusters,init='k-means++',precompute_distances='auto',n_init=10,random_state=self.random)
+      # now do fit predict
+      predict =self.k_object.fit_predict(data_t1)
+      # put it back with the group by aggregate columns
+      data_t1['cluster'] = predict
+      data_t1['cluster'] = data_t1['cluster'] .apply(str)
+      # now we dont need all the columns, only the cluster column is required along with the index (index also has a name , we  groupy as "levels")
+      data_t1 = data_t1[['cluster']]
+      # now convert index ot the column
+      data_t1.reset_index(level=0, inplace=True) # this table now only contains every level and its cluster
+      #self.data_t1= data_t1
+      # we can now replace cluster with the original level in the original data frame
+      data[i] = data[i].replace(list(data_t1['levels']),data_t1['cluster'])
+      self.ph_data.append(data_t1)
+
+    return(data)
+
+#____________________________________________________________________________________________________________________________________________
+# Clustering catagorical data
+class Reduce_Cardinality_with_Counts(BaseEstimator,TransformerMixin):
+  '''
+    - Reduces the level of catagorical column by replacing levels with their count & converting objects into float
+      Args:
+          catagorical_feature: list of features on which clustering is to be applied
+  '''
+
+  def __init__(self, catagorical_feature=[]):
+    self.feature = catagorical_feature    
+
+  def fit(self,data,y=None):
+    return(None)
+
+  def transform(self,dataset,y=None):
+    data= dataset.copy()
+    # we already know level counts 
+    for i,z,k in zip(self.feature,self.ph_data,self.ph_u):
+      data[i] = data[i].replace(k,z['counts'])
+      data[i] = data[i].astype('float64')
+    
+    return(data)
+
+  def fit_transform(self,dataset,y=None):
+    data = dataset.copy()
+    # 
+    self.ph_data = []
+    self.ph_u= []
+    for i in self.feature:
+      data_t1 = pd.DataFrame(dict(levels=data[i].groupby(data[i], sort=False).count().index,counts =data[i].groupby(data[i], sort=False).count().values))
+      u = data[i].unique()
+      # replace levels with counts
+      data[i].replace(u,data_t1['counts'],inplace=True)
+      data[i] = data[i].astype('float64')
+      self.ph_data.append(data_t1)
+      self.ph_u.append(u)
+    
+    return(data)
 #____________________________________________________________________________________________________________________________________________
 # take noneliner transformations
 class Make_NonLiner_Features(BaseEstimator,TransformerMixin):
@@ -2082,6 +2222,7 @@ def Preprocess_Path_One(train_data,target_variable,ml_usecase=None,test_data =No
                                 club_rare_levels = False, rara_level_threshold_percentage =0.05,
                                 apply_untrained_levels_treatment= False,untrained_levels_treatment_method = 'least frequent',
                                 apply_ordinal_encoding = False, ordinal_columns_and_categories= {},
+                                apply_cardinality_reduction=False, cardinal_method = 'cluster', cardinal_features=[],
                                 apply_binning=False, features_to_binn =[],
                                 apply_grouping= False , group_name=[] , features_to_group_ListofList=[[]],
                                 apply_polynomial_trigonometry_features = False, max_polynomial=2,trigonometry_calculations=['sin','cos','tan'], top_poly_trig_features_to_select_percentage=.20,
@@ -2106,19 +2247,20 @@ def Preprocess_Path_One(train_data,target_variable,ml_usecase=None,test_data =No
       - 4) Drop categorical variables that have zero variance or near zero variance
       - 5) Club categorical variables levels togather as a new level (other_infrequent) that are rare / at the bottom 5% of the variable distribution
       - 6) Club unseen levels in test dataset with most/least frequent levels in train dataset 
-      - 7) Generate sub features from time feature such as 'month','weekday',is_month_end','is_month_start' & 'hour'
-      - 8) Group features by calculating min, max, mean, median & sd of similar features
-      - 9) Make nonliner features (polynomial, sin , cos & tan)
-      -10) Scales & Power Transform (zscore,minmax,yeo-johnson,quantile,maxabs,robust) , including option to transform target variable
-      -11) Apply binning to continious variable when numeric features are provided as a list 
-      -12) Detect & remove outliers using isolation forest, knn and PCA
-      -13) Apply clusters to segment entire data
-      -14) One Hot / Dummy encoding
-      -15) Remove special characters from column names such as commas, square brackets etc to make it competible with jason dependednt models
-      -16) Feature Selection throuh Random Forest , LightGBM and Pearson Correlation
-      -17) Fix multicollinearity
-      -18) Feature Interaction (DFS) , multiply , divided , add and substract features
-      -19) Apply diamension reduction techniques such as pca_liner, pca_kernal, incremental, tsne 
+      - 7) Reduce high cardinality in categorical features using clustering or counts
+      - 8) Generate sub features from time feature such as 'month','weekday',is_month_end','is_month_start' & 'hour'
+      - 9) Group features by calculating min, max, mean, median & sd of similar features
+      -10) Make nonliner features (polynomial, sin , cos & tan)
+      -11) Scales & Power Transform (zscore,minmax,yeo-johnson,quantile,maxabs,robust) , including option to transform target variable
+      -12) Apply binning to continious variable when numeric features are provided as a list 
+      -13) Detect & remove outliers using isolation forest, knn and PCA
+      -14) Apply clusters to segment entire data
+      -15) One Hot / Dummy encoding
+      -16) Remove special characters from column names such as commas, square brackets etc to make it competible with jason dependednt models
+      -17) Feature Selection throuh Random Forest , LightGBM and Pearson Correlation
+      -18) Fix multicollinearity
+      -19) Feature Interaction (DFS) , multiply , divided , add and substract features
+      -20) Apply diamension reduction techniques such as pca_liner, pca_kernal, incremental, tsne 
           - except for pca_liner, all other method only takes number of component (as integer) i.e no variance explaination metohd available  
   '''
   global c2, subcase
@@ -2170,6 +2312,22 @@ def Preprocess_Path_One(train_data,target_variable,ml_usecase=None,test_data =No
     new_levels = New_Catagorical_Levels_in_TestData(target=target_variable,replacement_strategy=untrained_levels_treatment_method)
   else:
     new_levels= Empty()
+
+  # untrained levels in test(ordinal specific)
+  if apply_untrained_levels_treatment ==  True:
+    global new_levels1 
+    new_levels1 = New_Catagorical_Levels_in_TestData(target=target_variable,replacement_strategy=untrained_levels_treatment_method)
+  else:
+    new_levels1= Empty()
+ 
+  # cardinality:
+  global cardinality
+  if apply_cardinality_reduction==True and cardinal_method =='cluster':
+    cardinality = Reduce_Cardinality_with_Clustering(target_variable=target_variable, catagorical_feature=cardinal_features, check_clusters_upto=50,random_state=random_state)
+  elif apply_cardinality_reduction==True and cardinal_method =='count':
+    cardinality = Reduce_Cardinality_with_Counts(catagorical_feature=cardinal_features)
+  else:
+    cardinality= Empty()
 
   # ordinal coding
   if apply_ordinal_encoding == True:
@@ -2278,10 +2436,12 @@ def Preprocess_Path_One(train_data,target_variable,ml_usecase=None,test_data =No
   pipe = Pipeline([
                  ('dtypes',dtypes),
                  ('imputer',imputer),
+                 ('new_levels1',new_levels1), # specifically used for ordinal, so that if a new level comes in a feature that was marked ordinal can be handled 
                  ('ordinal',ordinal),
                  ('znz',znz),
                  ('club_R_L',club_R_L),
                  ('new_levels',new_levels),
+                 ('cardinality',cardinality),
                  ('feature_time',feature_time),
                  ('group',group),
                  ('nonliner',nonliner),
@@ -2313,6 +2473,7 @@ def Preprocess_Path_Two(train_data,ml_usecase=None,test_data =None,categorical_f
                                 apply_zero_nearZero_variance = False,
                                 club_rare_levels = False, rara_level_threshold_percentage =0.05,
                                 apply_untrained_levels_treatment= False,untrained_levels_treatment_method = 'least frequent',
+                                apply_cardinality_reduction=False, cardinal_method = 'cluster', cardinal_features=[],
                                 apply_ordinal_encoding = False, ordinal_columns_and_categories= {}, 
                                 apply_binning=False, features_to_binn =[],
                                 apply_grouping= False , group_name=[] , features_to_group_ListofList=[[]],
@@ -2334,15 +2495,16 @@ def Preprocess_Path_Two(train_data,ml_usecase=None,test_data =None,categorical_f
       - 4) Drop categorical variables that have zero variance or near zero variance
       - 5) Club categorical variables levels togather as a new level (other_infrequent) that are rare / at the bottom 5% of the variable distribution
       - 6) Club unseen levels in test dataset with most/least frequent levels in train dataset 
-      - 7) Generate sub features from time feature such as 'month','weekday',is_month_end','is_month_start' & 'hour'
-      - 8) Group features by calculating min, max, mean, median & sd of similar features
-      - 9) Scales & Power Transform (zscore,minmax,yeo-johnson,quantile,maxabs,robust) , including option to transform target variable
-      -10) Apply binning to continious variable when numeric features are provided as a list 
-      -11) Detect & remove outliers using isolation forest, knn and PCA
-      -12) One Hot / Dummy encoding
-      -13) Remove special characters from column names such as commas, square brackets etc to make it competible with jason dependednt models
-      -14) Fix multicollinearity
-      -15) Apply diamension reduction techniques such as pca_liner, pca_kernal, incremental, tsne 
+      - 7) Reduce high cardinality in categorical features using clustering or counts
+      - 8) Generate sub features from time feature such as 'month','weekday',is_month_end','is_month_start' & 'hour'
+      - 9) Group features by calculating min, max, mean, median & sd of similar features
+      -10) Scales & Power Transform (zscore,minmax,yeo-johnson,quantile,maxabs,robust) , including option to transform target variable
+      -11) Apply binning to continious variable when numeric features are provided as a list 
+      -12) Detect & remove outliers using isolation forest, knn and PCA
+      -13) One Hot / Dummy encoding
+      -14) Remove special characters from column names such as commas, square brackets etc to make it competible with jason dependednt models
+      -15) Fix multicollinearity
+      -16) Apply diamension reduction techniques such as pca_liner, pca_kernal, incremental, tsne 
           - except for pca_liner, all other method only takes number of component (as integer) i.e no variance explaination metohd available 
   '''
   
@@ -2392,6 +2554,22 @@ def Preprocess_Path_Two(train_data,ml_usecase=None,test_data =None,categorical_f
     new_levels = New_Catagorical_Levels_in_TestData(target=target_variable,replacement_strategy=untrained_levels_treatment_method)
   else:
     new_levels= Empty()
+
+  # untrained levels in test(ordinal specific)
+  if apply_untrained_levels_treatment ==  True:
+    global new_levels1 
+    new_levels1 = New_Catagorical_Levels_in_TestData(target=target_variable,replacement_strategy=untrained_levels_treatment_method)
+  else:
+    new_levels1= Empty()
+
+  # cardinality:
+  global cardinality
+  if apply_cardinality_reduction==True and cardinal_method =='cluster':
+    cardinality = Reduce_Cardinality_with_Clustering(target_variable=target_variable, catagorical_feature=cardinal_features, check_clusters_upto=50,random_state=random_state)
+  elif apply_cardinality_reduction==True and cardinal_method =='count':
+    cardinality = Reduce_Cardinality_with_Counts(catagorical_feature=cardinal_features)
+  else:
+    cardinality= Empty()
   
   # ordinal coding
   if apply_ordinal_encoding == True:
@@ -2463,10 +2641,12 @@ def Preprocess_Path_Two(train_data,ml_usecase=None,test_data =None,categorical_f
   pipe = Pipeline([
                  ('dtypes',dtypes),
                  ('imputer',imputer),
+                 ('new_levels1',new_levels1), # specifically used for ordinal, so that if a new level comes in a feature that was marked ordinal can be handled 
                  ('ordinal',ordinal),
                  ('znz',znz),
                  ('club_R_L',club_R_L),
                  ('new_levels',new_levels),
+                 ('cardinality',cardinality),
                  ('feature_time',feature_time),
                  ('group',group),
                  ('scaling',scaling),

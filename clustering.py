@@ -8,6 +8,7 @@ def setup(data,
           categorical_features = None,
           categorical_imputation = 'constant',
           ordinal_features = None, #new
+          high_cardinality_features = None, #latest
           numeric_features = None,
           numeric_imputation = 'mean',
           date_features = None,
@@ -74,6 +75,12 @@ def setup(data,
     of 'low', 'medium', 'high' and it is known that low < medium < high, then it can 
     be passed as ordinal_features = { 'column_name' : ['low', 'medium', 'high'] }. 
     The list sequence must be in increasing order from lowest to highest.
+    
+    high_cardinality_features: string, default = None
+    When the data containts features with high cardinality, they can be compressed
+    into fewer levels by passing them as a list of column names with high cardinality.
+    Features are compressed using frequency distribution. As such original features
+    are replaced with the frequency distribution and converted into numeric variable. 
     
     numeric_features: string, default = None
     If the inferred data types are not correct, numeric_features can be used to
@@ -308,6 +315,18 @@ def setup(data,
                     text =  "Column name '" + str(i) + "' doesnt contain any level named '" + str(j) + "'."
                     sys.exit(text)
     
+    #high_cardinality_features
+    if high_cardinality_features is not None:
+        if type(high_cardinality_features) is not list:
+            sys.exit("(Type Error): high_cardinality_features param only accepts name of columns as a list. ")
+        
+    if high_cardinality_features is not None:
+        data_cols = data.columns
+        #data_cols = data_cols.drop(target)
+        for i in high_cardinality_features:
+            if i not in data_cols:
+                sys.exit("(Value Error): Column type forced is either target column or doesn't exist in the dataset.")
+        
     #checking numeric imputation
     allowed_numeric_imputation = ['mean', 'median']
     if numeric_imputation not in allowed_numeric_imputation:
@@ -624,12 +643,24 @@ def setup(data,
         apply_ordinal_encoding_pass = True
     else:
         apply_ordinal_encoding_pass = False
-        
+     
+    #high cardinality
     if apply_ordinal_encoding_pass is True:
         ordinal_columns_and_categories_pass = ordinal_features
     else:
         ordinal_columns_and_categories_pass = {}
         
+    if high_cardinality_features is not None:
+        apply_cardinality_reduction_pass = True
+    else:
+        apply_cardinality_reduction_pass = False
+        
+    cardinal_method_pass = 'count'
+        
+    if apply_cardinality_reduction_pass:
+        cardinal_features_pass = high_cardinality_features
+    else:
+        cardinal_features_pass = []
     
     #display dtypes
     if supervised is False:
@@ -644,6 +675,9 @@ def setup(data,
                                        categorical_features = cat_features_pass,
                                        apply_ordinal_encoding = apply_ordinal_encoding_pass, #new
                                        ordinal_columns_and_categories = ordinal_columns_and_categories_pass,
+                                       apply_cardinality_reduction = apply_cardinality_reduction_pass, #latest
+                                       cardinal_method = cardinal_method_pass, #latest
+                                       cardinal_features = cardinal_features_pass, #latest
                                        numerical_features = numeric_features_pass,
                                        time_features = date_features_pass,
                                        features_todrop = ignore_features_pass,
@@ -737,6 +771,11 @@ def setup(data,
         group_features_grid = True
     else:
         group_features_grid = False
+     
+    if high_cardinality_features is not None:
+        high_cardinality_features_grid = True
+    else:
+        high_cardinality_features_grid = False
         
     learned_types = preprocess.dtypes.learent_dtypes
     #learned_types.drop(target, inplace=True)
@@ -788,9 +827,10 @@ def setup(data,
     functions = pd.DataFrame ( [ ['session_id ', seed ],
                                  ['Original Data ', shape ],
                                  ['Missing Values ', missing_flag],
-                                 ['Numeric Features ', float_type-1 ],
-                                 ['Categorical Features ', cat_type ],
+                                 ['Numeric Features ', str(float_type-1) ],
+                                 ['Categorical Features ', str(cat_type) ],
                                  ['Ordinal Features ', ordinal_features_grid],
+                                 ['High Cardinality Features ', high_cardinality_features_grid],
                                  ['Transformed Data ', shape_transformed ],
                                  ['Numeric Imputer ', numeric_imputation],
                                  ['Categorical Imputer ', categorical_imputation],
@@ -1700,12 +1740,21 @@ def tune_model(model=None,
     else:
         ordinal_features_pass = prep_param.ordinal.info_as_dict
     
+    #HIGH CARDINALITY
+    #---------------#
+    
+    if 'Empty' in str(prep_param.cardinality):
+        high_cardinality_features_pass = None
+    else:
+        high_cardinality_features_pass = prep_param.cardinality.feature
+    
     global setup_without_target
     
     setup_without_target = setup(data = data_,
                                  categorical_features = cat_pass,
                                  categorical_imputation = cat_impute_pass,
                                  ordinal_features = ordinal_features_pass, #new
+                                 high_cardinality_features = high_cardinality_features_pass, #latest
                                  numeric_features = num_pass,
                                  numeric_imputation = num_impute_pass,
                                  date_features = time_pass,
