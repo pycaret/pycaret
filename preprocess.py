@@ -39,8 +39,8 @@ import datefinder
 from datetime import datetime
 import calendar
 from sklearn.preprocessing import LabelEncoder
-#pd.set_option('display.max_columns', 500)
-#pd.set_option('display.max_rows', 500)
+pd.set_option('display.max_columns', 500)
+pd.set_option('display.max_rows', 500)
 
 #ignore warnings
 import warnings
@@ -2331,6 +2331,13 @@ def Preprocess_Path_One(train_data,target_variable,ml_usecase=None,test_data =No
 
   # ordinal coding
   if apply_ordinal_encoding == True:
+    # we need to make sure that if the columns chosen by user have NA & imputer strategy is not_availablle then we add that to the category first
+    for i in ordinal_columns_and_categories.keys():
+      if sum(train_data[i].isna()) > 0:
+        if categorical_imputation_strategy=='not_available':
+          lis = ['not_available'] + ordinal_columns_and_categories[i]
+          ordinal_columns_and_categories.update({i:lis})
+    
     global ordinal
     ordinal = Ordinal(info_as_dict=ordinal_columns_and_categories)
   else:
@@ -2565,14 +2572,22 @@ def Preprocess_Path_Two(train_data,ml_usecase=None,test_data =None,categorical_f
   # cardinality:
   global cardinality
   if apply_cardinality_reduction==True and cardinal_method =='cluster':
-    cardinality = Reduce_Cardinality_with_Clustering(target_variable=target_variable, catagorical_feature=cardinal_features, check_clusters_upto=50,random_state=random_state)
+    # cardinality = Reduce_Cardinality_with_Clustering(target_variable=target_variable, catagorical_feature=cardinal_features, check_clusters_upto=50,random_state=random_state)
+    cardinality= Empty()
   elif apply_cardinality_reduction==True and cardinal_method =='count':
     cardinality = Reduce_Cardinality_with_Counts(catagorical_feature=cardinal_features)
   else:
     cardinality= Empty()
   
-  # ordinal coding
+ # ordinal coding
   if apply_ordinal_encoding == True:
+    # we need to make sure that if the columns chosen by user have NA & imputer strategy is not_availablle then we add that to the categories first
+    for i in ordinal_columns_and_categories.keys():
+      if sum(train_data[i].isna()) > 0:
+        if categorical_imputation_strategy=='not_available':
+          lis = ['not_available'] + ordinal_columns_and_categories[i]
+          ordinal_columns_and_categories.update({i:lis})
+    
     global ordinal
     ordinal = Ordinal(info_as_dict=ordinal_columns_and_categories)
   else:
