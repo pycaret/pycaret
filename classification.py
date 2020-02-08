@@ -428,7 +428,7 @@ def setup(data,
                 sys.exit("(Value Error) Column name passed as a key in ordinal_features param doesnt exist. ")
                 
         for k in ord_keys:
-            if len(data[k].unique()) != len(ordinal_features.get(k)):
+            if data[k].nunique() != len(ordinal_features.get(k)):
                 sys.exit("(Value Error) Levels passed in ordinal_features param doesnt match with levels in data. ")
 
         for i in ord_keys:
