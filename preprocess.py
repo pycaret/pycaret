@@ -873,7 +873,7 @@ class Scaling_and_Power_transformation(BaseEstimator,TransformerMixin):
         self.scale_and_power = MinMaxScaler()
         self.scale_and_power.fit(data[self.numeric_features])
       elif  self.function_to_apply == 'yj':
-        self.scale_and_power = PowerTransformer(method='yeo-johnson',standardize=False)
+        self.scale_and_power = PowerTransformer(method='yeo-johnson',standardize=True)
         self.scale_and_power.fit(data[self.numeric_features])
       elif  self.function_to_apply == 'quantile':
         self.scale_and_power = QuantileTransformer(random_state=self.random_state_quantile,output_distribution='normal')
@@ -2445,10 +2445,10 @@ def Preprocess_Path_One(train_data,target_variable,ml_usecase=None,test_data =No
                  ('imputer',imputer),
                  ('new_levels1',new_levels1), # specifically used for ordinal, so that if a new level comes in a feature that was marked ordinal can be handled 
                  ('ordinal',ordinal),
+                 ('cardinality',cardinality),
                  ('znz',znz),
                  ('club_R_L',club_R_L),
                  ('new_levels',new_levels),
-                 ('cardinality',cardinality),
                  ('feature_time',feature_time),
                  ('group',group),
                  ('nonliner',nonliner),
@@ -2658,10 +2658,10 @@ def Preprocess_Path_Two(train_data,ml_usecase=None,test_data =None,categorical_f
                  ('imputer',imputer),
                  ('new_levels1',new_levels1), # specifically used for ordinal, so that if a new level comes in a feature that was marked ordinal can be handled 
                  ('ordinal',ordinal),
+                 ('cardinality',cardinality),
                  ('znz',znz),
                  ('club_R_L',club_R_L),
                  ('new_levels',new_levels),
-                 ('cardinality',cardinality),
                  ('feature_time',feature_time),
                  ('group',group),
                  ('scaling',scaling),
