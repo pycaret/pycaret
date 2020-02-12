@@ -5650,7 +5650,6 @@ def create_stacknet(estimator_list,
 
 
 
-
 def plot_model(estimator, 
                plot = 'residuals'): 
     
@@ -5748,6 +5747,7 @@ def plot_model(estimator,
     import pandas as pd
     import ipywidgets as ipw
     from IPython.display import display, HTML, clear_output, update_display
+    from copy import deepcopy
     
     #progress bar
     progress = ipw.IntProgress(value=0, min=0, max=5, step=1 , description='Processing: ')
@@ -5761,8 +5761,7 @@ def plot_model(estimator,
     import matplotlib.pyplot as plt
     import numpy as np
     import pandas as pd
-    
-    progress.value += 1
+    from sklearn.base import clone
     
     #defining estimator as model locally
     model = estimator
@@ -5774,6 +5773,7 @@ def plot_model(estimator,
         from yellowbrick.regressor import ResidualsPlot
         progress.value += 1
         visualizer = ResidualsPlot(model)
+        visualizer.fit(X_train, y_train)
         progress.value += 1
         visualizer.score(X_test, y_test)  # Evaluate the model on the test data
         progress.value += 1
@@ -5785,6 +5785,7 @@ def plot_model(estimator,
         from yellowbrick.regressor import PredictionError
         progress.value += 1
         visualizer = PredictionError(model)
+        visualizer.fit(X_train, y_train)
         progress.value += 1
         visualizer.score(X_test, y_test)
         progress.value += 1
@@ -5918,7 +5919,10 @@ def plot_model(estimator,
         
     elif plot == 'feature':
         if hasattr(estimator, 'coef_'):
-            variables = abs(model.coef_)
+            try:
+                variables = abs(model.coef_)
+            except:
+                variables = abs(model.feature_importances_)
         else:
             variables = abs(model.feature_importances_)
         col_names = np.array(X_train.columns)
@@ -5944,6 +5948,8 @@ def plot_model(estimator,
         clear_output()
         param_df = pd.DataFrame.from_dict(estimator.get_params(estimator), orient='index', columns=['Parameters'])
         display(param_df)
+
+
 
 
 
