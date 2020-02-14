@@ -911,6 +911,7 @@ def setup(data,
                                           outlier_methods = ['pca'], #pca hardcoded
                                           remove_multicollinearity = remove_multicollinearity, #new
                                           maximum_correlation_between_features = multicollinearity_threshold, #new
+                                          remove_perfect_collinearity = True, #latest 2
                                           cluster_entire_data = create_clusters, #new
                                           range_of_clusters_to_try = cluster_iter, #new
                                           apply_polynomial_trigonometry_features = polynomial_features, #new
@@ -5253,6 +5254,10 @@ def stack_models(estimator_list,
     #testing
     #no active test
     
+    #change method param to 'hard' for multiclass
+    if y.value_counts().count() > 2:
+        method = 'hard'
+
     #exception checking   
     import sys
     
@@ -5787,6 +5792,10 @@ def create_stacknet(estimator_list,
     #testing
     #global inter_level_names
     
+    #change method param to 'hard' for multiclass
+    if y.value_counts().count() > 2:
+        method = 'hard'
+
     #exception checking   
     import sys
     
@@ -7005,6 +7014,8 @@ def finalize_model(estimator):
     warnings.filterwarnings('ignore') 
     
     #import depedencies
+    from IPython.display import clear_output, update_display
+    from sklearn.base import clone
     from copy import deepcopy
     
     if type(estimator) is list:
@@ -7047,7 +7058,8 @@ def finalize_model(estimator):
 
     else:
         
-        model_final = deepcopy(estimator)
+        model_final = clone(estimator)
+        clear_output()
         model_final.fit(X,y)
     
     #storing into experiment
@@ -7057,6 +7069,7 @@ def finalize_model(estimator):
     experiment__.append(tup)
     
     return model_final
+
 
 
 def save_model(model, model_name, verbose=True):
@@ -7320,6 +7333,7 @@ def load_experiment(experiment_name):
 
 def predict_model(estimator, 
                   data=None,
+                  probability_threshold=None,
                   platform=None,
                   authentication=None):
     
@@ -7353,6 +7367,11 @@ def predict_model(estimator,
     is the number of samples and n_features is the number of features. All features 
     used during training must be present in the new dataset.
     
+    probability_threshold : float, default = None
+    threshold used to convert probability values into binary outcome. By default the
+    probability threshold for all binary classifiers is 0.5 (50%). This can be changed
+    using probability_threshold param.
+    
     platform: string, default = None
     Name of platform, if loading model from cloud. Current available options are:
     'aws'.
@@ -7382,7 +7401,7 @@ def predict_model(estimator,
     """
     
     #testing
-    #global base_pred_df, base_pred_df_no_restack, df, df_restack, stacker_method, combined_df, inter_pred_df
+    #no active test
     
     #ignore warnings
     import warnings
@@ -7396,6 +7415,35 @@ def predict_model(estimator,
     from sklearn import metrics
     from copy import deepcopy
     from IPython.display import clear_output, update_display
+    
+    """
+    exception checking starts here
+    """
+    
+    model_name = str(estimator).split("(")[0]
+    if probability_threshold is not None:
+        if 'OneVsRestClassifier' in model_name:
+            sys.exit("(Type Error) probability_threshold parameter cannot be used when target is multi-class. ")
+            
+    #probability_threshold allowed types    
+    if probability_threshold is not None:
+        allowed_types = [int,float]
+        if type(probability_threshold) not in allowed_types:
+            sys.exit("(Type Error) probability_threshold parameter only accepts value between 0 to 1. ")
+    
+    #probability_threshold allowed types
+    if probability_threshold is not None:
+        if probability_threshold > 1:
+            sys.exit("(Type Error) probability_threshold parameter only accepts value between 0 to 1. ")
+    
+    #probability_threshold allowed types    
+    if probability_threshold is not None:
+        if probability_threshold < 0:
+            sys.exit("(Type Error) probability_threshold parameter only accepts value between 0 to 1. ")
+
+    """
+    exception checking ends here
+    """
     
     estimator = deepcopy(estimator)
     clear_output()
@@ -7639,6 +7687,12 @@ def predict_model(estimator,
                     pass
 
             #print('Success')
+            
+            if probability_threshold is not None:
+                try:
+                    pred_ = (pred_prob >= probability_threshold).astype(int)
+                except:
+                    pass
 
             if data is None:
                 sca = metrics.accuracy_score(ytest,pred_)
@@ -7776,6 +7830,12 @@ def predict_model(estimator,
                 except:
                     pass
             
+            if probability_threshold is not None:
+                try:
+                    pred_ = (pred_prob >= probability_threshold).astype(int)
+                except:
+                    pass
+            
             if data is None:
                 
                 sca = metrics.accuracy_score(ytest,pred_)
@@ -7859,7 +7919,14 @@ def predict_model(estimator,
 
         pred_ = model.predict(Xtest)
         
+        if probability_threshold is not None:
+            try:
+                pred_ = (pred_prob >= probability_threshold).astype(int)
+            except:
+                pass
+        
         if data is None:
+  
             sca = metrics.accuracy_score(ytest,pred_)
 
             try:
@@ -7901,9 +7968,9 @@ def predict_model(estimator,
                 X_test_ = pd.concat([X_test_,score], axis=1)
             except:
                 pass
-            
-
+        
     return X_test_
+
 
 
 
@@ -8010,6 +8077,210 @@ def deploy_model(model,
 
 
 
+
+def optimize_threshold(estimator, 
+                       true_positive = 0, 
+                       true_negative = 0, 
+                       false_positive = 0, 
+                       false_negative = 0):
+    
+    """
+       
+    Description:
+    ------------
+    This function optimizes probability threshold for a trained model using custom cost
+    function that can be defined using combination of True Positives, True Negatives,
+    False Positives (also known as Type I error), and False Negatives (Type II error).
+    
+    This function returns a plot of optimized cost as a function of probability 
+    threshold between 0 to 100. 
+
+        Example
+        -------
+        from pycaret.datasets import get_data
+        juice = get_data('juice')
+        experiment_name = setup(data = juice,  target = 'Purchase')
+        
+        lr = create_model('lr')
+        
+        optimize_threshold(lr, true_negative = 10, false_negative = -100)
+
+        This will return a plot of optimized cost as a function of probability threshold.
+
+    Parameters
+    ----------
+    estimator : object
+    A trained model object should be passed as an estimator. 
+    
+    true_positive : int, default = 0
+    Cost function or returns when prediction is true positive.  
+    
+    true_negative : int, default = 0
+    Cost function or returns when prediction is true negative.
+    
+    false_positive : int, default = 0
+    Cost function or returns when prediction is false positive.    
+    
+    false_negative : int, default = 0
+    Cost function or returns when prediction is false negative.       
+    
+    
+    Returns:
+    --------
+
+    Visual Plot:  Prints the visual plot. 
+    ------------
+
+    Warnings:
+    ---------
+    - This function is not supported for multiclass problems.
+      
+       
+    """
+    
+    
+    #import libraries
+    import sys
+    import pandas as pd
+    import numpy as np
+    import plotly.express as px
+    from IPython.display import clear_output
+    
+    #cufflinks
+    import cufflinks as cf
+    cf.go_offline()
+    cf.set_config_file(offline=False, world_readable=True)
+    
+    
+    '''
+    ERROR HANDLING STARTS HERE
+    '''
+    
+    #exception 1 for multi-class
+    if y.value_counts().count() > 2:
+        sys.exit("(Type Error) optimize_threshold() cannot be used when target is multi-class. ")
+    
+    model_name = str(estimator).split("(")[0]
+    if 'OneVsRestClassifier' in model_name:
+        sys.exit("(Type Error) optimize_threshold() cannot be used when target is multi-class. ")
+    
+    #check predict_proba value
+    if type(estimator) is not list:
+        if not hasattr(estimator, 'predict_proba'):
+            sys.exit("(Type Error) Estimator doesn't support predict_proba function and cannot be used in optimize_threshold().  ")        
+        
+    #check cost function type
+    allowed_types = [int, float]
+    
+    if type(true_positive) not in allowed_types:
+        sys.exit("(Type Error) true_positive parameter only accepts float or integer value. ")
+        
+    if type(true_negative) not in allowed_types:
+        sys.exit("(Type Error) true_negative parameter only accepts float or integer value. ")
+        
+    if type(false_positive) not in allowed_types:
+        sys.exit("(Type Error) false_positive parameter only accepts float or integer value. ")
+        
+    if type(false_negative) not in allowed_types:
+        sys.exit("(Type Error) false_negative parameter only accepts float or integer value. ")
+    
+    
+
+    '''
+    ERROR HANDLING ENDS HERE
+    '''        
+
+        
+    #define model as estimator
+    model = estimator
+    
+    model_name = str(model).split("(")[0]
+    if 'CatBoostClassifier' in model_name:
+        model_name = 'CatBoostClassifier'
+        
+    #generate predictions and store actual on y_test in numpy array
+    actual = np.array(y_test)
+    
+    if type(model) is list:
+        predicted = predict_model(model)
+        model_name = 'Stacking'
+        clear_output()
+        try:
+            predicted = np.array(predicted['Score'])
+        except:
+            sys.exit("(Type Error) Meta model doesn't support predict_proba function. Cannot be used in optimize_threshold(). ")        
+        
+    else:
+        predicted = model.predict_proba(X_test)
+        predicted = predicted[:,1]
+    
+    
+    """
+    internal function to calculate loss starts here
+    """
+    
+    def calculate_loss(actual,predicted,
+                       tp_cost=true_positive,tn_cost=true_negative,
+                       fp_cost=false_positive,fn_cost=false_negative):
+        
+        #true positives
+        tp = predicted + actual
+        tp = np.where(tp==2, 1, 0)
+        tp = tp.sum()
+        
+        #true negative
+        tn = predicted + actual
+        tn = np.where(tn==0, 1, 0)
+        tn = tn.sum()
+        
+        #false positive
+        fp = (predicted > actual).astype(int)
+        fp = np.where(fp==1, 1, 0)
+        fp = fp.sum()
+        
+        #false negative
+        fn = (predicted < actual).astype(int)
+        fn = np.where(fn==1, 1, 0)
+        fn = fn.sum()
+        
+        total_cost = (tp_cost*tp) + (tn_cost*tn) + (fp_cost*fp) + (fn_cost*fn)
+        
+        return total_cost
+    
+    
+    """
+    internal function to calculate loss ends here
+    """
+    
+    grid = np.arange(0,1,0.01)
+    
+    #loop starts here
+    
+    cost = []
+    #global optimize_results
+    
+    for i in grid:
+        
+        pred_prob = (predicted >= i).astype(int)
+        cost.append(calculate_loss(actual,pred_prob))
+        
+    optimize_results = pd.DataFrame({'Probability Threshold' : grid, 'Cost Function' : cost })
+    fig = px.line(optimize_results, x='Probability Threshold', y='Cost Function', line_shape='linear')
+    fig.update_layout(plot_bgcolor='rgb(245,245,245)')
+    title= str(model_name) + ' Probability Threshold Optimization'
+    
+    #calculate vertical line
+    y0 = optimize_results['Cost Function'].min()
+    y1 = optimize_results['Cost Function'].max()
+    x0 = optimize_results.sort_values(by='Cost Function', ascending=False).iloc[0][0]
+    x1 = x0
+    
+    t = x0.round(2)
+    
+    fig.add_shape(dict(type="line", x0=x0, y0=y0, x1=x1, y1=y1,line=dict(color="red",width=2)))
+    fig.update_layout(title={'text': title, 'y':0.95,'x':0.45,'xanchor': 'center','yanchor': 'top'})
+    fig.show()
+    print('Optimized Probability Threshold: ' + str(t) + ' | ' + 'Optimized Cost Function: ' + str(y1))
 
 
 

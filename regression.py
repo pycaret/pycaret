@@ -3,6 +3,7 @@
 # License: MIT
 
 
+
 def setup(data, 
           target, 
           train_size=0.7,
@@ -935,6 +936,7 @@ def setup(data,
                                           outlier_methods = ['pca'], #pca hardcoded
                                           remove_multicollinearity = remove_multicollinearity, #new
                                           maximum_correlation_between_features = multicollinearity_threshold, #new
+                                          remove_perfect_collinearity = True, #latest 2
                                           cluster_entire_data = create_clusters, #new
                                           range_of_clusters_to_try = cluster_iter, #new
                                           apply_polynomial_trigonometry_features = polynomial_features, #new
@@ -1504,6 +1506,7 @@ def setup(data,
             pass
         
         return X, y, X_train, X_test, y_train, y_test, seed, prep_pipe, target_inverse_transformer, experiment__
+
 
 
 
@@ -6175,7 +6178,6 @@ def evaluate_model(estimator):
 
 
 
-
 def finalize_model(estimator):
     
     """
@@ -6224,6 +6226,8 @@ def finalize_model(estimator):
     warnings.filterwarnings('ignore') 
     
     #import depedencies
+    from IPython.display import clear_output, update_display
+    from sklearn.base import clone
     from copy import deepcopy
     
     if type(estimator) is list:
@@ -6261,7 +6265,8 @@ def finalize_model(estimator):
                                           verbose = False)
 
     else:
-        model_final = deepcopy(estimator)
+        model_final = clone(estimator)
+        clear_output()
         model_final.fit(X,y)
     
     #storing into experiment
@@ -6271,6 +6276,8 @@ def finalize_model(estimator):
     experiment__.append(tup)
     
     return model_final
+
+
 
 
 
