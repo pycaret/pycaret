@@ -3218,6 +3218,7 @@ def compare_models(blacklist = None,
     from sklearn.ensemble import GradientBoostingClassifier
     from sklearn.discriminant_analysis import LinearDiscriminantAnalysis 
     from sklearn.ensemble import ExtraTreesClassifier
+    from sklearn.multiclass import OneVsRestClassifier
     from xgboost import XGBClassifier
     from catboost import CatBoostClassifier
     try:
@@ -3351,7 +3352,15 @@ def compare_models(blacklist = None,
                        'Light Gradient Boosting Machine',
                        'CatBoost Classifier']
         
+    #multiclass check
+    model_library_multiclass = []
+    if y.value_counts().count() > 2:
+        for i in model_library:
+            model = OneVsRestClassifier(i)
+            model_library_multiclass.append(model)
             
+        model_library = model_library_multiclass
+        
     progress.value += 1
 
     
@@ -4334,6 +4343,7 @@ def tune_model(estimator = None,
     if y.value_counts().count() > 2:
         from sklearn.multiclass import OneVsRestClassifier
         model = OneVsRestClassifier(model)
+        best_model = model
         
     '''
     MONITOR UPDATE STARTS
@@ -7678,11 +7688,35 @@ def predict_model(estimator,
 
             try:
                 pred_prob = stacker_meta.predict_proba(combined_df)
-                pred_prob = pred_prob[:,1]
+                
+                if len(pred_prob[0]) > 2:
+                    p_counter = 0
+                    d = []
+                    for i in range(0,len(pred_prob)):
+                        d.append(pred_prob[i][pred_[p_counter]])
+                        p_counter += 1
+
+                    pred_prob = d
+                    
+                else:
+                    pred_prob = pred_prob[:,1]
+                    
             except:
                 try:
                     pred_prob = stacker_meta.predict_proba(inter_pred_df)
-                    pred_prob = pred_prob[:,1]
+                    
+                    if len(pred_prob[0]) > 2:
+                        p_counter = 0
+                        d = []
+                        for i in range(0,len(pred_prob)):
+                            d.append(pred_prob[i][pred_[p_counter]])
+                            p_counter += 1
+
+                        pred_prob = d
+
+                    else:
+                        pred_prob = pred_prob[:,1]
+                    
                 except:
                     pass
 
@@ -7821,12 +7855,35 @@ def predict_model(estimator,
                 
             try:
                 pred_prob = meta_model.predict_proba(df)
-                pred_prob = pred_prob[:,1]
+                
+                if len(pred_prob[0]) > 2:
+                    p_counter = 0
+                    d = []
+                    for i in range(0,len(pred_prob)):
+                        d.append(pred_prob[i][pred_[p_counter]])
+                        p_counter += 1
+
+                    pred_prob = d
+                    
+                else:
+                    pred_prob = pred_prob[:,1]
 
             except:
+                
                 try:
                     pred_prob = meta_model.predict_proba(df_restack)
-                    pred_prob = pred_prob[:,1]
+                    
+                    if len(pred_prob[0]) > 2:
+                        p_counter = 0
+                        d = []
+                        for i in range(0,len(pred_prob)):
+                            d.append(pred_prob[i][pred_[p_counter]])
+                            p_counter += 1
+
+                        pred_prob = d
+                        
+                    else:
+                        pred_prob = pred_prob[:,1]
                 except:
                     pass
             
@@ -7910,14 +7967,27 @@ def predict_model(estimator,
         elif 'Cat Boost Classifier' in full_name:
             full_name = 'CatBoost Classifier'
 
+        
         #prediction starts here
+        
+        pred_ = model.predict(Xtest)
+        
         try:
             pred_prob = model.predict_proba(Xtest)
-            pred_prob = pred_prob[:,1]
+            
+            if len(pred_prob[0]) > 2:
+                p_counter = 0
+                d = []
+                for i in range(0,len(pred_prob)):
+                    d.append(pred_prob[i][pred_[p_counter]])
+                    p_counter += 1
+                    
+                pred_prob = d
+                
+            else:
+                pred_prob = pred_prob[:,1]
         except:
             pass
-
-        pred_ = model.predict(Xtest)
         
         if probability_threshold is not None:
             try:
