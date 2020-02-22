@@ -3,7 +3,7 @@
 # License: MIT
 
 def version():
-    print("0.0.50")
+    print("0.0.54")
 
 
 def check_metric(actual, prediction, metric, round=4):

@@ -1083,7 +1083,7 @@ def assign_model(model,
         progress.value += 1
         
         if verbose:
-            clear_output()
+            monitor.clear_output()
         
     #storing into experiment
     if verbose:
@@ -1259,7 +1259,6 @@ def plot_model(model = None,
     cf.set_config_file(offline=False, world_readable=True)
 
     
-    
     if plot == 'frequency':
         
         try:   
@@ -1286,7 +1285,7 @@ def plot_model(model = None,
 
                 title = str(topic_num) + ': ' + 'Top 100 words after removing stop words'
 
-                assigned_df = assign_model(model)
+                assigned_df = assign_model(model, verbose = False)
                 filtered_df = assigned_df.loc[assigned_df['Dominant_Topic'] == topic_num]
 
                 common_words = get_top_n_words(filtered_df[target_], n=100)
@@ -1319,7 +1318,7 @@ def plot_model(model = None,
             else:
 
                 title = str(topic_num) + ': ' + 'Word Count Distribution'
-                assigned_df = assign_model(model)
+                assigned_df = assign_model(model, verbose = False)
                 filtered_df = assigned_df.loc[assigned_df['Dominant_Topic'] == topic_num]
 
                 b = filtered_df[target_].apply(lambda x: len(str(x).split()))
@@ -1361,7 +1360,7 @@ def plot_model(model = None,
             else:
 
                 title = str(topic_num) + ': ' + 'Top 100 bigrams after removing stop words'
-                assigned_df = assign_model(model)
+                assigned_df = assign_model(model, verbose = False)
                 filtered_df = assigned_df.loc[assigned_df['Dominant_Topic'] == topic_num]
 
                 common_words = get_top_n_bigram(filtered_df[target_], 100)
@@ -1397,7 +1396,7 @@ def plot_model(model = None,
             else:
 
                 title = str(topic_num) + ': ' + 'Top 100 trigrams after removing stop words'
-                assigned_df = assign_model(model)
+                assigned_df = assign_model(model, verbose = False)
                 filtered_df = assigned_df.loc[assigned_df['Dominant_Topic'] == topic_num]            
                 common_words = get_top_n_trigram(filtered_df[target_], 100)
                 df3 = pd.DataFrame(common_words, columns = ['Text' , 'count'])
@@ -1431,7 +1430,7 @@ def plot_model(model = None,
 
             else: 
                 title = str(topic_num) + ': ' + 'Sentiment Polarity Distribution'
-                assigned_df = assign_model(model)
+                assigned_df = assign_model(model, verbose = False)
                 filtered_df = assigned_df.loc[assigned_df['Dominant_Topic'] == topic_num] 
                 sentiments = filtered_df[target_].map(lambda text: TextBlob(text).sentiment.polarity)
                 sentiments = pd.DataFrame(sentiments)
@@ -1466,7 +1465,7 @@ def plot_model(model = None,
         
     elif plot == 'tsne':
         
-        b = assign_model(model)
+        b = assign_model(model, verbose = False)
         b.dropna(axis=0, inplace=True) #droping rows where Dominant_Topic is blank
 
         c = []
@@ -1546,7 +1545,7 @@ def plot_model(model = None,
 
 
         kw_df = pd.DataFrame({'Topic': topic_name, 'Keyword' : keyword}).set_index('Topic')
-        ass_df = assign_model(model)
+        ass_df = assign_model(model, verbose = False)
         ass_df_pivot = ass_df.pivot_table(index='Dominant_Topic', values='Topic_0', aggfunc='count')
         df2 = ass_df_pivot.join(kw_df)
         df2 = df2.reset_index()
@@ -1601,7 +1600,7 @@ def plot_model(model = None,
 
             else:
 
-                assigned_df = assign_model(model)
+                assigned_df = assign_model(model, verbose = False)
                 filtered_df = assigned_df.loc[assigned_df['Dominant_Topic'] == topic_num] 
                 atext = " ".join(review for review in filtered_df[target_])
 
@@ -1875,6 +1874,7 @@ def tune_model(model=None,
     #pre-load libraries
     import pandas as pd
     import ipywidgets as ipw
+    from ipywidgets import Output
     from IPython.display import display, HTML, clear_output, update_display
     import datetime, time
 
@@ -1882,7 +1882,10 @@ def tune_model(model=None,
     max_steps = 25
 
     progress = ipw.IntProgress(value=0, min=0, max=max_steps, step=1 , description='Processing: ')
-    display(progress)
+    progress_out = Output()
+    display(progress_out)
+    with progress_out:
+        display(progress)
 
     timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
 
@@ -1890,9 +1893,11 @@ def tune_model(model=None,
                              ['Status' , '. . . . . . . . . . . . . . . . . .' , 'Loading Dependencies'],
                              ['Step' , '. . . . . . . . . . . . . . . . . .',  'Initializing' ] ],
                               columns=['', ' ', '   ']).set_index('')
-
-    display(monitor, display_id = 'monitor')
-
+    
+    monitor_out = Output()
+    display(monitor_out)
+    with monitor_out:
+        display(monitor, display_id = 'monitor')
 
     #General Dependencies
     from sklearn.linear_model import LogisticRegression
@@ -2042,7 +2047,8 @@ def tune_model(model=None,
 
         fig.update_layout(plot_bgcolor='rgb(245,245,245)')
 
-        clear_output()
+        progress_out.clear_output()
+        monitor_out.clear_output()
 
         fig.show()
 
@@ -2248,7 +2254,8 @@ def tune_model(model=None,
         title= str(full_name) + ' Metrics and # of Topics'
         fig.update_layout(title={'text': title, 'y':0.95,'x':0.45,'xanchor': 'center','yanchor': 'top'})
 
-        clear_output()
+        progress_out.clear_output()
+        monitor_out.clear_output()
 
         fig.show()
 
@@ -2494,8 +2501,10 @@ def tune_model(model=None,
                       title= str(full_name) + ' Metrics and # of Topics', color='Metric')
 
         fig.update_layout(plot_bgcolor='rgb(245,245,245)')
-        progress.value += 1 
-        clear_output()
+        progress.value += 1
+        
+        progress_out.clear_output()
+        monitor_out.clear_output()
 
         fig.show()
         best_k = np.array(sorted_df.head(1)['# Topics'])[0]
@@ -2508,6 +2517,7 @@ def tune_model(model=None,
     experiment__.append(tup)    
 
     return best_model
+
 
 
 

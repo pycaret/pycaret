@@ -1482,6 +1482,7 @@ def tune_model(model=None,
     #pre-load libraries
     import pandas as pd
     import ipywidgets as ipw
+    from ipywidgets import Output
     from IPython.display import display, HTML, clear_output, update_display
     import datetime, time
     
@@ -1489,8 +1490,11 @@ def tune_model(model=None,
     max_steps = 25
 
     progress = ipw.IntProgress(value=0, min=0, max=max_steps, step=1 , description='Processing: ')
-    display(progress)
-    
+    progress_out = Output()
+    display(progress_out)
+    with progress_out:
+        display(progress)
+
     timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
     
     monitor = pd.DataFrame( [ ['Initiated' , '. . . . . . . . . . . . . . . . . .', timestampStr ], 
@@ -1498,8 +1502,11 @@ def tune_model(model=None,
                              ['Step' , '. . . . . . . . . . . . . . . . . .',  'Initializing' ] ],
                               columns=['', ' ', '   ']).set_index('')
     
-    display(monitor, display_id = 'monitor')
-        
+    monitor_out = Output()
+    display(monitor_out)
+    with monitor_out:
+        display(monitor, display_id = 'monitor')
+
     
     #General Dependencies
     from sklearn.linear_model import LogisticRegression
@@ -2058,7 +2065,8 @@ def tune_model(model=None,
         title= str(full_name) + ' Metrics and Number of Clusters'
         fig.update_layout(title={'text': title, 'y':0.95,'x':0.45,'xanchor': 'center','yanchor': 'top'})
         
-        clear_output()
+        progress_out.clear_output()
+        monitor_out.clear_output()
 
         fig.show()
         
@@ -2373,7 +2381,9 @@ def tune_model(model=None,
 
         fig.update_layout(plot_bgcolor='rgb(245,245,245)')
         progress.value += 1 
-        clear_output()
+        
+        progress_out.clear_output()
+        monitor_out.clear_output()
         
         fig.show()
         best_k = np.array(sorted_df.head(1)['# of Clusters'])[0]
@@ -2388,6 +2398,7 @@ def tune_model(model=None,
     org = retain_original(a,b,c)
     
     return best_model
+    
     
 
 
@@ -2623,7 +2634,7 @@ def plot_model(model, plot='cluster', feature = None, label = False):
         
         import plotly.express as px
         
-        d = assign_model(model)
+        d = assign_model(model, verbose = False)
         
         """
         sorting
