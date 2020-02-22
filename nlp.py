@@ -1877,14 +1877,15 @@ def tune_model(model=None,
     from ipywidgets import Output
     from IPython.display import display, HTML, clear_output, update_display
     import datetime, time
-
+	
     #progress bar
     max_steps = 25
 
-    progress = ipw.IntProgress(value=0, min=0, max=max_steps, step=1 , description='Processing: ')
     progress_out = Output()
     display(progress_out)
+    
     with progress_out:
+        progress = ipw.IntProgress(value=0, min=0, max=max_steps, step=1 , description='Processing: ')
         display(progress)
 
     timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
