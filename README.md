@@ -2,7 +2,7 @@
 PyCaret is a free software and an open source low-code machine learning library for supervised and unsupervised machine learning techniques in Python programming language. Its primary objective is to reduce the cycle time from hypothesis to insights and make data scientists more productive in their experiments. It does so by providing a high-level API which is sophisticated yet easy to use and consistent across all modules. PyCaret enables data scientists and analysts to perform iterative end-to-end data science experiments in very efficient way allowing them to reach the conclusions faster. Through the use of its high-level low-code API, the amount of time spent in coding experiments reduce drastically, allowing business to restructure their machine learning workflows and re-evaluate the value chain of data science projects. PyCaret is essentially a python wrapper around several machine learning frameworks and libraries such as scikit-learn, XGBoost, Microsoft LightGBM, spaCy to name a few.
 
 ## Current Release
-The current release is beta 0.0.50 (as of 21/02/2020). A full public release is expected by end of Feb 2020. 
+The current release is beta 0.0.54 (as of 22/02/2020). A full public release is expected by end of Feb 2020. 
 
 ## Who should use PyCaret?
 PyCaret is free and open source library which is easy to install and can be setup either locally or on any cloud service within minutes. As such there is no limitation of use however, in our opinion following are the ideal target audience: <br />
@@ -72,6 +72,15 @@ PyCaret also supports model deployment on cloud for consuming in production. It 
 
 ## PyCaret Runtime Visibility
 Often when performing experiment, one of the challenge or frustration is anticipating how long a particular model will take in training. Waiting sometimes may result in hours or days. Having visibility of remaining time of experiment as your code progresses through is a big feature PyCaret has to offer (only for Notebook users – since it uses HTML). Having run time visibility of the code may help data scientists / citizen data scientists to anticipate the total run time based on initial estimation shown by PyCaret. This may lead to decision making process to run or not run certain models which otherwise would have not been known until training is completed.
+
+## Contributors
+- pycaret.anomaly, Moez Ali <moez.ali@queensu.ca>
+- pycaret.classification, Moez Ali <moez.ali@queensu.ca>
+- pycaret.clustering, Moez Ali <moez.ali@queensu.ca>
+- pycaret.datasets, Moez Ali <moez.ali@queensu.ca>
+- pycaret.nlp, Moez Ali <moez.ali@queensu.ca>
+- pycaret.preprocess, Fahad Akbar <M.akbar@queensu.ca>
+- pycaret.regression, Moez Ali <moez.ali@queensu.ca>
 
 
 ## License
