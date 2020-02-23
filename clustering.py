@@ -1490,10 +1490,7 @@ def tune_model(model=None,
     max_steps = 25
 
     progress = ipw.IntProgress(value=0, min=0, max=max_steps, step=1 , description='Processing: ')
-    progress_out = Output()
-    display(progress_out)
-    with progress_out:
-        display(progress)
+    display(progress)
 
     timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
     
@@ -2064,12 +2061,15 @@ def tune_model(model=None,
         fig.update_layout(plot_bgcolor='rgb(245,245,245)')
         title= str(full_name) + ' Metrics and Number of Clusters'
         fig.update_layout(title={'text': title, 'y':0.95,'x':0.45,'xanchor': 'center','yanchor': 'top'})
-        
-        progress_out.clear_output()
-        monitor_out.clear_output()
 
         fig.show()
         
+        monitor = ''
+        update_display(monitor, display_id = 'monitor')
+        
+        monitor_out.clear_output()
+        progress.close()
+
         best_k = np.array(sorted_df.head(1)['# of Clusters'])[0]
         best_m = round(np.array(sorted_df.head(1)[optimize])[0],4)
         p = 'Best Model: ' + model_name + ' |' + ' Number of Clusters : ' + str(best_k) + ' | ' + str(optimize) + ' : ' + str(best_m)
@@ -2382,10 +2382,14 @@ def tune_model(model=None,
         fig.update_layout(plot_bgcolor='rgb(245,245,245)')
         progress.value += 1 
         
-        progress_out.clear_output()
-        monitor_out.clear_output()
-        
         fig.show()
+        
+        monitor = ''
+        update_display(monitor, display_id = 'monitor')
+        
+        monitor_out.clear_output()
+        progress.close()
+
         best_k = np.array(sorted_df.head(1)['# of Clusters'])[0]
         best_m = round(np.array(sorted_df.head(1)[optimize])[0],4)
         p = 'Best Model: ' + model_name + ' |' + ' Number of Clusters: ' + str(best_k) + ' | ' + str(optimize) + ' : ' + str(best_m)
@@ -2398,7 +2402,7 @@ def tune_model(model=None,
     org = retain_original(a,b,c)
     
     return best_model
-    
+
     
 
 

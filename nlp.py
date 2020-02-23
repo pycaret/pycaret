@@ -766,6 +766,7 @@ def create_model(model=None,
     return model
 
 
+
 def assign_model(model,
                  verbose=True):
     
@@ -1083,7 +1084,7 @@ def assign_model(model,
         progress.value += 1
         
         if verbose:
-            monitor.clear_output()
+            clear_output()
         
     #storing into experiment
     if verbose:
@@ -1482,6 +1483,7 @@ def plot_model(model = None,
         X = pd.DataFrame(X_embedded)
         X['Dominant_Topic'] = b['Dominant_Topic']
         X.sort_values(by='Dominant_Topic', inplace=True)
+        X.dropna(inplace=True)
 
         import plotly.express as px
         df = X
@@ -1877,17 +1879,12 @@ def tune_model(model=None,
     from ipywidgets import Output
     from IPython.display import display, HTML, clear_output, update_display
     import datetime, time
-	
+
     #progress bar
     max_steps = 25
-
-    progress_out = Output()
-    display(progress_out)
+    progress = ipw.IntProgress(value=0, min=0, max=max_steps, step=1 , description='Processing: ')
+    display(progress)
     
-    with progress_out:
-        progress = ipw.IntProgress(value=0, min=0, max=max_steps, step=1 , description='Processing: ')
-        display(progress)
-
     timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
 
     monitor = pd.DataFrame( [ ['Initiated' , '. . . . . . . . . . . . . . . . . .', timestampStr ], 
@@ -1897,6 +1894,7 @@ def tune_model(model=None,
     
     monitor_out = Output()
     display(monitor_out)
+    
     with monitor_out:
         display(monitor, display_id = 'monitor')
 
@@ -2047,11 +2045,14 @@ def tune_model(model=None,
                       title= 'Coherence Value and # of Topics', color='Metric')
 
         fig.update_layout(plot_bgcolor='rgb(245,245,245)')
-
-        progress_out.clear_output()
-        monitor_out.clear_output()
-
+        
         fig.show()
+        
+        monitor = '' 
+        update_display(monitor, display_id = 'monitor')
+        
+        monitor_out.clear_output()
+        progress.close()
 
         best_k = np.array(sorted_df.head(1)['# Topics'])[0]
         best_m = round(np.array(sorted_df.head(1)['Score'])[0],4)
@@ -2255,10 +2256,13 @@ def tune_model(model=None,
         title= str(full_name) + ' Metrics and # of Topics'
         fig.update_layout(title={'text': title, 'y':0.95,'x':0.45,'xanchor': 'center','yanchor': 'top'})
 
-        progress_out.clear_output()
-        monitor_out.clear_output()
-
         fig.show()
+        
+        monitor = ''
+        update_display(monitor, display_id = 'monitor')
+        
+        monitor_out.clear_output()
+        progress.close()
 
         best_k = np.array(sorted_df.head(1)['# Topics'])[0]
         best_m = round(np.array(sorted_df.head(1)[optimize])[0],4)
@@ -2504,8 +2508,11 @@ def tune_model(model=None,
         fig.update_layout(plot_bgcolor='rgb(245,245,245)')
         progress.value += 1
         
-        progress_out.clear_output()
+        monitor = ''
+        update_display(monitor, display_id = 'monitor')
+        
         monitor_out.clear_output()
+        progress.close()
 
         fig.show()
         best_k = np.array(sorted_df.head(1)['# Topics'])[0]
