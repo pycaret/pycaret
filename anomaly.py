@@ -2956,7 +2956,7 @@ def predict_model(model,
     #predictions start here
     _data_ = prep_pipe_transformer.transform(data__)
     pred = model.predict(_data_)
-    pred_score = model.decision_scores_
+    pred_score = model.decision_function(_data_)
         
     data__['Label'] = pred
     data__['Score'] = pred_score
