@@ -16,10 +16,10 @@ The first stable release pycaret version 1.0.0 is now publicly available. The ea
 pip install pycaret
 ```
 
-## Getting Started with PyCaret
-- User Guide: https://www.pycaret.org/guide
-- Tutorials: https://www.pycaret.org/tutorial
-- Issue Log: https://github.com/pycaret/pycaret/issues
+## Important Links
+- User Guide / Documentation: https://www.pycaret.org/guide
+- Getting Started Tutorials: https://www.pycaret.org/tutorial
+- Issue Logs: https://github.com/pycaret/pycaret/issues
 
 ## Who should use PyCaret?
 PyCaret is an open source library that anybody can use. In our view the ideal target audience of PyCaret is: <br />
