@@ -3,9 +3,9 @@ PyCaret is an open source, `low-code` machine learning library in Python that ai
 
 In comparison with the other open source machine learning libraries, PyCaret is an alternate `low-code` machine learning solution that allows data scientists to perform end-to-end iterative experiments and enhances their ability to perform simple to complex operations without the need to write and maintain extra lines of code.
 
-PyCaret is `simple`, `easy to use` and `deployment ready`. All of the operations performed in a typical experiment are executed and automatically stored in a custom pipeline which is completely orchestrated to manage dependencies. The Pipeline can be saved in a binary format that can be transferred into a different environment to perform experiments at scale.
+PyCaret is `simple`, `easy to use` and `deployment ready`. All of the operations performed in a typical experiment are executed and automatically stored in a custom pipeline which is completely orchestrated to manage dependencies. The `Pipeline` can be saved in a binary format that can be transferred into a different environment to perform experiments at scale.
 
-The design and simplicity of PyCaret is inspired by the emerging role of citizen data scientists, a term first used by Gartner. Citizen Data Scientists are ‘power users’ who can perform both simple and moderately sophisticated analytical tasks that would previously have required more expertise. The skills of a seasoned data scientists are often expensive and difficult to come by but citizen data scientists can be an effective way to mitigate this current skills gap and address data related challenges.
+The design and simplicity of PyCaret is inspired by the emerging role of citizen data scientists, a term first used by Gartner. Citizen Data Scientists are `power users` who can perform both simple and moderately sophisticated analytical tasks that would previously have required more expertise. The skills of a seasoned data scientists are often expensive and difficult to come by but citizen data scientists can be an effective way to mitigate this current skills gap and address data related challenges.
 
 For more information on PyCaret, please visit our official website https://www.pycaret.org
 
@@ -24,14 +24,13 @@ pip install pycaret
 ## Who should use PyCaret?
 PyCaret is an open source library that anybody can use. In our view the ideal target audience of PyCaret is: <br />
 
+- Experienced Data Scientists who want to increase productivity.
 - Citizen data scientists who wants to easily implement data science projects in a low-code environment.
-- Data scientists who want to increase their productivity.
-- Consultants / Data Science teams who wants to deliver Proof of Concept (POC) quickly and efficiently.
-- Students learning or planning to learn data science skills with no prior background in computer science.
-- Data Science Professionals and members of academic community who are involved in teaching machine learning.
-- Data Scientists and members of data science community who compete on platforms like Kaggle.
-- Small to mid-size companies looking to implement data science projects without committing significant resources.
-- Students, academicians, researchers and data science professionals seeking to combine simplicity of R language with power of Python.
+
+- Consultants / Data Science teams who wants to deliver Proof of Concept (POC) projects quickly and efficiently.
+- Citizen Data Scientists who prefer a low code machine learning solution.
+- Students of Data Science.
+- Data Science Professionals and Consultants involved in building Proof of Concept projects.
 
 ## Dependencies
 Please read requirements.txt for list of requirements. They are automatically installed when pycaret is installed using pip.
@@ -47,7 +46,6 @@ If you would like to contribute to PyCaret, please visit https://www.pycaret.org
 - pycaret.nlp, Moez Ali <moez.ali@queensu.ca>
 - pycaret.preprocess, Fahad Akbar <M.akbar@queensu.ca>
 - pycaret.regression, Moez Ali <moez.ali@queensu.ca>
-
 
 ## License
 
