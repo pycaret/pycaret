@@ -10,7 +10,7 @@ The design and simplicity of PyCaret is inspired by the emerging role of citizen
 For more information on PyCaret, please visit our official website https://www.pycaret.org
 
 ## Current Release
-The first stable release pycaret version 1.0.0 is now publicly available. The easiest way to install pycaret is using pip.
+The first stable release pycaret version `1.0.0` is now publicly available. The easiest way to install pycaret is using pip.
 
 ```python
 pip install pycaret
@@ -25,9 +25,6 @@ pip install pycaret
 PyCaret is an open source library that anybody can use. In our view the ideal target audience of PyCaret is: <br />
 
 - Experienced Data Scientists who want to increase productivity.
-- Citizen data scientists who wants to easily implement data science projects in a low-code environment.
-
-- Consultants / Data Science teams who wants to deliver Proof of Concept (POC) projects quickly and efficiently.
 - Citizen Data Scientists who prefer a low code machine learning solution.
 - Students of Data Science.
 - Data Science Professionals and Consultants involved in building Proof of Concept projects.
