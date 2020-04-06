@@ -2500,7 +2500,7 @@ def plot_model(model,
     model : object
     A trained model object can be passed. Model must be created using create_model().
 
-    plot : string, default = 'frequency'
+    plot : string, default = 'tsne'
     Enter abbreviation of type of plot. The current list of plots supported are:
 
     Name                           Abbreviated String     

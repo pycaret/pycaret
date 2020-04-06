@@ -27,8 +27,8 @@ def readme():
 
 setup(
     name="pycaret",
-    version="0.0.60",
-    description="A Python package for supervised and unsupervised machine learning.",
+    version="1.0.0",
+    description="An open source, low-code machine learning library in Python",
     long_description=readme(),
     long_description_content_type="text/markdown",
     url="https://github.com/pycaret/pycaret",
@@ -47,5 +47,5 @@ setup(
                      "wordcloud", "textblob", "plotly==4.4.1", "cufflinks==0.17.0", "umap-learn",
                      "lightgbm==2.3.1", "pyLDAvis", "gensim", "spacy", "nltk", "mlxtend",
                      "pyod", "catboost==0.20.2", "pandas-profiling==2.3.0", "kmodes==0.10.1",
-                     "datefinder==0.7.0", "datetime", "DateTime==4.3", "tqdm==4.36.1", "awscli"]
+                     "datefinder==0.7.0", "datetime", "DateTime==4.3", "awscli"]
 )
