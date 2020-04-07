@@ -1,4 +1,7 @@
-﻿## What is PyCaret?
+﻿# PyCaret
+https://img.shields.io/badge/stability-stable-green.svg https://badge.fury.io/py/pycaret.svg https://img.shields.io/pypi/l/ansicolortags.svg http://hits.dwyl.com/pycaret/pycaret/pycaret.svg
+
+## What is PyCaret?
 PyCaret is an open source, `low-code` machine learning library in Python that aims to reduce the cycle time from hypothesis to insights. It enables data scientists and analysts to perform iterative end-to-end data science experiments efficiently and allows them to reach conclusions faster due to far less time spent in coding. PyCaret is essentially a Python wrapper around several machine learning libraries and frameworks such as scikit-learn, XGBoost, Microsoft LightGBM, spaCy and many more.
 
 In comparison with the other open source machine learning libraries, PyCaret is an alternate `low-code` machine learning solution that allows data scientists to perform end-to-end iterative experiments and enhances their ability to perform simple to complex operations without the need to write and maintain extra lines of code.
