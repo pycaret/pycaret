@@ -35,9 +35,6 @@ PyCaret is an open source library that anybody can use. In our view the ideal ta
 ## Dependencies
 Please read requirements.txt for list of requirements. They are automatically installed when pycaret is installed using pip.
 
-## Contribute
-If you would like to contribute to PyCaret, please visit https://www.pycaret.org/contribute
-
 ## Contributors
 - pycaret.anomaly, Moez Ali <moez.ali@queensu.ca>
 - pycaret.classification, Moez Ali <moez.ali@queensu.ca>
@@ -46,6 +43,8 @@ If you would like to contribute to PyCaret, please visit https://www.pycaret.org
 - pycaret.nlp, Moez Ali <moez.ali@queensu.ca>
 - pycaret.preprocess, Fahad Akbar <M.akbar@queensu.ca>
 - pycaret.regression, Moez Ali <moez.ali@queensu.ca>
+
+If you would like to contribute to PyCaret, please visit https://www.pycaret.org/contribute
 
 ## License
 
