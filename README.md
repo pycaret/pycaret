@@ -2,13 +2,11 @@
 [![Stability](https://img.shields.io/badge/stability-stable-green.svg)](https://img.shields.io/badge/stability-stable-green.svg) [![Documentation Status](https://readthedocs.org/projects/pip/badge/?version=stable)](http://pip.pypa.io/en/stable/?badge=stable) [![PyPI version](https://badge.fury.io/py/pycaret.svg)](https://badge.fury.io/py/pycaret) [![License](https://img.shields.io/pypi/l/ansicolortags.svg)](https://img.shields.io/pypi/l/ansicolortags.svg) [![Git count](http://hits.dwyl.com/pycaret/pycaret/pycaret.svg)](http://hits.dwyl.com/pycaret/pycaret/pycaret)
 
 ## What is PyCaret?
-PyCaret is an open source, `low-code` machine learning library in Python that aims to reduce the cycle time from hypothesis to insights. It enables data scientists and analysts to perform iterative end-to-end data science experiments efficiently and allows them to reach conclusions faster due to far less time spent in coding. PyCaret is essentially a Python wrapper around several machine learning libraries and frameworks such as scikit-learn, XGBoost, Microsoft LightGBM, spaCy and many more.
+PyCaret is an open source `low-code` machine learning library in Python that aims to reduce the hypothesis to insights cycle time in a ML experiment. It enables data scientists to perform end-to-end experiments quickly and efficiently. In comparison with the other open source machine learning libraries, PyCaret is an alternate low-code library that can be used to perform complex machine learning tasks with only few lines of code. PyCaret is simple and easy to use. All the operations performed in PyCaret are automatically stored in a custom Pipeline that is fully orchestrated for deployment. PyCaret is essentially a Python wrapper around several machine learning libraries and frameworks such as scikit-learn, XGBoost, Microsoft LightGBM, spaCy and many more. 
 
-In comparison with the other open source machine learning libraries, PyCaret is an alternate `low-code` machine learning solution that allows data scientists to perform end-to-end iterative experiments and enhances their ability to perform simple to complex operations without the need to write and maintain extra lines of code.
+The design and simplicity of PyCaret is inspired by the emerging role of citizen data scientists, a term first used by Gartner. Citizen Data Scientists are ‘power users’ who can perform both simple and moderately sophisticated analytical tasks that would previously have required more expertise. Seasoned data scientists are often difficult to find and expensive to hire but citizen data scientists can be an effective way to mitigate this gap and address data related challenges in business setting.
 
-PyCaret is `simple`, `easy to use` and `deployment ready`. All of the operations performed in a typical experiment are executed and automatically stored in a custom pipeline which is completely orchestrated to manage dependencies. The `Pipeline` can be saved in a binary format that can be transferred into a different environment to perform experiments at scale.
-
-The design and simplicity of PyCaret is inspired by the emerging role of citizen data scientists, a term first used by Gartner. Citizen Data Scientists are `power users` who can perform both simple and moderately sophisticated analytical tasks that would previously have required more expertise. The skills of a seasoned data scientists are often expensive and difficult to come by but citizen data scientists can be an effective way to mitigate this current skills gap and address data related challenges.
+PyCaret is a deployment ready library in Python which means all the steps performed in a ML experiment can be reproduced using a pipeline that is automatically developed and orchestrated in PyCaret as you progress through the experiment. A pipeline can be saved in a binary file format that is transferable across environments.
 
 For more information on PyCaret, please visit our official website https://www.pycaret.org
 
@@ -35,7 +33,7 @@ PyCaret is an open source library that anybody can use. In our view the ideal ta
 ## Dependencies
 Please read requirements.txt for list of requirements. They are automatically installed when pycaret is installed using pip.
 
-## Contributors
+## Authors
 - pycaret.anomaly, Moez Ali <moez.ali@queensu.ca>
 - pycaret.classification, Moez Ali <moez.ali@queensu.ca>
 - pycaret.clustering, Moez Ali <moez.ali@queensu.ca>
