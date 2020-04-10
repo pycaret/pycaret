@@ -53,6 +53,12 @@ def check_metric(actual, prediction, metric, round=4):
         result = metrics.roc_auc_score(actual,prediction)
         result = result.round(round)
         
+    elif metric == 'mcc':
+        
+        from sklearn import metrics
+        result = metrics.matthews_corrcoef(actual,prediction)
+        result = result.round(round)
+        
     elif metric == 'mae':
 
         from sklearn import metrics
