@@ -120,15 +120,13 @@ class DataTypes_Auto_infer(BaseEstimator,TransformerMixin):
         if i not in self.numerical_features:
           if sum(data[i].isna()) == 0: 
             if len(data[i].unique()) == len_samples:
-              min_number = min(data[i])
-              max_number = max(data[i])
-              arr = np.arange(min_number,max_number+1,1)
-              try:
-                all_match = sum(data[i].sort_values() == arr)
-                if all_match == len_samples:
-                  self.id_columns.append(i) 
-              except:
-                None 
+              # we extract column and sort it
+              features = data[i].sort_values()
+              # no we subtract i+1-th value from i-th (calculating increments)
+              increments = features.diff()[1:]
+              # if all increments are 0 (with float tolerance), then the column is ID column
+              if sum(np.abs(increments-1) < 1e-7) == len_samples-1:
+                self.id_columns.append(i)
       
     data_len = len(data)                        
         
