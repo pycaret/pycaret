@@ -1956,9 +1956,16 @@ class Remove_100(BaseEstimator,TransformerMixin):
 
   def fit_transform(self,dataset,y=None):
     data = dataset.copy()
-    corr = pd.DataFrame(np.corrcoef(data.drop(self.target,axis=1).T))
-    corr.columns = data.drop(self.target,axis=1).columns
-    corr.index = data.drop(self.target,axis=1).columns
+
+    targetless_data = data.drop(self.target, axis=1)
+
+    # correlation should be calculated between at least two features, if there is only 1, there is nothing to delete
+    if len(targetless_data.columns) <= 1:
+      return data
+
+    corr = pd.DataFrame(np.corrcoef(targetless_data.T))
+    corr.columns = targetless_data.columns
+    corr.index = targetless_data.columns
     corr_matrix = abs(corr)
 
     # Now, add a column for variable name and drop index
