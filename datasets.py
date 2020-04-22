@@ -2,6 +2,7 @@
 # Author: Moez Ali <moez.ali@queensu.ca>
 # License: MIT
 
+from IPython.display import DisplayObject, display
 
 def get_data(dataset, save_copy=False, profile = False):
     
