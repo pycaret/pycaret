@@ -8,7 +8,7 @@ scikit-learn==0.22
 shap==0.32.1
 ipywidgets
 yellowbrick==1.0.1
-xgboost==0.90
+xgboost
 lightgbm==2.3.1
 plotly==4.4.1
 wordcloud
