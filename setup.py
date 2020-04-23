@@ -2,7 +2,7 @@
 # License: MIT, moez.ali@queensu.ca
 
 """
-  
+
 PyCaret - An end-to-end open source machine learning library
 
 Module Author:
@@ -18,6 +18,7 @@ pycaret.regression, Moez Ali <moez.ali@queensu.ca>
 """
 
 from setuptools import setup
+from setuptools import find_package
 
 def readme():
     with open('README.md') as f:
@@ -40,10 +41,10 @@ setup(
         "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3.7",
     ],
-    packages=["pycaret"],
+    packages=find_package(),
     include_package_data=True,
-    install_requires=["pandas", "numpy", "seaborn", "matplotlib", "IPython", "joblib", 
-                     "scikit-learn==0.22", "shap==0.32.1", "ipywidgets", "yellowbrick==1.0.1", "xgboost==0.90",
+    install_requires=["pandas", "numpy", "seaborn", "matplotlib", "IPython", "joblib",
+                     "scikit-learn==0.22", "shap==0.32.1", "ipywidgets", "yellowbrick==1.0.1", "xgboost",
                      "wordcloud", "textblob", "plotly==4.4.1", "cufflinks==0.17.0", "umap-learn",
                      "lightgbm==2.3.1", "pyLDAvis", "gensim", "spacy", "nltk", "mlxtend",
                      "pyod", "catboost==0.20.2", "pandas-profiling==2.3.0", "kmodes==0.10.1",
