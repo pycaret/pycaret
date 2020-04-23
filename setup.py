@@ -18,7 +18,7 @@ pycaret.regression, Moez Ali <moez.ali@queensu.ca>
 """
 
 from setuptools import setup
-from setuptools import find_package
+from setuptools import find_packages
 
 def readme():
     with open('README.md') as f:
@@ -41,7 +41,7 @@ setup(
         "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3.7",
     ],
-    packages=find_package(),
+    packages=find_packages(),
     include_package_data=True,
     install_requires=["pandas", "numpy", "seaborn", "matplotlib", "IPython", "joblib",
                      "scikit-learn==0.22", "shap==0.32.1", "ipywidgets", "yellowbrick==1.0.1", "xgboost",
