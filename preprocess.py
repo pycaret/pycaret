@@ -1211,23 +1211,25 @@ class Outlier(BaseEstimator,TransformerMixin):
     #   data = data.astype('float16')
     # except:
     #   None
-
+    
+    input_data = data.drop(self.target,axis=1)
+    
     if 'knn' in self.methods:
       self.knn = KNN(contamination=self.contamination)
-      self.knn.fit(data.drop(self.target,axis=1))
-      knn_predict = self.knn.predict(data.drop(self.target,axis=1))
+      self.knn.fit(input_data)
+      knn_predict = self.knn.predict(input_data)
       data['knn'] = knn_predict
     
     if 'iso' in self.methods:
       self.iso = IForest(contamination=self.contamination,random_state=self.random_state,behaviour='new')
-      self.iso.fit(data.drop(self.target,axis=1))
-      iso_predict = self.iso.predict(data.drop(self.target,axis=1))
+      self.iso.fit(input_data)
+      iso_predict = self.iso.predict(input_data)
       data['iso'] = iso_predict
 
     if 'pca' in self.methods:
       self.pca = PCA_od(contamination=self.contamination,random_state=self.random_state)
-      self.pca.fit(data.drop(self.target,axis=1))
-      pca_predict = self.pca.predict(data.drop(self.target,axis=1))
+      self.pca.fit(input_data)
+      pca_predict = self.pca.predict(input_data)
       data['pca'] = pca_predict
 
     data['vote_outlier'] = 0
