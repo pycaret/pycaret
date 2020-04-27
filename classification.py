@@ -1880,7 +1880,7 @@ def create_model(estimator = None,
     elif method == 'Boosting':
         
         from sklearn.ensemble import AdaBoostClassifier
-        model = AdaBoostClassifier(model, n_estimators=10, random_state=seed, n_jobs=-1)
+        model = AdaBoostClassifier(model, n_estimators=10, random_state=seed)
     
     
     #multiclass checking
@@ -3258,7 +3258,7 @@ def compare_models(blacklist = None,
     ridge = RidgeClassifier(random_state=seed)
     rf = RandomForestClassifier(n_estimators=10, random_state=seed, n_jobs=-1)
     qda = QuadraticDiscriminantAnalysis()
-    ada = AdaBoostClassifier(random_state=seed, n_jobs=-1)
+    ada = AdaBoostClassifier(random_state=seed)
     gbc = GradientBoostingClassifier(random_state=seed)
     lda = LinearDiscriminantAnalysis()
     et = ExtraTreesClassifier(random_state=seed, n_jobs=-1)
@@ -4837,7 +4837,7 @@ def blend_models(estimator_list = 'All',
         ridge = RidgeClassifier(random_state=seed)
         rf = RandomForestClassifier(n_estimators=10, random_state=seed, n_jobs=-1)
         qda = QuadraticDiscriminantAnalysis()
-        ada = AdaBoostClassifier(random_state=seed, n_jobs=-1)
+        ada = AdaBoostClassifier(random_state=seed)
         gbc = GradientBoostingClassifier(random_state=seed)
         lda = LinearDiscriminantAnalysis()
         et = ExtraTreesClassifier(random_state=seed, n_jobs=-1)
