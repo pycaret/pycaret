@@ -1766,7 +1766,7 @@ def create_model(estimator = None,
     elif estimator == 'knn':
         
         from sklearn.neighbors import KNeighborsClassifier
-        model = KNeighborsClassifier()
+        model = KNeighborsClassifier(n_jobs=-1)
         full_name = 'K Nearest Neighbours'
 
     elif estimator == 'nb':
@@ -1784,7 +1784,7 @@ def create_model(estimator = None,
     elif estimator == 'svm':
 
         from sklearn.linear_model import SGDClassifier
-        model = SGDClassifier(max_iter=1000, tol=0.001, random_state=seed)
+        model = SGDClassifier(max_iter=1000, tol=0.001, random_state=seed, n_jobs=-1)
         full_name = 'Support Vector Machine'
 
     elif estimator == 'rbfsvm':
@@ -1796,7 +1796,7 @@ def create_model(estimator = None,
     elif estimator == 'gpc':
 
         from sklearn.gaussian_process import GaussianProcessClassifier
-        model = GaussianProcessClassifier(random_state=seed)
+        model = GaussianProcessClassifier(random_state=seed, n_jobs=-1)
         full_name = 'Gaussian Process Classifier'
 
     elif estimator == 'mlp':
@@ -1814,7 +1814,7 @@ def create_model(estimator = None,
     elif estimator == 'rf':
 
         from sklearn.ensemble import RandomForestClassifier
-        model = RandomForestClassifier(n_estimators=10, random_state=seed)
+        model = RandomForestClassifier(n_estimators=10, random_state=seed, n_jobs=-1)
         full_name = 'Random Forest Classifier'    
 
     elif estimator == 'qda':
@@ -1844,24 +1844,24 @@ def create_model(estimator = None,
     elif estimator == 'et':
 
         from sklearn.ensemble import ExtraTreesClassifier 
-        model = ExtraTreesClassifier(random_state=seed)
+        model = ExtraTreesClassifier(random_state=seed, n_jobs=-1)
         full_name = 'Extra Trees Classifier'
 
     elif estimator == 'xgboost':
 
         from xgboost import XGBClassifier
-        model = XGBClassifier(random_state=seed, n_jobs=-1, verbosity=0)
+        model = XGBClassifier(random_state=seed, verbosity=0, n_jobs=-1)
         full_name = 'Extreme Gradient Boosting'
         
     elif estimator == 'lightgbm':
         
         import lightgbm as lgb
-        model = lgb.LGBMClassifier(random_state=seed)
+        model = lgb.LGBMClassifier(random_state=seed, n_jobs=-1)
         full_name = 'Light Gradient Boosting Machine'
         
     elif estimator == 'catboost':
         from catboost import CatBoostClassifier
-        model = CatBoostClassifier(random_state=seed, silent=True) # Silent is True to suppress CatBoost iteration results 
+        model = CatBoostClassifier(random_state=seed, silent=True, thread_count=-1) # Silent is True to suppress CatBoost iteration results 
         full_name = 'CatBoost Classifier'
         
     else:
@@ -1875,18 +1875,18 @@ def create_model(estimator = None,
     if method == 'Bagging':
         
         from sklearn.ensemble import BaggingClassifier
-        model = BaggingClassifier(model,bootstrap=True,n_estimators=10, random_state=seed)
+        model = BaggingClassifier(model,bootstrap=True,n_estimators=10, random_state=seed, n_jobs=-1)
 
     elif method == 'Boosting':
         
         from sklearn.ensemble import AdaBoostClassifier
-        model = AdaBoostClassifier(model, n_estimators=10, random_state=seed)
+        model = AdaBoostClassifier(model, n_estimators=10, random_state=seed, n_jobs=-1)
     
     
     #multiclass checking
     if y.value_counts().count() > 2:
         from sklearn.multiclass import OneVsRestClassifier
-        model = OneVsRestClassifier(model)
+        model = OneVsRestClassifier(model, n_jobs=-1)
     
     
     '''
@@ -2819,7 +2819,7 @@ def plot_model(estimator,
         from yellowbrick.model_selection import LearningCurve
         progress.value += 1
         sizes = np.linspace(0.3, 1.0, 10)  
-        visualizer = LearningCurve(model, cv=10, train_sizes=sizes, n_jobs=1, random_state=seed)
+        visualizer = LearningCurve(model, cv=10, train_sizes=sizes, n_jobs=-1, random_state=seed)
         progress.value += 1
         visualizer.fit(X_train, y_train)
         progress.value += 1
@@ -3246,26 +3246,25 @@ def compare_models(blacklist = None,
     '''
     MONITOR UPDATE ENDS
     '''
-    
     #creating model object 
     lr = LogisticRegression(random_state=seed)
-    knn = KNeighborsClassifier()
+    knn = KNeighborsClassifier(n_jobs=-1)
     nb = GaussianNB()
     dt = DecisionTreeClassifier(random_state=seed)
-    svm = SGDClassifier(max_iter=1000, tol=0.001, random_state=seed)
+    svm = SGDClassifier(max_iter=1000, tol=0.001, random_state=seed, n_jobs=-1)
     rbfsvm = SVC(gamma='auto', C=1, probability=True, kernel='rbf', random_state=seed)
-    gpc = GaussianProcessClassifier(random_state=seed)
+    gpc = GaussianProcessClassifier(random_state=seed, n_jobs=-1)
     mlp = MLPClassifier(max_iter=500, random_state=seed)
     ridge = RidgeClassifier(random_state=seed)
-    rf = RandomForestClassifier(n_estimators=10, random_state=seed)
+    rf = RandomForestClassifier(n_estimators=10, random_state=seed, n_jobs=-1)
     qda = QuadraticDiscriminantAnalysis()
-    ada = AdaBoostClassifier(random_state=seed)
+    ada = AdaBoostClassifier(random_state=seed, n_jobs=-1)
     gbc = GradientBoostingClassifier(random_state=seed)
     lda = LinearDiscriminantAnalysis()
-    et = ExtraTreesClassifier(random_state=seed)
-    xgboost = XGBClassifier(random_state=seed, n_jobs=-1, verbosity=0)
-    lightgbm = lgb.LGBMClassifier(random_state=seed)
-    catboost = CatBoostClassifier(random_state=seed, silent = True) 
+    et = ExtraTreesClassifier(random_state=seed, n_jobs=-1)
+    xgboost = XGBClassifier(random_state=seed, verbosity=0, n_jobs=-1)
+    lightgbm = lgb.LGBMClassifier(random_state=seed, n_jobs=-1)
+    catboost = CatBoostClassifier(random_state=seed, silent = True, thread_count=-1) 
     
     progress.value += 1
     
@@ -3698,8 +3697,6 @@ def tune_model(estimator = None,
           
     
   """
- 
-
 
     '''
     
@@ -3886,7 +3883,7 @@ def tune_model(estimator = None,
     
     #setting turbo parameters
     cv = 3
-        
+
     if estimator == 'knn':
         
         from sklearn.neighbors import KNeighborsClassifier
@@ -3914,7 +3911,7 @@ def tune_model(estimator = None,
                      }
         model_grid = RandomizedSearchCV(estimator=LogisticRegression(random_state=seed), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, cv=cv, 
-                                        random_state=seed, iid=False,n_jobs=-1)
+                                        random_state=seed, iid=False, n_jobs=-1)
         model_grid.fit(X_train,y_train)
         model = model_grid.best_estimator_
         best_model = model_grid.best_estimator_
@@ -4021,7 +4018,7 @@ def tune_model(estimator = None,
                       'eta0': [0.001, 0.01,0.05,0.1,0.2,0.3,0.4,0.5]
                      }    
 
-        model_grid = RandomizedSearchCV(estimator=SGDClassifier(loss='hinge', random_state=seed), 
+        model_grid = RandomizedSearchCV(estimator=SGDClassifier(loss='hinge', random_state=seed, n_jobs=-1), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
                                         cv=cv, random_state=seed, n_jobs=-1)
 
@@ -4830,24 +4827,24 @@ def blend_models(estimator_list = 'All',
         
         #creating CatBoost estimator
         lr = LogisticRegression(random_state=seed)
-        knn = KNeighborsClassifier()
+        knn = KNeighborsClassifier(n_jobs=-1)
         nb = GaussianNB()
         dt = DecisionTreeClassifier(random_state=seed)
-        svm = SGDClassifier(max_iter=1000, tol=0.001, random_state=seed)
+        svm = SGDClassifier(max_iter=1000, tol=0.001, random_state=seed, n_jobs=-1)
         rbfsvm = SVC(gamma='auto', C=1, probability=True, kernel='rbf', random_state=seed)
-        gpc = GaussianProcessClassifier(random_state=seed)
+        gpc = GaussianProcessClassifier(random_state=seed, n_jobs=-1)
         mlp = MLPClassifier(max_iter=500, random_state=seed)
         ridge = RidgeClassifier(random_state=seed)
-        rf = RandomForestClassifier(n_estimators=10, random_state=seed)
+        rf = RandomForestClassifier(n_estimators=10, random_state=seed, n_jobs=-1)
         qda = QuadraticDiscriminantAnalysis()
-        ada = AdaBoostClassifier(random_state=seed)
+        ada = AdaBoostClassifier(random_state=seed, n_jobs=-1)
         gbc = GradientBoostingClassifier(random_state=seed)
         lda = LinearDiscriminantAnalysis()
-        et = ExtraTreesClassifier(random_state=seed)
-        xgboost = XGBClassifier(random_state=seed, n_jobs=-1, verbosity=0)
-        lightgbm = lgb.LGBMClassifier(random_state=seed)
+        et = ExtraTreesClassifier(random_state=seed, n_jobs=-1)
+        xgboost = XGBClassifier(random_state=seed, verbosity=0, n_jobs=-1)
+        lightgbm = lgb.LGBMClassifier(random_state=seed, n_jobs=-1)
         #catboost = CatBoostClassifier(random_state=seed, silent = True)
-        
+
         progress.value += 1
         
         if turbo:
@@ -8351,6 +8348,3 @@ def optimize_threshold(estimator,
     fig.update_layout(title={'text': title, 'y':0.95,'x':0.45,'xanchor': 'center','yanchor': 'top'})
     fig.show()
     print('Optimized Probability Threshold: ' + str(t) + ' | ' + 'Optimized Cost Function: ' + str(y1))
-
-
-
