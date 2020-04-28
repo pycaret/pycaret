@@ -27,7 +27,7 @@ def readme():
 
 setup(
     name="pycaret",
-    version="1.0.0",
+    version="1.0.1",
     description="An open source, low-code machine learning library in Python",
     long_description=readme(),
     long_description_content_type="text/markdown",
