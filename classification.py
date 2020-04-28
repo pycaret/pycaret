@@ -11,6 +11,7 @@ def setup(data,
           categorical_features = None,
           categorical_imputation = 'constant',
           ordinal_features = None,
+          woe_features = None,
           high_cardinality_features = None, #latest
           high_cardinality_method = 'frequency', #latest
           numeric_features = None,
@@ -416,7 +417,7 @@ def setup(data,
     if ordinal_features is not None:
         if type(ordinal_features) is not dict:
             sys.exit("(Type Error): ordinal_features must be of type dictionary with column name as key and ordered values as list. ")
-    
+
     #ordinal features check
     if ordinal_features is not None:
         data_cols = data.columns
@@ -438,7 +439,22 @@ def setup(data,
                 if j not in value_in_data:
                     text =  "Column name '" + str(i) + "' doesnt contain any level named '" + str(j) + "'."
                     sys.exit(text)
+     
+    #woe_features
+    if woe_features is not None:
+        if type(woe_features) is not list:
+            sys.exit("(Type Error): woe_features must be of list of column names. ")
     
+    
+    #woe features check
+    if woe_features is not None:
+        data_cols = data.columns
+        data_cols = data_cols.drop(target)
+                        
+        for i in woe_features:
+            if i not in data_cols:
+                sys.exit("(Value Error) Column name passed as a key in woe_features param doesnt exist. ")
+                
     #high_cardinality_features
     if high_cardinality_features is not None:
         if type(high_cardinality_features) is not list:
@@ -855,7 +871,18 @@ def setup(data,
         ordinal_columns_and_categories_pass = ordinal_features
     else:
         ordinal_columns_and_categories_pass = {}
-    
+
+    #woe_features
+    if woe_features is not None:
+        apply_woe_encoding_pass = True
+    else:
+        apply_woe_encoding_pass = False
+        
+    if apply_woe_encoding_pass is True:
+        woe_columns_and_categories_pass = woe_features
+    else:
+        woe_columns_and_categories_pass = []
+
     if high_cardinality_features is not None:
         apply_cardinality_reduction_pass = True
     else:
@@ -877,13 +904,16 @@ def setup(data,
         display_dtypes_pass = True
         
     #import library
-    from pycaret import preprocess
-    
+    #from pycaret import preprocess
+    #-----------------------------------????????????????????????????????
+    import preprocess3 as preprocess
     data = preprocess.Preprocess_Path_One(train_data = data, 
                                           target_variable = target,
                                           categorical_features = cat_features_pass,
                                           apply_ordinal_encoding = apply_ordinal_encoding_pass, #new
+                                          apply_woe_encoding = apply_woe_encoding_pass, #new
                                           ordinal_columns_and_categories = ordinal_columns_and_categories_pass, #new
+                                          woe_columns_and_categories = woe_columns_and_categories_pass, #new
                                           apply_cardinality_reduction = apply_cardinality_reduction_pass, #latest
                                           cardinal_method = cardinal_method_pass, #latest
                                           cardinal_features = cardinal_features_pass, #latest
@@ -1031,7 +1061,12 @@ def setup(data,
         ordinal_features_grid = True
     else:
         ordinal_features_grid = False
-        
+
+    if woe_features is not None:
+        woe_features_grid = True
+    else:
+        woe_features_grid = False
+
     if handle_unknown_categorical:
         unknown_categorical_method_grid = unknown_categorical_method
     else:
@@ -1275,6 +1310,7 @@ def setup(data,
                                          ['Numeric Features ', str(float_type) ],
                                          ['Categorical Features ', str(cat_type) ],
                                          ['Ordinal Features ', ordinal_features_grid], #new
+                                         ['WOE Features ', woe_features_grid], #new
                                          ['High Cardinality Features ', high_cardinality_features_grid], #latest
                                          ['High Cardinality Method ', high_cardinality_method_grid], #latest
                                          ['Sampled Data', '(' + str(X_train.shape[0] + X_test.shape[0]) + ', ' + str(data_before_preprocess.shape[1]) + ')' ], 
@@ -1369,6 +1405,7 @@ def setup(data,
                                          ['Numeric Features ', str(float_type) ],
                                          ['Categorical Features ', str(cat_type) ],
                                          ['Ordinal Features ', ordinal_features_grid], #new
+                                         ['WOE Features ', woe_features_grid], #new
                                          ['High Cardinality Features ', high_cardinality_features_grid],
                                          ['High Cardinality Method ', high_cardinality_method_grid], #latest
                                          ['Sampled Data', '(' + str(X_train.shape[0] + X_test.shape[0]) + ', ' + str(data_before_preprocess.shape[1]) + ')' ], 
@@ -1459,6 +1496,7 @@ def setup(data,
                                      ['Numeric Features ', str(float_type) ],
                                      ['Categorical Features ', str(cat_type) ],
                                      ['Ordinal Features ', ordinal_features_grid], #new
+                                     ['WOE Features ', woe_features_grid], #new
                                      ['High Cardinality Features ', high_cardinality_features_grid],
                                      ['High Cardinality Method ', high_cardinality_method_grid], #latest
                                      ['Sampled Data', '(' + str(X_train.shape[0] + X_test.shape[0]) + ', ' + str(data_before_preprocess.shape[1]) + ')' ], 
