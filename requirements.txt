@@ -28,3 +28,4 @@ datefinder>=0.7.0
 datetime
 DateTime>=4.3
 awscli
+category_encoders>=2.0.0
