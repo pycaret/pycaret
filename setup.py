@@ -43,9 +43,9 @@ setup(
     packages=["pycaret"],
     include_package_data=True,
     install_requires=["pandas", "numpy", "seaborn", "matplotlib", "IPython", "joblib", 
-                     "scikit-learn==0.22", "shap==0.32.1", "ipywidgets", "yellowbrick==1.0.1", "xgboost==0.90",
-                     "wordcloud", "textblob", "plotly==4.4.1", "cufflinks==0.17.0", "umap-learn",
-                     "lightgbm==2.3.1", "pyLDAvis", "gensim", "spacy", "nltk", "mlxtend",
-                     "pyod", "catboost==0.20.2", "pandas-profiling==2.3.0", "kmodes==0.10.1",
-                     "datefinder==0.7.0", "datetime", "DateTime==4.3", "awscli"]
+                     "scikit-learn>=0.22", "shap>=0.32.1", "ipywidgets", "yellowbrick>=1.0.1", "xgboost>=0.90",
+                     "wordcloud", "textblob", "plotly>=4.4.1", "cufflinks>=0.17.0", "umap-learn",
+                     "lightgbm>=2.3.1", "pyLDAvis", "gensim", "spacy", "nltk", "mlxtend",
+                     "pyod", "catboost>=0.20.2", "pandas-profiling>=2.3.0", "kmodes>=0.10.1",
+                     "datefinder>=0.7.0", "datetime", "DateTime>=4.3", "awscli"]
 )
