@@ -2,13 +2,20 @@
 # Author: Fahad Akbar <m.akbar@queensu.ca>
 # License: MIT
 
+import sys 
+import datefinder
+from datetime import datetime
+import calendar
 
 import pandas as pd
 import numpy as np
 import ipywidgets as wg 
 from IPython.display import display
 from ipywidgets import Layout
-from sklearn.base import BaseEstimator , TransformerMixin
+from sklearn import metrics
+from sklearn import cluster
+from sklearn.ensemble import RandomForestClassifier as rfc
+from sklearn.ensemble import RandomForestRegressor as rfr
 from sklearn.preprocessing import StandardScaler
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.preprocessing import RobustScaler
@@ -17,35 +24,31 @@ from sklearn.preprocessing import PowerTransformer
 from sklearn.preprocessing import QuantileTransformer
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.preprocessing import OrdinalEncoder
+from sklearn.preprocessing import KBinsDiscretizer
+from sklearn.preprocessing import LabelEncoder
+from sklearn.cross_decomposition import PLSRegression
 from sklearn.decomposition import PCA
 from sklearn.decomposition import KernelPCA
-from sklearn.cross_decomposition import PLSRegression
-from sklearn.manifold import TSNE
 from sklearn.decomposition import IncrementalPCA
-from sklearn.preprocessing import KBinsDiscretizer
+from sklearn.manifold import TSNE
+from sklearn.pipeline import Pipeline
+from sklearn.base import BaseEstimator
+from sklearn.base import TransformerMixin
 from pyod.models.knn import KNN
 from pyod.models.iforest import IForest
 from pyod.models.pca import PCA as PCA_od
-from sklearn import cluster
 from scipy import stats
-from sklearn.ensemble import RandomForestClassifier as rfc
-from sklearn.ensemble import RandomForestRegressor as rfr
 from lightgbm import LGBMClassifier as lgbmc
 from lightgbm import LGBMRegressor as lgbmr
-import sys 
-from sklearn.pipeline import Pipeline
-from sklearn import metrics
-import datefinder
-from datetime import datetime
-import calendar
-from sklearn.preprocessing import LabelEncoder
+
+from category_encoders.woe import WOEEncoder
+
 pd.set_option('display.max_columns', 500)
 pd.set_option('display.max_rows', 500)
 
 #ignore warnings
 import warnings
 warnings.filterwarnings('ignore') 
-
 #_____________________________________________________________________________________________________________________________
 
 class DataTypes_Auto_infer(BaseEstimator,TransformerMixin):
@@ -126,7 +129,7 @@ class DataTypes_Auto_infer(BaseEstimator,TransformerMixin):
               increments = features.diff()[1:]
               # if all increments are 1 (with float tolerance), then the column is ID column
               if sum(np.abs(increments-1) < 1e-7) == len_samples-1:
-                self.id_columns.append(i)
+                  self.id_columns.append(i) 
       
     data_len = len(data)                        
         
@@ -1171,6 +1174,44 @@ class Dummify(BaseEstimator,TransformerMixin):
       return(data)
     else:
       return(data)
+# _______________________________________________________________________________________________________________________
+
+# Weight of Evidence Encoder
+class woe(BaseEstimator,TransformerMixin):
+  '''
+    - converts categorical features with Weight of Evidence Encoder
+    - takes a dataframe , and information about column names and ordered categories as list
+    - returns float panda data frame
+  '''
+
+  def __init__(self,target, info_as_dict):
+    self.target = target
+    self.info_as_dict = info_as_dict
+    return(None)
+
+  def fit(self,data,y=None):
+    return(None)
+
+  def transform(self,dataset,y=None):
+    data = dataset.copy()
+    new_data_test = pd.DataFrame(self.enc.transform(data[self.info_as_dict],self.target),columns= self.info_as_dict,index= data.index)
+    for i in self.info_as_dict:
+      data[i] = new_data_test[i]
+    return(data)
+
+  def fit_transform(self,dataset,y=None):
+    data = dataset.copy()
+    # creat categories from given keys in the data set
+    # now do fit transform 
+    self.enc = WOEEncoder()
+    #self.enc = OrdinalEncoder(cat_list)
+    
+    new_data_train = pd.DataFrame(self.enc.fit_transform(data.loc[:,self.info_as_dict],data.loc[:,[self.target]]),columns=self.info_as_dict,index= data.index )
+    # new_data = pd.DataFrame(self.enc.fit_transform(data.loc[:,self.info_as_dict.keys()]))
+    for i in self.info_as_dict:
+      data[i] = new_data_train[i]
+      
+    return(data)
 
 # _______________________________________________________________________________________________________________________
 # Outlier
@@ -1239,7 +1280,6 @@ class Outlier(BaseEstimator,TransformerMixin):
     # self.outliers = data[data['vote_outlier']==3]
     
     return(dataset[[True if i not in self.outliers.index else False for i in dataset.index]])
-
 
 #____________________________________________________________________________________________________________________________________________________________________
 # Column Name cleaner transformer
@@ -1735,7 +1775,6 @@ class Advanced_Feature_Selection_Classic(BaseEstimator,TransformerMixin):
     
     self.selected_columns_test = dataset[self.selected_columns].drop(self.target,axis=1).columns
     return(dataset[self.selected_columns])
-#_
 
 #_________________________________________________________________________________________________________________________________________
 class Fix_multicollinearity(BaseEstimator,TransformerMixin):
@@ -1954,12 +1993,10 @@ class Remove_100(BaseEstimator,TransformerMixin):
 
   def fit_transform(self,dataset,y=None):
     data = dataset.copy()
-
     targetless_data = data.drop(self.target, axis=1)
-
     # correlation should be calculated between at least two features, if there is only 1, there is nothing to delete
     if len(targetless_data.columns) <= 1:
-      return data
+          return data
 
     corr = pd.DataFrame(np.corrcoef(targetless_data.T))
     corr.columns = targetless_data.columns
@@ -2174,8 +2211,6 @@ class DFS_Classic(BaseEstimator,TransformerMixin):
    
     return(data_fe_final)
 
-
-
 #____________________________________________________________________________________________________________________________________________________________________
 # Empty transformer
 class Empty(BaseEstimator,TransformerMixin):
@@ -2275,7 +2310,6 @@ class Reduce_Dimensions_For_Supervised_Path(BaseEstimator,TransformerMixin):
     else:
       return(dataset)
 
-
 #___________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________
 # preprocess_all_in_one
 def Preprocess_Path_One(train_data,target_variable,ml_usecase=None,test_data =None,categorical_features=[],numerical_features=[],time_features=[],features_todrop=[],display_types=True,
@@ -2284,6 +2318,7 @@ def Preprocess_Path_One(train_data,target_variable,ml_usecase=None,test_data =No
                                 club_rare_levels = False, rara_level_threshold_percentage =0.05,
                                 apply_untrained_levels_treatment= False,untrained_levels_treatment_method = 'least frequent',
                                 apply_ordinal_encoding = False, ordinal_columns_and_categories= {},
+                                apply_woe_encoding = False, woe_columns_and_categories= [],
                                 apply_cardinality_reduction=False, cardinal_method = 'cluster', cardinal_features=[],
                                 apply_binning=False, features_to_binn =[],
                                 apply_grouping= False , group_name=[] , features_to_group_ListofList=[[]],
@@ -2402,11 +2437,25 @@ def Preprocess_Path_One(train_data,target_variable,ml_usecase=None,test_data =No
           lis = ['not_available'] + ordinal_columns_and_categories[i]
           ordinal_columns_and_categories.update({i:lis})
     
-    global ordinal
+    #global ordinal
     ordinal = Ordinal(info_as_dict=ordinal_columns_and_categories)
   else:
     ordinal = Empty()
 
+  # WOE coding
+  if apply_woe_encoding == True:
+    # we need to make sure that if the columns chosen by user have NA & imputer strategy is not_availablle then we add that to the category first
+    for i in woe_columns_and_categories:
+      if sum(train_data[i].isna()) > 0:
+        if categorical_imputation_strategy=='not_available':
+          lis = ['not_available'] + woe_columns_and_categories[i]
+          woe_columns_and_categories.update({i:lis})
+    
+    #global ordinal
+    ordinal = woe(target=target_variable,info_as_dict=woe_columns_and_categories)
+  else:
+    ordinal = Empty()
+    
   # grouping
   if apply_grouping == True:
     global group
@@ -2538,13 +2587,10 @@ def Preprocess_Path_One(train_data,target_variable,ml_usecase=None,test_data =No
                  ('dfs',dfs),
                  ('pca',pca)
                  ])
-  
   if test_data is not None:
     return(pipe.fit_transform(train_data),pipe.transform(test_data))
   else:
-    return(pipe.fit_transform(train_data))
-
-
+    return (pipe.fit_transform(train_data))
 
 # ______________________________________________________________________________________________________________________________________________________
 # preprocess_all_in_one_unsupervised
@@ -2555,6 +2601,7 @@ def Preprocess_Path_Two(train_data,ml_usecase=None,test_data =None,categorical_f
                                 apply_untrained_levels_treatment= False,untrained_levels_treatment_method = 'least frequent',
                                 apply_cardinality_reduction=False, cardinal_method = 'cluster', cardinal_features=[],
                                 apply_ordinal_encoding = False, ordinal_columns_and_categories= {}, 
+                                apply_woe_encoding = False, woe_columns_and_categories= [], 
                                 apply_binning=False, features_to_binn =[],
                                 apply_grouping= False , group_name=[] , features_to_group_ListofList=[[]],
                                 scale_data= False, scaling_method='zscore',
@@ -2662,11 +2709,25 @@ def Preprocess_Path_Two(train_data,ml_usecase=None,test_data =None,categorical_f
           lis = ['not_available'] + ordinal_columns_and_categories[i]
           ordinal_columns_and_categories.update({i:lis})
     
-    global ordinal
+    #global ordinal
     ordinal = Ordinal(info_as_dict=ordinal_columns_and_categories)
   else:
     ordinal = Empty()
-  
+    
+ # woe coding
+  if apply_woe_encoding == True:
+    # we need to make sure that if the columns chosen by user have NA & imputer strategy is not_availablle then we add that to the categories first
+    for i in woe_columns_and_categories:
+      if sum(train_data[i].isna()) > 0:
+        if categorical_imputation_strategy=='not_available':
+          lis = ['not_available'] + woe_columns_and_categories[i]
+          woe_columns_and_categories[i]=lis
+    
+    #global ordinal
+    ordinal = woe(target=target_variable,info_as_dict=woe_columns_and_categories)
+  else:
+    ordinal = Empty()
+    
   # grouping
   if apply_grouping == True:
     global group
