@@ -904,9 +904,7 @@ def setup(data,
         display_dtypes_pass = True
         
     #import library
-    #from pycaret import preprocess
-    #-----------------------------------????????????????????????????????
-    import preprocess3 as preprocess
+    from pycaret import preprocess
     data = preprocess.Preprocess_Path_One(train_data = data, 
                                           target_variable = target,
                                           categorical_features = cat_features_pass,
