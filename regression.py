@@ -1729,10 +1729,6 @@ def create_model(estimator = None,
     avgs_mape =np.empty((0,0)) 
     avgs_rmsle =np.empty((0,0))
     avgs_training_time=np.empty((0,0))
-    
-
-        #mask = actual != 0
-        #return np.mean((np.fabs(actual - prediction)/actual)[mask])* 100
   
     '''
     MONITOR UPDATE STARTS
