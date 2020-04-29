@@ -2,6 +2,13 @@
 # Author: Moez Ali <moez.ali@queensu.ca>
 # License: MIT
 
+def calculate_mape(actual, prediction):
+    import numpy as np
+    epsilon = np.finfo(np.float64).eps
+    mape = np.abs((prediction - actual) / np.maximum(np.abs(actual), epsilon))
+    output_errors = np.average(mape, axis=0) * 100
+    return np.average(output_errors)
+
 def setup(data, 
           target, 
           train_size=0.7,
@@ -665,7 +672,7 @@ def setup(data,
     #pandas option
     pd.set_option('display.max_columns', 500)
     pd.set_option('display.max_rows', 500)
-    
+    pd.set_option('precision', 4)
     #progress bar
     if sampling:
         max = 10 + 3
@@ -1107,6 +1114,7 @@ def setup(data,
     pd.reset_option("display.max_rows") #switch back on 
     pd.reset_option("display.max_columns")
     
+
     #create an empty list for pickling later.
     experiment__ = []
     
@@ -1722,9 +1730,9 @@ def create_model(estimator = None,
     avgs_rmsle =np.empty((0,0))
     avgs_training_time=np.empty((0,0))
     
-    def calculate_mape(actual, prediction):
-        mask = actual != 0
-        return (np.fabs(actual - prediction)/actual)[mask].mean()
+
+        #mask = actual != 0
+        #return np.mean((np.fabs(actual - prediction)/actual)[mask])* 100
   
     '''
     MONITOR UPDATE STARTS
@@ -2070,6 +2078,7 @@ def create_model(estimator = None,
     model.fit(data_X, data_y)
     # Green the mean
     model_results=model_results.style.apply(lambda x: ['background: lightgreen' if (x.name == 'Mean') else '' for i in x], axis=1)
+    model_results=model_results.format({'MAPE':'{:.2%}', 'Training time': '{:.2}s'})
     progress.value += 1
     
     #storing into experiment
@@ -2204,7 +2213,7 @@ def ensemble_model(estimator,
     import datetime, time
     import ipywidgets as ipw
     from IPython.display import display, HTML, clear_output, update_display
-    
+    pd.set_option('precision', 4)
     #progress bar
     progress = ipw.IntProgress(value=0, min=0, max=fold+4, step=1 , description='Processing: ')
     master_display = pd.DataFrame(columns=['MAE','MSE','RMSE', 'R2', 'RMSLE', 'MAPE', 'Training time'])
@@ -2295,10 +2304,6 @@ def ensemble_model(estimator,
     avgs_r2 =np.empty((0,0))
     avgs_mape =np.empty((0,0))
     avgs_training_time=np.empty((0,0))
-    
-    def calculate_mape(actual, prediction):
-        mask = actual != 0
-        return (np.fabs(actual - prediction)/actual)[mask].mean()
     
     fold_num = 1 
     
@@ -2451,6 +2456,7 @@ def ensemble_model(estimator,
     model_results.loc[:,'Training time'] = model_results.loc[:,'Training time'].round(2)
     # Green the mean
     model_results=model_results.style.apply(lambda x: ['background: lightgreen' if (x.name == 'Mean') else '' for i in x], axis=1)
+    model_results=model_results.format({'MAPE':'{:.2%}', 'Training time': '{:.2}s'})
     progress.value += 1
     
     #refitting the model on complete X_train, y_train
@@ -2637,7 +2643,7 @@ def compare_models(blacklist = None,
     import time, datetime
     import ipywidgets as ipw
     from IPython.display import display, HTML, clear_output, update_display
-    
+    pd.set_option('precision', 4)
     #progress bar
     if blacklist is None:
         len_of_blacklist = 0
@@ -2892,9 +2898,6 @@ def compare_models(blacklist = None,
     avgs_mape =np.empty((0,0))  
     avgs_training_time=np.empty((0,0))
     
-    def calculate_mape(actual, prediction):
-        mask = actual != 0
-        return (np.fabs(actual - prediction)/actual)[mask].mean()
     
     name_counter = 0
       
@@ -3043,11 +3046,12 @@ def compare_models(blacklist = None,
         if s.name=='R2':# min
             to_highlight = s == s.max()
         else:
-            to_highlight = s == s.min()
+            to_highlight = s == min(filter(lambda x: x >= 0, s))  # doesn't highlight negative scores
 
         return ['background-color: yellow' if v else '' for v in to_highlight]
 
     compare_models_ = master_display.style.apply(highlight_min,subset=['MAE','MSE','RMSE','R2','RMSLE','MAPE', 'Training time' ])
+    compare_models_=compare_models_.format({'MAPE':'{:.2%}', 'Training time': '{:.2}s'})
     compare_models_ = compare_models_.set_properties(**{'text-align': 'left'})
     compare_models_ = compare_models_.set_table_styles([dict(selector='th', props=[('text-align', 'left')])])
     
@@ -3179,7 +3183,7 @@ def blend_models(estimator_list = 'All',
     import time, datetime
     import ipywidgets as ipw
     from IPython.display import display, HTML, clear_output, update_display
-    
+    pd.set_option('precision', 4)
     #progress bar
     progress = ipw.IntProgress(value=0, min=0, max=fold+4, step=1 , description='Processing: ')
     master_display = pd.DataFrame(columns=['MAE','MSE','RMSE', 'R2', 'RMSLE', 'MAPE', 'Training time'])
@@ -3233,10 +3237,6 @@ def blend_models(estimator_list = 'All',
     avgs_r2 =np.empty((0,0))
     avgs_mape =np.empty((0,0))
     avgs_training_time=np.empty((0,0))
-    
-    def calculate_mape(actual, prediction):
-        mask = actual != 0
-        return (np.fabs(actual - prediction)/actual)[mask].mean()
 
     kf = KFold(fold, random_state=seed)
     
@@ -3567,6 +3567,7 @@ def blend_models(estimator_list = 'All',
     model_results.loc[:,'Training time'] = model_results.loc[:,'Training time'].round(2)
     # Green the mean
     model_results=model_results.style.apply(lambda x: ['background: lightgreen' if (x.name == 'Mean') else '' for i in x], axis=1)
+    model_results=model_results.format({'MAPE':'{:.2%}', 'Training time': '{:.2}s'})
     progress.value += 1
     
     #refitting the model on complete X_train, y_train
@@ -3779,7 +3780,7 @@ def tune_model(estimator = None,
     import time, datetime
     import ipywidgets as ipw
     from IPython.display import display, HTML, clear_output, update_display
-    
+    pd.set_option('precision', 4)
     #progress bar
     progress = ipw.IntProgress(value=0, min=0, max=fold+6, step=1 , description='Processing: ')
     master_display = pd.DataFrame(columns=['MAE','MSE','RMSE', 'R2', 'RMSLE', 'MAPE', 'Training time'])
@@ -3855,9 +3856,6 @@ def tune_model(estimator = None,
     avgs_r2 =np.empty((0,0))
     avgs_mape =np.empty((0,0))
     avgs_training_time=np.empty((0,0))
-    def calculate_mape(actual, prediction):
-        mask = actual != 0
-        return (np.fabs(actual - prediction)/actual)[mask].mean()
     
     '''
     MONITOR UPDATE STARTS
@@ -4625,6 +4623,7 @@ def tune_model(estimator = None,
     model_results.loc[:,'Training time'] = model_results.loc[:,'Training time'].round(2)
     # Green the mean
     model_results=model_results.style.apply(lambda x: ['background: lightgreen' if (x.name == 'Mean') else '' for i in x], axis=1)
+    model_results=model_results.format({'MAPE':'{:.2%}', 'Training time': '{:.2}s'})
     progress.value += 1
     
     #refitting the model on complete X_train, y_train
@@ -4798,7 +4797,7 @@ def stack_models(estimator_list,
     from IPython.display import display, HTML, clear_output, update_display
     import time, datetime
     from copy import deepcopy
-    
+    pd.set_option('precision', 4)
     #copy estimator_list
     estimator_list = deepcopy(estimator_list)
     
@@ -4962,10 +4961,6 @@ def stack_models(estimator_list,
     avgs_r2 =np.empty((0,0))
     avgs_mape =np.empty((0,0))  
     avgs_training_time=np.empty((0,0))
-    def calculate_mape(actual, prediction):
-        mask = actual != 0
-        return (np.fabs(actual - prediction)/actual)[mask].mean()
-
     
     progress.value += 1
     
@@ -5125,6 +5120,7 @@ def stack_models(estimator_list,
     model_results.loc[:,'Training time'] = model_results.loc[:,'Training time'].round(2)
     # Green the mean
     model_results=model_results.style.apply(lambda x: ['background: lightgreen' if (x.name == 'Mean') else '' for i in x], axis=1)
+    model_results=model_results.format({'MAPE':'{:.2%}', 'Training time': '{:.2}s'})
     progress.value += 1
     
     #appending method into models_
@@ -5301,7 +5297,7 @@ def create_stacknet(estimator_list,
     import time, datetime
     from copy import deepcopy
     from sklearn.base import clone
-    
+    pd.set_option('precision', 4)
     #copy estimator_list
     estimator_list = deepcopy(estimator_list)
     
@@ -5529,9 +5525,6 @@ def create_stacknet(estimator_list,
     avgs_r2 =np.empty((0,0))
     avgs_mape =np.empty((0,0))  
     avgs_training_time=np.empty((0,0))
-    def calculate_mape(actual, prediction):
-        mask = actual != 0
-        return (np.fabs(actual - prediction)/actual)[mask].mean()
     
     
     fold_num = 1
@@ -5681,6 +5674,7 @@ def create_stacknet(estimator_list,
     model_results.loc[:,'Training time'] = model_results.loc[:,'Training time'].round(2)
     # Green the mean
     model_results=model_results.style.apply(lambda x: ['background: lightgreen' if (x.name == 'Mean') else '' for i in x], axis=1)
+    model_results=model_results.format({'MAPE':'{:.2%}', 'Training time': '{:.2}s'})
     progress.value += 1
         
     #appending meta_model into models_
@@ -5804,7 +5798,7 @@ def plot_model(estimator,
     import ipywidgets as ipw
     from IPython.display import display, HTML, clear_output, update_display
     from copy import deepcopy
-    
+    pd.set_option('precision', 4)
     #progress bar
     progress = ipw.IntProgress(value=0, min=0, max=5, step=1 , description='Processing: ')
     display(progress)
@@ -5816,7 +5810,6 @@ def plot_model(estimator,
     #general dependencies
     import matplotlib.pyplot as plt
     import numpy as np
-    import pandas as pd
     from sklearn.base import clone
     
     #defining estimator as model locally
@@ -6659,11 +6652,7 @@ def predict_model(estimator,
     from sklearn import metrics
     from copy import deepcopy
     from IPython.display import clear_output, update_display
-    
-    def calculate_mape(actual, prediction):
-        mask = actual != 0
-        return (np.fabs(actual - prediction)/actual)[mask].mean()
-    
+    pd.set_option('precision', 4)
     estimator = deepcopy(estimator)
     clear_output()
     
@@ -6892,6 +6881,7 @@ def predict_model(estimator,
                 df_score = pd.DataFrame( {'Model' : 'Stacking Regressor', 'MAE' : [mae], 'MSE' : [mse], 'RMSE' : [rmse], 
                                           'R2' : [r2], 'RMSLE' : [rmsle], 'MAPE' : [mape]})
                 df_score = df_score.round(round)
+                df_score=df_score.style.format({'MAPE':'{:.2%}'})
                 display(df_score)
         
             label = pd.DataFrame(pred_)
@@ -7001,6 +6991,7 @@ def predict_model(estimator,
                 df_score = pd.DataFrame( {'Model' : 'Stacking Regressor', 'MAE' : [mae], 'MSE' : [mse], 'RMSE' : [rmse], 
                                           'R2' : [r2], 'RMSLE' : [rmsle], 'MAPE' : [mape]})
                 df_score = df_score.round(round)
+                df_score=df_score.style.format({'MAPE':'{:.2%}'})
                 display(df_score)
                 
             label = pd.DataFrame(pred_)
@@ -7080,6 +7071,7 @@ def predict_model(estimator,
             df_score = pd.DataFrame( {'Model' : [full_name], 'MAE' : [mae], 'MSE' : [mse], 'RMSE' : [rmse], 
                                       'R2' : [r2], 'RMSLE' : [rmsle], 'MAPE' : [mape] })
             df_score = df_score.round(4)
+            df_score=df_score.style.format({'MAPE':'{:.2%}'})
             display(df_score)
         
             label = pd.DataFrame(pred_)
