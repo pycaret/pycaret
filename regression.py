@@ -2074,7 +2074,7 @@ def create_model(estimator = None,
     model.fit(data_X, data_y)
     # Green the mean
     model_results=model_results.style.apply(lambda x: ['background: lightgreen' if (x.name == 'Mean') else '' for i in x], axis=1)
-    model_results=model_results.format({'MAPE':'{:.2%}', 'Training time': '{:.2}s'})
+    model_results=model_results.format({'MAPE':'{:.2}', 'Training time': '{:.2}s'})
     progress.value += 1
     
     #storing into experiment
@@ -2452,7 +2452,7 @@ def ensemble_model(estimator,
     model_results.loc[:,'Training time'] = model_results.loc[:,'Training time'].round(2)
     # Green the mean
     model_results=model_results.style.apply(lambda x: ['background: lightgreen' if (x.name == 'Mean') else '' for i in x], axis=1)
-    model_results=model_results.format({'MAPE':'{:.2%}', 'Training time': '{:.2}s'})
+    model_results=model_results.format({'MAPE':'{:.2}', 'Training time': '{:.2}s'})
     progress.value += 1
     
     #refitting the model on complete X_train, y_train
@@ -3047,7 +3047,7 @@ def compare_models(blacklist = None,
         return ['background-color: yellow' if v else '' for v in to_highlight]
 
     compare_models_ = master_display.style.apply(highlight_min,subset=['MAE','MSE','RMSE','R2','RMSLE','MAPE', 'Training time' ])
-    compare_models_=compare_models_.format({'MAPE':'{:.2%}', 'Training time': '{:.2}s'})
+    compare_models_=compare_models_.format({'MAPE':'{:.2}', 'Training time': '{:.2}s'})
     compare_models_ = compare_models_.set_properties(**{'text-align': 'left'})
     compare_models_ = compare_models_.set_table_styles([dict(selector='th', props=[('text-align', 'left')])])
     
@@ -3563,7 +3563,7 @@ def blend_models(estimator_list = 'All',
     model_results.loc[:,'Training time'] = model_results.loc[:,'Training time'].round(2)
     # Green the mean
     model_results=model_results.style.apply(lambda x: ['background: lightgreen' if (x.name == 'Mean') else '' for i in x], axis=1)
-    model_results=model_results.format({'MAPE':'{:.2%}', 'Training time': '{:.2}s'})
+    model_results=model_results.format({'MAPE':'{:.2}', 'Training time': '{:.2}s'})
     progress.value += 1
     
     #refitting the model on complete X_train, y_train
@@ -4619,7 +4619,7 @@ def tune_model(estimator = None,
     model_results.loc[:,'Training time'] = model_results.loc[:,'Training time'].round(2)
     # Green the mean
     model_results=model_results.style.apply(lambda x: ['background: lightgreen' if (x.name == 'Mean') else '' for i in x], axis=1)
-    model_results=model_results.format({'MAPE':'{:.2%}', 'Training time': '{:.2}s'})
+    model_results=model_results.format({'MAPE':'{:.2}', 'Training time': '{:.2}s'})
     progress.value += 1
     
     #refitting the model on complete X_train, y_train
@@ -5116,7 +5116,7 @@ def stack_models(estimator_list,
     model_results.loc[:,'Training time'] = model_results.loc[:,'Training time'].round(2)
     # Green the mean
     model_results=model_results.style.apply(lambda x: ['background: lightgreen' if (x.name == 'Mean') else '' for i in x], axis=1)
-    model_results=model_results.format({'MAPE':'{:.2%}', 'Training time': '{:.2}s'})
+    model_results=model_results.format({'MAPE':'{:.2}', 'Training time': '{:.2}s'})
     progress.value += 1
     
     #appending method into models_
@@ -5670,7 +5670,7 @@ def create_stacknet(estimator_list,
     model_results.loc[:,'Training time'] = model_results.loc[:,'Training time'].round(2)
     # Green the mean
     model_results=model_results.style.apply(lambda x: ['background: lightgreen' if (x.name == 'Mean') else '' for i in x], axis=1)
-    model_results=model_results.format({'MAPE':'{:.2%}', 'Training time': '{:.2}s'})
+    model_results=model_results.format({'MAPE':'{:.2}', 'Training time': '{:.2}s'})
     progress.value += 1
         
     #appending meta_model into models_
@@ -6877,7 +6877,7 @@ def predict_model(estimator,
                 df_score = pd.DataFrame( {'Model' : 'Stacking Regressor', 'MAE' : [mae], 'MSE' : [mse], 'RMSE' : [rmse], 
                                           'R2' : [r2], 'RMSLE' : [rmsle], 'MAPE' : [mape]})
                 df_score = df_score.round(round)
-                df_score=df_score.style.format({'MAPE':'{:.2%}'})
+                df_score=df_score.style.format({'MAPE':'{:.2}'})
                 display(df_score)
         
             label = pd.DataFrame(pred_)
@@ -6987,7 +6987,7 @@ def predict_model(estimator,
                 df_score = pd.DataFrame( {'Model' : 'Stacking Regressor', 'MAE' : [mae], 'MSE' : [mse], 'RMSE' : [rmse], 
                                           'R2' : [r2], 'RMSLE' : [rmsle], 'MAPE' : [mape]})
                 df_score = df_score.round(round)
-                df_score=df_score.style.format({'MAPE':'{:.2%}'})
+                df_score=df_score.style.format({'MAPE':'{:.2}'})
                 display(df_score)
                 
             label = pd.DataFrame(pred_)
@@ -7067,7 +7067,7 @@ def predict_model(estimator,
             df_score = pd.DataFrame( {'Model' : [full_name], 'MAE' : [mae], 'MSE' : [mse], 'RMSE' : [rmse], 
                                       'R2' : [r2], 'RMSLE' : [rmsle], 'MAPE' : [mape] })
             df_score = df_score.round(4)
-            df_score=df_score.style.format({'MAPE':'{:.2%}'})
+            df_score=df_score.style.format({'MAPE':'{:.2}'})
             display(df_score)
         
             label = pd.DataFrame(pred_)
