@@ -6,7 +6,7 @@ def calculate_mape(actual, prediction):
     import numpy as np
     epsilon = np.finfo(np.float64).eps
     mape = np.abs((prediction - actual) / np.maximum(np.abs(actual), epsilon))
-    output_errors = np.average(mape, axis=0) * 100
+    output_errors = np.average(mape, axis=0) 
     return np.average(output_errors)
 
 def setup(data, 
