@@ -661,7 +661,7 @@ def setup(data,
     import ipywidgets as ipw
     from IPython.display import display, HTML, clear_output, update_display
     import datetime, time
-    
+    pd.set_option('precision', 4)
     #pandas option
     pd.set_option('display.max_columns', 500)
     pd.set_option('display.max_rows', 500)
@@ -1723,7 +1723,7 @@ def create_model(estimator = None,
     import ipywidgets as ipw
     from IPython.display import display, HTML, clear_output, update_display
     import datetime, time
-        
+    pd.set_option('precision', 4)
     #progress bar
     progress = ipw.IntProgress(value=0, min=0, max=fold+4, step=1 , description='Processing: ')
     master_display = pd.DataFrame(columns=['Accuracy','AUC','Recall', 'Prec.', 'F1', 'Kappa', 'MCC', 'Training time'])
@@ -2133,7 +2133,7 @@ def create_model(estimator = None,
     
     # Green the mean
     model_results=model_results.style.apply(lambda x: ['background: lightgreen' if (x.name == 'Mean') else '' for i in x], axis=1)
-    
+    model_results=model_results.format({'Training time': '{:.2}s'})
     #refitting the model on complete X_train, y_train
     monitor.iloc[1,1:] = 'Compiling Final Model'
     update_display(monitor, display_id = 'monitor')
@@ -2296,7 +2296,7 @@ def ensemble_model(estimator,
     import datetime, time
     import ipywidgets as ipw
     from IPython.display import display, HTML, clear_output, update_display
-    
+    pd.set_option('precision', 4)
     #progress bar
     progress = ipw.IntProgress(value=0, min=0, max=fold+4, step=1 , description='Processing: ')
     master_display = pd.DataFrame(columns=['Accuracy','AUC','Recall', 'Prec.', 'F1', 'Kappa', 'MCC', 'Training time'])
@@ -2585,7 +2585,7 @@ def ensemble_model(estimator,
     model_results.loc[:,'Training time'] = model_results.loc[:,'Training time'].round(2)
     # Green the mean
     model_results=model_results.style.apply(lambda x: ['background: lightgreen' if (x.name == 'Mean') else '' for i in x], axis=1)
-    
+    model_results=model_results.format({'Training time': '{:.2}s'})
     progress.value += 1
     
     #refitting the model on complete X_train, y_train
@@ -2744,7 +2744,7 @@ def plot_model(estimator,
     import pandas as pd
     import ipywidgets as ipw
     from IPython.display import display, HTML, clear_output, update_display
-    
+    pd.set_option('precision', 4)
     #progress bar
     progress = ipw.IntProgress(value=0, min=0, max=5, step=1 , description='Processing: ')
     display(progress)
@@ -2756,7 +2756,7 @@ def plot_model(estimator,
     #general dependencies
     import matplotlib.pyplot as plt
     import numpy as np
-    import pandas as pd
+
     
     progress.value += 1
     
@@ -3223,7 +3223,7 @@ def compare_models(blacklist = None,
     import time, datetime
     import ipywidgets as ipw
     from IPython.display import display, HTML, clear_output, update_display
-    
+    pd.set_option('precision', 4)
     #progress bar
     if blacklist is None:
         len_of_blacklist = 0
@@ -3652,7 +3652,7 @@ def compare_models(blacklist = None,
         
         compare_models_ = master_display.style.apply(highlight_max,subset=['Accuracy','AUC','Recall',
                       'Prec.','F1','Kappa', 'MCC','Training time'])
-
+    compare_models_=compare_models_.format({'Training time': '{:.2}s'})
     compare_models_ = compare_models_.set_properties(**{'text-align': 'left'})
     compare_models_ = compare_models_.set_table_styles([dict(selector='th', props=[('text-align', 'left')])])
     
@@ -3856,7 +3856,7 @@ def tune_model(estimator = None,
     import time, datetime
     import ipywidgets as ipw
     from IPython.display import display, HTML, clear_output, update_display
-    
+    pd.set_option('precision', 4)
     #progress bar
     progress = ipw.IntProgress(value=0, min=0, max=fold+6, step=1 , description='Processing: ')
     master_display = pd.DataFrame(columns=['Accuracy','AUC','Recall', 'Prec.', 'F1', 'Kappa', 'MCC', 'Training time'])
@@ -4625,7 +4625,7 @@ def tune_model(estimator = None,
     
     # Green the mean
     model_results=model_results.style.apply(lambda x: ['background: lightgreen' if (x.name == 'Mean') else '' for i in x], axis=1)
-    
+    model_results=model_results.format({'Training time': '{:.2}s'})
     progress.value += 1
     
     #refitting the model on complete X_train, y_train
@@ -4818,7 +4818,7 @@ def blend_models(estimator_list = 'All',
     import time, datetime
     import ipywidgets as ipw
     from IPython.display import display, HTML, clear_output, update_display
-    
+    pd.set_option('precision', 4)
     #progress bar
     progress = ipw.IntProgress(value=0, min=0, max=fold+4, step=1 , description='Processing: ')
     master_display = pd.DataFrame(columns=['Accuracy','AUC','Recall', 'Prec.', 'F1', 'Kappa', 'MCC', 'Training time'])
@@ -5225,6 +5225,7 @@ def blend_models(estimator_list = 'All',
     model_results.loc[:,'Training time'] = model_results.loc[:,'Training time'].round(2)
     # Green the mean
     model_results=model_results.style.apply(lambda x: ['background: lightgreen' if (x.name == 'Mean') else '' for i in x], axis=1)
+    model_results=model_results.format({'Training time': '{:.2}s'})
     progress.value += 1
     
     #refitting the model on complete X_train, y_train
@@ -5425,6 +5426,7 @@ def stack_models(estimator_list,
     import pandas as pd
     import ipywidgets as ipw
     from IPython.display import display, HTML, clear_output, update_display
+    pd.set_option('precision', 4)
     import time, datetime
     from copy import deepcopy
     from sklearn.base import clone
@@ -5783,6 +5785,7 @@ def stack_models(estimator_list,
     model_results.loc[:,'Training time'] = model_results.loc[:,'Training time'].round(2)
     # Green the mean
     model_results=model_results.style.apply(lambda x: ['background: lightgreen' if (x.name == 'Mean') else '' for i in x], axis=1)
+    model_results=model_results.format({'Training time': '{:.2}s'})
     progress.value += 1
     
     #appending method into models_
@@ -5983,6 +5986,7 @@ def create_stacknet(estimator_list,
     import pandas as pd
     import ipywidgets as ipw
     from IPython.display import display, HTML, clear_output, update_display
+    pd.set_option('precision', 4)
     import time, datetime
     from copy import deepcopy
     from sklearn.base import clone
@@ -6399,7 +6403,7 @@ def create_stacknet(estimator_list,
     model_results.loc[:,'Training time'] = model_results.loc[:,'Training time'].round(2)
     # Green the mean
     model_results=model_results.style.apply(lambda x: ['background: lightgreen' if (x.name == 'Mean') else '' for i in x], axis=1)
-    
+    model_results=model_results.format({'Training time': '{:.2}s'})
     progress.value += 1
         
     
@@ -6536,7 +6540,6 @@ def interpret_model(estimator,
     import numpy as np
     import pandas as pd
     import shap
-    
     #storing estimator in model variable
     model = estimator
 
@@ -6748,7 +6751,7 @@ def calibrate_model(estimator,
     import ipywidgets as ipw
     from IPython.display import display, HTML, clear_output, update_display
     import datetime, time
-        
+    pd.set_option('precision', 4)
     #progress bar
     progress = ipw.IntProgress(value=0, min=0, max=fold+4, step=1 , description='Processing: ')
     master_display = pd.DataFrame(columns=['Accuracy','AUC','Recall', 'Prec.', 'F1', 'Kappa','MCC','Training time'])
@@ -7022,7 +7025,7 @@ def calibrate_model(estimator,
     model_results.loc[:,'Training time'] = model_results.loc[:,'Training time'].round(2)
     # Green the mean
     model_results=model_results.style.apply(lambda x: ['background: lightgreen' if (x.name == 'Mean') else '' for i in x], axis=1)
-    
+    model_results=model_results.format({'Training time': '{:.2}s'})
     #refitting the model on complete X_train, y_train
     monitor.iloc[1,1:] = 'Compiling Final Model'
     update_display(monitor, display_id = 'monitor')
@@ -7460,7 +7463,6 @@ def load_experiment(experiment_name):
     #general dependencies
     import joblib
     import pandas as pd
-    
     experiment_name = experiment_name + '.pkl'
     temp = joblib.load(experiment_name)
     
@@ -7560,7 +7562,7 @@ def predict_model(estimator,
     from sklearn import metrics
     from copy import deepcopy
     from IPython.display import clear_output, update_display
-    
+    pd.set_option('precision', 4)
     """
     exception checking starts here
     """
@@ -8259,7 +8261,7 @@ def deploy_model(model,
     import ipywidgets as ipw
     import pandas as pd
     from IPython.display import clear_output, update_display
-        
+    pd.set_option('precision', 4)
     try:
         model = finalize_model(model)
     except:
@@ -8347,7 +8349,7 @@ def optimize_threshold(estimator,
     import numpy as np
     import plotly.express as px
     from IPython.display import clear_output
-    
+    pd.set_option('precision', 4)
     #cufflinks
     import cufflinks as cf
     cf.go_offline()
