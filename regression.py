@@ -53,6 +53,7 @@ def setup(data,
           session_id = None,
           silent = False,
           data_split_shuffle = True, #new
+          folds_shuffle = False, #new
           profile = False):
     
     """
@@ -367,6 +368,9 @@ def setup(data,
 
     data_split_shuffle: bool, default = True
     If set to False, prevents shuffling of rows when splitting data
+
+    folds_shuffle: bool, default = True
+    If set to False, prevents shuffling of rows when using cross validation
 
     profile: bool, default = False
     If set to true, a data profile for Exploratory Data Analysis will be displayed 
@@ -1714,7 +1718,7 @@ def create_model(estimator = None,
     progress.value += 1
     
     #cross validation setup starts here
-    kf = KFold(fold, random_state=seed)
+    kf = KFold(fold, random_state=seed, shuffle=folds_shuffle)
     
     score_mae =np.empty((0,0))
     score_mse =np.empty((0,0))
@@ -2278,7 +2282,7 @@ def ensemble_model(estimator,
     MONITOR UPDATE ENDS
     '''
     
-    kf = KFold(fold, random_state=seed)
+    kf = KFold(fold, random_state=seed, shuffle=folds_shuffle)
     
     score_mae =np.empty((0,0))
     score_mse =np.empty((0,0))
@@ -2864,7 +2868,7 @@ def compare_models(blacklist = None,
     '''
     
     #cross validation setup starts here
-    kf = KFold(fold, random_state=seed)
+    kf = KFold(fold, random_state=seed, shuffle=folds_shuffle)
 
     score_mae =np.empty((0,0))
     score_mse =np.empty((0,0))
@@ -3216,7 +3220,7 @@ def blend_models(estimator_list = 'All',
         mask = actual != 0
         return (np.fabs(actual - prediction)/actual)[mask].mean()
 
-    kf = KFold(fold, random_state=seed)
+    kf = KFold(fold, random_state=seed, shuffle=folds_shuffle)
     
     '''
     MONITOR UPDATE STARTS
@@ -3809,7 +3813,7 @@ def tune_model(estimator = None,
     
     progress.value += 1
     
-    kf = KFold(fold, random_state=seed)
+    kf = KFold(fold, random_state=seed, shuffle=folds_shuffle)
 
     score_mae =np.empty((0,0))
     score_mse =np.empty((0,0))
@@ -4910,7 +4914,7 @@ def stack_models(estimator_list,
     model.fit(data_X, data_y)
     models_.append(model)
     
-    kf = KFold(fold, random_state=seed) #capturing fold requested by user
+    kf = KFold(fold, random_state=seed, shuffle=folds_shuffle) #capturing fold requested by user
 
     score_mae =np.empty((0,0))
     score_mse =np.empty((0,0))
@@ -5470,7 +5474,7 @@ def create_stacknet(estimator_list,
     
     meta_model_ = model.fit(data_X,data_y)
     
-    kf = KFold(fold, random_state=seed) #capturing fold requested by user
+    kf = KFold(fold, random_state=seed, shuffle=folds_shuffle) #capturing fold requested by user
 
     score_mae =np.empty((0,0))
     score_mse =np.empty((0,0))

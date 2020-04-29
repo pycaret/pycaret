@@ -50,6 +50,7 @@ def setup(data,
           session_id = None,
           silent = False,
           data_split_shuffle = True, #new
+          folds_shuffle = False, #new
           profile = False):
     
     """
@@ -355,6 +356,9 @@ def setup(data,
 
     data_split_shuffle: bool, default = True
     If set to False, prevents shuffling of rows when splitting data
+
+    folds_shuffle: bool, default = True
+    If set to False, prevents shuffling of rows when using cross validation
 
     profile: bool, default = False
     If set to true, a data profile for Exploratory Data Analysis will be displayed 
@@ -1734,7 +1738,7 @@ def create_model(estimator = None,
     progress.value += 1
     
     #cross validation setup starts here
-    kf = StratifiedKFold(fold, random_state=seed)
+    kf = StratifiedKFold(fold, random_state=seed, shuffle=folds_shuffle)
 
     score_auc =np.empty((0,0))
     score_acc =np.empty((0,0))
@@ -2324,7 +2328,7 @@ def ensemble_model(estimator,
     MONITOR UPDATE ENDS
     '''
     
-    kf = StratifiedKFold(fold, random_state=seed)
+    kf = StratifiedKFold(fold, random_state=seed, shuffle=folds_shuffle)
     
     score_auc =np.empty((0,0))
     score_acc =np.empty((0,0))
@@ -3380,7 +3384,7 @@ def compare_models(blacklist = None,
     '''
     
     #cross validation setup starts here
-    kf = StratifiedKFold(fold, random_state=seed)
+    kf = StratifiedKFold(fold, random_state=seed, shuffle=folds_shuffle)
 
     score_acc =np.empty((0,0))
     score_auc =np.empty((0,0))
@@ -3862,7 +3866,7 @@ def tune_model(estimator = None,
         
     progress.value += 1
     
-    kf = StratifiedKFold(fold, random_state=seed)
+    kf = StratifiedKFold(fold, random_state=seed, shuffle=folds_shuffle)
 
     score_auc =np.empty((0,0))
     score_acc =np.empty((0,0))
@@ -4796,7 +4800,7 @@ def blend_models(estimator_list = 'All',
     avg_f1 = np.empty((0,0))
     avg_kappa = np.empty((0,0))
 
-    kf = StratifiedKFold(fold, random_state=seed)
+    kf = StratifiedKFold(fold, random_state=seed, shuffle=folds_shuffle)
     
     '''
     MONITOR UPDATE STARTS
@@ -5495,7 +5499,7 @@ def stack_models(estimator_list,
     model.fit(data_X, data_y)
     models_.append(model)
     
-    kf = StratifiedKFold(fold, random_state=seed) #capturing fold requested by user
+    kf = StratifiedKFold(fold, random_state=seed, shuffle=folds_shuffle) #capturing fold requested by user
 
     score_auc =np.empty((0,0))
     score_acc =np.empty((0,0))
@@ -6101,7 +6105,7 @@ def create_stacknet(estimator_list,
     
     meta_model_ = model.fit(data_X,data_y)
     
-    kf = StratifiedKFold(fold, random_state=seed) #capturing fold requested by user
+    kf = StratifiedKFold(fold, random_state=seed, shuffle=folds_shuffle) #capturing fold requested by user
 
     score_auc =np.empty((0,0))
     score_acc =np.empty((0,0))
@@ -6656,7 +6660,7 @@ def calibrate_model(estimator,
     progress.value += 1
     
     #cross validation setup starts here
-    kf = StratifiedKFold(fold, random_state=seed)
+    kf = StratifiedKFold(fold, random_state=seed, shuffle=folds_shuffle)
 
     score_auc =np.empty((0,0))
     score_acc =np.empty((0,0))
