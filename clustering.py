@@ -894,7 +894,8 @@ def setup(data,
 
 def create_model(model = None, 
                  num_clusters = None,
-                 verbose=True):
+                 verbose=True,
+                 **kwargs):
     
     
     
@@ -940,6 +941,9 @@ def create_model(model = None,
 
     verbose: Boolean, default = True
     Status update is not printed when verbose is set to False.
+
+    **kwargs: 
+    Additional keyword arguments to pass to the estimator
 
     Returns:
     --------
@@ -1043,47 +1047,47 @@ def create_model(model = None,
     
     if model == 'kmeans':
         from sklearn.cluster import KMeans
-        model = KMeans(n_clusters = num_clusters, random_state=seed)
+        model = KMeans(n_clusters = num_clusters, random_state=seed, **kwargs)
         full_name = 'K-Means Clustering'
 
     elif model == 'ap':
         from sklearn.cluster import AffinityPropagation
-        model = AffinityPropagation(damping=0.5)
+        model = AffinityPropagation(damping=0.5, **kwargs)
         full_name = 'Affinity Propagation'
 
     elif model == 'meanshift':
         from sklearn.cluster import MeanShift
-        model = MeanShift()
+        model = MeanShift(**kwargs)
         full_name = 'Mean Shift Clustering'
 
     elif model == 'sc':
         from sklearn.cluster import SpectralClustering
-        model = SpectralClustering(n_clusters=num_clusters, random_state=seed, n_jobs=-1)
+        model = SpectralClustering(n_clusters=num_clusters, random_state=seed, n_jobs=-1, **kwargs)
         full_name = 'Spectral Clustering'
 
     elif model == 'hclust':
         from sklearn.cluster import AgglomerativeClustering
-        model = AgglomerativeClustering(n_clusters=num_clusters)
+        model = AgglomerativeClustering(n_clusters=num_clusters, **kwargs)
         full_name = 'Agglomerative Clustering'
 
     elif model == 'dbscan':
         from sklearn.cluster import DBSCAN
-        model = DBSCAN(eps=0.5, n_jobs=-1)
+        model = DBSCAN(eps=0.5, n_jobs=-1, **kwargs)
         full_name = 'Density-Based Spatial Clustering'
 
     elif model == 'optics':
         from sklearn.cluster import OPTICS
-        model = OPTICS(n_jobs=-1)
+        model = OPTICS(n_jobs=-1, **kwargs)
         full_name = 'OPTICS Clustering'
 
     elif model == 'birch':
         from sklearn.cluster import Birch
-        model = Birch(n_clusters=num_clusters)
+        model = Birch(n_clusters=num_clusters, **kwargs)
         full_name = 'Birch Clustering'
         
     elif model == 'kmodes':
         from kmodes.kmodes import KModes
-        model = KModes(n_clusters=num_clusters, n_jobs=1, random_state=seed)
+        model = KModes(n_clusters=num_clusters, n_jobs=1, random_state=seed, **kwargs)
         full_name = 'K-Modes Clustering'
         
     #elif model == 'skmeans':

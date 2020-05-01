@@ -1595,6 +1595,9 @@ def create_model(estimator = None,
     verbose: Boolean, default = True
     Score grid is not printed when verbose is set to False.
 
+    **kwargs: 
+    Additional keyword arguments to pass to the estimator
+
     Returns:
     --------
 
@@ -3711,6 +3714,9 @@ def tune_model(estimator = None,
 
     verbose: Boolean, default = True
     Score grid is not printed when verbose is set to False.
+
+    **kwargs: 
+    Additional keyword arguments to pass to the estimator
 
     Returns:
     --------

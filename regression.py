@@ -1510,7 +1510,8 @@ def create_model(estimator = None,
                  method = None, 
                  fold = 10, 
                  round = 4,  
-                 verbose = True):
+                 verbose = True,
+                 **kwargs):
     
      
     """  
@@ -1583,6 +1584,9 @@ def create_model(estimator = None,
 
     verbose: Boolean, default = True
     Score grid is not printed when verbose is set to False.
+
+    **kwargs: 
+    Additional keyword arguments to pass to the estimator
 
     Returns:
     --------
@@ -1740,149 +1744,149 @@ def create_model(estimator = None,
     if estimator == 'lr':
         
         from sklearn.linear_model import LinearRegression
-        model = LinearRegression(n_jobs=-1)
+        model = LinearRegression(n_jobs=-1, **kwargs)
         full_name = 'Linear Regression'
         
     elif estimator == 'lasso':
         
         from sklearn.linear_model import Lasso
-        model = Lasso(random_state=seed)
+        model = Lasso(random_state=seed, **kwargs)
         full_name = 'Lasso Regression'
         
     elif estimator == 'ridge':
         
         from sklearn.linear_model import Ridge
-        model = Ridge(random_state=seed)
+        model = Ridge(random_state=seed, **kwargs)
         full_name = 'Ridge Regression'
         
     elif estimator == 'en':
         
         from sklearn.linear_model import ElasticNet
-        model = ElasticNet(random_state=seed)
+        model = ElasticNet(random_state=seed, **kwargs)
         full_name = 'Elastic Net'
         
     elif estimator == 'lar':
         
         from sklearn.linear_model import Lars
-        model = Lars()
+        model = Lars(**kwargs)
         full_name = 'Least Angle Regression'
         
     elif estimator == 'llar':
         
         from sklearn.linear_model import LassoLars
-        model = LassoLars()
+        model = LassoLars(**kwargs)
         full_name = 'Lasso Least Angle Regression'
         
     elif estimator == 'omp':
         
         from sklearn.linear_model import OrthogonalMatchingPursuit
-        model = OrthogonalMatchingPursuit()
+        model = OrthogonalMatchingPursuit(**kwargs)
         full_name = 'Orthogonal Matching Pursuit'
         
     elif estimator == 'br':
         from sklearn.linear_model import BayesianRidge
-        model = BayesianRidge()
+        model = BayesianRidge(**kwargs)
         full_name = 'Bayesian Ridge Regression' 
         
     elif estimator == 'ard':
         
         from sklearn.linear_model import ARDRegression
-        model = ARDRegression()
+        model = ARDRegression(**kwargs)
         full_name = 'Automatic Relevance Determination'        
         
     elif estimator == 'par':
         
         from sklearn.linear_model import PassiveAggressiveRegressor
-        model = PassiveAggressiveRegressor(random_state=seed)
+        model = PassiveAggressiveRegressor(random_state=seed, **kwargs)
         full_name = 'Passive Aggressive Regressor'    
         
     elif estimator == 'ransac':
         
         from sklearn.linear_model import RANSACRegressor
-        model = RANSACRegressor(min_samples=0.5, random_state=seed)
+        model = RANSACRegressor(min_samples=0.5, random_state=seed, **kwargs)
         full_name = 'Random Sample Consensus'   
         
     elif estimator == 'tr':
         
         from sklearn.linear_model import TheilSenRegressor
-        model = TheilSenRegressor(random_state=seed, n_jobs=-1)
+        model = TheilSenRegressor(random_state=seed, n_jobs=-1, **kwargs)
         full_name = 'TheilSen Regressor'     
         
     elif estimator == 'huber':
         
         from sklearn.linear_model import HuberRegressor
-        model = HuberRegressor()
+        model = HuberRegressor(**kwargs)
         full_name = 'Huber Regressor'   
         
     elif estimator == 'kr':
         
         from sklearn.kernel_ridge import KernelRidge
-        model = KernelRidge()
+        model = KernelRidge(**kwargs)
         full_name = 'Kernel Ridge'
         
     elif estimator == 'svm':
         
         from sklearn.svm import SVR
-        model = SVR()
+        model = SVR(**kwargs)
         full_name = 'Support Vector Regression'  
         
     elif estimator == 'knn':
         
         from sklearn.neighbors import KNeighborsRegressor
-        model = KNeighborsRegressor(n_jobs=-1)
+        model = KNeighborsRegressor(n_jobs=-1, **kwargs)
         full_name = 'Nearest Neighbors Regression' 
         
     elif estimator == 'dt':
         
         from sklearn.tree import DecisionTreeRegressor
-        model = DecisionTreeRegressor(random_state=seed)
+        model = DecisionTreeRegressor(random_state=seed, **kwargs)
         full_name = 'Decision Tree Regressor'
         
     elif estimator == 'rf':
         
         from sklearn.ensemble import RandomForestRegressor
-        model = RandomForestRegressor(random_state=seed, n_jobs=-1)
+        model = RandomForestRegressor(random_state=seed, n_jobs=-1, **kwargs)
         full_name = 'Random Forest Regressor'
         
     elif estimator == 'et':
         
         from sklearn.ensemble import ExtraTreesRegressor
-        model = ExtraTreesRegressor(random_state=seed, n_jobs=-1)
+        model = ExtraTreesRegressor(random_state=seed, n_jobs=-1, **kwargs)
         full_name = 'Extra Trees Regressor'    
         
     elif estimator == 'ada':
         
         from sklearn.ensemble import AdaBoostRegressor
-        model = AdaBoostRegressor(random_state=seed)
+        model = AdaBoostRegressor(random_state=seed, **kwargs)
         full_name = 'AdaBoost Regressor'   
         
     elif estimator == 'gbr':
         
         from sklearn.ensemble import GradientBoostingRegressor
-        model = GradientBoostingRegressor(random_state=seed)
+        model = GradientBoostingRegressor(random_state=seed, **kwargs)
         full_name = 'Gradient Boosting Regressor'       
         
     elif estimator == 'mlp':
         
         from sklearn.neural_network import MLPRegressor
-        model = MLPRegressor(random_state=seed)
+        model = MLPRegressor(random_state=seed, **kwargs)
         full_name = 'MLP Regressor'
         
     elif estimator == 'xgboost':
         
         from xgboost import XGBRegressor
-        model = XGBRegressor(random_state=seed, n_jobs=-1, verbosity=0)
+        model = XGBRegressor(random_state=seed, n_jobs=-1, verbosity=0, **kwargs)
         full_name = 'Extreme Gradient Boosting Regressor'
         
     elif estimator == 'lightgbm':
         
         import lightgbm as lgb
-        model = lgb.LGBMRegressor(random_state=seed, n_jobs=-1)
+        model = lgb.LGBMRegressor(random_state=seed, n_jobs=-1, **kwargs)
         full_name = 'Light Gradient Boosting Machine'
         
     elif estimator == 'catboost':
         from catboost import CatBoostRegressor
-        model = CatBoostRegressor(random_state=seed, silent = True, thread_count=-1)
+        model = CatBoostRegressor(random_state=seed, silent = True, thread_count=-1, **kwargs)
         full_name = 'CatBoost Regressor'
         
     else:
@@ -3602,7 +3606,8 @@ def tune_model(estimator = None,
                optimize = 'r2',
                ensemble = False, 
                method = None,
-               verbose = True):
+               verbose = True,
+               **kwargs):
     
       
     """
@@ -3683,6 +3688,9 @@ def tune_model(estimator = None,
 
     verbose: Boolean, default = True
     Score grid is not printed when verbose is set to False.
+
+    **kwargs: 
+    Additional keyword arguments to pass to the estimator
 
     Returns:
     --------
@@ -3879,7 +3887,7 @@ def tune_model(estimator = None,
         param_grid = {'fit_intercept': [True, False],
                      'normalize' : [True, False]
                     }        
-        model_grid = RandomizedSearchCV(estimator=LinearRegression(), param_distributions=param_grid, 
+        model_grid = RandomizedSearchCV(estimator=LinearRegression(**kwargs), param_distributions=param_grid, 
                                         scoring=optimize, n_iter=n_iter, cv=cv, random_state=seed,
                                         n_jobs=-1, iid=False)
 
@@ -3896,7 +3904,7 @@ def tune_model(estimator = None,
                       'fit_intercept': [True, False],
                       'normalize' : [True, False],
                      }
-        model_grid = RandomizedSearchCV(estimator=Lasso(random_state=seed), 
+        model_grid = RandomizedSearchCV(estimator=Lasso(random_state=seed, **kwargs), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, cv=cv, 
                                         random_state=seed, iid=False,n_jobs=-1)
         
@@ -3914,7 +3922,7 @@ def tune_model(estimator = None,
                       "normalize": [True, False],
                       }
 
-        model_grid = RandomizedSearchCV(estimator=Ridge(random_state=seed), param_distributions=param_grid,
+        model_grid = RandomizedSearchCV(estimator=Ridge(random_state=seed, **kwargs), param_distributions=param_grid,
                                        scoring=optimize, n_iter=n_iter, cv=cv, random_state=seed,
                                        iid=False, n_jobs=-1)
 
@@ -3933,7 +3941,7 @@ def tune_model(estimator = None,
                       'normalize': [True, False]
                      } 
 
-        model_grid = RandomizedSearchCV(estimator=ElasticNet(random_state=seed), 
+        model_grid = RandomizedSearchCV(estimator=ElasticNet(random_state=seed, **kwargs), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, cv=cv, 
                                         random_state=seed, iid=False, n_jobs=-1)
 
@@ -3950,7 +3958,7 @@ def tune_model(estimator = None,
                      'normalize' : [True, False],
                      'eps': [0.00001, 0.0001, 0.001, 0.01, 0.05, 0.0005, 0.005, 0.00005, 0.02, 0.007]}
 
-        model_grid = RandomizedSearchCV(estimator=Lars(), param_distributions=param_grid,
+        model_grid = RandomizedSearchCV(estimator=Lars(**kwargs), param_distributions=param_grid,
                                        scoring=optimize, n_iter=n_iter, cv=cv, random_state=seed,
                                        n_jobs=-1)
 
@@ -3968,7 +3976,7 @@ def tune_model(estimator = None,
                      'normalize' : [True, False],
                      'eps': [0.00001, 0.0001, 0.001, 0.01, 0.05, 0.0005, 0.005, 0.00005, 0.02, 0.007]}
 
-        model_grid = RandomizedSearchCV(estimator=LassoLars(), param_distributions=param_grid,
+        model_grid = RandomizedSearchCV(estimator=LassoLars(**kwargs), param_distributions=param_grid,
                                        scoring=optimize, n_iter=n_iter, cv=cv, random_state=seed,
                                        n_jobs=-1)
 
@@ -3986,7 +3994,7 @@ def tune_model(estimator = None,
                       'fit_intercept' : [True, False],
                       'normalize': [True, False]}
 
-        model_grid = RandomizedSearchCV(estimator=OrthogonalMatchingPursuit(), 
+        model_grid = RandomizedSearchCV(estimator=OrthogonalMatchingPursuit(**kwargs), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
                                         cv=cv, random_state=seed, n_jobs=-1)
 
@@ -4008,7 +4016,7 @@ def tune_model(estimator = None,
                       'normalize': [True, False]
                      }    
 
-        model_grid = RandomizedSearchCV(estimator=BayesianRidge(), 
+        model_grid = RandomizedSearchCV(estimator=BayesianRidge(**kwargs), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
                                         cv=cv, random_state=seed, n_jobs=-1)
 
@@ -4031,7 +4039,7 @@ def tune_model(estimator = None,
                       'normalize': [True, False]
                      }    
 
-        model_grid = RandomizedSearchCV(estimator=ARDRegression(), 
+        model_grid = RandomizedSearchCV(estimator=ARDRegression(**kwargs), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
                                         cv=cv, random_state=seed, n_jobs=-1)
 
@@ -4053,7 +4061,7 @@ def tune_model(estimator = None,
                       'shuffle' : [True, False]
                      }    
 
-        model_grid = RandomizedSearchCV(estimator=PassiveAggressiveRegressor(random_state=seed), 
+        model_grid = RandomizedSearchCV(estimator=PassiveAggressiveRegressor(random_state=seed, **kwargs), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
                                         cv=cv, random_state=seed, n_jobs=-1)
 
@@ -4074,7 +4082,7 @@ def tune_model(estimator = None,
                       'loss' : ['absolute_loss', 'squared_loss'],
                      }    
 
-        model_grid = RandomizedSearchCV(estimator=RANSACRegressor(random_state=seed), 
+        model_grid = RandomizedSearchCV(estimator=RANSACRegressor(random_state=seed, **kwargs), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
                                         cv=cv, random_state=seed, n_jobs=-1)
 
@@ -4091,7 +4099,7 @@ def tune_model(estimator = None,
                       'max_subpopulation': [5000, 10000, 15000, 20000, 25000, 30000, 40000, 50000]
                      }    
 
-        model_grid = RandomizedSearchCV(estimator=TheilSenRegressor(random_state=seed), 
+        model_grid = RandomizedSearchCV(estimator=TheilSenRegressor(random_state=seed, **kwargs), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
                                         cv=cv, random_state=seed, n_jobs=-1)
 
@@ -4109,7 +4117,7 @@ def tune_model(estimator = None,
                       'fit_intercept' : [True, False]
                      }    
 
-        model_grid = RandomizedSearchCV(estimator=HuberRegressor(), 
+        model_grid = RandomizedSearchCV(estimator=HuberRegressor(**kwargs), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
                                         cv=cv, random_state=seed, n_jobs=-1)
 
@@ -4124,7 +4132,7 @@ def tune_model(estimator = None,
 
         param_grid = {'alpha': np.arange(0,1,0.01) }    
 
-        model_grid = RandomizedSearchCV(estimator=KernelRidge(), 
+        model_grid = RandomizedSearchCV(estimator=KernelRidge(**kwargs), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
                                         cv=cv, random_state=seed, n_jobs=-1)
 
@@ -4144,7 +4152,7 @@ def tune_model(estimator = None,
                       'shrinking': [True, False]
                      }    
 
-        model_grid = RandomizedSearchCV(estimator=SVR(), 
+        model_grid = RandomizedSearchCV(estimator=SVR(**kwargs), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
                                         cv=cv, random_state=seed, n_jobs=-1)
 
@@ -4163,7 +4171,7 @@ def tune_model(estimator = None,
                      'leaf_size': [10,20,30,40,50,60,70,80,90]
                      } 
 
-        model_grid = RandomizedSearchCV(estimator=KNeighborsRegressor(), 
+        model_grid = RandomizedSearchCV(estimator=KNeighborsRegressor(**kwargs), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
                                         cv=cv, random_state=seed, n_jobs=-1)
 
@@ -4182,7 +4190,7 @@ def tune_model(estimator = None,
                       "criterion": ["mse", "mae", "friedman_mse"],
                      } 
 
-        model_grid = RandomizedSearchCV(estimator=DecisionTreeRegressor(random_state=seed), 
+        model_grid = RandomizedSearchCV(estimator=DecisionTreeRegressor(random_state=seed, **kwargs), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
                                         cv=cv, random_state=seed, n_jobs=-1)
 
@@ -4205,7 +4213,7 @@ def tune_model(estimator = None,
                       'bootstrap': [True, False]
                       }
 
-        model_grid = RandomizedSearchCV(estimator=RandomForestRegressor(random_state=seed), 
+        model_grid = RandomizedSearchCV(estimator=RandomForestRegressor(random_state=seed, **kwargs), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
                                         cv=cv, random_state=seed, n_jobs=-1)
 
@@ -4228,7 +4236,7 @@ def tune_model(estimator = None,
                       'bootstrap': [True, False]
                       }  
 
-        model_grid = RandomizedSearchCV(estimator=ExtraTreesRegressor(random_state=seed), 
+        model_grid = RandomizedSearchCV(estimator=ExtraTreesRegressor(random_state=seed, **kwargs), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
                                         cv=cv, random_state=seed, n_jobs=-1)
 
@@ -4246,7 +4254,7 @@ def tune_model(estimator = None,
                       'loss' : ["linear", "square", "exponential"]
                      }    
 
-        model_grid = RandomizedSearchCV(estimator=AdaBoostRegressor(random_state=seed), 
+        model_grid = RandomizedSearchCV(estimator=AdaBoostRegressor(random_state=seed, **kwargs), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
                                         cv=cv, random_state=seed, n_jobs=-1)
 
@@ -4270,7 +4278,7 @@ def tune_model(estimator = None,
                       'max_features' : ['auto', 'sqrt', 'log2']
                      }     
 
-        model_grid = RandomizedSearchCV(estimator=GradientBoostingRegressor(random_state=seed), 
+        model_grid = RandomizedSearchCV(estimator=GradientBoostingRegressor(random_state=seed, **kwargs), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
                                         cv=cv, random_state=seed, n_jobs=-1)
 
@@ -4290,7 +4298,7 @@ def tune_model(estimator = None,
                       'activation': ["tanh", "identity", "logistic","relu"]
                       }    
 
-        model_grid = RandomizedSearchCV(estimator=MLPRegressor(random_state=seed), 
+        model_grid = RandomizedSearchCV(estimator=MLPRegressor(random_state=seed, **kwargs), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
                                         cv=cv, random_state=seed, n_jobs=-1)    
 
@@ -4312,7 +4320,7 @@ def tune_model(estimator = None,
                       'min_child_weight': [1, 2, 3, 4]
                      }
 
-        model_grid = RandomizedSearchCV(estimator=XGBRegressor(random_state=seed, n_jobs=-1, verbosity=0), 
+        model_grid = RandomizedSearchCV(estimator=XGBRegressor(random_state=seed, n_jobs=-1, verbosity=0, **kwargs), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
                                         cv=cv, random_state=seed, n_jobs=-1)
 
@@ -4336,7 +4344,7 @@ def tune_model(estimator = None,
                       'reg_lambda': [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
                      }
             
-        model_grid = RandomizedSearchCV(estimator=lgb.LGBMRegressor(random_state=seed), 
+        model_grid = RandomizedSearchCV(estimator=lgb.LGBMRegressor(random_state=seed, **kwargs), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
                                         cv=cv, random_state=seed, n_jobs=-1)
 
@@ -4357,7 +4365,7 @@ def tune_model(estimator = None,
                       #'ctr_border_count':[50,5,10,20,100,200]
                       }
             
-        model_grid = RandomizedSearchCV(estimator=CatBoostRegressor(random_state=seed, silent=True), 
+        model_grid = RandomizedSearchCV(estimator=CatBoostRegressor(random_state=seed, silent=True, **kwargs), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
                                         cv=cv, random_state=seed, n_jobs=-1)
 
