@@ -1527,7 +1527,8 @@ def create_model(estimator = None,
                  method = None, 
                  fold = 10, 
                  round = 4,  
-                 verbose = True):
+                 verbose = True,
+                 **kwargs):
 
     """  
      
@@ -1593,6 +1594,9 @@ def create_model(estimator = None,
 
     verbose: Boolean, default = True
     Score grid is not printed when verbose is set to False.
+
+    **kwargs: 
+    Additional keyword arguments to pass to the estimator
 
     Returns:
     --------
@@ -1760,108 +1764,108 @@ def create_model(estimator = None,
     if estimator == 'lr':
 
         from sklearn.linear_model import LogisticRegression
-        model = LogisticRegression(random_state=seed)
+        model = LogisticRegression(random_state=seed, **kwargs)
         full_name = 'Logistic Regression'
 
     elif estimator == 'knn':
         
         from sklearn.neighbors import KNeighborsClassifier
-        model = KNeighborsClassifier(n_jobs=-1)
+        model = KNeighborsClassifier(n_jobs=-1, **kwargs)
         full_name = 'K Nearest Neighbours'
 
     elif estimator == 'nb':
 
         from sklearn.naive_bayes import GaussianNB
-        model = GaussianNB()
+        model = GaussianNB(**kwargs)
         full_name = 'Naive Bayes'
 
     elif estimator == 'dt':
 
         from sklearn.tree import DecisionTreeClassifier
-        model = DecisionTreeClassifier(random_state=seed)
+        model = DecisionTreeClassifier(random_state=seed, **kwargs)
         full_name = 'Decision Tree'
 
     elif estimator == 'svm':
 
         from sklearn.linear_model import SGDClassifier
-        model = SGDClassifier(max_iter=1000, tol=0.001, random_state=seed, n_jobs=-1)
+        model = SGDClassifier(max_iter=1000, tol=0.001, random_state=seed, n_jobs=-1, **kwargs)
         full_name = 'Support Vector Machine'
 
     elif estimator == 'rbfsvm':
 
         from sklearn.svm import SVC
-        model = SVC(gamma='auto', C=1, probability=True, kernel='rbf', random_state=seed)
+        model = SVC(gamma='auto', C=1, probability=True, kernel='rbf', random_state=seed, **kwargs)
         full_name = 'RBF SVM'
 
     elif estimator == 'gpc':
 
         from sklearn.gaussian_process import GaussianProcessClassifier
-        model = GaussianProcessClassifier(random_state=seed, n_jobs=-1)
+        model = GaussianProcessClassifier(random_state=seed, n_jobs=-1, **kwargs)
         full_name = 'Gaussian Process Classifier'
 
     elif estimator == 'mlp':
 
         from sklearn.neural_network import MLPClassifier
-        model = MLPClassifier(max_iter=500, random_state=seed)
+        model = MLPClassifier(max_iter=500, random_state=seed, **kwargs)
         full_name = 'Multi Level Perceptron'    
 
     elif estimator == 'ridge':
 
         from sklearn.linear_model import RidgeClassifier
-        model = RidgeClassifier(random_state=seed)
+        model = RidgeClassifier(random_state=seed, **kwargs)
         full_name = 'Ridge Classifier'        
 
     elif estimator == 'rf':
 
         from sklearn.ensemble import RandomForestClassifier
-        model = RandomForestClassifier(n_estimators=10, random_state=seed, n_jobs=-1)
+        model = RandomForestClassifier(n_estimators=10, random_state=seed, n_jobs=-1, **kwargs)
         full_name = 'Random Forest Classifier'    
 
     elif estimator == 'qda':
 
         from sklearn.discriminant_analysis import QuadraticDiscriminantAnalysis
-        model = QuadraticDiscriminantAnalysis()
+        model = QuadraticDiscriminantAnalysis(**kwargs)
         full_name = 'Quadratic Discriminant Analysis' 
 
     elif estimator == 'ada':
 
         from sklearn.ensemble import AdaBoostClassifier
-        model = AdaBoostClassifier(random_state=seed)
+        model = AdaBoostClassifier(random_state=seed, **kwargs)
         full_name = 'AdaBoost Classifier'        
 
     elif estimator == 'gbc':
 
         from sklearn.ensemble import GradientBoostingClassifier    
-        model = GradientBoostingClassifier(random_state=seed)
+        model = GradientBoostingClassifier(random_state=seed, **kwargs)
         full_name = 'Gradient Boosting Classifier'    
 
     elif estimator == 'lda':
 
         from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
-        model = LinearDiscriminantAnalysis()
+        model = LinearDiscriminantAnalysis(**kwargs)
         full_name = 'Linear Discriminant Analysis'
 
     elif estimator == 'et':
 
         from sklearn.ensemble import ExtraTreesClassifier 
-        model = ExtraTreesClassifier(random_state=seed, n_jobs=-1)
+        model = ExtraTreesClassifier(random_state=seed, n_jobs=-1, **kwargs)
         full_name = 'Extra Trees Classifier'
 
     elif estimator == 'xgboost':
 
         from xgboost import XGBClassifier
-        model = XGBClassifier(random_state=seed, verbosity=0, n_jobs=-1)
+        model = XGBClassifier(random_state=seed, verbosity=0, n_jobs=-1, **kwargs)
         full_name = 'Extreme Gradient Boosting'
         
     elif estimator == 'lightgbm':
         
         import lightgbm as lgb
-        model = lgb.LGBMClassifier(random_state=seed, n_jobs=-1)
+        model = lgb.LGBMClassifier(random_state=seed, n_jobs=-1, **kwargs)
         full_name = 'Light Gradient Boosting Machine'
         
     elif estimator == 'catboost':
         from catboost import CatBoostClassifier
-        model = CatBoostClassifier(random_state=seed, silent=True, thread_count=-1) # Silent is True to suppress CatBoost iteration results 
+        model = CatBoostClassifier(random_state=seed, silent=True, thread_count=-1, **kwargs) # Silent is True to suppress CatBoost iteration results 
         full_name = 'CatBoost Classifier'
         
     else:
@@ -3633,7 +3637,8 @@ def tune_model(estimator = None,
                optimize = 'Accuracy',
                ensemble = False, 
                method = None,
-               verbose = True):
+               verbose = True,
+               **kwargs):
     
       
     """
@@ -3709,6 +3714,9 @@ def tune_model(estimator = None,
 
     verbose: Boolean, default = True
     Score grid is not printed when verbose is set to False.
+
+    **kwargs: 
+    Additional keyword arguments to pass to the estimator
 
     Returns:
     --------
@@ -3936,7 +3944,7 @@ def tune_model(estimator = None,
                  'weights' : ['uniform', 'distance'],
                  'metric':["euclidean", "manhattan"]
                      }        
-        model_grid = RandomizedSearchCV(estimator=KNeighborsClassifier(), param_distributions=param_grid, 
+        model_grid = RandomizedSearchCV(estimator=KNeighborsClassifier(**kwargs), param_distributions=param_grid, 
                                         scoring=optimize, n_iter=n_iter, cv=cv, random_state=seed,
                                        n_jobs=-1, iid=False)
 
@@ -3953,7 +3961,7 @@ def tune_model(estimator = None,
                   "penalty": [ 'l1', 'l2'],
                   "class_weight": ["balanced", None]
                      }
-        model_grid = RandomizedSearchCV(estimator=LogisticRegression(random_state=seed), 
+        model_grid = RandomizedSearchCV(estimator=LogisticRegression(random_state=seed, **kwargs), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, cv=cv, 
                                         random_state=seed, iid=False, n_jobs=-1)
         model_grid.fit(X_train,y_train)
@@ -3971,7 +3979,7 @@ def tune_model(estimator = None,
                   "criterion": ["gini", "entropy"],
                      }
 
-        model_grid = RandomizedSearchCV(estimator=DecisionTreeClassifier(random_state=seed), param_distributions=param_grid,
+        model_grid = RandomizedSearchCV(estimator=DecisionTreeClassifier(random_state=seed, **kwargs), param_distributions=param_grid,
                                        scoring=optimize, n_iter=n_iter, cv=cv, random_state=seed,
                                        iid=False, n_jobs=-1)
 
@@ -3991,7 +3999,7 @@ def tune_model(estimator = None,
                  'activation': ["tanh", "identity", "logistic","relu"]
                  }
 
-        model_grid = RandomizedSearchCV(estimator=MLPClassifier(max_iter=1000, random_state=seed), 
+        model_grid = RandomizedSearchCV(estimator=MLPClassifier(max_iter=1000, random_state=seed, **kwargs), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, cv=cv, 
                                         random_state=seed, iid=False, n_jobs=-1)
 
@@ -4006,7 +4014,7 @@ def tune_model(estimator = None,
         
         param_grid = {"max_iter_predict":[100,200,300,400,500,600,700,800,900,1000]}
 
-        model_grid = RandomizedSearchCV(estimator=GaussianProcessClassifier(random_state=seed), param_distributions=param_grid,
+        model_grid = RandomizedSearchCV(estimator=GaussianProcessClassifier(random_state=seed, **kwargs), param_distributions=param_grid,
                                        scoring=optimize, n_iter=n_iter, cv=cv, random_state=seed,
                                        n_jobs=-1)
 
@@ -4022,7 +4030,7 @@ def tune_model(estimator = None,
         param_grid = {'C': np.arange(0, 50, 0.01), #[.5,1,10,50,100],
                 "class_weight": ["balanced", None]}
 
-        model_grid = RandomizedSearchCV(estimator=SVC(gamma='auto', C=1, probability=True, kernel='rbf', random_state=seed), 
+        model_grid = RandomizedSearchCV(estimator=SVC(gamma='auto', C=1, probability=True, kernel='rbf', random_state=seed, **kwargs), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
                                         cv=cv, random_state=seed, n_jobs=-1)
 
@@ -4041,7 +4049,7 @@ def tune_model(estimator = None,
                                         0.004, 0.005, 0.006, 0.007,0.008, 0.009, 0.01, 0.1, 1]
                      }
 
-        model_grid = RandomizedSearchCV(estimator=GaussianNB(), 
+        model_grid = RandomizedSearchCV(estimator=GaussianNB(**kwargs), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
                                         cv=cv, random_state=seed, n_jobs=-1)
  
@@ -4062,7 +4070,7 @@ def tune_model(estimator = None,
                       'eta0': [0.001, 0.01,0.05,0.1,0.2,0.3,0.4,0.5]
                      }    
 
-        model_grid = RandomizedSearchCV(estimator=SGDClassifier(loss='hinge', random_state=seed, n_jobs=-1), 
+        model_grid = RandomizedSearchCV(estimator=SGDClassifier(loss='hinge', random_state=seed, n_jobs=-1, **kwargs), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
                                         cv=cv, random_state=seed, n_jobs=-1)
 
@@ -4080,7 +4088,7 @@ def tune_model(estimator = None,
                       'normalize': [True, False]
                      }    
 
-        model_grid = RandomizedSearchCV(estimator=RidgeClassifier(random_state=seed), 
+        model_grid = RandomizedSearchCV(estimator=RidgeClassifier(random_state=seed, **kwargs), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
                                         cv=cv, random_state=seed, n_jobs=-1)
 
@@ -4102,7 +4110,7 @@ def tune_model(estimator = None,
                       'bootstrap': [True, False]
                      }    
 
-        model_grid = RandomizedSearchCV(estimator=RandomForestClassifier(random_state=seed), 
+        model_grid = RandomizedSearchCV(estimator=RandomForestClassifier(random_state=seed, **kwargs), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
                                         cv=cv, random_state=seed, n_jobs=-1)
 
@@ -4120,7 +4128,7 @@ def tune_model(estimator = None,
                       'algorithm' : ["SAMME", "SAMME.R"]
                      }    
 
-        model_grid = RandomizedSearchCV(estimator=AdaBoostClassifier(random_state=seed), 
+        model_grid = RandomizedSearchCV(estimator=AdaBoostClassifier(random_state=seed, **kwargs), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
                                         cv=cv, random_state=seed, n_jobs=-1)
 
@@ -4144,7 +4152,7 @@ def tune_model(estimator = None,
                      }    
 
             
-        model_grid = RandomizedSearchCV(estimator=GradientBoostingClassifier(random_state=seed), 
+        model_grid = RandomizedSearchCV(estimator=GradientBoostingClassifier(random_state=seed, **kwargs), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
                                         cv=cv, random_state=seed, n_jobs=-1)
 
@@ -4160,7 +4168,7 @@ def tune_model(estimator = None,
         param_grid = {'reg_param': np.arange(0,1,0.01), #[0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1]
                      }    
 
-        model_grid = RandomizedSearchCV(estimator=QuadraticDiscriminantAnalysis(), 
+        model_grid = RandomizedSearchCV(estimator=QuadraticDiscriminantAnalysis(**kwargs), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
                                         cv=cv, random_state=seed, n_jobs=-1)
 
@@ -4177,7 +4185,7 @@ def tune_model(estimator = None,
                       'shrinkage': [None, 0.0001, 0.001, 0.01, 0.0005, 0.005, 0.05, 0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1]
                      }    
 
-        model_grid = RandomizedSearchCV(estimator=LinearDiscriminantAnalysis(), 
+        model_grid = RandomizedSearchCV(estimator=LinearDiscriminantAnalysis(**kwargs), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
                                         cv=cv, random_state=seed, n_jobs=-1)
 
@@ -4199,7 +4207,7 @@ def tune_model(estimator = None,
                       'bootstrap': [True, False]
                      }    
 
-        model_grid = RandomizedSearchCV(estimator=ExtraTreesClassifier(random_state=seed), 
+        model_grid = RandomizedSearchCV(estimator=ExtraTreesClassifier(random_state=seed, **kwargs), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
                                         cv=cv, random_state=seed, n_jobs=-1)
 
@@ -4235,7 +4243,7 @@ def tune_model(estimator = None,
                           #'num_class' : [num_class, num_class]
                          }
 
-        model_grid = RandomizedSearchCV(estimator=XGBClassifier(random_state=seed, n_jobs=-1, verbosity=0), 
+        model_grid = RandomizedSearchCV(estimator=XGBClassifier(random_state=seed, n_jobs=-1, verbosity=0, **kwargs), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
                                         cv=cv, random_state=seed, n_jobs=-1)
         
@@ -4259,7 +4267,7 @@ def tune_model(estimator = None,
                       'reg_lambda': [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
                       }
     
-        model_grid = RandomizedSearchCV(estimator=lgb.LGBMClassifier(random_state=seed), 
+        model_grid = RandomizedSearchCV(estimator=lgb.LGBMClassifier(random_state=seed, **kwargs), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
                                         cv=cv, random_state=seed, n_jobs=-1)
 
@@ -4281,7 +4289,7 @@ def tune_model(estimator = None,
                       #'ctr_border_count':[50,5,10,20,100,200]
                       }
         
-        model_grid = RandomizedSearchCV(estimator=CatBoostClassifier(random_state=seed, silent = True), 
+        model_grid = RandomizedSearchCV(estimator=CatBoostClassifier(random_state=seed, silent = True, **kwargs), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
                                         cv=cv, random_state=seed, n_jobs=-1)
 
