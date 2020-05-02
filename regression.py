@@ -4,8 +4,8 @@
 
 def setup(data, 
           target, 
-          train_size=0.7,
-          sampling=True,
+          train_size = 0.7,
+          sampling = True,
           sample_estimator = None,
           categorical_features = None,
           categorical_imputation = 'constant',
@@ -50,6 +50,8 @@ def setup(data,
           transform_target_method = 'box-cox', #new
           session_id = None,
           silent = False,
+          data_split_shuffle = True, #new
+          folds_shuffle = False, #new
           profile = False):
     
     """
@@ -361,7 +363,13 @@ def setup(data,
     When set to True, confirmation of data types is not required. All preprocessing will 
     be performed assuming automatically inferred data types. Not recommended for direct use 
     except for established pipelines.
-    
+
+    data_split_shuffle: bool, default = True
+    If set to False, prevents shuffling of rows when splitting data
+
+    folds_shuffle: bool, default = True
+    If set to False, prevents shuffling of rows when using cross validation
+
     profile: bool, default = False
     If set to true, a data profile for Exploratory Data Analysis will be displayed 
     in an interactive HTML report. 
@@ -1158,8 +1166,8 @@ def setup(data,
             MONITOR UPDATE ENDS
             '''
     
-            X_, X__, y_, y__ = train_test_split(X, y, test_size=1-i, random_state=seed)
-            X_train, X_test, y_train, y_test = train_test_split(X_, y_, test_size=0.3, random_state=seed)
+            X_, X__, y_, y__ = train_test_split(X, y, test_size=1-i, random_state=seed, shuffle=data_split_shuffle)
+            X_train, X_test, y_train, y_test = train_test_split(X_, y_, test_size=0.3, random_state=seed, shuffle=data_split_shuffle)
             model.fit(X_train,y_train)
             pred_ = model.predict(X_test)
             
@@ -1226,7 +1234,7 @@ def setup(data,
         
         if sample_size == '' or sample_size == '1':
             
-            X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=1-train_size, random_state=seed)
+            X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=1-train_size, random_state=seed, shuffle=data_split_shuffle)
             
             '''
             Final display Starts
@@ -1318,10 +1326,10 @@ def setup(data,
             
             sample_n = float(sample_size)
             X_selected, X_discard, y_selected, y_discard = train_test_split(X, y, test_size=1-sample_n,  
-                                                                random_state=seed)
+                                                                random_state=seed, shuffle=data_split_shuffle)
             
             X_train, X_test, y_train, y_test = train_test_split(X_selected, y_selected, test_size=1-train_size, 
-                                                                random_state=seed)
+                                                                random_state=seed, shuffle=data_split_shuffle)
             clear_output()
             
             
@@ -1416,7 +1424,7 @@ def setup(data,
         
         monitor.iloc[1,1:] = 'Splitting Data'
         update_display(monitor, display_id = 'monitor')
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=1-train_size, random_state=seed)
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=1-train_size, random_state=seed, shuffle=data_split_shuffle)
         progress.value += 1
         
         clear_output()
@@ -1709,7 +1717,7 @@ def create_model(estimator = None,
     progress.value += 1
     
     #cross validation setup starts here
-    kf = KFold(fold, random_state=seed)
+    kf = KFold(fold, random_state=seed, shuffle=folds_shuffle)
     
     score_mae =np.empty((0,0))
     score_mse =np.empty((0,0))
@@ -2283,7 +2291,7 @@ def ensemble_model(estimator,
     MONITOR UPDATE ENDS
     '''
     
-    kf = KFold(fold, random_state=seed)
+    kf = KFold(fold, random_state=seed, shuffle=folds_shuffle)
     
     score_mae =np.empty((0,0))
     score_mse =np.empty((0,0))
@@ -2879,7 +2887,7 @@ def compare_models(blacklist = None,
     '''
     
     #cross validation setup starts here
-    kf = KFold(fold, random_state=seed)
+    kf = KFold(fold, random_state=seed, shuffle=folds_shuffle)
 
     score_mae =np.empty((0,0))
     score_mse =np.empty((0,0))
@@ -3242,7 +3250,7 @@ def blend_models(estimator_list = 'All',
         mask = actual != 0
         return (np.fabs(actual - prediction)/actual)[mask].mean()
 
-    kf = KFold(fold, random_state=seed)
+    kf = KFold(fold, random_state=seed, shuffle=folds_shuffle)
     
     '''
     MONITOR UPDATE STARTS
@@ -3847,7 +3855,7 @@ def tune_model(estimator = None,
     
     progress.value += 1
     
-    kf = KFold(fold, random_state=seed)
+    kf = KFold(fold, random_state=seed, shuffle=folds_shuffle)
 
     score_mae =np.empty((0,0))
     score_mse =np.empty((0,0))
@@ -4954,7 +4962,7 @@ def stack_models(estimator_list,
     model.fit(data_X, data_y)
     models_.append(model)
     
-    kf = KFold(fold, random_state=seed) #capturing fold requested by user
+    kf = KFold(fold, random_state=seed, shuffle=folds_shuffle) #capturing fold requested by user
 
     score_mae =np.empty((0,0))
     score_mse =np.empty((0,0))
@@ -5521,7 +5529,7 @@ def create_stacknet(estimator_list,
     
     meta_model_ = model.fit(data_X,data_y)
     
-    kf = KFold(fold, random_state=seed) #capturing fold requested by user
+    kf = KFold(fold, random_state=seed, shuffle=folds_shuffle) #capturing fold requested by user
 
     score_mae =np.empty((0,0))
     score_mse =np.empty((0,0))

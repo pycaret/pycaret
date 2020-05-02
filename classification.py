@@ -48,7 +48,9 @@ def setup(data,
           feature_ratio = False, #new                        #create checking exceptions and docstring
           interaction_threshold = 0.01,    #new              #create checking exceptions and docstring
           session_id = None,
-          silent=False,
+          silent = False,
+          data_split_shuffle = True, #new
+          folds_shuffle = False, #new
           profile = False):
     
     """
@@ -351,7 +353,14 @@ def setup(data,
     When set to True, confirmation of data types is not required. All preprocessing will 
     be performed assuming automatically inferred data types. Not recommended for direct use 
     except for established pipelines.
-    
+
+    data_split_shuffle: bool, default = True
+    If set to False, prevents shuffling of rows when splitting data. If set to `False`
+    stratify updated to `None`
+
+    folds_shuffle: bool, default = True
+    If set to False, prevents shuffling of rows when using cross validation
+
     profile: bool, default = False
     If set to true, a data profile for Exploratory Data Analysis will be displayed 
     in an interactive HTML report. 
@@ -1130,8 +1139,8 @@ def setup(data,
             MONITOR UPDATE ENDS
             '''
     
-            X_, X__, y_, y__ = train_test_split(X, y, test_size=1-i, stratify=y, random_state=seed)
-            X_train, X_test, y_train, y_test = train_test_split(X_, y_, test_size=0.3, stratify=y_, random_state=seed)
+            X_, X__, y_, y__ = train_test_split(X, y, test_size=1-i, stratify=y if data_split_shuffle else None, random_state=seed, shuffle=data_split_shuffle)
+            X_train, X_test, y_train, y_test = train_test_split(X_, y_, test_size=0.3, stratify=y_ if data_split_shuffle else None, random_state=seed, shuffle=data_split_shuffle)
             model.fit(X_train,y_train)
             pred_ = model.predict(X_test)
             try:
@@ -1254,8 +1263,8 @@ def setup(data,
         sample_size = input("Sample Size: ")
         
         if sample_size == '' or sample_size == '1':
-            
-            X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=1-train_size, stratify=y, random_state=seed)
+            stratify = y if data_split_shuffle else None
+            X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=1-train_size, stratify=stratify, random_state=seed, shuffle=data_split_shuffle)
             
             '''
             Final display Starts
@@ -1341,11 +1350,11 @@ def setup(data,
         else:
             
             sample_n = float(sample_size)
-            X_selected, X_discard, y_selected, y_discard = train_test_split(X, y, test_size=1-sample_n, stratify=y, 
-                                                                random_state=seed)
+            X_selected, X_discard, y_selected, y_discard = train_test_split(X, y, test_size=1-sample_n, stratify=y if data_split_shuffle else None, 
+                                                                random_state=seed, shuffle=data_split_shuffle)
             
-            X_train, X_test, y_train, y_test = train_test_split(X_selected, y_selected, test_size=1-train_size, stratify=y_selected, 
-                                                                random_state=seed)
+            X_train, X_test, y_train, y_test = train_test_split(X_selected, y_selected, test_size=1-train_size, stratify=y_selected if data_split_shuffle else None, 
+                                                                random_state=seed, shuffle=data_split_shuffle)
             clear_output()
             
             
@@ -1436,7 +1445,8 @@ def setup(data,
         
         monitor.iloc[1,1:] = 'Splitting Data'
         update_display(monitor, display_id = 'monitor')
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=1-train_size, stratify=y, random_state=seed)
+        stratify = y if data_split_shuffle else None
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=1-train_size, stratify=stratify, random_state=seed, shuffle=data_split_shuffle)
         progress.value += 1
         
         clear_output()
@@ -1730,7 +1740,7 @@ def create_model(estimator = None,
     progress.value += 1
     
     #cross validation setup starts here
-    kf = StratifiedKFold(fold, random_state=seed)
+    kf = StratifiedKFold(fold, random_state=seed, shuffle=folds_shuffle)
 
     score_auc =np.empty((0,0))
     score_acc =np.empty((0,0))
@@ -2345,7 +2355,7 @@ def ensemble_model(estimator,
     MONITOR UPDATE ENDS
     '''
     
-    kf = StratifiedKFold(fold, random_state=seed)
+    kf = StratifiedKFold(fold, random_state=seed, shuffle=folds_shuffle)
     
     score_auc =np.empty((0,0))
     score_acc =np.empty((0,0))
@@ -3412,7 +3422,7 @@ def compare_models(blacklist = None,
     '''
     
     #cross validation setup starts here
-    kf = StratifiedKFold(fold, random_state=seed)
+    kf = StratifiedKFold(fold, random_state=seed, shuffle=folds_shuffle)
 
     score_acc =np.empty((0,0))
     score_auc =np.empty((0,0))
@@ -3902,7 +3912,7 @@ def tune_model(estimator = None,
         
     progress.value += 1
     
-    kf = StratifiedKFold(fold, random_state=seed)
+    kf = StratifiedKFold(fold, random_state=seed, shuffle=folds_shuffle)
 
     score_auc =np.empty((0,0))
     score_acc =np.empty((0,0))
@@ -4859,7 +4869,7 @@ def blend_models(estimator_list = 'All',
     
     
 
-    kf = StratifiedKFold(fold, random_state=seed)
+    kf = StratifiedKFold(fold, random_state=seed, shuffle=folds_shuffle)
     
     '''
     MONITOR UPDATE STARTS
@@ -5564,7 +5574,7 @@ def stack_models(estimator_list,
     model.fit(data_X, data_y)
     models_.append(model)
     
-    kf = StratifiedKFold(fold, random_state=seed) #capturing fold requested by user
+    kf = StratifiedKFold(fold, random_state=seed, shuffle=folds_shuffle) #capturing fold requested by user
 
     score_auc =np.empty((0,0))
     score_acc =np.empty((0,0))
@@ -6188,7 +6198,7 @@ def create_stacknet(estimator_list,
     
     meta_model_ = model.fit(data_X,data_y)
     
-    kf = StratifiedKFold(fold, random_state=seed) #capturing fold requested by user
+    kf = StratifiedKFold(fold, random_state=seed, shuffle=folds_shuffle) #capturing fold requested by user
 
     score_auc =np.empty((0,0))
     score_acc =np.empty((0,0))
@@ -6760,7 +6770,7 @@ def calibrate_model(estimator,
     progress.value += 1
     
     #cross validation setup starts here
-    kf = StratifiedKFold(fold, random_state=seed)
+    kf = StratifiedKFold(fold, random_state=seed, shuffle=folds_shuffle)
 
     score_auc =np.empty((0,0))
     score_acc =np.empty((0,0))
