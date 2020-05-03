@@ -9,3 +9,5 @@ The steps for this exercise would be:
 3. Create Label — Based on the definition of ‘sharp fall’, we would create labels on historical data
 
 4. Train models to predict the ‘sharp fall’ and use trained model to make prediction on new data
+
+Detailed article explaining the experiment can be found here ( https://towardsdatascience.com/predicting-crashes-in-gold-prices-using-machine-learning-5769f548496 )
