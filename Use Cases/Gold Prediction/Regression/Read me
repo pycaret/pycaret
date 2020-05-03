@@ -1,0 +1,8 @@
+In this experiemnet we will try to use a multi-variate regression approach to forecast the return from Gold.
+
+In the notebook, you will find codes that help you download financial information from yahoofinancials API for free and we will go through
+how to shape and prepare the data to make it fit for prediction.
+
+We will use a list of tickers which can be found in the Tickers.xlsx file in the Data folder, to download the historical prices.
+
+Detailed article on the experiment can be found here (https://towardsdatascience.com/machine-learning-to-predict-gold-price-returns-4bdb0506b132 )

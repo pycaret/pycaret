@@ -1,0 +1,13 @@
+In this experiment, we will try to predict if there would be a ‘sharp fall’ or ‘crash’ in Gold Prices over next 22-Day period.
+We would be using a classification technique for this experiment. We will also learn how to use the trained model to make a prediction on new data every day.
+The steps for this exercise would be:
+
+1. Import and shape the data — This would be similar to what was explained in the Regression Experiment Notebook. You can also use the final Training dataset from the Data folder.
+
+2. Define ‘sharp fall’ in Gold Prices. Sharp is not an absolute measure. We will try to define ‘sharp fall’ objectively
+
+3. Create Label — Based on the definition of ‘sharp fall’, we would create labels on historical data
+
+4. Train models to predict the ‘sharp fall’ and use trained model to make prediction on new data
+
+Detailed article explaining the experiment can be found here ( https://towardsdatascience.com/predicting-crashes-in-gold-prices-using-machine-learning-5769f548496 )
