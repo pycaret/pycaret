@@ -709,6 +709,10 @@ def setup(data,
     import warnings
     warnings.filterwarnings('ignore') 
     
+    # replace infinite numbers with NaN
+    if isinstance(data, pd.DataFrame):
+          data.replace([np.inf, -np.inf], np.nan, inplace = True)
+
     #copy original data for pandas profiler
     data_before_preprocess = data.copy()
     
