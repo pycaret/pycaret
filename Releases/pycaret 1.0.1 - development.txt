@@ -6,3 +6,4 @@ In addition to bug fix, following upgrades are being considered for 1.0.1 releas
 - Add matthews_corrcoef, log_loss metrics in classification. (Impact: pycaret.classification)
 - Add shuffle parameter for train-test-split in setup() function (Impact: pycaret.classification, pycaret.regression)
 - Add shuffle parameter for Kfold in setup() function (Impact: pycaret.classification, pycaret.regression)
+-
