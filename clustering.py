@@ -491,6 +491,10 @@ def setup(data,
     #defining global variables
     global data_, X, seed, prep_pipe, prep_param, experiment__
     
+    # replace infinite numbers with NaN
+    if isinstance(data, pd.DataFrame):
+          data.replace([np.inf, -np.inf], np.nan, inplace = True)
+
     #copy original data for pandas profiler
     data_before_preprocess = data.copy()
     
