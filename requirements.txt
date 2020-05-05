@@ -21,7 +21,7 @@ spacy
 nltk
 mlxtend
 pyod
-catboost>=0.20.2
+catboost
 pandas-profiling>=2.3.0
 kmodes>=0.10.1
 datefinder>=0.7.0

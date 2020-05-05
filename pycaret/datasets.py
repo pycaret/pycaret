@@ -48,6 +48,7 @@ def get_data(dataset, save_copy=False, profile = False):
     """
     
     import pandas as pd
+    from IPython.display import display, HTML, clear_output, update_display
     
     address = 'https://raw.githubusercontent.com/pycaret/pycaret/master/datasets/'
     extension = '.csv'

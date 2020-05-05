@@ -517,21 +517,21 @@ def setup(data,
     
     #pca components check
     if pca is True:
-        if pca_method is not 'linear':
+        if pca_method != 'linear':
             if pca_components is not None:
                 if(type(pca_components)) is not int:
                     sys.exit("(Type Error): pca_components parameter must be integer when pca_method is not 'linear'. ")
 
     #pca components check 2
     if pca is True:
-        if pca_method is not 'linear':
+        if pca_method != 'linear':
             if pca_components is not None:
                 if pca_components > len(data.columns)-1:
                     sys.exit("(Type Error): pca_components parameter cannot be greater than original features space.")                
  
     #pca components check 3
     if pca is True:
-        if pca_method is 'linear':
+        if pca_method == 'linear':
             if pca_components is not None:
                 if type(pca_components) is not float:
                     if pca_components > len(data.columns)-1: 
@@ -1807,7 +1807,8 @@ def create_model(estimator = None,
     
     monitor.iloc[1,1:] = 'Selecting Estimator'
     if verbose:
-        update_display(monitor, display_id = 'monitor')
+        if html_param:
+            update_display(monitor, display_id = 'monitor')
     
     '''
     MONITOR UPDATE ENDS
@@ -1986,7 +1987,8 @@ def create_model(estimator = None,
     
     monitor.iloc[1,1:] = 'Initializing CV'
     if verbose:
-        update_display(monitor, display_id = 'monitor')
+        if html_param:
+            update_display(monitor, display_id = 'monitor')
     
     '''
     MONITOR UPDATE ENDS
@@ -2005,7 +2007,8 @@ def create_model(estimator = None,
     
         monitor.iloc[1,1:] = 'Fitting Fold ' + str(fold_num) + ' of ' + str(fold)
         if verbose:
-            update_display(monitor, display_id = 'monitor')
+            if html_param:
+                update_display(monitor, display_id = 'monitor')
 
         '''
         MONITOR UPDATE ENDS
@@ -2077,7 +2080,8 @@ def create_model(estimator = None,
 
         monitor.iloc[2,1:] = ETC
         if verbose:
-            update_display(monitor, display_id = 'monitor')
+            if html_param:
+                update_display(monitor, display_id = 'monitor')
 
         '''
         MONITOR UPDATE ENDS
@@ -2143,7 +2147,8 @@ def create_model(estimator = None,
     #refitting the model on complete X_train, y_train
     monitor.iloc[1,1:] = 'Compiling Final Model'
     if verbose:
-        update_display(monitor, display_id = 'monitor')
+        if html_param:
+            update_display(monitor, display_id = 'monitor')
     
     model.fit(data_X, data_y)
     # Yellow the mean
@@ -2321,8 +2326,9 @@ def ensemble_model(estimator,
             display(monitor, display_id = 'monitor')
     
     if verbose:
-        display_ = display(master_display, display_id=True)
-        display_id = display_.display_id
+        if html_param:
+            display_ = display(master_display, display_id=True)
+            display_id = display_.display_id
         
     #dependencies
     import numpy as np
@@ -2400,7 +2406,9 @@ def ensemble_model(estimator,
     '''
     
     monitor.iloc[1,1:] = 'Selecting Estimator'
-    update_display(monitor, display_id = 'monitor')
+    if verbose:
+        if html_param:
+            update_display(monitor, display_id = 'monitor')
     
     '''
     MONITOR UPDATE ENDS
@@ -2423,7 +2431,9 @@ def ensemble_model(estimator,
     '''
     
     monitor.iloc[1,1:] = 'Initializing CV'
-    update_display(monitor, display_id = 'monitor')
+    if verbose:
+        if html_param:
+            update_display(monitor, display_id = 'monitor')
     
     '''
     MONITOR UPDATE ENDS
@@ -2659,7 +2669,10 @@ def ensemble_model(estimator,
     
     if verbose:
         clear_output()
-        display(model_results)
+        if html_param:
+            display(model_results)
+        else:
+            print(model_results.data)
         return model
     else:
         clear_output()
@@ -3326,7 +3339,9 @@ def compare_models(blacklist = None,
 
     for i in sorted_model_names:
         monitor.iloc[2,1:] = i
-        update_display(monitor, display_id = 'monitor')
+        if verbose:
+            if html_param:
+                update_display(monitor, display_id = 'monitor')
         progress.value += 1
         k = model_dict.get(i)
         m = create_model(estimator=k, verbose = False)
@@ -3893,11 +3908,8 @@ def blend_models(estimator_list = 'All',
             display(model_results)
         else:
             print(model_results.data)
-        return model
     
-    else:
-        clear_output()
-        return model
+    return model
 
 def tune_model(estimator, 
                fold = 10, 
@@ -3988,9 +4000,6 @@ def tune_model(estimator,
     When set to set to True, base estimator is returned when the metric doesn't improve 
     by tune_model. This gurantees the returned object would perform atleast equivalent 
     to base estimator created using create_model or model returned by compare_models.
-
-    **kwargs: 
-    Additional keyword arguments to pass to the estimator
 
     Returns:
     --------
@@ -4330,7 +4339,7 @@ def tune_model(estimator,
                         'normalize' : [True, False],
                         'eps': [0.00001, 0.0001, 0.001, 0.01, 0.05, 0.0005, 0.005, 0.00005, 0.02, 0.007]}
 
-        model_grid = RandomizedSearchCV(estimator=LassoLars(**kwargs), param_distributions=param_grid,
+        model_grid = RandomizedSearchCV(estimator=LassoLars(), param_distributions=param_grid,
                                        scoring=optimize, n_iter=n_iter, cv=cv, random_state=seed,
                                        n_jobs=n_jobs_param)
 
@@ -4344,15 +4353,15 @@ def tune_model(estimator,
         from sklearn.linear_model import OrthogonalMatchingPursuit
         import random
 
-        if custom_grid is None:
+        if custom_grid is not None:
             param_grid = custom_grid
 
         else:
-            param_grid = {'n_nonzero_coefs': range(1,len(X_train.columns)+1),
+            param_grid = {'n_nonzero_coefs': range(1, len(X_train.columns)+1),
                         'fit_intercept' : [True, False],
                         'normalize': [True, False]}
 
-        model_grid = RandomizedSearchCV(estimator=OrthogonalMatchingPursuit(**kwargs), 
+        model_grid = RandomizedSearchCV(estimator=OrthogonalMatchingPursuit(), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
                                         cv=cv, random_state=seed, n_jobs=n_jobs_param)
 
@@ -4365,7 +4374,7 @@ def tune_model(estimator,
 
         from sklearn.linear_model import BayesianRidge
 
-        if custom_grid is None:
+        if custom_grid is not None:
             param_grid = custom_grid
 
         else:
@@ -4379,7 +4388,7 @@ def tune_model(estimator,
                         'normalize': [True, False]
                         }    
 
-        model_grid = RandomizedSearchCV(estimator=BayesianRidge(**kwargs), 
+        model_grid = RandomizedSearchCV(estimator=BayesianRidge(), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
                                         cv=cv, random_state=seed, n_jobs=n_jobs_param)
 
@@ -4392,7 +4401,7 @@ def tune_model(estimator,
 
         from sklearn.linear_model import ARDRegression
 
-        if custom_grid is None:
+        if custom_grid is not None:
             param_grid = custom_grid
 
         else:
@@ -4406,7 +4415,7 @@ def tune_model(estimator,
                         'normalize': [True, False]
                         }    
 
-        model_grid = RandomizedSearchCV(estimator=ARDRegression(**kwargs), 
+        model_grid = RandomizedSearchCV(estimator=ARDRegression(), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
                                         cv=cv, random_state=seed, n_jobs=n_jobs_param)
 
@@ -4419,7 +4428,7 @@ def tune_model(estimator,
 
         from sklearn.linear_model import PassiveAggressiveRegressor
 
-        if custom_grid is None:
+        if custom_grid is not None:
             param_grid = custom_grid
 
         else:
@@ -4432,7 +4441,7 @@ def tune_model(estimator,
                         'shuffle' : [True, False]
                         }    
 
-        model_grid = RandomizedSearchCV(estimator=PassiveAggressiveRegressor(random_state=seed, **kwargs), 
+        model_grid = RandomizedSearchCV(estimator=PassiveAggressiveRegressor(random_state=seed, ), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
                                         cv=cv, random_state=seed, n_jobs=n_jobs_param)
 
@@ -4445,7 +4454,7 @@ def tune_model(estimator,
 
         from sklearn.linear_model import RANSACRegressor
 
-        if custom_grid is None:
+        if custom_grid is not None:
             param_grid = custom_grid
 
         else:
@@ -4458,7 +4467,7 @@ def tune_model(estimator,
                         'loss' : ['absolute_loss', 'squared_loss'],
                         }    
 
-        model_grid = RandomizedSearchCV(estimator=RANSACRegressor(random_state=seed, **kwargs), 
+        model_grid = RandomizedSearchCV(estimator=RANSACRegressor(random_state=seed, ), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
                                         cv=cv, random_state=seed, n_jobs=n_jobs_param)
 
@@ -4471,7 +4480,7 @@ def tune_model(estimator,
 
         from sklearn.linear_model import TheilSenRegressor
 
-        if custom_grid is None:
+        if custom_grid is not None:
             param_grid = custom_grid
 
         else:
@@ -4480,7 +4489,7 @@ def tune_model(estimator,
                         'max_subpopulation': [5000, 10000, 15000, 20000, 25000, 30000, 40000, 50000]
                         }    
 
-        model_grid = RandomizedSearchCV(estimator=TheilSenRegressor(random_state=seed, **kwargs), 
+        model_grid = RandomizedSearchCV(estimator=TheilSenRegressor(random_state=seed, ), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
                                         cv=cv, random_state=seed, n_jobs=n_jobs_param)
 
@@ -4493,7 +4502,7 @@ def tune_model(estimator,
 
         from sklearn.linear_model import HuberRegressor
 
-        if custom_grid is None:
+        if custom_grid is not None:
             param_grid = custom_grid
 
         else:
@@ -4502,7 +4511,7 @@ def tune_model(estimator,
                         'fit_intercept' : [True, False]
                         }    
 
-        model_grid = RandomizedSearchCV(estimator=HuberRegressor(**kwargs), 
+        model_grid = RandomizedSearchCV(estimator=HuberRegressor(), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
                                         cv=cv, random_state=seed, n_jobs=n_jobs_param)
 
@@ -4515,13 +4524,13 @@ def tune_model(estimator,
 
         from sklearn.kernel_ridge import KernelRidge
 
-        if custom_grid is None:
+        if custom_grid is not None:
             param_grid = custom_grid
 
         else:
             param_grid = {'alpha': np.arange(0,1,0.01) }    
 
-        model_grid = RandomizedSearchCV(estimator=KernelRidge(**kwargs), 
+        model_grid = RandomizedSearchCV(estimator=KernelRidge(), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
                                         cv=cv, random_state=seed, n_jobs=n_jobs_param)
 
@@ -4534,7 +4543,7 @@ def tune_model(estimator,
 
         from sklearn.svm import SVR
         
-        if custom_grid is None:
+        if custom_grid is not None:
             param_grid = custom_grid
 
         else:
@@ -4544,7 +4553,7 @@ def tune_model(estimator,
                         'shrinking': [True, False]
                         }    
 
-        model_grid = RandomizedSearchCV(estimator=SVR(**kwargs), 
+        model_grid = RandomizedSearchCV(estimator=SVR(), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
                                         cv=cv, random_state=seed, n_jobs=n_jobs_param)
 
@@ -4557,7 +4566,7 @@ def tune_model(estimator,
 
         from sklearn.neighbors import KNeighborsRegressor
 
-        if custom_grid is None:
+        if custom_grid is not None:
             param_grid = custom_grid
 
         else:
@@ -4567,7 +4576,7 @@ def tune_model(estimator,
                         'leaf_size': [10,20,30,40,50,60,70,80,90]
                         } 
 
-        model_grid = RandomizedSearchCV(estimator=KNeighborsRegressor(**kwargs), 
+        model_grid = RandomizedSearchCV(estimator=KNeighborsRegressor(), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
                                         cv=cv, random_state=seed, n_jobs=n_jobs_param)
 
@@ -4580,7 +4589,7 @@ def tune_model(estimator,
 
         from sklearn.tree import DecisionTreeRegressor
 
-        if custom_grid is None:
+        if custom_grid is not None:
             param_grid = custom_grid
 
         else:
@@ -4591,7 +4600,7 @@ def tune_model(estimator,
                         "criterion": ["mse", "mae", "friedman_mse"],
                         } 
 
-        model_grid = RandomizedSearchCV(estimator=DecisionTreeRegressor(random_state=seed, **kwargs), 
+        model_grid = RandomizedSearchCV(estimator=DecisionTreeRegressor(random_state=seed, ), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
                                         cv=cv, random_state=seed, n_jobs=n_jobs_param)
 
@@ -4604,7 +4613,7 @@ def tune_model(estimator,
 
         from sklearn.ensemble import RandomForestRegressor
 
-        if custom_grid is None:
+        if custom_grid is not None:
             param_grid = custom_grid
 
         else:
@@ -4617,7 +4626,7 @@ def tune_model(estimator,
                         'bootstrap': [True, False]
                         }
 
-        model_grid = RandomizedSearchCV(estimator=RandomForestRegressor(random_state=seed, **kwargs), 
+        model_grid = RandomizedSearchCV(estimator=RandomForestRegressor(random_state=seed, ), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
                                         cv=cv, random_state=seed, n_jobs=n_jobs_param)
 
@@ -4631,7 +4640,7 @@ def tune_model(estimator,
 
         from sklearn.ensemble import ExtraTreesRegressor
 
-        if custom_grid is None:
+        if custom_grid is not None:
             param_grid = custom_grid
 
         else:
@@ -4644,7 +4653,7 @@ def tune_model(estimator,
                         'bootstrap': [True, False]
                         }  
 
-        model_grid = RandomizedSearchCV(estimator=ExtraTreesRegressor(random_state=seed, **kwargs), 
+        model_grid = RandomizedSearchCV(estimator=ExtraTreesRegressor(random_state=seed, ), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
                                         cv=cv, random_state=seed, n_jobs=n_jobs_param)
 
@@ -4657,7 +4666,7 @@ def tune_model(estimator,
 
         from sklearn.ensemble import AdaBoostRegressor
 
-        if custom_grid is None:
+        if custom_grid is not None:
             param_grid = custom_grid
 
         else:
@@ -4666,7 +4675,7 @@ def tune_model(estimator,
                         'loss' : ["linear", "square", "exponential"]
                         }    
 
-        model_grid = RandomizedSearchCV(estimator=AdaBoostRegressor(base_estimator = _estimator_.base_estimator, random_state=seed, **kwargs), 
+        model_grid = RandomizedSearchCV(estimator=AdaBoostRegressor(base_estimator = _estimator_.base_estimator, random_state=seed, ), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
                                         cv=cv, random_state=seed, n_jobs=n_jobs_param)
 
@@ -4679,7 +4688,7 @@ def tune_model(estimator,
 
         from sklearn.ensemble import GradientBoostingRegressor
 
-        if custom_grid is None:
+        if custom_grid is not None:
             param_grid = custom_grid
 
         else:
@@ -4694,7 +4703,7 @@ def tune_model(estimator,
                         'max_features' : ['auto', 'sqrt', 'log2']
                         }     
 
-        model_grid = RandomizedSearchCV(estimator=GradientBoostingRegressor(random_state=seed, **kwargs), 
+        model_grid = RandomizedSearchCV(estimator=GradientBoostingRegressor(random_state=seed, ), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
                                         cv=cv, random_state=seed, n_jobs=n_jobs_param)
 
@@ -4707,7 +4716,7 @@ def tune_model(estimator,
 
         from sklearn.neural_network import MLPRegressor
         
-        if custom_grid is None:
+        if custom_grid is not None:
             param_grid = custom_grid
 
         else:
@@ -4718,7 +4727,7 @@ def tune_model(estimator,
                         'activation': ["tanh", "identity", "logistic","relu"]
                         }    
 
-        model_grid = RandomizedSearchCV(estimator=MLPRegressor(random_state=seed, **kwargs), 
+        model_grid = RandomizedSearchCV(estimator=MLPRegressor(random_state=seed, ), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
                                         cv=cv, random_state=seed, n_jobs=n_jobs_param)    
 
@@ -4732,7 +4741,7 @@ def tune_model(estimator,
         
         from xgboost import XGBRegressor
 
-        if custom_grid is None:
+        if custom_grid is not None:
             param_grid = custom_grid
 
         else:
@@ -4744,7 +4753,7 @@ def tune_model(estimator,
                         'min_child_weight': [1, 2, 3, 4]
                         }
 
-        model_grid = RandomizedSearchCV(estimator=XGBRegressor(random_state=seed, n_jobs=n_jobs_param, verbosity=0, **kwargs), 
+        model_grid = RandomizedSearchCV(estimator=XGBRegressor(random_state=seed, n_jobs=n_jobs_param, verbosity=0, ), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
                                         cv=cv, random_state=seed, n_jobs=n_jobs_param)
 
@@ -4758,7 +4767,7 @@ def tune_model(estimator,
         
         import lightgbm as lgb
 
-        if custom_grid is None:
+        if custom_grid is not None:
             param_grid = custom_grid
 
         else:
@@ -4771,7 +4780,7 @@ def tune_model(estimator,
                         'reg_lambda': [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
                         }
             
-        model_grid = RandomizedSearchCV(estimator=lgb.LGBMRegressor(random_state=seed, **kwargs), 
+        model_grid = RandomizedSearchCV(estimator=lgb.LGBMRegressor(random_state=seed, ), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
                                         cv=cv, random_state=seed, n_jobs=n_jobs_param)
 
@@ -4784,7 +4793,7 @@ def tune_model(estimator,
         
         from catboost import CatBoostRegressor
 
-        if custom_grid is None:
+        if custom_grid is not None:
             param_grid = custom_grid
 
         else:
@@ -4796,7 +4805,7 @@ def tune_model(estimator,
                         #'ctr_border_count':[50,5,10,20,100,200]
                         }
             
-        model_grid = RandomizedSearchCV(estimator=CatBoostRegressor(random_state=seed, silent=True, **kwargs), 
+        model_grid = RandomizedSearchCV(estimator=CatBoostRegressor(random_state=seed, silent=True, ), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
                                         cv=cv, random_state=seed, n_jobs=n_jobs_param)
 
@@ -4809,7 +4818,7 @@ def tune_model(estimator,
         
         from sklearn.ensemble import BaggingRegressor
 
-        if custom_grid is None:
+        if custom_grid is not None:
             param_grid = custom_grid
 
         else:
@@ -4818,7 +4827,7 @@ def tune_model(estimator,
                         'bootstrap_features': [True, False],
                         }
             
-        model_grid = RandomizedSearchCV(estimator=BaggingRegressor(base_estimator=_estimator_.base_estimator, random_state=seed, n_jobs=n_jobs_param, **kwargs), 
+        model_grid = RandomizedSearchCV(estimator=BaggingRegressor(base_estimator=_estimator_.base_estimator, random_state=seed, n_jobs=n_jobs_param, ), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
                                         cv=cv, random_state=seed, n_jobs=n_jobs_param)
 
@@ -4871,7 +4880,9 @@ def tune_model(estimator,
         '''
     
         monitor.iloc[1,1:] = 'Fitting Fold ' + str(fold_num) + ' of ' + str(fold)
-        update_display(monitor, display_id = 'monitor')
+        if verbose:
+            if html_param:
+                update_display(monitor, display_id = 'monitor')
 
         '''
         MONITOR UPDATE ENDS
@@ -5025,7 +5036,9 @@ def tune_model(estimator,
     
     #refitting the model on complete X_train, y_train
     monitor.iloc[1,1:] = 'Compiling Final Model'
-    update_display(monitor, display_id = 'monitor')
+    if verbose:
+        if html_param:
+            update_display(monitor, display_id = 'monitor')
     
     best_model.fit(data_X, data_y)
     
