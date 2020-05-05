@@ -8,7 +8,6 @@ before_install:
   - pip install -U pip
   - pip install -U pytest
   - pip install codecov
-  - pip install catboost
 install:
   - pip install -r requirements.txt
 script: pytest # run tests
