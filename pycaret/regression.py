@@ -936,9 +936,9 @@ def setup(data,
         transform_target_method_pass = 'yj'
         
     #import library
-    import pycaret.preprocess
+    import pycaret.preprocess as preprocess
     
-    data = pycaret.preprocess.Preprocess_Path_One(train_data = data, 
+    data = preprocess.Preprocess_Path_One(train_data = data, 
                                           target_variable = target,
                                           categorical_features = cat_features_pass,
                                           apply_ordinal_encoding = apply_ordinal_encoding_pass, #new
