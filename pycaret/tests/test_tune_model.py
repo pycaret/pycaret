@@ -6,15 +6,25 @@ import pytest
 import pycaret.regression
 import pycaret.datasets
 
-available_regressors = ['lr', 'lasso', 'ridge', 'en', 'lar', 'llar', 'omp', 'br', 'ard', 'par', 
-                            'ransac', 'tr', 'huber', 'kr', 'svm', 'knn', 'dt', 'rf', 'et', 'ada', 'gbr', 
-                            'mlp', 'xgboost', 'lightgbm', 'catboost']
-
-def test_tune_model():
+def test_model_tuning_r2():
     data = pycaret.datasets.get_data('boston')
+    data = data.head(50)
     reg1 = pycaret.regression.setup(data, target='medv',silent=True, verbose=False, html=False, session_id=123)
-    tuned_models = []
-    for i in available_regressors:
-        c = pycaret.regression.tune_model(estimator = pycaret.regression.create_model(i, verbose=False), verbose = False)
-        tuned_models.append(c)
-    assert len(tuned_models) == len(available_regressors)
+    model = pycaret.regression.tune_model(pycaret.regression.create_model('rf', verbose = False), verbose=False, optimize = 'r2')
+    assert hasattr(model, 'predict')
+
+def test_model_tuning_mae():
+    data = pycaret.datasets.get_data('boston')
+    data = data.head(50)
+    reg1 = pycaret.regression.setup(data, target='medv',silent=True, verbose=False, html=False, session_id=123)
+    model = pycaret.regression.tune_model(pycaret.regression.create_model('ada', verbose = False), verbose=False, optimize = 'mae')
+    assert hasattr(model, 'predict')
+
+def test_model_tuning_mse():
+    data = pycaret.datasets.get_data('boston')
+    data = data.head(50)
+    reg1 = pycaret.regression.setup(data, target='medv',silent=True, verbose=False, html=False, session_id=123)
+    model = pycaret.regression.tune_model(pycaret.regression.create_model('lr', verbose = False), verbose=False, optimize = 'mse')
+    assert hasattr(model, 'predict')
+
+

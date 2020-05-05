@@ -54,3 +54,14 @@
 2020-05-05 14:06:24,431 [413656] INFO     numexpr.utils:129: [JupyterRequire] Note: NumExpr detected 12 cores but "NUMEXPR_MAX_THREADS" not set, so enforcing safe limit of 8.
 2020-05-05 14:06:24,432 [413656] INFO     numexpr.utils:141: [JupyterRequire] NumExpr defaulting to 8 threads.
 2020-05-05 14:06:24,697 [413656] DEBUG    matplotlib.pyplot:225: [JupyterRequire] Loaded backend module://ipykernel.pylab.backend_inline version unknown.
+2020-05-05 15:23:24,077 [413656] DEBUG    parso.cache:126: [JupyterRequire] pickle loaded: C:\Users\mali085\AppData\Local\Continuum\anaconda3\lib\site-packages\sklearn\ensemble\_bagging.py
+2020-05-05 15:23:24,500 [413656] DEBUG    parso.cache:126: [JupyterRequire] pickle loaded: C:\Users\mali085\AppData\Local\Continuum\anaconda3\lib\site-packages\jedi\third_party\typeshed\stdlib\2and3\builtins.pyi
+2020-05-05 15:23:24,543 [413656] DEBUG    parso.cache:126: [JupyterRequire] pickle loaded: C:\Users\mali085\AppData\Local\Continuum\anaconda3\lib\site-packages\sklearn\ensemble\_base.py
+2020-05-05 15:23:24,574 [413656] DEBUG    parso.cache:126: [JupyterRequire] pickle loaded: C:\Users\mali085\AppData\Local\Continuum\anaconda3\lib\site-packages\sklearn\base.py
+2020-05-05 15:23:24,638 [413656] DEBUG    parso.cache:126: [JupyterRequire] pickle loaded: C:\Users\mali085\AppData\Local\Continuum\anaconda3\lib\site-packages\numpy\__init__.py
+2020-05-05 15:23:24,682 [413656] DEBUG    parso.cache:126: [JupyterRequire] pickle loaded: C:\Users\mali085\AppData\Local\Continuum\anaconda3\lib\site-packages\sklearn\tree\_classes.py
+2020-05-05 15:32:17,197 [413656] DEBUG    parso.python.diff:213: [JupyterRequire] diff parser start
+2020-05-05 15:32:17,198 [413656] DEBUG    parso.python.diff:224: [JupyterRequire] line_lengths old: 1; new: 1
+2020-05-05 15:32:17,199 [413656] DEBUG    parso.python.diff:228: [JupyterRequire] -> code[replace] old[1:1] new[1:1]
+2020-05-05 15:32:17,201 [413656] DEBUG    parso.python.diff:341: [JupyterRequire] parse_part from 1 to 1 (to 0 in part parser)
+2020-05-05 15:32:17,202 [413656] DEBUG    parso.python.diff:264: [JupyterRequire] diff parser end

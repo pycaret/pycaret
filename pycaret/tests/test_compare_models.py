@@ -8,6 +8,7 @@ import pycaret.datasets
 
 def test_compare_models():
     data = pycaret.datasets.get_data('boston')
+    data = data.head(50)
     reg1 = pycaret.regression.setup(data, target='medv',silent=True, html=False, session_id=123)
     models = pycaret.regression.compare_models(n_select=3)
     top_3 = len(models)
