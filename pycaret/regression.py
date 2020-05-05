@@ -936,7 +936,7 @@ def setup(data,
         transform_target_method_pass = 'yj'
         
     #import library
-    from pycaret import preprocess
+    import preprocess
     
     data = preprocess.Preprocess_Path_One(train_data = data, 
                                           target_variable = target,
