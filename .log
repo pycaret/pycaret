@@ -53,3 +53,4 @@
 2020-05-05 14:06:05,413 [413656] DEBUG    matplotlib.pyplot:225: [JupyterRequire] Loaded backend module://ipykernel.pylab.backend_inline version unknown.
 2020-05-05 14:06:24,431 [413656] INFO     numexpr.utils:129: [JupyterRequire] Note: NumExpr detected 12 cores but "NUMEXPR_MAX_THREADS" not set, so enforcing safe limit of 8.
 2020-05-05 14:06:24,432 [413656] INFO     numexpr.utils:141: [JupyterRequire] NumExpr defaulting to 8 threads.
+2020-05-05 14:06:24,697 [413656] DEBUG    matplotlib.pyplot:225: [JupyterRequire] Loaded backend module://ipykernel.pylab.backend_inline version unknown.
