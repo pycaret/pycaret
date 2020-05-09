@@ -2181,8 +2181,8 @@ def ensemble_model(estimator,
                    fold = 10,
                    n_estimators = 10,
                    round = 4,
+                   improve_only = True,
                    optimize = 'r2',
-                   improve_only = True,  
                    verbose = True):
     """
     
@@ -2230,16 +2230,16 @@ def ensemble_model(estimator,
     round: integer, default = 4
     Number of decimal places the metrics in the score grid will be rounded to.
 
-    optimize: string, default = 'r2'
-    Only used when improve_only is set to True. optimize parameter is used
-    to compare emsembled model with base estimator. Values accepted in 
-    optimize parameter are 'mae', 'mse', 'rmse', 'r2', 'rmsle', 'mape'.
-
     improve_only: Boolean, default = True
     When set to set to True, base estimator is returned when the metric doesn't 
     improve by ensemble_model. This gurantees the returned object would perform 
     atleast equivalent to base estimator created using create_model or model 
     returned by compare_models.
+
+    optimize: string, default = 'r2'
+    Only used when improve_only is set to True. optimize parameter is used
+    to compare emsembled model with base estimator. Values accepted in 
+    optimize parameter are 'mae', 'mse', 'rmse', 'r2', 'rmsle', 'mape'.
 
     verbose: Boolean, default = True
     Score grid is not printed when verbose is set to False.
@@ -3363,6 +3363,8 @@ def blend_models(estimator_list = 'All',
                  fold = 10, 
                  round = 4, 
                  turbo = True,
+                 improve_only = True,
+                 optimize = 'r2',
                  verbose = True):
     
     """
@@ -3412,6 +3414,17 @@ def blend_models(estimator_list = 'All',
 
     turbo: Boolean, default = True
     When turbo is set to True, it blacklists estimator that uses Radial Kernel.
+
+    improve_only: Boolean, default = True
+    When set to True, base estimator is returned when the metric doesn't 
+    improve by ensemble_model. This gurantees the returned object would perform 
+    atleast equivalent to base estimator created using create_model or model 
+    returned by compare_models.
+
+    optimize: string, default = 'r2'
+    Only used when improve_only is set to True. optimize parameter is used
+    to compare emsembled model with base estimator. Values accepted in 
+    optimize parameter are 'mae', 'mse', 'rmse', 'r2', 'rmsle', 'mape'.
 
     verbose: Boolean, default = True
     Score grid is not printed when verbose is set to False.
@@ -3524,6 +3537,25 @@ def blend_models(estimator_list = 'All',
     data_X.reset_index(drop=True, inplace=True)
     data_y.reset_index(drop=True, inplace=True)
     
+    if optimize == 'mae':
+        compare_dimension = 'MAE' 
+    elif optimize == 'mse':
+        compare_dimension = 'MSE' 
+    elif optimize == 'r2':
+        compare_dimension = 'R2'
+    elif optimize == 'mape':
+        compare_dimension = 'MAPE'
+    elif optimize == 'rmse':
+        compare_dimension = 'RMSE' 
+    elif optimize == 'rmsle':
+        compare_dimension = 'RMSLE' 
+
+    #estimator_list_flag
+    if estimator_list == 'All':
+        all_flag = True
+    else:
+        all_flag = False
+
     progress.value += 1
     
     score_mae =np.empty((0,0))
@@ -3901,6 +3933,40 @@ def blend_models(estimator_list = 'All',
     nam = str(model_name) + ' Score Grid'
     tup = (nam, model_results)
     experiment__.append(tup)
+
+    #storing results in create_model_container
+    create_model_container.append(model_results.data)
+
+    '''
+    When improve_only sets to True. optimize metric in scoregrid is
+    compared with base model created using create_model so that stack_models
+    functions return the model with better score only. This will ensure 
+    model performance is atleast equivalent to what is seen in compare_models 
+    '''
+    
+    scorer = []
+
+    blend_model_results = create_model_container[-1][compare_dimension][-2:][0]
+    
+    scorer.append(blend_model_results)
+
+    if improve_only and all_flag is False:
+        base_models_ = []
+        for i in estimator_list:
+            m = create_model(i,verbose=False)
+            s = create_model_container[-1][compare_dimension][-2:][0]
+            scorer.append(s)
+            base_models_.append(m)
+
+    if optimize == 'r2':
+        index_scorer = scorer.index(max(scorer))
+    else:
+        index_scorer = scorer.index(min(scorer))
+
+    if index_scorer == 0:
+        model = model
+    else:
+        model = base_models_[index_scorer-1]
     
     if verbose:
         clear_output()
@@ -5098,6 +5164,8 @@ def stack_models(estimator_list,
                  round = 4, 
                  restack = True, 
                  plot = False,
+                 improve_only = True,
+                 optimize = 'r2',
                  finalize = False,
                  verbose = True):
     
@@ -5155,7 +5223,18 @@ def stack_models(estimator_list,
     plot: Boolean, default = False
     When plot is set to True, it will return the correlation plot of prediction
     from all base models provided in estimator_list.
-    
+
+    improve_only: Boolean, default = True
+    When set to True, base estimator is returned when the metric doesn't 
+    improve by ensemble_model. This gurantees the returned object would perform 
+    atleast equivalent to base estimator created using create_model or model 
+    returned by compare_models.
+
+    optimize: string, default = 'r2'
+    Only used when improve_only is set to True. optimize parameter is used
+    to compare emsembled model with base estimator. Values accepted in 
+    optimize parameter are 'mae', 'mse', 'rmse', 'r2', 'rmsle', 'mape'.
+
     finalize: Boolean, default = False
     When finalize is set to True, it will fit the stacker on entire dataset
     including the hold-out sample created during the setup() stage. It is not 
@@ -5248,13 +5327,30 @@ def stack_models(estimator_list,
     else:
         meta_model = deepcopy(meta_model) 
     
-    clear_output()
+    if optimize == 'mae':
+        compare_dimension = 'MAE' 
+    elif optimize == 'mse':
+        compare_dimension = 'MSE' 
+    elif optimize == 'r2':
+        compare_dimension = 'R2'
+    elif optimize == 'mape':
+        compare_dimension = 'MAPE'
+    elif optimize == 'rmse':
+        compare_dimension = 'RMSE' 
+    elif optimize == 'rmsle':
+        compare_dimension = 'RMSLE' 
+
+    if verbose:
+        if html_param:
+            clear_output()
     
     #progress bar
     max_progress = len(estimator_list) + fold + 4
     progress = ipw.IntProgress(value=0, min=0, max=max_progress, step=1 , description='Processing: ')
     master_display = pd.DataFrame(columns=['MAE','MSE','RMSE', 'R2', 'RMSLE', 'MAPE'])
-    display(progress)
+    if verbose:
+        if html_param:
+            display(progress)
     
     #display monitor
     timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
@@ -5263,7 +5359,9 @@ def stack_models(estimator_list,
                              ['ETC' , '. . . . . . . . . . . . . . . . . .',  'Calculating ETC'] ],
                               columns=['', ' ', '   ']).set_index('')
     
-    display(monitor, display_id = 'monitor')
+    if verbose:
+        if html_param:
+            display(monitor, display_id = 'monitor')
     
     if verbose:
         display_ = display(master_display, display_id=True)
@@ -5336,7 +5434,9 @@ def stack_models(estimator_list,
         '''
 
         monitor.iloc[1,1:] = 'Evaluating ' + model_names[counter]
-        update_display(monitor, display_id = 'monitor')
+        if verbose:
+            if html_param:
+                update_display(monitor, display_id = 'monitor')
 
         '''
         MONITOR UPDATE ENDS
@@ -5378,7 +5478,6 @@ def stack_models(estimator_list,
     base_prediction_cor = base_prediction.corr()
     
     #Meta Modeling Starts Here
-    
     model = meta_model #this defines model to be used below as model = meta_model (as captured above)
     
     #appending in models
@@ -5419,7 +5518,9 @@ def stack_models(estimator_list,
         '''
     
         monitor.iloc[1,1:] = 'Fitting Meta Model Fold ' + str(fold_num) + ' of ' + str(fold)
-        update_display(monitor, display_id = 'monitor')
+        if verbose:
+            if html_param:
+                update_display(monitor, display_id = 'monitor')
 
         '''
         MONITOR UPDATE ENDS
@@ -5449,7 +5550,6 @@ def stack_models(estimator_list,
         rmsle = np.sqrt(np.mean(np.power(np.log(np.array(abs(pred_))+1) - np.log(np.array(abs(ytest))+1), 2)))
         mape = calculate_mape(ytest,pred_)
         training_time=time_end-time_start
-        #max_error_ = metrics.max_error(ytest,pred_)
         score_mae = np.append(score_mae,mae)
         score_mse = np.append(score_mse,mse)
         score_rmse = np.append(score_rmse,rmse)
@@ -5496,7 +5596,9 @@ def stack_models(estimator_list,
 
         monitor.iloc[2,1:] = ETC
         
-        update_display(monitor, display_id = 'monitor')
+        if verbose:
+            if html_param:
+                update_display(monitor, display_id = 'monitor')
 
         '''
         MONITOR UPDATE ENDS
@@ -5514,7 +5616,8 @@ def stack_models(estimator_list,
         '''
         
         if verbose:
-            update_display(master_display, display_id = display_id)
+            if html_param:
+                update_display(master_display, display_id = display_id)
             
         
         '''
@@ -5577,6 +5680,41 @@ def stack_models(estimator_list,
     tup = (nam, model_results)
     experiment__.append(tup)
     
+    #storing results in create_model_container
+    create_model_container.append(model_results.data)
+
+    '''
+    When improve_only sets to True. optimize metric in scoregrid is
+    compared with base model created using create_model so that stack_models
+    functions return the model with better score only. This will ensure 
+    model performance is atleast equivalent to what is seen in compare_models 
+    '''
+    
+    scorer = []
+
+    stack_model_results = create_model_container[-1][compare_dimension][-2:][0]
+    
+    scorer.append(stack_model_results)
+
+    if improve_only:
+        base_models_ = []
+        for i in estimator_list:
+            m = create_model(i,verbose=False)
+            s = create_model_container[-1][compare_dimension][-2:][0]
+            scorer.append(s)
+            base_models_.append(m)
+
+    if optimize == 'r2':
+        index_scorer = scorer.index(max(scorer))
+    else:
+        index_scorer = scorer.index(min(scorer))
+
+    if index_scorer == 0:
+        models_ = models_
+    else:
+        models_ = base_models_[index_scorer-1]
+
+
     if plot:
         clear_output()
         plt.subplots(figsize=(15,7))
@@ -5586,11 +5724,12 @@ def stack_models(estimator_list,
     
     if verbose:
         clear_output()
-        display(model_results)
-        return models_
-    else:
-        clear_output()
-        return models_
+        if html_param:
+            display(model_results)
+        else:
+            print(model_results.data)
+
+    return models_
 
 def create_stacknet(estimator_list,
                     meta_model = None,
