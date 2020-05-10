@@ -4,4 +4,4 @@ __pycache__/
 catboost_info
 /stacker.py
 /stacknet.py
-/nbtest.ipynb
+/nb_test.ipynb
