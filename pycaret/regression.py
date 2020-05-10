@@ -4301,7 +4301,7 @@ def tune_model(estimator,
             param_grid = {'fit_intercept': [True, False],
                         'normalize' : [True, False]
                         }        
-        model_grid = RandomizedSearchCV(estimator=LinearRegression(), param_distributions=param_grid, 
+        model_grid = RandomizedSearchCV(estimator=LinearRegression(n_jobs=n_jobs_param), param_distributions=param_grid, 
                                         scoring=optimize, n_iter=n_iter, cv=cv, random_state=seed,
                                         n_jobs=n_jobs_param, iid=False)
 
@@ -4507,7 +4507,7 @@ def tune_model(estimator,
                         'shuffle' : [True, False]
                         }    
 
-        model_grid = RandomizedSearchCV(estimator=PassiveAggressiveRegressor(random_state=seed, ), 
+        model_grid = RandomizedSearchCV(estimator=PassiveAggressiveRegressor(random_state=seed), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
                                         cv=cv, random_state=seed, n_jobs=n_jobs_param)
 
@@ -4533,7 +4533,7 @@ def tune_model(estimator,
                         'loss' : ['absolute_loss', 'squared_loss'],
                         }    
 
-        model_grid = RandomizedSearchCV(estimator=RANSACRegressor(random_state=seed, ), 
+        model_grid = RandomizedSearchCV(estimator=RANSACRegressor(random_state=seed), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
                                         cv=cv, random_state=seed, n_jobs=n_jobs_param)
 
@@ -4555,7 +4555,7 @@ def tune_model(estimator,
                         'max_subpopulation': [5000, 10000, 15000, 20000, 25000, 30000, 40000, 50000]
                         }    
 
-        model_grid = RandomizedSearchCV(estimator=TheilSenRegressor(random_state=seed, ), 
+        model_grid = RandomizedSearchCV(estimator=TheilSenRegressor(random_state=seed, n_jobs=n_jobs_param), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
                                         cv=cv, random_state=seed, n_jobs=n_jobs_param)
 
@@ -4642,7 +4642,7 @@ def tune_model(estimator,
                         'leaf_size': [10,20,30,40,50,60,70,80,90]
                         } 
 
-        model_grid = RandomizedSearchCV(estimator=KNeighborsRegressor(), 
+        model_grid = RandomizedSearchCV(estimator=KNeighborsRegressor(n_jobs=n_jobs_param), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
                                         cv=cv, random_state=seed, n_jobs=n_jobs_param)
 
@@ -4666,7 +4666,7 @@ def tune_model(estimator,
                         "criterion": ["mse", "mae", "friedman_mse"],
                         } 
 
-        model_grid = RandomizedSearchCV(estimator=DecisionTreeRegressor(random_state=seed, ), 
+        model_grid = RandomizedSearchCV(estimator=DecisionTreeRegressor(random_state=seed), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
                                         cv=cv, random_state=seed, n_jobs=n_jobs_param)
 
@@ -4692,7 +4692,7 @@ def tune_model(estimator,
                         'bootstrap': [True, False]
                         }
 
-        model_grid = RandomizedSearchCV(estimator=RandomForestRegressor(random_state=seed, ), 
+        model_grid = RandomizedSearchCV(estimator=RandomForestRegressor(random_state=seed, n_jobs=n_jobs_param), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
                                         cv=cv, random_state=seed, n_jobs=n_jobs_param)
 
@@ -4719,7 +4719,7 @@ def tune_model(estimator,
                         'bootstrap': [True, False]
                         }  
 
-        model_grid = RandomizedSearchCV(estimator=ExtraTreesRegressor(random_state=seed, ), 
+        model_grid = RandomizedSearchCV(estimator=ExtraTreesRegressor(random_state=seed, n_jobs=n_jobs_param), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
                                         cv=cv, random_state=seed, n_jobs=n_jobs_param)
 
@@ -4769,7 +4769,7 @@ def tune_model(estimator,
                         'max_features' : ['auto', 'sqrt', 'log2']
                         }     
 
-        model_grid = RandomizedSearchCV(estimator=GradientBoostingRegressor(random_state=seed, ), 
+        model_grid = RandomizedSearchCV(estimator=GradientBoostingRegressor(random_state=seed), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
                                         cv=cv, random_state=seed, n_jobs=n_jobs_param)
 
@@ -4793,7 +4793,7 @@ def tune_model(estimator,
                         'activation': ["tanh", "identity", "logistic","relu"]
                         }    
 
-        model_grid = RandomizedSearchCV(estimator=MLPRegressor(random_state=seed, ), 
+        model_grid = RandomizedSearchCV(estimator=MLPRegressor(random_state=seed), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
                                         cv=cv, random_state=seed, n_jobs=n_jobs_param)    
 
@@ -4846,7 +4846,7 @@ def tune_model(estimator,
                         'reg_lambda': [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
                         }
             
-        model_grid = RandomizedSearchCV(estimator=lgb.LGBMRegressor(random_state=seed, ), 
+        model_grid = RandomizedSearchCV(estimator=lgb.LGBMRegressor(random_state=seed, n_jobs=n_jobs_param), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
                                         cv=cv, random_state=seed, n_jobs=n_jobs_param)
 
@@ -4871,7 +4871,7 @@ def tune_model(estimator,
                         #'ctr_border_count':[50,5,10,20,100,200]
                         }
             
-        model_grid = RandomizedSearchCV(estimator=CatBoostRegressor(random_state=seed, silent=True, ), 
+        model_grid = RandomizedSearchCV(estimator=CatBoostRegressor(random_state=seed, silent=True), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
                                         cv=cv, random_state=seed, n_jobs=n_jobs_param)
 
@@ -4893,7 +4893,7 @@ def tune_model(estimator,
                         'bootstrap_features': [True, False],
                         }
             
-        model_grid = RandomizedSearchCV(estimator=BaggingRegressor(base_estimator=_estimator_.base_estimator, random_state=seed, n_jobs=n_jobs_param, ), 
+        model_grid = RandomizedSearchCV(estimator=BaggingRegressor(base_estimator=_estimator_.base_estimator, random_state=seed, n_jobs=n_jobs_param), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
                                         cv=cv, random_state=seed, n_jobs=n_jobs_param)
 
