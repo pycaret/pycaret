@@ -2,7 +2,7 @@
 # Author: Fahad Akbar <m.akbar@queensu.ca>
 # License: MIT
 
-# this is my chnage
+
 
 
 import pandas as pd
@@ -98,8 +98,12 @@ class DataTypes_Auto_infer(BaseEstimator,TransformerMixin):
     # 250-500 samples, th is 2.4%
     # 500 and above 2% or belwo
    
-    # # if there are inf or -inf then replace them with NaN
-    # data.replace([np.inf,-np.inf],np.NaN,inplace=True)
+    # if there are inf or -inf then replace them with NaN
+    data.replace([np.inf,-np.inf],np.NaN,inplace=True)
+
+    # also make sure that all the column names are string 
+    data.columns = [str(i) for i in data.columns]
+  
    
     # we canc check if somehow everything is object, we can try converting them in float
     for i in data.select_dtypes(include=['object']).columns:
@@ -292,6 +296,12 @@ class DataTypes_Auto_infer(BaseEstimator,TransformerMixin):
         Panda Data Frame
     '''
     data = dataset.copy()
+    # also make sure that all the column names are string 
+    data.columns = [str(i) for i in data.columns]
+
+    # if there are inf or -inf then replace them with NaN
+    data.replace([np.inf,-np.inf],np.NaN,inplace=True)
+    
     # remove sepcial char from column names
     #data.columns= data.columns.str.replace('[,]','')
 
@@ -2330,6 +2340,14 @@ def Preprocess_Path_One(train_data,target_variable,ml_usecase=None,test_data =No
           - except for pca_liner, all other method only takes number of component (as integer) i.e no variance explaination metohd available  
   '''
   global c2, subcase
+
+  # also make sure that all the column names are string 
+  train_data.columns = [str(i) for i in train_data.columns]
+  if test_data is not None:
+    test_data.columns = [str(i) for i in test_data.columns]
+  
+
+
   # WE NEED TO AUTO INFER the ml use case
   c1 = train_data[target_variable].dtype == 'int64'
   c2 = len(train_data[target_variable].unique()) <= 20
@@ -2590,6 +2608,12 @@ def Preprocess_Path_Two(train_data,ml_usecase=None,test_data =None,categorical_f
       -16) Apply diamension reduction techniques such as pca_liner, pca_kernal, incremental, tsne 
           - except for pca_liner, all other method only takes number of component (as integer) i.e no variance explaination metohd available 
   '''
+  
+  
+  # also make sure that all the column names are string 
+  train_data.columns = [str(i) for i in train_data.columns]
+  if test_data is not None:
+    test_data.columns = [str(i) for i in test_data.columns]
   
   # just make a dummy target variable
   target_variable = 'dummy_target'
