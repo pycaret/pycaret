@@ -745,7 +745,7 @@ def setup(data,
     
     #declaring global variables to be accessed by other functions
     global X, y, X_train, X_test, y_train, y_test, seed, prep_pipe, target_inverse_transformer, experiment__, preprocess,\
-            folds_shuffle_param, n_jobs_param, create_model_container
+            folds_shuffle_param, n_jobs_param, create_model_container, master_model_container
     
     #generate seed to be used globally
     if session_id is None:
@@ -1155,6 +1155,9 @@ def setup(data,
     #create create_model_container
     create_model_container = []
 
+    #create master_model_container
+    master_model_container = []
+
     #sample estimator
     if sample_estimator is None:
         model = LinearRegression(n_jobs=n_jobs_param)
@@ -1366,8 +1369,11 @@ def setup(data,
             except:
                 pass
             
+            #if you are making change to return argument (addition/deletion or sequence change) make sure
+            #you do it on two other places below as well. There are total 3 return arguments in setup() call.
+
             return X, y, X_train, X_test, y_train, y_test, seed, prep_pipe, target_inverse_transformer, experiment__,\
-                folds_shuffle_param, n_jobs_param, html_param, create_model_container
+                folds_shuffle_param, n_jobs_param, html_param, create_model_container, master_model_container
         
         else:
             
@@ -1470,7 +1476,7 @@ def setup(data,
                 pass
             
             return X, y, X_train, X_test, y_train, y_test, seed, prep_pipe, target_inverse_transformer, experiment__,\
-                folds_shuffle_param, n_jobs_param, html_param, create_model_container 
+                folds_shuffle_param, n_jobs_param, html_param, create_model_container, master_model_container
 
     else:
         
@@ -1570,7 +1576,7 @@ def setup(data,
             pass
         
         return X, y, X_train, X_test, y_train, y_test, seed, prep_pipe, target_inverse_transformer, experiment__,\
-            folds_shuffle_param, n_jobs_param, html_param, create_model_container
+            folds_shuffle_param, n_jobs_param, html_param, create_model_container, master_model_container
 
 def create_model(estimator = None, 
                  ensemble = False, 
@@ -2145,7 +2151,8 @@ def create_model(estimator = None,
     model_results = model_results.round(round)
     
     #refitting the model on complete X_train, y_train
-    monitor.iloc[1,1:] = 'Compiling Final Model'
+    monitor.iloc[1,1:] = 'Finalizing Model'
+    monitor.iloc[2,1:] = 'Almost Finished'
     if verbose:
         if html_param:
             update_display(monitor, display_id = 'monitor')
@@ -2165,6 +2172,9 @@ def create_model(estimator = None,
     
     #storing results in create_model_container
     create_model_container.append(model_results.data)
+    
+    #storing results in master_model_container
+    master_model_container.append(model)
 
     if verbose:
         clear_output()
@@ -2623,7 +2633,7 @@ def ensemble_model(estimator,
     progress.value += 1
     
     #refitting the model on complete X_train, y_train
-    monitor.iloc[1,1:] = 'Compiling Final Model'
+    monitor.iloc[1,1:] = 'Finalizing Model'
     if verbose:
         if html_param:
             update_display(monitor, display_id = 'monitor')
@@ -2632,6 +2642,9 @@ def ensemble_model(estimator,
 
     #storing results in create_model_container
     create_model_container.append(model_results.data)
+
+    #storing results in master_model_container
+    master_model_container.append(model)
     
     progress.value += 1
     
@@ -2642,6 +2655,13 @@ def ensemble_model(estimator,
     model performance is atleast equivalent to what is seen is compare_models 
     '''
     if improve_only:
+
+        if verbose:
+            if html_param:
+                monitor.iloc[1,1:] = 'Compiling Final Results'
+                monitor.iloc[2,1:] = 'Almost Finished'
+                update_display(monitor, display_id = 'monitor')
+
         #creating base model for comparison
         base_model = create_model(estimator=estimator, verbose = False)
         base_model_results = create_model_container[-1][compare_dimension][-2:][0]
@@ -3914,10 +3934,11 @@ def blend_models(estimator_list = 'All',
     
     # yellow the mean
     model_results=model_results.style.apply(lambda x: ['background: yellow' if (x.name == 'Mean') else '' for i in x], axis=1)
+    model_results = model_results.set_precision(round)
     progress.value += 1
     
     #refitting the model on complete X_train, y_train
-    monitor.iloc[1,1:] = 'Compiling Final Model'
+    monitor.iloc[1,1:] = 'Finalizing Model'
     if verbose:
         if html_param:
             update_display(monitor, display_id = 'monitor')
@@ -3937,6 +3958,9 @@ def blend_models(estimator_list = 'All',
     #storing results in create_model_container
     create_model_container.append(model_results.data)
 
+    #storing results in master_model_container
+    master_model_container.append(model)
+
     '''
     When improve_only sets to True. optimize metric in scoregrid is
     compared with base model created using create_model so that stack_models
@@ -3951,6 +3975,13 @@ def blend_models(estimator_list = 'All',
     scorer.append(blend_model_results)
 
     if improve_only and all_flag is False:
+
+        if verbose:
+            if html_param:
+                monitor.iloc[1,1:] = 'Compiling Final Results'
+                monitor.iloc[2,1:] = 'Almost Finished'
+                update_display(monitor, display_id = 'monitor')
+
         base_models_ = []
         for i in estimator_list:
             m = create_model(i,verbose=False)
@@ -5101,7 +5132,7 @@ def tune_model(estimator,
     progress.value += 1
     
     #refitting the model on complete X_train, y_train
-    monitor.iloc[1,1:] = 'Compiling Final Model'
+    monitor.iloc[1,1:] = 'Finalizing Model'
     if verbose:
         if html_param:
             update_display(monitor, display_id = 'monitor')
@@ -5113,6 +5144,9 @@ def tune_model(estimator,
     #storing results in create_model_container
     create_model_container.append(model_results.data)
 
+    #storing results in master_model_container
+    master_model_container.append(best_model)
+
     '''
     When improve_only sets to True. optimize metric in scoregrid is
     compared with base model created using create_model so that tune_model
@@ -5120,6 +5154,13 @@ def tune_model(estimator,
     model performance is atleast equivalent to what is seen is compare_models 
     '''
     if improve_only:
+
+        if verbose:
+            if html_param:
+                monitor.iloc[1,1:] = 'Compiling Final Results'
+                monitor.iloc[2,1:] = 'Almost Finished'
+                update_display(monitor, display_id = 'monitor')
+
         #creating base model for comparison
         if estimator in ['Bagging', 'ada']:
             base_model = create_model(estimator=_estimator_, verbose = False)
@@ -5340,9 +5381,7 @@ def stack_models(estimator_list,
     elif optimize == 'rmsle':
         compare_dimension = 'RMSLE' 
 
-    if verbose:
-        if html_param:
-            clear_output()
+    clear_output()
     
     #progress bar
     max_progress = len(estimator_list) + fold + 4
@@ -5676,6 +5715,9 @@ def stack_models(estimator_list,
     #storing results in create_model_container
     create_model_container.append(model_results.data)
 
+    #storing results in master_model_container
+    master_model_container.append(models_)
+
     '''
     When improve_only sets to True. optimize metric in scoregrid is
     compared with base model created using create_model so that stack_models
@@ -5690,6 +5732,13 @@ def stack_models(estimator_list,
     scorer.append(stack_model_results)
 
     if improve_only:
+
+        if verbose:
+            if html_param:
+                monitor.iloc[1,1:] = 'Compiling Final Results'
+                monitor.iloc[2,1:] = 'Almost Finished'
+                update_display(monitor, display_id = 'monitor')
+
         base_models_ = []
         for i in estimator_list:
             m = create_model(i,verbose=False)
@@ -6319,6 +6368,9 @@ def create_stacknet(estimator_list,
     #storing results in create_model_container
     create_model_container.append(model_results.data)
 
+    #storing results in master_model_container
+    master_model_container.append(models_)
+
     '''
     When improve_only sets to True. optimize metric in scoregrid is
     compared with base model created using create_model so that stack_models
@@ -6333,6 +6385,13 @@ def create_stacknet(estimator_list,
     scorer.append(stack_model_results)
 
     if improve_only:
+
+        if verbose:
+            if html_param:
+                monitor.iloc[1,1:] = 'Compiling Final Results'
+                monitor.iloc[2,1:] = 'Almost Finished'
+                update_display(monitor, display_id = 'monitor')
+
         base_models_ = []
         for i in estimator_list:
             for k in i:
@@ -7871,3 +7930,54 @@ def deploy_model(model,
         s3.upload_file(filename,bucket_name,key)
         clear_output()
         print("Model Succesfully Deployed on AWS S3")
+
+def automl(optimize='r2'):
+    """
+    space reserved for docstring
+    
+    """
+
+    if optimize == 'mae':
+        compare_dimension = 'MAE' 
+    elif optimize == 'mse':
+        compare_dimension = 'MSE' 
+    elif optimize == 'r2':
+        compare_dimension = 'R2'
+    elif optimize == 'mape':
+        compare_dimension = 'MAPE'
+    elif optimize == 'rmse':
+        compare_dimension = 'RMSE' 
+    elif optimize == 'rmsle':
+        compare_dimension = 'RMSLE' 
+        
+    scorer = []
+
+    for i in create_model_container:
+        r = i[compare_dimension][-2:][0]
+        scorer.append(r)
+
+    print(scorer)
+
+    #returning better model
+    if optimize == 'r2':
+        index_scorer = scorer.index(max(scorer))
+    else:
+        index_scorer = scorer.index(min(scorer))
+
+    automl_result = master_model_container[index_scorer]
+
+    return automl_result
+    
+
+
+
+
+    #base_model_results = create_model_container[-1][compare_dimension][-2:][0]
+    #tuned_model_results = create_model_container[-2][compare_dimension][-2:][0]
+
+    #print(len(create_model_container))
+    #print(len(master_model_container))
+
+    #print(create_model_container)
+    #print(master_model_container)
+
