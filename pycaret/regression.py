@@ -5364,8 +5364,9 @@ def stack_models(estimator_list,
             display(monitor, display_id = 'monitor')
     
     if verbose:
-        display_ = display(master_display, display_id=True)
-        display_id = display_.display_id
+        if html_param:
+            display_ = display(master_display, display_id=True)
+            display_id = display_.display_id
         
     #ignore warnings
     import warnings
@@ -5672,14 +5673,6 @@ def stack_models(estimator_list,
     #appending method into models_
     models_.append(restack)
     
-    #storing into experiment
-    model_name = 'Stacking Regressor (Single Layer)'
-    tup = (model_name,models_)
-    experiment__.append(tup)
-    nam = str(model_name) + ' Score Grid'
-    tup = (nam, model_results)
-    experiment__.append(tup)
-    
     #storing results in create_model_container
     create_model_container.append(model_results.data)
 
@@ -5704,6 +5697,12 @@ def stack_models(estimator_list,
             scorer.append(s)
             base_models_.append(m)
 
+        mm = create_model(meta_model, verbose=False)
+        base_models_.append(mm)
+        s = create_model_container[-1][compare_dimension][-2:][0]
+        scorer.append(s)
+
+    #returning better model
     if optimize == 'r2':
         index_scorer = scorer.index(max(scorer))
     else:
@@ -5713,7 +5712,14 @@ def stack_models(estimator_list,
         models_ = models_
     else:
         models_ = base_models_[index_scorer-1]
-
+    
+    #storing into experiment
+    model_name = 'Stacking Regressor (Single Layer)'
+    tup = (model_name,models_)
+    experiment__.append(tup)
+    nam = str(model_name) + ' Score Grid'
+    tup = (nam, model_results)
+    experiment__.append(tup)
 
     if plot:
         clear_output()
@@ -5736,6 +5742,8 @@ def create_stacknet(estimator_list,
                     fold = 10,
                     round = 4,
                     restack = True,
+                    improve_only = True,
+                    optimize = 'r2',
                     finalize = False,
                     verbose = True):
     
@@ -5787,6 +5795,17 @@ def create_stacknet(estimator_list,
     the predicted label of last layer is passed to meta model when making final 
     predictions.
     
+    improve_only: Boolean, default = True
+    When set to True, base estimator is returned when the metric doesn't 
+    improve by ensemble_model. This gurantees the returned object would perform 
+    atleast equivalent to base estimator created using create_model or model 
+    returned by compare_models.
+
+    optimize: string, default = 'r2'
+    Only used when improve_only is set to True. optimize parameter is used
+    to compare emsembled model with base estimator. Values accepted in 
+    optimize parameter are 'mae', 'mse', 'rmse', 'r2', 'rmsle', 'mape'.
+
     finalize: Boolean, default = False
     When finalize is set to True, it will fit the stacker on entire dataset
     including the hold-out sample created during the setup() stage. It is not 
@@ -5890,12 +5909,28 @@ def create_stacknet(estimator_list,
     else:
         meta_model = deepcopy(meta_model)
         
-    clear_output()
+    if optimize == 'mae':
+        compare_dimension = 'MAE' 
+    elif optimize == 'mse':
+        compare_dimension = 'MSE' 
+    elif optimize == 'r2':
+        compare_dimension = 'R2'
+    elif optimize == 'mape':
+        compare_dimension = 'MAPE'
+    elif optimize == 'rmse':
+        compare_dimension = 'RMSE' 
+    elif optimize == 'rmsle':
+        compare_dimension = 'RMSLE' 
+
+    if html_param:
+        clear_output()
     
     #progress bar
     max_progress = len(estimator_list) + fold + 4
     progress = ipw.IntProgress(value=0, min=0, max=max_progress, step=1 , description='Processing: ')
-    display(progress)
+    if verbose:
+        if html_param:
+            display(progress)
     
     #display monitor
     timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
@@ -5904,12 +5939,15 @@ def create_stacknet(estimator_list,
                              ['ETC' , '. . . . . . . . . . . . . . . . . .',  'Calculating ETC'] ],
                               columns=['', ' ', '   ']).set_index('')
     
-    display(monitor, display_id = 'monitor')
+    if verbose:
+        if html_param:
+            display(monitor, display_id = 'monitor')
     
     if verbose:
-        master_display = pd.DataFrame(columns=['MAE','MSE','RMSE', 'R2', 'RMSLE', 'MAPE'])
-        display_ = display(master_display, display_id=True)
-        display_id = display_.display_id
+        if html_param:
+            master_display = pd.DataFrame(columns=['MAE','MSE','RMSE', 'R2', 'RMSLE', 'MAPE'])
+            display_ = display(master_display, display_id=True)
+            display_id = display_.display_id
     
     #ignore warnings
     import warnings
@@ -6000,7 +6038,9 @@ def create_stacknet(estimator_list,
         '''
 
         monitor.iloc[1,1:] = 'Evaluating ' + base_level_names[base_counter]
-        update_display(monitor, display_id = 'monitor')
+        if verbose:
+            if html_param:
+                update_display(monitor, display_id = 'monitor')
 
         '''
         MONITOR UPDATE ENDS
@@ -6039,7 +6079,9 @@ def create_stacknet(estimator_list,
             '''
 
             monitor.iloc[1,1:] = 'Evaluating ' + inter_level_names[inter_counter][model_counter]
-            update_display(monitor, display_id = 'monitor')
+            if verbose:
+                if html_param:
+                    update_display(monitor, display_id = 'monitor')
 
             '''
             MONITOR UPDATE ENDS
@@ -6123,7 +6165,9 @@ def create_stacknet(estimator_list,
         '''
     
         monitor.iloc[1,1:] = 'Fitting Meta Model Fold ' + str(fold_num) + ' of ' + str(fold)
-        update_display(monitor, display_id = 'monitor')
+        if verbose:
+            if html_param:
+                update_display(monitor, display_id = 'monitor')
 
         '''
         MONITOR UPDATE ENDS
@@ -6151,7 +6195,6 @@ def create_stacknet(estimator_list,
         rmsle = np.sqrt(np.mean(np.power(np.log(np.array(abs(pred_))+1) - np.log(np.array(abs(ytest))+1), 2)))
         mape = calculate_mape(ytest,pred_)
         training_time=time_end-time_start
-        #max_error_ = metrics.max_error(ytest,pred_)
         score_mae = np.append(score_mae,mae)
         score_mse = np.append(score_mse,mse)
         score_rmse = np.append(score_rmse,rmse)
@@ -6172,7 +6215,8 @@ def create_stacknet(estimator_list,
                                      'R2': [r2], 'RMSLE' : [rmsle], 'MAPE': [mape]}).round(round)
                                      
         if verbose:
-            master_display = pd.concat([master_display, fold_results],ignore_index=True)
+            if html_param:
+                master_display = pd.concat([master_display, fold_results],ignore_index=True)
         
         fold_results = []
         
@@ -6199,7 +6243,9 @@ def create_stacknet(estimator_list,
         '''
 
         monitor.iloc[2,1:] = ETC
-        update_display(monitor, display_id = 'monitor')
+        if verbose:
+            if html_param:
+                update_display(monitor, display_id = 'monitor')
 
         '''
         MONITOR UPDATE ENDS
@@ -6210,7 +6256,8 @@ def create_stacknet(estimator_list,
         '''
         
         if verbose:
-            update_display(master_display, display_id = display_id)
+            if html_param:
+                update_display(master_display, display_id = display_id)
             
         
         '''
@@ -6269,6 +6316,47 @@ def create_stacknet(estimator_list,
     #appending restack param
     models_.append(restack)
     
+    #storing results in create_model_container
+    create_model_container.append(model_results.data)
+
+    '''
+    When improve_only sets to True. optimize metric in scoregrid is
+    compared with base model created using create_model so that stack_models
+    functions return the model with better score only. This will ensure 
+    model performance is atleast equivalent to what is seen in compare_models 
+    '''
+    
+    scorer = []
+
+    stack_model_results = create_model_container[-1][compare_dimension][-2:][0]
+    
+    scorer.append(stack_model_results)
+
+    if improve_only:
+        base_models_ = []
+        for i in estimator_list:
+            for k in i:
+                m = create_model(k,verbose=False)
+                s = create_model_container[-1][compare_dimension][-2:][0]
+                scorer.append(s)
+                base_models_.append(m)
+
+        mm = create_model(meta_model, verbose=False)
+        base_models_.append(mm)
+        s = create_model_container[-1][compare_dimension][-2:][0]
+        scorer.append(s)
+
+    #returning better model
+    if optimize == 'r2':
+        index_scorer = scorer.index(max(scorer))
+    else:
+        index_scorer = scorer.index(min(scorer))
+
+    if index_scorer == 0:
+        models_ = models_
+    else:
+        models_ = base_models_[index_scorer-1]
+
     #storing into experiment
     model_name = 'Stacking Regressor (Multi Layer)'
     tup = (model_name,models_)
@@ -6279,12 +6367,13 @@ def create_stacknet(estimator_list,
     
     if verbose:
         clear_output()
-        display(model_results)
-        return models_
+        if html_param:
+            display(model_results)
+        else:
+            print(model_results.data)
     
-    else:
-        clear_output()
-        return models_ 
+    return models_
+
 
 def plot_model(estimator, 
                plot = 'residuals'): 
@@ -7245,7 +7334,9 @@ def predict_model(estimator,
         return (np.fabs(actual - prediction)/actual)[mask].mean()
     
     estimator = deepcopy(estimator)
-    clear_output()
+
+    if html_param:
+        clear_output()
     
     if type(estimator) is str:
         if platform == 'aws':
@@ -7466,13 +7557,14 @@ def predict_model(estimator,
                 rmsle = np.sqrt(np.mean(np.power(np.log(np.array(abs(pred_))+1) - np.log(np.array(abs(ytest))+1), 2)))
                 r2 = metrics.r2_score(ytest,pred_)
                 mape = calculate_mape(ytest,pred_)
-                #max_error_ = metrics.max_error(ytest,pred_)
-
 
                 df_score = pd.DataFrame( {'Model' : 'Stacking Regressor', 'MAE' : [mae], 'MSE' : [mse], 'RMSE' : [rmse], 
                                           'R2' : [r2], 'RMSLE' : [rmsle], 'MAPE' : [mape]})
                 df_score = df_score.round(round)
-                display(df_score)
+                if html_param:
+                    display(df_score)
+                else:
+                    print(df_score)
         
             label = pd.DataFrame(pred_)
             label = label.round(round)
@@ -7565,23 +7657,21 @@ def predict_model(estimator,
                 except:
                     pass
                 
-                global moez, mehreen
-                moez = pred_.copy()
-                mehreen = ytest.copy()
-                
                 mae = metrics.mean_absolute_error(ytest,pred_)
                 mse = metrics.mean_squared_error(ytest,pred_)
                 rmse = np.sqrt(mse)
                 rmsle = np.sqrt(np.mean(np.power(np.log(np.array(abs(pred_))+1) - np.log(np.array(abs(ytest))+1), 2)))
                 r2 = metrics.r2_score(ytest,pred_)
                 mape = calculate_mape(ytest,pred_)
-                #max_error_ = metrics.max_error(ytest,pred_)
-
 
                 df_score = pd.DataFrame( {'Model' : 'Stacking Regressor', 'MAE' : [mae], 'MSE' : [mse], 'RMSE' : [rmse], 
                                           'R2' : [r2], 'RMSLE' : [rmsle], 'MAPE' : [mape]})
                 df_score = df_score.round(round)
-                display(df_score)
+
+                if html_param:
+                    display(df_score)
+                else:
+                    print(df_score)
                 
             label = pd.DataFrame(pred_)
             label = label.round(round)
@@ -7653,14 +7743,15 @@ def predict_model(estimator,
             rmsle = np.sqrt(np.mean(np.power(np.log(np.array(abs(pred_))+1) - np.log(np.array(abs(ytest))+1), 2)))
             r2 = metrics.r2_score(ytest,pred_)
             mape = calculate_mape(ytest,pred_)
-            
-            #max_error_ = metrics.max_error(ytest,pred_)
-
-            
+                        
             df_score = pd.DataFrame( {'Model' : [full_name], 'MAE' : [mae], 'MSE' : [mse], 'RMSE' : [rmse], 
                                       'R2' : [r2], 'RMSLE' : [rmsle], 'MAPE' : [mape] })
             df_score = df_score.round(4)
-            display(df_score)
+
+            if html_param:
+                display(df_score)
+            else:
+                print(df_score)
         
             label = pd.DataFrame(pred_)
             label = label.round(round)

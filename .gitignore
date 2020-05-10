@@ -1,0 +1,7 @@
+.ipynb_checkpoints/
+.pytest_cache/
+__pycache__/
+catboost_info
+/stacker.py
+/stacknet.py
+/nbtest.ipynb
