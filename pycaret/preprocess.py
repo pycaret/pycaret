@@ -2327,6 +2327,10 @@ def Preprocess_Path_One(train_data,target_variable,ml_usecase=None,test_data =No
       -20) Apply diamension reduction techniques such as pca_liner, pca_kernal, incremental, tsne 
           - except for pca_liner, all other method only takes number of component (as integer) i.e no variance explaination metohd available  
   '''
+  # replacing infinite values with NaN values, because they are practically useless and should be imprinted later
+  if isinstance(train_data, pd.DataFrame):
+          train_data.replace([np.inf, -np.inf], np.nan, inplace = True)
+  
   global c2, subcase
   # WE NEED TO AUTO INFER the ml use case
   c1 = train_data[target_variable].dtype == 'int64'
