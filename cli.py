@@ -53,3 +53,6 @@ print('Total Models Bagged ' + str(len(bagged_models)))
 print('Total Models Boosted ' + str(len(boosted_models)))
 print(bagged_models)
 print(boosted_models)
+
+best = automl()
+print(best)

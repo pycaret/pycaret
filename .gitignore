@@ -4,4 +4,7 @@ __pycache__/
 catboost_info
 /stacker.py
 /stacknet.py
+/cli.py
 /nb_test.ipynb
+/nb_test2.ipynb
+app.py
