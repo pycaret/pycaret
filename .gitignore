@@ -7,4 +7,5 @@ catboost_info
 /cli.py
 /nb_test.ipynb
 /nb_test2.ipynb
-app.py
+/app.py
+/logo.png

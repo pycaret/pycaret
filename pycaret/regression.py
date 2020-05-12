@@ -3343,7 +3343,7 @@ def compare_models(blacklist = None,
     progress.value += 1
 
     monitor.iloc[1,1:] = 'Compiling Final Model'
-    monitor.iloc[3,1:] = 'Finishing up'
+    monitor.iloc[3,1:] = 'Almost Finished'
     
     if verbose:
         if html_param:
@@ -4768,7 +4768,7 @@ def tune_model(estimator,
 
         else:
             param_grid = {'n_estimators': np.arange(10,200,5),
-                        'learning_rate': np.arange(0,1,0.01),
+                        'learning_rate': np.arange(0.1,1,0.01),
                         'loss' : ["linear", "square", "exponential"]
                         }    
 
@@ -7968,8 +7968,6 @@ def automl(optimize='r2'):
 
     return automl_result
     
-
-
 
 
     #base_model_results = create_model_container[-1][compare_dimension][-2:][0]
