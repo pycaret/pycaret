@@ -11,5 +11,5 @@ def test_blend_models():
     data = data.head(50)
     reg1 = pycaret.regression.setup(data, target='medv',silent=True, html=False, session_id=123)
     estimator_list = pycaret.regression.compare_models(n_select=5, verbose=False) #select top 5
-    blender = pycaret.regression.blend_models(estimator_list=estimator_list, improve_only=False, verbose=False)
+    blender = pycaret.regression.blend_models(estimator_list=estimator_list, choose_better=False, verbose=False)
     assert hasattr(blender, 'predict')

@@ -13,5 +13,5 @@ def test_create_stacknet():
     estimator_list = pycaret.regression.compare_models(blacklist = ['catboost', 'tr'], n_select=6, verbose=False) #select top 3
     layer1 = estimator_list[:3]
     layer2 = estimator_list[3:]
-    stacker = pycaret.regression.create_stacknet(estimator_list=[layer1,layer2], improve_only=False, verbose=False)
+    stacker = pycaret.regression.create_stacknet(estimator_list=[layer1,layer2], choose_better=False, verbose=False)
     assert type(stacker) == list
