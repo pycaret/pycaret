@@ -12,4 +12,4 @@ def test_stack_models():
     reg1 = pycaret.regression.setup(data, target='medv',silent=True, html=False, session_id=123)
     estimator_list = pycaret.regression.compare_models(blacklist = ['catboost', 'tr'], n_select=3, verbose=False) #select top 3
     stacker = pycaret.regression.stack_models(estimator_list=estimator_list, choose_better=False, verbose=False)
-    assert type(stacker) == lists
+    assert type(stacker) == list
