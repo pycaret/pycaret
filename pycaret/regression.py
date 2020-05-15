@@ -2191,7 +2191,7 @@ def ensemble_model(estimator,
                    fold = 10,
                    n_estimators = 10,
                    round = 4,
-                   improve_only = True,
+                   choose_better = True,
                    optimize = 'r2',
                    verbose = True):
     """
@@ -2240,14 +2240,14 @@ def ensemble_model(estimator,
     round: integer, default = 4
     Number of decimal places the metrics in the score grid will be rounded to.
 
-    improve_only: Boolean, default = True
+    choose_better: Boolean, default = True
     When set to set to True, base estimator is returned when the metric doesn't 
     improve by ensemble_model. This gurantees the returned object would perform 
     atleast equivalent to base estimator created using create_model or model 
     returned by compare_models.
 
     optimize: string, default = 'r2'
-    Only used when improve_only is set to True. optimize parameter is used
+    Only used when choose_better is set to True. optimize parameter is used
     to compare emsembled model with base estimator. Values accepted in 
     optimize parameter are 'mae', 'mse', 'rmse', 'r2', 'rmsle', 'mape'.
 
@@ -2649,12 +2649,12 @@ def ensemble_model(estimator,
     progress.value += 1
     
     '''
-    When improve_only sets to True. optimize metric in scoregrid is
+    When choose_better sets to True. optimize metric in scoregrid is
     compared with base model created using create_model so that ensemble_model
     functions return the model with better score only. This will ensure 
     model performance is atleast equivalent to what is seen is compare_models 
     '''
-    if improve_only:
+    if choose_better:
 
         if verbose:
             if html_param:
@@ -3383,7 +3383,7 @@ def blend_models(estimator_list = 'All',
                  fold = 10, 
                  round = 4, 
                  turbo = True,
-                 improve_only = True,
+                 choose_better = True,
                  optimize = 'r2',
                  verbose = True):
     
@@ -3435,14 +3435,14 @@ def blend_models(estimator_list = 'All',
     turbo: Boolean, default = True
     When turbo is set to True, it blacklists estimator that uses Radial Kernel.
 
-    improve_only: Boolean, default = True
+    choose_better: Boolean, default = True
     When set to True, base estimator is returned when the metric doesn't 
     improve by ensemble_model. This gurantees the returned object would perform 
     atleast equivalent to base estimator created using create_model or model 
     returned by compare_models.
 
     optimize: string, default = 'r2'
-    Only used when improve_only is set to True. optimize parameter is used
+    Only used when choose_better is set to True. optimize parameter is used
     to compare emsembled model with base estimator. Values accepted in 
     optimize parameter are 'mae', 'mse', 'rmse', 'r2', 'rmsle', 'mape'.
 
@@ -3962,7 +3962,7 @@ def blend_models(estimator_list = 'All',
     master_model_container.append(model)
 
     '''
-    When improve_only sets to True. optimize metric in scoregrid is
+    When choose_better sets to True. optimize metric in scoregrid is
     compared with base model created using create_model so that stack_models
     functions return the model with better score only. This will ensure 
     model performance is atleast equivalent to what is seen in compare_models 
@@ -3974,7 +3974,7 @@ def blend_models(estimator_list = 'All',
     
     scorer.append(blend_model_results)
 
-    if improve_only and all_flag is False:
+    if choose_better and all_flag is False:
 
         if verbose:
             if html_param:
@@ -4015,7 +4015,7 @@ def tune_model(estimator,
                custom_grid = None, 
                optimize = 'r2',
                verbose = True,
-               improve_only = True):
+               choose_better = True):
     
       
     """
@@ -4093,7 +4093,7 @@ def tune_model(estimator,
     verbose: Boolean, default = True
     Score grid is not printed when verbose is set to False.
 
-    improve_only: Boolean, default = True
+    choose_better: Boolean, default = True
     When set to set to True, base estimator is returned when the metric doesn't improve 
     by tune_model. This gurantees the returned object would perform atleast equivalent 
     to base estimator created using create_model or model returned by compare_models.
@@ -5148,12 +5148,12 @@ def tune_model(estimator,
     master_model_container.append(best_model)
 
     '''
-    When improve_only sets to True. optimize metric in scoregrid is
+    When choose_better sets to True. optimize metric in scoregrid is
     compared with base model created using create_model so that tune_model
     functions return the model with better score only. This will ensure 
     model performance is atleast equivalent to what is seen is compare_models 
     '''
-    if improve_only:
+    if choose_better:
 
         if verbose:
             if html_param:
@@ -5205,7 +5205,7 @@ def stack_models(estimator_list,
                  round = 4, 
                  restack = True, 
                  plot = False,
-                 improve_only = True,
+                 choose_better = True,
                  optimize = 'r2',
                  finalize = False,
                  verbose = True):
@@ -5265,14 +5265,14 @@ def stack_models(estimator_list,
     When plot is set to True, it will return the correlation plot of prediction
     from all base models provided in estimator_list.
 
-    improve_only: Boolean, default = True
+    choose_better: Boolean, default = True
     When set to True, base estimator is returned when the metric doesn't 
     improve by ensemble_model. This gurantees the returned object would perform 
     atleast equivalent to base estimator created using create_model or model 
     returned by compare_models.
 
     optimize: string, default = 'r2'
-    Only used when improve_only is set to True. optimize parameter is used
+    Only used when choose_better is set to True. optimize parameter is used
     to compare emsembled model with base estimator. Values accepted in 
     optimize parameter are 'mae', 'mse', 'rmse', 'r2', 'rmsle', 'mape'.
 
@@ -5719,7 +5719,7 @@ def stack_models(estimator_list,
     master_model_container.append(models_)
 
     '''
-    When improve_only sets to True. optimize metric in scoregrid is
+    When choose_better sets to True. optimize metric in scoregrid is
     compared with base model created using create_model so that stack_models
     functions return the model with better score only. This will ensure 
     model performance is atleast equivalent to what is seen in compare_models 
@@ -5731,7 +5731,7 @@ def stack_models(estimator_list,
     
     scorer.append(stack_model_results)
 
-    if improve_only:
+    if choose_better:
 
         if verbose:
             if html_param:
@@ -5791,7 +5791,7 @@ def create_stacknet(estimator_list,
                     fold = 10,
                     round = 4,
                     restack = True,
-                    improve_only = True,
+                    choose_better = True,
                     optimize = 'r2',
                     finalize = False,
                     verbose = True):
@@ -5844,14 +5844,14 @@ def create_stacknet(estimator_list,
     the predicted label of last layer is passed to meta model when making final 
     predictions.
     
-    improve_only: Boolean, default = True
+    choose_better: Boolean, default = True
     When set to True, base estimator is returned when the metric doesn't 
     improve by ensemble_model. This gurantees the returned object would perform 
     atleast equivalent to base estimator created using create_model or model 
     returned by compare_models.
 
     optimize: string, default = 'r2'
-    Only used when improve_only is set to True. optimize parameter is used
+    Only used when choose_better is set to True. optimize parameter is used
     to compare emsembled model with base estimator. Values accepted in 
     optimize parameter are 'mae', 'mse', 'rmse', 'r2', 'rmsle', 'mape'.
 
@@ -6372,7 +6372,7 @@ def create_stacknet(estimator_list,
     master_model_container.append(models_)
 
     '''
-    When improve_only sets to True. optimize metric in scoregrid is
+    When choose_better sets to True. optimize metric in scoregrid is
     compared with base model created using create_model so that stack_models
     functions return the model with better score only. This will ensure 
     model performance is atleast equivalent to what is seen in compare_models 
@@ -6384,7 +6384,7 @@ def create_stacknet(estimator_list,
     
     scorer.append(stack_model_results)
 
-    if improve_only:
+    if choose_better:
 
         if verbose:
             if html_param:
