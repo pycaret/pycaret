@@ -54,7 +54,7 @@ def setup(data,
           html = True, #added in pycaret==1.0.1
           session_id = None,
           silent = False,
-          verbose = True,
+          verbose = True, #added in pycaret==1.0.1
           profile = False):
     
     """
@@ -1584,7 +1584,7 @@ def create_model(estimator = None,
                  fold = 10, 
                  round = 4,  
                  verbose = True,
-                 **kwargs):
+                 **kwargs): #added in pycaret==1.0.1
     
      
     """  
@@ -1659,7 +1659,7 @@ def create_model(estimator = None,
     Score grid is not printed when verbose is set to False.
 
     **kwargs: 
-    Additional keyword arguments to pass to the estimator
+    Additional keyword arguments to pass to the estimator.
 
     Returns:
     --------
@@ -2704,7 +2704,7 @@ def compare_models(blacklist = None,
                    sort = 'R2',
                    n_select = 1, #added in pycaret==1.0.1
                    turbo = True,
-                   verbose = True):
+                   verbose = True): #added in pycaret==1.0.1
     
     """
        

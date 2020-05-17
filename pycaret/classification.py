@@ -11,8 +11,8 @@ def setup(data,
           categorical_features = None,
           categorical_imputation = 'constant',
           ordinal_features = None,
-          high_cardinality_features = None, #latest
-          high_cardinality_method = 'frequency', #latest
+          high_cardinality_features = None,
+          high_cardinality_method = 'frequency',
           numeric_features = None,
           numeric_imputation = 'mean',
           date_features = None,
@@ -21,34 +21,39 @@ def setup(data,
           normalize_method = 'zscore',
           transformation = False,
           transformation_method = 'yeo-johnson',
-          handle_unknown_categorical = True, #new             #create docstring and exception
-          unknown_categorical_method = 'least_frequent', #new  #create docstring and exception
-          pca = False, #new
-          pca_method = 'linear', #new
-          pca_components = None, #new
-          ignore_low_variance = False, #new
-          combine_rare_levels = False, #new
-          rare_level_threshold = 0.10, #new
-          bin_numeric_features = None, #new
-          remove_outliers = False, #new
-          outliers_threshold = 0.05, #new
-          remove_multicollinearity = False, #new
-          multicollinearity_threshold = 0.9, #new
-          create_clusters = False, #new
-          cluster_iter = 20, #new
-          polynomial_features = False, #new                  #create checking exceptions and docstring
-          polynomial_degree = 2, #new                        #create checking exceptions and docstring
-          trigonometry_features = False, #new                #create checking exceptions and docstring
-          polynomial_threshold = 0.1, #new                   #create checking exceptions and docstring
-          group_features = None, #new                        #create checking exceptions and docstring
-          group_names = None, #new                           #create checking exceptions and docstring
-          feature_selection = False, #new                    #create checking exceptions and docstring
-          feature_selection_threshold = 0.8, #new            #create checking exceptions and docstring
-          feature_interaction = False, #new                  #create checking exceptions and docstring
-          feature_ratio = False, #new                        #create checking exceptions and docstring
-          interaction_threshold = 0.01,    #new              #create checking exceptions and docstring
+          handle_unknown_categorical = True,
+          unknown_categorical_method = 'least_frequent',
+          pca = False,
+          pca_method = 'linear',
+          pca_components = None,
+          ignore_low_variance = False,
+          combine_rare_levels = False,
+          rare_level_threshold = 0.10,
+          bin_numeric_features = None,
+          remove_outliers = False,
+          outliers_threshold = 0.05,
+          remove_multicollinearity = False,
+          multicollinearity_threshold = 0.9,
+          create_clusters = False,
+          cluster_iter = 20,
+          polynomial_features = False,                 
+          polynomial_degree = 2,                       
+          trigonometry_features = False,               
+          polynomial_threshold = 0.1,                 
+          group_features = None,                        
+          group_names = None,                         
+          feature_selection = False,                     
+          feature_selection_threshold = 0.8,             
+          feature_interaction = False,                   
+          feature_ratio = False,                         
+          interaction_threshold = 0.01,
+          data_split_shuffle = True, #added in pycaret==1.0.1
+          folds_shuffle = False, #added in pycaret==1.0.1
+          n_jobs = -1, #added in pycaret==1.0.1
+          html = True, #added in pycaret==1.0.1
           session_id = None,
           silent=False,
+          verbose=True, #added in pycaret==1.0.1
           profile = False):
     
     """
@@ -342,6 +347,21 @@ def setup(data,
     percentile of the  defined threshold are kept in the dataset. Remaining features 
     are dropped before further processing.
     
+    data_split_shuffle: bool, default = True
+    If set to False, prevents shuffling of rows when splitting data
+
+    folds_shuffle: bool, default = True
+    If set to False, prevents shuffling of rows when using cross validation
+
+    n_jobs: int, default = -1
+    The number of jobs to run in parallel (for functions that supports parallel 
+    processing) -1 means using all processors. To run all functions on single processor 
+    set n_jobs to None.
+
+    html: bool, default = True
+    If set to False, prevents runtime display of monitor. This must be set to False
+    when using environment that doesnt support HTML.
+
     session_id: int, default = None
     If None, a random seed is generated and returned in the Information grid. The 
     unique number is then distributed as a seed in all functions used during the 
@@ -352,6 +372,9 @@ def setup(data,
     be performed assuming automatically inferred data types. Not recommended for direct use 
     except for established pipelines.
     
+    verbose: Boolean, default = True
+    Information grid is not printed when verbose is set to False.
+
     profile: bool, default = False
     If set to true, a data profile for Exploratory Data Analysis will be displayed 
     in an interactive HTML report. 
@@ -492,21 +515,21 @@ def setup(data,
     
     #pca components check
     if pca is True:
-        if pca_method is not 'linear':
+        if pca_method != 'linear':
             if pca_components is not None:
                 if(type(pca_components)) is not int:
                     sys.exit("(Type Error): pca_components parameter must be integer when pca_method is not 'linear'. ")
 
     #pca components check 2
     if pca is True:
-        if pca_method is not 'linear':
+        if pca_method != 'linear':
             if pca_components is not None:
                 if pca_components > len(data.columns)-1:
                     sys.exit("(Type Error): pca_components parameter cannot be greater than original features space.")                
  
     #pca components check 3
     if pca is True:
-        if pca_method is 'linear':
+        if pca_method == 'linear':
             if pca_components is not None:
                 if type(pca_components) is not float:
                     if pca_components > len(data.columns)-1: 
@@ -650,6 +673,12 @@ def setup(data,
     pd.set_option('display.max_columns', 500)
     pd.set_option('display.max_rows', 500)
    
+    #global html_param
+    global html_param
+    
+    #create html_param
+    html_param = html
+
     #progress bar
     if sampling:
         max_steps = 10 + 3
@@ -657,7 +686,9 @@ def setup(data,
         max_steps = 3
         
     progress = ipw.IntProgress(value=0, min=0, max=max_steps, step=1 , description='Processing: ')
-    display(progress)
+    if verbose:
+        if html_param:
+            display(progress)
     
     timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
     monitor = pd.DataFrame( [ ['Initiated' , '. . . . . . . . . . . . . . . . . .', timestampStr ], 
@@ -665,7 +696,9 @@ def setup(data,
                              ['ETC' , '. . . . . . . . . . . . . . . . . .',  'Calculating ETC'] ],
                               columns=['', ' ', '   ']).set_index('')
     
-    display(monitor, display_id = 'monitor')
+    if verbose:
+        if html_param:
+            display(monitor, display_id = 'monitor')
     
     #general dependencies
     import numpy as np
@@ -695,7 +728,8 @@ def setup(data,
     data_before_preprocess = data.copy()
     
     #declaring global variables to be accessed by other functions
-    global X, y, X_train, X_test, y_train, y_test, seed, prep_pipe, experiment__
+    global X, y, X_train, X_test, y_train, y_test, seed, prep_pipe, experiment__,\
+        folds_shuffle_param, n_jobs_param, create_model_container, master_model_container 
     
     #generate seed to be used globally
     if session_id is None:
@@ -708,7 +742,9 @@ def setup(data,
     """
     
     monitor.iloc[1,1:] = 'Preparing Data for Modeling'
-    update_display(monitor, display_id = 'monitor')
+    if verbose:
+        if html_param:
+            update_display(monitor, display_id = 'monitor')
             
     #define parameters for preprocessor
     
@@ -877,7 +913,7 @@ def setup(data,
         display_dtypes_pass = True
         
     #import library
-    from pycaret import preprocess
+    import pycaret.preprocess as preprocess
     
     data = preprocess.Preprocess_Path_One(train_data = data, 
                                           target_variable = target,
@@ -1076,7 +1112,19 @@ def setup(data,
       
     #create an empty list for pickling later.
     experiment__ = []
-        
+
+    #create folds_shuffle_param
+    folds_shuffle_param = folds_shuffle
+
+    #create n_jobs_param
+    n_jobs_param = n_jobs
+
+    #create create_model_container
+    create_model_container = []
+
+    #create master_model_container
+    master_model_container = []
+
     #sample estimator
     if sample_estimator is None:
         model = LogisticRegression()
@@ -1124,14 +1172,16 @@ def setup(data,
             
             perc_text = split_perc_text[counter]
             monitor.iloc[1,1:] = 'Fitting Model on ' + perc_text + ' sample'
-            update_display(monitor, display_id = 'monitor')
+            if verbose:
+                if html_param:
+                    update_display(monitor, display_id = 'monitor')
 
             '''
             MONITOR UPDATE ENDS
             '''
     
-            X_, X__, y_, y__ = train_test_split(X, y, test_size=1-i, stratify=y, random_state=seed)
-            X_train, X_test, y_train, y_test = train_test_split(X_, y_, test_size=0.3, stratify=y_, random_state=seed)
+            X_, X__, y_, y__ = train_test_split(X, y, test_size=1-i, stratify=y, random_state=seed, shuffle=data_split_shuffle)
+            X_train, X_test, y_train, y_test = train_test_split(X_, y_, test_size=0.3, stratify=y_, random_state=seed, shuffle=data_split_shuffle)
             model.fit(X_train,y_train)
             pred_ = model.predict(X_test)
             try:
@@ -1225,7 +1275,9 @@ def setup(data,
                 ETC = ttt + ' Minutes Remaining'
                 
             monitor.iloc[2,1:] = ETC
-            update_display(monitor, display_id = 'monitor')
+            if verbose:
+                if html_param:
+                    update_display(monitor, display_id = 'monitor')
             
             
             '''
@@ -1243,25 +1295,24 @@ def setup(data,
         fig.show()
         
         monitor.iloc[1,1:] = 'Waiting for input'
-        update_display(monitor, display_id = 'monitor')
+        if verbose:
+            if html_param:
+                update_display(monitor, display_id = 'monitor')
         
         
         print('Please Enter the sample % of data you would like to use for modeling. Example: Enter 0.3 for 30%.')
         print('Press Enter if you would like to use 100% of the data.')
-        
-        print(' ')
-        
+                
         sample_size = input("Sample Size: ")
         
         if sample_size == '' or sample_size == '1':
             
-            X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=1-train_size, stratify=y, random_state=seed)
+            X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=1-train_size, stratify=y, random_state=seed, shuffle=data_split_shuffle)
             
             '''
             Final display Starts
             '''
             clear_output()
-            print(' ')
             if profile:
                 print('Setup Succesfully Completed! Loading Profile Now... Please Wait!')
             else:
@@ -1313,7 +1364,11 @@ def setup(data,
 
             #functions_ = functions.style.hide_index()
             functions_ = functions.style.apply(highlight_max)
-            display(functions_)
+            if verbose:
+                if html_param:
+                    display(functions_)
+                else:
+                    print(functions_.data)
             
             if profile:
                 try:
@@ -1336,16 +1391,17 @@ def setup(data,
             experiment__.append(('y_test Set', y_test)) 
             experiment__.append(('Transformation Pipeline', prep_pipe))
             
-            return X, y, X_train, X_test, y_train, y_test, seed, prep_pipe, experiment__
+            return X, y, X_train, X_test, y_train, y_test, seed, prep_pipe, experiment__,\
+                folds_shuffle_param, n_jobs_param, html_param, create_model_container, master_model_container
         
         else:
             
             sample_n = float(sample_size)
             X_selected, X_discard, y_selected, y_discard = train_test_split(X, y, test_size=1-sample_n, stratify=y, 
-                                                                random_state=seed)
+                                                                random_state=seed, shuffle=data_split_shuffle)
             
             X_train, X_test, y_train, y_test = train_test_split(X_selected, y_selected, test_size=1-train_size, stratify=y_selected, 
-                                                                random_state=seed)
+                                                                random_state=seed, shuffle=data_split_shuffle)
             clear_output()
             
             
@@ -1355,7 +1411,6 @@ def setup(data,
 
                 
             clear_output()
-            print(' ')
             if profile:
                 print('Setup Succesfully Completed! Loading Profile Now... Please Wait!')
             else:
@@ -1407,7 +1462,11 @@ def setup(data,
             
             #functions_ = functions.style.hide_index()
             functions_ = functions.style.apply(highlight_max)
-            display(functions_)
+            if verbose:
+                if html_param:
+                    display(functions_)
+                else:
+                    print(functions_.data)
             
             if profile:
                 try:
@@ -1430,13 +1489,16 @@ def setup(data,
             experiment__.append(('y_test Set', y_test)) 
             experiment__.append(('Transformation Pipeline', prep_pipe))
             
-            return X, y, X_train, X_test, y_train, y_test, seed, prep_pipe, experiment__
+            return X, y, X_train, X_test, y_train, y_test, seed, prep_pipe, experiment__,\
+                folds_shuffle_param, n_jobs_param, html_param, create_model_container, master_model_container
 
     else:
         
         monitor.iloc[1,1:] = 'Splitting Data'
-        update_display(monitor, display_id = 'monitor')
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=1-train_size, stratify=y, random_state=seed)
+        if verbose:
+            if html_param:
+                update_display(monitor, display_id = 'monitor')
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=1-train_size, stratify=y, random_state=seed, shuffle=data_split_shuffle)
         progress.value += 1
         
         clear_output()
@@ -1445,7 +1507,6 @@ def setup(data,
         Final display Starts
         '''
         clear_output()
-        print(' ')
         if profile:
             print('Setup Succesfully Completed! Loading Profile Now... Please Wait!')
         else:
@@ -1497,7 +1558,11 @@ def setup(data,
         
         #functions = functions.style.hide_index()
         functions_ = functions.style.apply(highlight_max)
-        display(functions_)
+        if verbose:
+            if html_param:
+                display(functions_)
+            else:
+                print(functions_.data)
         
         if profile:
             try:
@@ -1520,14 +1585,16 @@ def setup(data,
         experiment__.append(('y_test Set', y_test))
         experiment__.append(('Transformation Pipeline', prep_pipe))
         
-        return X, y, X_train, X_test, y_train, y_test, seed, prep_pipe, experiment__
+        return X, y, X_train, X_test, y_train, y_test, seed, prep_pipe, experiment__,\
+            folds_shuffle_param, n_jobs_param, html_param, create_model_container, master_model_container
 
 def create_model(estimator = None, 
                  ensemble = False, 
                  method = None, 
                  fold = 10, 
                  round = 4,  
-                 verbose = True):
+                 verbose = True,
+                 **kwargs): #added in pycaret==1.0.1
 
     """  
      
@@ -1593,6 +1660,9 @@ def create_model(estimator = None,
 
     verbose: Boolean, default = True
     Score grid is not printed when verbose is set to False.
+
+    **kwargs: 
+    Additional keyword arguments to pass to the estimator.
 
     Returns:
     --------
@@ -1670,7 +1740,7 @@ def create_model(estimator = None,
         
     #checking boosting conflict with estimators
     boosting_not_supported = ['lda','qda','ridge','mlp','gpc','svm','knn', 'catboost']
-    if method is 'Boosting' and estimator in boosting_not_supported:
+    if method == 'Boosting' and estimator in boosting_not_supported:
         sys.exit("(Type Error): Estimator does not provide class_weights or predict_proba function and hence not supported for the Boosting method. Change the estimator or method to 'Bagging'.")
     
     
@@ -1690,8 +1760,10 @@ def create_model(estimator = None,
         
     #progress bar
     progress = ipw.IntProgress(value=0, min=0, max=fold+4, step=1 , description='Processing: ')
-    master_display = pd.DataFrame(columns=['Accuracy','AUC','Recall', 'Prec.', 'F1', 'Kappa', 'MCC', 'Training time'])
-    display(progress)
+    master_display = pd.DataFrame(columns=['Accuracy','AUC','Recall', 'Prec.', 'F1', 'Kappa', 'MCC'])
+    if verbose:
+        if html_param:
+            display(progress)
     
     #display monitor
     timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
@@ -1700,11 +1772,14 @@ def create_model(estimator = None,
                              ['ETC' , '. . . . . . . . . . . . . . . . . .',  'Calculating ETC'] ],
                               columns=['', ' ', '   ']).set_index('')
     
-    display(monitor, display_id = 'monitor')
+    if verbose:
+        if html_param:
+            display(monitor, display_id = 'monitor')
     
     if verbose:
-        display_ = display(master_display, display_id=True)
-        display_id = display_.display_id
+        if html_param:
+            display_ = display(master_display, display_id=True)
+            display_id = display_.display_id
     
     #ignore warnings
     import warnings
@@ -1751,7 +1826,9 @@ def create_model(estimator = None,
     '''
     
     monitor.iloc[1,1:] = 'Selecting Estimator'
-    update_display(monitor, display_id = 'monitor')
+    if verbose:
+        if html_param:
+            update_display(monitor, display_id = 'monitor')
     
     '''
     MONITOR UPDATE ENDS
@@ -1760,108 +1837,108 @@ def create_model(estimator = None,
     if estimator == 'lr':
 
         from sklearn.linear_model import LogisticRegression
-        model = LogisticRegression(random_state=seed)
+        model = LogisticRegression(random_state=seed, **kwargs)
         full_name = 'Logistic Regression'
 
     elif estimator == 'knn':
         
         from sklearn.neighbors import KNeighborsClassifier
-        model = KNeighborsClassifier(n_jobs=-1)
+        model = KNeighborsClassifier(n_jobs=n_jobs_param, **kwargs)
         full_name = 'K Nearest Neighbours'
 
     elif estimator == 'nb':
 
         from sklearn.naive_bayes import GaussianNB
-        model = GaussianNB()
+        model = GaussianNB(**kwargs)
         full_name = 'Naive Bayes'
 
     elif estimator == 'dt':
 
         from sklearn.tree import DecisionTreeClassifier
-        model = DecisionTreeClassifier(random_state=seed)
+        model = DecisionTreeClassifier(random_state=seed, **kwargs)
         full_name = 'Decision Tree'
 
     elif estimator == 'svm':
 
         from sklearn.linear_model import SGDClassifier
-        model = SGDClassifier(max_iter=1000, tol=0.001, random_state=seed, n_jobs=-1)
+        model = SGDClassifier(max_iter=1000, tol=0.001, random_state=seed, n_jobs=n_jobs_param, **kwargs)
         full_name = 'Support Vector Machine'
 
     elif estimator == 'rbfsvm':
 
         from sklearn.svm import SVC
-        model = SVC(gamma='auto', C=1, probability=True, kernel='rbf', random_state=seed)
+        model = SVC(gamma='auto', C=1, probability=True, kernel='rbf', random_state=seed, **kwargs)
         full_name = 'RBF SVM'
 
     elif estimator == 'gpc':
 
         from sklearn.gaussian_process import GaussianProcessClassifier
-        model = GaussianProcessClassifier(random_state=seed, n_jobs=-1)
+        model = GaussianProcessClassifier(random_state=seed, n_jobs=n_jobs_param, **kwargs)
         full_name = 'Gaussian Process Classifier'
 
     elif estimator == 'mlp':
 
         from sklearn.neural_network import MLPClassifier
-        model = MLPClassifier(max_iter=500, random_state=seed)
+        model = MLPClassifier(max_iter=500, random_state=seed, **kwargs)
         full_name = 'Multi Level Perceptron'    
 
     elif estimator == 'ridge':
 
         from sklearn.linear_model import RidgeClassifier
-        model = RidgeClassifier(random_state=seed)
+        model = RidgeClassifier(random_state=seed, **kwargs)
         full_name = 'Ridge Classifier'        
 
     elif estimator == 'rf':
 
         from sklearn.ensemble import RandomForestClassifier
-        model = RandomForestClassifier(n_estimators=10, random_state=seed, n_jobs=-1)
+        model = RandomForestClassifier(n_estimators=10, random_state=seed, n_jobs=n_jobs_param, **kwargs)
         full_name = 'Random Forest Classifier'    
 
     elif estimator == 'qda':
 
         from sklearn.discriminant_analysis import QuadraticDiscriminantAnalysis
-        model = QuadraticDiscriminantAnalysis()
+        model = QuadraticDiscriminantAnalysis(**kwargs)
         full_name = 'Quadratic Discriminant Analysis' 
 
     elif estimator == 'ada':
 
         from sklearn.ensemble import AdaBoostClassifier
-        model = AdaBoostClassifier(random_state=seed)
+        model = AdaBoostClassifier(random_state=seed, **kwargs)
         full_name = 'AdaBoost Classifier'        
 
     elif estimator == 'gbc':
 
         from sklearn.ensemble import GradientBoostingClassifier    
-        model = GradientBoostingClassifier(random_state=seed)
+        model = GradientBoostingClassifier(random_state=seed, **kwargs)
         full_name = 'Gradient Boosting Classifier'    
 
     elif estimator == 'lda':
 
         from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
-        model = LinearDiscriminantAnalysis()
+        model = LinearDiscriminantAnalysis(**kwargs)
         full_name = 'Linear Discriminant Analysis'
 
     elif estimator == 'et':
 
         from sklearn.ensemble import ExtraTreesClassifier 
-        model = ExtraTreesClassifier(random_state=seed, n_jobs=-1)
+        model = ExtraTreesClassifier(random_state=seed, n_jobs=n_jobs_param, **kwargs)
         full_name = 'Extra Trees Classifier'
 
     elif estimator == 'xgboost':
 
         from xgboost import XGBClassifier
-        model = XGBClassifier(random_state=seed, verbosity=0, n_jobs=-1)
+        model = XGBClassifier(random_state=seed, verbosity=0, n_jobs=n_jobs_param, **kwargs)
         full_name = 'Extreme Gradient Boosting'
         
     elif estimator == 'lightgbm':
         
         import lightgbm as lgb
-        model = lgb.LGBMClassifier(random_state=seed, n_jobs=-1)
+        model = lgb.LGBMClassifier(random_state=seed, n_jobs=n_jobs_param, **kwargs)
         full_name = 'Light Gradient Boosting Machine'
         
     elif estimator == 'catboost':
         from catboost import CatBoostClassifier
-        model = CatBoostClassifier(random_state=seed, silent=True, thread_count=-1) # Silent is True to suppress CatBoost iteration results 
+        model = CatBoostClassifier(random_state=seed, silent=True, thread_count=n_jobs_param, **kwargs) # Silent is True to suppress CatBoost iteration results 
         full_name = 'CatBoost Classifier'
         
     else:
@@ -1875,7 +1952,7 @@ def create_model(estimator = None,
     if method == 'Bagging':
         
         from sklearn.ensemble import BaggingClassifier
-        model = BaggingClassifier(model,bootstrap=True,n_estimators=10, random_state=seed, n_jobs=-1)
+        model = BaggingClassifier(model,bootstrap=True,n_estimators=10, random_state=seed, n_jobs=n_jobs_param)
 
     elif method == 'Boosting':
         
@@ -1886,7 +1963,7 @@ def create_model(estimator = None,
     #multiclass checking
     if y.value_counts().count() > 2:
         from sklearn.multiclass import OneVsRestClassifier
-        model = OneVsRestClassifier(model, n_jobs=-1)
+        model = OneVsRestClassifier(model, n_jobs=n_jobs_param)
     
     
     '''
@@ -1894,7 +1971,9 @@ def create_model(estimator = None,
     '''
     
     monitor.iloc[1,1:] = 'Initializing CV'
-    update_display(monitor, display_id = 'monitor')
+    if verbose:
+        if html_param:
+            update_display(monitor, display_id = 'monitor')
     
     '''
     MONITOR UPDATE ENDS
@@ -1902,6 +1981,7 @@ def create_model(estimator = None,
     
     
     fold_num = 1
+    
     for train_i , test_i in kf.split(data_X,data_y):
         
         t0 = time.time()
@@ -1911,7 +1991,9 @@ def create_model(estimator = None,
         '''
     
         monitor.iloc[1,1:] = 'Fitting Fold ' + str(fold_num) + ' of ' + str(fold)
-        update_display(monitor, display_id = 'monitor')
+        if verbose:
+            if html_param:
+                update_display(monitor, display_id = 'monitor')
 
         '''
         MONITOR UPDATE ENDS
@@ -1977,8 +2059,7 @@ def create_model(estimator = None,
         score_training_time = np.append(score_training_time,training_time)
    
         progress.value += 1
-        
-        
+                
         '''
         
         This section handles time calculation and is created to update_display() as code loops through 
@@ -1987,8 +2068,7 @@ def create_model(estimator = None,
         '''
         
         fold_results = pd.DataFrame({'Accuracy':[sca], 'AUC': [sc], 'Recall': [recall], 
-                                     'Prec.': [precision], 'F1': [f1], 'Kappa': [kappa], 'MCC':[mcc], 'Training time':[training_time]}).round(round)
-        fold_results.loc[:,'Training time'] = fold_results.loc[:,'Training time'].round(2)
+                                     'Prec.': [precision], 'F1': [f1], 'Kappa': [kappa], 'MCC':[mcc]}).round(round)
         master_display = pd.concat([master_display, fold_results],ignore_index=True)
         fold_results = []
         
@@ -2013,7 +2093,9 @@ def create_model(estimator = None,
         '''
 
         monitor.iloc[2,1:] = ETC
-        update_display(monitor, display_id = 'monitor')
+        if verbose:
+            if html_param:
+                update_display(monitor, display_id = 'monitor')
 
         '''
         MONITOR UPDATE ENDS
@@ -2026,7 +2108,8 @@ def create_model(estimator = None,
         '''
         
         if verbose:
-            update_display(master_display, display_id = display_id)
+            if html_param:
+                update_display(master_display, display_id = display_id)
             
         
         '''
@@ -2034,18 +2117,6 @@ def create_model(estimator = None,
         Update_display() ends here
         
         '''
-    time_end=time.time()
-    kappa = metrics.cohen_kappa_score(ytest,pred_)
-    mcc = metrics.matthews_corrcoef(ytest,pred_)
-    score_acc = np.append(score_acc,sca)
-    score_auc = np.append(score_auc,sc)
-    score_recall = np.append(score_recall,recall)
-    score_precision = np.append(score_precision,precision)
-    score_f1 =np.append(score_f1,f1)
-    score_kappa =np.append(score_kappa,kappa)
-    score_mcc=np.append(score_mcc,mcc)
-    score_training_time = np.append(score_training_time,training_time)
-        
             
     mean_acc=np.mean(score_acc)
     mean_auc=np.mean(score_auc)
@@ -2086,21 +2157,24 @@ def create_model(estimator = None,
     progress.value += 1
     
     model_results = pd.DataFrame({'Accuracy': score_acc, 'AUC': score_auc, 'Recall' : score_recall, 'Prec.' : score_precision , 
-                     'F1' : score_f1, 'Kappa' : score_kappa, 'MCC': score_mcc, 'Training time':score_training_time})
+                     'F1' : score_f1, 'Kappa' : score_kappa, 'MCC': score_mcc})
     model_avgs = pd.DataFrame({'Accuracy': avgs_acc, 'AUC': avgs_auc, 'Recall' : avgs_recall, 'Prec.' : avgs_precision , 
-                     'F1' : avgs_f1, 'Kappa' : avgs_kappa, 'MCC': avgs_mcc, 'Training time':avgs_training_time},index=['Mean', 'SD'])
+                     'F1' : avgs_f1, 'Kappa' : avgs_kappa, 'MCC': avgs_mcc},index=['Mean', 'SD'])
 
     
     model_results = model_results.append(model_avgs)
     model_results = model_results.round(round)
-    model_results.loc[:,'Training time'] = model_results.loc[:,'Training time'].round(2)
     
-    # Green the mean
-    model_results=model_results.style.apply(lambda x: ['background: lightgreen' if (x.name == 'Mean') else '' for i in x], axis=1)
-    
+    # yellow the mean
+    model_results=model_results.style.apply(lambda x: ['background: yellow' if (x.name == 'Mean') else '' for i in x], axis=1)
+    model_results = model_results.set_precision(round)
+
     #refitting the model on complete X_train, y_train
-    monitor.iloc[1,1:] = 'Compiling Final Model'
-    update_display(monitor, display_id = 'monitor')
+    monitor.iloc[1,1:] = 'Finalizing Model'
+    monitor.iloc[2,1:] = 'Almost Finished'    
+    if verbose:
+        if html_param:
+            update_display(monitor, display_id = 'monitor')
     
     model.fit(data_X, data_y)
     
@@ -2112,14 +2186,22 @@ def create_model(estimator = None,
     nam = str(full_name) + ' Score Grid'
     tup = (nam, model_results)
     experiment__.append(tup)
+
+    #storing results in create_model_container
+    create_model_container.append(model_results.data)
     
+    #storing results in master_model_container
+    master_model_container.append(model)
+
     if verbose:
         clear_output()
-        display(model_results)
-        return model
-    else:
-        clear_output()
-        return model
+
+        if html_param:
+            display(model_results)
+        else:
+            print(model_results.data)
+
+    return model
 
 def ensemble_model(estimator,
                    method = 'Bagging', 
@@ -2263,7 +2345,7 @@ def ensemble_model(estimator,
     
     #progress bar
     progress = ipw.IntProgress(value=0, min=0, max=fold+4, step=1 , description='Processing: ')
-    master_display = pd.DataFrame(columns=['Accuracy','AUC','Recall', 'Prec.', 'F1', 'Kappa', 'MCC', 'Training time'])
+    master_display = pd.DataFrame(columns=['Accuracy','AUC','Recall', 'Prec.', 'F1', 'Kappa', 'MCC', 'TT (Sec)'])
     display(progress)
     
     #display monitor
@@ -2447,8 +2529,8 @@ def ensemble_model(estimator,
         '''
         
         fold_results = pd.DataFrame({'Accuracy':[sca], 'AUC': [sc], 'Recall': [recall], 
-                                     'Prec.': [precision], 'F1': [f1], 'Kappa': [kappa], 'MCC':[mcc],'Training time':[training_time]}).round(round)
-        fold_results.loc[:,'Training time'] = fold_results.loc[:,'Training time'].round(2)
+                                     'Prec.': [precision], 'F1': [f1], 'Kappa': [kappa], 'MCC':[mcc],'TT (Sec)':[training_time]}).round(round)
+        fold_results.loc[:,'TT (Sec)'] = fold_results.loc[:,'TT (Sec)'].round(2)
         master_display = pd.concat([master_display, fold_results],ignore_index=True)
         fold_results = []
         
@@ -2538,15 +2620,15 @@ def ensemble_model(estimator,
     avgs_training_time = np.append(avgs_training_time, std_training_time)
 
     model_results = pd.DataFrame({'Accuracy': score_acc, 'AUC': score_auc, 'Recall' : score_recall, 'Prec.' : score_precision , 
-                     'F1' : score_f1, 'Kappa' : score_kappa, 'MCC':score_mcc, 'Training time':score_training_time})
-    model_results_unpivot = pd.melt(model_results,value_vars=['Accuracy', 'AUC', 'Recall', 'Prec.', 'F1', 'Kappa','MCC','Training time'])
+                     'F1' : score_f1, 'Kappa' : score_kappa, 'MCC':score_mcc, 'TT (Sec)':score_training_time})
+    model_results_unpivot = pd.melt(model_results,value_vars=['Accuracy', 'AUC', 'Recall', 'Prec.', 'F1', 'Kappa','MCC','TT (Sec)'])
     model_results_unpivot.columns = ['Metric', 'Measure']
     model_avgs = pd.DataFrame({'Accuracy': avgs_acc, 'AUC': avgs_auc, 'Recall' : avgs_recall, 'Prec.' : avgs_precision , 
-                     'F1' : avgs_f1, 'Kappa' : avgs_kappa,'MCC':avgs_mcc, 'Training time':avgs_training_time},index=['Mean', 'SD'])
+                     'F1' : avgs_f1, 'Kappa' : avgs_kappa,'MCC':avgs_mcc, 'TT (Sec)':avgs_training_time},index=['Mean', 'SD'])
 
     model_results = model_results.append(model_avgs)
     model_results = model_results.round(round)  
-    model_results.loc[:,'Training time'] = model_results.loc[:,'Training time'].round(2)
+    model_results.loc[:,'TT (Sec)'] = model_results.loc[:,'TT (Sec)'].round(2)
     # Green the mean
     model_results=model_results.style.apply(lambda x: ['background: lightgreen' if (x.name == 'Mean') else '' for i in x], axis=1)
     
@@ -2852,7 +2934,7 @@ def plot_model(estimator,
         from yellowbrick.model_selection import LearningCurve
         progress.value += 1
         sizes = np.linspace(0.3, 1.0, 10)  
-        visualizer = LearningCurve(model, cv=10, train_sizes=sizes, n_jobs=-1, random_state=seed)
+        visualizer = LearningCurve(model, cv=10, train_sizes=sizes, n_jobs=n_jobs_param, random_state=seed)
         progress.value += 1
         visualizer.fit(X_train, y_train)
         progress.value += 1
@@ -3033,7 +3115,9 @@ def compare_models(blacklist = None,
                    fold = 10, 
                    round = 4, 
                    sort = 'Accuracy',
-                   turbo = True):
+                   n_select = 1, #added in pycaret==1.0.1
+                   turbo = True,
+                   verbose = True): #added in pycaret==1.0.1
     
     """
       
@@ -3045,7 +3129,7 @@ def compare_models(blacklist = None,
     in the model library.
     
     When turbo is set to True ('rbfsvm', 'gpc' and 'mlp') are excluded due to longer
-    training times. By default turbo param is set to True.
+    TT (Sec)s. By default turbo param is set to True.
 
     List of models that support binary or multiclass problems in Model Library:
 
@@ -3080,7 +3164,7 @@ def compare_models(blacklist = None,
 
         This will return the averaged score grid of all the models except 'rbfsvm', 'gpc' 
         and 'mlp'. When turbo param is set to False, all models including 'rbfsvm', 'gpc' 
-        and 'mlp' are used but this may result in longer training times.
+        and 'mlp' are used but this may result in longer TT (Sec)s.
         
         compare_models( blacklist = [ 'knn', 'gbc' ] , turbo = False) 
 
@@ -3111,9 +3195,16 @@ def compare_models(blacklist = None,
     The scoring measure specified is used for sorting the average score grid
     Other options are 'AUC', 'Recall', 'Precision', 'F1' and 'Kappa'.
 
+    n_select: int, default = 3
+    Number of top_n models to return. use negative argument for bottom selection.
+    for example, n_select = -3 means bottom 3 models.
+
     turbo: Boolean, default = True
     When turbo is set to True, it blacklists estimators that have longer
-    training times.
+    training time.
+
+    verbose: Boolean, default = True
+    Score grid is not printed when verbose is set to False.
     
     Returns:
     --------
@@ -3167,7 +3258,7 @@ def compare_models(blacklist = None,
         sys.exit('(Type Error): Round parameter only accepts integer value.')
  
     #checking sort parameter
-    allowed_sort = ['Accuracy', 'Recall', 'Precision', 'F1', 'AUC', 'Kappa', 'MCC', 'Training time']
+    allowed_sort = ['Accuracy', 'Recall', 'Precision', 'F1', 'AUC', 'Kappa', 'MCC', 'TT (Sec)']
     if sort not in allowed_sort:
         sys.exit('(Value Error): Sort method not supported. See docstring for list of available parameters.')
     
@@ -3200,8 +3291,10 @@ def compare_models(blacklist = None,
         len_mod = 18 - len_of_blacklist
         
     progress = ipw.IntProgress(value=0, min=0, max=(fold*len_mod)+20, step=1 , description='Processing: ')
-    master_display = pd.DataFrame(columns=['Model', 'Accuracy','AUC','Recall', 'Prec.', 'F1', 'Kappa', 'MCC', 'Training time'])
-    display(progress)
+    master_display = pd.DataFrame(columns=['Model', 'Accuracy','AUC','Recall', 'Prec.', 'F1', 'Kappa', 'MCC', 'TT (Sec)'])
+    if verbose:
+        if html_param:
+            display(progress)
     
     #display monitor
     timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
@@ -3211,10 +3304,11 @@ def compare_models(blacklist = None,
                              ['ETC' , '. . . . . . . . . . . . . . . . . .',  'Calculating ETC'] ],
                               columns=['', ' ', '   ']).set_index('')
     
-    display(monitor, display_id = 'monitor')
-    
-    display_ = display(master_display, display_id=True)
-    display_id = display_.display_id
+    if verbose:
+        if html_param:
+            display(monitor, display_id = 'monitor')
+            display_ = display(master_display, display_id=True)
+            display_id = display_.display_id
     
     
     #ignore warnings
@@ -3273,33 +3367,54 @@ def compare_models(blacklist = None,
     '''
     
     monitor.iloc[1,1:] = 'Loading Estimator'
-    update_display(monitor, display_id = 'monitor')
+    if verbose:
+        if html_param:
+            update_display(monitor, display_id = 'monitor')
     
     '''
     MONITOR UPDATE ENDS
     '''
     #creating model object 
-    lr = LogisticRegression(random_state=seed)
-    knn = KNeighborsClassifier(n_jobs=-1)
+    lr = LogisticRegression(random_state=seed, n_jobs=n_jobs_param)
+    knn = KNeighborsClassifier(n_jobs=n_jobs_param)
     nb = GaussianNB()
     dt = DecisionTreeClassifier(random_state=seed)
-    svm = SGDClassifier(max_iter=1000, tol=0.001, random_state=seed, n_jobs=-1)
+    svm = SGDClassifier(max_iter=1000, tol=0.001, random_state=seed, n_jobs=n_jobs_param)
     rbfsvm = SVC(gamma='auto', C=1, probability=True, kernel='rbf', random_state=seed)
-    gpc = GaussianProcessClassifier(random_state=seed, n_jobs=-1)
+    gpc = GaussianProcessClassifier(random_state=seed, n_jobs=n_jobs_param)
     mlp = MLPClassifier(max_iter=500, random_state=seed)
     ridge = RidgeClassifier(random_state=seed)
-    rf = RandomForestClassifier(n_estimators=10, random_state=seed, n_jobs=-1)
+    rf = RandomForestClassifier(n_estimators=10, random_state=seed, n_jobs=n_jobs_param)
     qda = QuadraticDiscriminantAnalysis()
     ada = AdaBoostClassifier(random_state=seed)
     gbc = GradientBoostingClassifier(random_state=seed)
     lda = LinearDiscriminantAnalysis()
-    et = ExtraTreesClassifier(random_state=seed, n_jobs=-1)
-    xgboost = XGBClassifier(random_state=seed, verbosity=0, n_jobs=-1)
-    lightgbm = lgb.LGBMClassifier(random_state=seed, n_jobs=-1)
-    catboost = CatBoostClassifier(random_state=seed, silent = True, thread_count=-1) 
+    et = ExtraTreesClassifier(random_state=seed, n_jobs=n_jobs_param)
+    xgboost = XGBClassifier(random_state=seed, verbosity=0, n_jobs=n_jobs_param)
+    lightgbm = lgb.LGBMClassifier(random_state=seed, n_jobs=n_jobs_param)
+    catboost = CatBoostClassifier(random_state=seed, silent = True, thread_count=n_jobs_param) 
     
     progress.value += 1
     
+    model_dict = {'Logistic Regression' : 'lr',
+                   'Linear Discriminant Analysis' : 'lda', 
+                   'Ridge Classifier' : 'ridge', 
+                   'Extreme Gradient Boosting' : 'xgboost',
+                   'Ada Boost Classifier' : 'ada', 
+                   'CatBoost Classifier' : 'catboost', 
+                   'Light Gradient Boosting Machine' : 'lightgbm', 
+                   'Gradient Boosting Classifier' : 'gbc', 
+                   'Random Forest Classifier' : 'rf',
+                   'Naive Bayes' : 'nb', 
+                   'Extra Trees Classifier' : 'et',
+                   'Decision Tree Classifier' : 'dt', 
+                   'K Neighbors Classifier' : 'knn', 
+                   'Quadratic Discriminant Analysis' : 'qda',
+                   'SVM - Linear Kernel' : 'svm',
+                   'Gaussian Process Classifier' : 'gpc',
+                   'MLP Classifier' : 'mlp',
+                   'SVM - Radial Kernel' : 'rbfsvm'}
+
     model_library = [lr, knn, nb, dt, svm, rbfsvm, gpc, mlp, ridge, rf, qda, ada, gbc, lda, et, xgboost, lightgbm, catboost]
 
     model_names = ['Logistic Regression',
@@ -3320,8 +3435,6 @@ def compare_models(blacklist = None,
                    'Extreme Gradient Boosting',
                    'Light Gradient Boosting Machine',
                    'CatBoost Classifier']
-                   
-    
     
     #checking for blacklist models
     
@@ -3401,7 +3514,9 @@ def compare_models(blacklist = None,
     '''
     
     monitor.iloc[1,1:] = 'Initializing CV'
-    update_display(monitor, display_id = 'monitor')
+    if verbose:
+        if html_param:
+            update_display(monitor, display_id = 'monitor')
     
     '''
     MONITOR UPDATE ENDS
@@ -3440,7 +3555,9 @@ def compare_models(blacklist = None,
         '''
         monitor.iloc[2,1:] = model_names[name_counter]
         monitor.iloc[3,1:] = 'Calculating ETC'
-        update_display(monitor, display_id = 'monitor')
+        if verbose:
+            if html_param:
+                update_display(monitor, display_id = 'monitor')
 
         '''
         MONITOR UPDATE ENDS
@@ -3459,7 +3576,9 @@ def compare_models(blacklist = None,
             '''
                 
             monitor.iloc[1,1:] = 'Fitting Fold ' + str(fold_num) + ' of ' + str(fold)
-            update_display(monitor, display_id = 'monitor')
+            if verbose:
+                if html_param:
+                    update_display(monitor, display_id = 'monitor')
             
             '''
             MONITOR UPDATE ENDS
@@ -3546,7 +3665,9 @@ def compare_models(blacklist = None,
             '''
 
             monitor.iloc[3,1:] = ETC
-            update_display(monitor, display_id = 'monitor')
+            if verbose:
+                if html_param:
+                    update_display(monitor, display_id = 'monitor')
 
             '''
             MONITOR UPDATE ENDS
@@ -3559,18 +3680,20 @@ def compare_models(blacklist = None,
         avg_f1 = np.append(avg_f1,np.mean(score_f1))
         avg_kappa = np.append(avg_kappa,np.mean(score_kappa))
         avg_mcc=np.append(avg_mcc,np.mean(score_mcc))
-        avg_training_time=np.append(avg_training_time,np.mean(score_training_time))
+        avg_training_time=np.append(avg_training_time,np.sum(score_training_time))
         
         compare_models_ = pd.DataFrame({'Model':model_names[name_counter], 'Accuracy':avg_acc, 'AUC':avg_auc, 
                            'Recall':avg_recall, 'Prec.':avg_precision, 
-                           'F1':avg_f1, 'Kappa': avg_kappa, 'MCC':avg_mcc, 'Training time':avg_training_time})
+                           'F1':avg_f1, 'Kappa': avg_kappa, 'MCC':avg_mcc, 'TT (Sec)':avg_training_time})
         master_display = pd.concat([master_display, compare_models_],ignore_index=True)
         master_display = master_display.round(round)
-        master_display.loc[:,'Training time'] = master_display.loc[:,'Training time'].round(2)
+        master_display.loc[:,'TT (Sec)'] = master_display.loc[:,'TT (Sec)'].round(2)
         master_display = master_display.sort_values(by=sort,ascending=False)
         master_display.reset_index(drop=True, inplace=True)
         
-        update_display(master_display, display_id = display_id)
+        if verbose:
+            if html_param:
+                update_display(master_display, display_id = display_id)
         
         score_acc =np.empty((0,0))
         score_auc =np.empty((0,0))
@@ -3600,31 +3723,64 @@ def compare_models(blacklist = None,
     experiment__.append(tup)
     
     def highlight_max(s):
-        if s.name=='Training time':# min
-            to_highlight = s == s.min()
-        else:
-            to_highlight = s == s.max()
-
+        to_highlight = s == s.max()
         return ['background-color: yellow' if v else '' for v in to_highlight]
     
+    def highlight_cols(s):
+        color = 'lightgrey'
+        return 'background-color: %s' % color
     
     if y.value_counts().count() > 2:
         
         compare_models_ = master_display.style.apply(highlight_max,subset=['Accuracy','Recall',
-                      'Prec.','F1','Kappa', 'MCC','Training time'])
+                      'Prec.','F1','Kappa', 'MCC']).applymap(highlight_cols, subset = ['TT (Sec)'])
     else:
         
         compare_models_ = master_display.style.apply(highlight_max,subset=['Accuracy','AUC','Recall',
-                      'Prec.','F1','Kappa', 'MCC','Training time'])
+                      'Prec.','F1','Kappa', 'MCC']).applymap(highlight_cols, subset = ['TT (Sec)'])
 
+    compare_models_ = compare_models_.set_precision(round)
     compare_models_ = compare_models_.set_properties(**{'text-align': 'left'})
     compare_models_ = compare_models_.set_table_styles([dict(selector='th', props=[('text-align', 'left')])])
     
     progress.value += 1
     
+    monitor.iloc[1,1:] = 'Compiling Final Model'
+    monitor.iloc[3,1:] = 'Almost Finished'
+
+    if verbose:
+        if html_param:
+            update_display(monitor, display_id = 'monitor')
+
+    sorted_model_names = list(compare_models_.data['Model'])
+    if n_select < 0:
+        sorted_model_names = sorted_model_names[n_select:]
+    else:
+        sorted_model_names = sorted_model_names[:n_select]
+    
+    model_store_final = []
+
+    for i in sorted_model_names:
+        monitor.iloc[2,1:] = i
+        if verbose:
+            if html_param:
+                update_display(monitor, display_id = 'monitor')
+        progress.value += 1
+        k = model_dict.get(i)
+        m = create_model(estimator=k, verbose = False)
+        model_store_final.append(m)
+
+    if len(model_store_final) == 1:
+        model_store_final = model_store_final[0]
+
     clear_output()
 
-    return compare_models_
+    if html_param:
+        display(compare_models_)
+    else:
+        print(compare_models_.data)
+
+    return model_store_final
 
 def tune_model(estimator = None, 
                fold = 10, 
@@ -3803,7 +3959,7 @@ def tune_model(estimator = None,
         
     #checking boosting conflict with estimators
     boosting_not_supported = ['lda','qda','ridge','mlp','gpc','svm','knn', 'catboost']
-    if method is 'Boosting' and estimator in boosting_not_supported:
+    if method == 'Boosting' and estimator in boosting_not_supported:
         sys.exit("(Type Error): Estimator does not provide class_weights or predict_proba function and hence not supported for the Boosting method. Change the estimator or method to 'Bagging'.")
     
     
@@ -3823,7 +3979,7 @@ def tune_model(estimator = None,
     
     #progress bar
     progress = ipw.IntProgress(value=0, min=0, max=fold+6, step=1 , description='Processing: ')
-    master_display = pd.DataFrame(columns=['Accuracy','AUC','Recall', 'Prec.', 'F1', 'Kappa', 'MCC', 'Training time'])
+    master_display = pd.DataFrame(columns=['Accuracy','AUC','Recall', 'Prec.', 'F1', 'Kappa', 'MCC', 'TT (Sec)'])
     display(progress)    
     
     #display monitor
@@ -3938,7 +4094,7 @@ def tune_model(estimator = None,
                      }        
         model_grid = RandomizedSearchCV(estimator=KNeighborsClassifier(), param_distributions=param_grid, 
                                         scoring=optimize, n_iter=n_iter, cv=cv, random_state=seed,
-                                       n_jobs=-1, iid=False)
+                                       n_jobs=n_jobs_param, iid=False)
 
         model_grid.fit(X_train,y_train)
         model = model_grid.best_estimator_
@@ -3955,7 +4111,7 @@ def tune_model(estimator = None,
                      }
         model_grid = RandomizedSearchCV(estimator=LogisticRegression(random_state=seed), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, cv=cv, 
-                                        random_state=seed, iid=False, n_jobs=-1)
+                                        random_state=seed, iid=False, n_jobs=n_jobs_param)
         model_grid.fit(X_train,y_train)
         model = model_grid.best_estimator_
         best_model = model_grid.best_estimator_
@@ -3973,7 +4129,7 @@ def tune_model(estimator = None,
 
         model_grid = RandomizedSearchCV(estimator=DecisionTreeClassifier(random_state=seed), param_distributions=param_grid,
                                        scoring=optimize, n_iter=n_iter, cv=cv, random_state=seed,
-                                       iid=False, n_jobs=-1)
+                                       iid=False, n_jobs=n_jobs_param)
 
         model_grid.fit(X_train,y_train)
         model = model_grid.best_estimator_
@@ -3993,7 +4149,7 @@ def tune_model(estimator = None,
 
         model_grid = RandomizedSearchCV(estimator=MLPClassifier(max_iter=1000, random_state=seed), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, cv=cv, 
-                                        random_state=seed, iid=False, n_jobs=-1)
+                                        random_state=seed, iid=False, n_jobs=n_jobs_param)
 
         model_grid.fit(X_train,y_train)
         model = model_grid.best_estimator_
@@ -4008,7 +4164,7 @@ def tune_model(estimator = None,
 
         model_grid = RandomizedSearchCV(estimator=GaussianProcessClassifier(random_state=seed), param_distributions=param_grid,
                                        scoring=optimize, n_iter=n_iter, cv=cv, random_state=seed,
-                                       n_jobs=-1)
+                                       n_jobs=n_jobs_param)
 
         model_grid.fit(X_train,y_train)
         model = model_grid.best_estimator_
@@ -4024,7 +4180,7 @@ def tune_model(estimator = None,
 
         model_grid = RandomizedSearchCV(estimator=SVC(gamma='auto', C=1, probability=True, kernel='rbf', random_state=seed), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
-                                        cv=cv, random_state=seed, n_jobs=-1)
+                                        cv=cv, random_state=seed, n_jobs=n_jobs_param)
 
         model_grid.fit(X_train,y_train)
         model = model_grid.best_estimator_
@@ -4043,7 +4199,7 @@ def tune_model(estimator = None,
 
         model_grid = RandomizedSearchCV(estimator=GaussianNB(), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
-                                        cv=cv, random_state=seed, n_jobs=-1)
+                                        cv=cv, random_state=seed, n_jobs=n_jobs_param)
  
         model_grid.fit(X_train,y_train)
         model = model_grid.best_estimator_
@@ -4062,9 +4218,9 @@ def tune_model(estimator = None,
                       'eta0': [0.001, 0.01,0.05,0.1,0.2,0.3,0.4,0.5]
                      }    
 
-        model_grid = RandomizedSearchCV(estimator=SGDClassifier(loss='hinge', random_state=seed, n_jobs=-1), 
+        model_grid = RandomizedSearchCV(estimator=SGDClassifier(loss='hinge', random_state=seed, n_jobs=n_jobs_param), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
-                                        cv=cv, random_state=seed, n_jobs=-1)
+                                        cv=cv, random_state=seed, n_jobs=n_jobs_param)
 
         model_grid.fit(X_train,y_train)
         model = model_grid.best_estimator_
@@ -4082,7 +4238,7 @@ def tune_model(estimator = None,
 
         model_grid = RandomizedSearchCV(estimator=RidgeClassifier(random_state=seed), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
-                                        cv=cv, random_state=seed, n_jobs=-1)
+                                        cv=cv, random_state=seed, n_jobs=n_jobs_param)
 
         model_grid.fit(X_train,y_train)
         model = model_grid.best_estimator_
@@ -4104,7 +4260,7 @@ def tune_model(estimator = None,
 
         model_grid = RandomizedSearchCV(estimator=RandomForestClassifier(random_state=seed), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
-                                        cv=cv, random_state=seed, n_jobs=-1)
+                                        cv=cv, random_state=seed, n_jobs=n_jobs_param)
 
         model_grid.fit(X_train,y_train)
         model = model_grid.best_estimator_
@@ -4122,7 +4278,7 @@ def tune_model(estimator = None,
 
         model_grid = RandomizedSearchCV(estimator=AdaBoostClassifier(random_state=seed), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
-                                        cv=cv, random_state=seed, n_jobs=-1)
+                                        cv=cv, random_state=seed, n_jobs=n_jobs_param)
 
         model_grid.fit(X_train,y_train)
         model = model_grid.best_estimator_
@@ -4146,7 +4302,7 @@ def tune_model(estimator = None,
             
         model_grid = RandomizedSearchCV(estimator=GradientBoostingClassifier(random_state=seed), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
-                                        cv=cv, random_state=seed, n_jobs=-1)
+                                        cv=cv, random_state=seed, n_jobs=n_jobs_param)
 
         model_grid.fit(X_train,y_train)
         model = model_grid.best_estimator_
@@ -4162,7 +4318,7 @@ def tune_model(estimator = None,
 
         model_grid = RandomizedSearchCV(estimator=QuadraticDiscriminantAnalysis(), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
-                                        cv=cv, random_state=seed, n_jobs=-1)
+                                        cv=cv, random_state=seed, n_jobs=n_jobs_param)
 
         model_grid.fit(X_train,y_train)
         model = model_grid.best_estimator_
@@ -4179,7 +4335,7 @@ def tune_model(estimator = None,
 
         model_grid = RandomizedSearchCV(estimator=LinearDiscriminantAnalysis(), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
-                                        cv=cv, random_state=seed, n_jobs=-1)
+                                        cv=cv, random_state=seed, n_jobs=n_jobs_param)
 
         model_grid.fit(X_train,y_train)
         model = model_grid.best_estimator_
@@ -4201,7 +4357,7 @@ def tune_model(estimator = None,
 
         model_grid = RandomizedSearchCV(estimator=ExtraTreesClassifier(random_state=seed), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
-                                        cv=cv, random_state=seed, n_jobs=-1)
+                                        cv=cv, random_state=seed, n_jobs=n_jobs_param)
 
         model_grid.fit(X_train,y_train)
         model = model_grid.best_estimator_
@@ -4235,9 +4391,9 @@ def tune_model(estimator = None,
                           #'num_class' : [num_class, num_class]
                          }
 
-        model_grid = RandomizedSearchCV(estimator=XGBClassifier(random_state=seed, n_jobs=-1, verbosity=0), 
+        model_grid = RandomizedSearchCV(estimator=XGBClassifier(random_state=seed, n_jobs=n_jobs_param, verbosity=0), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
-                                        cv=cv, random_state=seed, n_jobs=-1)
+                                        cv=cv, random_state=seed, n_jobs=n_jobs_param)
         
         model_grid.fit(X_train,y_train)
         model = model_grid.best_estimator_
@@ -4261,7 +4417,7 @@ def tune_model(estimator = None,
     
         model_grid = RandomizedSearchCV(estimator=lgb.LGBMClassifier(random_state=seed), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
-                                        cv=cv, random_state=seed, n_jobs=-1)
+                                        cv=cv, random_state=seed, n_jobs=n_jobs_param)
 
         model_grid.fit(X_train,y_train)
         model = model_grid.best_estimator_
@@ -4283,7 +4439,7 @@ def tune_model(estimator = None,
         
         model_grid = RandomizedSearchCV(estimator=CatBoostClassifier(random_state=seed, silent = True), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
-                                        cv=cv, random_state=seed, n_jobs=-1)
+                                        cv=cv, random_state=seed, n_jobs=n_jobs_param)
 
         model_grid.fit(X_train,y_train)
         model = model_grid.best_estimator_
@@ -4323,7 +4479,7 @@ def tune_model(estimator = None,
 
         model_grid = RandomizedSearchCV(estimator=DecisionTreeClassifier(random_state=seed), param_distributions=param_grid_dt,
                                        scoring=optimize, n_iter=n_iter, cv=cv, random_state=seed,
-                                       iid=False, n_jobs=-1)
+                                       iid=False, n_jobs=n_jobs_param)
 
         model_grid.fit(X_train,y_train)
         model = model_grid.best_estimator_
@@ -4334,7 +4490,7 @@ def tune_model(estimator = None,
 
         model_grid = RandomizedSearchCV(estimator=best_model, 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
-                                        cv=cv, random_state=seed, iid=False, n_jobs=-1)
+                                        cv=cv, random_state=seed, iid=False, n_jobs=n_jobs_param)
 
         model_grid.fit(X_train,y_train)
         model = model_grid.best_estimator_
@@ -4356,7 +4512,7 @@ def tune_model(estimator = None,
 
         model_grid = RandomizedSearchCV(estimator=best_model, 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
-                                        cv=cv, random_state=seed, iid=False, n_jobs=-1)
+                                        cv=cv, random_state=seed, iid=False, n_jobs=n_jobs_param)
 
         model_grid.fit(X_train,y_train)
         model = model_grid.best_estimator_
@@ -4375,7 +4531,7 @@ def tune_model(estimator = None,
 
         model_grid = RandomizedSearchCV(estimator=best_model, 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
-                                        cv=cv, random_state=seed, iid=False, n_jobs=-1)
+                                        cv=cv, random_state=seed, iid=False, n_jobs=n_jobs_param)
 
     progress.value += 1
 
@@ -4485,8 +4641,8 @@ def tune_model(estimator = None,
         '''
 
         fold_results = pd.DataFrame({'Accuracy':[sca], 'AUC': [sc], 'Recall': [recall], 
-                                     'Prec.': [precision], 'F1': [f1], 'Kappa': [kappa], 'MCC':[mcc], 'Training time':[training_time]}).round(round)
-        fold_results.loc[:,'Training time'] = fold_results.loc[:,'Training time'].round(2)
+                                     'Prec.': [precision], 'F1': [f1], 'Kappa': [kappa], 'MCC':[mcc], 'TT (Sec)':[training_time]}).round(round)
+        fold_results.loc[:,'TT (Sec)'] = fold_results.loc[:,'TT (Sec)'].round(2)
         master_display = pd.concat([master_display, fold_results],ignore_index=True)
         fold_results = []
         
@@ -4579,13 +4735,13 @@ def tune_model(estimator = None,
     progress.value += 1
     
     model_results = pd.DataFrame({'Accuracy': score_acc, 'AUC': score_auc, 'Recall' : score_recall, 'Prec.' : score_precision , 
-                     'F1' : score_f1, 'Kappa' : score_kappa, 'MCC':score_mcc, 'Training time':score_training_time})
+                     'F1' : score_f1, 'Kappa' : score_kappa, 'MCC':score_mcc, 'TT (Sec)':score_training_time})
     model_avgs = pd.DataFrame({'Accuracy': avgs_acc, 'AUC': avgs_auc, 'Recall' : avgs_recall, 'Prec.' : avgs_precision , 
-                     'F1' : avgs_f1, 'Kappa' : avgs_kappa, 'MCC':avgs_mcc, 'Training time':avgs_training_time},index=['Mean', 'SD'])
+                     'F1' : avgs_f1, 'Kappa' : avgs_kappa, 'MCC':avgs_mcc, 'TT (Sec)':avgs_training_time},index=['Mean', 'SD'])
 
     model_results = model_results.append(model_avgs)
     model_results = model_results.round(round)
-    model_results.loc[:,'Training time'] = model_results.loc[:,'Training time'].round(2)
+    model_results.loc[:,'TT (Sec)'] = model_results.loc[:,'TT (Sec)'].round(2)
     
     # Green the mean
     model_results=model_results.style.apply(lambda x: ['background: lightgreen' if (x.name == 'Mean') else '' for i in x], axis=1)
@@ -4785,7 +4941,7 @@ def blend_models(estimator_list = 'All',
     
     #progress bar
     progress = ipw.IntProgress(value=0, min=0, max=fold+4, step=1 , description='Processing: ')
-    master_display = pd.DataFrame(columns=['Accuracy','AUC','Recall', 'Prec.', 'F1', 'Kappa', 'MCC', 'Training time'])
+    master_display = pd.DataFrame(columns=['Accuracy','AUC','Recall', 'Prec.', 'F1', 'Kappa', 'MCC', 'TT (Sec)'])
     display(progress)
     
     #display monitor
@@ -4889,22 +5045,22 @@ def blend_models(estimator_list = 'All',
         
         #creating CatBoost estimator
         lr = LogisticRegression(random_state=seed)
-        knn = KNeighborsClassifier(n_jobs=-1)
+        knn = KNeighborsClassifier(n_jobs=n_jobs_param)
         nb = GaussianNB()
         dt = DecisionTreeClassifier(random_state=seed)
-        svm = SGDClassifier(max_iter=1000, tol=0.001, random_state=seed, n_jobs=-1)
+        svm = SGDClassifier(max_iter=1000, tol=0.001, random_state=seed, n_jobs=n_jobs_param)
         rbfsvm = SVC(gamma='auto', C=1, probability=True, kernel='rbf', random_state=seed)
-        gpc = GaussianProcessClassifier(random_state=seed, n_jobs=-1)
+        gpc = GaussianProcessClassifier(random_state=seed, n_jobs=n_jobs_param)
         mlp = MLPClassifier(max_iter=500, random_state=seed)
         ridge = RidgeClassifier(random_state=seed)
-        rf = RandomForestClassifier(n_estimators=10, random_state=seed, n_jobs=-1)
+        rf = RandomForestClassifier(n_estimators=10, random_state=seed, n_jobs=n_jobs_param)
         qda = QuadraticDiscriminantAnalysis()
         ada = AdaBoostClassifier(random_state=seed)
         gbc = GradientBoostingClassifier(random_state=seed)
         lda = LinearDiscriminantAnalysis()
-        et = ExtraTreesClassifier(random_state=seed, n_jobs=-1)
-        xgboost = XGBClassifier(random_state=seed, verbosity=0, n_jobs=-1)
-        lightgbm = lgb.LGBMClassifier(random_state=seed, n_jobs=-1)
+        et = ExtraTreesClassifier(random_state=seed, n_jobs=n_jobs_param)
+        xgboost = XGBClassifier(random_state=seed, verbosity=0, n_jobs=n_jobs_param)
+        lightgbm = lgb.LGBMClassifier(random_state=seed, n_jobs=n_jobs_param)
         #catboost = CatBoostClassifier(random_state=seed, silent = True)
 
         progress.value += 1
@@ -4993,7 +5149,7 @@ def blend_models(estimator_list = 'All',
     estimator_list_ = list(estimator_list_)
     
     try:
-        model = VotingClassifier(estimators=estimator_list_, voting=voting, n_jobs=-1)
+        model = VotingClassifier(estimators=estimator_list_, voting=voting, n_jobs=n_jobs_param)
         model.fit(Xtrain,ytrain)
     except:
         model = VotingClassifier(estimators=estimator_list_, voting=voting)
@@ -5094,8 +5250,8 @@ def blend_models(estimator_list = 'All',
         '''
         
         fold_results = pd.DataFrame({'Accuracy':[sca], 'AUC': [sc], 'Recall': [recall], 
-                                     'Prec.': [precision], 'F1': [f1], 'Kappa': [kappa], 'MCC':[mcc], 'Training time':[training_time]}).round(round)
-        fold_results.loc[:,'Training time'] = fold_results.loc[:,'Training time'].round(2)
+                                     'Prec.': [precision], 'F1': [f1], 'Kappa': [kappa], 'MCC':[mcc], 'TT (Sec)':[training_time]}).round(round)
+        fold_results.loc[:,'TT (Sec)'] = fold_results.loc[:,'TT (Sec)'].round(2)
         master_display = pd.concat([master_display, fold_results],ignore_index=True)
         fold_results = []
         
@@ -5180,13 +5336,13 @@ def blend_models(estimator_list = 'All',
     progress.value += 1
     
     model_results = pd.DataFrame({'Accuracy': score_acc, 'AUC': score_auc, 'Recall' : score_recall, 'Prec.' : score_precision , 
-                     'F1' : score_f1, 'Kappa' : score_kappa, 'MCC' : score_mcc,'Training time' : score_training_time})
+                     'F1' : score_f1, 'Kappa' : score_kappa, 'MCC' : score_mcc,'TT (Sec)' : score_training_time})
     model_avgs = pd.DataFrame({'Accuracy': avgs_acc, 'AUC': avgs_auc, 'Recall' : avgs_recall, 'Prec.' : avgs_precision , 
-                     'F1' : avgs_f1, 'Kappa' : avgs_kappa, 'MCC' : avgs_mcc,'Training time' : avgs_training_time},index=['Mean', 'SD'])
+                     'F1' : avgs_f1, 'Kappa' : avgs_kappa, 'MCC' : avgs_mcc,'TT (Sec)' : avgs_training_time},index=['Mean', 'SD'])
 
     model_results = model_results.append(model_avgs)
     model_results = model_results.round(round)
-    model_results.loc[:,'Training time'] = model_results.loc[:,'Training time'].round(2)
+    model_results.loc[:,'TT (Sec)'] = model_results.loc[:,'TT (Sec)'].round(2)
     # Green the mean
     model_results=model_results.style.apply(lambda x: ['background: lightgreen' if (x.name == 'Mean') else '' for i in x], axis=1)
     progress.value += 1
@@ -5408,7 +5564,7 @@ def stack_models(estimator_list,
     #progress bar
     max_progress = len(estimator_list) + fold + 4
     progress = ipw.IntProgress(value=0, min=0, max=max_progress, step=1 , description='Processing: ')
-    master_display = pd.DataFrame(columns=['Accuracy','AUC','Recall', 'Prec.', 'F1', 'Kappa', 'MCC', 'Training time'])
+    master_display = pd.DataFrame(columns=['Accuracy','AUC','Recall', 'Prec.', 'F1', 'Kappa', 'MCC', 'TT (Sec)'])
     display(progress)
     
     #display monitor
@@ -5645,8 +5801,8 @@ def stack_models(estimator_list,
         '''
         
         fold_results = pd.DataFrame({'Accuracy':[sca], 'AUC': [sc], 'Recall': [recall], 
-                                     'Prec.': [precision], 'F1': [f1], 'Kappa': [kappa], 'MCC':[mcc],'Training time':[training_time] }).round(round)
-        fold_results.loc[:,'Training time'] = fold_results.loc[:,'Training time'].round(2)
+                                     'Prec.': [precision], 'F1': [f1], 'Kappa': [kappa], 'MCC':[mcc],'TT (Sec)':[training_time] }).round(round)
+        fold_results.loc[:,'TT (Sec)'] = fold_results.loc[:,'TT (Sec)'].round(2)
         master_display = pd.concat([master_display, fold_results],ignore_index=True)
         fold_results = []
         
@@ -5738,13 +5894,13 @@ def stack_models(estimator_list,
     avgs_training_time = np.append(avgs_training_time, std_training_time)
       
     model_results = pd.DataFrame({'Accuracy': score_acc, 'AUC': score_auc, 'Recall' : score_recall, 'Prec.' : score_precision , 
-                     'F1' : score_f1, 'Kappa' : score_kappa,'MCC':score_mcc,'Training time':score_training_time})
+                     'F1' : score_f1, 'Kappa' : score_kappa,'MCC':score_mcc,'TT (Sec)':score_training_time})
     model_avgs = pd.DataFrame({'Accuracy': avgs_acc, 'AUC': avgs_auc, 'Recall' : avgs_recall, 'Prec.' : avgs_precision , 
-                     'F1' : avgs_f1, 'Kappa' : avgs_kappa,'MCC':avgs_mcc,'Training time':avgs_training_time},index=['Mean', 'SD'])
+                     'F1' : avgs_f1, 'Kappa' : avgs_kappa,'MCC':avgs_mcc,'TT (Sec)':avgs_training_time},index=['Mean', 'SD'])
   
     model_results = model_results.append(model_avgs)
     model_results = model_results.round(round)  
-    model_results.loc[:,'Training time'] = model_results.loc[:,'Training time'].round(2)
+    model_results.loc[:,'TT (Sec)'] = model_results.loc[:,'TT (Sec)'].round(2)
     # Green the mean
     model_results=model_results.style.apply(lambda x: ['background: lightgreen' if (x.name == 'Mean') else '' for i in x], axis=1)
     progress.value += 1
@@ -5978,7 +6134,7 @@ def create_stacknet(estimator_list,
     display(monitor, display_id = 'monitor')
     
     if verbose:
-        master_display = pd.DataFrame(columns=['Accuracy','AUC','Recall', 'Prec.', 'F1', 'Kappa','MCC','Training time'])
+        master_display = pd.DataFrame(columns=['Accuracy','AUC','Recall', 'Prec.', 'F1', 'Kappa','MCC','TT (Sec)'])
         display_ = display(master_display, display_id=True)
         display_id = display_.display_id
     
@@ -6266,8 +6422,8 @@ def create_stacknet(estimator_list,
         '''
         
         fold_results = pd.DataFrame({'Accuracy':[sca], 'AUC': [sc], 'Recall': [recall], 
-                                     'Prec.': [precision], 'F1': [f1], 'Kappa': [kappa],'MCC':[mcc],'Training time':[training_time]}).round(round)
-        fold_results.loc[:,'Training time'] = fold_results.loc[:,'Training time'].round(2)
+                                     'Prec.': [precision], 'F1': [f1], 'Kappa': [kappa],'MCC':[mcc],'TT (Sec)':[training_time]}).round(round)
+        fold_results.loc[:,'TT (Sec)'] = fold_results.loc[:,'TT (Sec)'].round(2)
         if verbose:
             master_display = pd.concat([master_display, fold_results],ignore_index=True)
         
@@ -6354,13 +6510,13 @@ def create_stacknet(estimator_list,
     progress.value += 1
     
     model_results = pd.DataFrame({'Accuracy': score_acc, 'AUC': score_auc, 'Recall' : score_recall, 'Prec.' : score_precision , 
-                     'F1' : score_f1, 'Kappa' : score_kappa,'MCC' : score_mcc,'Training time' : score_training_time})
+                     'F1' : score_f1, 'Kappa' : score_kappa,'MCC' : score_mcc,'TT (Sec)' : score_training_time})
     model_avgs = pd.DataFrame({'Accuracy': avgs_acc, 'AUC': avgs_auc, 'Recall' : avgs_recall, 'Prec.' : avgs_precision , 
-                     'F1' : avgs_f1, 'Kappa' : avgs_kappa,'MCC' : avgs_mcc,'Training time' : avgs_training_time},index=['Mean', 'SD'])
+                     'F1' : avgs_f1, 'Kappa' : avgs_kappa,'MCC' : avgs_mcc,'TT (Sec)' : avgs_training_time},index=['Mean', 'SD'])
   
     model_results = model_results.append(model_avgs)
     model_results = model_results.round(round)      
-    model_results.loc[:,'Training time'] = model_results.loc[:,'Training time'].round(2)
+    model_results.loc[:,'TT (Sec)'] = model_results.loc[:,'TT (Sec)'].round(2)
     # Green the mean
     model_results=model_results.style.apply(lambda x: ['background: lightgreen' if (x.name == 'Mean') else '' for i in x], axis=1)
     
@@ -6715,7 +6871,7 @@ def calibrate_model(estimator,
         
     #progress bar
     progress = ipw.IntProgress(value=0, min=0, max=fold+4, step=1 , description='Processing: ')
-    master_display = pd.DataFrame(columns=['Accuracy','AUC','Recall', 'Prec.', 'F1', 'Kappa','MCC','Training time'])
+    master_display = pd.DataFrame(columns=['Accuracy','AUC','Recall', 'Prec.', 'F1', 'Kappa','MCC','TT (Sec)'])
     display(progress)
     
     #display monitor
@@ -6892,8 +7048,8 @@ def calibrate_model(estimator,
         '''
         
         fold_results = pd.DataFrame({'Accuracy':[sca], 'AUC': [sc], 'Recall': [recall], 
-                                     'Prec.': [precision], 'F1': [f1], 'Kappa': [kappa],'MCC':[mcc],'Training time':[training_time]}).round(round)
-        fold_results.loc[:,'Training time'] = fold_results.loc[:,'Training time'].round(2)
+                                     'Prec.': [precision], 'F1': [f1], 'Kappa': [kappa],'MCC':[mcc],'TT (Sec)':[training_time]}).round(round)
+        fold_results.loc[:,'TT (Sec)'] = fold_results.loc[:,'TT (Sec)'].round(2)
         master_display = pd.concat([master_display, fold_results],ignore_index=True)
         fold_results = []
         
@@ -6977,13 +7133,13 @@ def calibrate_model(estimator,
     progress.value += 1
     
     model_results = pd.DataFrame({'Accuracy': score_acc, 'AUC': score_auc, 'Recall' : score_recall, 'Prec.' : score_precision , 
-                     'F1' : score_f1, 'Kappa' : score_kappa,'MCC' : score_mcc,'Training time' : score_training_time})
+                     'F1' : score_f1, 'Kappa' : score_kappa,'MCC' : score_mcc,'TT (Sec)' : score_training_time})
     model_avgs = pd.DataFrame({'Accuracy': avgs_acc, 'AUC': avgs_auc, 'Recall' : avgs_recall, 'Prec.' : avgs_precision , 
-                     'F1' : avgs_f1, 'Kappa' : avgs_kappa,'MCC' : avgs_mcc,'Training time' : avgs_training_time},index=['Mean', 'SD'])
+                     'F1' : avgs_f1, 'Kappa' : avgs_kappa,'MCC' : avgs_mcc,'TT (Sec)' : avgs_training_time},index=['Mean', 'SD'])
 
     model_results = model_results.append(model_avgs)
     model_results = model_results.round(round)
-    model_results.loc[:,'Training time'] = model_results.loc[:,'Training time'].round(2)
+    model_results.loc[:,'TT (Sec)'] = model_results.loc[:,'TT (Sec)'].round(2)
     # Green the mean
     model_results=model_results.style.apply(lambda x: ['background: lightgreen' if (x.name == 'Mean') else '' for i in x], axis=1)
     
