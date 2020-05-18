@@ -201,12 +201,19 @@ class DataTypes_Auto_infer(BaseEstimator,TransformerMixin):
         except:
           data[i]=dataset[i].apply(str)
 
+    # Fix the conversion of numerical features to float and prevent some raising errors
+    # If the object column contains numbers separate by commas they will replaced by 'point'
+    # If there is no commas it will do nothing
     if len(self.numerical_features) > 0:
       for i in self.numerical_features:
+        if data[i].dtype == 'object':
+          data[i] = data[i].str.replace(',', '.')
         try:
-          data[i]=data[i].astype('float64')
+          # If the column contains unrecognized characters (whitespace,string...) they will converted by np.nan
+          # Then we convert float32 as float64 for keep a consistency code development
+          data[i] = pd.to_numeric(arg=data[i], downcast='float', errors='coerce').astype('float64')
         except:
-          data[i]=dataset[i].astype('float64')
+          data[i] = dataset[i].astype('float64')
     
     if len(self.time_features) > 0:
       for i in self.time_features:
