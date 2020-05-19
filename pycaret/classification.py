@@ -1704,9 +1704,12 @@ def create_model(estimator = None,
     #checking error for estimator (string)
     available_estimators = ['lr', 'knn', 'nb', 'dt', 'svm', 'rbfsvm', 'gpc', 'mlp', 'ridge', 'rf', 'qda', 'ada', 
                             'gbc', 'lda', 'et', 'xgboost', 'lightgbm', 'catboost']
-    if estimator not in available_estimators:
-        sys.exit('(Value Error): Estimator Not Available. Please see docstring for list of available estimators.')
-        
+
+    #only raise exception of estimator is of type string.
+    if type(estimator) is str:
+        if estimator not in available_estimators:
+            sys.exit('(Value Error): Estimator Not Available. Please see docstring for list of available estimators.')
+
     #checking error for ensemble:
     if type(ensemble) is not bool:
         sys.exit('(Type Error): Ensemble parameter can only take argument as True or False.') 
@@ -1801,7 +1804,7 @@ def create_model(estimator = None,
     progress.value += 1
     
     #cross validation setup starts here
-    kf = StratifiedKFold(fold, random_state=seed)
+    kf = StratifiedKFold(fold, random_state=seed, shuffle=folds_shuffle_param)
 
     score_auc =np.empty((0,0))
     score_acc =np.empty((0,0))
@@ -2423,7 +2426,7 @@ def ensemble_model(estimator,
     MONITOR UPDATE ENDS
     '''
     
-    kf = StratifiedKFold(fold, random_state=seed)
+    kf = StratifiedKFold(fold, random_state=seed, shuffle=folds_shuffle_param)
     
     score_auc =np.empty((0,0))
     score_acc =np.empty((0,0))
@@ -3523,7 +3526,7 @@ def compare_models(blacklist = None,
     '''
     
     #cross validation setup starts here
-    kf = StratifiedKFold(fold, random_state=seed)
+    kf = StratifiedKFold(fold, random_state=seed, shuffle=folds_shuffle_param)
 
     score_acc =np.empty((0,0))
     score_auc =np.empty((0,0))
@@ -3785,10 +3788,10 @@ def compare_models(blacklist = None,
 def tune_model(estimator = None, 
                fold = 10, 
                round = 4, 
-               n_iter = 10, 
+               n_iter = 10,
+               custom_grid = None, #added in pycaret==1.0.1 
                optimize = 'Accuracy',
-               ensemble = False, 
-               method = None,
+               choose_better = True, #added in pycaret==1.0.1 
                verbose = True):
     
       
@@ -3852,16 +3855,19 @@ def tune_model(estimator = None,
     Number of iterations within the Random Grid Search. For every iteration, 
     the model randomly selects one value from the pre-defined grid of hyperparameters.
 
+    custom_grid: dictionary, default = None
+    To use custom hyperparameters for tuning pass a dictionary with parameter name
+    and values to be iterated. When set to None it uses pre-defined tuning grid.  
+
     optimize: string, default = 'accuracy'
     Measure used to select the best model through hyperparameter tuning.
     The default scoring measure is 'Accuracy'. Other measures include 'AUC',
     'Recall', 'Precision', 'F1'. 
 
-    ensemble: Boolean, default = None
-    True enables ensembling of the model through method defined in 'method' param.
-
-    method: String, 'Bagging' or 'Boosting', default = None
-    method comes into effect only when ensemble = True. Default is set to None. 
+    choose_better: Boolean, default = True
+    When set to set to True, base estimator is returned when the metric doesn't improve 
+    by tune_model. This gurantees the returned object would perform atleast equivalent 
+    to base estimator created using create_model or model returned by compare_models.
 
     verbose: Boolean, default = True
     Score grid is not printed when verbose is set to False.
@@ -3902,30 +3908,9 @@ def tune_model(estimator = None,
     #exception checking   
     import sys
     
-    #checking error for estimator (string)
-    available_estimators = ['lr', 'knn', 'nb', 'dt', 'svm', 'rbfsvm', 'gpc', 'mlp', 'ridge', 'rf', 'qda', 'ada', 
-                            'gbc', 'lda', 'et', 'xgboost', 'lightgbm', 'catboost']
-    if estimator not in available_estimators:
-        sys.exit('(Value Error): Estimator Not Available. Please see docstring for list of available estimators.')
-        
-    #checking error for ensemble:
-    if type(ensemble) is not bool:
-        sys.exit('(Type Error): Ensemble parameter can only take argument as True or False.') 
-    
-    #checking error for method:
-    
-    #1 Check When method given and ensemble is not set to True.
-    if ensemble is False and method is not None:
-        sys.exit('(Type Error): Method parameter only accepts value when ensemble is set to True.')
-
-    #2 Check when ensemble is set to True and method is not passed.
-    if ensemble is True and method is None:
-        sys.exit("(Type Error): Method parameter missing. Pass method = 'Bagging' or 'Boosting'.")
-        
-    #3 Check when ensemble is set to True and method is passed but not allowed.
-    available_method = ['Bagging', 'Boosting']
-    if ensemble is True and method not in available_method:
-        sys.exit("(Value Error): Method parameter only accepts two values 'Bagging' or 'Boosting'.")
+    #checking estimator if string
+    if type(estimator) is str:
+        sys.exit('(Type Error): The behavior of tune_model in version 1.0.1 is changed. Please pass trained model object.')
         
     #checking fold parameter
     if type(fold) is not int:
@@ -3949,21 +3934,14 @@ def tune_model(estimator = None,
         if optimize == 'AUC':
             sys.exit('(Type Error): AUC metric not supported for multiclass problems. See docstring for list of other optimization parameters.')
     
-    
     if type(n_iter) is not int:
         sys.exit('(Type Error): n_iter parameter only accepts integer value.')
         
     #checking verbose parameter
     if type(verbose) is not bool:
-        sys.exit('(Type Error): Verbose parameter can only take argument as True or False.') 
-        
-    #checking boosting conflict with estimators
-    boosting_not_supported = ['lda','qda','ridge','mlp','gpc','svm','knn', 'catboost']
-    if method == 'Boosting' and estimator in boosting_not_supported:
-        sys.exit("(Type Error): Estimator does not provide class_weights or predict_proba function and hence not supported for the Boosting method. Change the estimator or method to 'Bagging'.")
-    
-    
-    
+        sys.exit('(Type Error): Verbose parameter can only take argument as True or False.')     
+
+
     '''
     
     ERROR HANDLING ENDS HERE
@@ -3979,8 +3957,10 @@ def tune_model(estimator = None,
     
     #progress bar
     progress = ipw.IntProgress(value=0, min=0, max=fold+6, step=1 , description='Processing: ')
-    master_display = pd.DataFrame(columns=['Accuracy','AUC','Recall', 'Prec.', 'F1', 'Kappa', 'MCC', 'TT (Sec)'])
-    display(progress)    
+    master_display = pd.DataFrame(columns=['Accuracy','AUC','Recall', 'Prec.', 'F1', 'Kappa', 'MCC'])
+    if verbose:
+        if html_param:
+            display(progress)    
     
     #display monitor
     timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
@@ -3989,11 +3969,11 @@ def tune_model(estimator = None,
                              ['ETC' , '. . . . . . . . . . . . . . . . . .',  'Calculating ETC'] ],
                               columns=['', ' ', '   ']).set_index('')
     
-    display(monitor, display_id = 'monitor')
-    
     if verbose:
-        display_ = display(master_display, display_id=True)
-        display_id = display_.display_id
+        if html_param:
+            display(monitor, display_id = 'monitor')
+            display_ = display(master_display, display_id=True)
+            display_id = display_.display_id
     
     #ignore warnings
     import warnings
@@ -4026,31 +4006,75 @@ def tune_model(estimator = None,
     #setting optimize parameter   
     if optimize == 'Accuracy':
         optimize = 'accuracy'
+        compare_dimension = 'Accuracy'
         
     elif optimize == 'AUC':
         optimize = 'roc_auc'
+        compare_dimension = 'AUC'
         
     elif optimize == 'Recall':
         if y.value_counts().count() > 2:
             optimize = metrics.make_scorer(metrics.recall_score, average = 'macro')
         else:
             optimize = 'recall'
+        compare_dimension = 'Recall'
 
     elif optimize == 'Precision':
         if y.value_counts().count() > 2:
             optimize = metrics.make_scorer(metrics.precision_score, average = 'weighted')
         else:
             optimize = 'precision'
+        compare_dimension = 'Prec.'
    
     elif optimize == 'F1':
         if y.value_counts().count() > 2:
             optimize = metrics.make_scorer(metrics.f1_score, average = 'weighted')
         else:
             optimize = optimize = 'f1'
+        compare_dimension = 'F1'
+
+    elif optimize == 'MCC':
+        optimize = 'roc_auc' # roc_auc instead because you cannot use MCC in gridsearchcv
+        compare_dimension = 'MCC'
+    
         
+    #convert trained estimator into string name for grids
+    
+    def get_model_name(e):
+        return str(e).split("(")[0]
+
+    mn = get_model_name(estimator)
+
+    if 'catboost' in mn:
+        mn = 'CatBoostClassifier'
+    
+    model_dict = {'ExtraTreesClassifier' : 'et',
+                'GradientBoostingClassifier' : 'gbc', 
+                'RandomForestClassifier' : 'rf',
+                'LGBMClassifier' : 'lightgbm',
+                'XGBClassifier' : 'xgboost',
+                'AdaBoostClassifier' : 'ada', 
+                'DecisionTreeClassifier' : 'dt', 
+                'RidgeClassifier' : 'ridge',
+                'LogisticRegression' : 'lr',
+                'KNeighborsClassifier' : 'knn',
+                'GaussianNB' : 'nb',
+                'SGDClassifier' : 'svm',
+                'SVC' : 'rbfsvm',
+                'GaussianProcessClassifier' : 'gpc',
+                'MLPClassifier' : 'mlp',
+                'QuadraticDiscriminantAnalysis' : 'qda',
+                'LinearDiscriminantAnalysis' : 'lda',
+                'CatBoostClassifier' : 'catboost',
+                'BaggingClassifier' : 'Bagging'}
+
+    _estimator_ = estimator
+
+    estimator = model_dict.get(mn)
+
     progress.value += 1
     
-    kf = StratifiedKFold(fold, random_state=seed)
+    kf = StratifiedKFold(fold, random_state=seed, shuffle=folds_shuffle_param)
 
     score_auc =np.empty((0,0))
     score_acc =np.empty((0,0))
@@ -4074,8 +4098,10 @@ def tune_model(estimator = None,
     MONITOR UPDATE STARTS
     '''
     
-    monitor.iloc[1,1:] = 'Tuning Hyperparameters'
-    update_display(monitor, display_id = 'monitor')
+    monitor.iloc[1,1:] = 'Searching Hyperparameters Grid'
+    if verbose:
+        if html_param:
+            update_display(monitor, display_id = 'monitor')
     
     '''
     MONITOR UPDATE ENDS
@@ -4087,12 +4113,16 @@ def tune_model(estimator = None,
     if estimator == 'knn':
         
         from sklearn.neighbors import KNeighborsClassifier
-        
-        param_grid = {'n_neighbors': range(1,51),
-                 'weights' : ['uniform', 'distance'],
-                 'metric':["euclidean", "manhattan"]
-                     }        
-        model_grid = RandomizedSearchCV(estimator=KNeighborsClassifier(), param_distributions=param_grid, 
+
+        if custom_grid is not None:
+            param_grid = custom_grid
+        else:
+            param_grid = {'n_neighbors': range(1,51),
+                    'weights' : ['uniform', 'distance'],
+                    'metric':["euclidean", "manhattan"]
+                        }
+
+        model_grid = RandomizedSearchCV(estimator=KNeighborsClassifier(n_jobs=n_jobs_param), param_distributions=param_grid, 
                                         scoring=optimize, n_iter=n_iter, cv=cv, random_state=seed,
                                        n_jobs=n_jobs_param, iid=False)
 
@@ -4105,11 +4135,14 @@ def tune_model(estimator = None,
         
         from sklearn.linear_model import LogisticRegression
 
-        param_grid = {'C': np.arange(0, 10, 0.001), #[1,5,10,25,50,100],
-                  "penalty": [ 'l1', 'l2'],
-                  "class_weight": ["balanced", None]
-                     }
-        model_grid = RandomizedSearchCV(estimator=LogisticRegression(random_state=seed), 
+        if custom_grid is not None:
+            param_grid = custom_grid
+        else:
+            param_grid = {'C': np.arange(0, 10, 0.001),
+                    "penalty": [ 'l1', 'l2'],
+                    "class_weight": ["balanced", None]
+                        }
+        model_grid = RandomizedSearchCV(estimator=LogisticRegression(random_state=seed, n_jobs=n_jobs_param), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, cv=cv, 
                                         random_state=seed, iid=False, n_jobs=n_jobs_param)
         model_grid.fit(X_train,y_train)
@@ -4120,12 +4153,15 @@ def tune_model(estimator = None,
     elif estimator == 'dt':
         
         from sklearn.tree import DecisionTreeClassifier
-        
-        param_grid = {"max_depth": np.random.randint(1, (len(X_train.columns)*.85),20),
-                  "max_features": np.random.randint(3, len(X_train.columns),20),
-                  "min_samples_leaf": [2,3,4,5,6],
-                  "criterion": ["gini", "entropy"],
-                     }
+
+        if custom_grid is not None:
+            param_grid = custom_grid
+        else:
+            param_grid = {"max_depth": np.random.randint(1, (len(X_train.columns)*.85),20),
+                    "max_features": np.random.randint(3, len(X_train.columns),20),
+                    "min_samples_leaf": [2,3,4,5,6],
+                    "criterion": ["gini", "entropy"],
+                        }
 
         model_grid = RandomizedSearchCV(estimator=DecisionTreeClassifier(random_state=seed), param_distributions=param_grid,
                                        scoring=optimize, n_iter=n_iter, cv=cv, random_state=seed,
@@ -4139,13 +4175,16 @@ def tune_model(estimator = None,
     elif estimator == 'mlp':
     
         from sklearn.neural_network import MLPClassifier
-        
-        param_grid = {'learning_rate': ['constant', 'invscaling', 'adaptive'],
-                 'solver' : ['lbfgs', 'sgd', 'adam'],
-                 'alpha': np.arange(0, 1, 0.0001), #[0.0001, 0.05],
-                 'hidden_layer_sizes': [(50,50,50), (50,100,50), (100,), (100,50,100), (100,100,100)], #np.random.randint(5,15,5),
-                 'activation': ["tanh", "identity", "logistic","relu"]
-                 }
+
+        if custom_grid is not None:
+            param_grid = custom_grid
+        else:
+            param_grid = {'learning_rate': ['constant', 'invscaling', 'adaptive'],
+                    'solver' : ['lbfgs', 'sgd', 'adam'],
+                    'alpha': np.arange(0, 1, 0.0001),
+                    'hidden_layer_sizes': [(50,50,50), (50,100,50), (100,), (100,50,100), (100,100,100)],
+                    'activation': ["tanh", "identity", "logistic","relu"]
+                    }
 
         model_grid = RandomizedSearchCV(estimator=MLPClassifier(max_iter=1000, random_state=seed), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, cv=cv, 
@@ -4159,10 +4198,13 @@ def tune_model(estimator = None,
     elif estimator == 'gpc':
         
         from sklearn.gaussian_process import GaussianProcessClassifier
-        
-        param_grid = {"max_iter_predict":[100,200,300,400,500,600,700,800,900,1000]}
 
-        model_grid = RandomizedSearchCV(estimator=GaussianProcessClassifier(random_state=seed), param_distributions=param_grid,
+        if custom_grid is not None:
+            param_grid = custom_grid
+        else:
+            param_grid = {"max_iter_predict":[100,200,300,400,500,600,700,800,900,1000]}
+
+        model_grid = RandomizedSearchCV(estimator=GaussianProcessClassifier(random_state=seed, n_jobs=n_jobs_param), param_distributions=param_grid,
                                        scoring=optimize, n_iter=n_iter, cv=cv, random_state=seed,
                                        n_jobs=n_jobs_param)
 
@@ -4174,9 +4216,12 @@ def tune_model(estimator = None,
     elif estimator == 'rbfsvm':
         
         from sklearn.svm import SVC
-        
-        param_grid = {'C': np.arange(0, 50, 0.01), #[.5,1,10,50,100],
-                "class_weight": ["balanced", None]}
+
+        if custom_grid is not None:
+            param_grid = custom_grid
+        else:
+            param_grid = {'C': np.arange(0, 50, 0.01),
+                    "class_weight": ["balanced", None]}
 
         model_grid = RandomizedSearchCV(estimator=SVC(gamma='auto', C=1, probability=True, kernel='rbf', random_state=seed), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
@@ -4191,11 +4236,14 @@ def tune_model(estimator = None,
         
         from sklearn.naive_bayes import GaussianNB
 
-        param_grid = {'var_smoothing': [0.000000001, 0.000000002, 0.000000005, 0.000000008, 0.000000009,
-                                        0.0000001, 0.0000002, 0.0000003, 0.0000005, 0.0000007, 0.0000009, 
-                                        0.00001, 0.001, 0.002, 0.003, 0.004, 0.005, 0.007, 0.009,
-                                        0.004, 0.005, 0.006, 0.007,0.008, 0.009, 0.01, 0.1, 1]
-                     }
+        if custom_grid is not None:
+            param_grid = custom_grid
+        else:
+            param_grid = {'var_smoothing': [0.000000001, 0.000000002, 0.000000005, 0.000000008, 0.000000009,
+                                            0.0000001, 0.0000002, 0.0000003, 0.0000005, 0.0000007, 0.0000009, 
+                                            0.00001, 0.001, 0.002, 0.003, 0.004, 0.005, 0.007, 0.009,
+                                            0.004, 0.005, 0.006, 0.007,0.008, 0.009, 0.01, 0.1, 1]
+                        }
 
         model_grid = RandomizedSearchCV(estimator=GaussianNB(), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
@@ -4209,14 +4257,17 @@ def tune_model(estimator = None,
     elif estimator == 'svm':
        
         from sklearn.linear_model import SGDClassifier
-        
-        param_grid = {'penalty': ['l2', 'l1','elasticnet'],
-                      'l1_ratio': np.arange(0,1,0.01), #[0,0.1,0.15,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1],
-                      'alpha': [0.0001, 0.001, 0.01, 0.0002, 0.002, 0.02, 0.0005, 0.005, 0.05],
-                      'fit_intercept': [True, False],
-                      'learning_rate': ['constant', 'optimal', 'invscaling', 'adaptive'],
-                      'eta0': [0.001, 0.01,0.05,0.1,0.2,0.3,0.4,0.5]
-                     }    
+
+        if custom_grid is not None:
+            param_grid = custom_grid
+        else:
+            param_grid = {'penalty': ['l2', 'l1','elasticnet'],
+                        'l1_ratio': np.arange(0,1,0.01),
+                        'alpha': [0.0001, 0.001, 0.01, 0.0002, 0.002, 0.02, 0.0005, 0.005, 0.05],
+                        'fit_intercept': [True, False],
+                        'learning_rate': ['constant', 'optimal', 'invscaling', 'adaptive'],
+                        'eta0': [0.001, 0.01,0.05,0.1,0.2,0.3,0.4,0.5]
+                        }    
 
         model_grid = RandomizedSearchCV(estimator=SGDClassifier(loss='hinge', random_state=seed, n_jobs=n_jobs_param), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
@@ -4230,11 +4281,14 @@ def tune_model(estimator = None,
     elif estimator == 'ridge':
         
         from sklearn.linear_model import RidgeClassifier
-        
-        param_grid = {'alpha': np.arange(0,1,0.001), #[0.0001,0.001,0.1,0.15,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1],
-                      'fit_intercept': [True, False],
-                      'normalize': [True, False]
-                     }    
+
+        if custom_grid is not None:
+            param_grid = custom_grid
+        else:
+            param_grid = {'alpha': np.arange(0,1,0.001),
+                        'fit_intercept': [True, False],
+                        'normalize': [True, False]
+                        }    
 
         model_grid = RandomizedSearchCV(estimator=RidgeClassifier(random_state=seed), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
@@ -4248,17 +4302,20 @@ def tune_model(estimator = None,
     elif estimator == 'rf':
         
         from sklearn.ensemble import RandomForestClassifier
-        
-        param_grid = {'n_estimators': [10, 20, 30, 40, 50, 60, 70, 80, 90, 100],
-                      'criterion': ['gini', 'entropy'],
-                      'max_depth': [int(x) for x in np.linspace(10, 110, num = 11)],
-                      'min_samples_split': [2, 5, 7, 9, 10],
-                      'min_samples_leaf' : [1, 2, 4],
-                      'max_features' : ['auto', 'sqrt', 'log2'],
-                      'bootstrap': [True, False]
-                     }    
 
-        model_grid = RandomizedSearchCV(estimator=RandomForestClassifier(random_state=seed), 
+        if custom_grid is not None:
+            param_grid = custom_grid
+        else:
+            param_grid = {'n_estimators': [10, 20, 30, 40, 50, 60, 70, 80, 90, 100],
+                        'criterion': ['gini', 'entropy'],
+                        'max_depth': [int(x) for x in np.linspace(10, 110, num = 11)],
+                        'min_samples_split': [2, 5, 7, 9, 10],
+                        'min_samples_leaf' : [1, 2, 4],
+                        'max_features' : ['auto', 'sqrt', 'log2'],
+                        'bootstrap': [True, False]
+                        }    
+
+        model_grid = RandomizedSearchCV(estimator=RandomForestClassifier(random_state=seed, n_jobs=n_jobs_param), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
                                         cv=cv, random_state=seed, n_jobs=n_jobs_param)
 
@@ -4271,12 +4328,15 @@ def tune_model(estimator = None,
         
         from sklearn.ensemble import AdaBoostClassifier        
 
-        param_grid = {'n_estimators':  np.arange(10,200,5), #[10, 40, 70, 80, 90, 100, 120, 140, 150],
-                      'learning_rate': np.arange(0,1,0.01), #[0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1],
-                      'algorithm' : ["SAMME", "SAMME.R"]
-                     }    
+        if custom_grid is not None:
+            param_grid = custom_grid
+        else:
+            param_grid = {'n_estimators':  np.arange(10,200,5),
+                        'learning_rate': np.arange(0,1,0.01),
+                        'algorithm' : ["SAMME", "SAMME.R"]
+                        }    
 
-        model_grid = RandomizedSearchCV(estimator=AdaBoostClassifier(random_state=seed), 
+        model_grid = RandomizedSearchCV(estimator=AdaBoostClassifier(base_estimator = _estimator_.base_estimator, random_state=seed), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
                                         cv=cv, random_state=seed, n_jobs=n_jobs_param)
 
@@ -4289,16 +4349,17 @@ def tune_model(estimator = None,
         
         from sklearn.ensemble import GradientBoostingClassifier
 
-        param_grid = {#'loss': ['deviance', 'exponential'],
-                      'n_estimators': np.arange(10,200,5), #[10, 40, 70, 80, 90, 100, 120, 140, 150],
-                      'learning_rate': np.arange(0,1,0.01), #[0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1],
-                      'subsample' : np.arange(0.1,1,0.05), #[0.1,0.3,0.5,0.7,0.9,1],
-                      'min_samples_split' : [2,4,5,7,9,10],
-                      'min_samples_leaf' : [1,2,3,4,5],
-                      'max_depth': [int(x) for x in np.linspace(10, 110, num = 11)],
-                      'max_features' : ['auto', 'sqrt', 'log2']
-                     }    
-
+        if custom_grid is not None:
+            param_grid = custom_grid
+        else:
+            param_grid = {'n_estimators': np.arange(10,200,5),
+                        'learning_rate': np.arange(0,1,0.01),
+                        'subsample' : np.arange(0.1,1,0.05),
+                        'min_samples_split' : [2,4,5,7,9,10],
+                        'min_samples_leaf' : [1,2,3,4,5],
+                        'max_depth': [int(x) for x in np.linspace(10, 110, num = 11)],
+                        'max_features' : ['auto', 'sqrt', 'log2']
+                        }    
             
         model_grid = RandomizedSearchCV(estimator=GradientBoostingClassifier(random_state=seed), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
@@ -4313,8 +4374,10 @@ def tune_model(estimator = None,
         
         from sklearn.discriminant_analysis import QuadraticDiscriminantAnalysis
 
-        param_grid = {'reg_param': np.arange(0,1,0.01), #[0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1]
-                     }    
+        if custom_grid is not None:
+            param_grid = custom_grid
+        else:
+            param_grid = {'reg_param': np.arange(0,1,0.01)}    
 
         model_grid = RandomizedSearchCV(estimator=QuadraticDiscriminantAnalysis(), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
@@ -4329,9 +4392,12 @@ def tune_model(estimator = None,
         
         from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 
-        param_grid = {'solver' : ['lsqr', 'eigen'],
-                      'shrinkage': [None, 0.0001, 0.001, 0.01, 0.0005, 0.005, 0.05, 0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1]
-                     }    
+        if custom_grid is not None:
+            param_grid = custom_grid
+        else:
+            param_grid = {'solver' : ['lsqr', 'eigen'],
+                        'shrinkage': [None, 0.0001, 0.001, 0.01, 0.0005, 0.005, 0.05, 0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1]
+                        }    
 
         model_grid = RandomizedSearchCV(estimator=LinearDiscriminantAnalysis(), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
@@ -4346,16 +4412,19 @@ def tune_model(estimator = None,
         
         from sklearn.ensemble import ExtraTreesClassifier
 
-        param_grid = {'n_estimators': np.arange(10,200,5), #[10, 20, 30, 40, 50, 60, 70, 80, 90, 100],
-                      'criterion': ['gini', 'entropy'],
-                      'max_depth': [int(x) for x in np.linspace(10, 110, num = 11)],
-                      'min_samples_split': [2, 5, 7, 9, 10],
-                      'min_samples_leaf' : [1, 2, 4],
-                      'max_features' : ['auto', 'sqrt', 'log2'],
-                      'bootstrap': [True, False]
-                     }    
+        if custom_grid is not None:
+            param_grid = custom_grid
+        else:
+            param_grid = {'n_estimators': np.arange(10,200,5),
+                        'criterion': ['gini', 'entropy'],
+                        'max_depth': [int(x) for x in np.linspace(10, 110, num = 11)],
+                        'min_samples_split': [2, 5, 7, 9, 10],
+                        'min_samples_leaf' : [1, 2, 4],
+                        'max_features' : ['auto', 'sqrt', 'log2'],
+                        'bootstrap': [True, False]
+                        }    
 
-        model_grid = RandomizedSearchCV(estimator=ExtraTreesClassifier(random_state=seed), 
+        model_grid = RandomizedSearchCV(estimator=ExtraTreesClassifier(random_state=seed, n_jobs=n_jobs_param), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
                                         cv=cv, random_state=seed, n_jobs=n_jobs_param)
 
@@ -4371,10 +4440,13 @@ def tune_model(estimator = None,
         
         num_class = y.value_counts().count()
         
-        if y.value_counts().count() > 2:
+        if custom_grid is not None:
+            param_grid = custom_grid
+
+        elif y.value_counts().count() > 2:
             
-            param_grid = {'learning_rate': np.arange(0,1,0.01), #[0.01, 0.02, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1], 
-                          'n_estimators': np.arange(10,500,20), #[10, 30, 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000], 
+            param_grid = {'learning_rate': np.arange(0,1,0.01),
+                          'n_estimators': np.arange(10,500,20),
                           'subsample': [0.1, 0.2, 0.3, 0.5, 0.7, 0.9, 1],
                           'max_depth': [int(x) for x in np.linspace(10, 110, num = 11)], 
                           'colsample_bytree': [0.5, 0.7, 0.9, 1],
@@ -4382,13 +4454,12 @@ def tune_model(estimator = None,
                           'num_class' : [num_class, num_class]
                          }
         else:
-            param_grid = {'learning_rate': np.arange(0,1,0.01), #[0.01, 0.02, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1], 
+            param_grid = {'learning_rate': np.arange(0,1,0.01),
                           'n_estimators':[10, 30, 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000], 
                           'subsample': [0.1, 0.2, 0.3, 0.5, 0.7, 0.9, 1],
                           'max_depth': [int(x) for x in np.linspace(10, 110, num = 11)], 
                           'colsample_bytree': [0.5, 0.7, 0.9, 1],
                           'min_child_weight': [1, 2, 3, 4],
-                          #'num_class' : [num_class, num_class]
                          }
 
         model_grid = RandomizedSearchCV(estimator=XGBClassifier(random_state=seed, n_jobs=n_jobs_param, verbosity=0), 
@@ -4405,17 +4476,19 @@ def tune_model(estimator = None,
         
         import lightgbm as lgb
         
-        param_grid = {#'boosting_type' : ['gbdt', 'dart', 'goss', 'rf'],
-                      'num_leaves': [10,20,30,40,50,60,70,80,90,100,150,200],
-                      'max_depth': [int(x) for x in np.linspace(10, 110, num = 11)],
-                      'learning_rate': [0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1],
-                      'n_estimators': [10, 30, 50, 70, 90, 100, 120, 150, 170, 200], 
-                      'min_split_gain' : [0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],
-                      'reg_alpha': [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9],
-                      'reg_lambda': [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
-                      }
+        if custom_grid is not None:
+            param_grid = custom_grid
+        else:
+            param_grid = {'num_leaves': [10,20,30,40,50,60,70,80,90,100,150,200],
+                        'max_depth': [int(x) for x in np.linspace(10, 110, num = 11)],
+                        'learning_rate': [0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1],
+                        'n_estimators': [10, 30, 50, 70, 90, 100, 120, 150, 170, 200], 
+                        'min_split_gain' : [0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],
+                        'reg_alpha': [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9],
+                        'reg_lambda': [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
+                        }
     
-        model_grid = RandomizedSearchCV(estimator=lgb.LGBMClassifier(random_state=seed), 
+        model_grid = RandomizedSearchCV(estimator=lgb.LGBMClassifier(random_state=seed, n_jobs=n_jobs_param), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
                                         cv=cv, random_state=seed, n_jobs=n_jobs_param)
 
@@ -4428,16 +4501,18 @@ def tune_model(estimator = None,
     elif estimator == 'catboost':
         
         from catboost import CatBoostClassifier
+
+        if custom_grid is not None:
+            param_grid = custom_grid
+        else:
+            param_grid = {'depth':[3,1,2,6,4,5,7,8,9,10],
+                        'iterations':[250,100,500,1000], 
+                        'learning_rate':[0.03,0.001,0.01,0.1,0.2,0.3], 
+                        'l2_leaf_reg':[3,1,5,10,100], 
+                        'border_count':[32,5,10,20,50,100,200], 
+                        }
         
-        param_grid = {'depth':[3,1,2,6,4,5,7,8,9,10],
-                      'iterations':[250,100,500,1000], 
-                      'learning_rate':[0.03,0.001,0.01,0.1,0.2,0.3], 
-                      'l2_leaf_reg':[3,1,5,10,100], 
-                      'border_count':[32,5,10,20,50,100,200], 
-                      #'ctr_border_count':[50,5,10,20,100,200]
-                      }
-        
-        model_grid = RandomizedSearchCV(estimator=CatBoostClassifier(random_state=seed, silent = True), 
+        model_grid = RandomizedSearchCV(estimator=CatBoostClassifier(random_state=seed, silent=True, thread_count=n_jobs_param), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
                                         cv=cv, random_state=seed, n_jobs=n_jobs_param)
 
@@ -4446,92 +4521,31 @@ def tune_model(estimator = None,
         best_model = model_grid.best_estimator_
         best_model_param = model_grid.best_params_ 
         
+    elif estimator == 'Bagging':
+        
+        from sklearn.ensemble import BaggingClassifier
+
+        if custom_grid is not None:
+            param_grid = custom_grid
+
+        else:
+            param_grid = {'n_estimators': np.arange(10,300,10),
+                        'bootstrap': [True, False],
+                        'bootstrap_features': [True, False],
+                        }
+            
+        model_grid = RandomizedSearchCV(estimator=BaggingClassifier(base_estimator=_estimator_.base_estimator, random_state=seed, n_jobs=n_jobs_param), 
+                                        param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
+                                        cv=cv, random_state=seed, n_jobs=n_jobs_param)
+
+        model_grid.fit(X_train,y_train)
+        model = model_grid.best_estimator_
+        best_model = model_grid.best_estimator_
+        best_model_param = model_grid.best_params_ 
         
     progress.value += 1
     
-    '''
-    MONITOR UPDATE STARTS
-    '''
-    
-    monitor.iloc[1,1:] = 'Tuning Hyperparameters of Ensemble'
-    update_display(monitor, display_id = 'monitor')
-    
-    '''
-    MONITOR UPDATE ENDS
-    '''
-    
-    if estimator == 'dt' and ensemble == True and method == 'Bagging':
-        
-        from sklearn.ensemble import BaggingClassifier
-    
-        #when using normal BaggingClassifier() DT estimator raise's an exception for max_features parameter. Hence a separate 
-        #call has been made for estimator='dt' and method = 'Bagging' where max_features has been removed from param_grid_dt.
-    
-        param_grid = {'n_estimators': np.arange(10,300,10), #[10,15,20,25,30],
-                     'bootstrap': [True, False],
-                     'bootstrap_features': [True, False],
-                     }
-
-        param_grid_dt = {"max_depth": np.random.randint(3, (len(X_train.columns)*.85),20),
-                      "min_samples_leaf": [2,3,4],
-                      "criterion": ["gini", "entropy"]}
-
-
-        model_grid = RandomizedSearchCV(estimator=DecisionTreeClassifier(random_state=seed), param_distributions=param_grid_dt,
-                                       scoring=optimize, n_iter=n_iter, cv=cv, random_state=seed,
-                                       iid=False, n_jobs=n_jobs_param)
-
-        model_grid.fit(X_train,y_train)
-        model = model_grid.best_estimator_
-        best_model = model_grid.best_estimator_
-        best_model_param = model_grid.best_params_
-
-        best_model = BaggingClassifier(best_model, random_state=seed)
-
-        model_grid = RandomizedSearchCV(estimator=best_model, 
-                                        param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
-                                        cv=cv, random_state=seed, iid=False, n_jobs=n_jobs_param)
-
-        model_grid.fit(X_train,y_train)
-        model = model_grid.best_estimator_
-        best_model = model_grid.best_estimator_
-        best_model_param = model_grid.best_params_    
-  
-        progress.value += 1
-    
-    elif ensemble and method == 'Bagging':
-        
-        from sklearn.ensemble import BaggingClassifier
-    
-        param_grid = {'n_estimators': np.arange(10,300,10), #[10,15,20,25,30],
-                     'bootstrap': [True, False],
-                     'bootstrap_features': [True, False],
-                     }
-
-        best_model = BaggingClassifier(best_model, random_state=seed)
-
-        model_grid = RandomizedSearchCV(estimator=best_model, 
-                                        param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
-                                        cv=cv, random_state=seed, iid=False, n_jobs=n_jobs_param)
-
-        model_grid.fit(X_train,y_train)
-        model = model_grid.best_estimator_
-        best_model = model_grid.best_estimator_
-        best_model_param = model_grid.best_params_    
-     
-    elif ensemble and method =='Boosting':
-        
-        from sklearn.ensemble import AdaBoostClassifier
-        
-        param_grid = {'n_estimators': np.arange(10,200,10), #[25,35,50,60,70,75],
-                     'learning_rate': np.arange(0,1,0.01), #[1,0.9,0.8,0.7,0.6,0.5,0.4,0.3,0.2],
-                     }        
-
-        best_model = AdaBoostClassifier(best_model, random_state=seed)
-
-        model_grid = RandomizedSearchCV(estimator=best_model, 
-                                        param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
-                                        cv=cv, random_state=seed, iid=False, n_jobs=n_jobs_param)
+    progress.value += 1
 
     progress.value += 1
 
@@ -4641,8 +4655,7 @@ def tune_model(estimator = None,
         '''
 
         fold_results = pd.DataFrame({'Accuracy':[sca], 'AUC': [sc], 'Recall': [recall], 
-                                     'Prec.': [precision], 'F1': [f1], 'Kappa': [kappa], 'MCC':[mcc], 'TT (Sec)':[training_time]}).round(round)
-        fold_results.loc[:,'TT (Sec)'] = fold_results.loc[:,'TT (Sec)'].round(2)
+                                     'Prec.': [precision], 'F1': [f1], 'Kappa': [kappa], 'MCC':[mcc]}).round(round)
         master_display = pd.concat([master_display, fold_results],ignore_index=True)
         fold_results = []
         
@@ -4665,8 +4678,10 @@ def tune_model(estimator = None,
             tt = str (tt)
             ETC = tt + ' Minutes Remaining'
             
-        update_display(ETC, display_id = 'ETC')
-            
+        if verbose:
+            if html_param:
+                update_display(ETC, display_id = 'ETC')
+
         fold_num += 1
         
         '''
@@ -4674,7 +4689,9 @@ def tune_model(estimator = None,
         '''
 
         monitor.iloc[2,1:] = ETC
-        update_display(monitor, display_id = 'monitor')
+        if verbose:
+            if html_param:
+                update_display(monitor, display_id = 'monitor')
 
         '''
         MONITOR UPDATE ENDS
@@ -4687,7 +4704,8 @@ def tune_model(estimator = None,
         '''
         
         if verbose:
-            update_display(master_display, display_id = display_id)
+            if html_param:
+                update_display(master_display, display_id = display_id)
         
         '''
         
@@ -4735,27 +4753,62 @@ def tune_model(estimator = None,
     progress.value += 1
     
     model_results = pd.DataFrame({'Accuracy': score_acc, 'AUC': score_auc, 'Recall' : score_recall, 'Prec.' : score_precision , 
-                     'F1' : score_f1, 'Kappa' : score_kappa, 'MCC':score_mcc, 'TT (Sec)':score_training_time})
+                     'F1' : score_f1, 'Kappa' : score_kappa, 'MCC':score_mcc})
     model_avgs = pd.DataFrame({'Accuracy': avgs_acc, 'AUC': avgs_auc, 'Recall' : avgs_recall, 'Prec.' : avgs_precision , 
-                     'F1' : avgs_f1, 'Kappa' : avgs_kappa, 'MCC':avgs_mcc, 'TT (Sec)':avgs_training_time},index=['Mean', 'SD'])
+                     'F1' : avgs_f1, 'Kappa' : avgs_kappa, 'MCC':avgs_mcc},index=['Mean', 'SD'])
 
     model_results = model_results.append(model_avgs)
     model_results = model_results.round(round)
-    model_results.loc[:,'TT (Sec)'] = model_results.loc[:,'TT (Sec)'].round(2)
     
-    # Green the mean
-    model_results=model_results.style.apply(lambda x: ['background: lightgreen' if (x.name == 'Mean') else '' for i in x], axis=1)
-    
+    # yellow the mean
+    model_results=model_results.style.apply(lambda x: ['background: yellow' if (x.name == 'Mean') else '' for i in x], axis=1)
+    model_results = model_results.set_precision(round)
+
     progress.value += 1
     
     #refitting the model on complete X_train, y_train
-    monitor.iloc[1,1:] = 'Compiling Final Model'
-    update_display(monitor, display_id = 'monitor')
+    monitor.iloc[1,1:] = 'Finalizing Model'
+    if verbose:
+        if html_param:
+            update_display(monitor, display_id = 'monitor')
     
     best_model.fit(data_X, data_y)
     
     progress.value += 1
     
+    #storing results in create_model_container
+    create_model_container.append(model_results.data)
+
+    #storing results in master_model_container
+    master_model_container.append(best_model)
+
+    '''
+    When choose_better sets to True. optimize metric in scoregrid is
+    compared with base model created using create_model so that tune_model
+    functions return the model with better score only. This will ensure 
+    model performance is atleast equivalent to what is seen is compare_models 
+    '''
+    if choose_better:
+
+        if verbose:
+            if html_param:
+                monitor.iloc[1,1:] = 'Compiling Final Results'
+                monitor.iloc[2,1:] = 'Almost Finished'
+                update_display(monitor, display_id = 'monitor')
+
+        #creating base model for comparison
+        if estimator in ['Bagging', 'ada']:
+            base_model = create_model(estimator=_estimator_, verbose = False)
+        else:
+            base_model = create_model(estimator=estimator, verbose = False)
+        base_model_results = create_model_container[-1][compare_dimension][-2:][0]
+        tuned_model_results = create_model_container[-2][compare_dimension][-2:][0]
+
+        if tuned_model_results > base_model_results:
+            best_model = best_model
+        else:
+            best_model = base_model
+        
     #storing into experiment
     model_name = 'Tuned ' + str(model).split("(")[0]
     tup = (model_name,best_model)
@@ -4764,14 +4817,16 @@ def tune_model(estimator = None,
     tup = (nam, model_results)
     experiment__.append(tup)
     
-    
     if verbose:
         clear_output()
-        display(model_results)
-        return best_model
+        if html_param:
+            display(model_results)
+        else:
+            print(model_results.data)
     else:
         clear_output()
-        return best_model
+        
+    return best_model
 
 def blend_models(estimator_list = 'All', 
                  fold = 10, 
@@ -5007,7 +5062,7 @@ def blend_models(estimator_list = 'All',
     
     
 
-    kf = StratifiedKFold(fold, random_state=seed)
+    kf = StratifiedKFold(fold, random_state=seed, shuffle=folds_shuffle_param)
     
     '''
     MONITOR UPDATE STARTS
@@ -5712,7 +5767,7 @@ def stack_models(estimator_list,
     model.fit(data_X, data_y)
     models_.append(model)
     
-    kf = StratifiedKFold(fold, random_state=seed) #capturing fold requested by user
+    kf = StratifiedKFold(fold, random_state=seed, shuffle=folds_shuffle_param) #capturing fold requested by user
 
     score_auc =np.empty((0,0))
     score_acc =np.empty((0,0))
@@ -6336,7 +6391,7 @@ def create_stacknet(estimator_list,
     
     meta_model_ = model.fit(data_X,data_y)
     
-    kf = StratifiedKFold(fold, random_state=seed) #capturing fold requested by user
+    kf = StratifiedKFold(fold, random_state=seed, shuffle=folds_shuffle_param) #capturing fold requested by user
 
     score_auc =np.empty((0,0))
     score_acc =np.empty((0,0))
@@ -6908,7 +6963,7 @@ def calibrate_model(estimator,
     progress.value += 1
     
     #cross validation setup starts here
-    kf = StratifiedKFold(fold, random_state=seed)
+    kf = StratifiedKFold(fold, random_state=seed, shuffle=folds_shuffle_param)
 
     score_auc =np.empty((0,0))
     score_acc =np.empty((0,0))

@@ -4012,10 +4012,10 @@ def tune_model(estimator,
                fold = 10, 
                round = 4, 
                n_iter = 10,
-               custom_grid = None, 
+               custom_grid = None, #added in pycaret==1.0.1 
                optimize = 'r2',
-               verbose = True,
-               choose_better = True):
+               choose_better = True, #added in pycaret==1.0.1
+               verbose = True):
     
       
     """
@@ -4084,19 +4084,23 @@ def tune_model(estimator,
     Number of iterations within the Random Grid Search. For every iteration, 
     the model randomly selects one value from the pre-defined grid of hyperparameters.
 
+    custom_grid: dictionary, default = None
+    To use custom hyperparameters for tuning pass a dictionary with parameter name
+    and values to be iterated. When set to None it uses pre-defined tuning grid.  
+
     optimize: string, default = 'r2'
     Measure used to select the best model through hyperparameter tuning.
     The default scoring measure is 'r2'. Other measures include 'mae', 'mse', 'rmse',
     'rmsle', 'mape'. When using 'rmse' or 'rmsle' the base scorer is 'mse' and when using
-    'mape' the base scorer is 'mae'. 
-
-    verbose: Boolean, default = True
-    Score grid is not printed when verbose is set to False.
+    'mape' the base scorer is 'mae'.
 
     choose_better: Boolean, default = True
     When set to set to True, base estimator is returned when the metric doesn't improve 
     by tune_model. This gurantees the returned object would perform atleast equivalent 
     to base estimator created using create_model or model returned by compare_models.
+
+    verbose: Boolean, default = True
+    Score grid is not printed when verbose is set to False.
 
     Returns:
     --------
@@ -4310,7 +4314,7 @@ def tune_model(estimator,
     MONITOR UPDATE STARTS
     '''
     
-    monitor.iloc[1,1:] = 'Tuning Hyperparameters'
+    monitor.iloc[1,1:] = 'Searching Hyperparameters Grid'
     if verbose:
         if html_param:
             update_display(monitor, display_id = 'monitor')
@@ -4899,10 +4903,9 @@ def tune_model(estimator,
                         'learning_rate':[0.03,0.001,0.01,0.1,0.2,0.3], 
                         'l2_leaf_reg':[3,1,5,10,100], 
                         'border_count':[32,5,10,20,50,100,200], 
-                        #'ctr_border_count':[50,5,10,20,100,200]
                         }
             
-        model_grid = RandomizedSearchCV(estimator=CatBoostRegressor(random_state=seed, silent=True), 
+        model_grid = RandomizedSearchCV(estimator=CatBoostRegressor(random_state=seed, silent=True, thread_count=n_jobs_param), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
                                         cv=cv, random_state=seed, n_jobs=n_jobs_param)
 
@@ -4935,19 +4938,6 @@ def tune_model(estimator,
 
 
     progress.value += 1
-    
-    '''
-    MONITOR UPDATE STARTS
-    '''
-    
-    monitor.iloc[1,1:] = 'Tuning Hyperparameters of Ensemble'
-    if verbose:
-        if html_param:
-            update_display(monitor, display_id = 'monitor')
-    
-    '''
-    MONITOR UPDATE ENDS
-    '''
    
     progress.value += 1
 
@@ -5194,10 +5184,10 @@ def tune_model(estimator,
             display(model_results)
         else:
             print(model_results.data)
-        return best_model
     else:
         clear_output()
-        return best_model
+    
+    return best_model
 
 def stack_models(estimator_list, 
                  meta_model = None, 
