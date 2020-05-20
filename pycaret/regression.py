@@ -2191,8 +2191,8 @@ def ensemble_model(estimator,
                    fold = 10,
                    n_estimators = 10,
                    round = 4,
-                   choose_better = True,
-                   optimize = 'r2',
+                   choose_better = True, #added in pycaret==1.0.1
+                   optimize = 'r2', #added in pycaret==1.0.1
                    verbose = True):
     """
     
@@ -2693,10 +2693,10 @@ def ensemble_model(estimator,
             display(model_results)
         else:
             print(model_results.data)
-        return model
     else:
         clear_output()
-        return model
+    
+    return model
 
 def compare_models(blacklist = None,
                    fold = 10, 

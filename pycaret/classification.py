@@ -2211,6 +2211,8 @@ def ensemble_model(estimator,
                    fold = 10,
                    n_estimators = 10,
                    round = 4,  
+                   choose_better = True, #added in pycaret==1.0.1
+                   optimize = 'Accuracy', #added in pycaret==1.0.1
                    verbose = True):
     """
        
@@ -2259,6 +2261,18 @@ def ensemble_model(estimator,
     round: integer, default = 4
     Number of decimal places the metrics in the score grid will be rounded to.
 
+    choose_better: Boolean, default = True
+    When set to set to True, base estimator is returned when the metric doesn't 
+    improve by ensemble_model. This gurantees the returned object would perform 
+    atleast equivalent to base estimator created using create_model or model 
+    returned by compare_models.
+
+    optimize: string, default = 'Accuracy'
+    Only used when choose_better is set to True. optimize parameter is used
+    to compare emsembled model with base estimator. Values accepted in 
+    optimize parameter are 'Accuracy', 'AUC', 'Recall', 'Precision', 'F1', 
+    'Kappa', 'MCC'.
+
     verbose: Boolean, default = True
     Score grid is not printed when verbose is set to False.
 
@@ -2302,7 +2316,6 @@ def ensemble_model(estimator,
     if method == 'Boosting':
         
         from sklearn.ensemble import AdaBoostClassifier
-        
         
         try:
             if hasattr(estimator,'n_classes_'):
@@ -2348,8 +2361,10 @@ def ensemble_model(estimator,
     
     #progress bar
     progress = ipw.IntProgress(value=0, min=0, max=fold+4, step=1 , description='Processing: ')
-    master_display = pd.DataFrame(columns=['Accuracy','AUC','Recall', 'Prec.', 'F1', 'Kappa', 'MCC', 'TT (Sec)'])
-    display(progress)
+    master_display = pd.DataFrame(columns=['Accuracy','AUC','Recall', 'Prec.', 'F1', 'Kappa', 'MCC'])
+    if verbose:
+        if html_param:
+            display(progress)
     
     #display monitor
     timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
@@ -2358,11 +2373,14 @@ def ensemble_model(estimator,
                              ['ETC' , '. . . . . . . . . . . . . . . . . .',  'Calculating ETC'] ],
                               columns=['', ' ', '   ']).set_index('')
     
-    display(monitor, display_id = 'monitor')
+    if verbose:
+        if html_param:
+            display(monitor, display_id = 'monitor')
     
     if verbose:
-        display_ = display(master_display, display_id=True)
-        display_id = display_.display_id
+        if html_param:
+            display_ = display(master_display, display_id=True)
+            display_id = display_.display_id
         
     #dependencies
     import numpy as np
@@ -2386,12 +2404,59 @@ def ensemble_model(estimator,
     #defining estimator as model
     model = estimator
     
+    if optimize == 'Accuracy':
+        compare_dimension = 'Accuracy' 
+    elif optimize == 'AUC':
+        compare_dimension = 'AUC' 
+    elif optimize == 'Recall':
+        compare_dimension = 'Recall'
+    elif optimize == 'Precision':
+        compare_dimension = 'Prec.'
+    elif optimize == 'F1':
+        compare_dimension = 'F1' 
+    elif optimize == 'Kappa':
+        compare_dimension = 'Kappa'
+    elif optimize == 'MCC':
+        compare_dimension = 'MCC' 
+    
+    def get_model_name(e):
+        return str(e).split("(")[0]
+
+    mn = get_model_name(estimator)
+
+    if 'catboost' in str(estimator):
+        mn = 'CatBoostClassifier'
+    
+    model_dict = {'ExtraTreesClassifier' : 'et',
+                'GradientBoostingClassifier' : 'gbc', 
+                'RandomForestClassifier' : 'rf',
+                'LGBMClassifier' : 'lightgbm',
+                'XGBClassifier' : 'xgboost',
+                'AdaBoostClassifier' : 'ada', 
+                'DecisionTreeClassifier' : 'dt', 
+                'RidgeClassifier' : 'ridge',
+                'LogisticRegression' : 'lr',
+                'KNeighborsClassifier' : 'knn',
+                'GaussianNB' : 'nb',
+                'SGDClassifier' : 'svm',
+                'SVC' : 'rbfsvm',
+                'GaussianProcessClassifier' : 'gpc',
+                'MLPClassifier' : 'mlp',
+                'QuadraticDiscriminantAnalysis' : 'qda',
+                'LinearDiscriminantAnalysis' : 'lda',
+                'CatBoostClassifier' : 'catboost',
+                'BaggingClassifier' : 'Bagging'}
+
+    estimator__ = model_dict.get(mn)
+
     '''
     MONITOR UPDATE STARTS
     '''
     
     monitor.iloc[1,1:] = 'Selecting Estimator'
-    update_display(monitor, display_id = 'monitor')
+    if verbose:
+        if html_param:
+            update_display(monitor, display_id = 'monitor')
     
     '''
     MONITOR UPDATE ENDS
@@ -2403,7 +2468,7 @@ def ensemble_model(estimator,
             
     if method == 'Bagging':
         from sklearn.ensemble import BaggingClassifier
-        model = BaggingClassifier(model,bootstrap=True,n_estimators=n_estimators, random_state=seed)
+        model = BaggingClassifier(model,bootstrap=True,n_estimators=n_estimators, random_state=seed, n_jobs=n_jobs_param)
         
     else:
         from sklearn.ensemble import AdaBoostClassifier
@@ -2420,7 +2485,9 @@ def ensemble_model(estimator,
     '''
     
     monitor.iloc[1,1:] = 'Initializing CV'
-    update_display(monitor, display_id = 'monitor')
+    if verbose:
+        if html_param:
+            update_display(monitor, display_id = 'monitor')
     
     '''
     MONITOR UPDATE ENDS
@@ -2457,7 +2524,9 @@ def ensemble_model(estimator,
         '''
     
         monitor.iloc[1,1:] = 'Fitting Fold ' + str(fold_num) + ' of ' + str(fold)
-        update_display(monitor, display_id = 'monitor')
+        if verbose:
+            if html_param:
+                update_display(monitor, display_id = 'monitor')
 
         '''
         MONITOR UPDATE ENDS
@@ -2526,14 +2595,11 @@ def ensemble_model(estimator,
         
                 
         '''
-        
         This section is created to update_display() as code loops through the fold defined.
-        
         '''
         
         fold_results = pd.DataFrame({'Accuracy':[sca], 'AUC': [sc], 'Recall': [recall], 
-                                     'Prec.': [precision], 'F1': [f1], 'Kappa': [kappa], 'MCC':[mcc],'TT (Sec)':[training_time]}).round(round)
-        fold_results.loc[:,'TT (Sec)'] = fold_results.loc[:,'TT (Sec)'].round(2)
+                                     'Prec.': [precision], 'F1': [f1], 'Kappa': [kappa], 'MCC':[mcc]}).round(round)
         master_display = pd.concat([master_display, fold_results],ignore_index=True)
         fold_results = []
         
@@ -2555,7 +2621,9 @@ def ensemble_model(estimator,
             tt = str (tt)
             ETC = tt + ' Minutes Remaining'
             
-        update_display(ETC, display_id = 'ETC')
+        if verbose:
+            if html_param:
+                update_display(ETC, display_id = 'ETC')
             
         fold_num += 1
         
@@ -2565,7 +2633,9 @@ def ensemble_model(estimator,
         '''
 
         monitor.iloc[2,1:] = ETC
-        update_display(monitor, display_id = 'monitor')
+        if verbose:
+            if html_param:
+                update_display(monitor, display_id = 'monitor')
 
         '''
         MONITOR UPDATE ENDS
@@ -2578,7 +2648,8 @@ def ensemble_model(estimator,
         '''
 
         if verbose:
-            update_display(master_display, display_id = display_id)
+            if html_param:
+                update_display(master_display, display_id = display_id)
         
         '''
         
@@ -2623,28 +2694,61 @@ def ensemble_model(estimator,
     avgs_training_time = np.append(avgs_training_time, std_training_time)
 
     model_results = pd.DataFrame({'Accuracy': score_acc, 'AUC': score_auc, 'Recall' : score_recall, 'Prec.' : score_precision , 
-                     'F1' : score_f1, 'Kappa' : score_kappa, 'MCC':score_mcc, 'TT (Sec)':score_training_time})
-    model_results_unpivot = pd.melt(model_results,value_vars=['Accuracy', 'AUC', 'Recall', 'Prec.', 'F1', 'Kappa','MCC','TT (Sec)'])
+                     'F1' : score_f1, 'Kappa' : score_kappa, 'MCC':score_mcc})
+    model_results_unpivot = pd.melt(model_results,value_vars=['Accuracy', 'AUC', 'Recall', 'Prec.', 'F1', 'Kappa','MCC'])
     model_results_unpivot.columns = ['Metric', 'Measure']
     model_avgs = pd.DataFrame({'Accuracy': avgs_acc, 'AUC': avgs_auc, 'Recall' : avgs_recall, 'Prec.' : avgs_precision , 
-                     'F1' : avgs_f1, 'Kappa' : avgs_kappa,'MCC':avgs_mcc, 'TT (Sec)':avgs_training_time},index=['Mean', 'SD'])
+                     'F1' : avgs_f1, 'Kappa' : avgs_kappa,'MCC':avgs_mcc},index=['Mean', 'SD'])
 
     model_results = model_results.append(model_avgs)
     model_results = model_results.round(round)  
-    model_results.loc[:,'TT (Sec)'] = model_results.loc[:,'TT (Sec)'].round(2)
-    # Green the mean
-    model_results=model_results.style.apply(lambda x: ['background: lightgreen' if (x.name == 'Mean') else '' for i in x], axis=1)
     
+    # yellow the mean
+    model_results=model_results.style.apply(lambda x: ['background: yellow' if (x.name == 'Mean') else '' for i in x], axis=1)
+    model_results = model_results.set_precision(round)
+
     progress.value += 1
     
     #refitting the model on complete X_train, y_train
-    monitor.iloc[1,1:] = 'Compiling Final Model'
-    update_display(monitor, display_id = 'monitor')
+    monitor.iloc[1,1:] = 'Finalizing Model'
+    if verbose:
+        if html_param:
+            update_display(monitor, display_id = 'monitor')
     
     model.fit(data_X, data_y)
     
+    #storing results in create_model_container
+    create_model_container.append(model_results.data)
+
+    #storing results in master_model_container
+    master_model_container.append(model)
+
     progress.value += 1
     
+    '''
+    When choose_better sets to True. optimize metric in scoregrid is
+    compared with base model created using create_model so that ensemble_model
+    functions return the model with better score only. This will ensure 
+    model performance is atleast equivalent to what is seen is compare_models 
+    '''
+    if choose_better:
+
+        if verbose:
+            if html_param:
+                monitor.iloc[1,1:] = 'Compiling Final Results'
+                monitor.iloc[2,1:] = 'Almost Finished'
+                update_display(monitor, display_id = 'monitor')
+
+        #creating base model for comparison
+        base_model = create_model(estimator=estimator, verbose = False)
+        base_model_results = create_model_container[-1][compare_dimension][-2:][0]
+        ensembled_model_results = create_model_container[-2][compare_dimension][-2:][0]
+
+        if ensembled_model_results > base_model_results:
+            model = model
+        else:
+            model = base_model
+   
     #storing into experiment
     model_name = str(model).split("(")[0]
     tup = (model_name,model)
@@ -2656,11 +2760,14 @@ def ensemble_model(estimator,
     
     if verbose:
         clear_output()
-        display(model_results)
-        return model
+        if html_param:
+            display(model_results)
+        else:
+            print(model_results.data)
     else:
         clear_output()
-        return model
+        
+    return model
 
 def plot_model(estimator, 
                plot = 'auc'): 
