@@ -2699,6 +2699,7 @@ def ensemble_model(estimator,
     return model
 
 def compare_models(blacklist = None,
+                   whitelist = None, #added in pycaret==1.0.1
                    fold = 10, 
                    round = 4, 
                    sort = 'R2',
@@ -2779,6 +2780,10 @@ def compare_models(blacklist = None,
     (see above list) can be passed as list in blacklist param. This is normally
     done to be more efficient with time. 
 
+    whitelist: string, default = None
+    In order to run only certain models for the comparison, the abbreviation string 
+    (see above list) can be passed as a list in whitelist param. 
+
     fold: integer, default = 10
     Number of folds to be used in Kfold CV. Must be at least 2. 
 
@@ -2838,7 +2843,17 @@ def compare_models(blacklist = None,
         for i in blacklist:
             if i not in available_estimators:
                 sys.exit('(Value Error): Estimator Not Available. Please see docstring for list of available estimators.')
-        
+
+    if whitelist != None:   
+        for i in whitelist:
+            if i not in available_estimators:
+                sys.exit('(Value Error): Estimator Not Available. Please see docstring for list of available estimators.')
+
+    #whitelist and blacklist together check
+    if whitelist is not None:
+        if blacklist is not None:
+            sys.exit('(Type Error): Cannot use blacklist parameter when whitelist is used to compare models.')
+
     #checking fold parameter
     if type(fold) is not int:
         sys.exit('(Type Error): Fold parameter only accepts integer value.')
@@ -2881,9 +2896,19 @@ def compare_models(blacklist = None,
         n_select_num = len(n_select)
     else:
         n_select_num = abs(n_select)
+
+    if whitelist is not None:
+        wl = len(whitelist)
+        bl = len_of_blacklist
+        len_mod = wl - bl
+
+    if whitelist is not None:
+        opt = 10
+    else:
+        opt = 30
         
     #display
-    progress = ipw.IntProgress(value=0, min=0, max=(fold*len_mod)+25+n_select_num, step=1 , description='Processing: ')
+    progress = ipw.IntProgress(value=0, min=0, max=(fold*len_mod)+opt+n_select_num, step=1 , description='Processing: ')
     master_display = pd.DataFrame(columns=['Model', 'MAE','MSE','RMSE', 'R2', 'RMSLE', 'MAPE', 'TT (Sec)'])
     
     #display monitor only when html_param is set to True
@@ -3125,7 +3150,88 @@ def compare_models(blacklist = None,
                        'Light Gradient Boosting Machine',
                        'CatBoost Regressor']
     
-        
+    #checking for whitelist models
+    if whitelist is not None:
+
+        model_library = []
+        model_names = []
+
+        for i in whitelist:
+            if i == 'lr':
+                model_library.append(lr)
+                model_names.append('Linear Regression')
+            elif i == 'lasso':
+                model_library.append(lasso)
+                model_names.append('Lasso Regression')                
+            elif i == 'ridge':
+                model_library.append(ridge)
+                model_names.append('Ridge Regression')   
+            elif i == 'en':
+                model_library.append(en)
+                model_names.append('Elastic Net')   
+            elif i == 'lar':
+                model_library.append(lar)
+                model_names.append('Least Angle Regression')   
+            elif i == 'llar':
+                model_library.append(llar)
+                model_names.append('Lasso Least Angle Regression')
+            elif i == 'omp':
+                model_library.append(omp)
+                model_names.append('Orthogonal Matching Pursuit')   
+            elif i == 'br':
+                model_library.append(br)
+                model_names.append('Bayesian Ridge')
+            elif i == 'ard':
+                model_library.append(ard)
+                model_names.append('Automatic Relevance Determination')  
+            elif i == 'par':
+                model_library.append(par)
+                model_names.append('Passive Aggressive Regressor')
+            elif i == 'ransac':
+                model_library.append(ransac)
+                model_names.append('Random Sample Consensus')   
+            elif i == 'tr':
+                model_library.append(tr)
+                model_names.append('TheilSen Regressor')   
+            elif i == 'huber':
+                model_library.append(huber)
+                model_names.append('Huber Regressor')
+            elif i == 'kr':
+                model_library.append(kr)
+                model_names.append('Kernel Ridge')     
+            elif i == 'svm':
+                model_library.append(svm)
+                model_names.append('Support Vector Machine')   
+            elif i == 'knn':
+                model_library.append(knn)
+                model_names.append('K Neighbors Regressor')   
+            elif i == 'dt':
+                model_library.append(dt)
+                model_names.append('Decision Tree')   
+            elif i == 'rf':
+                model_library.append(rf)
+                model_names.append('Random Forest') 
+            elif i == 'et':
+                model_library.append(et)
+                model_names.append('Extra Trees Regressor') 
+            elif i == 'ada':
+                model_library.append(ada)
+                model_names.append('AdaBoost Regressor')  
+            elif i == 'gbr':
+                model_library.append(gbr)
+                model_names.append('Gradient Boosting Regressor')
+            elif i == 'mlp':
+                model_library.append(mlp)
+                model_names.append('Multi Level Perceptron')     
+            elif i == 'xgboost':
+                model_library.append(xgboost)
+                model_names.append('Extreme Gradient Boosting')   
+            elif i == 'lightgbm':
+                model_library.append(lightgbm)
+                model_names.append('Light Gradient Boosting Machine')   
+            elif i == 'catboost':
+                model_library.append(catboost)
+                model_names.append('CatBoost Regressor')   
             
     progress.value += 1
 
@@ -3286,7 +3392,7 @@ def compare_models(blacklist = None,
                            'RMSE':avgs_rmse, 'R2':avgs_r2, 'RMSLE':avgs_rmsle, 'MAPE':avgs_mape, 'TT (Sec)':avgs_training_time})
         master_display = pd.concat([master_display, compare_models_],ignore_index=True)
         master_display = master_display.round(round)
-        master_display.loc[:,'TT (Sec)'] = master_display.loc[:,'TT (Sec)'].round(2)
+        #master_display.loc[:,'TT (Sec)'] = master_display.loc[:,'TT (Sec)'].round(2)
         
         if sort == 'R2':
             master_display = master_display.sort_values(by=sort,ascending=False)

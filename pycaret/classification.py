@@ -3222,6 +3222,7 @@ def plot_model(estimator,
         display(param_df)
 
 def compare_models(blacklist = None,
+                   whitelist = None, #added in pycaret==1.0.1
                    fold = 10, 
                    round = 4, 
                    sort = 'Accuracy',
@@ -3293,7 +3294,11 @@ def compare_models(blacklist = None,
     blacklist: string, default = None
     In order to omit certain models from the comparison, the abbreviation string 
     (see above list) can be passed as list in blacklist param. This is normally
-    done to be more efficient with time. 
+    done to be more efficient with time.
+
+    whitelist: string, default = None
+    In order to run only certain models for the comparison, the abbreviation string 
+    (see above list) can be passed as a list in whitelist param. 
 
     fold: integer, default = 10
     Number of folds to be used in Kfold CV. Must be at least 2. 
@@ -3359,6 +3364,16 @@ def compare_models(blacklist = None,
             if i not in available_estimators:
                 sys.exit('(Value Error): Estimator Not Available. Please see docstring for list of available estimators.')
         
+    if whitelist != None:   
+        for i in whitelist:
+            if i not in available_estimators:
+                sys.exit('(Value Error): Estimator Not Available. Please see docstring for list of available estimators.')
+
+    #whitelist and blacklist together check
+    if whitelist is not None:
+        if blacklist is not None:
+            sys.exit('(Type Error): Cannot use blacklist parameter when whitelist is used to compare models.')
+
     #checking fold parameter
     if type(fold) is not int:
         sys.exit('(Type Error): Fold parameter only accepts integer value.')
@@ -3399,8 +3414,24 @@ def compare_models(blacklist = None,
         len_mod = 15 - len_of_blacklist
     else:
         len_mod = 18 - len_of_blacklist
+    
+    #n_select param
+    if type(n_select) is list:
+        n_select_num = len(n_select)
+    else:
+        n_select_num = abs(n_select)
+
+    if whitelist is not None:
+        wl = len(whitelist)
+        bl = len_of_blacklist
+        len_mod = wl - bl
+
+    if whitelist is not None:
+        opt = 10
+    else:
+        opt = 25
         
-    progress = ipw.IntProgress(value=0, min=0, max=(fold*len_mod)+20, step=1 , description='Processing: ')
+    progress = ipw.IntProgress(value=0, min=0, max=(fold*len_mod)+opt+n_select_num, step=1 , description='Processing: ')
     master_display = pd.DataFrame(columns=['Model', 'Accuracy','AUC','Recall', 'Prec.', 'F1', 'Kappa', 'MCC', 'TT (Sec)'])
     if verbose:
         if html_param:
@@ -3485,7 +3516,7 @@ def compare_models(blacklist = None,
     MONITOR UPDATE ENDS
     '''
     #creating model object 
-    lr = LogisticRegression(random_state=seed, n_jobs=n_jobs_param)
+    lr = LogisticRegression(random_state=seed) #dont add n_jobs_param here. It slows doesn Logistic Regression somehow.
     knn = KNeighborsClassifier(n_jobs=n_jobs_param)
     nb = GaussianNB()
     dt = DecisionTreeClassifier(random_state=seed)
@@ -3544,7 +3575,7 @@ def compare_models(blacklist = None,
                    'Extra Trees Classifier',
                    'Extreme Gradient Boosting',
                    'Light Gradient Boosting Machine',
-                   'CatBoost Classifier']
+                   'CatBoost Classifier']          
     
     #checking for blacklist models
     
@@ -3607,6 +3638,68 @@ def compare_models(blacklist = None,
                        'Light Gradient Boosting Machine',
                        'CatBoost Classifier']
         
+    #checking for whitelist models
+    if whitelist is not None:
+
+        model_library = []
+        model_names = []
+
+        for i in whitelist:
+            if i == 'lr':
+                model_library.append(lr)
+                model_names.append('Logistic Regression')
+            elif i == 'knn':
+                model_library.append(knn)
+                model_names.append('K Neighbors Classifier')                
+            elif i == 'nb':
+                model_library.append(nb)
+                model_names.append('Naive Bayes')   
+            elif i == 'dt':
+                model_library.append(dt)
+                model_names.append('Decision Tree Classifier')   
+            elif i == 'svm':
+                model_library.append(svm)
+                model_names.append('SVM - Linear Kernel')   
+            elif i == 'rbfsvm':
+                model_library.append(rbfsvm)
+                model_names.append('SVM - Radial Kernel')
+            elif i == 'gpc':
+                model_library.append(gpc)
+                model_names.append('Gaussian Process Classifier')   
+            elif i == 'mlp':
+                model_library.append(mlp)
+                model_names.append('MLP Classifier')   
+            elif i == 'ridge':
+                model_library.append(ridge)
+                model_names.append('Ridge Classifier')   
+            elif i == 'rf':
+                model_library.append(rf)
+                model_names.append('Random Forest Classifier')   
+            elif i == 'qda':
+                model_library.append(qda)
+                model_names.append('Quadratic Discriminant Analysis')   
+            elif i == 'ada':
+                model_library.append(ada)
+                model_names.append('Ada Boost Classifier')   
+            elif i == 'gbc':
+                model_library.append(gbc)
+                model_names.append('Gradient Boosting Classifier')   
+            elif i == 'lda':
+                model_library.append(lda)
+                model_names.append('Linear Discriminant Analysis')   
+            elif i == 'et':
+                model_library.append(et)
+                model_names.append('Extra Trees Classifier')   
+            elif i == 'xgboost':
+                model_library.append(xgboost)
+                model_names.append('Extreme Gradient Boosting') 
+            elif i == 'lightgbm':
+                model_library.append(lightgbm)
+                model_names.append('Light Gradient Boosting Machine') 
+            elif i == 'catboost':
+                model_library.append(catboost)
+                model_names.append('CatBoost Classifier')   
+
     #multiclass check
     model_library_multiclass = []
     if y.value_counts().count() > 2:
@@ -3742,7 +3835,7 @@ def compare_models(blacklist = None,
             time_end=time.time()
             mcc = metrics.matthews_corrcoef(ytest,pred_)
             kappa = metrics.cohen_kappa_score(ytest,pred_)
-            training_time=time_end - time_start
+            training_time= time_end - time_start
             score_acc = np.append(score_acc,sca)
             score_auc = np.append(score_auc,sc)
             score_recall = np.append(score_recall,recall)
@@ -3797,9 +3890,9 @@ def compare_models(blacklist = None,
                            'F1':avg_f1, 'Kappa': avg_kappa, 'MCC':avg_mcc, 'TT (Sec)':avg_training_time})
         master_display = pd.concat([master_display, compare_models_],ignore_index=True)
         master_display = master_display.round(round)
-        master_display.loc[:,'TT (Sec)'] = master_display.loc[:,'TT (Sec)'].round(2)
         master_display = master_display.sort_values(by=sort,ascending=False)
         master_display.reset_index(drop=True, inplace=True)
+        #master_display.loc[:,'TT (Sec)'] = master_display.loc[:,'TT (Sec)'].round(2)
         
         if verbose:
             if html_param:
@@ -5203,10 +5296,7 @@ def blend_models(estimator_list = 'All',
         from xgboost import XGBClassifier
         import lightgbm as lgb
         
-        #from catboost import CatBoostClassifier
-        
-        #creating CatBoost estimator
-        lr = LogisticRegression(random_state=seed)
+        lr = LogisticRegression(random_state=seed) #don't add n_jobs parameter as it slows down the LR
         knn = KNeighborsClassifier(n_jobs=n_jobs_param)
         nb = GaussianNB()
         dt = DecisionTreeClassifier(random_state=seed)
