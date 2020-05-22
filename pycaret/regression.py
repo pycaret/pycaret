@@ -3488,9 +3488,9 @@ def compare_models(blacklist = None,
 def blend_models(estimator_list = 'All', 
                  fold = 10, 
                  round = 4, 
+                 choose_better = True, #added in pycaret==1.0.1 
+                 optimize = 'r2', #added in pycaret==1.0.1 
                  turbo = True,
-                 choose_better = True,
-                 optimize = 'r2',
                  verbose = True):
     
     """
@@ -3538,9 +3538,6 @@ def blend_models(estimator_list = 'All',
     round: integer, default = 4
     Number of decimal places the metrics in the score grid will be rounded to.
 
-    turbo: Boolean, default = True
-    When turbo is set to True, it blacklists estimator that uses Radial Kernel.
-
     choose_better: Boolean, default = True
     When set to True, base estimator is returned when the metric doesn't 
     improve by ensemble_model. This gurantees the returned object would perform 
@@ -3551,6 +3548,9 @@ def blend_models(estimator_list = 'All',
     Only used when choose_better is set to True. optimize parameter is used
     to compare emsembled model with base estimator. Values accepted in 
     optimize parameter are 'mae', 'mse', 'rmse', 'r2', 'rmsle', 'mape'.
+
+    turbo: Boolean, default = True
+    When turbo is set to True, it blacklists estimator that uses Radial Kernel.
 
     verbose: Boolean, default = True
     Score grid is not printed when verbose is set to False.
