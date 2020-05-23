@@ -5301,8 +5301,8 @@ def stack_models(estimator_list,
                  round = 4, 
                  restack = True, 
                  plot = False,
-                 choose_better = True,
-                 optimize = 'r2',
+                 choose_better = True, #added in pycaret==1.0.1
+                 optimize = 'r2', #added in pycaret==1.0.1
                  finalize = False,
                  verbose = True):
     

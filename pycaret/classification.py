@@ -5722,6 +5722,8 @@ def stack_models(estimator_list,
                  method = 'soft', 
                  restack = True, 
                  plot = False,
+                 choose_better = True, #added in pycaret==1.0.1
+                 optimize = 'Accuracy', #added in pycaret==1.0.1
                  finalize = False,
                  verbose = True):
     
@@ -5782,7 +5784,19 @@ def stack_models(estimator_list,
     plot: Boolean, default = False
     When plot is set to True, it will return the correlation plot of prediction
     from all base models provided in estimator_list.
-    
+
+    choose_better: Boolean, default = True
+    When set to set to True, base estimator is returned when the metric doesn't 
+    improve by ensemble_model. This gurantees the returned object would perform 
+    atleast equivalent to base estimator created using create_model or model 
+    returned by compare_models.
+
+    optimize: string, default = 'Accuracy'
+    Only used when choose_better is set to True. optimize parameter is used
+    to compare emsembled model with base estimator. Values accepted in 
+    optimize parameter are 'Accuracy', 'AUC', 'Recall', 'Precision', 'F1', 
+    'Kappa', 'MCC'.
+
     finalize: Boolean, default = False
     When finalize is set to True, it will fit the stacker on entire dataset
     including the hold-out sample created during the setup() stage. It is not 
@@ -5903,12 +5917,29 @@ def stack_models(estimator_list,
         meta_model = deepcopy(meta_model)
         
     clear_output()
-        
+
+    if optimize == 'Accuracy':
+        compare_dimension = 'Accuracy' 
+    elif optimize == 'AUC':
+        compare_dimension = 'AUC' 
+    elif optimize == 'Recall':
+        compare_dimension = 'Recall'
+    elif optimize == 'Precision':
+        compare_dimension = 'Prec.'
+    elif optimize == 'F1':
+        compare_dimension = 'F1' 
+    elif optimize == 'Kappa':
+        compare_dimension = 'Kappa'
+    elif optimize == 'MCC':
+        compare_dimension = 'MCC' 
+
     #progress bar
     max_progress = len(estimator_list) + fold + 4
     progress = ipw.IntProgress(value=0, min=0, max=max_progress, step=1 , description='Processing: ')
-    master_display = pd.DataFrame(columns=['Accuracy','AUC','Recall', 'Prec.', 'F1', 'Kappa', 'MCC', 'TT (Sec)'])
-    display(progress)
+    master_display = pd.DataFrame(columns=['Accuracy','AUC','Recall', 'Prec.', 'F1', 'Kappa', 'MCC'])
+    if verbose:
+        if html_param:
+            display(progress)
     
     #display monitor
     timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
@@ -5917,11 +5948,14 @@ def stack_models(estimator_list,
                              ['ETC' , '. . . . . . . . . . . . . . . . . .',  'Calculating ETC'] ],
                               columns=['', ' ', '   ']).set_index('')
     
-    display(monitor, display_id = 'monitor')
+    if verbose:
+        if html_param:
+            display(monitor, display_id = 'monitor')
     
     if verbose:
-        display_ = display(master_display, display_id=True)
-        display_id = display_.display_id
+        if html_param:
+            display_ = display(master_display, display_id=True)
+            display_id = display_.display_id
         
     #ignore warnings
     import warnings
@@ -5942,7 +5976,6 @@ def stack_models(estimator_list,
         predict_method = 'predict_proba'
     elif method == 'hard':
         predict_method = 'predict'
-    
     
     #defining data_X and data_y
     if finalize:
@@ -5996,7 +6029,9 @@ def stack_models(estimator_list,
         '''
 
         monitor.iloc[1,1:] = 'Evaluating ' + model_names[counter]
-        update_display(monitor, display_id = 'monitor')
+        if verbose:
+            if html_param:
+                update_display(monitor, display_id = 'monitor')
 
         '''
         MONITOR UPDATE ENDS
@@ -6087,7 +6122,9 @@ def stack_models(estimator_list,
         '''
     
         monitor.iloc[1,1:] = 'Fitting Meta Model Fold ' + str(fold_num) + ' of ' + str(fold)
-        update_display(monitor, display_id = 'monitor')
+        if verbose:
+            if html_param:
+                update_display(monitor, display_id = 'monitor')
 
         '''
         MONITOR UPDATE ENDS
@@ -6144,8 +6181,7 @@ def stack_models(estimator_list,
         '''
         
         fold_results = pd.DataFrame({'Accuracy':[sca], 'AUC': [sc], 'Recall': [recall], 
-                                     'Prec.': [precision], 'F1': [f1], 'Kappa': [kappa], 'MCC':[mcc],'TT (Sec)':[training_time] }).round(round)
-        fold_results.loc[:,'TT (Sec)'] = fold_results.loc[:,'TT (Sec)'].round(2)
+                                     'Prec.': [precision], 'F1': [f1], 'Kappa': [kappa], 'MCC':[mcc]}).round(round)
         master_display = pd.concat([master_display, fold_results],ignore_index=True)
         fold_results = []
         
@@ -6175,7 +6211,9 @@ def stack_models(estimator_list,
 
         monitor.iloc[2,1:] = ETC
         
-        update_display(monitor, display_id = 'monitor')
+        if verbose:
+            if html_param:
+                update_display(monitor, display_id = 'monitor')
 
         '''
         MONITOR UPDATE ENDS
@@ -6193,7 +6231,8 @@ def stack_models(estimator_list,
         '''
         
         if verbose:
-            update_display(master_display, display_id = display_id)
+            if html_param:
+                update_display(master_display, display_id = display_id)
             
         
         '''
@@ -6237,20 +6276,68 @@ def stack_models(estimator_list,
     avgs_training_time = np.append(avgs_training_time, std_training_time)
       
     model_results = pd.DataFrame({'Accuracy': score_acc, 'AUC': score_auc, 'Recall' : score_recall, 'Prec.' : score_precision , 
-                     'F1' : score_f1, 'Kappa' : score_kappa,'MCC':score_mcc,'TT (Sec)':score_training_time})
+                     'F1' : score_f1, 'Kappa' : score_kappa,'MCC':score_mcc})
     model_avgs = pd.DataFrame({'Accuracy': avgs_acc, 'AUC': avgs_auc, 'Recall' : avgs_recall, 'Prec.' : avgs_precision , 
-                     'F1' : avgs_f1, 'Kappa' : avgs_kappa,'MCC':avgs_mcc,'TT (Sec)':avgs_training_time},index=['Mean', 'SD'])
+                     'F1' : avgs_f1, 'Kappa' : avgs_kappa,'MCC':avgs_mcc},index=['Mean', 'SD'])
   
     model_results = model_results.append(model_avgs)
-    model_results = model_results.round(round)  
-    model_results.loc[:,'TT (Sec)'] = model_results.loc[:,'TT (Sec)'].round(2)
-    # Green the mean
-    model_results=model_results.style.apply(lambda x: ['background: lightgreen' if (x.name == 'Mean') else '' for i in x], axis=1)
+    model_results = model_results.round(round)
+
+    # yellow the mean
+    model_results=model_results.style.apply(lambda x: ['background: yellow' if (x.name == 'Mean') else '' for i in x], axis=1)
+    model_results = model_results.set_precision(round)
     progress.value += 1
     
-    #appending method into models_
+    #appending method and restack param into models_
     models_.append(method)
     models_.append(restack)
+    
+    #storing results in create_model_container
+    create_model_container.append(model_results.data)
+
+    #storing results in master_model_container
+    master_model_container.append(models_)
+
+    '''
+    When choose_better sets to True. optimize metric in scoregrid is
+    compared with base model created using create_model so that stack_models
+    functions return the model with better score only. This will ensure 
+    model performance is atleast equivalent to what is seen in compare_models 
+    '''
+    
+    scorer = []
+
+    stack_model_results = create_model_container[-1][compare_dimension][-2:][0]
+    
+    scorer.append(stack_model_results)
+
+    if choose_better:
+
+        if verbose:
+            if html_param:
+                monitor.iloc[1,1:] = 'Compiling Final Results'
+                monitor.iloc[2,1:] = 'Almost Finished'
+                update_display(monitor, display_id = 'monitor')
+
+        base_models_ = []
+        for i in estimator_list:
+            m = create_model(i,verbose=False)
+            s = create_model_container[-1][compare_dimension][-2:][0]
+            scorer.append(s)
+            base_models_.append(m)
+
+        mm = create_model(meta_model, verbose=False)
+        base_models_.append(mm)
+        s = create_model_container[-1][compare_dimension][-2:][0]
+        scorer.append(s)
+
+    #returning better model
+    index_scorer = scorer.index(max(scorer))
+    
+    if index_scorer == 0:
+        models_ = models_
+    else:
+        models_ = base_models_[index_scorer-1]
     
     #storing into experiment
     model_name = 'Stacking Classifier (Single Layer)'
@@ -6269,11 +6356,12 @@ def stack_models(estimator_list,
 
     if verbose:
         clear_output()
-        display(model_results)
-        return models_
-    else:
-        clear_output()
-        return models_
+        if html_param:
+            display(model_results)
+        else:
+            print(model_results.data)
+
+    return models_
 
 def create_stacknet(estimator_list,
                     meta_model = None,
