@@ -6304,7 +6304,7 @@ def stack_models(estimator_list,
     functions return the model with better score only. This will ensure 
     model performance is atleast equivalent to what is seen in compare_models 
     '''
-    
+
     scorer = []
 
     stack_model_results = create_model_container[-1][compare_dimension][-2:][0]
@@ -6369,6 +6369,8 @@ def create_stacknet(estimator_list,
                     round = 4,
                     method = 'soft',
                     restack = True,
+                    choose_better = True, #added in pycaret==1.0.1
+                    optimize = 'Accuracy', #added in pycaret==1.0.1
                     finalize = False,
                     verbose = True):
     
@@ -6425,6 +6427,18 @@ def create_stacknet(estimator_list,
     the predicted label or probabilities of last layer is passed to meta model 
     when making final predictions.
     
+    choose_better: Boolean, default = True
+    When set to set to True, base estimator is returned when the metric doesn't 
+    improve by ensemble_model. This gurantees the returned object would perform 
+    atleast equivalent to base estimator created using create_model or model 
+    returned by compare_models.
+
+    optimize: string, default = 'Accuracy'
+    Only used when choose_better is set to True. optimize parameter is used
+    to compare emsembled model with base estimator. Values accepted in 
+    optimize parameter are 'Accuracy', 'AUC', 'Recall', 'Precision', 'F1', 
+    'Kappa', 'MCC'.
+
     finalize: Boolean, default = False
     When finalize is set to True, it will fit the stacker on entire dataset
     including the hold-out sample created during the setup() stage. It is not 
@@ -6550,10 +6564,27 @@ def create_stacknet(estimator_list,
         
     clear_output()
     
+    if optimize == 'Accuracy':
+        compare_dimension = 'Accuracy' 
+    elif optimize == 'AUC':
+        compare_dimension = 'AUC' 
+    elif optimize == 'Recall':
+        compare_dimension = 'Recall'
+    elif optimize == 'Precision':
+        compare_dimension = 'Prec.'
+    elif optimize == 'F1':
+        compare_dimension = 'F1' 
+    elif optimize == 'Kappa':
+        compare_dimension = 'Kappa'
+    elif optimize == 'MCC':
+        compare_dimension = 'MCC' 
+
     #progress bar
     max_progress = len(estimator_list) + fold + 4
     progress = ipw.IntProgress(value=0, min=0, max=max_progress, step=1 , description='Processing: ')
-    display(progress)
+    if verbose:
+        if html_param:
+            display(progress)
     
     #display monitor
     timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
@@ -6562,12 +6593,15 @@ def create_stacknet(estimator_list,
                              ['ETC' , '. . . . . . . . . . . . . . . . . .',  'Calculating ETC'] ],
                               columns=['', ' ', '   ']).set_index('')
     
-    display(monitor, display_id = 'monitor')
+    if verbose:
+        if html_param:
+            display(monitor, display_id = 'monitor')
     
     if verbose:
-        master_display = pd.DataFrame(columns=['Accuracy','AUC','Recall', 'Prec.', 'F1', 'Kappa','MCC','TT (Sec)'])
-        display_ = display(master_display, display_id=True)
-        display_id = display_.display_id
+        if html_param:
+            master_display = pd.DataFrame(columns=['Accuracy','AUC','Recall', 'Prec.', 'F1', 'Kappa','MCC'])
+            display_ = display(master_display, display_id=True)
+            display_id = display_.display_id
     
     #ignore warnings
     import warnings
@@ -6660,7 +6694,9 @@ def create_stacknet(estimator_list,
         '''
 
         monitor.iloc[1,1:] = 'Evaluating ' + base_level_names[base_counter]
-        update_display(monitor, display_id = 'monitor')
+        if verbose:
+            if html_param:
+                update_display(monitor, display_id = 'monitor')
 
         '''
         MONITOR UPDATE ENDS
@@ -6707,7 +6743,9 @@ def create_stacknet(estimator_list,
             '''
 
             monitor.iloc[1,1:] = 'Evaluating ' + inter_level_names[inter_counter][model_counter]
-            update_display(monitor, display_id = 'monitor')
+            if verbose:
+                if html_param:
+                    update_display(monitor, display_id = 'monitor')
 
             '''
             MONITOR UPDATE ENDS
@@ -6797,7 +6835,9 @@ def create_stacknet(estimator_list,
         '''
     
         monitor.iloc[1,1:] = 'Fitting Meta Model Fold ' + str(fold_num) + ' of ' + str(fold)
-        update_display(monitor, display_id = 'monitor')
+        if verbose:
+            if html_param:
+                update_display(monitor, display_id = 'monitor')
 
         '''
         MONITOR UPDATE ENDS
@@ -6853,10 +6893,11 @@ def create_stacknet(estimator_list,
         '''
         
         fold_results = pd.DataFrame({'Accuracy':[sca], 'AUC': [sc], 'Recall': [recall], 
-                                     'Prec.': [precision], 'F1': [f1], 'Kappa': [kappa],'MCC':[mcc],'TT (Sec)':[training_time]}).round(round)
-        fold_results.loc[:,'TT (Sec)'] = fold_results.loc[:,'TT (Sec)'].round(2)
+                                     'Prec.': [precision], 'F1': [f1], 'Kappa': [kappa],'MCC':[mcc]}).round(round)
+
         if verbose:
-            master_display = pd.concat([master_display, fold_results],ignore_index=True)
+            if html_param:
+                master_display = pd.concat([master_display, fold_results],ignore_index=True)
         
         fold_results = []
         
@@ -6883,7 +6924,9 @@ def create_stacknet(estimator_list,
         '''
 
         monitor.iloc[2,1:] = ETC
-        update_display(monitor, display_id = 'monitor')
+        if verbose:
+            if html_param:
+                update_display(monitor, display_id = 'monitor')
 
         '''
         MONITOR UPDATE ENDS
@@ -6894,7 +6937,8 @@ def create_stacknet(estimator_list,
         '''
         
         if verbose:
-            update_display(master_display, display_id = display_id)
+            if html_param:
+                update_display(master_display, display_id = display_id)
             
         
         '''
@@ -6940,16 +6984,17 @@ def create_stacknet(estimator_list,
     
     progress.value += 1
     
-    model_results = pd.DataFrame({'Accuracy': score_acc, 'AUC': score_auc, 'Recall' : score_recall, 'Prec.' : score_precision , 
-                     'F1' : score_f1, 'Kappa' : score_kappa,'MCC' : score_mcc,'TT (Sec)' : score_training_time})
+    model_results = pd.DataFrame({'Accuracy': score_acc, 'AUC': score_auc, 'Recall' : score_recall, 'Prec.' : score_precision, 
+                     'F1' : score_f1, 'Kappa' : score_kappa,'MCC' : score_mcc})
     model_avgs = pd.DataFrame({'Accuracy': avgs_acc, 'AUC': avgs_auc, 'Recall' : avgs_recall, 'Prec.' : avgs_precision , 
-                     'F1' : avgs_f1, 'Kappa' : avgs_kappa,'MCC' : avgs_mcc,'TT (Sec)' : avgs_training_time},index=['Mean', 'SD'])
+                     'F1' : avgs_f1, 'Kappa' : avgs_kappa,'MCC' : avgs_mcc},index=['Mean', 'SD'])
   
     model_results = model_results.append(model_avgs)
     model_results = model_results.round(round)      
-    model_results.loc[:,'TT (Sec)'] = model_results.loc[:,'TT (Sec)'].round(2)
-    # Green the mean
-    model_results=model_results.style.apply(lambda x: ['background: lightgreen' if (x.name == 'Mean') else '' for i in x], axis=1)
+    
+    # yellow the mean
+    model_results=model_results.style.apply(lambda x: ['background: yellow' if (x.name == 'Mean') else '' for i in x], axis=1)
+    model_results = model_results.set_precision(round)
     
     progress.value += 1
         
@@ -6963,6 +7008,54 @@ def create_stacknet(estimator_list,
     #appending restack param
     models_.append(restack)
     
+    #storing results in create_model_container
+    create_model_container.append(model_results.data)
+
+    #storing results in master_model_container
+    master_model_container.append(models_)
+
+    '''
+    When choose_better sets to True. optimize metric in scoregrid is
+    compared with base model created using create_model so that stack_models
+    functions return the model with better score only. This will ensure 
+    model performance is atleast equivalent to what is seen in compare_models 
+    '''
+    
+    scorer = []
+
+    stack_model_results = create_model_container[-1][compare_dimension][-2:][0]
+    
+    scorer.append(stack_model_results)
+
+    if choose_better:
+
+        if verbose:
+            if html_param:
+                monitor.iloc[1,1:] = 'Compiling Final Results'
+                monitor.iloc[2,1:] = 'Almost Finished'
+                update_display(monitor, display_id = 'monitor')
+
+        base_models_ = []
+        for i in estimator_list:
+            for k in i:
+                m = create_model(k,verbose=False)
+                s = create_model_container[-1][compare_dimension][-2:][0]
+                scorer.append(s)
+                base_models_.append(m)
+
+        mm = create_model(meta_model, verbose=False)
+        base_models_.append(mm)
+        s = create_model_container[-1][compare_dimension][-2:][0]
+        scorer.append(s)
+
+    #returning better model
+    index_scorer = scorer.index(max(scorer))
+
+    if index_scorer == 0:
+        models_ = models_
+    else:
+        models_ = base_models_[index_scorer-1]
+
     #storing into experiment
     model_name = 'Stacking Classifier (Multi Layer)'
     tup = (model_name,models_)
@@ -6973,12 +7066,12 @@ def create_stacknet(estimator_list,
     
     if verbose:
         clear_output()
-        display(model_results)
-        return models_
+        if html_param:
+            display(model_results)
+        else:
+            print(model_results.data)
     
-    else:
-        clear_output()
-        return models_  
+    return models_
 
 def interpret_model(estimator,
                    plot = 'summary',

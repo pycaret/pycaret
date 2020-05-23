@@ -5887,8 +5887,8 @@ def create_stacknet(estimator_list,
                     fold = 10,
                     round = 4,
                     restack = True,
-                    choose_better = True,
-                    optimize = 'r2',
+                    choose_better = True, #added in pycaret==1.0.1
+                    optimize = 'r2', #added in pycaret==1.0.1
                     finalize = False,
                     verbose = True):
     
