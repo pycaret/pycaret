@@ -8063,8 +8063,6 @@ def automl(optimize='r2'):
     automl_result = master_model_container[index_scorer]
 
     return automl_result
-    
-
 
     #base_model_results = create_model_container[-1][compare_dimension][-2:][0]
     #tuned_model_results = create_model_container[-2][compare_dimension][-2:][0]
@@ -8074,4 +8072,9 @@ def automl(optimize='r2'):
 
     #print(create_model_container)
     #print(master_model_container)
+    
+def pull():
+    return create_model_container[-1]
+
+
 

@@ -4761,7 +4761,9 @@ def tune_model(estimator = None,
     '''
     
     monitor.iloc[1,1:] = 'Initializing CV'
-    update_display(monitor, display_id = 'monitor')
+    if verbose:
+        if html_param:
+            update_display(monitor, display_id = 'monitor')
     
     '''
     MONITOR UPDATE ENDS
@@ -4779,7 +4781,9 @@ def tune_model(estimator = None,
         '''
     
         monitor.iloc[1,1:] = 'Fitting Fold ' + str(fold_num) + ' of ' + str(fold)
-        update_display(monitor, display_id = 'monitor')
+        if verbose:
+            if html_param:
+                update_display(monitor, display_id = 'monitor')
 
         '''
         MONITOR UPDATE ENDS
@@ -5023,8 +5027,6 @@ def tune_model(estimator = None,
             display(model_results)
         else:
             print(model_results.data)
-    else:
-        clear_output()
         
     return best_model
 
@@ -5309,7 +5311,9 @@ def blend_models(estimator_list = 'All',
     '''
     
     monitor.iloc[1,1:] = 'Compiling Estimators'
-    update_display(monitor, display_id = 'monitor')
+    if verbose:
+        if html_param:
+            update_display(monitor, display_id = 'monitor')
     
     '''
     MONITOR UPDATE ENDS
@@ -7395,8 +7399,10 @@ def calibrate_model(estimator,
         
     #progress bar
     progress = ipw.IntProgress(value=0, min=0, max=fold+4, step=1 , description='Processing: ')
-    master_display = pd.DataFrame(columns=['Accuracy','AUC','Recall', 'Prec.', 'F1', 'Kappa','MCC','TT (Sec)'])
-    display(progress)
+    master_display = pd.DataFrame(columns=['Accuracy','AUC','Recall', 'Prec.', 'F1', 'Kappa','MCC'])
+    if verbose:
+        if html_param:
+            display(progress)
     
     #display monitor
     timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
@@ -7405,11 +7411,14 @@ def calibrate_model(estimator,
                              ['ETC' , '. . . . . . . . . . . . . . . . . .',  'Calculating ETC'] ],
                               columns=['', ' ', '   ']).set_index('')
     
-    display(monitor, display_id = 'monitor')
+    if verbose:
+        if html_param:
+            display(monitor, display_id = 'monitor')
     
     if verbose:
-        display_ = display(master_display, display_id=True)
-        display_id = display_.display_id
+        if html_param:
+            display_ = display(master_display, display_id=True)
+            display_id = display_.display_id
     
     #ignore warnings
     import warnings
@@ -7456,7 +7465,9 @@ def calibrate_model(estimator,
     '''
     
     monitor.iloc[1,1:] = 'Selecting Estimator'
-    update_display(monitor, display_id = 'monitor')
+    if verbose:
+        if html_param:
+            update_display(monitor, display_id = 'monitor')
     
     '''
     MONITOR UPDATE ENDS
@@ -7475,7 +7486,9 @@ def calibrate_model(estimator,
     '''
     
     monitor.iloc[1,1:] = 'Initializing CV'
-    update_display(monitor, display_id = 'monitor')
+    if verbose:
+        if html_param:
+            update_display(monitor, display_id = 'monitor')
     
     '''
     MONITOR UPDATE ENDS
@@ -7493,7 +7506,9 @@ def calibrate_model(estimator,
         '''
     
         monitor.iloc[1,1:] = 'Fitting Fold ' + str(fold_num) + ' of ' + str(fold)
-        update_display(monitor, display_id = 'monitor')
+        if verbose:
+            if html_param:
+                update_display(monitor, display_id = 'monitor')
 
         '''
         MONITOR UPDATE ENDS
@@ -7572,8 +7587,7 @@ def calibrate_model(estimator,
         '''
         
         fold_results = pd.DataFrame({'Accuracy':[sca], 'AUC': [sc], 'Recall': [recall], 
-                                     'Prec.': [precision], 'F1': [f1], 'Kappa': [kappa],'MCC':[mcc],'TT (Sec)':[training_time]}).round(round)
-        fold_results.loc[:,'TT (Sec)'] = fold_results.loc[:,'TT (Sec)'].round(2)
+                                     'Prec.': [precision], 'F1': [f1], 'Kappa': [kappa],'MCC':[mcc]}).round(round)
         master_display = pd.concat([master_display, fold_results],ignore_index=True)
         fold_results = []
         
@@ -7598,7 +7612,9 @@ def calibrate_model(estimator,
         '''
 
         monitor.iloc[2,1:] = ETC
-        update_display(monitor, display_id = 'monitor')
+        if verbose:
+            if html_param:
+                update_display(monitor, display_id = 'monitor')
 
         '''
         MONITOR UPDATE ENDS
@@ -7611,7 +7627,8 @@ def calibrate_model(estimator,
         '''
         
         if verbose:
-            update_display(master_display, display_id = display_id)
+            if html_param:
+                update_display(master_display, display_id = display_id)
             
         
         '''
@@ -7657,19 +7674,22 @@ def calibrate_model(estimator,
     progress.value += 1
     
     model_results = pd.DataFrame({'Accuracy': score_acc, 'AUC': score_auc, 'Recall' : score_recall, 'Prec.' : score_precision , 
-                     'F1' : score_f1, 'Kappa' : score_kappa,'MCC' : score_mcc,'TT (Sec)' : score_training_time})
+                     'F1' : score_f1, 'Kappa' : score_kappa,'MCC' : score_mcc})
     model_avgs = pd.DataFrame({'Accuracy': avgs_acc, 'AUC': avgs_auc, 'Recall' : avgs_recall, 'Prec.' : avgs_precision , 
-                     'F1' : avgs_f1, 'Kappa' : avgs_kappa,'MCC' : avgs_mcc,'TT (Sec)' : avgs_training_time},index=['Mean', 'SD'])
+                     'F1' : avgs_f1, 'Kappa' : avgs_kappa,'MCC' : avgs_mcc},index=['Mean', 'SD'])
 
     model_results = model_results.append(model_avgs)
     model_results = model_results.round(round)
-    model_results.loc[:,'TT (Sec)'] = model_results.loc[:,'TT (Sec)'].round(2)
-    # Green the mean
-    model_results=model_results.style.apply(lambda x: ['background: lightgreen' if (x.name == 'Mean') else '' for i in x], axis=1)
+    
+    # yellow the mean
+    model_results=model_results.style.apply(lambda x: ['background: yellow' if (x.name == 'Mean') else '' for i in x], axis=1)
+    model_results=model_results.set_precision(round)
     
     #refitting the model on complete X_train, y_train
     monitor.iloc[1,1:] = 'Compiling Final Model'
-    update_display(monitor, display_id = 'monitor')
+    if verbose:
+        if html_param:
+            update_display(monitor, display_id = 'monitor')
     
     model.fit(data_X, data_y)
     
@@ -7685,11 +7705,12 @@ def calibrate_model(estimator,
     
     if verbose:
         clear_output()
-        display(model_results)
-        return model
-    else:
-        clear_output()
-        return model
+        if html_param:
+            display(model_results)
+        else:
+            print(model_results.data)
+    
+    return model
 
 def evaluate_model(estimator):
     
@@ -8235,7 +8256,9 @@ def predict_model(estimator,
     """
     
     estimator = deepcopy(estimator)
-    clear_output()
+    
+    if html_param:
+        clear_output()
     
     if type(estimator) is str:
         if platform == 'aws':
@@ -8801,7 +8824,12 @@ def predict_model(estimator,
             df_score = pd.DataFrame( {'Model' : [full_name], 'Accuracy' : [sca], 'AUC' : [sc], 'Recall' : [recall], 'Prec.' : [precision],
                                 'F1' : [f1], 'Kappa' : [kappa], 'MCC':[mcc]})
             df_score = df_score.round(4)
-            display(df_score)
+            
+            
+            if html_param:
+                display(df_score)
+            else:
+                print(df_score)
             
         label = pd.DataFrame(pred_)
         label.columns = ['Label']
@@ -9126,3 +9154,42 @@ def optimize_threshold(estimator,
     fig.update_layout(title={'text': title, 'y':0.95,'x':0.45,'xanchor': 'center','yanchor': 'top'})
     fig.show()
     print('Optimized Probability Threshold: ' + str(t) + ' | ' + 'Optimized Cost Function: ' + str(y1))
+
+def automl(optimize='Accuracy'):
+    """
+    space reserved for docstring
+    
+    """
+
+    if optimize == 'Accuracy':
+        compare_dimension = 'Accuracy' 
+    elif optimize == 'AUC':
+        compare_dimension = 'AUC' 
+    elif optimize == 'Recall':
+        compare_dimension = 'Recall'
+    elif optimize == 'Precision':
+        compare_dimension = 'Prec.'
+    elif optimize == 'F1':
+        compare_dimension = 'F1' 
+    elif optimize == 'Kappa':
+        compare_dimension = 'Kappa'
+    elif optimize == 'MCC':
+        compare_dimension = 'MCC' 
+        
+    scorer = []
+
+    for i in create_model_container:
+        r = i[compare_dimension][-2:][0]
+        scorer.append(r)
+
+    print(scorer)
+
+    #returning better model
+    index_scorer = scorer.index(max(scorer))
+    
+    automl_result = master_model_container[index_scorer]
+
+    return automl_result
+
+def pull():
+    return create_model_container[-1]
