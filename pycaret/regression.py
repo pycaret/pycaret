@@ -4802,7 +4802,7 @@ def tune_model(estimator,
         else:
 
             param_grid = {"max_depth": np.random.randint(1, (len(X_train.columns)*.85),20),
-                        "max_features": np.random.randint(3, len(X_train.columns),20),
+                        "max_features": np.random.randint(1, len(X_train.columns),20),
                         "min_samples_leaf": [2,3,4,5,6],
                         "criterion": ["mse", "mae", "friedman_mse"],
                         } 
