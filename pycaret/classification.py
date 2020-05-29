@@ -679,6 +679,10 @@ def setup(data,
     #create html_param
     html_param = html
 
+    #silent parameter to also set sampling to False
+    if silent:
+        sampling = False
+
     #progress bar
     if sampling:
         max_steps = 10 + 3
