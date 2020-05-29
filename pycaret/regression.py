@@ -749,7 +749,7 @@ def setup(data,
     
     #declaring global variables to be accessed by other functions
     global X, y, X_train, X_test, y_train, y_test, seed, prep_pipe, target_inverse_transformer, experiment__, preprocess,\
-            folds_shuffle_param, n_jobs_param, create_model_container, master_model_container
+            folds_shuffle_param, n_jobs_param, create_model_container, master_model_container, display_container
     
     #generate seed to be used globally
     if session_id is None:
@@ -945,11 +945,11 @@ def setup(data,
     data = preprocess.Preprocess_Path_One(train_data = data, 
                                           target_variable = target,
                                           categorical_features = cat_features_pass,
-                                          apply_ordinal_encoding = apply_ordinal_encoding_pass, #new
-                                          ordinal_columns_and_categories = ordinal_columns_and_categories_pass, #new
-                                          apply_cardinality_reduction = apply_cardinality_reduction_pass, #latest
-                                          cardinal_method = cardinal_method_pass, #latest
-                                          cardinal_features = cardinal_features_pass, #latest
+                                          apply_ordinal_encoding = apply_ordinal_encoding_pass, 
+                                          ordinal_columns_and_categories = ordinal_columns_and_categories_pass, 
+                                          apply_cardinality_reduction = apply_cardinality_reduction_pass,
+                                          cardinal_method = cardinal_method_pass, 
+                                          cardinal_features = cardinal_features_pass,
                                           numerical_features = numeric_features_pass,
                                           time_features = date_features_pass,
                                           features_todrop = ignore_features_pass,
@@ -959,39 +959,39 @@ def setup(data,
                                           scaling_method = normalize_method,
                                           Power_transform_data = transformation,
                                           Power_transform_method = trans_method_pass,
-                                          apply_untrained_levels_treatment= handle_unknown_categorical, #new
-                                          untrained_levels_treatment_method = unknown_categorical_method_pass, #new
-                                          apply_pca = pca, #new
-                                          pca_method = pca_method_pass, #new
-                                          pca_variance_retained_or_number_of_components = pca_components_pass, #new
-                                          apply_zero_nearZero_variance = ignore_low_variance, #new
-                                          club_rare_levels = combine_rare_levels, #new
-                                          rara_level_threshold_percentage = rare_level_threshold, #new
-                                          apply_binning = apply_binning_pass, #new
-                                          features_to_binn = features_to_bin_pass, #new
-                                          remove_outliers = remove_outliers, #new
-                                          outlier_contamination_percentage = outliers_threshold, #new
+                                          apply_untrained_levels_treatment= handle_unknown_categorical,
+                                          untrained_levels_treatment_method = unknown_categorical_method_pass, 
+                                          apply_pca = pca, 
+                                          pca_method = pca_method_pass, 
+                                          pca_variance_retained_or_number_of_components = pca_components_pass, 
+                                          apply_zero_nearZero_variance = ignore_low_variance,
+                                          club_rare_levels = combine_rare_levels,
+                                          rara_level_threshold_percentage = rare_level_threshold,
+                                          apply_binning = apply_binning_pass,
+                                          features_to_binn = features_to_bin_pass,
+                                          remove_outliers = remove_outliers,
+                                          outlier_contamination_percentage = outliers_threshold,
                                           outlier_methods = ['pca'], #pca hardcoded
-                                          remove_multicollinearity = remove_multicollinearity, #new
-                                          maximum_correlation_between_features = multicollinearity_threshold, #new
-                                          remove_perfect_collinearity = True, #latest 2
-                                          cluster_entire_data = create_clusters, #new
-                                          range_of_clusters_to_try = cluster_iter, #new
-                                          apply_polynomial_trigonometry_features = polynomial_features, #new
-                                          max_polynomial = polynomial_degree, #new
-                                          trigonometry_calculations = trigonometry_features_pass, #new
-                                          top_poly_trig_features_to_select_percentage = polynomial_threshold, #new
-                                          apply_grouping = apply_grouping_pass, #new
-                                          features_to_group_ListofList = group_features_pass, #new
-                                          group_name = group_names_pass, #new
-                                          apply_feature_selection = feature_selection, #new
-                                          feature_selection_top_features_percentage = feature_selection_threshold, #new
-                                          apply_feature_interactions = apply_feature_interactions_pass, #new
-                                          feature_interactions_to_apply = interactions_to_apply_pass, #new
-                                          feature_interactions_top_features_to_select_percentage=interaction_threshold, #new
-                                          display_types = display_dtypes_pass, #new #to be parameterized in setup later.
-                                          target_transformation = transform_target, #new
-                                          target_transformation_method = transform_target_method_pass, #new
+                                          remove_multicollinearity = remove_multicollinearity,
+                                          maximum_correlation_between_features = multicollinearity_threshold,
+                                          remove_perfect_collinearity = True, 
+                                          cluster_entire_data = create_clusters, 
+                                          range_of_clusters_to_try = cluster_iter, 
+                                          apply_polynomial_trigonometry_features = polynomial_features, 
+                                          max_polynomial = polynomial_degree, 
+                                          trigonometry_calculations = trigonometry_features_pass, 
+                                          top_poly_trig_features_to_select_percentage = polynomial_threshold, 
+                                          apply_grouping = apply_grouping_pass, 
+                                          features_to_group_ListofList = group_features_pass, 
+                                          group_name = group_names_pass, 
+                                          apply_feature_selection = feature_selection, 
+                                          feature_selection_top_features_percentage = feature_selection_threshold, 
+                                          apply_feature_interactions = apply_feature_interactions_pass, 
+                                          feature_interactions_to_apply = interactions_to_apply_pass, 
+                                          feature_interactions_top_features_to_select_percentage=interaction_threshold, 
+                                          display_types = display_dtypes_pass, 
+                                          target_transformation = transform_target, 
+                                          target_transformation_method = transform_target_method_pass, 
                                           random_state = seed)
 
     progress.value += 1
@@ -1161,6 +1161,9 @@ def setup(data,
 
     #create master_model_container
     master_model_container = []
+
+    #create display container
+    display_container = []
 
     #sample estimator
     if sample_estimator is None:
@@ -1377,7 +1380,7 @@ def setup(data,
             #you do it on two other places below as well. There are total 3 return arguments in setup() call.
 
             return X, y, X_train, X_test, y_train, y_test, seed, prep_pipe, target_inverse_transformer, experiment__,\
-                folds_shuffle_param, n_jobs_param, html_param, create_model_container, master_model_container
+                folds_shuffle_param, n_jobs_param, html_param, create_model_container, master_model_container, display_container
         
         else:
             
@@ -1480,7 +1483,7 @@ def setup(data,
                 pass
             
             return X, y, X_train, X_test, y_train, y_test, seed, prep_pipe, target_inverse_transformer, experiment__,\
-                folds_shuffle_param, n_jobs_param, html_param, create_model_container, master_model_container
+                folds_shuffle_param, n_jobs_param, html_param, create_model_container, master_model_container, display_container
 
     else:
         
@@ -1580,7 +1583,7 @@ def setup(data,
             pass
         
         return X, y, X_train, X_test, y_train, y_test, seed, prep_pipe, target_inverse_transformer, experiment__,\
-            folds_shuffle_param, n_jobs_param, html_param, create_model_container, master_model_container
+            folds_shuffle_param, n_jobs_param, html_param, create_model_container, master_model_container, display_container
 
 def create_model(estimator = None, 
                  ensemble = False, 
@@ -2176,6 +2179,7 @@ def create_model(estimator = None,
     
     #storing results in create_model_container
     create_model_container.append(model_results.data)
+    display_container.append(model_results.data)
     
     #storing results in master_model_container
     master_model_container.append(model)
@@ -2646,6 +2650,7 @@ def ensemble_model(estimator,
 
     #storing results in create_model_container
     create_model_container.append(model_results.data)
+    display_container.append(model_results.data)
 
     #storing results in master_model_container
     master_model_container.append(model)
@@ -3486,6 +3491,9 @@ def compare_models(blacklist = None,
         display(compare_models_)
     else:
         print(compare_models_.data)
+    
+    #store in display container
+    display_container.append(compare_models_.data)
 
     return model_store_final
 
@@ -4067,6 +4075,7 @@ def blend_models(estimator_list = 'All',
 
     #storing results in create_model_container
     create_model_container.append(model_results.data)
+    display_container.append(model_results.data)
 
     #storing results in master_model_container
     master_model_container.append(model)
@@ -5243,6 +5252,7 @@ def tune_model(estimator,
     
     #storing results in create_model_container
     create_model_container.append(model_results.data)
+    display_container.append(model_results.data)
 
     #storing results in master_model_container
     master_model_container.append(best_model)
@@ -5814,6 +5824,7 @@ def stack_models(estimator_list,
     
     #storing results in create_model_container
     create_model_container.append(model_results.data)
+    display_container.append(model_results.data)
 
     #storing results in master_model_container
     master_model_container.append(models_)
@@ -5846,7 +5857,8 @@ def stack_models(estimator_list,
             scorer.append(s)
             base_models_.append(m)
 
-        mm = create_model(meta_model, verbose=False)
+        meta_model_clone = clone(meta_model)
+        mm = create_model(meta_model_clone, verbose=False)
         base_models_.append(mm)
         s = create_model_container[-1][compare_dimension][-2:][0]
         scorer.append(s)
@@ -6467,6 +6479,7 @@ def create_stacknet(estimator_list,
     
     #storing results in create_model_container
     create_model_container.append(model_results.data)
+    display_container.append(model_results.data)
 
     #storing results in master_model_container
     master_model_container.append(models_)
@@ -6500,7 +6513,8 @@ def create_stacknet(estimator_list,
                 scorer.append(s)
                 base_models_.append(m)
 
-        mm = create_model(meta_model, verbose=False)
+        meta_model_clone = clone(meta_model)
+        mm = create_model(meta_model_clone, verbose=False)
         base_models_.append(mm)
         s = create_model_container[-1][compare_dimension][-2:][0]
         scorer.append(s)
@@ -7409,7 +7423,8 @@ def predict_model(estimator,
                   data=None,
                   platform=None,
                   authentication=None,
-                  round=4):
+                  round=4,
+                  verbose=True): #added in pycaret==1.0.1
     
     """
        
@@ -7720,10 +7735,8 @@ def predict_model(estimator,
                 df_score = pd.DataFrame( {'Model' : 'Stacking Regressor', 'MAE' : [mae], 'MSE' : [mse], 'RMSE' : [rmse], 
                                           'R2' : [r2], 'RMSLE' : [rmsle], 'MAPE' : [mape]})
                 df_score = df_score.round(round)
-                if html_param:
+                if verbose:
                     display(df_score)
-                else:
-                    print(df_score)
         
             label = pd.DataFrame(pred_)
             label = label.round(round)
@@ -7827,10 +7840,8 @@ def predict_model(estimator,
                                           'R2' : [r2], 'RMSLE' : [rmsle], 'MAPE' : [mape]})
                 df_score = df_score.round(round)
 
-                if html_param:
+                if verbose:
                     display(df_score)
-                else:
-                    print(df_score)
                 
             label = pd.DataFrame(pred_)
             label = label.round(round)
@@ -7907,10 +7918,8 @@ def predict_model(estimator,
                                       'R2' : [r2], 'RMSLE' : [rmsle], 'MAPE' : [mape] })
             df_score = df_score.round(4)
 
-            if html_param:
+            if verbose:
                 display(df_score)
-            else:
-                print(df_score)
         
             label = pd.DataFrame(pred_)
             label = label.round(round)
@@ -7927,6 +7936,12 @@ def predict_model(estimator,
         else:
             X_test_ = pd.concat([X_test_,label], axis=1)
 
+    #store predictions on hold-out in display_container
+    try:
+        display_container.append(df_score)
+    except:
+        pass
+    
     return X_test_
 
 def deploy_model(model, 
@@ -8031,7 +8046,8 @@ def deploy_model(model,
         clear_output()
         print("Model Succesfully Deployed on AWS S3")
 
-def automl(optimize='r2'):
+def automl(optimize='r2', use_holdout=False):
+
     """
     space reserved for docstring
     
@@ -8052,11 +8068,21 @@ def automl(optimize='r2'):
         
     scorer = []
 
+    if use_holdout:
+        for i in master_model_container:
+            pred_holdout = predict_model(i, verbose=False)
+            p = pull()
+            p = p[compare_dimension][0]
+            scorer.append(p)
+
+    else:
+        for i in create_model_container:
+            r = i[compare_dimension][-2:][0]
+            scorer.append(r)
+
     for i in create_model_container:
         r = i[compare_dimension][-2:][0]
         scorer.append(r)
-
-    print(scorer)
 
     #returning better model
     if optimize == 'r2':
@@ -8066,19 +8092,11 @@ def automl(optimize='r2'):
 
     automl_result = master_model_container[index_scorer]
 
-    return automl_result
+    automl_finalized = finalize_model(automl_result)
 
-    #base_model_results = create_model_container[-1][compare_dimension][-2:][0]
-    #tuned_model_results = create_model_container[-2][compare_dimension][-2:][0]
-
-    #print(len(create_model_container))
-    #print(len(master_model_container))
-
-    #print(create_model_container)
-    #print(master_model_container)
+    return automl_finalized
     
 def pull():
-    return create_model_container[-1]
-
+    return display_container[-1]
 
 
