@@ -4,6 +4,7 @@ sys.path.insert(0, os.path.abspath(".."))
 #create_model_test
 import pytest
 import pycaret.regression
+import pycaret.classification
 import pycaret.datasets
 
 available_regressors = ['lr', 'lasso', 'ridge', 'en', 'lar', 'llar', 'omp', 'br', 'ard', 'par', 
