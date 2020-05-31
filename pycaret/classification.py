@@ -52,6 +52,9 @@ def setup(data,
           n_jobs = -1, #added in pycaret==1.0.1
           html = True, #added in pycaret==1.0.1
           session_id = None,
+          experiment_name = None, #added in pycaret==1.0.1
+          logging = True, #added in pycaret==1.0.1
+          log_profile = False, #added in pycaret==1.0.1
           silent=False,
           verbose=True, #added in pycaret==1.0.1
           profile = False):
@@ -367,6 +370,17 @@ def setup(data,
     unique number is then distributed as a seed in all functions used during the 
     experiment. This can be used for later reproducibility of the entire experiment.
     
+    experiment_name: str, default = None
+    Name of experiment for logging. When set to None, 'clf' is by default used as 
+    alias for the experiment name.
+
+    logging: bool, default = True
+    When set to True, all metrics and parameters are logged on MLFlow server.
+
+    log_profile: bool, default = False
+    When set to True, data profile is also logged on MLflow as a html file. By default,
+    its set to False. 
+
     silent: bool, default = False
     When set to True, confirmation of data types is not required. All preprocessing will 
     be performed assuming automatically inferred data types. Not recommended for direct use 
@@ -659,6 +673,19 @@ def setup(data,
             if i not in all_cols:
                 sys.exit("(Value Error): Feature ignored is either target column or doesn't exist in the dataset.") 
     
+    #logging
+    if type(logging) is not bool:
+        sys.exit("(Type Error): logging parameter only accepts True or False. ")
+
+    #log_profile
+    if type(log_profile) is not bool:
+        sys.exit("(Type Error): log_profile parameter only accepts True or False. ")
+
+    #experiment_name
+    if experiment_name is not None:
+        if type(experiment_name) is not str:
+            sys.exit("(Type Error): experiment_name parameter must be string if not None. ")
+      
     #silent
     if type(silent) is not bool:
         sys.exit("(Type Error): silent parameter only accepts True or False. ")
@@ -668,6 +695,11 @@ def setup(data,
     import ipywidgets as ipw
     from IPython.display import display, HTML, clear_output, update_display
     import datetime, time
+    
+    #import mlflow and logging utils
+    import mlflow
+    import mlflow.sklearn
+    import secrets
     
     #pandas option
     pd.set_option('display.max_columns', 500)
@@ -733,7 +765,7 @@ def setup(data,
     
     #declaring global variables to be accessed by other functions
     global X, y, X_train, X_test, y_train, y_test, seed, prep_pipe, experiment__,\
-         folds_shuffle_param, n_jobs_param, create_model_container, master_model_container, display_container
+         folds_shuffle_param, n_jobs_param, create_model_container, master_model_container, display_container, exp_name_log, logging_param
     
     #generate seed to be used globally
     if session_id is None:
@@ -1132,6 +1164,12 @@ def setup(data,
     #create display container
     display_container = []
 
+    #create logging parameter
+    logging_param = logging
+
+    #create exp_name_log param incase logging is False
+    exp_name_log = 'no_logging'
+
     #sample estimator
     if sample_estimator is None:
         model = LogisticRegression()
@@ -1397,9 +1435,6 @@ def setup(data,
             experiment__.append(('X_test Set', X_test))
             experiment__.append(('y_test Set', y_test)) 
             experiment__.append(('Transformation Pipeline', prep_pipe))
-            
-            return X, y, X_train, X_test, y_train, y_test, seed, prep_pipe, experiment__,\
-                folds_shuffle_param, n_jobs_param, html_param, create_model_container, master_model_container, display_container
         
         else:
             
@@ -1495,9 +1530,6 @@ def setup(data,
             experiment__.append(('X_test Set', X_test))
             experiment__.append(('y_test Set', y_test)) 
             experiment__.append(('Transformation Pipeline', prep_pipe))
-            
-            return X, y, X_train, X_test, y_train, y_test, seed, prep_pipe, experiment__,\
-                folds_shuffle_param, n_jobs_param, html_param, create_model_container, master_model_container, display_container
 
     else:
         
@@ -1591,9 +1623,49 @@ def setup(data,
         experiment__.append(('X_test Set', X_test))
         experiment__.append(('y_test Set', y_test))
         experiment__.append(('Transformation Pipeline', prep_pipe))
-        
-        return X, y, X_train, X_test, y_train, y_test, seed, prep_pipe, experiment__,\
-            folds_shuffle_param, n_jobs_param, html_param, create_model_container, master_model_container, display_container
+
+    #mlflow create experiment (name defined here)
+    if logging_param:
+        uniquekey = secrets.token_hex(nbytes=6)
+        if experiment_name is None:
+            exp_name_ = 'clf'
+        else:
+            exp_name_ = experiment_name
+        exp_name_log = exp_name_ + '-' + str(seed) + '-' + str(uniquekey)
+        mlflow.create_experiment(exp_name_log)
+
+        #mlflow logging
+        mlflow.set_experiment(exp_name_log)
+        with mlflow.start_run(run_name='Session Initialized') as run:
+            
+            k = functions.copy()
+            k.set_index('Description',drop=True,inplace=True)
+            kdict = k.to_dict()
+            params = kdict.get('Value')
+            mlflow.log_params(params)
+
+            # Log the transformation pipeline
+            save_model(prep_pipe, 'Transformation Pipeline', verbose=False)
+            mlflow.log_artifact('Transformation Pipeline' + '.pkl')
+
+            # Log pandas profile
+            if log_profile:
+                import pandas_profiling
+                pf = pandas_profiling.ProfileReport(data_before_preprocess)
+                pf.to_file("data_profile.html")
+                mlflow.log_artifact("data_profile.html")
+                clear_output()
+                display(functions_)
+
+            # Log training and testing set
+            X_train.join(y_train).to_csv('Train.csv')
+            X_test.join(y_test).to_csv('Test.csv')
+            mlflow.log_artifact("Train.csv")
+            mlflow.log_artifact("Test.csv")
+
+    return X, y, X_train, X_test, y_train, y_test, seed, prep_pipe, experiment__,\
+        folds_shuffle_param, n_jobs_param, html_param, create_model_container, master_model_container, display_container, exp_name_log, logging_param
+
 
 def create_model(estimator = None, 
                  ensemble = False, 
@@ -1767,7 +1839,11 @@ def create_model(estimator = None,
     import ipywidgets as ipw
     from IPython.display import display, HTML, clear_output, update_display
     import datetime, time
-        
+
+    #import mlflow
+    import mlflow
+    import mlflow.sklearn
+
     #progress bar
     progress = ipw.IntProgress(value=0, min=0, max=fold+4, step=1 , description='Processing: ')
     master_display = pd.DataFrame(columns=['Accuracy','AUC','Recall', 'Prec.', 'F1', 'Kappa', 'MCC'])
@@ -2188,6 +2264,17 @@ def create_model(estimator = None,
     
     model.fit(data_X, data_y)
     
+    #mlflow logging
+    mlflow.set_experiment(exp_name_log)
+    with mlflow.start_run(run_name=full_name) as run:
+        params = model.get_params()
+        mlflow.log_metrics({"Accuracy": avgs_acc[0], "AUC": avgs_auc[0], "Recall": avgs_recall[0], "Precision" : avgs_precision[0],
+                            "F1": avgs_f1[0], "Kappa": avgs_kappa[0], "MCC": avgs_mcc[0]})
+        mlflow.log_params(params)
+
+        # Log the sklearn model and register as version 1
+        mlflow.sklearn.log_model(model, full_name)
+
     progress.value += 1
     
     #storing into experiment
@@ -2941,6 +3028,7 @@ def plot_model(estimator,
         visualizer.score(X_test, y_test)
         progress.value += 1
         clear_output()
+        visualizer.show(outpath="image2.png")
         visualizer.poof()
         
     elif plot == 'threshold':
@@ -3229,6 +3317,7 @@ def plot_model(estimator,
         clear_output()
         param_df = pd.DataFrame.from_dict(estimator.get_params(estimator), orient='index', columns=['Parameters'])
         display(param_df)
+
 
 def compare_models(blacklist = None,
                    whitelist = None, #added in pycaret==1.0.1
@@ -5025,15 +5114,28 @@ def tune_model(estimator = None,
             best_model = best_model
         else:
             best_model = base_model
-        
+
     #storing into experiment
-    model_name = 'Tuned ' + str(model).split("(")[0]
+    model_name = '[TUNED] ' + str(model).split("(")[0]
     tup = (model_name,best_model)
     experiment__.append(tup)
     nam = str(model_name) + ' Score Grid'
     tup = (nam, model_results)
     experiment__.append(tup)
-    
+
+    #mlflow logging
+    import mlflow
+
+    mlflow.set_experiment(exp_name_log)
+    with mlflow.start_run(run_name=model_name) as run:
+        params = model_grid.cv_results_.get('params')
+        metrics = model_grid.cv_results_.get('mean_test_score')
+        for i in metrics:
+            mlflow.log_metric('Score', i)
+
+        # Log the sklearn model and register as version 1
+        #mlflow.sklearn.log_model(model, full_name)
+
     if verbose:
         clear_output()
         if html_param:
@@ -5041,7 +5143,7 @@ def tune_model(estimator = None,
         else:
             print(model_results.data)
         
-    return best_model
+    return best_model, model_grid
 
 def blend_models(estimator_list = 'All', 
                  fold = 10, 
