@@ -1673,6 +1673,7 @@ def create_model(estimator = None,
                  fold = 10, 
                  round = 4,  
                  verbose = True,
+                 system = True, #added in pycaret==1.0.1
                  **kwargs): #added in pycaret==1.0.1
 
     """  
@@ -1739,6 +1740,9 @@ def create_model(estimator = None,
 
     verbose: Boolean, default = True
     Score grid is not printed when verbose is set to False.
+
+    system: Boolean, default = True
+    Must remain True all times. Only to be changed by internal functions.
 
     **kwargs: 
     Additional keyword arguments to pass to the estimator.
@@ -1930,7 +1934,7 @@ def create_model(estimator = None,
         
         from sklearn.neighbors import KNeighborsClassifier
         model = KNeighborsClassifier(n_jobs=n_jobs_param, **kwargs)
-        full_name = 'K Nearest Neighbours'
+        full_name = 'K Neighbors Classifier'
 
     elif estimator == 'nb':
 
@@ -1942,19 +1946,19 @@ def create_model(estimator = None,
 
         from sklearn.tree import DecisionTreeClassifier
         model = DecisionTreeClassifier(random_state=seed, **kwargs)
-        full_name = 'Decision Tree'
+        full_name = 'Decision Tree Classifier'
 
     elif estimator == 'svm':
 
         from sklearn.linear_model import SGDClassifier
         model = SGDClassifier(max_iter=1000, tol=0.001, random_state=seed, n_jobs=n_jobs_param, **kwargs)
-        full_name = 'Support Vector Machine'
+        full_name = 'SVM - Linear Kernel'
 
     elif estimator == 'rbfsvm':
 
         from sklearn.svm import SVC
         model = SVC(gamma='auto', C=1, probability=True, kernel='rbf', random_state=seed, **kwargs)
-        full_name = 'RBF SVM'
+        full_name = 'SVM - Radial Kernel'
 
     elif estimator == 'gpc':
 
@@ -1966,7 +1970,7 @@ def create_model(estimator = None,
 
         from sklearn.neural_network import MLPClassifier
         model = MLPClassifier(max_iter=500, random_state=seed, **kwargs)
-        full_name = 'Multi Level Perceptron'    
+        full_name = 'MLP Classifier'    
 
     elif estimator == 'ridge':
 
@@ -1990,7 +1994,7 @@ def create_model(estimator = None,
 
         from sklearn.ensemble import AdaBoostClassifier
         model = AdaBoostClassifier(random_state=seed, **kwargs)
-        full_name = 'AdaBoost Classifier'        
+        full_name = 'Ada Boost Classifier'        
 
     elif estimator == 'gbc':
 
@@ -2265,15 +2269,22 @@ def create_model(estimator = None,
     model.fit(data_X, data_y)
     
     #mlflow logging
-    mlflow.set_experiment(exp_name_log)
-    with mlflow.start_run(run_name=full_name) as run:
-        params = model.get_params()
-        mlflow.log_metrics({"Accuracy": avgs_acc[0], "AUC": avgs_auc[0], "Recall": avgs_recall[0], "Precision" : avgs_precision[0],
-                            "F1": avgs_f1[0], "Kappa": avgs_kappa[0], "MCC": avgs_mcc[0]})
-        mlflow.log_params(params)
+    if logging_param and system:
+        mlflow.set_experiment(exp_name_log)
+        with mlflow.start_run(run_name=full_name) as run:
+            params = model.get_params()
+            mlflow.log_metrics({"Accuracy": avgs_acc[0], "AUC": avgs_auc[0], "Recall": avgs_recall[0], "Precision" : avgs_precision[0],
+                                "F1": avgs_f1[0], "Kappa": avgs_kappa[0], "MCC": avgs_mcc[0]})
+            mlflow.log_params(params)
 
-        # Log the sklearn model and register as version 1
-        mlflow.sklearn.log_model(model, full_name)
+            #log other parameter of create_model function
+            mlflow.log_param("ensemble", ensemble)
+            mlflow.log_param("ensemble_method", method)
+            mlflow.log_param("fold", fold)
+            mlflow.log_param("round", round)
+
+            # Log the sklearn model and register as version 1
+            #mlflow.sklearn.log_model(model, full_name)
 
     progress.value += 1
     
@@ -4369,6 +4380,26 @@ def tune_model(estimator = None,
                 'CatBoostClassifier' : 'catboost',
                 'BaggingClassifier' : 'Bagging'}
 
+    model_dict_logging = {'ExtraTreesClassifier' : 'Extra Trees Classifier',
+                        'GradientBoostingClassifier' : 'Gradient Boosting Classifier', 
+                        'RandomForestClassifier' : 'Random Forest Classifier',
+                        'LGBMClassifier' : 'Light Gradient Boosting Machine',
+                        'XGBClassifier' : 'Extreme Gradient Boosting',
+                        'AdaBoostClassifier' : 'Ada Boost Classifier', 
+                        'DecisionTreeClassifier' : 'Decision Tree Classifier', 
+                        'RidgeClassifier' : 'Ridge Classifier',
+                        'LogisticRegression' : 'Logistic Regression',
+                        'KNeighborsClassifier' : 'K Neighbors Classifier',
+                        'GaussianNB' : 'Naive Bayes',
+                        'SGDClassifier' : 'SVM - Linear Kernel',
+                        'SVC' : 'SVM - Radial Kernel',
+                        'GaussianProcessClassifier' : 'Gaussian Process Classifier',
+                        'MLPClassifier' : 'MLP Classifier',
+                        'QuadraticDiscriminantAnalysis' : 'Quadratic Discriminant Analysis',
+                        'LinearDiscriminantAnalysis' : 'Linear Discriminant Analysis',
+                        'CatBoostClassifier' : 'CatBoost Classifier',
+                        'BaggingClassifier' : 'Bagging Classifier'}
+
     _estimator_ = estimator
 
     estimator = model_dict.get(mn)
@@ -5104,9 +5135,9 @@ def tune_model(estimator = None,
 
         #creating base model for comparison
         if estimator in ['Bagging', 'ada']:
-            base_model = create_model(estimator=_estimator_, verbose = False)
+            base_model = create_model(estimator=_estimator_, verbose = False, system=False)
         else:
-            base_model = create_model(estimator=estimator, verbose = False)
+            base_model = create_model(estimator=estimator, verbose = False, system=False)
         base_model_results = create_model_container[-1][compare_dimension][-2:][0]
         tuned_model_results = create_model_container[-2][compare_dimension][-2:][0]
 
@@ -5125,17 +5156,21 @@ def tune_model(estimator = None,
 
     #mlflow logging
     import mlflow
-
     mlflow.set_experiment(exp_name_log)
-    with mlflow.start_run(run_name=model_name) as run:
+    full_name = model_dict_logging.get(mn)
+    full_name = '[TUNED] ' + str(full_name)
+
+    with mlflow.start_run(run_name=full_name) as run:        
         params = model_grid.cv_results_.get('params')
         metrics = model_grid.cv_results_.get('mean_test_score')
         for i in metrics:
-            mlflow.log_metric('Score', i)
+            mlflow.log_metric('Mean Test Score', i)
 
-        # Log the sklearn model and register as version 1
-        #mlflow.sklearn.log_model(model, full_name)
-
+        params = best_model.get_params()
+        mlflow.log_params(params)
+        mlflow.log_metrics({"Accuracy": avgs_acc[0], "AUC": avgs_auc[0], "Recall": avgs_recall[0], "Precision" : avgs_precision[0],
+                            "F1": avgs_f1[0], "Kappa": avgs_kappa[0], "MCC": avgs_mcc[0]})
+        
     if verbose:
         clear_output()
         if html_param:
@@ -5143,7 +5178,7 @@ def tune_model(estimator = None,
         else:
             print(model_results.data)
         
-    return best_model, model_grid
+    return best_model
 
 def blend_models(estimator_list = 'All', 
                  fold = 10, 
@@ -9328,3 +9363,4 @@ def automl(optimize='Accuracy', use_holdout=False):
 
 def pull():
     return display_container[-1]
+
