@@ -2215,7 +2215,7 @@ def create_model(estimator = None,
     mean_f1=np.mean(score_f1)
     mean_kappa=np.mean(score_kappa)
     mean_mcc=np.mean(score_mcc)
-    mean_training_time=np.mean(score_training_time)
+    mean_training_time=np.sum(score_training_time) #changed it to sum from mean 
     
     std_acc=np.std(score_acc)
     std_auc=np.std(score_auc)
@@ -2277,14 +2277,22 @@ def create_model(estimator = None,
                                 "F1": avgs_f1[0], "Kappa": avgs_kappa[0], "MCC": avgs_mcc[0]})
             mlflow.log_params(params)
 
-            #log other parameter of create_model function
+            # Log other parameter of create_model function (internal to pycaret)
             mlflow.log_param("ensemble", ensemble)
             mlflow.log_param("ensemble_method", method)
             mlflow.log_param("fold", fold)
             mlflow.log_param("round", round)
+            
+            # Log training time in seconds
+            mlflow.log_metric("Training Time", mean_training_time.round(round))
 
-            # Log the sklearn model and register as version 1
-            #mlflow.sklearn.log_model(model, full_name)
+            # Log the CV results as model_results.html artifact
+            model_results.data.to_html('Results.html', col_space=65, justify='left')
+            mlflow.log_artifact('Results.html')
+
+            # Log model and transformation pipeline
+            save_model(model, 'Trained Model')
+            mlflow.log_artifact('Trained Model' + '.pkl')
 
     progress.value += 1
     
