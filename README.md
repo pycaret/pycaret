@@ -1,5 +1,5 @@
 ﻿# PyCaret
-[![Stability](https://img.shields.io/badge/stability-stable-green.svg)](https://img.shields.io/badge/stability-stable-green.svg) [![Documentation Status](https://readthedocs.org/projects/pip/badge/?version=stable)](http://pip.pypa.io/en/stable/?badge=stable) [![PyPI version](https://badge.fury.io/py/pycaret.svg)](https://badge.fury.io/py/pycaret) [![License](https://img.shields.io/pypi/l/ansicolortags.svg)](https://img.shields.io/pypi/l/ansicolortags.svg) [![Git count](http://hits.dwyl.com/pycaret/pycaret/pycaret.svg)](http://hits.dwyl.com/pycaret/pycaret/pycaret)
+[![Build](https://api.travis-ci.com/pycaret/pycaret.svg?branch=dev-1.0.1)](https://api.travis-ci.com/pycaret/pycaret.svg?branch=dev-1.0.1) [![Stability](https://img.shields.io/badge/stability-stable-green.svg)](https://img.shields.io/badge/stability-stable-green.svg) [![Documentation Status](https://readthedocs.org/projects/pip/badge/?version=stable)](http://pip.pypa.io/en/stable/?badge=stable) [![PyPI version](https://badge.fury.io/py/pycaret.svg)](https://badge.fury.io/py/pycaret) [![License](https://img.shields.io/pypi/l/ansicolortags.svg)](https://img.shields.io/pypi/l/ansicolortags.svg) [![Git count](http://hits.dwyl.com/pycaret/pycaret/pycaret.svg)](http://hits.dwyl.com/pycaret/pycaret/pycaret)
 
 ## What is PyCaret?
 PyCaret is an open source `low-code` machine learning library in Python that aims to reduce the hypothesis to insights cycle time in a ML experiment. It enables data scientists to perform end-to-end experiments quickly and efficiently. In comparison with the other open source machine learning libraries, PyCaret is an alternate low-code library that can be used to perform complex machine learning tasks with only few lines of code. PyCaret is essentially a Python wrapper around several machine learning libraries and frameworks such as `scikit-learn`, `XGBoost`, `Microsoft LightGBM`, `spaCy` and many more. 
@@ -32,15 +32,6 @@ PyCaret is an open source library that anybody can use. In our view the ideal ta
 
 ## Dependencies
 Please read requirements.txt for list of requirements. They are automatically installed when pycaret is installed using pip.
-
-## Authors
-- pycaret.anomaly, Moez Ali <moez.ali@queensu.ca>
-- pycaret.classification, Moez Ali <moez.ali@queensu.ca>
-- pycaret.clustering, Moez Ali <moez.ali@queensu.ca>
-- pycaret.datasets, Moez Ali <moez.ali@queensu.ca>
-- pycaret.nlp, Moez Ali <moez.ali@queensu.ca>
-- pycaret.preprocess, Fahad Akbar <M.akbar@queensu.ca>
-- pycaret.regression, Moez Ali <moez.ali@queensu.ca>
 
 If you would like to contribute to PyCaret, please visit https://www.pycaret.org/contribute
 

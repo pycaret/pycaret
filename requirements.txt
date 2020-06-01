@@ -11,6 +11,7 @@ plotly==4.4.1
 pmdarima==1.6.1
 matplotlib
 mlxtend
+mlflow
 numpy
 nltk
 pandas
@@ -18,7 +19,7 @@ pandas-profiling==2.3.0
 pyLDAvis
 pyod
 seaborn
-scikit-learn==0.22
+scikit-learn==0.23
 spacy
 shap==0.32.1
 statsmodels==0.11.1
