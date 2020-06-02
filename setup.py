@@ -1,14 +1,12 @@
 # Copyright (C) 2019-2020 Moez Ali <moez.ali@queensu.ca>
 # License: MIT, moez.ali@queensu.ca
 
-
 from setuptools import setup
 
 def readme():
     with open('README.md') as f:
         README = f.read()
     return README
-
 
 setup(
     name="pycaret",
