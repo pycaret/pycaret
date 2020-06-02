@@ -2563,6 +2563,26 @@ def ensemble_model(estimator,
 
     estimator__ = model_dict.get(mn)
 
+    model_dict_logging = {'ExtraTreesClassifier' : 'Extra Trees Classifier',
+                        'GradientBoostingClassifier' : 'Gradient Boosting Classifier', 
+                        'RandomForestClassifier' : 'Random Forest Classifier',
+                        'LGBMClassifier' : 'Light Gradient Boosting Machine',
+                        'XGBClassifier' : 'Extreme Gradient Boosting',
+                        'AdaBoostClassifier' : 'Ada Boost Classifier', 
+                        'DecisionTreeClassifier' : 'Decision Tree Classifier', 
+                        'RidgeClassifier' : 'Ridge Classifier',
+                        'LogisticRegression' : 'Logistic Regression',
+                        'KNeighborsClassifier' : 'K Neighbors Classifier',
+                        'GaussianNB' : 'Naive Bayes',
+                        'SGDClassifier' : 'SVM - Linear Kernel',
+                        'SVC' : 'SVM - Radial Kernel',
+                        'GaussianProcessClassifier' : 'Gaussian Process Classifier',
+                        'MLPClassifier' : 'MLP Classifier',
+                        'QuadraticDiscriminantAnalysis' : 'Quadratic Discriminant Analysis',
+                        'LinearDiscriminantAnalysis' : 'Linear Discriminant Analysis',
+                        'CatBoostClassifier' : 'CatBoost Classifier',
+                        'BaggingClassifier' : 'Bagging Classifier'}
+
     '''
     MONITOR UPDATE STARTS
     '''
@@ -2778,7 +2798,7 @@ def ensemble_model(estimator,
     mean_f1=np.mean(score_f1)
     mean_kappa=np.mean(score_kappa)
     mean_mcc=np.mean(score_mcc)
-    mean_training_time=np.mean(score_training_time)
+    mean_training_time=np.sum(score_training_time)
     std_acc=np.std(score_acc)
     std_auc=np.std(score_auc)
     std_recall=np.std(score_recall)
@@ -2855,7 +2875,7 @@ def ensemble_model(estimator,
                 update_display(monitor, display_id = 'monitor')
 
         #creating base model for comparison
-        base_model = create_model(estimator=estimator, verbose = False)
+        base_model = create_model(estimator=estimator, verbose = False, system=False)
         base_model_results = create_model_container[-1][compare_dimension][-2:][0]
         ensembled_model_results = create_model_container[-2][compare_dimension][-2:][0]
 
@@ -2873,6 +2893,37 @@ def ensemble_model(estimator,
     tup = (nam, model_results)
     experiment__.append(tup)
     
+    if logging_param:
+        import mlflow
+        mlflow.set_experiment(exp_name_log)
+        full_name = model_dict_logging.get(mn)
+        full_name = '[ENSEMBLE] ' + str(full_name)
+
+        with mlflow.start_run(run_name=full_name) as run:        
+            params = model.get_params()
+            mlflow.log_metrics({"Accuracy": avgs_acc[0], "AUC": avgs_auc[0], "Recall": avgs_recall[0], "Precision" : avgs_precision[0],
+                                "F1": avgs_f1[0], "Kappa": avgs_kappa[0], "MCC": avgs_mcc[0]})
+            mlflow.log_params(params)
+
+            # Log other parameter of create_model function (internal to pycaret)
+            mlflow.log_param("n_estimators", n_estimators)
+            mlflow.log_param("method", method)
+            mlflow.log_param("optimize", optimize)
+            mlflow.log_param("choose_better", choose_better)
+            mlflow.log_param("fold", fold)
+            mlflow.log_param("round", round)
+
+            # Log training time in seconds
+            mlflow.log_metric("Training Time", mean_training_time.round(round))
+
+            # Log model and transformation pipeline
+            save_model(model, 'Trained Model')
+            mlflow.log_artifact('Trained Model' + '.pkl')
+
+            # Log the CV results as model_results.html artifact
+            model_results.data.to_html('Results.html', col_space=65, justify='left')
+            mlflow.log_artifact('Results.html')
+
     if verbose:
         clear_output()
         if html_param:
@@ -4087,13 +4138,51 @@ def compare_models(blacklist = None,
                 update_display(monitor, display_id = 'monitor')
         progress.value += 1
         k = model_dict.get(i)
-        m = create_model(estimator=k, verbose = False)
+        m = create_model(estimator=k, verbose = False, system=False)
         model_store_final.append(m)
 
     if len(model_store_final) == 1:
         model_store_final = model_store_final[0]
 
     clear_output()
+
+    if logging_param:
+
+        import mlflow
+
+        with mlflow.start_run(run_name='Compare Models') as run:        
+            if type(model_store_final) is list:
+                params = model_store_final[0].get_params()
+            else:
+                params = model_store_final.get_params()
+
+            mlflow.log_params(params)
+
+            # Log other parameter of create_model function (internal to pycaret)
+            mlflow.log_param("blacklist", blacklist)
+            mlflow.log_param("whitelist", whitelist)
+            mlflow.log_param("sort", sort)
+            mlflow.log_param("n_select", n_select)
+            mlflow.log_param("turbo", turbo)
+            mlflow.log_param("fold", fold)
+            mlflow.log_param("round", round)
+
+            # Log model and transformation pipeline
+            if type(model_store_final) is list:
+                model_ = model_store_final[0]
+            else:
+                model_ = model_store_final
+
+            save_model(model_, 'Trained Model')
+            mlflow.log_artifact('Trained Model' + '.pkl')
+
+            # Log training time of compare_models
+            tt = compare_models_.data['TT (Sec)'].sum().round(round)
+            mlflow.log_metric("Training Time", tt)
+
+            # Log the CV results as model_results.html artifact
+            compare_models_.data.to_html('Results.html', col_space=65, justify='left')
+            mlflow.log_artifact('Results.html')
 
     if html_param:
         display(compare_models_)
@@ -5066,7 +5155,7 @@ def tune_model(estimator = None,
     mean_f1=np.mean(score_f1)
     mean_kappa=np.mean(score_kappa)
     mean_mcc=np.mean(score_mcc)
-    mean_training_time=np.mean(score_training_time)
+    mean_training_time=np.sum(score_training_time)
     std_acc=np.std(score_acc)
     std_auc=np.std(score_auc)
     std_recall=np.std(score_recall)
@@ -5163,21 +5252,42 @@ def tune_model(estimator = None,
     experiment__.append(tup)
 
     #mlflow logging
-    import mlflow
-    mlflow.set_experiment(exp_name_log)
-    full_name = model_dict_logging.get(mn)
-    full_name = '[TUNED] ' + str(full_name)
+    if logging_param:
+        import mlflow
+        mlflow.set_experiment(exp_name_log)
+        full_name = model_dict_logging.get(mn)
+        full_name = '[TUNED] ' + str(full_name)
 
-    with mlflow.start_run(run_name=full_name) as run:        
-        params = model_grid.cv_results_.get('params')
-        metrics = model_grid.cv_results_.get('mean_test_score')
-        for i in metrics:
-            mlflow.log_metric('Mean Test Score', i)
+        with mlflow.start_run(run_name=full_name) as run:        
+            params = best_model.get_params()
+            mlflow.log_metrics({"Accuracy": avgs_acc[0], "AUC": avgs_auc[0], "Recall": avgs_recall[0], "Precision" : avgs_precision[0],
+                                "F1": avgs_f1[0], "Kappa": avgs_kappa[0], "MCC": avgs_mcc[0]})
+            mlflow.log_params(params)
 
-        params = best_model.get_params()
-        mlflow.log_params(params)
-        mlflow.log_metrics({"Accuracy": avgs_acc[0], "AUC": avgs_auc[0], "Recall": avgs_recall[0], "Precision" : avgs_precision[0],
-                            "F1": avgs_f1[0], "Kappa": avgs_kappa[0], "MCC": avgs_mcc[0]})
+            # Log other parameter of create_model function (internal to pycaret)
+            mlflow.log_param("n_iter", n_iter)
+            mlflow.log_param("optimize", optimize)
+            mlflow.log_param("choose_better", choose_better)
+            mlflow.log_param("fold", fold)
+            mlflow.log_param("round", round)
+
+            # Log training time in seconds
+            mlflow.log_metric("Training Time", mean_training_time.round(round))
+
+            # Log model and transformation pipeline
+            save_model(best_model, 'Trained Model')
+            mlflow.log_artifact('Trained Model' + '.pkl')
+
+            # Log the CV results as model_results.html artifact
+            model_results.data.to_html('Results.html', col_space=65, justify='left')
+            mlflow.log_artifact('Results.html')
+
+            # Log hyperparameter tuning grid
+            d1 = model_grid.cv_results_.get('params')
+            dd = pd.DataFrame.from_dict(d1)
+            dd['Score'] = model_grid.cv_results_.get('mean_test_score')
+            dd.to_html('Iterations.html', col_space=75, justify='left')
+            mlflow.log_artifact('Iterations.html')
         
     if verbose:
         clear_output()
