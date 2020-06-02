@@ -1,21 +1,6 @@
 # Copyright (C) 2019-2020 Moez Ali <moez.ali@queensu.ca>
 # License: MIT, moez.ali@queensu.ca
 
-"""
-  
-PyCaret - An end-to-end open source machine learning library
-
-Module Author:
---------------
-pycaret.anomaly, Moez Ali <moez.ali@queensu.ca>
-pycaret.classification, Moez Ali <moez.ali@queensu.ca>
-pycaret.clustering, Moez Ali <moez.ali@queensu.ca>
-pycaret.datasets, Moez Ali <moez.ali@queensu.ca>
-pycaret.nlp, Moez Ali <moez.ali@queensu.ca>
-pycaret.preprocess, Fahad Akbar <M.akbar@queensu.ca>
-pycaret.regression, Moez Ali <moez.ali@queensu.ca>
-
-"""
 
 from setuptools import setup
 
