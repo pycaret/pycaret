@@ -4495,7 +4495,8 @@ def tune_model(estimator = None,
                         'QuadraticDiscriminantAnalysis' : 'Quadratic Discriminant Analysis',
                         'LinearDiscriminantAnalysis' : 'Linear Discriminant Analysis',
                         'CatBoostClassifier' : 'CatBoost Classifier',
-                        'BaggingClassifier' : 'Bagging Classifier'}
+                        'BaggingClassifier' : 'Bagging Classifier',
+                        'VotingClassifier' : 'Voting Classifier'}
 
     _estimator_ = estimator
 
@@ -5875,7 +5876,7 @@ def blend_models(estimator_list = 'All',
     mean_f1=np.mean(score_f1)
     mean_kappa=np.mean(score_kappa)
     mean_mcc=np.mean(score_mcc)
-    mean_training_time=np.mean(score_training_time)
+    mean_training_time=np.sum(score_training_time)
     std_acc=np.std(score_acc)
     std_auc=np.std(score_auc)
     std_recall=np.std(score_recall)
@@ -5959,7 +5960,7 @@ def blend_models(estimator_list = 'All',
 
         base_models_ = []
         for i in estimator_list:
-            m = create_model(i,verbose=False)
+            m = create_model(i,verbose=False, system=False)
             s = create_model_container[-1][compare_dimension][-2:][0]
             scorer.append(s)
             base_models_.append(m)
@@ -5978,6 +5979,36 @@ def blend_models(estimator_list = 'All',
     nam = str(model_name) + ' Score Grid'
     tup = (nam, model_results)
     experiment__.append(tup)
+
+    if logging_param:
+
+        import mlflow
+
+        with mlflow.start_run(run_name='Voting Classifier') as run:        
+            params = model.get_params()
+            mlflow.log_metrics({"Accuracy": avgs_acc[0], "AUC": avgs_auc[0], "Recall": avgs_recall[0], "Precision" : avgs_precision[0],
+                                "F1": avgs_f1[0], "Kappa": avgs_kappa[0], "MCC": avgs_mcc[0]})
+            mlflow.log_params(params)
+
+            # Log other parameter of create_model function (internal to pycaret)
+            mlflow.log_param("estimator_list", estimator_list)
+            mlflow.log_param("fold", fold)
+            mlflow.log_param("round", round)
+            mlflow.log_param("choose_better", choose_better)
+            mlflow.log_param("optimize", optimize)
+            mlflow.log_param("method", method)
+            mlflow.log_param("turbo", turbo)
+            
+            # Log model and transformation pipeline
+            save_model(model, 'Trained Model')
+            mlflow.log_artifact('Trained Model' + '.pkl')
+
+            # Log training time of compare_models
+            mlflow.log_metric("Training Time", mean_training_time)
+
+            # Log the CV results as model_results.html artifact
+            model_results.data.to_html('Results.html', col_space=65, justify='left')
+            mlflow.log_artifact('Results.html')
 
     if verbose:
         clear_output()
