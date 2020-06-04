@@ -2291,8 +2291,14 @@ def create_model(estimator = None,
             mlflow.log_artifact('Results.html')
 
             # Log model and transformation pipeline
-            save_model(model, 'Trained Model')
+            save_model(model, 'Trained Model', verbose=False)
             mlflow.log_artifact('Trained Model' + '.pkl')
+
+            # Generate hold-out predictions and save as html
+            holdout = predict_model(model, verbose=False)
+            holdout_score = pull()
+            holdout_score.to_html('Holdout.html', col_space=65, justify='left')
+            mlflow.log_artifact('Holdout.html')
 
     progress.value += 1
     
@@ -2325,7 +2331,7 @@ def ensemble_model(estimator,
                    fold = 10,
                    n_estimators = 10,
                    round = 4,  
-                   choose_better = True, #added in pycaret==1.0.1
+                   choose_better = False, #added in pycaret==1.0.1
                    optimize = 'Accuracy', #added in pycaret==1.0.1
                    verbose = True):
     """
@@ -2375,7 +2381,7 @@ def ensemble_model(estimator,
     round: integer, default = 4
     Number of decimal places the metrics in the score grid will be rounded to.
 
-    choose_better: Boolean, default = True
+    choose_better: Boolean, default = False
     When set to set to True, base estimator is returned when the metric doesn't 
     improve by ensemble_model. This gurantees the returned object would perform 
     atleast equivalent to base estimator created using create_model or model 
@@ -2897,15 +2903,20 @@ def ensemble_model(estimator,
         import mlflow
         mlflow.set_experiment(exp_name_log)
         full_name = model_dict_logging.get(mn)
-        full_name = '[ENSEMBLE] ' + str(full_name)
 
         with mlflow.start_run(run_name=full_name) as run:        
             params = model.get_params()
+            try:
+                params.pop('base_estimator')
+            except:
+                pass
+            mlflow.log_params(params)
             mlflow.log_metrics({"Accuracy": avgs_acc[0], "AUC": avgs_auc[0], "Recall": avgs_recall[0], "Precision" : avgs_precision[0],
                                 "F1": avgs_f1[0], "Kappa": avgs_kappa[0], "MCC": avgs_mcc[0]})
-            mlflow.log_params(params)
+            
 
             # Log other parameter of create_model function (internal to pycaret)
+            mlflow.log_param('base_estimator', full_name)
             mlflow.log_param("n_estimators", n_estimators)
             mlflow.log_param("method", method)
             mlflow.log_param("optimize", optimize)
@@ -2913,12 +2924,21 @@ def ensemble_model(estimator,
             mlflow.log_param("fold", fold)
             mlflow.log_param("round", round)
 
+            #set tag of compare_models
+            mlflow.set_tag("Source", "ensemble_model")
+
             # Log training time in seconds
             mlflow.log_metric("Training Time", mean_training_time.round(round))
 
             # Log model and transformation pipeline
-            save_model(model, 'Trained Model')
+            save_model(model, 'Trained Model', verbose=False)
             mlflow.log_artifact('Trained Model' + '.pkl')
+
+            # Generate hold-out predictions and save as html
+            holdout = predict_model(model, verbose=False)
+            holdout_score = pull()
+            holdout_score.to_html('Holdout.html', col_space=65, justify='left')
+            mlflow.log_artifact('Holdout.html')
 
             # Log the CV results as model_results.html artifact
             model_results.data.to_html('Results.html', col_space=65, justify='left')
@@ -4150,13 +4170,19 @@ def compare_models(blacklist = None,
 
         import mlflow
 
-        with mlflow.start_run(run_name='Compare Models') as run:        
+        cmdf = compare_models_.data
+        run_name = cmdf['Model'][0]
+
+        with mlflow.start_run(run_name=run_name) as run:        
             if type(model_store_final) is list:
                 params = model_store_final[0].get_params()
             else:
                 params = model_store_final.get_params()
 
             mlflow.log_params(params)
+
+            #set tag of compare_models
+            mlflow.set_tag("Source", "compare_models")
 
             # Log other parameter of create_model function (internal to pycaret)
             mlflow.log_param("blacklist", blacklist)
@@ -4167,18 +4193,24 @@ def compare_models(blacklist = None,
             mlflow.log_param("fold", fold)
             mlflow.log_param("round", round)
 
+            #Log top model metrics
+            mlflow.log_metric("Accuracy", cmdf['Accuracy'][0])
+            mlflow.log_metric("AUC", cmdf['AUC'][0])
+            mlflow.log_metric("Recall", cmdf['Recall'][0])
+            mlflow.log_metric("Precision", cmdf['Prec.'][0])
+            mlflow.log_metric("F1", cmdf['F1'][0])
+            mlflow.log_metric("Kappa", cmdf['Kappa'][0])
+            mlflow.log_metric("MCC", cmdf['MCC'][0])
+            mlflow.log_metric("Training Time", cmdf['TT (Sec)'][0])
+
             # Log model and transformation pipeline
             if type(model_store_final) is list:
                 model_ = model_store_final[0]
             else:
                 model_ = model_store_final
 
-            save_model(model_, 'Trained Model')
+            save_model(model_, 'Trained Model', verbose=False)
             mlflow.log_artifact('Trained Model' + '.pkl')
-
-            # Log training time of compare_models
-            tt = compare_models_.data['TT (Sec)'].sum().round(round)
-            mlflow.log_metric("Training Time", tt)
 
             # Log the CV results as model_results.html artifact
             compare_models_.data.to_html('Results.html', col_space=65, justify='left')
@@ -4200,7 +4232,7 @@ def tune_model(estimator = None,
                n_iter = 10,
                custom_grid = None, #added in pycaret==1.0.1 
                optimize = 'Accuracy',
-               choose_better = True, #added in pycaret==1.0.1 
+               choose_better = False, #added in pycaret==1.0.1 
                verbose = True):
     
       
@@ -4273,7 +4305,7 @@ def tune_model(estimator = None,
     The default scoring measure is 'Accuracy'. Other measures include 'AUC',
     'Recall', 'Precision', 'F1'. 
 
-    choose_better: Boolean, default = True
+    choose_better: Boolean, default = False
     When set to set to True, base estimator is returned when the metric doesn't improve 
     by tune_model. This gurantees the returned object would perform atleast equivalent 
     to base estimator created using create_model or model returned by compare_models.
@@ -5257,7 +5289,6 @@ def tune_model(estimator = None,
         import mlflow
         mlflow.set_experiment(exp_name_log)
         full_name = model_dict_logging.get(mn)
-        full_name = '[TUNED] ' + str(full_name)
 
         with mlflow.start_run(run_name=full_name) as run:        
             params = best_model.get_params()
@@ -5272,16 +5303,25 @@ def tune_model(estimator = None,
             mlflow.log_param("fold", fold)
             mlflow.log_param("round", round)
 
+            #set tag of compare_models
+            mlflow.set_tag("Source", "tune_model")
+
             # Log training time in seconds
             mlflow.log_metric("Training Time", mean_training_time.round(round))
 
             # Log model and transformation pipeline
-            save_model(best_model, 'Trained Model')
+            save_model(best_model, 'Trained Model', verbose=False)
             mlflow.log_artifact('Trained Model' + '.pkl')
 
             # Log the CV results as model_results.html artifact
             model_results.data.to_html('Results.html', col_space=65, justify='left')
             mlflow.log_artifact('Results.html')
+
+            # Generate hold-out predictions and save as html
+            holdout = predict_model(best_model, verbose=False)
+            holdout_score = pull()
+            holdout_score.to_html('Holdout.html', col_space=65, justify='left')
+            mlflow.log_artifact('Holdout.html')
 
             # Log hyperparameter tuning grid
             d1 = model_grid.cv_results_.get('params')
@@ -5302,7 +5342,7 @@ def tune_model(estimator = None,
 def blend_models(estimator_list = 'All', 
                  fold = 10, 
                  round = 4,
-                 choose_better = True, #added in pycaret==1.0.1 
+                 choose_better = False, #added in pycaret==1.0.1 
                  optimize = 'Accuracy', #added in pycaret==1.0.1 
                  method = 'hard',
                  turbo = True,
@@ -5352,7 +5392,7 @@ def blend_models(estimator_list = 'All',
     round: integer, default = 4
     Number of decimal places the metrics in the score grid will be rounded to.
 
-    choose_better: Boolean, default = True
+    choose_better: Boolean, default = False
     When set to set to True, base estimator is returned when the metric doesn't 
     improve by ensemble_model. This gurantees the returned object would perform 
     atleast equivalent to base estimator created using create_model or model 
@@ -5985,13 +6025,12 @@ def blend_models(estimator_list = 'All',
         import mlflow
 
         with mlflow.start_run(run_name='Voting Classifier') as run:        
-            params = model.get_params()
             mlflow.log_metrics({"Accuracy": avgs_acc[0], "AUC": avgs_auc[0], "Recall": avgs_recall[0], "Precision" : avgs_precision[0],
                                 "F1": avgs_f1[0], "Kappa": avgs_kappa[0], "MCC": avgs_mcc[0]})
-            mlflow.log_params(params)
+            
 
             # Log other parameter of create_model function (internal to pycaret)
-            mlflow.log_param("estimator_list", estimator_list)
+            mlflow.log_param("estimator_list", model_names_final)
             mlflow.log_param("fold", fold)
             mlflow.log_param("round", round)
             mlflow.log_param("choose_better", choose_better)
@@ -6000,8 +6039,17 @@ def blend_models(estimator_list = 'All',
             mlflow.log_param("turbo", turbo)
             
             # Log model and transformation pipeline
-            save_model(model, 'Trained Model')
+            save_model(model, 'Trained Model', verbose=False)
             mlflow.log_artifact('Trained Model' + '.pkl')
+
+            # Generate hold-out predictions and save as html
+            holdout = predict_model(model, verbose=False)
+            holdout_score = pull()
+            holdout_score.to_html('Holdout.html', col_space=65, justify='left')
+            mlflow.log_artifact('Holdout.html')
+
+            #set tag of compare_models
+            mlflow.set_tag("Source", "blend_models")
 
             # Log training time of compare_models
             mlflow.log_metric("Training Time", mean_training_time)
@@ -6026,7 +6074,7 @@ def stack_models(estimator_list,
                  method = 'soft', 
                  restack = True, 
                  plot = False,
-                 choose_better = True, #added in pycaret==1.0.1
+                 choose_better = False, #added in pycaret==1.0.1
                  optimize = 'Accuracy', #added in pycaret==1.0.1
                  finalize = False,
                  verbose = True):
@@ -6089,7 +6137,7 @@ def stack_models(estimator_list,
     When plot is set to True, it will return the correlation plot of prediction
     from all base models provided in estimator_list.
 
-    choose_better: Boolean, default = True
+    choose_better: Boolean, default = False
     When set to set to True, base estimator is returned when the metric doesn't 
     improve by ensemble_model. This gurantees the returned object would perform 
     atleast equivalent to base estimator created using create_model or model 
@@ -6552,7 +6600,7 @@ def stack_models(estimator_list,
     mean_f1=np.mean(score_f1)
     mean_kappa=np.mean(score_kappa)
     mean_mcc=np.mean(score_mcc)
-    mean_training_time=np.mean(score_training_time)
+    mean_training_time=np.sum(score_training_time)
     std_acc=np.std(score_acc)
     std_auc=np.std(score_auc)
     std_recall=np.std(score_recall)
@@ -6626,13 +6674,13 @@ def stack_models(estimator_list,
 
         base_models_ = []
         for i in estimator_list:
-            m = create_model(i,verbose=False)
+            m = create_model(i,verbose=False, system=False)
             s = create_model_container[-1][compare_dimension][-2:][0]
             scorer.append(s)
             base_models_.append(m)
 
         meta_model_clone = clone(meta_model)
-        mm = create_model(meta_model_clone, verbose=False)
+        mm = create_model(meta_model_clone, verbose=False, system=False)
         base_models_.append(mm)
         s = create_model_container[-1][compare_dimension][-2:][0]
         scorer.append(s)
@@ -6660,6 +6708,41 @@ def stack_models(estimator_list,
                          linewidths=1)
         ax.set_ylim(sorted(ax.get_xlim(), reverse=True))
 
+    if logging_param:
+
+        import mlflow
+
+        with mlflow.start_run(run_name='Stacking Classifier') as run:        
+            params = meta_model.get_params()
+            mlflow.log_metrics({"Accuracy": avgs_acc[0], "AUC": avgs_auc[0], "Recall": avgs_recall[0], "Precision" : avgs_precision[0],
+                                "F1": avgs_f1[0], "Kappa": avgs_kappa[0], "MCC": avgs_mcc[0]})
+            mlflow.log_params(params)
+
+            # Log other parameter of create_model function (internal to pycaret)
+            mlflow.log_param("estimator_list", estimator_list)
+            mlflow.log_param("fold", fold)
+            mlflow.log_param("round", round)
+            mlflow.log_param("method", method)
+            mlflow.log_param("restack", restack)
+            mlflow.log_param("plot", plot)
+            mlflow.log_param("choose_better", choose_better)
+            mlflow.log_param("optimize", optimize)
+            mlflow.log_param("finalize", finalize)
+            
+            #set tag of compare_models
+            mlflow.set_tag("Source", "stack_models")
+
+            # Log model and transformation pipeline
+            save_model(models_, 'Trained Model', verbose=False)
+            mlflow.log_artifact('Trained Model' + '.pkl')
+
+            # Log training time of compare_models
+            mlflow.log_metric("Training Time", mean_training_time)
+
+            # Log the CV results as model_results.html artifact
+            model_results.data.to_html('Results.html', col_space=65, justify='left')
+            mlflow.log_artifact('Results.html')
+
     if verbose:
         clear_output()
         if html_param:
@@ -6675,7 +6758,7 @@ def create_stacknet(estimator_list,
                     round = 4,
                     method = 'soft',
                     restack = True,
-                    choose_better = True, #added in pycaret==1.0.1
+                    choose_better = False, #added in pycaret==1.0.1
                     optimize = 'Accuracy', #added in pycaret==1.0.1
                     finalize = False,
                     verbose = True):
@@ -6733,7 +6816,7 @@ def create_stacknet(estimator_list,
     the predicted label or probabilities of last layer is passed to meta model 
     when making final predictions.
     
-    choose_better: Boolean, default = True
+    choose_better: Boolean, default = False
     When set to set to True, base estimator is returned when the metric doesn't 
     improve by ensemble_model. This gurantees the returned object would perform 
     atleast equivalent to base estimator created using create_model or model 
@@ -7260,7 +7343,7 @@ def create_stacknet(estimator_list,
     mean_f1=np.mean(score_f1)
     mean_kappa=np.mean(score_kappa)
     mean_mcc=np.mean(score_mcc)
-    mean_training_time=np.mean(score_training_time)
+    mean_training_time=np.sum(score_training_time)
     std_acc=np.std(score_acc)
     std_auc=np.std(score_auc)
     std_recall=np.std(score_recall)
@@ -7345,13 +7428,13 @@ def create_stacknet(estimator_list,
         base_models_ = []
         for i in estimator_list:
             for k in i:
-                m = create_model(k,verbose=False)
+                m = create_model(k,verbose=False, system=False)
                 s = create_model_container[-1][compare_dimension][-2:][0]
                 scorer.append(s)
                 base_models_.append(m)
 
         meta_model_clone = clone(meta_model)
-        mm = create_model(meta_model_clone, verbose=False)
+        mm = create_model(meta_model_clone, verbose=False, system=False)
         base_models_.append(mm)
         s = create_model_container[-1][compare_dimension][-2:][0]
         scorer.append(s)
@@ -7372,6 +7455,40 @@ def create_stacknet(estimator_list,
     tup = (nam, model_results)
     experiment__.append(tup)
     
+    if logging_param:
+
+        import mlflow
+
+        with mlflow.start_run(run_name='Stacking Classifier (Multi-layer)') as run:        
+            params = meta_model.get_params()
+            mlflow.log_metrics({"Accuracy": avgs_acc[0], "AUC": avgs_auc[0], "Recall": avgs_recall[0], "Precision" : avgs_precision[0],
+                                "F1": avgs_f1[0], "Kappa": avgs_kappa[0], "MCC": avgs_mcc[0]})
+            mlflow.log_params(params)
+
+            # Log other parameter of create_model function (internal to pycaret)
+            mlflow.log_param("estimator_list", estimator_list)
+            mlflow.log_param("fold", fold)
+            mlflow.log_param("round", round)
+            mlflow.log_param("method", method)
+            mlflow.log_param("restack", restack)
+            mlflow.log_param("choose_better", choose_better)
+            mlflow.log_param("optimize", optimize)
+            mlflow.log_param("finalize", finalize)
+            
+            #set tag of compare_models
+            mlflow.set_tag("Source", "create_stacknet")
+
+            # Log model and transformation pipeline
+            save_model(models_, 'Trained Model', verbose=False)
+            mlflow.log_artifact('Trained Model' + '.pkl')
+
+            # Log training time of compare_models
+            mlflow.log_metric("Training Time", mean_training_time)
+
+            # Log the CV results as model_results.html artifact
+            model_results.data.to_html('Results.html', col_space=65, justify='left')
+            mlflow.log_artifact('Results.html')
+
     if verbose:
         clear_output()
         if html_param:
