@@ -1644,6 +1644,9 @@ def setup(data,
             params = kdict.get('Value')
             mlflow.log_params(params)
 
+            #set tag of compare_models
+            mlflow.set_tag("Source", "setup")
+
             # Log the transformation pipeline
             save_model(prep_pipe, 'Transformation Pipeline', verbose=False)
             mlflow.log_artifact('Transformation Pipeline' + '.pkl')
@@ -1843,10 +1846,6 @@ def create_model(estimator = None,
     import ipywidgets as ipw
     from IPython.display import display, HTML, clear_output, update_display
     import datetime, time
-
-    #import mlflow
-    import mlflow
-    import mlflow.sklearn
 
     #progress bar
     progress = ipw.IntProgress(value=0, min=0, max=fold+4, step=1 , description='Processing: ')
@@ -2270,19 +2269,36 @@ def create_model(estimator = None,
     
     #mlflow logging
     if logging_param and system:
+
+        #import mlflow
+        import mlflow
+        import mlflow.sklearn
+
         mlflow.set_experiment(exp_name_log)
+
         with mlflow.start_run(run_name=full_name) as run:
+
+            # Log model parameters
             params = model.get_params()
+            mlflow.log_params(params)
+            
+            # Log metrics
             mlflow.log_metrics({"Accuracy": avgs_acc[0], "AUC": avgs_auc[0], "Recall": avgs_recall[0], "Precision" : avgs_precision[0],
                                 "F1": avgs_f1[0], "Kappa": avgs_kappa[0], "MCC": avgs_mcc[0]})
-            mlflow.log_params(params)
-
-            # Log other parameter of create_model function (internal to pycaret)
-            mlflow.log_param("ensemble", ensemble)
-            mlflow.log_param("ensemble_method", method)
-            mlflow.log_param("fold", fold)
-            mlflow.log_param("round", round)
             
+
+            # Log internal parameters
+            mlflow.log_param("create_model_estimator", estimator)
+            mlflow.log_param("create_model_ensemble", ensemble)
+            mlflow.log_param("create_model_method", method)
+            mlflow.log_param("create_model_fold", fold)
+            mlflow.log_param("create_model_round", round)
+            mlflow.log_param("create_model_verbose", verbose)
+            mlflow.log_param("create_model_system", system)
+            
+            #set tag of compare_models
+            mlflow.set_tag("Source", "create_model")
+
             # Log training time in seconds
             mlflow.log_metric("Training Time", mean_training_time.round(round))
 
@@ -2290,15 +2306,15 @@ def create_model(estimator = None,
             model_results.data.to_html('Results.html', col_space=65, justify='left')
             mlflow.log_artifact('Results.html')
 
-            # Log model and transformation pipeline
-            save_model(model, 'Trained Model', verbose=False)
-            mlflow.log_artifact('Trained Model' + '.pkl')
-
             # Generate hold-out predictions and save as html
             holdout = predict_model(model, verbose=False)
             holdout_score = pull()
             holdout_score.to_html('Holdout.html', col_space=65, justify='left')
             mlflow.log_artifact('Holdout.html')
+
+            # Log model and transformation pipeline
+            save_model(model, 'Trained Model', verbose=False)
+            mlflow.log_artifact('Trained Model' + '.pkl')
 
     progress.value += 1
     
@@ -2915,14 +2931,15 @@ def ensemble_model(estimator,
                                 "F1": avgs_f1[0], "Kappa": avgs_kappa[0], "MCC": avgs_mcc[0]})
             
 
-            # Log other parameter of create_model function (internal to pycaret)
-            mlflow.log_param('base_estimator', full_name)
-            mlflow.log_param("n_estimators", n_estimators)
-            mlflow.log_param("method", method)
-            mlflow.log_param("optimize", optimize)
-            mlflow.log_param("choose_better", choose_better)
-            mlflow.log_param("fold", fold)
-            mlflow.log_param("round", round)
+            # Log internal parameters
+            mlflow.log_param('ensemble_model_estimator', full_name)
+            mlflow.log_param('ensemble_model_method', method)
+            mlflow.log_param('ensemble_model_fold', fold)
+            mlflow.log_param('ensemble_model_n_estimators', n_estimators)
+            mlflow.log_param('ensemble_model_round', round)
+            mlflow.log_param('ensemble_model_choose_better', choose_better)
+            mlflow.log_param('ensemble_model_optimize', optimize)
+            mlflow.log_param('ensemble_model_verbose', verbose)
 
             #set tag of compare_models
             mlflow.set_tag("Source", "ensemble_model")
@@ -4184,15 +4201,16 @@ def compare_models(blacklist = None,
             #set tag of compare_models
             mlflow.set_tag("Source", "compare_models")
 
-            # Log other parameter of create_model function (internal to pycaret)
-            mlflow.log_param("blacklist", blacklist)
-            mlflow.log_param("whitelist", whitelist)
-            mlflow.log_param("sort", sort)
-            mlflow.log_param("n_select", n_select)
-            mlflow.log_param("turbo", turbo)
-            mlflow.log_param("fold", fold)
-            mlflow.log_param("round", round)
-
+            # Log internal parameters
+            mlflow.log_param("compare_models_blacklist", blacklist)
+            mlflow.log_param("compare_models_whitelist", whitelist)
+            mlflow.log_param("compare_models_fold", fold)
+            mlflow.log_param("compare_models_round", round)
+            mlflow.log_param("compare_models_sort", sort)
+            mlflow.log_param("compare_models_n_select", n_select)
+            mlflow.log_param("compare_models_turbo", turbo)
+            mlflow.log_param("compare_models_verbose", verbose)
+            
             #Log top model metrics
             mlflow.log_metric("Accuracy", cmdf['Accuracy'][0])
             mlflow.log_metric("AUC", cmdf['AUC'][0])
@@ -4352,7 +4370,11 @@ def tune_model(estimator = None,
     #checking estimator if string
     if type(estimator) is str:
         sys.exit('(Type Error): The behavior of tune_model in version 1.0.1 is changed. Please pass trained model object.')
-        
+    
+    #restrict VotingClassifier
+    if hasattr(estimator,'voting'):
+         sys.exit('(Type Error): VotingClassifier not allowed under tune_model().')
+
     #checking fold parameter
     if type(fold) is not int:
         sys.exit('(Type Error): Fold parameter only accepts integer value.')
@@ -5286,7 +5308,9 @@ def tune_model(estimator = None,
 
     #mlflow logging
     if logging_param:
+
         import mlflow
+        
         mlflow.set_experiment(exp_name_log)
         full_name = model_dict_logging.get(mn)
 
@@ -5296,12 +5320,13 @@ def tune_model(estimator = None,
                                 "F1": avgs_f1[0], "Kappa": avgs_kappa[0], "MCC": avgs_mcc[0]})
             mlflow.log_params(params)
 
-            # Log other parameter of create_model function (internal to pycaret)
-            mlflow.log_param("n_iter", n_iter)
-            mlflow.log_param("optimize", optimize)
-            mlflow.log_param("choose_better", choose_better)
-            mlflow.log_param("fold", fold)
-            mlflow.log_param("round", round)
+            # Log internal parameters
+            mlflow.log_param("tune_model_fold", fold)
+            mlflow.log_param("tune_model_round", round)
+            mlflow.log_param("tune_model_n_iter", n_iter)
+            mlflow.log_param("tune_model_optimize", optimize)
+            mlflow.log_param("tune_model_choose_better", choose_better)
+            mlflow.log_param("tune_model_verbose", verbose)
 
             #set tag of compare_models
             mlflow.set_tag("Source", "tune_model")
@@ -6029,14 +6054,15 @@ def blend_models(estimator_list = 'All',
                                 "F1": avgs_f1[0], "Kappa": avgs_kappa[0], "MCC": avgs_mcc[0]})
             
 
-            # Log other parameter of create_model function (internal to pycaret)
-            mlflow.log_param("estimator_list", model_names_final)
-            mlflow.log_param("fold", fold)
-            mlflow.log_param("round", round)
-            mlflow.log_param("choose_better", choose_better)
-            mlflow.log_param("optimize", optimize)
-            mlflow.log_param("method", method)
-            mlflow.log_param("turbo", turbo)
+            # Log internal parameters
+            mlflow.log_param("blend_models_estimator_list", model_names_final)
+            mlflow.log_param("blend_models_fold", fold)
+            mlflow.log_param("blend_models_round", round)
+            mlflow.log_param("blend_models_choose_better", choose_better)
+            mlflow.log_param("blend_models_optimize", optimize)
+            mlflow.log_param("blend_models_method", method)
+            mlflow.log_param("blend_models_turbo", turbo)
+            mlflow.log_param("blend_models_verbose", verbose)
             
             # Log model and transformation pipeline
             save_model(model, 'Trained Model', verbose=False)
@@ -6718,16 +6744,17 @@ def stack_models(estimator_list,
                                 "F1": avgs_f1[0], "Kappa": avgs_kappa[0], "MCC": avgs_mcc[0]})
             mlflow.log_params(params)
 
-            # Log other parameter of create_model function (internal to pycaret)
-            mlflow.log_param("estimator_list", estimator_list)
-            mlflow.log_param("fold", fold)
-            mlflow.log_param("round", round)
-            mlflow.log_param("method", method)
-            mlflow.log_param("restack", restack)
-            mlflow.log_param("plot", plot)
-            mlflow.log_param("choose_better", choose_better)
-            mlflow.log_param("optimize", optimize)
-            mlflow.log_param("finalize", finalize)
+            # Log internal parameters
+            mlflow.log_param("stack_models_estimator_list", estimator_list)
+            mlflow.log_param("stack_models_fold", fold)
+            mlflow.log_param("stack_models_round", round)
+            mlflow.log_param("stack_models_method", method)
+            mlflow.log_param("stack_models_restack", restack)
+            mlflow.log_param("stack_models_plot", plot)
+            mlflow.log_param("stack_models_choose_better", choose_better)
+            mlflow.log_param("stack_models_optimize", optimize)
+            mlflow.log_param("stack_models_finalize", finalize)
+            mlflow.log_param("stack_models_verbose", verbose)
             
             #set tag of compare_models
             mlflow.set_tag("Source", "stack_models")
@@ -7466,14 +7493,15 @@ def create_stacknet(estimator_list,
             mlflow.log_params(params)
 
             # Log other parameter of create_model function (internal to pycaret)
-            mlflow.log_param("estimator_list", estimator_list)
-            mlflow.log_param("fold", fold)
-            mlflow.log_param("round", round)
-            mlflow.log_param("method", method)
-            mlflow.log_param("restack", restack)
-            mlflow.log_param("choose_better", choose_better)
-            mlflow.log_param("optimize", optimize)
-            mlflow.log_param("finalize", finalize)
+            mlflow.log_param("create_stacknet_estimator_list", estimator_list)
+            mlflow.log_param("create_stacknet_fold", fold)
+            mlflow.log_param("create_stacknet_round", round)
+            mlflow.log_param("create_stacknet_method", method)
+            mlflow.log_param("create_stacknet_restack", restack)
+            mlflow.log_param("create_stacknet_choose_better", choose_better)
+            mlflow.log_param("create_stacknet_optimize", optimize)
+            mlflow.log_param("create_stacknet_finalize", finalize)
+            mlflow.log_param("create_stacknet_verbose", verbose)
             
             #set tag of compare_models
             mlflow.set_tag("Source", "create_stacknet")
@@ -7861,6 +7889,34 @@ def calibrate_model(estimator,
     
     progress.value += 1
     
+    def get_model_name(e):
+        return str(e).split("(")[0]
+
+    mn = get_model_name(estimator)   
+
+    model_dict_logging = {'ExtraTreesClassifier' : 'Extra Trees Classifier',
+                        'GradientBoostingClassifier' : 'Gradient Boosting Classifier', 
+                        'RandomForestClassifier' : 'Random Forest Classifier',
+                        'LGBMClassifier' : 'Light Gradient Boosting Machine',
+                        'XGBClassifier' : 'Extreme Gradient Boosting',
+                        'AdaBoostClassifier' : 'Ada Boost Classifier', 
+                        'DecisionTreeClassifier' : 'Decision Tree Classifier', 
+                        'RidgeClassifier' : 'Ridge Classifier',
+                        'LogisticRegression' : 'Logistic Regression',
+                        'KNeighborsClassifier' : 'K Neighbors Classifier',
+                        'GaussianNB' : 'Naive Bayes',
+                        'SGDClassifier' : 'SVM - Linear Kernel',
+                        'SVC' : 'SVM - Radial Kernel',
+                        'GaussianProcessClassifier' : 'Gaussian Process Classifier',
+                        'MLPClassifier' : 'MLP Classifier',
+                        'QuadraticDiscriminantAnalysis' : 'Quadratic Discriminant Analysis',
+                        'LinearDiscriminantAnalysis' : 'Linear Discriminant Analysis',
+                        'CatBoostClassifier' : 'CatBoost Classifier',
+                        'BaggingClassifier' : 'Bagging Classifier',
+                        'VotingClassifier' : 'Voting Classifier'}
+
+    base_estimator_full_name = model_dict_logging.get(mn)
+
     #cross validation setup starts here
     kf = StratifiedKFold(fold, random_state=seed, shuffle=folds_shuffle_param)
 
@@ -8065,7 +8121,7 @@ def calibrate_model(estimator,
     mean_f1=np.mean(score_f1)
     mean_kappa=np.mean(score_kappa)
     mean_mcc=np.mean(score_mcc)
-    mean_training_time=np.mean(score_training_time)
+    mean_training_time=np.sum(score_training_time)
     std_acc=np.std(score_acc)
     std_auc=np.std(score_auc)
     std_recall=np.std(score_recall)
@@ -8123,7 +8179,58 @@ def calibrate_model(estimator,
     tup = (nam, model_results)
     experiment__.append(tup)
     
-    
+    #mlflow logging
+    if logging_param:
+
+        #import mlflow
+        import mlflow
+        import mlflow.sklearn
+
+        mlflow.set_experiment(exp_name_log)
+
+        with mlflow.start_run(run_name=base_estimator_full_name) as run:
+
+            # Log model parameters
+            params = model.get_params()
+            try:
+                params.pop('base_estimator')
+            except:
+                pass
+            mlflow.log_params(params)
+            mlflow.log_param('base_estimator', full_name)
+            
+            # Log metrics
+            mlflow.log_metrics({"Accuracy": avgs_acc[0], "AUC": avgs_auc[0], "Recall": avgs_recall[0], "Precision" : avgs_precision[0],
+                                "F1": avgs_f1[0], "Kappa": avgs_kappa[0], "MCC": avgs_mcc[0]})
+            
+
+            # Log internal parameters
+            mlflow.log_param("calibrate_model_estimator", estimator)
+            mlflow.log_param("calibrate_model_method", method)
+            mlflow.log_param("calibrate_model_fold", fold)
+            mlflow.log_param("calibrate_model_round", round)
+            mlflow.log_param("calibrate_model_verbose", verbose)
+            
+            #set tag of compare_models
+            mlflow.set_tag("Source", "calibrate_model")
+
+            # Log training time in seconds
+            mlflow.log_metric("Training Time", mean_training_time.round(round))
+
+            # Log the CV results as model_results.html artifact
+            model_results.data.to_html('Results.html', col_space=65, justify='left')
+            mlflow.log_artifact('Results.html')
+
+            # Generate hold-out predictions and save as html
+            holdout = predict_model(model, verbose=False)
+            holdout_score = pull()
+            holdout_score.to_html('Holdout.html', col_space=65, justify='left')
+            mlflow.log_artifact('Holdout.html')
+
+            # Log model and transformation pipeline
+            save_model(model, 'Trained Model', verbose=False)
+            mlflow.log_artifact('Trained Model' + '.pkl')
+
     if verbose:
         clear_output()
         if html_param:
