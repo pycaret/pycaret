@@ -1,22 +1,24 @@
+from typing import Optional
+
+
 def setup(data, 
           target, 
-          train_size=0.7,
-          numeric_features = None,
-          numeric_imputation = 'mean',
-          date_features = None,
-          ignore_features = None,
-          normalize = False,
-          normalize_method = 'zscore',
-          transformation = False,
-          transformation_method = 'yeo-johnson',
-          bin_numeric_features = None, #new
-          remove_outliers = False, #new
-          outliers_threshold = 0.05, #new
-          transform_target = False, #new
-          transform_target_method = 'box-cox', #new
-          session_id = None,
-          silent = False,
-          profile = False):
+          train_size:float=0.7,
+          numeric_features:Optional[list]=None,
+          numeric_imputation='mean',
+          date_features:Optional[list]=None,
+          ignore_features:Optional[list]=None,
+          normalize:bool=False,
+          normalize_method:str='zscore',
+          transformation:bool=False,
+          transformation_method:str='yeo-johnson',
+          remove_outliers:bool=False, #new
+          outliers_threshold:float=0.05, #new
+          transform_target:bool=False, #new
+          transform_target_method:str='box-cox', #new
+          session_id:Optional[int]=None,
+          silent:bool=False,
+          profile:bool=False):
     
     """
         
@@ -40,7 +42,7 @@ def setup(data,
     Size of the training set. By default, 70% of the data will be used for training 
     and validation. The remaining data will be used for test / hold-out set.
     
-    * numeric_features: string, default = None
+    * numeric_features: list, default = None
     If the inferred data types are not correct, numeric_features can be used to
     overwrite the inferred type. If when running setup the type of 'column1' is 
     inferred as a categorical instead of numeric, then this parameter can be used 
@@ -51,7 +53,7 @@ def setup(data,
     mean value of the feature. The other available option is 'median' which imputes 
     the value using the median value in the training dataset. 
     
-    * date_features: string, default = None
+    * date_features: list, default = None
     If the data has a DateTime column that is not automatically detected when running
     setup, this parameter can be used by passing date_features = 'date_column_name'. 
     It can work with multiple date columns. Date columns are not used in modeling. 
@@ -59,7 +61,7 @@ def setup(data,
     dataset. If the date column includes a time stamp, features related to time will 
     also be extracted.
     
-    * ignore_features: string, default = None
+    * ignore_features: list, default = None
     If any feature should be ignored for modeling, it can be passed to the param
     ignore_features. The ID and DateTime columns when inferred, are automatically 
     set to ignore for modeling. 
@@ -531,11 +533,10 @@ def setup(data,
     
 
 
-def create_model(estimator=None, 
+def create_model(estimator:str='Auto_arima', 
                  splits:int=5,
                  round:int=4,
                  verbose:bool=True):
-    
      
     """  
      
@@ -552,7 +553,7 @@ def create_model(estimator=None,
         from pycaret.datasets import get_data
         from pycaret.forecast import *
         
-        gold = get_data('gold')
+        data = get_data('gold')
         s = setup(data, target='Platinum_T-22')
         
         model = create_model('auto_arima')
@@ -567,7 +568,6 @@ def create_model(estimator=None,
     ---------                     ------------------     -----------------------
     Simple Exponential Smoothing  'sem'                  tsa.api.SimpleExpSmoothing
     Holt                          'holt'                 tsa.api.Holt
-    Holt-Winters                  'holt-winters'         tsa.api.ExponentialSmoothing
     Auto_Arima                    'auto_arima'           pmdarima.auto_arima
     
     splits: integer, default = 5
@@ -601,7 +601,7 @@ def create_model(estimator=None,
     import sys
     
     #checking error for estimator (string)
-    available_estimators = ['sem','holt','holt-winters','auto_arima']
+    available_estimators = ['sem','holt','auto_arima']
     
     if estimator not in available_estimators:
         sys.exit('(Value Error): Estimator Not Available. Please see docstring for list of available estimators.')
@@ -609,7 +609,7 @@ def create_model(estimator=None,
 
     #checking fold parameter
     if type(splits) is not int:
-        sys.exit('(Type Error): Fold parameter only accepts integer value.')
+        sys.exit('(Type Error): Splits parameter only accepts integer value.')
     
     #checking round parameter
     if type(round) is not int:
@@ -655,12 +655,9 @@ def create_model(estimator=None,
     warnings.filterwarnings('ignore') 
 
     #Storing X_train and y_train in data_X and data_y parameter
-    data_X = X_train.copy()
     data_y = y_train.copy()
 
-    
     #reset index
-    data_X.reset_index(drop=True, inplace=True)
     data_y.reset_index(drop=True, inplace=True)
 
 
@@ -674,18 +671,12 @@ def create_model(estimator=None,
     #cross validation setup starts here
     tscv = TimeSeriesSplit(n_splits=splits)
 
-    score_mae = np.empty((0,0))
-    score_mse = np.empty((0,0))
-    score_rmse = np.empty((0,0))
-    score_mape = np.empty((0,0))
-    score_aic = np.empty((0,0))
-    score_bic = np.empty((0,0))
-    avgs_mae =np.empty((0,0))
-    avgs_mse =np.empty((0,0))
-    avgs_rmse =np.empty((0,0))
-    avgs_mape =np.empty((0,0)) 
-    avgs_aic =np.empty((0,0))
-    avgs_bic =np.empty((0,0))
+    score_mae = score_mse = np.empty((0,0))
+    score_rmse = score_mape = np.empty((0,0))
+    score_aic = score_bic = np.empty((0,0))
+    avgs_mae = avgs_mse = np.empty((0,0))
+    avgs_rmse = avgs_mape = np.empty((0,0))
+    avgs_aic = avgs_bic = np.empty((0,0))
 
 
     def calculate_mape(actual, prediction):
@@ -717,12 +708,6 @@ def create_model(estimator=None,
         from statsmodels.tsa.api import Holt
         model = Holt(endog=dummy_y) # Dummy initialization
         full_name = 'Holt'
-    
-    elif estimator == 'holt-winters':
-
-        from statsmodels.tsa.api import ExponentialSmoothing
-        model = ExponentialSmoothing(endog=dummy_y) # Dummy initialization
-        full_name = 'ExponentialSmoothing'
 
     elif estimator == 'auto_arima':
 
@@ -915,7 +900,184 @@ def create_model(estimator=None,
     if verbose:
         clear_output()
         display(model_results)
-        return model
+        return (model, model_results)
     else:
         clear_output()
-        return model
+        return (model, model_results)
+
+
+
+
+def auto_select(splits:int=5,
+                round:int=4,
+                metric:str='rmse',
+                verbose:bool=True):
+
+    """  
+     
+    Description:
+    ------------
+    This function chooses the best model based on the lower AIC and metric
+
+    Example
+        -------
+        from pycaret.datasets import get_data
+        from pycaret.forecast import *
+        
+        data = get_data('gold')
+        s = setup(data, target='Platinum_T-22')
+        
+        model = auto_select(splits=10, metric='mae')
+        This will output the best model based on AIC and the metric choosen
+    
+
+    Parameters
+    ----------
+    * splits: integer, default = 5
+    Number of splits to be used in TimeSeriesSplit. Must be at least 2. 
+    * round: integer, default = 4
+    Number of decimal places the metrics in the score grid will be rounded to. 
+    * metric: string, default = 'rmse'
+    Select the model based which has the lower value of this metric. 
+    * verbose: Boolean, default = True
+    Score grid is not printed when verbose is set to False.
+    Returns:
+    
+  
+    """
+
+    '''
+
+    ERROR HANDLING STARTS HERE
+    
+    '''
+    
+    #exception checking   
+    import sys
+    
+    #checking fold parameter
+    if not isinstance(splits, int):
+        sys.exit('(Type Error): Splits parameter only accepts integer value.')
+    
+    #checking round parameter
+    if not isinstance(round, int):
+        sys.exit('(Type Error): Round parameter only accepts integer value.')
+
+    #checking metric parameter
+    if not isinstance(metric, str):
+        sys.exit('(Type Error): Metric parameter only accepts string value.')
+ 
+    #checking verbose parameter
+    if not isinstance(verbose, bool):
+        sys.exit('(Type Error): Verbose parameter can only take argument as True or False.') 
+
+    '''
+    
+    ERROR HANDLING ENDS HERE
+    
+    '''
+
+
+    
+    #pre-load libraries
+    import pandas as pd
+    import ipywidgets as ipw
+    from IPython.display import display, HTML, clear_output, update_display
+    import datetime, time
+    
+    #progress bar
+    progress = ipw.IntProgress(value=0, min=0, max=splits+4, step=1 , description='Processing: ')
+    master_display = pd.DataFrame(columns=['MAE','MSE','RMSE','MAPE','AIC','BIC'])
+    display(progress)
+    
+    #display monitor
+    timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
+    monitor = pd.DataFrame( [
+                             ['Initiated' , '. . . . . . . . . . . . . . . . . .', timestampStr ], 
+                             ['Status' , '. . . . . . . . . . . . . . . . . .' , 'Loading Dependencies' ],
+                             ['ETC' , '. . . . . . . . . . . . . . . . . .',  'Calculating ETC'] 
+                            ],
+                             columns=['', ' ', '   ']).set_index('')
+    
+    display(monitor, display_id = 'monitor')
+    
+    if verbose:
+        display_ = display(master_display, display_id=True)
+        display_id = display_.display_id
+    
+    #ignore warnings
+    import warnings
+    warnings.filterwarnings('ignore') 
+
+    progress.value += 1
+  
+    '''
+    MONITOR UPDATE STARTS
+    '''
+    
+    monitor.iloc[1,1:] = 'Selecting Model'
+    update_display(monitor, display_id = 'monitor')
+    
+    '''
+    MONITOR UPDATE ENDS
+    '''
+
+
+    '''
+    MODEL SELECTION STARTS HERE
+    '''
+
+    available_estimators = ['sem','holt','auto_arima']
+    metric_results = {}
+    results = {}
+
+    for estimator in available_estimators:
+        model, model_results = create_model(
+                                        estimator=estimator,
+                                        splits=splits,
+                                        round=round,
+                                        verbose=False
+                                        )
+
+        metric_results[estimator] = model_results.loc['Mean', metric.upper()]
+        results[estimator] = (model, model_results)
+
+    # Select the model with the lowest value of metric
+    best_model = min(metric_results, key=metric_results.get)
+
+    '''
+        MODEL SELECTION ENDS HERE
+    '''
+
+
+    '''
+    MONITOR UPDATE STARTS
+    '''
+    
+    monitor.iloc[1,1:] = 'Calling Best Model'
+    update_display(monitor, display_id = 'monitor')
+    
+    '''
+    MONITOR UPDATE ENDS
+    '''
+
+    
+    results = results[best_model]
+    full_name = best_model
+    model, model_results = results[0], results[1]
+
+
+    #storing into experiment
+    tup = (full_name,model)
+    experiment__.append(tup)
+    nam = str(full_name) + ' Score Grid'
+    tup = (nam, model_results)
+    experiment__.append(tup)
+    
+    if verbose:
+        clear_output()
+        display(model_results)
+        return (model, model_results)
+    else:
+        clear_output()
+        return (model, model_results)
