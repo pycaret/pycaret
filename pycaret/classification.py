@@ -378,9 +378,13 @@ def setup(data,
     logging: bool, default = True
     When set to True, all metrics and parameters are logged on MLFlow server.
 
+    log_plots: bool, default = False
+    When set to True, specific plots are logged in MLflow as a png file. By default,
+    it is set to False. 
+
     log_profile: bool, default = False
     When set to True, data profile is also logged on MLflow as a html file. By default,
-    its set to False. 
+    it is set to False. 
 
     silent: bool, default = False
     When set to True, confirmation of data types is not required. All preprocessing will 
@@ -701,6 +705,7 @@ def setup(data,
     import mlflow
     import mlflow.sklearn
     import secrets
+    import os
     
     #pandas option
     pd.set_option('display.max_columns', 500)
@@ -1633,6 +1638,7 @@ def setup(data,
 
     #mlflow create experiment (name defined here)
     if logging_param:
+
         uniquekey = secrets.token_hex(nbytes=6)
         if experiment_name is None:
             exp_name_ = 'clf'
@@ -1657,13 +1663,15 @@ def setup(data,
             # Log the transformation pipeline
             save_model(prep_pipe, 'Transformation Pipeline', verbose=False)
             mlflow.log_artifact('Transformation Pipeline' + '.pkl')
+            os.remove('Transformation Pipeline.pkl')
 
             # Log pandas profile
             if log_profile:
                 import pandas_profiling
                 pf = pandas_profiling.ProfileReport(data_before_preprocess)
-                pf.to_file("data_profile.html")
-                mlflow.log_artifact("data_profile.html")
+                pf.to_file("Data Profile.html")
+                mlflow.log_artifact("Data Profile.html")
+                os.remove("Data Profile.html")
                 clear_output()
                 display(functions_)
 
@@ -1672,6 +1680,8 @@ def setup(data,
             X_test.join(y_test).to_csv('Test.csv')
             mlflow.log_artifact("Train.csv")
             mlflow.log_artifact("Test.csv")
+            os.remove('Train.csv')
+            os.remove('Test.csv')
 
     return X, y, X_train, X_test, y_train, y_test, seed, prep_pipe, experiment__,\
         folds_shuffle_param, n_jobs_param, html_param, create_model_container, master_model_container, display_container, exp_name_log, logging_param, log_plots_param
@@ -2277,9 +2287,17 @@ def create_model(estimator = None,
     #mlflow logging
     if logging_param and system:
 
+        #Creating Logs message monitor
+        monitor.iloc[1,1:] = 'Creating Logs'
+        monitor.iloc[2,1:] = 'Almost Finished'    
+        if verbose:
+            if html_param:
+                update_display(monitor, display_id = 'monitor')
+
         #import mlflow
         import mlflow
         import mlflow.sklearn
+        import os
 
         mlflow.set_experiment(exp_name_log)
 
@@ -2293,7 +2311,6 @@ def create_model(estimator = None,
             mlflow.log_metrics({"Accuracy": avgs_acc[0], "AUC": avgs_auc[0], "Recall": avgs_recall[0], "Precision" : avgs_precision[0],
                                 "F1": avgs_f1[0], "Kappa": avgs_kappa[0], "MCC": avgs_mcc[0]})
             
-
             # Log internal parameters
             mlflow.log_param("create_model_estimator", estimator)
             mlflow.log_param("create_model_ensemble", ensemble)
@@ -2312,26 +2329,42 @@ def create_model(estimator = None,
             # Log the CV results as model_results.html artifact
             model_results.data.to_html('Results.html', col_space=65, justify='left')
             mlflow.log_artifact('Results.html')
+            os.remove('Results.html')
 
             # Generate hold-out predictions and save as html
             holdout = predict_model(model, verbose=False)
             holdout_score = pull()
             holdout_score.to_html('Holdout.html', col_space=65, justify='left')
             mlflow.log_artifact('Holdout.html')
+            os.remove('Holdout.html')
 
             # Log AUC and Confusion Matrix plot
             if log_plots_param:
-                plot_model(model, plot = 'auc', verbose=False, save=True, system=False)
-                mlflow.log_artifact('AUC.png')
+                try:
+                    plot_model(model, plot = 'auc', verbose=False, save=True, system=False)
+                    mlflow.log_artifact('AUC.png')
+                    os.remove("AUC.png")
+                except:
+                    pass
 
-                plot_model(model, plot = 'confusion_matrix', verbose=False, save=True, system=False)
-                mlflow.log_artifact('Confusion Matrix.png')
+                try:
+                    plot_model(model, plot = 'confusion_matrix', verbose=False, save=True, system=False)
+                    mlflow.log_artifact('Confusion Matrix.png')
+                    os.remove("Confusion Matrix.png")
+                except:
+                    pass
+
+                try:
+                    plot_model(model, plot = 'feature', verbose=False, save=True, system=False)
+                    mlflow.log_artifact('Feature Importance.png')
+                    os.remove("Feature Importance.png")
+                except:
+                    pass
 
             # Log model and transformation pipeline
             save_model(model, 'Trained Model', verbose=False)
             mlflow.log_artifact('Trained Model' + '.pkl')
-
-            clear_output()
+            os.remove('Trained Model.pkl')
 
     progress.value += 1
     
@@ -2933,7 +2966,18 @@ def ensemble_model(estimator,
     experiment__.append(tup)
     
     if logging_param:
+
+        #Creating Logs message monitor
+        monitor.iloc[1,1:] = 'Creating Logs'
+        monitor.iloc[2,1:] = 'Almost Finished'    
+        if verbose:
+            if html_param:
+                update_display(monitor, display_id = 'monitor')
+
+
         import mlflow
+        import os
+
         mlflow.set_experiment(exp_name_log)
         full_name = model_dict_logging.get(mn)
 
@@ -2943,6 +2987,7 @@ def ensemble_model(estimator,
                 params.pop('base_estimator')
             except:
                 pass
+
             mlflow.log_params(params)
             mlflow.log_metrics({"Accuracy": avgs_acc[0], "AUC": avgs_auc[0], "Recall": avgs_recall[0], "Precision" : avgs_precision[0],
                                 "F1": avgs_f1[0], "Kappa": avgs_kappa[0], "MCC": avgs_mcc[0]})
@@ -2967,16 +3012,19 @@ def ensemble_model(estimator,
             # Log model and transformation pipeline
             save_model(model, 'Trained Model', verbose=False)
             mlflow.log_artifact('Trained Model' + '.pkl')
+            os.remove('Trained Model.pkl')
 
             # Generate hold-out predictions and save as html
             holdout = predict_model(model, verbose=False)
             holdout_score = pull()
             holdout_score.to_html('Holdout.html', col_space=65, justify='left')
             mlflow.log_artifact('Holdout.html')
+            os.remove('Holdout.html')
 
             # Log the CV results as model_results.html artifact
             model_results.data.to_html('Results.html', col_space=65, justify='left')
             mlflow.log_artifact('Results.html')
+            os.remove('Results.html')
 
     if verbose:
         clear_output()
@@ -3045,6 +3093,15 @@ def plot_model(estimator,
 
     ** https://www.scikit-yb.org/en/latest/api/classifier/<reference>
 
+    save: Boolean, default = False
+    Plot is saved as png file in local directory when save parameter set to True.
+
+    verbose: Boolean, default = True
+    Progress bar not shown when verbose set to False. 
+
+    system: Boolean, default = True
+    Must remain True all times. Only to be changed by internal functions.
+
     Returns:
     --------
 
@@ -3061,8 +3118,7 @@ def plot_model(estimator,
               
     -   'calibration', 'threshold', 'manifold' and 'rfe' plots are not available for
          multiclass problems.
-           
-             
+                
 
     """  
     
@@ -3146,8 +3202,11 @@ def plot_model(estimator,
     
     progress.value += 1
     
+    #plots used for logging (controlled through plots_log_param) 
+    #AUC, #Confusion Matrix and #Feature Importance
+
         
-    if plot == 'auc':
+    if plot == 'auc': 
         
         from yellowbrick.classifier import ROCAUC
         progress.value += 1
@@ -3175,7 +3234,7 @@ def plot_model(estimator,
         visualizer.score(X_test, y_test)
         progress.value += 1
         clear_output()
-        if save or log_plots_param:
+        if save:
             if system:
                 visualizer.show(outpath="Threshold Curve.png")
             else:
@@ -3193,7 +3252,7 @@ def plot_model(estimator,
         visualizer.score(X_test, y_test)
         progress.value += 1
         clear_output()
-        if save or log_plots_param:
+        if save:
             if system:
                 visualizer.show(outpath="Precision Recall.png")
             else:
@@ -3229,7 +3288,13 @@ def plot_model(estimator,
         visualizer.score(X_test, y_test)
         progress.value += 1
         clear_output()
-        visualizer.poof()
+        if save:
+            if system:
+                visualizer.show(outpath="Class Prediction Error.png")
+            else:
+                visualizer.show(outpath="Class Prediction Error.png", clear_figure=True)
+        else:
+            visualizer.show()
 
     elif plot == 'class_report':
         
@@ -3241,7 +3306,13 @@ def plot_model(estimator,
         visualizer.score(X_test, y_test)
         progress.value += 1
         clear_output()
-        visualizer.poof()
+        if save:
+            if system:
+                visualizer.show(outpath="Classification Report.png")
+            else:
+                visualizer.show(outpath="Classification Report.png", clear_figure=True)
+        else:
+            visualizer.show()
         
     elif plot == 'boundary':
         
@@ -3275,8 +3346,14 @@ def plot_model(estimator,
         viz_.draw(X_test_transformed, y_test_transformed)
         progress.value += 1
         clear_output()
-        viz_.poof()
-        
+        if save:
+            if system:
+                viz_.show(outpath="Decision Boundary.png")
+            else:
+                viz_.show(outpath="Decision Boundary.png", clear_figure=True)
+        else:
+            viz_.show()
+
     elif plot == 'rfe':
         
         from yellowbrick.model_selection import RFECV 
@@ -3286,7 +3363,13 @@ def plot_model(estimator,
         visualizer.fit(X_train, y_train)
         progress.value += 1
         clear_output()
-        visualizer.poof()
+        if save:
+            if system:
+                visualizer.show(outpath="Recursive Feature Selection.png")
+            else:
+                visualizer.show(outpath="Recursive Feature Selection.png", clear_figure=True)
+        else:
+            visualizer.show()
            
     elif plot == 'learning':
         
@@ -3298,8 +3381,14 @@ def plot_model(estimator,
         visualizer.fit(X_train, y_train)
         progress.value += 1
         clear_output()
-        visualizer.poof()
-        
+        if save:
+            if system:
+                visualizer.show(outpath="Learning Curve.png")
+            else:
+                visualizer.show(outpath="Learning Curve.png", clear_figure=True)
+        else:
+            visualizer.show()
+
     elif plot == 'manifold':
         
         from yellowbrick.features import Manifold
@@ -3311,8 +3400,14 @@ def plot_model(estimator,
         visualizer.fit_transform(X_train_transformed, y_train)
         progress.value += 1
         clear_output()
-        visualizer.poof()       
-        
+        if save:
+            if system:
+                visualizer.show(outpath="Manifold Plot.png")
+            else:
+                visualizer.show(outpath="Manifold Plot.png", clear_figure=True)
+        else:
+            visualizer.show()
+
     elif plot == 'calibration':      
                 
         from sklearn.calibration import calibration_curve
@@ -3340,7 +3435,13 @@ def plot_model(estimator,
         plt.tight_layout()
         progress.value += 1
         clear_output()
-        plt.show() 
+        if save:
+            if system:
+                plt.savefig("Calibration Plot.png")
+            else:
+                plt.show()
+        else:
+            plt.show() 
         
     elif plot == 'vc':
         
@@ -3412,7 +3513,13 @@ def plot_model(estimator,
         viz.fit(X_train, y_train)
         progress.value += 1
         clear_output()
-        viz.poof()
+        if save:
+            if system:
+                viz.show(outpath="Validation Curve.png")
+            else:
+                viz.show(outpath="Validation Curve.png", clear_figure=True)
+        else:
+            viz.show()
         
     elif plot == 'dimension':
     
@@ -3430,14 +3537,20 @@ def plot_model(estimator,
         pca = PCA(n_components=features, random_state=seed)
         X_train_transformed = pca.fit_transform(X_train_transformed)
         progress.value += 1
-        #classes = ["1", "0"]
         classes = y_train.unique().tolist()
         visualizer = RadViz(classes=classes, alpha=0.25)
         visualizer.fit(X_train_transformed, y_train_transformed)     
         visualizer.transform(X_train_transformed)
         progress.value += 1
         clear_output()
-        visualizer.poof()
+        if save:
+            if system:
+                visualizer.show(outpath="Dimension Plot.png")
+            else:
+                visualizer.show(outpath="Dimension Plot.png", clear_figure=True)
+        else:
+            visualizer.show()
+
         
     elif plot == 'feature':
         
@@ -3463,6 +3576,14 @@ def plot_model(estimator,
         plt.ylabel('Features')
         progress.value += 1
         clear_output()
+        if save or log_plots_param:
+            if system:
+                plt.savefig("Feature Importance.png")
+            else:
+                plt.savefig("Feature Importance.png")
+                plt.close()
+        else:
+            plt.show() 
     
     elif plot == 'parameter':
         
@@ -4230,7 +4351,15 @@ def compare_models(blacklist = None,
 
     if logging_param:
 
+        #Creating Logs message monitor
+        monitor.iloc[1,1:] = 'Creating Logs'
+        monitor.iloc[2,1:] = 'Almost Finished'    
+        if verbose:
+            if html_param:
+                update_display(monitor, display_id = 'monitor')
+
         import mlflow
+        import os
 
         cmdf = compare_models_.data
         run_name = cmdf['Model'][0]
@@ -4274,10 +4403,12 @@ def compare_models(blacklist = None,
 
             save_model(model_, 'Trained Model', verbose=False)
             mlflow.log_artifact('Trained Model' + '.pkl')
+            os.remove('Trained Model.pkl')
 
             # Log the CV results as model_results.html artifact
             compare_models_.data.to_html('Results.html', col_space=65, justify='left')
             mlflow.log_artifact('Results.html')
+            os.remove('Results.html')
 
     if html_param:
         display(compare_models_)
@@ -5354,7 +5485,15 @@ def tune_model(estimator = None,
     #mlflow logging
     if logging_param:
 
+        #Creating Logs message monitor
+        monitor.iloc[1,1:] = 'Creating Logs'
+        monitor.iloc[2,1:] = 'Almost Finished'    
+        if verbose:
+            if html_param:
+                update_display(monitor, display_id = 'monitor')
+
         import mlflow
+        import os
         
         mlflow.set_experiment(exp_name_log)
         full_name = model_dict_logging.get(mn)
@@ -5382,16 +5521,19 @@ def tune_model(estimator = None,
             # Log model and transformation pipeline
             save_model(best_model, 'Trained Model', verbose=False)
             mlflow.log_artifact('Trained Model' + '.pkl')
+            os.remove('Trained Model.pkl')
 
             # Log the CV results as model_results.html artifact
             model_results.data.to_html('Results.html', col_space=65, justify='left')
             mlflow.log_artifact('Results.html')
+            os.remove('Results.html')
 
             # Generate hold-out predictions and save as html
             holdout = predict_model(best_model, verbose=False)
             holdout_score = pull()
             holdout_score.to_html('Holdout.html', col_space=65, justify='left')
             mlflow.log_artifact('Holdout.html')
+            os.remove('Holdout.html')
 
             # Log hyperparameter tuning grid
             d1 = model_grid.cv_results_.get('params')
@@ -5399,6 +5541,7 @@ def tune_model(estimator = None,
             dd['Score'] = model_grid.cv_results_.get('mean_test_score')
             dd.to_html('Iterations.html', col_space=75, justify='left')
             mlflow.log_artifact('Iterations.html')
+            os.remove('Iterations.html')
         
     if verbose:
         clear_output()
@@ -6092,7 +6235,15 @@ def blend_models(estimator_list = 'All',
 
     if logging_param:
 
+        #Creating Logs message monitor
+        monitor.iloc[1,1:] = 'Creating Logs'
+        monitor.iloc[2,1:] = 'Almost Finished'    
+        if verbose:
+            if html_param:
+                update_display(monitor, display_id = 'monitor')
+
         import mlflow
+        import os
 
         with mlflow.start_run(run_name='Voting Classifier') as run:        
             mlflow.log_metrics({"Accuracy": avgs_acc[0], "AUC": avgs_auc[0], "Recall": avgs_recall[0], "Precision" : avgs_precision[0],
@@ -6112,12 +6263,14 @@ def blend_models(estimator_list = 'All',
             # Log model and transformation pipeline
             save_model(model, 'Trained Model', verbose=False)
             mlflow.log_artifact('Trained Model' + '.pkl')
+            os.remove('Trained Model.pkl')
 
             # Generate hold-out predictions and save as html
             holdout = predict_model(model, verbose=False)
             holdout_score = pull()
             holdout_score.to_html('Holdout.html', col_space=65, justify='left')
             mlflow.log_artifact('Holdout.html')
+            os.remove('Holdout.html')
 
             #set tag of compare_models
             mlflow.set_tag("Source", "blend_models")
@@ -6128,6 +6281,7 @@ def blend_models(estimator_list = 'All',
             # Log the CV results as model_results.html artifact
             model_results.data.to_html('Results.html', col_space=65, justify='left')
             mlflow.log_artifact('Results.html')
+            os.remove('Results.html')
 
     if verbose:
         clear_output()
@@ -6782,6 +6936,14 @@ def stack_models(estimator_list,
     if logging_param:
 
         import mlflow
+        import os
+
+        #Creating Logs message monitor
+        monitor.iloc[1,1:] = 'Creating Logs'
+        monitor.iloc[2,1:] = 'Almost Finished'    
+        if verbose:
+            if html_param:
+                update_display(monitor, display_id = 'monitor')
 
         with mlflow.start_run(run_name='Stacking Classifier') as run:        
             params = meta_model.get_params()
@@ -6807,6 +6969,7 @@ def stack_models(estimator_list,
             # Log model and transformation pipeline
             save_model(models_, 'Trained Model', verbose=False)
             mlflow.log_artifact('Trained Model' + '.pkl')
+            os.remove('Trained Model.pkl')
 
             # Log training time of compare_models
             mlflow.log_metric("Training Time", mean_training_time)
@@ -6814,6 +6977,14 @@ def stack_models(estimator_list,
             # Log the CV results as model_results.html artifact
             model_results.data.to_html('Results.html', col_space=65, justify='left')
             mlflow.log_artifact('Results.html')
+            os.remove('Results.html')
+
+            # Generate hold-out predictions and save as html
+            holdout = predict_model(models_, verbose=False)
+            holdout_score = pull()
+            holdout_score.to_html('Holdout.html', col_space=65, justify='left')
+            mlflow.log_artifact('Holdout.html')
+            os.remove('Holdout.html')
 
     if verbose:
         clear_output()
@@ -7530,6 +7701,14 @@ def create_stacknet(estimator_list,
     if logging_param:
 
         import mlflow
+        import os
+
+        #Creating Logs message monitor
+        monitor.iloc[1,1:] = 'Creating Logs'
+        monitor.iloc[2,1:] = 'Almost Finished'    
+        if verbose:
+            if html_param:
+                update_display(monitor, display_id = 'monitor')
 
         with mlflow.start_run(run_name='Stacking Classifier (Multi-layer)') as run:        
             params = meta_model.get_params()
@@ -7554,6 +7733,7 @@ def create_stacknet(estimator_list,
             # Log model and transformation pipeline
             save_model(models_, 'Trained Model', verbose=False)
             mlflow.log_artifact('Trained Model' + '.pkl')
+            os.remove('Trained Model.pkl')
 
             # Log training time of compare_models
             mlflow.log_metric("Training Time", mean_training_time)
@@ -7561,6 +7741,14 @@ def create_stacknet(estimator_list,
             # Log the CV results as model_results.html artifact
             model_results.data.to_html('Results.html', col_space=65, justify='left')
             mlflow.log_artifact('Results.html')
+            os.remove('Results.html')
+
+            # Generate hold-out predictions and save as html
+            holdout = predict_model(models_, verbose=False)
+            holdout_score = pull()
+            holdout_score.to_html('Holdout.html', col_space=65, justify='left')
+            mlflow.log_artifact('Holdout.html')
+            os.remove('Holdout.html')
 
     if verbose:
         clear_output()
@@ -8227,9 +8415,17 @@ def calibrate_model(estimator,
     #mlflow logging
     if logging_param:
 
+        #Creating Logs message monitor
+        monitor.iloc[1,1:] = 'Creating Logs'
+        monitor.iloc[2,1:] = 'Almost Finished'    
+        if verbose:
+            if html_param:
+                update_display(monitor, display_id = 'monitor')
+
         #import mlflow
         import mlflow
         import mlflow.sklearn
+        import os
 
         mlflow.set_experiment(exp_name_log)
 
@@ -8265,16 +8461,19 @@ def calibrate_model(estimator,
             # Log the CV results as model_results.html artifact
             model_results.data.to_html('Results.html', col_space=65, justify='left')
             mlflow.log_artifact('Results.html')
+            os.remove('Results.html')
 
             # Generate hold-out predictions and save as html
             holdout = predict_model(model, verbose=False)
             holdout_score = pull()
             holdout_score.to_html('Holdout.html', col_space=65, justify='left')
             mlflow.log_artifact('Holdout.html')
+            os.remove('Holdout.html')
 
             # Log model and transformation pipeline
             save_model(model, 'Trained Model', verbose=False)
             mlflow.log_artifact('Trained Model' + '.pkl')
+            os.remove('Trained Model.pkl')
 
     if verbose:
         clear_output()
@@ -8766,6 +8965,9 @@ def predict_model(estimator,
      When platform = 'aws': 
      {'bucket' : 'Name of Bucket on S3'}
     
+    verbose: Boolean, default = True
+    Holdout score grid is not printed when verbose is set to False.
+
     Returns:
     --------
 
