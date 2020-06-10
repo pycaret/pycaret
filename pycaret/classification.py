@@ -3067,6 +3067,29 @@ def ensemble_model(estimator,
             mlflow.log_artifact('Holdout.html')
             os.remove('Holdout.html')
 
+            # Log AUC and Confusion Matrix plot
+            if log_plots_param:
+                try:
+                    plot_model(model, plot = 'auc', verbose=False, save=True, system=False)
+                    mlflow.log_artifact('AUC.png')
+                    os.remove("AUC.png")
+                except:
+                    pass
+
+                try:
+                    plot_model(model, plot = 'confusion_matrix', verbose=False, save=True, system=False)
+                    mlflow.log_artifact('Confusion Matrix.png')
+                    os.remove("Confusion Matrix.png")
+                except:
+                    pass
+
+                try:
+                    plot_model(model, plot = 'feature', verbose=False, save=True, system=False)
+                    mlflow.log_artifact('Feature Importance.png')
+                    os.remove("Feature Importance.png")
+                except:
+                    pass
+
             # Log the CV results as model_results.html artifact
             model_results.data.to_html('Results.html', col_space=65, justify='left')
             mlflow.log_artifact('Results.html')
@@ -4812,7 +4835,7 @@ def tune_model(estimator = None,
     MONITOR UPDATE STARTS
     '''
     
-    monitor.iloc[1,1:] = 'Searching Hyperparameters Grid'
+    monitor.iloc[1,1:] = 'Searching Hyperparameters'
     if verbose:
         if html_param:
             update_display(monitor, display_id = 'monitor')
@@ -5604,6 +5627,29 @@ def tune_model(estimator = None,
             mlflow.log_artifact('Holdout.html')
             os.remove('Holdout.html')
 
+            # Log AUC and Confusion Matrix plot
+            if log_plots_param:
+                try:
+                    plot_model(model, plot = 'auc', verbose=False, save=True, system=False)
+                    mlflow.log_artifact('AUC.png')
+                    os.remove("AUC.png")
+                except:
+                    pass
+
+                try:
+                    plot_model(model, plot = 'confusion_matrix', verbose=False, save=True, system=False)
+                    mlflow.log_artifact('Confusion Matrix.png')
+                    os.remove("Confusion Matrix.png")
+                except:
+                    pass
+
+                try:
+                    plot_model(model, plot = 'feature', verbose=False, save=True, system=False)
+                    mlflow.log_artifact('Feature Importance.png')
+                    os.remove("Feature Importance.png")
+                except:
+                    pass
+
             # Log hyperparameter tuning grid
             d1 = model_grid.cv_results_.get('params')
             dd = pd.DataFrame.from_dict(d1)
@@ -6348,6 +6394,15 @@ def blend_models(estimator_list = 'All',
             # Log training time of compare_models
             mlflow.log_metric("Training Time", mean_training_time)
 
+            # Log AUC and Confusion Matrix plot
+            if log_plots_param:
+                try:
+                    plot_model(model, plot = 'confusion_matrix', verbose=False, save=True, system=False)
+                    mlflow.log_artifact('Confusion Matrix.png')
+                    os.remove("Confusion Matrix.png")
+                except:
+                    pass
+
             # Log the CV results as model_results.html artifact
             model_results.data.to_html('Results.html', col_space=65, justify='left')
             mlflow.log_artifact('Results.html')
@@ -7056,6 +7111,17 @@ def stack_models(estimator_list,
             model_results.data.to_html('Results.html', col_space=65, justify='left')
             mlflow.log_artifact('Results.html')
             os.remove('Results.html')
+
+            if log_plots_param:
+
+                plt.subplots(figsize=(15,7))
+                ax = sns.heatmap(base_prediction_cor, vmin=0.2, vmax=1, center=0,cmap='magma', square=True, annot=True, 
+                                linewidths=1)
+                ax.set_ylim(sorted(ax.get_xlim(), reverse=True))
+                plt.savefig("Stacking Heatmap.png")
+                mlflow.log_artifact('Stacking Heatmap.png')
+                os.remove('Stacking Heatmap.png')
+                plt.close()
 
             # Generate hold-out predictions and save as html
             holdout = predict_model(models_, verbose=False)
@@ -8525,7 +8591,6 @@ def calibrate_model(estimator,
                     params.pop(i)
 
             mlflow.log_params(params)
-            mlflow.log_param('base_estimator', full_name)
             
             # Log metrics
             mlflow.log_metrics({"Accuracy": avgs_acc[0], "AUC": avgs_auc[0], "Recall": avgs_recall[0], "Precision" : avgs_precision[0],
@@ -8557,6 +8622,29 @@ def calibrate_model(estimator,
             mlflow.log_artifact('Holdout.html')
             os.remove('Holdout.html')
 
+            # Log AUC and Confusion Matrix plot
+            if log_plots_param:
+                try:
+                    plot_model(model, plot = 'auc', verbose=False, save=True, system=False)
+                    mlflow.log_artifact('AUC.png')
+                    os.remove("AUC.png")
+                except:
+                    pass
+
+                try:
+                    plot_model(model, plot = 'confusion_matrix', verbose=False, save=True, system=False)
+                    mlflow.log_artifact('Confusion Matrix.png')
+                    os.remove("Confusion Matrix.png")
+                except:
+                    pass
+
+                try:
+                    plot_model(model, plot = 'feature', verbose=False, save=True, system=False)
+                    mlflow.log_artifact('Feature Importance.png')
+                    os.remove("Feature Importance.png")
+                except:
+                    pass
+                
             # Log model and transformation pipeline
             save_model(model, 'Trained Model', verbose=False)
             mlflow.log_artifact('Trained Model' + '.pkl')
