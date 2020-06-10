@@ -11,3 +11,7 @@ catboost_info
 /logo.png
 /mlruns
 /Results.html
+/build
+/pycaret_nightly.egg-info
+/pycaret.egg-info
+/dist

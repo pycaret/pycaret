@@ -12,9 +12,9 @@ with open('requirements.txt') as f:
     required = f.read().splitlines()
 
 setup(
-    name="pycaret",
-    version="1.0.1",
-    description="An open source, low-code machine learning library in Python.",
+    name="pycaret-nightly",
+    version="0.3",
+    description="Nightly build of PyCaret - An open source, low-code machine learning library in Python.",
     long_description=readme(),
     long_description_content_type="text/markdown",
     url="https://github.com/pycaret/pycaret",
@@ -27,6 +27,7 @@ setup(
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
     ],
+    packages=["pycaret"],
     include_package_data=True,
     install_requires=required
 )

@@ -2049,7 +2049,43 @@ def create_model(estimator = None,
         
     else:
         model = estimator
-        full_name = str(model).split("(")[0]
+
+        def get_model_name(e):
+            return str(e).split("(")[0]
+
+        if y.value_counts().count() > 2:
+
+            mn = get_model_name(estimator.estimator)
+
+            if 'catboost' in mn:
+                mn = 'CatBoostClassifier'
+
+            model_dict_logging = {'ExtraTreesClassifier' : 'Extra Trees Classifier',
+                                'GradientBoostingClassifier' : 'Gradient Boosting Classifier', 
+                                'RandomForestClassifier' : 'Random Forest Classifier',
+                                'LGBMClassifier' : 'Light Gradient Boosting Machine',
+                                'XGBClassifier' : 'Extreme Gradient Boosting',
+                                'AdaBoostClassifier' : 'Ada Boost Classifier', 
+                                'DecisionTreeClassifier' : 'Decision Tree Classifier', 
+                                'RidgeClassifier' : 'Ridge Classifier',
+                                'LogisticRegression' : 'Logistic Regression',
+                                'KNeighborsClassifier' : 'K Neighbors Classifier',
+                                'GaussianNB' : 'Naive Bayes',
+                                'SGDClassifier' : 'SVM - Linear Kernel',
+                                'SVC' : 'SVM - Radial Kernel',
+                                'GaussianProcessClassifier' : 'Gaussian Process Classifier',
+                                'MLPClassifier' : 'MLP Classifier',
+                                'QuadraticDiscriminantAnalysis' : 'Quadratic Discriminant Analysis',
+                                'LinearDiscriminantAnalysis' : 'Linear Discriminant Analysis',
+                                'CatBoostClassifier' : 'CatBoost Classifier',
+                                'BaggingClassifier' : 'Bagging Classifier',
+                                'VotingClassifier' : 'Voting Classifier'} 
+
+            full_name = model_dict_logging.get(mn)
+        
+        else:
+
+            full_name = get_model_name(estimator)
     
     progress.value += 1
     
@@ -2305,6 +2341,12 @@ def create_model(estimator = None,
 
             # Log model parameters
             params = model.get_params()
+
+            for i in list(params):
+                v = params.get(i)
+                if len(str(v)) > 250:
+                    params.pop(i)
+
             mlflow.log_params(params)
             
             # Log metrics
@@ -2608,7 +2650,10 @@ def ensemble_model(estimator,
     def get_model_name(e):
         return str(e).split("(")[0]
 
-    mn = get_model_name(estimator)
+    if y.value_counts().count() > 2:
+        mn = get_model_name(estimator.estimator)
+    else:
+        mn = get_model_name(estimator)
 
     if 'catboost' in str(estimator):
         mn = 'CatBoostClassifier'
@@ -2983,10 +3028,11 @@ def ensemble_model(estimator,
 
         with mlflow.start_run(run_name=full_name) as run:        
             params = model.get_params()
-            try:
-                params.pop('base_estimator')
-            except:
-                pass
+
+            for i in list(params):
+                v = params.get(i)
+                if len(str(v)) > 250:
+                    params.pop(i)
 
             mlflow.log_params(params)
             mlflow.log_metrics({"Accuracy": avgs_acc[0], "AUC": avgs_auc[0], "Recall": avgs_recall[0], "Precision" : avgs_precision[0],
@@ -4370,6 +4416,11 @@ def compare_models(blacklist = None,
             else:
                 params = model_store_final.get_params()
 
+            for i in list(params):
+                v = params.get(i)
+                if len(str(v)) > 250:
+                    params.pop(i)
+                    
             mlflow.log_params(params)
 
             #set tag of compare_models
@@ -4682,7 +4733,10 @@ def tune_model(estimator = None,
     def get_model_name(e):
         return str(e).split("(")[0]
 
-    mn = get_model_name(estimator)
+    if len(estimator.classes_) > 2:
+        mn = get_model_name(estimator.estimator)
+    else:
+        mn = get_model_name(estimator)
 
     if 'catboost' in mn:
         mn = 'CatBoostClassifier'
@@ -4996,7 +5050,12 @@ def tune_model(estimator = None,
                         'algorithm' : ["SAMME", "SAMME.R"]
                         }    
 
-        model_grid = RandomizedSearchCV(estimator=AdaBoostClassifier(base_estimator = _estimator_.base_estimator, random_state=seed), 
+        if y.value_counts().count() > 2:
+            base_estimator_input = _estimator_.estimator.base_estimator
+        else:
+            base_estimator_input = _estimator_.base_estimator
+
+        model_grid = RandomizedSearchCV(estimator=AdaBoostClassifier(base_estimator = base_estimator_input, random_state=seed), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
                                         cv=cv, random_state=seed, n_jobs=n_jobs_param)
 
@@ -5500,9 +5559,19 @@ def tune_model(estimator = None,
 
         with mlflow.start_run(run_name=full_name) as run:        
             params = best_model.get_params()
+
+            # Log model parameters
+            params = model.get_params()
+
+            for i in list(params):
+                v = params.get(i)
+                if len(str(v)) > 250:
+                    params.pop(i)
+
+            mlflow.log_params(params)
+
             mlflow.log_metrics({"Accuracy": avgs_acc[0], "AUC": avgs_auc[0], "Recall": avgs_recall[0], "Precision" : avgs_precision[0],
                                 "F1": avgs_f1[0], "Kappa": avgs_kappa[0], "MCC": avgs_mcc[0]})
-            mlflow.log_params(params)
 
             # Log internal parameters
             mlflow.log_param("tune_model_fold", fold)
@@ -6174,6 +6243,7 @@ def blend_models(estimator_list = 'All',
     
     #refitting the model on complete X_train, y_train
     monitor.iloc[1,1:] = 'Finalizing Model'
+    monitor.iloc[2,1:] = 'Almost Finished'
     
     if verbose:
         if html_param:
@@ -6947,9 +7017,17 @@ def stack_models(estimator_list,
 
         with mlflow.start_run(run_name='Stacking Classifier') as run:        
             params = meta_model.get_params()
+
+            for i in list(params):
+                v = params.get(i)
+                if len(str(v)) > 250:
+                    params.pop(i)
+            
+            mlflow.log_params(params)
+            
             mlflow.log_metrics({"Accuracy": avgs_acc[0], "AUC": avgs_auc[0], "Recall": avgs_recall[0], "Precision" : avgs_precision[0],
                                 "F1": avgs_f1[0], "Kappa": avgs_kappa[0], "MCC": avgs_mcc[0]})
-            mlflow.log_params(params)
+
 
             # Log internal parameters
             mlflow.log_param("stack_models_estimator_list", estimator_list)
@@ -7712,9 +7790,16 @@ def create_stacknet(estimator_list,
 
         with mlflow.start_run(run_name='Stacking Classifier (Multi-layer)') as run:        
             params = meta_model.get_params()
+
+            for i in list(params):
+                v = params.get(i)
+                if len(str(v)) > 250:
+                    params.pop(i)
+    
+            mlflow.log_params(params)
+            
             mlflow.log_metrics({"Accuracy": avgs_acc[0], "AUC": avgs_auc[0], "Recall": avgs_recall[0], "Precision" : avgs_precision[0],
                                 "F1": avgs_f1[0], "Kappa": avgs_kappa[0], "MCC": avgs_mcc[0]})
-            mlflow.log_params(params)
 
             # Log other parameter of create_model function (internal to pycaret)
             mlflow.log_param("create_stacknet_estimator_list", estimator_list)
@@ -8433,10 +8518,12 @@ def calibrate_model(estimator,
 
             # Log model parameters
             params = model.get_params()
-            try:
-                params.pop('base_estimator')
-            except:
-                pass
+            
+            for i in list(params):
+                v = params.get(i)
+                if len(str(v)) > 250:
+                    params.pop(i)
+
             mlflow.log_params(params)
             mlflow.log_param('base_estimator', full_name)
             
