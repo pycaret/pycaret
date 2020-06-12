@@ -420,6 +420,10 @@ def setup(data,
     #exception checking   
     import sys
     
+    #run_time
+    import datetime, time
+    runtime_start = time.time()
+
     #checking train size parameter
     if type(train_size) is not float:
         sys.exit('(Type Error): train_size parameter only accepts float value.')
@@ -699,7 +703,6 @@ def setup(data,
     import pandas as pd
     import ipywidgets as ipw
     from IPython.display import display, HTML, clear_output, update_display
-    import datetime, time
     
     #import mlflow and logging utils
     import mlflow
@@ -771,7 +774,8 @@ def setup(data,
     
     #declaring global variables to be accessed by other functions
     global X, y, X_train, X_test, y_train, y_test, seed, prep_pipe, experiment__,\
-         folds_shuffle_param, n_jobs_param, create_model_container, master_model_container, display_container, exp_name_log, logging_param, log_plots_param
+        folds_shuffle_param, n_jobs_param, create_model_container, master_model_container,\
+        display_container, exp_name_log, logging_param, log_plots_param, USI
     
     #generate seed to be used globally
     if session_id is None:
@@ -1636,20 +1640,32 @@ def setup(data,
         experiment__.append(('y_test Set', y_test))
         experiment__.append(('Transformation Pipeline', prep_pipe))
 
+    #end runtime
+    runtime_end = time.time()
+    runtime = np.array((runtime_end - runtime_start)/60).round(2)
+
     #mlflow create experiment (name defined here)
     if logging_param:
 
-        uniquekey = secrets.token_hex(nbytes=6)
         if experiment_name is None:
-            exp_name_ = 'clf'
+            exp_name_ = 'clf-default-name'
         else:
             exp_name_ = experiment_name
-        exp_name_log = exp_name_ + '-' + str(seed) + '-' + str(uniquekey)
-        mlflow.create_experiment(exp_name_log)
+
+        URI = secrets.token_hex(nbytes=4)
+        USI = secrets.token_hex(nbytes=2)
+
+        exp_name_log = exp_name_
+        
+        try:
+            mlflow.create_experiment(exp_name_log)
+        except:
+            pass
 
         #mlflow logging
         mlflow.set_experiment(exp_name_log)
-        with mlflow.start_run(run_name='Session Initialized') as run:
+        run_name_ = 'Session Initialized ' + str(URI)
+        with mlflow.start_run(run_name=run_name_) as run:
             
             k = functions.copy()
             k.set_index('Description',drop=True,inplace=True)
@@ -1659,6 +1675,14 @@ def setup(data,
 
             #set tag of compare_models
             mlflow.set_tag("Source", "setup")
+            
+            import secrets
+            URI = secrets.token_hex(nbytes=4)
+            mlflow.set_tag("URI", URI)
+
+            mlflow.set_tag("USI", USI) 
+
+            mlflow.set_tag("Run Time", runtime)
 
             # Log the transformation pipeline
             save_model(prep_pipe, 'Transformation Pipeline', verbose=False)
@@ -1684,7 +1708,8 @@ def setup(data,
             os.remove('Test.csv')
 
     return X, y, X_train, X_test, y_train, y_test, seed, prep_pipe, experiment__,\
-        folds_shuffle_param, n_jobs_param, html_param, create_model_container, master_model_container, display_container, exp_name_log, logging_param, log_plots_param
+        folds_shuffle_param, n_jobs_param, html_param, create_model_container, master_model_container,\
+        display_container, exp_name_log, logging_param, log_plots_param, USI
 
 
 def create_model(estimator = None, 
@@ -1857,12 +1882,15 @@ def create_model(estimator = None,
     
     '''
     
-    
+    #run_time
+    import datetime, time
+    runtime_start = time.time()
+
     #pre-load libraries
     import pandas as pd
     import ipywidgets as ipw
     from IPython.display import display, HTML, clear_output, update_display
-    import datetime, time
+    
 
     #progress bar
     progress = ipw.IntProgress(value=0, min=0, max=fold+4, step=1 , description='Processing: ')
@@ -2053,6 +2081,27 @@ def create_model(estimator = None,
         def get_model_name(e):
             return str(e).split("(")[0]
 
+        model_dict_logging = {'ExtraTreesClassifier' : 'Extra Trees Classifier',
+                            'GradientBoostingClassifier' : 'Gradient Boosting Classifier', 
+                            'RandomForestClassifier' : 'Random Forest Classifier',
+                            'LGBMClassifier' : 'Light Gradient Boosting Machine',
+                            'XGBClassifier' : 'Extreme Gradient Boosting',
+                            'AdaBoostClassifier' : 'Ada Boost Classifier', 
+                            'DecisionTreeClassifier' : 'Decision Tree Classifier', 
+                            'RidgeClassifier' : 'Ridge Classifier',
+                            'LogisticRegression' : 'Logistic Regression',
+                            'KNeighborsClassifier' : 'K Neighbors Classifier',
+                            'GaussianNB' : 'Naive Bayes',
+                            'SGDClassifier' : 'SVM - Linear Kernel',
+                            'SVC' : 'SVM - Radial Kernel',
+                            'GaussianProcessClassifier' : 'Gaussian Process Classifier',
+                            'MLPClassifier' : 'MLP Classifier',
+                            'QuadraticDiscriminantAnalysis' : 'Quadratic Discriminant Analysis',
+                            'LinearDiscriminantAnalysis' : 'Linear Discriminant Analysis',
+                            'CatBoostClassifier' : 'CatBoost Classifier',
+                            'BaggingClassifier' : 'Bagging Classifier',
+                            'VotingClassifier' : 'Voting Classifier'} 
+
         if y.value_counts().count() > 2:
 
             mn = get_model_name(estimator.estimator)
@@ -2060,32 +2109,19 @@ def create_model(estimator = None,
             if 'catboost' in mn:
                 mn = 'CatBoostClassifier'
 
-            model_dict_logging = {'ExtraTreesClassifier' : 'Extra Trees Classifier',
-                                'GradientBoostingClassifier' : 'Gradient Boosting Classifier', 
-                                'RandomForestClassifier' : 'Random Forest Classifier',
-                                'LGBMClassifier' : 'Light Gradient Boosting Machine',
-                                'XGBClassifier' : 'Extreme Gradient Boosting',
-                                'AdaBoostClassifier' : 'Ada Boost Classifier', 
-                                'DecisionTreeClassifier' : 'Decision Tree Classifier', 
-                                'RidgeClassifier' : 'Ridge Classifier',
-                                'LogisticRegression' : 'Logistic Regression',
-                                'KNeighborsClassifier' : 'K Neighbors Classifier',
-                                'GaussianNB' : 'Naive Bayes',
-                                'SGDClassifier' : 'SVM - Linear Kernel',
-                                'SVC' : 'SVM - Radial Kernel',
-                                'GaussianProcessClassifier' : 'Gaussian Process Classifier',
-                                'MLPClassifier' : 'MLP Classifier',
-                                'QuadraticDiscriminantAnalysis' : 'Quadratic Discriminant Analysis',
-                                'LinearDiscriminantAnalysis' : 'Linear Discriminant Analysis',
-                                'CatBoostClassifier' : 'CatBoost Classifier',
-                                'BaggingClassifier' : 'Bagging Classifier',
-                                'VotingClassifier' : 'Voting Classifier'} 
-
             full_name = model_dict_logging.get(mn)
         
         else:
 
-            full_name = get_model_name(estimator)
+            mn = get_model_name(estimator)
+            
+            if 'catboost' in mn:
+                mn = 'CatBoostClassifier'
+
+            try:
+                full_name = model_dict_logging.get(mn)
+            except:
+                full_name = 'Custom Model'
     
     progress.value += 1
     
@@ -2320,6 +2356,10 @@ def create_model(estimator = None,
     
     model.fit(data_X, data_y)
     
+    #end runtime
+    runtime_end = time.time()
+    runtime = np.array((runtime_end - runtime_start)/60).round(2)
+
     #mlflow logging
     if logging_param and system:
 
@@ -2364,6 +2404,14 @@ def create_model(estimator = None,
             
             #set tag of compare_models
             mlflow.set_tag("Source", "create_model")
+            
+            import secrets
+            URI = secrets.token_hex(nbytes=4)
+            mlflow.set_tag("URI", URI)
+            
+            mlflow.set_tag("USI", USI)
+
+            mlflow.set_tag("Run Time", runtime)
 
             # Log training time in seconds
             mlflow.log_metric("Training Time", mean_training_time.round(round))
@@ -2533,6 +2581,10 @@ def ensemble_model(estimator,
     
     #exception checking   
     import sys
+
+    #run_time
+    import datetime, time
+    runtime_start = time.time()
         
     #Check for allowed method
     available_method = ['Bagging', 'Boosting']
@@ -2583,7 +2635,6 @@ def ensemble_model(estimator,
     
     #pre-load libraries
     import pandas as pd
-    import datetime, time
     import ipywidgets as ipw
     from IPython.display import display, HTML, clear_output, update_display
     
@@ -2962,6 +3013,7 @@ def ensemble_model(estimator,
     
     #refitting the model on complete X_train, y_train
     monitor.iloc[1,1:] = 'Finalizing Model'
+    monitor.iloc[2,1:] = 'Almost Finished'
     if verbose:
         if html_param:
             update_display(monitor, display_id = 'monitor')
@@ -3009,6 +3061,10 @@ def ensemble_model(estimator,
     nam = str(model_name) + ' Score Grid'
     tup = (nam, model_results)
     experiment__.append(tup)
+
+    #end runtime
+    runtime_end = time.time()
+    runtime = np.array((runtime_end - runtime_start)/60).round(2)
     
     if logging_param:
 
@@ -3051,6 +3107,14 @@ def ensemble_model(estimator,
 
             #set tag of compare_models
             mlflow.set_tag("Source", "ensemble_model")
+            
+            import secrets
+            URI = secrets.token_hex(nbytes=4)
+            mlflow.set_tag("URI", URI)
+
+            mlflow.set_tag("USI", USI)
+            
+            mlflow.set_tag("Run Time", runtime)
 
             # Log training time in seconds
             mlflow.log_metric("Training Time", mean_training_time.round(round))
@@ -3795,6 +3859,10 @@ def compare_models(blacklist = None,
     #exception checking   
     import sys
     
+    #run_time
+    import datetime, time
+    runtime_start = time.time()
+    
     #checking error for blacklist (string)
     available_estimators = ['lr', 'knn', 'nb', 'dt', 'svm', 'rbfsvm', 'gpc', 'mlp', 'ridge', 'rf', 'qda', 'ada', 
                             'gbc', 'lda', 'et', 'xgboost', 'lightgbm', 'catboost']
@@ -4418,6 +4486,10 @@ def compare_models(blacklist = None,
 
     clear_output()
 
+    #end runtime
+    runtime_end = time.time()
+    runtime = np.array((runtime_end - runtime_start)/60).round(2)
+
     if logging_param:
 
         #Creating Logs message monitor
@@ -4448,6 +4520,14 @@ def compare_models(blacklist = None,
 
             #set tag of compare_models
             mlflow.set_tag("Source", "compare_models")
+            
+            import secrets
+            URI = secrets.token_hex(nbytes=4)
+            mlflow.set_tag("URI", URI)
+
+            mlflow.set_tag("USI", USI)
+
+            mlflow.set_tag("Run Time", runtime)
 
             # Log internal parameters
             mlflow.log_param("compare_models_blacklist", blacklist)
@@ -4617,6 +4697,10 @@ def tune_model(estimator = None,
     #exception checking   
     import sys
     
+    #run_time
+    import datetime, time
+    runtime_start = time.time()
+
     #checking estimator if string
     if type(estimator) is str:
         sys.exit('(Type Error): The behavior of tune_model in version 1.0.1 is changed. Please pass trained model object.')
@@ -4664,7 +4748,6 @@ def tune_model(estimator = None,
     
     #pre-load libraries
     import pandas as pd
-    import time, datetime
     import ipywidgets as ipw
     from IPython.display import display, HTML, clear_output, update_display
     
@@ -5514,6 +5597,7 @@ def tune_model(estimator = None,
     
     #refitting the model on complete X_train, y_train
     monitor.iloc[1,1:] = 'Finalizing Model'
+    monitor.iloc[2,1:] = 'Almost Finished'
     if verbose:
         if html_param:
             update_display(monitor, display_id = 'monitor')
@@ -5564,6 +5648,10 @@ def tune_model(estimator = None,
     tup = (nam, model_results)
     experiment__.append(tup)
 
+    #end runtime
+    runtime_end = time.time()
+    runtime = np.array((runtime_end - runtime_start)/60).round(2)
+    
     #mlflow logging
     if logging_param:
 
@@ -5606,6 +5694,14 @@ def tune_model(estimator = None,
 
             #set tag of compare_models
             mlflow.set_tag("Source", "tune_model")
+            
+            import secrets
+            URI = secrets.token_hex(nbytes=4)
+            mlflow.set_tag("URI", URI)
+
+            mlflow.set_tag("USI", USI)
+
+            mlflow.set_tag("Run Time", runtime)
 
             # Log training time in seconds
             mlflow.log_metric("Training Time", mean_training_time.round(round))
@@ -5782,6 +5878,10 @@ def blend_models(estimator_list = 'All',
     
     #exception checking   
     import sys
+
+    #run_time
+    import datetime, time
+    runtime_start = time.time()
     
     #checking error for estimator_list (string)
     
@@ -5843,7 +5943,6 @@ def blend_models(estimator_list = 'All',
     
     #pre-load libraries
     import pandas as pd
-    import time, datetime
     import ipywidgets as ipw
     from IPython.display import display, HTML, clear_output, update_display
     
@@ -6349,6 +6448,10 @@ def blend_models(estimator_list = 'All',
     tup = (nam, model_results)
     experiment__.append(tup)
 
+    #end runtime
+    runtime_end = time.time()
+    runtime = np.array((runtime_end - runtime_start)/60).round(2)
+
     if logging_param:
 
         #Creating Logs message monitor
@@ -6390,6 +6493,14 @@ def blend_models(estimator_list = 'All',
 
             #set tag of compare_models
             mlflow.set_tag("Source", "blend_models")
+            
+            import secrets
+            URI = secrets.token_hex(nbytes=4)
+            mlflow.set_tag("URI", URI)
+
+            mlflow.set_tag("USI", USI)
+
+            mlflow.set_tag("Run Time", runtime)
 
             # Log training time of compare_models
             mlflow.log_metric("Training Time", mean_training_time)
@@ -6544,13 +6655,17 @@ def stack_models(estimator_list,
     #testing
     #no active test
     
+    #exception checking   
+    import sys
+    
+    #run_time
+    import datetime, time
+    runtime_start = time.time()
+
     #change method param to 'hard' for multiclass
     if y.value_counts().count() > 2:
         method = 'hard'
 
-    #exception checking   
-    import sys
-    
     #checking error for estimator_list
     for i in estimator_list:
         if 'sklearn' not in str(type(i)) and 'CatBoostClassifier' not in str(type(i)):
@@ -6604,7 +6719,6 @@ def stack_models(estimator_list,
     import pandas as pd
     import ipywidgets as ipw
     from IPython.display import display, HTML, clear_output, update_display
-    import time, datetime
     from copy import deepcopy
     from sklearn.base import clone
     
@@ -7058,6 +7172,10 @@ def stack_models(estimator_list,
                          linewidths=1)
         ax.set_ylim(sorted(ax.get_xlim(), reverse=True))
 
+    #end runtime
+    runtime_end = time.time()
+    runtime = np.array((runtime_end - runtime_start)/60).round(2)
+
     if logging_param:
 
         import mlflow
@@ -7096,8 +7214,16 @@ def stack_models(estimator_list,
             mlflow.log_param("stack_models_finalize", finalize)
             mlflow.log_param("stack_models_verbose", verbose)
             
-            #set tag of compare_models
+            #set tag of stack_models
             mlflow.set_tag("Source", "stack_models")
+            
+            import secrets
+            URI = secrets.token_hex(nbytes=4)
+            mlflow.set_tag("URI", URI)
+
+            mlflow.set_tag("USI", USI)
+
+            mlflow.set_tag("Run Time", runtime)
 
             # Log model and transformation pipeline
             save_model(models_, 'Trained Model', verbose=False)
@@ -7262,13 +7388,17 @@ def create_stacknet(estimator_list,
     #testing
     #global inter_level_names
     
+    #exception checking   
+    import sys
+    
+    #run_time
+    import datetime, time
+    runtime_start = time.time()
+
     #change method param to 'hard' for multiclass
     if y.value_counts().count() > 2:
         method = 'hard'
 
-    #exception checking   
-    import sys
-    
     #checking estimator_list
     if type(estimator_list[0]) is not list:
         sys.exit("(Type Error): estimator_list parameter must be list of list. ")
@@ -7842,6 +7972,10 @@ def create_stacknet(estimator_list,
     tup = (nam, model_results)
     experiment__.append(tup)
     
+    #end runtime
+    runtime_end = time.time()
+    runtime = np.array((runtime_end - runtime_start)/60).round(2)
+
     if logging_param:
 
         import mlflow
@@ -7878,8 +8012,16 @@ def create_stacknet(estimator_list,
             mlflow.log_param("create_stacknet_finalize", finalize)
             mlflow.log_param("create_stacknet_verbose", verbose)
             
-            #set tag of compare_models
+            #set tag of create_stacknet
             mlflow.set_tag("Source", "create_stacknet")
+            
+            import secrets
+            URI = secrets.token_hex(nbytes=4)
+            mlflow.set_tag("URI", URI)
+
+            mlflow.set_tag("USI", USI)
+
+            mlflow.set_tag("Run Time", runtime)
 
             # Log model and transformation pipeline
             save_model(models_, 'Trained Model', verbose=False)
@@ -8192,7 +8334,11 @@ def calibrate_model(estimator,
     
     #exception checking   
     import sys
-    
+
+    #run_time
+    import datetime, time
+    runtime_start = time.time()
+
     #Statement to find CatBoost and change name
     
     model_name = str(estimator).split("(")[0]
@@ -8228,7 +8374,6 @@ def calibrate_model(estimator,
     import pandas as pd
     import ipywidgets as ipw
     from IPython.display import display, HTML, clear_output, update_display
-    import datetime, time
         
     #progress bar
     progress = ipw.IntProgress(value=0, min=0, max=fold+4, step=1 , description='Processing: ')
@@ -8563,6 +8708,10 @@ def calibrate_model(estimator,
     tup = (nam, model_results)
     experiment__.append(tup)
     
+    #end runtime
+    runtime_end = time.time()
+    runtime = np.array((runtime_end - runtime_start)/60).round(2)
+
     #mlflow logging
     if logging_param:
 
@@ -8606,6 +8755,14 @@ def calibrate_model(estimator,
             
             #set tag of compare_models
             mlflow.set_tag("Source", "calibrate_model")
+            
+            import secrets
+            URI = secrets.token_hex(nbytes=4)
+            mlflow.set_tag("URI", URI)
+
+            mlflow.set_tag("USI", USI)
+
+            mlflow.set_tag("Run Time", runtime)
 
             # Log training time in seconds
             mlflow.log_metric("Training Time", mean_training_time.round(round))
