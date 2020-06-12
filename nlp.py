@@ -2824,3 +2824,44 @@ def get_topics(data, text, model=None, num_topics=4):
     return dataset
 
 
+
+
+
+# Using autosentiment library
+#Source code of library : https://github.com/CodeFighter03/autosentiment
+import autosentiment as at
+
+
+"""
+Get the sentiment type piplot
+"""
+
+def sentiment_pieplot(data, target=None):
+    at.pie(data[target])
+
+
+"""
+Get the sentiment type number list
+"""
+
+def sentiment_numbers(data, target=None):
+    return at.numbers(data[target])
+
+
+"""
+Get the sentiment type percentage list
+"""
+
+def senitment_percentage(data,target=None):
+    return at.percentage(data[target])
+
+
+"""
+Get the sentiment type for each of the text
+-1:negative, 1:positive, 0:neutral
+"""
+def sentiment_class(data,target=None):
+    return at.analysis_ternary(data[target])    
+
+
+
