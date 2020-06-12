@@ -56,6 +56,7 @@ def setup(data,
           logging = True, #added in pycaret==1.0.1
           log_plots = False, #added in pycaret==1.0.1
           log_profile = False, #added in pycaret==1.0.1
+          log_data = False, #added in pycaret==1.0.1
           silent=False,
           verbose=True, #added in pycaret==1.0.1
           profile = False):
@@ -1642,7 +1643,7 @@ def setup(data,
 
     #end runtime
     runtime_end = time.time()
-    runtime = np.array((runtime_end - runtime_start)/60).round(2)
+    runtime = np.array(runtime_end - runtime_start).round(2)
 
     #mlflow create experiment (name defined here)
     if logging_param:
@@ -1664,8 +1665,12 @@ def setup(data,
 
         #mlflow logging
         mlflow.set_experiment(exp_name_log)
+
         run_name_ = 'Session Initialized ' + str(USI)
         with mlflow.start_run(run_name=run_name_) as run:
+
+            # Get active run to log as tag
+            RunID = mlflow.active_run().info.run_id
             
             k = functions.copy()
             k.set_index('Description',drop=True,inplace=True)
@@ -1684,6 +1689,8 @@ def setup(data,
 
             mlflow.set_tag("Run Time", runtime)
 
+            mlflow.set_tag("Run ID", RunID)
+
             # Log the transformation pipeline
             save_model(prep_pipe, 'Transformation Pipeline', verbose=False)
             mlflow.log_artifact('Transformation Pipeline' + '.pkl')
@@ -1700,12 +1707,25 @@ def setup(data,
                 display(functions_)
 
             # Log training and testing set
-            X_train.join(y_train).to_csv('Train.csv')
-            X_test.join(y_test).to_csv('Test.csv')
-            mlflow.log_artifact("Train.csv")
-            mlflow.log_artifact("Test.csv")
-            os.remove('Train.csv')
-            os.remove('Test.csv')
+            if log_data:
+                X_train.join(y_train).to_csv('Train.csv')
+                X_test.join(y_test).to_csv('Test.csv')
+                mlflow.log_artifact("Train.csv")
+                mlflow.log_artifact("Test.csv")
+                os.remove('Train.csv')
+                os.remove('Test.csv')
+
+            # Log input.txt that contains name of columns required in dataset 
+            # to use this pipeline based on USI/URI.
+
+            input_cols = list(data_before_preprocess.columns)
+            input_cols.remove(target)
+
+            with open("input.txt", "w") as output:
+                output.write(str(input_cols))
+            
+            mlflow.log_artifact("input.txt")
+            os.remove('input.txt')
 
     return X, y, X_train, X_test, y_train, y_test, seed, prep_pipe, experiment__,\
         folds_shuffle_param, n_jobs_param, html_param, create_model_container, master_model_container,\
@@ -2354,11 +2374,15 @@ def create_model(estimator = None,
         if html_param:
             update_display(monitor, display_id = 'monitor')
     
+    model_fit_start = time.time()
     model.fit(data_X, data_y)
+    model_fit_end = time.time()
+
+    model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
     
     #end runtime
     runtime_end = time.time()
-    runtime = np.array((runtime_end - runtime_start)/60).round(2)
+    runtime = np.array(runtime_end - runtime_start).round(2)
 
     #mlflow logging
     if logging_param and system:
@@ -2378,6 +2402,9 @@ def create_model(estimator = None,
         mlflow.set_experiment(exp_name_log)
 
         with mlflow.start_run(run_name=full_name) as run:
+
+            # Get active run to log as tag
+            RunID = mlflow.active_run().info.run_id
 
             # Log model parameters
             params = model.get_params()
@@ -2413,8 +2440,10 @@ def create_model(estimator = None,
 
             mlflow.set_tag("Run Time", runtime)
 
+            mlflow.set_tag("Run ID", RunID)
+
             # Log training time in seconds
-            mlflow.log_metric("Training Time", mean_training_time.round(round))
+            mlflow.log_metric("TT", model_fit_time)
 
             # Log the CV results as model_results.html artifact
             model_results.data.to_html('Results.html', col_space=65, justify='left')
@@ -3018,7 +3047,11 @@ def ensemble_model(estimator,
         if html_param:
             update_display(monitor, display_id = 'monitor')
     
+    model_fit_start = time.time()
     model.fit(data_X, data_y)
+    model_fit_end = time.time()
+
+    model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
     
     #storing results in create_model_container
     create_model_container.append(model_results.data)
@@ -3064,7 +3097,7 @@ def ensemble_model(estimator,
 
     #end runtime
     runtime_end = time.time()
-    runtime = np.array((runtime_end - runtime_start)/60).round(2)
+    runtime = np.array(runtime_end - runtime_start).round(2)
     
     if logging_param:
 
@@ -3083,6 +3116,10 @@ def ensemble_model(estimator,
         full_name = model_dict_logging.get(mn)
 
         with mlflow.start_run(run_name=full_name) as run:        
+
+            # Get active run to log as tag
+            RunID = mlflow.active_run().info.run_id
+
             params = model.get_params()
 
             for i in list(params):
@@ -3116,8 +3153,10 @@ def ensemble_model(estimator,
             
             mlflow.set_tag("Run Time", runtime)
 
+            mlflow.set_tag("Run ID", RunID)
+
             # Log training time in seconds
-            mlflow.log_metric("Training Time", mean_training_time.round(round))
+            mlflow.log_metric("TT", model_fit_time)
 
             # Log model and transformation pipeline
             save_model(model, 'Trained Model', verbose=False)
@@ -4471,6 +4510,8 @@ def compare_models(blacklist = None,
     
     model_store_final = []
 
+    model_fit_start = time.time()
+
     for i in sorted_model_names:
         monitor.iloc[2,1:] = i
         if verbose:
@@ -4481,6 +4522,10 @@ def compare_models(blacklist = None,
         m = create_model(estimator=k, verbose = False, system=False)
         model_store_final.append(m)
 
+    model_fit_end = time.time()
+
+    model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
+
     if len(model_store_final) == 1:
         model_store_final = model_store_final[0]
 
@@ -4488,7 +4533,7 @@ def compare_models(blacklist = None,
 
     #end runtime
     runtime_end = time.time()
-    runtime = np.array((runtime_end - runtime_start)/60).round(2)
+    runtime = np.array(runtime_end - runtime_start).round(2)
 
     if logging_param:
 
@@ -4505,7 +4550,11 @@ def compare_models(blacklist = None,
         cmdf = compare_models_.data
         run_name = cmdf['Model'][0]
 
-        with mlflow.start_run(run_name=run_name) as run:        
+        with mlflow.start_run(run_name=run_name) as run:  
+
+            # Get active run to log as tag
+            RunID = mlflow.active_run().info.run_id
+
             if type(model_store_final) is list:
                 params = model_store_final[0].get_params()
             else:
@@ -4529,6 +4578,8 @@ def compare_models(blacklist = None,
 
             mlflow.set_tag("Run Time", runtime)
 
+            mlflow.set_tag("Run ID", RunID)
+
             # Log internal parameters
             mlflow.log_param("compare_models_blacklist", blacklist)
             mlflow.log_param("compare_models_whitelist", whitelist)
@@ -4547,7 +4598,7 @@ def compare_models(blacklist = None,
             mlflow.log_metric("F1", cmdf['F1'][0])
             mlflow.log_metric("Kappa", cmdf['Kappa'][0])
             mlflow.log_metric("MCC", cmdf['MCC'][0])
-            mlflow.log_metric("Training Time", cmdf['TT (Sec)'][0])
+            mlflow.log_metric("TT", model_fit_time)
 
             # Log model and transformation pipeline
             if type(model_store_final) is list:
@@ -5602,7 +5653,11 @@ def tune_model(estimator = None,
         if html_param:
             update_display(monitor, display_id = 'monitor')
     
+    model_fit_start = time.time()
     best_model.fit(data_X, data_y)
+    model_fit_end = time.time()
+
+    model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
     
     progress.value += 1
     
@@ -5650,7 +5705,7 @@ def tune_model(estimator = None,
 
     #end runtime
     runtime_end = time.time()
-    runtime = np.array((runtime_end - runtime_start)/60).round(2)
+    runtime = np.array(runtime_end - runtime_start).round(2)
     
     #mlflow logging
     if logging_param:
@@ -5668,7 +5723,11 @@ def tune_model(estimator = None,
         mlflow.set_experiment(exp_name_log)
         full_name = model_dict_logging.get(mn)
 
-        with mlflow.start_run(run_name=full_name) as run:        
+        with mlflow.start_run(run_name=full_name) as run:    
+
+            # Get active run to log as tag
+            RunID = mlflow.active_run().info.run_id
+
             params = best_model.get_params()
 
             # Log model parameters
@@ -5703,8 +5762,10 @@ def tune_model(estimator = None,
 
             mlflow.set_tag("Run Time", runtime)
 
+            mlflow.set_tag("Run ID", RunID)
+
             # Log training time in seconds
-            mlflow.log_metric("Training Time", mean_training_time.round(round))
+            mlflow.log_metric("TT", model_fit_time)
 
             # Log model and transformation pipeline
             save_model(best_model, 'Trained Model', verbose=False)
@@ -6394,7 +6455,11 @@ def blend_models(estimator_list = 'All',
         if html_param:
             update_display(monitor, display_id = 'monitor')
     
+    model_fit_start = time.time()
     model.fit(data_X, data_y)
+    model_fit_end = time.time()
+
+    model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
     
     progress.value += 1
     
@@ -6450,7 +6515,7 @@ def blend_models(estimator_list = 'All',
 
     #end runtime
     runtime_end = time.time()
-    runtime = np.array((runtime_end - runtime_start)/60).round(2)
+    runtime = np.array(runtime_end - runtime_start).round(2)
 
     if logging_param:
 
@@ -6464,7 +6529,11 @@ def blend_models(estimator_list = 'All',
         import mlflow
         import os
 
-        with mlflow.start_run(run_name='Voting Classifier') as run:        
+        with mlflow.start_run(run_name='Voting Classifier') as run:
+
+            # Get active run to log as tag
+            RunID = mlflow.active_run().info.run_id
+
             mlflow.log_metrics({"Accuracy": avgs_acc[0], "AUC": avgs_auc[0], "Recall": avgs_recall[0], "Precision" : avgs_precision[0],
                                 "F1": avgs_f1[0], "Kappa": avgs_kappa[0], "MCC": avgs_mcc[0]})
             
@@ -6502,8 +6571,10 @@ def blend_models(estimator_list = 'All',
 
             mlflow.set_tag("Run Time", runtime)
 
+            mlflow.set_tag("Run ID", RunID)
+
             # Log training time of compare_models
-            mlflow.log_metric("Training Time", mean_training_time)
+            mlflow.log_metric("TT", model_fit_time)
 
             # Log AUC and Confusion Matrix plot
             if log_plots_param:
@@ -6838,6 +6909,8 @@ def stack_models(estimator_list,
     
     counter = 0
     
+    model_fit_start = time.time()
+
     for model in estimator_list:
         
         '''
@@ -7056,7 +7129,10 @@ def stack_models(estimator_list,
         Update_display() ends here
         
         '''
-     
+
+    model_fit_end = time.time()
+    model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
+
     mean_acc=np.mean(score_acc)
     mean_auc=np.mean(score_auc)
     mean_recall=np.mean(score_recall)
@@ -7174,7 +7250,7 @@ def stack_models(estimator_list,
 
     #end runtime
     runtime_end = time.time()
-    runtime = np.array((runtime_end - runtime_start)/60).round(2)
+    runtime = np.array(runtime_end - runtime_start).round(2)
 
     if logging_param:
 
@@ -7188,7 +7264,11 @@ def stack_models(estimator_list,
             if html_param:
                 update_display(monitor, display_id = 'monitor')
 
-        with mlflow.start_run(run_name='Stacking Classifier') as run:        
+        with mlflow.start_run(run_name='Stacking Classifier') as run:   
+
+            # Get active run to log as tag
+            RunID = mlflow.active_run().info.run_id
+
             params = meta_model.get_params()
 
             for i in list(params):
@@ -7225,13 +7305,15 @@ def stack_models(estimator_list,
 
             mlflow.set_tag("Run Time", runtime)
 
+            mlflow.set_tag("Run ID", RunID)
+
             # Log model and transformation pipeline
             save_model(models_, 'Trained Model', verbose=False)
             mlflow.log_artifact('Trained Model' + '.pkl')
             os.remove('Trained Model.pkl')
 
             # Log training time of compare_models
-            mlflow.log_metric("Training Time", mean_training_time)
+            mlflow.log_metric("TT", model_fit_time)
 
             # Log the CV results as model_results.html artifact
             model_results.data.to_html('Results.html', col_space=65, justify='left')
@@ -7590,6 +7672,8 @@ def create_stacknet(estimator_list,
     base_counter = 0
     
     base_models_ = []
+
+    model_fit_start = time.time()
     
     for model in base_level:
         
@@ -7852,7 +7936,12 @@ def create_stacknet(estimator_list,
         Update_display() ends here
         
         '''
-        
+
+    model_fit_end = time.time()
+    model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
+
+    model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
+
     mean_acc=np.mean(score_acc)
     mean_auc=np.mean(score_auc)
     mean_recall=np.mean(score_recall)
@@ -7974,7 +8063,7 @@ def create_stacknet(estimator_list,
     
     #end runtime
     runtime_end = time.time()
-    runtime = np.array((runtime_end - runtime_start)/60).round(2)
+    runtime = np.array(runtime_end - runtime_start).round(2)
 
     if logging_param:
 
@@ -7988,7 +8077,11 @@ def create_stacknet(estimator_list,
             if html_param:
                 update_display(monitor, display_id = 'monitor')
 
-        with mlflow.start_run(run_name='Stacking Classifier (Multi-layer)') as run:        
+        with mlflow.start_run(run_name='Stacking Classifier (Multi-layer)') as run:       
+
+            # Get active run to log as tag
+            RunID = mlflow.active_run().info.run_id
+
             params = meta_model.get_params()
 
             for i in list(params):
@@ -8023,13 +8116,15 @@ def create_stacknet(estimator_list,
 
             mlflow.set_tag("Run Time", runtime)
 
+            mlflow.set_tag("Run ID", RunID)
+
             # Log model and transformation pipeline
             save_model(models_, 'Trained Model', verbose=False)
             mlflow.log_artifact('Trained Model' + '.pkl')
             os.remove('Trained Model.pkl')
 
             # Log training time of compare_models
-            mlflow.log_metric("Training Time", mean_training_time)
+            mlflow.log_metric("TT", model_fit_time)
 
             # Log the CV results as model_results.html artifact
             model_results.data.to_html('Results.html', col_space=65, justify='left')
@@ -8697,7 +8792,11 @@ def calibrate_model(estimator,
         if html_param:
             update_display(monitor, display_id = 'monitor')
     
+    model_fit_start = time.time()
     model.fit(data_X, data_y)
+    model_fit_end = time.time()
+
+    model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
     
     progress.value += 1
     
@@ -8710,7 +8809,7 @@ def calibrate_model(estimator,
     
     #end runtime
     runtime_end = time.time()
-    runtime = np.array((runtime_end - runtime_start)/60).round(2)
+    runtime = np.array(runtime_end - runtime_start).round(2)
 
     #mlflow logging
     if logging_param:
@@ -8730,6 +8829,9 @@ def calibrate_model(estimator,
         mlflow.set_experiment(exp_name_log)
 
         with mlflow.start_run(run_name=base_estimator_full_name) as run:
+
+            # Get active run to log as tag
+            RunID = mlflow.active_run().info.run_id
 
             # Log model parameters
             params = model.get_params()
@@ -8764,8 +8866,10 @@ def calibrate_model(estimator,
 
             mlflow.set_tag("Run Time", runtime)
 
+            mlflow.set_tag("Run ID", RunID)
+
             # Log training time in seconds
-            mlflow.log_metric("Training Time", mean_training_time.round(round))
+            mlflow.log_metric("TT", model_fit_time)
 
             # Log the CV results as model_results.html artifact
             model_results.data.to_html('Results.html', col_space=65, justify='left')
@@ -8936,11 +9040,62 @@ def finalize_model(estimator):
     import warnings
     warnings.filterwarnings('ignore') 
     
+    #run_time
+    import datetime, time
+    runtime_start = time.time()
+
     #import depedencies
     from IPython.display import clear_output, update_display
     from sklearn.base import clone
     from copy import deepcopy
+    import numpy as np
     
+    #determine runname for logging
+    def get_model_name(e):
+        return str(e).split("(")[0]
+    
+    if type(estimator) is not list:
+
+        if len(estimator.classes_) > 2:
+            mn = get_model_name(estimator.estimator)
+
+        if hasattr(estimator, 'base_estimator'):
+            mn = get_model_name(estimator.base_estimator)
+
+        else:
+            mn = get_model_name(estimator)
+
+        if 'catboost' in mn:
+            mn = 'CatBoostClassifier'
+
+    if type(estimator) is list:
+        if type(estimator[0]) is not list:
+            full_name = 'Stacking Classifier'
+        else:
+            full_name = 'Stacking Classifier (Multi-layer)'
+
+    model_dict_logging = {'ExtraTreesClassifier' : 'Extra Trees Classifier',
+                            'GradientBoostingClassifier' : 'Gradient Boosting Classifier', 
+                            'RandomForestClassifier' : 'Random Forest Classifier',
+                            'LGBMClassifier' : 'Light Gradient Boosting Machine',
+                            'XGBClassifier' : 'Extreme Gradient Boosting',
+                            'AdaBoostClassifier' : 'Ada Boost Classifier', 
+                            'DecisionTreeClassifier' : 'Decision Tree Classifier', 
+                            'RidgeClassifier' : 'Ridge Classifier',
+                            'LogisticRegression' : 'Logistic Regression',
+                            'KNeighborsClassifier' : 'K Neighbors Classifier',
+                            'GaussianNB' : 'Naive Bayes',
+                            'SGDClassifier' : 'SVM - Linear Kernel',
+                            'SVC' : 'SVM - Radial Kernel',
+                            'GaussianProcessClassifier' : 'Gaussian Process Classifier',
+                            'MLPClassifier' : 'MLP Classifier',
+                            'QuadraticDiscriminantAnalysis' : 'Quadratic Discriminant Analysis',
+                            'LinearDiscriminantAnalysis' : 'Linear Discriminant Analysis',
+                            'CatBoostClassifier' : 'CatBoost Classifier',
+                            'BaggingClassifier' : 'Bagging Classifier',
+                            'VotingClassifier' : 'Voting Classifier'}
+
+
     if type(estimator) is list:
         
         if type(estimator[0]) is not list:
@@ -8991,6 +9146,105 @@ def finalize_model(estimator):
     tup = (model_name,model_final)
     experiment__.append(tup)
     
+    #end runtime
+    runtime_end = time.time()
+    runtime = np.array(runtime_end - runtime_start).round(2)
+
+    #mlflow logging
+    if logging_param:
+
+        #import mlflow
+        import mlflow
+        import mlflow.sklearn
+        import os
+
+        mlflow.set_experiment(exp_name_log)
+
+        with mlflow.start_run(run_name=full_name) as run:
+
+            # Get active run to log as tag
+            RunID = mlflow.active_run().info.run_id
+
+            # Log model parameters
+            try:
+                params = model_final.get_params()
+
+                for i in list(params):
+                    v = params.get(i)
+                    if len(str(v)) > 250:
+                        params.pop(i)
+
+                mlflow.log_params(params)
+            
+            except:
+                pass
+            
+            # get metrics of non-finalized model and log it
+
+            try:
+                c = create_model(estimator, verbose=False, system=False)
+                cr = pull()
+                log_accuracy = cr.loc['Mean']['Accuracy'] 
+                log_auc = cr.loc['Mean']['AUC'] 
+                log_recall = cr.loc['Mean']['Recall'] 
+                log_precision = cr.loc['Mean']['Prec.'] 
+                log_f1 = cr.loc['Mean']['F1'] 
+                log_kappa = cr.loc['Mean']['Kappa'] 
+                log_mcc = cr.loc['Mean']['MCC']
+
+                mlflow.log_metric("Accuracy", log_accuracy)
+                mlflow.log_metric("AUC", log_auc)
+                mlflow.log_metric("Recall", log_recall)
+                mlflow.log_metric("Precision", log_precision)
+                mlflow.log_metric("F1", log_f1)
+                mlflow.log_metric("Kappa", log_kappa)
+                mlflow.log_metric("MCC", log_mcc)
+
+            except:
+                pass
+
+            #set tag of compare_models
+            mlflow.set_tag("Source", "finalize_model")
+            mlflow.set_tag("Final", "True")
+            
+            import secrets
+            URI = secrets.token_hex(nbytes=4)
+            mlflow.set_tag("URI", URI)           
+            mlflow.set_tag("USI", USI)
+            mlflow.set_tag("Run Time", runtime)
+            mlflow.set_tag("Run ID", RunID)
+
+            # Log training time in seconds
+            mlflow.log_metric("TT", runtime)
+
+            # Log AUC and Confusion Matrix plot
+            if log_plots_param:
+                try:
+                    plot_model(model, plot = 'auc', verbose=False, save=True, system=False)
+                    mlflow.log_artifact('AUC.png')
+                    os.remove("AUC.png")
+                except:
+                    pass
+
+                try:
+                    plot_model(model, plot = 'confusion_matrix', verbose=False, save=True, system=False)
+                    mlflow.log_artifact('Confusion Matrix.png')
+                    os.remove("Confusion Matrix.png")
+                except:
+                    pass
+
+                try:
+                    plot_model(model, plot = 'feature', verbose=False, save=True, system=False)
+                    mlflow.log_artifact('Feature Importance.png')
+                    os.remove("Feature Importance.png")
+                except:
+                    pass
+
+            # Log model and transformation pipeline
+            save_model(model_final, 'Trained Model', verbose=False)
+            mlflow.log_artifact('Trained Model' + '.pkl')
+            os.remove('Trained Model.pkl')
+
     return model_final
 
 def save_model(model, model_name, verbose=True):
@@ -10045,10 +10299,10 @@ def deploy_model(model,
     import pandas as pd
     from IPython.display import clear_output, update_display
         
-    try:
-        model = finalize_model(model)
-    except:
-        pass
+    #try:
+    #    model = finalize_model(model)
+    #except:
+    #    pass
     
     if platform == 'aws':
         
