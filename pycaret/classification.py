@@ -1664,7 +1664,7 @@ def setup(data,
 
         #mlflow logging
         mlflow.set_experiment(exp_name_log)
-        run_name_ = 'Session Initialized ' + str(URI)
+        run_name_ = 'Session Initialized ' + str(USI)
         with mlflow.start_run(run_name=run_name_) as run:
             
             k = functions.copy()
