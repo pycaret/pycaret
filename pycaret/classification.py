@@ -1646,6 +1646,9 @@ def setup(data,
     runtime = np.array(runtime_end - runtime_start).round(2)
 
     #mlflow create experiment (name defined here)
+
+    USI = secrets.token_hex(nbytes=2)
+
     if logging_param:
 
         if experiment_name is None:
@@ -1653,9 +1656,7 @@ def setup(data,
         else:
             exp_name_ = experiment_name
 
-        URI = secrets.token_hex(nbytes=4)
-        USI = secrets.token_hex(nbytes=2)
-
+        URI = secrets.token_hex(nbytes=4)    
         exp_name_log = exp_name_
         
         try:
@@ -2453,6 +2454,7 @@ def create_model(estimator = None,
             # Generate hold-out predictions and save as html
             holdout = predict_model(model, verbose=False)
             holdout_score = pull()
+            display_container.pop(-1)
             holdout_score.to_html('Holdout.html', col_space=65, justify='left')
             mlflow.log_artifact('Holdout.html')
             os.remove('Holdout.html')
@@ -3166,6 +3168,7 @@ def ensemble_model(estimator,
             # Generate hold-out predictions and save as html
             holdout = predict_model(model, verbose=False)
             holdout_score = pull()
+            display_container.pop(-1)
             holdout_score.to_html('Holdout.html', col_space=65, justify='left')
             mlflow.log_artifact('Holdout.html')
             os.remove('Holdout.html')
@@ -3377,7 +3380,6 @@ def plot_model(estimator,
     #plots used for logging (controlled through plots_log_param) 
     #AUC, #Confusion Matrix and #Feature Importance
 
-        
     if plot == 'auc': 
         
         from yellowbrick.classifier import ROCAUC
@@ -5780,6 +5782,7 @@ def tune_model(estimator = None,
             # Generate hold-out predictions and save as html
             holdout = predict_model(best_model, verbose=False)
             holdout_score = pull()
+            display_container.pop(-1)
             holdout_score.to_html('Holdout.html', col_space=65, justify='left')
             mlflow.log_artifact('Holdout.html')
             os.remove('Holdout.html')
@@ -6556,6 +6559,7 @@ def blend_models(estimator_list = 'All',
             # Generate hold-out predictions and save as html
             holdout = predict_model(model, verbose=False)
             holdout_score = pull()
+            display_container.pop(-1)
             holdout_score.to_html('Holdout.html', col_space=65, justify='left')
             mlflow.log_artifact('Holdout.html')
             os.remove('Holdout.html')
@@ -7186,7 +7190,8 @@ def stack_models(estimator_list,
     
     #storing results in create_model_container
     create_model_container.append(model_results.data)
-    display_container.append(model_results.data)
+    if not finalize:
+        display_container.append(model_results.data)
 
     #storing results in master_model_container
     master_model_container.append(models_)
@@ -7252,7 +7257,7 @@ def stack_models(estimator_list,
     runtime_end = time.time()
     runtime = np.array(runtime_end - runtime_start).round(2)
 
-    if logging_param:
+    if logging_param and not finalize:
 
         import mlflow
         import os
@@ -7334,6 +7339,7 @@ def stack_models(estimator_list,
             # Generate hold-out predictions and save as html
             holdout = predict_model(models_, verbose=False)
             holdout_score = pull()
+            display_container.pop(-1)
             holdout_score.to_html('Holdout.html', col_space=65, justify='left')
             mlflow.log_artifact('Holdout.html')
             os.remove('Holdout.html')
@@ -8065,7 +8071,7 @@ def create_stacknet(estimator_list,
     runtime_end = time.time()
     runtime = np.array(runtime_end - runtime_start).round(2)
 
-    if logging_param:
+    if logging_param and not finalize:
 
         import mlflow
         import os
@@ -8134,6 +8140,7 @@ def create_stacknet(estimator_list,
             # Generate hold-out predictions and save as html
             holdout = predict_model(models_, verbose=False)
             holdout_score = pull()
+            display_container.pop(-1)
             holdout_score.to_html('Holdout.html', col_space=65, justify='left')
             mlflow.log_artifact('Holdout.html')
             os.remove('Holdout.html')
@@ -8879,6 +8886,7 @@ def calibrate_model(estimator,
             # Generate hold-out predictions and save as html
             holdout = predict_model(model, verbose=False)
             holdout_score = pull()
+            display_container.pop(-1)
             holdout_score.to_html('Holdout.html', col_space=65, justify='left')
             mlflow.log_artifact('Holdout.html')
             os.remove('Holdout.html')
@@ -9054,26 +9062,6 @@ def finalize_model(estimator):
     def get_model_name(e):
         return str(e).split("(")[0]
     
-    if type(estimator) is not list:
-
-        if len(estimator.classes_) > 2:
-            mn = get_model_name(estimator.estimator)
-
-        if hasattr(estimator, 'base_estimator'):
-            mn = get_model_name(estimator.base_estimator)
-
-        else:
-            mn = get_model_name(estimator)
-
-        if 'catboost' in mn:
-            mn = 'CatBoostClassifier'
-
-    if type(estimator) is list:
-        if type(estimator[0]) is not list:
-            full_name = 'Stacking Classifier'
-        else:
-            full_name = 'Stacking Classifier (Multi-layer)'
-
     model_dict_logging = {'ExtraTreesClassifier' : 'Extra Trees Classifier',
                             'GradientBoostingClassifier' : 'Gradient Boosting Classifier', 
                             'RandomForestClassifier' : 'Random Forest Classifier',
@@ -9094,7 +9082,28 @@ def finalize_model(estimator):
                             'CatBoostClassifier' : 'CatBoost Classifier',
                             'BaggingClassifier' : 'Bagging Classifier',
                             'VotingClassifier' : 'Voting Classifier'}
+                            
+    if type(estimator) is not list:
 
+        if len(estimator.classes_) > 2:
+            mn = get_model_name(estimator.estimator)
+
+        if hasattr(estimator, 'base_estimator'):
+            mn = get_model_name(estimator.base_estimator)
+
+        else:
+            mn = get_model_name(estimator)
+
+        if 'catboost' in mn:
+            mn = 'CatBoostClassifier'
+
+    if type(estimator) is list:
+        if type(estimator[0]) is not list:
+            full_name = 'Stacking Classifier'
+        else:
+            full_name = 'Stacking Classifier (Multi-layer)'
+    else:
+        full_name = model_dict_logging.get(mn)
 
     if type(estimator) is list:
         
@@ -9133,6 +9142,8 @@ def finalize_model(estimator):
                                           restack = stack_restack,
                                           finalize = True,
                                           verbose = False)
+
+        pull_results = pull() 
 
     else:
         
@@ -9201,11 +9212,28 @@ def finalize_model(estimator):
                 mlflow.log_metric("MCC", log_mcc)
 
             except:
-                pass
+                cr = pull_results
+                log_accuracy = cr.loc['Mean']['Accuracy'] 
+                log_auc = cr.loc['Mean']['AUC'] 
+                log_recall = cr.loc['Mean']['Recall'] 
+                log_precision = cr.loc['Mean']['Prec.'] 
+                log_f1 = cr.loc['Mean']['F1'] 
+                log_kappa = cr.loc['Mean']['Kappa'] 
+                log_mcc = cr.loc['Mean']['MCC']
+
+                mlflow.log_metric("Accuracy", log_accuracy)
+                mlflow.log_metric("AUC", log_auc)
+                mlflow.log_metric("Recall", log_recall)
+                mlflow.log_metric("Precision", log_precision)
+                mlflow.log_metric("F1", log_f1)
+                mlflow.log_metric("Kappa", log_kappa)
+                mlflow.log_metric("MCC", log_mcc)
 
             #set tag of compare_models
             mlflow.set_tag("Source", "finalize_model")
-            mlflow.set_tag("Final", "True")
+            
+            #create MRI (model registration id)
+            mlflow.set_tag("Final", True)
             
             import secrets
             URI = secrets.token_hex(nbytes=4)
@@ -9551,6 +9579,9 @@ def predict_model(estimator,
      When platform = 'aws': 
      {'bucket' : 'Name of Bucket on S3'}
     
+    system: Boolean, default = True
+    Must remain True all times. Only to be changed by internal functions.
+
     verbose: Boolean, default = True
     Holdout score grid is not printed when verbose is set to False.
 
@@ -10548,7 +10579,7 @@ def automl(optimize='Accuracy', use_holdout=False):
 
     if use_holdout:
         for i in master_model_container:
-            pred_holdout = predict_model(i, verbose=False)
+            pred_holdout = predict_model(i, verbose=False, system=False)
             p = pull()
             p = p[compare_dimension][0]
             scorer.append(p)
