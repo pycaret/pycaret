@@ -8,6 +8,7 @@ catboost_info
 /nb_test.ipynb
 /nb_test2.ipynb
 /app.py
+/cli_app.py
 /logo.png
 /mlruns
 /Results.html
