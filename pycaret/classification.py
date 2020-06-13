@@ -47,18 +47,18 @@ def setup(data,
           feature_interaction = False,                   
           feature_ratio = False,                         
           interaction_threshold = 0.01,
-          data_split_shuffle = True, #added in pycaret==1.0.1
-          folds_shuffle = False, #added in pycaret==1.0.1
-          n_jobs = -1, #added in pycaret==1.0.1
-          html = True, #added in pycaret==1.0.1
+          data_split_shuffle = True, #added in pycaret==2.0.0
+          folds_shuffle = False, #added in pycaret==2.0.0
+          n_jobs = -1, #added in pycaret==2.0.0
+          html = True, #added in pycaret==2.0.0
           session_id = None,
-          experiment_name = None, #added in pycaret==1.0.1
-          logging = True, #added in pycaret==1.0.1
-          log_plots = False, #added in pycaret==1.0.1
-          log_profile = False, #added in pycaret==1.0.1
-          log_data = False, #added in pycaret==1.0.1
+          experiment_name = None, #added in pycaret==2.0.0
+          logging = True, #added in pycaret==2.0.0
+          log_plots = False, #added in pycaret==2.0.0
+          log_profile = False, #added in pycaret==2.0.0
+          log_data = False, #added in pycaret==2.0.0
           silent=False,
-          verbose=True, #added in pycaret==1.0.1
+          verbose=True, #added in pycaret==2.0.0
           profile = False):
     
     """
@@ -1739,8 +1739,8 @@ def create_model(estimator = None,
                  fold = 10, 
                  round = 4,  
                  verbose = True,
-                 system = True, #added in pycaret==1.0.1
-                 **kwargs): #added in pycaret==1.0.1
+                 system = True, #added in pycaret==2.0.0
+                 **kwargs): #added in pycaret==2.0.0
 
     """  
      
@@ -2518,8 +2518,8 @@ def ensemble_model(estimator,
                    fold = 10,
                    n_estimators = 10,
                    round = 4,  
-                   choose_better = False, #added in pycaret==1.0.1
-                   optimize = 'Accuracy', #added in pycaret==1.0.1
+                   choose_better = False, #added in pycaret==2.0.0
+                   optimize = 'Accuracy', #added in pycaret==2.0.0
                    verbose = True):
     """
        
@@ -3087,6 +3087,9 @@ def ensemble_model(estimator,
             model = model
         else:
             model = base_model
+
+        #re-instate display_constainer state 
+        display_container.pop(-1)
    
     #storing into experiment
     model_name = str(model).split("(")[0]
@@ -3767,13 +3770,13 @@ def plot_model(estimator,
 
 
 def compare_models(blacklist = None,
-                   whitelist = None, #added in pycaret==1.0.1
+                   whitelist = None, #added in pycaret==2.0.0
                    fold = 10, 
                    round = 4, 
                    sort = 'Accuracy',
-                   n_select = 1, #added in pycaret==1.0.1
+                   n_select = 1, #added in pycaret==2.0.0
                    turbo = True,
-                   verbose = True): #added in pycaret==1.0.1
+                   verbose = True): #added in pycaret==2.0.0
     
     """
       
@@ -4631,9 +4634,9 @@ def tune_model(estimator = None,
                fold = 10, 
                round = 4, 
                n_iter = 10,
-               custom_grid = None, #added in pycaret==1.0.1 
+               custom_grid = None, #added in pycaret==2.0.0 
                optimize = 'Accuracy',
-               choose_better = False, #added in pycaret==1.0.1 
+               choose_better = False, #added in pycaret==2.0.0 
                verbose = True):
     
       
@@ -5697,6 +5700,9 @@ def tune_model(estimator = None,
         else:
             best_model = base_model
 
+        #re-instate display_constainer state 
+        display_container.pop(-1)
+
     #storing into experiment
     model_name = '[TUNED] ' + str(model).split("(")[0]
     tup = (model_name,best_model)
@@ -5830,8 +5836,8 @@ def tune_model(estimator = None,
 def blend_models(estimator_list = 'All', 
                  fold = 10, 
                  round = 4,
-                 choose_better = False, #added in pycaret==1.0.1 
-                 optimize = 'Accuracy', #added in pycaret==1.0.1 
+                 choose_better = False, #added in pycaret==2.0.0 
+                 optimize = 'Accuracy', #added in pycaret==2.0.0 
                  method = 'hard',
                  turbo = True,
                  verbose = True):
@@ -6501,6 +6507,9 @@ def blend_models(estimator_list = 'All',
             scorer.append(s)
             base_models_.append(m)
 
+            #re-instate display_constainer state 
+            display_container.pop(-1)
+
     index_scorer = scorer.index(max(scorer))
 
     if index_scorer == 0:
@@ -6610,8 +6619,8 @@ def stack_models(estimator_list,
                  method = 'soft', 
                  restack = True, 
                  plot = False,
-                 choose_better = False, #added in pycaret==1.0.1
-                 optimize = 'Accuracy', #added in pycaret==1.0.1
+                 choose_better = False, #added in pycaret==2.0.0
+                 optimize = 'Accuracy', #added in pycaret==2.0.0
                  finalize = False,
                  verbose = True):
     
@@ -7224,11 +7233,17 @@ def stack_models(estimator_list,
             scorer.append(s)
             base_models_.append(m)
 
+            #re-instate display_constainer state 
+            display_container.pop(-1)
+
         meta_model_clone = clone(meta_model)
         mm = create_model(meta_model_clone, verbose=False, system=False)
         base_models_.append(mm)
         s = create_model_container[-1][compare_dimension][-2:][0]
         scorer.append(s)
+
+        #re-instate display_constainer state 
+        display_container.pop(-1)
 
     #returning better model
     index_scorer = scorer.index(max(scorer))
@@ -7359,8 +7374,8 @@ def create_stacknet(estimator_list,
                     round = 4,
                     method = 'soft',
                     restack = True,
-                    choose_better = False, #added in pycaret==1.0.1
-                    optimize = 'Accuracy', #added in pycaret==1.0.1
+                    choose_better = False, #added in pycaret==2.0.0
+                    optimize = 'Accuracy', #added in pycaret==2.0.0
                     finalize = False,
                     verbose = True):
     
@@ -8045,11 +8060,17 @@ def create_stacknet(estimator_list,
                 scorer.append(s)
                 base_models_.append(m)
 
+                #re-instate display_constainer state 
+                display_container.pop(-1)
+
         meta_model_clone = clone(meta_model)
         mm = create_model(meta_model_clone, verbose=False, system=False)
         base_models_.append(mm)
         s = create_model_container[-1][compare_dimension][-2:][0]
         scorer.append(s)
+
+        #re-instate display_constainer state 
+        display_container.pop(-1)
 
     #returning better model
     index_scorer = scorer.index(max(scorer))
@@ -9532,7 +9553,7 @@ def predict_model(estimator,
                   probability_threshold=None,
                   platform=None,
                   authentication=None,
-                  verbose=True): #added in pycaret==1.0.1
+                  verbose=True): #added in pycaret==2.0.0
     
     """
        
