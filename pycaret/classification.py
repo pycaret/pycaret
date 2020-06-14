@@ -2158,7 +2158,6 @@ def create_model(estimator = None,
         from sklearn.ensemble import AdaBoostClassifier
         model = AdaBoostClassifier(model, n_estimators=10, random_state=seed)
     
-    
     #multiclass checking
     if y.value_counts().count() > 2:
         from sklearn.multiclass import OneVsRestClassifier
@@ -9669,7 +9668,7 @@ def predict_model(estimator,
     exception checking ends here
     """
     
-    estimator = deepcopy(estimator)
+    estimator = deepcopy(estimator) #lookout for an alternate of deepcopy()
     
     if html_param:
         clear_output()
@@ -9744,11 +9743,6 @@ def predict_model(estimator,
         X_test_.reset_index(drop=True, inplace=True)
     
         estimator_ = estimator
-        
-    #try:
-    #    model = finalize_model(estimator)
-    #except:
-    #    model = estimator
 
     if type(estimator) is list:
         
@@ -10600,8 +10594,9 @@ def automl(optimize='Accuracy', use_holdout=False):
 
     if use_holdout:
         for i in master_model_container:
-            pred_holdout = predict_model(i, verbose=False, system=False)
+            pred_holdout = predict_model(i, verbose=False)
             p = pull()
+            display_container.pop(-1)
             p = p[compare_dimension][0]
             scorer.append(p)
 
