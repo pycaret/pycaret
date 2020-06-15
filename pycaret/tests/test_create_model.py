@@ -5,7 +5,8 @@ sys.path.insert(0, os.path.abspath(".."))
 import pytest
 import pycaret.regression
 import pycaret.classification
-import pycaret.datasets
+import pycaret.forecast
+import pycaret.datasets 
 
 available_regressors = ['lr', 'lasso', 'ridge', 'en', 'lar', 'llar', 'omp', 'br', 'ard', 'par', 
                             'ransac', 'tr', 'huber', 'kr', 'svm', 'knn', 'dt', 'rf', 'et', 'ada', 'gbr', 
@@ -14,6 +15,8 @@ available_regressors = ['lr', 'lasso', 'ridge', 'en', 'lar', 'llar', 'omp', 'br'
 
 available_classifiers = ['lr', 'knn', 'nb', 'dt', 'svm', 'rbfsvm', 'gpc', 'mlp', 'ridge', 'rf', 'qda', 'ada', 
                             'gbc', 'lda', 'et', 'xgboost', 'lightgbm', 'catboost']
+
+available_forecast = ['sem','holt','auto_arima']
 
 
 def test_create_model_reg():
@@ -35,3 +38,13 @@ def test_create_model_clf():
         c = pycaret.classification.create_model(i, verbose=False)
         trained_models.append(c)
     assert len(trained_models) == len(available_classifiers)
+
+def test_create_model_foc():
+    data = pycaret.datasets.get_data('air_passangers')
+    data = data.tail(100)
+    foc1 = pycaret.forecast.setup(data, target='#Passengers',silent=True, session_id=786)
+    trained_models = []
+    for i in available_forecast:
+        c = pycaret.forecast.create_model(i, verbose=False)
+        trained_models.append(c)
+    assert len(trained_models) == len(available_forecast)
