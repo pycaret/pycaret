@@ -47,16 +47,18 @@ def setup(data,
           feature_interaction = False,                   
           feature_ratio = False,                         
           interaction_threshold = 0.01,
-          data_split_shuffle = True, #added in pycaret==1.0.1
-          folds_shuffle = False, #added in pycaret==1.0.1
-          n_jobs = -1, #added in pycaret==1.0.1
-          html = True, #added in pycaret==1.0.1
+          data_split_shuffle = True, #added in pycaret==2.0.0
+          folds_shuffle = False, #added in pycaret==2.0.0
+          n_jobs = -1, #added in pycaret==2.0.0
+          html = True, #added in pycaret==2.0.0
           session_id = None,
-          experiment_name = None, #added in pycaret==1.0.1
-          logging = True, #added in pycaret==1.0.1
-          log_profile = False, #added in pycaret==1.0.1
+          experiment_name = None, #added in pycaret==2.0.0
+          logging = True, #added in pycaret==2.0.0
+          log_plots = False, #added in pycaret==2.0.0
+          log_profile = False, #added in pycaret==2.0.0
+          log_data = False, #added in pycaret==2.0.0
           silent=False,
-          verbose=True, #added in pycaret==1.0.1
+          verbose=True, #added in pycaret==2.0.0
           profile = False):
     
     """
@@ -377,9 +379,13 @@ def setup(data,
     logging: bool, default = True
     When set to True, all metrics and parameters are logged on MLFlow server.
 
+    log_plots: bool, default = False
+    When set to True, specific plots are logged in MLflow as a png file. By default,
+    it is set to False. 
+
     log_profile: bool, default = False
     When set to True, data profile is also logged on MLflow as a html file. By default,
-    its set to False. 
+    it is set to False. 
 
     silent: bool, default = False
     When set to True, confirmation of data types is not required. All preprocessing will 
@@ -415,6 +421,10 @@ def setup(data,
     #exception checking   
     import sys
     
+    #run_time
+    import datetime, time
+    runtime_start = time.time()
+
     #checking train size parameter
     if type(train_size) is not float:
         sys.exit('(Type Error): train_size parameter only accepts float value.')
@@ -694,12 +704,12 @@ def setup(data,
     import pandas as pd
     import ipywidgets as ipw
     from IPython.display import display, HTML, clear_output, update_display
-    import datetime, time
     
     #import mlflow and logging utils
     import mlflow
     import mlflow.sklearn
     import secrets
+    import os
     
     #pandas option
     pd.set_option('display.max_columns', 500)
@@ -765,7 +775,8 @@ def setup(data,
     
     #declaring global variables to be accessed by other functions
     global X, y, X_train, X_test, y_train, y_test, seed, prep_pipe, experiment__,\
-         folds_shuffle_param, n_jobs_param, create_model_container, master_model_container, display_container, exp_name_log, logging_param
+        folds_shuffle_param, n_jobs_param, create_model_container, master_model_container,\
+        display_container, exp_name_log, logging_param, log_plots_param, USI
     
     #generate seed to be used globally
     if session_id is None:
@@ -1169,6 +1180,12 @@ def setup(data,
 
     #create exp_name_log param incase logging is False
     exp_name_log = 'no_logging'
+
+    #create an empty log_plots_param
+    if log_plots:
+        log_plots_param = True
+    else:
+        log_plots_param = False
 
     #sample estimator
     if sample_estimator is None:
@@ -1624,19 +1641,37 @@ def setup(data,
         experiment__.append(('y_test Set', y_test))
         experiment__.append(('Transformation Pipeline', prep_pipe))
 
+    #end runtime
+    runtime_end = time.time()
+    runtime = np.array(runtime_end - runtime_start).round(2)
+
     #mlflow create experiment (name defined here)
+
+    USI = secrets.token_hex(nbytes=2)
+
     if logging_param:
-        uniquekey = secrets.token_hex(nbytes=6)
+
         if experiment_name is None:
-            exp_name_ = 'clf'
+            exp_name_ = 'clf-default-name'
         else:
             exp_name_ = experiment_name
-        exp_name_log = exp_name_ + '-' + str(seed) + '-' + str(uniquekey)
-        mlflow.create_experiment(exp_name_log)
+
+        URI = secrets.token_hex(nbytes=4)    
+        exp_name_log = exp_name_
+        
+        try:
+            mlflow.create_experiment(exp_name_log)
+        except:
+            pass
 
         #mlflow logging
         mlflow.set_experiment(exp_name_log)
-        with mlflow.start_run(run_name='Session Initialized') as run:
+
+        run_name_ = 'Session Initialized ' + str(USI)
+        with mlflow.start_run(run_name=run_name_) as run:
+
+            # Get active run to log as tag
+            RunID = mlflow.active_run().info.run_id
             
             k = functions.copy()
             k.set_index('Description',drop=True,inplace=True)
@@ -1644,27 +1679,58 @@ def setup(data,
             params = kdict.get('Value')
             mlflow.log_params(params)
 
+            #set tag of compare_models
+            mlflow.set_tag("Source", "setup")
+            
+            import secrets
+            URI = secrets.token_hex(nbytes=4)
+            mlflow.set_tag("URI", URI)
+
+            mlflow.set_tag("USI", USI) 
+
+            mlflow.set_tag("Run Time", runtime)
+
+            mlflow.set_tag("Run ID", RunID)
+
             # Log the transformation pipeline
             save_model(prep_pipe, 'Transformation Pipeline', verbose=False)
             mlflow.log_artifact('Transformation Pipeline' + '.pkl')
+            os.remove('Transformation Pipeline.pkl')
 
             # Log pandas profile
             if log_profile:
                 import pandas_profiling
                 pf = pandas_profiling.ProfileReport(data_before_preprocess)
-                pf.to_file("data_profile.html")
-                mlflow.log_artifact("data_profile.html")
+                pf.to_file("Data Profile.html")
+                mlflow.log_artifact("Data Profile.html")
+                os.remove("Data Profile.html")
                 clear_output()
                 display(functions_)
 
             # Log training and testing set
-            X_train.join(y_train).to_csv('Train.csv')
-            X_test.join(y_test).to_csv('Test.csv')
-            mlflow.log_artifact("Train.csv")
-            mlflow.log_artifact("Test.csv")
+            if log_data:
+                X_train.join(y_train).to_csv('Train.csv')
+                X_test.join(y_test).to_csv('Test.csv')
+                mlflow.log_artifact("Train.csv")
+                mlflow.log_artifact("Test.csv")
+                os.remove('Train.csv')
+                os.remove('Test.csv')
+
+            # Log input.txt that contains name of columns required in dataset 
+            # to use this pipeline based on USI/URI.
+
+            input_cols = list(data_before_preprocess.columns)
+            input_cols.remove(target)
+
+            with open("input.txt", "w") as output:
+                output.write(str(input_cols))
+            
+            mlflow.log_artifact("input.txt")
+            os.remove('input.txt')
 
     return X, y, X_train, X_test, y_train, y_test, seed, prep_pipe, experiment__,\
-        folds_shuffle_param, n_jobs_param, html_param, create_model_container, master_model_container, display_container, exp_name_log, logging_param
+        folds_shuffle_param, n_jobs_param, html_param, create_model_container, master_model_container,\
+        display_container, exp_name_log, logging_param, log_plots_param, USI
 
 
 def create_model(estimator = None, 
@@ -1673,8 +1739,8 @@ def create_model(estimator = None,
                  fold = 10, 
                  round = 4,  
                  verbose = True,
-                 system = True, #added in pycaret==1.0.1
-                 **kwargs): #added in pycaret==1.0.1
+                 system = True, #added in pycaret==2.0.0
+                 **kwargs): #added in pycaret==2.0.0
 
     """  
      
@@ -1837,16 +1903,15 @@ def create_model(estimator = None,
     
     '''
     
-    
+    #run_time
+    import datetime, time
+    runtime_start = time.time()
+
     #pre-load libraries
     import pandas as pd
     import ipywidgets as ipw
     from IPython.display import display, HTML, clear_output, update_display
-    import datetime, time
-
-    #import mlflow
-    import mlflow
-    import mlflow.sklearn
+    
 
     #progress bar
     progress = ipw.IntProgress(value=0, min=0, max=fold+4, step=1 , description='Processing: ')
@@ -2033,7 +2098,51 @@ def create_model(estimator = None,
         
     else:
         model = estimator
-        full_name = str(model).split("(")[0]
+
+        def get_model_name(e):
+            return str(e).split("(")[0]
+
+        model_dict_logging = {'ExtraTreesClassifier' : 'Extra Trees Classifier',
+                            'GradientBoostingClassifier' : 'Gradient Boosting Classifier', 
+                            'RandomForestClassifier' : 'Random Forest Classifier',
+                            'LGBMClassifier' : 'Light Gradient Boosting Machine',
+                            'XGBClassifier' : 'Extreme Gradient Boosting',
+                            'AdaBoostClassifier' : 'Ada Boost Classifier', 
+                            'DecisionTreeClassifier' : 'Decision Tree Classifier', 
+                            'RidgeClassifier' : 'Ridge Classifier',
+                            'LogisticRegression' : 'Logistic Regression',
+                            'KNeighborsClassifier' : 'K Neighbors Classifier',
+                            'GaussianNB' : 'Naive Bayes',
+                            'SGDClassifier' : 'SVM - Linear Kernel',
+                            'SVC' : 'SVM - Radial Kernel',
+                            'GaussianProcessClassifier' : 'Gaussian Process Classifier',
+                            'MLPClassifier' : 'MLP Classifier',
+                            'QuadraticDiscriminantAnalysis' : 'Quadratic Discriminant Analysis',
+                            'LinearDiscriminantAnalysis' : 'Linear Discriminant Analysis',
+                            'CatBoostClassifier' : 'CatBoost Classifier',
+                            'BaggingClassifier' : 'Bagging Classifier',
+                            'VotingClassifier' : 'Voting Classifier'} 
+
+        if y.value_counts().count() > 2:
+
+            mn = get_model_name(estimator.estimator)
+
+            if 'catboost' in mn:
+                mn = 'CatBoostClassifier'
+
+            full_name = model_dict_logging.get(mn)
+        
+        else:
+
+            mn = get_model_name(estimator)
+            
+            if 'catboost' in mn:
+                mn = 'CatBoostClassifier'
+
+            try:
+                full_name = model_dict_logging.get(mn)
+            except:
+                full_name = 'Custom Model'
     
     progress.value += 1
     
@@ -2048,7 +2157,6 @@ def create_model(estimator = None,
         
         from sklearn.ensemble import AdaBoostClassifier
         model = AdaBoostClassifier(model, n_estimators=10, random_state=seed)
-    
     
     #multiclass checking
     if y.value_counts().count() > 2:
@@ -2215,7 +2323,7 @@ def create_model(estimator = None,
     mean_f1=np.mean(score_f1)
     mean_kappa=np.mean(score_kappa)
     mean_mcc=np.mean(score_mcc)
-    mean_training_time=np.mean(score_training_time)
+    mean_training_time=np.sum(score_training_time) #changed it to sum from mean 
     
     std_acc=np.std(score_acc)
     std_auc=np.std(score_auc)
@@ -2266,25 +2374,117 @@ def create_model(estimator = None,
         if html_param:
             update_display(monitor, display_id = 'monitor')
     
+    model_fit_start = time.time()
     model.fit(data_X, data_y)
+    model_fit_end = time.time()
+
+    model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
     
+    #end runtime
+    runtime_end = time.time()
+    runtime = np.array(runtime_end - runtime_start).round(2)
+
     #mlflow logging
     if logging_param and system:
+
+        #Creating Logs message monitor
+        monitor.iloc[1,1:] = 'Creating Logs'
+        monitor.iloc[2,1:] = 'Almost Finished'    
+        if verbose:
+            if html_param:
+                update_display(monitor, display_id = 'monitor')
+
+        #import mlflow
+        import mlflow
+        import mlflow.sklearn
+        import os
+
         mlflow.set_experiment(exp_name_log)
+
         with mlflow.start_run(run_name=full_name) as run:
+
+            # Get active run to log as tag
+            RunID = mlflow.active_run().info.run_id
+
+            # Log model parameters
             params = model.get_params()
+
+            for i in list(params):
+                v = params.get(i)
+                if len(str(v)) > 250:
+                    params.pop(i)
+
+            mlflow.log_params(params)
+            
+            # Log metrics
             mlflow.log_metrics({"Accuracy": avgs_acc[0], "AUC": avgs_auc[0], "Recall": avgs_recall[0], "Precision" : avgs_precision[0],
                                 "F1": avgs_f1[0], "Kappa": avgs_kappa[0], "MCC": avgs_mcc[0]})
-            mlflow.log_params(params)
+            
+            # Log internal parameters
+            mlflow.log_param("create_model_estimator", estimator)
+            mlflow.log_param("create_model_ensemble", ensemble)
+            mlflow.log_param("create_model_method", method)
+            mlflow.log_param("create_model_fold", fold)
+            mlflow.log_param("create_model_round", round)
+            mlflow.log_param("create_model_verbose", verbose)
+            mlflow.log_param("create_model_system", system)
+            
+            #set tag of compare_models
+            mlflow.set_tag("Source", "create_model")
+            
+            import secrets
+            URI = secrets.token_hex(nbytes=4)
+            mlflow.set_tag("URI", URI)
+            
+            mlflow.set_tag("USI", USI)
 
-            #log other parameter of create_model function
-            mlflow.log_param("ensemble", ensemble)
-            mlflow.log_param("ensemble_method", method)
-            mlflow.log_param("fold", fold)
-            mlflow.log_param("round", round)
+            mlflow.set_tag("Run Time", runtime)
 
-            # Log the sklearn model and register as version 1
-            #mlflow.sklearn.log_model(model, full_name)
+            mlflow.set_tag("Run ID", RunID)
+
+            # Log training time in seconds
+            mlflow.log_metric("TT", model_fit_time)
+
+            # Log the CV results as model_results.html artifact
+            model_results.data.to_html('Results.html', col_space=65, justify='left')
+            mlflow.log_artifact('Results.html')
+            os.remove('Results.html')
+
+            # Generate hold-out predictions and save as html
+            holdout = predict_model(model, verbose=False)
+            holdout_score = pull()
+            display_container.pop(-1)
+            holdout_score.to_html('Holdout.html', col_space=65, justify='left')
+            mlflow.log_artifact('Holdout.html')
+            os.remove('Holdout.html')
+
+            # Log AUC and Confusion Matrix plot
+            if log_plots_param:
+                try:
+                    plot_model(model, plot = 'auc', verbose=False, save=True, system=False)
+                    mlflow.log_artifact('AUC.png')
+                    os.remove("AUC.png")
+                except:
+                    pass
+
+                try:
+                    plot_model(model, plot = 'confusion_matrix', verbose=False, save=True, system=False)
+                    mlflow.log_artifact('Confusion Matrix.png')
+                    os.remove("Confusion Matrix.png")
+                except:
+                    pass
+
+                try:
+                    plot_model(model, plot = 'feature', verbose=False, save=True, system=False)
+                    mlflow.log_artifact('Feature Importance.png')
+                    os.remove("Feature Importance.png")
+                except:
+                    pass
+
+            # Log model and transformation pipeline
+            save_model(model, 'Trained Model', verbose=False)
+            mlflow.log_artifact('Trained Model' + '.pkl')
+            os.remove('Trained Model.pkl')
 
     progress.value += 1
     
@@ -2317,8 +2517,8 @@ def ensemble_model(estimator,
                    fold = 10,
                    n_estimators = 10,
                    round = 4,  
-                   choose_better = True, #added in pycaret==1.0.1
-                   optimize = 'Accuracy', #added in pycaret==1.0.1
+                   choose_better = False, #added in pycaret==2.0.0
+                   optimize = 'Accuracy', #added in pycaret==2.0.0
                    verbose = True):
     """
        
@@ -2367,7 +2567,7 @@ def ensemble_model(estimator,
     round: integer, default = 4
     Number of decimal places the metrics in the score grid will be rounded to.
 
-    choose_better: Boolean, default = True
+    choose_better: Boolean, default = False
     When set to set to True, base estimator is returned when the metric doesn't 
     improve by ensemble_model. This gurantees the returned object would perform 
     atleast equivalent to base estimator created using create_model or model 
@@ -2411,6 +2611,10 @@ def ensemble_model(estimator,
     
     #exception checking   
     import sys
+
+    #run_time
+    import datetime, time
+    runtime_start = time.time()
         
     #Check for allowed method
     available_method = ['Bagging', 'Boosting']
@@ -2461,7 +2665,6 @@ def ensemble_model(estimator,
     
     #pre-load libraries
     import pandas as pd
-    import datetime, time
     import ipywidgets as ipw
     from IPython.display import display, HTML, clear_output, update_display
     
@@ -2528,7 +2731,10 @@ def ensemble_model(estimator,
     def get_model_name(e):
         return str(e).split("(")[0]
 
-    mn = get_model_name(estimator)
+    if y.value_counts().count() > 2:
+        mn = get_model_name(estimator.estimator)
+    else:
+        mn = get_model_name(estimator)
 
     if 'catboost' in str(estimator):
         mn = 'CatBoostClassifier'
@@ -2554,6 +2760,26 @@ def ensemble_model(estimator,
                 'BaggingClassifier' : 'Bagging'}
 
     estimator__ = model_dict.get(mn)
+
+    model_dict_logging = {'ExtraTreesClassifier' : 'Extra Trees Classifier',
+                        'GradientBoostingClassifier' : 'Gradient Boosting Classifier', 
+                        'RandomForestClassifier' : 'Random Forest Classifier',
+                        'LGBMClassifier' : 'Light Gradient Boosting Machine',
+                        'XGBClassifier' : 'Extreme Gradient Boosting',
+                        'AdaBoostClassifier' : 'Ada Boost Classifier', 
+                        'DecisionTreeClassifier' : 'Decision Tree Classifier', 
+                        'RidgeClassifier' : 'Ridge Classifier',
+                        'LogisticRegression' : 'Logistic Regression',
+                        'KNeighborsClassifier' : 'K Neighbors Classifier',
+                        'GaussianNB' : 'Naive Bayes',
+                        'SGDClassifier' : 'SVM - Linear Kernel',
+                        'SVC' : 'SVM - Radial Kernel',
+                        'GaussianProcessClassifier' : 'Gaussian Process Classifier',
+                        'MLPClassifier' : 'MLP Classifier',
+                        'QuadraticDiscriminantAnalysis' : 'Quadratic Discriminant Analysis',
+                        'LinearDiscriminantAnalysis' : 'Linear Discriminant Analysis',
+                        'CatBoostClassifier' : 'CatBoost Classifier',
+                        'BaggingClassifier' : 'Bagging Classifier'}
 
     '''
     MONITOR UPDATE STARTS
@@ -2770,7 +2996,7 @@ def ensemble_model(estimator,
     mean_f1=np.mean(score_f1)
     mean_kappa=np.mean(score_kappa)
     mean_mcc=np.mean(score_mcc)
-    mean_training_time=np.mean(score_training_time)
+    mean_training_time=np.sum(score_training_time)
     std_acc=np.std(score_acc)
     std_auc=np.std(score_auc)
     std_recall=np.std(score_recall)
@@ -2817,11 +3043,16 @@ def ensemble_model(estimator,
     
     #refitting the model on complete X_train, y_train
     monitor.iloc[1,1:] = 'Finalizing Model'
+    monitor.iloc[2,1:] = 'Almost Finished'
     if verbose:
         if html_param:
             update_display(monitor, display_id = 'monitor')
     
+    model_fit_start = time.time()
     model.fit(data_X, data_y)
+    model_fit_end = time.time()
+
+    model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
     
     #storing results in create_model_container
     create_model_container.append(model_results.data)
@@ -2847,7 +3078,7 @@ def ensemble_model(estimator,
                 update_display(monitor, display_id = 'monitor')
 
         #creating base model for comparison
-        base_model = create_model(estimator=estimator, verbose = False)
+        base_model = create_model(estimator=estimator, verbose = False, system=False)
         base_model_results = create_model_container[-1][compare_dimension][-2:][0]
         ensembled_model_results = create_model_container[-2][compare_dimension][-2:][0]
 
@@ -2855,6 +3086,9 @@ def ensemble_model(estimator,
             model = model
         else:
             model = base_model
+
+        #re-instate display_constainer state 
+        display_container.pop(-1)
    
     #storing into experiment
     model_name = str(model).split("(")[0]
@@ -2864,7 +3098,111 @@ def ensemble_model(estimator,
     nam = str(model_name) + ' Score Grid'
     tup = (nam, model_results)
     experiment__.append(tup)
+
+    #end runtime
+    runtime_end = time.time()
+    runtime = np.array(runtime_end - runtime_start).round(2)
     
+    if logging_param:
+
+        #Creating Logs message monitor
+        monitor.iloc[1,1:] = 'Creating Logs'
+        monitor.iloc[2,1:] = 'Almost Finished'    
+        if verbose:
+            if html_param:
+                update_display(monitor, display_id = 'monitor')
+
+
+        import mlflow
+        import os
+
+        mlflow.set_experiment(exp_name_log)
+        full_name = model_dict_logging.get(mn)
+
+        with mlflow.start_run(run_name=full_name) as run:        
+
+            # Get active run to log as tag
+            RunID = mlflow.active_run().info.run_id
+
+            params = model.get_params()
+
+            for i in list(params):
+                v = params.get(i)
+                if len(str(v)) > 250:
+                    params.pop(i)
+
+            mlflow.log_params(params)
+            mlflow.log_metrics({"Accuracy": avgs_acc[0], "AUC": avgs_auc[0], "Recall": avgs_recall[0], "Precision" : avgs_precision[0],
+                                "F1": avgs_f1[0], "Kappa": avgs_kappa[0], "MCC": avgs_mcc[0]})
+            
+
+            # Log internal parameters
+            mlflow.log_param('ensemble_model_estimator', full_name)
+            mlflow.log_param('ensemble_model_method', method)
+            mlflow.log_param('ensemble_model_fold', fold)
+            mlflow.log_param('ensemble_model_n_estimators', n_estimators)
+            mlflow.log_param('ensemble_model_round', round)
+            mlflow.log_param('ensemble_model_choose_better', choose_better)
+            mlflow.log_param('ensemble_model_optimize', optimize)
+            mlflow.log_param('ensemble_model_verbose', verbose)
+
+            #set tag of compare_models
+            mlflow.set_tag("Source", "ensemble_model")
+            
+            import secrets
+            URI = secrets.token_hex(nbytes=4)
+            mlflow.set_tag("URI", URI)
+
+            mlflow.set_tag("USI", USI)
+            
+            mlflow.set_tag("Run Time", runtime)
+
+            mlflow.set_tag("Run ID", RunID)
+
+            # Log training time in seconds
+            mlflow.log_metric("TT", model_fit_time)
+
+            # Log model and transformation pipeline
+            save_model(model, 'Trained Model', verbose=False)
+            mlflow.log_artifact('Trained Model' + '.pkl')
+            os.remove('Trained Model.pkl')
+
+            # Generate hold-out predictions and save as html
+            holdout = predict_model(model, verbose=False)
+            holdout_score = pull()
+            display_container.pop(-1)
+            holdout_score.to_html('Holdout.html', col_space=65, justify='left')
+            mlflow.log_artifact('Holdout.html')
+            os.remove('Holdout.html')
+
+            # Log AUC and Confusion Matrix plot
+            if log_plots_param:
+                try:
+                    plot_model(model, plot = 'auc', verbose=False, save=True, system=False)
+                    mlflow.log_artifact('AUC.png')
+                    os.remove("AUC.png")
+                except:
+                    pass
+
+                try:
+                    plot_model(model, plot = 'confusion_matrix', verbose=False, save=True, system=False)
+                    mlflow.log_artifact('Confusion Matrix.png')
+                    os.remove("Confusion Matrix.png")
+                except:
+                    pass
+
+                try:
+                    plot_model(model, plot = 'feature', verbose=False, save=True, system=False)
+                    mlflow.log_artifact('Feature Importance.png')
+                    os.remove("Feature Importance.png")
+                except:
+                    pass
+
+            # Log the CV results as model_results.html artifact
+            model_results.data.to_html('Results.html', col_space=65, justify='left')
+            mlflow.log_artifact('Results.html')
+            os.remove('Results.html')
+
     if verbose:
         clear_output()
         if html_param:
@@ -2877,7 +3215,10 @@ def ensemble_model(estimator,
     return model
 
 def plot_model(estimator, 
-               plot = 'auc'): 
+               plot = 'auc',
+               save = False, #added in pycaret 1.0.1
+               verbose = True, #added in pycaret 1.0.1
+               system = True): #added in pycaret 1.0.1
     
     
     """
@@ -2929,6 +3270,15 @@ def plot_model(estimator,
 
     ** https://www.scikit-yb.org/en/latest/api/classifier/<reference>
 
+    save: Boolean, default = False
+    Plot is saved as png file in local directory when save parameter set to True.
+
+    verbose: Boolean, default = True
+    Progress bar not shown when verbose set to False. 
+
+    system: Boolean, default = True
+    Must remain True all times. Only to be changed by internal functions.
+
     Returns:
     --------
 
@@ -2945,8 +3295,7 @@ def plot_model(estimator,
               
     -   'calibration', 'threshold', 'manifold' and 'rfe' plots are not available for
          multiclass problems.
-           
-             
+                
 
     """  
     
@@ -3010,7 +3359,9 @@ def plot_model(estimator,
     
     #progress bar
     progress = ipw.IntProgress(value=0, min=0, max=5, step=1 , description='Processing: ')
-    display(progress)
+    if verbose:
+        if html_param:
+            display(progress)
     
     #ignore warnings
     import warnings
@@ -3028,8 +3379,10 @@ def plot_model(estimator,
     
     progress.value += 1
     
-        
-    if plot == 'auc':
+    #plots used for logging (controlled through plots_log_param) 
+    #AUC, #Confusion Matrix and #Feature Importance
+
+    if plot == 'auc': 
         
         from yellowbrick.classifier import ROCAUC
         progress.value += 1
@@ -3039,8 +3392,13 @@ def plot_model(estimator,
         visualizer.score(X_test, y_test)
         progress.value += 1
         clear_output()
-        visualizer.show(outpath="image2.png")
-        visualizer.poof()
+        if save or log_plots_param:
+            if system:
+                visualizer.show(outpath="AUC.png")
+            else:
+                visualizer.show(outpath="AUC.png", clear_figure=True)
+        else:
+            visualizer.show()
         
     elif plot == 'threshold':
         
@@ -3052,8 +3410,14 @@ def plot_model(estimator,
         visualizer.score(X_test, y_test)
         progress.value += 1
         clear_output()
-        visualizer.poof()
-    
+        if save:
+            if system:
+                visualizer.show(outpath="Threshold Curve.png")
+            else:
+                visualizer.show(outpath="Threshold Curve.png", clear_figure=True)
+        else:
+            visualizer.show()
+
     elif plot == 'pr':
         
         from yellowbrick.classifier import PrecisionRecallCurve
@@ -3064,7 +3428,13 @@ def plot_model(estimator,
         visualizer.score(X_test, y_test)
         progress.value += 1
         clear_output()
-        visualizer.poof()
+        if save:
+            if system:
+                visualizer.show(outpath="Precision Recall.png")
+            else:
+                visualizer.show(outpath="Precision Recall.png", clear_figure=True)
+        else:
+            visualizer.show()
 
     elif plot == 'confusion_matrix':
         
@@ -3076,8 +3446,14 @@ def plot_model(estimator,
         visualizer.score(X_test, y_test)
         progress.value += 1
         clear_output()
-        visualizer.poof()
-    
+        if save or log_plots_param:
+            if system:
+                visualizer.show(outpath="Confusion Matrix.png")
+            else:
+                visualizer.show(outpath="Confusion Matrix.png", clear_figure=True)
+        else:
+            visualizer.show()
+
     elif plot == 'error':
         
         from yellowbrick.classifier import ClassPredictionError
@@ -3088,7 +3464,13 @@ def plot_model(estimator,
         visualizer.score(X_test, y_test)
         progress.value += 1
         clear_output()
-        visualizer.poof()
+        if save:
+            if system:
+                visualizer.show(outpath="Class Prediction Error.png")
+            else:
+                visualizer.show(outpath="Class Prediction Error.png", clear_figure=True)
+        else:
+            visualizer.show()
 
     elif plot == 'class_report':
         
@@ -3100,7 +3482,13 @@ def plot_model(estimator,
         visualizer.score(X_test, y_test)
         progress.value += 1
         clear_output()
-        visualizer.poof()
+        if save:
+            if system:
+                visualizer.show(outpath="Classification Report.png")
+            else:
+                visualizer.show(outpath="Classification Report.png", clear_figure=True)
+        else:
+            visualizer.show()
         
     elif plot == 'boundary':
         
@@ -3134,8 +3522,14 @@ def plot_model(estimator,
         viz_.draw(X_test_transformed, y_test_transformed)
         progress.value += 1
         clear_output()
-        viz_.poof()
-        
+        if save:
+            if system:
+                viz_.show(outpath="Decision Boundary.png")
+            else:
+                viz_.show(outpath="Decision Boundary.png", clear_figure=True)
+        else:
+            viz_.show()
+
     elif plot == 'rfe':
         
         from yellowbrick.model_selection import RFECV 
@@ -3145,7 +3539,13 @@ def plot_model(estimator,
         visualizer.fit(X_train, y_train)
         progress.value += 1
         clear_output()
-        visualizer.poof()
+        if save:
+            if system:
+                visualizer.show(outpath="Recursive Feature Selection.png")
+            else:
+                visualizer.show(outpath="Recursive Feature Selection.png", clear_figure=True)
+        else:
+            visualizer.show()
            
     elif plot == 'learning':
         
@@ -3157,8 +3557,14 @@ def plot_model(estimator,
         visualizer.fit(X_train, y_train)
         progress.value += 1
         clear_output()
-        visualizer.poof()
-        
+        if save:
+            if system:
+                visualizer.show(outpath="Learning Curve.png")
+            else:
+                visualizer.show(outpath="Learning Curve.png", clear_figure=True)
+        else:
+            visualizer.show()
+
     elif plot == 'manifold':
         
         from yellowbrick.features import Manifold
@@ -3170,8 +3576,14 @@ def plot_model(estimator,
         visualizer.fit_transform(X_train_transformed, y_train)
         progress.value += 1
         clear_output()
-        visualizer.poof()       
-        
+        if save:
+            if system:
+                visualizer.show(outpath="Manifold Plot.png")
+            else:
+                visualizer.show(outpath="Manifold Plot.png", clear_figure=True)
+        else:
+            visualizer.show()
+
     elif plot == 'calibration':      
                 
         from sklearn.calibration import calibration_curve
@@ -3199,7 +3611,13 @@ def plot_model(estimator,
         plt.tight_layout()
         progress.value += 1
         clear_output()
-        plt.show() 
+        if save:
+            if system:
+                plt.savefig("Calibration Plot.png")
+            else:
+                plt.show()
+        else:
+            plt.show() 
         
     elif plot == 'vc':
         
@@ -3271,7 +3689,13 @@ def plot_model(estimator,
         viz.fit(X_train, y_train)
         progress.value += 1
         clear_output()
-        viz.poof()
+        if save:
+            if system:
+                viz.show(outpath="Validation Curve.png")
+            else:
+                viz.show(outpath="Validation Curve.png", clear_figure=True)
+        else:
+            viz.show()
         
     elif plot == 'dimension':
     
@@ -3289,14 +3713,20 @@ def plot_model(estimator,
         pca = PCA(n_components=features, random_state=seed)
         X_train_transformed = pca.fit_transform(X_train_transformed)
         progress.value += 1
-        #classes = ["1", "0"]
         classes = y_train.unique().tolist()
         visualizer = RadViz(classes=classes, alpha=0.25)
         visualizer.fit(X_train_transformed, y_train_transformed)     
         visualizer.transform(X_train_transformed)
         progress.value += 1
         clear_output()
-        visualizer.poof()
+        if save:
+            if system:
+                visualizer.show(outpath="Dimension Plot.png")
+            else:
+                visualizer.show(outpath="Dimension Plot.png", clear_figure=True)
+        else:
+            visualizer.show()
+
         
     elif plot == 'feature':
         
@@ -3322,6 +3752,14 @@ def plot_model(estimator,
         plt.ylabel('Features')
         progress.value += 1
         clear_output()
+        if save or log_plots_param:
+            if system:
+                plt.savefig("Feature Importance.png")
+            else:
+                plt.savefig("Feature Importance.png")
+                plt.close()
+        else:
+            plt.show() 
     
     elif plot == 'parameter':
         
@@ -3331,13 +3769,13 @@ def plot_model(estimator,
 
 
 def compare_models(blacklist = None,
-                   whitelist = None, #added in pycaret==1.0.1
+                   whitelist = None, #added in pycaret==2.0.0
                    fold = 10, 
                    round = 4, 
                    sort = 'Accuracy',
-                   n_select = 1, #added in pycaret==1.0.1
+                   n_select = 1, #added in pycaret==2.0.0
                    turbo = True,
-                   verbose = True): #added in pycaret==1.0.1
+                   verbose = True): #added in pycaret==2.0.0
     
     """
       
@@ -3463,6 +3901,10 @@ def compare_models(blacklist = None,
     
     #exception checking   
     import sys
+    
+    #run_time
+    import datetime, time
+    runtime_start = time.time()
     
     #checking error for blacklist (string)
     available_estimators = ['lr', 'knn', 'nb', 'dt', 'svm', 'rbfsvm', 'gpc', 'mlp', 'ridge', 'rf', 'qda', 'ada', 
@@ -4072,6 +4514,8 @@ def compare_models(blacklist = None,
     
     model_store_final = []
 
+    model_fit_start = time.time()
+
     for i in sorted_model_names:
         monitor.iloc[2,1:] = i
         if verbose:
@@ -4079,13 +4523,101 @@ def compare_models(blacklist = None,
                 update_display(monitor, display_id = 'monitor')
         progress.value += 1
         k = model_dict.get(i)
-        m = create_model(estimator=k, verbose = False)
+        m = create_model(estimator=k, verbose = False, system=False)
         model_store_final.append(m)
+
+    model_fit_end = time.time()
+
+    model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
 
     if len(model_store_final) == 1:
         model_store_final = model_store_final[0]
 
     clear_output()
+
+    #end runtime
+    runtime_end = time.time()
+    runtime = np.array(runtime_end - runtime_start).round(2)
+
+    if logging_param:
+
+        #Creating Logs message monitor
+        monitor.iloc[1,1:] = 'Creating Logs'
+        monitor.iloc[2,1:] = 'Almost Finished'    
+        if verbose:
+            if html_param:
+                update_display(monitor, display_id = 'monitor')
+
+        import mlflow
+        import os
+
+        cmdf = compare_models_.data
+        run_name = cmdf['Model'][0]
+
+        with mlflow.start_run(run_name=run_name) as run:  
+
+            # Get active run to log as tag
+            RunID = mlflow.active_run().info.run_id
+
+            if type(model_store_final) is list:
+                params = model_store_final[0].get_params()
+            else:
+                params = model_store_final.get_params()
+
+            for i in list(params):
+                v = params.get(i)
+                if len(str(v)) > 250:
+                    params.pop(i)
+                    
+            mlflow.log_params(params)
+
+            #set tag of compare_models
+            mlflow.set_tag("Source", "compare_models")
+            
+            import secrets
+            URI = secrets.token_hex(nbytes=4)
+            mlflow.set_tag("URI", URI)
+
+            mlflow.set_tag("USI", USI)
+
+            mlflow.set_tag("Run Time", runtime)
+
+            mlflow.set_tag("Run ID", RunID)
+
+            # Log internal parameters
+            mlflow.log_param("compare_models_blacklist", blacklist)
+            mlflow.log_param("compare_models_whitelist", whitelist)
+            mlflow.log_param("compare_models_fold", fold)
+            mlflow.log_param("compare_models_round", round)
+            mlflow.log_param("compare_models_sort", sort)
+            mlflow.log_param("compare_models_n_select", n_select)
+            mlflow.log_param("compare_models_turbo", turbo)
+            mlflow.log_param("compare_models_verbose", verbose)
+            
+            #Log top model metrics
+            mlflow.log_metric("Accuracy", cmdf['Accuracy'][0])
+            mlflow.log_metric("AUC", cmdf['AUC'][0])
+            mlflow.log_metric("Recall", cmdf['Recall'][0])
+            mlflow.log_metric("Precision", cmdf['Prec.'][0])
+            mlflow.log_metric("F1", cmdf['F1'][0])
+            mlflow.log_metric("Kappa", cmdf['Kappa'][0])
+            mlflow.log_metric("MCC", cmdf['MCC'][0])
+            mlflow.log_metric("TT", model_fit_time)
+
+            # Log model and transformation pipeline
+            if type(model_store_final) is list:
+                model_ = model_store_final[0]
+            else:
+                model_ = model_store_final
+
+            save_model(model_, 'Trained Model', verbose=False)
+            mlflow.log_artifact('Trained Model' + '.pkl')
+            os.remove('Trained Model.pkl')
+
+            # Log the CV results as model_results.html artifact
+            compare_models_.data.to_html('Results.html', col_space=65, justify='left')
+            mlflow.log_artifact('Results.html')
+            os.remove('Results.html')
 
     if html_param:
         display(compare_models_)
@@ -4101,9 +4633,9 @@ def tune_model(estimator = None,
                fold = 10, 
                round = 4, 
                n_iter = 10,
-               custom_grid = None, #added in pycaret==1.0.1 
+               custom_grid = None, #added in pycaret==2.0.0 
                optimize = 'Accuracy',
-               choose_better = True, #added in pycaret==1.0.1 
+               choose_better = False, #added in pycaret==2.0.0 
                verbose = True):
     
       
@@ -4176,7 +4708,7 @@ def tune_model(estimator = None,
     The default scoring measure is 'Accuracy'. Other measures include 'AUC',
     'Recall', 'Precision', 'F1'. 
 
-    choose_better: Boolean, default = True
+    choose_better: Boolean, default = False
     When set to set to True, base estimator is returned when the metric doesn't improve 
     by tune_model. This gurantees the returned object would perform atleast equivalent 
     to base estimator created using create_model or model returned by compare_models.
@@ -4220,10 +4752,18 @@ def tune_model(estimator = None,
     #exception checking   
     import sys
     
+    #run_time
+    import datetime, time
+    runtime_start = time.time()
+
     #checking estimator if string
     if type(estimator) is str:
         sys.exit('(Type Error): The behavior of tune_model in version 1.0.1 is changed. Please pass trained model object.')
-        
+    
+    #restrict VotingClassifier
+    if hasattr(estimator,'voting'):
+         sys.exit('(Type Error): VotingClassifier not allowed under tune_model().')
+
     #checking fold parameter
     if type(fold) is not int:
         sys.exit('(Type Error): Fold parameter only accepts integer value.')
@@ -4263,7 +4803,6 @@ def tune_model(estimator = None,
     
     #pre-load libraries
     import pandas as pd
-    import time, datetime
     import ipywidgets as ipw
     from IPython.display import display, HTML, clear_output, update_display
     
@@ -4355,7 +4894,10 @@ def tune_model(estimator = None,
     def get_model_name(e):
         return str(e).split("(")[0]
 
-    mn = get_model_name(estimator)
+    if len(estimator.classes_) > 2:
+        mn = get_model_name(estimator.estimator)
+    else:
+        mn = get_model_name(estimator)
 
     if 'catboost' in mn:
         mn = 'CatBoostClassifier'
@@ -4398,7 +4940,8 @@ def tune_model(estimator = None,
                         'QuadraticDiscriminantAnalysis' : 'Quadratic Discriminant Analysis',
                         'LinearDiscriminantAnalysis' : 'Linear Discriminant Analysis',
                         'CatBoostClassifier' : 'CatBoost Classifier',
-                        'BaggingClassifier' : 'Bagging Classifier'}
+                        'BaggingClassifier' : 'Bagging Classifier',
+                        'VotingClassifier' : 'Voting Classifier'}
 
     _estimator_ = estimator
 
@@ -4430,7 +4973,7 @@ def tune_model(estimator = None,
     MONITOR UPDATE STARTS
     '''
     
-    monitor.iloc[1,1:] = 'Searching Hyperparameters Grid'
+    monitor.iloc[1,1:] = 'Searching Hyperparameters'
     if verbose:
         if html_param:
             update_display(monitor, display_id = 'monitor')
@@ -4668,7 +5211,12 @@ def tune_model(estimator = None,
                         'algorithm' : ["SAMME", "SAMME.R"]
                         }    
 
-        model_grid = RandomizedSearchCV(estimator=AdaBoostClassifier(base_estimator = _estimator_.base_estimator, random_state=seed), 
+        if y.value_counts().count() > 2:
+            base_estimator_input = _estimator_.estimator.base_estimator
+        else:
+            base_estimator_input = _estimator_.base_estimator
+
+        model_grid = RandomizedSearchCV(estimator=AdaBoostClassifier(base_estimator = base_estimator_input, random_state=seed), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
                                         cv=cv, random_state=seed, n_jobs=n_jobs_param)
 
@@ -5058,7 +5606,7 @@ def tune_model(estimator = None,
     mean_f1=np.mean(score_f1)
     mean_kappa=np.mean(score_kappa)
     mean_mcc=np.mean(score_mcc)
-    mean_training_time=np.mean(score_training_time)
+    mean_training_time=np.sum(score_training_time)
     std_acc=np.std(score_acc)
     std_auc=np.std(score_auc)
     std_recall=np.std(score_recall)
@@ -5104,11 +5652,16 @@ def tune_model(estimator = None,
     
     #refitting the model on complete X_train, y_train
     monitor.iloc[1,1:] = 'Finalizing Model'
+    monitor.iloc[2,1:] = 'Almost Finished'
     if verbose:
         if html_param:
             update_display(monitor, display_id = 'monitor')
     
+    model_fit_start = time.time()
     best_model.fit(data_X, data_y)
+    model_fit_end = time.time()
+
+    model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
     
     progress.value += 1
     
@@ -5146,6 +5699,9 @@ def tune_model(estimator = None,
         else:
             best_model = base_model
 
+        #re-instate display_constainer state 
+        display_container.pop(-1)
+
     #storing into experiment
     model_name = '[TUNED] ' + str(model).split("(")[0]
     tup = (model_name,best_model)
@@ -5154,22 +5710,118 @@ def tune_model(estimator = None,
     tup = (nam, model_results)
     experiment__.append(tup)
 
+    #end runtime
+    runtime_end = time.time()
+    runtime = np.array(runtime_end - runtime_start).round(2)
+    
     #mlflow logging
-    import mlflow
-    mlflow.set_experiment(exp_name_log)
-    full_name = model_dict_logging.get(mn)
-    full_name = '[TUNED] ' + str(full_name)
+    if logging_param:
 
-    with mlflow.start_run(run_name=full_name) as run:        
-        params = model_grid.cv_results_.get('params')
-        metrics = model_grid.cv_results_.get('mean_test_score')
-        for i in metrics:
-            mlflow.log_metric('Mean Test Score', i)
+        #Creating Logs message monitor
+        monitor.iloc[1,1:] = 'Creating Logs'
+        monitor.iloc[2,1:] = 'Almost Finished'    
+        if verbose:
+            if html_param:
+                update_display(monitor, display_id = 'monitor')
 
-        params = best_model.get_params()
-        mlflow.log_params(params)
-        mlflow.log_metrics({"Accuracy": avgs_acc[0], "AUC": avgs_auc[0], "Recall": avgs_recall[0], "Precision" : avgs_precision[0],
-                            "F1": avgs_f1[0], "Kappa": avgs_kappa[0], "MCC": avgs_mcc[0]})
+        import mlflow
+        import os
+        
+        mlflow.set_experiment(exp_name_log)
+        full_name = model_dict_logging.get(mn)
+
+        with mlflow.start_run(run_name=full_name) as run:    
+
+            # Get active run to log as tag
+            RunID = mlflow.active_run().info.run_id
+
+            params = best_model.get_params()
+
+            # Log model parameters
+            params = model.get_params()
+
+            for i in list(params):
+                v = params.get(i)
+                if len(str(v)) > 250:
+                    params.pop(i)
+
+            mlflow.log_params(params)
+
+            mlflow.log_metrics({"Accuracy": avgs_acc[0], "AUC": avgs_auc[0], "Recall": avgs_recall[0], "Precision" : avgs_precision[0],
+                                "F1": avgs_f1[0], "Kappa": avgs_kappa[0], "MCC": avgs_mcc[0]})
+
+            # Log internal parameters
+            mlflow.log_param("tune_model_fold", fold)
+            mlflow.log_param("tune_model_round", round)
+            mlflow.log_param("tune_model_n_iter", n_iter)
+            mlflow.log_param("tune_model_optimize", optimize)
+            mlflow.log_param("tune_model_choose_better", choose_better)
+            mlflow.log_param("tune_model_verbose", verbose)
+
+            #set tag of compare_models
+            mlflow.set_tag("Source", "tune_model")
+            
+            import secrets
+            URI = secrets.token_hex(nbytes=4)
+            mlflow.set_tag("URI", URI)
+
+            mlflow.set_tag("USI", USI)
+
+            mlflow.set_tag("Run Time", runtime)
+
+            mlflow.set_tag("Run ID", RunID)
+
+            # Log training time in seconds
+            mlflow.log_metric("TT", model_fit_time)
+
+            # Log model and transformation pipeline
+            save_model(best_model, 'Trained Model', verbose=False)
+            mlflow.log_artifact('Trained Model' + '.pkl')
+            os.remove('Trained Model.pkl')
+
+            # Log the CV results as model_results.html artifact
+            model_results.data.to_html('Results.html', col_space=65, justify='left')
+            mlflow.log_artifact('Results.html')
+            os.remove('Results.html')
+
+            # Generate hold-out predictions and save as html
+            holdout = predict_model(best_model, verbose=False)
+            holdout_score = pull()
+            display_container.pop(-1)
+            holdout_score.to_html('Holdout.html', col_space=65, justify='left')
+            mlflow.log_artifact('Holdout.html')
+            os.remove('Holdout.html')
+
+            # Log AUC and Confusion Matrix plot
+            if log_plots_param:
+                try:
+                    plot_model(model, plot = 'auc', verbose=False, save=True, system=False)
+                    mlflow.log_artifact('AUC.png')
+                    os.remove("AUC.png")
+                except:
+                    pass
+
+                try:
+                    plot_model(model, plot = 'confusion_matrix', verbose=False, save=True, system=False)
+                    mlflow.log_artifact('Confusion Matrix.png')
+                    os.remove("Confusion Matrix.png")
+                except:
+                    pass
+
+                try:
+                    plot_model(model, plot = 'feature', verbose=False, save=True, system=False)
+                    mlflow.log_artifact('Feature Importance.png')
+                    os.remove("Feature Importance.png")
+                except:
+                    pass
+
+            # Log hyperparameter tuning grid
+            d1 = model_grid.cv_results_.get('params')
+            dd = pd.DataFrame.from_dict(d1)
+            dd['Score'] = model_grid.cv_results_.get('mean_test_score')
+            dd.to_html('Iterations.html', col_space=75, justify='left')
+            mlflow.log_artifact('Iterations.html')
+            os.remove('Iterations.html')
         
     if verbose:
         clear_output()
@@ -5183,8 +5835,8 @@ def tune_model(estimator = None,
 def blend_models(estimator_list = 'All', 
                  fold = 10, 
                  round = 4,
-                 choose_better = True, #added in pycaret==1.0.1 
-                 optimize = 'Accuracy', #added in pycaret==1.0.1 
+                 choose_better = False, #added in pycaret==2.0.0 
+                 optimize = 'Accuracy', #added in pycaret==2.0.0 
                  method = 'hard',
                  turbo = True,
                  verbose = True):
@@ -5233,7 +5885,7 @@ def blend_models(estimator_list = 'All',
     round: integer, default = 4
     Number of decimal places the metrics in the score grid will be rounded to.
 
-    choose_better: Boolean, default = True
+    choose_better: Boolean, default = False
     When set to set to True, base estimator is returned when the metric doesn't 
     improve by ensemble_model. This gurantees the returned object would perform 
     atleast equivalent to base estimator created using create_model or model 
@@ -5295,6 +5947,10 @@ def blend_models(estimator_list = 'All',
     
     #exception checking   
     import sys
+
+    #run_time
+    import datetime, time
+    runtime_start = time.time()
     
     #checking error for estimator_list (string)
     
@@ -5356,7 +6012,6 @@ def blend_models(estimator_list = 'All',
     
     #pre-load libraries
     import pandas as pd
-    import time, datetime
     import ipywidgets as ipw
     from IPython.display import display, HTML, clear_output, update_display
     
@@ -5757,7 +6412,7 @@ def blend_models(estimator_list = 'All',
     mean_f1=np.mean(score_f1)
     mean_kappa=np.mean(score_kappa)
     mean_mcc=np.mean(score_mcc)
-    mean_training_time=np.mean(score_training_time)
+    mean_training_time=np.sum(score_training_time)
     std_acc=np.std(score_acc)
     std_auc=np.std(score_auc)
     std_recall=np.std(score_recall)
@@ -5802,12 +6457,17 @@ def blend_models(estimator_list = 'All',
     
     #refitting the model on complete X_train, y_train
     monitor.iloc[1,1:] = 'Finalizing Model'
+    monitor.iloc[2,1:] = 'Almost Finished'
     
     if verbose:
         if html_param:
             update_display(monitor, display_id = 'monitor')
     
+    model_fit_start = time.time()
     model.fit(data_X, data_y)
+    model_fit_end = time.time()
+
+    model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
     
     progress.value += 1
     
@@ -5841,10 +6501,13 @@ def blend_models(estimator_list = 'All',
 
         base_models_ = []
         for i in estimator_list:
-            m = create_model(i,verbose=False)
+            m = create_model(i,verbose=False, system=False)
             s = create_model_container[-1][compare_dimension][-2:][0]
             scorer.append(s)
             base_models_.append(m)
+
+            #re-instate display_constainer state 
+            display_container.pop(-1)
 
     index_scorer = scorer.index(max(scorer))
 
@@ -5860,6 +6523,84 @@ def blend_models(estimator_list = 'All',
     nam = str(model_name) + ' Score Grid'
     tup = (nam, model_results)
     experiment__.append(tup)
+
+    #end runtime
+    runtime_end = time.time()
+    runtime = np.array(runtime_end - runtime_start).round(2)
+
+    if logging_param:
+
+        #Creating Logs message monitor
+        monitor.iloc[1,1:] = 'Creating Logs'
+        monitor.iloc[2,1:] = 'Almost Finished'    
+        if verbose:
+            if html_param:
+                update_display(monitor, display_id = 'monitor')
+
+        import mlflow
+        import os
+
+        with mlflow.start_run(run_name='Voting Classifier') as run:
+
+            # Get active run to log as tag
+            RunID = mlflow.active_run().info.run_id
+
+            mlflow.log_metrics({"Accuracy": avgs_acc[0], "AUC": avgs_auc[0], "Recall": avgs_recall[0], "Precision" : avgs_precision[0],
+                                "F1": avgs_f1[0], "Kappa": avgs_kappa[0], "MCC": avgs_mcc[0]})
+            
+
+            # Log internal parameters
+            mlflow.log_param("blend_models_estimator_list", model_names_final)
+            mlflow.log_param("blend_models_fold", fold)
+            mlflow.log_param("blend_models_round", round)
+            mlflow.log_param("blend_models_choose_better", choose_better)
+            mlflow.log_param("blend_models_optimize", optimize)
+            mlflow.log_param("blend_models_method", method)
+            mlflow.log_param("blend_models_turbo", turbo)
+            mlflow.log_param("blend_models_verbose", verbose)
+            
+            # Log model and transformation pipeline
+            save_model(model, 'Trained Model', verbose=False)
+            mlflow.log_artifact('Trained Model' + '.pkl')
+            os.remove('Trained Model.pkl')
+
+            # Generate hold-out predictions and save as html
+            holdout = predict_model(model, verbose=False)
+            holdout_score = pull()
+            display_container.pop(-1)
+            holdout_score.to_html('Holdout.html', col_space=65, justify='left')
+            mlflow.log_artifact('Holdout.html')
+            os.remove('Holdout.html')
+
+            #set tag of compare_models
+            mlflow.set_tag("Source", "blend_models")
+            
+            import secrets
+            URI = secrets.token_hex(nbytes=4)
+            mlflow.set_tag("URI", URI)
+
+            mlflow.set_tag("USI", USI)
+
+            mlflow.set_tag("Run Time", runtime)
+
+            mlflow.set_tag("Run ID", RunID)
+
+            # Log training time of compare_models
+            mlflow.log_metric("TT", model_fit_time)
+
+            # Log AUC and Confusion Matrix plot
+            if log_plots_param:
+                try:
+                    plot_model(model, plot = 'confusion_matrix', verbose=False, save=True, system=False)
+                    mlflow.log_artifact('Confusion Matrix.png')
+                    os.remove("Confusion Matrix.png")
+                except:
+                    pass
+
+            # Log the CV results as model_results.html artifact
+            model_results.data.to_html('Results.html', col_space=65, justify='left')
+            mlflow.log_artifact('Results.html')
+            os.remove('Results.html')
 
     if verbose:
         clear_output()
@@ -5877,8 +6618,8 @@ def stack_models(estimator_list,
                  method = 'soft', 
                  restack = True, 
                  plot = False,
-                 choose_better = True, #added in pycaret==1.0.1
-                 optimize = 'Accuracy', #added in pycaret==1.0.1
+                 choose_better = False, #added in pycaret==2.0.0
+                 optimize = 'Accuracy', #added in pycaret==2.0.0
                  finalize = False,
                  verbose = True):
     
@@ -5940,7 +6681,7 @@ def stack_models(estimator_list,
     When plot is set to True, it will return the correlation plot of prediction
     from all base models provided in estimator_list.
 
-    choose_better: Boolean, default = True
+    choose_better: Boolean, default = False
     When set to set to True, base estimator is returned when the metric doesn't 
     improve by ensemble_model. This gurantees the returned object would perform 
     atleast equivalent to base estimator created using create_model or model 
@@ -5997,13 +6738,17 @@ def stack_models(estimator_list,
     #testing
     #no active test
     
+    #exception checking   
+    import sys
+    
+    #run_time
+    import datetime, time
+    runtime_start = time.time()
+
     #change method param to 'hard' for multiclass
     if y.value_counts().count() > 2:
         method = 'hard'
 
-    #exception checking   
-    import sys
-    
     #checking error for estimator_list
     for i in estimator_list:
         if 'sklearn' not in str(type(i)) and 'CatBoostClassifier' not in str(type(i)):
@@ -6057,7 +6802,6 @@ def stack_models(estimator_list,
     import pandas as pd
     import ipywidgets as ipw
     from IPython.display import display, HTML, clear_output, update_display
-    import time, datetime
     from copy import deepcopy
     from sklearn.base import clone
     
@@ -6177,6 +6921,8 @@ def stack_models(estimator_list,
     
     counter = 0
     
+    model_fit_start = time.time()
+
     for model in estimator_list:
         
         '''
@@ -6395,7 +7141,10 @@ def stack_models(estimator_list,
         Update_display() ends here
         
         '''
-     
+
+    model_fit_end = time.time()
+    model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
+
     mean_acc=np.mean(score_acc)
     mean_auc=np.mean(score_auc)
     mean_recall=np.mean(score_recall)
@@ -6403,7 +7152,7 @@ def stack_models(estimator_list,
     mean_f1=np.mean(score_f1)
     mean_kappa=np.mean(score_kappa)
     mean_mcc=np.mean(score_mcc)
-    mean_training_time=np.mean(score_training_time)
+    mean_training_time=np.sum(score_training_time)
     std_acc=np.std(score_acc)
     std_auc=np.std(score_auc)
     std_recall=np.std(score_recall)
@@ -6449,7 +7198,8 @@ def stack_models(estimator_list,
     
     #storing results in create_model_container
     create_model_container.append(model_results.data)
-    display_container.append(model_results.data)
+    if not finalize:
+        display_container.append(model_results.data)
 
     #storing results in master_model_container
     master_model_container.append(models_)
@@ -6477,16 +7227,22 @@ def stack_models(estimator_list,
 
         base_models_ = []
         for i in estimator_list:
-            m = create_model(i,verbose=False)
+            m = create_model(i,verbose=False, system=False)
             s = create_model_container[-1][compare_dimension][-2:][0]
             scorer.append(s)
             base_models_.append(m)
 
+            #re-instate display_constainer state 
+            display_container.pop(-1)
+
         meta_model_clone = clone(meta_model)
-        mm = create_model(meta_model_clone, verbose=False)
+        mm = create_model(meta_model_clone, verbose=False, system=False)
         base_models_.append(mm)
         s = create_model_container[-1][compare_dimension][-2:][0]
         scorer.append(s)
+
+        #re-instate display_constainer state 
+        display_container.pop(-1)
 
     #returning better model
     index_scorer = scorer.index(max(scorer))
@@ -6511,6 +7267,97 @@ def stack_models(estimator_list,
                          linewidths=1)
         ax.set_ylim(sorted(ax.get_xlim(), reverse=True))
 
+    #end runtime
+    runtime_end = time.time()
+    runtime = np.array(runtime_end - runtime_start).round(2)
+
+    if logging_param and not finalize:
+
+        import mlflow
+        import os
+
+        #Creating Logs message monitor
+        monitor.iloc[1,1:] = 'Creating Logs'
+        monitor.iloc[2,1:] = 'Almost Finished'    
+        if verbose:
+            if html_param:
+                update_display(monitor, display_id = 'monitor')
+
+        with mlflow.start_run(run_name='Stacking Classifier') as run:   
+
+            # Get active run to log as tag
+            RunID = mlflow.active_run().info.run_id
+
+            params = meta_model.get_params()
+
+            for i in list(params):
+                v = params.get(i)
+                if len(str(v)) > 250:
+                    params.pop(i)
+            
+            mlflow.log_params(params)
+            
+            mlflow.log_metrics({"Accuracy": avgs_acc[0], "AUC": avgs_auc[0], "Recall": avgs_recall[0], "Precision" : avgs_precision[0],
+                                "F1": avgs_f1[0], "Kappa": avgs_kappa[0], "MCC": avgs_mcc[0]})
+
+
+            # Log internal parameters
+            mlflow.log_param("stack_models_estimator_list", estimator_list)
+            mlflow.log_param("stack_models_fold", fold)
+            mlflow.log_param("stack_models_round", round)
+            mlflow.log_param("stack_models_method", method)
+            mlflow.log_param("stack_models_restack", restack)
+            mlflow.log_param("stack_models_plot", plot)
+            mlflow.log_param("stack_models_choose_better", choose_better)
+            mlflow.log_param("stack_models_optimize", optimize)
+            mlflow.log_param("stack_models_finalize", finalize)
+            mlflow.log_param("stack_models_verbose", verbose)
+            
+            #set tag of stack_models
+            mlflow.set_tag("Source", "stack_models")
+            
+            import secrets
+            URI = secrets.token_hex(nbytes=4)
+            mlflow.set_tag("URI", URI)
+
+            mlflow.set_tag("USI", USI)
+
+            mlflow.set_tag("Run Time", runtime)
+
+            mlflow.set_tag("Run ID", RunID)
+
+            # Log model and transformation pipeline
+            save_model(models_, 'Trained Model', verbose=False)
+            mlflow.log_artifact('Trained Model' + '.pkl')
+            os.remove('Trained Model.pkl')
+
+            # Log training time of compare_models
+            mlflow.log_metric("TT", model_fit_time)
+
+            # Log the CV results as model_results.html artifact
+            model_results.data.to_html('Results.html', col_space=65, justify='left')
+            mlflow.log_artifact('Results.html')
+            os.remove('Results.html')
+
+            if log_plots_param:
+
+                plt.subplots(figsize=(15,7))
+                ax = sns.heatmap(base_prediction_cor, vmin=0.2, vmax=1, center=0,cmap='magma', square=True, annot=True, 
+                                linewidths=1)
+                ax.set_ylim(sorted(ax.get_xlim(), reverse=True))
+                plt.savefig("Stacking Heatmap.png")
+                mlflow.log_artifact('Stacking Heatmap.png')
+                os.remove('Stacking Heatmap.png')
+                plt.close()
+
+            # Generate hold-out predictions and save as html
+            holdout = predict_model(models_, verbose=False)
+            holdout_score = pull()
+            display_container.pop(-1)
+            holdout_score.to_html('Holdout.html', col_space=65, justify='left')
+            mlflow.log_artifact('Holdout.html')
+            os.remove('Holdout.html')
+
     if verbose:
         clear_output()
         if html_param:
@@ -6526,8 +7373,8 @@ def create_stacknet(estimator_list,
                     round = 4,
                     method = 'soft',
                     restack = True,
-                    choose_better = True, #added in pycaret==1.0.1
-                    optimize = 'Accuracy', #added in pycaret==1.0.1
+                    choose_better = False, #added in pycaret==2.0.0
+                    optimize = 'Accuracy', #added in pycaret==2.0.0
                     finalize = False,
                     verbose = True):
     
@@ -6584,7 +7431,7 @@ def create_stacknet(estimator_list,
     the predicted label or probabilities of last layer is passed to meta model 
     when making final predictions.
     
-    choose_better: Boolean, default = True
+    choose_better: Boolean, default = False
     When set to set to True, base estimator is returned when the metric doesn't 
     improve by ensemble_model. This gurantees the returned object would perform 
     atleast equivalent to base estimator created using create_model or model 
@@ -6643,13 +7490,17 @@ def create_stacknet(estimator_list,
     #testing
     #global inter_level_names
     
+    #exception checking   
+    import sys
+    
+    #run_time
+    import datetime, time
+    runtime_start = time.time()
+
     #change method param to 'hard' for multiclass
     if y.value_counts().count() > 2:
         method = 'hard'
 
-    #exception checking   
-    import sys
-    
     #checking estimator_list
     if type(estimator_list[0]) is not list:
         sys.exit("(Type Error): estimator_list parameter must be list of list. ")
@@ -6841,6 +7692,8 @@ def create_stacknet(estimator_list,
     base_counter = 0
     
     base_models_ = []
+
+    model_fit_start = time.time()
     
     for model in base_level:
         
@@ -7103,7 +7956,12 @@ def create_stacknet(estimator_list,
         Update_display() ends here
         
         '''
-        
+
+    model_fit_end = time.time()
+    model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
+
+    model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
+
     mean_acc=np.mean(score_acc)
     mean_auc=np.mean(score_auc)
     mean_recall=np.mean(score_recall)
@@ -7111,7 +7969,7 @@ def create_stacknet(estimator_list,
     mean_f1=np.mean(score_f1)
     mean_kappa=np.mean(score_kappa)
     mean_mcc=np.mean(score_mcc)
-    mean_training_time=np.mean(score_training_time)
+    mean_training_time=np.sum(score_training_time)
     std_acc=np.std(score_acc)
     std_auc=np.std(score_auc)
     std_recall=np.std(score_recall)
@@ -7196,16 +8054,22 @@ def create_stacknet(estimator_list,
         base_models_ = []
         for i in estimator_list:
             for k in i:
-                m = create_model(k,verbose=False)
+                m = create_model(k,verbose=False, system=False)
                 s = create_model_container[-1][compare_dimension][-2:][0]
                 scorer.append(s)
                 base_models_.append(m)
 
+                #re-instate display_constainer state 
+                display_container.pop(-1)
+
         meta_model_clone = clone(meta_model)
-        mm = create_model(meta_model_clone, verbose=False)
+        mm = create_model(meta_model_clone, verbose=False, system=False)
         base_models_.append(mm)
         s = create_model_container[-1][compare_dimension][-2:][0]
         scorer.append(s)
+
+        #re-instate display_constainer state 
+        display_container.pop(-1)
 
     #returning better model
     index_scorer = scorer.index(max(scorer))
@@ -7223,6 +8087,84 @@ def create_stacknet(estimator_list,
     tup = (nam, model_results)
     experiment__.append(tup)
     
+    #end runtime
+    runtime_end = time.time()
+    runtime = np.array(runtime_end - runtime_start).round(2)
+
+    if logging_param and not finalize:
+
+        import mlflow
+        import os
+
+        #Creating Logs message monitor
+        monitor.iloc[1,1:] = 'Creating Logs'
+        monitor.iloc[2,1:] = 'Almost Finished'    
+        if verbose:
+            if html_param:
+                update_display(monitor, display_id = 'monitor')
+
+        with mlflow.start_run(run_name='Stacking Classifier (Multi-layer)') as run:       
+
+            # Get active run to log as tag
+            RunID = mlflow.active_run().info.run_id
+
+            params = meta_model.get_params()
+
+            for i in list(params):
+                v = params.get(i)
+                if len(str(v)) > 250:
+                    params.pop(i)
+    
+            mlflow.log_params(params)
+            
+            mlflow.log_metrics({"Accuracy": avgs_acc[0], "AUC": avgs_auc[0], "Recall": avgs_recall[0], "Precision" : avgs_precision[0],
+                                "F1": avgs_f1[0], "Kappa": avgs_kappa[0], "MCC": avgs_mcc[0]})
+
+            # Log other parameter of create_model function (internal to pycaret)
+            mlflow.log_param("create_stacknet_estimator_list", estimator_list)
+            mlflow.log_param("create_stacknet_fold", fold)
+            mlflow.log_param("create_stacknet_round", round)
+            mlflow.log_param("create_stacknet_method", method)
+            mlflow.log_param("create_stacknet_restack", restack)
+            mlflow.log_param("create_stacknet_choose_better", choose_better)
+            mlflow.log_param("create_stacknet_optimize", optimize)
+            mlflow.log_param("create_stacknet_finalize", finalize)
+            mlflow.log_param("create_stacknet_verbose", verbose)
+            
+            #set tag of create_stacknet
+            mlflow.set_tag("Source", "create_stacknet")
+            
+            import secrets
+            URI = secrets.token_hex(nbytes=4)
+            mlflow.set_tag("URI", URI)
+
+            mlflow.set_tag("USI", USI)
+
+            mlflow.set_tag("Run Time", runtime)
+
+            mlflow.set_tag("Run ID", RunID)
+
+            # Log model and transformation pipeline
+            save_model(models_, 'Trained Model', verbose=False)
+            mlflow.log_artifact('Trained Model' + '.pkl')
+            os.remove('Trained Model.pkl')
+
+            # Log training time of compare_models
+            mlflow.log_metric("TT", model_fit_time)
+
+            # Log the CV results as model_results.html artifact
+            model_results.data.to_html('Results.html', col_space=65, justify='left')
+            mlflow.log_artifact('Results.html')
+            os.remove('Results.html')
+
+            # Generate hold-out predictions and save as html
+            holdout = predict_model(models_, verbose=False)
+            holdout_score = pull()
+            display_container.pop(-1)
+            holdout_score.to_html('Holdout.html', col_space=65, justify='left')
+            mlflow.log_artifact('Holdout.html')
+            os.remove('Holdout.html')
+
     if verbose:
         clear_output()
         if html_param:
@@ -7514,7 +8456,11 @@ def calibrate_model(estimator,
     
     #exception checking   
     import sys
-    
+
+    #run_time
+    import datetime, time
+    runtime_start = time.time()
+
     #Statement to find CatBoost and change name
     
     model_name = str(estimator).split("(")[0]
@@ -7550,7 +8496,6 @@ def calibrate_model(estimator,
     import pandas as pd
     import ipywidgets as ipw
     from IPython.display import display, HTML, clear_output, update_display
-    import datetime, time
         
     #progress bar
     progress = ipw.IntProgress(value=0, min=0, max=fold+4, step=1 , description='Processing: ')
@@ -7595,6 +8540,34 @@ def calibrate_model(estimator,
     
     progress.value += 1
     
+    def get_model_name(e):
+        return str(e).split("(")[0]
+
+    mn = get_model_name(estimator)   
+
+    model_dict_logging = {'ExtraTreesClassifier' : 'Extra Trees Classifier',
+                        'GradientBoostingClassifier' : 'Gradient Boosting Classifier', 
+                        'RandomForestClassifier' : 'Random Forest Classifier',
+                        'LGBMClassifier' : 'Light Gradient Boosting Machine',
+                        'XGBClassifier' : 'Extreme Gradient Boosting',
+                        'AdaBoostClassifier' : 'Ada Boost Classifier', 
+                        'DecisionTreeClassifier' : 'Decision Tree Classifier', 
+                        'RidgeClassifier' : 'Ridge Classifier',
+                        'LogisticRegression' : 'Logistic Regression',
+                        'KNeighborsClassifier' : 'K Neighbors Classifier',
+                        'GaussianNB' : 'Naive Bayes',
+                        'SGDClassifier' : 'SVM - Linear Kernel',
+                        'SVC' : 'SVM - Radial Kernel',
+                        'GaussianProcessClassifier' : 'Gaussian Process Classifier',
+                        'MLPClassifier' : 'MLP Classifier',
+                        'QuadraticDiscriminantAnalysis' : 'Quadratic Discriminant Analysis',
+                        'LinearDiscriminantAnalysis' : 'Linear Discriminant Analysis',
+                        'CatBoostClassifier' : 'CatBoost Classifier',
+                        'BaggingClassifier' : 'Bagging Classifier',
+                        'VotingClassifier' : 'Voting Classifier'}
+
+    base_estimator_full_name = model_dict_logging.get(mn)
+
     #cross validation setup starts here
     kf = StratifiedKFold(fold, random_state=seed, shuffle=folds_shuffle_param)
 
@@ -7799,7 +8772,7 @@ def calibrate_model(estimator,
     mean_f1=np.mean(score_f1)
     mean_kappa=np.mean(score_kappa)
     mean_mcc=np.mean(score_mcc)
-    mean_training_time=np.mean(score_training_time)
+    mean_training_time=np.sum(score_training_time)
     std_acc=np.std(score_acc)
     std_auc=np.std(score_auc)
     std_recall=np.std(score_recall)
@@ -7846,7 +8819,11 @@ def calibrate_model(estimator,
         if html_param:
             update_display(monitor, display_id = 'monitor')
     
+    model_fit_start = time.time()
     model.fit(data_X, data_y)
+    model_fit_end = time.time()
+
+    model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
     
     progress.value += 1
     
@@ -7857,7 +8834,111 @@ def calibrate_model(estimator,
     tup = (nam, model_results)
     experiment__.append(tup)
     
-    
+    #end runtime
+    runtime_end = time.time()
+    runtime = np.array(runtime_end - runtime_start).round(2)
+
+    #mlflow logging
+    if logging_param:
+
+        #Creating Logs message monitor
+        monitor.iloc[1,1:] = 'Creating Logs'
+        monitor.iloc[2,1:] = 'Almost Finished'    
+        if verbose:
+            if html_param:
+                update_display(monitor, display_id = 'monitor')
+
+        #import mlflow
+        import mlflow
+        import mlflow.sklearn
+        import os
+
+        mlflow.set_experiment(exp_name_log)
+
+        with mlflow.start_run(run_name=base_estimator_full_name) as run:
+
+            # Get active run to log as tag
+            RunID = mlflow.active_run().info.run_id
+
+            # Log model parameters
+            params = model.get_params()
+            
+            for i in list(params):
+                v = params.get(i)
+                if len(str(v)) > 250:
+                    params.pop(i)
+
+            mlflow.log_params(params)
+            
+            # Log metrics
+            mlflow.log_metrics({"Accuracy": avgs_acc[0], "AUC": avgs_auc[0], "Recall": avgs_recall[0], "Precision" : avgs_precision[0],
+                                "F1": avgs_f1[0], "Kappa": avgs_kappa[0], "MCC": avgs_mcc[0]})
+            
+
+            # Log internal parameters
+            mlflow.log_param("calibrate_model_estimator", estimator)
+            mlflow.log_param("calibrate_model_method", method)
+            mlflow.log_param("calibrate_model_fold", fold)
+            mlflow.log_param("calibrate_model_round", round)
+            mlflow.log_param("calibrate_model_verbose", verbose)
+            
+            #set tag of compare_models
+            mlflow.set_tag("Source", "calibrate_model")
+            
+            import secrets
+            URI = secrets.token_hex(nbytes=4)
+            mlflow.set_tag("URI", URI)
+
+            mlflow.set_tag("USI", USI)
+
+            mlflow.set_tag("Run Time", runtime)
+
+            mlflow.set_tag("Run ID", RunID)
+
+            # Log training time in seconds
+            mlflow.log_metric("TT", model_fit_time)
+
+            # Log the CV results as model_results.html artifact
+            model_results.data.to_html('Results.html', col_space=65, justify='left')
+            mlflow.log_artifact('Results.html')
+            os.remove('Results.html')
+
+            # Generate hold-out predictions and save as html
+            holdout = predict_model(model, verbose=False)
+            holdout_score = pull()
+            display_container.pop(-1)
+            holdout_score.to_html('Holdout.html', col_space=65, justify='left')
+            mlflow.log_artifact('Holdout.html')
+            os.remove('Holdout.html')
+
+            # Log AUC and Confusion Matrix plot
+            if log_plots_param:
+                try:
+                    plot_model(model, plot = 'auc', verbose=False, save=True, system=False)
+                    mlflow.log_artifact('AUC.png')
+                    os.remove("AUC.png")
+                except:
+                    pass
+
+                try:
+                    plot_model(model, plot = 'confusion_matrix', verbose=False, save=True, system=False)
+                    mlflow.log_artifact('Confusion Matrix.png')
+                    os.remove("Confusion Matrix.png")
+                except:
+                    pass
+
+                try:
+                    plot_model(model, plot = 'feature', verbose=False, save=True, system=False)
+                    mlflow.log_artifact('Feature Importance.png')
+                    os.remove("Feature Importance.png")
+                except:
+                    pass
+                
+            # Log model and transformation pipeline
+            save_model(model, 'Trained Model', verbose=False)
+            mlflow.log_artifact('Trained Model' + '.pkl')
+            os.remove('Trained Model.pkl')
+
     if verbose:
         clear_output()
         if html_param:
@@ -7987,11 +9068,63 @@ def finalize_model(estimator):
     import warnings
     warnings.filterwarnings('ignore') 
     
+    #run_time
+    import datetime, time
+    runtime_start = time.time()
+
     #import depedencies
     from IPython.display import clear_output, update_display
     from sklearn.base import clone
     from copy import deepcopy
+    import numpy as np
     
+    #determine runname for logging
+    def get_model_name(e):
+        return str(e).split("(")[0]
+    
+    model_dict_logging = {'ExtraTreesClassifier' : 'Extra Trees Classifier',
+                            'GradientBoostingClassifier' : 'Gradient Boosting Classifier', 
+                            'RandomForestClassifier' : 'Random Forest Classifier',
+                            'LGBMClassifier' : 'Light Gradient Boosting Machine',
+                            'XGBClassifier' : 'Extreme Gradient Boosting',
+                            'AdaBoostClassifier' : 'Ada Boost Classifier', 
+                            'DecisionTreeClassifier' : 'Decision Tree Classifier', 
+                            'RidgeClassifier' : 'Ridge Classifier',
+                            'LogisticRegression' : 'Logistic Regression',
+                            'KNeighborsClassifier' : 'K Neighbors Classifier',
+                            'GaussianNB' : 'Naive Bayes',
+                            'SGDClassifier' : 'SVM - Linear Kernel',
+                            'SVC' : 'SVM - Radial Kernel',
+                            'GaussianProcessClassifier' : 'Gaussian Process Classifier',
+                            'MLPClassifier' : 'MLP Classifier',
+                            'QuadraticDiscriminantAnalysis' : 'Quadratic Discriminant Analysis',
+                            'LinearDiscriminantAnalysis' : 'Linear Discriminant Analysis',
+                            'CatBoostClassifier' : 'CatBoost Classifier',
+                            'BaggingClassifier' : 'Bagging Classifier',
+                            'VotingClassifier' : 'Voting Classifier'}
+                            
+    if type(estimator) is not list:
+
+        if len(estimator.classes_) > 2:
+            mn = get_model_name(estimator.estimator)
+
+        if hasattr(estimator, 'base_estimator'):
+            mn = get_model_name(estimator.base_estimator)
+
+        else:
+            mn = get_model_name(estimator)
+
+        if 'catboost' in mn:
+            mn = 'CatBoostClassifier'
+
+    if type(estimator) is list:
+        if type(estimator[0]) is not list:
+            full_name = 'Stacking Classifier'
+        else:
+            full_name = 'Stacking Classifier (Multi-layer)'
+    else:
+        full_name = model_dict_logging.get(mn)
+
     if type(estimator) is list:
         
         if type(estimator[0]) is not list:
@@ -8030,6 +9163,8 @@ def finalize_model(estimator):
                                           finalize = True,
                                           verbose = False)
 
+        pull_results = pull() 
+
     else:
         
         model_final = clone(estimator)
@@ -8042,6 +9177,122 @@ def finalize_model(estimator):
     tup = (model_name,model_final)
     experiment__.append(tup)
     
+    #end runtime
+    runtime_end = time.time()
+    runtime = np.array(runtime_end - runtime_start).round(2)
+
+    #mlflow logging
+    if logging_param:
+
+        #import mlflow
+        import mlflow
+        import mlflow.sklearn
+        import os
+
+        mlflow.set_experiment(exp_name_log)
+
+        with mlflow.start_run(run_name=full_name) as run:
+
+            # Get active run to log as tag
+            RunID = mlflow.active_run().info.run_id
+
+            # Log model parameters
+            try:
+                params = model_final.get_params()
+
+                for i in list(params):
+                    v = params.get(i)
+                    if len(str(v)) > 250:
+                        params.pop(i)
+
+                mlflow.log_params(params)
+            
+            except:
+                pass
+            
+            # get metrics of non-finalized model and log it
+
+            try:
+                c = create_model(estimator, verbose=False, system=False)
+                cr = pull()
+                log_accuracy = cr.loc['Mean']['Accuracy'] 
+                log_auc = cr.loc['Mean']['AUC'] 
+                log_recall = cr.loc['Mean']['Recall'] 
+                log_precision = cr.loc['Mean']['Prec.'] 
+                log_f1 = cr.loc['Mean']['F1'] 
+                log_kappa = cr.loc['Mean']['Kappa'] 
+                log_mcc = cr.loc['Mean']['MCC']
+
+                mlflow.log_metric("Accuracy", log_accuracy)
+                mlflow.log_metric("AUC", log_auc)
+                mlflow.log_metric("Recall", log_recall)
+                mlflow.log_metric("Precision", log_precision)
+                mlflow.log_metric("F1", log_f1)
+                mlflow.log_metric("Kappa", log_kappa)
+                mlflow.log_metric("MCC", log_mcc)
+
+            except:
+                cr = pull_results
+                log_accuracy = cr.loc['Mean']['Accuracy'] 
+                log_auc = cr.loc['Mean']['AUC'] 
+                log_recall = cr.loc['Mean']['Recall'] 
+                log_precision = cr.loc['Mean']['Prec.'] 
+                log_f1 = cr.loc['Mean']['F1'] 
+                log_kappa = cr.loc['Mean']['Kappa'] 
+                log_mcc = cr.loc['Mean']['MCC']
+
+                mlflow.log_metric("Accuracy", log_accuracy)
+                mlflow.log_metric("AUC", log_auc)
+                mlflow.log_metric("Recall", log_recall)
+                mlflow.log_metric("Precision", log_precision)
+                mlflow.log_metric("F1", log_f1)
+                mlflow.log_metric("Kappa", log_kappa)
+                mlflow.log_metric("MCC", log_mcc)
+
+            #set tag of compare_models
+            mlflow.set_tag("Source", "finalize_model")
+            
+            #create MRI (model registration id)
+            mlflow.set_tag("Final", True)
+            
+            import secrets
+            URI = secrets.token_hex(nbytes=4)
+            mlflow.set_tag("URI", URI)           
+            mlflow.set_tag("USI", USI)
+            mlflow.set_tag("Run Time", runtime)
+            mlflow.set_tag("Run ID", RunID)
+
+            # Log training time in seconds
+            mlflow.log_metric("TT", runtime)
+
+            # Log AUC and Confusion Matrix plot
+            if log_plots_param:
+                try:
+                    plot_model(model, plot = 'auc', verbose=False, save=True, system=False)
+                    mlflow.log_artifact('AUC.png')
+                    os.remove("AUC.png")
+                except:
+                    pass
+
+                try:
+                    plot_model(model, plot = 'confusion_matrix', verbose=False, save=True, system=False)
+                    mlflow.log_artifact('Confusion Matrix.png')
+                    os.remove("Confusion Matrix.png")
+                except:
+                    pass
+
+                try:
+                    plot_model(model, plot = 'feature', verbose=False, save=True, system=False)
+                    mlflow.log_artifact('Feature Importance.png')
+                    os.remove("Feature Importance.png")
+                except:
+                    pass
+
+            # Log model and transformation pipeline
+            save_model(model_final, 'Trained Model', verbose=False)
+            mlflow.log_artifact('Trained Model' + '.pkl')
+            os.remove('Trained Model.pkl')
+
     return model_final
 
 def save_model(model, model_name, verbose=True):
@@ -8301,7 +9552,7 @@ def predict_model(estimator,
                   probability_threshold=None,
                   platform=None,
                   authentication=None,
-                  verbose=True): #added in pycaret==1.0.1
+                  verbose=True): #added in pycaret==2.0.0
     
     """
        
@@ -8348,6 +9599,12 @@ def predict_model(estimator,
      When platform = 'aws': 
      {'bucket' : 'Name of Bucket on S3'}
     
+    system: Boolean, default = True
+    Must remain True all times. Only to be changed by internal functions.
+
+    verbose: Boolean, default = True
+    Holdout score grid is not printed when verbose is set to False.
+
     Returns:
     --------
 
@@ -8411,7 +9668,7 @@ def predict_model(estimator,
     exception checking ends here
     """
     
-    estimator = deepcopy(estimator)
+    estimator = deepcopy(estimator) #lookout for an alternate of deepcopy()
     
     if html_param:
         clear_output()
@@ -8486,11 +9743,6 @@ def predict_model(estimator,
         X_test_.reset_index(drop=True, inplace=True)
     
         estimator_ = estimator
-        
-    #try:
-    #    model = finalize_model(estimator)
-    #except:
-    #    model = estimator
 
     if type(estimator) is list:
         
@@ -9093,10 +10345,10 @@ def deploy_model(model,
     import pandas as pd
     from IPython.display import clear_output, update_display
         
-    try:
-        model = finalize_model(model)
-    except:
-        pass
+    #try:
+    #    model = finalize_model(model)
+    #except:
+    #    pass
     
     if platform == 'aws':
         
@@ -9344,6 +10596,7 @@ def automl(optimize='Accuracy', use_holdout=False):
         for i in master_model_container:
             pred_holdout = predict_model(i, verbose=False)
             p = pull()
+            display_container.pop(-1)
             p = p[compare_dimension][0]
             scorer.append(p)
 

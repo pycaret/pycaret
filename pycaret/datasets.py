@@ -3,7 +3,7 @@
 # License: MIT
 
 
-def get_data(dataset, save_copy=False, profile = False):
+def get_data(dataset, save_copy=False, profile=False, verbose=True):
     
     """
       
@@ -33,6 +33,9 @@ def get_data(dataset, save_copy=False, profile = False):
     profile: bool, default = False
     If set to true, a data profile for Exploratory Data Analysis will be displayed 
     in an interactive HTML report. 
+
+    verbose: bool, default = True
+    When set to False, head of data is not displayed.
     
     Returns:
     --------
@@ -75,6 +78,7 @@ def get_data(dataset, save_copy=False, profile = False):
             display(pf)
             
         else:
-            display(data.head())
+            if verbose:
+                display(data.head())
         
-        return data
+    return data

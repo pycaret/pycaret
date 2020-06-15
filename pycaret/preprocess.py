@@ -1341,7 +1341,7 @@ class Cluster_Entire_Data(BaseEstimator,TransformerMixin):
         self.k_object =  cluster.KMeans(n_clusters= c,init='k-means++',precompute_distances='auto',n_init=10,random_state=self.random_state)
         self.k_object.fit(data_t1)
         self.ph.iloc[k,1] = metrics.silhouette_score(data_t1,self.k_object.labels_)
-        self.ph.iloc[k,2] = metrics.calinski_harabaz_score(data_t1,self.k_object.labels_)
+        self.ph.iloc[k,2] = metrics.calinski_harabasz_score(data_t1,self.k_object.labels_)
     
     # now standardize the scores and make a total column
     m = MinMaxScaler((-1,1))
