@@ -1849,6 +1849,10 @@ def create_model(estimator = None,
     
     #exception checking   
     import sys
+
+    #run_time
+    import datetime, time
+    runtime_start = time.time()
     
     #checking error for estimator (string)
     available_estimators = ['lr', 'knn', 'nb', 'dt', 'svm', 'rbfsvm', 'gpc', 'mlp', 'ridge', 'rf', 'qda', 'ada', 
@@ -1902,10 +1906,6 @@ def create_model(estimator = None,
     ERROR HANDLING ENDS HERE
     
     '''
-    
-    #run_time
-    import datetime, time
-    runtime_start = time.time()
 
     #pre-load libraries
     import pandas as pd
@@ -3899,10 +3899,6 @@ def compare_models(blacklist = None,
     #exception checking   
     import sys
     
-    #run_time
-    import datetime, time
-    runtime_start = time.time()
-    
     #checking error for blacklist (string)
     available_estimators = ['lr', 'knn', 'nb', 'dt', 'svm', 'rbfsvm', 'gpc', 'mlp', 'ridge', 'rf', 'qda', 'ada', 
                             'gbc', 'lda', 'et', 'xgboost', 'lightgbm', 'catboost']
@@ -4294,10 +4290,16 @@ def compare_models(blacklist = None,
     avg_mcc=np.empty((0,0))
     avg_training_time=np.empty((0,0))
     
-    
+    #create URI (before loop)
+    import secrets
+    URI = secrets.token_hex(nbytes=4)
+
     name_counter = 0
       
     for model in model_library:
+
+        #run_time
+        runtime_start = time.time()
         
         progress.value += 1
         
@@ -4337,10 +4339,11 @@ def compare_models(blacklist = None,
      
             Xtrain,Xtest = data_X.iloc[train_i], data_X.iloc[test_i]
             ytrain,ytest = data_y.iloc[train_i], data_y.iloc[test_i]
-            time_start=time.time()
+            
             if hasattr(model, 'predict_proba'):
-                
+                time_start=time.time()    
                 model.fit(Xtrain,ytrain)
+                time_end=time.time()
                 pred_prob = model.predict_proba(Xtest)
                 pred_prob = pred_prob[:,1]
                 pred_ = model.predict(Xtest)
@@ -4361,7 +4364,9 @@ def compare_models(blacklist = None,
                     precision = metrics.precision_score(ytest,pred_)
                     f1 = metrics.f1_score(ytest,pred_)
             else:
+                time_start=time.time()   
                 model.fit(Xtrain,ytrain)
+                time_end=time.time()
                 pred_prob = 0.00
                 pred_ = model.predict(Xtest)
                 sca = metrics.accuracy_score(ytest,pred_)
@@ -4380,7 +4385,6 @@ def compare_models(blacklist = None,
                     recall = metrics.recall_score(ytest,pred_)                
                     precision = metrics.precision_score(ytest,pred_)
                     f1 = metrics.f1_score(ytest,pred_)
-            time_end=time.time()
             mcc = metrics.matthews_corrcoef(ytest,pred_)
             kappa = metrics.cohen_kappa_score(ytest,pred_)
             training_time= time_end - time_start
@@ -4431,7 +4435,7 @@ def compare_models(blacklist = None,
         avg_f1 = np.append(avg_f1,np.mean(score_f1))
         avg_kappa = np.append(avg_kappa,np.mean(score_kappa))
         avg_mcc=np.append(avg_mcc,np.mean(score_mcc))
-        avg_training_time=np.append(avg_training_time,np.sum(score_training_time))
+        avg_training_time=np.append(avg_training_time,np.mean(score_training_time))
         
         compare_models_ = pd.DataFrame({'Model':model_names[name_counter], 'Accuracy':avg_acc, 'AUC':avg_auc, 
                            'Recall':avg_recall, 'Prec.':avg_precision, 
@@ -4440,12 +4444,62 @@ def compare_models(blacklist = None,
         master_display = master_display.round(round)
         master_display = master_display.sort_values(by=sort,ascending=False)
         master_display.reset_index(drop=True, inplace=True)
-        #master_display.loc[:,'TT (Sec)'] = master_display.loc[:,'TT (Sec)'].round(2)
         
         if verbose:
             if html_param:
                 update_display(master_display, display_id = display_id)
         
+        #end runtime
+        runtime_end = time.time()
+        runtime = np.array(runtime_end - runtime_start).round(2)
+
+        """
+        MLflow logging starts here
+        """
+
+        if logging_param:
+
+            import mlflow
+            import os
+
+            run_name = model_names[name_counter]
+
+            with mlflow.start_run(run_name=run_name) as run:  
+
+                # Get active run to log as tag
+                RunID = mlflow.active_run().info.run_id
+
+                params = model.get_params()
+
+                for i in list(params):
+                    v = params.get(i)
+                    if len(str(v)) > 250:
+                        params.pop(i)
+                        
+                mlflow.log_params(params)
+
+                #set tag of compare_models
+                mlflow.set_tag("Source", "compare_models")
+                mlflow.set_tag("URI", URI)
+                mlflow.set_tag("USI", USI)
+                mlflow.set_tag("Run Time", runtime)
+                mlflow.set_tag("Run ID", RunID)
+
+                #Log top model metrics
+                mlflow.log_metric("Accuracy", avg_acc[0])
+                mlflow.log_metric("AUC", avg_auc[0])
+                mlflow.log_metric("Recall", avg_recall[0])
+                mlflow.log_metric("Precision", avg_precision[0])
+                mlflow.log_metric("F1", avg_f1[0])
+                mlflow.log_metric("Kappa", avg_kappa[0])
+                mlflow.log_metric("MCC", avg_mcc[0])
+                mlflow.log_metric("TT", avg_training_time[0])
+
+                # Log model and transformation pipeline
+                save_model(model, 'Trained Model', verbose=False)
+                mlflow.log_artifact('Trained Model' + '.pkl')
+                os.remove('Trained Model.pkl')
+
         score_acc =np.empty((0,0))
         score_auc =np.empty((0,0))
         score_recall =np.empty((0,0))
@@ -4531,90 +4585,6 @@ def compare_models(blacklist = None,
         model_store_final = model_store_final[0]
 
     clear_output()
-
-    #end runtime
-    runtime_end = time.time()
-    runtime = np.array(runtime_end - runtime_start).round(2)
-
-    if logging_param:
-
-        #Creating Logs message monitor
-        monitor.iloc[1,1:] = 'Creating Logs'
-        monitor.iloc[2,1:] = 'Almost Finished'    
-        if verbose:
-            if html_param:
-                update_display(monitor, display_id = 'monitor')
-
-        import mlflow
-        import os
-
-        cmdf = compare_models_.data
-        run_name = cmdf['Model'][0]
-
-        with mlflow.start_run(run_name=run_name) as run:  
-
-            # Get active run to log as tag
-            RunID = mlflow.active_run().info.run_id
-
-            if type(model_store_final) is list:
-                params = model_store_final[0].get_params()
-            else:
-                params = model_store_final.get_params()
-
-            for i in list(params):
-                v = params.get(i)
-                if len(str(v)) > 250:
-                    params.pop(i)
-                    
-            mlflow.log_params(params)
-
-            #set tag of compare_models
-            mlflow.set_tag("Source", "compare_models")
-            
-            import secrets
-            URI = secrets.token_hex(nbytes=4)
-            mlflow.set_tag("URI", URI)
-
-            mlflow.set_tag("USI", USI)
-
-            mlflow.set_tag("Run Time", runtime)
-
-            mlflow.set_tag("Run ID", RunID)
-
-            # Log internal parameters
-            mlflow.log_param("compare_models_blacklist", blacklist)
-            mlflow.log_param("compare_models_whitelist", whitelist)
-            mlflow.log_param("compare_models_fold", fold)
-            mlflow.log_param("compare_models_round", round)
-            mlflow.log_param("compare_models_sort", sort)
-            mlflow.log_param("compare_models_n_select", n_select)
-            mlflow.log_param("compare_models_turbo", turbo)
-            mlflow.log_param("compare_models_verbose", verbose)
-            
-            #Log top model metrics
-            mlflow.log_metric("Accuracy", cmdf['Accuracy'][0])
-            mlflow.log_metric("AUC", cmdf['AUC'][0])
-            mlflow.log_metric("Recall", cmdf['Recall'][0])
-            mlflow.log_metric("Precision", cmdf['Prec.'][0])
-            mlflow.log_metric("F1", cmdf['F1'][0])
-            mlflow.log_metric("Kappa", cmdf['Kappa'][0])
-            mlflow.log_metric("MCC", cmdf['MCC'][0])
-            mlflow.log_metric("TT", model_fit_time)
-
-            # Log model and transformation pipeline
-            if type(model_store_final) is list:
-                model_ = model_store_final[0]
-            else:
-                model_ = model_store_final
-
-            save_model(model_, 'Trained Model', verbose=False)
-            mlflow.log_artifact('Trained Model' + '.pkl')
-            os.remove('Trained Model.pkl')
-
-            # Log the CV results as model_results.html artifact
-            compare_models_.data.to_html('Results.html', col_space=65, justify='left')
-            mlflow.log_artifact('Results.html')
-            os.remove('Results.html')
 
     if html_param:
         display(compare_models_)
@@ -6934,7 +6904,7 @@ def stack_models(estimator_list,
         '''
         MONITOR UPDATE ENDS
         '''
-        
+
         #fitting and appending
         model.fit(data_X, data_y)
         models_.append(model)
