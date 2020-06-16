@@ -8429,7 +8429,6 @@ def calibrate_model(estimator,
     runtime_start = time.time()
 
     #Statement to find CatBoost and change name
-    
     model_name = str(estimator).split("(")[0]
     if model_name.find("catboost.core.CatBoostClassifier") != -1:
         model_name = 'CatBoostClassifier'
@@ -8518,9 +8517,8 @@ def calibrate_model(estimator,
             mn = get_model_name(estimator.estimator)
 
     else:
-
-        if hasattr(estimator, 'base_estimator'):
-            mn = get_model_name(estimator.base_estimator)
+        if hasattr(estimator, 'voting'):
+            mn = 'VotingClassifier'
         else:
             mn = get_model_name(estimator)
 
@@ -9096,10 +9094,16 @@ def finalize_model(estimator):
 
         else:
 
-            if hasattr(estimator, 'base_estimator'):
-                mn = get_model_name(estimator.base_estimator)
+            if hasattr(estimator, 'voting'):
+                mn = 'VotingClassifier'
             else:
                 mn = get_model_name(estimator)
+
+            if 'BaggingClassifier' in mn:
+                mn = get_model_name(estimator.base_estimator_)
+
+            if 'CalibratedClassifierCV' in mn:
+                mn = get_model_name(estimator.base_estimator)
 
         if 'catboost' in mn:
             mn = 'CatBoostClassifier'
