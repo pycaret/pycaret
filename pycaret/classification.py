@@ -706,8 +706,8 @@ def setup(data,
     from IPython.display import display, HTML, clear_output, update_display
     
     #import mlflow and logging utils
-    import mlflow
-    import mlflow.sklearn
+    #import mlflow
+    #import mlflow.sklearn
     import secrets
     import os
     
@@ -1650,6 +1650,8 @@ def setup(data,
     USI = secrets.token_hex(nbytes=2)
 
     if logging_param:
+
+        import mlflow
 
         if experiment_name is None:
             exp_name_ = 'clf-default-name'
@@ -3964,6 +3966,9 @@ def compare_models(blacklist = None,
         n_select_num = len(n_select)
     else:
         n_select_num = abs(n_select)
+
+    if n_select_num > len_mod:
+        n_select_num = len_mod
 
     if whitelist is not None:
         wl = len(whitelist)
