@@ -7928,8 +7928,6 @@ def create_stacknet(estimator_list,
     model_fit_end = time.time()
     model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
 
-    model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
-
     mean_acc=np.mean(score_acc)
     mean_auc=np.mean(score_auc)
     mean_recall=np.mean(score_recall)
