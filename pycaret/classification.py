@@ -704,10 +704,6 @@ def setup(data,
     import pandas as pd
     import ipywidgets as ipw
     from IPython.display import display, HTML, clear_output, update_display
-    
-    #import mlflow and logging utils
-    #import mlflow
-    #import mlflow.sklearn
     import secrets
     import os
     

@@ -53,6 +53,11 @@ def setup(data,
           n_jobs = -1, #added in pycaret==1.0.1
           html = True, #added in pycaret==1.0.1
           session_id = None,
+          experiment_name = None, #added in pycaret==2.0.0
+          logging = True, #added in pycaret==2.0.0
+          log_plots = False, #added in pycaret==2.0.0
+          log_profile = False, #added in pycaret==2.0.0
+          log_data = False, #added in pycaret==2.0.0
           silent = False,
           verbose = True, #added in pycaret==1.0.1
           profile = False):
@@ -382,6 +387,21 @@ def setup(data,
     be performed assuming automatically inferred data types. Not recommended for direct use 
     except for established pipelines.
 
+    experiment_name: str, default = None
+    Name of experiment for logging. When set to None, 'clf' is by default used as 
+    alias for the experiment name.
+
+    logging: bool, default = True
+    When set to True, all metrics and parameters are logged on MLFlow server.
+
+    log_plots: bool, default = False
+    When set to True, specific plots are logged in MLflow as a png file. By default,
+    it is set to False. 
+
+    log_profile: bool, default = False
+    When set to True, data profile is also logged on MLflow as a html file. By default,
+    it is set to False. 
+
     verbose: Boolean, default = True
     Information grid is not printed when verbose is set to False.
 
@@ -408,6 +428,10 @@ def setup(data,
     #exception checking   
     import sys
     
+    #run_time
+    import datetime, time
+    runtime_start = time.time()
+
     #checking train size parameter
     if type(train_size) is not float:
         sys.exit('(Type Error): train_size parameter only accepts float value.')
@@ -684,6 +708,8 @@ def setup(data,
     import ipywidgets as ipw
     from IPython.display import display, HTML, clear_output, update_display
     import datetime, time
+    import secrets
+    import os
 
     #pandas option
     pd.set_option('display.max_columns', 500)
@@ -748,8 +774,9 @@ def setup(data,
     data_before_preprocess = data.copy()
     
     #declaring global variables to be accessed by other functions
-    global X, y, X_train, X_test, y_train, y_test, seed, prep_pipe, target_inverse_transformer, experiment__, preprocess,\
-            folds_shuffle_param, n_jobs_param, create_model_container, master_model_container, display_container
+    global X, y, X_train, X_test, y_train, y_test, seed, prep_pipe, target_inverse_transformer, experiment__,\
+        preprocess, folds_shuffle_param, n_jobs_param, create_model_container, master_model_container,\
+        display_container, exp_name_log, logging_param, log_plots_param, USI
     
     #generate seed to be used globally
     if session_id is None:
@@ -1164,6 +1191,18 @@ def setup(data,
 
     #create display container
     display_container = []
+
+    #create logging parameter
+    logging_param = logging
+
+    #create exp_name_log param incase logging is False
+    exp_name_log = 'no_logging'
+
+    #create an empty log_plots_param
+    if log_plots:
+        log_plots_param = True
+    else:
+        log_plots_param = False
 
     #sample estimator
     if sample_estimator is None:
@@ -1582,8 +1621,98 @@ def setup(data,
         except:
             pass
         
-        return X, y, X_train, X_test, y_train, y_test, seed, prep_pipe, target_inverse_transformer, experiment__,\
-            folds_shuffle_param, n_jobs_param, html_param, create_model_container, master_model_container, display_container
+    #end runtime
+    runtime_end = time.time()
+    runtime = np.array(runtime_end - runtime_start).round(2)
+
+    #mlflow create experiment (name defined here)
+
+    USI = secrets.token_hex(nbytes=2)
+
+    if logging_param:
+
+        import mlflow
+
+        if experiment_name is None:
+            exp_name_ = 'clf-default-name'
+        else:
+            exp_name_ = experiment_name
+
+        URI = secrets.token_hex(nbytes=4)    
+        exp_name_log = exp_name_
+        
+        try:
+            mlflow.create_experiment(exp_name_log)
+        except:
+            pass
+
+        #mlflow logging
+        mlflow.set_experiment(exp_name_log)
+
+        run_name_ = 'Session Initialized ' + str(USI)
+        with mlflow.start_run(run_name=run_name_) as run:
+
+            # Get active run to log as tag
+            RunID = mlflow.active_run().info.run_id
+            
+            k = functions.copy()
+            k.set_index('Description',drop=True,inplace=True)
+            kdict = k.to_dict()
+            params = kdict.get('Value')
+            mlflow.log_params(params)
+
+            #set tag of compare_models
+            mlflow.set_tag("Source", "setup")
+            
+            import secrets
+            URI = secrets.token_hex(nbytes=4)
+            mlflow.set_tag("URI", URI)
+
+            mlflow.set_tag("USI", USI) 
+
+            mlflow.set_tag("Run Time", runtime)
+
+            mlflow.set_tag("Run ID", RunID)
+
+            # Log the transformation pipeline
+            save_model(prep_pipe, 'Transformation Pipeline', verbose=False)
+            mlflow.log_artifact('Transformation Pipeline' + '.pkl')
+            os.remove('Transformation Pipeline.pkl')
+
+            # Log pandas profile
+            if log_profile:
+                import pandas_profiling
+                pf = pandas_profiling.ProfileReport(data_before_preprocess)
+                pf.to_file("Data Profile.html")
+                mlflow.log_artifact("Data Profile.html")
+                os.remove("Data Profile.html")
+                clear_output()
+                display(functions_)
+
+            # Log training and testing set
+            if log_data:
+                X_train.join(y_train).to_csv('Train.csv')
+                X_test.join(y_test).to_csv('Test.csv')
+                mlflow.log_artifact("Train.csv")
+                mlflow.log_artifact("Test.csv")
+                os.remove('Train.csv')
+                os.remove('Test.csv')
+
+            # Log input.txt that contains name of columns required in dataset 
+            # to use this pipeline based on USI/URI.
+
+            input_cols = list(data_before_preprocess.columns)
+            input_cols.remove(target)
+
+            with open("input.txt", "w") as output:
+                output.write(str(input_cols))
+            
+            mlflow.log_artifact("input.txt")
+            os.remove('input.txt')
+            
+        return X, y, X_train, X_test, y_train, y_test, seed, prep_pipe, target_inverse_transformer,\
+            experiment__, folds_shuffle_param, n_jobs_param, html_param, create_model_container,\
+            master_model_container, display_container, exp_name_log, logging_param, log_plots_param, USI
 
 def create_model(estimator = None, 
                  ensemble = False, 
@@ -1591,6 +1720,7 @@ def create_model(estimator = None,
                  fold = 10, 
                  round = 4,  
                  verbose = True,
+                 system = True, #added in pycaret==2.0.0
                  **kwargs): #added in pycaret==1.0.1
     
      
@@ -1664,7 +1794,10 @@ def create_model(estimator = None,
 
     verbose: Boolean, default = True
     Score grid is not printed when verbose is set to False.
-
+    
+    system: Boolean, default = True
+    Must remain True all times. Only to be changed by internal functions.
+    
     **kwargs: 
     Additional keyword arguments to pass to the estimator.
 
@@ -1697,6 +1830,10 @@ def create_model(estimator = None,
     #exception checking   
     import sys
     
+    #run_time
+    import datetime, time
+    runtime_start = time.time()
+
     #checking error for estimator (string)
     available_estimators = ['lr', 'lasso', 'ridge', 'en', 'lar', 'llar', 'omp', 'br', 'ard', 'par', 
                             'ransac', 'tr', 'huber', 'kr', 'svm', 'knn', 'dt', 'rf', 'et', 'ada', 'gbr', 
@@ -2157,6 +2294,10 @@ def create_model(estimator = None,
     model_results = model_results.append(model_avgs)
     model_results = model_results.round(round)
     
+    #Yellow the mean
+    model_results=model_results.style.apply(lambda x: ['background: yellow' if (x.name == 'Mean') else '' for i in x], axis=1)
+    model_results = model_results.set_precision(round)
+
     #refitting the model on complete X_train, y_train
     monitor.iloc[1,1:] = 'Finalizing Model'
     monitor.iloc[2,1:] = 'Almost Finished'
@@ -2164,12 +2305,118 @@ def create_model(estimator = None,
         if html_param:
             update_display(monitor, display_id = 'monitor')
     
+    model_fit_start = time.time()
     model.fit(data_X, data_y)
-    # Yellow the mean
-    model_results=model_results.style.apply(lambda x: ['background: yellow' if (x.name == 'Mean') else '' for i in x], axis=1)
-    model_results = model_results.set_precision(round)
+    model_fit_end = time.time()
+
+    model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
+    
+    #end runtime
+    runtime_end = time.time()
+    runtime = np.array(runtime_end - runtime_start).round(2)
+
     progress.value += 1
     
+    #mlflow logging
+    if logging_param and system:
+
+        #Creating Logs message monitor
+        monitor.iloc[1,1:] = 'Creating Logs'
+        monitor.iloc[2,1:] = 'Almost Finished'    
+        if verbose:
+            if html_param:
+                update_display(monitor, display_id = 'monitor')
+
+        #import mlflow
+        import mlflow
+        import os
+
+        mlflow.set_experiment(exp_name_log)
+
+        with mlflow.start_run(run_name=full_name) as run:
+
+            # Get active run to log as tag
+            RunID = mlflow.active_run().info.run_id
+
+            # Log model parameters
+            params = model.get_params()
+
+            for i in list(params):
+                v = params.get(i)
+                if len(str(v)) > 250:
+                    params.pop(i)
+
+            mlflow.log_params(params)
+            
+            # Log metrics
+            mlflow.log_metrics({"MAE": avgs_mae[0], "MSE": avgs_mse[0], "RMSE": avgs_rmse[0], "R2" : avgs_r2[0],
+                                "RMSLE": avgs_rmsle[0], "MAPE": avgs_mape[0]})
+            
+            # Log internal parameters
+            mlflow.log_param("create_model_estimator", estimator)
+            mlflow.log_param("create_model_ensemble", ensemble)
+            mlflow.log_param("create_model_method", method)
+            mlflow.log_param("create_model_fold", fold)
+            mlflow.log_param("create_model_round", round)
+            mlflow.log_param("create_model_verbose", verbose)
+            mlflow.log_param("create_model_system", system)
+            
+            #set tag of compare_models
+            mlflow.set_tag("Source", "create_model")
+            
+            import secrets
+            URI = secrets.token_hex(nbytes=4)
+            mlflow.set_tag("URI", URI)   
+            mlflow.set_tag("USI", USI)
+            mlflow.set_tag("Run Time", runtime)
+            mlflow.set_tag("Run ID", RunID)
+
+            # Log training time in seconds
+            mlflow.log_metric("TT", model_fit_time)
+
+            # Log the CV results as model_results.html artifact
+            model_results.data.to_html('Results.html', col_space=65, justify='left')
+            mlflow.log_artifact('Results.html')
+            os.remove('Results.html')
+
+            # Generate hold-out predictions and save as html
+            holdout = predict_model(model, verbose=False)
+            holdout_score = pull()
+            display_container.pop(-1)
+            holdout_score.to_html('Holdout.html', col_space=65, justify='left')
+            mlflow.log_artifact('Holdout.html')
+            os.remove('Holdout.html')
+
+            # Log AUC and Confusion Matrix plot
+            if log_plots_param:
+                try:
+                    plot_model(model, plot = 'residuals', verbose=False, save=True, system=False)
+                    mlflow.log_artifact('Residuals.png')
+                    os.remove("Residuals.png")
+                except:
+                    pass
+
+                try:
+                    plot_model(model, plot = 'error', verbose=False, save=True, system=False)
+                    mlflow.log_artifact('Prediction Error.png')
+                    os.remove("Prediction Error.png")
+                except:
+                    pass
+
+                try:
+                    plot_model(model, plot = 'feature', verbose=False, save=True, system=False)
+                    mlflow.log_artifact('Feature Importance.png')
+                    os.remove("Feature Importance.png")
+                except:
+                    pass
+
+            # Log model and transformation pipeline
+            save_model(model, 'Trained Model', verbose=False)
+            mlflow.log_artifact('Trained Model' + '.pkl')
+            os.remove('Trained Model.pkl')
+
+    progress.value += 1
+
     #storing into experiment
     tup = (full_name,model)
     experiment__.append(tup)
@@ -6549,7 +6796,10 @@ def create_stacknet(estimator_list,
 
 
 def plot_model(estimator, 
-               plot = 'residuals'): 
+               plot = 'residuals',
+               save = False, #added in pycaret 1.0.1
+               verbose = True, #added in pycaret 1.0.1
+               system = True): #added in pycaret 1.0.1): 
     
     
     """
@@ -6594,6 +6844,15 @@ def plot_model(estimator,
     Model Hyperparameter         'parameter'                 N/A 
 
     ** https://www.scikit-yb.org/en/latest/api/regressor/<reference>
+
+    save: Boolean, default = False
+    Plot is saved as png file in local directory when save parameter set to True.
+
+    verbose: Boolean, default = True
+    Progress bar not shown when verbose set to False. 
+
+    system: Boolean, default = True
+    Must remain True all times. Only to be changed by internal functions.
 
     Returns:
     --------
@@ -6649,7 +6908,9 @@ def plot_model(estimator,
     
     #progress bar
     progress = ipw.IntProgress(value=0, min=0, max=5, step=1 , description='Processing: ')
-    display(progress)
+    if verbose:
+        if html_param:
+            display(progress)
     
     #ignore warnings
     import warnings
@@ -6666,6 +6927,9 @@ def plot_model(estimator,
     
     progress.value += 1
     
+    #plots used for logging (controlled through plots_log_param) 
+    #residuals, #error, and #feature importance
+
     if plot == 'residuals':
         
         from yellowbrick.regressor import ResidualsPlot
@@ -6676,7 +6940,13 @@ def plot_model(estimator,
         visualizer.score(X_test, y_test)  # Evaluate the model on the test data
         progress.value += 1
         clear_output()
-        visualizer.show()
+        if save or log_plots_param:
+            if system:
+                visualizer.show(outpath="Residuals.png")
+            else:
+                visualizer.show(outpath="Residuals.png", clear_figure=True)
+        else:
+            visualizer.show()
         
         
     elif plot == 'error':
@@ -6688,7 +6958,13 @@ def plot_model(estimator,
         visualizer.score(X_test, y_test)
         progress.value += 1
         clear_output()
-        visualizer.show()
+        if save or log_plots_param:
+            if system:
+                visualizer.show(outpath="Prediction Error.png")
+            else:
+                visualizer.show(outpath="Prediction Error.png", clear_figure=True)
+        else:
+            visualizer.show()
         
     elif plot == 'cooks':
         from yellowbrick.regressor import CooksDistance
@@ -6698,7 +6974,13 @@ def plot_model(estimator,
         visualizer.fit(X, y)
         progress.value += 1
         clear_output()
-        visualizer.show() 
+        if save:
+            if system:
+                visualizer.show(outpath="Cooks Distance.png")
+            else:
+                visualizer.show(outpath="Cooks Distance.png", clear_figure=True)
+        else:
+            visualizer.show()
         
     elif plot == 'rfe':
         
@@ -6709,7 +6991,13 @@ def plot_model(estimator,
         visualizer.fit(X_train, y_train)
         progress.value += 1
         clear_output()
-        visualizer.poof()
+        if save:
+            if system:
+                visualizer.show(outpath="Recursive Feature Selection.png")
+            else:
+                visualizer.show(outpath="Recursive Feature Selection.png", clear_figure=True)
+        else:
+            visualizer.show()
         
     elif plot == 'learning':
         
@@ -6721,7 +7009,13 @@ def plot_model(estimator,
         visualizer.fit(X_train, y_train)
         progress.value += 1
         clear_output()
-        visualizer.poof()
+        if save:
+            if system:
+                visualizer.show(outpath="Learning Curve.png")
+            else:
+                visualizer.show(outpath="Learning Curve.png", clear_figure=True)
+        else:
+            visualizer.show()
     
     elif plot == 'manifold':
         
@@ -6734,7 +7028,13 @@ def plot_model(estimator,
         visualizer.fit_transform(X_train_transformed, y_train)
         progress.value += 1
         clear_output()
-        visualizer.poof()
+        if save:
+            if system:
+                visualizer.show(outpath="Manifold.png")
+            else:
+                visualizer.show(outpath="Manifold.png", clear_figure=True)
+        else:
+            visualizer.show()
 
     elif plot == 'vc':
         
@@ -6813,7 +7113,13 @@ def plot_model(estimator,
         viz.fit(X_train, y_train)
         progress.value += 1
         clear_output()
-        viz.poof()
+        if save:
+            if system:
+                visualizer.show(outpath="Validation Curve.png")
+            else:
+                visualizer.show(outpath="Validation Curve.png", clear_figure=True)
+        else:
+            visualizer.show()
         
     elif plot == 'feature':
         if hasattr(estimator, 'coef_'):
@@ -6840,7 +7146,15 @@ def plot_model(estimator,
         plt.ylabel('Features') 
         progress.value += 1
         clear_output()
-   
+        if save or log_plots_param:
+            if system:
+                plt.savefig("Feature Importance.png")
+            else:
+                plt.savefig("Feature Importance.png")
+                plt.close()
+        else:
+            plt.show()
+
     elif plot == 'parameter':
         
         clear_output()
