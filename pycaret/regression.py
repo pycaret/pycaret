@@ -48,10 +48,10 @@ def setup(data,
           interaction_threshold = 0.01,              
           transform_target = False,
           transform_target_method = 'box-cox',
-          data_split_shuffle = True, #added in pycaret==1.0.1
-          folds_shuffle = False, #added in pycaret==1.0.1
-          n_jobs = -1, #added in pycaret==1.0.1
-          html = True, #added in pycaret==1.0.1
+          data_split_shuffle = True, #added in pycaret==2.0.0
+          folds_shuffle = False, #added in pycaret==2.0.0
+          n_jobs = -1, #added in pycaret==2.0.0
+          html = True, #added in pycaret==2.0.0
           session_id = None,
           experiment_name = None, #added in pycaret==2.0.0
           logging = True, #added in pycaret==2.0.0
@@ -59,7 +59,7 @@ def setup(data,
           log_profile = False, #added in pycaret==2.0.0
           log_data = False, #added in pycaret==2.0.0
           silent = False,
-          verbose = True, #added in pycaret==1.0.1
+          verbose = True, #added in pycaret==2.0.0
           profile = False):
     
     """
@@ -1725,7 +1725,7 @@ def create_model(estimator = None,
                  round = 4,  
                  verbose = True,
                  system = True, #added in pycaret==2.0.0
-                 **kwargs): #added in pycaret==1.0.1
+                 **kwargs): #added in pycaret==2.0.0
     
      
     """  
@@ -2454,8 +2454,8 @@ def ensemble_model(estimator,
                    fold = 10,
                    n_estimators = 10,
                    round = 4,
-                   choose_better = False, #added in pycaret==1.0.1
-                   optimize = 'r2', #added in pycaret==1.0.1
+                   choose_better = False, #added in pycaret==2.0.0
+                   optimize = 'r2', #added in pycaret==2.0.0
                    verbose = True):
     """
     
@@ -3110,13 +3110,13 @@ def ensemble_model(estimator,
     return model
 
 def compare_models(blacklist = None,
-                   whitelist = None, #added in pycaret==1.0.1
+                   whitelist = None, #added in pycaret==2.0.0
                    fold = 10, 
                    round = 4, 
                    sort = 'R2',
-                   n_select = 1, #added in pycaret==1.0.1
+                   n_select = 1, #added in pycaret==2.0.0
                    turbo = True,
-                   verbose = True): #added in pycaret==1.0.1
+                   verbose = True): #added in pycaret==2.0.0
     
     """
        
@@ -3966,8 +3966,8 @@ def compare_models(blacklist = None,
 def blend_models(estimator_list = 'All', 
                  fold = 10, 
                  round = 4, 
-                 choose_better = False, #added in pycaret==1.0.1 
-                 optimize = 'r2', #added in pycaret==1.0.1 
+                 choose_better = False, #added in pycaret==2.0.0 
+                 optimize = 'r2', #added in pycaret==2.0.0 
                  turbo = True,
                  verbose = True):
     
@@ -4703,9 +4703,9 @@ def tune_model(estimator,
                fold = 10, 
                round = 4, 
                n_iter = 10,
-               custom_grid = None, #added in pycaret==1.0.1 
+               custom_grid = None, #added in pycaret==2.0.0 
                optimize = 'r2',
-               choose_better = False, #added in pycaret==1.0.1
+               choose_better = False, #added in pycaret==2.0.0
                verbose = True):
     
       
@@ -6042,8 +6042,8 @@ def stack_models(estimator_list,
                  round = 4, 
                  restack = True, 
                  plot = False,
-                 choose_better = False, #added in pycaret==1.0.1
-                 optimize = 'r2', #added in pycaret==1.0.1
+                 choose_better = False, #added in pycaret==2.0.0
+                 optimize = 'r2', #added in pycaret==2.0.0
                  finalize = False,
                  verbose = True):
     
@@ -6737,8 +6737,8 @@ def create_stacknet(estimator_list,
                     fold = 10,
                     round = 4,
                     restack = True,
-                    choose_better = False, #added in pycaret==1.0.1
-                    optimize = 'r2', #added in pycaret==1.0.1
+                    choose_better = False, #added in pycaret==2.0.0
+                    optimize = 'r2', #added in pycaret==2.0.0
                     finalize = False,
                     verbose = True):
     
@@ -6838,11 +6838,15 @@ def create_stacknet(estimator_list,
     '''
     
     #for checking only
-    global inter_level_names
+    #no active test
     
     #exception checking   
     import sys
     
+    #run_time
+    import datetime, time
+    runtime_start = time.time()
+
     #checking estimator_list
     if type(estimator_list[0]) is not list:
         sys.exit("(Type Error): estimator_list parameter must be list of list. ")
@@ -7023,6 +7027,8 @@ def create_stacknet(estimator_list,
     base_counter = 0
     
     base_models_ = []
+
+    model_fit_start = time.time()
 
     for model in base_level:
         
@@ -7261,6 +7267,9 @@ def create_stacknet(estimator_list,
         
         '''
     
+    model_fit_end = time.time()
+    model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
+
     mean_mae=np.mean(score_mae)
     mean_mse=np.mean(score_mse)
     mean_rmse=np.mean(score_rmse)
@@ -7353,6 +7362,9 @@ def create_stacknet(estimator_list,
         s = create_model_container[-1][compare_dimension][-2:][0]
         scorer.append(s)
 
+        #re-instate display_constainer state 
+        display_container.pop(-1)
+
     #returning better model
     if optimize == 'r2':
         index_scorer = scorer.index(max(scorer))
@@ -7372,6 +7384,87 @@ def create_stacknet(estimator_list,
     tup = (nam, model_results)
     experiment__.append(tup)
     
+    #end runtime
+    runtime_end = time.time()
+    runtime = np.array(runtime_end - runtime_start).round(2)
+
+    if logging_param and not finalize:
+
+        import mlflow
+        from pathlib import Path
+        import os
+
+        #Creating Logs message monitor
+        monitor.iloc[1,1:] = 'Creating Logs'
+        monitor.iloc[2,1:] = 'Almost Finished'    
+        if verbose:
+            if html_param:
+                update_display(monitor, display_id = 'monitor')
+
+        with mlflow.start_run(run_name='Stacking Regressor (Multi-layer)') as run:       
+
+            # Get active run to log as tag
+            RunID = mlflow.active_run().info.run_id
+
+            params = meta_model.get_params()
+
+            for i in list(params):
+                v = params.get(i)
+                if len(str(v)) > 250:
+                    params.pop(i)
+    
+            mlflow.log_params(params)
+            
+            mlflow.log_metrics({"MAE": avgs_mae[0], "MSE": avgs_mse[0], "RMSE": avgs_rmse[0], "R2" : avgs_r2[0],
+                                "RMSLE": avgs_rmsle[0], "MAPE": avgs_mape[0]})
+
+            # Log other parameter of create_model function (internal to pycaret)
+            mlflow.log_param("create_stacknet_estimator_list", estimator_list)
+            mlflow.log_param("create_stacknet_fold", fold)
+            mlflow.log_param("create_stacknet_round", round)
+            mlflow.log_param("create_stacknet_restack", restack)
+            mlflow.log_param("create_stacknet_choose_better", choose_better)
+            mlflow.log_param("create_stacknet_optimize", optimize)
+            mlflow.log_param("create_stacknet_finalize", finalize)
+            mlflow.log_param("create_stacknet_verbose", verbose)
+            
+            #set tag of create_stacknet
+            mlflow.set_tag("Source", "create_stacknet")
+            
+            import secrets
+            URI = secrets.token_hex(nbytes=4)
+            mlflow.set_tag("URI", URI)
+
+            mlflow.set_tag("USI", USI)
+
+            mlflow.set_tag("Run Time", runtime)
+
+            mlflow.set_tag("Run ID", RunID)
+
+            # Log model and transformation pipeline
+            save_model(models_, 'Trained Model', verbose=False)
+            mlflow.log_artifact('Trained Model' + '.pkl')
+            size_bytes = Path('Trained Model.pkl').stat().st_size
+            size_kb = np.round(size_bytes/1000, 2)
+            mlflow.set_tag("Size KB", size_kb)
+            os.remove('Trained Model.pkl')
+            
+            # Log training time of compare_models
+            mlflow.log_metric("TT", model_fit_time)
+
+            # Log the CV results as model_results.html artifact
+            model_results.data.to_html('Results.html', col_space=65, justify='left')
+            mlflow.log_artifact('Results.html')
+            os.remove('Results.html')
+
+            # Generate hold-out predictions and save as html
+            holdout = predict_model(models_, verbose=False)
+            holdout_score = pull()
+            display_container.pop(-1)
+            holdout_score.to_html('Holdout.html', col_space=65, justify='left')
+            mlflow.log_artifact('Holdout.html')
+            os.remove('Holdout.html')
+
     if verbose:
         clear_output()
         if html_param:
@@ -8013,11 +8106,69 @@ def finalize_model(estimator):
     import warnings
     warnings.filterwarnings('ignore') 
     
+    #run_time
+    import datetime, time
+    runtime_start = time.time()
+
     #import depedencies
     from IPython.display import clear_output, update_display
     from sklearn.base import clone
     from copy import deepcopy
+    import numpy as np
+
+    #determine runname for logging
+    def get_model_name(e):
+        return str(e).split("(")[0]
     
+    model_dict_logging = {'ExtraTreesRegressor' : 'Extra Trees Regressor',
+                        'GradientBoostingRegressor' : 'Gradient Boosting Regressor', 
+                        'RandomForestRegressor' : 'Random Forest',
+                        'LGBMRegressor' : 'Light Gradient Boosting Machine',
+                        'XGBRegressor' : 'Extreme Gradient Boosting',
+                        'AdaBoostRegressor' : 'AdaBoost Regressor', 
+                        'DecisionTreeRegressor' : 'Decision Tree', 
+                        'Ridge' : 'Ridge Regression',
+                        'TheilSenRegressor' : 'TheilSen Regressor', 
+                        'BayesianRidge' : 'Bayesian Ridge',
+                        'LinearRegression' : 'Linear Regression',
+                        'ARDRegression' : 'Automatic Relevance Determination', 
+                        'KernelRidge' : 'Kernel Ridge', 
+                        'RANSACRegressor' : 'Random Sample Consensus', 
+                        'HuberRegressor' : 'Huber Regressor', 
+                        'Lasso' : 'Lasso Regression', 
+                        'ElasticNet' : 'Elastic Net', 
+                        'Lars' : 'Least Angle Regression', 
+                        'OrthogonalMatchingPursuit' : 'Orthogonal Matching Pursuit', 
+                        'MLPRegressor' : 'Multi Level Perceptron',
+                        'KNeighborsRegressor' : 'K Neighbors Regressor',
+                        'SVR' : 'Support Vector Machine',
+                        'LassoLars' : 'Lasso Least Angle Regression',
+                        'PassiveAggressiveRegressor' : 'Passive Aggressive Regressor',
+                        'CatBoostRegressor' : 'CatBoost Regressor',
+                        'BaggingRegressor' : 'Bagging Regressor',
+                        'VotingRegressor' : 'Voting Regressor'}
+                            
+    if type(estimator) is not list:
+
+        if hasattr(estimator, 'voting'):
+            mn = 'VotingRegressor'
+        else:
+            mn = get_model_name(estimator)
+
+        if 'BaggingRegressor' in mn:
+            mn = get_model_name(estimator.base_estimator_)
+
+        if 'catboost' in mn:
+            mn = 'CatBoostRegressor'
+
+    if type(estimator) is list:
+        if type(estimator[0]) is not list:
+            full_name = 'Stacking Regresspr'
+        else:
+            full_name = 'Stacking Regressor (Multi-layer)'
+    else:
+        full_name = model_dict_logging.get(mn)
+
     if type(estimator) is list:
         
         if type(estimator[0]) is not list:
@@ -8052,6 +8203,8 @@ def finalize_model(estimator):
                                           finalize = True,
                                           verbose = False)
 
+        pull_results = pull() 
+
     else:
         model_final = clone(estimator)
         clear_output()
@@ -8063,6 +8216,121 @@ def finalize_model(estimator):
     tup = (model_name,model_final)
     experiment__.append(tup)
     
+    #end runtime
+    runtime_end = time.time()
+    runtime = np.array(runtime_end - runtime_start).round(2)
+
+    #mlflow logging
+    if logging_param:
+
+        #import mlflow
+        import mlflow
+        from pathlib import Path
+        import os
+
+        mlflow.set_experiment(exp_name_log)
+
+        with mlflow.start_run(run_name=full_name) as run:
+
+            # Get active run to log as tag
+            RunID = mlflow.active_run().info.run_id
+
+            # Log model parameters
+            try:
+                params = model_final.get_params()
+
+                for i in list(params):
+                    v = params.get(i)
+                    if len(str(v)) > 250:
+                        params.pop(i)
+
+                mlflow.log_params(params)
+            
+            except:
+                pass
+            
+            # get metrics of non-finalized model and log it
+
+            try:
+                c = create_model(estimator, verbose=False, system=False)
+                cr = pull()
+                log_mae = cr.loc['Mean']['MAE'] 
+                log_mse = cr.loc['Mean']['MSE'] 
+                log_rmse = cr.loc['Mean']['RMSE'] 
+                log_r2 = cr.loc['Mean']['R2'] 
+                log_rmsle = cr.loc['Mean']['RMSLE'] 
+                log_mape = cr.loc['Mean']['MAPE'] 
+
+                mlflow.log_metric("MAE", log_mae)
+                mlflow.log_metric("MSE", log_mse)
+                mlflow.log_metric("RMSE", log_rmse)
+                mlflow.log_metric("R2", log_r2)
+                mlflow.log_metric("RMSLE", log_rmsle)
+                mlflow.log_metric("MAPE", log_mape)
+
+            except:
+                cr = pull_results
+                log_mae = cr.loc['Mean']['MAE'] 
+                log_mse = cr.loc['Mean']['MSE'] 
+                log_rmse = cr.loc['Mean']['RMSE'] 
+                log_r2 = cr.loc['Mean']['R2'] 
+                log_rmsle = cr.loc['Mean']['RMSLE'] 
+                log_mape = cr.loc['Mean']['MAPE'] 
+
+                mlflow.log_metric("MAE", log_mae)
+                mlflow.log_metric("MSE", log_mse)
+                mlflow.log_metric("RMSE", log_rmse)
+                mlflow.log_metric("R2", log_r2)
+                mlflow.log_metric("RMSLE", log_rmsle)
+                mlflow.log_metric("MAPE", log_mape)
+
+            #set tag of compare_models
+            mlflow.set_tag("Source", "finalize_model")
+            
+            #create MRI (model registration id)
+            mlflow.set_tag("Final", True)
+            
+            import secrets
+            URI = secrets.token_hex(nbytes=4)
+            mlflow.set_tag("URI", URI)           
+            mlflow.set_tag("USI", USI)
+            mlflow.set_tag("Run Time", runtime)
+            mlflow.set_tag("Run ID", RunID)
+
+            # Log training time in seconds
+            mlflow.log_metric("TT", runtime)
+
+            # Log AUC and Confusion Matrix plot
+            if log_plots_param:
+                try:
+                    plot_model(model, plot = 'residuals', verbose=False, save=True, system=False)
+                    mlflow.log_artifact('Residuals.png')
+                    os.remove("Residuals.png")
+                except:
+                    pass
+
+                try:
+                    plot_model(model, plot = 'error', verbose=False, save=True, system=False)
+                    mlflow.log_artifact('Prediction Error.png')
+                    os.remove("Prediction Error.png")
+                except:
+                    pass
+
+                try:
+                    plot_model(model, plot = 'feature', verbose=False, save=True, system=False)
+                    mlflow.log_artifact('Feature Importance.png')
+                    os.remove("Feature Importance.png")
+                except:
+                    pass
+
+            # Log model and transformation pipeline
+            save_model(model_final, 'Trained Model', verbose=False)
+            mlflow.log_artifact('Trained Model' + '.pkl')
+            size_bytes = Path('Trained Model.pkl').stat().st_size
+            size_kb = np.round(size_bytes/1000, 2)
+            mlflow.set_tag("Size KB", size_kb)
+            os.remove('Trained Model.pkl')
+
     return model_final
 
 def save_model(model, model_name, verbose=True):
@@ -8325,7 +8593,7 @@ def predict_model(estimator,
                   platform=None,
                   authentication=None,
                   round=4,
-                  verbose=True): #added in pycaret==1.0.1
+                  verbose=True): #added in pycaret==2.0.0
     
     """
        
