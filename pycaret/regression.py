@@ -54,7 +54,7 @@ def setup(data,
           html = True, #added in pycaret==2.0.0
           session_id = None,
           experiment_name = None, #added in pycaret==2.0.0
-          logging = True, #added in pycaret==2.0.0
+          logging = False, #added in pycaret==2.0.0
           log_plots = False, #added in pycaret==2.0.0
           log_profile = False, #added in pycaret==2.0.0
           log_data = False, #added in pycaret==2.0.0
@@ -391,7 +391,7 @@ def setup(data,
     Name of experiment for logging. When set to None, 'clf' is by default used as 
     alias for the experiment name.
 
-    logging: bool, default = True
+    logging: bool, default = False
     When set to True, all metrics and parameters are logged on MLFlow server.
 
     log_plots: bool, default = False

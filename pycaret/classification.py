@@ -53,7 +53,7 @@ def setup(data,
           html = True, #added in pycaret==2.0.0
           session_id = None,
           experiment_name = None, #added in pycaret==2.0.0
-          logging = True, #added in pycaret==2.0.0
+          logging = False, #added in pycaret==2.0.0
           log_plots = False, #added in pycaret==2.0.0
           log_profile = False, #added in pycaret==2.0.0
           log_data = False, #added in pycaret==2.0.0
@@ -376,7 +376,7 @@ def setup(data,
     Name of experiment for logging. When set to None, 'clf' is by default used as 
     alias for the experiment name.
 
-    logging: bool, default = True
+    logging: bool, default = False
     When set to True, all metrics and parameters are logged on MLFlow server.
 
     log_plots: bool, default = False
@@ -1420,7 +1420,6 @@ def setup(data,
                                          ['Interaction Threshold ', interaction_threshold_grid], #new
                                        ], columns = ['Description', 'Value'] )
 
-            #functions_ = functions.style.hide_index()
             functions_ = functions.style.apply(highlight_max)
             if verbose:
                 if html_param:
@@ -1608,7 +1607,6 @@ def setup(data,
                                      ['Interaction Threshold ', interaction_threshold_grid], #new
                                    ], columns = ['Description', 'Value'] )
         
-        #functions = functions.style.hide_index()
         functions_ = functions.style.apply(highlight_max)
         if verbose:
             if html_param:
@@ -1648,6 +1646,7 @@ def setup(data,
     if logging_param:
 
         import mlflow
+        from pathlib import Path
 
         if experiment_name is None:
             exp_name_ = 'clf-default-name'
@@ -1693,6 +1692,9 @@ def setup(data,
             # Log the transformation pipeline
             save_model(prep_pipe, 'Transformation Pipeline', verbose=False)
             mlflow.log_artifact('Transformation Pipeline' + '.pkl')
+            size_bytes = Path('Transformation Pipeline.pkl').stat().st_size
+            size_kb = np.round(size_bytes/1000, 2)
+            mlflow.set_tag("Size KB", size_kb)
             os.remove('Transformation Pipeline.pkl')
 
             # Log pandas profile
@@ -2395,6 +2397,7 @@ def create_model(estimator = None,
         #import mlflow
         import mlflow
         import mlflow.sklearn
+        from pathlib import Path
         import os
 
         mlflow.set_experiment(exp_name_log)
@@ -2479,6 +2482,9 @@ def create_model(estimator = None,
             # Log model and transformation pipeline
             save_model(model, 'Trained Model', verbose=False)
             mlflow.log_artifact('Trained Model' + '.pkl')
+            size_bytes = Path('Trained Model.pkl').stat().st_size
+            size_kb = np.round(size_bytes/1000, 2)
+            mlflow.set_tag("Size KB", size_kb)
             os.remove('Trained Model.pkl')
 
     progress.value += 1
@@ -3109,6 +3115,7 @@ def ensemble_model(estimator,
 
 
         import mlflow
+        from pathlib import Path
         import os
 
         mlflow.set_experiment(exp_name_log)
@@ -3160,6 +3167,9 @@ def ensemble_model(estimator,
             # Log model and transformation pipeline
             save_model(model, 'Trained Model', verbose=False)
             mlflow.log_artifact('Trained Model' + '.pkl')
+            size_bytes = Path('Trained Model.pkl').stat().st_size
+            size_kb = np.round(size_bytes/1000, 2)
+            mlflow.set_tag("Size KB", size_kb)
             os.remove('Trained Model.pkl')
 
             # Generate hold-out predictions and save as html
@@ -3211,9 +3221,9 @@ def ensemble_model(estimator,
 
 def plot_model(estimator, 
                plot = 'auc',
-               save = False, #added in pycaret 1.0.1
-               verbose = True, #added in pycaret 1.0.1
-               system = True): #added in pycaret 1.0.1
+               save = False, #added in pycaret 2.0.0
+               verbose = True, #added in pycaret 2.0.0
+               system = True): #added in pycaret 2.0.0
     
     
     """
@@ -4461,6 +4471,7 @@ def compare_models(blacklist = None,
         if logging_param:
 
             import mlflow
+            from pathlib import Path
             import os
 
             run_name = model_names[name_counter]
@@ -4499,6 +4510,9 @@ def compare_models(blacklist = None,
                 # Log model and transformation pipeline
                 save_model(model, 'Trained Model', verbose=False)
                 mlflow.log_artifact('Trained Model' + '.pkl')
+                size_bytes = Path('Trained Model.pkl').stat().st_size
+                size_kb = np.round(size_bytes/1000, 2)
+                mlflow.set_tag("Size KB", size_kb)
                 os.remove('Trained Model.pkl')
 
         score_acc =np.empty((0,0))
@@ -5693,6 +5707,7 @@ def tune_model(estimator = None,
                 update_display(monitor, display_id = 'monitor')
 
         import mlflow
+        from pathlib import Path
         import os
         
         mlflow.set_experiment(exp_name_log)
@@ -5745,6 +5760,9 @@ def tune_model(estimator = None,
             # Log model and transformation pipeline
             save_model(best_model, 'Trained Model', verbose=False)
             mlflow.log_artifact('Trained Model' + '.pkl')
+            size_bytes = Path('Trained Model.pkl').stat().st_size
+            size_kb = np.round(size_bytes/1000, 2)
+            mlflow.set_tag("Size KB", size_kb)
             os.remove('Trained Model.pkl')
 
             # Log the CV results as model_results.html artifact
@@ -6506,6 +6524,7 @@ def blend_models(estimator_list = 'All',
                 update_display(monitor, display_id = 'monitor')
 
         import mlflow
+        from pathlib import Path
         import os
 
         with mlflow.start_run(run_name='Voting Classifier') as run:
@@ -6530,8 +6549,11 @@ def blend_models(estimator_list = 'All',
             # Log model and transformation pipeline
             save_model(model, 'Trained Model', verbose=False)
             mlflow.log_artifact('Trained Model' + '.pkl')
+            size_bytes = Path('Trained Model.pkl').stat().st_size
+            size_kb = np.round(size_bytes/1000, 2)
+            mlflow.set_tag("Size KB", size_kb)
             os.remove('Trained Model.pkl')
-
+            
             # Generate hold-out predictions and save as html
             holdout = predict_model(model, verbose=False)
             holdout_score = pull()
@@ -7242,6 +7264,7 @@ def stack_models(estimator_list,
     if logging_param and not finalize:
 
         import mlflow
+        from pathlib import Path
         import os
 
         #Creating Logs message monitor
@@ -7297,6 +7320,9 @@ def stack_models(estimator_list,
             # Log model and transformation pipeline
             save_model(models_, 'Trained Model', verbose=False)
             mlflow.log_artifact('Trained Model' + '.pkl')
+            size_bytes = Path('Trained Model.pkl').stat().st_size
+            size_kb = np.round(size_bytes/1000, 2)
+            mlflow.set_tag("Size KB", size_kb)
             os.remove('Trained Model.pkl')
 
             # Log training time of compare_models
@@ -8060,6 +8086,7 @@ def create_stacknet(estimator_list,
     if logging_param and not finalize:
 
         import mlflow
+        from pathlib import Path
         import os
 
         #Creating Logs message monitor
@@ -8113,6 +8140,9 @@ def create_stacknet(estimator_list,
             # Log model and transformation pipeline
             save_model(models_, 'Trained Model', verbose=False)
             mlflow.log_artifact('Trained Model' + '.pkl')
+            size_bytes = Path('Trained Model.pkl').stat().st_size
+            size_kb = np.round(size_bytes/1000, 2)
+            mlflow.set_tag("Size KB", size_kb)
             os.remove('Trained Model.pkl')
 
             # Log training time of compare_models
@@ -8830,6 +8860,7 @@ def calibrate_model(estimator,
         #import mlflow
         import mlflow
         import mlflow.sklearn
+        from pathlib import Path
         import os
 
         mlflow.set_experiment(exp_name_log)
@@ -8916,6 +8947,9 @@ def calibrate_model(estimator,
             # Log model and transformation pipeline
             save_model(model, 'Trained Model', verbose=False)
             mlflow.log_artifact('Trained Model' + '.pkl')
+            size_bytes = Path('Trained Model.pkl').stat().st_size
+            size_kb = np.round(size_bytes/1000, 2)
+            mlflow.set_tag("Size KB", size_kb)
             os.remove('Trained Model.pkl')
 
     if verbose:
@@ -9176,6 +9210,7 @@ def finalize_model(estimator):
 
         #import mlflow
         import mlflow
+        from pathlib import Path
         import mlflow.sklearn
         import os
 
@@ -9281,6 +9316,9 @@ def finalize_model(estimator):
             # Log model and transformation pipeline
             save_model(model_final, 'Trained Model', verbose=False)
             mlflow.log_artifact('Trained Model' + '.pkl')
+            size_bytes = Path('Trained Model.pkl').stat().st_size
+            size_kb = np.round(size_bytes/1000, 2)
+            mlflow.set_tag("Size KB", size_kb)
             os.remove('Trained Model.pkl')
 
     return model_final

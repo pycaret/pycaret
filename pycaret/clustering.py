@@ -3,38 +3,45 @@
 # License: MIT
 
 
-
 def setup(data, 
-          categorical_features = None,
-          categorical_imputation = 'constant',
-          ordinal_features = None, #new
-          high_cardinality_features = None, #latest
-          numeric_features = None,
-          numeric_imputation = 'mean',
-          date_features = None,
-          ignore_features = None,
-          normalize = False,
-          normalize_method = 'zscore',
-          transformation = False,
-          transformation_method = 'yeo-johnson',
-          handle_unknown_categorical = True, #new             
-          unknown_categorical_method = 'least_frequent', #new 
-          pca = False,
-          pca_method = 'linear',
-          pca_components = None,
-          ignore_low_variance = False, 
-          combine_rare_levels = False, 
-          rare_level_threshold = 0.10, 
-          bin_numeric_features = None, 
-          remove_multicollinearity = False, #new
-          multicollinearity_threshold = 0.9, #new
-          group_features = None, #new
-          group_names = None, #new  
-          supervised = False,
-          supervised_target = None,
-          session_id = None,
-          profile = False,
-          verbose=True):
+        categorical_features = None,
+        categorical_imputation = 'constant',
+        ordinal_features = None,
+        high_cardinality_features = None,
+        numeric_features = None,
+        numeric_imputation = 'mean',
+        date_features = None,
+        ignore_features = None,
+        normalize = False,
+        normalize_method = 'zscore',
+        transformation = False,
+        transformation_method = 'yeo-johnson',
+        handle_unknown_categorical = True,             
+        unknown_categorical_method = 'least_frequent', 
+        pca = False,
+        pca_method = 'linear',
+        pca_components = None,
+        ignore_low_variance = False, 
+        combine_rare_levels = False, 
+        rare_level_threshold = 0.10, 
+        bin_numeric_features = None, 
+        remove_multicollinearity = False,
+        multicollinearity_threshold = 0.9, 
+        group_features = None, 
+        group_names = None, 
+        supervised = False,
+        supervised_target = None,
+        n_jobs = -1, #added in pycaret==2.0.0
+        html = True, #added in pycaret==2.0.0
+        session_id = None,
+        experiment_name = None, #added in pycaret==2.0.0
+        logging = False, #added in pycaret==2.0.0
+        log_plots = False, #added in pycaret==2.0.0
+        log_profile = False, #added in pycaret==2.0.0
+        log_data = False, #added in pycaret==2.0.0
+        silent=False, #added in pycaret==2.0.0
+        verbose=True,
+        profile = False,):
     
     """
         
@@ -230,18 +237,47 @@ def setup(data,
     Name of supervised_target column that will be ignored for transformation. Only
     applciable when tune_model() function is used. This param is only for internal use.
 
+    n_jobs: int, default = -1
+    The number of jobs to run in parallel (for functions that supports parallel 
+    processing) -1 means using all processors. To run all functions on single processor 
+    set n_jobs to None.
+
+    html: bool, default = True
+    If set to False, prevents runtime display of monitor. This must be set to False
+    when using environment that doesnt support HTML.
+
     session_id: int, default = None
     If None, a random seed is generated and returned in the Information grid. The 
     unique number is then distributed as a seed in all functions used during the 
     experiment. This can be used for later reproducibility of the entire experiment.
+
+    experiment_name: str, default = None
+    Name of experiment for logging. When set to None, 'clf' is by default used as 
+    alias for the experiment name.
+
+    logging: bool, default = True
+    When set to True, all metrics and parameters are logged on MLFlow server.
+
+    log_plots: bool, default = False
+    When set to True, specific plots are logged in MLflow as a png file. By default,
+    it is set to False. 
+
+    log_profile: bool, default = False
+    When set to True, data profile is also logged on MLflow as a html file. By default,
+    it is set to False. 
+
+    silent: bool, default = False
+    When set to True, confirmation of data types is not required. All preprocessing will 
+    be performed assuming automatically inferred data types. Not recommended for direct use 
+    except for established pipelines.
+
+    verbose: Boolean, default = True
+    Information grid is not printed when verbose is set to False.
     
     profile: bool, default = False
     If set to true, a data profile for Exploratory Data Analysis will be displayed 
     in an interactive HTML report. 
 
-    verbose: Boolean, default = True
-    Information grid is not printed when verbose is set to False.
-    
     Returns:
     --------
 
@@ -261,7 +297,10 @@ def setup(data,
     #exception checking   
     import sys
     
-    
+    #run_time
+    import datetime, time
+    runtime_start = time.time()
+
     """
     error handling starts here
     """
@@ -453,11 +492,19 @@ def setup(data,
     import ipywidgets as ipw
     from IPython.display import display, HTML, clear_output, update_display
     import datetime, time
+    import secrets
+    import os
     
     #pandas option
     pd.set_option('display.max_columns', 500)
     pd.set_option('display.max_rows', 500)
     
+    #global html_param
+    global html_param
+    
+    #create html_param
+    html_param = html
+
     #progress bar
     max_steps = 4
         
@@ -471,8 +518,9 @@ def setup(data,
                               columns=['', ' ', '   ']).set_index('')
     
     if verbose:
-        display(progress)
-        display(monitor, display_id = 'monitor')
+        if html_param:
+            display(progress)
+            display(monitor, display_id = 'monitor')
     
     #general dependencies
     import numpy as np
@@ -489,7 +537,8 @@ def setup(data,
     warnings.filterwarnings('ignore') 
     
     #defining global variables
-    global data_, X, seed, prep_pipe, prep_param, experiment__
+    global data_, X, seed, prep_pipe, prep_param, experiment__,\
+        n_jobs_param, exp_name_log, logging_param, log_plots_param, USI
     
     #copy original data for pandas profiler
     data_before_preprocess = data.copy()
@@ -521,7 +570,9 @@ def setup(data,
     pd.set_option('display.max_rows', 500)
 
     monitor.iloc[1,1:] = 'Preparing Data for Modeling'
-    update_display(monitor, display_id = 'monitor')
+    if verbose:
+        if html_param:
+            update_display(monitor, display_id = 'monitor')
             
     #define parameters for preprocessor
     
@@ -668,16 +719,19 @@ def setup(data,
     else:
         display_types_pass = False
     
+    if silent:
+        display_types_pass = False
+
     #import library
     from pycaret import preprocess
     
     X = preprocess.Preprocess_Path_Two(train_data = data_for_preprocess, 
                                        categorical_features = cat_features_pass,
-                                       apply_ordinal_encoding = apply_ordinal_encoding_pass, #new
+                                       apply_ordinal_encoding = apply_ordinal_encoding_pass,
                                        ordinal_columns_and_categories = ordinal_columns_and_categories_pass,
-                                       apply_cardinality_reduction = apply_cardinality_reduction_pass, #latest
-                                       cardinal_method = cardinal_method_pass, #latest
-                                       cardinal_features = cardinal_features_pass, #latest
+                                       apply_cardinality_reduction = apply_cardinality_reduction_pass,
+                                       cardinal_method = cardinal_method_pass,
+                                       cardinal_features = cardinal_features_pass,
                                        numerical_features = numeric_features_pass,
                                        time_features = date_features_pass,
                                        features_todrop = ignore_features_pass,
@@ -688,21 +742,21 @@ def setup(data,
                                        scaling_method = normalize_method,
                                        Power_transform_data = transformation,
                                        Power_transform_method = trans_method_pass,
-                                       apply_untrained_levels_treatment= handle_unknown_categorical, #new
-                                       untrained_levels_treatment_method = unknown_categorical_method_pass, #new
+                                       apply_untrained_levels_treatment= handle_unknown_categorical, 
+                                       untrained_levels_treatment_method = unknown_categorical_method_pass,
                                        apply_pca = pca,
-                                       pca_method = pca_method_pass, #new
-                                       pca_variance_retained_or_number_of_components = pca_components_pass, #new
-                                       apply_zero_nearZero_variance = ignore_low_variance, #new
-                                       club_rare_levels = combine_rare_levels, #new
-                                       rara_level_threshold_percentage = rare_level_threshold, #new
-                                       apply_binning = apply_binning_pass, #new
-                                       features_to_binn = features_to_bin_pass, #new
-                                       remove_multicollinearity = remove_multicollinearity, #new
-                                       maximum_correlation_between_features = multicollinearity_threshold, #new
-                                       apply_grouping = apply_grouping_pass, #new
-                                       features_to_group_ListofList = group_features_pass, #new
-                                       group_name = group_names_pass, #new
+                                       pca_method = pca_method_pass, 
+                                       pca_variance_retained_or_number_of_components = pca_components_pass,
+                                       apply_zero_nearZero_variance = ignore_low_variance, 
+                                       club_rare_levels = combine_rare_levels, 
+                                       rara_level_threshold_percentage = rare_level_threshold,
+                                       apply_binning = apply_binning_pass, 
+                                       features_to_binn = features_to_bin_pass,
+                                       remove_multicollinearity = remove_multicollinearity,
+                                       maximum_correlation_between_features = multicollinearity_threshold, 
+                                       apply_grouping = apply_grouping_pass, 
+                                       features_to_group_ListofList = group_features_pass,
+                                       group_name = group_names_pass,
                                        random_state = seed)
         
     progress.value += 1
@@ -810,12 +864,28 @@ def setup(data,
         except:
             experiment__ = []
     
+    #create n_jobs_param
+    n_jobs_param = n_jobs
+
+    #create logging parameter
+    logging_param = logging
+
+    #create exp_name_log param incase logging is False
+    exp_name_log = 'no_logging'
+
+    #create an empty log_plots_param
+    if log_plots:
+        log_plots_param = True
+    else:
+        log_plots_param = False
+
     progress.value += 1
     
     #monitor update
     monitor.iloc[1,1:] = 'Compiling Results'
     if verbose:
-        update_display(monitor, display_id = 'monitor')
+        if html_param:
+            update_display(monitor, display_id = 'monitor')
         
     '''
     Final display Starts
@@ -824,6 +894,13 @@ def setup(data,
     shape = data.shape
     shape_transformed = X.shape
     
+    if profile:
+        if verbose:
+            print('Setup Succesfully Completed! Loading Profile Now... Please Wait!')
+    else:
+        if verbose:
+            print('Setup Succesfully Completed!')
+
     functions = pd.DataFrame ( [ ['session_id ', seed ],
                                  ['Original Data ', shape ],
                                  ['Missing Values ', missing_flag],
@@ -854,19 +931,15 @@ def setup(data,
     
     progress.value += 1
     
+    clear_output()
+
     if verbose:
-        if profile:
-            clear_output()
-            print('')
-            print('Setup Succesfully Completed! Loading Profile Now... Please Wait!')
+        if html_param:
             display(functions_)
         else:
-            clear_output()
-            print('')
-            print('Setup Succesfully Completed!')
-            display(functions_)            
-        
-    if profile:    
+            print(functions_.data)
+         
+    if profile:
         try:
             import pandas_profiling
             pf = pandas_profiling.ProfileReport(data_before_preprocess)
@@ -880,21 +953,111 @@ def setup(data,
     '''   
     
     #log into experiment
-    if verbose:
+    if logging:
         experiment__.append(('Clustering Setup Config', functions))
         experiment__.append(('Orignal Dataset', data_))
         experiment__.append(('Transformed Dataset', X))
         experiment__.append(('Transformation Pipeline', prep_pipe))
     
-    
-    return X, data_, seed, prep_pipe, prep_param, experiment__
+    #end runtime
+    runtime_end = time.time()
+    runtime = np.array(runtime_end - runtime_start).round(2)
 
+    #mlflow create experiment (name defined here)
 
+    USI = secrets.token_hex(nbytes=2)
+
+    if logging_param:
+
+        import mlflow
+        from pathlib import Path
+        import os
+
+        if experiment_name is None:
+            exp_name_ = 'clu-default-name'
+        else:
+            exp_name_ = experiment_name
+
+        URI = secrets.token_hex(nbytes=4)    
+        exp_name_log = exp_name_
+        
+        try:
+            mlflow.create_experiment(exp_name_log)
+        except:
+            pass
+
+        #mlflow logging
+        mlflow.set_experiment(exp_name_log)
+
+        run_name_ = 'Session Initialized ' + str(USI)
+        with mlflow.start_run(run_name=run_name_) as run:
+
+            # Get active run to log as tag
+            RunID = mlflow.active_run().info.run_id
+            
+            k = functions.copy()
+            k.set_index('Description',drop=True,inplace=True)
+            kdict = k.to_dict()
+            params = kdict.get('Value')
+            mlflow.log_params(params)
+
+            #set tag of compare_models
+            mlflow.set_tag("Source", "setup")
+            
+            import secrets
+            URI = secrets.token_hex(nbytes=4)
+            mlflow.set_tag("URI", URI)
+
+            mlflow.set_tag("USI", USI) 
+
+            mlflow.set_tag("Run Time", runtime)
+
+            mlflow.set_tag("Run ID", RunID)
+
+            # Log the transformation pipeline
+            save_model(prep_pipe, 'Transformation Pipeline', verbose=False)
+            mlflow.log_artifact('Transformation Pipeline' + '.pkl')
+            size_bytes = Path('Transformation Pipeline.pkl').stat().st_size
+            size_kb = np.round(size_bytes/1000, 2)
+            mlflow.set_tag("Size KB", size_kb)
+            os.remove('Transformation Pipeline.pkl')
+
+            # Log pandas profile
+            if log_profile:
+                import pandas_profiling
+                pf = pandas_profiling.ProfileReport(data_before_preprocess)
+                pf.to_file("Data Profile.html")
+                mlflow.log_artifact("Data Profile.html")
+                os.remove("Data Profile.html")
+                clear_output()
+                display(functions_)
+
+            # Log training and testing set
+            if log_data:
+                data_before_preprocess.to_csv('data.csv')
+                mlflow.log_artifact('data.csv')
+                os.remove('data.csv')
+
+            # Log input.txt that contains name of columns required in dataset 
+            # to use this pipeline based on USI/URI.
+
+            input_cols = list(data_before_preprocess.columns)
+
+            with open("input.txt", "w") as output:
+                output.write(str(input_cols))
+            
+            mlflow.log_artifact("input.txt")
+            os.remove('input.txt')
+
+    return X, data_, seed, prep_pipe, prep_param, experiment__,\
+        n_jobs_param, exp_name_log, logging_param, log_plots_param, USI
 
 
 def create_model(model = None, 
                  num_clusters = None,
-                 verbose=True):
+                 verbose=True,
+                 system=True, #added in pycaret==2.0.0
+                 **kwargs): #added in pycaret==2.0.0
     
     
     
@@ -941,6 +1104,12 @@ def create_model(model = None,
     verbose: Boolean, default = True
     Status update is not printed when verbose is set to False.
 
+    system: Boolean, default = True
+    Must remain True all times. Only to be changed by internal functions.
+
+    **kwargs: 
+    Additional keyword arguments to pass to the estimator.
+
     Returns:
     --------
 
@@ -971,7 +1140,11 @@ def create_model(model = None,
     
     #exception checking   
     import sys        
-        
+    
+    #run_time
+    import datetime, time
+    runtime_start = time.time()
+
     #ignore warings
     import warnings
     warnings.filterwarnings('ignore') 
@@ -1011,6 +1184,7 @@ def create_model(model = None,
     
     #pre-load libraries
     import pandas as pd
+    import numpy as np
     import ipywidgets as ipw
     from IPython.display import display, HTML, clear_output, update_display
     import datetime, time
@@ -1032,8 +1206,9 @@ def create_model(model = None,
                               ['Status' , '. . . . . . . . . . . . . . . . . .' , 'Initializing'] ],
                               columns=['', ' ', '  ']).set_index('')
     if verbose:
-        display(progress)
-        display(monitor, display_id = 'monitor')
+        if html_param:
+            display(progress)
+            display(monitor, display_id = 'monitor')
         
     progress.value += 1
     
@@ -1043,77 +1218,161 @@ def create_model(model = None,
     
     if model == 'kmeans':
         from sklearn.cluster import KMeans
-        model = KMeans(n_clusters = num_clusters, random_state=seed)
+        model = KMeans(n_clusters = num_clusters, random_state=seed, n_jobs=n_jobs_param, **kwargs)
         full_name = 'K-Means Clustering'
 
     elif model == 'ap':
         from sklearn.cluster import AffinityPropagation
-        model = AffinityPropagation(damping=0.5)
+        model = AffinityPropagation(damping=0.5, **kwargs)
         full_name = 'Affinity Propagation'
 
     elif model == 'meanshift':
         from sklearn.cluster import MeanShift
-        model = MeanShift()
+        model = MeanShift(n_jobs=n_jobs_param, **kwargs)
         full_name = 'Mean Shift Clustering'
 
     elif model == 'sc':
         from sklearn.cluster import SpectralClustering
-        model = SpectralClustering(n_clusters=num_clusters, random_state=seed, n_jobs=-1)
+        model = SpectralClustering(n_clusters=num_clusters, random_state=seed, n_jobs=n_jobs_param, **kwargs)
         full_name = 'Spectral Clustering'
 
     elif model == 'hclust':
         from sklearn.cluster import AgglomerativeClustering
-        model = AgglomerativeClustering(n_clusters=num_clusters)
+        model = AgglomerativeClustering(n_clusters=num_clusters, **kwargs)
         full_name = 'Agglomerative Clustering'
 
     elif model == 'dbscan':
         from sklearn.cluster import DBSCAN
-        model = DBSCAN(eps=0.5, n_jobs=-1)
+        model = DBSCAN(eps=0.5, n_jobs=n_jobs_param, **kwargs)
         full_name = 'Density-Based Spatial Clustering'
 
     elif model == 'optics':
         from sklearn.cluster import OPTICS
-        model = OPTICS(n_jobs=-1)
+        model = OPTICS(n_jobs=n_jobs_param, **kwargs)
         full_name = 'OPTICS Clustering'
 
     elif model == 'birch':
         from sklearn.cluster import Birch
-        model = Birch(n_clusters=num_clusters)
+        model = Birch(n_clusters=num_clusters, **kwargs)
         full_name = 'Birch Clustering'
         
     elif model == 'kmodes':
         from kmodes.kmodes import KModes
-        model = KModes(n_clusters=num_clusters, n_jobs=1, random_state=seed)
+        model = KModes(n_clusters=num_clusters, n_jobs=n_jobs_param, random_state=seed, **kwargs)
         full_name = 'K-Modes Clustering'
-        
-    #elif model == 'skmeans':
-    #    from spherecluster import SphericalKMeans
-    #    model = SphericalKMeans(n_clusters=num_clusters, n_jobs=1, random_state=seed)
-    #    full_name = 'Spherical K-Means Clustering'
         
     #monitor update
     monitor.iloc[1,1:] = 'Fitting ' + str(full_name) + ' Model'
     progress.value += 1
     if verbose:
-        update_display(monitor, display_id = 'monitor')
+        if html_param:
+            update_display(monitor, display_id = 'monitor')
         
     #fitting the model
+    model_fit_start = time.time()
     model.fit(X)
+    model_fit_end = time.time()
+
+    model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
     
     #storing in experiment__
     full_name_ = str(full_name) + ' Model'
-    if verbose:
+    
+    if system:
         tup = (full_name_,model)
         experiment__.append(tup)  
     
+    #end runtime
+    runtime_end = time.time()
+    runtime = np.array(runtime_end - runtime_start).round(2)
+
+    #mlflow logging
+    if logging_param and system:
+
+        #Creating Logs message monitor
+        monitor.iloc[1,1:] = 'Creating Logs'
+        if verbose:
+            if html_param:
+                update_display(monitor, display_id = 'monitor')
+
+        #import mlflow
+        import mlflow
+        from pathlib import Path
+        import os
+
+        mlflow.set_experiment(exp_name_log)
+
+        with mlflow.start_run(run_name=full_name) as run:
+
+            # Get active run to log as tag
+            RunID = mlflow.active_run().info.run_id
+
+            # Log model parameters
+            params = model.get_params()
+
+            for i in list(params):
+                v = params.get(i)
+                if len(str(v)) > 250:
+                    params.pop(i)
+
+            mlflow.log_params(params)
+                        
+            # Log internal parameters
+            mlflow.log_param("create_model_model", model)
+            mlflow.log_param("create_num_clusters", num_clusters)
+            mlflow.log_param("create_model_verbose", verbose)
+            mlflow.log_param("create_model_system", system)
+            
+            #set tag of compare_models
+            mlflow.set_tag("Source", "create_model")
+            
+            import secrets
+            URI = secrets.token_hex(nbytes=4)
+            mlflow.set_tag("URI", URI)   
+            mlflow.set_tag("USI", USI)
+            mlflow.set_tag("Run Time", runtime)
+            mlflow.set_tag("Run ID", RunID)
+
+            # Log training time in seconds
+            mlflow.log_metric("TT", model_fit_time)
+
+            # Log AUC and Confusion Matrix plot
+            if log_plots_param:
+                try:
+                    plot_model(model, plot = 'cluster', save=True, system=False)
+                    mlflow.log_artifact('Cluster.html')
+                    os.remove("Cluster.html")
+                except:
+                    pass
+
+                try:
+                    plot_model(model, plot = 'distribution', save=True, system=False)
+                    mlflow.log_artifact('Distribution.html')
+                    os.remove("Distribution.html")
+                except:
+                    pass
+
+                try:
+                    plot_model(model, plot = 'elbow', save=True, system=False)
+                    mlflow.log_artifact('Elbow.png')
+                    os.remove("Elbow.png")
+                except:
+                    pass
+
+            # Log model and transformation pipeline
+            save_model(model, 'Trained Model', verbose=False)
+            mlflow.log_artifact('Trained Model' + '.pkl')
+            size_bytes = Path('Trained Model.pkl').stat().st_size
+            size_kb = np.round(size_bytes/1000, 2)
+            mlflow.set_tag("Size KB", size_kb)
+            os.remove('Trained Model.pkl')
+
     progress.value += 1
     
     if verbose:
         clear_output()
 
     return model
-
-
 
 def assign_model(model, 
                  transformation=False,
@@ -1214,15 +1473,17 @@ def assign_model(model,
                               ['Status' , '. . . . . . . . . . . . . . . . . .' , 'Initializing'] ],
                               columns=['', ' ', '  ']).set_index('')
     if verbose:
-        display(progress)
-        display(monitor, display_id = 'monitor')
+        if html_param:
+            display(progress)
+            display(monitor, display_id = 'monitor')
         
     progress.value += 1
     
     monitor.iloc[1,1:] = 'Inferring Clusters from Model'
     
     if verbose:
-        update_display(monitor, display_id = 'monitor')
+        if html_param:
+            update_display(monitor, display_id = 'monitor')
     
     progress.value += 1
     
@@ -1282,13 +1543,12 @@ def assign_model(model,
         
     return data__
 
-
-
 def tune_model(model=None,
                supervised_target=None,
                estimator=None,
                optimize=None,
-               fold=10):
+               fold=10,
+               verbose=True):
     
     
     """
@@ -1394,7 +1654,9 @@ def tune_model(model=None,
     fold: integer, default = 10
     Number of folds to be used in Kfold CV. Must be at least 2. 
 
-    
+    verbose: Boolean, default = True
+    Status update is not printed when verbose is set to False.
+
     Returns:
     --------
 
@@ -1430,6 +1692,10 @@ def tune_model(model=None,
     
     import sys
     
+    #run_time
+    import datetime, time
+    runtime_start = time.time()
+
     #checking for model parameter
     if model is None:
         sys.exit('(Value Error): Model parameter Missing. Please see docstring for list of available models.')
@@ -1490,7 +1756,10 @@ def tune_model(model=None,
     max_steps = 25
 
     progress = ipw.IntProgress(value=0, min=0, max=max_steps, step=1 , description='Processing: ')
-    display(progress)
+    
+    if verbose:
+        if html_param:
+            display(progress)
 
     timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
     
@@ -1500,9 +1769,14 @@ def tune_model(model=None,
                               columns=['', ' ', '   ']).set_index('')
     
     monitor_out = Output()
-    display(monitor_out)
-    with monitor_out:
-        display(monitor, display_id = 'monitor')
+    if verbose:
+        if html_param:
+            display(monitor_out)
+    
+    if verbose:
+        if html_param:
+            with monitor_out:
+                display(monitor, display_id = 'monitor')
 
     
     #General Dependencies
@@ -1516,16 +1790,20 @@ def tune_model(model=None,
     a = data_.copy()
     b = X.copy()
     c = deepcopy(prep_pipe)
+    e = exp_name_log
+    z = logging_param
     
-    def retain_original(a,b,c):
+    def retain_original(a,b,c,e,z):
         
-        global data_, X, prep_pipe
+        global data_, X, prep_pipe, exp_name_log, logging_param
         
         data_ = a.copy()
         X = b.copy()
         prep_pipe = deepcopy(c)
-
-        return data_, X, prep_pipe
+        exp_name_log = e
+        logging_param = z
+        
+        return data_, X, prep_pipe, exp_name_log, logging_param
             
     #setting up cufflinks
     import cufflinks as cf
@@ -1586,7 +1864,9 @@ def tune_model(model=None,
     master = []; master_df = []
     
     monitor.iloc[1,1:] = 'Creating Clustering Model'
-    update_display(monitor, display_id = 'monitor')
+    if verbose:
+        if html_param:
+            update_display(monitor, display_id = 'monitor')
     
     """
     preprocess starts here
@@ -1757,8 +2037,8 @@ def tune_model(model=None,
     setup_without_target = setup(data = data_,
                                  categorical_features = cat_pass,
                                  categorical_imputation = cat_impute_pass,
-                                 ordinal_features = ordinal_features_pass, #new
-                                 high_cardinality_features = high_cardinality_features_pass, #latest
+                                 ordinal_features = ordinal_features_pass,
+                                 high_cardinality_features = high_cardinality_features_pass,
                                  numeric_features = num_pass,
                                  numeric_imputation = num_impute_pass,
                                  date_features = time_pass,
@@ -1767,22 +2047,23 @@ def tune_model(model=None,
                                  normalize_method = normalize_method_pass,
                                  transformation = transformation_pass,
                                  transformation_method = transformation_method_pass,
-                                 handle_unknown_categorical = handle_unknown_categorical_pass, #new
-                                 unknown_categorical_method = unknown_categorical_method_pass, #new
+                                 handle_unknown_categorical = handle_unknown_categorical_pass,
+                                 unknown_categorical_method = unknown_categorical_method_pass,
                                  pca = pca_pass,
-                                 pca_components = pca_comp_pass, #new
-                                 pca_method = pca_method_pass, #new
-                                 ignore_low_variance = ignore_low_variance_pass, #new
-                                 combine_rare_levels = combine_rare_levels_pass, #new
-                                 rare_level_threshold = combine_rare_threshold_pass, #new
-                                 bin_numeric_features = features_to_bin_pass, #new
-                                 remove_multicollinearity = remove_multicollinearity_pass, #new
-                                 multicollinearity_threshold = multicollinearity_threshold_pass, #new
-                                 group_features = group_features_pass, #new
-                                 group_names = group_names_pass, #new
+                                 pca_components = pca_comp_pass,
+                                 pca_method = pca_method_pass,
+                                 ignore_low_variance = ignore_low_variance_pass,
+                                 combine_rare_levels = combine_rare_levels_pass,
+                                 rare_level_threshold = combine_rare_threshold_pass, 
+                                 bin_numeric_features = features_to_bin_pass,
+                                 remove_multicollinearity = remove_multicollinearity_pass, 
+                                 multicollinearity_threshold = multicollinearity_threshold_pass, 
+                                 group_features = group_features_pass,
+                                 group_names = group_names_pass, 
                                  supervised = True,
                                  supervised_target = supervised_target,
                                  session_id = seed,
+                                 logging = False, #added in pycaret==2.0.0
                                  profile=False,
                                  verbose=False)
     
@@ -1799,10 +2080,12 @@ def tune_model(model=None,
     for i in param_grid:
         progress.value += 1                      
         monitor.iloc[2,1:] = 'Fitting Model With ' + str(i) + ' Clusters'
-        update_display(monitor, display_id = 'monitor')
+        if verbose:
+            if html_param:
+                update_display(monitor, display_id = 'monitor')
                              
         #create and assign the model to dataset d
-        m = create_model(model=model, num_clusters=i, verbose=False)
+        m = create_model(model=model, num_clusters=i, verbose=False, system=False)
         d = assign_model(m, transformation=True, verbose=False)
         d[str(supervised_target)] = target_
 
@@ -1824,7 +2107,9 @@ def tune_model(model=None,
         """
         
         monitor.iloc[1,1:] = 'Evaluating Clustering Model'
-        update_display(monitor, display_id = 'monitor')
+        if verbose:
+            if html_param:
+                update_display(monitor, display_id = 'monitor')
                              
         if estimator == 'lr':
 
@@ -1919,7 +2204,7 @@ def tune_model(model=None,
         elif estimator == 'xgboost':
             
             from xgboost import XGBClassifier
-            model = XGBClassifier(random_state=seed, n_jobs=-1, verbosity=0)
+            model = XGBClassifier(random_state=seed, n_jobs=n_jobs_param, verbosity=0)
             full_name = 'Extreme Gradient Boosting'
             
         elif estimator == 'lightgbm':
@@ -1945,7 +2230,9 @@ def tune_model(model=None,
         
         #build model without clustering
         monitor.iloc[2,1:] = 'Evaluating Classifier Without Clustering'
-        update_display(monitor, display_id = 'monitor')   
+        if verbose:
+            if html_param:
+                update_display(monitor, display_id = 'monitor')   
 
         d = master_df[1].copy()
         d.drop(['Cluster'], axis=1, inplace=True)
@@ -1995,7 +2282,9 @@ def tune_model(model=None,
             param_grid_val = param_grid[i-1]
             
             monitor.iloc[2,1:] = 'Evaluating Classifier With ' + str(param_grid_val) + ' Clusters'
-            update_display(monitor, display_id = 'monitor')                
+            if verbose:
+                if html_param:
+                    update_display(monitor, display_id = 'monitor')                
                              
             #prepare the dataset for supervised problem
             d = master_df[i]
@@ -2042,8 +2331,11 @@ def tune_model(model=None,
 
                              
         monitor.iloc[1,1:] = 'Compiling Results'
-        monitor.iloc[1,1:] = 'Finalizing'
-        update_display(monitor, display_id = 'monitor')
+        monitor.iloc[1,1:] = 'Almost Finished'
+        
+        if verbose:
+            if html_param:
+                update_display(monitor, display_id = 'monitor')
                              
         df = pd.DataFrame({'# of Clusters': param_grid_with_zero, 'Accuracy' : acc, 'AUC' : auc, 'Recall' : recall, 
                    'Precision' : prec, 'F1' : f1, 'Kappa' : kappa})
@@ -2065,10 +2357,14 @@ def tune_model(model=None,
         fig.show()
         
         monitor = ''
-        update_display(monitor, display_id = 'monitor')
+        if verbose:
+            if html_param:
+                update_display(monitor, display_id = 'monitor')
         
-        monitor_out.clear_output()
-        progress.close()
+        if verbose:
+            if html_param:
+                monitor_out.clear_output()
+                progress.close()
 
         best_k = np.array(sorted_df.head(1)['# of Clusters'])[0]
         best_m = round(np.array(sorted_df.head(1)[optimize])[0],4)
@@ -2084,7 +2380,9 @@ def tune_model(model=None,
         """
         
         monitor.iloc[1,1:] = 'Evaluating Clustering Model'
-        update_display(monitor, display_id = 'monitor')
+        if verbose:
+            if html_param:
+                update_display(monitor, display_id = 'monitor')
                                     
         if estimator == 'lr':
         
@@ -2220,7 +2518,7 @@ def tune_model(model=None,
         elif estimator == 'xgboost':
             
             from xgboost import XGBRegressor
-            model = XGBRegressor(random_state=seed, n_jobs=-1, verbosity=0)
+            model = XGBRegressor(random_state=seed, n_jobs=n_jobs_param, verbosity=0)
             full_name = 'Extreme Gradient Boosting Regressor'
             
         elif estimator == 'lightgbm':
@@ -2247,7 +2545,9 @@ def tune_model(model=None,
         
         #build model without clustering
         monitor.iloc[2,1:] = 'Evaluating Regressor Without Clustering'
-        update_display(monitor, display_id = 'monitor')   
+        if verbose:
+            if html_param:
+                update_display(monitor, display_id = 'monitor')   
 
         d = master_df[1].copy()
         d.drop(['Cluster'], axis=1, inplace=True)
@@ -2305,7 +2605,9 @@ def tune_model(model=None,
             param_grid_val = param_grid[i-1]
             
             monitor.iloc[2,1:] = 'Evaluating Regressor With ' + str(param_grid_val) + ' Clusters'
-            update_display(monitor, display_id = 'monitor')    
+            if verbose:
+                if html_param:
+                    update_display(monitor, display_id = 'monitor')    
                              
             #prepare the dataset for supervised problem
             d = master_df[i]
@@ -2360,7 +2662,9 @@ def tune_model(model=None,
         
         monitor.iloc[1,1:] = 'Compiling Results'
         monitor.iloc[1,1:] = 'Finalizing'
-        update_display(monitor, display_id = 'monitor')                    
+        if verbose:
+            if html_param:
+                update_display(monitor, display_id = 'monitor')                    
          
         df = pd.DataFrame({'Clusters': param_grid_with_zero, 'Score' : score, 'Metric': metric})
         df.columns = ['# of Clusters', optimize, 'Metric']
@@ -2385,10 +2689,14 @@ def tune_model(model=None,
         fig.show()
         
         monitor = ''
-        update_display(monitor, display_id = 'monitor')
+        if verbose:
+            if html_param:
+                update_display(monitor, display_id = 'monitor')
         
-        monitor_out.clear_output()
-        progress.close()
+        if verbose:
+            if html_param:
+                monitor_out.clear_output()
+                progress.close()
 
         best_k = np.array(sorted_df.head(1)['# of Clusters'])[0]
         best_m = round(np.array(sorted_df.head(1)[optimize])[0],4)
@@ -2399,15 +2707,88 @@ def tune_model(model=None,
     tup = ('Best Model',best_model)
     experiment__.append(tup)    
     
-    org = retain_original(a,b,c)
-    
+    org = retain_original(a,b,c,e,z)
+
+    #end runtime
+    runtime_end = time.time()
+    runtime = np.array(runtime_end - runtime_start).round(2)
+
+    #mlflow logging
+    if logging_param:
+
+        #import mlflow
+        import mlflow
+        from pathlib import Path
+        import os
+
+        mlflow.set_experiment(exp_name_log)
+
+        #Creating Logs message monitor
+        if verbose:
+            if html_param:
+                monitor.iloc[1,1:] = 'Creating Logs'
+                update_display(monitor, display_id = 'monitor')
+
+        mlflow.set_experiment(exp_name_log)
+
+        with mlflow.start_run(run_name=model_name) as run:
+
+            # Get active run to log as tag
+            RunID = mlflow.active_run().info.run_id
+
+            # Log model parameters
+            params = model.get_params()
+
+            for i in list(params):
+                v = params.get(i)
+                if len(str(v)) > 250:
+                    params.pop(i)
+
+            mlflow.log_params(params)
+                        
+            # Log internal parameters
+            mlflow.log_param("tune_model_model", model)
+            mlflow.log_param("tune_model_supervised_target", supervised_target)
+            mlflow.log_param("tune_model_estimator", estimator)
+            mlflow.log_param("tune_model_optimize", optimize)
+            mlflow.log_param("tune_model_fold", fold)
+            mlflow.log_param("tune_model_verbose", verbose)
+            
+            #set tag of compare_models
+            mlflow.set_tag("Source", "tune_model")
+            
+            import secrets
+            URI = secrets.token_hex(nbytes=4)
+            mlflow.set_tag("URI", URI)   
+            mlflow.set_tag("USI", USI)
+            mlflow.set_tag("Run Time", runtime)
+            mlflow.set_tag("Run ID", RunID)
+
+            # Log training time in seconds
+            mlflow.log_metric("TT", 1) #change this
+
+            # Log plot to html
+            fig.write_html("Iterations.html")
+            mlflow.log_artifact('Iterations.html')
+            os.remove('Iterations.html')
+
+            # Log model and transformation pipeline
+            save_model(best_model, 'Trained Model', verbose=False)
+            mlflow.log_artifact('Trained Model' + '.pkl')
+            size_bytes = Path('Trained Model.pkl').stat().st_size
+            size_kb = np.round(size_bytes/1000, 2)
+            mlflow.set_tag("Size KB", size_kb)
+            os.remove('Trained Model.pkl')
+
     return best_model
 
-    
 
-
-
-def plot_model(model, plot='cluster', feature = None, label = False):
+def plot_model(model, 
+            plot='cluster', 
+            feature = None, 
+            label = False,
+            save = False, #added in pycaret 2.0.0
+            system = True): #added in pycaret 2.0.0
     
     
     """
@@ -2455,6 +2836,12 @@ def plot_model(model, plot='cluster', feature = None, label = False):
     label : bool, default = False
     When set to True, data labels are shown in 'cluster' and 'tsne' plot.
     
+    save: Boolean, default = False
+    Plot is saved as png file in local directory when save parameter set to True.
+
+    system: Boolean, default = True
+    Must remain True all times. Only to be changed by internal functions.
+
     Returns:
     --------
 
@@ -2572,7 +2959,11 @@ def plot_model(model, plot='cluster', feature = None, label = False):
             title_text='2D Cluster PCA Plot'
         )
 
-        fig.show()
+        if system:
+            fig.show()
+
+        if save:
+            fig.write_html("Cluster.html")
         
         
     elif plot == 'tsne':
@@ -2631,9 +3022,12 @@ def plot_model(model, plot='cluster', feature = None, label = False):
             fig = px.scatter_3d(df, x=0, y=1, z=2, color='Cluster', title='3d TSNE Plot for Clusters', 
                                 hover_data = ['Feature'], opacity=0.7, width=900, height=800)
         
-        fig.show()
+        if system:
+            fig.show()
         
-        
+        if save:
+            fig.write_html("TSNE.html")
+
     elif plot == 'distribution':
         
         import plotly.express as px
@@ -2673,8 +3067,12 @@ def plot_model(model, plot='cluster', feature = None, label = False):
         fig = px.histogram(d, x=x_col, color="Cluster",
                    marginal="box", opacity = 0.7,
                    hover_data=d.columns)
-        fig.show()
+        
+        if system:
+            fig.show()
 
+        if save:
+            fig.write_html("Distribution.html")
 
     elif plot == 'elbow':
         
@@ -2685,8 +3083,14 @@ def plot_model(model, plot='cluster', feature = None, label = False):
             from yellowbrick.cluster import KElbowVisualizer
             visualizer = KElbowVisualizer(model_,timings=False)
             visualizer.fit(X)
-            visualizer.poof()
-            
+            if save:
+                if system:
+                    visualizer.show(outpath="Elbow.png")
+                else:
+                    visualizer.show(outpath="Elbow.png", clear_figure=True)
+            else:
+                visualizer.show()   
+
         except: 
             sys.exit('(Type Error): Plot Type not supported for this model.')
         
@@ -2696,8 +3100,13 @@ def plot_model(model, plot='cluster', feature = None, label = False):
             from yellowbrick.cluster import SilhouetteVisualizer
             visualizer = SilhouetteVisualizer(model, colors='yellowbrick')
             visualizer.fit(X)
-            visualizer.poof()
-        
+            if save:
+                if system:
+                    visualizer.show(outpath="Silhouette.png")
+                else:
+                    visualizer.show(outpath="Silhouette.png", clear_figure=True)
+            else:
+                visualizer.show()        
         except: 
             sys.exit('(Type Error): Plot Type not supported for this model.')
             
@@ -2707,8 +3116,14 @@ def plot_model(model, plot='cluster', feature = None, label = False):
             from yellowbrick.cluster import InterclusterDistance
             visualizer = InterclusterDistance(model)
             visualizer.fit(X)
-            visualizer.poof()
-            
+            if save:
+                if system:
+                    visualizer.show(outpath="Distance.png")
+                else:
+                    visualizer.show(outpath="Distance.png", clear_figure=True)
+            else:
+                visualizer.show()
+
         except:
             sys.exit('(Type Error): Plot Type not supported for this model.')
 
@@ -3244,8 +3659,8 @@ def get_clusters(data,
                                        random_state = seed)
       
     try:
-        c = create_model(model=model, num_clusters=num_clusters, verbose=False)
+        c = create_model(model=model, num_clusters=num_clusters, verbose=False, system=False)
     except:
-        c = create_model(model=model, verbose=False)
+        c = create_model(model=model, verbose=False, system=False)
     dataset = assign_model(c, verbose=False)
     return dataset
