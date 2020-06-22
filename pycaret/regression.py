@@ -2118,7 +2118,46 @@ def create_model(estimator = None,
         
     else:
         model = estimator
-        full_name = str(model).split("(")[0]
+        
+        def get_model_name(e):
+            return str(e).split("(")[0]
+
+        model_dict_logging = {'ExtraTreesRegressor' : 'Extra Trees Regressor',
+                            'GradientBoostingRegressor' : 'Gradient Boosting Regressor', 
+                            'RandomForestRegressor' : 'Random Forest',
+                            'LGBMRegressor' : 'Light Gradient Boosting Machine',
+                            'XGBRegressor' : 'Extreme Gradient Boosting',
+                            'AdaBoostRegressor' : 'AdaBoost Regressor', 
+                            'DecisionTreeRegressor' : 'Decision Tree', 
+                            'Ridge' : 'Ridge Regression',
+                            'TheilSenRegressor' : 'TheilSen Regressor', 
+                            'BayesianRidge' : 'Bayesian Ridge',
+                            'LinearRegression' : 'Linear Regression',
+                            'ARDRegression' : 'Automatic Relevance Determination', 
+                            'KernelRidge' : 'Kernel Ridge', 
+                            'RANSACRegressor' : 'Random Sample Consensus', 
+                            'HuberRegressor' : 'Huber Regressor', 
+                            'Lasso' : 'Lasso Regression', 
+                            'ElasticNet' : 'Elastic Net', 
+                            'Lars' : 'Least Angle Regression', 
+                            'OrthogonalMatchingPursuit' : 'Orthogonal Matching Pursuit', 
+                            'MLPRegressor' : 'Multi Level Perceptron',
+                            'KNeighborsRegressor' : 'K Neighbors Regressor',
+                            'SVR' : 'Support Vector Machine',
+                            'LassoLars' : 'Lasso Least Angle Regression',
+                            'PassiveAggressiveRegressor' : 'Passive Aggressive Regressor',
+                            'CatBoostRegressor' : 'CatBoost Regressor',
+                            'BaggingRegressor' : 'Bagging Regressor'}
+
+        mn = get_model_name(estimator)
+        
+        if 'catboost' in mn:
+            mn = 'CatBoostRegressor'
+
+        try:
+            full_name = model_dict_logging.get(mn)
+        except:
+            full_name = 'Custom Model'
     
     progress.value += 1
     
@@ -2415,13 +2454,13 @@ def create_model(estimator = None,
                 except:
                     pass
 
-                # Log model and transformation pipeline
-                save_model(model, 'Trained Model', verbose=False)
-                mlflow.log_artifact('Trained Model' + '.pkl')
-                size_bytes = Path('Trained Model.pkl').stat().st_size
-                size_kb = np.round(size_bytes/1000, 2)
-                mlflow.set_tag("Size KB", size_kb)
-                os.remove('Trained Model.pkl')
+            # Log model and transformation pipeline
+            save_model(model, 'Trained Model', verbose=False)
+            mlflow.log_artifact('Trained Model' + '.pkl')
+            size_bytes = Path('Trained Model.pkl').stat().st_size
+            size_kb = np.round(size_bytes/1000, 2)
+            mlflow.set_tag("Size KB", size_kb)
+            os.remove('Trained Model.pkl')
 
     progress.value += 1
 
@@ -2928,6 +2967,7 @@ def ensemble_model(estimator,
     
     #refitting the model on complete X_train, y_train
     monitor.iloc[1,1:] = 'Finalizing Model'
+    monitor.iloc[2,1:] = 'Almost Finished'
     if verbose:
         if html_param:
             update_display(monitor, display_id = 'monitor')
@@ -4527,6 +4567,7 @@ def blend_models(estimator_list = 'All',
     
     #refitting the model on complete X_train, y_train
     monitor.iloc[1,1:] = 'Finalizing Model'
+    monitor.iloc[2,1:] = 'Almost Finished'
     if verbose:
         if html_param:
             update_display(monitor, display_id = 'monitor')
@@ -8163,7 +8204,7 @@ def finalize_model(estimator):
 
     if type(estimator) is list:
         if type(estimator[0]) is not list:
-            full_name = 'Stacking Regresspr'
+            full_name = 'Stacking Regressor'
         else:
             full_name = 'Stacking Regressor (Multi-layer)'
     else:
@@ -9241,6 +9282,7 @@ def automl(optimize='r2', use_holdout=False):
         for i in master_model_container:
             pred_holdout = predict_model(i, verbose=False)
             p = pull()
+            display_container.pop(-1)
             p = p[compare_dimension][0]
             scorer.append(p)
 
@@ -9249,9 +9291,9 @@ def automl(optimize='r2', use_holdout=False):
             r = i[compare_dimension][-2:][0]
             scorer.append(r)
 
-    for i in create_model_container:
-        r = i[compare_dimension][-2:][0]
-        scorer.append(r)
+    #for i in create_model_container:
+    #    r = i[compare_dimension][-2:][0]
+    #    scorer.append(r)
 
     #returning better model
     if optimize == 'r2':
