@@ -931,10 +931,9 @@ def setup(data,
     
     progress.value += 1
     
-    clear_output()
-
     if verbose:
         if html_param:
+            clear_output()
             display(functions_)
         else:
             print(functions_.data)
@@ -1769,16 +1768,13 @@ def tune_model(model=None,
                               columns=['', ' ', '   ']).set_index('')
     
     monitor_out = Output()
+    
     if verbose:
         if html_param:
             display(monitor_out)
-    
-    if verbose:
-        if html_param:
             with monitor_out:
                 display(monitor, display_id = 'monitor')
 
-    
     #General Dependencies
     from sklearn.linear_model import LogisticRegression
     from sklearn.model_selection import cross_val_predict
@@ -1884,6 +1880,7 @@ def tune_model(model=None,
     time_pass = prep_param.dtypes.time_features
     ignore_pass = prep_param.dtypes.features_todrop
     
+
     #PCA
     #---# 
     if 'Empty' in str(prep_param.pca): 
@@ -2031,7 +2028,7 @@ def tune_model(model=None,
         high_cardinality_features_pass = None
     else:
         high_cardinality_features_pass = prep_param.cardinality.feature
-    
+
     global setup_without_target
     
     setup_without_target = setup(data = data_,
@@ -2072,7 +2069,7 @@ def tune_model(model=None,
     """
     preprocess ends here
     """
-    
+
     #adding dummy model in master
     master.append('No Model Required')
     master_df.append('No Model Required')
@@ -2356,7 +2353,8 @@ def tune_model(model=None,
 
         fig.show()
         
-        monitor = ''
+        #monitor = ''
+
         if verbose:
             if html_param:
                 update_display(monitor, display_id = 'monitor')
@@ -2688,7 +2686,8 @@ def tune_model(model=None,
         
         fig.show()
         
-        monitor = ''
+        #monitor = ''
+        
         if verbose:
             if html_param:
                 update_display(monitor, display_id = 'monitor')
@@ -2724,9 +2723,9 @@ def tune_model(model=None,
         mlflow.set_experiment(exp_name_log)
 
         #Creating Logs message monitor
+        monitor.iloc[1,1:] = 'Creating Logs'
         if verbose:
             if html_param:
-                monitor.iloc[1,1:] = 'Creating Logs'
                 update_display(monitor, display_id = 'monitor')
 
         mlflow.set_experiment(exp_name_log)
