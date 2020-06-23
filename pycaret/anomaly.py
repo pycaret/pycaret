@@ -6,8 +6,8 @@
 def setup(data, 
           categorical_features = None,
           categorical_imputation = 'constant',
-          ordinal_features = None, #new
-          high_cardinality_features = None, #latest
+          ordinal_features = None, 
+          high_cardinality_features = None,
           numeric_features = None,
           numeric_imputation = 'mean',
           date_features = None,
@@ -16,8 +16,8 @@ def setup(data,
           normalize_method = 'zscore',
           transformation = False,
           transformation_method = 'yeo-johnson',
-          handle_unknown_categorical = True, #new             
-          unknown_categorical_method = 'least_frequent', #new 
+          handle_unknown_categorical = True,           
+          unknown_categorical_method = 'least_frequent',
           pca = False,
           pca_method = 'linear',
           pca_components = None,
@@ -25,15 +25,23 @@ def setup(data,
           combine_rare_levels = False, 
           rare_level_threshold = 0.10, 
           bin_numeric_features = None, 
-          remove_multicollinearity = False, #new
-          multicollinearity_threshold = 0.9, #new
-          group_features = None, #new
-          group_names = None, #new  
+          remove_multicollinearity = False,
+          multicollinearity_threshold = 0.9,
+          group_features = None,
+          group_names = None,
           supervised = False,
           supervised_target = None,
+          n_jobs = -1, #added in pycaret==2.0.0
+          html = True, #added in pycaret==2.0.0
           session_id = None,
-          profile = False,
-          verbose=True):
+          experiment_name = None, #added in pycaret==2.0.0
+          logging = False, #added in pycaret==2.0.0
+          log_plots = False, #added in pycaret==2.0.0
+          log_profile = False, #added in pycaret==2.0.0
+          log_data = False, #added in pycaret==2.0.0
+          silent=False, #added in pycaret==2.0.0
+          verbose=True,
+          profile = False):
     
     """
         
@@ -229,17 +237,46 @@ def setup(data,
     Name of supervised_target column that will be ignored for transformation. Only
     applciable when tune_model() function is used. This param is only for internal use.
 
+    n_jobs: int, default = -1
+    The number of jobs to run in parallel (for functions that supports parallel 
+    processing) -1 means using all processors. To run all functions on single processor 
+    set n_jobs to None.
+
+    html: bool, default = True
+    If set to False, prevents runtime display of monitor. This must be set to False
+    when using environment that doesnt support HTML.
+
     session_id: int, default = None
     If None, a random seed is generated and returned in the Information grid. The 
     unique number is then distributed as a seed in all functions used during the 
     experiment. This can be used for later reproducibility of the entire experiment.
     
-    profile: bool, default = False
-    If set to true, a data profile for Exploratory Data Analysis will be displayed 
-    in an interactive HTML report. 
+    experiment_name: str, default = None
+    Name of experiment for logging. When set to None, 'clf' is by default used as 
+    alias for the experiment name.
+
+    logging: bool, default = True
+    When set to True, all metrics and parameters are logged on MLFlow server.
+
+    log_plots: bool, default = False
+    When set to True, specific plots are logged in MLflow as a png file. By default,
+    it is set to False. 
+
+    log_profile: bool, default = False
+    When set to True, data profile is also logged on MLflow as a html file. By default,
+    it is set to False. 
+
+    silent: bool, default = False
+    When set to True, confirmation of data types is not required. All preprocessing will 
+    be performed assuming automatically inferred data types. Not recommended for direct use 
+    except for established pipelines.
 
     verbose: Boolean, default = True
     Information grid is not printed when verbose is set to False.
+
+    profile: bool, default = False
+    If set to true, a data profile for Exploratory Data Analysis will be displayed 
+    in an interactive HTML report. 
     
     Returns:
     --------
@@ -260,7 +297,10 @@ def setup(data,
     #exception checking   
     import sys
     
-    
+    #run_time
+    import datetime, time
+    runtime_start = time.time()
+
     """
     error handling starts here
     """
@@ -452,11 +492,18 @@ def setup(data,
     import ipywidgets as ipw
     from IPython.display import display, HTML, clear_output, update_display
     import datetime, time
+    import secrets
     
     #pandas option
     pd.set_option('display.max_columns', 500)
     pd.set_option('display.max_rows', 500)
     
+    #global html_param
+    global html_param
+
+    #create html_param
+    html_param = html
+
     #progress bar
     max_steps = 4
         
@@ -470,8 +517,9 @@ def setup(data,
                               columns=['', ' ', '   ']).set_index('')
     
     if verbose:
-        display(progress)
-        display(monitor, display_id = 'monitor')
+        if html_param:
+            display(progress)
+            display(monitor, display_id = 'monitor')
     
     #general dependencies
     import numpy as np
@@ -488,7 +536,8 @@ def setup(data,
     warnings.filterwarnings('ignore') 
     
     #defining global variables
-    global data_, X, seed, prep_pipe, prep_param, experiment__
+    global data_, X, seed, prep_pipe, prep_param, experiment__,\
+        n_jobs_param, exp_name_log, logging_param, log_plots_param, USI
     
     #copy original data for pandas profiler
     data_before_preprocess = data.copy()
@@ -520,7 +569,9 @@ def setup(data,
     pd.set_option('display.max_rows', 500)
 
     monitor.iloc[1,1:] = 'Preparing Data for Modeling'
-    update_display(monitor, display_id = 'monitor')
+    if verbose:
+        if html_param:
+            update_display(monitor, display_id = 'monitor')
             
     #define parameters for preprocessor
     
@@ -672,6 +723,9 @@ def setup(data,
     else:
         display_types_pass = False
     
+    if silent:
+        display_types_pass = False
+
     #import library
     from pycaret import preprocess
     
@@ -814,12 +868,28 @@ def setup(data,
         except:
             experiment__ = []
     
+    #create n_jobs_param
+    n_jobs_param = n_jobs
+
+    #create logging parameter
+    logging_param = logging
+
+    #create exp_name_log param incase logging is False
+    exp_name_log = 'no_logging'
+
+    #create an empty log_plots_param
+    if log_plots:
+        log_plots_param = True
+    else:
+        log_plots_param = False
+
     progress.value += 1
     
     #monitor update
     monitor.iloc[1,1:] = 'Compiling Results'
     if verbose:
-        update_display(monitor, display_id = 'monitor')
+        if html_param:
+            update_display(monitor, display_id = 'monitor')
         
     '''
     Final display Starts
@@ -828,6 +898,13 @@ def setup(data,
     shape = data.shape
     shape_transformed = X.shape
     
+    if profile:
+        if verbose:
+            print('Setup Succesfully Completed! Loading Profile Now... Please Wait!')
+    else:
+        if verbose:
+            print('Setup Succesfully Completed!')
+
     functions = pd.DataFrame ( [ ['session_id ', seed ],
                                  ['Original Data ', shape ],
                                  ['Missing Values ', missing_flag],
@@ -859,18 +936,13 @@ def setup(data,
     progress.value += 1
     
     if verbose:
-        if profile:
+        if html_param:
             clear_output()
-            print('')
-            print('Setup Succesfully Completed! Loading Profile Now... Please Wait!')
             display(functions_)
         else:
-            clear_output()
-            print('')
-            print('Setup Succesfully Completed!')
-            display(functions_)            
-        
-    if profile:    
+            print(functions_.data)
+         
+    if profile:
         try:
             import pandas_profiling
             pf = pandas_profiling.ProfileReport(data_before_preprocess)
@@ -891,16 +963,105 @@ def setup(data,
         experiment__.append(('Transformation Pipeline', prep_pipe))
     
     
-    return X, data_, seed, prep_pipe, prep_param, experiment__
+    #end runtime
+    runtime_end = time.time()
+    runtime = np.array(runtime_end - runtime_start).round(2)
 
+    #mlflow create experiment (name defined here)
 
+    USI = secrets.token_hex(nbytes=2)
+
+    if logging_param:
+
+        import mlflow
+        from pathlib import Path
+        import os
+
+        if experiment_name is None:
+            exp_name_ = 'ano-default-name'
+        else:
+            exp_name_ = experiment_name
+
+        URI = secrets.token_hex(nbytes=4)    
+        exp_name_log = exp_name_
+        
+        try:
+            mlflow.create_experiment(exp_name_log)
+        except:
+            pass
+
+        #mlflow logging
+        mlflow.set_experiment(exp_name_log)
+
+        run_name_ = 'Session Initialized ' + str(USI)
+        with mlflow.start_run(run_name=run_name_) as run:
+
+            # Get active run to log as tag
+            RunID = mlflow.active_run().info.run_id
+            
+            k = functions.copy()
+            k.set_index('Description',drop=True,inplace=True)
+            kdict = k.to_dict()
+            params = kdict.get('Value')
+            mlflow.log_params(params)
+
+            #set tag of compare_models
+            mlflow.set_tag("Source", "setup")
+            
+            import secrets
+            URI = secrets.token_hex(nbytes=4)
+            mlflow.set_tag("URI", URI)
+
+            mlflow.set_tag("USI", USI) 
+
+            mlflow.set_tag("Run Time", runtime)
+
+            mlflow.set_tag("Run ID", RunID)
+
+            # Log the transformation pipeline
+            save_model(prep_pipe, 'Transformation Pipeline', verbose=False)
+            mlflow.log_artifact('Transformation Pipeline' + '.pkl')
+            size_bytes = Path('Transformation Pipeline.pkl').stat().st_size
+            size_kb = np.round(size_bytes/1000, 2)
+            mlflow.set_tag("Size KB", size_kb)
+            os.remove('Transformation Pipeline.pkl')
+
+            # Log pandas profile
+            if log_profile:
+                import pandas_profiling
+                pf = pandas_profiling.ProfileReport(data_before_preprocess)
+                pf.to_file("Data Profile.html")
+                mlflow.log_artifact("Data Profile.html")
+                os.remove("Data Profile.html")
+                clear_output()
+                display(functions_)
+
+            # Log training and testing set
+            if log_data:
+                data_before_preprocess.to_csv('data.csv')
+                mlflow.log_artifact('data.csv')
+                os.remove('data.csv')
+
+            # Log input.txt that contains name of columns required in dataset 
+            # to use this pipeline based on USI/URI.
+
+            input_cols = list(data_before_preprocess.columns)
+
+            with open("input.txt", "w") as output:
+                output.write(str(input_cols))
+            
+            mlflow.log_artifact("input.txt")
+            os.remove('input.txt')
+
+    return X, data_, seed, prep_pipe, prep_param, experiment__,\
+        n_jobs_param, exp_name_log, logging_param, log_plots_param, USI
 
 
 def create_model(model = None, 
                  fraction = 0.05,
-                 verbose = True):
-    
-    
+                 verbose = True,
+                 system=True, #added in pycaret==2.0.0
+                 **kwargs): #added in pycaret==2.0.0
     
     """  
      
@@ -948,6 +1109,12 @@ def create_model(model = None,
     verbose: Boolean, default = True
     Status update is not printed when verbose is set to False.
 
+    system: Boolean, default = True
+    Must remain True all times. Only to be changed by internal functions.
+
+    **kwargs: 
+    Additional keyword arguments to pass to the estimator.
+
     Returns:
     --------
 
@@ -966,7 +1133,11 @@ def create_model(model = None,
     
     #exception checking   
     import sys        
-        
+
+    #run_time
+    import datetime, time
+    runtime_start = time.time()
+
     #ignore warings
     import warnings
     warnings.filterwarnings('ignore') 
@@ -999,6 +1170,7 @@ def create_model(model = None,
     
     #pre-load libraries
     import pandas as pd
+    import numpy as np
     import ipywidgets as ipw
     from IPython.display import display, HTML, clear_output, update_display
     import datetime, time
@@ -1014,8 +1186,9 @@ def create_model(model = None,
                               ['Status' , '. . . . . . . . . . . . . . . . . .' , 'Initializing'] ],
                               columns=['', ' ', '  ']).set_index('')
     if verbose:
-        display(progress)
-        display(monitor, display_id = 'monitor')
+        if html_param:
+            display(progress)
+            display(monitor, display_id = 'monitor')
         
     progress.value += 1
     
@@ -1026,24 +1199,25 @@ def create_model(model = None,
     #monitor update
     monitor.iloc[1,1:] = 'Importing the Model'
     if verbose:
-        update_display(monitor, display_id = 'monitor')
+        if html_param:
+            update_display(monitor, display_id = 'monitor')
     
     progress.value += 1
     
     #create model
     if model == 'abod':
         from pyod.models.abod import ABOD
-        model = ABOD(contamination=fraction)
+        model = ABOD(contamination=fraction, **kwargs)
         full_name = 'Angle-base Outlier Detection'
         
     elif model == 'cluster':
         from pyod.models.cblof import CBLOF
         try:
-            model = CBLOF(contamination=fraction, n_clusters=8, random_state=seed)
+            model = CBLOF(contamination=fraction, n_clusters=8, random_state=seed, **kwargs)
             model.fit(X)
         except:
             try:
-                model = CBLOF(contamination=fraction, n_clusters=12, random_state=seed)
+                model = CBLOF(contamination=fraction, n_clusters=12, random_state=seed, **kwargs)
                 model.fit(X)
             except:
                 sys.exit("(Type Error) Could not form valid cluster separation")
@@ -1052,75 +1226,149 @@ def create_model(model = None,
         
     elif model == 'cof':
         from pyod.models.cof import COF
-        model = COF(contamination=fraction)        
+        model = COF(contamination=fraction, **kwargs)        
         full_name = 'Connectivity-Based Outlier Factor'
         
     elif model == 'iforest':
         from pyod.models.iforest import IForest
-        model = IForest(contamination=fraction, behaviour = 'new', random_state=seed)    
+        model = IForest(contamination=fraction, behaviour = 'new', random_state=seed, **kwargs)    
         full_name = 'Isolation Forest'
         
     elif model == 'histogram':
         from pyod.models.hbos import HBOS
-        model = HBOS(contamination=fraction) 
+        model = HBOS(contamination=fraction, **kwargs) 
         full_name = 'Histogram-based Outlier Detection'
         
     elif model == 'knn':
         from pyod.models.knn import KNN
-        model = KNN(contamination=fraction)  
+        model = KNN(contamination=fraction, **kwargs)  
         full_name = 'k-Nearest Neighbors Detector'
         
     elif model == 'lof':
         from pyod.models.lof import LOF
-        model = LOF(contamination=fraction)
+        model = LOF(contamination=fraction, **kwargs)
         full_name = 'Local Outlier Factor'
         
     elif model == 'svm':
         from pyod.models.ocsvm import OCSVM
-        model = OCSVM(contamination=fraction)
+        model = OCSVM(contamination=fraction, **kwargs)
         full_name = 'One-class SVM detector'
         
     elif model == 'pca':
         from pyod.models.pca import PCA
-        model = PCA(contamination=fraction, random_state=seed)  
+        model = PCA(contamination=fraction, random_state=seed, **kwargs)  
         full_name = 'Principal Component Analysis'
         
     elif model == 'mcd':
         from pyod.models.mcd import MCD
-        model = MCD(contamination=fraction, random_state=seed)
+        model = MCD(contamination=fraction, random_state=seed, **kwargs)
         full_name = 'Minimum Covariance Determinant'
         
     elif model == 'sod':
         from pyod.models.sod import SOD
-        model = SOD(contamination=fraction)         
+        model = SOD(contamination=fraction, **kwargs)         
         full_name = 'Subspace Outlier Detection'
         
     elif model == 'sos':
         from pyod.models.sos import SOS
-        model = SOS(contamination=fraction)   
+        model = SOS(contamination=fraction, **kwargs)   
         full_name = 'Stochastic Outlier Selection'
     
     #monitor update
     monitor.iloc[1,1:] = 'Fitting the Model'
     progress.value += 1
     if verbose:
-        update_display(monitor, display_id = 'monitor')
+        if html_param:
+            update_display(monitor, display_id = 'monitor')
         
     #fitting the model
+    model_fit_start = time.time()
     model.fit(X)
+    model_fit_end = time.time()
+
+    model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
     
     #storing in experiment__
-    if verbose:
+    if system:
         tup = (full_name,model)
         experiment__.append(tup)  
     
+    #end runtime
+    runtime_end = time.time()
+    runtime = np.array(runtime_end - runtime_start).round(2)
+
+    #mlflow logging
+    if logging_param and system:
+
+        #Creating Logs message monitor
+        monitor.iloc[1,1:] = 'Creating Logs'
+        if verbose:
+            if html_param:
+                update_display(monitor, display_id = 'monitor')
+
+        #import mlflow
+        import mlflow
+        from pathlib import Path
+        import os
+
+        mlflow.set_experiment(exp_name_log)
+
+        with mlflow.start_run(run_name=full_name) as run:
+
+            # Get active run to log as tag
+            RunID = mlflow.active_run().info.run_id
+
+            # Log model parameters
+            params = model.get_params()
+
+            for i in list(params):
+                v = params.get(i)
+                if len(str(v)) > 250:
+                    params.pop(i)
+
+            mlflow.log_params(params)
+                        
+            # Log internal parameters
+            mlflow.log_param("create_model_model", model)
+            mlflow.log_param("create_model_fraction", fraction)
+            mlflow.log_param("create_model_verbose", verbose)
+            
+            #set tag of compare_models
+            mlflow.set_tag("Source", "create_model")
+            
+            import secrets
+            URI = secrets.token_hex(nbytes=4)
+            mlflow.set_tag("URI", URI)   
+            mlflow.set_tag("USI", USI)
+            mlflow.set_tag("Run Time", runtime)
+            mlflow.set_tag("Run ID", RunID)
+
+            # Log training time in seconds
+            mlflow.log_metric("TT", model_fit_time)
+
+            # Log AUC and Confusion Matrix plot
+            if log_plots_param:
+                try:
+                    plot_model(model, plot = 'tsne', save=True, system=False)
+                    mlflow.log_artifact('TSNE.html')
+                    os.remove("TSNE.html")
+                except:
+                    pass
+
+            # Log model and transformation pipeline
+            save_model(model, 'Trained Model', verbose=False)
+            mlflow.log_artifact('Trained Model' + '.pkl')
+            size_bytes = Path('Trained Model.pkl').stat().st_size
+            size_kb = np.round(size_bytes/1000, 2)
+            mlflow.set_tag("Size KB", size_kb)
+            os.remove('Trained Model.pkl')
+
     progress.value += 1
     
     if verbose:
         clear_output()
 
     return model
-
 
 
 def assign_model(model,
@@ -1236,15 +1484,17 @@ def assign_model(model,
                               ['Status' , '. . . . . . . . . . . . . . . . . .' , 'Initializing'] ],
                               columns=['', ' ', '  ']).set_index('')
     if verbose:
-        display(progress)
-        display(monitor, display_id = 'monitor')
+        if html_param:
+            display(progress)
+            display(monitor, display_id = 'monitor')
         
     progress.value += 1
     
     monitor.iloc[1,1:] = 'Inferring Outliers from Model'
     
     if verbose:
-        update_display(monitor, display_id = 'monitor')
+        if html_param:
+            update_display(monitor, display_id = 'monitor')
     
     progress.value += 1
     
@@ -1315,13 +1565,13 @@ def assign_model(model,
     return data__
 
 
-
 def tune_model(model=None,
                supervised_target=None,
                method='drop',
                estimator=None,
                optimize=None,
-               fold=10):
+               fold=10,
+               verbose=True): #added in pycaret 2.0.0
     
     
     """
@@ -1440,6 +1690,9 @@ def tune_model(model=None,
     fold: integer, default = 10
     Number of folds to be used in Kfold CV. Must be at least 2. 
 
+    verbose: Boolean, default = True
+    Status update is not printed when verbose is set to False.
+
     Returns:
     --------
 
@@ -1464,15 +1717,16 @@ def tune_model(model=None,
     
     global data_, X
     
-    #testing
-    #no active testing
-    
     #ignore warnings
     import warnings
     warnings.filterwarnings('ignore') 
     
     import sys
     
+    #run_time
+    import datetime, time
+    runtime_start = time.time()
+
     #checking for model parameter
     if model is None:
         sys.exit('(Value Error): Model parameter Missing. Please see docstring for list of available models.')
@@ -1537,7 +1791,10 @@ def tune_model(model=None,
     #progress bar
     max_steps = 25
     progress = ipw.IntProgress(value=0, min=0, max=max_steps, step=1 , description='Processing: ')
-    display(progress)
+    
+    if verbose:
+        if html_param:
+            display(progress)
     
     timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
     
@@ -1547,9 +1804,12 @@ def tune_model(model=None,
                               columns=['', ' ', '   ']).set_index('')
     
     monitor_out = Output()
-    display(monitor_out)
-    with monitor_out:
-        display(monitor, display_id = 'monitor')
+    
+    if verbose:
+        if html_param:
+            display(monitor_out)
+            with monitor_out:
+                display(monitor, display_id = 'monitor')
         
     #General Dependencies
     from sklearn.linear_model import LogisticRegression
@@ -1564,16 +1824,20 @@ def tune_model(model=None,
     a = data_.copy()
     b = X.copy()
     c = deepcopy(prep_pipe)
+    e = exp_name_log
+    z = logging_param
     
-    def retain_original(a,b,c):
+    def retain_original(a,b,c,e,z):
         
-        global data_, X, prep_pipe
+        global data_, X, prep_pipe, exp_name_log, logging_param
         
         data_ = a.copy()
         X = b.copy()
         prep_pipe = deepcopy(c)
+        exp_name_log = e
+        logging_param = z
 
-        return data_, X, prep_pipe
+        return data_, X, prep_pipe, exp_name_log, logging_param
             
     #setting up cufflinks
     import cufflinks as cf
@@ -1641,7 +1905,9 @@ def tune_model(model=None,
     master = []; master_df = []
     
     monitor.iloc[1,1:] = 'Creating Outlier Detection Model'
-    update_display(monitor, display_id = 'monitor')
+    if verbose:
+        if html_param:
+            update_display(monitor, display_id = 'monitor')
     
     """
     preprocess starts here
@@ -1822,22 +2088,23 @@ def tune_model(model=None,
                                  normalize_method = normalize_method_pass,
                                  transformation = transformation_pass,
                                  transformation_method = transformation_method_pass,
-                                 handle_unknown_categorical = handle_unknown_categorical_pass, #new
-                                 unknown_categorical_method = unknown_categorical_method_pass, #new
+                                 handle_unknown_categorical = handle_unknown_categorical_pass, 
+                                 unknown_categorical_method = unknown_categorical_method_pass, 
                                  pca = pca_pass,
-                                 pca_components = pca_comp_pass, #new
-                                 pca_method = pca_method_pass, #new
-                                 ignore_low_variance = ignore_low_variance_pass, #new
-                                 combine_rare_levels = combine_rare_levels_pass, #new
-                                 rare_level_threshold = combine_rare_threshold_pass, #new
-                                 bin_numeric_features = features_to_bin_pass, #new
-                                 remove_multicollinearity = remove_multicollinearity_pass, #new
-                                 multicollinearity_threshold = multicollinearity_threshold_pass, #new
-                                 group_features = group_features_pass, #new
-                                 group_names = group_names_pass, #new
+                                 pca_components = pca_comp_pass, 
+                                 pca_method = pca_method_pass, 
+                                 ignore_low_variance = ignore_low_variance_pass, 
+                                 combine_rare_levels = combine_rare_levels_pass, 
+                                 rare_level_threshold = combine_rare_threshold_pass,
+                                 bin_numeric_features = features_to_bin_pass, 
+                                 remove_multicollinearity = remove_multicollinearity_pass, 
+                                 multicollinearity_threshold = multicollinearity_threshold_pass, 
+                                 group_features = group_features_pass,
+                                 group_names = group_names_pass,
                                  supervised = True,
                                  supervised_target = supervised_target,
                                  session_id = seed,
+                                 logging = False, #added in pycaret==2.0.0
                                  profile=False,
                                  verbose=False)
     
@@ -1854,10 +2121,12 @@ def tune_model(model=None,
     for i in param_grid:
         progress.value += 1                      
         monitor.iloc[2,1:] = 'Fitting Model With ' + str(i) + ' Fraction'
-        update_display(monitor, display_id = 'monitor')
+        if verbose:
+            if html_param:
+                update_display(monitor, display_id = 'monitor')
                              
         #create and assign the model to dataset d
-        m = create_model(model=model, fraction=i, verbose=False)
+        m = create_model(model=model, fraction=i, verbose=False, system=False)
         d = assign_model(m, transformation=True, score=True, verbose=False)
         d[str(supervised_target)] = target_
 
@@ -1878,7 +2147,9 @@ def tune_model(model=None,
         """
         
         monitor.iloc[1,1:] = 'Evaluating Anomaly Model'
-        update_display(monitor, display_id = 'monitor')
+        if verbose:
+            if html_param:
+                update_display(monitor, display_id = 'monitor')
                              
         if estimator == 'lr':
 
@@ -1999,7 +2270,9 @@ def tune_model(model=None,
         
         #build model without anomaly
         monitor.iloc[2,1:] = 'Evaluating Classifier Without Anomaly Detector'
-        update_display(monitor, display_id = 'monitor')   
+        if verbose:
+            if html_param:
+                update_display(monitor, display_id = 'monitor')   
 
         d = master_df[1].copy()
         d.drop(['Label', 'Score'], axis=1, inplace=True)
@@ -2049,7 +2322,9 @@ def tune_model(model=None,
             param_grid_val = param_grid[i-1]
             
             monitor.iloc[2,1:] = 'Evaluating Classifier With ' + str(param_grid_val) + ' Fraction'
-            update_display(monitor, display_id = 'monitor')                
+            if verbose:
+                if html_param:
+                    update_display(monitor, display_id = 'monitor')                
                              
             #prepare the dataset for supervised problem
             d = master_df[i]
@@ -2104,7 +2379,10 @@ def tune_model(model=None,
                              
         monitor.iloc[1,1:] = 'Compiling Results'
         monitor.iloc[1,1:] = 'Finalizing'
-        update_display(monitor, display_id = 'monitor')
+        
+        if verbose:
+            if html_param:
+                update_display(monitor, display_id = 'monitor')
                              
         df = pd.DataFrame({'Fraction %': param_grid_with_zero, 'Accuracy' : acc, 'AUC' : auc, 'Recall' : recall, 
                    'Precision' : prec, 'F1' : f1, 'Kappa' : kappa})
@@ -2125,10 +2403,16 @@ def tune_model(model=None,
         
         fig.show()
         
-        monitor = ''
-        update_display(monitor, display_id = 'monitor')
-        monitor_out.clear_output()
-        progress.close()
+        #monitor = ''
+        
+        if verbose:
+            if html_param:
+                update_display(monitor, display_id = 'monitor')
+        
+        if verbose:
+            if html_param:
+                monitor_out.clear_output()
+                progress.close()
         
         best_k = np.array(sorted_df.head(1)['Fraction %'])[0]
         best_m = round(np.array(sorted_df.head(1)[optimize])[0],4)
@@ -2451,7 +2735,8 @@ def tune_model(model=None,
 
         fig.show()
         
-        monitor = ''
+        #monitor = ''
+        
         update_display(monitor, display_id = 'monitor')
         monitor_out.clear_output()
         progress.close()
@@ -2465,7 +2750,78 @@ def tune_model(model=None,
     tup = ('Best Model',best_model)
     experiment__.append(tup)    
     
-    org = retain_original(a,b,c)
+    org = retain_original(a,b,c,e,z)
+
+    #end runtime
+    runtime_end = time.time()
+    runtime = np.array(runtime_end - runtime_start).round(2)
+
+    #mlflow logging
+    if logging_param:
+
+        #import mlflow
+        import mlflow
+        from pathlib import Path
+        import os
+
+        mlflow.set_experiment(exp_name_log)
+
+        #Creating Logs message monitor
+        monitor.iloc[1,1:] = 'Creating Logs'
+        if verbose:
+            if html_param:
+                update_display(monitor, display_id = 'monitor')
+
+        mlflow.set_experiment(exp_name_log)
+
+        with mlflow.start_run(run_name=model_name) as run:
+
+            # Get active run to log as tag
+            RunID = mlflow.active_run().info.run_id
+
+            # Log model parameters
+            params = model.get_params()
+
+            for i in list(params):
+                v = params.get(i)
+                if len(str(v)) > 250:
+                    params.pop(i)
+
+            mlflow.log_params(params)
+                        
+            # Log internal parameters
+            mlflow.log_param("tune_model_model", model)
+            mlflow.log_param("tune_model_supervised_target", supervised_target)
+            mlflow.log_param("tune_model_estimator", estimator)
+            mlflow.log_param("tune_model_optimize", optimize)
+            mlflow.log_param("tune_model_fold", fold)
+            mlflow.log_param("tune_model_verbose", verbose)
+            
+            #set tag of compare_models
+            mlflow.set_tag("Source", "tune_model")
+            
+            import secrets
+            URI = secrets.token_hex(nbytes=4)
+            mlflow.set_tag("URI", URI)   
+            mlflow.set_tag("USI", USI)
+            mlflow.set_tag("Run Time", runtime)
+            mlflow.set_tag("Run ID", RunID)
+
+            # Log training time in seconds
+            mlflow.log_metric("TT", 1) #change this
+
+            # Log plot to html
+            fig.write_html("Iterations.html")
+            mlflow.log_artifact('Iterations.html')
+            os.remove('Iterations.html')
+
+            # Log model and transformation pipeline
+            save_model(best_model, 'Trained Model', verbose=False)
+            mlflow.log_artifact('Trained Model' + '.pkl')
+            size_bytes = Path('Trained Model.pkl').stat().st_size
+            size_kb = np.round(size_bytes/1000, 2)
+            mlflow.set_tag("Size KB", size_kb)
+            os.remove('Trained Model.pkl')
     
     return best_model
 
@@ -2474,8 +2830,10 @@ def tune_model(model=None,
 
 def plot_model(model,
                plot = 'tsne',
-               feature = None):
-    
+               feature = None,
+               save = False, #added in pycaret 2.0.0
+               system = True): #added in pycaret 2.0.0
+               
     
     """
           
@@ -2512,6 +2870,12 @@ def plot_model(model,
     feature column is used as a hoverover tooltip. By default, first of column of the
     dataset is chosen as hoverover tooltip, when no feature is passed.
     
+    save: Boolean, default = False
+    Plot is saved as png file in local directory when save parameter set to True.
+
+    system: Boolean, default = True
+    Must remain True all times. Only to be changed by internal functions.
+
     Returns:
     --------
 
@@ -2520,7 +2884,6 @@ def plot_model(model,
 
     Warnings:
     ---------
-    
     -  None
               
 
@@ -2585,7 +2948,11 @@ def plot_model(model,
                                 opacity=0.7, width=900, height=800)
             
             
-        fig.show()
+        if system:
+            fig.show()
+
+        if save:
+            fig.write_html("TSNE.html")
         
     elif plot == 'umap':
 
@@ -2612,7 +2979,11 @@ def plot_model(model,
         fig = px.scatter(df, x=0, y=1,
                       color='Label', title='uMAP Plot for Outliers', hover_data=['Feature'], opacity=0.7, 
                          width=900, height=800)
-        fig.show() 
+        if system:
+            fig.show() 
+
+        if save:
+            fig.write_html("UMAP.html")
 
 
 
@@ -3118,7 +3489,7 @@ def get_outliers(data,
     
     
     
-    c = create_model(model=model, fraction=fraction, verbose=False)
+    c = create_model(model=model, fraction=fraction, verbose=False, system=False)
     
     dataset = assign_model(c, verbose=False)
     

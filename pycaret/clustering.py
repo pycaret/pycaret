@@ -1318,7 +1318,7 @@ def create_model(model = None,
                         
             # Log internal parameters
             mlflow.log_param("create_model_model", model)
-            mlflow.log_param("create_num_clusters", num_clusters)
+            mlflow.log_param("create_model_num_clusters", num_clusters)
             mlflow.log_param("create_model_verbose", verbose)
             mlflow.log_param("create_model_system", system)
             
@@ -1547,7 +1547,7 @@ def tune_model(model=None,
                estimator=None,
                optimize=None,
                fold=10,
-               verbose=True):
+               verbose=True): #added in pycaret 2.0.0
     
     
     """
@@ -1681,9 +1681,6 @@ def tune_model(model=None,
     """
     
     global data_, X
-    
-    #testing
-    global target_, master_df
     
     #ignore warnings
     import warnings
