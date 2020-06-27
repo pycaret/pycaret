@@ -1340,10 +1340,13 @@ def create_model(model = None,
             metric_value.append(cs)
         except:
             pass
-
-    model_results = pd.DataFrame(metric_value)
-    model_results.columns = ['Metric']
-    model_results.set_index([metric], inplace=True)
+    
+    try:
+        model_results = pd.DataFrame(metric_value)
+        model_results.columns = ['Metric']
+        model_results.set_index([metric], inplace=True)
+    except:
+        pass
 
     #storing in experiment__
     full_name_ = str(full_name) + ' Model'
@@ -1405,7 +1408,10 @@ def create_model(model = None,
 
             # Log training time in seconds
             mlflow.log_metric("TT", model_fit_time)
-            mlflow.log_metrics(model_results.to_dict().get('Metric'))
+            try:
+                mlflow.log_metrics(model_results.to_dict().get('Metric'))
+            except:
+                pass
         
             # Log Cluster, Distribution Plot and Elbow Plot
             if log_plots_param:
@@ -1443,7 +1449,10 @@ def create_model(model = None,
     
     if verbose:
         clear_output()
-        display(model_results)
+        try:
+            display(model_results)
+        except:
+            pass
 
     return model
 
@@ -2145,6 +2154,8 @@ def tune_model(model=None,
     master.append('No Model Required')
     master_df.append('No Model Required')
     
+    model_fit_time_list = []
+
     for i in param_grid:
         progress.value += 1                      
         monitor.iloc[2,1:] = 'Fitting Model With ' + str(i) + ' Clusters'
@@ -2153,7 +2164,12 @@ def tune_model(model=None,
                 update_display(monitor, display_id = 'monitor')
                              
         #create and assign the model to dataset d
+        model_fit_start = time.time()
         m = create_model(model=model, num_clusters=i, verbose=False, system=False)
+        model_fit_end = time.time()
+        model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
+        model_fit_time_list.append(model_fit_time)
+
         d = assign_model(m, transformation=True, verbose=False)
         d[str(supervised_target)] = target_
 
@@ -2413,6 +2429,8 @@ def tune_model(model=None,
 
         best_model = master[ival]
         best_model_df = master_df[ival]
+        best_model_tt = model_fit_time_list[ival]
+
         progress.value += 1 
         sd = pd.melt(df, id_vars=['# of Clusters'], value_vars=['Accuracy', 'AUC', 'Recall', 'Precision', 'F1', 'Kappa'], 
                      var_name='Metric', value_name='Score')
@@ -2748,6 +2766,7 @@ def tune_model(model=None,
 
         best_model = master[ival]
         best_model_df = master_df[ival]
+        best_model_tt = model_fit_time_list[ival]
 
         fig = px.line(df, x='# of Clusters', y=optimize, line_shape='linear', 
                       title= str(full_name) + ' Metrics and Number of Clusters', color='Metric')
@@ -2807,7 +2826,7 @@ def tune_model(model=None,
             RunID = mlflow.active_run().info.run_id
 
             # Log model parameters
-            params = model.get_params()
+            params = best_model.get_params()
 
             for i in list(params):
                 v = params.get(i)
@@ -2835,7 +2854,7 @@ def tune_model(model=None,
             mlflow.set_tag("Run ID", RunID)
 
             # Log training time in seconds
-            mlflow.log_metric("TT", 1) #change this
+            mlflow.log_metric("TT", best_model_tt) #change this
 
             # Log plot to html
             fig.write_html("Iterations.html")

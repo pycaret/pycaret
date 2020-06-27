@@ -2118,6 +2118,8 @@ def tune_model(model=None,
     master.append('No Model Required')
     master_df.append('No Model Required')
     
+    model_fit_time_list = []
+
     for i in param_grid:
         progress.value += 1                      
         monitor.iloc[2,1:] = 'Fitting Model With ' + str(i) + ' Fraction'
@@ -2126,7 +2128,12 @@ def tune_model(model=None,
                 update_display(monitor, display_id = 'monitor')
                              
         #create and assign the model to dataset d
+        model_fit_start = time.time()
         m = create_model(model=model, fraction=i, verbose=False, system=False)
+        model_fit_end = time.time()
+        model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
+        model_fit_time_list.append(model_fit_time)
+
         d = assign_model(m, transformation=True, score=True, verbose=False)
         d[str(supervised_target)] = target_
 
@@ -2392,6 +2399,8 @@ def tune_model(model=None,
 
         best_model = master[ival]
         best_model_df = master_df[ival]
+        best_model_tt = model_fit_time_list[ival]
+
         progress.value += 1 
         sd = pd.melt(df, id_vars=['Fraction %'], value_vars=['Accuracy', 'AUC', 'Recall', 'Precision', 'F1', 'Kappa'], 
                      var_name='Metric', value_name='Score')
@@ -2726,6 +2735,7 @@ def tune_model(model=None,
 
         best_model = master[ival]
         best_model_df = master_df[ival]
+        best_model_tt = model_fit_time_list[ival]
 
         fig = px.line(df, x='Fraction %', y=optimize, line_shape='linear', 
                       title= str(full_name) + ' Metrics and Fraction %', color='Metric')
@@ -2780,7 +2790,7 @@ def tune_model(model=None,
             RunID = mlflow.active_run().info.run_id
 
             # Log model parameters
-            params = model.get_params()
+            params = best_model.get_params()
 
             for i in list(params):
                 v = params.get(i)
@@ -2808,7 +2818,7 @@ def tune_model(model=None,
             mlflow.set_tag("Run ID", RunID)
 
             # Log training time in seconds
-            mlflow.log_metric("TT", 1) #change this
+            mlflow.log_metric("TT", best_model_tt) #change this
 
             # Log plot to html
             fig.write_html("Iterations.html")

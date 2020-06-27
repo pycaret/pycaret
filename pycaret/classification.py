@@ -34,6 +34,7 @@ def setup(data,
           outliers_threshold = 0.05,
           remove_multicollinearity = False,
           multicollinearity_threshold = 0.9,
+          remove_perfect_collinearity = True, #added in pycaret==2.0.0
           create_clusters = False,
           cluster_iter = 20,
           polynomial_features = False,                 
@@ -269,10 +270,15 @@ def setup(data,
     defined under the multicollinearity_threshold param are dropped. When two features
     are highly correlated with each other, the feature that is less correlated with 
     the target variable is dropped. 
-    
+
     multicollinearity_threshold: float, default = 0.9
     Threshold used for dropping the correlated features. Only comes into effect when 
     remove_multicollinearity is set to True.
+    
+    remove_perfect_collinearity: bool, default = True
+    When set to True, perfect collinearity (features with correlation = 1) is removed
+    from the dataset, When two features are 100% correlated, one of it is randomly 
+    dropped from the dataset.
     
     create_clusters: bool, default = False
     When set to True, an additional feature is created where each instance is assigned
@@ -990,7 +996,7 @@ def setup(data,
                                           outlier_methods = ['pca'],
                                           remove_multicollinearity = remove_multicollinearity, 
                                           maximum_correlation_between_features = multicollinearity_threshold, 
-                                          remove_perfect_collinearity = True,
+                                          remove_perfect_collinearity = remove_perfect_collinearity,
                                           cluster_entire_data = create_clusters, 
                                           range_of_clusters_to_try = cluster_iter, 
                                           apply_polynomial_trigonometry_features = polynomial_features, 
