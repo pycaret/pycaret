@@ -1054,6 +1054,7 @@ def setup(data,
 
 def create_model(model = None, 
                  num_clusters = None,
+                 ground_truth=None, #added in pycaret==2.0.0
                  verbose=True,
                  system=True, #added in pycaret==2.0.0
                  **kwargs): #added in pycaret==2.0.0
@@ -1172,7 +1173,12 @@ def create_model(model = None,
     if num_clusters is not None:
         if type(num_clusters) is not int:
             sys.exit('(Type Error): num_clusters parameter can only take value integer value greater than 1.')
-        
+
+    #check ground truth exist in data_
+    if ground_truth is not None:
+        if ground_truth not in data_.columns:
+            sys.exit('(Value Error): ground_truth defined doesnt exist in the dataset.')
+
     #checking verbose parameter
     if type(verbose) is not bool:
         sys.exit('(Type Error): Verbose parameter can only take argument as True or False.') 
@@ -1274,6 +1280,71 @@ def create_model(model = None,
 
     model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
     
+    #Calculate unsupervised metrics
+    from sklearn import metrics
+
+    metric = []
+    metric_value = []
+
+    try:
+        silhouette = metrics.silhouette_score(X,model.labels_)
+        silhouette = silhouette.round(4)
+        metric.append('Silhouette')
+        metric_value.append(silhouette)
+        
+    except:
+        pass
+
+    try:
+        chs = metrics.calinski_harabasz_score(X,model.labels_)
+        chs = chs.round(4)
+        metric.append('Calinski-Harabasz')
+        metric_value.append(chs)
+    except:
+        pass
+
+    try:
+        db = metrics.davies_bouldin_score(X,model.labels_)
+        db = db.round(4)
+        metric.append('Davies-Bouldin')
+        metric_value.append(db)
+
+    except:
+        pass
+
+    if ground_truth is not None:
+
+        gt = np.array(data_[ground_truth])
+
+        try:
+            hs = metrics.homogeneity_score(gt,model.labels_)
+            hs = hs.round(4)
+            metric.append('Homogeneity Score')
+            metric_value.append(hs)
+
+        except:
+            pass
+
+        try:
+            ari = metrics.adjusted_rand_score(gt,model.labels_)
+            ari = ari.round(4)
+            metric.append('ARI')
+            metric_value.append(ari)
+        except:
+            pass
+
+        try:
+            cs = metrics.completeness_score(gt,model.labels_)
+            cs = cs.round(4)
+            metric.append('Completeness Score')
+            metric_value.append(cs)
+        except:
+            pass
+
+    model_results = pd.DataFrame(metric_value)
+    model_results.columns = ['Metric']
+    model_results.set_index([metric], inplace=True)
+
     #storing in experiment__
     full_name_ = str(full_name) + ' Model'
     
@@ -1334,8 +1405,9 @@ def create_model(model = None,
 
             # Log training time in seconds
             mlflow.log_metric("TT", model_fit_time)
-
-            # Log AUC and Confusion Matrix plot
+            mlflow.log_metrics(model_results.to_dict().get('Metric'))
+        
+            # Log Cluster, Distribution Plot and Elbow Plot
             if log_plots_param:
                 try:
                     plot_model(model, plot = 'cluster', save=True, system=False)
@@ -1358,6 +1430,7 @@ def create_model(model = None,
                 except:
                     pass
 
+
             # Log model and transformation pipeline
             save_model(model, 'Trained Model', verbose=False)
             mlflow.log_artifact('Trained Model' + '.pkl')
@@ -1370,6 +1443,7 @@ def create_model(model = None,
     
     if verbose:
         clear_output()
+        display(model_results)
 
     return model
 
