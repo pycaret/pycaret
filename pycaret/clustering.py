@@ -1436,7 +1436,6 @@ def create_model(model = None,
                 except:
                     pass
 
-
             # Log model and transformation pipeline
             save_model(model, 'Trained Model', verbose=False)
             mlflow.log_artifact('Trained Model' + '.pkl')
@@ -3247,6 +3246,9 @@ def save_model(model, model_name, verbose=True):
     
     model_name : string, default = none
     Name of pickle file to be passed as a string.
+
+    verbose : bool, default = True
+    When set to False, success message is not printed.
 
     Returns:
     --------    

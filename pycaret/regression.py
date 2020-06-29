@@ -408,6 +408,9 @@ def setup(data,
     When set to True, data profile is also logged on MLflow as a html file. By default,
     it is set to False. 
 
+    log_data: bool, default = False
+    When set to True, train and test dataset are logged as csv. 
+    
     verbose: Boolean, default = True
     Information grid is not printed when verbose is set to False.
 

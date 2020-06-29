@@ -393,6 +393,9 @@ def setup(data,
     When set to True, data profile is also logged on MLflow as a html file. By default,
     it is set to False. 
 
+    log_data: bool, default = False
+    When set to True, train and test dataset are logged as csv. 
+
     silent: bool, default = False
     When set to True, confirmation of data types is not required. All preprocessing will 
     be performed assuming automatically inferred data types. Not recommended for direct use 

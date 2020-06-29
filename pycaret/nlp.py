@@ -1,12 +1,17 @@
 # Module: Natural Language Processing
 # Author: Moez Ali <moez.ali@queensu.ca>
-# License: MIT
 
 
 def setup(data, 
           target=None,
           custom_stopwords=None,
-          session_id = None):
+          html = True, #added in pycaret==2.0.0
+          session_id = None,
+          experiment_name = None, #added in pycaret==2.0.0
+          logging = False, #added in pycaret==2.0.0
+          log_plots = False, #added in pycaret==2.0.0
+          log_data = False, #added in pycaret==2.0.0)
+          verbose = True): #added in pycaret==2.0.0)
     
     """
         
@@ -40,11 +45,31 @@ def setup(data,
     custom_stopwords: list, default = None
     list containing custom stopwords.
 
+    html: bool, default = True
+    If set to False, prevents runtime display of monitor. This must be set to False
+    when using environment that doesnt support HTML.
+
     session_id: int, default = None
     If None, a random seed is generated and returned in the Information grid. The 
     unique number is then distributed as a seed in all functions used during the 
     experiment. This can be used for later reproducibility of the entire experiment.
 
+    experiment_name: str, default = None
+    Name of experiment for logging. When set to None, 'clf' is by default used as 
+    alias for the experiment name.
+
+    logging: bool, default = True
+    When set to True, all metrics and parameters are logged on MLFlow server.
+
+    log_plots: bool, default = False
+    When set to True, specific plots are logged in MLflow as a png file. By default,
+    it is set to False. 
+
+    log_data: bool, default = False
+    When set to True, train and test dataset are logged as csv. 
+
+    verbose: Boolean, default = True
+    Information grid is not printed when verbose is set to False.
 
     Returns:
     --------
@@ -67,14 +92,16 @@ def setup(data,
          python -m textblob.download_corpora
     
       Once downloaded, please restart your kernel and re-run the setup.
-        
-          
     
     """
     
     #exception checking   
     import sys
     
+    #run_time
+    import datetime, time
+    runtime_start = time.time()
+
     #ignore warnings
     import warnings
     warnings.filterwarnings('ignore') 
@@ -126,6 +153,12 @@ def setup(data,
     import ipywidgets as ipw
     from IPython.display import display, HTML, clear_output, update_display
     import datetime, time
+    
+    #global html_param
+    global html_param
+    
+    #create html_param
+    html_param = html
 
     '''
     generate monitor starts 
@@ -136,23 +169,24 @@ def setup(data,
     total_steps = 9
         
     progress = ipw.IntProgress(value=0, min=0, max=max_steps, step=1 , description='Processing: ')
-    display(progress)
+    if verbose:
+        if html_param:
+            display(progress)
     
     try:
         max_sub = len(data[target].values.tolist())
     except:
         max_sub = len(data)
         
-    #sub_progress = ipw.IntProgress(value=0, min=0, max=max_sub, step=1, bar_style='', description='Sub Process: ')
-    #display(sub_progress)
-    
     timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
     monitor = pd.DataFrame( [ ['Initiated' , '. . . . . . . . . . . . . . . . . .', timestampStr ], 
                              ['Status' , '. . . . . . . . . . . . . . . . . .' , 'Loading Dependencies' ],
                              ['Step' , '. . . . . . . . . . . . . . . . . .',  'Step 0 of ' + str(total_steps)] ],
                               columns=['', ' ', '   ']).set_index('')
     
-    display(monitor, display_id = 'monitor')
+    if verbose:
+        if html_param:
+            display(monitor, display_id = 'monitor')
     
     '''
     generate monitor end
@@ -168,10 +202,12 @@ def setup(data,
     from gensim.models import CoherenceModel
     import spacy
     import re
+    import secrets
 
     
     #defining global variables
-    global text, id2word, corpus, data_, seed, target_, experiment__
+    global text, id2word, corpus, data_, seed, target_, experiment__,\
+        exp_name_log, logging_param, log_plots_param, USI
     
     #create an empty list for pickling later.
     try:
@@ -207,6 +243,18 @@ def setup(data,
     else: 
         data_ = data.copy()
     
+    #create logging parameter
+    logging_param = logging
+
+    #create exp_name_log param incase logging is False
+    exp_name_log = 'no_logging'
+
+    #create an empty log_plots_param
+    if log_plots:
+        log_plots_param = True
+    else:
+        log_plots_param = False
+        
     progress.value += 1
 
     
@@ -248,7 +296,10 @@ def setup(data,
     
     monitor.iloc[1,1:] = 'Removing Numeric Characters'
     monitor.iloc[2,1:] = 'Step 1 of '+ str(total_steps)
-    update_display(monitor, display_id = 'monitor')
+    
+    if verbose:
+        if html_param:
+            update_display(monitor, display_id = 'monitor')
             
     text_step1 = []
     
@@ -271,7 +322,9 @@ def setup(data,
     
     monitor.iloc[1,1:] = 'Removing Special Characters'
     monitor.iloc[2,1:] = 'Step 2 of '+ str(total_steps)
-    update_display(monitor, display_id = 'monitor')
+    if verbose:
+        if html_param:
+            update_display(monitor, display_id = 'monitor')
     
     text_step2 = []
     
@@ -299,7 +352,9 @@ def setup(data,
     
     monitor.iloc[1,1:] = 'Tokenizing Words'
     monitor.iloc[2,1:] = 'Step 3 of '+ str(total_steps)
-    update_display(monitor, display_id = 'monitor')
+    if verbose:
+        if html_param:
+            update_display(monitor, display_id = 'monitor')
     
     text_step3 = []
     
@@ -322,7 +377,9 @@ def setup(data,
     
     monitor.iloc[1,1:] = 'Removing Stopwords'
     monitor.iloc[2,1:] = 'Step 4 of '+ str(total_steps)
-    update_display(monitor, display_id = 'monitor')
+    if verbose:
+        if html_param:
+            update_display(monitor, display_id = 'monitor')
     
     text_step4 = []
     
@@ -348,7 +405,9 @@ def setup(data,
     
     monitor.iloc[1,1:] = 'Extracting Bigrams'
     monitor.iloc[2,1:] = 'Step 5 of '+ str(total_steps)
-    update_display(monitor, display_id = 'monitor')
+    if verbose:
+        if html_param:
+            update_display(monitor, display_id = 'monitor')
     
     bigram = gensim.models.Phrases(text, min_count=5, threshold=100)
     bigram_mod = gensim.models.phrases.Phraser(bigram)
@@ -372,7 +431,9 @@ def setup(data,
     
     monitor.iloc[1,1:] = 'Extracting Trigrams'
     monitor.iloc[2,1:] = 'Step 6 of '+ str(total_steps)
-    update_display(monitor, display_id = 'monitor')
+    if verbose:
+        if html_param:
+            update_display(monitor, display_id = 'monitor')
     
     trigram = gensim.models.Phrases(bigram[text], threshold=100)  
     trigram_mod = gensim.models.phrases.Phraser(trigram)
@@ -396,7 +457,9 @@ def setup(data,
     
     monitor.iloc[1,1:] = 'Lemmatizing'
     monitor.iloc[2,1:] = 'Step 7 of '+ str(total_steps)
-    update_display(monitor, display_id = 'monitor')
+    if verbose:
+        if html_param:
+            update_display(monitor, display_id = 'monitor')
     
     nlp = spacy.load('en_core_web_sm', disable=['parser', 'ner'])
     allowed_postags=['NOUN', 'ADJ', 'VERB', 'ADV']
@@ -422,7 +485,9 @@ def setup(data,
     
     monitor.iloc[1,1:] = 'Removing Custom Stopwords'
     monitor.iloc[2,1:] = 'Step 8 of '+ str(total_steps)
-    update_display(monitor, display_id = 'monitor')
+    if verbose:
+        if html_param:
+            update_display(monitor, display_id = 'monitor')
     
     text_step8 = []
     
@@ -449,7 +514,9 @@ def setup(data,
     
     monitor.iloc[1,1:] = 'Compiling Corpus'
     monitor.iloc[2,1:] = 'Step 9 of '+ str(total_steps)
-    update_display(monitor, display_id = 'monitor')
+    if verbose:
+        if html_param:
+            update_display(monitor, display_id = 'monitor')
     
     #creating dictionary
     id2word = corpora.Dictionary(text)
@@ -482,7 +549,6 @@ def setup(data,
     '''
     Final display Starts
     '''
-    clear_output()
     
     if custom_stopwords is None:
         csw = False
@@ -490,13 +556,12 @@ def setup(data,
         csw = True
         
     functions = pd.DataFrame ( [ ['session_id', seed ],
-                                 ['# Documents', len(corpus) ], 
+                                 ['Documents', len(corpus) ], 
                                  ['Vocab Size',len(id2word.keys()) ],
                                  ['Custom Stopwords',csw ],
                                ], columns = ['Description', 'Value'] )
 
     functions_ = functions.style.hide_index()
-    display(functions_)
 
     '''
     Final display Ends
@@ -509,15 +574,124 @@ def setup(data,
     experiment__.append(('Dictionary', id2word))
     experiment__.append(('Text', text))
 
-    return text, data_, corpus, id2word, seed, target_, experiment__
+    #end runtime
+    runtime_end = time.time()
+    runtime = np.array(runtime_end - runtime_start).round(2)
 
+    #mlflow create experiment (name defined here)
 
+    USI = secrets.token_hex(nbytes=2)
+
+    if logging_param:
+
+        monitor.iloc[1,1:] = 'Creating Logs'
+        monitor.iloc[2,1:] = 'Final'
+        if verbose:
+            if html_param:
+                update_display(monitor, display_id = 'monitor')
+
+        import mlflow
+        from pathlib import Path
+        import os
+
+        if experiment_name is None:
+            exp_name_ = 'nlp-default-name'
+        else:
+            exp_name_ = experiment_name
+
+        URI = secrets.token_hex(nbytes=4)    
+        exp_name_log = exp_name_
+        
+        try:
+            mlflow.create_experiment(exp_name_log)
+        except:
+            pass
+
+        #mlflow logging
+        mlflow.set_experiment(exp_name_log)
+
+        run_name_ = 'Session Initialized ' + str(USI)
+        with mlflow.start_run(run_name=run_name_) as run:
+
+            # Get active run to log as tag
+            RunID = mlflow.active_run().info.run_id
+            
+            k = functions.copy()
+            k.set_index('Description',drop=True,inplace=True)
+            kdict = k.to_dict()
+            params = kdict.get('Value')
+            mlflow.log_params(params)
+
+            #set tag of compare_models
+            mlflow.set_tag("Source", "setup")
+            
+            import secrets
+            URI = secrets.token_hex(nbytes=4)
+            mlflow.set_tag("URI", URI)
+
+            mlflow.set_tag("USI", USI) 
+
+            mlflow.set_tag("Run Time", runtime)
+
+            mlflow.set_tag("Run ID", RunID)
+
+            # Log the Dictionary and doc2bow
+            save_model(id2word, 'Dictionary', verbose=False)
+            mlflow.log_artifact('Dictionary' + '.pkl')
+            size_bytes = Path('Dictionary.pkl').stat().st_size
+            size_kb = np.round(size_bytes/1000, 2)
+            mlflow.set_tag("Size KB", size_kb)
+            os.remove('Dictionary.pkl')
+
+            save_model(corpus, 'doc2bow', verbose=False)
+            mlflow.log_artifact('doc2bow' + '.pkl')
+            size_bytes = Path('doc2bow.pkl').stat().st_size
+            size_kb = np.round(size_bytes/1000, 2)
+            mlflow.set_tag("Size KB", size_kb)
+            os.remove('doc2bow.pkl')
+
+            # Log data
+            if log_data:
+                data_.to_csv('data.csv')
+                mlflow.log_artifact('data.csv')
+                os.remove('data.csv')
+
+            # Log plots
+            if log_plots:
+                
+                plot_model(plot='frequency', save=True, system=False)
+                mlflow.log_artifact('Word Frequency.html')
+                os.remove('Word Frequency.html')
+
+                plot_model(plot='bigram', save=True, system=False)
+                mlflow.log_artifact('Bigram.html')
+                os.remove('Bigram.html')
+
+                plot_model(plot='trigram', save=True, system=False)
+                mlflow.log_artifact('Trigram.html')
+                os.remove('Trigram.html')
+
+                plot_model(plot='pos', save=True, system=False)
+                mlflow.log_artifact('POS.html')
+                os.remove('POS.html')
+
+    if verbose:
+        clear_output()
+        if html_param:
+            display(functions_)
+        else:
+            print(display_.data)
+
+    return text, data_, corpus, id2word, seed, target_, experiment__,\
+        exp_name_log, logging_param, log_plots_param, USI
 
 
 def create_model(model=None,
                  multi_core=False,
                  num_topics = None,
-                 verbose=True):
+                 verbose=True,
+                 system=True, #added in pycaret==2.0.0
+                 **kwargs): #added in pycaret==2.0.0
     
     """  
      
@@ -562,6 +736,12 @@ def create_model(model=None,
     verbose: Boolean, default = True
     Status update is not printed when verbose is set to False.
 
+    system: Boolean, default = True
+    Must remain True all times. Only to be changed by internal functions.
+
+    **kwargs: 
+    Additional keyword arguments to pass to the estimator.
+
     Returns:
     --------
 
@@ -579,6 +759,10 @@ def create_model(model=None,
     #exception checking   
     import sys
     
+    #run_time
+    import datetime, time
+    runtime_start = time.time()
+
     #ignore warnings
     import warnings
     warnings.filterwarnings('ignore') 
@@ -617,6 +801,7 @@ def create_model(model=None,
     
     #pre-load libraries
     import pandas as pd
+    import numpy as np
     import ipywidgets as ipw
     from IPython.display import display, HTML, clear_output, update_display
     import datetime, time
@@ -632,8 +817,9 @@ def create_model(model=None,
                               ['Status' , '. . . . . . . . . . . . . . . . . .' , 'Initializing'] ],
                               columns=['', ' ', '  ']).set_index('')
     if verbose:
-        display(progress)
-        display(monitor, display_id = 'monitor')
+        if html_param:
+            display(progress)
+            display(monitor, display_id = 'monitor')
         
     progress.value += 1
     
@@ -665,8 +851,11 @@ def create_model(model=None,
     monitor.iloc[1,1:] = 'Fitting Topic Model'
     progress.value += 1
     if verbose:
-        update_display(monitor, display_id = 'monitor')
+        if html_param:
+            update_display(monitor, display_id = 'monitor')
     
+    model_fit_start = time.time()
+
     if model == 'lda':
         
         if multi_core:
@@ -681,7 +870,8 @@ def create_model(model=None,
                                 chunksize=100,
                                 passes=10,
                                 alpha= 'symmetric',
-                                per_word_topics=True)
+                                per_word_topics=True,
+                                **kwargs)
             
             progress.value += 1
         
@@ -697,7 +887,8 @@ def create_model(model=None,
                             chunksize=100,
                             passes=10,
                             alpha='auto',
-                            per_word_topics=True)
+                            per_word_topics=True,
+                            **kwargs)
             
             progress.value += 1
             
@@ -707,7 +898,8 @@ def create_model(model=None,
         
         model = LsiModel(corpus=corpus, 
                          num_topics=n_topics, 
-                         id2word=id2word)
+                         id2word=id2word,
+                         **kwargs)
         
         progress.value += 1
 
@@ -719,7 +911,8 @@ def create_model(model=None,
                          id2word=id2word, 
                          random_state=seed, 
                          chunksize=100,
-                         T=n_topics)
+                         T=n_topics,
+                         **kwargs)
         
         progress.value += 1
         
@@ -729,7 +922,8 @@ def create_model(model=None,
         
         model = RpModel(corpus=corpus, 
                         id2word=id2word, 
-                        num_topics=n_topics)
+                        num_topics=n_topics,
+                        **kwargs)
         
         progress.value += 1
         
@@ -749,22 +943,96 @@ def create_model(model=None,
         
         vectorizer = CountVectorizer(analyzer='word', max_features=5000)
         x_counts = vectorizer.fit_transform(text_join)
-        transformer = TfidfTransformer(smooth_idf=False);
-        x_tfidf = transformer.fit_transform(x_counts);
+        transformer = TfidfTransformer(smooth_idf=False)
+        x_tfidf = transformer.fit_transform(x_counts)
         xtfidf_norm = normalize(x_tfidf, norm='l1', axis=1)
-        model = NMF(n_components=n_topics, init='nndsvd', random_state=seed);
+        model = NMF(n_components=n_topics, init='nndsvd', random_state=seed,**kwargs)
         model.fit(xtfidf_norm)
-        
+
+    model_fit_end = time.time()
+    model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
+
     progress.value += 1
+    
+    #end runtime
+    runtime_end = time.time()
+    runtime = np.array(runtime_end - runtime_start).round(2)
+
+    #mlflow logging
+    if logging_param and system:
+
+        #Creating Logs message monitor
+        monitor.iloc[1,1:] = 'Creating Logs'
+        if verbose:
+            if html_param:
+                update_display(monitor, display_id = 'monitor')
+
+        #import mlflow
+        import mlflow
+        from pathlib import Path
+        import os
+
+        mlflow.set_experiment(exp_name_log)
+
+        with mlflow.start_run(run_name=topic_model_name) as run:
+
+            # Get active run to log as tag
+            RunID = mlflow.active_run().info.run_id
+
+            # Log model parameters
+            
+            try:
+                params = model.get_params()
+            except:
+                import inspect
+                params = inspect.getmembers(model)[2][1]
+
+            for i in list(params):
+                v = params.get(i)
+                if len(str(v)) > 250:
+                    params.pop(i)
+
+            mlflow.log_params(params)
+                        
+            # Log internal parameters
+            mlflow.log_param("create_model_model", model)
+            mlflow.log_param("create_model_multi_core", multi_core)
+            mlflow.log_param("create_model_num_topics", num_topics)
+            mlflow.log_param("create_model_verbose", verbose)
+            mlflow.log_param("create_model_system", system)
+            
+            #set tag of compare_models
+            mlflow.set_tag("Source", "create_model")
+            
+            import secrets
+            URI = secrets.token_hex(nbytes=4)
+            mlflow.set_tag("URI", URI)   
+            mlflow.set_tag("USI", USI)
+            mlflow.set_tag("Run Time", runtime)
+            mlflow.set_tag("Run ID", RunID)
+
+            # Log model and transformation pipeline
+            save_model(model, 'Trained Model', verbose=False)
+            mlflow.log_artifact('Trained Model' + '.pkl')
+            size_bytes = Path('Trained Model.pkl').stat().st_size
+            size_kb = np.round(size_bytes/1000, 2)
+            mlflow.set_tag("Size KB", size_kb)
+            os.remove('Trained Model.pkl')
+
+            # Log training time in seconds
+            mlflow.log_metric("TT", model_fit_time)
+            try:
+                mlflow.log_metrics(model_results.to_dict().get('Metric'))
+            except:
+                pass
     
     #storing into experiment
     if verbose:
         clear_output()
         tup = (topic_model_name,model)
         experiment__.append(tup)  
-    
+        
     return model
-
 
 
 def assign_model(model,
@@ -878,15 +1146,17 @@ def assign_model(model,
                               ['Status' , '. . . . . . . . . . . . . . . . . .' , 'Initializing'] ],
                               columns=['', ' ', '  ']).set_index('')
     if verbose:
-        display(progress)
-        display(monitor, display_id = 'monitor')
+        if html_param:
+            display(progress)
+            display(monitor, display_id = 'monitor')
         
     progress.value += 1
     
     monitor.iloc[1,1:] = 'Extracting Topics from Model'
     
     if verbose:
-        update_display(monitor, display_id = 'monitor')
+        if html_param:
+            update_display(monitor, display_id = 'monitor')
     
     progress.value += 1
     
@@ -1100,7 +1370,9 @@ def assign_model(model,
 
 def plot_model(model = None,
                plot = 'frequency',
-               topic_num = None):
+               topic_num = None,
+               save = False, #added in pycaret 2.0.0
+               system = True): #added in pycaret 2.0.0):
     
     
     """
@@ -1166,6 +1438,12 @@ def plot_model(model = None,
     Topic number to be passed as a string. If set to None, default generation will 
     be on 'Topic 0'
     
+    save: Boolean, default = False
+    Plot is saved as png file in local directory when save parameter set to True.
+
+    system: Boolean, default = True
+    Must remain True all times. Only to be changed by internal functions.
+
     Returns:
     --------
 
@@ -1259,7 +1537,13 @@ def plot_model(model = None,
     cf.go_offline()
     cf.set_config_file(offline=False, world_readable=True)
 
+    #save parameter
     
+    if save:
+        save_param = True
+    else:
+        save_param = False
+
     if plot == 'frequency':
         
         try:   
@@ -1278,9 +1562,9 @@ def plot_model(model = None,
 
                 common_words = get_top_n_words(data_[target_], n=100)
                 df2 = pd.DataFrame(common_words, columns = ['Text' , 'count'])
-
-                df2.groupby('Text').sum()['count'].sort_values(ascending=False).iplot(
-                kind='bar', yTitle='Count', linecolor='black', title='Top 100 words after removing stop words')
+                df3 = df2.groupby('Text').sum()['count'].sort_values(ascending=False).iplot(
+                kind='bar', yTitle='Count', linecolor='black', title='Top 100 words after removing stop words',
+                asFigure=save_param)
 
             else: 
 
@@ -1291,9 +1575,11 @@ def plot_model(model = None,
 
                 common_words = get_top_n_words(filtered_df[target_], n=100)
                 df2 = pd.DataFrame(common_words, columns = ['Text' , 'count'])
+                df3 = df2.groupby('Text').sum()['count'].sort_values(ascending=False).iplot(
+                kind='bar', yTitle='Count', linecolor='black', title=title, asFigure=save_param)
 
-                df2.groupby('Text').sum()['count'].sort_values(ascending=False).iplot(
-                kind='bar', yTitle='Count', linecolor='black', title=title)
+            if save:
+                df3.write_html('Word Frequency.html')
                 
         except:
             
@@ -1308,13 +1594,14 @@ def plot_model(model = None,
 
                 b = data_[target_].apply(lambda x: len(str(x).split()))
                 b = pd.DataFrame(b)
-                b[target_].iplot(
+                b = b[target_].iplot(
                 kind='hist',
                 bins=100,
                 xTitle='word count',
                 linecolor='black',
                 yTitle='count',
-                title='Word Count Distribution')
+                title='Word Count Distribution',
+                asFigure=save_param)
 
             else:
 
@@ -1324,13 +1611,17 @@ def plot_model(model = None,
 
                 b = filtered_df[target_].apply(lambda x: len(str(x).split()))
                 b = pd.DataFrame(b)
-                b[target_].iplot(
+                b = b[target_].iplot(
                 kind='hist',
                 bins=100,
                 xTitle='word count',
                 linecolor='black',
                 yTitle='count',
-                title= title)            
+                title= title,
+                asFigure=save_param)
+
+            if save:
+                b.write_html('Distribution.html')
 
         except:
             
@@ -1355,8 +1646,8 @@ def plot_model(model = None,
 
                 common_words = get_top_n_bigram(data_[target_], 100)
                 df3 = pd.DataFrame(common_words, columns = ['Text' , 'count'])
-                df3.groupby('Text').sum()['count'].sort_values(ascending=False).iplot(
-                kind='bar', yTitle='Count', linecolor='black', title='Top 100 bigrams after removing stop words')
+                df3 = df3.groupby('Text').sum()['count'].sort_values(ascending=False).iplot(
+                kind='bar', yTitle='Count', linecolor='black', title='Top 100 bigrams after removing stop words', asFigure=save_param)
 
             else:
 
@@ -1366,8 +1657,11 @@ def plot_model(model = None,
 
                 common_words = get_top_n_bigram(filtered_df[target_], 100)
                 df3 = pd.DataFrame(common_words, columns = ['Text' , 'count'])
-                df3.groupby('Text').sum()['count'].sort_values(ascending=False).iplot(
-                kind='bar', yTitle='Count', linecolor='black', title=title)            
+                df3 = df3.groupby('Text').sum()['count'].sort_values(ascending=False).iplot(
+                kind='bar', yTitle='Count', linecolor='black', title=title, asFigure=save_param)
+
+            if save:
+                df3.write_html('Bigram.html')            
     
         except:
             
@@ -1391,8 +1685,8 @@ def plot_model(model = None,
 
                 common_words = get_top_n_trigram(data_[target_], 100)
                 df3 = pd.DataFrame(common_words, columns = ['Text' , 'count'])
-                df3.groupby('Text').sum()['count'].sort_values(ascending=False).iplot(
-                kind='bar', yTitle='Count', linecolor='black', title='Top 100 trigrams after removing stop words')
+                df3 = df3.groupby('Text').sum()['count'].sort_values(ascending=False).iplot(
+                kind='bar', yTitle='Count', linecolor='black', title='Top 100 trigrams after removing stop words', asFigure=save_param)
 
             else:
 
@@ -1401,8 +1695,11 @@ def plot_model(model = None,
                 filtered_df = assigned_df.loc[assigned_df['Dominant_Topic'] == topic_num]            
                 common_words = get_top_n_trigram(filtered_df[target_], 100)
                 df3 = pd.DataFrame(common_words, columns = ['Text' , 'count'])
-                df3.groupby('Text').sum()['count'].sort_values(ascending=False).iplot(
-                kind='bar', yTitle='Count', linecolor='black', title=title)
+                df3 = df3.groupby('Text').sum()['count'].sort_values(ascending=False).iplot(
+                kind='bar', yTitle='Count', linecolor='black', title=title, asFigure=save_param)
+
+            if save:
+                df3.write_html('Trigram.html')  
                 
         except:
             
@@ -1421,13 +1718,14 @@ def plot_model(model = None,
 
                 sentiments = data_[target_].map(lambda text: TextBlob(text).sentiment.polarity)
                 sentiments = pd.DataFrame(sentiments)
-                sentiments[target_].iplot(
+                sentiments = sentiments[target_].iplot(
                 kind='hist',
                 bins=50,
                 xTitle='polarity',
                 linecolor='black',
                 yTitle='count',
-                title='Sentiment Polarity Distribution')
+                title='Sentiment Polarity Distribution',
+                asFigure=save_param)
 
             else: 
                 title = str(topic_num) + ': ' + 'Sentiment Polarity Distribution'
@@ -1435,13 +1733,17 @@ def plot_model(model = None,
                 filtered_df = assigned_df.loc[assigned_df['Dominant_Topic'] == topic_num] 
                 sentiments = filtered_df[target_].map(lambda text: TextBlob(text).sentiment.polarity)
                 sentiments = pd.DataFrame(sentiments)
-                sentiments[target_].iplot(
+                sentiments = sentiments[target_].iplot(
                 kind='hist',
                 bins=50,
                 xTitle='polarity',
                 linecolor='black',
                 yTitle='count',
-                title=title)            
+                title=title,
+                asFigure=save_param)
+
+            if save:
+                sentiments.write_html('Sentiments.html')              
          
         except:
             
@@ -1457,11 +1759,15 @@ def plot_model(model = None,
         pos_df = pd.DataFrame(blob.tags, columns = ['word' , 'pos'])
         pos_df = pos_df.loc[pos_df['pos'] != 'POS']
         pos_df = pos_df.pos.value_counts()[:20]
-        pos_df.iplot(
+        pos_df = pos_df.iplot(
         kind='bar',
         xTitle='POS',
         yTitle='count', 
-        title='Top 20 Part-of-speech tagging for review corpus')
+        title='Top 20 Part-of-speech tagging for review corpus',
+        asFigure=save_param)
+
+        if save:
+            pos_df.write_html('POS.html')  
         
         
     elif plot == 'tsne':
@@ -1489,7 +1795,12 @@ def plot_model(model = None,
         df = X
         fig = px.scatter_3d(df, x=0, y=1, z=2,
                       color='Dominant_Topic', title='3d TSNE Plot for Topic Model', opacity=0.7, width=900, height=800)
-        fig.show()
+        
+        if system:
+            fig.show()
+        
+        if save:
+            fig.write_html("TSNE.html")    
         
     
     elif plot == 'topic_model':
@@ -1584,8 +1895,12 @@ def plot_model(model = None,
 
         import plotly.express as px
         fig = px.bar(df2, x='Topic', y='Documents', hover_data = ['Keyword'], title='Document Distribution by Topics')
-        fig.show()
-    
+
+        if system:
+            fig.show()
+        
+        if save:
+            fig.write_html("Topic Distribution.html")    
         
     elif plot == 'wordcloud':
         
@@ -1617,7 +1932,14 @@ def plot_model(model = None,
             plt.axis("off") 
             plt.tight_layout(pad = 0) 
 
-            plt.show() 
+            if save or log_plots_param:
+                if system:
+                    plt.savefig("Wordcloud.png")
+                else:
+                    plt.savefig("Wordcloud.png")
+                    plt.close()
+            else:
+                plt.show() 
             
         except:
             sys.exit('(Value Error): Invalid topic_num param or empty Vocab. Try changing Topic Number.')
@@ -1645,9 +1967,14 @@ def plot_model(model = None,
         
         umap = UMAPVisualizer(random_state=seed)
         umap.fit(docs, ["c{}".format(c) for c in clusters.labels_])
-        umap.show()
-
-
+        
+        if save or log_plots_param:
+            if system:
+                umap.show(outpath="UMAP.png")
+            else:
+                umap.show(outpath="UMAP.png", clear_figure=True)
+        else:
+            umap.show()
 
 def tune_model(model=None,
                multi_core=False,
@@ -1655,7 +1982,8 @@ def tune_model(model=None,
                estimator=None,
                optimize=None,
                auto_fe = True,
-               fold=10):
+               fold=10,
+               verbose=True): #added in pycaret==2.0.0
 
 
     """
@@ -1883,7 +2211,9 @@ def tune_model(model=None,
     #progress bar
     max_steps = 25
     progress = ipw.IntProgress(value=0, min=0, max=max_steps, step=1 , description='Processing: ')
-    display(progress)
+    if verbose:
+        if html_param:
+            display(progress)
     
     timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
 
@@ -1893,10 +2223,15 @@ def tune_model(model=None,
                               columns=['', ' ', '   ']).set_index('')
     
     monitor_out = Output()
-    display(monitor_out)
     
-    with monitor_out:
-        display(monitor, display_id = 'monitor')
+    if verbose:
+        if html_param:
+            display(monitor_out)
+    
+    if verbose:
+        if html_param:
+            with monitor_out:
+                display(monitor, display_id = 'monitor')
 
     #General Dependencies
     from sklearn.linear_model import LogisticRegression
@@ -1957,22 +2292,30 @@ def tune_model(model=None,
         if auto_fe:
 
             monitor.iloc[1,1:] = 'Feature Engineering'
-            update_display(monitor, display_id = 'monitor')
+            if verbose:
+                if html_param:
+                    update_display(monitor, display_id = 'monitor')
 
             from textblob import TextBlob
 
             monitor.iloc[2,1:] = 'Extracting Polarity'
-            update_display(monitor, display_id = 'monitor')
+            if verbose:
+                if html_param:
+                    update_display(monitor, display_id = 'monitor')
 
             polarity = data_[target_].map(lambda text: TextBlob(text).sentiment.polarity)
 
             monitor.iloc[2,1:] = 'Extracting Subjectivity'
-            update_display(monitor, display_id = 'monitor')
+            if verbose:
+                if html_param:
+                    update_display(monitor, display_id = 'monitor')
 
             subjectivity = data_[target_].map(lambda text: TextBlob(text).sentiment.subjectivity)
 
             monitor.iloc[2,1:] = 'Extracting Wordcount'
-            update_display(monitor, display_id = 'monitor')
+            if verbose:
+                if html_param:
+                    update_display(monitor, display_id = 'monitor')
 
             word_count = [len(i) for i in text]
 
@@ -1984,12 +2327,16 @@ def tune_model(model=None,
     master = []; master_df = []
 
     monitor.iloc[1,1:] = 'Creating Topic Model'
-    update_display(monitor, display_id = 'monitor')
+    if verbose:
+        if html_param:
+            update_display(monitor, display_id = 'monitor')
 
     for i in param_grid:
         progress.value += 1                      
         monitor.iloc[2,1:] = 'Fitting Model With ' + str(i) + ' Topics'
-        update_display(monitor, display_id = 'monitor')
+        if verbose:
+            if html_param:
+                update_display(monitor, display_id = 'monitor')
 
         #create and assign the model to dataset d
         m = create_model(model=model, multi_core=multi_core, num_topics=i, verbose=False)
@@ -2008,7 +2355,9 @@ def tune_model(model=None,
     if problem == 'unsupervised':
 
         monitor.iloc[1,1:] = 'Evaluating Topic Model'
-        update_display(monitor, display_id = 'monitor')
+        if verbose:
+            if html_param:
+                update_display(monitor, display_id = 'monitor')
 
         from gensim.models import CoherenceModel
 
@@ -2020,7 +2369,9 @@ def tune_model(model=None,
         for i in master:
             progress.value += 1 
             monitor.iloc[2,1:] = 'Evaluating Coherence With ' + str(param_grid[counter]) + ' Topics'
-            update_display(monitor, display_id = 'monitor')
+            if verbose:
+                if html_param:
+                    update_display(monitor, display_id = 'monitor')
 
             model = CoherenceModel(model=i, texts=text, dictionary=id2word, coherence='c_v')
             model_coherence = model.get_coherence()
@@ -2030,7 +2381,9 @@ def tune_model(model=None,
 
         monitor.iloc[1,1:] = 'Compiling Results'
         monitor.iloc[1,1:] = 'Finalizing'
-        update_display(monitor, display_id = 'monitor')
+        if verbose:
+            if html_param:
+                update_display(monitor, display_id = 'monitor')
 
         df = pd.DataFrame({'# Topics': param_grid, 'Score' : coherence, 'Metric': metric})
         df.columns = ['# Topics', 'Score', 'Metric']
@@ -2049,7 +2402,9 @@ def tune_model(model=None,
         fig.show()
         
         monitor = '' 
-        update_display(monitor, display_id = 'monitor')
+        if verbose:
+            if html_param:
+                update_display(monitor, display_id = 'monitor')
         
         monitor_out.clear_output()
         progress.close()
@@ -2069,7 +2424,9 @@ def tune_model(model=None,
         """
 
         monitor.iloc[1,1:] = 'Evaluating Topic Model'
-        update_display(monitor, display_id = 'monitor')
+        if verbose:
+            if html_param:
+                update_display(monitor, display_id = 'monitor')
 
         if estimator == 'lr':
 
@@ -2192,7 +2549,9 @@ def tune_model(model=None,
             param_grid_val = param_grid[i]
 
             monitor.iloc[2,1:] = 'Evaluating Classifier With ' + str(param_grid_val) + ' Topics'
-            update_display(monitor, display_id = 'monitor')                
+            if verbose:
+                if html_param:
+                    update_display(monitor, display_id = 'monitor')                
 
             #prepare the dataset for supervised problem
             d = master_df[i]
@@ -2237,7 +2596,9 @@ def tune_model(model=None,
 
         monitor.iloc[1,1:] = 'Compiling Results'
         monitor.iloc[1,1:] = 'Finalizing'
-        update_display(monitor, display_id = 'monitor')
+        if verbose:
+            if html_param:
+                update_display(monitor, display_id = 'monitor')
 
         df = pd.DataFrame({'# Topics': param_grid, 'Accuracy' : acc, 'AUC' : auc, 'Recall' : recall, 
                    'Precision' : prec, 'F1' : f1, 'Kappa' : kappa})
@@ -2259,7 +2620,9 @@ def tune_model(model=None,
         fig.show()
         
         monitor = ''
-        update_display(monitor, display_id = 'monitor')
+        if verbose:
+            if html_param:
+                update_display(monitor, display_id = 'monitor')
         
         monitor_out.clear_output()
         progress.close()
@@ -2278,7 +2641,9 @@ def tune_model(model=None,
         """
 
         monitor.iloc[1,1:] = 'Evaluating Topic Model'
-        update_display(monitor, display_id = 'monitor')
+        if verbose:
+            if html_param:
+                update_display(monitor, display_id = 'monitor')
 
         if estimator == 'lr':
 
@@ -2443,7 +2808,9 @@ def tune_model(model=None,
             param_grid_val = param_grid[i]
 
             monitor.iloc[2,1:] = 'Evaluating Regressor With ' + str(param_grid_val) + ' Topics'
-            update_display(monitor, display_id = 'monitor')    
+            if verbose:
+                if html_param:
+                    update_display(monitor, display_id = 'monitor')    
 
             #prepare the dataset for supervised problem
             d = master_df[i]
@@ -2486,7 +2853,9 @@ def tune_model(model=None,
 
         monitor.iloc[1,1:] = 'Compiling Results'
         monitor.iloc[1,1:] = 'Finalizing'
-        update_display(monitor, display_id = 'monitor')                    
+        if verbose:
+            if html_param:
+                update_display(monitor, display_id = 'monitor')                    
 
         df = pd.DataFrame({'# Topics': param_grid, 'Score' : score, 'Metric': metric})
         df.columns = ['# Topics', optimize, 'Metric']
@@ -2509,7 +2878,9 @@ def tune_model(model=None,
         progress.value += 1
         
         monitor = ''
-        update_display(monitor, display_id = 'monitor')
+        if verbose:
+            if html_param:
+                update_display(monitor, display_id = 'monitor')
         
         monitor_out.clear_output()
         progress.close()
@@ -2613,7 +2984,8 @@ def evaluate_model(model):
 
 
 
-def save_model(model, model_name):
+def save_model(model, model_name, 
+               verbose=True): #added in pycaret==2.0.0)
     
     """
           
@@ -2642,6 +3014,9 @@ def save_model(model, model_name):
     model_name : string, default = none
     Name of pickle file to be passed as a string.
 
+    verbose : bool, default = True
+    When set to False, success message is not printed.
+
     Returns:
     --------    
     Success Message
@@ -2656,11 +3031,13 @@ def save_model(model, model_name):
     import joblib
     model_name = model_name + '.pkl'
     joblib.dump(model, model_name)
-    print('Model Succesfully Saved')
+    if verbose:
+        print('Model Succesfully Saved')
 
 
 
-def load_model(model_name):
+def load_model(model_name, 
+              verbose=True): #added in pycaret==2.0.0)
     
     """
           
@@ -2681,6 +3058,9 @@ def load_model(model_name):
     model_name : string, default = none
     Name of pickle file to be passed as a string.
 
+    verbose : bool, default = True
+    When set to False, success message is not printed.
+
     Returns:
     --------    
     Success Message
@@ -2692,12 +3072,11 @@ def load_model(model_name):
          
     """
         
-        
     import joblib
     model_name = model_name + '.pkl'
-    print('Model Sucessfully Loaded')
+    if verbose:
+        print('Model Sucessfully Loaded')
     return joblib.load(model_name)
-
 
 
 def save_experiment(experiment_name=None):
@@ -2755,7 +3134,6 @@ def save_experiment(experiment_name=None):
     print('Experiment Succesfully Saved')
 
 
-
 def load_experiment(experiment_name):
     
     """
@@ -2806,8 +3184,6 @@ def load_experiment(experiment_name):
     display(ind)
 
     return exp
-
-
 
 def get_topics(data, text, model=None, num_topics=4):
     
