@@ -48,6 +48,8 @@ def setup(data,
           feature_interaction = False,                   
           feature_ratio = False,                         
           interaction_threshold = 0.01,
+          fix_imbalance = False, #added in pycaret==2.0.0
+          fix_imbalance_method = None, #added in pycaret==2.0.0
           data_split_shuffle = True, #added in pycaret==2.0.0
           folds_shuffle = False, #added in pycaret==2.0.0
           n_jobs = -1, #added in pycaret==2.0.0
@@ -358,6 +360,16 @@ def setup(data,
     percentile of the  defined threshold are kept in the dataset. Remaining features 
     are dropped before further processing.
     
+    fix_imbalance: bool, default = False
+    When dataset has unequal distribution of target class it can be fixed using
+    fix_imbalance parameter. When set to True, SMOTE (Synthetic Minority Over-sampling 
+    Technique) is applied by default to create synthetic datapoints for minority class.
+
+    fix_imbalance_method: obj, default = None
+    When fix_imbalance is set to True and fix_imbalance_method is None, 'smote' is applied 
+    by default to oversample minority class during cross validation. This parameter
+    accepts any module from 'imblearn' that supports 'fit_resample' method.
+
     data_split_shuffle: bool, default = True
     If set to False, prevents shuffling of rows when splitting data
 
@@ -781,7 +793,8 @@ def setup(data,
     #declaring global variables to be accessed by other functions
     global X, y, X_train, X_test, y_train, y_test, seed, prep_pipe, experiment__,\
         folds_shuffle_param, n_jobs_param, create_model_container, master_model_container,\
-        display_container, exp_name_log, logging_param, log_plots_param, USI
+        display_container, exp_name_log, logging_param, log_plots_param, USI,\
+        fix_imbalance_param, fix_imbalance_method_param
     
     #generate seed to be used globally
     if session_id is None:
@@ -1192,6 +1205,15 @@ def setup(data,
     else:
         log_plots_param = False
 
+    #create a fix_imbalance_param and fix_imbalance_method_param
+    fix_imbalance_param = fix_imbalance
+    fix_imbalance_method_param = fix_imbalance_method
+    
+    if fix_imbalance_method_param is None:
+        fix_imbalance_model_name = 'SMOTE'
+    else:
+        fix_imbalance_model_name = str(fix_imbalance_method_param).split("(")[0]
+
     #sample estimator
     if sample_estimator is None:
         model = LogisticRegression()
@@ -1392,9 +1414,9 @@ def setup(data,
                                          ['Missing Values ', missing_flag],
                                          ['Numeric Features ', str(float_type) ],
                                          ['Categorical Features ', str(cat_type) ],
-                                         ['Ordinal Features ', ordinal_features_grid], #new
-                                         ['High Cardinality Features ', high_cardinality_features_grid], #latest
-                                         ['High Cardinality Method ', high_cardinality_method_grid], #latest
+                                         ['Ordinal Features ', ordinal_features_grid], 
+                                         ['High Cardinality Features ', high_cardinality_features_grid],
+                                         ['High Cardinality Method ', high_cardinality_method_grid],
                                          ['Sampled Data', '(' + str(X_train.shape[0] + X_test.shape[0]) + ', ' + str(data_before_preprocess.shape[1]) + ')' ], 
                                          ['Transformed Train Set', X_train.shape ], 
                                          ['Transformed Test Set',X_test.shape ],
@@ -1417,16 +1439,18 @@ def setup(data,
                                          ['Multicollinearity Threshold ', multicollinearity_threshold_grid],
                                          ['Clustering ', create_clusters],
                                          ['Clustering Iteration ', cluster_iter_grid],
-                                         ['Polynomial Features ', polynomial_features], #new
-                                         ['Polynomial Degree ', polynomial_degree_grid], #new
-                                         ['Trignometry Features ', trigonometry_features], #new
-                                         ['Polynomial Threshold ', polynomial_threshold_grid], #new
-                                         ['Group Features ', group_features_grid], #new
-                                         ['Feature Selection ', feature_selection], #new
-                                         ['Features Selection Threshold ', feature_selection_threshold_grid], #new
-                                         ['Feature Interaction ', feature_interaction], #new
-                                         ['Feature Ratio ', feature_ratio], #new
-                                         ['Interaction Threshold ', interaction_threshold_grid], #new
+                                         ['Polynomial Features ', polynomial_features],
+                                         ['Polynomial Degree ', polynomial_degree_grid], 
+                                         ['Trignometry Features ', trigonometry_features], 
+                                         ['Polynomial Threshold ', polynomial_threshold_grid], 
+                                         ['Group Features ', group_features_grid], 
+                                         ['Feature Selection ', feature_selection],
+                                         ['Features Selection Threshold ', feature_selection_threshold_grid], 
+                                         ['Feature Interaction ', feature_interaction], 
+                                         ['Feature Ratio ', feature_ratio], 
+                                         ['Interaction Threshold ', interaction_threshold_grid],
+                                         ['Fix Imbalance', fix_imbalance_param],
+                                         ['Fix Imbalance Method', fix_imbalance_model_name] 
                                        ], columns = ['Description', 'Value'] )
 
             functions_ = functions.style.apply(highlight_max)
@@ -1486,9 +1510,9 @@ def setup(data,
                                          ['Missing Values ', missing_flag],
                                          ['Numeric Features ', str(float_type) ],
                                          ['Categorical Features ', str(cat_type) ],
-                                         ['Ordinal Features ', ordinal_features_grid], #new
+                                         ['Ordinal Features ', ordinal_features_grid], 
                                          ['High Cardinality Features ', high_cardinality_features_grid],
-                                         ['High Cardinality Method ', high_cardinality_method_grid], #latest
+                                         ['High Cardinality Method ', high_cardinality_method_grid], 
                                          ['Sampled Data', '(' + str(X_train.shape[0] + X_test.shape[0]) + ', ' + str(data_before_preprocess.shape[1]) + ')' ], 
                                          ['Transformed Train Set', X_train.shape ], 
                                          ['Transformed Test Set',X_test.shape ],
@@ -1511,16 +1535,18 @@ def setup(data,
                                          ['Multicollinearity Threshold ', multicollinearity_threshold_grid],
                                          ['Clustering ', create_clusters],
                                          ['Clustering Iteration ', cluster_iter_grid],
-                                         ['Polynomial Features ', polynomial_features], #new
-                                         ['Polynomial Degree ', polynomial_degree_grid], #new
-                                         ['Trignometry Features ', trigonometry_features], #new
-                                         ['Polynomial Threshold ', polynomial_threshold_grid], #new
-                                         ['Group Features ', group_features_grid], #new
-                                         ['Feature Selection ', feature_selection], #new
-                                         ['Features Selection Threshold ', feature_selection_threshold_grid], #new
-                                         ['Feature Interaction ', feature_interaction], #new
-                                         ['Feature Ratio ', feature_ratio], #new
-                                         ['Interaction Threshold ', interaction_threshold_grid], #new
+                                         ['Polynomial Features ', polynomial_features], 
+                                         ['Polynomial Degree ', polynomial_degree_grid], 
+                                         ['Trignometry Features ', trigonometry_features], 
+                                         ['Polynomial Threshold ', polynomial_threshold_grid], 
+                                         ['Group Features ', group_features_grid], 
+                                         ['Feature Selection ', feature_selection], 
+                                         ['Features Selection Threshold ', feature_selection_threshold_grid], 
+                                         ['Feature Interaction ', feature_interaction], 
+                                         ['Feature Ratio ', feature_ratio], 
+                                         ['Interaction Threshold ', interaction_threshold_grid],
+                                         ['Fix Imbalance', fix_imbalance_param],
+                                         ['Fix Imbalance Method', fix_imbalance_model_name] 
                                        ], columns = ['Description', 'Value'] )
             
             #functions_ = functions.style.hide_index()
@@ -1579,9 +1605,9 @@ def setup(data,
                                      ['Missing Values ', missing_flag],
                                      ['Numeric Features ', str(float_type) ],
                                      ['Categorical Features ', str(cat_type) ],
-                                     ['Ordinal Features ', ordinal_features_grid], #new
+                                     ['Ordinal Features ', ordinal_features_grid],
                                      ['High Cardinality Features ', high_cardinality_features_grid],
-                                     ['High Cardinality Method ', high_cardinality_method_grid], #latest
+                                     ['High Cardinality Method ', high_cardinality_method_grid],
                                      ['Sampled Data', '(' + str(X_train.shape[0] + X_test.shape[0]) + ', ' + str(data_before_preprocess.shape[1]) + ')' ], 
                                      ['Transformed Train Set', X_train.shape ], 
                                      ['Transformed Test Set',X_test.shape ],
@@ -1604,16 +1630,18 @@ def setup(data,
                                      ['Multicollinearity Threshold ', multicollinearity_threshold_grid],
                                      ['Clustering ', create_clusters],
                                      ['Clustering Iteration ', cluster_iter_grid],
-                                     ['Polynomial Features ', polynomial_features], #new
-                                     ['Polynomial Degree ', polynomial_degree_grid], #new
-                                     ['Trignometry Features ', trigonometry_features], #new
-                                     ['Polynomial Threshold ', polynomial_threshold_grid], #new
-                                     ['Group Features ', group_features_grid], #new
-                                     ['Feature Selection ', feature_selection], #new
-                                     ['Features Selection Threshold ', feature_selection_threshold_grid], #new
-                                     ['Feature Interaction ', feature_interaction], #new
-                                     ['Feature Ratio ', feature_ratio], #new
-                                     ['Interaction Threshold ', interaction_threshold_grid], #new
+                                     ['Polynomial Features ', polynomial_features],
+                                     ['Polynomial Degree ', polynomial_degree_grid],
+                                     ['Trignometry Features ', trigonometry_features],
+                                     ['Polynomial Threshold ', polynomial_threshold_grid],
+                                     ['Group Features ', group_features_grid],
+                                     ['Feature Selection ', feature_selection],
+                                     ['Features Selection Threshold ', feature_selection_threshold_grid],
+                                     ['Feature Interaction ', feature_interaction], 
+                                     ['Feature Ratio ', feature_ratio], 
+                                     ['Interaction Threshold ', interaction_threshold_grid], 
+                                     ['Fix Imbalance', fix_imbalance_param],
+                                     ['Fix Imbalance Method', fix_imbalance_model_name] 
                                    ], columns = ['Description', 'Value'] )
         
         functions_ = functions.style.apply(highlight_max)
@@ -1739,14 +1767,15 @@ def setup(data,
 
     return X, y, X_train, X_test, y_train, y_test, seed, prep_pipe, experiment__,\
         folds_shuffle_param, n_jobs_param, html_param, create_model_container, master_model_container,\
-        display_container, exp_name_log, logging_param, log_plots_param, USI
+        display_container, exp_name_log, logging_param, log_plots_param, USI,\
+        fix_imbalance_param, fix_imbalance_method_param
 
 
 def create_model(estimator = None, 
                  ensemble = False, 
                  method = None, 
                  fold = 10, 
-                 round = 4,  
+                 round = 4,
                  verbose = True,
                  system = True, #added in pycaret==2.0.0
                  **kwargs): #added in pycaret==2.0.0
@@ -2209,8 +2238,19 @@ def create_model(estimator = None,
         Xtrain,Xtest = data_X.iloc[train_i], data_X.iloc[test_i]
         ytrain,ytest = data_y.iloc[train_i], data_y.iloc[test_i]
         time_start=time.time()
-        if hasattr(model, 'predict_proba'):
+
+        if fix_imbalance_param:
             
+            if fix_imbalance_method_param is None:
+                from imblearn.over_sampling import SMOTE
+                resampler = SMOTE(random_state=seed)
+            else:
+                resampler = fix_imbalance_method_param
+
+            Xtrain,ytrain = resampler.fit_sample(Xtrain, ytrain)
+
+        if hasattr(model, 'predict_proba'):
+
             model.fit(Xtrain,ytrain)
             pred_prob = model.predict_proba(Xtest)
             pred_prob = pred_prob[:,1]
@@ -2877,6 +2917,17 @@ def ensemble_model(estimator,
         Xtrain,Xtest = data_X.iloc[train_i], data_X.iloc[test_i]
         ytrain,ytest = data_y.iloc[train_i], data_y.iloc[test_i]
         time_start=time.time()
+
+        if fix_imbalance_param:
+            
+            if fix_imbalance_method_param is None:
+                from imblearn.over_sampling import SMOTE
+                resampler = SMOTE(random_state=seed)
+            else:
+                resampler = fix_imbalance_method_param
+
+            Xtrain,ytrain = resampler.fit_sample(Xtrain, ytrain)
+
         if hasattr(model, 'predict_proba'):
         
             model.fit(Xtrain,ytrain)
@@ -4360,6 +4411,16 @@ def compare_models(blacklist = None,
             Xtrain,Xtest = data_X.iloc[train_i], data_X.iloc[test_i]
             ytrain,ytest = data_y.iloc[train_i], data_y.iloc[test_i]
             
+            if fix_imbalance_param:
+                
+                if fix_imbalance_method_param is None:
+                    from imblearn.over_sampling import SMOTE
+                    resampler = SMOTE(random_state = seed)
+                else:
+                    resampler = fix_imbalance_method_param
+
+                Xtrain,ytrain = resampler.fit_sample(Xtrain, ytrain)
+
             if hasattr(model, 'predict_proba'):
                 time_start=time.time()    
                 model.fit(Xtrain,ytrain)
@@ -5463,6 +5524,17 @@ def tune_model(estimator = None,
         Xtrain,Xtest = data_X.iloc[train_i], data_X.iloc[test_i]
         ytrain,ytest = data_y.iloc[train_i], data_y.iloc[test_i]
         time_start=time.time()
+
+        if fix_imbalance_param:
+            
+            if fix_imbalance_method_param is None:
+                from imblearn.over_sampling import SMOTE
+                resampler = SMOTE(random_state = seed)
+            else:
+                resampler = fix_imbalance_method_param
+
+            Xtrain,ytrain = resampler.fit_sample(Xtrain, ytrain)
+
         if hasattr(model, 'predict_proba'):
         
             model.fit(Xtrain,ytrain)
@@ -6289,6 +6361,17 @@ def blend_models(estimator_list = 'All',
         Xtrain,Xtest = data_X.iloc[train_i], data_X.iloc[test_i]
         ytrain,ytest = data_y.iloc[train_i], data_y.iloc[test_i]    
         time_start=time.time()
+
+        if fix_imbalance_param:
+            
+            if fix_imbalance_method_param is None:
+                from imblearn.over_sampling import SMOTE
+                resampler = SMOTE(random_state = seed)
+            else:
+                resampler = fix_imbalance_method_param
+
+            Xtrain,ytrain = resampler.fit_sample(Xtrain, ytrain)
+
         if voting == 'hard':
         
             model.fit(Xtrain,ytrain)
@@ -7035,6 +7118,16 @@ def stack_models(estimator_list,
         Xtrain,Xtest = data_X.iloc[train_i], data_X.iloc[test_i]
         ytrain,ytest = data_y.iloc[train_i], data_y.iloc[test_i]
         
+        if fix_imbalance_param:
+            
+            if fix_imbalance_method_param is None:
+                from imblearn.over_sampling import SMOTE
+                resampler = SMOTE(random_state = seed)
+            else:
+                resampler = fix_imbalance_method_param
+
+            Xtrain,ytrain = resampler.fit_sample(Xtrain, ytrain)
+
         time_start=time.time()
         model.fit(Xtrain,ytrain)
         
@@ -7860,6 +7953,17 @@ def create_stacknet(estimator_list,
         ytrain,ytest = data_y.iloc[train_i], data_y.iloc[test_i]
         
         time_start=time.time()
+
+        if fix_imbalance_param:
+            
+            if fix_imbalance_method_param is None:
+                from imblearn.over_sampling import SMOTE
+                resampler = SMOTE(random_state = seed)
+            else:
+                resampler = fix_imbalance_method_param
+
+            Xtrain,ytrain = resampler.fit_sample(Xtrain, ytrain)
+
         model.fit(Xtrain,ytrain)
         try:
             pred_prob = model.predict_proba(Xtest)
@@ -8664,6 +8768,17 @@ def calibrate_model(estimator,
         Xtrain,Xtest = data_X.iloc[train_i], data_X.iloc[test_i]
         ytrain,ytest = data_y.iloc[train_i], data_y.iloc[test_i]
         time_start=time.time()
+
+        if fix_imbalance_param:
+            
+            if fix_imbalance_method_param is None:
+                from imblearn.over_sampling import SMOTE
+                resampler = SMOTE(random_state = seed)
+            else:
+                resampler = fix_imbalance_method_param
+
+            Xtrain,ytrain = resampler.fit_sample(Xtrain, ytrain)
+
         if hasattr(model, 'predict_proba'):
         
             model.fit(Xtrain,ytrain)
@@ -10654,3 +10769,61 @@ def automl(optimize='Accuracy', use_holdout=False):
 def pull():
     return display_container[-1]
 
+def models():
+    """
+    returns table of models available in model zoo
+    """
+
+    import pandas as pd
+
+    model_id = ['lr', 'knn', 'nb', 'dt', 'svm', 'rbfsvm', 'gpc', 'mlp', 'ridge', 'rf', 'qda', 'ada', 'gbc', 'lda', 'et', 'xgboost', 'lightgbm', 'catboost']
+    
+    model_name = ['Logistic Regression',
+                    'K Neighbors Classifier',
+                    'Naive Bayes',
+                    'Decision Tree Classifier',
+                    'SVM - Linear Kernel',
+                    'SVM - Radial Kernel',
+                    'Gaussian Process Classifier',
+                    'MLP Classifier',
+                    'Ridge Classifier',
+                    'Random Forest Classifier',
+                    'Quadratic Discriminant Analysis',
+                    'Ada Boost Classifier',
+                    'Gradient Boosting Classifier',
+                    'Linear Discriminant Analysis',
+                    'Extra Trees Classifier',
+                    'Extreme Gradient Boosting',
+                    'Light Gradient Boosting Machine',
+                    'CatBoost Classifier']    
+
+    model_ref = ['sklearn.linear_model.LogisticRegression',
+                'sklearn.neighbors.KNeighborsClassifier',
+                'sklearn.naive_bayes.GaussianNB',
+                'sklearn.tree.DecisionTreeClassifier',
+                'sklearn.linear_model.SGDClassifier',
+                'sklearn.svm.SVC',
+                'sklearn.gaussian_process.GPC',
+                'sklearn.neural_network.MLPClassifier',
+                'sklearn.linear_model.RidgeClassifier',
+                'sklearn.ensemble.RandomForestClassifier',
+                'sklearn.discriminant_analysis.QDA',
+                'sklearn.ensemble.AdaBoostClassifier',
+                'sklearn.ensemble.GradientBoostingClassifier',
+                'sklearn.discriminant_analysis.LDA', 
+                'sklearn.ensemble.ExtraTreesClassifier',
+                'xgboost.readthedocs.io',
+                'github.com/microsoft/LightGBM',
+                'catboost.ai']
+
+    model_turbo = [True, True, True, True, True, False, False, False, True,
+                   True, True, True, True, True, True, True, True, True]
+
+    df = pd.DataFrame({'ID' : model_id, 
+                       'Name' : model_name,
+                       'Reference' : model_ref,
+                        'Turbo' : model_turbo})
+
+    df.set_index('ID', inplace=True)
+
+    return df
