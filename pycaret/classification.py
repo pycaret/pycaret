@@ -721,6 +721,51 @@ def setup(data,
     if type(silent) is not bool:
         sys.exit("(Type Error): silent parameter only accepts True or False. ")
     
+    #remove_perfect_collinearity
+    if type(remove_perfect_collinearity) is not bool:
+        sys.exit('(Type Error): remove_perfect_collinearity parameter only accepts True or False.')
+
+    #html
+    if type(html) is not bool:
+        sys.exit('(Type Error): html parameter only accepts True or False.')
+
+    #folds_shuffle
+    if type(folds_shuffle) is not bool:
+        sys.exit('(Type Error): folds_shuffle parameter only accepts True or False.')
+
+    #data_split_shuffle
+    if type(data_split_shuffle) is not bool:
+        sys.exit('(Type Error): data_split_shuffle parameter only accepts True or False.')
+
+    #logging
+    if type(logging) is not bool:
+        sys.exit('(Type Error): logging parameter only accepts True or False.')
+
+    #log_plots
+    if type(log_plots) is not bool:
+        sys.exit('(Type Error): log_plots parameter only accepts True or False.')
+
+    #log_data
+    if type(log_data) is not bool:
+        sys.exit('(Type Error): log_data parameter only accepts True or False.')
+
+    #log_profile
+    if type(log_profile) is not bool:
+        sys.exit('(Type Error): log_profile parameter only accepts True or False.')
+
+    #fix_imbalance
+    if type(fix_imbalance) is not bool:
+        sys.exit('(Type Error): fix_imbalance parameter only accepts True or False.')
+
+    #fix_imbalance_method
+    if fix_imbalance_method is not None:
+        if hasattr(fix_imbalance_method, 'fit_sample'):
+            pass
+        else:
+            sys.exit('(Type Error): fix_imbalance_method must contain resampler with fit_sample method.')
+
+
+
     #pre-load libraries
     import pandas as pd
     import ipywidgets as ipw
@@ -10806,7 +10851,7 @@ def pull():
 
 def models():
     """
-    returns table of models available in model zoo
+    returns table of models available in model library
     """
 
     import pandas as pd

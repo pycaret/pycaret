@@ -482,7 +482,30 @@ def setup(data,
         if type(group_names) is not list:
             sys.exit('(Type Error): group_names must be of type list. ')        
 
-    
+    #silent
+    if type(silent) is not bool:
+        sys.exit("(Type Error): silent parameter only accepts True or False. ")
+        
+    #html
+    if type(html) is not bool:
+        sys.exit('(Type Error): html parameter only accepts True or False.')
+
+    #logging
+    if type(logging) is not bool:
+        sys.exit('(Type Error): logging parameter only accepts True or False.')
+
+    #log_plots
+    if type(log_plots) is not bool:
+        sys.exit('(Type Error): log_plots parameter only accepts True or False.')
+
+    #log_data
+    if type(log_data) is not bool:
+        sys.exit('(Type Error): log_data parameter only accepts True or False.')
+
+    #log_profile
+    if type(log_profile) is not bool:
+        sys.exit('(Type Error): log_profile parameter only accepts True or False.')
+
     """
     error handling ends here
     """
@@ -1088,15 +1111,15 @@ def create_model(model = None,
 
     Model                              Abbreviated String   Original Implementation 
     ---------                          ------------------   -----------------------
-    K-Means clustering                 'kmeans'             sklearn.cluster.KMeans.html
+    K-Means Clustering                 'kmeans'             sklearn.cluster.KMeans.html
     Affinity Propagation               'ap'                 AffinityPropagation.html
-    Mean shift clustering              'meanshift'          sklearn.cluster.MeanShift.html
+    Mean shift Clustering              'meanshift'          sklearn.cluster.MeanShift.html
     Spectral Clustering                'sc'                 SpectralClustering.html
     Agglomerative Clustering           'hclust'             AgglomerativeClustering.html
     Density-Based Spatial Clustering   'dbscan'             sklearn.cluster.DBSCAN.html
     OPTICS Clustering                  'optics'             sklearn.cluster.OPTICS.html
     Birch Clustering                   'birch'              sklearn.cluster.Birch.html
-    K-Modes clustering                 'kmodes'             git/nicodv/kmodes
+    K-Modes Clustering                 'kmodes'             git/nicodv/kmodes
     
     num_clusters: int, default = None
     Number of clusters to be generated with the dataset. If None, num_clusters is set to 4. 
@@ -3755,3 +3778,41 @@ def get_clusters(data,
         c = create_model(model=model, verbose=False, system=False)
     dataset = assign_model(c, verbose=False)
     return dataset
+
+def models():
+
+    """
+    returns table of models available in model library
+    """
+
+    import pandas as pd
+
+    model_id = ['kmeans', 'ap', 'meanshift', 'sc', 'hclust', 'dbscan', 'optics', 'birch', 'kmodes']
+
+    model_name = ['K-Means Clustering',
+                  'Affinity Propagation',
+                  'Mean shift Clustering',
+                  'Spectral Clustering',
+                  'Agglomerative Clustering',
+                  'Density-Based Spatial Clustering',
+                  'OPTICS Clustering',
+                  'Birch Clustering',
+                  'K-Modes Clustering']
+
+    model_ref = ['sklearn.cluster.KMeans',
+                  'sklearn.cluster.AffinityPropagation',
+                  'sklearn.cluster.MeanShift',
+                  'sklearn.cluster.SpectralClustering',
+                  'sklearn.cluster.AgglomerativeClustering',
+                  'sklearn.cluster.DBSCAN',
+                  'sklearn.cluster.OPTICS',
+                  'sklearn.cluster.Birch',
+                  'git/nicodv/kmodes']
+
+    df = pd.DataFrame({'ID' : model_id, 
+                        'Name' : model_name,
+                        'Reference' : model_ref})
+
+    df.set_index('ID', inplace=True)
+
+    return df

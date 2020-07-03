@@ -143,7 +143,30 @@ def setup(data,
     except:
         sys.exit('(Type Error): spacy english model is not yet downloaded. See the documentation of setup to see installation guide.')
     
-    
+    #silent
+    if type(silent) is not bool:
+        sys.exit("(Type Error): silent parameter only accepts True or False. ")
+        
+    #html
+    if type(html) is not bool:
+        sys.exit('(Type Error): html parameter only accepts True or False.')
+
+    #logging
+    if type(logging) is not bool:
+        sys.exit('(Type Error): logging parameter only accepts True or False.')
+
+    #log_plots
+    if type(log_plots) is not bool:
+        sys.exit('(Type Error): log_plots parameter only accepts True or False.')
+
+    #log_data
+    if type(log_data) is not bool:
+        sys.exit('(Type Error): log_data parameter only accepts True or False.')
+
+    #verbose
+    if type(verbose) is not bool:
+        sys.exit('(Type Error): verbose parameter only accepts True or False.')
+
     """
     error handling ends here
     """
@@ -3200,3 +3223,32 @@ def get_topics(data, text, model=None, num_topics=4):
     return dataset
 
 
+def models():
+
+    """
+    returns table of models available in model library
+    """
+
+    import pandas as pd
+
+    model_id = ['lda', 'lsi', 'hdp', 'rp', 'nmf']
+
+    model_name = ['Latent Dirichlet Allocation',
+                  'Latent Semantic Indexing',
+                  'Hierarchical Dirichlet Process',
+                  'Random Projections',
+                  'Non-Negative Matrix Factorization']
+
+    model_ref = ['gensim/models/ldamodel',
+                  'gensim/models/lsimodel',
+                  'gensim/models/hdpmodel',
+                  'gensim/models/rpmodel',
+                  'sklearn.decomposition.NMF']
+
+    df = pd.DataFrame({'ID' : model_id, 
+                        'Name' : model_name,
+                        'Reference' : model_ref})
+
+    df.set_index('ID', inplace=True)
+
+    return df

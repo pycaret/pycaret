@@ -482,6 +482,30 @@ def setup(data,
         if type(group_names) is not list:
             sys.exit('(Type Error): group_names must be of type list. ')        
 
+    #silent
+    if type(silent) is not bool:
+        sys.exit("(Type Error): silent parameter only accepts True or False. ")
+        
+    #html
+    if type(html) is not bool:
+        sys.exit('(Type Error): html parameter only accepts True or False.')
+
+    #logging
+    if type(logging) is not bool:
+        sys.exit('(Type Error): logging parameter only accepts True or False.')
+
+    #log_plots
+    if type(log_plots) is not bool:
+        sys.exit('(Type Error): log_plots parameter only accepts True or False.')
+
+    #log_data
+    if type(log_data) is not bool:
+        sys.exit('(Type Error): log_data parameter only accepts True or False.')
+
+    #log_profile
+    if type(log_profile) is not bool:
+        sys.exit('(Type Error): log_profile parameter only accepts True or False.')
+        
     
     """
     error handling ends here
@@ -3504,3 +3528,47 @@ def get_outliers(data,
     dataset = assign_model(c, verbose=False)
     
     return dataset
+
+def models():
+
+    """
+    returns table of models available in model library
+    """
+
+    import pandas as pd
+
+    model_id = ['abod', 'iforest', 'cluster', 'cof', 'histogram', 'knn', 'lof', 'svm', 'pca', 'mcd', 'sod', 'sos']
+
+    model_name = ['Angle-base Outlier Detection',
+                  'Isolation Forest',
+                  'Clustering-Based Local Outlier',
+                  'Connectivity-Based Outlier Factor',
+                  'Histogram-based Outlier Detection',
+                  'k-Nearest Neighbors Detector',
+                  'Local Outlier Factor',
+                  'One-class SVM detector',
+                  'Principal Component Analysis',
+                  'Minimum Covariance Determinant',
+                  'Subspace Outlier Detection',
+                  'Stochastic Outlier Selection']
+
+    model_ref = ['pyod.models.abod.ABOD',
+                  'pyod.models.iforest',
+                  'pyod.models.cblof',
+                  'pyod.models.cof',
+                  'pyod.models.hbos',
+                  'pyod.models.knn',
+                  'pyod.models.lof',
+                  'pyod.models.ocsvm',
+                  'pyod.models.pca',
+                  'pyod.models.mcd',
+                  'pyod.models.sod',
+                  'pyod.models.sos']
+
+    df = pd.DataFrame({'ID' : model_id, 
+                        'Name' : model_name,
+                        'Reference' : model_ref})
+
+    df.set_index('ID', inplace=True)
+
+    return df

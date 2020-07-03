@@ -711,7 +711,40 @@ def setup(data,
     #silent
     if type(silent) is not bool:
         sys.exit("(Type Error): silent parameter only accepts True or False. ")
+
+    #remove_perfect_collinearity
+    if type(remove_perfect_collinearity) is not bool:
+        sys.exit('(Type Error): remove_perfect_collinearity parameter only accepts True or False.')
         
+    #html
+    if type(html) is not bool:
+        sys.exit('(Type Error): html parameter only accepts True or False.')
+
+    #folds_shuffle
+    if type(folds_shuffle) is not bool:
+        sys.exit('(Type Error): folds_shuffle parameter only accepts True or False.')
+
+    #data_split_shuffle
+    if type(data_split_shuffle) is not bool:
+        sys.exit('(Type Error): data_split_shuffle parameter only accepts True or False.')
+
+    #logging
+    if type(logging) is not bool:
+        sys.exit('(Type Error): logging parameter only accepts True or False.')
+
+    #log_plots
+    if type(log_plots) is not bool:
+        sys.exit('(Type Error): log_plots parameter only accepts True or False.')
+
+    #log_data
+    if type(log_data) is not bool:
+        sys.exit('(Type Error): log_data parameter only accepts True or False.')
+
+    #log_profile
+    if type(log_profile) is not bool:
+        sys.exit('(Type Error): log_profile parameter only accepts True or False.')
+
+
     #pre-load libraries
     import pandas as pd
     import ipywidgets as ipw
@@ -9343,4 +9376,78 @@ def automl(optimize='r2', use_holdout=False):
 def pull():
     return display_container[-1]
 
+def models():
+    """
+    returns table of models available in model library
+    """
 
+    import pandas as pd
+
+    model_id = ['lr', 'lasso', 'ridge', 'en', 'lar', 'llar', 'omp', 'br', 'ard', 'par', 
+                'ransac', 'tr', 'huber', 'kr', 'svm', 'knn', 'dt', 'rf', 'et', 'ada', 
+                'gbr', 'mlp', 'xgboost', 'lightgbm', 'catboost']
+
+    model_name = ['Linear Regression',
+                   'Lasso Regression',
+                   'Ridge Regression',
+                   'Elastic Net',
+                   'Least Angle Regression',
+                   'Lasso Least Angle Regression',
+                   'Orthogonal Matching Pursuit',
+                   'Bayesian Ridge',
+                   'Automatic Relevance Determination',
+                   'Passive Aggressive Regressor',
+                   'Random Sample Consensus',
+                   'TheilSen Regressor',
+                   'Huber Regressor',
+                   'Kernel Ridge',
+                   'Support Vector Machine',
+                   'K Neighbors Regressor',
+                   'Decision Tree',
+                   'Random Forest',
+                   'Extra Trees Regressor',
+                   'AdaBoost Regressor',
+                   'Gradient Boosting Regressor',
+                   'Multi Level Perceptron',
+                   'Extreme Gradient Boosting',
+                   'Light Gradient Boosting Machine',
+                   'CatBoost Regressor']
+
+    model_ref = ['sklearn.linear_model.LinearRegression',
+                'sklearn.linear_model.Lasso',
+                'sklearn.linear_model.Ridge',
+                'sklearn.linear_model.ElasticNet',
+                'sklearn.linear_model.Lars',
+                'sklearn.linear_model.LassoLars',
+                'sklearn.linear_model.OMP',
+                'sklearn.linear_model.BayesianRidge',
+                'sklearn.linear_model.ARDRegression',
+                'sklearn.linear_model.PAR',
+                'sklearn.linear_model.RANSACRegressor',
+                'sklearn.linear_model.TheilSenRegressor',
+                'sklearn.linear_model.HuberRegressor',
+                'sklearn.kernel_ridge.KernelRidge',
+                'sklearn.svm.SVR',
+                'sklearn.neighbors.KNeighborsRegressor',
+                'sklearn.tree.DecisionTreeRegressor',
+                'sklearn.ensemble.RandomForestRegressor',
+                'sklearn.ensemble.ExtraTreesRegressor',
+                'sklearn.ensemble.AdaBoostRegressor',
+                'sklearn.ensemble.GradientBoostingRegressor',
+                'sklearn.neural_network.MLPRegressor',
+                'xgboost.readthedocs.io',
+                'github.com/microsoft/LightGBM',
+                'https://catboost.ai']
+    
+    model_turbo = [True, True, True, True, True, True, True, True, False, True,
+                   True, True, True, False, True, True, True, True, True, True,
+                   True, False, True, True, True]
+
+    df = pd.DataFrame({'ID' : model_id, 
+                       'Name' : model_name,
+                       'Reference' : model_ref,
+                        'Turbo' : model_turbo})
+
+    df.set_index('ID', inplace=True)
+
+    return df
