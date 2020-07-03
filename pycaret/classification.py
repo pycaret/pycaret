@@ -1702,6 +1702,7 @@ def setup(data,
         mlflow.set_experiment(exp_name_log)
 
         run_name_ = 'Session Initialized ' + str(USI)
+
         with mlflow.start_run(run_name=run_name_) as run:
 
             # Get active run to log as tag
@@ -1776,6 +1777,7 @@ def create_model(estimator = None,
                  method = None, 
                  fold = 10, 
                  round = 4,
+                 fit_only = False, #added in pycaret==2.0.0
                  verbose = True,
                  system = True, #added in pycaret==2.0.0
                  **kwargs): #added in pycaret==2.0.0
@@ -1841,6 +1843,11 @@ def create_model(estimator = None,
 
     round: integer, default = 4
     Number of decimal places the metrics in the score grid will be rounded to. 
+
+    fit_only: bool, default = False
+    When fit_only set to True, no cross validation or metric evaluation is performed.
+    Trained model object returned when using fit_only is same as the one returned
+    without fit_only.
 
     verbose: Boolean, default = True
     Score grid is not printed when verbose is set to False.
@@ -1932,11 +1939,18 @@ def create_model(estimator = None,
     if type(verbose) is not bool:
         sys.exit('(Type Error): Verbose parameter can only take argument as True or False.') 
         
+    #checking system parameter
+    if type(system) is not bool:
+        sys.exit('(Type Error): System parameter can only take argument as True or False.') 
+
+    #checking fit_only parameter
+    if type(fit_only) is not bool:
+        sys.exit('(Type Error): fit_only parameter can only take argument as True or False.') 
+
     #checking boosting conflict with estimators
     boosting_not_supported = ['lda','qda','ridge','mlp','gpc','svm','knn', 'catboost']
     if method == 'Boosting' and estimator in boosting_not_supported:
         sys.exit("(Type Error): Estimator does not provide class_weights or predict_proba function and hence not supported for the Boosting method. Change the estimator or method to 'Bagging'.")
-    
     
     
     '''
@@ -2206,7 +2220,11 @@ def create_model(estimator = None,
     MONITOR UPDATE STARTS
     '''
     
-    monitor.iloc[1,1:] = 'Initializing CV'
+    if fit_only:
+        monitor.iloc[1,1:] = 'Fitting ' + str(full_name)
+    else:
+        monitor.iloc[1,1:] = 'Initializing CV'
+    
     if verbose:
         if html_param:
             update_display(monitor, display_id = 'monitor')
@@ -2215,6 +2233,23 @@ def create_model(estimator = None,
     MONITOR UPDATE ENDS
     '''
     
+    if fit_only:
+
+        if fix_imbalance_param:
+            if fix_imbalance_method_param is None:
+                from imblearn.over_sampling import SMOTE
+                resampler = SMOTE(random_state=seed)
+            else:
+                resampler = fix_imbalance_method_param
+
+            Xtrain,ytrain = resampler.fit_sample(data_X,data_y)
+
+        model.fit(data_X,data_y)
+
+        if verbose:
+            clear_output()
+
+        return model
     
     fold_num = 1
     
@@ -4659,7 +4694,7 @@ def compare_models(blacklist = None,
                 update_display(monitor, display_id = 'monitor')
         progress.value += 1
         k = model_dict.get(i)
-        m = create_model(estimator=k, verbose = False, system=False)
+        m = create_model(estimator=k, verbose = False, system=False, fit_only=True)
         model_store_final.append(m)
 
     model_fit_end = time.time()
@@ -9156,7 +9191,7 @@ def evaluate_model(estimator):
     )
     
   
-    d = interact(plot_model, estimator = fixed(estimator), plot = a)
+    d = interact(plot_model, estimator = fixed(estimator), plot = a, save = fixed(False), verbose = fixed(True), system = fixed(True))
 
 def finalize_model(estimator):
     

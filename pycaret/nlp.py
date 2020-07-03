@@ -2980,7 +2980,7 @@ def evaluate_model(model):
     
     b = widgets.Dropdown(options=final_list, description='Topic #:', disabled=False)
     
-    d = interact_manual(plot_model, model = fixed(model), plot = a, topic_num=b)
+    d = interact_manual(plot_model, model = fixed(model), plot = a, topic_num=b, save=fixed(False), system=fixed(True))
 
 
 
