@@ -2209,10 +2209,10 @@ def create_model(estimator = None,
         if 'catboost' in mn:
             mn = 'CatBoostRegressor'
 
-        try:
-            full_name = model_dict_logging.get(mn)
-        except:
-            full_name = 'Custom Model'
+        full_name = model_dict_logging.get(mn)
+        
+        if full_name is None:
+            full_name = mn
     
     progress.value += 1
     
@@ -8785,8 +8785,7 @@ def predict_model(estimator,
     
     estimator = deepcopy(estimator)
 
-    if html_param:
-        clear_output()
+    clear_output()
     
     if type(estimator) is str:
         if platform == 'aws':

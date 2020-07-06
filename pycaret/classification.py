@@ -9902,8 +9902,7 @@ def predict_model(estimator,
     
     estimator = deepcopy(estimator) #lookout for an alternate of deepcopy()
     
-    if html_param:
-        clear_output()
+    clear_output()
     
     if type(estimator) is str:
         if platform == 'aws':
