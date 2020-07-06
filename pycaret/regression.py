@@ -8785,7 +8785,10 @@ def predict_model(estimator,
     
     estimator = deepcopy(estimator)
 
-    clear_output()
+    try:
+        clear_output()
+    except:
+        pass
     
     if type(estimator) is str:
         if platform == 'aws':

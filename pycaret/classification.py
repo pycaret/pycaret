@@ -1833,7 +1833,7 @@ def create_model(estimator = None,
     ------------
     This function creates a model and scores it using Stratified Cross Validation. 
     The output prints a score grid that shows Accuracy, AUC, Recall, Precision, 
-    F1 and Kappa by fold (default = 10 Fold). 
+    F1, Kappa and MCC by fold (default = 10 Fold). 
 
     This function returns a trained model object. 
 
@@ -9902,7 +9902,10 @@ def predict_model(estimator,
     
     estimator = deepcopy(estimator) #lookout for an alternate of deepcopy()
     
-    clear_output()
+    try:
+        clear_output()
+    except:
+        pass
     
     if type(estimator) is str:
         if platform == 'aws':

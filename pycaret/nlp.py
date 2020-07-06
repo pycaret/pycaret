@@ -136,17 +136,13 @@ def setup(data,
         if type(session_id) is not int:
             sys.exit('(Type Error): session_id parameter must be an integer.')  
             
-    #chcek if spacy is loaded 
+    #check if spacy is loaded 
     try:
         import spacy
         sp = spacy.load('en_core_web_sm', disable=['parser', 'ner'])
     except:
         sys.exit('(Type Error): spacy english model is not yet downloaded. See the documentation of setup to see installation guide.')
     
-    #silent
-    if type(silent) is not bool:
-        sys.exit("(Type Error): silent parameter only accepts True or False. ")
-        
     #html
     if type(html) is not bool:
         sys.exit('(Type Error): html parameter only accepts True or False.')
@@ -485,6 +481,7 @@ def setup(data,
             update_display(monitor, display_id = 'monitor')
     
     nlp = spacy.load('en_core_web_sm', disable=['parser', 'ner'])
+    nlp.max_length=3000000 #increasing text length to 3000000 from default of 1000000
     allowed_postags=['NOUN', 'ADJ', 'VERB', 'ADV']
     
     text_step7 = []
