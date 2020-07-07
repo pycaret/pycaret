@@ -3292,14 +3292,14 @@ def compare_models(blacklist = None,
         
     Parameters
     ----------
-    blacklist: string, default = None
+    blacklist: list of strings, default = None
     In order to omit certain models from the comparison, the abbreviation string 
-    (see above list) can be passed as list in blacklist param. This is normally
-    done to be more efficient with time. 
+    (see above list) can be passed as list of strings in blacklist param. This is 
+    normally done to be more efficient with time. 
 
-    whitelist: string, default = None
+    whitelist: list of strings, default = None
     In order to run only certain models for the comparison, the abbreviation string 
-    (see above list) can be passed as a list in whitelist param. 
+    (see above list) can be passed as a list of strings in whitelist param. 
 
     fold: integer, default = 10
     Number of folds to be used in Kfold CV. Must be at least 2. 
@@ -7902,11 +7902,11 @@ def plot_model(estimator,
         clear_output()
         if save:
             if system:
-                visualizer.show(outpath="Validation Curve.png")
+                viz.show(outpath="Validation Curve.png")
             else:
-                visualizer.show(outpath="Validation Curve.png", clear_figure=True)
+                viz.show(outpath="Validation Curve.png", clear_figure=True)
         else:
-            visualizer.show()
+            viz.show()
         
     elif plot == 'feature':
         if hasattr(estimator, 'coef_'):
