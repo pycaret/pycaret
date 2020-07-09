@@ -3532,7 +3532,18 @@ def get_outliers(data,
 def models():
 
     """
-    returns table of models available in model library
+
+    Description:
+    ------------
+    Returns table of models available in model library.
+
+        Example
+        -------
+        all_models = models()
+
+        This will return pandas dataframe with all available 
+        models and their metadata.     
+    
     """
 
     import pandas as pd
@@ -3572,3 +3583,52 @@ def models():
     df.set_index('ID', inplace=True)
 
     return df
+
+def get_logs(experiment_name = None, save = False):
+
+    """
+
+    Description:
+    ------------
+    Returns a table with experiment logs consisting
+    run details, parameter, metrics and tags. 
+
+        Example
+        -------
+        logs = get_logs()
+
+        This will return pandas dataframe.
+
+    Parameters
+    ----------
+    experiment_name : string, default = None
+    When set to None current active run is used.
+
+    save : bool, default = False
+    When set to True, csv file is saved in current directory.
+      
+    
+    """
+
+    import sys
+
+    if experiment_name is None:
+        exp_name_log_ = exp_name_log
+    else:
+        exp_name_log_ = experiment_name
+
+    import mlflow
+    from mlflow.tracking import MlflowClient
+    
+    client = MlflowClient()
+
+    if client.get_experiment_by_name(exp_name_log_) is None:
+        sys.exit('No active run found. Check logging parameter in setup or to get logs for inactive run pass experiment_name.')
+    
+    exp_id = client.get_experiment_by_name(exp_name_log_).experiment_id    
+    runs = mlflow.search_runs(exp_id)
+
+    if save:
+        file_name = str(exp_name_log_) + '_logs.csv'
+        runs.to_csv(file_name, index=False)
+    return runs

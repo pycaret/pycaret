@@ -1,7 +1,8 @@
 # Module: Classification
 # Author: Moez Ali <moez.ali@queensu.ca>
 # License: MIT
-
+# Release: PyCaret 2.0x
+# Last modified : 09/07/2020
 
 def setup(data,  
           target,   
@@ -1822,7 +1823,7 @@ def create_model(estimator = None,
                  method = None, 
                  fold = 10, 
                  round = 4,
-                 fit_only = False, #added in pycaret==2.0.0
+                 cross_validation = True, #added in pycaret==2.0.0
                  verbose = True,
                  system = True, #added in pycaret==2.0.0
                  **kwargs): #added in pycaret==2.0.0
@@ -1889,10 +1890,9 @@ def create_model(estimator = None,
     round: integer, default = 4
     Number of decimal places the metrics in the score grid will be rounded to. 
 
-    fit_only: bool, default = False
-    When fit_only set to True, no cross validation or metric evaluation is performed.
-    Trained model object returned when using fit_only is same as the one returned
-    without fit_only.
+    cross_validation: bool, default = True
+    When cross_validation set to False fold parameter is ignored and model is fitted
+    on entire training dataset. No metric evaluation is returned.
 
     verbose: Boolean, default = True
     Score grid is not printed when verbose is set to False.
@@ -1988,9 +1988,9 @@ def create_model(estimator = None,
     if type(system) is not bool:
         sys.exit('(Type Error): System parameter can only take argument as True or False.') 
 
-    #checking fit_only parameter
-    if type(fit_only) is not bool:
-        sys.exit('(Type Error): fit_only parameter can only take argument as True or False.') 
+    #checking cross_validation parameter
+    if type(cross_validation) is not bool:
+        sys.exit('(Type Error): cross_validation parameter can only take argument as True or False.') 
 
     #checking boosting conflict with estimators
     boosting_not_supported = ['lda','qda','ridge','mlp','gpc','svm','knn', 'catboost']
@@ -2265,7 +2265,7 @@ def create_model(estimator = None,
     MONITOR UPDATE STARTS
     '''
     
-    if fit_only:
+    if not cross_validation:
         monitor.iloc[1,1:] = 'Fitting ' + str(full_name)
     else:
         monitor.iloc[1,1:] = 'Initializing CV'
@@ -2278,7 +2278,7 @@ def create_model(estimator = None,
     MONITOR UPDATE ENDS
     '''
     
-    if fit_only:
+    if not cross_validation:
 
         if fix_imbalance_param:
             if fix_imbalance_method_param is None:
@@ -4741,7 +4741,7 @@ def compare_models(blacklist = None,
                 update_display(monitor, display_id = 'monitor')
         progress.value += 1
         k = model_dict.get(i)
-        m = create_model(estimator=k, verbose = False, system=False, fit_only=True)
+        m = create_model(estimator=k, verbose = False, system=False, cross_validation=False)
         model_store_final.append(m)
 
     model_fit_end = time.time()
@@ -6106,10 +6106,14 @@ def blend_models(estimator_list = 'All',
     #checking error for estimator_list (string)
     
     if estimator_list != 'All':
+        if type(estimator_list) is not list:
+            sys.exit("(Value Error): estimator_list parameter only accepts 'All' as string or list of trained models.")
+
+    if estimator_list != 'All':
         for i in estimator_list:
             if 'sklearn' not in str(type(i)) and 'CatBoostClassifier' not in str(type(i)):
-                sys.exit("(Value Error): estimator_list parameter only accepts 'All' as string or trained model object")
-   
+                sys.exit("(Value Error): estimator_list parameter only accepts 'All' as string or trained model object.")
+
     #checking method param with estimator list
     if estimator_list != 'All':
         if method == 'soft':
@@ -10855,9 +10859,30 @@ def automl(optimize='Accuracy', use_holdout=False):
 def pull():
     return display_container[-1]
 
-def models():
+def models(type=None):
+
     """
-    returns table of models available in model library
+
+    Description:
+    ------------
+    Returns table of models available in model library.
+
+        Example
+        -------
+        all_models = models()
+
+        This will return pandas dataframe with all available 
+        models and their metadata.
+
+    Parameters
+    ----------
+    type : string, default = None
+    
+      - linear : filters and only return linear models
+      - tree : filters and only return tree based models
+      - ensemble : filters and only return ensemble models
+      
+    
     """
 
     import pandas as pd
@@ -10912,4 +10937,64 @@ def models():
 
     df.set_index('ID', inplace=True)
 
+    linear_models = ['lr', 'ridge', 'svm']
+    tree_models = ['dt'] 
+    ensemble_models = ['rf', 'et', 'gbc', 'xgboost', 'lightgbm', 'catboost', 'ada']
+
+    if type == 'linear':
+        df = df[df.index.isin(linear_models)]
+    if type == 'tree':
+        df = df[df.index.isin(tree_models)]
+    if type == 'ensemble':
+        df = df[df.index.isin(ensemble_models)]
+
     return df
+
+def get_logs(experiment_name = None, save = False):
+
+    """
+
+    Description:
+    ------------
+    Returns a table with experiment logs consisting
+    run details, parameter, metrics and tags. 
+
+        Example
+        -------
+        logs = get_logs()
+
+        This will return pandas dataframe.
+
+    Parameters
+    ----------
+    experiment_name : string, default = None
+    When set to None current active run is used.
+
+    save : bool, default = False
+    When set to True, csv file is saved in current directory.
+      
+    
+    """
+
+    import sys
+
+    if experiment_name is None:
+        exp_name_log_ = exp_name_log
+    else:
+        exp_name_log_ = experiment_name
+
+    import mlflow
+    from mlflow.tracking import MlflowClient
+    
+    client = MlflowClient()
+
+    if client.get_experiment_by_name(exp_name_log_) is None:
+        sys.exit('No active run found. Check logging parameter in setup or to get logs for inactive run pass experiment_name.')
+    
+    exp_id = client.get_experiment_by_name(exp_name_log_).experiment_id    
+    runs = mlflow.search_runs(exp_id)
+
+    if save:
+        file_name = str(exp_name_log_) + '_logs.csv'
+        runs.to_csv(file_name, index=False)
+    return runs

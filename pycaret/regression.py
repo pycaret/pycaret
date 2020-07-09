@@ -4180,11 +4180,15 @@ def blend_models(estimator_list = 'All',
     import datetime, time
     runtime_start = time.time()
 
+    if estimator_list != 'All':
+        if type(estimator_list) is not list:
+            sys.exit("(Value Error): estimator_list parameter only accepts 'All' as string or list of trained models.")
+
     #checking error for estimator_list (string)
     if estimator_list != 'All':
         for i in estimator_list:
             if 'sklearn' not in str(type(i)) and 'CatBoostRegressor' not in str(type(i)):
-                sys.exit("(Value Error): estimator_list parameter only accepts 'All' as string or trained model object")
+                sys.exit("(Value Error): estimator_list parameter only accepts 'All' as string or trained model object.")
    
     #checking fold parameter
     if type(fold) is not int:
@@ -9382,9 +9386,30 @@ def automl(optimize='r2', use_holdout=False):
 def pull():
     return display_container[-1]
 
-def models():
+def models(type=None):
+
     """
-    returns table of models available in model library
+
+    Description:
+    ------------
+    Returns table of models available in model library.
+
+        Example
+        -------
+        all_models = models()
+
+        This will return pandas dataframe with all available 
+        models and their metadata.
+
+    Parameters
+    ----------
+    type : string, default = None
+    
+      - linear : filters and only return linear models
+      - tree : filters and only return tree based models
+      - ensemble : filters and only return ensemble models
+      
+    
     """
 
     import pandas as pd
@@ -9456,4 +9481,65 @@ def models():
 
     df.set_index('ID', inplace=True)
 
+    linear_models = ['lr', 'lasso', 'ridge', 'en', 'lar', 'llar', 'omp', 'br', 'ard', 'par', 'ransac', 'tr', 'huber', 'kr']
+    tree_models = ['dt'] 
+    ensemble_models = ['rf', 'et', 'gbr', 'xgboost', 'lightgbm', 'catboost', 'ada']
+
+    if type == 'linear':
+        df = df[df.index.isin(linear_models)]
+    if type == 'tree':
+        df = df[df.index.isin(tree_models)]
+    if type == 'ensemble':
+        df = df[df.index.isin(ensemble_models)]
+
     return df
+
+
+def get_logs(experiment_name = None, save = False):
+
+    """
+
+    Description:
+    ------------
+    Returns a table with experiment logs consisting
+    run details, parameter, metrics and tags. 
+
+        Example
+        -------
+        logs = get_logs()
+
+        This will return pandas dataframe.
+
+    Parameters
+    ----------
+    experiment_name : string, default = None
+    When set to None current active run is used.
+
+    save : bool, default = False
+    When set to True, csv file is saved in current directory.
+      
+    
+    """
+
+    import sys
+
+    if experiment_name is None:
+        exp_name_log_ = exp_name_log
+    else:
+        exp_name_log_ = experiment_name
+
+    import mlflow
+    from mlflow.tracking import MlflowClient
+    
+    client = MlflowClient()
+
+    if client.get_experiment_by_name(exp_name_log_) is None:
+        sys.exit('No active run found. Check logging parameter in setup or to get logs for inactive run pass experiment_name.')
+    
+    exp_id = client.get_experiment_by_name(exp_name_log_).experiment_id    
+    runs = mlflow.search_runs(exp_id)
+
+    if save:
+        file_name = str(exp_name_log_) + '_logs.csv'
+        runs.to_csv(file_name, index=False)
+    return runs

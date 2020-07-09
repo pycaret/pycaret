@@ -3,7 +3,7 @@
 # License: MIT
 
 def version():
-    print("pycaret-nightly-0.18")
+    print("pycaret-nightly-0.19")
 
 
 def check_metric(actual, prediction, metric, round=4):
