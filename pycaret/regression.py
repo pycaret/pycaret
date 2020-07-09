@@ -3397,6 +3397,8 @@ def compare_models(blacklist = None,
     import ipywidgets as ipw
     from IPython.display import display, HTML, clear_output, update_display
     
+    pd.set_option('display.max_columns', 500)
+
     #progress bar
     if blacklist is None:
         len_of_blacklist = 0
@@ -4063,6 +4065,8 @@ def compare_models(blacklist = None,
         display(compare_models_)
     else:
         print(compare_models_.data)
+    
+    pd.reset_option("display.max_columns")
     
     #store in display container
     display_container.append(compare_models_.data)
