@@ -2537,7 +2537,7 @@ def compare_models(blacklist = None,
         
     Parameters
     ----------
-    blacklist: List if string, default = None
+    blacklist: List of string, default = None
     In order to omit certain models from the comparison, the abbreviation string 
     (see above list) can be passed as list in blacklist param. This is normally
     done to be more efficient with time. 
