@@ -56,8 +56,8 @@ def setup(data,
           n_jobs = -1, #added in pycaret==2.0.0
           html = True, #added in pycaret==2.0.0
           session_id = None,
+          log_experiment = False, #added in pycaret==2.0.0
           experiment_name = None, #added in pycaret==2.0.0
-          logging = False, #added in pycaret==2.0.0
           log_plots = False, #added in pycaret==2.0.0
           log_profile = False, #added in pycaret==2.0.0
           log_data = False, #added in pycaret==2.0.0
@@ -391,12 +391,12 @@ def setup(data,
     unique number is then distributed as a seed in all functions used during the 
     experiment. This can be used for later reproducibility of the entire experiment.
     
+    log_experiment: bool, default = False
+    When set to True, all metrics and parameters are logged on MLFlow server.
+
     experiment_name: str, default = None
     Name of experiment for logging. When set to None, 'clf' is by default used as 
     alias for the experiment name.
-
-    logging: bool, default = False
-    When set to True, all metrics and parameters are logged on MLFlow server.
 
     log_plots: bool, default = False
     When set to True, specific plots are logged in MLflow as a png file. By default,
@@ -443,6 +443,18 @@ def setup(data,
     #exception checking   
     import sys
     
+    from pycaret.utils import __version__
+    ver = __version__()
+
+    import logging
+    logging.basicConfig(filename='logs.log', level=logging.DEBUG,
+                format = '%(asctime)s:%(levelname)s:%(message)s')
+
+    logging.info("PyCaret Classification Module")
+    logging.info('version ' + str(ver))
+    logging.info("Initializing setup()")
+    logging.info("Checking Exceptions")
+
     #run_time
     import datetime, time
     runtime_start = time.time()
@@ -705,9 +717,9 @@ def setup(data,
             if i not in all_cols:
                 sys.exit("(Value Error): Feature ignored is either target column or doesn't exist in the dataset.") 
     
-    #logging
-    if type(logging) is not bool:
-        sys.exit("(Type Error): logging parameter only accepts True or False. ")
+    #log_experiment
+    if type(log_experiment) is not bool:
+        sys.exit("(Type Error): log_experiment parameter only accepts True or False. ")
 
     #log_profile
     if type(log_profile) is not bool:
@@ -738,10 +750,6 @@ def setup(data,
     if type(data_split_shuffle) is not bool:
         sys.exit('(Type Error): data_split_shuffle parameter only accepts True or False.')
 
-    #logging
-    if type(logging) is not bool:
-        sys.exit('(Type Error): logging parameter only accepts True or False.')
-
     #log_plots
     if type(log_plots) is not bool:
         sys.exit('(Type Error): log_plots parameter only accepts True or False.')
@@ -766,6 +774,7 @@ def setup(data,
             sys.exit('(Type Error): fix_imbalance_method must contain resampler with fit_sample method.')
 
 
+    logging.info("Preloading libraries")
 
     #pre-load libraries
     import pandas as pd
@@ -788,6 +797,8 @@ def setup(data,
     if silent:
         sampling = False
 
+    logging.info("Setting display")
+
     #progress bar
     if sampling:
         max_steps = 10 + 3
@@ -809,6 +820,8 @@ def setup(data,
         if html_param:
             display(monitor, display_id = 'monitor')
     
+    logging.info("Importing libraries")
+
     #general dependencies
     import numpy as np
     from sklearn.linear_model import LogisticRegression
@@ -836,6 +849,8 @@ def setup(data,
     #copy original data for pandas profiler
     data_before_preprocess = data.copy()
     
+    logging.info("Declaring global variables")
+
     #declaring global variables to be accessed by other functions
     global X, y, X_train, X_test, y_train, y_test, seed, prep_pipe, experiment__,\
         folds_shuffle_param, n_jobs_param, create_model_container, master_model_container,\
@@ -859,6 +874,8 @@ def setup(data,
             
     #define parameters for preprocessor
     
+    logging.info("Declaring preprocessing parameters")
+
     #categorical features
     if categorical_features is None:
         cat_features_pass = []
@@ -1022,10 +1039,14 @@ def setup(data,
         display_dtypes_pass = False
     else:
         display_dtypes_pass = True
-        
+
+    logging.info("Importing preprocessing module")
+
     #import library
     import pycaret.preprocess as preprocess
     
+    logging.info("Creating preprocessing pipeline")
+
     data = preprocess.Preprocess_Path_One(train_data = data, 
                                           target_variable = target,
                                           categorical_features = cat_features_pass,
@@ -1102,6 +1123,8 @@ def setup(data,
     #save prep pipe
     prep_pipe = preprocess.pipe
     
+    logging.info("Creating grid variables")
+
     #generate values for grid show
     missing_values = data_before_preprocess.isna().sum().sum()
     if missing_values > 0:
@@ -1220,7 +1243,9 @@ def setup(data,
     #reset pandas option
     pd.reset_option("display.max_rows") 
     pd.reset_option("display.max_columns")
-      
+
+    logging.info("Creating global containers")
+
     #create an empty list for pickling later.
     experiment__ = []
 
@@ -1240,7 +1265,7 @@ def setup(data,
     display_container = []
 
     #create logging parameter
-    logging_param = logging
+    logging_param = log_experiment
 
     #create exp_name_log param incase logging is False
     exp_name_log = 'no_logging'
@@ -1283,7 +1308,9 @@ def setup(data,
     progress.value += 1
     
     if sampling is True and data.shape[0] > 25000: #change this back to 25000
-    
+        
+        logging.info("Sampling dataset")
+
         split_perc = [0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,0.99]
         split_perc_text = ['10%','20%','30%','40%','50%','60%', '70%', '80%', '90%', '100%']
         split_perc_tt = [0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,0.99]
@@ -1727,6 +1754,8 @@ def setup(data,
     USI = secrets.token_hex(nbytes=2)
 
     if logging_param:
+        
+        logging.info("Logging experiment in MLFlow")
 
         import mlflow
         from pathlib import Path
@@ -1811,6 +1840,8 @@ def setup(data,
             
             mlflow.log_artifact("input.txt")
             os.remove('input.txt')
+
+    logging.info("setup() succesfully completed")
 
     return X, y, X_train, X_test, y_train, y_test, seed, prep_pipe, experiment__,\
         folds_shuffle_param, n_jobs_param, html_param, create_model_container, master_model_container,\
@@ -1937,6 +1968,10 @@ def create_model(estimator = None,
     
     '''
     
+    import logging
+    logging.info("Initializing create_model()")
+    logging.info("Checking exceptions")
+
     #exception checking   
     import sys
 
@@ -2004,11 +2039,14 @@ def create_model(estimator = None,
     
     '''
 
+    logging.info("Preloading libraries")
+
     #pre-load libraries
     import pandas as pd
     import ipywidgets as ipw
     from IPython.display import display, HTML, clear_output, update_display
     
+    logging.info("Preparing display monitor")
 
     #progress bar
     progress = ipw.IntProgress(value=0, min=0, max=fold+4, step=1 , description='Processing: ')
@@ -2037,6 +2075,8 @@ def create_model(estimator = None,
     import warnings
     warnings.filterwarnings('ignore') 
     
+    logging.info("Copying training dataset")
+
     #Storing X_train and y_train in data_X and data_y parameter
     data_X = X_train.copy()
     data_y = y_train.copy()
@@ -2045,6 +2085,8 @@ def create_model(estimator = None,
     data_X.reset_index(drop=True, inplace=True)
     data_y.reset_index(drop=True, inplace=True)
   
+    logging.info("Importing libraries")
+
     #general dependencies
     import numpy as np
     from sklearn import metrics
@@ -2052,8 +2094,12 @@ def create_model(estimator = None,
     
     progress.value += 1
     
+    logging.info("Defining folds")
+
     #cross validation setup starts here
     kf = StratifiedKFold(fold, random_state=seed, shuffle=folds_shuffle_param)
+
+    logging.info("Declaring metric variables")
 
     score_auc =np.empty((0,0))
     score_acc =np.empty((0,0))
@@ -2085,7 +2131,9 @@ def create_model(estimator = None,
     '''
     MONITOR UPDATE ENDS
     '''
-        
+
+    logging.info("Importing untrained model")
+
     if estimator == 'lr':
 
         from sklearn.linear_model import LogisticRegression
@@ -2194,6 +2242,9 @@ def create_model(estimator = None,
         full_name = 'CatBoost Classifier'
         
     else:
+
+        logging.info("Declaring custom model")
+
         model = estimator
 
         def get_model_name(e):
@@ -2241,9 +2292,13 @@ def create_model(estimator = None,
             except:
                 full_name = 'Custom Model'
     
+    logging.info(str(full_name) + ' Imported succesfully')
+
     progress.value += 1
     
     #checking method when ensemble is set to True. 
+
+    logging.info("Checking ensemble method")
 
     if method == 'Bagging':
         
@@ -2280,7 +2335,10 @@ def create_model(estimator = None,
     
     if not cross_validation:
 
+        logging.info("Cross validation set to False")
+
         if fix_imbalance_param:
+            logging.info("Initializing SMOTE")
             if fix_imbalance_method_param is None:
                 from imblearn.over_sampling import SMOTE
                 resampler = SMOTE(random_state=seed)
@@ -2288,17 +2346,23 @@ def create_model(estimator = None,
                 resampler = fix_imbalance_method_param
 
             Xtrain,ytrain = resampler.fit_sample(data_X,data_y)
+            logging.info("Resampling completed")
 
+        logging.info("Fitting Model")
         model.fit(data_X,data_y)
 
         if verbose:
             clear_output()
-
+        
+        logging.info("create_models() succesfully completed")
+        
         return model
     
     fold_num = 1
     
     for train_i , test_i in kf.split(data_X,data_y):
+
+        logging.info("Initializing Fold " + str(fold_num))
         
         t0 = time.time()
         
@@ -2321,6 +2385,8 @@ def create_model(estimator = None,
 
         if fix_imbalance_param:
             
+            logging.info("Initializing SMOTE")
+
             if fix_imbalance_method_param is None:
                 from imblearn.over_sampling import SMOTE
                 resampler = SMOTE(random_state=seed)
@@ -2328,10 +2394,12 @@ def create_model(estimator = None,
                 resampler = fix_imbalance_method_param
 
             Xtrain,ytrain = resampler.fit_sample(Xtrain, ytrain)
+            logging.info("Resampling completed")
 
         if hasattr(model, 'predict_proba'):
-
+            logging.info("Fitting Model")
             model.fit(Xtrain,ytrain)
+            logging.info("Evaluating Metrics")
             pred_prob = model.predict_proba(Xtest)
             pred_prob = pred_prob[:,1]
             pred_ = model.predict(Xtest)
@@ -2352,7 +2420,9 @@ def create_model(estimator = None,
                 precision = metrics.precision_score(ytest,pred_)
                 f1 = metrics.f1_score(ytest,pred_)
         else:
+            logging.info("Fitting Model")
             model.fit(Xtrain,ytrain)
+            logging.info("Evaluating Metrics")
             pred_prob = 0.00
             pred_ = model.predict(Xtest)
             sca = metrics.accuracy_score(ytest,pred_)
@@ -2371,7 +2441,8 @@ def create_model(estimator = None,
                 recall = metrics.recall_score(ytest,pred_)                
                 precision = metrics.precision_score(ytest,pred_)
                 f1 = metrics.f1_score(ytest,pred_)
-                
+
+        logging.info("Compiling Metrics")        
         time_end=time.time()
         kappa = metrics.cohen_kappa_score(ytest,pred_)
         mcc = metrics.matthews_corrcoef(ytest,pred_)
@@ -2444,7 +2515,9 @@ def create_model(estimator = None,
         Update_display() ends here
         
         '''
-            
+    
+    logging.info("Calculating mean and std")
+
     mean_acc=np.mean(score_acc)
     mean_auc=np.mean(score_auc)
     mean_recall=np.mean(score_recall)
@@ -2483,6 +2556,8 @@ def create_model(estimator = None,
     
     progress.value += 1
     
+    logging.info("Creating metrics dataframe")
+
     model_results = pd.DataFrame({'Accuracy': score_acc, 'AUC': score_auc, 'Recall' : score_recall, 'Prec.' : score_precision , 
                      'F1' : score_f1, 'Kappa' : score_kappa, 'MCC': score_mcc})
     model_avgs = pd.DataFrame({'Accuracy': avgs_acc, 'AUC': avgs_auc, 'Recall' : avgs_recall, 'Prec.' : avgs_precision , 
@@ -2504,6 +2579,7 @@ def create_model(estimator = None,
             update_display(monitor, display_id = 'monitor')
     
     model_fit_start = time.time()
+    logging.info("Finalizing model")
     model.fit(data_X, data_y)
     model_fit_end = time.time()
 
@@ -2512,10 +2588,12 @@ def create_model(estimator = None,
     #end runtime
     runtime_end = time.time()
     runtime = np.array(runtime_end - runtime_start).round(2)
-
+    
     #mlflow logging
     if logging_param and system:
-
+        
+        logging.info("Creating MLFlow logs")
+        
         #Creating Logs message monitor
         monitor.iloc[1,1:] = 'Creating Logs'
         monitor.iloc[2,1:] = 'Almost Finished'    
@@ -2614,22 +2692,18 @@ def create_model(estimator = None,
             size_bytes = Path('Trained Model.pkl').stat().st_size
             size_kb = np.round(size_bytes/1000, 2)
             mlflow.set_tag("Size KB", size_kb)
-            os.remove('Trained Model.pkl')
+            #os.remove('Trained Model.pkl')
 
     progress.value += 1
-    
-    #storing into experiment
-    tup = (full_name,model)
-    experiment__.append(tup)
-    nam = str(full_name) + ' Score Grid'
-    tup = (nam, model_results)
-    experiment__.append(tup)
+
+    logging.info("Uploading results into container")
 
     #storing results in create_model_container
     create_model_container.append(model_results.data)
     display_container.append(model_results.data)
 
     #storing results in master_model_container
+    logging.info("Uploading model into container")
     master_model_container.append(model)
 
     if verbose:
@@ -2640,6 +2714,7 @@ def create_model(estimator = None,
         else:
             print(model_results.data)
 
+    logging.info("create_model() succesfully completed")
     return model
 
 def ensemble_model(estimator,
@@ -2739,6 +2814,10 @@ def ensemble_model(estimator,
     
     '''
     
+    import logging
+    logging.info("Initializing ensemble_model()")
+    logging.info("Checking exceptions")
+
     #exception checking   
     import sys
 
@@ -2793,11 +2872,15 @@ def ensemble_model(estimator,
     
     '''    
     
+    logging.info("Preloading libraries")
+
     #pre-load libraries
     import pandas as pd
     import ipywidgets as ipw
     from IPython.display import display, HTML, clear_output, update_display
     
+    logging.info("Preparing display monitor")
+
     #progress bar
     progress = ipw.IntProgress(value=0, min=0, max=fold+4, step=1 , description='Processing: ')
     master_display = pd.DataFrame(columns=['Accuracy','AUC','Recall', 'Prec.', 'F1', 'Kappa', 'MCC'])
@@ -2820,7 +2903,9 @@ def ensemble_model(estimator,
         if html_param:
             display_ = display(master_display, display_id=True)
             display_id = display_.display_id
-        
+
+    logging.info("Importing libraries")
+
     #dependencies
     import numpy as np
     from sklearn import metrics
@@ -2830,6 +2915,8 @@ def ensemble_model(estimator,
     import warnings
     warnings.filterwarnings('ignore')    
     
+    logging.info("Copying training dataset")
+
     #Storing X_train and y_train in data_X and data_y parameter
     data_X = X_train.copy()
     data_y = y_train.copy()
@@ -2858,6 +2945,8 @@ def ensemble_model(estimator,
     elif optimize == 'MCC':
         compare_dimension = 'MCC' 
     
+    logging.info("Checking base model")
+
     def get_model_name(e):
         return str(e).split("(")[0]
 
@@ -2911,6 +3000,8 @@ def ensemble_model(estimator,
                         'CatBoostClassifier' : 'CatBoost Classifier',
                         'BaggingClassifier' : 'Bagging Classifier'}
 
+    logging.info('Base model : ' + str(model_dict_logging.get(mn)))
+
     '''
     MONITOR UPDATE STARTS
     '''
@@ -2927,18 +3018,23 @@ def ensemble_model(estimator,
     if hasattr(estimator,'n_classes_'):
         if estimator.n_classes_ > 2:
             model = estimator.estimator
-            
+
+    logging.info("Importing untrained ensembler")
+
     if method == 'Bagging':
         from sklearn.ensemble import BaggingClassifier
         model = BaggingClassifier(model,bootstrap=True,n_estimators=n_estimators, random_state=seed, n_jobs=n_jobs_param)
-        
+        logging.info("BaggingClassifier() succesfully imported")
+
     else:
         from sklearn.ensemble import AdaBoostClassifier
         model = AdaBoostClassifier(model, n_estimators=n_estimators, random_state=seed)
-    
+        logging.info("AdaBoostClassifier() succesfully imported")
+
     if y.value_counts().count() > 2:
         from sklearn.multiclass import OneVsRestClassifier
         model = OneVsRestClassifier(model)
+        logging.info("OneVsRestClassifier() succesfully imported")
         
     progress.value += 1
     
@@ -2954,9 +3050,10 @@ def ensemble_model(estimator,
     '''
     MONITOR UPDATE ENDS
     '''
-    
+    logging.info("Defining folds")
     kf = StratifiedKFold(fold, random_state=seed, shuffle=folds_shuffle_param)
     
+    logging.info("Declaring metric variables")
     score_auc =np.empty((0,0))
     score_acc =np.empty((0,0))
     score_recall =np.empty((0,0))
@@ -2978,6 +3075,8 @@ def ensemble_model(estimator,
     fold_num = 1 
     
     for train_i , test_i in kf.split(data_X,data_y):
+
+        logging.info("Initializing Fold " + str(fold_num))
         
         t0 = time.time()
         
@@ -2999,6 +3098,7 @@ def ensemble_model(estimator,
         time_start=time.time()
 
         if fix_imbalance_param:
+            logging.info("Initializing SMOTE")
             
             if fix_imbalance_method_param is None:
                 from imblearn.over_sampling import SMOTE
@@ -3007,10 +3107,12 @@ def ensemble_model(estimator,
                 resampler = fix_imbalance_method_param
 
             Xtrain,ytrain = resampler.fit_sample(Xtrain, ytrain)
+            logging.info("Resampling completed")
 
         if hasattr(model, 'predict_proba'):
-        
+            logging.info("Fitting Model")
             model.fit(Xtrain,ytrain)
+            logging.info("Evaluating Metrics")
             pred_prob = model.predict_proba(Xtest)
             pred_prob = pred_prob[:,1]
             pred_ = model.predict(Xtest)
@@ -3031,8 +3133,9 @@ def ensemble_model(estimator,
                 precision = metrics.precision_score(ytest,pred_)
                 f1 = metrics.f1_score(ytest,pred_)
         else:
-            
+            logging.info("Fitting Model")
             model.fit(Xtrain,ytrain)
+            logging.info("Evaluating Metrics")
             pred_prob = 0.00
             pred_ = model.predict(Xtest)
             sca = metrics.accuracy_score(ytest,pred_)
@@ -3051,7 +3154,8 @@ def ensemble_model(estimator,
                 recall = metrics.recall_score(ytest,pred_)                
                 precision = metrics.precision_score(ytest,pred_)
                 f1 = metrics.f1_score(ytest,pred_)
-                
+
+        logging.info("Compiling Metrics")        
         time_end=time.time()
         kappa = metrics.cohen_kappa_score(ytest,pred_)
         mcc = metrics.matthews_corrcoef(ytest,pred_)
@@ -3130,6 +3234,7 @@ def ensemble_model(estimator,
         
         '''
         
+    logging.info("Calculating mean and std")
     mean_acc=np.mean(score_acc)
     mean_auc=np.mean(score_auc)
     mean_recall=np.mean(score_recall)
@@ -3166,6 +3271,7 @@ def ensemble_model(estimator,
     avgs_training_time = np.append(avgs_training_time, mean_training_time)
     avgs_training_time = np.append(avgs_training_time, std_training_time)
 
+    logging.info("Creating metrics dataframe")
     model_results = pd.DataFrame({'Accuracy': score_acc, 'AUC': score_auc, 'Recall' : score_recall, 'Prec.' : score_precision , 
                      'F1' : score_f1, 'Kappa' : score_kappa, 'MCC':score_mcc})
     model_results_unpivot = pd.melt(model_results,value_vars=['Accuracy', 'AUC', 'Recall', 'Prec.', 'F1', 'Kappa','MCC'])
@@ -3190,16 +3296,19 @@ def ensemble_model(estimator,
             update_display(monitor, display_id = 'monitor')
     
     model_fit_start = time.time()
+    logging.info("Finalizing model")
     model.fit(data_X, data_y)
     model_fit_end = time.time()
 
     model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
     
     #storing results in create_model_container
+    logging.info("Uploading results into container")
     create_model_container.append(model_results.data)
     display_container.append(model_results.data)
 
     #storing results in master_model_container
+    logging.info("Uploading model into container")
     master_model_container.append(model)
 
     progress.value += 1
@@ -3211,6 +3320,8 @@ def ensemble_model(estimator,
     model performance is atleast equivalent to what is seen is compare_models 
     '''
     if choose_better:
+
+        logging.info("choose_better activated")
 
         if verbose:
             if html_param:
@@ -3230,21 +3341,15 @@ def ensemble_model(estimator,
 
         #re-instate display_constainer state 
         display_container.pop(-1)
-   
-    #storing into experiment
-    model_name = str(model).split("(")[0]
-    tup = (model_name,model)
-    experiment__.append(tup)
-    
-    nam = str(model_name) + ' Score Grid'
-    tup = (nam, model_results)
-    experiment__.append(tup)
+        logging.info("choose_better completed")
 
     #end runtime
     runtime_end = time.time()
     runtime = np.array(runtime_end - runtime_start).round(2)
     
     if logging_param:
+
+        logging.info("Creating MLFlow logs")
 
         #Creating Logs message monitor
         monitor.iloc[1,1:] = 'Creating Logs'
@@ -3356,7 +3461,9 @@ def ensemble_model(estimator,
             print(model_results.data)
     else:
         clear_output()
-        
+
+    logging.info("ensemble_model() succesfully completed")
+
     return model
 
 def plot_model(estimator, 
@@ -4043,7 +4150,11 @@ def compare_models(blacklist = None,
     ERROR HANDLING STARTS HERE
     
     '''
-    
+
+    import logging
+    logging.info("Initializing compare_models()")
+    logging.info("Checking exceptions")
+
     #exception checking   
     import sys
     
@@ -4090,6 +4201,8 @@ def compare_models(blacklist = None,
     
     '''
     
+    logging.info("Preloading libraries")
+
     #pre-load libraries
     import pandas as pd
     import time, datetime
@@ -4097,6 +4210,8 @@ def compare_models(blacklist = None,
     from IPython.display import display, HTML, clear_output, update_display
     
     pd.set_option('display.max_columns', 500)
+
+    logging.info("Preparing display monitor")
 
     #progress bar
     if blacklist is None:
@@ -4147,8 +4262,7 @@ def compare_models(blacklist = None,
             display(monitor, display_id = 'monitor')
             display_ = display(master_display, display_id=True)
             display_id = display_.display_id
-    
-    
+
     #ignore warnings
     import warnings
     warnings.filterwarnings('ignore') 
@@ -4160,12 +4274,15 @@ def compare_models(blacklist = None,
     from sklearn.model_selection import StratifiedKFold
     import pandas.io.formats.style
     
+    logging.info("Copying training dataset")
     #defining X_train and y_train as data_X and data_y
     data_X = X_train
     data_y=y_train
     
     progress.value += 1
     
+    logging.info("Importing libraries")
+
     #import sklearn dependencies
     from sklearn.linear_model import LogisticRegression
     from sklearn.neighbors import KNeighborsClassifier
@@ -4212,6 +4329,9 @@ def compare_models(blacklist = None,
     '''
     MONITOR UPDATE ENDS
     '''
+    
+    logging.info("Importing untrained models")
+
     #creating model object 
     lr = LogisticRegression(random_state=seed) #dont add n_jobs_param here. It slows doesn Logistic Regression somehow.
     knn = KNeighborsClassifier(n_jobs=n_jobs_param)
@@ -4423,8 +4543,10 @@ def compare_models(blacklist = None,
     '''
     
     #cross validation setup starts here
+    logging.info("Defining folds")
     kf = StratifiedKFold(fold, random_state=seed, shuffle=folds_shuffle_param)
 
+    logging.info("Declaring metric variables")
     score_acc =np.empty((0,0))
     score_auc =np.empty((0,0))
     score_recall =np.empty((0,0))
@@ -4451,6 +4573,8 @@ def compare_models(blacklist = None,
       
     for model in model_library:
 
+        logging.info("Initializing " + str(model_names[name_counter]))
+
         #run_time
         runtime_start = time.time()
         
@@ -4472,6 +4596,8 @@ def compare_models(blacklist = None,
         fold_num = 1
         
         for train_i , test_i in kf.split(data_X,data_y):
+            
+            logging.info("Initializing Fold " + str(fold_num))
         
             progress.value += 1
             
@@ -4494,6 +4620,8 @@ def compare_models(blacklist = None,
             ytrain,ytest = data_y.iloc[train_i], data_y.iloc[test_i]
             
             if fix_imbalance_param:
+
+                logging.info("Initializing SMOTE")
                 
                 if fix_imbalance_method_param is None:
                     from imblearn.over_sampling import SMOTE
@@ -4502,10 +4630,13 @@ def compare_models(blacklist = None,
                     resampler = fix_imbalance_method_param
 
                 Xtrain,ytrain = resampler.fit_sample(Xtrain, ytrain)
+                logging.info("Resampling completed")
 
             if hasattr(model, 'predict_proba'):
                 time_start=time.time()    
+                logging.info("Fitting Model")
                 model.fit(Xtrain,ytrain)
+                logging.info("Evaluating Metrics")
                 time_end=time.time()
                 pred_prob = model.predict_proba(Xtest)
                 pred_prob = pred_prob[:,1]
@@ -4528,7 +4659,9 @@ def compare_models(blacklist = None,
                     f1 = metrics.f1_score(ytest,pred_)
             else:
                 time_start=time.time()   
+                logging.info("Fitting Model")
                 model.fit(Xtrain,ytrain)
+                logging.info("Evaluating Metrics")
                 time_end=time.time()
                 pred_prob = 0.00
                 pred_ = model.predict(Xtest)
@@ -4548,6 +4681,7 @@ def compare_models(blacklist = None,
                     recall = metrics.recall_score(ytest,pred_)                
                     precision = metrics.precision_score(ytest,pred_)
                     f1 = metrics.f1_score(ytest,pred_)
+            logging.info("Compiling Metrics")
             mcc = metrics.matthews_corrcoef(ytest,pred_)
             kappa = metrics.cohen_kappa_score(ytest,pred_)
             training_time= time_end - time_start
@@ -4590,7 +4724,7 @@ def compare_models(blacklist = None,
             '''
             MONITOR UPDATE ENDS
             '''
-        
+        logging.info("Calculating mean and std")
         avg_acc = np.append(avg_acc,np.mean(score_acc))
         avg_auc = np.append(avg_auc,np.mean(score_auc))
         avg_recall = np.append(avg_recall,np.mean(score_recall))
@@ -4600,6 +4734,7 @@ def compare_models(blacklist = None,
         avg_mcc=np.append(avg_mcc,np.mean(score_mcc))
         avg_training_time=np.append(avg_training_time,np.mean(score_training_time))
         
+        logging.info("Creating metrics dataframe")
         compare_models_ = pd.DataFrame({'Model':model_names[name_counter], 'Accuracy':avg_acc, 'AUC':avg_auc, 
                            'Recall':avg_recall, 'Prec.':avg_precision, 
                            'F1':avg_f1, 'Kappa': avg_kappa, 'MCC':avg_mcc, 'TT (Sec)':avg_training_time})
@@ -4621,6 +4756,8 @@ def compare_models(blacklist = None,
         """
 
         if logging_param:
+
+            logging.info("Creating MLFlow logs")
 
             import mlflow
             from pathlib import Path
@@ -4689,11 +4826,6 @@ def compare_models(blacklist = None,
   
     progress.value += 1
     
-    #storing into experiment
-    model_name = 'Compare Models Score Grid'
-    tup = (model_name,master_display)
-    experiment__.append(tup)
-    
     def highlight_max(s):
         to_highlight = s == s.max()
         return ['background-color: yellow' if v else '' for v in to_highlight]
@@ -4734,6 +4866,8 @@ def compare_models(blacklist = None,
 
     model_fit_start = time.time()
 
+    logging.info("Finalizing top_n models")
+
     for i in sorted_model_names:
         monitor.iloc[2,1:] = i
         if verbose:
@@ -4762,6 +4896,8 @@ def compare_models(blacklist = None,
 
     #store in display container
     display_container.append(compare_models_.data)
+
+    logging.info("compare_models() succesfully completed")
 
     return model_store_final
 
@@ -4884,7 +5020,10 @@ def tune_model(estimator = None,
     ERROR HANDLING STARTS HERE
     
     '''
-    
+    import logging
+    logging.info("Initializing tune_model()")
+    logging.info("Checking exceptions")
+
     #exception checking   
     import sys
     
@@ -4936,12 +5075,15 @@ def tune_model(estimator = None,
     
     '''
     
-    
+    logging.info("Preloading libraries")
+
     #pre-load libraries
     import pandas as pd
     import ipywidgets as ipw
     from IPython.display import display, HTML, clear_output, update_display
     
+    logging.info("Preparing display monitor")
+
     #progress bar
     progress = ipw.IntProgress(value=0, min=0, max=fold+6, step=1 , description='Processing: ')
     master_display = pd.DataFrame(columns=['Accuracy','AUC','Recall', 'Prec.', 'F1', 'Kappa', 'MCC'])
@@ -4970,6 +5112,7 @@ def tune_model(estimator = None,
     import warnings
     warnings.filterwarnings('ignore')    
 
+    logging.info("Copying training dataset")
     #Storing X_train and y_train in data_X and data_y parameter
     data_X = X_train.copy()
     data_y = y_train.copy()
@@ -4979,7 +5122,8 @@ def tune_model(estimator = None,
     data_y.reset_index(drop=True, inplace=True)
     
     progress.value += 1
-            
+
+    logging.info("Importing libraries")    
     #general dependencies
     import random
     import numpy as np
@@ -5027,6 +5171,7 @@ def tune_model(estimator = None,
         
     #convert trained estimator into string name for grids
     
+    logging.info("Checking base model")
     def get_model_name(e):
         return str(e).split("(")[0]
 
@@ -5083,10 +5228,14 @@ def tune_model(estimator = None,
 
     estimator = model_dict.get(mn)
 
+    logging.info('Base model : ' + str(model_dict_logging.get(mn)))
+
     progress.value += 1
     
+    logging.info("Defining folds")
     kf = StratifiedKFold(fold, random_state=seed, shuffle=folds_shuffle_param)
 
+    logging.info("Declaring metric variables")
     score_auc =np.empty((0,0))
     score_acc =np.empty((0,0))
     score_recall =np.empty((0,0))
@@ -5118,6 +5267,9 @@ def tune_model(estimator = None,
     MONITOR UPDATE ENDS
     '''
     
+    logging.info("Defining Hyperparameters")
+    logging.info("Initializing RandomizedSearchCV")
+
     #setting turbo parameters
     cv = 3
 
@@ -5560,11 +5712,10 @@ def tune_model(estimator = None,
         best_model_param = model_grid.best_params_ 
         
     progress.value += 1
-    
+    progress.value += 1
     progress.value += 1
 
-    progress.value += 1
-
+    logging.info("Random search completed")
         
     #multiclass checking
     if y.value_counts().count() > 2:
@@ -5589,6 +5740,8 @@ def tune_model(estimator = None,
     
     for train_i , test_i in kf.split(data_X,data_y):
         
+        logging.info("Initializing Fold " + str(fold_num))
+
         t0 = time.time()
         
         
@@ -5611,6 +5764,8 @@ def tune_model(estimator = None,
 
         if fix_imbalance_param:
             
+            logging.info("Initializing SMOTE")
+
             if fix_imbalance_method_param is None:
                 from imblearn.over_sampling import SMOTE
                 resampler = SMOTE(random_state = seed)
@@ -5618,10 +5773,12 @@ def tune_model(estimator = None,
                 resampler = fix_imbalance_method_param
 
             Xtrain,ytrain = resampler.fit_sample(Xtrain, ytrain)
+            logging.info("Resampling completed")
 
         if hasattr(model, 'predict_proba'):
-        
+            logging.info("Fitting Model")
             model.fit(Xtrain,ytrain)
+            logging.info("Evaluating Metrics")
             pred_prob = model.predict_proba(Xtest)
             pred_prob = pred_prob[:,1]
             pred_ = model.predict(Xtest)
@@ -5643,8 +5800,9 @@ def tune_model(estimator = None,
                 f1 = metrics.f1_score(ytest,pred_)
                 
         else:
-            
+            logging.info("Fitting Model")
             model.fit(Xtrain,ytrain)
+            logging.info("Evaluating Metrics")
             pred_prob = 0.00
             pred_ = model.predict(Xtest)
             sca = metrics.accuracy_score(ytest,pred_)
@@ -5663,6 +5821,8 @@ def tune_model(estimator = None,
                 recall = metrics.recall_score(ytest,pred_)                
                 precision = metrics.precision_score(ytest,pred_)
                 f1 = metrics.f1_score(ytest,pred_)
+
+        logging.info("Compiling Metrics")
         time_end=time.time()
         kappa = metrics.cohen_kappa_score(ytest,pred_)
         mcc = metrics.matthews_corrcoef(ytest,pred_)
@@ -5746,6 +5906,7 @@ def tune_model(estimator = None,
         
     progress.value += 1
     
+    logging.info("Calculating mean and std")
     mean_acc=np.mean(score_acc)
     mean_auc=np.mean(score_auc)
     mean_recall=np.mean(score_recall)
@@ -5783,6 +5944,7 @@ def tune_model(estimator = None,
     
     progress.value += 1
     
+    logging.info("Creating metrics dataframe")
     model_results = pd.DataFrame({'Accuracy': score_acc, 'AUC': score_auc, 'Recall' : score_recall, 'Prec.' : score_precision , 
                      'F1' : score_f1, 'Kappa' : score_kappa, 'MCC':score_mcc})
     model_avgs = pd.DataFrame({'Accuracy': avgs_acc, 'AUC': avgs_auc, 'Recall' : avgs_recall, 'Prec.' : avgs_precision , 
@@ -5805,6 +5967,7 @@ def tune_model(estimator = None,
             update_display(monitor, display_id = 'monitor')
     
     model_fit_start = time.time()
+    logging.info("Finalizing model")
     best_model.fit(data_X, data_y)
     model_fit_end = time.time()
 
@@ -5813,10 +5976,12 @@ def tune_model(estimator = None,
     progress.value += 1
     
     #storing results in create_model_container
+    logging.info("Uploading results into container")
     create_model_container.append(model_results.data)
     display_container.append(model_results.data)
 
     #storing results in master_model_container
+    logging.info("Uploading model into container")
     master_model_container.append(best_model)
 
     '''
@@ -5826,7 +5991,7 @@ def tune_model(estimator = None,
     model performance is atleast equivalent to what is seen is compare_models 
     '''
     if choose_better:
-
+        logging.info("choose_better activated")
         if verbose:
             if html_param:
                 monitor.iloc[1,1:] = 'Compiling Final Results'
@@ -5848,14 +6013,7 @@ def tune_model(estimator = None,
 
         #re-instate display_constainer state 
         display_container.pop(-1)
-
-    #storing into experiment
-    model_name = '[TUNED] ' + str(model).split("(")[0]
-    tup = (model_name,best_model)
-    experiment__.append(tup)
-    nam = str(model_name) + ' Score Grid'
-    tup = (nam, model_results)
-    experiment__.append(tup)
+        logging.info("choose_better completed")
 
     #end runtime
     runtime_end = time.time()
@@ -5863,6 +6021,8 @@ def tune_model(estimator = None,
     
     #mlflow logging
     if logging_param:
+
+        logging.info("Creating MLFlow logs")
 
         #Creating Logs message monitor
         monitor.iloc[1,1:] = 'Creating Logs'
@@ -5980,7 +6140,9 @@ def tune_model(estimator = None,
             display(model_results)
         else:
             print(model_results.data)
-        
+    
+    logging.info("tune_model() succesfully completed")
+    
     return best_model
 
 def blend_models(estimator_list = 'All', 
@@ -6096,6 +6258,10 @@ def blend_models(estimator_list = 'All',
     
     '''
     
+    import logging
+    logging.info("Initializing blend_models()")
+    logging.info("Checking exceptions")
+
     #exception checking   
     import sys
 
@@ -6162,14 +6328,13 @@ def blend_models(estimator_list = 'All',
     
     '''
     
-    #testing
-    #no active testing
-    
+    logging.info("Preloading libraries")
     #pre-load libraries
     import pandas as pd
     import ipywidgets as ipw
     from IPython.display import display, HTML, clear_output, update_display
     
+    logging.info("Preparing display monitor")
     #progress bar
     progress = ipw.IntProgress(value=0, min=0, max=fold+4, step=1 , description='Processing: ')
     master_display = pd.DataFrame(columns=['Accuracy','AUC','Recall', 'Prec.', 'F1', 'Kappa', 'MCC'])
@@ -6197,6 +6362,7 @@ def blend_models(estimator_list = 'All',
     import warnings
     warnings.filterwarnings('ignore') 
     
+    logging.info("Importing libraries")
     #general dependencies
     import numpy as np
     from sklearn import metrics
@@ -6204,6 +6370,7 @@ def blend_models(estimator_list = 'All',
     from sklearn.ensemble import VotingClassifier
     import re
     
+    logging.info("Copying training dataset")
     #Storing X_train and y_train in data_X and data_y parameter
     data_X = X_train.copy()
     data_y = y_train.copy()
@@ -6235,6 +6402,7 @@ def blend_models(estimator_list = 'All',
         
     progress.value += 1
     
+    logging.info("Declaring metric variables")
     score_auc =np.empty((0,0))
     score_acc =np.empty((0,0))
     score_recall =np.empty((0,0))
@@ -6281,6 +6449,7 @@ def blend_models(estimator_list = 'All',
     
     if estimator_list == 'All':
 
+        logging.info("Importing untrained models")
         from sklearn.linear_model import LogisticRegression
         from sklearn.neighbors import KNeighborsClassifier
         from sklearn.naive_bayes import GaussianNB
@@ -6317,10 +6486,10 @@ def blend_models(estimator_list = 'All',
         et = ExtraTreesClassifier(random_state=seed, n_jobs=n_jobs_param)
         xgboost = XGBClassifier(random_state=seed, verbosity=0, n_jobs=n_jobs_param)
         lightgbm = lgb.LGBMClassifier(random_state=seed, n_jobs=n_jobs_param)
-        #catboost = CatBoostClassifier(random_state=seed, silent = True)
 
         progress.value += 1
         
+        logging.info("Defining estimator list")
         if turbo:
             if method == 'hard':
                 estimator_list = [lr,knn,nb,dt,svm,ridge,rf,qda,ada,gbc,lda,et,xgboost,lightgbm]
@@ -6341,6 +6510,7 @@ def blend_models(estimator_list = 'All',
         estimator_list = estimator_list
         voting = method  
         
+    logging.info("Defining model names in estimator_list")
     model_names = []
 
     for names in estimator_list:
@@ -6406,8 +6576,10 @@ def blend_models(estimator_list = 'All',
     
     try:
         model = VotingClassifier(estimators=estimator_list_, voting=voting, n_jobs=n_jobs_param)
-        model.fit(Xtrain,ytrain)
+        model.fit(data_X,data_y)
+        logging.info("n_jobs multiple passed")
     except:
+        logging.info("n_jobs multiple failed")
         model = VotingClassifier(estimators=estimator_list_, voting=voting)
     
     progress.value += 1
@@ -6429,6 +6601,8 @@ def blend_models(estimator_list = 'All',
     
     for train_i , test_i in kf.split(data_X,data_y):
         
+        logging.info("Initializing Fold " + str(fold_num))
+
         progress.value += 1
         
         t0 = time.time()
@@ -6451,7 +6625,7 @@ def blend_models(estimator_list = 'All',
         time_start=time.time()
 
         if fix_imbalance_param:
-            
+            logging.info("Initializing SMOTE")
             if fix_imbalance_method_param is None:
                 from imblearn.over_sampling import SMOTE
                 resampler = SMOTE(random_state = seed)
@@ -6459,10 +6633,12 @@ def blend_models(estimator_list = 'All',
                 resampler = fix_imbalance_method_param
 
             Xtrain,ytrain = resampler.fit_sample(Xtrain, ytrain)
+            logging.info("Resampling completed")
 
         if voting == 'hard':
-        
+            logging.info("Fitting Model")
             model.fit(Xtrain,ytrain)
+            logging.info("Evaluating Metrics")
             pred_prob = 0.0
             pred_ = model.predict(Xtest)
             sca = metrics.accuracy_score(ytest,pred_)
@@ -6477,8 +6653,9 @@ def blend_models(estimator_list = 'All',
                 f1 = metrics.f1_score(ytest,pred_) 
                 
         else:
-        
+            logging.info("Fitting Model")
             model.fit(Xtrain,ytrain)
+            logging.info("Evaluating Metrics")
             pred_ = model.predict(Xtest)
             sca = metrics.accuracy_score(ytest,pred_)
             
@@ -6498,7 +6675,8 @@ def blend_models(estimator_list = 'All',
                 recall = metrics.recall_score(ytest,pred_)
                 precision = metrics.precision_score(ytest,pred_)
                 f1 = metrics.f1_score(ytest,pred_)
-                
+            
+        logging.info("Compiling Metrics")
         time_end=time.time()
         kappa = metrics.cohen_kappa_score(ytest,pred_)
         mcc = metrics.matthews_corrcoef(ytest,pred_)
@@ -6570,7 +6748,7 @@ def blend_models(estimator_list = 'All',
         Update_display() ends here
         
         '''
-    
+    logging.info("Calculating mean and std")
     mean_acc=np.mean(score_acc)
     mean_auc=np.mean(score_auc)
     mean_recall=np.mean(score_recall)
@@ -6608,6 +6786,7 @@ def blend_models(estimator_list = 'All',
     
     progress.value += 1
     
+    logging.info("Creating metrics dataframe")
     model_results = pd.DataFrame({'Accuracy': score_acc, 'AUC': score_auc, 'Recall' : score_recall, 'Prec.' : score_precision , 
                      'F1' : score_f1, 'Kappa' : score_kappa, 'MCC' : score_mcc})
     model_avgs = pd.DataFrame({'Accuracy': avgs_acc, 'AUC': avgs_auc, 'Recall' : avgs_recall, 'Prec.' : avgs_precision , 
@@ -6630,6 +6809,7 @@ def blend_models(estimator_list = 'All',
             update_display(monitor, display_id = 'monitor')
     
     model_fit_start = time.time()
+    logging.info("Finalizing model")
     model.fit(data_X, data_y)
     model_fit_end = time.time()
 
@@ -6638,10 +6818,12 @@ def blend_models(estimator_list = 'All',
     progress.value += 1
     
     #storing results in create_model_container
+    logging.info("Uploading results into container")
     create_model_container.append(model_results.data)
     display_container.append(model_results.data)
 
     #storing results in master_model_container
+    logging.info("Uploading model into container")
     master_model_container.append(model)
 
     '''
@@ -6658,7 +6840,7 @@ def blend_models(estimator_list = 'All',
     scorer.append(blend_model_results)
 
     if choose_better and all_flag is False:
-
+        logging.info("choose_better activated")
         if verbose:
             if html_param:
                 monitor.iloc[1,1:] = 'Compiling Final Results'
@@ -6674,6 +6856,8 @@ def blend_models(estimator_list = 'All',
 
             #re-instate display_constainer state 
             display_container.pop(-1)
+        
+        logging.info("choose_better completed")
 
     index_scorer = scorer.index(max(scorer))
 
@@ -6681,20 +6865,14 @@ def blend_models(estimator_list = 'All',
         model = model
     else:
         model = base_models_[index_scorer-1]
-    
-    #storing into experiment
-    model_name = 'Voting Classifier'
-    tup = (model_name,model)
-    experiment__.append(tup)
-    nam = str(model_name) + ' Score Grid'
-    tup = (nam, model_results)
-    experiment__.append(tup)
 
     #end runtime
     runtime_end = time.time()
     runtime = np.array(runtime_end - runtime_start).round(2)
 
     if logging_param:
+        
+        logging.info("Creating MLFlow logs")
 
         #Creating Logs message monitor
         monitor.iloc[1,1:] = 'Creating Logs'
@@ -6779,6 +6957,8 @@ def blend_models(estimator_list = 'All',
         else:
             print(model_results.data)
     
+    logging.info("blend_models() succesfully completed")
+
     return model
 
 def stack_models(estimator_list, 
@@ -6905,9 +7085,10 @@ def stack_models(estimator_list,
     
     '''
     
-    #testing
-    #no active test
-    
+    import logging
+    logging.info("Initializing stack_models()")
+    logging.info("Checking exceptions")
+
     #exception checking   
     import sys
     
@@ -6965,9 +7146,7 @@ def stack_models(estimator_list,
     
     '''
     
-    #testing
-    #no active test
-    
+    logging.info("Preloading libraries")
     #pre-load libraries
     import pandas as pd
     import ipywidgets as ipw
@@ -6975,9 +7154,11 @@ def stack_models(estimator_list,
     from copy import deepcopy
     from sklearn.base import clone
     
+    logging.info("Copying estimator list")
     #copy estimator_list
     estimator_list = deepcopy(estimator_list)
     
+    logging.info("Defining meta model")
     #Defining meta model.
     if meta_model == None:
         from sklearn.linear_model import LogisticRegression
@@ -7002,6 +7183,7 @@ def stack_models(estimator_list,
     elif optimize == 'MCC':
         compare_dimension = 'MCC' 
 
+    logging.info("Preparing display monitor")
     #progress bar
     max_progress = len(estimator_list) + fold + 4
     progress = ipw.IntProgress(value=0, min=0, max=max_progress, step=1 , description='Processing: ')
@@ -7030,6 +7212,7 @@ def stack_models(estimator_list,
     import warnings
     warnings.filterwarnings('ignore') 
     
+    logging.info("Importing libraries")
     #dependencies
     import numpy as np
     from sklearn import metrics
@@ -7046,6 +7229,7 @@ def stack_models(estimator_list,
     elif method == 'hard':
         predict_method = 'predict'
     
+    logging.info("Copying training dataset")
     #defining data_X and data_y
     if finalize:
         data_X = X.copy()
@@ -7061,6 +7245,7 @@ def stack_models(estimator_list,
     #models_ for appending
     models_ = []
     
+    logging.info("Getting model names")
     #defining model_library model names
     model_names = np.zeros(0)
     for item in estimator_list:
@@ -7094,7 +7279,9 @@ def stack_models(estimator_list,
     model_fit_start = time.time()
 
     for model in estimator_list:
-        
+
+        logging.info("Checking base model : " + str(model_names[counter]))
+
         '''
         MONITOR UPDATE STARTS
         '''
@@ -7109,11 +7296,13 @@ def stack_models(estimator_list,
         '''
 
         #fitting and appending
+        logging.info("Fitting base model")
         model.fit(data_X, data_y)
         models_.append(model)
         
         progress.value += 1
         
+        logging.info("Generating cross val predictions")
         try:
             base_array = cross_val_predict(model,data_X,data_y,cv=fold, method=predict_method)
         except:
@@ -7130,7 +7319,9 @@ def stack_models(estimator_list,
         base_array = np.empty((0,0))
         
         counter += 1
-        
+
+    logging.info("Base layer complete")
+
     #fill nas for base_prediction
     base_prediction.fillna(value=0, inplace=True)
     
@@ -7161,6 +7352,7 @@ def stack_models(estimator_list,
     model.fit(data_X, data_y)
     models_.append(model)
     
+    logging.info("Defining folds")
     kf = StratifiedKFold(fold, random_state=seed, shuffle=folds_shuffle_param) #capturing fold requested by user
 
     score_auc =np.empty((0,0))
@@ -7186,6 +7378,8 @@ def stack_models(estimator_list,
     
     for train_i , test_i in kf.split(data_X,data_y):
         
+        logging.info("Initializing Fold " + str(fold_num))
+
         t0 = time.time()
         
         '''
@@ -7207,7 +7401,7 @@ def stack_models(estimator_list,
         ytrain,ytest = data_y.iloc[train_i], data_y.iloc[test_i]
         
         if fix_imbalance_param:
-            
+            logging.info("Initializing SMOTE")
             if fix_imbalance_method_param is None:
                 from imblearn.over_sampling import SMOTE
                 resampler = SMOTE(random_state = seed)
@@ -7215,9 +7409,12 @@ def stack_models(estimator_list,
                 resampler = fix_imbalance_method_param
 
             Xtrain,ytrain = resampler.fit_sample(Xtrain, ytrain)
+            logging.info("Resampling completed")
 
         time_start=time.time()
+        logging.info("Fitting Model")
         model.fit(Xtrain,ytrain)
+        logging.info("Evaluating Metrics")
         
         try:
             pred_prob = model.predict_proba(Xtest)
@@ -7240,7 +7437,8 @@ def stack_models(estimator_list,
             recall = metrics.recall_score(ytest,pred_)
             precision = metrics.precision_score(ytest,pred_)
             f1 = metrics.f1_score(ytest,pred_)
-            
+        
+        logging.info("Compiling Metrics")
         time_end=time.time()
         kappa = metrics.cohen_kappa_score(ytest,pred_)
         mcc = metrics.matthews_corrcoef(ytest,pred_)
@@ -7325,6 +7523,7 @@ def stack_models(estimator_list,
     model_fit_end = time.time()
     model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
 
+    logging.info("Calculating mean and std")
     mean_acc=np.mean(score_acc)
     mean_auc=np.mean(score_auc)
     mean_recall=np.mean(score_recall)
@@ -7358,7 +7557,8 @@ def stack_models(estimator_list,
     avgs_mcc = np.append(avgs_mcc, std_mcc)
     avgs_training_time = np.append(avgs_training_time, mean_training_time)
     avgs_training_time = np.append(avgs_training_time, std_training_time)
-      
+
+    logging.info("Creating metrics dataframe")
     model_results = pd.DataFrame({'Accuracy': score_acc, 'AUC': score_auc, 'Recall' : score_recall, 'Prec.' : score_precision , 
                      'F1' : score_f1, 'Kappa' : score_kappa,'MCC':score_mcc})
     model_avgs = pd.DataFrame({'Accuracy': avgs_acc, 'AUC': avgs_auc, 'Recall' : avgs_recall, 'Prec.' : avgs_precision , 
@@ -7377,11 +7577,13 @@ def stack_models(estimator_list,
     models_.append(restack)
     
     #storing results in create_model_container
+    logging.info("Uploading results into container")
     create_model_container.append(model_results.data)
     if not finalize:
         display_container.append(model_results.data)
 
     #storing results in master_model_container
+    logging.info("Uploading model into container")
     master_model_container.append(models_)
 
     '''
@@ -7398,6 +7600,7 @@ def stack_models(estimator_list,
     scorer.append(stack_model_results)
 
     if choose_better:
+        logging.info("choose_better activated")
 
         if verbose:
             if html_param:
@@ -7423,6 +7626,7 @@ def stack_models(estimator_list,
 
         #re-instate display_constainer state 
         display_container.pop(-1)
+        logging.info("choose_better completed")
 
     #returning better model
     index_scorer = scorer.index(max(scorer))
@@ -7431,16 +7635,9 @@ def stack_models(estimator_list,
         models_ = models_
     else:
         models_ = base_models_[index_scorer-1]
-    
-    #storing into experiment
-    model_name = 'Stacking Classifier (Single Layer)'
-    tup = (model_name,models_)
-    experiment__.append(tup)
-    nam = str(model_name) + ' Score Grid'
-    tup = (nam, model_results)
-    experiment__.append(tup)
-    
+
     if plot:
+        logging.info("Plotting correlation heatmap")
         clear_output()
         plt.subplots(figsize=(15,7))
         ax = sns.heatmap(base_prediction_cor, vmin=0.2, vmax=1, center=0,cmap='magma', square=True, annot=True, 
@@ -7452,6 +7649,8 @@ def stack_models(estimator_list,
     runtime = np.array(runtime_end - runtime_start).round(2)
 
     if logging_param and not finalize:
+        
+        logging.info("Creating MLFlow logs")
 
         import mlflow
         from pathlib import Path
@@ -7548,6 +7747,8 @@ def stack_models(estimator_list,
             display(model_results)
         else:
             print(model_results.data)
+
+    logging.info("stack_models() succesfully completed")
 
     return models_
 
@@ -7671,8 +7872,9 @@ def create_stacknet(estimator_list,
     
     '''
     
-    #testing
-    #global inter_level_names
+    import logging
+    logging.info("Initializing create_stacknet()")
+    logging.info("Checking exceptions")
     
     #exception checking   
     import sys
@@ -7736,6 +7938,7 @@ def create_stacknet(estimator_list,
     
     '''
     
+    logging.info("Preloading libraries")
     #pre-load libraries
     import pandas as pd
     import ipywidgets as ipw
@@ -7744,9 +7947,11 @@ def create_stacknet(estimator_list,
     from copy import deepcopy
     from sklearn.base import clone
     
+    logging.info("Copying estimator list")
     #copy estimator_list
     estimator_list = deepcopy(estimator_list)
     
+    logging.info("Defining meta model")
     #copy meta_model
     if meta_model is None:
         from sklearn.linear_model import LogisticRegression
@@ -7771,6 +7976,7 @@ def create_stacknet(estimator_list,
     elif optimize == 'MCC':
         compare_dimension = 'MCC' 
 
+    logging.info("Preparing display monitor")
     #progress bar
     max_progress = len(estimator_list) + fold + 4
     progress = ipw.IntProgress(value=0, min=0, max=max_progress, step=1 , description='Processing: ')
@@ -7813,6 +8019,7 @@ def create_stacknet(estimator_list,
     base_level = estimator_list[0]
     base_level_names = []
     
+    logging.info("Defining model names")
     #defining base_level_names
     for item in base_level:
         base_level_names = np.append(base_level_names, str(item).split("(")[0])
@@ -7849,6 +8056,7 @@ def create_stacknet(estimator_list,
                 level_list.append(str(m).split("(")[0])
         inter_level_names.append(level_list)
     
+    logging.info("Copying training dataset")
     #defining data_X and data_y
     if finalize:
         data_X = X.copy()
@@ -7878,9 +8086,10 @@ def create_stacknet(estimator_list,
     base_models_ = []
 
     model_fit_start = time.time()
-    
+
     for model in base_level:
         
+        logging.info('Checking base model :' + str(base_level_names[base_counter]))
         base_models_.append(model.fit(data_X,data_y)) #changed to data_X and data_y
         
         '''
@@ -7898,6 +8107,7 @@ def create_stacknet(estimator_list,
         
         progress.value += 1
         
+        logging.info("Generating cross val predictions")
         if method == 'soft':
             try:
                 base_array = cross_val_predict(model,data_X,data_y,cv=fold, method=predict_method)
@@ -7926,6 +8136,9 @@ def create_stacknet(estimator_list,
     inter_counter = 0
     
     for level in inter_level:
+
+        logging.info("Checking intermediate level: " + str(inter_counter))
+
         inter_inner = []
         model_counter = 0
         inter_array_df = pd.DataFrame()
@@ -7935,6 +8148,8 @@ def create_stacknet(estimator_list,
             '''
             MONITOR UPDATE STARTS
             '''
+            
+            logging.info("Checking model : " + str(inter_level_names[inter_counter][model_counter]))
 
             monitor.iloc[1,1:] = 'Evaluating ' + inter_level_names[inter_counter][model_counter]
             if verbose:
@@ -7999,8 +8214,10 @@ def create_stacknet(estimator_list,
     
     meta_model_ = model.fit(data_X,data_y)
     
+    logging.info("Defining folds")
     kf = StratifiedKFold(fold, random_state=seed, shuffle=folds_shuffle_param) #capturing fold requested by user
 
+    logging.info("Declaring metric variables")
     score_auc =np.empty((0,0))
     score_acc =np.empty((0,0))
     score_recall =np.empty((0,0))
@@ -8022,6 +8239,8 @@ def create_stacknet(estimator_list,
     
     for train_i , test_i in kf.split(data_X,data_y):
         
+        logging.info("Initializing fold " + str(fold_num))
+
         t0 = time.time()
         
         '''
@@ -8044,6 +8263,8 @@ def create_stacknet(estimator_list,
 
         if fix_imbalance_param:
             
+            logging.info("Initializing SMOTE")
+
             if fix_imbalance_method_param is None:
                 from imblearn.over_sampling import SMOTE
                 resampler = SMOTE(random_state = seed)
@@ -8051,8 +8272,11 @@ def create_stacknet(estimator_list,
                 resampler = fix_imbalance_method_param
 
             Xtrain,ytrain = resampler.fit_sample(Xtrain, ytrain)
+            logging.info("Resampling completed")
 
+        logging.info("Fitting Model")
         model.fit(Xtrain,ytrain)
+        logging.info("Evaluating Metrics")
         try:
             pred_prob = model.predict_proba(Xtest)
             pred_prob = pred_prob[:,1]
@@ -8074,7 +8298,8 @@ def create_stacknet(estimator_list,
             recall = metrics.recall_score(ytest,pred_)
             precision = metrics.precision_score(ytest,pred_)
             f1 = metrics.f1_score(ytest,pred_) 
-            
+
+        logging.info("Compiling metrics")     
         time_end=time.time()
         kappa = metrics.cohen_kappa_score(ytest,pred_)
         mcc = metrics.matthews_corrcoef(ytest,pred_)
@@ -8155,6 +8380,8 @@ def create_stacknet(estimator_list,
     model_fit_end = time.time()
     model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
 
+    logging.info("Calculating mean and std")
+
     mean_acc=np.mean(score_acc)
     mean_auc=np.mean(score_auc)
     mean_recall=np.mean(score_recall)
@@ -8192,6 +8419,8 @@ def create_stacknet(estimator_list,
     
     progress.value += 1
     
+    logging.info("Creating metrics dataframe")
+
     model_results = pd.DataFrame({'Accuracy': score_acc, 'AUC': score_auc, 'Recall' : score_recall, 'Prec.' : score_precision, 
                      'F1' : score_f1, 'Kappa' : score_kappa,'MCC' : score_mcc})
     model_avgs = pd.DataFrame({'Accuracy': avgs_acc, 'AUC': avgs_auc, 'Recall' : avgs_recall, 'Prec.' : avgs_precision , 
@@ -8205,7 +8434,6 @@ def create_stacknet(estimator_list,
     model_results = model_results.set_precision(round)
     
     progress.value += 1
-        
     
     #appending meta_model into models_
     models_.append(meta_model_)
@@ -8237,6 +8465,8 @@ def create_stacknet(estimator_list,
     scorer.append(stack_model_results)
 
     if choose_better:
+        
+        logging.info("choose_better activated")
 
         if verbose:
             if html_param:
@@ -8263,6 +8493,8 @@ def create_stacknet(estimator_list,
 
         #re-instate display_constainer state 
         display_container.pop(-1)
+        
+        logging.info("choose_better completed")
 
     #returning better model
     index_scorer = scorer.index(max(scorer))
@@ -8271,20 +8503,14 @@ def create_stacknet(estimator_list,
         models_ = models_
     else:
         models_ = base_models_[index_scorer-1]
-
-    #storing into experiment
-    model_name = 'Stacking Classifier (Multi Layer)'
-    tup = (model_name,models_)
-    experiment__.append(tup)
-    nam = str(model_name) + ' Score Grid'
-    tup = (nam, model_results)
-    experiment__.append(tup)
     
     #end runtime
     runtime_end = time.time()
     runtime = np.array(runtime_end - runtime_start).round(2)
 
     if logging_param and not finalize:
+
+        logging.info('Creating MLFlow logs')
 
         import mlflow
         from pathlib import Path
@@ -8369,6 +8595,8 @@ def create_stacknet(estimator_list,
         else:
             print(model_results.data)
     
+    logging.info("create_stacknet() succesfully completed")
+
     return models_
 
 def interpret_model(estimator,
@@ -8651,6 +8879,10 @@ def calibrate_model(estimator,
     
     '''
     
+    import logging
+    logging.info("Initializing calibrate_model()")
+    logging.info("Checking exceptions")
+
     #exception checking   
     import sys
 
@@ -8687,12 +8919,14 @@ def calibrate_model(estimator,
     
     '''
     
-    
+    logging.info("Preloading libraries")
+
     #pre-load libraries
     import pandas as pd
     import ipywidgets as ipw
     from IPython.display import display, HTML, clear_output, update_display
-        
+
+    logging.info("Preparing display monitor")    
     #progress bar
     progress = ipw.IntProgress(value=0, min=0, max=fold+4, step=1 , description='Processing: ')
     master_display = pd.DataFrame(columns=['Accuracy','AUC','Recall', 'Prec.', 'F1', 'Kappa','MCC'])
@@ -8720,6 +8954,7 @@ def calibrate_model(estimator,
     import warnings
     warnings.filterwarnings('ignore') 
     
+    logging.info("Copying training dataset")
     #Storing X_train and y_train in data_X and data_y parameter
     data_X = X_train.copy()
     data_y = y_train.copy()
@@ -8727,7 +8962,8 @@ def calibrate_model(estimator,
     #reset index
     data_X.reset_index(drop=True, inplace=True)
     data_y.reset_index(drop=True, inplace=True)
-  
+    
+    logging.info("Importing libraries")
     #general dependencies
     import numpy as np
     from sklearn import metrics
@@ -8736,6 +8972,8 @@ def calibrate_model(estimator,
     
     progress.value += 1
     
+    logging.info("Getting model name")
+
     def get_model_name(e):
         return str(e).split("(")[0]
 
@@ -8778,9 +9016,13 @@ def calibrate_model(estimator,
 
     base_estimator_full_name = model_dict_logging.get(mn)
 
+    logging.info("Base model : " + str(base_estimator_full_name))
+
     #cross validation setup starts here
+    logging.info("Defining folds")
     kf = StratifiedKFold(fold, random_state=seed, shuffle=folds_shuffle_param)
 
+    logging.info("Declaring metric variables")
     score_auc =np.empty((0,0))
     score_acc =np.empty((0,0))
     score_recall =np.empty((0,0))
@@ -8812,7 +9054,8 @@ def calibrate_model(estimator,
     '''
     
     #calibrating estimator
-            
+    
+    logging.info("Importing untrained CalibratedClassifierCV")
     model = CalibratedClassifierCV(base_estimator=estimator, method=method, cv=fold)
     full_name = str(model).split("(")[0]
     
@@ -8836,6 +9079,8 @@ def calibrate_model(estimator,
     fold_num = 1
     
     for train_i , test_i in kf.split(data_X,data_y):
+
+        logging.info("Initializing Fold " + str(fold_num))
         
         t0 = time.time()
         
@@ -8859,6 +9104,8 @@ def calibrate_model(estimator,
 
         if fix_imbalance_param:
             
+            logging.info("Initializing SMOTE")
+
             if fix_imbalance_method_param is None:
                 from imblearn.over_sampling import SMOTE
                 resampler = SMOTE(random_state = seed)
@@ -8866,10 +9113,13 @@ def calibrate_model(estimator,
                 resampler = fix_imbalance_method_param
 
             Xtrain,ytrain = resampler.fit_sample(Xtrain, ytrain)
+            logging.info("Resampling completed")
 
         if hasattr(model, 'predict_proba'):
         
+            logging.info("Fitting Model")
             model.fit(Xtrain,ytrain)
+            logging.info("Evaluating Metrics")
             pred_prob = model.predict_proba(Xtest)
             pred_prob = pred_prob[:,1]
             pred_ = model.predict(Xtest)
@@ -8891,8 +9141,9 @@ def calibrate_model(estimator,
                 f1 = metrics.f1_score(ytest,pred_)
                 
         else:
-            
+            logging.info("Fitting Model")
             model.fit(Xtrain,ytrain)
+            logging.info("Evaluating Metrics")
             pred_prob = 0.00
             pred_ = model.predict(Xtest)
             sca = metrics.accuracy_score(ytest,pred_)
@@ -8912,6 +9163,7 @@ def calibrate_model(estimator,
                 precision = metrics.precision_score(ytest,pred_)
                 f1 = metrics.f1_score(ytest,pred_)
 
+        logging.info("Compiling Metrics") 
         time_end=time.time()
         kappa = metrics.cohen_kappa_score(ytest,pred_)
         mcc = metrics.matthews_corrcoef(ytest,pred_)
@@ -8985,7 +9237,8 @@ def calibrate_model(estimator,
         Update_display() ends here
         
         '''
-            
+
+    logging.info("Calculating mean and std")        
     mean_acc=np.mean(score_acc)
     mean_auc=np.mean(score_auc)
     mean_recall=np.mean(score_recall)
@@ -9021,7 +9274,8 @@ def calibrate_model(estimator,
     avgs_training_time = np.append(avgs_training_time, std_training_time)
     
     progress.value += 1
-    
+
+    logging.info("Creating metrics dataframe")   
     model_results = pd.DataFrame({'Accuracy': score_acc, 'AUC': score_auc, 'Recall' : score_recall, 'Prec.' : score_precision , 
                      'F1' : score_f1, 'Kappa' : score_kappa,'MCC' : score_mcc})
     model_avgs = pd.DataFrame({'Accuracy': avgs_acc, 'AUC': avgs_auc, 'Recall' : avgs_recall, 'Prec.' : avgs_precision , 
@@ -9041,6 +9295,7 @@ def calibrate_model(estimator,
             update_display(monitor, display_id = 'monitor')
     
     model_fit_start = time.time()
+    logging.info("Finalizing model")
     model.fit(data_X, data_y)
     model_fit_end = time.time()
 
@@ -9048,19 +9303,14 @@ def calibrate_model(estimator,
     
     progress.value += 1
     
-    #storing into experiment
-    tup = (full_name,model)
-    experiment__.append(tup)
-    nam = str(full_name) + ' Score Grid'
-    tup = (nam, model_results)
-    experiment__.append(tup)
-    
     #end runtime
     runtime_end = time.time()
     runtime = np.array(runtime_end - runtime_start).round(2)
 
     #mlflow logging
     if logging_param:
+        
+        logging.info("Creating MLFlow logs")
 
         #Creating Logs message monitor
         monitor.iloc[1,1:] = 'Creating Logs'
@@ -9171,6 +9421,8 @@ def calibrate_model(estimator,
         else:
             print(model_results.data)
     
+    logging.info("calibrate_model() succesfully completed")
+
     return model
 
 def evaluate_model(estimator):
@@ -9289,6 +9541,9 @@ def finalize_model(estimator):
          
     """
     
+    import logging
+    logging.info("Initializing finalize_model()")
+
     #ignore warnings
     import warnings
     warnings.filterwarnings('ignore') 
@@ -9297,11 +9552,14 @@ def finalize_model(estimator):
     import datetime, time
     runtime_start = time.time()
 
+    logging.info("Importing libraries")
     #import depedencies
     from IPython.display import clear_output, update_display
     from sklearn.base import clone
     from copy import deepcopy
     import numpy as np
+    
+    logging.info("Getting model name")
     
     #determine runname for logging
     def get_model_name(e):
@@ -9365,6 +9623,8 @@ def finalize_model(estimator):
         
         if type(estimator[0]) is not list:
             
+            logging.info("Finalizing Stacking Classifier")
+
             """
             Single Layer Stacker
             """
@@ -9387,6 +9647,8 @@ def finalize_model(estimator):
             multiple layer stacknet
             """
             
+            logging.info("Finalizing Multi-layer Stacking Classifier")
+
             stacker_final = deepcopy(estimator)
             stack_restack = stacker_final.pop()
             stack_method_final = stacker_final.pop()[0]
@@ -9403,15 +9665,10 @@ def finalize_model(estimator):
 
     else:
         
+        logging.info("Finalizing " + str(full_name))
         model_final = clone(estimator)
         clear_output()
         model_final.fit(X,y)
-    
-    #storing into experiment
-    model_name = str(estimator).split("(")[0]
-    model_name = 'Final ' + model_name
-    tup = (model_name,model_final)
-    experiment__.append(tup)
     
     #end runtime
     runtime_end = time.time()
@@ -9419,6 +9676,8 @@ def finalize_model(estimator):
 
     #mlflow logging
     if logging_param:
+
+        logging.info("Creating MLFlow logs")
 
         #import mlflow
         import mlflow
@@ -9533,6 +9792,8 @@ def finalize_model(estimator):
             mlflow.set_tag("Size KB", size_kb)
             os.remove('Trained Model.pkl')
 
+    logging.info("finalize_model() succesfully completed")
+
     return model_final
 
 def save_model(model, model_name, verbose=True):
@@ -9578,10 +9839,14 @@ def save_model(model, model_name, verbose=True):
          
     """
     
+    import logging
+    logging.info("Initializing save_model()")
+    
     #ignore warnings
     import warnings
     warnings.filterwarnings('ignore') 
     
+    logging.info("Appending prep pipeline")
     model_ = []
     model_.append(prep_pipe)
     model_.append(model)
@@ -9591,6 +9856,9 @@ def save_model(model, model_name, verbose=True):
     joblib.dump(model_, model_name)
     if verbose:
         print('Transformation Pipeline and Model Succesfully Saved')
+    
+    logging.info(str(model_name) + ' saved in current working directory')
+    logging.info("save_model() succesfully completed")
 
 def load_model(model_name, 
                platform = None, 
@@ -9641,6 +9909,9 @@ def load_model(model_name,
          
     """
     
+    import logging
+    logging.info("Initializing load_model()")
+
     #ignore warnings
     import warnings
     warnings.filterwarnings('ignore') 
@@ -9655,6 +9926,8 @@ def load_model(model_name,
     #cloud provider
     if platform == 'aws':
         
+        logging.info("Importing model from AWS-S3")
+
         import boto3
         bucketname = authentication.get('bucket')
         filename = str(model_name) + '.pkl'
@@ -9665,13 +9938,15 @@ def load_model(model_name,
         
         if verbose:
             print('Transformation Pipeline and Model Sucessfully Loaded')
-            
+
+        logging.info("load_model() succesfully completed")
         return model
 
     import joblib
     model_name = model_name + '.pkl'
     if verbose:
         print('Transformation Pipeline and Model Sucessfully Loaded')
+    logging.info("load_model() succesfully completed")
     return joblib.load(model_name)
 
 def predict_model(estimator, 
@@ -10863,6 +11138,9 @@ def get_logs(experiment_name = None, save = False):
     
     """
 
+    import logging
+    logging.info("Initializing get_logs()")
+
     import sys
     
     if experiment_name is None:
@@ -10873,15 +11151,22 @@ def get_logs(experiment_name = None, save = False):
     import mlflow
     from mlflow.tracking import MlflowClient
     
+    logging.info("Importing MLFlow Client")
     client = MlflowClient()
 
     if client.get_experiment_by_name(exp_name_log_) is None:
+        logging.info("No active run found.")
         sys.exit('No active run found. Check logging parameter in setup or to get logs for inactive run pass experiment_name.')
     
     exp_id = client.get_experiment_by_name(exp_name_log_).experiment_id    
+    logging.info("Searching runs")
     runs = mlflow.search_runs(exp_id)
 
     if save:
+        logging.info("Saving logs as csv")
         file_name = str(exp_name_log_) + '_logs.csv'
         runs.to_csv(file_name, index=False)
+
+    logging.info("get_logs() succesfully completed")
+
     return runs

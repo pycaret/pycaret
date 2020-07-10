@@ -56,8 +56,8 @@ def setup(data,
           n_jobs = -1, #added in pycaret==2.0.0
           html = True, #added in pycaret==2.0.0
           session_id = None,
+          log_experiment = False, #added in pycaret==2.0.0
           experiment_name = None, #added in pycaret==2.0.0
-          logging = False, #added in pycaret==2.0.0
           log_plots = False, #added in pycaret==2.0.0
           log_profile = False, #added in pycaret==2.0.0
           log_data = False, #added in pycaret==2.0.0
@@ -395,12 +395,12 @@ def setup(data,
     be performed assuming automatically inferred data types. Not recommended for direct use 
     except for established pipelines.
 
+    log_experiment: bool, default = False
+    When set to True, all metrics and parameters are logged on MLFlow server.
+
     experiment_name: str, default = None
     Name of experiment for logging. When set to None, 'clf' is by default used as 
     alias for the experiment name.
-
-    logging: bool, default = False
-    When set to True, all metrics and parameters are logged on MLFlow server.
 
     log_plots: bool, default = False
     When set to True, specific plots are logged in MLflow as a png file. By default,
@@ -676,7 +676,6 @@ def setup(data,
     if type(interaction_threshold) is not float:
         sys.exit('(Type Error): interaction_threshold must be a float between 0 and 1. ')      
 
-
     #cannot drop target
     if ignore_features is not None:
         if target in ignore_features:
@@ -730,9 +729,9 @@ def setup(data,
     if type(data_split_shuffle) is not bool:
         sys.exit('(Type Error): data_split_shuffle parameter only accepts True or False.')
 
-    #logging
-    if type(logging) is not bool:
-        sys.exit('(Type Error): logging parameter only accepts True or False.')
+    #log_experiment
+    if type(log_experiment) is not bool:
+        sys.exit('(Type Error): log_experiment parameter only accepts True or False.')
 
     #log_plots
     if type(log_plots) is not bool:
@@ -1237,7 +1236,7 @@ def setup(data,
     display_container = []
 
     #create logging parameter
-    logging_param = logging
+    logging_param = log_experiment
 
     #create exp_name_log param incase logging is False
     exp_name_log = 'no_logging'

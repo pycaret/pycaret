@@ -2,9 +2,13 @@
 # Author: Moez Ali <moez.ali@queensu.ca>
 # License: MIT
 
-def version():
-    print("pycaret-nightly-0.19")
+version_ = "pycaret-nightly-0.19"
 
+def version():
+    print(version_)
+
+def __version__():
+    return version_
 
 def check_metric(actual, prediction, metric, round=4):
     

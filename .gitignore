@@ -17,3 +17,4 @@ catboost_info
 /pycaret.egg-info
 /dist
 .vscode/settings.json
+/logs.log
