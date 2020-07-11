@@ -4893,7 +4893,7 @@ def compare_models(blacklist = None,
                 update_display(monitor, display_id = 'monitor')
         progress.value += 1
         k = model_dict.get(i)
-        m = create_model(estimator=k, verbose = False, system=False, cross_validation=False)
+        m = create_model(estimator=k, verbose = False, system=False, cross_validation=True)
         model_store_final.append(m)
 
     model_fit_end = time.time()
@@ -11188,3 +11188,164 @@ def get_logs(experiment_name = None, save = False):
     logger.info("get_logs() succesfully completed")
 
     return runs
+
+
+def get_config(variable):
+
+    """
+    get global environment variable
+    """
+
+    if variable == 'X':
+        return X
+    
+    if variable == 'y':
+        return y
+
+    if variable == 'X_train':
+        return X_train
+
+    if variable == 'X_test':
+        return X_test
+
+    if variable == 'y_train':
+        return y_train
+
+    if variable == 'y_test':
+        return y_test
+
+    if variable == 'seed':
+        return seed
+
+    if variable == 'prep_pipe':
+        return prep_pipe
+
+    if variable == 'folds_shuffle_param':
+        return folds_shuffle_param
+        
+    if variable == 'n_jobs_param':
+        return n_jobs_param
+
+    if variable == 'html_param':
+        return html_param
+
+    if variable == 'create_model_container':
+        return create_model_container
+
+    if variable == 'master_model_container':
+        return master_model_container
+
+    if variable == 'display_container':
+        return display_container
+
+    if variable == 'exp_name_log':
+        return exp_name_log
+
+    if variable == 'logging_param':
+        return logging_param
+
+    if variable == 'log_plots_param':
+        return log_plots_param
+
+    if variable == 'USI':
+        return USI
+
+    if variable == 'fix_imbalance_param':
+        return fix_imbalance_param
+
+    if variable == 'fix_imbalance_method_param':
+        return fix_imbalance_method_param
+
+    if variable == 'logger':
+        return logger
+
+
+def set_config(variable,value):
+
+    """
+    set global environment variable
+    """
+
+    if variable == 'X':
+        global X
+        X = value
+
+    if variable == 'y':
+        global y
+        y = value
+
+    if variable == 'X_train':
+        global X_train
+        X_train = value
+
+    if variable == 'X_test':
+        global X_test
+        X_test = value
+
+    if variable == 'y_train':
+        global y_train
+        y_train = value
+
+    if variable == 'y_test':
+        global y_test
+        y_test = value
+
+    if variable == 'seed':
+        global seed
+        seed = value
+
+    if variable == 'prep_pipe':
+        global prep_pipe
+        prep_pipe = value
+
+    if variable == 'folds_shuffle_param':
+        global folds_shuffle_param
+        folds_shuffle_param = value
+
+    if variable == 'n_jobs_param':
+        global n_jobs_param
+        n_jobs_param = value
+
+    if variable == 'html_param':
+        global html_param
+        html_param = value
+
+    if variable == 'create_model_container':
+        global create_model_container
+        create_model_container = value
+
+    if variable == 'master_model_container':
+        global master_model_container
+        master_model_container = value
+
+    if variable == 'display_container':
+        global display_container
+        display_container = value
+
+    if variable == 'exp_name_log':
+        global exp_name_log
+        exp_name_log = value
+
+    if variable == 'logging_param':
+        global logging_param
+        logging_param = value
+
+    if variable == 'log_plots_param':
+        global log_plots_param
+        log_plots_param = value
+
+    if variable == 'USI':
+        global USI
+        USI = value
+
+    if variable == 'fix_imbalance_param':
+        global fix_imbalance_param
+        fix_imbalance_param = value
+
+    if variable == 'fix_imbalance_method_param':
+        global sefix_imbalance_method_paramed
+        fix_imbalance_method_param = value
+
+    if variable == 'logger':
+        global logger
+        logger = value

@@ -1766,7 +1766,7 @@ def create_model(estimator = None,
                  method = None, 
                  fold = 10, 
                  round = 4,
-                 fit_only = False, #added in pycaret==2.0.0
+                 cross_validation = True, #added in pycaret==2.0.0
                  verbose = True,
                  system = True, #added in pycaret==2.0.0
                  **kwargs): #added in pycaret==2.0.0
@@ -1840,10 +1840,10 @@ def create_model(estimator = None,
     round: integer, default = 4
     Number of decimal places the metrics in the score grid will be rounded to. 
 
-    fit_only: bool, default = False
-    When fit_only set to True, no cross validation or metric evaluation is performed.
-    Trained model object returned when using fit_only is same as the one returned
-    without fit_only.
+    cross_validation: bool, default = True
+    When cross_validation set to True, no cross validation or metric evaluation is performed.
+    Trained model object returned when using cross_validation is same as the one returned
+    without cross_validation.
 
     verbose: Boolean, default = True
     Score grid is not printed when verbose is set to False.
@@ -1932,9 +1932,9 @@ def create_model(estimator = None,
     if type(system) is not bool:
         sys.exit('(Type Error): System parameter can only take argument as True or False.') 
 
-    #checking fit_only parameter
-    if type(fit_only) is not bool:
-        sys.exit('(Type Error): fit_only parameter can only take argument as True or False.') 
+    #checking cross_validation parameter
+    if type(cross_validation) is not bool:
+        sys.exit('(Type Error): cross_validation parameter can only take argument as True or False.') 
     
     '''
     
@@ -2234,7 +2234,7 @@ def create_model(estimator = None,
     MONITOR UPDATE STARTS
     '''
     
-    if fit_only:
+    if not cross_validation:
         monitor.iloc[1,1:] = 'Fitting ' + str(full_name)
     else:
         monitor.iloc[1,1:] = 'Initializing CV'
@@ -2247,7 +2247,7 @@ def create_model(estimator = None,
     MONITOR UPDATE ENDS
     '''
     
-    if fit_only:
+    if not cross_validation:
         model.fit(data_X,data_y)
 
         if verbose:
@@ -4054,7 +4054,7 @@ def compare_models(blacklist = None,
                 update_display(monitor, display_id = 'monitor')
         progress.value += 1
         k = model_dict.get(i)
-        m = create_model(estimator=k, verbose = False, system=False, fit_only=True)
+        m = create_model(estimator=k, verbose = False, system=False, cross_validation=True)
         model_store_final.append(m)
 
     if len(model_store_final) == 1:
@@ -9430,3 +9430,164 @@ def get_logs(experiment_name = None, save = False):
         file_name = str(exp_name_log_) + '_logs.csv'
         runs.to_csv(file_name, index=False)
     return runs
+
+
+def get_config(variable):
+
+    """
+    get global environment variable
+    """
+
+    if variable == 'X':
+        return X
+    
+    if variable == 'y':
+        return y
+
+    if variable == 'X_train':
+        return X_train
+
+    if variable == 'X_test':
+        return X_test
+
+    if variable == 'y_train':
+        return y_train
+
+    if variable == 'y_test':
+        return y_test
+
+    if variable == 'seed':
+        return seed
+
+    if variable == 'prep_pipe':
+        return prep_pipe
+
+    if variable == 'folds_shuffle_param':
+        return folds_shuffle_param
+        
+    if variable == 'n_jobs_param':
+        return n_jobs_param
+
+    if variable == 'html_param':
+        return html_param
+
+    if variable == 'create_model_container':
+        return create_model_container
+
+    if variable == 'master_model_container':
+        return master_model_container
+
+    if variable == 'display_container':
+        return display_container
+
+    if variable == 'exp_name_log':
+        return exp_name_log
+
+    if variable == 'logging_param':
+        return logging_param
+
+    if variable == 'log_plots_param':
+        return log_plots_param
+
+    if variable == 'USI':
+        return USI
+
+    if variable == 'fix_imbalance_param':
+        return fix_imbalance_param
+
+    if variable == 'fix_imbalance_method_param':
+        return fix_imbalance_method_param
+
+    if variable == 'logger':
+        return logger
+
+
+def set_config(variable,value):
+
+    """
+    set global environment variable
+    """
+
+    if variable == 'X':
+        global X
+        X = value
+
+    if variable == 'y':
+        global y
+        y = value
+
+    if variable == 'X_train':
+        global X_train
+        X_train = value
+
+    if variable == 'X_test':
+        global X_test
+        X_test = value
+
+    if variable == 'y_train':
+        global y_train
+        y_train = value
+
+    if variable == 'y_test':
+        global y_test
+        y_test = value
+
+    if variable == 'seed':
+        global seed
+        seed = value
+
+    if variable == 'prep_pipe':
+        global prep_pipe
+        prep_pipe = value
+
+    if variable == 'folds_shuffle_param':
+        global folds_shuffle_param
+        folds_shuffle_param = value
+
+    if variable == 'n_jobs_param':
+        global n_jobs_param
+        n_jobs_param = value
+
+    if variable == 'html_param':
+        global html_param
+        html_param = value
+
+    if variable == 'create_model_container':
+        global create_model_container
+        create_model_container = value
+
+    if variable == 'master_model_container':
+        global master_model_container
+        master_model_container = value
+
+    if variable == 'display_container':
+        global display_container
+        display_container = value
+
+    if variable == 'exp_name_log':
+        global exp_name_log
+        exp_name_log = value
+
+    if variable == 'logging_param':
+        global logging_param
+        logging_param = value
+
+    if variable == 'log_plots_param':
+        global log_plots_param
+        log_plots_param = value
+
+    if variable == 'USI':
+        global USI
+        USI = value
+
+    if variable == 'fix_imbalance_param':
+        global fix_imbalance_param
+        fix_imbalance_param = value
+
+    if variable == 'fix_imbalance_method_param':
+        global sefix_imbalance_method_paramed
+        fix_imbalance_method_param = value
+
+    if variable == 'logger':
+        global logger
+        logger = value
