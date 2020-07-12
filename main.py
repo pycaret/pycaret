@@ -1,8 +1,8 @@
 # main.py
 # entry point for Dockerfile
 
-from pycaret.utils import version
-version()
+def main():
 
-print('Success')
-
+    from pycaret.utils import version
+    print('Success')
+    return version()
