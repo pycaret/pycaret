@@ -449,7 +449,6 @@ def setup(data,
     import logging
 
     # create logger
-
     global logger
 
     logger = logging.getLogger('logs')
@@ -785,12 +784,12 @@ def setup(data,
         sys.exit('(Type Error): fix_imbalance parameter only accepts True or False.')
 
     #fix_imbalance_method
-    if fix_imbalance_method is not None:
-        if hasattr(fix_imbalance_method, 'fit_sample'):
-            pass
-        else:
-            sys.exit('(Type Error): fix_imbalance_method must contain resampler with fit_sample method.')
-
+    if fix_imbalance:
+        if fix_imbalance_method is not None:
+            if hasattr(fix_imbalance_method, 'fit_sample'):
+                pass
+            else:
+                sys.exit('(Type Error): fix_imbalance_method must contain resampler with fit_sample method.')
 
     logger.info("Preloading libraries")
 
@@ -815,7 +814,7 @@ def setup(data,
     if silent:
         sampling = False
 
-    logger.info("Setting display")
+    logger.info("Preparing display monitor")
 
     #progress bar
     if sampling:
@@ -863,6 +862,8 @@ def setup(data,
     #ignore warnings
     import warnings
     warnings.filterwarnings('ignore') 
+    
+    logger.info("Copying data for preprocessing")
     
     #copy original data for pandas profiler
     data_before_preprocess = data.copy()
@@ -2319,17 +2320,18 @@ def create_model(estimator = None,
     logger.info("Checking ensemble method")
 
     if method == 'Bagging':
-        
+        logger.info("Ensemble method set to Bagging")     
         from sklearn.ensemble import BaggingClassifier
         model = BaggingClassifier(model,bootstrap=True,n_estimators=10, random_state=seed, n_jobs=n_jobs_param)
 
     elif method == 'Boosting':
-        
+        logger.info("Ensemble method set to Boosting")     
         from sklearn.ensemble import AdaBoostClassifier
         model = AdaBoostClassifier(model, n_estimators=10, random_state=seed)
     
     #multiclass checking
     if y.value_counts().count() > 2:
+        logger.info("Target variable is Multiclass. OneVsRestClassifier activated")     
         from sklearn.multiclass import OneVsRestClassifier
         model = OneVsRestClassifier(model, n_jobs=n_jobs_param)
     
@@ -4324,6 +4326,7 @@ def compare_models(blacklist = None,
         import lightgbm as lgb
     except:
         pass
+        logger.info("LightGBM import failed")
     
    
     progress.value += 1
@@ -4370,6 +4373,8 @@ def compare_models(blacklist = None,
     lightgbm = lgb.LGBMClassifier(random_state=seed, n_jobs=n_jobs_param)
     catboost = CatBoostClassifier(random_state=seed, silent = True, thread_count=n_jobs_param) 
     
+    logger.info("Import successful")
+
     progress.value += 1
     
     model_dict = {'Logistic Regression' : 'lr',
@@ -4699,6 +4704,7 @@ def compare_models(blacklist = None,
                     recall = metrics.recall_score(ytest,pred_)                
                     precision = metrics.precision_score(ytest,pred_)
                     f1 = metrics.f1_score(ytest,pred_)
+            
             logger.info("Compiling Metrics")
             mcc = metrics.matthews_corrcoef(ytest,pred_)
             kappa = metrics.cohen_kappa_score(ytest,pred_)
@@ -6448,8 +6454,7 @@ def blend_models(estimator_list = 'All',
     avg_mcc = np.empty((0,0))
     avg_training_time = np.empty((0,0))
     
-    
-
+    logger.info("Defining folds")
     kf = StratifiedKFold(fold, random_state=seed, shuffle=folds_shuffle_param)
     
     '''
@@ -6504,6 +6509,8 @@ def blend_models(estimator_list = 'All',
         et = ExtraTreesClassifier(random_state=seed, n_jobs=n_jobs_param)
         xgboost = XGBClassifier(random_state=seed, verbosity=0, n_jobs=n_jobs_param)
         lightgbm = lgb.LGBMClassifier(random_state=seed, n_jobs=n_jobs_param)
+
+        logger.info("Import successful")
 
         progress.value += 1
         
@@ -8026,6 +8033,7 @@ def create_stacknet(estimator_list,
     #models_ list
     models_ = []
     
+    logger.info("Importing libraries")
     #general dependencies
     import numpy as np
     from sklearn import metrics
@@ -10758,6 +10766,9 @@ def deploy_model(model,
     
     """
     
+    import logging
+    logger.info("Initializing deploy_model()")
+
     #ignore warnings
     import warnings
     warnings.filterwarnings('ignore') 
@@ -10766,25 +10777,25 @@ def deploy_model(model,
     import ipywidgets as ipw
     import pandas as pd
     from IPython.display import clear_output, update_display
-        
-    #try:
-    #    model = finalize_model(model)
-    #except:
-    #    pass
     
     if platform == 'aws':
+
+        logger.info("Platform : AWS S3")
         
         import boto3
         
+        logger.info("Saving model in active working directory")
         save_model(model, model_name = model_name, verbose=False)
         
         #initiaze s3
+        logger.info("Initializing S3 client")
         s3 = boto3.client('s3')
         filename = str(model_name)+'.pkl'
         key = str(model_name)+'.pkl'
         bucket_name = authentication.get('bucket')
         s3.upload_file(filename,bucket_name,key)
         clear_output()
+        logger.info("deploy_model() succesfully completed")
         print("Model Succesfully Deployed on AWS S3")
 
 def optimize_threshold(estimator, 
