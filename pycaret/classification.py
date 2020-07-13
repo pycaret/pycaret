@@ -437,9 +437,6 @@ def setup(data,
        
     """
     
-    #testing
-    #no active test
-    
     #exception checking   
     import sys
     
@@ -455,6 +452,10 @@ def setup(data,
     logger.setLevel(logging.DEBUG)
     
     # create console handler and set level to debug
+
+    if logger.hasHandlers():
+        logger.handlers.clear()
+        
     ch = logging.FileHandler('logs.log')
     ch.setLevel(logging.DEBUG)
 
@@ -1118,7 +1119,7 @@ def setup(data,
                                           random_state = seed)
 
     progress.value += 1
-    
+    logger.info("Preprocessing pipeline created successfully")
 
     if hasattr(preprocess.dtypes, 'replacement'):
             label_encoded = preprocess.dtypes.replacement

@@ -298,6 +298,38 @@ def setup(data,
     #exception checking   
     import sys
     
+    from pycaret.utils import __version__
+    ver = __version__()
+
+    import logging
+
+    # create logger
+    global logger
+    
+    logger = logging.getLogger('logs')
+    logger.setLevel(logging.DEBUG)
+    
+    # create console handler and set level to debug
+    if logger.hasHandlers():
+        logger.handlers.clear()
+    
+    ch = logging.FileHandler('logs.log')
+    ch.setLevel(logging.DEBUG)
+
+    # create formatter
+    formatter = logging.Formatter('%(asctime)s:%(levelname)s:%(message)s')
+
+    # add formatter to ch
+    ch.setFormatter(formatter)
+
+    # add ch to logger
+    logger.addHandler(ch)
+
+    logger.info("PyCaret Clustering Module")
+    logger.info('version ' + str(ver))
+    logger.info("Initializing setup()")
+    logger.info("Checking Exceptions")
+
     #run_time
     import datetime, time
     runtime_start = time.time()
@@ -511,6 +543,8 @@ def setup(data,
     error handling ends here
     """
     
+    logger.info("Preloading libraries")
+
     #pre-load libraries
     import pandas as pd
     import ipywidgets as ipw
@@ -529,6 +563,8 @@ def setup(data,
     #create html_param
     html_param = html
 
+    logger.info("Preparing display monitor")
+
     #progress bar
     max_steps = 4
         
@@ -546,6 +582,7 @@ def setup(data,
             display(progress)
             display(monitor, display_id = 'monitor')
     
+    logger.info("Importing libraries")
     #general dependencies
     import numpy as np
     import pandas as pd
@@ -560,10 +597,12 @@ def setup(data,
     import warnings
     warnings.filterwarnings('ignore') 
     
+    logger.info("Declaring global variables")
     #defining global variables
     global data_, X, seed, prep_pipe, prep_param, experiment__,\
         n_jobs_param, exp_name_log, logging_param, log_plots_param, USI
     
+    logger.info("Copying data for preprocessing")
     #copy original data for pandas profiler
     data_before_preprocess = data.copy()
     
@@ -600,6 +639,8 @@ def setup(data,
             
     #define parameters for preprocessor
     
+    logger.info("Declaring preprocessing parameters")
+
     #categorical features
     if categorical_features is None:
         cat_features_pass = []
@@ -746,9 +787,13 @@ def setup(data,
     if silent:
         display_types_pass = False
 
+    logger.info("Importing preprocessing module")
+
     #import library
     from pycaret import preprocess
     
+    logger.info("Creating preprocessing pipeline")
+
     X = preprocess.Preprocess_Path_Two(train_data = data_for_preprocess, 
                                        categorical_features = cat_features_pass,
                                        apply_ordinal_encoding = apply_ordinal_encoding_pass,
@@ -784,7 +829,8 @@ def setup(data,
                                        random_state = seed)
         
     progress.value += 1
-    
+    logger.info("Preprocessing pipeline created successfully")
+
     try:
         res_type = ['quit','Quit','exit','EXIT','q','Q','e','E','QUIT','Exit']
         res = preprocess.dtypes.response
@@ -798,6 +844,8 @@ def setup(data,
     prep_pipe = preprocess.pipe
     prep_param = preprocess
     
+    logger.info("Creating grid variables")
+
     #generate values for grid show
     missing_values = data_before_preprocess.isna().sum().sum()
     if missing_values > 0:
@@ -878,6 +926,8 @@ def setup(data,
     pd.reset_option("display.max_rows") 
     pd.reset_option("display.max_columns")
     
+    logger.info("Creating global containers")
+
     #create an empty list for pickling later.
     if supervised is False:
         experiment__ = []
@@ -991,6 +1041,8 @@ def setup(data,
     USI = secrets.token_hex(nbytes=2)
 
     if logging_param:
+        
+        logger.info("Logging experiment in MLFlow")
 
         import mlflow
         from pathlib import Path
@@ -1072,9 +1124,10 @@ def setup(data,
             mlflow.log_artifact("input.txt")
             os.remove('input.txt')
 
+    logger.info("setup() succesfully completed")
+    
     return X, data_, seed, prep_pipe, prep_param, experiment__,\
-        n_jobs_param, exp_name_log, logging_param, log_plots_param, USI
-
+        n_jobs_param, html_param, exp_name_log, logging_param, log_plots_param, USI
 
 def create_model(model = None, 
                  num_clusters = None,
@@ -1159,8 +1212,9 @@ def create_model(model = None,
        
     """
     
-    #testing
-    #no test available
+    import logging
+    logger.info("Initializing create_model()")
+    logger.info("Checking exceptions")
     
     #exception checking   
     import sys        
@@ -1211,6 +1265,8 @@ def create_model(model = None,
     error handling ends here
     """
     
+    logger.info("Preloading libraries")
+
     #pre-load libraries
     import pandas as pd
     import numpy as np
@@ -1218,6 +1274,8 @@ def create_model(model = None,
     from IPython.display import display, HTML, clear_output, update_display
     import datetime, time
     
+    logger.info("Setting num_cluster param")
+
     #determine num_clusters
     if num_clusters is None:
         num_clusters = 4
@@ -1228,6 +1286,8 @@ def create_model(model = None,
     monitor starts
     """
     
+    logger.info("Preparing display monitor")
+
     #progress bar and monitor control    
     timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
     progress = ipw.IntProgress(value=0, min=0, max=3, step=1 , description='Processing: ')
@@ -1245,6 +1305,8 @@ def create_model(model = None,
     monitor ends
     """
     
+    logger.info("Importing untrained model")
+
     if model == 'kmeans':
         from sklearn.cluster import KMeans
         model = KMeans(n_clusters = num_clusters, random_state=seed, n_jobs=n_jobs_param, **kwargs)
@@ -1289,7 +1351,9 @@ def create_model(model = None,
         from kmodes.kmodes import KModes
         model = KModes(n_clusters=num_clusters, n_jobs=n_jobs_param, random_state=seed, **kwargs)
         full_name = 'K-Modes Clustering'
-        
+
+    logger.info(str(full_name) + ' Imported succesfully')
+
     #monitor update
     monitor.iloc[1,1:] = 'Fitting ' + str(full_name) + ' Model'
     progress.value += 1
@@ -1299,17 +1363,20 @@ def create_model(model = None,
         
     #fitting the model
     model_fit_start = time.time()
+    logger.info("Fitting Model")
     model.fit(X)
     model_fit_end = time.time()
 
     model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
     
     #Calculate unsupervised metrics
+    logger.info("Evaluating Metrics")
+
     from sklearn import metrics
 
     metric = []
     metric_value = []
-
+    
     try:
         silhouette = metrics.silhouette_score(X,model.labels_)
         silhouette = silhouette.round(4)
@@ -1337,6 +1404,8 @@ def create_model(model = None,
         pass
 
     if ground_truth is not None:
+
+        logger.info("ground_truth parameter set to " + str(ground_truth))
 
         gt = np.array(data_[ground_truth])
 
@@ -1366,18 +1435,12 @@ def create_model(model = None,
             pass
     
     try:
+        logger.info("Creating Metrics dataframe")
         model_results = pd.DataFrame(metric_value)
         model_results.columns = ['Metric']
         model_results.set_index([metric], inplace=True)
     except:
         pass
-
-    #storing in experiment__
-    full_name_ = str(full_name) + ' Model'
-    
-    if system:
-        tup = (full_name_,model)
-        experiment__.append(tup)  
     
     #end runtime
     runtime_end = time.time()
@@ -1385,6 +1448,8 @@ def create_model(model = None,
 
     #mlflow logging
     if logging_param and system:
+
+        logger.info("Creating MLFlow logs")
 
         #Creating Logs message monitor
         monitor.iloc[1,1:] = 'Creating Logs'
@@ -1477,6 +1542,8 @@ def create_model(model = None,
         except:
             pass
 
+    logger.info("create_models() succesfully completed")
+
     return model
 
 def assign_model(model, 
@@ -1530,6 +1597,10 @@ def assign_model(model,
     #exception checking   
     import sys
     
+    import logging
+    logger.info("Initializing assign_model()")
+    
+
     #ignore warnings
     import warnings
     warnings.filterwarnings('ignore') 
@@ -1538,6 +1609,8 @@ def assign_model(model,
     error handling starts here
     """
     
+    logger.info("Checking exceptions")
+
     #determine model type and store in string
     mod_type = str(type(model))
     
@@ -1558,6 +1631,7 @@ def assign_model(model,
     error handling ends here
     """
     
+    logger.info("Preloading libraries")
     #pre-load libraries
     import numpy as np
     import pandas as pd
@@ -1565,12 +1639,14 @@ def assign_model(model,
     from IPython.display import display, HTML, clear_output, update_display
     import datetime, time
     
+    logger.info("Copying data")
     #copy data_
     if transformation:
         data__ = X.copy()
     else:
         data__ = data_.copy()
     
+    logger.info("Preparing display monitor")
     #progress bar and monitor control 
     timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
     progress = ipw.IntProgress(value=0, min=0, max=3, step=1 , description='Processing: ')
@@ -1601,10 +1677,11 @@ def assign_model(model,
         labels.append(a)
         
     data__['Cluster'] = labels
-
     
     progress.value += 1
     
+    logger.info("Determining Trained Model")
+
     mod_type = str(model).split("(")[0]
     
     if 'KMeans' in mod_type:
@@ -1636,16 +1713,14 @@ def assign_model(model,
     
     else:
         name_ = 'Unknown Clustering'
-        
-    name_ = 'Assigned ' + str(name_)
-    #storing in experiment__
-    if verbose:
-        tup = (name_,data__)
-        experiment__.append(tup)  
-    
+
+    logger.info("Trained Model : " + str(name_))
+
     if verbose:
         clear_output()
-        
+
+    logger.info("assign_model() succesfully completed")
+
     return data__
 
 def tune_model(model=None,
@@ -2894,7 +2969,6 @@ def tune_model(model=None,
 
     return best_model
 
-
 def plot_model(model, 
             plot='cluster', 
             feature = None, 
@@ -3239,9 +3313,6 @@ def plot_model(model,
         except:
             sys.exit('(Type Error): Plot Type not supported for this model.')
 
-
-
-
 def save_model(model, model_name, verbose=True):
     
     """
@@ -3285,10 +3356,14 @@ def save_model(model, model_name, verbose=True):
          
     """
     
+    import logging
+    logger.info("Initializing save_model()")
+
     #ignore warnings
     import warnings
     warnings.filterwarnings('ignore') 
     
+    logger.info("Appending prep pipeline")
     model_ = []
     model_.append(prep_pipe)
     model_.append(model)
@@ -3299,6 +3374,8 @@ def save_model(model, model_name, verbose=True):
     if verbose:
         print('Transformation Pipeline and Model Succesfully Saved')
 
+    logger.info(str(model_name) + ' saved in current working directory')
+    logger.info("save_model() succesfully completed")
 
 def load_model(model_name, 
                platform = None,
@@ -3348,7 +3425,10 @@ def load_model(model_name,
        
          
     """
-     
+
+    import logging
+    logger.info("Initializing load_model()")
+
     #ignore warnings
     import warnings
     warnings.filterwarnings('ignore') 
@@ -3363,6 +3443,8 @@ def load_model(model_name,
     #cloud provider
     if platform == 'aws':
         
+        logger.info("Importing model from AWS-S3")
+
         import boto3
         bucketname = authentication.get('bucket')
         filename = str(model_name) + '.pkl'
@@ -3373,15 +3455,17 @@ def load_model(model_name,
         
         if verbose:
             print('Transformation Pipeline and Model Sucessfully Loaded')
-            
+
+        logger.info("load_model() succesfully completed")
+
         return model
     
     import joblib
     model_name = model_name + '.pkl'
     if verbose:
         print('Transformation Pipeline and Model Sucessfully Loaded')
+    logger.info("load_model() succesfully completed")
     return joblib.load(model_name)
-
 
 def predict_model(model, 
                   data,
@@ -3502,8 +3586,6 @@ def predict_model(model,
     
     return data__
 
-
-
 def deploy_model(model, 
                  model_name, 
                  authentication,
@@ -3572,6 +3654,9 @@ def deploy_model(model,
     
     """
     
+    import logging
+    logger.info("Initializing deploy_model()")
+
     #ignore warnings
     import warnings
     warnings.filterwarnings('ignore') 
@@ -3580,28 +3665,25 @@ def deploy_model(model,
     import ipywidgets as ipw
     import pandas as pd
     from IPython.display import clear_output, update_display
-        
-    try:
-        model = finalize_model(model)
-    except:
-        pass
-    
+            
     if platform == 'aws':
         
+        logger.info("Platform : AWS S3")
+
         import boto3
-        
+        logger.info("Saving model in current working directory")
         save_model(model, model_name = model_name, verbose=False)
         
         #initiaze s3
+        logger.info("Initializing S3 client")
         s3 = boto3.client('s3')
         filename = str(model_name)+'.pkl'
         key = str(model_name)+'.pkl'
         bucket_name = authentication.get('bucket')
         s3.upload_file(filename,bucket_name,key)
         clear_output()
+        logger.info("deploy_model() succesfully completed")
         print("Model Succesfully Deployed on AWS S3")
-
-
 
 def get_clusters(data, 
                  model = None, 
@@ -3677,6 +3759,9 @@ def models():
         models and their metadata.     
     
     """
+    
+    import logging
+    logger.info("Initializing models()")
 
     import pandas as pd
 
@@ -3708,6 +3793,8 @@ def models():
 
     df.set_index('ID', inplace=True)
 
+    logger.info("models() succesfully completed")
+
     return df
 
 def get_logs(experiment_name = None, save = False):
@@ -3736,6 +3823,9 @@ def get_logs(experiment_name = None, save = False):
     
     """
 
+    import logging
+    logger.info("Initializing get_logs()")
+
     import sys
 
     if experiment_name is None:
@@ -3749,12 +3839,121 @@ def get_logs(experiment_name = None, save = False):
     client = MlflowClient()
 
     if client.get_experiment_by_name(exp_name_log_) is None:
+        logger.info("No active run found.")
         sys.exit('No active run found. Check logging parameter in setup or to get logs for inactive run pass experiment_name.')
     
     exp_id = client.get_experiment_by_name(exp_name_log_).experiment_id    
+    logger.info("Searching runs")
     runs = mlflow.search_runs(exp_id)
 
     if save:
+        logger.info("Saving logs as csv")
         file_name = str(exp_name_log_) + '_logs.csv'
         runs.to_csv(file_name, index=False)
+
+    logger.info("get_logs() succesfully completed")
+
     return runs
+
+def get_config(variable):
+
+    """
+    get global environment variable
+    """
+
+    import logging
+    logger.info("Initializing get_config()")
+
+    if variable == 'X':
+        global_var = X
+    
+    if variable == 'data_':
+        global_var = data_
+
+    if variable == 'seed':
+        global_var = seed
+
+    if variable == 'prep_pipe':
+        global_var = prep_pipe
+
+    if variable == 'prep_param':
+        global_var = prep_param
+        
+    if variable == 'n_jobs_param':
+        global_var = n_jobs_param
+
+    if variable == 'html_param':
+        global_var = html_param
+
+    if variable == 'exp_name_log':
+        global_var = exp_name_log
+
+    if variable == 'logging_param':
+        global_var = logging_param
+
+    if variable == 'log_plots_param':
+        global_var = log_plots_param
+
+    if variable == 'USI':
+        global_var = USI
+
+    logger.info("Global variable: " + str(variable) + ' returned')
+    logger.info("get_config() succesfully completed")
+
+    return global_var
+
+def set_config(variable,value):
+
+    """
+    set global environment variable
+    """
+
+    import logging
+    logger.info("Initializing set_config()")
+
+    if variable == 'X':
+        global X
+        X = value
+
+    if variable == 'data_':
+        global data_
+        data_ = value
+
+    if variable == 'seed':
+        global seed
+        seed = value
+
+    if variable == 'prep_pipe':
+        global prep_pipe
+        prep_pipe = value
+
+    if variable == 'prep_param':
+        global prep_param
+        prep_param = value
+
+    if variable == 'n_jobs_param':
+        global n_jobs_param
+        n_jobs_param = value
+
+    if variable == 'html_param':
+        global html_param
+        html_param = value
+
+    if variable == 'exp_name_log':
+        global exp_name_log
+        exp_name_log = value
+
+    if variable == 'logging_param':
+        global logging_param
+        logging_param = value
+
+    if variable == 'log_plots_param':
+        global log_plots_param
+        log_plots_param = value
+
+    if variable == 'USI':
+        global USI
+        USI = value
+
+    logger.info("Global variable:  " + str(variable) + ' updated')
+    logger.info("set_config() succesfully completed")
