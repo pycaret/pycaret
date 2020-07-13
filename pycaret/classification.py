@@ -1867,7 +1867,6 @@ def setup(data,
         display_container, exp_name_log, logging_param, log_plots_param, USI,\
         fix_imbalance_param, fix_imbalance_method_param, logger
 
-
 def create_model(estimator = None, 
                  ensemble = False, 
                  method = None, 
@@ -4038,7 +4037,6 @@ def plot_model(estimator,
         clear_output()
         param_df = pd.DataFrame.from_dict(estimator.get_params(estimator), orient='index', columns=['Parameters'])
         display(param_df)
-
 
 def compare_models(blacklist = None,
                    whitelist = None, #added in pycaret==2.0.0
@@ -10858,6 +10856,9 @@ def optimize_threshold(estimator,
        
     """
     
+    import logging
+    logger.info("Initializing optimize_threshold()")
+    logger.info("Importing libraries")
     
     #import libraries
     import sys
@@ -10876,6 +10877,8 @@ def optimize_threshold(estimator,
     ERROR HANDLING STARTS HERE
     '''
     
+    logger.info("Checking exceptions")
+
     #exception 1 for multi-class
     if y.value_counts().count() > 2:
         sys.exit("(Type Error) optimize_threshold() cannot be used when target is multi-class. ")
@@ -10922,12 +10925,14 @@ def optimize_threshold(estimator,
     actual = np.array(y_test)
     
     if type(model) is list:
+        logger.info("Model Type : Stacking")
         predicted = predict_model(model)
         model_name = 'Stacking'
         clear_output()
         try:
             predicted = np.array(predicted['Score'])
         except:
+            logger.info("Meta model doesn't support predict_proba function.")
             sys.exit("(Type Error) Meta model doesn't support predict_proba function. Cannot be used in optimize_threshold(). ")        
         
     else:
@@ -10938,6 +10943,8 @@ def optimize_threshold(estimator,
     internal function to calculate loss starts here
     """
     
+    logger.info("Defining loss function")
+
     def calculate_loss(actual,predicted,
                        tp_cost=true_positive,tn_cost=true_negative,
                        fp_cost=false_positive,fn_cost=false_negative):
@@ -10978,6 +10985,8 @@ def optimize_threshold(estimator,
     cost = []
     #global optimize_results
     
+    logger.info("Iteration starts at 0")
+
     for i in grid:
         
         pred_prob = (predicted >= i).astype(int)
@@ -10998,8 +11007,10 @@ def optimize_threshold(estimator,
     
     fig.add_shape(dict(type="line", x0=x0, y0=y0, x1=x1, y1=y1,line=dict(color="red",width=2)))
     fig.update_layout(title={'text': title, 'y':0.95,'x':0.45,'xanchor': 'center','yanchor': 'top'})
+    logger.info("Figure ready for render")
     fig.show()
     print('Optimized Probability Threshold: ' + str(t) + ' | ' + 'Optimized Cost Function: ' + str(y1))
+    logger.info("optimize_threshold() succesfully completed")
 
 def automl(optimize='Accuracy', use_holdout=False):
     
@@ -11007,6 +11018,9 @@ def automl(optimize='Accuracy', use_holdout=False):
     space reserved for docstring
     
     """
+
+    import logging
+    logger.info("Initializing automl()")
 
     if optimize == 'Accuracy':
         compare_dimension = 'Accuracy' 
@@ -11026,6 +11040,7 @@ def automl(optimize='Accuracy', use_holdout=False):
     scorer = []
 
     if use_holdout:
+        logger.info("Model Selection Basis : Holdout set")
         for i in master_model_container:
             pred_holdout = predict_model(i, verbose=False)
             p = pull()
@@ -11034,6 +11049,7 @@ def automl(optimize='Accuracy', use_holdout=False):
             scorer.append(p)
 
     else:
+        logger.info("Model Selection Basis : CV Results on Training set")
         for i in create_model_container:
             r = i[compare_dimension][-2:][0]
             scorer.append(r)
@@ -11044,6 +11060,8 @@ def automl(optimize='Accuracy', use_holdout=False):
     automl_result = master_model_container[index_scorer]
 
     automl_finalized = finalize_model(automl_result)
+
+    logger.info("automl() succesfully completed")
 
     return automl_finalized
 
@@ -11075,6 +11093,9 @@ def models(type=None):
       
     
     """
+    
+    import logging
+    logger.info("Initializing models()")
 
     import pandas as pd
 
@@ -11139,6 +11160,8 @@ def models(type=None):
     if type == 'ensemble':
         df = df[df.index.isin(ensemble_models)]
 
+    logger.info("models() succesfully completed")
+
     return df
 
 def get_logs(experiment_name = None, save = False):
@@ -11200,82 +11223,88 @@ def get_logs(experiment_name = None, save = False):
 
     return runs
 
-
 def get_config(variable):
 
     """
     get global environment variable
     """
 
+    import logging
+    logger.info("Initializing get_config()")
+
     if variable == 'X':
-        return X
+        global_var = X
     
     if variable == 'y':
-        return y
+        global_var = y
 
     if variable == 'X_train':
-        return X_train
+        global_var = X_train
 
     if variable == 'X_test':
-        return X_test
+        global_var = X_test
 
     if variable == 'y_train':
-        return y_train
+        global_var = y_train
 
     if variable == 'y_test':
-        return y_test
+        global_var = y_test
 
     if variable == 'seed':
-        return seed
+        global_var = seed
 
     if variable == 'prep_pipe':
-        return prep_pipe
+        global_var = prep_pipe
 
     if variable == 'folds_shuffle_param':
-        return folds_shuffle_param
+        global_var = folds_shuffle_param
         
     if variable == 'n_jobs_param':
-        return n_jobs_param
+        global_var = n_jobs_param
 
     if variable == 'html_param':
-        return html_param
+        global_var = html_param
 
     if variable == 'create_model_container':
-        return create_model_container
+        global_var = create_model_container
 
     if variable == 'master_model_container':
-        return master_model_container
+        global_var = master_model_container
 
     if variable == 'display_container':
-        return display_container
+        global_var = display_container
 
     if variable == 'exp_name_log':
-        return exp_name_log
+        global_var = exp_name_log
 
     if variable == 'logging_param':
-        return logging_param
+        global_var = logging_param
 
     if variable == 'log_plots_param':
-        return log_plots_param
+        global_var = log_plots_param
 
     if variable == 'USI':
-        return USI
+        global_var = USI
 
     if variable == 'fix_imbalance_param':
-        return fix_imbalance_param
+        global_var = fix_imbalance_param
 
     if variable == 'fix_imbalance_method_param':
-        return fix_imbalance_method_param
+        global_var = fix_imbalance_method_param
 
-    if variable == 'logger':
-        return logger
+    logger.info("Global variable: " + str(variable) + ' returned')
+    logger.info("get_config() succesfully completed")
 
+    return global_var
 
 def set_config(variable,value):
 
     """
     set global environment variable
     """
+
+    import logging
+    logger.info("Initializing set_config()")
 
     if variable == 'X':
         global X
@@ -11354,9 +11383,8 @@ def set_config(variable,value):
         fix_imbalance_param = value
 
     if variable == 'fix_imbalance_method_param':
-        global sefix_imbalance_method_paramed
+        global fix_imbalance_method_param
         fix_imbalance_method_param = value
 
-    if variable == 'logger':
-        global logger
-        logger = value
+    logger.info("Global variable:  " + str(variable) + ' updated')
+    logger.info("set_config() succesfully completed")

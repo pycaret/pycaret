@@ -9501,6 +9501,9 @@ def automl(optimize='r2', use_holdout=False):
     
     """
 
+    import logging
+    logger.info("Initializing automl()")
+
     if optimize == 'mae':
         compare_dimension = 'MAE' 
     elif optimize == 'mse':
@@ -9517,6 +9520,7 @@ def automl(optimize='r2', use_holdout=False):
     scorer = []
 
     if use_holdout:
+        logger.info("Model Selection Basis : Holdout set")
         for i in master_model_container:
             pred_holdout = predict_model(i, verbose=False)
             p = pull()
@@ -9525,13 +9529,11 @@ def automl(optimize='r2', use_holdout=False):
             scorer.append(p)
 
     else:
+        logger.info("Model Selection Basis : CV Results on Training set")
         for i in create_model_container:
             r = i[compare_dimension][-2:][0]
             scorer.append(r)
 
-    #for i in create_model_container:
-    #    r = i[compare_dimension][-2:][0]
-    #    scorer.append(r)
 
     #returning better model
     if optimize == 'r2':
@@ -9542,6 +9544,8 @@ def automl(optimize='r2', use_holdout=False):
     automl_result = master_model_container[index_scorer]
 
     automl_finalized = finalize_model(automl_result)
+
+    logger.info("automl() succesfully completed")
 
     return automl_finalized
     
@@ -9573,6 +9577,9 @@ def models(type=None):
       
     
     """
+
+    import logging
+    logger.info("Initializing models()")
 
     import pandas as pd
 
@@ -9654,6 +9661,8 @@ def models(type=None):
     if type == 'ensemble':
         df = df[df.index.isin(ensemble_models)]
 
+    logger.info("models() succesfully completed")
+
     return df
 
 def get_logs(experiment_name = None, save = False):
@@ -9681,6 +9690,9 @@ def get_logs(experiment_name = None, save = False):
       
     
     """
+    
+    import logging
+    logger.info("Initializing get_logs()")
 
     import sys
 
@@ -9692,17 +9704,24 @@ def get_logs(experiment_name = None, save = False):
     import mlflow
     from mlflow.tracking import MlflowClient
     
+    logger.info("Importing MLFlow Client")
     client = MlflowClient()
 
     if client.get_experiment_by_name(exp_name_log_) is None:
+        logger.info("No active run found.")
         sys.exit('No active run found. Check logging parameter in setup or to get logs for inactive run pass experiment_name.')
     
     exp_id = client.get_experiment_by_name(exp_name_log_).experiment_id    
+    logger.info("Searching runs")
     runs = mlflow.search_runs(exp_id)
 
     if save:
+        logger.info("Saving logs as csv")
         file_name = str(exp_name_log_) + '_logs.csv'
         runs.to_csv(file_name, index=False)
+
+    logger.info("get_logs() succesfully completed")
+
     return runs
 
 def get_config(variable):
@@ -9711,74 +9730,82 @@ def get_config(variable):
     get global environment variable
     """
 
+    import logging
+    logger.info("Initializing get_config()")
+
     if variable == 'X':
-        return X
+        global_var = X
     
     if variable == 'y':
-        return y
+        global_var = y
 
     if variable == 'X_train':
-        return X_train
+        global_var = X_train
 
     if variable == 'X_test':
-        return X_test
+        global_var = X_test
 
     if variable == 'y_train':
-        return y_train
+        global_var = y_train
 
     if variable == 'y_test':
-        return y_test
+        global_var = y_test
 
     if variable == 'seed':
-        return seed
+        global_var = seed
 
     if variable == 'prep_pipe':
-        return prep_pipe
+        global_var = prep_pipe
 
     if variable == 'folds_shuffle_param':
-        return folds_shuffle_param
+        global_var = folds_shuffle_param
         
     if variable == 'n_jobs_param':
-        return n_jobs_param
+        global_var = n_jobs_param
 
     if variable == 'html_param':
-        return html_param
+        global_var = html_param
 
     if variable == 'create_model_container':
-        return create_model_container
+        global_var = create_model_container
 
     if variable == 'master_model_container':
-        return master_model_container
+        global_var = master_model_container
 
     if variable == 'display_container':
-        return display_container
+        global_var = display_container
 
     if variable == 'exp_name_log':
-        return exp_name_log
+        global_var = exp_name_log
 
     if variable == 'logging_param':
-        return logging_param
+        global_var = logging_param
 
     if variable == 'log_plots_param':
-        return log_plots_param
+        global_var = log_plots_param
 
     if variable == 'USI':
-        return USI
+        global_var = USI
 
     if variable == 'fix_imbalance_param':
-        return fix_imbalance_param
+        global_var = fix_imbalance_param
 
     if variable == 'fix_imbalance_method_param':
-        return fix_imbalance_method_param
+        global_var = fix_imbalance_method_param
 
-    if variable == 'logger':
-        return logger
+    logger.info("Global variable: " + str(variable) + ' returned')
+    logger.info("get_config() succesfully completed")
+
+    return global_var
 
 def set_config(variable,value):
 
     """
     set global environment variable
     """
+
+    import logging
+    logger.info("Initializing set_config()")
 
     if variable == 'X':
         global X
@@ -9857,9 +9884,8 @@ def set_config(variable,value):
         fix_imbalance_param = value
 
     if variable == 'fix_imbalance_method_param':
-        global sefix_imbalance_method_paramed
+        global fix_imbalance_method_param
         fix_imbalance_method_param = value
 
-    if variable == 'logger':
-        global logger
-        logger = value
+    logger.info("Global variable:  " + str(variable) + ' updated')
+    logger.info("set_config() succesfully completed")
