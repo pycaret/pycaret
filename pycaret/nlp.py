@@ -710,7 +710,6 @@ def setup(data,
     return text, data_, corpus, id2word, seed, target_, experiment__,\
         exp_name_log, logging_param, log_plots_param, USI
 
-
 def create_model(model=None,
                  multi_core=False,
                  num_topics = None,
@@ -1059,7 +1058,6 @@ def create_model(model=None,
         
     return model
 
-
 def assign_model(model,
                  verbose=True):
     
@@ -1390,8 +1388,6 @@ def assign_model(model,
         #return bb_
     
     return bb_
-
-
 
 def plot_model(model = None,
                plot = 'frequency',
@@ -2922,9 +2918,6 @@ def tune_model(model=None,
 
     return best_model
 
-
-
-
 def evaluate_model(model):
     
     """
@@ -3007,8 +3000,6 @@ def evaluate_model(model):
     
     d = interact_manual(plot_model, model = fixed(model), plot = a, topic_num=b, save=fixed(False), system=fixed(True))
 
-
-
 def save_model(model, model_name, 
                verbose=True): #added in pycaret==2.0.0)
     
@@ -3059,8 +3050,6 @@ def save_model(model, model_name,
     if verbose:
         print('Model Succesfully Saved')
 
-
-
 def load_model(model_name, 
               verbose=True): #added in pycaret==2.0.0)
     
@@ -3103,7 +3092,6 @@ def load_model(model_name,
         print('Model Sucessfully Loaded')
     return joblib.load(model_name)
 
-
 def get_topics(data, text, model=None, num_topics=4):
     
     """
@@ -3117,7 +3105,6 @@ def get_topics(data, text, model=None, num_topics=4):
     c = create_model(model=model, num_topics=num_topics, verbose=False)
     dataset = assign_model(c, verbose=False)
     return dataset
-
 
 def models():
 
