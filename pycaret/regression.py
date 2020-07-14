@@ -837,6 +837,10 @@ def setup(data,
     import matplotlib.pyplot as plt
     import plotly.express as px
     
+    #setting sklearn config to print all parameters including default
+    import sklearn
+    sklearn.set_config(print_changed_only=False)
+    
     #define highlight function for function grid to display
     def highlight_max(s):
         is_max = s == True

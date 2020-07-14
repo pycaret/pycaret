@@ -225,6 +225,9 @@ def setup(data,
     import re
     import secrets
 
+    #setting sklearn config to print all parameters including default
+    import sklearn
+    sklearn.set_config(print_changed_only=False)
     
     #defining global variables
     global text, id2word, corpus, data_, seed, target_, experiment__,\

@@ -4293,6 +4293,10 @@ def compare_models(blacklist = None,
     from sklearn.model_selection import StratifiedKFold
     import pandas.io.formats.style
     
+    #setting sklearn config to print all parameters including default
+    import sklearn
+    sklearn.set_config(print_changed_only=False)
+    
     logger.info("Copying training dataset")
     #defining X_train and y_train as data_X and data_y
     data_X = X_train
