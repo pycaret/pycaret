@@ -2,7 +2,7 @@
 # Author: Moez Ali <moez.ali@queensu.ca>
 # License: MIT
 # Release: PyCaret 2.0x
-# Last modified : 09/07/2020
+# Last modified : 14/07/2020
 
 def setup(data, 
           categorical_features = None,

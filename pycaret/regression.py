@@ -2,7 +2,7 @@
 # Author: Moez Ali <moez.ali@queensu.ca>
 # License: MIT
 # Release: PyCaret 2.0x
-# Last modified : 09/07/2020
+# Last modified : 14/07/2020
 
 def setup(data, 
           target, 
@@ -2289,9 +2289,9 @@ def create_model(estimator = None,
         if 'catboost' in mn:
             mn = 'CatBoostRegressor'
 
-        full_name = model_dict_logging.get(mn)
-        
-        if full_name is None:
+        if mn in model_dict_logging.keys():
+            full_name = model_dict_logging.get(mn)
+        else:
             full_name = mn
     
     logger.info(str(full_name) + ' Imported succesfully')
