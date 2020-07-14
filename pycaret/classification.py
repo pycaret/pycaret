@@ -2715,7 +2715,7 @@ def create_model(estimator = None,
             size_bytes = Path('Trained Model.pkl').stat().st_size
             size_kb = np.round(size_bytes/1000, 2)
             mlflow.set_tag("Size KB", size_kb)
-            #os.remove('Trained Model.pkl')
+            os.remove('Trained Model.pkl')
 
     progress.value += 1
 
@@ -3667,7 +3667,7 @@ def plot_model(estimator,
         visualizer.score(X_test, y_test)
         progress.value += 1
         clear_output()
-        if save or log_plots_param:
+        if save:
             if system:
                 visualizer.show(outpath="AUC.png")
             else:
@@ -3721,7 +3721,7 @@ def plot_model(estimator,
         visualizer.score(X_test, y_test)
         progress.value += 1
         clear_output()
-        if save or log_plots_param:
+        if save:
             if system:
                 visualizer.show(outpath="Confusion Matrix.png")
             else:
@@ -4027,7 +4027,7 @@ def plot_model(estimator,
         plt.ylabel('Features')
         progress.value += 1
         clear_output()
-        if save or log_plots_param:
+        if save:
             if system:
                 plt.savefig("Feature Importance.png")
             else:

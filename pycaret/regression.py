@@ -7988,7 +7988,7 @@ def plot_model(estimator,
         visualizer.score(X_test, y_test)  # Evaluate the model on the test data
         progress.value += 1
         clear_output()
-        if save or log_plots_param:
+        if save:
             if system:
                 visualizer.show(outpath="Residuals.png")
             else:
@@ -8006,7 +8006,7 @@ def plot_model(estimator,
         visualizer.score(X_test, y_test)
         progress.value += 1
         clear_output()
-        if save or log_plots_param:
+        if save:
             if system:
                 visualizer.show(outpath="Prediction Error.png")
             else:
@@ -8194,7 +8194,7 @@ def plot_model(estimator,
         plt.ylabel('Features') 
         progress.value += 1
         clear_output()
-        if save or log_plots_param:
+        if save:
             if system:
                 plt.savefig("Feature Importance.png")
             else:
