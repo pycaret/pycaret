@@ -3403,7 +3403,8 @@ def deploy_model(model,
     import ipywidgets as ipw
     import pandas as pd
     from IPython.display import clear_output, update_display
-    
+    import os
+
     if platform == 'aws':
 
         logger.info("Platform : AWS S3")
@@ -3420,6 +3421,7 @@ def deploy_model(model,
         bucket_name = authentication.get('bucket')
         s3.upload_file(filename,bucket_name,key)
         clear_output()
+        os.remove(filename)
         logger.info("deploy_model() succesfully completed")
         print("Model Succesfully Deployed on AWS S3")
 
