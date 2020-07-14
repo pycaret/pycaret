@@ -8824,9 +8824,6 @@ def load_model(model_name,
         
     """
 
-    import logging
-    logger.info("Initializing load_model()")
-
     #ignore warnings
     import warnings
     warnings.filterwarnings('ignore') 
@@ -8842,8 +8839,6 @@ def load_model(model_name,
     #cloud provider
     if platform == 'aws':
         
-        logger.info("Importing model from AWS-S3")
-
         import boto3
         bucketname = authentication.get('bucket')
         filename = str(model_name) + '.pkl'
@@ -8855,7 +8850,6 @@ def load_model(model_name,
         if verbose:
             print('Transformation Pipeline and Model Sucessfully Loaded')
 
-        logger.info("load_model() succesfully completed")    
         return model
     
     import joblib
@@ -8863,7 +8857,6 @@ def load_model(model_name,
     if verbose:
         print('Transformation Pipeline and Model Sucessfully Loaded')
     
-    logger.info("load_model() succesfully completed")
     return joblib.load(model_name)
 
 def predict_model(estimator, 
