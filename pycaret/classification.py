@@ -2,7 +2,7 @@
 # Author: Moez Ali <moez.ali@queensu.ca>
 # License: MIT
 # Release: PyCaret 2.0x
-# Last modified : 14/07/2020
+# Last modified : 16/07/2020
 
 def setup(data,  
           target,   
@@ -1494,7 +1494,8 @@ def setup(data,
             if profile:
                 print('Setup Succesfully Completed! Loading Profile Now... Please Wait!')
             else:
-                print('Setup Succesfully Completed!')
+                if verbose:
+                    print('Setup Succesfully Completed!')
             
             functions = pd.DataFrame ( [ ['session_id', seed ],
                                          ['Target Type', target_type],
@@ -1590,7 +1591,8 @@ def setup(data,
             if profile:
                 print('Setup Succesfully Completed! Loading Profile Now... Please Wait!')
             else:
-                print('Setup Succesfully Completed!')
+                if verbose:
+                    print('Setup Succesfully Completed!')
                 
             functions = pd.DataFrame ( [ ['session_id', seed ],
                                          ['Target Type', target_type],
@@ -1685,7 +1687,8 @@ def setup(data,
         if profile:
             print('Setup Succesfully Completed! Loading Profile Now... Please Wait!')
         else:
-            print('Setup Succesfully Completed!')
+            if verbose:
+                print('Setup Succesfully Completed!')
             
         functions = pd.DataFrame ( [ ['session_id', seed ],
                                      ['Target Type', target_type],
@@ -4074,12 +4077,12 @@ def compare_models(blacklist = None,
         and 'mlp'. When turbo param is set to False, all models including 'rbfsvm', 'gpc' 
         and 'mlp' are used but this may result in longer training time.
         
-        compare_models( blacklist = [ 'knn', 'gbc' ] , turbo = False) 
+        best_model = compare_models( blacklist = [ 'knn', 'gbc' ] , turbo = False) 
 
         This will return a comparison of all models except K Nearest Neighbour and
         Gradient Boosting Classifier.
         
-        compare_models( blacklist = [ 'knn', 'gbc' ] , turbo = True) 
+        best_model = compare_models( blacklist = [ 'knn', 'gbc' ] , turbo = True) 
 
         This will return comparison of all models except K Nearest Neighbour, 
         Gradient Boosting Classifier, SVM (RBF), Gaussian Process Classifier and
@@ -4890,10 +4893,11 @@ def compare_models(blacklist = None,
 
     clear_output()
 
-    if html_param:
-        display(compare_models_)
-    else:
-        print(compare_models_.data)
+    if verbose:
+        if html_param:
+            display(compare_models_)
+        else:
+            print(compare_models_.data)
 
     pd.reset_option("display.max_columns")
 
@@ -8847,7 +8851,6 @@ def calibrate_model(estimator,
       
     - calibration plot not available for multiclass problems.
       
-    
   
     """
 
@@ -9435,10 +9438,6 @@ def evaluate_model(estimator):
 
     User Interface:  Displays the user interface for plotting.
     --------------
-
-    Warnings:
-    ---------
-    None    
        
          
     """
@@ -9794,7 +9793,7 @@ def save_model(model, model_name, verbose=True):
         save_model(lr, 'lr_model_23122019')
         
         This will save the transformation pipeline and model as a binary pickle
-        file in the current directory. 
+        file in the current active directory. 
 
     Parameters
     ----------
@@ -9811,10 +9810,6 @@ def save_model(model, model_name, verbose=True):
     --------    
     Success Message
     
-    Warnings:
-    ---------
-    None    
-       
          
     """
     
@@ -9880,10 +9875,6 @@ def load_model(model_name,
     Returns:
     --------    
     Success Message
-    
-    Warnings:
-    ---------
-    None    
        
          
     """
@@ -9992,7 +9983,6 @@ def predict_model(estimator,
       the complete dataset including the test / hold-out set. Once finalize_model() 
       is used, the model is considered ready for deployment and should be used on new 
       unseen datasets only.
-         
            
     
     """
@@ -10965,7 +10955,18 @@ def optimize_threshold(estimator,
 def automl(optimize='Accuracy', use_holdout=False):
     
     """
-    space reserved for docstring
+    Description:
+    ------------
+    This function returns the best model out of all models created in 
+    current active environment based on metric defined in optimize parameter. 
+
+    Parameters
+    ----------
+    optimize : string, default = 'Accuracy'
+
+    use_holdout: bool, default = False
+    When set to True, metrics are evaluated on holdout set instead of CV.
+    
     
     """
 
@@ -11163,7 +11164,39 @@ def get_logs(experiment_name = None, save = False):
 def get_config(variable):
 
     """
-    get global environment variable
+    Description:
+    ------------
+    This function is used to access global environment variables.
+    Following variables can be accessed:
+
+    - X: Transformed dataset (X)
+    - y: Transformed dataset (y)  
+    - X_train: Transformed train dataset (X)
+    - X_test: Transformed test/holdout dataset (X)
+    - y_train: Transformed train dataset (y)
+    - y_test: Transformed test/holdout dataset (y)
+    - seed: random state set through session_id
+    - prep_pipe: Transformation pipeline configured through setup
+    - folds_shuffle_param: shuffle parameter used in Kfolds
+    - n_jobs_param: n_jobs parameter used in model training
+    - html_param: html_param configured through setup
+    - create_model_container: results grid storage container
+    - master_model_container: model storage container
+    - display_container: results display container
+    - exp_name_log: Name of experiment set through setup
+    - logging_param: log_experiment param set through setup
+    - log_plots_param: log_plots param set through setup
+    - USI: Unique session ID parameter set through setup
+    - fix_imbalance_param: fix_imbalance param set through setup
+    - fix_imbalance_method_param: fix_imbalance_method param set through setup
+
+        Example:
+        --------
+        X_train = get_config('X_train') 
+
+        This will return X_train transformed dataset.
+          
+      
     """
 
     import logging
@@ -11237,7 +11270,39 @@ def get_config(variable):
 def set_config(variable,value):
 
     """
-    set global environment variable
+    Description:
+    ------------
+    This function is used to reset global environment variables.
+    Following variables can be accessed:
+
+    - X: Transformed dataset (X)
+    - y: Transformed dataset (y)  
+    - X_train: Transformed train dataset (X)
+    - X_test: Transformed test/holdout dataset (X)
+    - y_train: Transformed train dataset (y)
+    - y_test: Transformed test/holdout dataset (y)
+    - seed: random state set through session_id
+    - prep_pipe: Transformation pipeline configured through setup
+    - folds_shuffle_param: shuffle parameter used in Kfolds
+    - n_jobs_param: n_jobs parameter used in model training
+    - html_param: html_param configured through setup
+    - create_model_container: results grid storage container
+    - master_model_container: model storage container
+    - display_container: results display container
+    - exp_name_log: Name of experiment set through setup
+    - logging_param: log_experiment param set through setup
+    - log_plots_param: log_plots param set through setup
+    - USI: Unique session ID parameter set through setup
+    - fix_imbalance_param: fix_imbalance param set through setup
+    - fix_imbalance_method_param: fix_imbalance_method param set through setup
+
+        Example:
+        --------
+        set_config('seed', 123) 
+
+        This will set the global seed to '123'.
+            
+      
     """
 
     import logging
