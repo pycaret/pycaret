@@ -35,7 +35,7 @@ def setup(data,
           outliers_threshold = 0.05,
           remove_multicollinearity = False,
           multicollinearity_threshold = 0.9,
-          remove_perfect_collinearity = True, #added in pycaret==2.0.0
+          remove_perfect_collinearity = False, #added in pycaret==2.0.0
           create_clusters = False,
           cluster_iter = 20,
           polynomial_features = False,                 
@@ -278,7 +278,7 @@ def setup(data,
     Threshold used for dropping the correlated features. Only comes into effect when 
     remove_multicollinearity is set to True.
     
-    remove_perfect_collinearity: bool, default = True
+    remove_perfect_collinearity: bool, default = False
     When set to True, perfect collinearity (features with correlation = 1) is removed
     from the dataset, When two features are 100% correlated, one of it is randomly 
     dropped from the dataset.
@@ -372,10 +372,10 @@ def setup(data,
     accepts any module from 'imblearn' that supports 'fit_resample' method.
 
     data_split_shuffle: bool, default = True
-    If set to False, prevents shuffling of rows when splitting data
+    If set to False, prevents shuffling of rows when splitting data.
 
-    folds_shuffle: bool, default = True
-    If set to False, prevents shuffling of rows when using cross validation
+    folds_shuffle: bool, default = False
+    If set to False, prevents shuffling of rows when using cross validation.
 
     n_jobs: int, default = -1
     The number of jobs to run in parallel (for functions that supports parallel 
@@ -429,10 +429,6 @@ def setup(data,
 
     environment:  This function returns various outputs that are stored in variables
     -----------   as tuples. They are used by other functions in pycaret.
-
-    Warnings:
-    ---------
-    None
       
        
     """
@@ -1902,31 +1898,32 @@ def create_model(estimator = None,
 
     Parameters
     ----------
-    estimator : string, default = None
+    estimator : string / object, default = None
 
-    Enter abbreviated string of the estimator class. All estimators support binary or 
-    multiclass problem. List of estimators supported:
+    Enter ID of the estimators available in model library or pass an untrained model 
+    object consistent with fit / predict API to train and evaluate model. All estimators 
+    support binary or multiclass problem. List of estimators in model library:
 
-    Estimator                   Abbreviated String     Original Implementation 
-    ---------                   ------------------     -----------------------
-    Logistic Regression         'lr'                   linear_model.LogisticRegression
-    K Nearest Neighbour         'knn'                  neighbors.KNeighborsClassifier
-    Naives Bayes                'nb'                   naive_bayes.GaussianNB
-    Decision Tree               'dt'                   tree.DecisionTreeClassifier
-    SVM (Linear)                'svm'                  linear_model.SGDClassifier
-    SVM (RBF)                   'rbfsvm'               svm.SVC
-    Gaussian Process            'gpc'                  gaussian_process.GPC
-    Multi Level Perceptron      'mlp'                  neural_network.MLPClassifier
-    Ridge Classifier            'ridge'                linear_model.RidgeClassifier
-    Random Forest               'rf'                   ensemble.RandomForestClassifier
-    Quadratic Disc. Analysis    'qda'                  discriminant_analysis.QDA
-    AdaBoost                    'ada'                  ensemble.AdaBoostClassifier
-    Gradient Boosting           'gbc'                  ensemble.GradientBoostingClassifier
-    Linear Disc. Analysis       'lda'                  discriminant_analysis.LDA
-    Extra Trees Classifier      'et'                   ensemble.ExtraTreesClassifier
-    Extreme Gradient Boosting   'xgboost'              xgboost.readthedocs.io
-    Light Gradient Boosting     'lightgbm'             github.com/microsoft/LightGBM
-    CatBoost Classifier         'catboost'             https://catboost.ai
+    ID          Name      
+    --------    ----------     
+    'lr'        Logistic Regression             
+    'knn'       K Nearest Neighbour            
+    'nb'        Naive Bayes             
+    'dt'        Decision Tree Classifier                   
+    'svm'       SVM - Linear Kernel	            
+    'rbfsvm'    SVM - Radial Kernel               
+    'gpc'       Gaussian Process Classifier                  
+    'mlp'       Multi Level Perceptron                  
+    'ridge'     Ridge Classifier                
+    'rf'        Random Forest Classifier                   
+    'qda'       Quadratic Discriminant Analysis                  
+    'ada'       Ada Boost Classifier                 
+    'gbc'       Gradient Boosting Classifier                  
+    'lda'       Linear Discriminant Analysis                  
+    'et'        Extra Trees Classifier                   
+    'xgboost'   Extreme Gradient Boosting              
+    'lightgbm'  Light Gradient Boosting              
+    'catboost'  CatBoost Classifier             
 
     ensemble: Boolean, default = False
     True would result in an ensemble of estimator using the method parameter defined. 
@@ -1941,8 +1938,8 @@ def create_model(estimator = None,
     Number of decimal places the metrics in the score grid will be rounded to. 
 
     cross_validation: bool, default = True
-    When cross_validation set to False fold parameter is ignored and model is fitted
-    on entire training dataset. No metric evaluation is returned.
+    When cross_validation set to False fold parameter is ignored and model is trained
+    on entire training dataset. No metric evaluation is returned. 
 
     verbose: Boolean, default = True
     Score grid is not printed when verbose is set to False.
@@ -2755,7 +2752,7 @@ def ensemble_model(estimator,
     ------------
     This function ensembles the trained base estimator using the method defined in 
     'method' param (default = 'Bagging'). The output prints a score grid that shows 
-    Accuracy, AUC, Recall, Precision, F1 and Kappa by fold (default = 10 Fold). 
+    Accuracy, AUC, Recall, Precision, F1, Kappa and MCC by fold (default = 10 Fold). 
 
     This function returns a trained model object.  
 
@@ -2814,9 +2811,9 @@ def ensemble_model(estimator,
     --------
 
     score grid:   A table containing the scores of the model across the kfolds. 
-    -----------   Scoring metrics used are Accuracy, AUC, Recall, Precision, F1 
-                  and Kappa. Mean and standard deviation of the scores across the 
-                  folds are also returned.
+    -----------   Scoring metrics used are Accuracy, AUC, Recall, Precision, F1, 
+                  Kappa and MCC. Mean and standard deviation of the scores across 
+                  the folds are also returned.
 
     model:        trained ensembled model object
     -----------
@@ -2825,7 +2822,6 @@ def ensemble_model(estimator,
     ---------  
     - If target variable is multiclass (more than 2 classes), AUC will be returned 
       as zero (0.0).
-        
         
     
     """
@@ -3525,28 +3521,26 @@ def plot_model(estimator,
     plot : string, default = auc
     Enter abbreviation of type of plot. The current list of plots supported are:
 
-    Name                        Abbreviated String     Original Implementation 
-    ---------                   ------------------     -----------------------
-    Area Under the Curve         'auc'                 .. / rocauc.html
-    Discrimination Threshold     'threshold'           .. / threshold.html
-    Precision Recall Curve       'pr'                  .. / prcurve.html
-    Confusion Matrix             'confusion_matrix'    .. / confusion_matrix.html
-    Class Prediction Error       'error'               .. / class_prediction_error.html
-    Classification Report        'class_report'        .. / classification_report.html
-    Decision Boundary            'boundary'            .. / boundaries.html
-    Recursive Feat. Selection    'rfe'                 .. / rfecv.html
-    Learning Curve               'learning'            .. / learning_curve.html
-    Manifold Learning            'manifold'            .. / manifold.html
-    Calibration Curve            'calibration'         .. / calibration_curve.html
-    Validation Curve             'vc'                  .. / validation_curve.html
-    Dimension Learning           'dimension'           .. / radviz.html
-    Feature Importance           'feature'                   N/A 
-    Model Hyperparameter         'parameter'                 N/A 
-
-    ** https://www.scikit-yb.org/en/latest/api/classifier/<reference>
+    Plot                    Name
+    ------------------      -----------------------           
+    'auc'                   Area Under the Curve                 
+    'threshold'             Discrimination Threshold           
+    'pr'                    Precision Recall Curve                  
+    'confusion_matrix'      Confusion Matrix    
+    'error'                 Class Prediction Error                
+    'class_report'          Classification Report        
+    'boundary'              Decision Boundary            
+    'rfe'                   Recursive Feature Selection                 
+    'learning'              Learning Curve             
+    'manifold'              Manifold Learning            
+    'calibration'           Calibration Curve         
+    'vc'                    Validation Curve                  
+    'dimension'             Dimension Learning           
+    'feature'               Feature Importance              
+    'parameter'             Model Hyperparameter          
 
     save: Boolean, default = False
-    Plot is saved as png file in local directory when save parameter set to True.
+    When set to True, Plot is saved as a 'png' file in current working directory.
 
     verbose: Boolean, default = True
     Progress bar not shown when verbose set to False. 
@@ -4055,36 +4049,18 @@ def compare_models(blacklist = None,
       
     Description:
     ------------
-    This function uses all models in the model library and scores them using Stratified 
-    Cross Validation. The output prints a score grid that shows Accuracy, AUC, Recall,
-    Precision, F1 and Kappa by fold (default CV = 10 Folds) of all the available models 
-    in the model library.
+    This function train all the models available in the model library and scores them 
+    using Stratified Cross Validation. The output prints a score grid with Accuracy, 
+    AUC, Recall, Precision, F1, Kappa and MCC (averaged accross folds), determined by
+    fold parameter.
     
+    This function returns the best model based on metric defined in sort parameter. 
+    
+    To select top N models, use n_select parameter that is set to 1 by default.
+    Where n_select parameter > 1, it will return a list of trained model objects.
+
     When turbo is set to True ('rbfsvm', 'gpc' and 'mlp') are excluded due to longer
-    training time. By default turbo param is set to True.
-
-    List of models that support binary or multiclass problems in Model Library:
-
-    Estimator                   Abbreviated String     sklearn Implementation 
-    ---------                   ------------------     -----------------------
-    Logistic Regression         'lr'                   linear_model.LogisticRegression
-    K Nearest Neighbour         'knn'                  neighbors.KNeighborsClassifier
-    Naives Bayes                'nb'                   naive_bayes.GaussianNB
-    Decision Tree               'dt'                   tree.DecisionTreeClassifier
-    SVM (Linear)                'svm'                  linear_model.SGDClassifier
-    SVM (RBF)                   'rbfsvm'               svm.SVC
-    Gaussian Process            'gpc'                  gaussian_process.GPC
-    Multi Level Perceptron      'mlp'                  neural_network.MLPClassifier
-    Ridge Classifier            'ridge'                linear_model.RidgeClassifier
-    Random Forest               'rf'                   ensemble.RandomForestClassifier
-    Quadratic Disc. Analysis    'qda'                  discriminant_analysis.QDA 
-    AdaBoost                    'ada'                  ensemble.AdaBoostClassifier
-    Gradient Boosting           'gbc'                  ensemble.GradientBoostingClassifier
-    Linear Disc. Analysis       'lda'                  discriminant_analysis.LDA 
-    Extra Trees Classifier      'et'                   ensemble.ExtraTreesClassifier
-    Extreme Gradient Boosting   'xgboost'              xgboost.readthedocs.io
-    Light Gradient Boosting     'lightgbm'             github.com/microsoft/LightGBM
-    CatBoost Classifier         'catboost'             https://catboost.ai
+    training time. By default turbo param is set to True.        
 
         Example:
         --------
@@ -4092,11 +4068,11 @@ def compare_models(blacklist = None,
         juice = get_data('juice')
         experiment_name = setup(data = juice,  target = 'Purchase')
         
-        compare_models() 
+        best_model = compare_models() 
 
         This will return the averaged score grid of all the models except 'rbfsvm', 'gpc' 
         and 'mlp'. When turbo param is set to False, all models including 'rbfsvm', 'gpc' 
-        and 'mlp' are used but this may result in longer TT (Sec)s.
+        and 'mlp' are used but this may result in longer training time.
         
         compare_models( blacklist = [ 'knn', 'gbc' ] , turbo = False) 
 
@@ -4129,9 +4105,9 @@ def compare_models(blacklist = None,
   
     sort: string, default = 'Accuracy'
     The scoring measure specified is used for sorting the average score grid
-    Other options are 'AUC', 'Recall', 'Precision', 'F1' and 'Kappa'.
+    Other options are 'AUC', 'Recall', 'Precision', 'F1', 'Kappa' and 'MCC'.
 
-    n_select: int, default = 3
+    n_select: int, default = 1
     Number of top_n models to return. use negative argument for bottom selection.
     for example, n_select = -3 means bottom 3 models.
 
@@ -4146,9 +4122,9 @@ def compare_models(blacklist = None,
     --------
 
     score grid:   A table containing the scores of the model across the kfolds. 
-    -----------   Scoring metrics used are Accuracy, AUC, Recall, Precision, F1 
-                  and Kappa. Mean and standard deviation of the scores across the 
-                  folds are also returned.
+    -----------   Scoring metrics used are Accuracy, AUC, Recall, Precision, F1, 
+                  Kappa and MCC. Mean and standard deviation of the scores across 
+                  the folds are also returned.
 
     Warnings:
     ---------
@@ -4159,10 +4135,7 @@ def compare_models(blacklist = None,
       10,000.
       
     - If target variable is multiclass (more than 2 classes), AUC will be 
-      returned as zero (0.0)
-      
-    - This function doesn't return model object.
-      
+      returned as zero (0.0)      
              
     
     """
@@ -4947,11 +4920,9 @@ def tune_model(estimator = None,
     ------------
     This function tunes the hyperparameters of a model and scores it using Stratified 
     Cross Validation. The output prints a score grid that shows Accuracy, AUC, Recall
-    Precision, F1 and Kappa by fold (by default = 10 Folds).
+    Precision, F1, Kappa and MCC by fold (by default = 10 Folds).
 
     This function returns a trained model object.  
-
-    tune_model() only accepts a string parameter for estimator.
 
         Example
         -------
@@ -4959,37 +4930,15 @@ def tune_model(estimator = None,
         juice = get_data('juice')
         experiment_name = setup(data = juice,  target = 'Purchase')
         
-        tuned_xgboost = tune_model('xgboost') 
+        xgboost = create_model('xgboost')
+        tuned_xgboost = tune_model(xgboost) 
 
         This will tune the hyperparameters of Extreme Gradient Boosting Classifier.
 
 
     Parameters
     ----------
-    estimator : string, default = None
-
-    Enter abbreviated name of the estimator class. List of estimators supported:
-
-    Estimator                   Abbreviated String     Original Implementation 
-    ---------                   ------------------     -----------------------
-    Logistic Regression         'lr'                   linear_model.LogisticRegression
-    K Nearest Neighbour         'knn'                  neighbors.KNeighborsClassifier
-    Naives Bayes                'nb'                   naive_bayes.GaussianNB
-    Decision Tree               'dt'                   tree.DecisionTreeClassifier
-    SVM (Linear)                'svm'                  linear_model.SGDClassifier
-    SVM (RBF)                   'rbfsvm'               svm.SVC
-    Gaussian Process            'gpc'                  gaussian_process.GPC
-    Multi Level Perceptron      'mlp'                  neural_network.MLPClassifier
-    Ridge Classifier            'ridge'                linear_model.RidgeClassifier
-    Random Forest               'rf'                   ensemble.RandomForestClassifier
-    Quadratic Disc. Analysis    'qda'                  discriminant_analysis.QDA 
-    AdaBoost                    'ada'                  ensemble.AdaBoostClassifier
-    Gradient Boosting           'gbc'                  ensemble.GradientBoostingClassifier
-    Linear Disc. Analysis       'lda'                  discriminant_analysis.LDA 
-    Extra Trees Classifier      'et'                   ensemble.ExtraTreesClassifier
-    Extreme Gradient Boosting   'xgboost'              xgboost.readthedocs.io
-    Light Gradient Boosting     'lightgbm'             github.com/microsoft/LightGBM
-    CatBoost Classifier         'catboost'             https://catboost.ai
+    estimator : object, default = None
 
     fold: integer, default = 10
     Number of folds to be used in Kfold CV. Must be at least 2. 
@@ -5011,9 +4960,10 @@ def tune_model(estimator = None,
     'Recall', 'Precision', 'F1'. 
 
     choose_better: Boolean, default = False
-    When set to set to True, base estimator is returned when the metric doesn't improve 
-    by tune_model. This gurantees the returned object would perform atleast equivalent 
-    to base estimator created using create_model or model returned by compare_models.
+    When set to set to True, base estimator is returned when the performance doesn't 
+    improve by tune_model. This gurantees the returned object would perform atleast 
+    equivalent to base estimator created using create_model or model returned by 
+    compare_models.
 
     verbose: Boolean, default = True
     Score grid is not printed when verbose is set to False.
@@ -5022,18 +4972,15 @@ def tune_model(estimator = None,
     --------
 
     score grid:   A table containing the scores of the model across the kfolds. 
-    -----------   Scoring metrics used are Accuracy, AUC, Recall, Precision, F1 
-                  and Kappa. Mean and standard deviation of the scores across the 
-                  folds are also returned.
+    -----------   Scoring metrics used are Accuracy, AUC, Recall, Precision, F1, 
+                  Kappa and MCC. Mean and standard deviation of the scores across 
+                  the folds are also returned.
 
     model:        trained and tuned model object. 
     -----------
 
     Warnings:
     ---------
-    - estimator parameter takes an abbreviated string. Passing a trained model object
-      returns an error. The tune_model() function internally calls create_model() 
-      before tuning the hyperparameters.
    
     - If target variable is multiclass (more than 2 classes), optimize param 'AUC' is 
       not acceptable.
@@ -5043,7 +4990,7 @@ def tune_model(estimator = None,
         
           
     
-  """
+    """
 
     '''
     
@@ -5082,7 +5029,7 @@ def tune_model(estimator = None,
         sys.exit('(Type Error): n_iter parameter only accepts integer value.')
 
     #checking optimize parameter
-    allowed_optimize = ['Accuracy', 'Recall', 'Precision', 'F1', 'AUC']
+    allowed_optimize = ['Accuracy', 'Recall', 'Precision', 'F1', 'AUC', 'MCC']
     if optimize not in allowed_optimize:
         sys.exit('(Value Error): Optimization method not supported. See docstring for list of available parameters.')
     
@@ -6192,8 +6139,8 @@ def blend_models(estimator_list = 'All',
     estimators in the model library (excluding the few when turbo is True) or 
     for specific trained estimators passed as a list in estimator_list param.
     It scores it using Stratified Cross Validation. The output prints a score
-    grid that shows Accuracy,  AUC, Recall, Precision, F1 and Kappa by fold 
-    (default CV = 10 Folds). 
+    grid that shows Accuracy,  AUC, Recall, Precision, F1, Kappa and MCC by 
+    fold (default CV = 10 Folds). 
 
     This function returns a trained model object.  
 
@@ -6255,9 +6202,9 @@ def blend_models(estimator_list = 'All',
     --------
 
     score grid:   A table containing the scores of the model across the kfolds. 
-    -----------   Scoring metrics used are Accuracy, AUC, Recall, Precision, F1 
-                  and Kappa. Mean and standard deviation of the scores across the 
-                  folds are also returned.
+    -----------   Scoring metrics used are Accuracy, AUC, Recall, Precision, F1, 
+                  Kappa and MCC. Mean and standard deviation of the scores across 
+                  the folds are also returned.
 
     model:        trained Voting Classifier model object. 
     -----------
@@ -7015,7 +6962,7 @@ def stack_models(estimator_list,
     (default = False).
 
     The output prints the score grid that shows Accuracy, AUC, Recall, Precision, 
-    F1 and Kappa by fold (default = 10 Folds). 
+    F1, Kappa and MCC by fold (default = 10 Folds). 
     
     This function returns a container which is the list of all models in stacking. 
 
@@ -7087,9 +7034,9 @@ def stack_models(estimator_list,
     --------
 
     score grid:   A table containing the scores of the model across the kfolds. 
-    -----------   Scoring metrics used are Accuracy, AUC, Recall, Precision, F1 
-                  and Kappa. Mean and standard deviation of the scores across the 
-                  folds are also returned.
+    -----------   Scoring metrics used are Accuracy, AUC, Recall, Precision, F1, 
+                  Kappa and MCC. Mean and standard deviation of the scores across 
+                  the folds are also returned.
 
     container:    list of all the models where last element is meta model.
     ----------
@@ -7857,7 +7804,7 @@ def create_stacknet(estimator_list,
     Only used when choose_better is set to True. optimize parameter is used
     to compare emsembled model with base estimator. Values accepted in 
     optimize parameter are 'Accuracy', 'AUC', 'Recall', 'Precision', 'F1', 
-    'Kappa', 'MCC'.
+    'Kappa' and 'MCC'.
 
     finalize: Boolean, default = False
     When finalize is set to True, it will fit the stacker on entire dataset
@@ -7872,8 +7819,8 @@ def create_stacknet(estimator_list,
     --------
 
     score grid:   A table containing the scores of the model across the kfolds. 
-    -----------   Scoring metrics used are Accuracy, AUC, Recall, Precision, F1 
-                  and Kappa. Mean and standard deviation of the scores across the 
+    -----------   Scoring metrics used are Accuracy, AUC, Recall, Precision, F1, 
+                  Kappa and MCC. Mean and standard deviation of the scores across the 
                   folds are also returned.
 
     container:    list of all models where the last element is the meta model.
@@ -7883,8 +7830,8 @@ def create_stacknet(estimator_list,
     ---------
     -  When the method is forced to be 'soft' and estimator_list param includes 
        estimators that donot support the predict_proba method such as 'svm' or 
-       'ridge',  predicted values for those specific estimators only are used 
-       instead of probability  when building the meta_model. The same rule applies
+       'ridge', predicted values for those specific estimators only are used 
+       instead of probability when building the meta_model. The same rule applies
        when the stacker is used under predict_model() function.
     
     -  If target variable is multiclass (more than 2 classes), AUC will be returned 
@@ -8845,7 +8792,7 @@ def calibrate_model(estimator,
     ------------
     This function takes the input of trained estimator and performs probability 
     calibration with sigmoid or isotonic regression. The output prints a score 
-    grid that shows Accuracy, AUC, Recall, Precision, F1 and Kappa by fold 
+    grid that shows Accuracy, AUC, Recall, Precision, F1, Kappa and MCC by fold 
     (default = 10 Fold). The ouput of the original estimator and the calibrated 
     estimator (created using this function) might not differ much. In order 
     to see the calibration differences, use 'calibration' plot in plot_model to 
@@ -8886,9 +8833,9 @@ def calibrate_model(estimator,
     --------
 
     score grid:   A table containing the scores of the model across the kfolds. 
-    -----------   Scoring metrics used are Accuracy, AUC, Recall, Precision, F1 
-                  and Kappa. Mean and standard deviation of the scores across the 
-                  folds are also returned.
+    -----------   Scoring metrics used are Accuracy, AUC, Recall, Precision, F1, 
+                  Kappa and MCC. Mean and standard deviation of the scores across 
+                  the folds are also returned.
 
     model:        trained and calibrated model object.
     -----------
@@ -11097,9 +11044,6 @@ def models(type=None):
     
     """
     
-    import logging
-    logger.info("Initializing models()")
-
     import pandas as pd
 
     model_id = ['lr', 'knn', 'nb', 'dt', 'svm', 'rbfsvm', 'gpc', 'mlp', 'ridge', 'rf', 'qda', 'ada', 'gbc', 'lda', 'et', 'xgboost', 'lightgbm', 'catboost']
@@ -11163,8 +11107,6 @@ def models(type=None):
     if type == 'ensemble':
         df = df[df.index.isin(ensemble_models)]
 
-    logger.info("models() succesfully completed")
-
     return df
 
 def get_logs(experiment_name = None, save = False):
@@ -11193,9 +11135,6 @@ def get_logs(experiment_name = None, save = False):
     
     """
 
-    import logging
-    logger.info("Initializing get_logs()")
-
     import sys
     
     if experiment_name is None:
@@ -11210,19 +11149,14 @@ def get_logs(experiment_name = None, save = False):
     client = MlflowClient()
 
     if client.get_experiment_by_name(exp_name_log_) is None:
-        logger.info("No active run found.")
         sys.exit('No active run found. Check logging parameter in setup or to get logs for inactive run pass experiment_name.')
     
     exp_id = client.get_experiment_by_name(exp_name_log_).experiment_id    
-    logger.info("Searching runs")
     runs = mlflow.search_runs(exp_id)
 
     if save:
-        logger.info("Saving logs as csv")
         file_name = str(exp_name_log_) + '_logs.csv'
         runs.to_csv(file_name, index=False)
-
-    logger.info("get_logs() succesfully completed")
 
     return runs
 

@@ -3501,9 +3501,6 @@ def models():
     
     """
 
-    import logging
-    logger.info("Initializing models()")
-
     import pandas as pd
 
     model_id = ['abod', 'iforest', 'cluster', 'cof', 'histogram', 'knn', 'lof', 'svm', 'pca', 'mcd', 'sod', 'sos']
@@ -3540,8 +3537,6 @@ def models():
 
     df.set_index('ID', inplace=True)
 
-    logger.info("models() succesfully completed")
-
     return df
 
 def get_logs(experiment_name = None, save = False):
@@ -3570,9 +3565,6 @@ def get_logs(experiment_name = None, save = False):
     
     """
 
-    import logging
-    logger.info("Initializing get_logs()")
-
     import sys
 
     if experiment_name is None:
@@ -3586,19 +3578,14 @@ def get_logs(experiment_name = None, save = False):
     client = MlflowClient()
 
     if client.get_experiment_by_name(exp_name_log_) is None:
-        logger.info("No active run found.")
         sys.exit('No active run found. Check logging parameter in setup or to get logs for inactive run pass experiment_name.')
     
     exp_id = client.get_experiment_by_name(exp_name_log_).experiment_id    
-    logger.info("Searching runs")
     runs = mlflow.search_runs(exp_id)
 
     if save:
-        logger.info("Saving logs as csv")
         file_name = str(exp_name_log_) + '_logs.csv'
         runs.to_csv(file_name, index=False)
-
-    logger.info("get_logs() succesfully completed")
 
     return runs
 
