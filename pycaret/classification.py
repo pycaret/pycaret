@@ -4092,13 +4092,12 @@ def compare_models(blacklist = None,
     Parameters
     ----------
     blacklist: list of strings, default = None
-    In order to omit certain models from the comparison, the abbreviation string 
-    (see above list) can be passed as list of string in blacklist param. This is 
-    normally done to be more efficient with time.
+    In order to omit certain models from the comparison model ID's can be passed as 
+    a list of strings in blacklist param. 
 
     whitelist: list of strings, default = None
-    In order to run only certain models for the comparison, the abbreviation string 
-    (see above list) can be passed as a list of strings in whitelist param. 
+    In order to run only certain models for the comparison, the model ID's can be 
+    passed as a list of strings in whitelist param. 
 
     fold: integer, default = 10
     Number of folds to be used in Kfold CV. Must be at least 2. 
@@ -4933,8 +4932,8 @@ def tune_model(estimator = None,
         from pycaret.datasets import get_data
         juice = get_data('juice')
         experiment_name = setup(data = juice,  target = 'Purchase')
-        
         xgboost = create_model('xgboost')
+
         tuned_xgboost = tune_model(xgboost) 
 
         This will tune the hyperparameters of Extreme Gradient Boosting Classifier.
@@ -10963,6 +10962,8 @@ def automl(optimize='Accuracy', use_holdout=False):
     Parameters
     ----------
     optimize : string, default = 'Accuracy'
+    Other values you can pass in optimize param are 'AUC', 'Recall', 'Precision',
+    'F1', 'Kappa', and 'MCC'.
 
     use_holdout: bool, default = False
     When set to True, metrics are evaluated on holdout set instead of CV.

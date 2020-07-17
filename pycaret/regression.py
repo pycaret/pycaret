@@ -2,7 +2,7 @@
 # Author: Moez Ali <moez.ali@queensu.ca>
 # License: MIT
 # Release: PyCaret 2.0x
-# Last modified : 16/07/2020
+# Last modified : 17/07/2020
 
 def setup(data, 
           target, 
@@ -35,7 +35,7 @@ def setup(data,
           outliers_threshold = 0.05,
           remove_multicollinearity = False,
           multicollinearity_threshold = 0.9,
-          remove_perfect_collinearity = True, #added in pycaret==2.0.0
+          remove_perfect_collinearity = False, #added in pycaret==2.0.0
           create_clusters = False,
           cluster_iter = 20,
           polynomial_features = False,           
@@ -276,7 +276,7 @@ def setup(data,
     Threshold used for dropping the correlated features. Only comes into effect when 
     remove_multicollinearity is set to True.
     
-    remove_perfect_collinearity: bool, default = True
+    remove_perfect_collinearity: bool, default = False
     When set to True, perfect collinearity (features with correlation = 1) is removed
     from the dataset, When two features are 100% correlated, one of it is randomly 
     dropped from the dataset.
@@ -371,10 +371,10 @@ def setup(data,
     values, method is internally forced to 'yeo-johnson' to avoid exceptions.
 
     data_split_shuffle: bool, default = True
-    If set to False, prevents shuffling of rows when splitting data
+    If set to False, prevents shuffling of rows when splitting data.
 
     folds_shuffle: bool, default = True
-    If set to False, prevents shuffling of rows when using cross validation
+    If set to False, prevents shuffling of rows when using cross validation.
 
     n_jobs: int, default = -1
     The number of jobs to run in parallel (for functions that supports parallel 
@@ -389,17 +389,12 @@ def setup(data,
     If None, a random seed is generated and returned in the Information grid. The 
     unique number is then distributed as a seed in all functions used during the 
     experiment. This can be used for later reproducibility of the entire experiment.
-    
-    silent: bool, default = False
-    When set to True, confirmation of data types is not required. All preprocessing will 
-    be performed assuming automatically inferred data types. Not recommended for direct use 
-    except for established pipelines.
 
     log_experiment: bool, default = False
     When set to True, all metrics and parameters are logged on MLFlow server.
 
     experiment_name: str, default = None
-    Name of experiment for logging. When set to None, 'clf' is by default used as 
+    Name of experiment for logging. When set to None, 'reg' is by default used as 
     alias for the experiment name.
 
     log_plots: bool, default = False
@@ -413,6 +408,11 @@ def setup(data,
     log_data: bool, default = False
     When set to True, train and test dataset are logged as csv. 
     
+    silent: bool, default = False
+    When set to True, confirmation of data types is not required. All preprocessing will 
+    be performed assuming automatically inferred data types. Not recommended for direct use 
+    except for established pipelines.
+
     verbose: Boolean, default = True
     Information grid is not printed when verbose is set to False.
 
@@ -428,10 +428,6 @@ def setup(data,
 
     environment:  This function returns various outputs that are stored in variable
     -----------   as tuple. They are used by other functions in pycaret.
-
-    Warnings:
-    ---------
-    None
       
       
     """
@@ -1743,7 +1739,7 @@ def setup(data,
         from pathlib import Path
 
         if experiment_name is None:
-            exp_name_ = 'clf-default-name'
+            exp_name_ = 'reg-default-name'
         else:
             exp_name_ = experiment_name
 
@@ -1844,8 +1840,8 @@ def create_model(estimator = None,
     Description:
     ------------
     This function creates a model and scores it using Kfold Cross Validation. 
-    (default = 10 Fold). The output prints a score grid that shows MAE, MSE, 
-    RMSE, RMSLE, R2 and MAPE.
+    The output prints a score grid that shows MAE, MSE, RMSE, RMSLE, R2 and 
+    MAPE by fold (default = 10 Fold).
 
     This function returns a trained model object. 
 
@@ -1863,37 +1859,39 @@ def create_model(estimator = None,
 
     Parameters
     ----------
-    estimator : string, default = None
+    estimator : string / object, default = None
 
-    Enter abbreviated string of the estimator class. List of estimators supported:
+    Enter ID of the estimators available in model library or pass an untrained model 
+    object consistent with fit / predict API to train and evaluate model. All estimators 
+    support binary or multiclass problem. List of estimators in model library:
 
-    Estimator                     Abbreviated String     Original Implementation 
-    ---------                     ------------------     -----------------------
-    Linear Regression             'lr'                   linear_model.LinearRegression
-    Lasso Regression              'lasso'                linear_model.Lasso
-    Ridge Regression              'ridge'                linear_model.Ridge
-    Elastic Net                   'en'                   linear_model.ElasticNet
-    Least Angle Regression        'lar'                  linear_model.Lars
-    Lasso Least Angle Regression  'llar'                 linear_model.LassoLars
-    Orthogonal Matching Pursuit   'omp'                  linear_model.OMP
-    Bayesian Ridge                'br'                   linear_model.BayesianRidge
-    Automatic Relevance Determ.   'ard'                  linear_model.ARDRegression
-    Passive Aggressive Regressor  'par'                  linear_model.PAR
-    Random Sample Consensus       'ransac'               linear_model.RANSACRegressor
-    TheilSen Regressor            'tr'                   linear_model.TheilSenRegressor
-    Huber Regressor               'huber'                linear_model.HuberRegressor 
-    Kernel Ridge                  'kr'                   kernel_ridge.KernelRidge
-    Support Vector Machine        'svm'                  svm.SVR
-    K Neighbors Regressor         'knn'                  neighbors.KNeighborsRegressor 
-    Decision Tree                 'dt'                   tree.DecisionTreeRegressor
-    Random Forest                 'rf'                   ensemble.RandomForestRegressor
-    Extra Trees Regressor         'et'                   ensemble.ExtraTreesRegressor
-    AdaBoost Regressor            'ada'                  ensemble.AdaBoostRegressor
-    Gradient Boosting             'gbr'                  ensemble.GradientBoostingRegressor 
-    Multi Level Perceptron        'mlp'                  neural_network.MLPRegressor
-    Extreme Gradient Boosting     'xgboost'              xgboost.readthedocs.io
-    Light Gradient Boosting       'lightgbm'             github.com/microsoft/LightGBM
-    CatBoost Regressor            'catboost'             https://catboost.ai
+    ID          Name      
+    --------    ----------     
+    'lr'        Linear Regression                   
+    'lasso'     Lasso Regression                
+    'ridge'     Ridge Regression                
+    'en'        Elastic Net                   
+    'lar'       Least Angle Regression                  
+    'llar'      Lasso Least Angle Regression                   
+    'omp'       Orthogonal Matching Pursuit                     
+    'br'        Bayesian Ridge                   
+    'ard'       Automatic Relevance Determ                  
+    'par'       Passive Aggressive Regressor                    
+    'ransac'    Random Sample Consensus       
+    'tr'        TheilSen Regressor                   
+    'huber'     Huber Regressor                               
+    'kr'        Kernel Ridge                                     
+    'svm'       Support Vector Machine                           
+    'knn'       K Neighbors Regressor                           
+    'dt'        Decision Tree                                    
+    'rf'        Random Forest                                    
+    'et'        Extra Trees Regressor                            
+    'ada'       AdaBoost Regressor                              
+    'gbr'       Gradient Boosting                               
+    'mlp'       Multi Level Perceptron                          
+    'xgboost'   Extreme Gradient Boosting                   
+    'lightgbm'  Light Gradient Boosting                    
+    'catboost'  CatBoost Regressor                         
 
     ensemble: Boolean, default = False
     True would result in an ensemble of estimator using the method parameter defined. 
@@ -1908,9 +1906,8 @@ def create_model(estimator = None,
     Number of decimal places the metrics in the score grid will be rounded to. 
 
     cross_validation: bool, default = True
-    When cross_validation set to True, no cross validation or metric evaluation is performed.
-    Trained model object returned when using cross_validation is same as the one returned
-    without cross_validation.
+    When cross_validation set to False fold parameter is ignored and model is trained
+    on entire training dataset. No metric evaluation is returned. 
 
     verbose: Boolean, default = True
     Score grid is not printed when verbose is set to False.
@@ -1932,11 +1929,6 @@ def create_model(estimator = None,
     model:        trained model object
     -----------
 
-    Warnings:
-    ---------
-    None
-      
-    
   
     """
 
@@ -2662,7 +2654,7 @@ def ensemble_model(estimator,
                    n_estimators = 10,
                    round = 4,
                    choose_better = False, #added in pycaret==2.0.0
-                   optimize = 'r2', #added in pycaret==2.0.0
+                   optimize = 'R2', #added in pycaret==2.0.0
                    verbose = True):
     """
     
@@ -2716,10 +2708,10 @@ def ensemble_model(estimator,
     atleast equivalent to base estimator created using create_model or model 
     returned by compare_models.
 
-    optimize: string, default = 'r2'
+    optimize: string, default = 'R2'
     Only used when choose_better is set to True. optimize parameter is used
     to compare emsembled model with base estimator. Values accepted in 
-    optimize parameter are 'mae', 'mse', 'rmse', 'r2', 'rmsle', 'mape'.
+    optimize parameter are 'MAE', 'MSE', 'RMSE', 'R2', 'RMSLE', 'MAPE'.
 
     verbose: Boolean, default = True
     Score grid is not printed when verbose is set to False.
@@ -2736,11 +2728,6 @@ def ensemble_model(estimator,
     model:        trained ensembled model object
     -----------
 
-    Warnings:
-    ---------
-    None
-      
-        
     
     """
     
@@ -2848,18 +2835,18 @@ def ensemble_model(estimator,
     #defining estimator as model
     model = estimator
 
-    if optimize == 'mae':
+    if optimize == 'MAE':
         compare_dimension = 'MAE' 
-    elif optimize == 'mse':
+    elif optimize == 'MSE':
         compare_dimension = 'MSE' 
-    elif optimize == 'r2':
-        compare_dimension = 'R2'
-    elif optimize == 'mape':
-        compare_dimension = 'MAPE'
-    elif optimize == 'rmse':
+    elif optimize == 'RMSE':
         compare_dimension = 'RMSE' 
-    elif optimize == 'rmsle':
+    elif optimize == 'R2':
+        compare_dimension = 'R2'
+    elif optimize == 'RMSLE':
         compare_dimension = 'RMSLE' 
+    elif optimize == 'MAPE':
+        compare_dimension = 'MAPE'
     
     logger.info("Checking base model")
 
@@ -3205,7 +3192,7 @@ def ensemble_model(estimator,
         base_model_results = create_model_container[-1][compare_dimension][-2:][0]
         ensembled_model_results = create_model_container[-2][compare_dimension][-2:][0]
 
-        if optimize == 'r2':
+        if compare_dimension == 'R2':
             if ensembled_model_results > base_model_results:
                 model = model
             else:
@@ -3357,43 +3344,17 @@ def compare_models(blacklist = None,
    
     Description:
     ------------
-    This function uses all models in the model library and scores them using  
-    Kfold Cross Validation. The output prints a score grid that shows MAE, MSE, 
-    RMSE, R2, RMSLE and MAPE by fold (default CV = 10 Folds) of all the available
-    models in model library.
+    This function train all the models available in the model library and scores them 
+    using Kfold Cross Validation. The output prints a score grid with MAE, MSE 
+    RMSE, R2, RMSLE and MAPE (averaged accross folds), determined by fold parameter.
     
+    This function returns the best model based on metric defined in sort parameter. 
+    
+    To select top N models, use n_select parameter that is set to 1 by default.
+    Where n_select parameter > 1, it will return a list of trained model objects.
+
     When turbo is set to True ('kr', 'ard' and 'mlp') are excluded due to longer
     training times. By default turbo param is set to True.
-
-    List of models in Model Library
-
-    Estimator                     Abbreviated String     Original Implementation 
-    ---------                     ------------------     -----------------------
-    Linear Regression             'lr'                   linear_model.LinearRegression
-    Lasso Regression              'lasso'                linear_model.Lasso
-    Ridge Regression              'ridge'                linear_model.Ridge
-    Elastic Net                   'en'                   linear_model.ElasticNet
-    Least Angle Regression        'lar'                  linear_model.Lars
-    Lasso Least Angle Regression  'llar'                 linear_model.LassoLars
-    Orthogonal Matching Pursuit   'omp'                  linear_model.OMP
-    Bayesian Ridge                'br'                   linear_model.BayesianRidge
-    Automatic Relevance Determ.   'ard'                  linear_model.ARDRegression
-    Passive Aggressive Regressor  'par'                  linear_model.PAR
-    Random Sample Consensus       'ransac'               linear_model.RANSACRegressor
-    TheilSen Regressor            'tr'                   linear_model.TheilSenRegressor
-    Huber Regressor               'huber'                linear_model.HuberRegressor 
-    Kernel Ridge                  'kr'                   kernel_ridge.KernelRidge
-    Support Vector Machine        'svm'                  svm.SVR
-    K Neighbors Regressor         'knn'                  neighbors.KNeighborsRegressor 
-    Decision Tree                 'dt'                   tree.DecisionTreeRegressor
-    Random Forest                 'rf'                   ensemble.RandomForestRegressor
-    Extra Trees Regressor         'et'                   ensemble.ExtraTreesRegressor
-    AdaBoost Regressor            'ada'                  ensemble.AdaBoostRegressor
-    Gradient Boosting             'gbr'                  ensemble.GradientBoostingRegressor 
-    Multi Level Perceptron        'mlp'                  neural_network.MLPRegressor
-    Extreme Gradient Boosting     'xgboost'              xgboost.readthedocs.io
-    Light Gradient Boosting       'lightgbm'             github.com/microsoft/LightGBM
-    CatBoost Regressor            'catboost'             https://catboost.ai
 
         Example:
         --------
@@ -3401,18 +3362,18 @@ def compare_models(blacklist = None,
         boston = get_data('boston')
         experiment_name = setup(data = boston,  target = 'medv')
 
-        compare_models() 
+        best_model = compare_models() 
 
         This will return the averaged score grid of all models except 'kr', 'ard' 
         and 'mlp'. When turbo param is set to False, all models including 'kr',
         'ard' and 'mlp' are used, but this may result in longer training times.
         
-        compare_models(blacklist = ['knn','gbr'], turbo = False) 
+        best_model = compare_models(blacklist = ['knn','gbr'], turbo = False) 
 
         This will return a comparison of all models except K Nearest Neighbour and
         Gradient Boosting Regressor.
         
-        compare_models(blacklist = ['knn','gbr'] , turbo = True) 
+        best_model = compare_models(blacklist = ['knn','gbr'] , turbo = True) 
 
         This will return a comparison of all models except K Nearest Neighbour, 
         Gradient Boosting Regressor, Kernel Ridge Regressor, Automatic Relevance
@@ -3421,13 +3382,12 @@ def compare_models(blacklist = None,
     Parameters
     ----------
     blacklist: list of strings, default = None
-    In order to omit certain models from the comparison, the abbreviation string 
-    (see above list) can be passed as list of strings in blacklist param. This is 
-    normally done to be more efficient with time. 
+    In order to omit certain models from the comparison model ID's can be passed as 
+    a list of strings in blacklist param. 
 
     whitelist: list of strings, default = None
-    In order to run only certain models for the comparison, the abbreviation string 
-    (see above list) can be passed as a list of strings in whitelist param. 
+    In order to run only certain models for the comparison, the model ID's can be 
+    passed as a list of strings in whitelist param. 
 
     fold: integer, default = 10
     Number of folds to be used in Kfold CV. Must be at least 2. 
@@ -3439,7 +3399,7 @@ def compare_models(blacklist = None,
     The scoring measure specified is used for sorting the average score grid
     Other options are 'MAE', 'MSE', 'RMSE', 'R2', 'RMSLE' and 'MAPE'.
 
-    n_select: int, default = 3
+    n_select: int, default = 1
     Number of top_n models to return. use negative argument for bottom selection.
     for example, n_select = -3 means bottom 3 models.
 
@@ -3465,8 +3425,7 @@ def compare_models(blacklist = None,
       have longer training times. Changing turbo parameter to False may result 
       in very high training times with datasets where number of samples exceed 
       10,000.
-      
-               
+             
     
     """
     
@@ -4234,7 +4193,7 @@ def blend_models(estimator_list = 'All',
                  fold = 10, 
                  round = 4, 
                  choose_better = False, #added in pycaret==2.0.0 
-                 optimize = 'r2', #added in pycaret==2.0.0 
+                 optimize = 'R2', #added in pycaret==2.0.0 
                  turbo = True,
                  verbose = True):
     
@@ -4275,7 +4234,7 @@ def blend_models(estimator_list = 'All',
 
     Parameters
     ----------
-    estimator_list : string ('All') or list of object, default = 'All'
+    estimator_list : string ('All') or list of objects, default = 'All'
 
     fold: integer, default = 10
     Number of folds to be used in Kfold CV. Must be at least 2. 
@@ -4289,10 +4248,10 @@ def blend_models(estimator_list = 'All',
     atleast equivalent to base estimator created using create_model or model 
     returned by compare_models.
 
-    optimize: string, default = 'r2'
+    optimize: string, default = 'R2'
     Only used when choose_better is set to True. optimize parameter is used
     to compare emsembled model with base estimator. Values accepted in 
-    optimize parameter are 'mae', 'mse', 'rmse', 'r2', 'rmsle', 'mape'.
+    optimize parameter are 'MAE', 'MSE', 'RMSE', 'R2', 'RMSLE', 'MAPE'.
 
     turbo: Boolean, default = True
     When turbo is set to True, it blacklists estimator that uses Radial Kernel.
@@ -4310,12 +4269,6 @@ def blend_models(estimator_list = 'All',
 
     model:        trained Voting Regressor model object. 
     -----------
-
-    Warnings:
-    ---------
-    None
-      
-       
        
   
     """
@@ -4419,18 +4372,19 @@ def blend_models(estimator_list = 'All',
     data_X.reset_index(drop=True, inplace=True)
     data_y.reset_index(drop=True, inplace=True)
     
-    if optimize == 'mae':
+    if optimize == 'MAE':
         compare_dimension = 'MAE' 
-    elif optimize == 'mse':
+    elif optimize == 'MSE':
         compare_dimension = 'MSE' 
-    elif optimize == 'r2':
-        compare_dimension = 'R2'
-    elif optimize == 'mape':
-        compare_dimension = 'MAPE'
-    elif optimize == 'rmse':
+    elif optimize == 'RMSE':
         compare_dimension = 'RMSE' 
-    elif optimize == 'rmsle':
+    elif optimize == 'R2':
+        compare_dimension = 'R2'
+    elif optimize == 'RMSLE':
         compare_dimension = 'RMSLE' 
+    elif optimize == 'MAPE':
+        compare_dimension = 'MAPE'
+
 
     #estimator_list_flag
     if estimator_list == 'All':
@@ -4869,7 +4823,7 @@ def blend_models(estimator_list = 'All',
             display_container.pop(-1)
             logger.info("choose_better completed")
 
-    if optimize == 'r2':
+    if compare_dimension == 'R2':
         index_scorer = scorer.index(max(scorer))
     else:
         index_scorer = scorer.index(min(scorer))
@@ -4992,7 +4946,7 @@ def tune_model(estimator,
                round = 4, 
                n_iter = 10,
                custom_grid = None, #added in pycaret==2.0.0 
-               optimize = 'r2',
+               optimize = 'R2',
                choose_better = False, #added in pycaret==2.0.0
                verbose = True):
     
@@ -5014,44 +4968,15 @@ def tune_model(estimator,
         from pycaret.datasets import get_data
         boston = get_data('boston')
         experiment_name = setup(data = boston,  target = 'medv')
-        
-        tuned_xgboost = tune_model('xgboost') 
+        xgboost = create_model('xgboost')
+
+        tuned_xgboost = tune_model(xgboost) 
 
         This will tune the hyperparameters of Extreme Gradient Boosting Regressor.
 
     Parameters
     ----------
-    estimator : string, default = None
-
-    Enter abbreviated name of the estimator class. List of estimators supported:
-
-    Estimator                     Abbreviated String    Original Implementation 
-    ---------                     ------------------    -----------------------
-    Linear Regression             'lr'                  linear_model.LinearRegression
-    Lasso Regression              'lasso'               linear_model.Lasso
-    Ridge Regression              'ridge'               linear_model.Ridge
-    Elastic Net                   'en'                  linear_model.ElasticNet
-    Least Angle Regression        'lar'                 linear_model.Lars
-    Lasso Least Angle Regression  'llar'                linear_model.LassoLars
-    Orthogonal Matching Pursuit   'omp'                 linear_model.OMP
-    Bayesian Ridge                'br'                  linear_model.BayesianRidge
-    Automatic Relevance Determ.   'ard'                 linear_model.ARDRegression
-    Passive Aggressive Regressor  'par'                 linear_model.PAR
-    Random Sample Consensus       'ransac'              linear_model.RANSACRegressor
-    TheilSen Regressor            'tr'                  linear_model.TheilSenRegressor
-    Huber Regressor               'huber'               linear_model.HuberRegressor 
-    Kernel Ridge                  'kr'                  kernel_ridge.KernelRidge
-    Support Vector Machine        'svm'                 svm.SVR
-    K Neighbors Regressor         'knn'                 neighbors.KNeighborsRegressor 
-    Decision Tree                 'dt'                  tree.DecisionTreeRegressor
-    Random Forest                 'rf'                  ensemble.RandomForestRegressor
-    Extra Trees Regressor         'et'                  ensemble.ExtraTreesRegressor
-    AdaBoost Regressor            'ada'                 ensemble.AdaBoostRegressor
-    Gradient Boosting             'gbr'                 ensemble.GradientBoostingRegressor 
-    Multi Level Perceptron        'mlp'                 neural_network.MLPRegressor
-    Extreme Gradient Boosting     'xgboost'             xgboost.readthedocs.io
-    Light Gradient Boosting       'lightgbm'            github.com/microsoft/LightGBM
-    CatBoost Regressor            'catboost'            https://catboost.ai
+    estimator : object, default = None
 
     fold: integer, default = 10
     Number of folds to be used in Kfold CV. Must be at least 2. 
@@ -5067,11 +4992,11 @@ def tune_model(estimator,
     To use custom hyperparameters for tuning pass a dictionary with parameter name
     and values to be iterated. When set to None it uses pre-defined tuning grid.  
 
-    optimize: string, default = 'r2'
+    optimize: string, default = 'R2'
     Measure used to select the best model through hyperparameter tuning.
-    The default scoring measure is 'r2'. Other measures include 'mae', 'mse', 'rmse',
-    'rmsle', 'mape'. When using 'rmse' or 'rmsle' the base scorer is 'mse' and when using
-    'mape' the base scorer is 'mae'.
+    The default scoring measure is 'R2'. Other measures include 'MAE', 'MSE', 'RMSE',
+    'RMSLE', 'MAPE'. When using 'RMSE' or 'RMSLE' the base scorer is 'MSE' and when using
+    'MAPE' the base scorer is 'MAE'.
 
     choose_better: Boolean, default = False
     When set to set to True, base estimator is returned when the metric doesn't improve 
@@ -5137,7 +5062,7 @@ def tune_model(estimator,
         sys.exit('(Type Error): n_iter parameter only accepts integer value.')
 
     #checking optimize parameter
-    allowed_optimize = ['mae', 'mse', 'r2', 'rmse', 'rmsle', 'mape']
+    allowed_optimize = ['MAE', 'MSE', 'R2', 'RMSE', 'RMSLE', 'MAPE']
     if optimize not in allowed_optimize:
         sys.exit('(Value Error): Optimization method not supported. See docstring for list of available parameters.')
     
@@ -5218,22 +5143,22 @@ def tune_model(estimator,
     np.random.seed(seed)
 
     #define optimizer
-    if optimize == 'mae':
+    if optimize == 'MAE':
         optimize = 'neg_mean_absolute_error'
         compare_dimension = 'MAE' 
-    elif optimize == 'mse':
+    elif optimize == 'MSE':
         optimize = 'neg_mean_squared_error'
         compare_dimension = 'MSE' 
-    elif optimize == 'r2':
+    elif optimize == 'R2':
         optimize = 'r2'
         compare_dimension = 'R2'
-    elif optimize == 'mape':
+    elif optimize == 'MAPE':
         optimize = 'neg_mean_absolute_error' #because mape not present in sklearn
         compare_dimension = 'MAPE'
-    elif optimize == 'rmse':
+    elif optimize == 'RMSE':
         optimize = 'neg_mean_squared_error' #because rmse not present in sklearn
         compare_dimension = 'RMSE' 
-    elif optimize == 'rmsle':
+    elif optimize == 'RMSLE':
         optimize = 'neg_mean_squared_error' #because rmsle not present in sklearn
         compare_dimension = 'RMSLE' 
     
@@ -6204,7 +6129,7 @@ def tune_model(estimator,
         base_model_results = create_model_container[-1][compare_dimension][-2:][0]
         tuned_model_results = create_model_container[-2][compare_dimension][-2:][0]
 
-        if optimize == 'r2':
+        if compare_dimension == 'R2':
             if tuned_model_results > base_model_results:
                 best_model = best_model
             else:
@@ -6358,7 +6283,7 @@ def stack_models(estimator_list,
                  restack = True, 
                  plot = False,
                  choose_better = False, #added in pycaret==2.0.0
-                 optimize = 'r2', #added in pycaret==2.0.0
+                 optimize = 'R2', #added in pycaret==2.0.0
                  finalize = False,
                  verbose = True):
     
@@ -6423,10 +6348,10 @@ def stack_models(estimator_list,
     atleast equivalent to base estimator created using create_model or model 
     returned by compare_models.
 
-    optimize: string, default = 'r2'
+    optimize: string, default = 'R2'
     Only used when choose_better is set to True. optimize parameter is used
     to compare emsembled model with base estimator. Values accepted in 
-    optimize parameter are 'mae', 'mse', 'rmse', 'r2', 'rmsle', 'mape'.
+    optimize parameter are 'MAE', 'MSE', 'RMSE', 'R2', 'RMSLE', 'MAPE'.
 
     finalize: Boolean, default = False
     When finalize is set to True, it will fit the stacker on entire dataset
@@ -6448,11 +6373,6 @@ def stack_models(estimator_list,
     container:    list of all the models where last element is meta model.
     ----------
 
-    Warnings:
-    ---------
-    None
-      
-             
           
     """
     
@@ -6529,18 +6449,18 @@ def stack_models(estimator_list,
     else:
         meta_model = deepcopy(meta_model) 
     
-    if optimize == 'mae':
+    if optimize == 'MAE':
         compare_dimension = 'MAE' 
-    elif optimize == 'mse':
+    elif optimize == 'MSE':
         compare_dimension = 'MSE' 
-    elif optimize == 'r2':
-        compare_dimension = 'R2'
-    elif optimize == 'mape':
-        compare_dimension = 'MAPE'
-    elif optimize == 'rmse':
+    elif optimize == 'RMSE':
         compare_dimension = 'RMSE' 
-    elif optimize == 'rmsle':
+    elif optimize == 'R2':
+        compare_dimension = 'R2'
+    elif optimize == 'RMSLE':
         compare_dimension = 'RMSLE' 
+    elif optimize == 'MAPE':
+        compare_dimension = 'MAPE'
 
     clear_output()
     
@@ -6947,7 +6867,7 @@ def stack_models(estimator_list,
         logger.info("choose_better completed")
 
     #returning better model
-    if optimize == 'r2':
+    if compare_dimension == 'R2':
         index_scorer = scorer.index(max(scorer))
     else:
         index_scorer = scorer.index(min(scorer))
@@ -7078,7 +6998,7 @@ def create_stacknet(estimator_list,
                     round = 4,
                     restack = True,
                     choose_better = False, #added in pycaret==2.0.0
-                    optimize = 'r2', #added in pycaret==2.0.0
+                    optimize = 'R2', #added in pycaret==2.0.0
                     finalize = False,
                     verbose = True):
     
@@ -7136,10 +7056,10 @@ def create_stacknet(estimator_list,
     atleast equivalent to base estimator created using create_model or model 
     returned by compare_models.
 
-    optimize: string, default = 'r2'
+    optimize: string, default = 'R2'
     Only used when choose_better is set to True. optimize parameter is used
     to compare emsembled model with base estimator. Values accepted in 
-    optimize parameter are 'mae', 'mse', 'rmse', 'r2', 'rmsle', 'mape'.
+    optimize parameter are 'MAE', 'MSE', 'RMSE', 'R2', 'RMSLE', 'MAPE'.
 
     finalize: Boolean, default = False
     When finalize is set to True, it will fit the stacker on entire dataset
@@ -7160,11 +7080,6 @@ def create_stacknet(estimator_list,
 
     container:    list of all models where the last element is the meta model.
     ----------
-
-    Warnings:
-    ---------    
-    None
-      
       
     
     """
@@ -7250,18 +7165,18 @@ def create_stacknet(estimator_list,
     else:
         meta_model = deepcopy(meta_model)
         
-    if optimize == 'mae':
+    if optimize == 'MAE':
         compare_dimension = 'MAE' 
-    elif optimize == 'mse':
+    elif optimize == 'MSE':
         compare_dimension = 'MSE' 
-    elif optimize == 'r2':
-        compare_dimension = 'R2'
-    elif optimize == 'mape':
-        compare_dimension = 'MAPE'
-    elif optimize == 'rmse':
+    elif optimize == 'RMSE':
         compare_dimension = 'RMSE' 
-    elif optimize == 'rmsle':
+    elif optimize == 'R2':
+        compare_dimension = 'R2'
+    elif optimize == 'RMSLE':
         compare_dimension = 'RMSLE' 
+    elif optimize == 'MAPE':
+        compare_dimension = 'MAPE'
 
     if html_param:
         clear_output()
@@ -7735,7 +7650,7 @@ def create_stacknet(estimator_list,
         logger.info("choose_better completed")
 
     #returning better model
-    if optimize == 'r2':
+    if compare_dimension == 'R2':
         index_scorer = scorer.index(max(scorer))
     else:
         index_scorer = scorer.index(min(scorer))
@@ -7883,22 +7798,20 @@ def plot_model(estimator,
     plot : string, default = residual
     Enter abbreviation of type of plot. The current list of plots supported are:
 
-    Name                        Abbreviated String     Original Implementation 
-    ---------                   ------------------     -----------------------
-    Residuals Plot               'residuals'           .. / residuals.html
-    Prediction Error Plot        'error'               .. / peplot.html
-    Cooks Distance Plot          'cooks'               .. / influence.html
-    Recursive Feat. Selection    'rfe'                 .. / rfecv.html
-    Learning Curve               'learning'            .. / learning_curve.html
-    Validation Curve             'vc'                  .. / validation_curve.html
-    Manifold Learning            'manifold'            .. / manifold.html
-    Feature Importance           'feature'                   N/A 
-    Model Hyperparameter         'parameter'                 N/A 
-
-    ** https://www.scikit-yb.org/en/latest/api/regressor/<reference>
+    Plot            Name                             
+    ------          ---------                       
+    'residuals'     Residuals Plot
+    'error'         Prediction Error Plot
+    'cooks'         Cooks Distance Plot                         
+    'rfe'           Recursive Feat. Selection                     
+    'learning'      Learning Curve                           
+    'vc'            Validation Curve                               
+    'manifold'      Manifold Learning                        
+    'feature'       Feature Importance                        
+    'parameter'     Model Hyperparameter                    
 
     save: Boolean, default = False
-    Plot is saved as png file in local directory when save parameter set to True.
+    When set to True, Plot is saved as a 'png' file in current working directory.
 
     verbose: Boolean, default = True
     Progress bar not shown when verbose set to False. 
@@ -7906,16 +7819,13 @@ def plot_model(estimator,
     system: Boolean, default = True
     Must remain True all times. Only to be changed by internal functions.
 
+
     Returns:
     --------
 
     Visual Plot:  Prints the visual plot. 
     ------------
 
-    Warnings:
-    ---------
-    None
-      
                 
     """  
     
@@ -7925,9 +7835,6 @@ def plot_model(estimator,
     ERROR HANDLING STARTS HERE
     
     '''
-    
-    #for testing
-    #No active testing
     
     #exception checking   
     import sys
@@ -8269,11 +8176,6 @@ def interpret_model(estimator,
     Visual Plot:  Returns the visual plot.
     -----------   Returns the interactive JS plot when plot = 'reason'.
 
-    Warnings:
-    ---------
-    None
-     
-         
          
     """
     
@@ -8394,11 +8296,7 @@ def evaluate_model(estimator):
 
     User Interface:  Displays the user interface for plotting.
     --------------
-
-    Warnings:
-    ---------
-    None
-      
+    
          
          
     """
@@ -8749,11 +8647,7 @@ def save_model(model, model_name, verbose=True):
     Returns:
     --------    
     Success Message
-    
-    Warnings:
-    ---------
-    None
-      
+          
             
     """
     
@@ -8820,11 +8714,7 @@ def load_model(model_name,
     Returns:
     --------    
     Success Message
-    
-    Warnings:
-    ---------
-    None
-      
+          
         
     """
 
@@ -8913,6 +8803,9 @@ def predict_model(estimator,
     round: integer, default = 4
     Number of decimal places the predicted labels will be rounded to.
     
+    verbose: Boolean, default = True
+    Holdout score grid is not printed when verbose is set to False.
+
     Returns:
     --------
 
@@ -9497,7 +9390,7 @@ def deploy_model(model,
         logger.info("deploy_model() succesfully completed")
         print("Model Succesfully Deployed on AWS S3")
 
-def automl(optimize='r2', use_holdout=False):
+def automl(optimize='R2', use_holdout=False):
 
     """
     Description:
@@ -9507,7 +9400,9 @@ def automl(optimize='r2', use_holdout=False):
 
     Parameters
     ----------
-    optimize : string, default = 'r2'
+    optimize : string, default = 'R2'
+    Other values you can pass in optimize param are 'MAE', 'MSE', 'RMSE',
+    'RMSLE', and 'MAPE'. 
 
     use_holdout: bool, default = False
     When set to True, metrics are evaluated on holdout set instead of CV.
@@ -9517,18 +9412,18 @@ def automl(optimize='r2', use_holdout=False):
     import logging
     logger.info("Initializing automl()")
 
-    if optimize == 'mae':
+    if optimize == 'MAE':
         compare_dimension = 'MAE' 
-    elif optimize == 'mse':
+    elif optimize == 'MSE':
         compare_dimension = 'MSE' 
-    elif optimize == 'r2':
-        compare_dimension = 'R2'
-    elif optimize == 'mape':
-        compare_dimension = 'MAPE'
-    elif optimize == 'rmse':
+    elif optimize == 'RMSE':
         compare_dimension = 'RMSE' 
-    elif optimize == 'rmsle':
+    elif optimize == 'R2':
+        compare_dimension = 'R2'
+    elif optimize == 'RMSLE':
         compare_dimension = 'RMSLE' 
+    elif optimize == 'MAPE':
+        compare_dimension = 'MAPE'
         
     scorer = []
 
@@ -9549,7 +9444,7 @@ def automl(optimize='r2', use_holdout=False):
 
 
     #returning better model
-    if optimize == 'r2':
+    if compare_dimension == 'R2':
         index_scorer = scorer.index(max(scorer))
     else:
         index_scorer = scorer.index(min(scorer))
