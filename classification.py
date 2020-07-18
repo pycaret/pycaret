@@ -1861,7 +1861,7 @@ def create_model(estimator = None,
         
     elif estimator == 'catboost':
         from catboost import CatBoostClassifier
-        model = CatBoostClassifier(random_state=seed, silent=True) # Silent is True to suppress CatBoost iteration results 
+        model = CatBoostClassifier(random_state=seed, silent=True, allow_writing_files=False) # Silent is True to suppress CatBoost iteration results 
         full_name = 'CatBoost Classifier'
         
     else:
