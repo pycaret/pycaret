@@ -4240,7 +4240,7 @@ def tune_model(estimator = None,
                       #'ctr_border_count':[50,5,10,20,100,200]
                       }
         
-        model_grid = RandomizedSearchCV(estimator=CatBoostClassifier(random_state=seed, silent = True), 
+        model_grid = RandomizedSearchCV(estimator=CatBoostClassifier(random_state=seed, silent=True, allow_writing_files=False), 
                                         param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
                                         cv=cv, random_state=seed, n_jobs=-1)
 
@@ -4846,7 +4846,7 @@ def blend_models(estimator_list = 'All',
         et = ExtraTreesClassifier(random_state=seed)
         xgboost = XGBClassifier(random_state=seed, n_jobs=-1, verbosity=0)
         lightgbm = lgb.LGBMClassifier(random_state=seed)
-        #catboost = CatBoostClassifier(random_state=seed, silent = True)
+        #catboost = CatBoostClassifier(random_state=seed, silent=True, allow_writing_files=False)
         
         progress.value += 1
         
