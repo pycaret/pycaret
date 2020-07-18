@@ -1885,7 +1885,7 @@ def create_model(estimator = None,
         
     elif estimator == 'catboost':
         from catboost import CatBoostRegressor
-        model = CatBoostRegressor(random_state=seed, silent = True)
+        model = CatBoostRegressor(random_state=seed, silent=True, allow_writing_files=False)
         full_name = 'CatBoost Regressor'
         
     else:
@@ -2742,7 +2742,7 @@ def compare_models(blacklist = None,
     mlp = MLPRegressor(random_state=seed)
     xgboost = XGBRegressor(random_state=seed, n_jobs=-1, verbosity=0)
     lightgbm = lgb.LGBMRegressor(random_state=seed)
-    catboost = CatBoostRegressor(random_state=seed, silent = True)
+    catboost = CatBoostRegressor(random_state=seed, silent=True, , allow_writing_files=False)
     
     progress.value += 1
     
