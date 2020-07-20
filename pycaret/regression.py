@@ -2,7 +2,7 @@
 # Author: Moez Ali <moez.ali@queensu.ca>
 # License: MIT
 # Release: PyCaret 2.0x
-# Last modified : 17/07/2020
+# Last modified : 20/07/2020
 
 def setup(data, 
           target, 
@@ -1875,7 +1875,7 @@ def create_model(estimator = None,
     'llar'      Lasso Least Angle Regression                   
     'omp'       Orthogonal Matching Pursuit                     
     'br'        Bayesian Ridge                   
-    'ard'       Automatic Relevance Determ                  
+    'ard'       Automatic Relevance Determination                  
     'par'       Passive Aggressive Regressor                    
     'ransac'    Random Sample Consensus       
     'tr'        TheilSen Regressor                   
@@ -1887,7 +1887,7 @@ def create_model(estimator = None,
     'rf'        Random Forest                                    
     'et'        Extra Trees Regressor                            
     'ada'       AdaBoost Regressor                              
-    'gbr'       Gradient Boosting                               
+    'gbr'       Gradient Boosting Regressor                               
     'mlp'       Multi Level Perceptron                          
     'xgboost'   Extreme Gradient Boosting                   
     'lightgbm'  Light Gradient Boosting                    

@@ -1145,8 +1145,6 @@ def create_model(model = None,
                  system=True, #added in pycaret==2.0.0
                  **kwargs): #added in pycaret==2.0.0
     
-    
-    
     """  
      
     Description:
@@ -1174,7 +1172,7 @@ def create_model(model = None,
     object consistent with fit / predict API to train and evaluate model. List of 
     models available in model library:
 
-    ID              Name   
+    ID              Model   
     ------          -----------
     'kmeans'        K-Means Clustering
     'ap'            Affinity Propagation
@@ -1777,75 +1775,78 @@ def tune_model(model=None,
         
         tuned_kmeans = tune_model(model = 'kmeans', supervised_target = 'medv') 
 
-        This will return tuned K Means Clustering Model.
+        This will return tuned K-Means Clustering Model.
 
     Parameters
     ----------
     model : string, default = None
 
-    Enter abbreviated name of the model. List of available models supported: 
+    Enter ID of the models available in model library:
     
-    Model                              Abbreviated String   Original Implementation 
-    ---------                          ------------------   -----------------------
-    K-Means clustering                 'kmeans'             sklearn.cluster.KMeans.html
-    Spectral Clustering                'sc'                 SpectralClustering.html
-    Agglomerative Clustering           'hclust'             AgglomerativeClustering.html
-    Birch Clustering                   'birch'              sklearn.cluster.Birch.html
-    K-Modes clustering                 'kmodes'             git/nicodv/kmodes
+    ID              Name   
+    ------          -----------
+    'kmeans'        K-Means Clustering
+    'ap'            Affinity Propagation
+    'meanshift'     Mean shift Clustering
+    'sc'            Spectral Clustering
+    'hclust'        Agglomerative Clustering
+    'dbscan'        Density-Based Spatial Clustering
+    'optics'        OPTICS Clustering                               
+    'birch'         Birch Clustering                                 
+    'kmodes'        K-Modes Clustering    
     
     supervised_target: string
     Name of the target column for supervised learning.
     
     estimator: string, default = None
 
-    Estimator                     Abbreviated String     Task 
-    ---------                     ------------------     ---------------
-    Logistic Regression           'lr'                   Classification
-    K Nearest Neighbour           'knn'                  Classification
-    Naives Bayes                  'nb'                   Classification
-    Decision Tree                 'dt'                   Classification
-    SVM (Linear)                  'svm'                  Classification
-    SVM (RBF)                     'rbfsvm'               Classification
-    Gaussian Process              'gpc'                  Classification
-    Multi Level Perceptron        'mlp'                  Classification
-    Ridge Classifier              'ridge'                Classification
-    Random Forest                 'rf'                   Classification
-    Quadratic Disc. Analysis      'qda'                  Classification
-    AdaBoost                      'ada'                  Classification
-    Gradient Boosting             'gbc'                  Classification
-    Linear Disc. Analysis         'lda'                  Classification
-    Extra Trees Classifier        'et'                   Classification
-    Extreme Gradient Boosting     'xgboost'              Classification
-    Light Gradient Boosting       'lightgbm'             Classification
-    CatBoost Classifier           'catboost'             Classification
-    Linear Regression             'lr'                   Regression
-    Lasso Regression              'lasso'                Regression
-    Ridge Regression              'ridge'                Regression
-    Elastic Net                   'en'                   Regression
-    Least Angle Regression        'lar'                  Regression
-    Lasso Least Angle Regression  'llar'                 Regression
-    Orthogonal Matching Pursuit   'omp'                  Regression
-    Bayesian Ridge                'br'                   Regression
-    Automatic Relevance Determ.   'ard'                  Regression
-    Passive Aggressive Regressor  'par'                  Regression
-    Random Sample Consensus       'ransac'               Regression
-    TheilSen Regressor            'tr'                   Regression
-    Huber Regressor               'huber'                Regression
-    Kernel Ridge                  'kr'                   Regression
-    Support Vector Machine        'svm'                  Regression
-    K Neighbors Regressor         'knn'                  Regression
-    Decision Tree                 'dt'                   Regression
-    Random Forest                 'rf'                   Regression
-    Extra Trees Regressor         'et'                   Regression
-    AdaBoost Regressor            'ada'                  Regression
-    Gradient Boosting             'gbr'                  Regression
-    Multi Level Perceptron        'mlp'                  Regression
-    Extreme Gradient Boosting     'xgboost'              Regression
-    Light Gradient Boosting       'lightgbm'             Regression
-    CatBoost Classifier           'catboost'             Regression
+    ID          Name                            Task      
+    --------    ----------                      ----------     
+    'lr'        Logistic Regression             Classification
+    'knn'       K Nearest Neighbour             Classification
+    'nb'        Naive Bayes                     Classification            
+    'dt'        Decision Tree Classifier        Classification                   
+    'svm'       SVM - Linear Kernel             Classification	            
+    'rbfsvm'    SVM - Radial Kernel             Classification               
+    'gpc'       Gaussian Process Classifier     Classification                  
+    'mlp'       Multi Level Perceptron          Classification                  
+    'ridge'     Ridge Classifier                Classification
+    'rf'        Random Forest Classifier        Classification                   
+    'qda'       Quadratic Discriminant Analysis Classification                  
+    'ada'       Ada Boost Classifier            Classification                 
+    'gbc'       Gradient Boosting Classifier    Classification                          
+    'lda'       Linear Discriminant Analysis    Classification                  
+    'et'        Extra Trees Classifier          Classification                   
+    'xgboost'   Extreme Gradient Boosting       Classification              
+    'lightgbm'  Light Gradient Boosting         Classification              
+    'catboost'  CatBoost Classifier             Classification
+    'lr'        Linear Regression               Regression                   
+    'lasso'     Lasso Regression                Regression
+    'ridge'     Ridge Regression                Regression
+    'en'        Elastic Net                     Regression
+    'lar'       Least Angle Regression          Regression        
+    'llar'      Lasso Least Angle Regression    Regression                   
+    'omp'       Orthogonal Matching Pursuit     Regression                     
+    'br'        Bayesian Ridge                  Regression                   
+    'ard'       Automatic Relevance Determ.     Regression                  
+    'par'       Passive Aggressive Regressor    Regression                    
+    'ransac'    Random Sample Consensus         Regression       
+    'tr'        TheilSen Regressor              Regression                   
+    'huber'     Huber Regressor                 Regression                               
+    'kr'        Kernel Ridge                    Regression                                     
+    'svm'       Support Vector Machine          Regression                           
+    'knn'       K Neighbors Regressor           Regression                           
+    'dt'        Decision Tree                   Regression                                    
+    'rf'        Random Forest                   Regression                                    
+    'et'        Extra Trees Regressor           Regression                            
+    'ada'       AdaBoost Regressor              Regression                                   
+    'gbr'       Gradient Boosting               Regression                               
+    'mlp'       Multi Level Perceptron          Regression                          
+    'xgboost'   Extreme Gradient Boosting       Regression                              
+    'lightgbm'  Light Gradient Boosting         Regression                    
+    'catboost'  CatBoost Regressor              Regression           
     
-    If set to None, Linear model is used by default for both classification
-    and regression tasks.
+    If set to None, Linear / Logistic model is used by default.
     
     optimize: string, default = None
     
@@ -1894,6 +1895,10 @@ def tune_model(model=None,
     """
     
     global data_, X
+    
+    import logging
+    logger.info("Initializing tune_model()")
+    logger.info("Checking exceptions")
     
     #ignore warnings
     import warnings
@@ -1954,13 +1959,17 @@ def tune_model(model=None,
     exception handling ends here
     """
     
+    logger.info("Preloading libraries")
+
     #pre-load libraries
     import pandas as pd
     import ipywidgets as ipw
     from ipywidgets import Output
     from IPython.display import display, HTML, clear_output, update_display
     import datetime, time
-    
+
+    logger.info("Preparing display monitor")
+
     #progress bar
     if custom_grid is None:
         max_steps = 25
@@ -1988,6 +1997,8 @@ def tune_model(model=None,
             with monitor_out:
                 display(monitor, display_id = 'monitor')
 
+    logger.info("Importing libraries")
+
     #General Dependencies
     from sklearn.linear_model import LogisticRegression
     from sklearn.model_selection import cross_val_predict
@@ -1996,6 +2007,8 @@ def tune_model(model=None,
     import plotly.express as px
     from copy import deepcopy
     
+    logger.info("Copying environment variables")
+
     a = data_.copy()
     b = X.copy()
     c = deepcopy(prep_pipe)
@@ -2024,11 +2037,15 @@ def tune_model(model=None,
     #define the problem
     if data_[supervised_target].value_counts().count() == 2: 
         problem = 'classification'
+        logger.info("Objective : Classification")
     else:
         problem = 'regression'    
+        logger.info("Objective : Regression")
     
     #define model name
     
+    logger.info("Defining Model Name")
+
     if model == 'kmeans':
         model_name = 'K-Means Clustering'
     elif model == 'ap':
@@ -2048,6 +2065,8 @@ def tune_model(model=None,
     elif model == 'kmodes':
         model_name = 'K-Modes Clustering'
     
+    logger.info("Defining Supervised Estimator")
+
     #defining estimator:
     if problem == 'classification' and estimator is None:
         estimator = 'lr'
@@ -2056,6 +2075,7 @@ def tune_model(model=None,
     else:
         estimator = estimator
     
+    logger.info("Defining Optimizer")
     #defining optimizer:
     if optimize is None and problem == 'classification':
         optimize = 'Accuracy'
@@ -2063,12 +2083,17 @@ def tune_model(model=None,
         optimize = 'R2'
     else:
         optimize=optimize
+
+    logger.info("Optimize: " + str(optimize))
     
     progress.value += 1 
             
     #defining tuning grid
+    logger.info("Defining Tuning Grid")
+
     if custom_grid is not None:
         
+        logger.info("Custom Grid used")
         param_grid = custom_grid
         param_grid_with_zero = [0]
 
@@ -2076,7 +2101,8 @@ def tune_model(model=None,
             param_grid_with_zero.append(i)
 
     else:
-                
+        
+        logger.info("Pre-defined Grid used")
         param_grid = [4, 5, 6, 8, 10, 14, 18, 25, 30, 40] 
         param_grid_with_zero = [0, 4, 5, 6, 8, 10, 14, 18, 25, 30, 40] 
 
@@ -2092,6 +2118,8 @@ def tune_model(model=None,
     preprocess starts here
     """
     
+    logger.info("Defining setup variables for preprocessing")
+    
     #removing target variable from data by defining new setup
     _data_ = data_.copy()
     target_ = pd.DataFrame(_data_[supervised_target])
@@ -2104,7 +2132,6 @@ def tune_model(model=None,
     time_pass = prep_param.dtypes.time_features
     ignore_pass = prep_param.dtypes.features_todrop
     
-
     #PCA
     #---# 
     if 'Empty' in str(prep_param.pca): 
@@ -2255,6 +2282,8 @@ def tune_model(model=None,
 
     global setup_without_target
     
+    logger.info("SubProcess setup() called")
+    
     setup_without_target = setup(data = data_,
                                  categorical_features = cat_pass,
                                  categorical_imputation = cat_impute_pass,
@@ -2290,6 +2319,8 @@ def tune_model(model=None,
     
     data_without_target = setup_without_target[0]
     
+    logger.info("SubProcess setup() end")
+
     """
     preprocess ends here
     """
@@ -2301,6 +2332,7 @@ def tune_model(model=None,
     model_fit_time_list = []
 
     for i in param_grid:
+        logger.info("Fitting Model with num_clusters = " +str(i))
         progress.value += 1                      
         monitor.iloc[2,1:] = 'Fitting Model With ' + str(i) + ' Clusters'
         if verbose:
@@ -2309,12 +2341,17 @@ def tune_model(model=None,
                              
         #create and assign the model to dataset d
         model_fit_start = time.time()
+        logger.info("SubProcess create_model() called")
         m = create_model(model=model, num_clusters=i, verbose=False, system=False)
+        logger.info("SubProcess create_model() end")
         model_fit_end = time.time()
         model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
         model_fit_time_list.append(model_fit_time)
 
+        logger.info("Generating labels")
+        logger.info("SubProcess assign_model() called")
         d = assign_model(m, transformation=True, verbose=False)
+        logger.info("SubProcess assign_model() ends")
         d[str(supervised_target)] = target_
 
         master.append(m)
@@ -2325,9 +2362,12 @@ def tune_model(model=None,
     #attaching target variable back
     data_[str(supervised_target)] = target_
 
-    
+    logger.info("Defining Supervised Estimator")
+
     if problem == 'classification':
         
+        logger.info("Problem : Classification")
+
         """
         
         defining estimator
@@ -2446,14 +2486,16 @@ def tune_model(model=None,
             model = CatBoostClassifier(random_state=seed, silent=True) # Silent is True to suppress CatBoost iteration results 
             full_name = 'CatBoost Classifier'
         
-        
+        logger.info(str(full_name) + " Imported Successfully")
+
         progress.value += 1 
         
         """
         start model building here
 
         """
-                             
+
+        logger.info("Creating Classifier without clusters")                     
         acc = [];  auc = []; recall = []; prec = []; kappa = []; f1 = []
         
         #build model without clustering
@@ -2476,9 +2518,11 @@ def tune_model(model=None,
         y = d[supervised_target]
 
         #fit the model
+        logger.info("Fitting Model") 
         model.fit(X,y)
         
         #generate the prediction and evaluate metric
+        logger.info("Evaluating Cross Val Predictions") 
         pred = cross_val_predict(model,X,y,cv=fold, method = 'predict')
 
         acc_ = metrics.accuracy_score(y,pred)
@@ -2506,8 +2550,11 @@ def tune_model(model=None,
             auc.append(0)
 
         for i in range(1,len(master_df)):
+            
             progress.value += 1 
             param_grid_val = param_grid[i-1]
+            
+            logger.info("Creating Classifier with num_clusters = " + str(param_grid_val)) 
             
             monitor.iloc[2,1:] = 'Evaluating Classifier With ' + str(param_grid_val) + ' Clusters'
             if verbose:
@@ -2528,9 +2575,11 @@ def tune_model(model=None,
             y = d[supervised_target]
 
             #fit the model
+            logger.info("Fitting Model") 
             model.fit(X,y)
 
             #generate the prediction and evaluate metric
+            logger.info("Generating Cross Val Predictions") 
             pred = cross_val_predict(model,X,y,cv=fold, method = 'predict')
 
             acc_ = metrics.accuracy_score(y,pred)
@@ -2564,7 +2613,8 @@ def tune_model(model=None,
         if verbose:
             if html_param:
                 update_display(monitor, display_id = 'monitor')
-                             
+
+        logger.info("Creating metrics dataframe")                     
         df = pd.DataFrame({'# of Clusters': param_grid_with_zero, 'Accuracy' : acc, 'AUC' : auc, 'Recall' : recall, 
                    'Precision' : prec, 'F1' : f1, 'Kappa' : kappa})
         
@@ -2576,6 +2626,7 @@ def tune_model(model=None,
         best_model_tt = model_fit_time_list[ival]
 
         progress.value += 1 
+        logger.info("Rendering Visual")
         sd = pd.melt(df, id_vars=['# of Clusters'], value_vars=['Accuracy', 'AUC', 'Recall', 'Precision', 'F1', 'Kappa'], 
                      var_name='Metric', value_name='Score')
 
@@ -2585,7 +2636,8 @@ def tune_model(model=None,
         fig.update_layout(title={'text': title, 'y':0.95,'x':0.45,'xanchor': 'center','yanchor': 'top'})
 
         fig.show()
-        
+        logger.info("Visual Rendered Successfully")
+
         #monitor = ''
 
         if verbose:
@@ -2604,6 +2656,8 @@ def tune_model(model=None,
 
     elif problem == 'regression':
         
+        logger.info("Problem : Regression")
+
         """
         
         defining estimator
@@ -2764,6 +2818,8 @@ def tune_model(model=None,
             model = CatBoostRegressor(random_state=seed, silent = True)
             full_name = 'CatBoost Regressor'
             
+        logger.info(str(full_name) + " Imported Successfully")
+
         progress.value += 1 
         
         """
@@ -2771,6 +2827,8 @@ def tune_model(model=None,
 
         """
         
+        logger.info("Creating Regressor without clusters")          
+
         score = []
         metric = []
         
@@ -2794,9 +2852,11 @@ def tune_model(model=None,
         y = d[supervised_target]
             
         #fit the model
+        logger.info("Fitting Model") 
         model.fit(X,y)
 
         #generate the prediction and evaluate metric
+        logger.info("Generating Cross Val Predictions")
         pred = cross_val_predict(model,X,y,cv=fold, method = 'predict')
 
         if optimize == 'R2':
@@ -2832,9 +2892,12 @@ def tune_model(model=None,
         metric.append(str(optimize))
         
         for i in range(1,len(master_df)):
+
             progress.value += 1 
             param_grid_val = param_grid[i-1]
             
+            logger.info("Creating Regressor with num_clusters = " + str(param_grid_val)) 
+
             monitor.iloc[2,1:] = 'Evaluating Regressor With ' + str(param_grid_val) + ' Clusters'
             if verbose:
                 if html_param:
@@ -2854,9 +2917,11 @@ def tune_model(model=None,
             y = d[supervised_target]
 
             #fit the model
+            logger.info("Fitting Model") 
             model.fit(X,y)
 
             #generate the prediction and evaluate metric
+            logger.info("Generating Cross Val Predictions") 
             pred = cross_val_predict(model,X,y,cv=fold, method = 'predict')
 
             if optimize == 'R2':
@@ -2896,7 +2961,8 @@ def tune_model(model=None,
         if verbose:
             if html_param:
                 update_display(monitor, display_id = 'monitor')                    
-         
+
+        logger.info("Creating metrics dataframe") 
         df = pd.DataFrame({'Clusters': param_grid_with_zero, 'Score' : score, 'Metric': metric})
         df.columns = ['# of Clusters', optimize, 'Metric']
         
@@ -2912,6 +2978,8 @@ def tune_model(model=None,
         best_model_df = master_df[ival]
         best_model_tt = model_fit_time_list[ival]
 
+        logger.info("Rendering Visual")
+
         fig = px.line(df, x='# of Clusters', y=optimize, line_shape='linear', 
                       title= str(full_name) + ' Metrics and Number of Clusters', color='Metric')
 
@@ -2919,6 +2987,8 @@ def tune_model(model=None,
         progress.value += 1 
         
         fig.show()
+
+        logger.info("Visual Rendered Successfully")
         
         #monitor = ''
         
@@ -2936,10 +3006,7 @@ def tune_model(model=None,
         p = 'Best Model: ' + model_name + ' |' + ' Number of Clusters: ' + str(best_k) + ' | ' + str(optimize) + ' : ' + str(best_m)
         print(p)
         
-    #storing into experiment
-    tup = ('Best Model',best_model)
-    experiment__.append(tup)    
-    
+    logger.info("Resetting environment to original variables")
     org = retain_original(a,b,c,e,z)
 
     #end runtime
@@ -2948,6 +3015,8 @@ def tune_model(model=None,
 
     #mlflow logging
     if logging_param:
+        
+        logger.info("Creating MLFlow logs")
 
         #import mlflow
         import mlflow
@@ -3013,6 +3082,8 @@ def tune_model(model=None,
             mlflow.set_tag("Size KB", size_kb)
             os.remove('Trained Model.pkl')
 
+    logger.info("tune_model() succesfully completed")
+
     return best_model
 
 def plot_model(model, 
@@ -3050,14 +3121,14 @@ def plot_model(model,
     plot : string, default = 'cluster'
     Enter abbreviation for type of plot. The current list of plots supported are:
 
-    Name                           Abbreviated String     
-    ---------                      ------------------     
-    Cluster PCA Plot (2d)          'cluster'              
-    Cluster TSnE (3d)              'tsne'
-    Elbow Plot                     'elbow'
-    Silhouette Plot                'silhouette'
-    Distance Plot                  'distance'
-    Distribution Plot              'distribution'
+    Plot            Name                               
+    ---------       -----------               
+    'cluster'       Cluster PCA Plot (2d)              
+    'tsne'          Cluster TSnE (3d)
+    'elbow'         Elbow Plot 
+    'silhouette'    Silhouette Plot         
+    'distance'      Distance Plot   
+    'distribution'  Distribution Plot
     
     feature : string, default = None
     Name of feature column for x-axis of when plot = 'distribution'. When plot is
@@ -3078,12 +3149,7 @@ def plot_model(model,
     --------
 
     Visual Plot:  Prints the visual plot. 
-    ------------
-
-    Warnings:
-    ---------
-    None
-              
+    ------------     
 
     """  
     
@@ -3133,30 +3199,6 @@ def plot_model(model,
     if plot == 'cluster':
         
         b = assign_model(model, verbose=False, transformation=True)       
-        
-        """
-        sorting
-        """
-        clus_num = []
-        for i in b.Cluster:
-            a = int(i.split()[1])
-            clus_num.append(a)
-
-        b['cnum'] = clus_num
-        b.sort_values(by='cnum', inplace=True)
-        b.reset_index(inplace=True, drop=True)
-        
-        clus_label = []
-        for i in b.cnum:
-            a = 'Cluster ' + str(i)
-            clus_label.append(a)
-        
-        b.drop(['Cluster', 'cnum'], inplace=True, axis=1)
-        b['Cluster'] = clus_label
-        
-        """
-        sorting ends
-        """
             
         cluster = b['Cluster']
         b.drop(['Cluster'], axis=1, inplace=True)
@@ -3177,6 +3219,22 @@ def plot_model(model,
             
         if label:
                 pca_['Label'] = pca_['Feature']
+
+        """
+        sorting
+        """
+        clus_num = []
+
+        for i in pca_.Cluster:
+            a = int(i.split()[1])
+            clus_num.append(a)
+
+        pca_['cnum'] = clus_num
+        pca_.sort_values(by='cnum', inplace=True) 
+
+        """
+        sorting ends
+        """
 
         if label:
             fig = px.scatter(pca_, x="PCA1", y="PCA2", text='Label', color='Cluster', opacity=0.5)
@@ -3201,31 +3259,7 @@ def plot_model(model,
     elif plot == 'tsne':
         
         b = assign_model(model, verbose=False, transformation=True)
-        
-        """
-        sorting
-        """
-        clus_num = []
-        for i in b.Cluster:
-            a = int(i.split()[1])
-            clus_num.append(a)
-
-        b['cnum'] = clus_num
-        b.sort_values(by='cnum', inplace=True)
-        b.reset_index(inplace=True, drop=True)
-        
-        clus_label = []
-        for i in b.cnum:
-            a = 'Cluster ' + str(i)
-            clus_label.append(a)
-        
-        b.drop(['Cluster', 'cnum'], inplace=True, axis=1)
-        b['Cluster'] = clus_label
-        
-        """
-        sorting ends
-        """
-    
+            
         cluster = b['Cluster']
         b.drop(['Cluster'], axis=1, inplace=True)
         
@@ -3241,7 +3275,22 @@ def plot_model(model,
             
         if label:
                 X_embedded['Label'] = X_embedded['Feature']
-                
+
+        """
+        sorting
+        """
+        clus_num = []
+        for i in X_embedded.Cluster:
+            a = int(i.split()[1])
+            clus_num.append(a)
+
+        X_embedded['cnum'] = clus_num
+        X_embedded.sort_values(by='cnum', inplace=True)
+        
+        """
+        sorting ends
+        """
+        
         import plotly.express as px
         df = X_embedded
         
@@ -3285,11 +3334,10 @@ def plot_model(model,
         
         d.drop(['Cluster', 'cnum'], inplace=True, axis=1)
         d['Cluster'] = clus_label
-        
+
         """
         sorting ends
         """
-        
         
         if feature is None:
             x_col = 'Cluster'
@@ -3394,11 +3442,6 @@ def save_model(model, model_name, verbose=True):
     Returns:
     --------    
     Success Message
-
-    Warnings:
-    ---------
-    None    
-       
          
     """
     
@@ -3464,11 +3507,6 @@ def load_model(model_name,
     Returns:
     --------    
     Success Message
-
-    Warnings:
-    ---------
-    None    
-       
          
     """
 
@@ -3556,8 +3594,7 @@ def predict_model(model,
     Warnings:
     ---------
     - Models that donot support 'predict' function cannot be used in predict_model(). 
-  
-             
+       
     
     """
     
@@ -3686,10 +3723,7 @@ def deploy_model(model,
     --------    
     Success Message
     
-    Warnings:
-    ---------
-    None    
-    
+
     """
     
     import logging
@@ -3885,7 +3919,30 @@ def get_logs(experiment_name = None, save = False):
 def get_config(variable):
 
     """
-    get global environment variable
+    Description:
+    ------------
+    This function is used to access global environment variables.
+    Following variables can be accessed:
+
+    - X: Transformed dataset
+    - data_: Original dataset  
+    - seed: random state set through session_id
+    - prep_pipe: Transformation pipeline configured through setup
+    - prep_param: prep_param configured through setup
+    - n_jobs_param: n_jobs parameter used in model training
+    - html_param: html_param configured through setup
+    - exp_name_log: Name of experiment set through setup
+    - logging_param: log_experiment param set through setup
+    - log_plots_param: log_plots param set through setup
+    - USI: Unique session ID parameter set through setup
+
+        Example:
+        --------
+        X = get_config('X') 
+
+        This will return transformed dataset.
+          
+      
     """
 
     import logging
@@ -3932,7 +3989,29 @@ def get_config(variable):
 def set_config(variable,value):
 
     """
-    set global environment variable
+    Description:
+    ------------
+    This function is used to reset global environment variables.
+    Following variables can be accessed:
+
+    - X: Transformed dataset
+    - data_: Original dataset  
+    - seed: random state set through session_id
+    - prep_pipe: Transformation pipeline configured through setup
+    - prep_param: prep_param configured through setup
+    - n_jobs_param: n_jobs parameter used in model training
+    - html_param: html_param configured through setup
+    - exp_name_log: Name of experiment set through setup
+    - logging_param: log_experiment param set through setup
+    - log_plots_param: log_plots param set through setup
+    - USI: Unique session ID parameter set through setup
+
+        Example:
+        --------
+        set_config('seed', 123) 
+
+        This will set the global seed to '123'.
+
     """
 
     import logging

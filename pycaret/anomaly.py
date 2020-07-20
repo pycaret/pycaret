@@ -236,7 +236,7 @@ def setup(data,
     
     supervised_target: string, default = None
     Name of supervised_target column that will be ignored for transformation. Only
-    applciable when tune_model() function is used. This param is only for internal use.
+    applicable when tune_model() function is used. This param is only for internal use.
 
     n_jobs: int, default = -1
     The number of jobs to run in parallel (for functions that supports parallel 
@@ -287,10 +287,6 @@ def setup(data,
 
     environment:  This function returns various outputs that are stored in variable
     -----------   as tuple. They are used by other functions in pycaret.
-
-    Warnings:
-    ---------
-    None
       
           
     """
@@ -1166,24 +1162,25 @@ def create_model(model = None,
 
     Parameters
     ----------
-    model : string, default = None
+    model : string / object, default = None
+    
+    Enter ID of the models available in model library or pass an untrained model 
+    object consistent with fit / predict API to train and evaluate model. List of 
+    models available in model library:
 
-    Enter abbreviated string of the model class. List of available models supported:
-
-    Model                              Abbreviated String   Original Implementation 
-    ---------                          ------------------   -----------------------
-    Angle-base Outlier Detection       'abod'               pyod.models.abod.ABOD
-    Isolation Forest                   'iforest'            module-pyod.models.iforest
-    Clustering-Based Local Outlier     'cluster'            pyod.models.cblof
-    Connectivity-Based Outlier Factor  'cof'                module-pyod.models.cof
-    Histogram-based Outlier Detection  'histogram'          module-pyod.models.hbos
-    k-Nearest Neighbors Detector       'knn'                module-pyod.models.knn
-    Local Outlier Factor               'lof'                module-pyod.models.lof
-    One-class SVM detector             'svm'                module-pyod.models.ocsvm
-    Principal Component Analysis       'pca'                module-pyod.models.pca
-    Minimum Covariance Determinant     'mcd'                module-pyod.models.mcd
-    Subspace Outlier Detection         'sod'                module-pyod.models.sod
-    Stochastic Outlier Selection       'sos'                module-pyod.models.sos
+    ID          Model   
+    -------     ---------
+    'abod'      Angle-base Outlier Detection       
+    'cluster'   Clustering-Based Local Outlier            
+    'cof'       Connectivity-Based Outlier Factor                 
+    'histogram' Histogram-based Outlier Detection          
+    'knn'       k-Nearest Neighbors Detector                       
+    'lof'       Local Outlier Factor                            
+    'svm'       One-class SVM detector                          
+    'pca'       Principal Component Analysis                    
+    'mcd'       Minimum Covariance Determinant                    
+    'sod'       Subspace Outlier Detection                       
+    'sos'       Stochastic Outlier Selection                       
 
     fraction: float, default = 0.05
     The percentage / proportion of outliers in the dataset.
@@ -1202,10 +1199,6 @@ def create_model(model = None,
 
     model:    trained model object
     ------
-
-    Warnings:
-    ---------
-    None
       
        
     """
@@ -1517,10 +1510,6 @@ def assign_model(model,
 
     dataframe:   Returns a dataframe with inferred outliers using a trained model.
     ---------
-
-    Warnings:
-    ---------
-    None
   
     """
     
@@ -1703,22 +1692,21 @@ def tune_model(model=None,
     ----------
     model : string, default = None
 
-    Enter abbreviated name of the model. List of available models supported: 
+    Enter ID of the models available in model library:
     
-    Model                              Abbreviated String   Original Implementation 
-    ---------                          ------------------   -----------------------
-    Angle-base Outlier Detection       'abod'               pyod.models.abod.ABOD
-    Isolation Forest                   'iforest'            module-pyod.models.iforest
-    Clustering-Based Local Outlier     'cluster'            pyod.models.cblof
-    Connectivity-Based Outlier Factor  'cof'                module-pyod.models.cof
-    Histogram-based Outlier Detection  'histogram'          module-pyod.models.hbos
-    k-Nearest Neighbors Detector       'knn'                module-pyod.models.knn
-    Local Outlier Factor               'lof'                module-pyod.models.lof
-    One-class SVM detector             'svm'                module-pyod.models.ocsvm
-    Principal Component Analysis       'pca'                module-pyod.models.pca
-    Minimum Covariance Determinant     'mcd'                module-pyod.models.mcd
-    Subspace Outlier Detection         'sod'                module-pyod.models.sod
-    Stochastic Outlier Selection       'sos'                module-pyod.models.sos
+    ID          Model   
+    -------     ---------
+    'abod'      Angle-base Outlier Detection       
+    'cluster'   Clustering-Based Local Outlier            
+    'cof'       Connectivity-Based Outlier Factor                 
+    'histogram' Histogram-based Outlier Detection          
+    'knn'       k-Nearest Neighbors Detector                       
+    'lof'       Local Outlier Factor                            
+    'svm'       One-class SVM detector                          
+    'pca'       Principal Component Analysis                    
+    'mcd'       Minimum Covariance Determinant                    
+    'sod'       Subspace Outlier Detection                       
+    'sos'       Stochastic Outlier Selection    
     
     supervised_target: string
     Name of the target column for supervised learning.
@@ -1731,51 +1719,51 @@ def tune_model(model=None,
     
     estimator: string, default = None
 
-    Estimator                     Abbreviated String     Task 
-    ---------                     ------------------     ---------------
-    Logistic Regression           'lr'                   Classification
-    K Nearest Neighbour           'knn'                  Classification
-    Naives Bayes                  'nb'                   Classification
-    Decision Tree                 'dt'                   Classification
-    SVM (Linear)                  'svm'                  Classification
-    SVM (RBF)                     'rbfsvm'               Classification
-    Gaussian Process              'gpc'                  Classification
-    Multi Level Perceptron        'mlp'                  Classification
-    Ridge Classifier              'ridge'                Classification
-    Random Forest                 'rf'                   Classification
-    Quadratic Disc. Analysis      'qda'                  Classification
-    AdaBoost                      'ada'                  Classification
-    Gradient Boosting             'gbc'                  Classification
-    Linear Disc. Analysis         'lda'                  Classification
-    Extra Trees Classifier        'et'                   Classification
-    Extreme Gradient Boosting     'xgboost'              Classification
-    Light Gradient Boosting       'lightgbm'             Classification
-    CatBoost Classifier           'catboost'             Classification
-    Linear Regression             'lr'                   Regression
-    Lasso Regression              'lasso'                Regression
-    Ridge Regression              'ridge'                Regression
-    Elastic Net                   'en'                   Regression
-    Least Angle Regression        'lar'                  Regression
-    Lasso Least Angle Regression  'llar'                 Regression
-    Orthogonal Matching Pursuit   'omp'                  Regression
-    Bayesian Ridge                'br'                   Regression
-    Automatic Relevance Determ.   'ard'                  Regression
-    Passive Aggressive Regressor  'par'                  Regression
-    Random Sample Consensus       'ransac'               Regression
-    TheilSen Regressor            'tr'                   Regression
-    Huber Regressor               'huber'                Regression
-    Kernel Ridge                  'kr'                   Regression
-    Support Vector Machine        'svm'                  Regression
-    K Neighbors Regressor         'knn'                  Regression
-    Decision Tree                 'dt'                   Regression
-    Random Forest                 'rf'                   Regression
-    Extra Trees Regressor         'et'                   Regression
-    AdaBoost Regressor            'ada'                  Regression
-    Gradient Boosting             'gbr'                  Regression
-    Multi Level Perceptron        'mlp'                  Regression
-    Extreme Gradient Boosting     'xgboost'              Regression
-    Light Gradient Boosting       'lightgbm'             Regression
-    CatBoost Regressor            'catboost'             Regression
+    ID          Name                            Task      
+    --------    ----------                      ----------     
+    'lr'        Logistic Regression             Classification
+    'knn'       K Nearest Neighbour             Classification
+    'nb'        Naive Bayes                     Classification            
+    'dt'        Decision Tree Classifier        Classification                   
+    'svm'       SVM - Linear Kernel             Classification	            
+    'rbfsvm'    SVM - Radial Kernel             Classification               
+    'gpc'       Gaussian Process Classifier     Classification                  
+    'mlp'       Multi Level Perceptron          Classification                  
+    'ridge'     Ridge Classifier                Classification
+    'rf'        Random Forest Classifier        Classification                   
+    'qda'       Quadratic Discriminant Analysis Classification                  
+    'ada'       Ada Boost Classifier            Classification                 
+    'gbc'       Gradient Boosting Classifier    Classification                          
+    'lda'       Linear Discriminant Analysis    Classification                  
+    'et'        Extra Trees Classifier          Classification                   
+    'xgboost'   Extreme Gradient Boosting       Classification              
+    'lightgbm'  Light Gradient Boosting         Classification              
+    'catboost'  CatBoost Classifier             Classification
+    'lr'        Linear Regression               Regression                   
+    'lasso'     Lasso Regression                Regression
+    'ridge'     Ridge Regression                Regression
+    'en'        Elastic Net                     Regression
+    'lar'       Least Angle Regression          Regression        
+    'llar'      Lasso Least Angle Regression    Regression                   
+    'omp'       Orthogonal Matching Pursuit     Regression                     
+    'br'        Bayesian Ridge                  Regression                   
+    'ard'       Automatic Relevance Determ.     Regression                  
+    'par'       Passive Aggressive Regressor    Regression                    
+    'ransac'    Random Sample Consensus         Regression       
+    'tr'        TheilSen Regressor              Regression                   
+    'huber'     Huber Regressor                 Regression                               
+    'kr'        Kernel Ridge                    Regression                                     
+    'svm'       Support Vector Machine          Regression                           
+    'knn'       K Neighbors Regressor           Regression                           
+    'dt'        Decision Tree                   Regression                                    
+    'rf'        Random Forest                   Regression                                    
+    'et'        Extra Trees Regressor           Regression                            
+    'ada'       AdaBoost Regressor              Regression                                   
+    'gbr'       Gradient Boosting               Regression                               
+    'mlp'       Multi Level Perceptron          Regression                          
+    'xgboost'   Extreme Gradient Boosting       Regression                              
+    'lightgbm'  Light Gradient Boosting         Regression                    
+    'catboost'  CatBoost Regressor              Regression     
     
     If set to None, Linear model is used by default for both classification
     and regression tasks.
@@ -1811,10 +1799,6 @@ def tune_model(model=None,
     model:        trained model object with best fraction param. 
     -----------
 
-    Warnings:
-    ---------
-    None
-           
           
     """
     
@@ -1826,6 +1810,10 @@ def tune_model(model=None,
     
     global data_, X
     
+    import logging
+    logger.info("Initializing tune_model()")
+    logger.info("Checking exceptions")
+
     #ignore warnings
     import warnings
     warnings.filterwarnings('ignore') 
@@ -1890,6 +1878,8 @@ def tune_model(model=None,
     exception handling ends here
     """
     
+    logger.info("Preloading libraries")
+
     #pre-load libraries
     import pandas as pd
     import ipywidgets as ipw
@@ -1897,6 +1887,8 @@ def tune_model(model=None,
     from IPython.display import display, HTML, clear_output, update_display
     import datetime, time
     
+    logger.info("Preparing display monitor")
+
     #progress bar
     if custom_grid is None:
         max_steps = 25
@@ -1923,7 +1915,9 @@ def tune_model(model=None,
             display(monitor_out)
             with monitor_out:
                 display(monitor, display_id = 'monitor')
-        
+
+    logger.info("Importing libraries")
+
     #General Dependencies
     from sklearn.linear_model import LogisticRegression
     from sklearn.model_selection import cross_val_predict
@@ -1934,6 +1928,8 @@ def tune_model(model=None,
     from sklearn.preprocessing import StandardScaler
     scaler = StandardScaler()
     
+    logger.info("Copying environment variables")
+
     a = data_.copy()
     b = X.copy()
     c = deepcopy(prep_pipe)
@@ -1962,12 +1958,15 @@ def tune_model(model=None,
     #define the problem
     if data_[supervised_target].value_counts().count() == 2: 
         problem = 'classification'
+        logger.info("Objective : Classification")
     else:
         problem = 'regression'    
+        logger.info("Objective : Regression")
     
     #define model name
     
-    #define model name
+    logger.info("Defining Model Name")    
+
     if model == 'abod':
         model_name = 'Angle-base Outlier Detection'  
     elif model == 'iforest':
@@ -1993,6 +1992,8 @@ def tune_model(model=None,
     elif model == 'sos':
         model_name = 'Stochastic Outlier Selection'   
     
+    logger.info("Defining Supervised Estimator")
+
     #defining estimator:
     if problem == 'classification' and estimator is None:
         estimator = 'lr'
@@ -2001,6 +2002,8 @@ def tune_model(model=None,
     else:
         estimator = estimator
     
+    logger.info("Defining Optimizer")
+
     #defining optimizer:
     if optimize is None and problem == 'classification':
         optimize = 'Accuracy'
@@ -2009,12 +2012,16 @@ def tune_model(model=None,
     else:
         optimize=optimize
     
+    logger.info("Optimize: " + str(optimize))
+
     progress.value += 1 
             
     #defining tuning grid
+    logger.info("Defining Tuning Grid")
 
     if custom_grid is not None:
-
+        
+        logger.info("Custom Grid used")
         param_grid = custom_grid
         param_grid_with_zero = [0]
 
@@ -2023,6 +2030,7 @@ def tune_model(model=None,
 
     else:
         
+        logger.info("Pre-defined Grid used")
         param_grid_with_zero = [0, 0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09, 0.10] 
         param_grid = [0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09, 0.10] 
     
@@ -2037,6 +2045,8 @@ def tune_model(model=None,
     preprocess starts here
     """
     
+    logger.info("Defining setup variables for preprocessing")
+
     #removing target variable from data by defining new setup
     _data_ = data_.copy()
     target_ = pd.DataFrame(_data_[supervised_target])
@@ -2199,6 +2209,8 @@ def tune_model(model=None,
         
     global setup_without_target
     
+    logger.info("SubProcess setup() called")
+
     setup_without_target = setup(data = data_,
                                  categorical_features = cat_pass,
                                  categorical_imputation = cat_impute_pass,
@@ -2234,6 +2246,8 @@ def tune_model(model=None,
     
     data_without_target = setup_without_target[0]
     
+    logger.info("SubProcess setup() end")
+
     """
     preprocess ends here
     """
@@ -2245,6 +2259,7 @@ def tune_model(model=None,
     model_fit_time_list = []
 
     for i in param_grid:
+        logger.info("Fitting Model with Fraction = " +str(i))
         progress.value += 1                      
         monitor.iloc[2,1:] = 'Fitting Model With ' + str(i) + ' Fraction'
         if verbose:
@@ -2253,12 +2268,17 @@ def tune_model(model=None,
                              
         #create and assign the model to dataset d
         model_fit_start = time.time()
+        logger.info("SubProcess create_model() called")
         m = create_model(model=model, fraction=i, verbose=False, system=False)
+        logger.info("SubProcess create_model() end")
         model_fit_end = time.time()
         model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
         model_fit_time_list.append(model_fit_time)
 
+        logger.info("Generating labels")
+        logger.info("SubProcess assign_model() called")
         d = assign_model(m, transformation=True, score=True, verbose=False)
+        logger.info("SubProcess assign_model() ends")
         d[str(supervised_target)] = target_
 
         master.append(m)
@@ -2268,9 +2288,12 @@ def tune_model(model=None,
     #attaching target variable back
     data_[str(supervised_target)] = target_
 
+    logger.info("Defining Supervised Estimator")
     
     if problem == 'classification':
         
+        logger.info("Problem : Classification")
+
         """
         
         defining estimator
@@ -2389,7 +2412,8 @@ def tune_model(model=None,
             model = CatBoostClassifier(random_state=seed, silent=True) # Silent is True to suppress CatBoost iteration results 
             full_name = 'CatBoost Classifier'
         
-        
+        logger.info(str(full_name) + " Imported Successfully")
+
         progress.value += 1 
         
         """
@@ -2397,6 +2421,7 @@ def tune_model(model=None,
 
         """
                              
+        logger.info("Creating Classifier without Anomaly")         
         acc = [];  auc = []; recall = []; prec = []; kappa = []; f1 = []
         
         #build model without anomaly
@@ -2419,9 +2444,11 @@ def tune_model(model=None,
         y = d[supervised_target]
 
         #fit the model
+        logger.info("Fitting Model") 
         model.fit(X,y)
         
         #generate the prediction and evaluate metric
+        logger.info("Evaluating Cross Val Predictions") 
         pred = cross_val_predict(model,X,y,cv=fold, method = 'predict')
 
         acc_ = metrics.accuracy_score(y,pred)
@@ -2452,6 +2479,8 @@ def tune_model(model=None,
             progress.value += 1 
             param_grid_val = param_grid[i-1]
             
+            logger.info("Creating Classifier with Fraction = " + str(param_grid_val))
+
             monitor.iloc[2,1:] = 'Evaluating Classifier With ' + str(param_grid_val) + ' Fraction'
             if verbose:
                 if html_param:
@@ -2478,9 +2507,11 @@ def tune_model(model=None,
             y = d[supervised_target]
 
             #fit the model
+            logger.info("Fitting Model") 
             model.fit(X,y)
 
             #generate the prediction and evaluate metric
+            logger.info("Generating Cross Val Predictions") 
             pred = cross_val_predict(model,X,y,cv=fold, method = 'predict')
 
             acc_ = metrics.accuracy_score(y,pred)
@@ -2514,7 +2545,8 @@ def tune_model(model=None,
         if verbose:
             if html_param:
                 update_display(monitor, display_id = 'monitor')
-                             
+
+        logger.info("Creating metrics dataframe")                        
         df = pd.DataFrame({'Fraction %': param_grid_with_zero, 'Accuracy' : acc, 'AUC' : auc, 'Recall' : recall, 
                    'Precision' : prec, 'F1' : f1, 'Kappa' : kappa})
         
@@ -2526,6 +2558,7 @@ def tune_model(model=None,
         best_model_tt = model_fit_time_list[ival]
 
         progress.value += 1 
+        logger.info("Rendering Visual")
         sd = pd.melt(df, id_vars=['Fraction %'], value_vars=['Accuracy', 'AUC', 'Recall', 'Precision', 'F1', 'Kappa'], 
                      var_name='Metric', value_name='Score')
 
@@ -2535,6 +2568,7 @@ def tune_model(model=None,
         fig.update_layout(title={'text': title, 'y':0.95,'x':0.45,'xanchor': 'center','yanchor': 'top'})
         
         fig.show()
+        logger.info("Visual Rendered Successfully")
         
         #monitor = ''
         
@@ -2554,6 +2588,8 @@ def tune_model(model=None,
 
     elif problem == 'regression':
         
+        logger.info("Problem : Regression")
+
         """
         
         defining estimator
@@ -2712,6 +2748,8 @@ def tune_model(model=None,
             model = CatBoostRegressor(random_state=seed, silent = True)
             full_name = 'CatBoost Regressor'
             
+        logger.info(str(full_name) + " Imported Successfully")
+
         progress.value += 1 
         
         """
@@ -2719,12 +2757,16 @@ def tune_model(model=None,
 
         """
         
+        logger.info("Creating Regressor without anomaly")
+
         score = []
         metric = []
         
         #build model without anomaly
         monitor.iloc[2,1:] = 'Evaluating Regressor Without Anomaly Detector'
-        update_display(monitor, display_id = 'monitor')   
+        if verbose:
+            if html_param:
+                update_display(monitor, display_id = 'monitor')   
 
         d = master_df[1].copy()
         d.drop(['Label', 'Score'], axis=1, inplace=True)
@@ -2740,9 +2782,11 @@ def tune_model(model=None,
         y = d[supervised_target]
             
         #fit the model
+        logger.info("Fitting Model") 
         model.fit(X,y)
 
         #generate the prediction and evaluate metric
+        logger.info("Generating Cross Val Predictions")
         pred = cross_val_predict(model,X,y,cv=fold, method = 'predict')
 
         if optimize == 'R2':
@@ -2781,6 +2825,8 @@ def tune_model(model=None,
             progress.value += 1 
             param_grid_val = param_grid[i-1]
             
+            logger.info("Creating Regressor with Fraction = " + str(param_grid_val)) 
+
             monitor.iloc[2,1:] = 'Evaluating Regressor With ' + str(param_grid_val) + ' Fraction'
             update_display(monitor, display_id = 'monitor')    
                              
@@ -2805,9 +2851,11 @@ def tune_model(model=None,
             y = d[supervised_target]
 
             #fit the model
+            logger.info("Fitting Model") 
             model.fit(X,y)
 
             #generate the prediction and evaluate metric
+            logger.info("Generating Cross Val Predictions") 
             pred = cross_val_predict(model,X,y,cv=fold, method = 'predict')
 
             if optimize == 'R2':
@@ -2845,7 +2893,8 @@ def tune_model(model=None,
         monitor.iloc[1,1:] = 'Compiling Results'
         monitor.iloc[1,1:] = 'Finalizing'
         update_display(monitor, display_id = 'monitor')                    
-         
+
+        logger.info("Creating metrics dataframe")  
         df = pd.DataFrame({'Fraction': param_grid_with_zero, 'Score' : score, 'Metric': metric})
         df.columns = ['Fraction %', optimize, 'Metric']
         
@@ -2861,6 +2910,8 @@ def tune_model(model=None,
         best_model_df = master_df[ival]
         best_model_tt = model_fit_time_list[ival]
 
+        logger.info("Rendering Visual")
+
         fig = px.line(df, x='Fraction %', y=optimize, line_shape='linear', 
                       title= str(full_name) + ' Metrics and Fraction %', color='Metric')
 
@@ -2869,6 +2920,8 @@ def tune_model(model=None,
 
         fig.show()
         
+        logger.info("Visual Rendered Successfully")
+
         #monitor = ''
         
         update_display(monitor, display_id = 'monitor')
@@ -2880,10 +2933,7 @@ def tune_model(model=None,
         p = 'Best Model: ' + model_name + ' |' + ' Fraction %: ' + str(best_k) + ' | ' + str(optimize) + ' : ' + str(best_m)
         print(p)
         
-    #storing into experiment
-    tup = ('Best Model',best_model)
-    experiment__.append(tup)    
-    
+    logger.info("Resetting environment to original variables")
     org = retain_original(a,b,c,e,z)
 
     #end runtime
@@ -2892,6 +2942,8 @@ def tune_model(model=None,
 
     #mlflow logging
     if logging_param:
+        
+        logger.info("Creating MLFlow logs")
 
         #import mlflow
         import mlflow
@@ -2957,6 +3009,8 @@ def tune_model(model=None,
             mlflow.set_tag("Size KB", size_kb)
             os.remove('Trained Model.pkl')
     
+    logger.info("tune_model() succesfully completed")
+
     return best_model
 
 def plot_model(model,
@@ -3011,12 +3065,7 @@ def plot_model(model,
     --------
 
     Visual Plot:  Prints the visual plot. 
-    ------------
-
-    Warnings:
-    ---------
-    -  None
-              
+    ------------ 
 
     """  
     
@@ -3145,13 +3194,12 @@ def save_model(model, model_name, verbose=True):
     model_name : string, default = none
     Name of pickle file to be passed as a string.
 
+    verbose : bool, default = True
+    When set to False, success message is not printed.
+
     Returns:
     --------    
     Success Message
-
-    Warnings:
-    ---------
-    None
        
          
     """
@@ -3202,13 +3250,22 @@ def load_model(model_name,
     model_name : string, default = none
     Name of pickle file to be passed as a string.
 
+    platform: string, default = None
+    Name of platform, if loading model from cloud. Current available options are:
+    'aws'.
+    
+    authentication : dict
+    dictionary of applicable authentication tokens. 
+    
+     When platform = 'aws': 
+     {'bucket' : 'Name of Bucket on S3'}
+
+    verbose: Boolean, default = True
+    Success message is not printed when verbose is set to False. 
+
     Returns:
     --------    
-    Success Message
-
-    Warnings:
-    ---------
-    None    
+    Success Message  
        
          
     """
@@ -3279,16 +3336,21 @@ def predict_model(model,
     is the number of samples and n_features is the number of features. All features 
     used during training must be present in the new dataset.
     
+    platform: string, default = None
+    Name of platform, if loading model from cloud. Current available options are:
+    'aws'.
+    
+    authentication : dict
+    dictionary of applicable authentication tokens. 
+    
+     When platform = 'aws': 
+     {'bucket' : 'Name of Bucket on S3'}
+     
     Returns:
     --------
 
     info grid:  Information grid is printed when data is None.
     ----------      
-
-    Warnings:
-    ---------
-    - Models that donot support 'predict' function cannot be used in predict_model(). 
-  
              
     
     """
@@ -3413,10 +3475,6 @@ def deploy_model(model,
     Returns:
     --------    
     Success Message
-    
-    Warnings:
-    ---------
-    None
       
        
     """
@@ -3621,7 +3679,30 @@ def get_logs(experiment_name = None, save = False):
 def get_config(variable):
 
     """
-    get global environment variable
+    Description:
+    ------------
+    This function is used to access global environment variables.
+    Following variables can be accessed:
+
+    - X: Transformed dataset
+    - data_: Original dataset  
+    - seed: random state set through session_id
+    - prep_pipe: Transformation pipeline configured through setup
+    - prep_param: prep_param configured through setup
+    - n_jobs_param: n_jobs parameter used in model training
+    - html_param: html_param configured through setup
+    - exp_name_log: Name of experiment set through setup
+    - logging_param: log_experiment param set through setup
+    - log_plots_param: log_plots param set through setup
+    - USI: Unique session ID parameter set through setup
+
+        Example:
+        --------
+        X = get_config('X') 
+
+        This will return transformed dataset.
+          
+      
     """
 
     import logging
@@ -3668,7 +3749,29 @@ def get_config(variable):
 def set_config(variable,value):
 
     """
-    set global environment variable
+    Description:
+    ------------
+    This function is used to reset global environment variables.
+    Following variables can be accessed:
+
+    - X: Transformed dataset
+    - data_: Original dataset  
+    - seed: random state set through session_id
+    - prep_pipe: Transformation pipeline configured through setup
+    - prep_param: prep_param configured through setup
+    - n_jobs_param: n_jobs parameter used in model training
+    - html_param: html_param configured through setup
+    - exp_name_log: Name of experiment set through setup
+    - logging_param: log_experiment param set through setup
+    - log_plots_param: log_plots param set through setup
+    - USI: Unique session ID parameter set through setup
+
+        Example:
+        --------
+        set_config('seed', 123) 
+
+        This will set the global seed to '123'.
+
     """
 
     import logging
