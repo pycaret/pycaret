@@ -2,7 +2,7 @@
 # Author: Moez Ali <moez.ali@queensu.ca>
 # License: MIT
 # Release: PyCaret 2.0x
-# Last modified : 14/07/2020
+# Last modified : 20/07/2020
 
 def setup(data, 
           categorical_features = None,
@@ -1016,6 +1016,7 @@ def setup(data,
     if verbose:
         if html_param:
             clear_output()
+            print('Setup Succesfully Completed!')
             display(functions_)
         else:
             print(functions_.data)
@@ -1239,7 +1240,7 @@ def create_model(model = None,
         sys.exit('(Value Error): Model Not Available. Please see docstring for list of available models.')
         
     #checking fraction type:
-    if type(fraction) is not float:
+    if fraction <= 0 or fraction >= 1:
         sys.exit('(Type Error): Fraction parameter can only take value as float between 0 to 1.')
         
     #checking verbose parameter
@@ -1362,6 +1363,13 @@ def create_model(model = None,
         model = SOS(contamination=fraction, **kwargs)   
         full_name = 'Stochastic Outlier Selection'
     
+    else:    
+        def get_model_name(e):
+            return str(e).split("(")[0]
+
+        model == model
+        full_name = get_model_name(model)
+        
     logger.info(str(full_name) + ' Imported succesfully')
 
     #monitor update
@@ -1665,6 +1673,7 @@ def tune_model(model=None,
                method='drop',
                estimator=None,
                optimize=None,
+               custom_grid = None, #added in pycaret 2.0.0
                fold=10,
                verbose=True): #added in pycaret 2.0.0
     
@@ -1773,6 +1782,11 @@ def tune_model(model=None,
     
     optimize: string, default = None
     
+    custom_grid: list, default = None
+    By default, a pre-defined list of fraction values is iterated over to 
+    optimize the supervised objective. To overwrite default iteration,
+    pass a list of fraction value to iterate over in custom_grid param.
+
     For Classification tasks:
     Accuracy, AUC, Recall, Precision, F1, Kappa
     
@@ -1884,7 +1898,11 @@ def tune_model(model=None,
     import datetime, time
     
     #progress bar
-    max_steps = 25
+    if custom_grid is None:
+        max_steps = 25
+    else:
+        max_steps = 15 + len(custom_grid)
+        
     progress = ipw.IntProgress(value=0, min=0, max=max_steps, step=1 , description='Processing: ')
     
     if verbose:
@@ -1994,8 +2012,19 @@ def tune_model(model=None,
     progress.value += 1 
             
     #defining tuning grid
-    param_grid_with_zero = [0, 0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09, 0.10] 
-    param_grid = [0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09, 0.10] 
+
+    if custom_grid is not None:
+
+        param_grid = custom_grid
+        param_grid_with_zero = [0]
+
+        for i in param_grid:
+            param_grid_with_zero.append(i)
+
+    else:
+        
+        param_grid_with_zero = [0, 0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09, 0.10] 
+        param_grid = [0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09, 0.10] 
     
     master = []; master_df = []
     
@@ -2199,7 +2228,7 @@ def tune_model(model=None,
                                  supervised = True,
                                  supervised_target = supervised_target,
                                  session_id = seed,
-                                 logging = False, #added in pycaret==2.0.0
+                                 log_experiment = False, #added in pycaret==2.0.0
                                  profile=False,
                                  verbose=False)
     

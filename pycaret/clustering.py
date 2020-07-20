@@ -2,7 +2,7 @@
 # Author: Moez Ali <moez.ali@queensu.ca>
 # License: MIT
 # Release: PyCaret 2.0x
-# Last modified : 14/07/2020
+# Last modified : 20/07/2020
 
 def setup(data, 
         categorical_features = None,
@@ -27,7 +27,7 @@ def setup(data,
         rare_level_threshold = 0.10, 
         bin_numeric_features = None, 
         remove_multicollinearity = False,
-        multicollinearity_threshold = 0.9, 
+        multicollinearity_threshold = 0.9,
         group_features = None, 
         group_names = None, 
         supervised = False,
@@ -40,8 +40,8 @@ def setup(data,
         log_plots = False, #added in pycaret==2.0.0
         log_profile = False, #added in pycaret==2.0.0
         log_data = False, #added in pycaret==2.0.0
-        silent=False, #added in pycaret==2.0.0
-        verbose=True,
+        silent = False, #added in pycaret==2.0.0
+        verbose = True,
         profile = False,):
     
     """
@@ -252,12 +252,12 @@ def setup(data,
     unique number is then distributed as a seed in all functions used during the 
     experiment. This can be used for later reproducibility of the entire experiment.
 
-    experiment_name: str, default = None
-    Name of experiment for logging. When set to None, 'clf' is by default used as 
-    alias for the experiment name.
-
     log_experiment: bool, default = True
     When set to True, all metrics and parameters are logged on MLFlow server.
+
+    experiment_name: str, default = None
+    Name of experiment for logging. When set to None, 'clu' is by default used as 
+    alias for the experiment name.
 
     log_plots: bool, default = False
     When set to True, specific plots are logged in MLflow as a png file. By default,
@@ -266,6 +266,9 @@ def setup(data,
     log_profile: bool, default = False
     When set to True, data profile is also logged on MLflow as a html file. By default,
     it is set to False. 
+
+    log_data: bool, default = False
+    When set to True, train and test dataset are logged as csv. 
 
     silent: bool, default = False
     When set to True, confirmation of data types is not required. All preprocessing will 
@@ -826,7 +829,7 @@ def setup(data,
                                        apply_binning = apply_binning_pass, 
                                        features_to_binn = features_to_bin_pass,
                                        remove_multicollinearity = remove_multicollinearity,
-                                       maximum_correlation_between_features = multicollinearity_threshold, 
+                                       maximum_correlation_between_features = multicollinearity_threshold,
                                        apply_grouping = apply_grouping_pass, 
                                        features_to_group_ListofList = group_features_pass,
                                        group_name = group_names_pass,
@@ -1012,8 +1015,10 @@ def setup(data,
     if verbose:
         if html_param:
             clear_output()
+            print('Setup Succesfully Completed!')
             display(functions_)
         else:
+            print('Setup Succesfully Completed!')
             print(functions_.data)
          
     if profile:
@@ -1163,24 +1168,31 @@ def create_model(model = None,
 
     Parameters
     ----------
-    model : string, default = None
+    model : string / object, default = None
+    
+    Enter ID of the models available in model library or pass an untrained model 
+    object consistent with fit / predict API to train and evaluate model. List of 
+    models available in model library:
 
-    Enter abbreviated string of the model class. List of available models supported:
-
-    Model                              Abbreviated String   Original Implementation 
-    ---------                          ------------------   -----------------------
-    K-Means Clustering                 'kmeans'             sklearn.cluster.KMeans.html
-    Affinity Propagation               'ap'                 AffinityPropagation.html
-    Mean shift Clustering              'meanshift'          sklearn.cluster.MeanShift.html
-    Spectral Clustering                'sc'                 SpectralClustering.html
-    Agglomerative Clustering           'hclust'             AgglomerativeClustering.html
-    Density-Based Spatial Clustering   'dbscan'             sklearn.cluster.DBSCAN.html
-    OPTICS Clustering                  'optics'             sklearn.cluster.OPTICS.html
-    Birch Clustering                   'birch'              sklearn.cluster.Birch.html
-    K-Modes Clustering                 'kmodes'             git/nicodv/kmodes
+    ID              Name   
+    ------          -----------
+    'kmeans'        K-Means Clustering
+    'ap'            Affinity Propagation
+    'meanshift'     Mean shift Clustering
+    'sc'            Spectral Clustering
+    'hclust'        Agglomerative Clustering
+    'dbscan'        Density-Based Spatial Clustering
+    'optics'        OPTICS Clustering                               
+    'birch'         Birch Clustering                                 
+    'kmodes'        K-Modes Clustering                              
     
     num_clusters: int, default = None
-    Number of clusters to be generated with the dataset. If None, num_clusters is set to 4. 
+    Number of clusters to be generated with the dataset. If None, num_clusters 
+    is set to 4. 
+
+    ground_truth: string, default = None
+    When ground_truth is provided, Homogeneity Score, Rand Index, and 
+    Completeness Score is evaluated and printer along with other metrics.
 
     verbose: Boolean, default = True
     Status update is not printed when verbose is set to False.
@@ -1194,7 +1206,12 @@ def create_model(model = None,
     Returns:
     --------
 
-    model:    trained model object
+    score grid:   A table containing the Silhouette, Calinski-Harabasz,  
+    -----------   Davies-Bouldin, Homogeneity Score, Rand Index, and 
+                  Completeness Score. Last 3 are only evaluated when
+                  ground_truth param is provided.
+
+    model:        trained model object
     ------
 
     Warnings:
@@ -1242,18 +1259,19 @@ def create_model(model = None,
     #checking for allowed models
     allowed_models = ['kmeans', 'ap', 'meanshift', 'sc', 'hclust', 'dbscan', 'optics', 'birch', 'kmodes']
     
+    if type(model) is str:
+        if model not in allowed_models:
+            sys.exit('(Value Error): Model Not Available. Please see docstring for list of available models.')
+
     #check num_clusters parameter:
     if num_clusters is not None:
         no_num_required = ['ap', 'meanshift', 'dbscan', 'optics']
         if model in no_num_required: 
             sys.exit('(Value Error): num_clusters parameter not required for specified model. Remove num_clusters to run this model.')
-    
-    if model not in allowed_models:
-        sys.exit('(Value Error): Model Not Available. Please see docstring for list of available models.')
         
     #checking num_clusters type:
     if num_clusters is not None:
-        if type(num_clusters) is not int:
+        if num_clusters <= 1:
             sys.exit('(Type Error): num_clusters parameter can only take value integer value greater than 1.')
 
     #check ground truth exist in data_
@@ -1355,6 +1373,13 @@ def create_model(model = None,
         from kmodes.kmodes import KModes
         model = KModes(n_clusters=num_clusters, n_jobs=n_jobs_param, random_state=seed, **kwargs)
         full_name = 'K-Modes Clustering'
+        
+    else:    
+        def get_model_name(e):
+            return str(e).split("(")[0]
+
+        model == model
+        full_name = get_model_name(model)
 
     logger.info(str(full_name) + ' Imported succesfully')
 
@@ -1383,7 +1408,7 @@ def create_model(model = None,
     
     try:
         silhouette = metrics.silhouette_score(X,model.labels_)
-        silhouette = silhouette.round(4)
+        silhouette = round(silhouette, 4)
         metric.append('Silhouette')
         metric_value.append(silhouette)
         
@@ -1392,7 +1417,7 @@ def create_model(model = None,
 
     try:
         chs = metrics.calinski_harabasz_score(X,model.labels_)
-        chs = chs.round(4)
+        chs = round(chs, 4)
         metric.append('Calinski-Harabasz')
         metric_value.append(chs)
     except:
@@ -1400,7 +1425,7 @@ def create_model(model = None,
 
     try:
         db = metrics.davies_bouldin_score(X,model.labels_)
-        db = db.round(4)
+        db = round(db, 4)
         metric.append('Davies-Bouldin')
         metric_value.append(db)
 
@@ -1415,7 +1440,7 @@ def create_model(model = None,
 
         try:
             hs = metrics.homogeneity_score(gt,model.labels_)
-            hs = hs.round(4)
+            hs = round(hs, 4)
             metric.append('Homogeneity Score')
             metric_value.append(hs)
 
@@ -1424,15 +1449,16 @@ def create_model(model = None,
 
         try:
             ari = metrics.adjusted_rand_score(gt,model.labels_)
-            ari = ari.round(4)
-            metric.append('ARI')
+            ari = round(ari,4)
+            metric.append('Rand Index')
             metric_value.append(ari)
+
         except:
             pass
-
+        
         try:
             cs = metrics.completeness_score(gt,model.labels_)
-            cs = cs.round(4)
+            cs = round(cs, 4)
             metric.append('Completeness Score')
             metric_value.append(cs)
         except:
@@ -1591,10 +1617,6 @@ def assign_model(model,
 
     dataframe:   Returns a dataframe with assigned clusters using a trained model.
     ---------
-
-    Warnings:
-    ---------
-    None
   
     """
     
@@ -1731,6 +1753,7 @@ def tune_model(model=None,
                supervised_target=None,
                estimator=None,
                optimize=None,
+               custom_grid = None, #added in pycaret 2.0.0
                fold=10,
                verbose=True): #added in pycaret 2.0.0
     
@@ -1826,6 +1849,11 @@ def tune_model(model=None,
     
     optimize: string, default = None
     
+    custom_grid: list, default = None
+    By default, a pre-defined number of clusters is iterated over to 
+    optimize the supervised objective. To overwrite default iteration,
+    pass a list of num_clusters to iterate over in custom_grid param.
+
     For Classification tasks:
     Accuracy, AUC, Recall, Precision, F1, Kappa
     
@@ -1934,7 +1962,10 @@ def tune_model(model=None,
     import datetime, time
     
     #progress bar
-    max_steps = 25
+    if custom_grid is None:
+        max_steps = 25
+    else:
+        max_steps = 15 + len(custom_grid)
 
     progress = ipw.IntProgress(value=0, min=0, max=max_steps, step=1 , description='Processing: ')
     
@@ -2036,9 +2067,20 @@ def tune_model(model=None,
     progress.value += 1 
             
     #defining tuning grid
-    param_grid_with_zero = [0, 4, 5, 6, 8, 10, 14, 18, 25, 30, 40] 
-    param_grid = [4, 5, 6, 8, 10, 14, 18, 25, 30, 40] 
-    
+    if custom_grid is not None:
+        
+        param_grid = custom_grid
+        param_grid_with_zero = [0]
+
+        for i in param_grid:
+            param_grid_with_zero.append(i)
+
+    else:
+                
+        param_grid = [4, 5, 6, 8, 10, 14, 18, 25, 30, 40] 
+        param_grid_with_zero = [0, 4, 5, 6, 8, 10, 14, 18, 25, 30, 40] 
+
+
     master = []; master_df = []
     
     monitor.iloc[1,1:] = 'Creating Clustering Model'
@@ -2236,13 +2278,13 @@ def tune_model(model=None,
                                  rare_level_threshold = combine_rare_threshold_pass, 
                                  bin_numeric_features = features_to_bin_pass,
                                  remove_multicollinearity = remove_multicollinearity_pass, 
-                                 multicollinearity_threshold = multicollinearity_threshold_pass, 
+                                 multicollinearity_threshold = multicollinearity_threshold_pass,
                                  group_features = group_features_pass,
                                  group_names = group_names_pass, 
                                  supervised = True,
                                  supervised_target = supervised_target,
                                  session_id = seed,
-                                 logging = False, #added in pycaret==2.0.0
+                                 log_experiment = False, #added in pycaret==2.0.0
                                  profile=False,
                                  verbose=False)
     

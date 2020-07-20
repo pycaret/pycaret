@@ -2,7 +2,7 @@
 # Author: Moez Ali <moez.ali@queensu.ca>
 # License: MIT
 # Release: PyCaret 2.0x
-# Last modified : 09/07/2020
+# Last modified : 20/07/2020
 
 def setup(data, 
           target=None,
@@ -811,7 +811,7 @@ def create_model(model=None,
         
     #checking round parameter
     if num_topics is not None:
-        if type(num_topics) is not int:
+        if num_topics <= 1:
             sys.exit('(Type Error): num_topics parameter only accepts integer value.')
         
     #checking verbose parameter
@@ -2002,6 +2002,7 @@ def tune_model(model=None,
                supervised_target=None,
                estimator=None,
                optimize=None,
+               custom_grid = None, #added in pycaret 2.0.0
                auto_fe = True,
                fold=10,
                verbose=True): #added in pycaret==2.0.0
@@ -2103,6 +2104,11 @@ def tune_model(model=None,
     
     optimize: string, default = None
     
+    custom_grid: list, default = None
+    By default, a pre-defined number of topics is iterated over to 
+    optimize the supervised objective. To overwrite default iteration,
+    pass a list of num_topics to iterate over in custom_grid param.
+
     For Classification tasks:
     Accuracy, AUC, Recall, Precision, F1, Kappa
     
@@ -2230,7 +2236,11 @@ def tune_model(model=None,
     import datetime, time
 
     #progress bar
-    max_steps = 25
+    if custom_grid is None:
+        max_steps = 25
+    else:
+        max_steps = 10 + len(custom_grid)
+
     progress = ipw.IntProgress(value=0, min=0, max=max_steps, step=1 , description='Processing: ')
     if verbose:
         if html_param:
@@ -2343,7 +2353,12 @@ def tune_model(model=None,
             progress.value += 1 
 
     #defining tuning grid
-    param_grid = [2,4,8,16,32,64,100,200,300,400] 
+
+    if custom_grid is not None:
+        param_grid = custom_grid
+    
+    else:
+        param_grid = [2,4,8,16,32,64,100,200,300,400] 
 
     master = []; master_df = []
 
