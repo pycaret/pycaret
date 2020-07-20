@@ -6464,6 +6464,11 @@ def stack_models(estimator_list,
 
     clear_output()
     
+    import warnings
+    warnings.filterwarnings('default')
+    warnings.warn('This function will adopt to Stackingclassifer() from sklearn in future release of PyCaret 2.x.')
+    warnings.filterwarnings('ignore')
+    
     logger.info("Preparing display monitor")
     #progress bar
     max_progress = len(estimator_list) + fold + 4
@@ -6488,10 +6493,6 @@ def stack_models(estimator_list,
         if html_param:
             display_ = display(master_display, display_id=True)
             display_id = display_.display_id
-        
-    #ignore warnings
-    import warnings
-    warnings.filterwarnings('ignore') 
     
     logger.info("Importing libraries")
     #dependencies
@@ -7091,7 +7092,7 @@ def create_stacknet(estimator_list,
     ERROR HANDLING STARTS HERE
     
     '''
-    
+
     import logging
     logger.info("Initializing create_stacknet()")
     logger.info("Checking exceptions")
@@ -7181,6 +7182,11 @@ def create_stacknet(estimator_list,
     if html_param:
         clear_output()
     
+    import warnings
+    warnings.filterwarnings('default')
+    warnings.warn('This function will be deprecated in future release of PyCaret 2.x.')
+    warnings.filterwarnings('ignore') 
+
     #progress bar
     logger.info("Preparing display monitor")
     max_progress = len(estimator_list) + fold + 4
@@ -7205,10 +7211,6 @@ def create_stacknet(estimator_list,
             master_display = pd.DataFrame(columns=['MAE','MSE','RMSE', 'R2', 'RMSLE', 'MAPE'])
             display_ = display(master_display, display_id=True)
             display_id = display_.display_id
-    
-    #ignore warnings
-    import warnings
-    warnings.filterwarnings('ignore') 
     
     logger.info("Importing libraries")
     #general dependencies

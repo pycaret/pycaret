@@ -7149,6 +7149,11 @@ def stack_models(estimator_list,
         
     clear_output()
 
+    import warnings
+    warnings.filterwarnings('default')
+    warnings.warn('This function will adopt to Stackingclassifer() from sklearn in future release of PyCaret 2.x.')
+    warnings.filterwarnings('ignore')
+
     if optimize == 'Accuracy':
         compare_dimension = 'Accuracy' 
     elif optimize == 'AUC':
@@ -7188,10 +7193,6 @@ def stack_models(estimator_list,
         if html_param:
             display_ = display(master_display, display_id=True)
             display_id = display_.display_id
-        
-    #ignore warnings
-    import warnings
-    warnings.filterwarnings('ignore') 
     
     logger.info("Importing libraries")
     #dependencies
@@ -7942,6 +7943,10 @@ def create_stacknet(estimator_list,
         
     clear_output()
     
+    import warnings
+    warnings.filterwarnings('default')
+    warnings.warn('This function will be deprecated in future release of PyCaret 2.x.')
+
     if optimize == 'Accuracy':
         compare_dimension = 'Accuracy' 
     elif optimize == 'AUC':
@@ -7981,10 +7986,6 @@ def create_stacknet(estimator_list,
             master_display = pd.DataFrame(columns=['Accuracy','AUC','Recall', 'Prec.', 'F1', 'Kappa','MCC'])
             display_ = display(master_display, display_id=True)
             display_id = display_.display_id
-    
-    #ignore warnings
-    import warnings
-    warnings.filterwarnings('ignore') 
     
     #models_ list
     models_ = []
