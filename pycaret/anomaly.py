@@ -1204,9 +1204,34 @@ def create_model(model = None,
     """
     
     import logging
-    logger.info("Initializing create_model()")
-    logger.info("Checking exceptions")
     
+    try:
+        logger.info("Initializing create_model()")
+        logger.info("Checking exceptions")
+    
+    except:
+        logger = logging.getLogger('logs')
+        logger.setLevel(logging.DEBUG)
+        
+        # create console handler and set level to debug
+        if logger.hasHandlers():
+            logger.handlers.clear()
+        
+        ch = logging.FileHandler('logs.log')
+        ch.setLevel(logging.DEBUG)
+
+        # create formatter
+        formatter = logging.Formatter('%(asctime)s:%(levelname)s:%(message)s')
+
+        # add formatter to ch
+        ch.setFormatter(formatter)
+
+        # add ch to logger
+        logger.addHandler(ch)
+
+        logger.info("Initializing create_model()")
+        logger.info("Checking exceptions")
+
     #exception checking   
     import sys        
 

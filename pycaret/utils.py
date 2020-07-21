@@ -2,7 +2,7 @@
 # Author: Moez Ali <moez.ali@queensu.ca>
 # License: MIT
 
-version_ = "pycaret-nightly-0.28"
+version_ = "pycaret-nightly-0.29"
 
 def version():
     print(version_)
@@ -93,8 +93,6 @@ def check_metric(actual, prediction, metric, round=4):
         result = (np.fabs(actual - prediction)/actual)[mask].mean()
         result = result.round(round)
        
-
-    
     return result
 
 
