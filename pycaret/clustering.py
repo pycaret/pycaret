@@ -3796,7 +3796,8 @@ def get_clusters(data,
                  combine_rare_levels=False,
                  rare_level_threshold=0.1,
                  remove_multicollinearity=False,
-                 multicollinearity_threshold=0.9):
+                 multicollinearity_threshold=0.9,
+                 n_jobs = -1):
     
     """
     Magic function to get clusters in Power Query / Power BI.    
@@ -3811,11 +3812,13 @@ def get_clusters(data,
     else:
         ignore_features_pass = ignore_features
     
-    global X, data_, seed
+    global X, data_, seed, n_jobs_param
     
     data_ = data.copy()
     
     seed = 99
+
+    n_jobs_param = n_jobs
     
     from pycaret import preprocess
     
