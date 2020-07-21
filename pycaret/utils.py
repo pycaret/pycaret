@@ -2,7 +2,7 @@
 # Author: Moez Ali <moez.ali@queensu.ca>
 # License: MIT
 
-version_ = "pycaret-nightly-0.32"
+version_ = "pycaret-nightly-0.33"
 
 def version():
     print(version_)
@@ -21,73 +21,79 @@ def check_metric(actual, prediction, metric, round=4):
 
     #metric calculation starts here
     
-    if metric == 'accuracy':
+    if metric == 'Accuracy':
         
         from sklearn import metrics
         result = metrics.accuracy_score(actual,prediction)
         result = result.round(round)
         
-    elif metric == 'recall':
+    elif metric == 'Recall':
         
         from sklearn import metrics
         result = metrics.recall_score(actual,prediction)
         result = result.round(round)
         
-    elif metric == 'precision':
+    elif metric == 'Precision':
         
         from sklearn import metrics
         result = metrics.precision_score(actual,prediction)
         result = result.round(round)
         
-    elif metric == 'f1':
+    elif metric == 'F1':
         
         from sklearn import metrics
         result = metrics.f1_score(actual,prediction)
         result = result.round(round)
         
-    elif metric == 'kappa':
+    elif metric == 'Kappa':
         
         from sklearn import metrics
         result = metrics.cohen_kappa_score(actual,prediction)
         result = result.round(round)
        
-    elif metric == 'auc':
+    elif metric == 'AUC':
         
         from sklearn import metrics
         result = metrics.roc_auc_score(actual,prediction)
         result = result.round(round)
         
-    elif metric == 'mae':
+    elif metric == 'MCC':
+        
+        from sklearn import metrics
+        result = metrics.matthews_corrcoef(actual,prediction)
+        result = result.round(round)
+
+    elif metric == 'MAE':
 
         from sklearn import metrics
         result = metrics.mean_absolute_error(actual,prediction)
         result = result.round(round)
         
-    elif metric == 'mse':
+    elif metric == 'MSE':
 
         from sklearn import metrics
         result = metrics.mean_squared_error(actual,prediction)
         result = result.round(round)        
         
-    elif metric == 'rmse':
+    elif metric == 'RMSE':
 
         from sklearn import metrics
         result = metrics.mean_squared_error(actual,prediction)
         result = np.sqrt(result)
         result = result.round(round)     
         
-    elif metric == 'r2':
+    elif metric == 'R2':
 
         from sklearn import metrics
         result = metrics.r2_score(actual,prediction)
         result = result.round(round)    
         
-    elif metric == 'rmsle':
+    elif metric == 'RMSLE':
 
         result = np.sqrt(np.mean(np.power(np.log(np.array(abs(prediction))+1) - np.log(np.array(abs(actual))+1), 2)))
         result = result.round(round)
 
-    elif metric == 'mape':
+    elif metric == 'MAPE':
 
         mask = actual != 0
         result = (np.fabs(actual - prediction)/actual)[mask].mean()
