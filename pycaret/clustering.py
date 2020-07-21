@@ -2,7 +2,7 @@
 # Author: Moez Ali <moez.ali@queensu.ca>
 # License: MIT
 # Release: PyCaret 2.0x
-# Last modified : 20/07/2020
+# Last modified : 21/07/2020
 
 def setup(data, 
         categorical_features = None,
@@ -2155,7 +2155,6 @@ def tune_model(model=None,
         pca_comp_pass = 0.99
     
     #IMPUTATION
-    #----------# 
     if 'not_available' in prep_param.imputer.categorical_strategy:
         cat_impute_pass = 'constant'
     elif 'most frequent' in prep_param.imputer.categorical_strategy:
@@ -2164,7 +2163,6 @@ def tune_model(model=None,
     num_impute_pass = prep_param.imputer.numeric_strategy
     
     #NORMALIZE
-    #---------#  
     if 'Empty' in str(prep_param.scaling):
         normalize_pass = False
     else:
@@ -2176,7 +2174,6 @@ def tune_model(model=None,
         normalize_method_pass = 'zscore'
     
     #FEATURE TRANSFORMATION
-    #---------------------#  
     if 'Empty' in str(prep_param.P_transform):
         transformation_pass = False
     else:
@@ -2193,7 +2190,6 @@ def tune_model(model=None,
         transformation_method_pass = 'yeo-johnson'
     
     #BIN NUMERIC FEATURES
-    #--------------------#  
     if 'Empty' in str(prep_param.binn):
         features_to_bin_pass = []
         apply_binning_pass = False
@@ -2203,7 +2199,6 @@ def tune_model(model=None,
         apply_binning_pass = True
     
     #COMBINE RARE LEVELS
-    #-------------------#  
     if 'Empty' in str(prep_param.club_R_L):
         combine_rare_levels_pass = False
         combine_rare_threshold_pass = 0.1
@@ -2212,14 +2207,12 @@ def tune_model(model=None,
         combine_rare_threshold_pass = prep_param.club_R_L.threshold
         
     #ZERO NERO ZERO VARIANCE
-    #----------------------#  
     if 'Empty' in str(prep_param.znz):
         ignore_low_variance_pass = False
     else:
         ignore_low_variance_pass = True
     
     #MULTI-COLLINEARITY
-    #------------------#
     if 'Empty' in str(prep_param.fix_multi):
         remove_multicollinearity_pass = False
     else:
@@ -2231,7 +2224,6 @@ def tune_model(model=None,
         multicollinearity_threshold_pass = 0.9
     
     #UNKNOWN CATEGORICAL LEVEL
-    #------------------------#
     if 'Empty' in str(prep_param.new_levels):
         handle_unknown_categorical_pass = False
     else:
@@ -2249,7 +2241,6 @@ def tune_model(model=None,
         unknown_categorical_method_pass = 'least_frequent'
     
     #GROUP FEATURES
-    #--------------#
     if 'Empty' in str(prep_param.group):
         apply_grouping_pass = False
     else:
@@ -2266,16 +2257,13 @@ def tune_model(model=None,
         group_names_pass = None
     
     #ORDINAL FEATURES
-    #----------------#
     
     if 'Empty' in str(prep_param.ordinal):
         ordinal_features_pass = None
     else:
         ordinal_features_pass = prep_param.ordinal.info_as_dict
     
-    #HIGH CARDINALITY
-    #---------------#
-    
+    #HIGH CARDINALITY    
     if 'Empty' in str(prep_param.cardinality):
         high_cardinality_features_pass = None
     else:
@@ -3773,7 +3761,7 @@ def get_clusters(data,
                  rare_level_threshold=0.1,
                  remove_multicollinearity=False,
                  multicollinearity_threshold=0.9,
-                 n_jobs = -1):
+                 n_jobs = None):
     
     """
     Callable from any external environment without requiring setup initialization.

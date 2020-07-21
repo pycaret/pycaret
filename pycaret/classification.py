@@ -2,7 +2,7 @@
 # Author: Moez Ali <moez.ali@queensu.ca>
 # License: MIT
 # Release: PyCaret 2.0x
-# Last modified : 16/07/2020
+# Last modified : 21/07/2020
 
 def setup(data,  
           target,   
@@ -846,6 +846,10 @@ def setup(data,
     import matplotlib.pyplot as plt
     import plotly.express as px
     
+    #setting sklearn config to print all parameters including default
+    import sklearn
+    sklearn.set_config(print_changed_only=False)
+
     #define highlight function for function grid to display
     def highlight_max(s):
         is_max = s == True
@@ -4270,10 +4274,6 @@ def compare_models(blacklist = None,
     from sklearn import metrics
     from sklearn.model_selection import StratifiedKFold
     import pandas.io.formats.style
-    
-    #setting sklearn config to print all parameters including default
-    import sklearn
-    sklearn.set_config(print_changed_only=False)
     
     logger.info("Copying training dataset")
     #defining X_train and y_train as data_X and data_y

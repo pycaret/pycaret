@@ -4,7 +4,7 @@ seaborn
 matplotlib
 IPython
 joblib
-scikit-learn>=0.23
+scikit-learn>=0.23 
 ipywidgets
 yellowbrick>=1.0.1
 xgboost>=0.90
@@ -25,7 +25,7 @@ pandas-profiling>=2.3.0
 kmodes>=0.10.1
 datefinder>=0.7.0
 DateTime>=4.3
-awscli
 mlflow
 imbalanced-learn
-#shap removing shap as it's causing issues building Docker image. 
+#awscli - removing it as its only needed for deploy_model() 
+#shap - removing shap as it's causing issues building Docker image. 

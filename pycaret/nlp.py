@@ -2,7 +2,7 @@
 # Author: Moez Ali <moez.ali@queensu.ca>
 # License: MIT
 # Release: PyCaret 2.0x
-# Last modified : 20/07/2020
+# Last modified : 21/07/2020
 
 def setup(data, 
           target=None,
@@ -60,7 +60,7 @@ def setup(data,
     When set to True, all metrics and parameters are logged on MLFlow server.
 
     experiment_name: str, default = None
-    Name of experiment for logging. When set to None, 'clf' is by default used as 
+    Name of experiment for logging. When set to None, 'nlp' is by default used as 
     alias for the experiment name.
 
     log_plots: bool, default = False
@@ -100,6 +100,38 @@ def setup(data,
     #exception checking   
     import sys
     
+    from pycaret.utils import __version__
+    ver = __version__()
+
+    import logging
+
+    # create logger
+    global logger
+    
+    logger = logging.getLogger('logs')
+    logger.setLevel(logging.DEBUG)
+    
+    # create console handler and set level to debug
+    if logger.hasHandlers():
+        logger.handlers.clear()
+    
+    ch = logging.FileHandler('logs.log')
+    ch.setLevel(logging.DEBUG)
+
+    # create formatter
+    formatter = logging.Formatter('%(asctime)s:%(levelname)s:%(message)s')
+
+    # add formatter to ch
+    ch.setFormatter(formatter)
+
+    # add ch to logger
+    logger.addHandler(ch)
+
+    logger.info("PyCaret NLP Module")
+    logger.info('version ' + str(ver))
+    logger.info("Initializing setup()")
+    logger.info("Checking Exceptions")
+
     #run_time
     import datetime, time
     runtime_start = time.time()
@@ -169,6 +201,8 @@ def setup(data,
     error handling ends here
     """
     
+    logger.info("Preloading libraries")
+
     #pre-load libraries
     import pandas as pd
     import ipywidgets as ipw
@@ -185,6 +219,8 @@ def setup(data,
     generate monitor starts 
     '''
     
+    logger.info("Preparing display monitor")
+
     #progress bar
     max_steps = 11
     total_steps = 9
@@ -213,6 +249,8 @@ def setup(data,
     generate monitor end
     '''
     
+    logger.info("Importing libraries")
+
     #general dependencies
     import numpy as np
     import random
@@ -229,6 +267,8 @@ def setup(data,
     import sklearn
     sklearn.set_config(print_changed_only=False)
     
+    logger.info("Declaring global variables")
+
     #defining global variables
     global text, id2word, corpus, data_, seed, target_, experiment__,\
         exp_name_log, logging_param, log_plots_param, USI
@@ -243,6 +283,7 @@ def setup(data,
     
     #converting to dataframe if list provided
     if type(data) is list:
+        logger.info("Converting list into dataframe")
         data = pd.DataFrame(data, columns=['en'])
         target = 'en'
 
@@ -250,9 +291,11 @@ def setup(data,
     try:
         text = data[target].values.tolist()
         target_ = str(target)
+        logger.info("Input provided : dataframe")
     except:
         text = data
         target_ = 'en'
+        logger.info("Input provided : list")
     
     #generate seed to be used globally
     if session_id is None:
@@ -260,6 +303,9 @@ def setup(data,
     else:
         seed = session_id
     
+    logger.info("session_id set to : " + str(seed))
+    
+    logger.info("Copying training dataset")
     #copying dataframe
     if type(data) is list:
         data_ = pd.DataFrame(data)
@@ -286,12 +332,15 @@ def setup(data,
     DEFINE STOPWORDS
     """
     try:
+        logger.info("Importing stopwords from nltk")
         import nltk
         nltk.download('stopwords')
         from nltk.corpus import stopwords
         stop_words = stopwords.words('english')
         
     except:
+        logger.info("Importing stopwords from nltk failed .. loading pre-defined stopwords")
+
         stop_words = ['ourselves', 'hers', 'between', 'yourself', 'but', 'again', 'there', 'about', 'once', 'during', 
                       'out', 'very', 'having', 'with', 'they', 'own', 'an', 'be', 'some', 'for', 'do', 'its', 'yours', 
                       'such', 'into', 'of', 'most', 'itself', 'other', 'off', 'is', 's', 'am', 'or', 'who', 'as', 'from', 
@@ -307,6 +356,9 @@ def setup(data,
     if custom_stopwords is not None:
         stop_words = stop_words + custom_stopwords
         
+    if custom_stopwords is None:
+        logger.info("No custom stopwords defined")
+
     progress.value += 1
     
     
@@ -317,7 +369,8 @@ def setup(data,
     """
     STEP 1 - REMOVE NUMERIC CHARACTERS FROM THE LIST
     """
-    
+    logger.info("Removing numeric characters from the text")
+
     monitor.iloc[1,1:] = 'Removing Numeric Characters'
     monitor.iloc[2,1:] = 'Step 1 of '+ str(total_steps)
     
@@ -330,10 +383,6 @@ def setup(data,
     for i in range(0,len(text)):
         review = re.sub("\d+", "", str(text[i]))
         text_step1.append(review)
-        
-        #sub_progress.value += 1
-        
-    #sub_progress.value = 0
 
     text = text_step1 #re-assigning
     del(text_step1)
@@ -344,6 +393,8 @@ def setup(data,
     STEP 2 - REGULAR EXPRESSIONS
     """    
     
+    logger.info("Removing special characters from the text")
+
     monitor.iloc[1,1:] = 'Removing Special Characters'
     monitor.iloc[2,1:] = 'Step 2 of '+ str(total_steps)
     if verbose:
@@ -360,10 +411,6 @@ def setup(data,
         review = re.sub(r'\d+', ' ', review)
         review = re.sub(r'\s+', ' ', review)
         text_step2.append(review)
-        
-        #sub_progress.value += 1
-        
-    #sub_progress.value = 0
     
     text = text_step2 #re-assigning
     del(text_step2)
@@ -374,6 +421,8 @@ def setup(data,
     STEP 3 - WORD TOKENIZATION
     """ 
     
+    logger.info("Tokenizing Words")
+
     monitor.iloc[1,1:] = 'Tokenizing Words'
     monitor.iloc[2,1:] = 'Step 3 of '+ str(total_steps)
     if verbose:
@@ -385,10 +434,6 @@ def setup(data,
     for i in text:
         review = gensim.utils.simple_preprocess(str(i), deacc=True)
         text_step3.append(review)
-        
-        #sub_progress.value += 1
-        
-    #sub_progress.value = 0
     
     text = text_step3
     del(text_step3)
@@ -399,6 +444,8 @@ def setup(data,
     STEP 4 - REMOVE STOPWORDS
     """
     
+    logger.info("Removing stopwords")
+
     monitor.iloc[1,1:] = 'Removing Stopwords'
     monitor.iloc[2,1:] = 'Step 4 of '+ str(total_steps)
     if verbose:
@@ -414,12 +461,8 @@ def setup(data,
                 ii.append(word)
         text_step4.append(ii)
         
-        #sub_progress.value += 1
-        
     text = text_step4
     del(text_step4)
-        
-    #sub_progress.value = 0
             
     progress.value += 1
     
@@ -427,6 +470,8 @@ def setup(data,
     STEP 5 - BIGRAM EXTRACTION
     """    
     
+    logger.info("Extracting Bigrams")
+
     monitor.iloc[1,1:] = 'Extracting Bigrams'
     monitor.iloc[2,1:] = 'Step 5 of '+ str(total_steps)
     if verbose:
@@ -440,19 +485,18 @@ def setup(data,
     
     for i in text:
         text_step5.append(bigram_mod[i])
-        #sub_progress.value += 1
         
     text = text_step5
     del(text_step5)
-        
-    #sub_progress.value = 0
-    
+
     progress.value += 1
     
     """
     STEP 6 - TRIGRAM EXTRACTION
     """ 
     
+    logger.info("Extracting Trigrams")
+
     monitor.iloc[1,1:] = 'Extracting Trigrams'
     monitor.iloc[2,1:] = 'Step 6 of '+ str(total_steps)
     if verbose:
@@ -466,9 +510,6 @@ def setup(data,
 
     for i in text:
         text_step6.append(trigram_mod[bigram_mod[i]])
-        #sub_progress.value += 1
-    
-    #sub_progress.value = 0
     
     text = text_step6
     del(text_step6)
@@ -479,6 +520,8 @@ def setup(data,
     STEP 7 - LEMMATIZATION USING SPACY
     """     
     
+    logger.info("Lemmatizing tokens")
+
     monitor.iloc[1,1:] = 'Lemmatizing'
     monitor.iloc[2,1:] = 'Step 7 of '+ str(total_steps)
     if verbose:
@@ -495,9 +538,6 @@ def setup(data,
         doc = nlp(" ".join(i))
         text_step7.append([token.lemma_ for token in doc if token.pos_ in allowed_postags])
         
-        #sub_progress.value += 1
-        
-    #sub_progress.value = 0
     text = text_step7
     del(text_step7)
     
@@ -508,6 +548,8 @@ def setup(data,
     STEP 8  - CUSTOM STOPWORD REMOVER
     """
     
+    logger.info("Removing stopwords after lemmatizing")
+
     monitor.iloc[1,1:] = 'Removing Custom Stopwords'
     monitor.iloc[2,1:] = 'Step 8 of '+ str(total_steps)
     if verbose:
@@ -523,12 +565,8 @@ def setup(data,
                 ii.append(word)
         text_step8.append(ii)
         
-        #sub_progress.value += 1
-        
     text = text_step8
     del(text_step8)
-        
-    #sub_progress.value = 0
             
     progress.value += 1
     
@@ -537,6 +575,8 @@ def setup(data,
     STEP 8 - CREATING CORPUS AND DICTIONARY
     """  
     
+    logger.info("Creating corpus and dictionary")
+
     monitor.iloc[1,1:] = 'Compiling Corpus'
     monitor.iloc[2,1:] = 'Step 9 of '+ str(total_steps)
     if verbose:
@@ -553,16 +593,14 @@ def setup(data,
         d = id2word.doc2bow(i)
         corpus.append(d)
         
-        #sub_progress.value += 1
-        
-    #sub_progress.value = 0
-        
     progress.value += 1
     
     """
     PROGRESS NOT YET TRACKED - TO BE CODED LATER
     """
     
+    logger.info("Compiling processed text")
+
     text_join = []
 
     for i in text:
@@ -579,7 +617,9 @@ def setup(data,
         csw = False
     else:
         csw = True
-        
+
+    logger.info("Compiling information grid")
+
     functions = pd.DataFrame ( [ ['session_id', seed ],
                                  ['Documents', len(corpus) ], 
                                  ['Vocab Size',len(id2word.keys()) ],
@@ -608,6 +648,8 @@ def setup(data,
     USI = secrets.token_hex(nbytes=2)
 
     if logging_param:
+
+        logger.info("Creating MLFlow logs")
 
         monitor.iloc[1,1:] = 'Creating Logs'
         monitor.iloc[2,1:] = 'Final'
@@ -705,10 +747,12 @@ def setup(data,
         if html_param:
             display(functions_)
         else:
-            print(display_.data)
+            print(functions_.data)
+
+    logger.info("setup() succesfully completed")
 
     return text, data_, corpus, id2word, seed, target_, experiment__,\
-        exp_name_log, logging_param, log_plots_param, USI
+        exp_name_log, logging_param, log_plots_param, USI, html_param
 
 def create_model(model=None,
                  multi_core=False,
@@ -740,15 +784,15 @@ def create_model(model=None,
     ----------
     model : string, default = None
 
-    Enter abbreviated string of the model class. List of models supported:
+    Enter ID of the model available in model library.
 
-    Model                              Abbreviated String   Original Implementation 
-    ---------                          ------------------   -----------------------
-    Latent Dirichlet Allocation        'lda'                gensim/models/ldamodel.html
-    Latent Semantic Indexing           'lsi'                gensim/models/lsimodel.html
-    Hierarchical Dirichlet Process     'hdp'                gensim/models/hdpmodel.html
-    Random Projections                 'rp'                 gensim/models/rpmodel.html
-    Non-Negative Matrix Factorization  'nmf'                sklearn.decomposition.NMF.html
+    ID          Model  
+    ------      ---------
+    'lda'       Latent Dirichlet Allocation         
+    'lsi'       Latent Semantic Indexing           
+    'hdp'       Hierarchical Dirichlet Process
+    'rp'        Random Projections
+    'nmf'       Non-Negative Matrix Factorization
    
     multi_core: Boolean, default = False
     True would utilize all CPU cores to parallelize and speed up model training. Only
@@ -771,18 +815,16 @@ def create_model(model=None,
 
     model:   trained model object
     ------
-
-    Warnings:
-    ---------
-    None
-      
-    
      
     """
     
     #exception checking   
     import sys
     
+    import logging
+    logger.info("Initializing create_model()")
+    logger.info("Checking exceptions")
+
     #run_time
     import datetime, time
     runtime_start = time.time()
@@ -822,7 +864,8 @@ def create_model(model=None,
     error handling ends here
     """
     
-    
+    logger.info("Preloading libraries")
+
     #pre-load libraries
     import pandas as pd
     import numpy as np
@@ -834,6 +877,8 @@ def create_model(model=None,
     monitor starts
     """
     
+    logger.info("Preparing display monitor")
+
     #progress bar and monitor control    
     timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
     progress = ipw.IntProgress(value=0, min=0, max=4, step=1 , description='Processing: ')
@@ -850,7 +895,9 @@ def create_model(model=None,
     """
     monitor starts
     """
-        
+
+    logger.info("Defining topic model")
+
     #define topic_model_name
     if model == 'lda':
         topic_model_name = 'Latent Dirichlet Allocation'
@@ -863,13 +910,16 @@ def create_model(model=None,
     elif model == 'rp':
         topic_model_name = 'Random Projections'
         
-        
+    logger.info("Model: " + str(topic_model_name))
+    
     #defining default number of topics
+    logger.info("Defining num_topics parameter")
     if num_topics is None:
         n_topics = 4
     else:
         n_topics = num_topics
     
+    logger.info("num_topics set to: " + str(n_topics))
 
     #monitor update
     monitor.iloc[1,1:] = 'Fitting Topic Model'
@@ -883,8 +933,10 @@ def create_model(model=None,
     if model == 'lda':
         
         if multi_core:
+            logger.info("LDA multi_core enabled")
             
             from gensim.models.ldamulticore import LdaMulticore
+            logger.info("LdaMulticore imported successfully")
 
             model = LdaMulticore(corpus=corpus,
                                 num_topics=n_topics,
@@ -897,12 +949,15 @@ def create_model(model=None,
                                 per_word_topics=True,
                                 **kwargs)
             
+            logger.info("LdaMulticore trained successfully")
+
             progress.value += 1
         
         else:
             
             from gensim.models.ldamodel import LdaModel
-        
+            logger.info("LdaModel imported successfully")
+
             model = LdaModel(corpus=corpus,
                             num_topics=n_topics,
                             id2word=id2word,
@@ -914,23 +969,29 @@ def create_model(model=None,
                             per_word_topics=True,
                             **kwargs)
             
+            logger.info("LdaModel trained successfully")
+
             progress.value += 1
             
     elif model == 'lsi':
         
         from gensim.models.lsimodel import LsiModel
-        
+        logger.info("LsiModel imported successfully")
+
         model = LsiModel(corpus=corpus, 
                          num_topics=n_topics, 
                          id2word=id2word,
                          **kwargs)
         
+        logger.info("LsiModel trained successfully")
+
         progress.value += 1
 
     elif model == 'hdp':
         
         from gensim.models import HdpModel
-        
+        logger.info("HdpModel imported successfully")
+
         model = HdpModel(corpus=corpus, 
                          id2word=id2word, 
                          random_state=seed, 
@@ -938,17 +999,22 @@ def create_model(model=None,
                          T=n_topics,
                          **kwargs)
         
+        logger.info("HdpModel trained successfully")
+
         progress.value += 1
         
     elif model == 'rp':
         
         from gensim.models import RpModel
-        
+        logger.info("RpModel imported successfully")
+
         model = RpModel(corpus=corpus, 
                         id2word=id2word, 
                         num_topics=n_topics,
                         **kwargs)
         
+        logger.info("RpModel trained successfully")
+
         progress.value += 1
         
     elif model == 'nmf':
@@ -956,7 +1022,8 @@ def create_model(model=None,
         from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
         from sklearn.decomposition import NMF
         from sklearn.preprocessing import normalize
-        
+        logger.info("CountVectorizer, TfidfTransformer, NMF, normalize imported successfully")
+
         text_join = []
 
         for i in text:
@@ -967,11 +1034,14 @@ def create_model(model=None,
         
         vectorizer = CountVectorizer(analyzer='word', max_features=5000)
         x_counts = vectorizer.fit_transform(text_join)
+        logger.info("CountVectorizer() Fit Successfully")
         transformer = TfidfTransformer(smooth_idf=False)
         x_tfidf = transformer.fit_transform(x_counts)
+        logger.info("TfidfTransformer() Fit Successfully")
         xtfidf_norm = normalize(x_tfidf, norm='l1', axis=1)
         model = NMF(n_components=n_topics, init='nndsvd', random_state=seed,**kwargs)
         model.fit(xtfidf_norm)
+        logger.info("NMF() Trained Successfully")
 
     model_fit_end = time.time()
     model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
@@ -984,6 +1054,8 @@ def create_model(model=None,
 
     #mlflow logging
     if logging_param and system:
+
+        logger.info("Creating MLFLow Logs")
 
         #Creating Logs message monitor
         monitor.iloc[1,1:] = 'Creating Logs'
@@ -1053,9 +1125,9 @@ def create_model(model=None,
     #storing into experiment
     if verbose:
         clear_output()
-        tup = (topic_model_name,model)
-        experiment__.append(tup)  
-        
+    
+    logger.info("create_model() succesfully completed")
+
     return model
 
 def assign_model(model,
@@ -1096,14 +1168,21 @@ def assign_model(model,
 
     dataframe:   Returns dataframe with inferred topics using trained model object.
     ---------
-
-    Warnings:
-    ---------
-    None
       
     
     """
     
+    #exception checking   
+    import sys
+    
+    import logging
+    logger.info("Initializing assign_model()")
+    
+    #ignore warnings
+    import warnings
+    warnings.filterwarnings('ignore') 
+
+    logger.info("Determining model type")
     #determine model type
     if 'LdaModel' in str(type(model)):
         mod_type = 'lda'
@@ -1125,19 +1204,14 @@ def assign_model(model,
         
     else:
         mod_type = None
-        
-        
-    #exception checking   
-    import sys
     
-    #ignore warnings
-    import warnings
-    warnings.filterwarnings('ignore') 
-    
+    logger.info("model type: " + str(mod_type))
     
     """
     error handling starts here
     """
+    
+    logger.info("Checking exceptions")
     
     #checking for allowed models
     allowed_models = ['lda', 'lsi', 'hdp', 'rp', 'nmf']
@@ -1154,6 +1228,7 @@ def assign_model(model,
     error handling ends here
     """
     
+    logger.info("Preloading libraries")
     #pre-load libraries
     import numpy as np
     import pandas as pd
@@ -1161,6 +1236,7 @@ def assign_model(model,
     from IPython.display import display, HTML, clear_output, update_display
     import datetime, time
 
+    logger.info("Preparing display monitor")
     #progress bar and monitor control 
     max_progress = len(text) + 5
     timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
@@ -1231,9 +1307,7 @@ def assign_model(model,
         
         if verbose:
             clear_output()
-            
-        #return bb_
-    
+
     elif mod_type == 'lsi':
         
         col_names = []
@@ -1270,8 +1344,6 @@ def assign_model(model,
         
         if verbose:
             clear_output()
-            
-        #return bb_
     
     elif mod_type == 'hdp' or mod_type == 'rp':
         
@@ -1311,8 +1383,6 @@ def assign_model(model,
             clear_output()
             
         bb_ = pd.concat([data_,df], axis=1)
-        
-        #return bb_
     
     elif mod_type == 'nmf':
         
@@ -1378,15 +1448,9 @@ def assign_model(model,
         
         if verbose:
             clear_output()
-        
-    #storing into experiment
-    if verbose:
-        clear_output()
-        mod__ = str(mod_type) + ' Topic Assignment'
-        tup = (mod__,bb_)
-        experiment__.append(tup) 
-        #return bb_
     
+    logger.info("assign_model() succesfully completed")
+
     return bb_
 
 def plot_model(model = None,
@@ -2033,15 +2097,15 @@ def tune_model(model=None,
     ----------
     model : string, default = None
 
-    Enter abbreviated name of the model. List of available models supported: 
+    Enter ID of the models available in model library:
 
-    Model                              Abbreviated String   Original Implementation 
-    ---------                          ------------------   -----------------------
-    Latent Dirichlet Allocation        'lda'                gensim/models/ldamodel.html
-    Latent Semantic Indexing           'lsi'                gensim/models/lsimodel.html
-    Hierarchical Dirichlet Process     'hdp'                gensim/models/hdpmodel.html
-    Random Projections                 'rp'                 gensim/models/rpmodel.html
-    Non-Negative Matrix Factorization  'nmf'                sklearn.decomposition.NMF.html
+    ID          Model  
+    ------      ---------
+    'lda'       Latent Dirichlet Allocation         
+    'lsi'       Latent Semantic Indexing           
+    'hdp'       Hierarchical Dirichlet Process
+    'rp'        Random Projections
+    'nmf'       Non-Negative Matrix Factorization
 
     multi_core: Boolean, default = False
     True would utilize all CPU cores to parallelize and speed up model training. Only
@@ -2053,54 +2117,53 @@ def tune_model(model=None,
 
     estimator: string, default = None
 
-    Estimator                     Abbreviated String     Task 
-    ---------                     ------------------     ---------------
-    Logistic Regression           'lr'                   Classification
-    K Nearest Neighbour           'knn'                  Classification
-    Naives Bayes                  'nb'                   Classification
-    Decision Tree                 'dt'                   Classification
-    SVM (Linear)                  'svm'                  Classification
-    SVM (RBF)                     'rbfsvm'               Classification
-    Gaussian Process              'gpc'                  Classification
-    Multi Level Perceptron        'mlp'                  Classification
-    Ridge Classifier              'ridge'                Classification
-    Random Forest                 'rf'                   Classification
-    Quadratic Disc. Analysis      'qda'                  Classification
-    AdaBoost                      'ada'                  Classification
-    Gradient Boosting             'gbc'                  Classification
-    Linear Disc. Analysis         'lda'                  Classification
-    Extra Trees Classifier        'et'                   Classification
-    Extreme Gradient Boosting     'xgboost'              Classification
-    Light Gradient Boosting       'lightgbm'             Classification
-    CatBoost Classifier           'catboost'             Classification
-    Linear Regression             'lr'                   Regression
-    Lasso Regression              'lasso'                Regression
-    Ridge Regression              'ridge'                Regression
-    Elastic Net                   'en'                   Regression
-    Least Angle Regression        'lar'                  Regression
-    Lasso Least Angle Regression  'llar'                 Regression
-    Orthogonal Matching Pursuit   'omp'                  Regression
-    Bayesian Ridge                'br'                   Regression
-    Automatic Relevance Determ.   'ard'                  Regression
-    Passive Aggressive Regressor  'par'                  Regression
-    Random Sample Consensus       'ransac'               Regression
-    TheilSen Regressor            'tr'                   Regression
-    Huber Regressor               'huber'                Regression
-    Kernel Ridge                  'kr'                   Regression
-    Support Vector Machine        'svm'                  Regression
-    K Neighbors Regressor         'knn'                  Regression
-    Decision Tree                 'dt'                   Regression
-    Random Forest                 'rf'                   Regression
-    Extra Trees Regressor         'et'                   Regression
-    AdaBoost Regressor            'ada'                  Regression
-    Gradient Boosting             'gbr'                  Regression
-    Multi Level Perceptron        'mlp'                  Regression
-    Extreme Gradient Boosting     'xgboost'              Regression
-    Light Gradient Boosting       'lightgbm'             Regression
-    CatBoost Regressor            'catboost'             Regression
+    ID          Name                            Task      
+    --------    ----------                      ----------     
+    'lr'        Logistic Regression             Classification
+    'knn'       K Nearest Neighbour             Classification
+    'nb'        Naive Bayes                     Classification            
+    'dt'        Decision Tree Classifier        Classification                   
+    'svm'       SVM - Linear Kernel             Classification	            
+    'rbfsvm'    SVM - Radial Kernel             Classification               
+    'gpc'       Gaussian Process Classifier     Classification                  
+    'mlp'       Multi Level Perceptron          Classification                  
+    'ridge'     Ridge Classifier                Classification
+    'rf'        Random Forest Classifier        Classification                   
+    'qda'       Quadratic Discriminant Analysis Classification                  
+    'ada'       Ada Boost Classifier            Classification                 
+    'gbc'       Gradient Boosting Classifier    Classification                          
+    'lda'       Linear Discriminant Analysis    Classification                  
+    'et'        Extra Trees Classifier          Classification                   
+    'xgboost'   Extreme Gradient Boosting       Classification              
+    'lightgbm'  Light Gradient Boosting         Classification              
+    'catboost'  CatBoost Classifier             Classification
+    'lr'        Linear Regression               Regression                   
+    'lasso'     Lasso Regression                Regression
+    'ridge'     Ridge Regression                Regression
+    'en'        Elastic Net                     Regression
+    'lar'       Least Angle Regression          Regression        
+    'llar'      Lasso Least Angle Regression    Regression                   
+    'omp'       Orthogonal Matching Pursuit     Regression                     
+    'br'        Bayesian Ridge                  Regression                   
+    'ard'       Automatic Relevance Determ.     Regression                  
+    'par'       Passive Aggressive Regressor    Regression                    
+    'ransac'    Random Sample Consensus         Regression       
+    'tr'        TheilSen Regressor              Regression                   
+    'huber'     Huber Regressor                 Regression                               
+    'kr'        Kernel Ridge                    Regression                                     
+    'svm'       Support Vector Machine          Regression                           
+    'knn'       K Neighbors Regressor           Regression                           
+    'dt'        Decision Tree                   Regression                                    
+    'rf'        Random Forest                   Regression                                    
+    'et'        Extra Trees Regressor           Regression                            
+    'ada'       AdaBoost Regressor              Regression                                   
+    'gbr'       Gradient Boosting               Regression                               
+    'mlp'       Multi Level Perceptron          Regression                          
+    'xgboost'   Extreme Gradient Boosting       Regression                              
+    'lightgbm'  Light Gradient Boosting         Regression                    
+    'catboost'  CatBoost Regressor              Regression   
 
-    If set to None, Linear model is used by default for both classification
-    and regression tasks.
+    If set to None, Linear / Logistic model is used by default.
     
     optimize: string, default = None
     
@@ -2156,6 +2219,10 @@ def tune_model(model=None,
     """
     exception handling starts here
     """
+
+    import logging
+    logger.info("Initializing tune_model()")
+    logger.info("Checking exceptions")
 
     #ignore warnings
     import warnings
@@ -2228,12 +2295,16 @@ def tune_model(model=None,
     exception handling ends here
     """
 
+    logger.info("Preloading libraries")
+
     #pre-load libraries
     import pandas as pd
     import ipywidgets as ipw
     from ipywidgets import Output
     from IPython.display import display, HTML, clear_output, update_display
     import datetime, time
+
+    logger.info("Preparing display monitor")
 
     #progress bar
     if custom_grid is None:
@@ -2264,6 +2335,8 @@ def tune_model(model=None,
             with monitor_out:
                 display(monitor, display_id = 'monitor')
 
+    logger.info("Importing libraries")
+    
     #General Dependencies
     from sklearn.linear_model import LogisticRegression
     from sklearn.model_selection import cross_val_predict
@@ -2281,12 +2354,18 @@ def tune_model(model=None,
     #define the problem
     if supervised_target is None:
         problem ='unsupervised'
+        logger.info("Objective : Unsupervised")
     elif data_[supervised_target].value_counts().count() == 2: 
         problem = 'classification'
+        logger.info("Objective : Classification")
     else:
         problem = 'regression'
+        logger.info("Objective : Regression")
 
-    #define topic_model_name
+    
+    #define topic_model_name  
+    logger.info("Defining model name")
+    
     if model == 'lda':
         topic_model_name = 'Latent Dirichlet Allocation'
     elif model == 'lsi':
@@ -2298,7 +2377,10 @@ def tune_model(model=None,
     elif model == 'rp':
         topic_model_name = 'Random Projections'
 
+    logger.info("Topic Model Name: " + str(topic_model_name))
+    
     #defining estimator:
+    logger.info("Defining supervised estimator")
     if problem == 'classification' and estimator is None:
         estimator = 'lr'
     elif problem == 'regression' and estimator is None:
@@ -2306,7 +2388,10 @@ def tune_model(model=None,
     else:
         estimator = estimator
 
+    logger.info("Estimator: " + str(estimator))
+
     #defining optimizer:
+    logger.info("Defining Optimizer")
     if optimize is None and problem == 'classification':
         optimize = 'Accuracy'
     elif optimize is None and problem == 'regression':
@@ -2314,13 +2399,19 @@ def tune_model(model=None,
     else:
         optimize=optimize
 
+    logger.info("Optimize: " + str(optimize))
+    
     progress.value += 1 
 
     #creating sentiments
 
     if problem == 'classification' or problem == 'regression':
 
+        logger.info("Problem : Supervised")
+
         if auto_fe:
+
+            logger.info("auto_fe param set to True")
 
             monitor.iloc[1,1:] = 'Feature Engineering'
             if verbose:
@@ -2334,6 +2425,7 @@ def tune_model(model=None,
                 if html_param:
                     update_display(monitor, display_id = 'monitor')
 
+            logger.info("Extracting Polarity")
             polarity = data_[target_].map(lambda text: TextBlob(text).sentiment.polarity)
 
             monitor.iloc[2,1:] = 'Extracting Subjectivity'
@@ -2341,6 +2433,7 @@ def tune_model(model=None,
                 if html_param:
                     update_display(monitor, display_id = 'monitor')
 
+            logger.info("Extracting Subjectivity")
             subjectivity = data_[target_].map(lambda text: TextBlob(text).sentiment.subjectivity)
 
             monitor.iloc[2,1:] = 'Extracting Wordcount'
@@ -2348,16 +2441,20 @@ def tune_model(model=None,
                 if html_param:
                     update_display(monitor, display_id = 'monitor')
 
+            logger.info("Extracting Wordcount")
             word_count = [len(i) for i in text]
 
             progress.value += 1 
 
     #defining tuning grid
+    logger.info("Defining Tuning Grid")
 
     if custom_grid is not None:
+        logger.info("Custom Grid used")
         param_grid = custom_grid
     
     else:
+        logger.info("Pre-defined Grid used")
         param_grid = [2,4,8,16,32,64,100,200,300,400] 
 
     master = []; master_df = []
@@ -2368,6 +2465,7 @@ def tune_model(model=None,
             update_display(monitor, display_id = 'monitor')
 
     for i in param_grid:
+        logger.info("Fitting Model with num_topics = " +str(i))
         progress.value += 1                      
         monitor.iloc[2,1:] = 'Fitting Model With ' + str(i) + ' Topics'
         if verbose:
@@ -2375,8 +2473,13 @@ def tune_model(model=None,
                 update_display(monitor, display_id = 'monitor')
 
         #create and assign the model to dataset d
+        logger.info("SubProcess create_model() called")
         m = create_model(model=model, multi_core=multi_core, num_topics=i, verbose=False)
+        logger.info("SubProcess create_model() end")
+
+        logger.info("SubProcess assign_model() called")
         d = assign_model(m, verbose=False)
+        logger.info("SubProcess assign_model() ends")
 
         if problem in ['classification', 'regression'] and auto_fe:
             d['Polarity'] = polarity
@@ -2389,6 +2492,8 @@ def tune_model(model=None,
         #topic model creation end's here
 
     if problem == 'unsupervised':
+        
+        logger.info("Problem : Unsupervised")
 
         monitor.iloc[1,1:] = 'Evaluating Topic Model'
         if verbose:
@@ -2396,6 +2501,7 @@ def tune_model(model=None,
                 update_display(monitor, display_id = 'monitor')
 
         from gensim.models import CoherenceModel
+        logger.info("CoherenceModel imported successfully")
 
         coherence = []
         metric = []
@@ -2403,6 +2509,7 @@ def tune_model(model=None,
         counter = 0
 
         for i in master:
+            logger.info("Evaluating Coherence with num_topics: " +str(i))
             progress.value += 1 
             monitor.iloc[2,1:] = 'Evaluating Coherence With ' + str(param_grid[counter]) + ' Topics'
             if verbose:
@@ -2421,6 +2528,7 @@ def tune_model(model=None,
             if html_param:
                 update_display(monitor, display_id = 'monitor')
 
+        logger.info("Creating metrics dataframe")
         df = pd.DataFrame({'# Topics': param_grid, 'Score' : coherence, 'Metric': metric})
         df.columns = ['# Topics', 'Score', 'Metric']
 
@@ -2430,14 +2538,17 @@ def tune_model(model=None,
         best_model = master[ival]
         best_model_df = master_df[ival]
 
+        logger.info("Rendering Visual")
         fig = px.line(df, x='# Topics', y='Score', line_shape='linear', 
                       title= 'Coherence Value and # of Topics', color='Metric')
 
         fig.update_layout(plot_bgcolor='rgb(245,245,245)')
         
         fig.show()
+        logger.info("Visual Rendered Successfully")
+
+        #monitor = '' 
         
-        monitor = '' 
         if verbose:
             if html_param:
                 update_display(monitor, display_id = 'monitor')
@@ -2452,6 +2563,8 @@ def tune_model(model=None,
 
 
     elif problem == 'classification':
+
+        logger.info("Importing untrained Classifier")
 
         """
 
@@ -2571,6 +2684,8 @@ def tune_model(model=None,
             model = CatBoostClassifier(random_state=seed, silent=True) # Silent is True to suppress CatBoost iteration results 
             full_name = 'CatBoost Classifier'
 
+        logger.info(str(full_name) + ' Imported Successfully')
+
         progress.value += 1 
 
         """
@@ -2583,6 +2698,8 @@ def tune_model(model=None,
         for i in range(0,len(master_df)):
             progress.value += 1 
             param_grid_val = param_grid[i]
+
+            logger.info('Training supervised model with num_topics: ' + str(param_grid_val))
 
             monitor.iloc[2,1:] = 'Evaluating Classifier With ' + str(param_grid_val) + ' Topics'
             if verbose:
@@ -2600,9 +2717,11 @@ def tune_model(model=None,
             y = d[supervised_target]
 
             #fit the model
+            logger.info('Fitting Model')
             model.fit(X,y)
 
             #generate the prediction and evaluate metric
+            logger.info('Generating Cross Val Predictions')
             pred = cross_val_predict(model,X,y,cv=fold, method = 'predict')
 
             acc_ = metrics.accuracy_score(y,pred)
@@ -2629,13 +2748,13 @@ def tune_model(model=None,
             else:
                 auc.append(0)
 
-
         monitor.iloc[1,1:] = 'Compiling Results'
         monitor.iloc[1,1:] = 'Finalizing'
         if verbose:
             if html_param:
                 update_display(monitor, display_id = 'monitor')
 
+        logger.info('Creating metrics dataframe')
         df = pd.DataFrame({'# Topics': param_grid, 'Accuracy' : acc, 'AUC' : auc, 'Recall' : recall, 
                    'Precision' : prec, 'F1' : f1, 'Kappa' : kappa})
 
@@ -2645,6 +2764,8 @@ def tune_model(model=None,
         best_model = master[ival]
         best_model_df = master_df[ival]
         progress.value += 1 
+
+        logger.info('Rendering Visual')
         sd = pd.melt(df, id_vars=['# Topics'], value_vars=['Accuracy', 'AUC', 'Recall', 'Precision', 'F1', 'Kappa'], 
                      var_name='Metric', value_name='Score')
 
@@ -2654,8 +2775,10 @@ def tune_model(model=None,
         fig.update_layout(title={'text': title, 'y':0.95,'x':0.45,'xanchor': 'center','yanchor': 'top'})
 
         fig.show()
+        logger.info("Visual Rendered Successfully")
+
+        #monitor = ''
         
-        monitor = ''
         if verbose:
             if html_param:
                 update_display(monitor, display_id = 'monitor')
@@ -2669,6 +2792,8 @@ def tune_model(model=None,
         print(p)
 
     elif problem == 'regression':
+
+        logger.info("Importing untrained Regressor")
 
         """
 
@@ -2829,6 +2954,8 @@ def tune_model(model=None,
             model = CatBoostRegressor(random_state=seed, silent = True)
             full_name = 'CatBoost Regressor'
 
+        logger.info(str(full_name) + ' Imported Successfully')
+
         progress.value += 1 
 
         """
@@ -2842,6 +2969,8 @@ def tune_model(model=None,
         for i in range(0,len(master_df)):
             progress.value += 1 
             param_grid_val = param_grid[i]
+
+            logger.info('Training supervised model with num_topics: ' + str(param_grid_val))
 
             monitor.iloc[2,1:] = 'Evaluating Regressor With ' + str(param_grid_val) + ' Topics'
             if verbose:
@@ -2859,9 +2988,11 @@ def tune_model(model=None,
             y = d[supervised_target]
 
             #fit the model
+            logger.info('Fitting Model')
             model.fit(X,y)
 
             #generate the prediction and evaluate metric
+            logger.info('Generating Cross Val Predictions')
             pred = cross_val_predict(model,X,y,cv=fold, method = 'predict')
 
             if optimize == 'R2':
@@ -2893,6 +3024,7 @@ def tune_model(model=None,
             if html_param:
                 update_display(monitor, display_id = 'monitor')                    
 
+        logger.info('Creating metrics dataframe')
         df = pd.DataFrame({'# Topics': param_grid, 'Score' : score, 'Metric': metric})
         df.columns = ['# Topics', optimize, 'Metric']
 
@@ -2906,14 +3038,18 @@ def tune_model(model=None,
 
         best_model = master[ival]
         best_model_df = master_df[ival]
+        
+        logger.info('Rendering Visual')
 
         fig = px.line(df, x='# Topics', y=optimize, line_shape='linear', 
                       title= str(full_name) + ' Metrics and # of Topics', color='Metric')
 
         fig.update_layout(plot_bgcolor='rgb(245,245,245)')
+
         progress.value += 1
+
+        #monitor = ''
         
-        monitor = ''
         if verbose:
             if html_param:
                 update_display(monitor, display_id = 'monitor')
@@ -2922,14 +3058,14 @@ def tune_model(model=None,
         progress.close()
 
         fig.show()
+        logger.info('Visual Rendered Successfully')
+
         best_k = np.array(sorted_df.head(1)['# Topics'])[0]
         best_m = round(np.array(sorted_df.head(1)[optimize])[0],4)
         p = 'Best Model: ' + topic_model_name + ' |' + ' # Topics: ' + str(best_k) + ' | ' + str(optimize) + ' : ' + str(best_m)
         print(p)
 
-    #storing into experiment
-    tup = ('Best Model',best_model)
-    experiment__.append(tup)    
+    logger.info("tune_model() succesfully completed")
 
     return best_model
 
@@ -2964,11 +3100,6 @@ def evaluate_model(model):
 
     User Interface:  Displays the user interface for plotting.
     --------------
-
-    Warnings:
-    ---------
-    None    
-      
            
     """
         
@@ -3016,7 +3147,7 @@ def evaluate_model(model):
     d = interact_manual(plot_model, model = fixed(model), plot = a, topic_num=b, save=fixed(False), system=fixed(True))
 
 def save_model(model, model_name, 
-               verbose=True): #added in pycaret==2.0.0)
+               verbose=True): #added in pycaret==2.0.0
     
     """
           
@@ -3051,13 +3182,11 @@ def save_model(model, model_name,
     Returns:
     --------    
     Success Message
-
-    Warnings:
-    ---------
-    None    
        
          
     """
+    import logging
+    logger.info("Initializing save_model()")
     
     import joblib
     model_name = model_name + '.pkl'
@@ -3065,8 +3194,10 @@ def save_model(model, model_name,
     if verbose:
         print('Model Succesfully Saved')
 
+    logger.info("save_model() succesfully completed")
+
 def load_model(model_name, 
-              verbose=True): #added in pycaret==2.0.0)
+               verbose=True): #added in pycaret==2.0.0
     
     """
           
@@ -3093,11 +3224,6 @@ def load_model(model_name,
     Returns:
     --------    
     Success Message
-
-    Warnings:
-    ---------
-    None    
-       
          
     """
         
@@ -3110,7 +3236,7 @@ def load_model(model_name,
 def get_topics(data, text, model=None, num_topics=4):
     
     """
-    Magic function to get topic model in Power Query / Power BI.
+    Callable from any external environment without requiring setup initialization.    
     """
     
     if model is None:
@@ -3210,3 +3336,147 @@ def get_logs(experiment_name = None, save = False):
         file_name = str(exp_name_log_) + '_logs.csv'
         runs.to_csv(file_name, index=False)
     return runs
+
+def get_config(variable):
+
+    """
+    Description:
+    ------------
+    This function is used to access global environment variables.
+    Following variables can be accessed:
+
+    - text: Tokenized words as a list with length = # documents
+    - data_: Dataframe containing text after all processing
+    - corpus: List containing tuples of id to word mapping
+    - id2word: gensim.corpora.dictionary.Dictionary  
+    - seed: random state set through session_id
+    - target_: Name of column containing text. 'en' by default.
+    - html_param: html_param configured through setup
+    - exp_name_log: Name of experiment set through setup
+    - logging_param: log_experiment param set through setup
+    - log_plots_param: log_plots param set through setup
+    - USI: Unique session ID parameter set through setup
+
+        Example:
+        --------
+        text = get_config('text') 
+
+        This will return transformed dataset.
+          
+      
+    """
+
+    import logging
+    logger.info("Initializing get_config()")
+
+    if variable == 'text':
+        global_var = text
+    
+    if variable == 'data_':
+        global_var = data_
+
+    if variable == 'corpus':
+        global_var = corpus
+        
+    if variable == 'id2word':
+        global_var = id2word
+
+    if variable == 'seed':
+        global_var = seed
+
+    if variable == 'target_':
+        global_var = target_
+
+    if variable == 'html_param':
+        global_var = html_param
+
+    if variable == 'exp_name_log':
+        global_var = exp_name_log
+
+    if variable == 'logging_param':
+        global_var = logging_param
+
+    if variable == 'log_plots_param':
+        global_var = log_plots_param
+
+    if variable == 'USI':
+        global_var = USI
+
+    logger.info("Global variable: " + str(variable) + ' returned')
+    logger.info("get_config() succesfully completed")
+
+    return global_var
+
+def set_config(variable,value):
+
+    """
+    Description:
+    ------------
+    This function is used to reset global environment variables.
+    Following variables can be accessed:
+
+    - text: Tokenized words as a list with length = # documents
+    - data_: Dataframe containing text after all processing
+    - corpus: List containing tuples of id to word mapping
+    - id2word: gensim.corpora.dictionary.Dictionary 
+    - seed: random state set through session_id
+    - target_: Name of column containing text. 'en' by default.
+    - html_param: html_param configured through setup
+    - exp_name_log: Name of experiment set through setup
+    - logging_param: log_experiment param set through setup
+    - log_plots_param: log_plots param set through setup
+    - USI: Unique session ID parameter set through setup
+
+        Example:
+        --------
+        set_config('seed', 123) 
+
+        This will set the global seed to '123'.
+
+    """
+
+    import logging
+    logger.info("Initializing set_config()")
+
+    if variable == 'text':
+        global text
+        text = value
+
+    if variable == 'data_':
+        global data_
+        data_ = value
+
+    if variable == 'corpus':
+        global corpus
+        corpus = value
+
+    if variable == 'id2word':
+        global id2word
+        id2word = value
+
+    if variable == 'seed':
+        global seed
+        seed = value
+
+    if variable == 'html_param':
+        global html_param
+        html_param = value
+
+    if variable == 'exp_name_log':
+        global exp_name_log
+        exp_name_log = value
+
+    if variable == 'logging_param':
+        global logging_param
+        logging_param = value
+
+    if variable == 'log_plots_param':
+        global log_plots_param
+        log_plots_param = value
+
+    if variable == 'USI':
+        global USI
+        USI = value
+
+    logger.info("Global variable:  " + str(variable) + ' updated')
+    logger.info("set_config() succesfully completed")

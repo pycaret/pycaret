@@ -2005,6 +2005,8 @@ def create_model(estimator = None,
     
     '''
     
+    logger.info("Preloading libraries")
+
     #pre-load libraries
     import pandas as pd
     import ipywidgets as ipw
