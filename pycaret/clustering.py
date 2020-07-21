@@ -1233,32 +1233,8 @@ def create_model(model = None,
     
     import logging
 
-    try:
-        logger.info("Initializing create_model()")
-        logger.info("Checking exceptions")
-
-    except:
-        logger = logging.getLogger('logs')
-        logger.setLevel(logging.DEBUG)
-        
-        # create console handler and set level to debug
-        if logger.hasHandlers():
-            logger.handlers.clear()
-        
-        ch = logging.FileHandler('logs.log')
-        ch.setLevel(logging.DEBUG)
-
-        # create formatter
-        formatter = logging.Formatter('%(asctime)s:%(levelname)s:%(message)s')
-
-        # add formatter to ch
-        ch.setFormatter(formatter)
-
-        # add ch to logger
-        logger.addHandler(ch)
-
-        logger.info("Initializing create_model()")
-        logger.info("Checking exceptions")
+    logger.info("Initializing create_model()")
+    logger.info("Checking exceptions")
     
     #exception checking   
     import sys        
@@ -3812,7 +3788,7 @@ def get_clusters(data,
     else:
         ignore_features_pass = ignore_features
     
-    global X, data_, seed, n_jobs_param, logging_param
+    global X, data_, seed, n_jobs_param, logging_param, logger
     
     data_ = data.copy()
     
@@ -3821,6 +3797,27 @@ def get_clusters(data,
     n_jobs_param = n_jobs
 
     logging_param = False
+    
+    import logging
+
+    logger = logging.getLogger('logs')
+    logger.setLevel(logging.DEBUG)
+    
+    # create console handler and set level to debug
+    if logger.hasHandlers():
+        logger.handlers.clear()
+    
+    ch = logging.FileHandler('logs.log')
+    ch.setLevel(logging.DEBUG)
+
+    # create formatter
+    formatter = logging.Formatter('%(asctime)s:%(levelname)s:%(message)s')
+
+    # add formatter to ch
+    ch.setFormatter(formatter)
+
+    # add ch to logger
+    logger.addHandler(ch)
     
     from pycaret import preprocess
     
