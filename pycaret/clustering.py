@@ -3800,7 +3800,7 @@ def get_clusters(data,
                  n_jobs = -1):
     
     """
-    Magic function to get clusters in Power Query / Power BI.    
+    Callable from any external environment without requiring setup initialization.
     
     """
     
@@ -3812,13 +3812,15 @@ def get_clusters(data,
     else:
         ignore_features_pass = ignore_features
     
-    global X, data_, seed, n_jobs_param
+    global X, data_, seed, n_jobs_param, logging_param
     
     data_ = data.copy()
     
     seed = 99
 
     n_jobs_param = n_jobs
+
+    logging_param = False
     
     from pycaret import preprocess
     

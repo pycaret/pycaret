@@ -3549,7 +3549,8 @@ def get_outliers(data,
                  combine_rare_levels=False,
                  rare_level_threshold=0.1,
                  remove_multicollinearity=False,
-                 multicollinearity_threshold=0.9):
+                 multicollinearity_threshold=0.9,
+                 n_jobs = -1):
     
     """
     Magic function to get outliers in Power Query / Power BI.    
@@ -3564,8 +3565,12 @@ def get_outliers(data,
     else:
         ignore_features_pass = ignore_features
     
-    global X, data_, seed
+    global X, data_, seed, n_jobs_param, logging_param
     
+    n_jobs_param = n_jobs
+
+    logging_param = False
+
     data_ = data.copy()
     
     seed = 99
