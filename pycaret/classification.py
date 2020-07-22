@@ -433,6 +433,10 @@ def setup(data,
        
     """
     
+    #ignore warnings
+    import warnings
+    warnings.filterwarnings('ignore') 
+
     #exception checking   
     import sys
     
@@ -467,11 +471,194 @@ def setup(data,
     logger.info("PyCaret Classification Module")
     logger.info('version ' + str(ver))
     logger.info("Initializing setup()")
-    logger.info("Checking Exceptions")
+
+    #logging libraries
+
+    logger.info("Checking libraries")
+
+    try:
+        import pandas as pd
+        logger.info("pd==" + str(pd.__version__))
+    except:
+        logger.warning("pandas not found")
+
+    try:
+        import numpy as np
+        logger.info("numpy==" + str(np.__version__))
+    except:
+        logger.warning("numpy not found")
+
+    try:
+        import sklearn
+        logger.info("sklearn==" + str(sklearn.__version__))
+    except:
+        logger.warning("sklearn not found")
+
+    try:
+        import xgboost
+        logger.info("xgboost==" + str(xgboost.__version__))
+    except:
+        logger.warning("xgboost not found")
+
+    try:
+        import lightgbm
+        logger.info("lightgbm==" + str(lightgbm.__version__))
+    except:
+        logger.warning("lightgbm not found")
+
+    try:
+        import catboost
+        logger.info("catboost==" + str(catboost.__version__))
+    except:
+        logger.warning("catboost not found")
+
+    try:
+        import kmodes
+        logger.info("kmodes==" + str(kmodes.__version__))
+    except:
+        logger.warning("kmodes not found")
+        
+    try:
+        import pyod.version
+        logger.info("pyod==" + str(pyod.version.__version__))
+    except:
+        logger.warning("pyod not found")
+
+    try:
+        import warnings
+        warnings.filterwarnings('ignore')
+        import gensim 
+        logger.info("gensim==" + str(gensim.__version__))
+    except:
+        logger.warning("gensim not found")
+
+    try:
+        import spacy
+        logger.info("spacy==" + str(spacy.__version__))
+    except:
+        logger.warning("spacy not found")
+
+    try:
+        import nltk
+        logger.info("nltk==" + str(nltk.__version__))
+    except:
+        logger.warning("nltk not found")
+
+    try:
+        import textblob
+        logger.info("textblob==" + str(textblob.__version__))
+    except:
+        logger.warning("textblob not found")
+
+    try:
+        import pyLDAvis
+        logger.info("pyLDAvis==" + str(pyLDAvis.__version__))
+    except:
+        logger.warning("pyLDAvis not found")
+
+    try:
+        import mlxtend
+        logger.info("mlxtend==" + str(mlxtend.__version__))
+    except:
+        logger.warning("mlxtend not found")
+
+    try:
+        import matplotlib as plt
+        logger.info("matplotlib==" + str(plt.__version__))
+    except:
+        logger.warning("matplotlib not found")
+
+    try:
+        import seaborn as sns
+        logger.info("seaborn==" + str(sns.__version__))
+    except:
+        logger.warning("seaborn not found")
+
+    try:
+        import plotly
+        logger.info("plotly==" + str(plotly.__version__))
+    except:
+        logger.warning("plotly not found")
+
+    try:
+        import cufflinks
+        logger.info("cufflinks==" + str(cufflinks.__version__))
+    except:
+        logger.warning("cufflinks not found")
+
+    try:
+        import yellowbrick
+        logger.info("yellowbrick==" + str(yellowbrick.__version__))
+    except:
+        logger.warning("yellowbrick not found")
+
+    try:
+        import shap
+        logger.info("shap==" + str(shap.__version__))
+    except:
+        logger.warning("shap not found. cannot use interpret_model without shap.")
+
+    try:
+        import pandas_profiling
+        logger.info("pandas_profiling==" + str(pandas_profiling.__version__))
+    except:
+        logger.warning("pandas_profiling not found")
+
+    try:
+        import wordcloud
+        logger.info("wordcloud==" + str(wordcloud.__version__))
+    except:
+        logger.warning("wordcloud not found")
+
+    try:
+        import umap
+        logger.info("umap==" + str(umap.__version__))
+    except:
+        logger.warning("umap not found")
+
+    try:
+        import IPython
+        logger.info("IPython==" + str(IPython.__version__))
+    except:
+        logger.warning("IPython not found")
+
+    try:
+        import ipywidgets
+        logger.info("ipywidgets==" + str(ipywidgets.__version__))
+    except:
+        logger.warning("ipywidgets not found")
+
+    try:
+        import joblib
+        logger.info("joblib==" + str(joblib.__version__))
+    except:
+        logger.warning("joblib not found")
+
+    try:
+        import imblearn
+        logger.info("imblearn==" + str(imblearn.__version__))
+    except:
+        logger.warning("imblearn not found")
+
+    try:
+        from mlflow.version import VERSION
+        import warnings
+        warnings.filterwarnings('ignore') 
+        logger.info("mlflow==" + str(VERSION))
+    except:
+        logger.warning("mlflow not found")
+
+    try:
+        import awscli
+        logger.info("awscli==" + str(awscli.__version__))
+    except:
+        logger.warning("awscli not found. cannot use deploy_model without awscli")
 
     #run_time
     import datetime, time
     runtime_start = time.time()
+
+    logger.info("Checking Exceptions")
 
     #checking train size parameter
     if type(train_size) is not float:
@@ -859,10 +1046,6 @@ def setup(data,
     import cufflinks as cf
     cf.go_offline()
     cf.set_config_file(offline=False, world_readable=True)
-
-    #ignore warnings
-    import warnings
-    warnings.filterwarnings('ignore') 
     
     logger.info("Copying data for preprocessing")
     
