@@ -2,7 +2,7 @@
 # Author: Moez Ali <moez.ali@queensu.ca>
 # License: MIT
 # Release: PyCaret 2.0x
-# Last modified : 20/07/2020
+# Last modified : 22/07/2020
 
 def setup(data, 
           target, 
@@ -466,11 +466,220 @@ def setup(data,
     logger.info("PyCaret Regression Module")
     logger.info('version ' + str(ver))
     logger.info("Initializing setup()")
-    logger.info("Checking Exceptions")
+    logger.info("""setup(data={}, target={}, train_size={}, sampling={}, sample_estimator={}, categorical_features={}, categorical_imputation={}, ordinal_features={},
+                    high_cardinality_features={}, high_cardinality_method={}, numeric_features={}, numeric_imputation={}, date_features={}, ignore_features={}, normalize={},
+                    normalize_method={}, transformation={}, transformation_method={}, handle_unknown_categorical={}, unknown_categorical_method={}, pca={}, pca_method={},
+                    pca_components={}, ignore_low_variance={}, combine_rare_levels={}, rare_level_threshold={}, bin_numeric_features={}, remove_outliers={}, outliers_threshold={},
+                    remove_multicollinearity={}, multicollinearity_threshold={}, remove_perfect_collinearity={}, create_clusters={}, cluster_iter={},
+                    polynomial_features={}, polynomial_degree={}, trigonometry_features={}, polynomial_threshold={}, group_features={},
+                    group_names={}, feature_selection={}, feature_selection_threshold={}, feature_interaction={}, feature_ratio={}, interaction_threshold={}, transform_target={},
+                    transform_target_method={}, data_split_shuffle={}, folds_shuffle={}, n_jobs={}, html={}, session_id={}, log_experiment={},
+                    experiment_name={}, log_plots={}, log_profile={}, log_data={}, silent={}, verbose={}, profile={})""".format(\
+            str(data.shape), str(target), str(train_size), str(sampling), str(sample_estimator), str(categorical_features), str(categorical_imputation), str(ordinal_features),\
+            str(high_cardinality_features), str(high_cardinality_method), str(numeric_features), str(numeric_imputation), str(date_features), str(ignore_features),\
+            str(normalize), str(normalize_method), str(transformation), str(transformation_method), str(handle_unknown_categorical), str(unknown_categorical_method), str(pca),\
+            str(pca_method), str(pca_components), str(ignore_low_variance), str(combine_rare_levels), str(rare_level_threshold), str(bin_numeric_features), str(remove_outliers),\
+            str(outliers_threshold), str(remove_multicollinearity), str(multicollinearity_threshold), str(remove_perfect_collinearity), str(create_clusters), str(cluster_iter),\
+            str(polynomial_features), str(polynomial_degree), str(trigonometry_features), str(polynomial_threshold), str(group_features), str(group_names),\
+            str(feature_selection), str(feature_selection_threshold), str(feature_interaction), str(feature_ratio), str(interaction_threshold), str(transform_target),\
+            str(transform_target_method), str(data_split_shuffle), str(folds_shuffle), str(n_jobs), str(html), str(session_id),\
+            str(log_experiment), str(experiment_name), str(log_plots), str(log_profile), str(log_data), str(silent), str(verbose), str(profile)))
+
+    #logging environment and libraries
+    logger.info("Checking environment")
+    
+    from platform import python_version, platform, python_build, machine
+
+    logger.info("python_version: " + str(python_version()))
+    logger.info("python_build: " + str(python_build()))
+    logger.info("machine: " + str(machine()))
+    logger.info("platform: " + str(platform()))
+
+    logger.info("Checking libraries")
+
+    try:
+        from pandas import __version__
+        logger.info("pd==" + str(__version__))
+    except:
+        logger.warning("pandas not found")
+
+    try:
+        from numpy import __version__
+        logger.info("numpy==" + str(__version__))
+    except:
+        logger.warning("numpy not found")
+
+    try:
+        from sklearn import __version__
+        logger.info("sklearn==" + str(__version__))
+    except:
+        logger.warning("sklearn not found")
+
+    try:
+        from xgboost import __version__
+        logger.info("xgboost==" + str(__version__))
+    except:
+        logger.warning("xgboost not found")
+
+    try:
+        from lightgbm import __version__
+        logger.info("lightgbm==" + str(__version__))
+    except:
+        logger.warning("lightgbm not found")
+
+    try:
+        from catboost import __version__
+        logger.info("catboost==" + str(__version__))
+    except:
+        logger.warning("catboost not found")
+
+    try:
+        from kmodes import __version__
+        logger.info("kmodes==" + str(__version__))
+    except:
+        logger.warning("kmodes not found")
+        
+    try:
+        from pyod.version import __version__
+        logger.info("pyod==" + str(__version__))
+    except:
+        logger.warning("pyod not found")
+
+    try:
+        import warnings
+        warnings.filterwarnings('ignore')
+        from gensim import __version__ 
+        logger.info("gensim==" + str(__version__))
+    except:
+        logger.warning("gensim not found")
+
+    try:
+        from spacy import __version__
+        logger.info("spacy==" + str(__version__))
+    except:
+        logger.warning("spacy not found")
+
+    try:
+        from nltk import __version__
+        logger.info("nltk==" + str(__version__))
+    except:
+        logger.warning("nltk not found")
+
+    try:
+        from textblob import __version__
+        logger.info("textblob==" + str(__version__))
+    except:
+        logger.warning("textblob not found")
+
+    try:
+        from pyLDAvis import __version__
+        logger.info("pyLDAvis==" + str(__version__))
+    except:
+        logger.warning("pyLDAvis not found")
+
+    try:
+        from mlxtend import __version__
+        logger.info("mlxtend==" + str(__version__))
+    except:
+        logger.warning("mlxtend not found")
+
+    try:
+        from matplotlib import __version__
+        logger.info("matplotlib==" + str(__version__))
+    except:
+        logger.warning("matplotlib not found")
+
+    try:
+        from seaborn import __version__
+        logger.info("seaborn==" + str(__version__))
+    except:
+        logger.warning("seaborn not found")
+
+    try:
+        from plotly import __version__
+        logger.info("plotly==" + str(__version__))
+    except:
+        logger.warning("plotly not found")
+
+    try:
+        from cufflinks import __version__
+        logger.info("cufflinks==" + str(__version__))
+    except:
+        logger.warning("cufflinks not found")
+
+    try:
+        from yellowbrick import __version__
+        logger.info("yellowbrick==" + str(__version__))
+    except:
+        logger.warning("yellowbrick not found")
+
+    try:
+        from shap import __version__
+        logger.info("shap==" + str(__version__))
+    except:
+        logger.warning("shap not found. cannot use interpret_model without shap.")
+
+    try:
+        from pandas_profiling import __version__
+        logger.info("pandas_profiling==" + str(__version__))
+    except:
+        logger.warning("pandas_profiling not found")
+
+    try:
+        from wordcloud import __version__
+        logger.info("wordcloud==" + str(__version__))
+    except:
+        logger.warning("wordcloud not found")
+
+    try:
+        from umap import __version__
+        logger.info("umap==" + str(__version__))
+    except:
+        logger.warning("umap not found")
+
+    try:
+        from IPython import __version__
+        logger.info("IPython==" + str(__version__))
+    except:
+        logger.warning("IPython not found")
+
+    try:
+        from ipywidgets import __version__
+        logger.info("ipywidgets==" + str(__version__))
+    except:
+        logger.warning("ipywidgets not found")
+
+    try:
+        from joblib import __version__
+        logger.info("joblib==" + str(__version__))
+    except:
+        logger.warning("joblib not found")
+
+    try:
+        from imblearn import __version__
+        logger.info("imblearn==" + str(__version__))
+    except:
+        logger.warning("imblearn not found")
+
+    try:
+        from mlflow.version import VERSION
+        import warnings
+        warnings.filterwarnings('ignore') 
+        logger.info("mlflow==" + str(VERSION))
+    except:
+        logger.warning("mlflow not found")
+
+    try:
+        from awscli import __version__
+        logger.info("awscli==" + str(__version__))
+    except:
+        logger.warning("awscli not found. cannot use deploy_model without awscli")
 
     #run_time
     import datetime, time
     runtime_start = time.time()
+
+    logger.info("Checking Exceptions")
 
     #checking train size parameter
     if type(train_size) is not float:
@@ -1514,12 +1723,6 @@ def setup(data,
                 experiment__.append(('Target Inverse Transformer', target_inverse_transformer))
             except:
                 pass
-            
-            #if you are making change to return argument (addition/deletion or sequence change) make sure
-            #you do it on two other places below as well. There are total 3 return arguments in setup() call.
-
-            return X, y, X_train, X_test, y_train, y_test, seed, prep_pipe, target_inverse_transformer, experiment__,\
-                folds_shuffle_param, n_jobs_param, html_param, create_model_container, master_model_container, display_container
         
         else:
             
@@ -1621,9 +1824,6 @@ def setup(data,
                 experiment__.append(('Target Inverse Transformer', target_inverse_transformer))
             except:
                 pass
-            
-            return X, y, X_train, X_test, y_train, y_test, seed, prep_pipe, target_inverse_transformer, experiment__,\
-                folds_shuffle_param, n_jobs_param, html_param, create_model_container, master_model_container, display_container
 
     else:
         
@@ -1780,7 +1980,9 @@ def setup(data,
             mlflow.set_tag("Run ID", RunID)
 
             # Log the transformation pipeline
+            logger.info("SubProcess save_model() called ==================================")
             save_model(prep_pipe, 'Transformation Pipeline', verbose=False)
+            logger.info("SubProcess save_model() end ==================================")
             mlflow.log_artifact('Transformation Pipeline' + '.pkl')
             size_bytes = Path('Transformation Pipeline.pkl').stat().st_size
             size_kb = np.round(size_bytes/1000, 2)
@@ -1818,7 +2020,7 @@ def setup(data,
             mlflow.log_artifact("input.txt")
             os.remove('input.txt')
             
-        logger.info("setup() succesfully completed")
+        logger.info("setup() succesfully completed......................................")
 
         return X, y, X_train, X_test, y_train, y_test, seed, prep_pipe, target_inverse_transformer,\
             experiment__, folds_shuffle_param, n_jobs_param, html_param, create_model_container,\
@@ -1941,6 +2143,9 @@ def create_model(estimator = None,
     
     import logging
     logger.info("Initializing create_model()")
+    logger.info("""create_model(estimator={}, ensemble={}, method={}, fold={}, round={}, cross_validation={}, verbose={}, system={})""".\
+        format(str(estimator), str(ensemble), str(method), str(fold), str(round), str(cross_validation), str(verbose), str(system)))
+
     logger.info("Checking exceptions")
 
     #exception checking   
@@ -2337,7 +2542,8 @@ def create_model(estimator = None,
         if verbose:
             clear_output()
 
-        logger.info("create_models() succesfully completed")
+        logger.info(str(model))
+        logger.info("create_models() succesfully completed......................................")
         return model
     
     fold_num = 1
@@ -2562,15 +2768,6 @@ def create_model(estimator = None,
             mlflow.log_metrics({"MAE": avgs_mae[0], "MSE": avgs_mse[0], "RMSE": avgs_rmse[0], "R2" : avgs_r2[0],
                                 "RMSLE": avgs_rmsle[0], "MAPE": avgs_mape[0]})
             
-            # Log internal parameters
-            mlflow.log_param("create_model_estimator", estimator)
-            mlflow.log_param("create_model_ensemble", ensemble)
-            mlflow.log_param("create_model_method", method)
-            mlflow.log_param("create_model_fold", fold)
-            mlflow.log_param("create_model_round", round)
-            mlflow.log_param("create_model_verbose", verbose)
-            mlflow.log_param("create_model_system", system)
-            
             #set tag of compare_models
             mlflow.set_tag("Source", "create_model")
             
@@ -2599,6 +2796,9 @@ def create_model(estimator = None,
 
             # Log AUC and Confusion Matrix plot
             if log_plots_param:
+
+                logger.info("SubProcess plot_model() called ==================================")
+
                 try:
                     plot_model(model, plot = 'residuals', verbose=False, save=True, system=False)
                     mlflow.log_artifact('Residuals.png')
@@ -2620,8 +2820,12 @@ def create_model(estimator = None,
                 except:
                     pass
 
+                logger.info("SubProcess plot_model() end ==================================")
+
             # Log model and transformation pipeline
+            logger.info("SubProcess save_model() called ==================================")
             save_model(model, 'Trained Model', verbose=False)
+            logger.info("SubProcess save_model() end ==================================")
             mlflow.log_artifact('Trained Model' + '.pkl')
             size_bytes = Path('Trained Model.pkl').stat().st_size
             size_kb = np.round(size_bytes/1000, 2)
@@ -2647,7 +2851,8 @@ def create_model(estimator = None,
         else:
             print(model_results.data)
 
-    logger.info("create_model() succesfully completed")
+    logger.info(str(model))
+    logger.info("create_model() succesfully completed......................................")
     return model
 
 def ensemble_model(estimator,
@@ -2742,6 +2947,9 @@ def ensemble_model(estimator,
     
     import logging
     logger.info("Initializing ensemble_model()")
+    logger.info("""ensemble_model(estimator={}, method={}, fold={}, n_estimators={}, round={}, choose_better={}, optimize={}, verbose={})""".\
+        format(str(estimator), str(method), str(fold), str(n_estimators), str(round), str(choose_better), str(optimize), str(verbose)))
+
     logger.info("Checking exceptions")
 
     #exception checking   
@@ -3190,7 +3398,9 @@ def ensemble_model(estimator,
                 update_display(monitor, display_id = 'monitor')
 
         #creating base model for comparison
+        logger.info("SubProcess create_model() called ==================================")
         base_model = create_model(estimator=estimator, verbose = False)
+        logger.info("SubProcess create_model() end ==================================")
         base_model_results = create_model_container[-1][compare_dimension][-2:][0]
         ensembled_model_results = create_model_container[-2][compare_dimension][-2:][0]
 
@@ -3247,17 +3457,6 @@ def ensemble_model(estimator,
             mlflow.log_params(params)
             mlflow.log_metrics({"MAE": avgs_mae[0], "MSE": avgs_mse[0], "RMSE": avgs_rmse[0], "R2" : avgs_r2[0],
                                 "RMSLE": avgs_rmsle[0], "MAPE": avgs_mape[0]})
-            
-
-            # Log internal parameters
-            mlflow.log_param('ensemble_model_estimator', full_name)
-            mlflow.log_param('ensemble_model_method', method)
-            mlflow.log_param('ensemble_model_fold', fold)
-            mlflow.log_param('ensemble_model_n_estimators', n_estimators)
-            mlflow.log_param('ensemble_model_round', round)
-            mlflow.log_param('ensemble_model_choose_better', choose_better)
-            mlflow.log_param('ensemble_model_optimize', optimize)
-            mlflow.log_param('ensemble_model_verbose', verbose)
 
             #set tag of compare_models
             mlflow.set_tag("Source", "ensemble_model")
@@ -3265,18 +3464,17 @@ def ensemble_model(estimator,
             import secrets
             URI = secrets.token_hex(nbytes=4)
             mlflow.set_tag("URI", URI)
-
-            mlflow.set_tag("USI", USI)
-            
+            mlflow.set_tag("USI", USI) 
             mlflow.set_tag("Run Time", runtime)
-
             mlflow.set_tag("Run ID", RunID)
 
             # Log training time in seconds
             mlflow.log_metric("TT", model_fit_time)
 
             # Log model and transformation pipeline
+            logger.info("SubProcess save_model() called ==================================")
             save_model(model, 'Trained Model', verbose=False)
+            logger.info("SubProcess save_model() end ==================================")
             mlflow.log_artifact('Trained Model' + '.pkl')
             size_bytes = Path('Trained Model.pkl').stat().st_size
             size_kb = np.round(size_bytes/1000, 2)
@@ -3293,6 +3491,9 @@ def ensemble_model(estimator,
 
             # Log AUC and Confusion Matrix plot
             if log_plots_param:
+
+                logger.info("SubProcess plot_model() called ==================================")
+
                 try:
                     plot_model(model, plot = 'residuals', verbose=False, save=True, system=False)
                     mlflow.log_artifact('Residuals.png')
@@ -3314,6 +3515,8 @@ def ensemble_model(estimator,
                 except:
                     pass
 
+                logger.info("SubProcess plot_model() end ==================================")
+
             # Log the CV results as model_results.html artifact
             model_results.data.to_html('Results.html', col_space=65, justify='left')
             mlflow.log_artifact('Results.html')
@@ -3328,7 +3531,8 @@ def ensemble_model(estimator,
     else:
         clear_output()
     
-    logger.info("ensemble_model() succesfully completed")
+    logger.info(str(model))
+    logger.info("ensemble_model() succesfully completed......................................")
 
     return model
 
@@ -3439,6 +3643,9 @@ def compare_models(blacklist = None,
     
     import logging
     logger.info("Initializing compare_models()")
+    logger.info("""compare_models(blacklist={}, whitelist={}, fold={}, round={}, sort={}, n_select={}, turbo={}, verbose={})""".\
+        format(str(blacklist), str(whitelist), str(fold), str(round), str(sort), str(n_select), str(turbo), str(verbose)))
+
     logger.info("Checking exceptions")
 
     #exception checking   
@@ -4099,7 +4306,9 @@ def compare_models(blacklist = None,
                 mlflow.log_metric("TT", avgs_training_time[0])
 
                 # Log model and transformation pipeline
+                logger.info("SubProcess save_model() called ==================================")
                 save_model(model, 'Trained Model', verbose=False)
+                logger.info("SubProcess save_model() end ==================================")
                 mlflow.log_artifact('Trained Model' + '.pkl')
                 size_bytes = Path('Trained Model.pkl').stat().st_size
                 size_kb = np.round(size_bytes/1000, 2)
@@ -4161,6 +4370,7 @@ def compare_models(blacklist = None,
 
     logger.info("Finalizing top_n models")
 
+    logger.info("SubProcess create_model() called ==================================")
     for i in sorted_model_names:
         monitor.iloc[2,1:] = i
         if verbose:
@@ -4170,6 +4380,7 @@ def compare_models(blacklist = None,
         k = model_dict.get(i)
         m = create_model(estimator=k, verbose = False, system=False, cross_validation=True)
         model_store_final.append(m)
+    logger.info("SubProcess create_model() end ==================================")
 
     if len(model_store_final) == 1:
         model_store_final = model_store_final[0]
@@ -4187,7 +4398,8 @@ def compare_models(blacklist = None,
     #store in display container
     display_container.append(compare_models_.data)
 
-    logger.info("compare_models() succesfully completed")
+    logger.info(str(model_store_final))
+    logger.info("compare_models() succesfully completed......................................")
 
     return model_store_final
 
@@ -4284,6 +4496,9 @@ def blend_models(estimator_list = 'All',
     
     import logging
     logger.info("Initializing blend_models()")
+    logger.info("""blend_models(estimator_list={}, fold={}, round={}, choose_better={}, optimize={}, turbo={}, verbose={})""".\
+        format(str(estimator_list), str(fold), str(round), str(choose_better), str(optimize), str(turbo), str(verbose)))
+
     logger.info("Checking exceptions")
     
     #exception checking   
@@ -4815,6 +5030,7 @@ def blend_models(estimator_list = 'All',
                 update_display(monitor, display_id = 'monitor')
 
         base_models_ = []
+        logger.info("SubProcess create_model() called ==================================")
         for i in estimator_list:
             m = create_model(i,verbose=False, system=False)
             s = create_model_container[-1][compare_dimension][-2:][0]
@@ -4823,7 +5039,9 @@ def blend_models(estimator_list = 'All',
 
             #re-instate display_constainer state 
             display_container.pop(-1)
-            logger.info("choose_better completed")
+
+        logger.info("SubProcess create_model() called ==================================")
+        logger.info("choose_better completed")
 
     if compare_dimension == 'R2':
         index_scorer = scorer.index(max(scorer))
@@ -4862,18 +5080,10 @@ def blend_models(estimator_list = 'All',
             mlflow.log_metrics({"MAE": avgs_mae[0], "MSE": avgs_mse[0], "RMSE": avgs_rmse[0], "R2" : avgs_r2[0],
                                 "RMSLE": avgs_rmsle[0], "MAPE": avgs_mape[0]})
             
-
-            # Log internal parameters
-            mlflow.log_param("blend_models_estimator_list", model_names_final)
-            mlflow.log_param("blend_models_fold", fold)
-            mlflow.log_param("blend_models_round", round)
-            mlflow.log_param("blend_models_choose_better", choose_better)
-            mlflow.log_param("blend_models_optimize", optimize)
-            mlflow.log_param("blend_models_turbo", turbo)
-            mlflow.log_param("blend_models_verbose", verbose)
-            
             # Log model and transformation pipeline
+            logger.info("SubProcess save_model() called ==================================")
             save_model(model, 'Trained Model', verbose=False)
+            logger.info("SubProcess save_model() end ==================================")
             mlflow.log_artifact('Trained Model' + '.pkl')
             size_bytes = Path('Trained Model.pkl').stat().st_size
             size_kb = np.round(size_bytes/1000, 2)
@@ -4894,11 +5104,8 @@ def blend_models(estimator_list = 'All',
             import secrets
             URI = secrets.token_hex(nbytes=4)
             mlflow.set_tag("URI", URI)
-
             mlflow.set_tag("USI", USI)
-
             mlflow.set_tag("Run Time", runtime)
-
             mlflow.set_tag("Run ID", RunID)
 
             # Log training time of compare_models
@@ -4906,6 +5113,9 @@ def blend_models(estimator_list = 'All',
 
             # Log AUC and Confusion Matrix plot
             if log_plots_param:
+
+                logger.info("SubProcess plot_model() called ==================================")
+
                 try:
                     plot_model(model, plot = 'residuals', verbose=False, save=True, system=False)
                     mlflow.log_artifact('Residuals.png')
@@ -4926,6 +5136,8 @@ def blend_models(estimator_list = 'All',
                     os.remove("Feature Importance.png")
                 except:
                     pass
+                
+                logger.info("SubProcess plot_model() end ==================================")
 
             # Log the CV results as model_results.html artifact
             model_results.data.to_html('Results.html', col_space=65, justify='left')
@@ -4939,7 +5151,8 @@ def blend_models(estimator_list = 'All',
         else:
             print(model_results.data)
     
-    logger.info("blend_models() succesfully completed")
+    logger.info(str(model))
+    logger.info("blend_models() succesfully completed......................................")
 
     return model
 
@@ -5038,6 +5251,9 @@ def tune_model(estimator,
     
     import logging
     logger.info("Initializing tune_model()")
+    logger.info("""tune_model(estimator={}, fold={}, round={}, n_iter={}, custom_grid={}, optimize={}, choose_better={}, verbose={})""".\
+        format(str(estimator), str(fold), str(round), str(n_iter), str(custom_grid), str(optimize), str(choose_better), str(verbose)))
+
     logger.info("Checking exceptions")
 
     #exception checking   
@@ -6124,12 +6340,14 @@ def tune_model(estimator,
                 update_display(monitor, display_id = 'monitor')
 
         #creating base model for comparison
+        logger.info("SubProcess create_model() called ==================================")
         if estimator in ['Bagging', 'ada']:
             base_model = create_model(estimator=_estimator_, verbose = False, system=False)
         else:
             base_model = create_model(estimator=estimator, verbose = False)
         base_model_results = create_model_container[-1][compare_dimension][-2:][0]
         tuned_model_results = create_model_container[-2][compare_dimension][-2:][0]
+        logger.info("SubProcess create_model() end ==================================")
 
         if compare_dimension == 'R2':
             if tuned_model_results > base_model_results:
@@ -6189,32 +6407,23 @@ def tune_model(estimator,
             mlflow.log_metrics({"MAE": avgs_mae[0], "MSE": avgs_mse[0], "RMSE": avgs_rmse[0], "R2" : avgs_r2[0],
                                 "RMSLE": avgs_rmsle[0], "MAPE": avgs_mape[0]})
 
-            # Log internal parameters
-            mlflow.log_param("tune_model_fold", fold)
-            mlflow.log_param("tune_model_round", round)
-            mlflow.log_param("tune_model_n_iter", n_iter)
-            mlflow.log_param("tune_model_optimize", optimize)
-            mlflow.log_param("tune_model_choose_better", choose_better)
-            mlflow.log_param("tune_model_verbose", verbose)
-
             #set tag of compare_models
             mlflow.set_tag("Source", "tune_model")
             
             import secrets
             URI = secrets.token_hex(nbytes=4)
             mlflow.set_tag("URI", URI)
-
             mlflow.set_tag("USI", USI)
-
             mlflow.set_tag("Run Time", runtime)
-
             mlflow.set_tag("Run ID", RunID)
 
             # Log training time in seconds
             mlflow.log_metric("TT", model_fit_time)
 
             # Log model and transformation pipeline
+            logger.info("SubProcess save_model() called ==================================")
             save_model(best_model, 'Trained Model', verbose=False)
+            logger.info("SubProcess save_model() end ==================================")
             mlflow.log_artifact('Trained Model' + '.pkl')
             size_bytes = Path('Trained Model.pkl').stat().st_size
             size_kb = np.round(size_bytes/1000, 2)
@@ -6236,6 +6445,9 @@ def tune_model(estimator,
 
             # Log AUC and Confusion Matrix plot
             if log_plots_param:
+
+                logger.info("SubProcess plot_model() called ==================================")
+
                 try:
                     plot_model(model, plot = 'residuals', verbose=False, save=True, system=False)
                     mlflow.log_artifact('Residuals.png')
@@ -6257,6 +6469,8 @@ def tune_model(estimator,
                 except:
                     pass
 
+                logger.info("SubProcess plot_model() end ==================================")
+
             # Log hyperparameter tuning grid
             d1 = model_grid.cv_results_.get('params')
             dd = pd.DataFrame.from_dict(d1)
@@ -6274,7 +6488,8 @@ def tune_model(estimator,
     else:
         clear_output()
     
-    logger.info("tune_model() succesfully completed")
+    logger.info(str(best_model))
+    logger.info("tune_model() succesfully completed......................................")
 
     return best_model
 
@@ -6386,6 +6601,9 @@ def stack_models(estimator_list,
     
     import logging
     logger.info("Initializing stack_models()")
+    logger.info("""stack_models(estimator_list={}, meta_model={}, fold={}, round={}, restack={}, plot={}, choose_better={}, optimize={}, finalize={}, verbose={})""".\
+        format(str(estimator_list), str(meta_model), str(fold), str(round), str(restack), str(plot), str(choose_better), str(optimize), str(finalize), str(verbose)))
+
     logger.info("Checking exceptions")
 
     #exception checking   
@@ -6853,6 +7071,7 @@ def stack_models(estimator_list,
                 update_display(monitor, display_id = 'monitor')
 
         base_models_ = []
+        logger.info("SubProcess create_model() called ==================================")
         for i in estimator_list:
             m = create_model(i,verbose=False)
             s = create_model_container[-1][compare_dimension][-2:][0]
@@ -6867,6 +7086,7 @@ def stack_models(estimator_list,
 
         #re-instate display_constainer state 
         display_container.pop(-1)
+        logger.info("SubProcess create_model() called ==================================")
         logger.info("choose_better completed")
 
     #returning better model
@@ -6923,18 +7143,6 @@ def stack_models(estimator_list,
             
             mlflow.log_metrics({"MAE": avgs_mae[0], "MSE": avgs_mse[0], "RMSE": avgs_rmse[0], "R2" : avgs_r2[0],
                                 "RMSLE": avgs_rmsle[0], "MAPE": avgs_mape[0]})
-
-
-            # Log internal parameters
-            mlflow.log_param("stack_models_estimator_list", estimator_list)
-            mlflow.log_param("stack_models_fold", fold)
-            mlflow.log_param("stack_models_round", round)
-            mlflow.log_param("stack_models_restack", restack)
-            mlflow.log_param("stack_models_plot", plot)
-            mlflow.log_param("stack_models_choose_better", choose_better)
-            mlflow.log_param("stack_models_optimize", optimize)
-            mlflow.log_param("stack_models_finalize", finalize)
-            mlflow.log_param("stack_models_verbose", verbose)
             
             #set tag of stack_models
             mlflow.set_tag("Source", "stack_models")
@@ -6942,15 +7150,14 @@ def stack_models(estimator_list,
             import secrets
             URI = secrets.token_hex(nbytes=4)
             mlflow.set_tag("URI", URI)
-
             mlflow.set_tag("USI", USI)
-
             mlflow.set_tag("Run Time", runtime)
-
             mlflow.set_tag("Run ID", RunID)
 
             # Log model and transformation pipeline
+            logger.info("SubProcess save_model() called ==================================")
             save_model(models_, 'Trained Model', verbose=False)
+            logger.info("SubProcess save_model() end ==================================")
             mlflow.log_artifact('Trained Model' + '.pkl')
             size_bytes = Path('Trained Model.pkl').stat().st_size
             size_kb = np.round(size_bytes/1000, 2)
@@ -6991,7 +7198,8 @@ def stack_models(estimator_list,
         else:
             print(model_results.data)
 
-    logger.info("stack_models() succesfully completed")
+    logger.info(str(models_))
+    logger.info("stack_models() succesfully completed......................................")
 
     return models_
 
@@ -7097,6 +7305,9 @@ def create_stacknet(estimator_list,
 
     import logging
     logger.info("Initializing create_stacknet()")
+    logger.info("""create_stacknet(estimator_list={}, meta_model={}, fold={}, round={}, restack={}, choose_better={}, optimize={}, finalize={}, verbose={})""".\
+        format(str(estimator_list), str(meta_model), str(fold), str(round), str(restack), str(choose_better), str(optimize), str(finalize), str(verbose)))
+
     logger.info("Checking exceptions")
     
     #exception checking   
@@ -7636,6 +7847,7 @@ def create_stacknet(estimator_list,
                 update_display(monitor, display_id = 'monitor')
 
         base_models_ = []
+        logger.info("SubProcess create_model() called ==================================")
         for i in estimator_list:
             for k in i:
                 m = create_model(k,verbose=False)
@@ -7651,6 +7863,7 @@ def create_stacknet(estimator_list,
 
         #re-instate display_constainer state 
         display_container.pop(-1)
+        logger.info("SubProcess create_model() called ==================================")
         logger.info("choose_better completed")
 
     #returning better model
@@ -7707,16 +7920,6 @@ def create_stacknet(estimator_list,
             
             mlflow.log_metrics({"MAE": avgs_mae[0], "MSE": avgs_mse[0], "RMSE": avgs_rmse[0], "R2" : avgs_r2[0],
                                 "RMSLE": avgs_rmsle[0], "MAPE": avgs_mape[0]})
-
-            # Log other parameter of create_model function (internal to pycaret)
-            mlflow.log_param("create_stacknet_estimator_list", estimator_list)
-            mlflow.log_param("create_stacknet_fold", fold)
-            mlflow.log_param("create_stacknet_round", round)
-            mlflow.log_param("create_stacknet_restack", restack)
-            mlflow.log_param("create_stacknet_choose_better", choose_better)
-            mlflow.log_param("create_stacknet_optimize", optimize)
-            mlflow.log_param("create_stacknet_finalize", finalize)
-            mlflow.log_param("create_stacknet_verbose", verbose)
             
             #set tag of create_stacknet
             mlflow.set_tag("Source", "create_stacknet")
@@ -7724,15 +7927,14 @@ def create_stacknet(estimator_list,
             import secrets
             URI = secrets.token_hex(nbytes=4)
             mlflow.set_tag("URI", URI)
-
             mlflow.set_tag("USI", USI)
-
             mlflow.set_tag("Run Time", runtime)
-
             mlflow.set_tag("Run ID", RunID)
 
             # Log model and transformation pipeline
+            logger.info("SubProcess save_model() called ==================================")
             save_model(models_, 'Trained Model', verbose=False)
+            logger.info("SubProcess save_model() end ==================================")
             mlflow.log_artifact('Trained Model' + '.pkl')
             size_bytes = Path('Trained Model.pkl').stat().st_size
             size_kb = np.round(size_bytes/1000, 2)
@@ -7762,7 +7964,8 @@ def create_stacknet(estimator_list,
         else:
             print(model_results.data)
     
-    logger.info("create_stacknet() succesfully completed")
+    logger.info(str(models_))
+    logger.info("create_stacknet() succesfully completed......................................")
 
     return models_
 
@@ -8378,6 +8581,8 @@ def finalize_model(estimator):
     
     import logging
     logger.info("Initializing finalize_model()")
+    logger.info("""finalize_model(estimator={})""".\
+        format(str(estimator)))
 
     #ignore warnings
     import warnings
@@ -8463,11 +8668,13 @@ def finalize_model(estimator):
             stack_restack = stacker_final.pop()
             stack_meta_final = stacker_final.pop()
             
+            logger.info("SubProcess stack_models() called ==================================")
             model_final = stack_models(estimator_list = stacker_final, 
                                        meta_model = stack_meta_final, 
                                        restack = stack_restack,
                                        finalize=True, 
                                        verbose=False)
+            logger.info("SubProcess stack_models() end ==================================")
             
         else:
             
@@ -8481,11 +8688,13 @@ def finalize_model(estimator):
             stack_restack = stacker_final.pop()
             stack_meta_final = stacker_final.pop()
             
+            logger.info("SubProcess create_stacknet() called ==================================")
             model_final = create_stacknet(estimator_list = stacker_final,
                                           meta_model = stack_meta_final,
                                           restack = stack_restack,
                                           finalize = True,
                                           verbose = False)
+            logger.info("SubProcess create_stacknet() end ==================================")
 
         pull_results = pull() 
 
@@ -8533,7 +8742,9 @@ def finalize_model(estimator):
             # get metrics of non-finalized model and log it
 
             try:
+                logger.info("SubProcess create_model() called ==================================")
                 c = create_model(estimator, verbose=False, system=False)
+                logger.info("SubProcess create_model() end ==================================")
                 cr = pull()
                 log_mae = cr.loc['Mean']['MAE'] 
                 log_mse = cr.loc['Mean']['MSE'] 
@@ -8583,36 +8794,44 @@ def finalize_model(estimator):
 
             # Log AUC and Confusion Matrix plot
             if log_plots_param:
+
+                logger.info("SubProcess plot_model() called ==================================")
+
                 try:
-                    plot_model(model, plot = 'residuals', verbose=False, save=True, system=False)
+                    plot_model(model_final, plot = 'residuals', verbose=False, save=True, system=False)
                     mlflow.log_artifact('Residuals.png')
                     os.remove("Residuals.png")
                 except:
                     pass
 
                 try:
-                    plot_model(model, plot = 'error', verbose=False, save=True, system=False)
+                    plot_model(model_final, plot = 'error', verbose=False, save=True, system=False)
                     mlflow.log_artifact('Prediction Error.png')
                     os.remove("Prediction Error.png")
                 except:
                     pass
 
                 try:
-                    plot_model(model, plot = 'feature', verbose=False, save=True, system=False)
+                    plot_model(model_final, plot = 'feature', verbose=False, save=True, system=False)
                     mlflow.log_artifact('Feature Importance.png')
                     os.remove("Feature Importance.png")
                 except:
                     pass
 
+                logger.info("SubProcess plot_model() end ==================================")
+
             # Log model and transformation pipeline
+            logger.info("SubProcess save_model() called ==================================")
             save_model(model_final, 'Trained Model', verbose=False)
+            logger.info("SubProcess save_model() end ==================================")
             mlflow.log_artifact('Trained Model' + '.pkl')
             size_bytes = Path('Trained Model.pkl').stat().st_size
             size_kb = np.round(size_bytes/1000, 2)
             mlflow.set_tag("Size KB", size_kb)
             os.remove('Trained Model.pkl')
 
-    logger.info("finalize_model() succesfully completed")
+    logger.info(str(model_final))
+    logger.info("finalize_model() succesfully completed......................................")
 
     return model_final
 
@@ -8657,6 +8876,8 @@ def save_model(model, model_name, verbose=True):
     
     import logging
     logger.info("Initializing save_model()")
+    logger.info("""save_model(model={}, model_name={}, verbose={})""".\
+        format(str(model), str(model_name), str(verbose)))
 
     #ignore warnings
     import warnings
@@ -8675,7 +8896,8 @@ def save_model(model, model_name, verbose=True):
         print('Transformation Pipeline and Model Succesfully Saved')
 
     logger.info(str(model_name) + ' saved in current working directory')
-    logger.info("save_model() succesfully completed")
+    logger.info(str(model_))
+    logger.info("save_model() succesfully completed......................................")
 
 def load_model(model_name, 
                platform = None,
@@ -8928,11 +9150,6 @@ def predict_model(estimator,
         X_test_.reset_index(drop=True, inplace=True)
         
         estimator_ = estimator
-
-    #try:
-    #    model = finalize_model(estimator)
-    #except:
-    #    model = estimator
 
     if type(estimator) is list:
         
@@ -9362,6 +9579,8 @@ def deploy_model(model,
     
     import logging
     logger.info("Initializing deploy_model()")
+    logger.info("""deploy_model(model={}, model_name={}, authentication={}, platform={})""".\
+        format(str(model), str(model_name), str(authentication), str(platform)))
 
     #ignore warnings
     import warnings
@@ -9380,7 +9599,9 @@ def deploy_model(model,
         import boto3
         
         logger.info("Saving model in active working directory")
+        logger.info("SubProcess save_model() called ==================================")
         save_model(model, model_name = model_name, verbose=False)
+        logger.info("SubProcess save_model() end ==================================")
         
         #initiaze s3
         logger.info("Initializing S3 client")
@@ -9391,9 +9612,10 @@ def deploy_model(model,
         s3.upload_file(filename,bucket_name,key)
         clear_output()
         os.remove(filename)
-        logger.info("deploy_model() succesfully completed")
         print("Model Succesfully Deployed on AWS S3")
-
+        logger.info(str(model))
+        logger.info("deploy_model() succesfully completed......................................")
+        
 def automl(optimize='R2', use_holdout=False):
 
     """
@@ -9415,6 +9637,8 @@ def automl(optimize='R2', use_holdout=False):
 
     import logging
     logger.info("Initializing automl()")
+    logger.info("""automl(optimize={}, use_holdout={})""".\
+        format(str(optimize), str(use_holdout)))
 
     if optimize == 'MAE':
         compare_dimension = 'MAE' 
@@ -9455,9 +9679,12 @@ def automl(optimize='R2', use_holdout=False):
 
     automl_result = master_model_container[index_scorer]
 
+    logger.info("SubProcess finalize_model() called ==================================")
     automl_finalized = finalize_model(automl_result)
+    logger.info("SubProcess finalize_model() end ==================================")
 
-    logger.info("automl() succesfully completed")
+    logger.info(str(automl_finalized))
+    logger.info("automl() succesfully completed......................................")
 
     return automl_finalized
     
@@ -9662,6 +9889,8 @@ def get_config(variable):
 
     import logging
     logger.info("Initializing get_config()")
+    logger.info("""get_config(variable={})""".\
+        format(str(variable)))
 
     if variable == 'X':
         global_var = X
@@ -9724,7 +9953,7 @@ def get_config(variable):
         global_var = fix_imbalance_method_param
 
     logger.info("Global variable: " + str(variable) + ' returned')
-    logger.info("get_config() succesfully completed")
+    logger.info("get_config() succesfully completed......................................")
 
     return global_var
 
@@ -9768,6 +9997,8 @@ def set_config(variable,value):
 
     import logging
     logger.info("Initializing set_config()")
+    logger.info("""get_config(variable={}, value={})""".\
+        format(str(variable), str(value)))
 
     if variable == 'X':
         global X
@@ -9850,4 +10081,21 @@ def set_config(variable,value):
         fix_imbalance_method_param = value
 
     logger.info("Global variable:  " + str(variable) + ' updated')
-    logger.info("set_config() succesfully completed")
+    logger.info("set_config() succesfully completed......................................")
+
+def get_system_logs():
+
+    """
+    Read and print 'logs.log' file from current active directory
+    """
+
+    file = open('logs.log', 'r')
+    lines = file.read().splitlines()
+    file.close()
+
+    for line in lines:
+        if not line:
+            continue
+
+        columns = [col.strip() for col in line.split(':') if col]
+        print(columns)

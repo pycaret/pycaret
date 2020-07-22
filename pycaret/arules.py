@@ -2,7 +2,7 @@
 # Author: Moez Ali <moez.ali@queensu.ca>
 # License: MIT
 # Release: PyCaret 2.0x
-# Last modified : 09/07/2020
+# Last modified : 22/07/2020
 
 def setup(data, 
           transaction_id, 
@@ -117,8 +117,6 @@ def setup(data,
     
     return X, txid, iid, ignore_list, seed, experiment__
 
-
-
 def create_model(metric='confidence',
                  threshold = 0.5,
                  min_support = 0.05,
@@ -230,8 +228,6 @@ def create_model(metric='confidence',
     
     return(rules)
 
-
-
 def plot_model(model,
                plot = '2d'):
     
@@ -338,8 +334,6 @@ def plot_model(model,
                       color='antecedent support', title='3d Plot for Rule Mining', opacity=0.7, width=900, height=800,
                            hover_data = ['antecedents', 'consequents' ])
         fig.show()   
-
-
 
 def get_rules(data, 
               transaction_id, 

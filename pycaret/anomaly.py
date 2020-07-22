@@ -3860,3 +3860,20 @@ def set_config(variable,value):
 
     logger.info("Global variable:  " + str(variable) + ' updated')
     logger.info("set_config() succesfully completed")
+
+def get_system_logs():
+
+    """
+    Read and print 'logs.log' file from current active directory
+    """
+
+    file = open('logs.log', 'r')
+    lines = file.read().splitlines()
+    file.close()
+
+    for line in lines:
+        if not line:
+            continue
+
+        columns = [col.strip() for col in line.split(':') if col]
+        print(columns)

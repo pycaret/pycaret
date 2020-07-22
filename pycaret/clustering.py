@@ -2,7 +2,7 @@
 # Author: Moez Ali <moez.ali@queensu.ca>
 # License: MIT
 # Release: PyCaret 2.0x
-# Last modified : 21/07/2020
+# Last modified : 22/07/2020
 
 def setup(data, 
         categorical_features = None,
@@ -4078,3 +4078,20 @@ def set_config(variable,value):
 
     logger.info("Global variable:  " + str(variable) + ' updated')
     logger.info("set_config() succesfully completed")
+
+def get_system_logs():
+
+    """
+    Read and print 'logs.log' file from current active directory
+    """
+
+    file = open('logs.log', 'r')
+    lines = file.read().splitlines()
+    file.close()
+
+    for line in lines:
+        if not line:
+            continue
+
+        columns = [col.strip() for col in line.split(':') if col]
+        print(columns)
