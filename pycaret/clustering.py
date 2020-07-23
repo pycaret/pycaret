@@ -2,7 +2,7 @@
 # Author: Moez Ali <moez.ali@queensu.ca>
 # License: MIT
 # Release: PyCaret 2.0x
-# Last modified : 22/07/2020
+# Last modified : 23/07/2020
 
 def setup(data, 
         categorical_features = None,
@@ -1099,7 +1099,9 @@ def setup(data,
             mlflow.set_tag("Run ID", RunID)
 
             # Log the transformation pipeline
+            logger.info("SubProcess save_model() called ==================================")
             save_model(prep_pipe, 'Transformation Pipeline', verbose=False)
+            logger.info("SubProcess save_model() end ==================================")
             mlflow.log_artifact('Transformation Pipeline' + '.pkl')
             size_bytes = Path('Transformation Pipeline.pkl').stat().st_size
             size_kb = np.round(size_bytes/1000, 2)
@@ -1133,7 +1135,8 @@ def setup(data,
             mlflow.log_artifact("input.txt")
             os.remove('input.txt')
 
-    logger.info("setup() succesfully completed")
+    logger.info(str(prep_pipe))
+    logger.info("setup() succesfully completed......................................")
     
     return X, data_, seed, prep_pipe, prep_param, experiment__,\
         n_jobs_param, html_param, exp_name_log, logging_param, log_plots_param, USI
@@ -1507,12 +1510,6 @@ def create_model(model = None,
                     params.pop(i)
 
             mlflow.log_params(params)
-                        
-            # Log internal parameters
-            mlflow.log_param("create_model_model", model)
-            mlflow.log_param("create_model_num_clusters", num_clusters)
-            mlflow.log_param("create_model_verbose", verbose)
-            mlflow.log_param("create_model_system", system)
             
             #set tag of compare_models
             mlflow.set_tag("Source", "create_model")
@@ -1533,6 +1530,9 @@ def create_model(model = None,
         
             # Log Cluster, Distribution Plot and Elbow Plot
             if log_plots_param:
+
+                logger.info("SubProcess plot_model() called ==================================")
+
                 try:
                     plot_model(model, plot = 'cluster', save=True, system=False)
                     mlflow.log_artifact('Cluster.html')
@@ -1554,8 +1554,12 @@ def create_model(model = None,
                 except:
                     pass
 
+                logger.info("SubProcess plot_model() end ==================================")
+
             # Log model and transformation pipeline
+            logger.info("SubProcess save_model() called ==================================")
             save_model(model, 'Trained Model', verbose=False)
+            logger.info("SubProcess save_model() end ==================================")
             mlflow.log_artifact('Trained Model' + '.pkl')
             size_bytes = Path('Trained Model.pkl').stat().st_size
             size_kb = np.round(size_bytes/1000, 2)
@@ -1571,7 +1575,8 @@ def create_model(model = None,
         except:
             pass
 
-    logger.info("create_models() succesfully completed")
+    logger.info(str(model))
+    logger.info("create_models() succesfully completed......................................")
 
     return model
 
@@ -1744,7 +1749,8 @@ def assign_model(model,
     if verbose:
         clear_output()
 
-    logger.info("assign_model() succesfully completed")
+    logger.info(done__.shape)
+    logger.info("assign_model() succesfully completed......................................")
 
     return data__
 
@@ -2330,17 +2336,17 @@ def tune_model(model=None,
                              
         #create and assign the model to dataset d
         model_fit_start = time.time()
-        logger.info("SubProcess create_model() called")
+        logger.info("SubProcess create_model() called==================================")
         m = create_model(model=model, num_clusters=i, verbose=False, system=False)
-        logger.info("SubProcess create_model() end")
+        logger.info("SubProcess create_model() end==================================")
         model_fit_end = time.time()
         model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
         model_fit_time_list.append(model_fit_time)
 
         logger.info("Generating labels")
-        logger.info("SubProcess assign_model() called")
+        logger.info("SubProcess assign_model() called==================================")
         d = assign_model(m, transformation=True, verbose=False)
-        logger.info("SubProcess assign_model() ends")
+        logger.info("SubProcess assign_model() ends==================================")
         d[str(supervised_target)] = target_
 
         master.append(m)
@@ -3036,14 +3042,6 @@ def tune_model(model=None,
                     params.pop(i)
 
             mlflow.log_params(params)
-                        
-            # Log internal parameters
-            mlflow.log_param("tune_model_model", model)
-            mlflow.log_param("tune_model_supervised_target", supervised_target)
-            mlflow.log_param("tune_model_estimator", estimator)
-            mlflow.log_param("tune_model_optimize", optimize)
-            mlflow.log_param("tune_model_fold", fold)
-            mlflow.log_param("tune_model_verbose", verbose)
             
             #set tag of compare_models
             mlflow.set_tag("Source", "tune_model")
@@ -3064,14 +3062,17 @@ def tune_model(model=None,
             os.remove('Iterations.html')
 
             # Log model and transformation pipeline
+            logger.info("SubProcess save_model() called ==================================")
             save_model(best_model, 'Trained Model', verbose=False)
+            logger.info("SubProcess save_model() end ==================================")
             mlflow.log_artifact('Trained Model' + '.pkl')
             size_bytes = Path('Trained Model.pkl').stat().st_size
             size_kb = np.round(size_bytes/1000, 2)
             mlflow.set_tag("Size KB", size_kb)
             os.remove('Trained Model.pkl')
 
-    logger.info("tune_model() succesfully completed")
+    logger.info(str(best_model))
+    logger.info("tune_model() succesfully completed......................................")
 
     return best_model
 
@@ -3453,7 +3454,8 @@ def save_model(model, model_name, verbose=True):
         print('Transformation Pipeline and Model Succesfully Saved')
 
     logger.info(str(model_name) + ' saved in current working directory')
-    logger.info("save_model() succesfully completed")
+    logger.info(str(model_))
+    logger.info("save_model() succesfully completed......................................")
 
 def load_model(model_name, 
                platform = None,
@@ -3734,7 +3736,9 @@ def deploy_model(model,
 
         import boto3
         logger.info("Saving model in current working directory")
+        logger.info("SubProcess save_model() called ==================================")
         save_model(model, model_name = model_name, verbose=False)
+        logger.info("SubProcess save_model() end ==================================")
         
         #initiaze s3
         logger.info("Initializing S3 client")
@@ -3745,9 +3749,10 @@ def deploy_model(model,
         s3.upload_file(filename,bucket_name,key)
         clear_output()
         os.remove(filename)
-        logger.info("deploy_model() succesfully completed")
         print("Model Succesfully Deployed on AWS S3")
-
+        logger.info(str(model))
+        logger.info("deploy_model() succesfully completed......................................")
+        
 def get_clusters(data, 
                  model = None, 
                  num_clusters = 4, 
@@ -3997,7 +4002,7 @@ def get_config(variable):
         global_var = USI
 
     logger.info("Global variable: " + str(variable) + ' returned')
-    logger.info("get_config() succesfully completed")
+    logger.info("get_config() succesfully completed......................................")
 
     return global_var
 
@@ -4077,7 +4082,7 @@ def set_config(variable,value):
         USI = value
 
     logger.info("Global variable:  " + str(variable) + ' updated')
-    logger.info("set_config() succesfully completed")
+    logger.info("set_config() succesfully completed......................................")
 
 def get_system_logs():
 
