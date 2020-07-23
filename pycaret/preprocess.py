@@ -1138,7 +1138,7 @@ class Dummify(BaseEstimator,TransformerMixin):
     for binary_col in self.data_binary.columns:
       name = binary_col
       try:
-        if not all(str(v) == '1' or str(v) == '0' for v in self.data_binary[binary_col]):
+        if not all(int(v) == 1 or int(v) == 0 for v in self.data_binary[binary_col]):
           possible_values = self.data_binary[binary_col].unique()
           selected_value = possible_values[1]
           mapper = {possible_values[0]: 0, possible_values[1]: 1}
