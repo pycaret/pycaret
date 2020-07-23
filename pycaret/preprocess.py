@@ -1138,8 +1138,8 @@ class Dummify(BaseEstimator,TransformerMixin):
     for binary_col in self.data_binary.columns:
       name = binary_col
       try:
-        if not all(str(v).isnumeric() and (int(v) == 1 or int(v) == 0) for v in self.data_binary[binary_col]):
-          possible_values = self.data_binary[binary_col].unique()
+        possible_values = sorted(self.data_binary[binary_col].unique(),reverse=True)
+        if not all(self._is_number(v) and (float(v) == 1 or float(v) == 0) for v in possible_values):
           selected_value = possible_values[1]
           mapper = {possible_values[0]: 0, possible_values[1]: 1}
           self.data_binary[binary_col] = self.data_binary[binary_col].replace(mapper)
@@ -1149,6 +1149,13 @@ class Dummify(BaseEstimator,TransformerMixin):
       except:
         self.data_cat[binary_col] = self.data_binary[binary_col]
         self.data_binary = self.data_binary.drop(binary_col, axis=1,errors='ignore')
+
+  def _is_number(self, x):
+    try:
+      float(x)
+    except:
+      return False
+    return True
 
   def fit(self,dataset,y=None):
     data = dataset.copy()
