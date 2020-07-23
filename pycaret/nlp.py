@@ -2,7 +2,7 @@
 # Author: Moez Ali <moez.ali@queensu.ca>
 # License: MIT
 # Release: PyCaret 2.0x
-# Last modified : 21/07/2020
+# Last modified : 23/07/2020
 
 def setup(data, 
           target=None,
@@ -749,7 +749,9 @@ def setup(data,
         else:
             print(functions_.data)
 
-    logger.info("setup() succesfully completed")
+    logger.info('Corpus: ' + str(len(corpus)))
+    logger.info('Vocab: ' + str(len(id2word.keys())))
+    logger.info("setup() succesfully completed......................................")
 
     return text, data_, corpus, id2word, seed, target_, experiment__,\
         exp_name_log, logging_param, log_plots_param, USI, html_param
@@ -1126,7 +1128,8 @@ def create_model(model=None,
     if verbose:
         clear_output()
     
-    logger.info("create_model() succesfully completed")
+    logger.info(str(model))
+    logger.info("create_model() succesfully completed......................................")
 
     return model
 
@@ -1449,7 +1452,8 @@ def assign_model(model,
         if verbose:
             clear_output()
     
-    logger.info("assign_model() succesfully completed")
+    logger.info(str(bb_.shape))
+    logger.info("assign_model() succesfully completed......................................")
 
     return bb_
 
@@ -3065,7 +3069,8 @@ def tune_model(model=None,
         p = 'Best Model: ' + topic_model_name + ' |' + ' # Topics: ' + str(best_k) + ' | ' + str(optimize) + ' : ' + str(best_m)
         print(p)
 
-    logger.info("tune_model() succesfully completed")
+    logger.info(str(best_model))
+    logger.info("tune_model() succesfully completed......................................")
 
     return best_model
 
@@ -3194,7 +3199,8 @@ def save_model(model, model_name,
     if verbose:
         print('Model Succesfully Saved')
 
-    logger.info("save_model() succesfully completed")
+    logger.info(str(model))
+    logger.info("save_model() succesfully completed......................................")
 
 def load_model(model_name, 
                verbose=True): #added in pycaret==2.0.0
@@ -3403,7 +3409,7 @@ def get_config(variable):
         global_var = USI
 
     logger.info("Global variable: " + str(variable) + ' returned')
-    logger.info("get_config() succesfully completed")
+    logger.info("get_config() succesfully completed......................................")
 
     return global_var
 
@@ -3479,7 +3485,7 @@ def set_config(variable,value):
         USI = value
 
     logger.info("Global variable:  " + str(variable) + ' updated')
-    logger.info("set_config() succesfully completed")
+    logger.info("set_config() succesfully completed......................................")
 
 def get_system_logs():
 

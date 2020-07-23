@@ -2,7 +2,7 @@
 # Author: Moez Ali <moez.ali@queensu.ca>
 # License: MIT
 # Release: PyCaret 2.0x
-# Last modified : 22/07/2020
+# Last modified : 23/07/2020
 
 def setup(data,  
           target,   
@@ -2079,6 +2079,10 @@ def setup(data,
             mlflow.log_artifact("input.txt")
             os.remove('input.txt')
 
+    logger.info("create_model_container " + str(len(create_model_container)))
+    logger.info("master_model_container " + str(len(master_model_container)))
+    logger.info("display_container " + str(len(display_container)))
+
     logger.info(str(prep_pipe))
     logger.info("setup() succesfully completed......................................")
 
@@ -2600,6 +2604,10 @@ def create_model(estimator = None,
         if verbose:
             clear_output()
         
+        logger.info("create_model_container " + str(len(create_model_container)))
+        logger.info("master_model_container " + str(len(master_model_container)))
+        logger.info("display_container " + str(len(display_container)))
+        
         logger.info(str(model))
         logger.info("create_models() succesfully completed......................................")
         
@@ -2952,7 +2960,7 @@ def create_model(estimator = None,
     display_container.append(model_results.data)
 
     #storing results in master_model_container
-    logger.info("Uploading model into container")
+    logger.info("Uploading model into container now")
     master_model_container.append(model)
 
     if verbose:
@@ -2963,6 +2971,10 @@ def create_model(estimator = None,
         else:
             print(model_results.data)
 
+    logger.info("create_model_container: " + str(len(create_model_container)))
+    logger.info("master_model_container: " + str(len(master_model_container)))
+    logger.info("display_container: " + str(len(display_container)))
+    
     logger.info(str(model))
     logger.info("create_model() succesfully completed......................................")
     return model
@@ -3711,6 +3723,10 @@ def ensemble_model(estimator,
             print(model_results.data)
     else:
         clear_output()
+
+    logger.info("create_model_container: " + str(len(create_model_container)))
+    logger.info("master_model_container: " + str(len(master_model_container)))
+    logger.info("display_container: " + str(len(display_container)))
 
     logger.info(str(model))
     logger.info("ensemble_model() succesfully completed......................................")
@@ -5138,6 +5154,10 @@ def compare_models(blacklist = None,
     #store in display container
     display_container.append(compare_models_.data)
 
+    logger.info("create_model_container: " + str(len(create_model_container)))
+    logger.info("master_model_container: " + str(len(master_model_container)))
+    logger.info("display_container: " + str(len(display_container)))
+
     logger.info(str(model_store_final))
     logger.info("compare_models() succesfully completed......................................")
 
@@ -6361,6 +6381,10 @@ def tune_model(estimator = None,
         else:
             print(model_results.data)
     
+    logger.info("create_model_container: " + str(len(create_model_container)))
+    logger.info("master_model_container: " + str(len(master_model_container)))
+    logger.info("display_container: " + str(len(display_container)))
+
     logger.info(str(best_model))
     logger.info("tune_model() succesfully completed......................................")
     
@@ -7178,6 +7202,10 @@ def blend_models(estimator_list = 'All',
         else:
             print(model_results.data)
     
+    logger.info("create_model_container: " + str(len(create_model_container)))
+    logger.info("master_model_container: " + str(len(master_model_container)))
+    logger.info("display_container: " + str(len(display_container)))
+
     logger.info(str(model))
     logger.info("blend_models() succesfully completed......................................")
 
@@ -7961,6 +7989,10 @@ def stack_models(estimator_list,
             display(model_results)
         else:
             print(model_results.data)
+
+    logger.info("create_model_container: " + str(len(create_model_container)))
+    logger.info("master_model_container: " + str(len(master_model_container)))
+    logger.info("display_container: " + str(len(display_container)))
 
     logger.info(str(models_))
     logger.info("stack_models() succesfully completed......................................")
@@ -8805,6 +8837,10 @@ def create_stacknet(estimator_list,
         else:
             print(model_results.data)
     
+    logger.info("create_model_container: " + str(len(create_model_container)))
+    logger.info("master_model_container: " + str(len(master_model_container)))
+    logger.info("display_container: " + str(len(display_container)))
+
     logger.info(str(models_))
     logger.info("create_stacknet() succesfully completed......................................")
 
@@ -9631,6 +9667,10 @@ def calibrate_model(estimator,
         else:
             print(model_results.data)
     
+    logger.info("create_model_container: " + str(len(create_model_container)))
+    logger.info("master_model_container: " + str(len(master_model_container)))
+    logger.info("display_container: " + str(len(display_container)))
+
     logger.info(str(model))
     logger.info("calibrate_model() succesfully completed......................................")
 
@@ -10013,6 +10053,10 @@ def finalize_model(estimator):
             size_kb = np.round(size_bytes/1000, 2)
             mlflow.set_tag("Size KB", size_kb)
             os.remove('Trained Model.pkl')
+
+    logger.info("create_model_container: " + str(len(create_model_container)))
+    logger.info("master_model_container: " + str(len(master_model_container)))
+    logger.info("display_container: " + str(len(display_container)))
 
     logger.info(str(model_final))
     logger.info("finalize_model() succesfully completed......................................")
