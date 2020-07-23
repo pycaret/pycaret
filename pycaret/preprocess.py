@@ -1128,9 +1128,28 @@ class Dummify(BaseEstimator,TransformerMixin):
     self.target = target
 
     
-    # creat ohe object 
+    # create ohe object 
     self.ohe = OneHotEncoder(handle_unknown='ignore')
   
+  # if we have categorical columns with just two values (boolean), it is better to just leave them as one column, as pd.get_dummies would separate it into two columns
+  # this function checks the values inside of a boolean column - if they aren't 0 and 1, they are converted to those and the column is renamed for clarity
+  # to play it safe, if there is an exception, then it will default to the old behavior
+  def _fix_non_zero_one_binaries(self):
+    for binary_col in self.data_binary.columns:
+      name = binary_col
+      try:
+        if not all(str(v) == '1' or str(v) == '0' for v in self.data_binary[binary_col]):
+          possible_values = self.data_binary[binary_col].unique()
+          selected_value = possible_values[1]
+          mapper = {possible_values[0]: 0, possible_values[1]: 1}
+          self.data_binary[binary_col] = self.data_binary[binary_col].replace(mapper)
+          name = f'{binary_col}_{str(selected_value)}'
+          self.data_binary = self.data_binary.rename(columns = {binary_col: name})
+        self.data_binary[name] = self.data_binary[name].astype('float64')
+      except:
+        self.data_cat[binary_col] = self.data_binary[binary_col]
+        self.data_binary = self.data_binary.drop(binary_col, axis=1,errors='ignore')
+
   def fit(self,dataset,y=None):
     data = dataset.copy()
     # will only do this if there are categorical variables 
@@ -1139,13 +1158,17 @@ class Dummify(BaseEstimator,TransformerMixin):
       # save non categorical data
       self.data_nonc = data.drop(self.target,axis=1,errors='ignore').select_dtypes(exclude=('object'))
       self.target_column =  data[[self.target]]
+      self.data_cat = data.drop(self.target,axis=1,errors='ignore').select_dtypes(include=('object'))
+      self.data_binary = self.data_cat.drop(columns=self.data_cat.columns[self.data_cat.nunique()!=2])
+      self.data_cat = self.data_cat.drop(columns=self.data_cat.columns[self.data_cat.nunique()==2])
+      self._fix_non_zero_one_binaries()
       # # plus we will only take object data types
       try:
-        self.data_columns  = pd.get_dummies(data.drop(self.target,axis=1,errors='ignore').select_dtypes(include=('object'))).columns
+        self.data_columns  = pd.get_dummies(self.data_cat).columns
       except:
         self.data_columns = []
       # # now fit the trainin column
-      self.ohe.fit(data.drop(self.target,axis=1,errors='ignore').select_dtypes(include=('object')))
+      self.ohe.fit(self.data_cat)
     else:
       None
     return(None)
@@ -1156,12 +1179,16 @@ class Dummify(BaseEstimator,TransformerMixin):
     if len(data.select_dtypes(include=('object')).columns) > 0:
       # only for test data
       self.data_nonc = data.drop(self.target,axis=1,errors='ignore').select_dtypes(exclude=('object'))
+      self.data_cat = data.drop(self.target,axis=1,errors='ignore').select_dtypes(include=('object'))
+      self.data_binary = self.data_cat.drop(columns=self.data_cat.columns[self.data_cat.nunique()!=2])
+      self.data_cat = self.data_cat.drop(columns=self.data_cat.columns[self.data_cat.nunique()==2])
+      self._fix_non_zero_one_binaries()
       # fit without target and only categorical columns
-      array = self.ohe.transform(data.drop(self.target,axis=1,errors='ignore').select_dtypes(include=('object'))).toarray()
+      array = self.ohe.transform(self.data_cat).toarray()
       data_dummies = pd.DataFrame(array,columns= self.data_columns)
       data_dummies.index = self.data_nonc.index
       #now put target , numerical and categorical variables back togather
-      data = pd.concat((self.data_nonc,data_dummies),axis=1)
+      data = pd.concat((self.data_nonc,self.data_binary,data_dummies),axis=1)
       del(self.data_nonc)
       return(data)
     else:
@@ -1173,11 +1200,11 @@ class Dummify(BaseEstimator,TransformerMixin):
     if len(data.select_dtypes(include=('object')).columns) > 0:
       self.fit(data)
       # fit without target and only categorical columns
-      array = self.ohe.transform(data.drop(self.target,axis=1,errors='ignore').select_dtypes(include=('object'))).toarray()
+      array = self.ohe.transform(self.data_cat).toarray()
       data_dummies = pd.DataFrame(array,columns= self.data_columns)
       data_dummies.index = self.data_nonc.index
       # now put target , numerical and categorical variables back togather
-      data = pd.concat((self.target_column,self.data_nonc,data_dummies),axis=1)
+      data = pd.concat((self.target_column,self.data_nonc,self.data_binary,data_dummies),axis=1)
       # remove unwanted attributes
       del(self.target_column,self.data_nonc)
       return(data)
