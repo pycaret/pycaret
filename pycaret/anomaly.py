@@ -2506,17 +2506,17 @@ def tune_model(model=None,
                              
         #create and assign the model to dataset d
         model_fit_start = time.time()
-        logger.info("SubProcess create_model() called")
+        logger.info("SubProcess create_model() called==================================")
         m = create_model(model=model, fraction=i, verbose=False, system=False)
-        logger.info("SubProcess create_model() end")
+        logger.info("SubProcess create_model() end==================================")
         model_fit_end = time.time()
         model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
         model_fit_time_list.append(model_fit_time)
 
         logger.info("Generating labels")
-        logger.info("SubProcess assign_model() called")
+        logger.info("SubProcess assign_model() called==================================")
         d = assign_model(m, transformation=True, score=True, verbose=False)
-        logger.info("SubProcess assign_model() ends")
+        logger.info("SubProcess assign_model() ends==================================")
         d[str(supervised_target)] = target_
 
         master.append(m)
