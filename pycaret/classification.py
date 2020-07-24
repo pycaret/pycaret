@@ -3834,6 +3834,13 @@ def plot_model(estimator,
     #exception checking   
     import sys
     
+    import logging
+    logger.info("Initializing plot_model()")
+    logger.info("""plot_model(estimator={}, plot={}, save={}, verbose={}, system={})""".\
+        format(str(estimator), str(plot), str(save), str(verbose), str(system)))
+
+    logger.info("Checking exceptions")
+
     #checking plots (string)
     available_plots = ['auc', 'threshold', 'pr', 'confusion_matrix', 'error', 'class_report', 'boundary', 'rfe', 'learning',
                        'manifold', 'calibration', 'vc', 'dimension', 'feature', 'parameter']
@@ -3877,11 +3884,13 @@ def plot_model(estimator,
     
     '''
     
+    logger.info("Preloading libraries")
     #pre-load libraries
     import pandas as pd
     import ipywidgets as ipw
     from IPython.display import display, HTML, clear_output, update_display
     
+    logger.info("Preparing display monitor")
     #progress bar
     progress = ipw.IntProgress(value=0, min=0, max=5, step=1 , description='Processing: ')
     if verbose:
@@ -3892,6 +3901,7 @@ def plot_model(estimator,
     import warnings
     warnings.filterwarnings('ignore') 
     
+    logger.info("Importing libraries")
     #general dependencies
     import matplotlib.pyplot as plt
     import numpy as np
@@ -3907,35 +3917,45 @@ def plot_model(estimator,
     #plots used for logging (controlled through plots_log_param) 
     #AUC, #Confusion Matrix and #Feature Importance
 
-    if plot == 'auc': 
-        
+    logger.info("plot type: " + str(plot)) 
+
+    if plot == 'auc':
+
         from yellowbrick.classifier import ROCAUC
         progress.value += 1
         visualizer = ROCAUC(model)
+        logger.info("Fitting Model")
         visualizer.fit(X_train, y_train)
         progress.value += 1
+        logger.info("Scoring test/hold-out set")
         visualizer.score(X_test, y_test)
         progress.value += 1
         clear_output()
         if save:
+            logger.info("Saving 'AUC.png' in current active directory")
             if system:
                 visualizer.show(outpath="AUC.png")
             else:
                 visualizer.show(outpath="AUC.png", clear_figure=True)
         else:
             visualizer.show()
+
+        logger.info("Visual Rendered Successfully")
         
     elif plot == 'threshold':
         
         from yellowbrick.classifier import DiscriminationThreshold
         progress.value += 1
         visualizer = DiscriminationThreshold(model, random_state=seed)
+        logger.info("Fitting Model")
         visualizer.fit(X_train, y_train)
         progress.value += 1
+        logger.info("Scoring test/hold-out set")
         visualizer.score(X_test, y_test)
         progress.value += 1
         clear_output()
         if save:
+            logger.info("Saving 'Threshold Curve.png' in current active directory")
             if system:
                 visualizer.show(outpath="Threshold Curve.png")
             else:
@@ -3943,17 +3963,22 @@ def plot_model(estimator,
         else:
             visualizer.show()
 
+        logger.info("Visual Rendered Successfully")
+
     elif plot == 'pr':
         
         from yellowbrick.classifier import PrecisionRecallCurve
         progress.value += 1
         visualizer = PrecisionRecallCurve(model, random_state=seed)
+        logger.info("Fitting Model")
         visualizer.fit(X_train, y_train)
         progress.value += 1
+        logger.info("Scoring test/hold-out set")
         visualizer.score(X_test, y_test)
         progress.value += 1
         clear_output()
         if save:
+            logger.info("Saving 'Precision Recall.png' in current active directory")
             if system:
                 visualizer.show(outpath="Precision Recall.png")
             else:
@@ -3961,35 +3986,45 @@ def plot_model(estimator,
         else:
             visualizer.show()
 
+        logger.info("Visual Rendered Successfully")
+
     elif plot == 'confusion_matrix':
         
         from yellowbrick.classifier import ConfusionMatrix
         progress.value += 1
         visualizer = ConfusionMatrix(model, random_state=seed, fontsize = 15, cmap="Greens")
+        logger.info("Fitting Model")
         visualizer.fit(X_train, y_train)
         progress.value += 1
+        logger.info("Scoring test/hold-out set")
         visualizer.score(X_test, y_test)
         progress.value += 1
         clear_output()
         if save:
+            logger.info("Saving 'Confusion Matrix.png' in current active directory")
             if system:
                 visualizer.show(outpath="Confusion Matrix.png")
             else:
                 visualizer.show(outpath="Confusion Matrix.png", clear_figure=True)
         else:
             visualizer.show()
+            
+        logger.info("Visual Rendered Successfully")
 
     elif plot == 'error':
         
         from yellowbrick.classifier import ClassPredictionError
         progress.value += 1
         visualizer = ClassPredictionError(model, random_state=seed)
+        logger.info("Fitting Model")
         visualizer.fit(X_train, y_train)
         progress.value += 1
+        logger.info("Scoring test/hold-out set")
         visualizer.score(X_test, y_test)
         progress.value += 1
         clear_output()
         if save:
+            logger.info("Saving 'Class Prediction Error.png' in current active directory")
             if system:
                 visualizer.show(outpath="Class Prediction Error.png")
             else:
@@ -3997,23 +4032,30 @@ def plot_model(estimator,
         else:
             visualizer.show()
 
+        logger.info("Visual Rendered Successfully")
+
     elif plot == 'class_report':
         
         from yellowbrick.classifier import ClassificationReport
         progress.value += 1
         visualizer = ClassificationReport(model, random_state=seed, support=True)
+        logger.info("Fitting Model")
         visualizer.fit(X_train, y_train)
         progress.value += 1
+        logger.info("Scoring test/hold-out set")
         visualizer.score(X_test, y_test)
         progress.value += 1
         clear_output()
         if save:
+            logger.info("Saving 'Classification Report.png' in current active directory")
             if system:
                 visualizer.show(outpath="Classification Report.png")
             else:
                 visualizer.show(outpath="Classification Report.png", clear_figure=True)
         else:
             visualizer.show()
+
+        logger.info("Visual Rendered Successfully")
         
     elif plot == 'boundary':
         
@@ -4029,9 +4071,11 @@ def plot_model(estimator,
         X_test_transformed = X_test.copy()
         X_train_transformed = X_train_transformed.select_dtypes(include='float64')
         X_test_transformed = X_test_transformed.select_dtypes(include='float64')
+        logger.info("Fitting StandardScaler()")
         X_train_transformed = StandardScaler().fit_transform(X_train_transformed)
         X_test_transformed = StandardScaler().fit_transform(X_test_transformed)
         pca = PCA(n_components=2, random_state = seed)
+        logger.info("Fitting PCA()")
         X_train_transformed = pca.fit_transform(X_train_transformed)
         X_test_transformed = pca.fit_transform(X_test_transformed)
         
@@ -4043,11 +4087,13 @@ def plot_model(estimator,
         y_test_transformed = np.array(y_test_transformed)
         
         viz_ = DecisionViz(model2)
+        logger.info("Fitting Model")
         viz_.fit(X_train_transformed, y_train_transformed, features=['Feature One', 'Feature Two'], classes=['A', 'B'])
         viz_.draw(X_test_transformed, y_test_transformed)
         progress.value += 1
         clear_output()
         if save:
+            logger.info("Saving 'Decision Boundary.png' in current active directory")
             if system:
                 viz_.show(outpath="Decision Boundary.png")
             else:
@@ -4055,22 +4101,28 @@ def plot_model(estimator,
         else:
             viz_.show()
 
+        logger.info("Visual Rendered Successfully")
+
     elif plot == 'rfe':
         
         from yellowbrick.model_selection import RFECV 
         progress.value += 1
         visualizer = RFECV(model, cv=10)
         progress.value += 1
+        logger.info("Fitting Model")
         visualizer.fit(X_train, y_train)
         progress.value += 1
         clear_output()
         if save:
+            logger.info("Saving 'Recursive Feature Selection.png' in current active directory")
             if system:
                 visualizer.show(outpath="Recursive Feature Selection.png")
             else:
                 visualizer.show(outpath="Recursive Feature Selection.png", clear_figure=True)
         else:
             visualizer.show()
+
+        logger.info("Visual Rendered Successfully")
            
     elif plot == 'learning':
         
@@ -4079,16 +4131,20 @@ def plot_model(estimator,
         sizes = np.linspace(0.3, 1.0, 10)  
         visualizer = LearningCurve(model, cv=10, train_sizes=sizes, n_jobs=n_jobs_param, random_state=seed)
         progress.value += 1
+        logger.info("Fitting Model")
         visualizer.fit(X_train, y_train)
         progress.value += 1
         clear_output()
         if save:
+            logger.info("Saving 'Learning Curve.png' in current active directory")
             if system:
                 visualizer.show(outpath="Learning Curve.png")
             else:
                 visualizer.show(outpath="Learning Curve.png", clear_figure=True)
         else:
             visualizer.show()
+
+        logger.info("Visual Rendered Successfully")
 
     elif plot == 'manifold':
         
@@ -4098,16 +4154,20 @@ def plot_model(estimator,
         X_train_transformed = X_train.select_dtypes(include='float64') 
         visualizer = Manifold(manifold='tsne', random_state = seed)
         progress.value += 1
+        logger.info("Fitting Model")
         visualizer.fit_transform(X_train_transformed, y_train)
         progress.value += 1
         clear_output()
         if save:
+            logger.info("Saving 'Manifold Plot.png' in current active directory")
             if system:
                 visualizer.show(outpath="Manifold Plot.png")
             else:
                 visualizer.show(outpath="Manifold Plot.png", clear_figure=True)
         else:
             visualizer.show()
+
+        logger.info("Visual Rendered Successfully")
 
     elif plot == 'calibration':      
                 
@@ -4120,6 +4180,7 @@ def plot_model(estimator,
 
         ax1.plot([0, 1], [0, 1], "k:", label="Perfectly calibrated")
         progress.value += 1
+        logger.info("Scoring test/hold-out set")
         prob_pos = model.predict_proba(X_test)[:, 1]
         prob_pos = (prob_pos - prob_pos.min()) / (prob_pos.max() - prob_pos.min())
         fraction_of_positives, mean_predicted_value = calibration_curve(y_test, prob_pos, n_bins=10)
@@ -4137,6 +4198,7 @@ def plot_model(estimator,
         progress.value += 1
         clear_output()
         if save:
+            logger.info("Saving 'Calibration Plot.png' in current active directory")
             if system:
                 plt.savefig("Calibration Plot.png")
             else:
@@ -4144,10 +4206,14 @@ def plot_model(estimator,
         else:
             plt.show() 
         
+        logger.info("Visual Rendered Successfully")
+
     elif plot == 'vc':
         
         model_name = str(model).split("(")[0]
         
+        logger.info("Determining param_name")
+
         #SGD Classifier
         if model_name == 'SGDClassifier':
             param_name='l1_ratio'
@@ -4204,23 +4270,28 @@ def plot_model(estimator,
         else:
             clear_output()
             sys.exit('(Type Error): Plot not supported for this estimator. Try different estimator.')
-        #max_iter_predict
+        
+        logger.info("param_name: " + str(param_name))
             
         progress.value += 1
             
         from yellowbrick.model_selection import ValidationCurve
         viz = ValidationCurve(model, param_name=param_name, param_range=param_range,cv=10, 
                               random_state=seed)
+        logger.info("Fitting Model")
         viz.fit(X_train, y_train)
         progress.value += 1
         clear_output()
         if save:
+            logger.info("Saving 'Validation Curve.png' in current active directory")
             if system:
                 viz.show(outpath="Validation Curve.png")
             else:
                 viz.show(outpath="Validation Curve.png", clear_figure=True)
         else:
             viz.show()
+        
+        logger.info("Visual Rendered Successfully")
         
     elif plot == 'dimension':
     
@@ -4229,6 +4300,7 @@ def plot_model(estimator,
         from sklearn.decomposition import PCA
         progress.value += 1
         X_train_transformed = X_train.select_dtypes(include='float64') 
+        logger.info("Fitting StandardScaler()")
         X_train_transformed = StandardScaler().fit_transform(X_train_transformed)
         y_train_transformed = np.array(y_train)
         
@@ -4236,15 +4308,18 @@ def plot_model(estimator,
         features = int(features)
         
         pca = PCA(n_components=features, random_state=seed)
+        logger.info("Fitting PCA()")
         X_train_transformed = pca.fit_transform(X_train_transformed)
         progress.value += 1
         classes = y_train.unique().tolist()
         visualizer = RadViz(classes=classes, alpha=0.25)
+        logger.info("Fitting Model")
         visualizer.fit(X_train_transformed, y_train_transformed)     
         visualizer.transform(X_train_transformed)
         progress.value += 1
         clear_output()
         if save:
+            logger.info("Saving 'Dimension Plot.png' in current active directory")
             if system:
                 visualizer.show(outpath="Dimension Plot.png")
             else:
@@ -4252,12 +4327,14 @@ def plot_model(estimator,
         else:
             visualizer.show()
 
+        logger.info("Visual Rendered Successfully")
         
     elif plot == 'feature':
         
         if hasattr(estimator,'coef_'):
             variables = abs(model.coef_[0])
         else:
+            logger.warning("No coef_ found. Trying feature_importances_")
             variables = abs(model.feature_importances_)
         col_names = np.array(X_train.columns)
         coef_df = pd.DataFrame({'Variable': X_train.columns, 'Value': variables})
@@ -4278,6 +4355,7 @@ def plot_model(estimator,
         progress.value += 1
         clear_output()
         if save:
+            logger.info("Saving 'Feature Importance.png' in current active directory")
             if system:
                 plt.savefig("Feature Importance.png")
             else:
@@ -4285,12 +4363,17 @@ def plot_model(estimator,
                 plt.close()
         else:
             plt.show() 
+        
+        logger.info("Visual Rendered Successfully")
     
     elif plot == 'parameter':
         
         clear_output()
         param_df = pd.DataFrame.from_dict(estimator.get_params(estimator), orient='index', columns=['Parameters'])
         display(param_df)
+        logger.info("Visual Rendered Successfully")
+
+    logger.info("plot_model() succesfully completed......................................")
 
 def compare_models(blacklist = None,
                    whitelist = None, #added in pycaret==2.0.0
@@ -11514,7 +11597,6 @@ def get_logs(experiment_name = None, save = False):
     import mlflow
     from mlflow.tracking import MlflowClient
     
-    logger.info("Importing MLFlow Client")
     client = MlflowClient()
 
     if client.get_experiment_by_name(exp_name_log_) is None:

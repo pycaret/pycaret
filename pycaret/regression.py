@@ -8089,7 +8089,14 @@ def plot_model(estimator,
     
     #exception checking   
     import sys
+
+    import logging
+    logger.info("Initializing plot_model()")
+    logger.info("""plot_model(estimator={}, plot={}, save={}, verbose={}, system={})""".\
+        format(str(estimator), str(plot), str(save), str(verbose), str(system)))
     
+    logger.info("Checking exceptions")
+
     #checking plots (string)
     available_plots = ['residuals', 'error', 'cooks', 'feature', 'parameter', 'rfe', 'learning', 'manifold', 'vc']
     
@@ -8110,12 +8117,14 @@ def plot_model(estimator,
     
     '''
     
+    logger.info("Preloading libraries")
     #pre-load libraries
     import pandas as pd
     import ipywidgets as ipw
     from IPython.display import display, HTML, clear_output, update_display
     from copy import deepcopy
     
+    logger.info("Preparing display monitor")
     #progress bar
     progress = ipw.IntProgress(value=0, min=0, max=5, step=1 , description='Processing: ')
     if verbose:
@@ -8126,6 +8135,7 @@ def plot_model(estimator,
     import warnings
     warnings.filterwarnings('ignore') 
     
+    logger.info("Importing libraries")
     #general dependencies
     import matplotlib.pyplot as plt
     import numpy as np
@@ -8140,17 +8150,22 @@ def plot_model(estimator,
     #plots used for logging (controlled through plots_log_param) 
     #residuals, #error, and #feature importance
 
+    logger.info("plot type: " + str(plot)) 
+
     if plot == 'residuals':
         
         from yellowbrick.regressor import ResidualsPlot
         progress.value += 1
         visualizer = ResidualsPlot(model)
+        logger.info("Fitting Model")
         visualizer.fit(X_train, y_train)
         progress.value += 1
+        logger.info("Scoring test/hold-out set")
         visualizer.score(X_test, y_test)  # Evaluate the model on the test data
         progress.value += 1
         clear_output()
         if save:
+            logger.info("Saving 'Residuals.png' in current active directory")
             if system:
                 visualizer.show(outpath="Residuals.png")
             else:
@@ -8158,17 +8173,21 @@ def plot_model(estimator,
         else:
             visualizer.show()
         
+        logger.info("Visual Rendered Successfully")
         
     elif plot == 'error':
         from yellowbrick.regressor import PredictionError
         progress.value += 1
         visualizer = PredictionError(model)
+        logger.info("Fitting Model")
         visualizer.fit(X_train, y_train)
         progress.value += 1
+        logger.info("Scoring test/hold-out set")
         visualizer.score(X_test, y_test)
         progress.value += 1
         clear_output()
         if save:
+            logger.info("Saving 'Prediction Error.png' in current active directory")
             if system:
                 visualizer.show(outpath="Prediction Error.png")
             else:
@@ -8176,15 +8195,19 @@ def plot_model(estimator,
         else:
             visualizer.show()
         
+        logger.info("Visual Rendered Successfully")
+
     elif plot == 'cooks':
         from yellowbrick.regressor import CooksDistance
         progress.value += 1
         visualizer = CooksDistance()
         progress.value += 1
+        logger.info("Fitting Model")
         visualizer.fit(X, y)
         progress.value += 1
         clear_output()
         if save:
+            logger.info("Saving 'Cooks Distance.png' in current active directory")
             if system:
                 visualizer.show(outpath="Cooks Distance.png")
             else:
@@ -8192,16 +8215,20 @@ def plot_model(estimator,
         else:
             visualizer.show()
         
+        logger.info("Visual Rendered Successfully")
+
     elif plot == 'rfe':
         
         from yellowbrick.model_selection import RFECV 
         progress.value += 1
         visualizer = RFECV(model, cv=10)
         progress.value += 1
+        logger.info("Fitting Model")
         visualizer.fit(X_train, y_train)
         progress.value += 1
         clear_output()
         if save:
+            logger.info("Saving 'Recursive Feature Selection.png' in current active directory")
             if system:
                 visualizer.show(outpath="Recursive Feature Selection.png")
             else:
@@ -8209,6 +8236,8 @@ def plot_model(estimator,
         else:
             visualizer.show()
         
+        logger.info("Visual Rendered Successfully")
+
     elif plot == 'learning':
         
         from yellowbrick.model_selection import LearningCurve
@@ -8216,17 +8245,21 @@ def plot_model(estimator,
         sizes = np.linspace(0.3, 1.0, 10)  
         visualizer = LearningCurve(model, cv=10, train_sizes=sizes, n_jobs=1, random_state=seed)
         progress.value += 1
+        logger.info("Fitting Model")
         visualizer.fit(X_train, y_train)
         progress.value += 1
         clear_output()
         if save:
+            logger.info("Saving 'Learning Curve.png' in current active directory")
             if system:
                 visualizer.show(outpath="Learning Curve.png")
             else:
                 visualizer.show(outpath="Learning Curve.png", clear_figure=True)
         else:
             visualizer.show()
-    
+
+        logger.info("Visual Rendered Successfully")
+
     elif plot == 'manifold':
         
         from yellowbrick.features import Manifold
@@ -8235,10 +8268,12 @@ def plot_model(estimator,
         X_train_transformed = X_train.select_dtypes(include='float64') 
         visualizer = Manifold(manifold='tsne', random_state = seed)
         progress.value += 1
+        logger.info("Fitting Model")
         visualizer.fit_transform(X_train_transformed, y_train)
         progress.value += 1
         clear_output()
         if save:
+            logger.info("Saving 'Manifold.png' in current active directory")
             if system:
                 visualizer.show(outpath="Manifold.png")
             else:
@@ -8246,12 +8281,16 @@ def plot_model(estimator,
         else:
             visualizer.show()
 
+        logger.info("Visual Rendered Successfully")
+
     elif plot == 'vc':
         
         model_name = str(model).split("(")[0]
         
         not_allowed = ['LinearRegression', 'PassiveAggressiveRegressor']
         
+        logger.info("Determining param_name")
+
         if model_name in not_allowed:
             clear_output()
             sys.exit('(Value Error): Estimator not supported in Validation Curve Plot.')
@@ -8314,16 +8353,19 @@ def plot_model(estimator,
             clear_output()
             sys.exit('(Value Error): Estimator not supported in Validation Curve Plot.')
         
-            
+        logger.info("param_name: " + str(param_name))
+
         progress.value += 1
             
         from yellowbrick.model_selection import ValidationCurve
         viz = ValidationCurve(model, param_name=param_name, param_range=param_range,cv=10, 
                               random_state=seed)
+        logger.info("Fitting Model")
         viz.fit(X_train, y_train)
         progress.value += 1
         clear_output()
         if save:
+            logger.info("Saving 'Validation Curve.png' in current active directory")
             if system:
                 viz.show(outpath="Validation Curve.png")
             else:
@@ -8331,11 +8373,14 @@ def plot_model(estimator,
         else:
             viz.show()
         
+        logger.info("Visual Rendered Successfully")
+
     elif plot == 'feature':
         if hasattr(estimator, 'coef_'):
             try:
                 variables = abs(model.coef_)
             except:
+                logger.warning("No coef_ found. Trying feature_importances_")
                 variables = abs(model.feature_importances_)
         else:
             variables = abs(model.feature_importances_)
@@ -8357,6 +8402,7 @@ def plot_model(estimator,
         progress.value += 1
         clear_output()
         if save:
+            logger.info("Saving 'Feature Importance.png' in current active directory")
             if system:
                 plt.savefig("Feature Importance.png")
             else:
@@ -8365,11 +8411,17 @@ def plot_model(estimator,
         else:
             plt.show()
 
+        logger.info("Visual Rendered Successfully")
+
     elif plot == 'parameter':
         
         clear_output()
         param_df = pd.DataFrame.from_dict(estimator.get_params(estimator), orient='index', columns=['Parameters'])
         display(param_df)
+
+        logger.info("Visual Rendered Successfully")
+    
+    logger.info("plot_model() succesfully completed......................................")
 
 def interpret_model(estimator,
                    plot = 'summary',
