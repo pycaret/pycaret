@@ -365,6 +365,8 @@ def setup(data,
     import psutil
     psvm = psutil.virtual_memory()
     logger.info("Memory: " + str(psvm))
+    logger.info("Physical Core: " + str(psutil.cpu_count(logical=False)))
+    logger.info("Logical Core: " + str(psutil.cpu_count(logical=True)))
     
     logger.info("Checking libraries")
 
