@@ -10071,7 +10071,7 @@ def set_config(variable,value):
 
     import logging
     logger.info("Initializing set_config()")
-    logger.info("""get_config(variable={}, value={})""".\
+    logger.info("""set_config(variable={}, value={})""".\
         format(str(variable), str(value)))
 
     if variable == 'X':

@@ -2,7 +2,7 @@
 # Author: Moez Ali <moez.ali@queensu.ca>
 # License: MIT
 # Release: PyCaret 2.0x
-# Last modified : 23/07/2020
+# Last modified : 24/07/2020
 
 def setup(data, 
         categorical_features = None,
@@ -1679,7 +1679,7 @@ def create_model(model = None,
             metric.append('Completeness Score')
             metric_value.append(cs)
         except:
-            palogger.warning('No ground_truth parameter found. Cannot calculate Completeness Score')ss
+            palogger.warning('No ground_truth parameter found. Cannot calculate Completeness Score')
     
     try:
         logger.info("Creating Metrics dataframe")
@@ -4263,7 +4263,7 @@ def set_config(variable,value):
 
     import logging
     logger.info("Initializing set_config()")
-    logger.info("""get_config(variable={}, value={})""".\
+    logger.info("""set_config(variable={}, value={})""".\
         format(str(variable), str(value)))
         
     if variable == 'X':

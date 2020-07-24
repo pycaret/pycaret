@@ -2,7 +2,7 @@
 # Author: Moez Ali <moez.ali@queensu.ca>
 # License: MIT
 # Release: PyCaret 2.0x
-# Last modified : 23/07/2020
+# Last modified : 24/07/2020
 
 def setup(data, 
           target=None,
@@ -130,6 +130,212 @@ def setup(data,
     logger.info("PyCaret NLP Module")
     logger.info('version ' + str(ver))
     logger.info("Initializing setup()")
+    
+    #generate USI for mlflow tracking
+    import secrets
+    global USI
+    USI = secrets.token_hex(nbytes=2)
+    logger.info('USI: ' + str(USI))
+
+    logger.info("""setup(data={}, target={}, custom_stopwords={}, html={}, session_id={}, log_experiment={},
+                    experiment_name={}, log_plots={}, log_data={}, verbose={})""".format(\
+            str(data.shape), str(target), str(custom_stopwords), str(html),\
+            str(session_id),str(log_experiment), str(experiment_name), str(log_plots), str(log_data), str(verbose)))
+
+    #logging environment and libraries
+    logger.info("Checking environment")
+    
+    from platform import python_version, platform, python_build, machine
+
+    logger.info("python_version: " + str(python_version()))
+    logger.info("python_build: " + str(python_build()))
+    logger.info("machine: " + str(machine()))
+    logger.info("platform: " + str(platform()))
+
+    import psutil
+    psvm = psutil.virtual_memory()
+    logger.info("Memory: " + str(psvm))
+    
+    logger.info("Checking libraries")
+
+    try:
+        from pandas import __version__
+        logger.info("pd==" + str(__version__))
+    except:
+        logger.warning("pandas not found")
+
+    try:
+        from numpy import __version__
+        logger.info("numpy==" + str(__version__))
+    except:
+        logger.warning("numpy not found")
+
+    try:
+        from sklearn import __version__
+        logger.info("sklearn==" + str(__version__))
+    except:
+        logger.warning("sklearn not found")
+
+    try:
+        from xgboost import __version__
+        logger.info("xgboost==" + str(__version__))
+    except:
+        logger.warning("xgboost not found")
+
+    try:
+        from lightgbm import __version__
+        logger.info("lightgbm==" + str(__version__))
+    except:
+        logger.warning("lightgbm not found")
+
+    try:
+        from catboost import __version__
+        logger.info("catboost==" + str(__version__))
+    except:
+        logger.warning("catboost not found")
+
+    try:
+        from kmodes import __version__
+        logger.info("kmodes==" + str(__version__))
+    except:
+        logger.warning("kmodes not found")
+        
+    try:
+        from pyod.version import __version__
+        logger.info("pyod==" + str(__version__))
+    except:
+        logger.warning("pyod not found")
+
+    try:
+        import warnings
+        warnings.filterwarnings('ignore')
+        from gensim import __version__ 
+        logger.info("gensim==" + str(__version__))
+    except:
+        logger.warning("gensim not found")
+
+    try:
+        from spacy import __version__
+        logger.info("spacy==" + str(__version__))
+    except:
+        logger.warning("spacy not found")
+
+    try:
+        from nltk import __version__
+        logger.info("nltk==" + str(__version__))
+    except:
+        logger.warning("nltk not found")
+
+    try:
+        from textblob import __version__
+        logger.info("textblob==" + str(__version__))
+    except:
+        logger.warning("textblob not found")
+
+    try:
+        from pyLDAvis import __version__
+        logger.info("pyLDAvis==" + str(__version__))
+    except:
+        logger.warning("pyLDAvis not found")
+
+    try:
+        from mlxtend import __version__
+        logger.info("mlxtend==" + str(__version__))
+    except:
+        logger.warning("mlxtend not found")
+
+    try:
+        from matplotlib import __version__
+        logger.info("matplotlib==" + str(__version__))
+    except:
+        logger.warning("matplotlib not found")
+
+    try:
+        from seaborn import __version__
+        logger.info("seaborn==" + str(__version__))
+    except:
+        logger.warning("seaborn not found")
+
+    try:
+        from plotly import __version__
+        logger.info("plotly==" + str(__version__))
+    except:
+        logger.warning("plotly not found")
+
+    try:
+        from cufflinks import __version__
+        logger.info("cufflinks==" + str(__version__))
+    except:
+        logger.warning("cufflinks not found")
+
+    try:
+        from yellowbrick import __version__
+        logger.info("yellowbrick==" + str(__version__))
+    except:
+        logger.warning("yellowbrick not found")
+
+    try:
+        from shap import __version__
+        logger.info("shap==" + str(__version__))
+    except:
+        logger.warning("shap not found. cannot use interpret_model without shap.")
+
+    try:
+        from pandas_profiling import __version__
+        logger.info("pandas_profiling==" + str(__version__))
+    except:
+        logger.warning("pandas_profiling not found")
+
+    try:
+        from wordcloud import __version__
+        logger.info("wordcloud==" + str(__version__))
+    except:
+        logger.warning("wordcloud not found")
+
+    try:
+        from umap import __version__
+        logger.info("umap==" + str(__version__))
+    except:
+        logger.warning("umap not found")
+
+    try:
+        from IPython import __version__
+        logger.info("IPython==" + str(__version__))
+    except:
+        logger.warning("IPython not found")
+
+    try:
+        from ipywidgets import __version__
+        logger.info("ipywidgets==" + str(__version__))
+    except:
+        logger.warning("ipywidgets not found")
+
+    try:
+        from joblib import __version__
+        logger.info("joblib==" + str(__version__))
+    except:
+        logger.warning("joblib not found")
+
+    try:
+        from imblearn import __version__
+        logger.info("imblearn==" + str(__version__))
+    except:
+        logger.warning("imblearn not found")
+
+    try:
+        from mlflow.version import VERSION
+        import warnings
+        warnings.filterwarnings('ignore') 
+        logger.info("mlflow==" + str(VERSION))
+    except:
+        logger.warning("mlflow not found")
+
+    try:
+        from awscli import __version__
+        logger.info("awscli==" + str(__version__))
+    except:
+        logger.warning("awscli not found. cannot use deploy_model without awscli")
+
     logger.info("Checking Exceptions")
 
     #run_time
@@ -271,7 +477,7 @@ def setup(data,
 
     #defining global variables
     global text, id2word, corpus, data_, seed, target_, experiment__,\
-        exp_name_log, logging_param, log_plots_param, USI
+        exp_name_log, logging_param, log_plots_param
     
     #create an empty list for pickling later.
     try:
@@ -643,10 +849,6 @@ def setup(data,
     runtime_end = time.time()
     runtime = np.array(runtime_end - runtime_start).round(2)
 
-    #mlflow create experiment (name defined here)
-
-    USI = secrets.token_hex(nbytes=2)
-
     if logging_param:
 
         logger.info("Creating MLFlow logs")
@@ -825,6 +1027,9 @@ def create_model(model=None,
     
     import logging
     logger.info("Initializing create_model()")
+    logger.info("""create_model(model={}, multi_core={}, num_topics={}, verbose={}, system={})""".\
+    format(str(model), str(multi_core), str(num_topics),  str(verbose), str(system)))
+        
     logger.info("Checking exceptions")
 
     #run_time
@@ -1180,6 +1385,8 @@ def assign_model(model,
     
     import logging
     logger.info("Initializing assign_model()")
+    logger.info("""assign_model(model={}, verbose={})""".\
+        format(str(model), str(verbose)))
     
     #ignore warnings
     import warnings
@@ -2226,6 +2433,9 @@ def tune_model(model=None,
 
     import logging
     logger.info("Initializing tune_model()")
+    logger.info("""tune_model(model={}, multi_core={}, supervised_target={}, estimator={}, optimize={}, custom_grid={}, auto_fe={}, fold={}, verbose={})""".\
+        format(str(model), str(multi_core), str(supervised_target), str(estimator), str(optimize), str(custom_grid), str(auto_fe), str(fold), str(verbose)))
+
     logger.info("Checking exceptions")
 
     #ignore warnings
@@ -3192,7 +3402,9 @@ def save_model(model, model_name,
     """
     import logging
     logger.info("Initializing save_model()")
-    
+    logger.info("""save_model(model={}, model_name={}, verbose={})""".\
+        format(str(model), str(model_name), str(verbose)))
+
     import joblib
     model_name = model_name + '.pkl'
     joblib.dump(model, model_name)
@@ -3374,6 +3586,8 @@ def get_config(variable):
 
     import logging
     logger.info("Initializing get_config()")
+    logger.info("""get_config(variable={})""".\
+        format(str(variable)))
 
     if variable == 'text':
         global_var = text
@@ -3443,7 +3657,9 @@ def set_config(variable,value):
 
     import logging
     logger.info("Initializing set_config()")
-
+    logger.info("""set_config(variable={}, value={})""".\
+        format(str(variable), str(value)))
+        
     if variable == 'text':
         global text
         text = value
