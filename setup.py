@@ -13,7 +13,7 @@ with open('requirements.txt') as f:
 
 setup(
     name="pycaret-nightly",
-    version="0.34",
+    version="0.35",
     description="Nightly build of PyCaret - An open source, low-code machine learning library in Python.",
     long_description=readme(),
     long_description_content_type="text/markdown",

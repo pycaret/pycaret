@@ -2,7 +2,7 @@
 # Author: Moez Ali <moez.ali@queensu.ca>
 # License: MIT
 # Release: PyCaret 2.0x
-# Last modified : 23/07/2020
+# Last modified : 24/07/2020
 
 def setup(data,  
           target,   
@@ -471,6 +471,13 @@ def setup(data,
     logger.info("PyCaret Classification Module")
     logger.info('version ' + str(ver))
     logger.info("Initializing setup()")
+
+    #generate USI for mlflow tracking
+    import secrets
+    global USI
+    USI = secrets.token_hex(nbytes=2)
+    logger.info('USI: ' + str(USI))
+
     logger.info("""setup(data={}, target={}, train_size={}, sampling={}, sample_estimator={}, categorical_features={}, categorical_imputation={}, ordinal_features={},
                     high_cardinality_features={}, high_cardinality_method={}, numeric_features={}, numeric_imputation={}, date_features={}, ignore_features={}, normalize={},
                     normalize_method={}, transformation={}, transformation_method={}, handle_unknown_categorical={}, unknown_categorical_method={}, pca={}, pca_method={},
@@ -499,6 +506,10 @@ def setup(data,
     logger.info("python_build: " + str(python_build()))
     logger.info("machine: " + str(machine()))
     logger.info("platform: " + str(platform()))
+
+    import psutil
+    psvm = psutil.virtual_memory()
+    logger.info("Memory: " + str(psvm))
 
     logger.info("Checking libraries")
 
@@ -1007,7 +1018,6 @@ def setup(data,
     import pandas as pd
     import ipywidgets as ipw
     from IPython.display import display, HTML, clear_output, update_display
-    import secrets
     import os
     
     #pandas option
@@ -1083,7 +1093,7 @@ def setup(data,
     #declaring global variables to be accessed by other functions
     global X, y, X_train, X_test, y_train, y_test, seed, prep_pipe, experiment__,\
         folds_shuffle_param, n_jobs_param, create_model_container, master_model_container,\
-        display_container, exp_name_log, logging_param, log_plots_param, USI,\
+        display_container, exp_name_log, logging_param, log_plots_param,\
         fix_imbalance_param, fix_imbalance_method_param
     
     #generate seed to be used globally
@@ -1984,10 +1994,6 @@ def setup(data,
     #end runtime
     runtime_end = time.time()
     runtime = np.array(runtime_end - runtime_start).round(2)
-
-    #mlflow create experiment (name defined here)
-
-    USI = secrets.token_hex(nbytes=2)
 
     if logging_param:
         
@@ -8905,8 +8911,6 @@ def interpret_model(estimator,
     Warnings:
     --------- 
     - interpret_model doesn't support multiclass problems.
-      
-         
          
     """
     
@@ -8919,6 +8923,13 @@ def interpret_model(estimator,
     
     import sys
     
+    import logging
+    logger.info("Initializing interpret_model()")
+    logger.info("""interpret_model(estimator={}, plot={}, feature={}, observation={})""".\
+        format(str(estimator), str(plot), str(feature), str(observation)))
+
+    logger.info("Checking exceptions")
+
     #allowed models
     allowed_models = ['RandomForestClassifier',
                       'DecisionTreeClassifier',
@@ -8948,7 +8959,7 @@ def interpret_model(estimator,
     
     '''
         
-    
+    logger.info("Importing libraries")
     #general dependencies
     import numpy as np
     import pandas as pd
@@ -8957,96 +8968,142 @@ def interpret_model(estimator,
     #storing estimator in model variable
     model = estimator
 
-    
     #defining type of classifier
     type1 = ['RandomForestClassifier','DecisionTreeClassifier','ExtraTreesClassifier', 'LGBMClassifier']
     type2 = ['GradientBoostingClassifier', 'XGBClassifier', 'CatBoostClassifier']
     
     if plot == 'summary':
+
+        logger.info("plot type: summary")
         
         if model_name in type1:
-        
+            
+            logger.info("model type detected: type 1")
+            logger.info("Creating TreeExplainer")
             explainer = shap.TreeExplainer(model)
+            logger.info("Compiling shap values")
             shap_values = explainer.shap_values(X_test)
             shap.summary_plot(shap_values, X_test)
+            logger.info("Visual Rendered Successfully")
             
         elif model_name in type2:
             
+            logger.info("model type detected: type 2")
+            logger.info("Creating TreeExplainer")
             explainer = shap.TreeExplainer(model)
+            logger.info("Compiling shap values")
             shap_values = explainer.shap_values(X_test)
             shap.summary_plot(shap_values, X_test)
+            logger.info("Visual Rendered Successfully")
                               
     elif plot == 'correlation':
         
+        logger.info("plot type: correlation")
+
         if feature == None:
             
+            logger.warning("No feature passed. Default value of feature used for correlation plot: " + str(X_test.columns[0]))
             dependence = X_test.columns[0]
             
         else:
             
+            logger.warning("feature value passed. Feature used for correlation plot: " + str(X_test.columns[0]))
             dependence = feature
         
         if model_name in type1:
-                
+            logger.info("model type detected: type 1")
+            logger.info("Creating TreeExplainer")    
             explainer = shap.TreeExplainer(model)
+            logger.info("Compiling shap values")
             shap_values = explainer.shap_values(X_test)
             shap.dependence_plot(dependence, shap_values[1], X_test)
+            logger.info("Visual Rendered Successfully")
         
         elif model_name in type2:
-            
+            logger.info("model type detected: type 2")
+            logger.info("Creating TreeExplainer")  
             explainer = shap.TreeExplainer(model)
+            logger.info("Compiling shap values")
             shap_values = explainer.shap_values(X_test) 
             shap.dependence_plot(dependence, shap_values, X_test)
+            logger.info("Visual Rendered Successfully")
         
     elif plot == 'reason':
         
+        logger.info("plot type: reason")
+
         if model_name in type1:
-            
+            logger.info("model type detected: type 1")
+
             if observation is None:
-                
+                logger.warning("Observation set to None. Model agnostic plot will be rendered.")
+                logger.info("Creating TreeExplainer") 
                 explainer = shap.TreeExplainer(model)
+                logger.info("Compiling shap values")
                 shap_values = explainer.shap_values(X_test)
                 shap.initjs()
+                logger.info("Visual Rendered Successfully")
+                logger.info("interpret_model() succesfully completed......................................")
                 return shap.force_plot(explainer.expected_value[1], shap_values[1], X_test)
             
             else: 
                 
                 if model_name == 'LGBMClassifier':
-                    
+                    logger.info("model type detected: LGBMClassifier")
+
                     row_to_show = observation
                     data_for_prediction = X_test.iloc[row_to_show]
+                    logger.info("Creating TreeExplainer") 
                     explainer = shap.TreeExplainer(model)
+                    logger.info("Compiling shap values")  
                     shap_values = explainer.shap_values(X_test)
                     shap.initjs()
+                    logger.info("Visual Rendered Successfully")
+                    logger.info("interpret_model() succesfully completed......................................")
                     return shap.force_plot(explainer.expected_value[1], shap_values[0][row_to_show], data_for_prediction)    
                 
                 else:
-                    
+                    logger.info("model type detected: Unknown")
                     row_to_show = observation
                     data_for_prediction = X_test.iloc[row_to_show]
+                    logger.info("Creating TreeExplainer")  
                     explainer = shap.TreeExplainer(model)
+                    logger.info("Compiling shap values")  
                     shap_values = explainer.shap_values(data_for_prediction)
                     shap.initjs()
+                    logger.info("Visual Rendered Successfully")
+                    logger.info("interpret_model() succesfully completed......................................")
                     return shap.force_plot(explainer.expected_value[1], shap_values[1], data_for_prediction)        
 
             
         elif model_name in type2:
+            logger.info("model type detected: type 2")
 
             if observation is None:
-                
+                logger.warning("Observation set to None. Model agnostic plot will be rendered.")
+                logger.info("Creating TreeExplainer")  
                 explainer = shap.TreeExplainer(model)
+                logger.info("Compiling shap values")  
                 shap_values = explainer.shap_values(X_test)
                 shap.initjs()
+                logger.info("Visual Rendered Successfully")
+                logger.info("interpret_model() succesfully completed......................................")
                 return shap.force_plot(explainer.expected_value, shap_values, X_test)  
                 
             else:
                 
                 row_to_show = observation
                 data_for_prediction = X_test.iloc[row_to_show]
+                logger.info("Creating TreeExplainer") 
                 explainer = shap.TreeExplainer(model)
+                logger.info("Compiling shap values")  
                 shap_values = explainer.shap_values(X_test)
                 shap.initjs()
+                logger.info("Visual Rendered Successfully")
+                logger.info("interpret_model() succesfully completed......................................")
                 return shap.force_plot(explainer.expected_value, shap_values[row_to_show,:], X_test.iloc[row_to_show,:])
+
+    logger.info("interpret_model() succesfully completed......................................")
 
 def calibrate_model(estimator,
                     method = 'sigmoid',
