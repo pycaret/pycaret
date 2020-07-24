@@ -27,5 +27,6 @@ datefinder>=0.7.0
 DateTime>=4.3
 mlflow
 imbalanced-learn
+psutil
 #awscli - removing it as its only needed for deploy_model() 
 #shap - removing shap as it's causing issues building Docker image. 

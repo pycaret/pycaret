@@ -905,7 +905,9 @@ def setup(data,
             mlflow.set_tag("Run ID", RunID)
 
             # Log the Dictionary and doc2bow
+            logger.info("SubProcess save_model() called ==================================")
             save_model(id2word, 'Dictionary', verbose=False)
+            logger.info("SubProcess save_model() end ==================================")
             mlflow.log_artifact('Dictionary' + '.pkl')
             size_bytes = Path('Dictionary.pkl').stat().st_size
             size_kb = np.round(size_bytes/1000, 2)
@@ -928,6 +930,8 @@ def setup(data,
             # Log plots
             if log_plots:
                 
+                logger.info("SubProcess plot_model() called ==================================")
+
                 plot_model(plot='frequency', save=True, system=False)
                 mlflow.log_artifact('Word Frequency.html')
                 os.remove('Word Frequency.html')
@@ -943,6 +947,8 @@ def setup(data,
                 plot_model(plot='pos', save=True, system=False)
                 mlflow.log_artifact('POS.html')
                 os.remove('POS.html')
+
+                logger.info("SubProcess plot_model() end ==================================")
 
     if verbose:
         clear_output()
@@ -1296,14 +1302,7 @@ def create_model(model=None,
                     params.pop(i)
 
             mlflow.log_params(params)
-                        
-            # Log internal parameters
-            mlflow.log_param("create_model_model", model)
-            mlflow.log_param("create_model_multi_core", multi_core)
-            mlflow.log_param("create_model_num_topics", num_topics)
-            mlflow.log_param("create_model_verbose", verbose)
-            mlflow.log_param("create_model_system", system)
-            
+   
             #set tag of compare_models
             mlflow.set_tag("Source", "create_model")
             
@@ -1315,7 +1314,9 @@ def create_model(model=None,
             mlflow.set_tag("Run ID", RunID)
 
             # Log model and transformation pipeline
+            logger.info("SubProcess save_model() called ==================================")
             save_model(model, 'Trained Model', verbose=False)
+            logger.info("SubProcess save_model() end ==================================")
             mlflow.log_artifact('Trained Model' + '.pkl')
             size_bytes = Path('Trained Model.pkl').stat().st_size
             size_kb = np.round(size_bytes/1000, 2)
@@ -2687,13 +2688,13 @@ def tune_model(model=None,
                 update_display(monitor, display_id = 'monitor')
 
         #create and assign the model to dataset d
-        logger.info("SubProcess create_model() called")
+        logger.info("SubProcess create_model() called ==================================")
         m = create_model(model=model, multi_core=multi_core, num_topics=i, verbose=False)
-        logger.info("SubProcess create_model() end")
+        logger.info("SubProcess create_model() end ==================================")
 
-        logger.info("SubProcess assign_model() called")
+        logger.info("SubProcess assign_model() called ==================================")
         d = assign_model(m, verbose=False)
-        logger.info("SubProcess assign_model() ends")
+        logger.info("SubProcess assign_model() end ==================================")
 
         if problem in ['classification', 'regression'] and auto_fe:
             d['Polarity'] = polarity
