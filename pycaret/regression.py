@@ -5559,7 +5559,7 @@ def tune_model(estimator,
                         }        
 
         if method == 'RandomGrid':
-        model_grid = RandomizedSearchCV(estimator=LinearRegression(n_jobs=n_jobs_param), param_distributions=param_grid, 
+            model_grid = RandomizedSearchCV(estimator=LinearRegression(n_jobs=n_jobs_param), param_distributions=param_grid, 
                                         scoring=optimize, n_iter=n_iter, cv=cv, random_state=seed,
                                             n_jobs=n_jobs_param, iid=False, **kwargs)
         elif method == 'Grid':
@@ -5608,7 +5608,7 @@ def tune_model(estimator,
                         }
 
         if method == 'RandomGrid':
-        model_grid = RandomizedSearchCV(estimator=Ridge(random_state=seed), param_distributions=param_grid,
+            model_grid = RandomizedSearchCV(estimator=Ridge(random_state=seed), param_distributions=param_grid,
                                        scoring=optimize, n_iter=n_iter, cv=cv, random_state=seed,
                                             n_jobs=n_jobs_param, iid=False, **kwargs)
         elif method == 'Grid':
@@ -5658,7 +5658,7 @@ def tune_model(estimator,
                         'eps': [0.00001, 0.0001, 0.001, 0.01, 0.05, 0.0005, 0.005, 0.00005, 0.02, 0.007]}
 
         if method == 'RandomGrid':
-        model_grid = RandomizedSearchCV(estimator=Lars(), param_distributions=param_grid,
+            model_grid = RandomizedSearchCV(estimator=Lars(), param_distributions=param_grid,
                                        scoring=optimize, n_iter=n_iter, cv=cv, random_state=seed,
                                             n_jobs=n_jobs_param, **kwargs)
         elif method == 'Grid':
@@ -5683,7 +5683,7 @@ def tune_model(estimator,
                         'eps': [0.00001, 0.0001, 0.001, 0.01, 0.05, 0.0005, 0.005, 0.00005, 0.02, 0.007]}
 
         if method == 'RandomGrid':
-        model_grid = RandomizedSearchCV(estimator=LassoLars(), param_distributions=param_grid,
+            model_grid = RandomizedSearchCV(estimator=LassoLars(), param_distributions=param_grid,
                                        scoring=optimize, n_iter=n_iter, cv=cv, random_state=seed,
                                             n_jobs=n_jobs_param, **kwargs)
         elif method == 'Grid':
@@ -5857,7 +5857,7 @@ def tune_model(estimator,
                         }    
 
         if method == 'RandomGrid':
-        model_grid = RandomizedSearchCV(estimator=TheilSenRegressor(random_state=seed, n_jobs=n_jobs_param), 
+            model_grid = RandomizedSearchCV(estimator=TheilSenRegressor(random_state=seed, n_jobs=n_jobs_param), 
                                             param_distributions=param_grid, scoring=optimize, n_iter=n_iter, cv=cv, 
                                             random_state=seed, n_jobs=n_jobs_param, **kwargs)
         elif method == 'Grid':
@@ -6049,7 +6049,7 @@ def tune_model(estimator,
                         }  
 
         if method == 'RandomGrid':
-        model_grid = RandomizedSearchCV(estimator=ExtraTreesRegressor(random_state=seed, n_jobs=n_jobs_param), 
+            model_grid = RandomizedSearchCV(estimator=ExtraTreesRegressor(random_state=seed, n_jobs=n_jobs_param), 
                                             param_distributions=param_grid, scoring=optimize, n_iter=n_iter, cv=cv, 
                                             random_state=seed, n_jobs=n_jobs_param, **kwargs)
         elif method == 'Grid':
@@ -6076,7 +6076,7 @@ def tune_model(estimator,
                         }    
 
         if method == 'RandomGrid':
-        model_grid = RandomizedSearchCV(estimator=AdaBoostRegressor(base_estimator = _estimator_.base_estimator, random_state=seed, ), 
+            model_grid = RandomizedSearchCV(estimator=AdaBoostRegressor(base_estimator = _estimator_.base_estimator, random_state=seed, ), 
                                             param_distributions=param_grid, scoring=optimize, n_iter=n_iter, cv=cv, 
                                             random_state=seed, n_jobs=n_jobs_param, **kwargs)
         elif method == 'Grid':
@@ -6109,7 +6109,7 @@ def tune_model(estimator,
                         }     
 
         if method == 'RandomGrid':
-        model_grid = RandomizedSearchCV(estimator=GradientBoostingRegressor(random_state=seed), 
+            model_grid = RandomizedSearchCV(estimator=GradientBoostingRegressor(random_state=seed), 
                                             param_distributions=param_grid, scoring=optimize, n_iter=n_iter, cv=cv, 
                                             random_state=seed, n_jobs=n_jobs_param, **kwargs)
         elif method == 'Grid':
@@ -6138,7 +6138,7 @@ def tune_model(estimator,
                         }    
 
         if method == 'RandomGrid':
-        model_grid = RandomizedSearchCV(estimator=MLPRegressor(random_state=seed), 
+            model_grid = RandomizedSearchCV(estimator=MLPRegressor(random_state=seed), 
                                             param_distributions=param_grid, scoring=optimize, n_iter=n_iter, cv=cv, 
                                             random_state=seed, n_jobs=n_jobs_param, **kwargs)
         elif method == 'Grid':
@@ -6169,7 +6169,7 @@ def tune_model(estimator,
                         }
 
         if method == 'RandomGrid':
-        model_grid = RandomizedSearchCV(estimator=XGBRegressor(random_state=seed, n_jobs=n_jobs_param, verbosity=0, ), 
+            model_grid = RandomizedSearchCV(estimator=XGBRegressor(random_state=seed, n_jobs=n_jobs_param, verbosity=0, ), 
                                             param_distributions=param_grid, scoring=optimize, n_iter=n_iter, cv=cv, 
                                             random_state=seed, n_jobs=n_jobs_param, **kwargs)
         elif method == 'Grid':
@@ -6201,7 +6201,7 @@ def tune_model(estimator,
                         }
             
         if method == 'RandomGrid':
-        model_grid = RandomizedSearchCV(estimator=lgb.LGBMRegressor(random_state=seed, n_jobs=n_jobs_param), 
+            model_grid = RandomizedSearchCV(estimator=lgb.LGBMRegressor(random_state=seed, n_jobs=n_jobs_param), 
                                             param_distributions=param_grid, scoring=optimize, n_iter=n_iter, cv=cv, 
                                             random_state=seed, n_jobs=n_jobs_param, **kwargs)
         elif method == 'Grid':
@@ -6230,7 +6230,7 @@ def tune_model(estimator,
                         }
             
         if method == 'RandomGrid':
-        model_grid = RandomizedSearchCV(estimator=CatBoostRegressor(random_state=seed, silent=True, thread_count=n_jobs_param), 
+            model_grid = RandomizedSearchCV(estimator=CatBoostRegressor(random_state=seed, silent=True, thread_count=n_jobs_param), 
                                             param_distributions=param_grid, scoring=optimize, n_iter=n_iter, cv=cv, 
                                             random_state=seed, n_jobs=n_jobs_param, **kwargs)
         elif method == 'Grid':
@@ -6257,7 +6257,7 @@ def tune_model(estimator,
                         }
             
         if method == 'RandomGrid':
-        model_grid = RandomizedSearchCV(estimator=BaggingRegressor(base_estimator=_estimator_.base_estimator, random_state=seed, n_jobs=n_jobs_param), 
+            model_grid = RandomizedSearchCV(estimator=BaggingRegressor(base_estimator=_estimator_.base_estimator, random_state=seed, n_jobs=n_jobs_param), 
                                             param_distributions=param_grid, scoring=optimize, n_iter=n_iter, cv=cv, 
                                             random_state=seed, n_jobs=n_jobs_param, **kwargs)
         elif method == 'Grid':
