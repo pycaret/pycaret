@@ -27,4 +27,10 @@ def test_model_tuning_mse():
     model = pycaret.regression.tune_model(pycaret.regression.create_model('lr', verbose = False), verbose=False, optimize = 'MSE')
     assert hasattr(model, 'predict')
 
+def test_model_tuning_grid():
+    data = pycaret.datasets.get_data('boston')
+    data = data.head(50)
+    reg1 = pycaret.regression.setup(data, target='medv',silent=True, verbose=False, html=False, session_id=123)
+    model = pycaret.regression.tune_model(pycaret.regression.create_model('lr', verbose = False), verbose=False, method='Grid')
+    assert hasattr(model, 'predict')
 
