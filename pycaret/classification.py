@@ -5475,7 +5475,7 @@ def tune_model(estimator = None,
     import numpy as np
     from sklearn import metrics
     from sklearn.model_selection import StratifiedKFold
-    from sklearn.model_selection import RandomizedSearchCV
+    from sklearn.model_selection import RandomizedSearchCV, GridSearchCV
     
     #setting numpy seed
     np.random.seed(seed)
