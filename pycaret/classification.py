@@ -5614,7 +5614,7 @@ def tune_model(estimator = None,
     '''
     
     logger.info("Defining Hyperparameters")
-    logger.info("Initializing RandomizedSearchCV")
+    logger.info(f"Initializing {available_method[method]}")
 
     #setting turbo parameters
     cv = 3
