@@ -5408,7 +5408,7 @@ def tune_model(estimator = None,
         'RandomGrid': 'RandomizedSearchCV',
     }
     if method not in available_method:
-        sys.exit(f"(Value Error): Method parameter only accepts {len(available_method)} values: {', '.join(available_method.values()[:-1])} or {available_method.values()[-1]}.")
+        sys.exit(f"(Value Error): Method parameter only accepts {len(available_method)} values: {', '.join(list(available_method.values())[:-1])} or {list(available_method.values())[-1]}.")
 
     #checking verbose parameter
     if type(verbose) is not bool:
