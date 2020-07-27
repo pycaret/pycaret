@@ -1139,13 +1139,15 @@ class Dummify(BaseEstimator,TransformerMixin):
       # save non categorical data
       self.data_nonc = data.drop(self.target,axis=1,errors='ignore').select_dtypes(exclude=('object'))
       self.target_column =  data[[self.target]]
-      # # plus we will only take object data types
+      # plus we will only take object data types
+      categorical_data = data.drop(self.target,axis=1,errors='ignore').select_dtypes(include=('object'))
+      # now fit the trainin column
+      self.ohe.fit(categorical_data)
+      # get transformed names
       try:
-        self.data_columns  = pd.get_dummies(data.drop(self.target,axis=1,errors='ignore').select_dtypes(include=('object'))).columns
+        self.data_columns = self.ohe.get_feature_names(categorical_data.columns)
       except:
         self.data_columns = []
-      # # now fit the trainin column
-      self.ohe.fit(data.drop(self.target,axis=1,errors='ignore').select_dtypes(include=('object')))
     else:
       None
     return(None)
