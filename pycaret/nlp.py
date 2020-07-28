@@ -2,7 +2,7 @@
 # Author: Moez Ali <moez.ali@queensu.ca>
 # License: MIT
 # Release: PyCaret 2.0x
-# Last modified : 24/07/2020
+# Last modified : 27/07/2020
 
 def setup(data, 
           target=None,
@@ -147,17 +147,40 @@ def setup(data,
     
     from platform import python_version, platform, python_build, machine
 
-    logger.info("python_version: " + str(python_version()))
-    logger.info("python_build: " + str(python_build()))
-    logger.info("machine: " + str(machine()))
-    logger.info("platform: " + str(platform()))
+    try:
+        logger.info("python_version: " + str(python_version()))
+    except:
+        logger.warning("cannot find platform.python_version")
+
+    try:
+        logger.info("python_build: " + str(python_build()))
+    except:
+        logger.warning("cannot find platform.python_build")
+
+    try:
+        logger.info("machine: " + str(machine()))
+    except:
+        logger.warning("cannot find platform.machine")
+
+    try:
+        logger.info("platform: " + str(platform()))
+    except:
+        logger.warning("cannot find platform.platform")
 
     import psutil
-    psvm = psutil.virtual_memory()
-    logger.info("Memory: " + str(psvm))
-    logger.info("Physical Core: " + str(psutil.cpu_count(logical=False)))
-    logger.info("Logical Core: " + str(psutil.cpu_count(logical=True)))
-    
+
+    try:
+        psvm = psutil.virtual_memory()
+        logger.info("Memory: " + str(psvm))
+    except:
+        logger.warning("cannot find psutil.version_memory")
+
+    try:
+        logger.info("Physical Core: " + str(psutil.cpu_count(logical=False)))
+        logger.info("Logical Core: " + str(psutil.cpu_count(logical=True)))
+    except:
+        logger.warning("cannot find psutil.cpu_count")
+
     logger.info("Checking libraries")
 
     try:
@@ -171,43 +194,7 @@ def setup(data,
         logger.info("numpy==" + str(__version__))
     except:
         logger.warning("numpy not found")
-
-    try:
-        from sklearn import __version__
-        logger.info("sklearn==" + str(__version__))
-    except:
-        logger.warning("sklearn not found")
-
-    try:
-        from xgboost import __version__
-        logger.info("xgboost==" + str(__version__))
-    except:
-        logger.warning("xgboost not found")
-
-    try:
-        from lightgbm import __version__
-        logger.info("lightgbm==" + str(__version__))
-    except:
-        logger.warning("lightgbm not found")
-
-    try:
-        from catboost import __version__
-        logger.info("catboost==" + str(__version__))
-    except:
-        logger.warning("catboost not found")
-
-    try:
-        from kmodes import __version__
-        logger.info("kmodes==" + str(__version__))
-    except:
-        logger.warning("kmodes not found")
         
-    try:
-        from pyod.version import __version__
-        logger.info("pyod==" + str(__version__))
-    except:
-        logger.warning("pyod not found")
-
     try:
         import warnings
         warnings.filterwarnings('ignore')
@@ -241,88 +228,10 @@ def setup(data,
         logger.warning("pyLDAvis not found")
 
     try:
-        from mlxtend import __version__
-        logger.info("mlxtend==" + str(__version__))
-    except:
-        logger.warning("mlxtend not found")
-
-    try:
-        from matplotlib import __version__
-        logger.info("matplotlib==" + str(__version__))
-    except:
-        logger.warning("matplotlib not found")
-
-    try:
-        from seaborn import __version__
-        logger.info("seaborn==" + str(__version__))
-    except:
-        logger.warning("seaborn not found")
-
-    try:
-        from plotly import __version__
-        logger.info("plotly==" + str(__version__))
-    except:
-        logger.warning("plotly not found")
-
-    try:
-        from cufflinks import __version__
-        logger.info("cufflinks==" + str(__version__))
-    except:
-        logger.warning("cufflinks not found")
-
-    try:
-        from yellowbrick import __version__
-        logger.info("yellowbrick==" + str(__version__))
-    except:
-        logger.warning("yellowbrick not found")
-
-    try:
-        from shap import __version__
-        logger.info("shap==" + str(__version__))
-    except:
-        logger.warning("shap not found. cannot use interpret_model without shap.")
-
-    try:
-        from pandas_profiling import __version__
-        logger.info("pandas_profiling==" + str(__version__))
-    except:
-        logger.warning("pandas_profiling not found")
-
-    try:
         from wordcloud import __version__
         logger.info("wordcloud==" + str(__version__))
     except:
         logger.warning("wordcloud not found")
-
-    try:
-        from umap import __version__
-        logger.info("umap==" + str(__version__))
-    except:
-        logger.warning("umap not found")
-
-    try:
-        from IPython import __version__
-        logger.info("IPython==" + str(__version__))
-    except:
-        logger.warning("IPython not found")
-
-    try:
-        from ipywidgets import __version__
-        logger.info("ipywidgets==" + str(__version__))
-    except:
-        logger.warning("ipywidgets not found")
-
-    try:
-        from joblib import __version__
-        logger.info("joblib==" + str(__version__))
-    except:
-        logger.warning("joblib not found")
-
-    try:
-        from imblearn import __version__
-        logger.info("imblearn==" + str(__version__))
-    except:
-        logger.warning("imblearn not found")
 
     try:
         from mlflow.version import VERSION
@@ -332,11 +241,6 @@ def setup(data,
     except:
         logger.warning("mlflow not found")
 
-    try:
-        from awscli import __version__
-        logger.info("awscli==" + str(__version__))
-    except:
-        logger.warning("awscli not found. cannot use deploy_model without awscli")
 
     logger.info("Checking Exceptions")
 
@@ -347,7 +251,6 @@ def setup(data,
     #ignore warnings
     import warnings
     warnings.filterwarnings('ignore') 
-    
     
     """
     error handling starts here
@@ -1764,6 +1667,11 @@ def plot_model(model = None,
     #exception checking   
     import sys
     
+    import logging
+    logger.info("Initializing plot_model()")
+    logger.info("""plot_model(model={}, plot={}, topic_num={}, save={}, system={})""".\
+        format(str(model), str(plot), str(topic_num), str(save), str(system)))
+
     #ignore warnings
     import warnings
     warnings.filterwarnings('ignore') 
@@ -1771,7 +1679,9 @@ def plot_model(model = None,
     #setting default of topic_num
     if model is not None and topic_num is None:
         topic_num = 'Topic 0'
-        
+        logger.info("Topic selected. topic_num : " + str(topic_num))
+
+
     """
     exception handling starts here
     """
@@ -1801,6 +1711,8 @@ def plot_model(model = None,
             mod_type = 'rp'
             
     
+    logger.info("Checking exceptions")
+
     #plot checking
     allowed_plots = ['frequency', 'distribution', 'bigram', 'trigram', 'sentiment', 'pos', 'tsne', 'topic_model', 
                      'topic_distribution', 'wordcloud', 'umap']  
@@ -1826,7 +1738,7 @@ def plot_model(model = None,
     """
     
 
-    
+    logger.info("Importing libraries")
     #import dependencies
     import pandas as pd
     import numpy
@@ -1842,6 +1754,10 @@ def plot_model(model = None,
         save_param = True
     else:
         save_param = False
+    
+    logger.info("save_param set to " + str(save_param))
+
+    logger.info("plot type: " + str(plot))
 
     if plot == 'frequency':
         
@@ -1851,14 +1767,17 @@ def plot_model(model = None,
 
             def get_top_n_words(corpus, n=None):
                 vec = CountVectorizer()
+                logger.info("Fitting CountVectorizer()")  
                 bag_of_words = vec.fit_transform(corpus)
                 sum_words = bag_of_words.sum(axis=0) 
                 words_freq = [(word, sum_words[0, idx]) for word, idx in vec.vocabulary_.items()]
                 words_freq =sorted(words_freq, key = lambda x: x[1], reverse=True)
                 return words_freq[:n]
 
-            if topic_num is None:
+            logger.info("Rendering Visual")  
 
+            if topic_num is None:
+                logger.warning("topic_num set to None. Plot generated at corpus level.") 
                 common_words = get_top_n_words(data_[target_], n=100)
                 df2 = pd.DataFrame(common_words, columns = ['Text' , 'count'])
                 df3 = df2.groupby('Text').sum()['count'].sort_values(ascending=False).iplot(
@@ -1866,22 +1785,24 @@ def plot_model(model = None,
                 asFigure=save_param)
 
             else: 
-
                 title = str(topic_num) + ': ' + 'Top 100 words after removing stop words'
-
+                logger.info("SubProcess assign_model() called ==================================")
                 assigned_df = assign_model(model, verbose = False)
+                logger.info("SubProcess assign_model() end ==================================")
                 filtered_df = assigned_df.loc[assigned_df['Dominant_Topic'] == topic_num]
-
                 common_words = get_top_n_words(filtered_df[target_], n=100)
                 df2 = pd.DataFrame(common_words, columns = ['Text' , 'count'])
                 df3 = df2.groupby('Text').sum()['count'].sort_values(ascending=False).iplot(
                 kind='bar', yTitle='Count', linecolor='black', title=title, asFigure=save_param)
 
+            logger.info("Visual Rendered Successfully")  
+
             if save:
                 df3.write_html('Word Frequency.html')
+                logger.info("Saving 'Word Frequency.html' in current active directory")  
                 
         except:
-            
+            logger.warning("Invalid topic_num param or empty Vocab. Try changing Topic Number.")
             sys.exit('(Value Error): Invalid topic_num param or empty Vocab. Try changing Topic Number.')
                 
     
@@ -1890,9 +1811,10 @@ def plot_model(model = None,
         try:
         
             if topic_num is None:
-
+                logger.warning("topic_num set to None. Plot generated at corpus level.") 
                 b = data_[target_].apply(lambda x: len(str(x).split()))
                 b = pd.DataFrame(b)
+                logger.info("Rendering Visual")
                 b = b[target_].iplot(
                 kind='hist',
                 bins=100,
@@ -1903,13 +1825,15 @@ def plot_model(model = None,
                 asFigure=save_param)
 
             else:
-
                 title = str(topic_num) + ': ' + 'Word Count Distribution'
+                logger.info("SubProcess assign_model() called ==================================")
                 assigned_df = assign_model(model, verbose = False)
+                logger.info("SubProcess assign_model() end ==================================")
                 filtered_df = assigned_df.loc[assigned_df['Dominant_Topic'] == topic_num]
 
                 b = filtered_df[target_].apply(lambda x: len(str(x).split()))
                 b = pd.DataFrame(b)
+                logger.info("Rendering Visual")
                 b = b[target_].iplot(
                 kind='hist',
                 bins=100,
@@ -1919,11 +1843,14 @@ def plot_model(model = None,
                 title= title,
                 asFigure=save_param)
 
+            logger.info("Visual Rendered Successfully")  
+
             if save:
                 b.write_html('Distribution.html')
+                logger.info("Saving 'Distribution.html' in current active directory")  
 
         except:
-            
+            logger.warning("Invalid topic_num param or empty Vocab. Try changing Topic Number.")
             sys.exit('(Value Error): Invalid topic_num param or empty Vocab. Try changing Topic Number.')
                 
                 
@@ -1934,6 +1861,7 @@ def plot_model(model = None,
             from sklearn.feature_extraction.text import CountVectorizer
 
             def get_top_n_bigram(corpus, n=None):
+                logger.info("Fitting CountVectorizer()") 
                 vec = CountVectorizer(ngram_range=(2, 2)).fit(corpus)
                 bag_of_words = vec.transform(corpus)
                 sum_words = bag_of_words.sum(axis=0) 
@@ -1942,28 +1870,33 @@ def plot_model(model = None,
                 return words_freq[:n]
 
             if topic_num is None:
-
+                logger.warning("topic_num set to None. Plot generated at corpus level.") 
                 common_words = get_top_n_bigram(data_[target_], 100)
                 df3 = pd.DataFrame(common_words, columns = ['Text' , 'count'])
+                logger.info("Rendering Visual")
                 df3 = df3.groupby('Text').sum()['count'].sort_values(ascending=False).iplot(
                 kind='bar', yTitle='Count', linecolor='black', title='Top 100 bigrams after removing stop words', asFigure=save_param)
 
             else:
-
                 title = str(topic_num) + ': ' + 'Top 100 bigrams after removing stop words'
+                logger.info("SubProcess assign_model() called ==================================")
                 assigned_df = assign_model(model, verbose = False)
+                logger.info("SubProcess assign_model() end ==================================")
                 filtered_df = assigned_df.loc[assigned_df['Dominant_Topic'] == topic_num]
-
                 common_words = get_top_n_bigram(filtered_df[target_], 100)
                 df3 = pd.DataFrame(common_words, columns = ['Text' , 'count'])
+                logger.info("Rendering Visual")
                 df3 = df3.groupby('Text').sum()['count'].sort_values(ascending=False).iplot(
                 kind='bar', yTitle='Count', linecolor='black', title=title, asFigure=save_param)
 
+            logger.info("Visual Rendered Successfully")  
+
             if save:
-                df3.write_html('Bigram.html')            
+                df3.write_html('Bigram.html')
+                logger.info("Saving 'Bigram.html' in current active directory")              
     
         except:
-            
+            logger.warning("Invalid topic_num param or empty Vocab. Try changing Topic Number.")
             sys.exit('(Value Error): Invalid topic_num param or empty Vocab. Try changing Topic Number.')
             
     elif plot == 'trigram':
@@ -1974,6 +1907,7 @@ def plot_model(model = None,
 
             def get_top_n_trigram(corpus, n=None):
                 vec = CountVectorizer(ngram_range=(3, 3)).fit(corpus)
+                logger.info("Fitting CountVectorizer()") 
                 bag_of_words = vec.transform(corpus)
                 sum_words = bag_of_words.sum(axis=0) 
                 words_freq = [(word, sum_words[0, idx]) for word, idx in vec.vocabulary_.items()]
@@ -1981,27 +1915,33 @@ def plot_model(model = None,
                 return words_freq[:n]
 
             if topic_num is None:
-
+                logger.warning("topic_num set to None. Plot generated at corpus level.") 
                 common_words = get_top_n_trigram(data_[target_], 100)
                 df3 = pd.DataFrame(common_words, columns = ['Text' , 'count'])
+                logger.info("Rendering Visual")
                 df3 = df3.groupby('Text').sum()['count'].sort_values(ascending=False).iplot(
                 kind='bar', yTitle='Count', linecolor='black', title='Top 100 trigrams after removing stop words', asFigure=save_param)
 
             else:
-
                 title = str(topic_num) + ': ' + 'Top 100 trigrams after removing stop words'
+                logger.info("SubProcess assign_model() called ==================================")
                 assigned_df = assign_model(model, verbose = False)
+                logger.info("SubProcess assign_model() end ==================================")
                 filtered_df = assigned_df.loc[assigned_df['Dominant_Topic'] == topic_num]            
                 common_words = get_top_n_trigram(filtered_df[target_], 100)
                 df3 = pd.DataFrame(common_words, columns = ['Text' , 'count'])
+                logger.info("Rendering Visual")
                 df3 = df3.groupby('Text').sum()['count'].sort_values(ascending=False).iplot(
                 kind='bar', yTitle='Count', linecolor='black', title=title, asFigure=save_param)
 
+            logger.info("Visual Rendered Successfully")  
+
             if save:
                 df3.write_html('Trigram.html')  
+                logger.info("Saving 'Trigram.html' in current active directory")  
                 
         except:
-            
+            logger.warning("Invalid topic_num param or empty Vocab. Try changing Topic Number.")
             sys.exit('(Value Error): Invalid topic_num param or empty Vocab. Try changing Topic Number.')
             
    
@@ -2014,9 +1954,10 @@ def plot_model(model = None,
             from textblob import TextBlob
 
             if topic_num is None:
-
+                logger.warning("topic_num set to None. Plot generated at corpus level.") 
                 sentiments = data_[target_].map(lambda text: TextBlob(text).sentiment.polarity)
                 sentiments = pd.DataFrame(sentiments)
+                logger.info("Rendering Visual")
                 sentiments = sentiments[target_].iplot(
                 kind='hist',
                 bins=50,
@@ -2028,10 +1969,13 @@ def plot_model(model = None,
 
             else: 
                 title = str(topic_num) + ': ' + 'Sentiment Polarity Distribution'
+                logger.info("SubProcess assign_model() called ==================================")
                 assigned_df = assign_model(model, verbose = False)
+                logger.info("SubProcess assign_model() end ==================================")
                 filtered_df = assigned_df.loc[assigned_df['Dominant_Topic'] == topic_num] 
                 sentiments = filtered_df[target_].map(lambda text: TextBlob(text).sentiment.polarity)
                 sentiments = pd.DataFrame(sentiments)
+                logger.info("Rendering Visual")
                 sentiments = sentiments[target_].iplot(
                 kind='hist',
                 bins=50,
@@ -2041,11 +1985,14 @@ def plot_model(model = None,
                 title=title,
                 asFigure=save_param)
 
+            logger.info("Visual Rendered Successfully")  
+
             if save:
-                sentiments.write_html('Sentiments.html')              
+                sentiments.write_html('Sentiments.html')
+                logger.info("Saving 'Sentiments.html' in current active directory")                
          
         except:
-            
+            logger.warning("Invalid topic_num param or empty Vocab. Try changing Topic Number.")
             sys.exit('(Value Error): Invalid topic_num param or empty Vocab. Try changing Topic Number.')
             
             
@@ -2054,10 +2001,12 @@ def plot_model(model = None,
         from textblob import TextBlob
         
         b = list(id2word.token2id.keys())
+        logger.info("Fitting TextBlob()") 
         blob = TextBlob(str(b))
         pos_df = pd.DataFrame(blob.tags, columns = ['word' , 'pos'])
         pos_df = pos_df.loc[pos_df['pos'] != 'POS']
         pos_df = pos_df.pos.value_counts()[:20]
+        logger.info("Rendering Visual")
         pos_df = pos_df.iplot(
         kind='bar',
         xTitle='POS',
@@ -2065,13 +2014,18 @@ def plot_model(model = None,
         title='Top 20 Part-of-speech tagging for review corpus',
         asFigure=save_param)
 
+        logger.info("Visual Rendered Sucessfully")
+
         if save:
             pos_df.write_html('POS.html')  
+            logger.info("Saving 'POS.html' in current active directory")  
         
         
     elif plot == 'tsne':
         
+        logger.info("SubProcess assign_model() called ==================================")
         b = assign_model(model, verbose = False)
+        logger.info("SubProcess assign_model() end ==================================")
         b.dropna(axis=0, inplace=True) #droping rows where Dominant_Topic is blank
 
         c = []
@@ -2083,13 +2037,16 @@ def plot_model(model = None,
         bb = b[c]
 
         from sklearn.manifold import TSNE
+        logger.info("Fitting TSNE()") 
         X_embedded = TSNE(n_components=3).fit_transform(bb)
 
+        logger.info("Sorting Dataframe") 
         X = pd.DataFrame(X_embedded)
         X['Dominant_Topic'] = b['Dominant_Topic']
         X.sort_values(by='Dominant_Topic', inplace=True)
         X.dropna(inplace=True)
 
+        logger.info("Rendering Visual")
         import plotly.express as px
         df = X
         fig = px.scatter_3d(df, x=0, y=1, z=2,
@@ -2098,8 +2055,11 @@ def plot_model(model = None,
         if system:
             fig.show()
         
+        logger.info("Visual Rendered Successfully")  
+
         if save:
-            fig.write_html("TSNE.html")    
+            fig.write_html("TSNE.html")
+            logger.info("Saving 'TSNE.html' in current active directory")     
         
     
     elif plot == 'topic_model':
@@ -2110,8 +2070,10 @@ def plot_model(model = None,
         import warnings
         warnings.filterwarnings('ignore') 
         pyLDAvis.enable_notebook()
+        logger.info("Preparing pyLDAvis visual")  
         vis = pyLDAvis.gensim.prepare(model, corpus, id2word, mds='mmds')
         display(vis)
+        logger.info("Visual Rendered Successfully")  
 
     elif plot == 'topic_distribution':
         
@@ -2157,7 +2119,9 @@ def plot_model(model = None,
 
 
         kw_df = pd.DataFrame({'Topic': topic_name, 'Keyword' : keyword}).set_index('Topic')
+        logger.info("SubProcess assign_model() called ==================================")
         ass_df = assign_model(model, verbose = False)
+        logger.info("SubProcess assign_model() end ==================================")
         ass_df_pivot = ass_df.pivot_table(index='Dominant_Topic', values='Topic_0', aggfunc='count')
         df2 = ass_df_pivot.join(kw_df)
         df2 = df2.reset_index()
@@ -2168,6 +2132,8 @@ def plot_model(model = None,
         
         """
         
+        logger.info("Sorting Dataframe") 
+
         topic_list = list(df2['Topic'])
 
         s = []
@@ -2192,14 +2158,19 @@ def plot_model(model = None,
         sorting column ends
         """
 
+        logger.info("Rendering Visual")
+
         import plotly.express as px
         fig = px.bar(df2, x='Topic', y='Documents', hover_data = ['Keyword'], title='Document Distribution by Topics')
 
         if system:
             fig.show()
         
+        logger.info("Visual Rendered Successfully")  
+
         if save:
             fig.write_html("Topic Distribution.html")    
+            logger.info("Saving 'Topic Distribution.html' in current active directory") 
         
     elif plot == 'wordcloud':
         
@@ -2211,15 +2182,18 @@ def plot_model(model = None,
             stopwords = set(STOPWORDS) 
 
             if topic_num is None:
-
+                logger.warning("topic_num set to None. Plot generated at corpus level.") 
                 atext = " ".join(review for review in data_[target_])
 
             else:
 
+                logger.info("SubProcess assign_model() called ==================================")
                 assigned_df = assign_model(model, verbose = False)
+                logger.info("SubProcess assign_model() end ==================================")
                 filtered_df = assigned_df.loc[assigned_df['Dominant_Topic'] == topic_num] 
                 atext = " ".join(review for review in filtered_df[target_])
 
+            logger.info("Fitting WordCloud()") 
             wordcloud = WordCloud(width = 800, height = 800, 
                             background_color ='white', 
                             stopwords = stopwords, 
@@ -2231,16 +2205,24 @@ def plot_model(model = None,
             plt.axis("off") 
             plt.tight_layout(pad = 0) 
 
+            logger.info("Rendering Visual")
+
             if save or log_plots_param:
                 if system:
                     plt.savefig("Wordcloud.png")
                 else:
                     plt.savefig("Wordcloud.png")
                     plt.close()
+
+                logger.info("Saving 'Wordcloud.png' in current active directory") 
+
             else:
                 plt.show() 
-            
+
+            logger.info("Visual Rendered Successfully")  
+
         except:
+            logger.warning("Invalid topic_num param or empty Vocab. Try changing Topic Number.")
             sys.exit('(Value Error): Invalid topic_num param or empty Vocab. Try changing Topic Number.')
         
     elif plot == 'umap':
@@ -2256,24 +2238,36 @@ def plot_model(model = None,
         import matplotlib.pyplot as plt
             
         tfidf = TfidfVectorizer()
+        logger.info("Fitting TfidfVectorizer()") 
         docs = tfidf.fit_transform(data_[target_])
                 
         # Instantiate the clustering model
         clusters = KMeans(n_clusters=5, random_state=seed)
+        logger.info("Fitting KMeans()") 
         clusters.fit(docs)
         
         plt.figure(figsize=(10,6))
         
         umap = UMAPVisualizer(random_state=seed)
+        logger.info("Fitting UMAP()")  
         umap.fit(docs, ["c{}".format(c) for c in clusters.labels_])
         
+        logger.info("Rendering Visual")
+
         if save or log_plots_param:
             if system:
                 umap.show(outpath="UMAP.png")
             else:
                 umap.show(outpath="UMAP.png", clear_figure=True)
+            
+            logger.info("Saving 'UMAP.png' in current active directory") 
+
         else:
             umap.show()
+        
+        logger.info("Visual Rendered Successfully")
+    
+    logger.info("plot_model() succesfully completed......................................")
 
 def tune_model(model=None,
                multi_core=False,

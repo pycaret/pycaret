@@ -2,7 +2,7 @@
 # Author: Moez Ali <moez.ali@queensu.ca>
 # License: MIT
 # Release: PyCaret 2.0x
-# Last modified : 24/07/2020
+# Last modified : 27/07/2020
 
 def setup(data, 
           target, 
@@ -497,16 +497,39 @@ def setup(data,
     
     from platform import python_version, platform, python_build, machine
 
-    logger.info("python_version: " + str(python_version()))
-    logger.info("python_build: " + str(python_build()))
-    logger.info("machine: " + str(machine()))
-    logger.info("platform: " + str(platform()))
+    try:
+        logger.info("python_version: " + str(python_version()))
+    except:
+        logger.warning("cannot find platform.python_version")
+
+    try:
+        logger.info("python_build: " + str(python_build()))
+    except:
+        logger.warning("cannot find platform.python_build")
+
+    try:
+        logger.info("machine: " + str(machine()))
+    except:
+        logger.warning("cannot find platform.machine")
+
+    try:
+        logger.info("platform: " + str(platform()))
+    except:
+        logger.warning("cannot find platform.platform")
 
     import psutil
-    psvm = psutil.virtual_memory()
-    logger.info("Memory: " + str(psvm))
-    logger.info("Physical Core: " + str(psutil.cpu_count(logical=False)))
-    logger.info("Logical Core: " + str(psutil.cpu_count(logical=True)))
+
+    try:
+        psvm = psutil.virtual_memory()
+        logger.info("Memory: " + str(psvm))
+    except:
+        logger.warning("cannot find psutil.version_memory")
+
+    try:
+        logger.info("Physical Core: " + str(psutil.cpu_count(logical=False)))
+        logger.info("Logical Core: " + str(psutil.cpu_count(logical=True)))
+    except:
+        logger.warning("cannot find psutil.cpu_count")
     
     logger.info("Checking libraries")
 
@@ -547,146 +570,12 @@ def setup(data,
         logger.warning("catboost not found")
 
     try:
-        from kmodes import __version__
-        logger.info("kmodes==" + str(__version__))
-    except:
-        logger.warning("kmodes not found")
-        
-    try:
-        from pyod.version import __version__
-        logger.info("pyod==" + str(__version__))
-    except:
-        logger.warning("pyod not found")
-
-    try:
-        import warnings
-        warnings.filterwarnings('ignore')
-        from gensim import __version__ 
-        logger.info("gensim==" + str(__version__))
-    except:
-        logger.warning("gensim not found")
-
-    try:
-        from spacy import __version__
-        logger.info("spacy==" + str(__version__))
-    except:
-        logger.warning("spacy not found")
-
-    try:
-        from nltk import __version__
-        logger.info("nltk==" + str(__version__))
-    except:
-        logger.warning("nltk not found")
-
-    try:
-        from textblob import __version__
-        logger.info("textblob==" + str(__version__))
-    except:
-        logger.warning("textblob not found")
-
-    try:
-        from pyLDAvis import __version__
-        logger.info("pyLDAvis==" + str(__version__))
-    except:
-        logger.warning("pyLDAvis not found")
-
-    try:
-        from mlxtend import __version__
-        logger.info("mlxtend==" + str(__version__))
-    except:
-        logger.warning("mlxtend not found")
-
-    try:
-        from matplotlib import __version__
-        logger.info("matplotlib==" + str(__version__))
-    except:
-        logger.warning("matplotlib not found")
-
-    try:
-        from seaborn import __version__
-        logger.info("seaborn==" + str(__version__))
-    except:
-        logger.warning("seaborn not found")
-
-    try:
-        from plotly import __version__
-        logger.info("plotly==" + str(__version__))
-    except:
-        logger.warning("plotly not found")
-
-    try:
-        from cufflinks import __version__
-        logger.info("cufflinks==" + str(__version__))
-    except:
-        logger.warning("cufflinks not found")
-
-    try:
-        from yellowbrick import __version__
-        logger.info("yellowbrick==" + str(__version__))
-    except:
-        logger.warning("yellowbrick not found")
-
-    try:
-        from shap import __version__
-        logger.info("shap==" + str(__version__))
-    except:
-        logger.warning("shap not found. cannot use interpret_model without shap.")
-
-    try:
-        from pandas_profiling import __version__
-        logger.info("pandas_profiling==" + str(__version__))
-    except:
-        logger.warning("pandas_profiling not found")
-
-    try:
-        from wordcloud import __version__
-        logger.info("wordcloud==" + str(__version__))
-    except:
-        logger.warning("wordcloud not found")
-
-    try:
-        from umap import __version__
-        logger.info("umap==" + str(__version__))
-    except:
-        logger.warning("umap not found")
-
-    try:
-        from IPython import __version__
-        logger.info("IPython==" + str(__version__))
-    except:
-        logger.warning("IPython not found")
-
-    try:
-        from ipywidgets import __version__
-        logger.info("ipywidgets==" + str(__version__))
-    except:
-        logger.warning("ipywidgets not found")
-
-    try:
-        from joblib import __version__
-        logger.info("joblib==" + str(__version__))
-    except:
-        logger.warning("joblib not found")
-
-    try:
-        from imblearn import __version__
-        logger.info("imblearn==" + str(__version__))
-    except:
-        logger.warning("imblearn not found")
-
-    try:
         from mlflow.version import VERSION
         import warnings
         warnings.filterwarnings('ignore') 
         logger.info("mlflow==" + str(VERSION))
     except:
         logger.warning("mlflow not found")
-
-    try:
-        from awscli import __version__
-        logger.info("awscli==" + str(__version__))
-    except:
-        logger.warning("awscli not found. cannot use deploy_model without awscli")
 
     #run_time
     import datetime, time

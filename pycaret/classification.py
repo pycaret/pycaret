@@ -2,7 +2,7 @@
 # Author: Moez Ali <moez.ali@queensu.ca>
 # License: MIT
 # Release: PyCaret 2.0x
-# Last modified : 24/07/2020
+# Last modified : 27/07/2020
 
 def setup(data,  
           target,   
@@ -508,10 +508,18 @@ def setup(data,
     logger.info("platform: " + str(platform()))
 
     import psutil
-    psvm = psutil.virtual_memory()
-    logger.info("Memory: " + str(psvm))
-    logger.info("Physical Core: " + str(psutil.cpu_count(logical=False)))
-    logger.info("Logical Core: " + str(psutil.cpu_count(logical=True)))
+    
+    try:
+        psvm = psutil.virtual_memory()
+        logger.info("Memory: " + str(psvm))
+    except:
+        logger.warning("cannot find psutil.version_memory")
+
+    try:
+        logger.info("Physical Core: " + str(psutil.cpu_count(logical=False)))
+        logger.info("Logical Core: " + str(psutil.cpu_count(logical=True)))
+    except:
+        logger.warning("cannot find psutil.cpu_count")
 
     logger.info("Checking libraries")
 
@@ -527,7 +535,6 @@ def setup(data,
     except:
         logger.warning("numpy not found")
 
-    
     try:
         from sklearn import __version__
         logger.info("sklearn==" + str(__version__))
@@ -553,90 +560,12 @@ def setup(data,
         logger.warning("catboost not found")
 
     try:
-        from shap import __version__
-        logger.info("shap==" + str(__version__))
-    except:
-        logger.warning("shap not found. cannot use interpret_model without shap.")
-
-    try:
-        from pandas_profiling import __version__
-        logger.info("pandas_profiling==" + str(__version__))
-    except:
-        logger.warning("pandas_profiling not found")
-
-    try:
         from mlflow.version import VERSION
         import warnings
         warnings.filterwarnings('ignore') 
         logger.info("mlflow==" + str(VERSION))
     except:
         logger.warning("mlflow not found")
-        
-    """
-
-    try:
-        from kmodes import __version__
-        logger.info("kmodes==" + str(__version__))
-    except:
-        logger.warning("kmodes not found")
-        
-    try:
-        from pyod.version import __version__
-        logger.info("pyod==" + str(__version__))
-    except:
-        logger.warning("pyod not found")
-
-    try:
-        from matplotlib import __version__
-        logger.info("matplotlib==" + str(__version__))
-    except:
-        logger.warning("matplotlib not found")
-
-    try:
-        from yellowbrick import __version__
-        logger.info("yellowbrick==" + str(__version__))
-    except:
-        logger.warning("yellowbrick not found")
-
-    try:
-        from shap import __version__
-        logger.info("shap==" + str(__version__))
-    except:
-        logger.warning("shap not found. cannot use interpret_model without shap.")
-
-    try:
-        from pandas_profiling import __version__
-        logger.info("pandas_profiling==" + str(__version__))
-    except:
-        logger.warning("pandas_profiling not found")
-
-    try:
-        from IPython import __version__
-        logger.info("IPython==" + str(__version__))
-    except:
-        logger.warning("IPython not found")
-
-    try:
-        from ipywidgets import __version__
-        logger.info("ipywidgets==" + str(__version__))
-    except:
-        logger.warning("ipywidgets not found")
-
-    try:
-        from joblib import __version__
-        logger.info("joblib==" + str(__version__))
-    except:
-        logger.warning("joblib not found")
-
-
-
-    try:
-        from awscli import __version__
-        logger.info("awscli==" + str(__version__))
-    except:
-        logger.warning("awscli not found. cannot use deploy_model without awscli")
-
-    """
 
     #run_time
     import datetime, time
