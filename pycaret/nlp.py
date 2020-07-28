@@ -2,7 +2,7 @@
 # Author: Moez Ali <moez.ali@queensu.ca>
 # License: MIT
 # Release: PyCaret 2.0x
-# Last modified : 27/07/2020
+# Last modified : 28/07/2020
 
 def setup(data, 
           target=None,
@@ -802,29 +802,15 @@ def setup(data,
             import secrets
             URI = secrets.token_hex(nbytes=4)
             mlflow.set_tag("URI", URI)
-
             mlflow.set_tag("USI", USI) 
-
             mlflow.set_tag("Run Time", runtime)
-
             mlflow.set_tag("Run ID", RunID)
 
-            # Log the Dictionary and doc2bow
-            logger.info("SubProcess save_model() called ==================================")
-            save_model(id2word, 'Dictionary', verbose=False)
-            logger.info("SubProcess save_model() end ==================================")
-            mlflow.log_artifact('Dictionary' + '.pkl')
-            size_bytes = Path('Dictionary.pkl').stat().st_size
-            size_kb = np.round(size_bytes/1000, 2)
-            mlflow.set_tag("Size KB", size_kb)
-            os.remove('Dictionary.pkl')
-
-            save_model(corpus, 'doc2bow', verbose=False)
-            mlflow.log_artifact('doc2bow' + '.pkl')
-            size_bytes = Path('doc2bow.pkl').stat().st_size
-            size_kb = np.round(size_bytes/1000, 2)
-            mlflow.set_tag("Size KB", size_kb)
-            os.remove('doc2bow.pkl')
+            # Log gensim id2word
+            id2word.save('id2word')
+            mlflow.log_artifact('id2word')
+            import os
+            os.remove('id2word')
 
             # Log data
             if log_data:
@@ -862,8 +848,6 @@ def setup(data,
         else:
             print(functions_.data)
 
-    logger.info('Corpus: ' + str(len(corpus)))
-    logger.info('Vocab: ' + str(len(id2word.keys())))
     logger.info("setup() succesfully completed......................................")
 
     return text, data_, corpus, id2word, seed, target_, experiment__,\
@@ -1015,6 +999,8 @@ def create_model(model=None,
     """
 
     logger.info("Defining topic model")
+
+    model_name_short = model
 
     #define topic_model_name
     if model == 'lda':
@@ -1194,12 +1180,14 @@ def create_model(model=None,
             RunID = mlflow.active_run().info.run_id
 
             # Log model parameters
-            
+            from copy import deepcopy
+            model_copied = deepcopy(model)
+
             try:
-                params = model.get_params()
+                params = model_copied.get_params()
             except:
                 import inspect
-                params = inspect.getmembers(model)[2][1]
+                params = inspect.getmembers(model_copied)[2][1]
 
             for i in list(params):
                 v = params.get(i)
@@ -1207,7 +1195,7 @@ def create_model(model=None,
                     params.pop(i)
 
             mlflow.log_params(params)
-   
+
             #set tag of compare_models
             mlflow.set_tag("Source", "create_model")
             
@@ -1218,15 +1206,50 @@ def create_model(model=None,
             mlflow.set_tag("Run Time", runtime)
             mlflow.set_tag("Run ID", RunID)
 
-            # Log model and transformation pipeline
-            logger.info("SubProcess save_model() called ==================================")
-            save_model(model, 'Trained Model', verbose=False)
-            logger.info("SubProcess save_model() end ==================================")
-            mlflow.log_artifact('Trained Model' + '.pkl')
-            size_bytes = Path('Trained Model.pkl').stat().st_size
+            # Log model and related artifacts
+            if model_name_short == 'nmf':
+                logger.info("SubProcess save_model() called ==================================")
+                save_model(model, 'model', verbose=False)
+                logger.info("SubProcess save_model() end ==================================")
+                mlflow.log_artifact('model.pkl')
+                size_bytes = Path('model.pkl').stat().st_size
+                os.remove('model.pkl')
+            
+            elif model_name_short == 'lda':
+                model.save('model')
+                mlflow.log_artifact('model')
+                mlflow.log_artifact('model.expElogbeta.npy')
+                mlflow.log_artifact('model.id2word')
+                mlflow.log_artifact('model.state')
+                size_bytes = Path('model').stat().st_size + Path('model.id2word').stat().st_size\
+                    + Path('model.state').stat().st_size
+                os.remove('model')
+                os.remove('model.expElogbeta.npy')
+                os.remove('model.id2word')
+                os.remove('model.state')
+
+            elif model_name_short == 'lsi':
+                model.save('model')
+                mlflow.log_artifact('model')
+                mlflow.log_artifact('model.projection')
+                size_bytes = Path('model').stat().st_size + Path('model.projection').stat().st_size
+                os.remove('model')
+                os.remove('model.projection')
+            
+            elif model_name_short == 'rp':
+                model.save('model')
+                mlflow.log_artifact('model')
+                size_bytes = Path('model').stat().st_size
+                os.remove('model')
+
+            elif model_name_short == 'hdp':
+                model.save('model')
+                mlflow.log_artifact('model')
+                size_bytes = Path('model').stat().st_size
+                os.remove('model')
+
             size_kb = np.round(size_bytes/1000, 2)
             mlflow.set_tag("Size KB", size_kb)
-            os.remove('Trained Model.pkl')
 
             # Log training time in seconds
             mlflow.log_metric("TT", model_fit_time)
@@ -1234,7 +1257,7 @@ def create_model(model=None,
                 mlflow.log_metrics(model_results.to_dict().get('Metric'))
             except:
                 pass
-    
+            
     #storing into experiment
     if verbose:
         clear_output()
@@ -1299,6 +1322,7 @@ def assign_model(model,
     warnings.filterwarnings('ignore') 
 
     logger.info("Determining model type")
+    
     #determine model type
     if 'LdaModel' in str(type(model)):
         mod_type = 'lda'
@@ -1520,8 +1544,8 @@ def assign_model(model,
         
         vectorizer = CountVectorizer(analyzer='word', max_features=5000)
         x_counts = vectorizer.fit_transform(text_join)
-        transformer = TfidfTransformer(smooth_idf=False);
-        x_tfidf = transformer.fit_transform(x_counts);
+        transformer = TfidfTransformer(smooth_idf=False)
+        x_tfidf = transformer.fit_transform(x_counts)
         xtfidf_norm = normalize(x_tfidf, norm='l1', axis=1)
         
         """

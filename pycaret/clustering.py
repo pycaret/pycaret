@@ -1846,7 +1846,7 @@ def assign_model(model,
     if verbose:
         clear_output()
 
-    logger.info(done__.shape)
+    logger.info(data__.shape)
     logger.info("assign_model() succesfully completed......................................")
 
     return data__
