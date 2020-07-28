@@ -10003,8 +10003,6 @@ def get_config(variable):
     - logging_param: log_experiment param set through setup
     - log_plots_param: log_plots param set through setup
     - USI: Unique session ID parameter set through setup
-    - fix_imbalance_param: fix_imbalance param set through setup
-    - fix_imbalance_method_param: fix_imbalance_method param set through setup
 
         Example:
         --------
@@ -10074,12 +10072,6 @@ def get_config(variable):
     if variable == 'USI':
         global_var = USI
 
-    if variable == 'fix_imbalance_param':
-        global_var = fix_imbalance_param
-
-    if variable == 'fix_imbalance_method_param':
-        global_var = fix_imbalance_method_param
-
     logger.info("Global variable: " + str(variable) + ' returned')
     logger.info("get_config() succesfully completed......................................")
 
@@ -10111,8 +10103,6 @@ def set_config(variable,value):
     - logging_param: log_experiment param set through setup
     - log_plots_param: log_plots param set through setup
     - USI: Unique session ID parameter set through setup
-    - fix_imbalance_param: fix_imbalance param set through setup
-    - fix_imbalance_method_param: fix_imbalance_method param set through setup
 
         Example:
         --------
@@ -10199,14 +10189,6 @@ def set_config(variable,value):
     if variable == 'USI':
         global USI
         USI = value
-
-    if variable == 'fix_imbalance_param':
-        global fix_imbalance_param
-        fix_imbalance_param = value
-
-    if variable == 'fix_imbalance_method_param':
-        global fix_imbalance_method_param
-        fix_imbalance_method_param = value
 
     logger.info("Global variable:  " + str(variable) + ' updated')
     logger.info("set_config() succesfully completed......................................")

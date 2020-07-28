@@ -3281,10 +3281,10 @@ def plot_model(model,
     plot : string, default = 'tsne'
     Enter abbreviation of type of plot. The current list of plots supported are:
 
-    Name                           Abbreviated String     
-    ---------                      ------------------     
-    t-SNE (3d) Dimension Plot      'tsne'
-    UMAP Dimensionality Plot       'umap'
+    Plot        Name                                
+    -------     ----------             
+    'tsne'      t-SNE (3d) Dimension Plot
+    'umap'      UMAP Dimensionality Plot
 
     feature : string, default = None
     feature column is used as a hoverover tooltip. By default, first of column of the
@@ -3307,6 +3307,11 @@ def plot_model(model,
     #exception checking   
     import sys
     
+    import logging
+    logger.info("Initializing plot_model()")
+    logger.info("""plot_model(model={}, plot={}, feature={}, save={}, system={})""".\
+        format(str(model), str(plot), str(feature), str(save), str(system)))
+
     #ignore warnings
     import warnings
     warnings.filterwarnings('ignore') 
@@ -3315,6 +3320,7 @@ def plot_model(model,
     exception handling starts here
     """
     
+    logger.info("Checking exceptions")
 
     #plot checking
     allowed_plots = ['tsne', 'umap']  
@@ -3327,6 +3333,7 @@ def plot_model(model,
     error handling ends here
     """
     
+    logger.info("Importing libraries")
     #import dependencies
     import pandas as pd
     import numpy
@@ -3336,16 +3343,22 @@ def plot_model(model,
     cf.go_offline()
     cf.set_config_file(offline=False, world_readable=True)
 
+    logger.info("plot type: " + str(plot))
+
     if plot == 'tsne':
         
+        logger.info("SubProcess assign_model() called ==================================")
         b = assign_model(model, verbose=False, transformation=True, score=False)
+        logger.info("SubProcess assign_model() end ==================================")
         Label = pd.DataFrame(b['Label'])
         b.dropna(axis=0, inplace=True) #droping rows with NA's
         b.drop(['Label'], axis=1, inplace=True)
         
+        logger.info("Getting dummies to cast categorical variables")
         b = pd.get_dummies(b) #casting categorical variables
 
         from sklearn.manifold import TSNE
+        logger.info("Fitting TSNE()")
         X_embedded = TSNE(n_components=3).fit_transform(b)
 
         X = pd.DataFrame(X_embedded)
@@ -3358,7 +3371,9 @@ def plot_model(model,
 
         import plotly.express as px
         df = X
-            
+
+        logger.info("Rendering Visual")
+
         fig = px.scatter_3d(df, x=0, y=1, z=2, hover_data=['Feature'], color='Label', title='3d TSNE Plot for Outliers', 
                                 opacity=0.7, width=900, height=800)
             
@@ -3366,19 +3381,28 @@ def plot_model(model,
         if system:
             fig.show()
 
+        logger.info("Visual Rendered Successfully")
+
         if save:
             fig.write_html("TSNE.html")
-        
-    elif plot == 'umap':
+            logger.info("Saving 'TSNE.html' in current active directory") 
 
+    elif plot == 'umap':
+        
+        logger.info("SubProcess assign_model() called ==================================")
         b = assign_model(model, verbose=False, transformation=True, score=False)
+        logger.info("SubProcess assign_model() end ==================================")
+
         Label = pd.DataFrame(b['Label'])
         b.dropna(axis=0, inplace=True) #droping rows with NA's
         b.drop(['Label'], axis=1, inplace=True)
+        
+        logger.info("Getting dummies to cast categorical variables")
         b = pd.get_dummies(b) #casting categorical variables
         
         import umap
         reducer = umap.UMAP()
+        logger.info("Fitting UMAP()")
         embedding = reducer.fit_transform(b)
         X = pd.DataFrame(embedding)
 
@@ -3390,15 +3414,22 @@ def plot_model(model,
             df['Feature'] = data_[feature]
         else:
             df['Feature'] = data_[data_.columns[0]]
-            
+        
+        logger.info("Rendering Visual")
+
         fig = px.scatter(df, x=0, y=1,
                       color='Label', title='uMAP Plot for Outliers', hover_data=['Feature'], opacity=0.7, 
                          width=900, height=800)
         if system:
             fig.show() 
 
+        logger.info("Visual Rendered Successfully")
+        
         if save:
             fig.write_html("UMAP.html")
+            logger.info("Saving 'UMAP.html' in current active directory") 
+    
+    logger.info("plot_model() succesfully completed......................................")
 
 def save_model(model, model_name, verbose=True):
     

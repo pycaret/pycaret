@@ -527,6 +527,7 @@ def setup(data,
     except:
         logger.warning("numpy not found")
 
+    
     try:
         from sklearn import __version__
         logger.info("sklearn==" + str(__version__))
@@ -552,6 +553,28 @@ def setup(data,
         logger.warning("catboost not found")
 
     try:
+        from shap import __version__
+        logger.info("shap==" + str(__version__))
+    except:
+        logger.warning("shap not found. cannot use interpret_model without shap.")
+
+    try:
+        from pandas_profiling import __version__
+        logger.info("pandas_profiling==" + str(__version__))
+    except:
+        logger.warning("pandas_profiling not found")
+
+    try:
+        from mlflow.version import VERSION
+        import warnings
+        warnings.filterwarnings('ignore') 
+        logger.info("mlflow==" + str(VERSION))
+    except:
+        logger.warning("mlflow not found")
+        
+    """
+
+    try:
         from kmodes import __version__
         logger.info("kmodes==" + str(__version__))
     except:
@@ -564,66 +587,10 @@ def setup(data,
         logger.warning("pyod not found")
 
     try:
-        import warnings
-        warnings.filterwarnings('ignore')
-        from gensim import __version__ 
-        logger.info("gensim==" + str(__version__))
-    except:
-        logger.warning("gensim not found")
-
-    try:
-        from spacy import __version__
-        logger.info("spacy==" + str(__version__))
-    except:
-        logger.warning("spacy not found")
-
-    try:
-        from nltk import __version__
-        logger.info("nltk==" + str(__version__))
-    except:
-        logger.warning("nltk not found")
-
-    try:
-        from textblob import __version__
-        logger.info("textblob==" + str(__version__))
-    except:
-        logger.warning("textblob not found")
-
-    try:
-        from pyLDAvis import __version__
-        logger.info("pyLDAvis==" + str(__version__))
-    except:
-        logger.warning("pyLDAvis not found")
-
-    try:
-        from mlxtend import __version__
-        logger.info("mlxtend==" + str(__version__))
-    except:
-        logger.warning("mlxtend not found")
-
-    try:
         from matplotlib import __version__
         logger.info("matplotlib==" + str(__version__))
     except:
         logger.warning("matplotlib not found")
-
-    try:
-        from seaborn import __version__
-        logger.info("seaborn==" + str(__version__))
-    except:
-        logger.warning("seaborn not found")
-
-    try:
-        from plotly import __version__
-        logger.info("plotly==" + str(__version__))
-    except:
-        logger.warning("plotly not found")
-
-    try:
-        from cufflinks import __version__
-        logger.info("cufflinks==" + str(__version__))
-    except:
-        logger.warning("cufflinks not found")
 
     try:
         from yellowbrick import __version__
@@ -644,18 +611,6 @@ def setup(data,
         logger.warning("pandas_profiling not found")
 
     try:
-        from wordcloud import __version__
-        logger.info("wordcloud==" + str(__version__))
-    except:
-        logger.warning("wordcloud not found")
-
-    try:
-        from umap import __version__
-        logger.info("umap==" + str(__version__))
-    except:
-        logger.warning("umap not found")
-
-    try:
         from IPython import __version__
         logger.info("IPython==" + str(__version__))
     except:
@@ -673,25 +628,15 @@ def setup(data,
     except:
         logger.warning("joblib not found")
 
-    try:
-        from imblearn import __version__
-        logger.info("imblearn==" + str(__version__))
-    except:
-        logger.warning("imblearn not found")
 
-    try:
-        from mlflow.version import VERSION
-        import warnings
-        warnings.filterwarnings('ignore') 
-        logger.info("mlflow==" + str(VERSION))
-    except:
-        logger.warning("mlflow not found")
 
     try:
         from awscli import __version__
         logger.info("awscli==" + str(__version__))
     except:
         logger.warning("awscli not found. cannot use deploy_model without awscli")
+
+    """
 
     #run_time
     import datetime, time

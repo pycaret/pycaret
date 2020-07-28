@@ -2404,6 +2404,9 @@ def tune_model(model=None,
     fold: integer, default = 10
     Number of folds to be used in Kfold CV. Must be at least 2. 
 
+    verbose: Boolean, default = True
+    Status update is not printed when verbose is set to False.
+    
     Returns:
     --------
 

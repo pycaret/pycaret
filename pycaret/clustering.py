@@ -3369,9 +3369,16 @@ def plot_model(model,
     #exception checking   
     import sys
     
+    import logging
+    logger.info("Initializing plot_model()")
+    logger.info("""plot_model(model={}, plot={}, feature={}, label={}, save={}, system={})""".\
+        format(str(model), str(plot), str(feature), str(label), str(save), str(system)))
+
     """
     exception handling starts here
     """
+
+    logger.info("Checking exceptions")
 
     #plot checking
     allowed_plots = ['cluster', 'tsne', 'elbow', 'silhouette', 'distance', 'distribution']  
@@ -3398,6 +3405,7 @@ def plot_model(model,
     import warnings
     warnings.filterwarnings('ignore') 
     
+    logger.info("Importing libraries")
     #general dependencies
     import pandas as pd
     import numpy as np
@@ -3408,11 +3416,13 @@ def plot_model(model,
     cf.go_offline()
     cf.set_config_file(offline=False, world_readable=True)
     
+    logger.info("plot type: " + str(plot))
     
     if plot == 'cluster':
         
-        b = assign_model(model, verbose=False, transformation=True)       
-            
+        logger.info("SubProcess assign_model() called ==================================")
+        b = assign_model(model, verbose=False, transformation=True)           
+        logger.info("SubProcess assign_model() end ==================================")
         cluster = b['Cluster']
         b.drop(['Cluster'], axis=1, inplace=True)
         b = pd.get_dummies(b) #casting categorical variable
@@ -3420,6 +3430,7 @@ def plot_model(model,
         
         from sklearn.decomposition import PCA
         pca = PCA(n_components=2, random_state=seed)
+        logger.info("Fitting PCA()")
         pca_ = pca.fit_transform(b)
         pca_ = pd.DataFrame(pca_)
         pca_ = pca_.rename(columns={0: "PCA1", 1: "PCA2"})
@@ -3436,6 +3447,9 @@ def plot_model(model,
         """
         sorting
         """
+
+        logger.info("Sorting dataframe")
+
         clus_num = []
 
         for i in pca_.Cluster:
@@ -3448,6 +3462,8 @@ def plot_model(model,
         """
         sorting ends
         """
+
+        logger.info("Rendering Visual)
 
         if label:
             fig = px.scatter(pca_, x="PCA1", y="PCA2", text='Label', color='Cluster', opacity=0.5)
@@ -3467,16 +3483,21 @@ def plot_model(model,
 
         if save:
             fig.write_html("Cluster.html")
+            logger.info("Saving 'Cluster.html' in current active directory")
         
+        logger.info("Visual Rendered Successfully")
         
     elif plot == 'tsne':
         
+        logger.info("SubProcess assign_model() called ==================================")
         b = assign_model(model, verbose=False, transformation=True)
+        logger.info("SubProcess assign_model() end ==================================")
             
         cluster = b['Cluster']
         b.drop(['Cluster'], axis=1, inplace=True)
         
         from sklearn.manifold import TSNE
+        logger.info("Fitting TSNE()")
         X_embedded = TSNE(n_components=3, random_state=seed).fit_transform(b)
         X_embedded = pd.DataFrame(X_embedded)
         X_embedded['Cluster'] = cluster
@@ -3492,6 +3513,8 @@ def plot_model(model,
         """
         sorting
         """
+        logger.info("Sorting dataframe")
+
         clus_num = []
         for i in X_embedded.Cluster:
             a = int(i.split()[1])
@@ -3507,6 +3530,8 @@ def plot_model(model,
         import plotly.express as px
         df = X_embedded
         
+        logger.info("Rendering Visual")
+
         if label:
             
             fig = px.scatter_3d(df, x=0, y=1, z=2, color='Cluster', title='3d TSNE Plot for Clusters', 
@@ -3521,16 +3546,23 @@ def plot_model(model,
         
         if save:
             fig.write_html("TSNE.html")
+            logger.info("Saving 'TSNE.html' in current active directory")
+
+        logger.info("Visual Rendered Successfully")
 
     elif plot == 'distribution':
         
         import plotly.express as px
         
+        logger.info("SubProcess assign_model() called ==================================")
         d = assign_model(model, verbose = False)
+        logger.info("SubProcess assign_model() end ==================================")
         
         """
         sorting
         """
+        logger.info("Sorting dataframe")
+
         clus_num = []
         for i in d.Cluster:
             a = int(i.split()[1])
@@ -3557,6 +3589,8 @@ def plot_model(model,
         else:
             x_col = feature
         
+        logger.info("Rendering Visual")
+
         fig = px.histogram(d, x=x_col, color="Cluster",
                    marginal="box", opacity = 0.7,
                    hover_data=d.columns)
@@ -3566,6 +3600,9 @@ def plot_model(model,
 
         if save:
             fig.write_html("Distribution.html")
+            logger.info("Saving 'Distribution.html' in current active directory")
+
+        logger.info("Visual Rendered Successfully")
 
     elif plot == 'elbow':
         
@@ -3575,16 +3612,22 @@ def plot_model(model,
         try: 
             from yellowbrick.cluster import KElbowVisualizer
             visualizer = KElbowVisualizer(model_,timings=False)
+            logger.info("Fitting KElbowVisualizer()")
             visualizer.fit(X)
+            logger.info("Rendering Visual")
             if save:
                 if system:
                     visualizer.show(outpath="Elbow.png")
                 else:
                     visualizer.show(outpath="Elbow.png", clear_figure=True)
+                logger.info("Saving 'Elbow.png' in current active directory")
             else:
-                visualizer.show()   
+                visualizer.show()
+
+            logger.info("Visual Rendered Successfully")
 
         except: 
+            logger.warning("Elbow plot failed")
             sys.exit('(Type Error): Plot Type not supported for this model.')
         
     elif plot == 'silhouette':
@@ -3592,15 +3635,22 @@ def plot_model(model,
         try:
             from yellowbrick.cluster import SilhouetteVisualizer
             visualizer = SilhouetteVisualizer(model, colors='yellowbrick')
+            logger.info("Fitting SilhouetteVisualizer()")
             visualizer.fit(X)
+            logger.info("Rendering Visual")
             if save:
                 if system:
                     visualizer.show(outpath="Silhouette.png")
                 else:
                     visualizer.show(outpath="Silhouette.png", clear_figure=True)
+                logger.info("Saving 'Silhouette.png' in current active directory")
             else:
-                visualizer.show()        
-        except: 
+                visualizer.show()
+
+            logger.info("Visual Rendered Successfully")
+
+        except:
+            logger.warning("Solhouette Plot failed") 
             sys.exit('(Type Error): Plot Type not supported for this model.')
             
     elif plot == 'distance':  
@@ -3608,17 +3658,25 @@ def plot_model(model,
         try:    
             from yellowbrick.cluster import InterclusterDistance
             visualizer = InterclusterDistance(model)
+            logger.info("Fitting InterclusterDistance()")
             visualizer.fit(X)
+            logger.info("Rendering Visual")
             if save:
                 if system:
                     visualizer.show(outpath="Distance.png")
                 else:
                     visualizer.show(outpath="Distance.png", clear_figure=True)
+                logger.info("Saving 'Distance.png' in current active directory")
             else:
                 visualizer.show()
 
+            logger.info("Visual Rendered Successfully")
+
         except:
+            logger.warning("Distance Plot failed")
             sys.exit('(Type Error): Plot Type not supported for this model.')
+
+    logger.info("plot_model() succesfully completed......................................")
 
 def save_model(model, model_name, verbose=True):
     
