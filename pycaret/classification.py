@@ -507,19 +507,13 @@ def setup(data,
     logger.info("machine: " + str(machine()))
     logger.info("platform: " + str(platform()))
 
-    import psutil
-    
     try:
-        psvm = psutil.virtual_memory()
-        logger.info("Memory: " + str(psvm))
-    except:
-        logger.warning("cannot find psutil.version_memory")
-
-    try:
+        import psutil
+        logger.info("Memory: " + str(psutil.virtual_memory()))
         logger.info("Physical Core: " + str(psutil.cpu_count(logical=False)))
         logger.info("Logical Core: " + str(psutil.cpu_count(logical=True)))
     except:
-        logger.warning("cannot find psutil.cpu_count")
+        logger.warning("cannot find psutil installation. memory not traceable. Install psutil using pip to enable memory logging. ")
 
     logger.info("Checking libraries")
 
