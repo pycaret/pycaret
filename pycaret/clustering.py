@@ -3340,7 +3340,7 @@ def plot_model(model,
         sorting ends
         """
 
-        logger.info("Rendering Visual)
+        logger.info("Rendering Visual")
 
         if label:
             fig = px.scatter(pca_, x="PCA1", y="PCA2", text='Label', color='Cluster', opacity=0.5)
