@@ -2,7 +2,7 @@
 # Author: Moez Ali <moez.ali@queensu.ca>
 # License: MIT
 # Release: PyCaret 2.0x
-# Last modified : 27/07/2020
+# Last modified : 29/07/2020
 
 def setup(data, 
         categorical_features = None,
@@ -1321,6 +1321,28 @@ def create_model(model = None,
     
     import logging
 
+    try:
+        hasattr(logger, 'name')
+    except:
+        logger = logging.getLogger('logs')
+        logger.setLevel(logging.DEBUG)
+        
+        # create console handler and set level to debug
+        if logger.hasHandlers():
+            logger.handlers.clear()
+        
+        ch = logging.FileHandler('logs.log')
+        ch.setLevel(logging.DEBUG)
+
+        # create formatter
+        formatter = logging.Formatter('%(asctime)s:%(levelname)s:%(message)s')
+
+        # add formatter to ch
+        ch.setFormatter(formatter)
+
+        # add ch to logger
+        logger.addHandler(ch)
+
     logger.info("Initializing create_model()")
     logger.info("""create_model(model={}, num_clusters={}, ground_truth={}, verbose={}, system={})""".\
         format(str(model), str(num_clusters), str(ground_truth), str(verbose), str(system)))
@@ -1716,6 +1738,29 @@ def assign_model(model,
     import sys
     
     import logging
+
+    try:
+        hasattr(logger, 'name')
+    except:
+        logger = logging.getLogger('logs')
+        logger.setLevel(logging.DEBUG)
+        
+        # create console handler and set level to debug
+        if logger.hasHandlers():
+            logger.handlers.clear()
+        
+        ch = logging.FileHandler('logs.log')
+        ch.setLevel(logging.DEBUG)
+
+        # create formatter
+        formatter = logging.Formatter('%(asctime)s:%(levelname)s:%(message)s')
+
+        # add formatter to ch
+        ch.setFormatter(formatter)
+
+        # add ch to logger
+        logger.addHandler(ch)
+
     logger.info("Initializing assign_model()")
     logger.info("""assign_model(model={}, transformation={}, verbose={})""".\
         format(str(model), str(transformation), str(verbose)))
@@ -1995,6 +2040,29 @@ def tune_model(model=None,
     global data_, X
     
     import logging
+
+    try:
+        hasattr(logger, 'name')
+    except:
+        logger = logging.getLogger('logs')
+        logger.setLevel(logging.DEBUG)
+        
+        # create console handler and set level to debug
+        if logger.hasHandlers():
+            logger.handlers.clear()
+        
+        ch = logging.FileHandler('logs.log')
+        ch.setLevel(logging.DEBUG)
+
+        # create formatter
+        formatter = logging.Formatter('%(asctime)s:%(levelname)s:%(message)s')
+
+        # add formatter to ch
+        ch.setFormatter(formatter)
+
+        # add ch to logger
+        logger.addHandler(ch)
+
     logger.info("Initializing tune_model()")
     logger.info("""tune_model(model={}, supervised_target={}, estimator={}, optimize={}, custom_grid={}, fold={}, verbose={})""".\
         format(str(model), str(supervised_target), str(estimator), str(optimize), str(custom_grid), str(fold), str(verbose)))
@@ -3241,6 +3309,29 @@ def plot_model(model,
     import sys
     
     import logging
+
+    try:
+        hasattr(logger, 'name')
+    except:
+        logger = logging.getLogger('logs')
+        logger.setLevel(logging.DEBUG)
+        
+        # create console handler and set level to debug
+        if logger.hasHandlers():
+            logger.handlers.clear()
+        
+        ch = logging.FileHandler('logs.log')
+        ch.setLevel(logging.DEBUG)
+
+        # create formatter
+        formatter = logging.Formatter('%(asctime)s:%(levelname)s:%(message)s')
+
+        # add formatter to ch
+        ch.setFormatter(formatter)
+
+        # add ch to logger
+        logger.addHandler(ch)
+
     logger.info("Initializing plot_model()")
     logger.info("""plot_model(model={}, plot={}, feature={}, label={}, save={}, system={})""".\
         format(str(model), str(plot), str(feature), str(label), str(save), str(system)))
@@ -3872,6 +3963,29 @@ def deploy_model(model,
     """
     
     import logging
+
+    try:
+        hasattr(logger, 'name')
+    except:
+        logger = logging.getLogger('logs')
+        logger.setLevel(logging.DEBUG)
+        
+        # create console handler and set level to debug
+        if logger.hasHandlers():
+            logger.handlers.clear()
+        
+        ch = logging.FileHandler('logs.log')
+        ch.setLevel(logging.DEBUG)
+
+        # create formatter
+        formatter = logging.Formatter('%(asctime)s:%(levelname)s:%(message)s')
+
+        # add formatter to ch
+        ch.setFormatter(formatter)
+
+        # add ch to logger
+        logger.addHandler(ch)
+
     logger.info("Initializing deploy_model()")
     logger.info("""deploy_model(model={}, model_name={}, authentication={}, platform={})""".\
         format(str(model), str(model_name), str(authentication), str(platform)))
@@ -4122,6 +4236,29 @@ def get_config(variable):
     """
 
     import logging
+
+    try:
+        hasattr(logger, 'name')
+    except:
+        logger = logging.getLogger('logs')
+        logger.setLevel(logging.DEBUG)
+        
+        # create console handler and set level to debug
+        if logger.hasHandlers():
+            logger.handlers.clear()
+        
+        ch = logging.FileHandler('logs.log')
+        ch.setLevel(logging.DEBUG)
+
+        # create formatter
+        formatter = logging.Formatter('%(asctime)s:%(levelname)s:%(message)s')
+
+        # add formatter to ch
+        ch.setFormatter(formatter)
+
+        # add ch to logger
+        logger.addHandler(ch)
+
     logger.info("Initializing get_config()")
     logger.info("""get_config(variable={})""".\
         format(str(variable)))
@@ -4193,6 +4330,29 @@ def set_config(variable,value):
     """
 
     import logging
+
+    try:
+        hasattr(logger, 'name')
+    except:
+        logger = logging.getLogger('logs')
+        logger.setLevel(logging.DEBUG)
+        
+        # create console handler and set level to debug
+        if logger.hasHandlers():
+            logger.handlers.clear()
+        
+        ch = logging.FileHandler('logs.log')
+        ch.setLevel(logging.DEBUG)
+
+        # create formatter
+        formatter = logging.Formatter('%(asctime)s:%(levelname)s:%(message)s')
+
+        # add formatter to ch
+        ch.setFormatter(formatter)
+
+        # add ch to logger
+        logger.addHandler(ch)
+
     logger.info("Initializing set_config()")
     logger.info("""set_config(variable={}, value={})""".\
         format(str(variable), str(value)))
