@@ -8557,7 +8557,6 @@ def interpret_model(estimator,
     '''
     
     import sys
-    
     import logging
 
     try:
@@ -9847,7 +9846,8 @@ def deploy_model(model,
         
       
     """
-    
+
+    import sys
     import logging
 
     try:

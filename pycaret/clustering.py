@@ -3679,6 +3679,29 @@ def save_model(model, model_name, verbose=True):
     """
     
     import logging
+
+    try:
+        hasattr(logger, 'name')
+    except:
+        logger = logging.getLogger('logs')
+        logger.setLevel(logging.DEBUG)
+        
+        # create console handler and set level to debug
+        if logger.hasHandlers():
+            logger.handlers.clear()
+        
+        ch = logging.FileHandler('logs.log')
+        ch.setLevel(logging.DEBUG)
+
+        # create formatter
+        formatter = logging.Formatter('%(asctime)s:%(levelname)s:%(message)s')
+
+        # add formatter to ch
+        ch.setFormatter(formatter)
+
+        # add ch to logger
+        logger.addHandler(ch)
+
     logger.info("Initializing save_model()")
     logger.info("""save_model(model={}, model_name={}, verbose={})""".\
         format(str(model), str(model_name), str(verbose)))
@@ -3838,9 +3861,6 @@ def predict_model(model,
     import warnings
     warnings.filterwarnings('ignore') 
     
-    #testing
-    #no active tests
-    
     #general dependencies
     from IPython.display import clear_output, update_display
     import numpy as np
@@ -3962,6 +3982,7 @@ def deploy_model(model,
 
     """
     
+    import sys
     import logging
 
     try:

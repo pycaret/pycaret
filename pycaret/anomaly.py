@@ -3726,6 +3726,7 @@ def deploy_model(model,
        
     """
     
+    import sys
     import logging
 
     try:
