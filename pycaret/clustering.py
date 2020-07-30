@@ -2,7 +2,7 @@
 # Author: Moez Ali <moez.ali@queensu.ca>
 # License: MIT
 # Release: PyCaret 2.0x
-# Last modified : 29/07/2020
+# Last modified : 30/07/2020
 
 def setup(data, 
         categorical_features = None,
@@ -3989,6 +3989,13 @@ def deploy_model(model,
     logger.info("Initializing deploy_model()")
     logger.info("""deploy_model(model={}, model_name={}, authentication={}, platform={})""".\
         format(str(model), str(model_name), str(authentication), str(platform)))
+
+    #checking if awscli available
+    try:
+        import awscli
+    except:
+        logger.error("awscli library not found. pip install awscli to use deploy_model function.")
+        sys.exit("awscli library not found. pip install awscli to use deploy_model function.")  
 
     #ignore warnings
     import warnings
