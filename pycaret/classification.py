@@ -9803,6 +9803,15 @@ def calibrate_model(estimator,
     runtime_end = time.time()
     runtime = np.array(runtime_end - runtime_start).round(2)
 
+    #storing results in create_model_container
+    logger.info("Uploading results into container")
+    create_model_container.append(model_results.data)
+    display_container.append(model_results.data)
+
+    #storing results in master_model_container
+    logger.info("Uploading model into container")
+    master_model_container.append(model)
+
     #mlflow logging
     if logging_param:
         

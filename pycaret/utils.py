@@ -2,7 +2,7 @@
 # Author: Moez Ali <moez.ali@queensu.ca>
 # License: MIT
 
-version_ = "pycaret-nightly-0.41"
+version_ = "pycaret-nightly-0.42"
 
 def version():
     print(version_)
