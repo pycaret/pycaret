@@ -10189,6 +10189,7 @@ def get_config(variable):
     - y_test: Transformed test/holdout dataset (y)
     - seed: random state set through session_id
     - prep_pipe: Transformation pipeline configured through setup
+    - target_inverse_transformer: Target variable inverse transformer
     - folds_shuffle_param: shuffle parameter used in Kfolds
     - n_jobs_param: n_jobs parameter used in model training
     - html_param: html_param configured through setup
@@ -10261,6 +10262,9 @@ def get_config(variable):
     if variable == 'prep_pipe':
         global_var = prep_pipe
 
+    if variable == 'target_inverse_transformer':
+        global_var = target_inverse_transformer
+
     if variable == 'folds_shuffle_param':
         global_var = folds_shuffle_param
         
@@ -10312,6 +10316,7 @@ def set_config(variable,value):
     - y_test: Transformed test/holdout dataset (y)
     - seed: random state set through session_id
     - prep_pipe: Transformation pipeline configured through setup
+    - target_inverse_transformer: Target variable inverse transformer
     - folds_shuffle_param: shuffle parameter used in Kfolds
     - n_jobs_param: n_jobs parameter used in model training
     - html_param: html_param configured through setup
@@ -10391,6 +10396,10 @@ def set_config(variable,value):
     if variable == 'prep_pipe':
         global prep_pipe
         prep_pipe = value
+
+    if variable == 'target_inverse_transformer':
+        global target_inverse_transformer
+        target_inverse_transformer = value
 
     if variable == 'folds_shuffle_param':
         global folds_shuffle_param
