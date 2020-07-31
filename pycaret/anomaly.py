@@ -2769,7 +2769,9 @@ def tune_model(model=None,
         """
         
         monitor.iloc[1,1:] = 'Evaluating Anomaly Model'
-        update_display(monitor, display_id = 'monitor')
+        if verbose:
+            if html_param:
+                update_display(monitor, display_id = 'monitor')
                                     
         if estimator == 'lr':
         
@@ -3000,7 +3002,9 @@ def tune_model(model=None,
             logger.info("Creating Regressor with Fraction = " + str(param_grid_val)) 
 
             monitor.iloc[2,1:] = 'Evaluating Regressor With ' + str(param_grid_val) + ' Fraction'
-            update_display(monitor, display_id = 'monitor')    
+            if verbose:
+                if html_param:
+                    update_display(monitor, display_id = 'monitor')    
                              
             #prepare the dataset for supervised problem
             d = master_df[i]
@@ -3064,7 +3068,9 @@ def tune_model(model=None,
         
         monitor.iloc[1,1:] = 'Compiling Results'
         monitor.iloc[1,1:] = 'Finalizing'
-        update_display(monitor, display_id = 'monitor')                    
+        if verbose:
+            if html_param:
+                update_display(monitor, display_id = 'monitor')                    
 
         logger.info("Creating metrics dataframe")  
         df = pd.DataFrame({'Fraction': param_grid_with_zero, 'Score' : score, 'Metric': metric})
@@ -3096,7 +3102,9 @@ def tune_model(model=None,
 
         #monitor = ''
         
-        update_display(monitor, display_id = 'monitor')
+        if verbose:
+            if html_param:
+                update_display(monitor, display_id = 'monitor')
         monitor_out.clear_output()
         progress.close()
         

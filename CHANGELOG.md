@@ -21,6 +21,8 @@ All notable changes to this project will be documented in this file.
 - **NEW FUNCTION: get_config()** New function `get_config` added in `pycaret.classification` `pycaret.regression` `pycaret.clustering` `pycaret.anomaly` `pycaret.nlp` <br/>
 - **NEW FUNCTION: set_config()** New function `set_config` added in `pycaret.classification` `pycaret.regression` `pycaret.clustering` `pycaret.anomaly` `pycaret.nlp` <br/>
 - **NEW FUNCTION: get_system_logs** New function `get_logs` added in `pycaret.classification` `pycaret.regression` `pycaret.clustering` `pycaret.anomaly` `pycaret.nlp` <br/>
+- **CHANGE IN BEHAVIOR: compare_models** `compare_models` now returns top_n models defined by `n_select` parameter, by default set to 1. <br/>
+- **CHANGE IN BEHAVIOR: tune_model** `tune_model` function in `pycaret.classification` and `pycaret.regression` now requires trained model object to be passed as `estimator` instead of string abbreviation / ID. <br/>
 - **REMOVED DEPENDENCIES** `awscli` and `shap` removed from requirements.txt. To use `interpret_model` function in `pycaret.classification` `pycaret.regression` and `deploy_model` function in `pycaret.classification` `pycaret.regression` `pycaret.clustering` `pycaret.anomaly`, these libraries will have to be installed separately. <br/>
 
 # <span style="color:red"> setup </span>

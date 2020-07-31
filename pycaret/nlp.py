@@ -2,7 +2,7 @@
 # Author: Moez Ali <moez.ali@queensu.ca>
 # License: MIT
 # Release: PyCaret 2.0x
-# Last modified : 29/07/2020
+# Last modified : 30/07/2020
 
 def setup(data, 
           target=None,
