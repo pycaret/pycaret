@@ -8,7 +8,7 @@ import pycaret.datasets
 
 def test():
     # loading dataset
-    data = pycaret.datasets.get_data('juice')
+    data = pycaret.datasets.get_data('jewellery')
 
     # init setup
     clu1 = pycaret.clustering.setup(data, normalize = True, silent=True, html=False, session_id=123)
@@ -20,9 +20,6 @@ def test():
     # assign model
     kmeans_results = pycaret.clustering.assign_model(kmeans)
     kmodes_results = pycaret.clustering.assign_model(kmodes)
-
-    # tune model
-    tuned_model = pycaret.clustering.tune_model('kmeans', supervised_target = 'Purchase', custom_grid = [2,4,8], estimator = 'lightgbm')
 
     # get config
     X = pycaret.clustering.get_config('X')

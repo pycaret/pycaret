@@ -14,24 +14,20 @@ def test():
     reg1 = pycaret.regression.setup(data, target='medv',silent=True, html=False, session_id=123)
 
     # compare models
-    top5 = pycaret.regression.compare_models(n_select = 5)
+    top3 = pycaret.regression.compare_models(n_select = 3, blacklist = ['catboost'])
 
     # tune model
-    tuned_top5 = [pycaret.regression.tune_model(i) for i in top5]
+    tuned_top3 = [pycaret.regression.tune_model(i, n_iter=3) for i in top3]
 
     # ensemble model
-    bagged_top5 = [pycaret.regression.ensemble_model(i) for i in tuned_top5]
+    bagged_top3 = [pycaret.regression.ensemble_model(i) for i in tuned_top3]
 
     # blend models
-    blender = pycaret.regression.blend_models()
+    blender = pycaret.regression.blend_models(top3)
 
     # stack models
-    stacker = pycaret.regression.stack_models(estimator_list = top5[1:], meta_model = top5[0])
+    stacker = pycaret.regression.stack_models(estimator_list = top3[1:], meta_model = top3[0])
 
-    # automl
-    best = pycaret.regression.automl()
-    best_holdout = pycaret.regression.automl(use_holdout = True)
-    
     # get config
     X_train = pycaret.regression.get_config('X_train')
     X_test = pycaret.regression.get_config('X_test')

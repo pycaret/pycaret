@@ -12,7 +12,7 @@ def test():
     data = data.head(1000)
 
     # init setup
-    clu1 = pycaret.nlp.setup(data, target = 'en', html=False, session_id=123)
+    nlp1 = pycaret.nlp.setup(data, target = 'en', html=False, session_id=123)
 
     # create model
     lda = pycaret.nlp.create_model('lda')
@@ -21,9 +21,6 @@ def test():
     # assign model
     lda_results = pycaret.nlp.assign_model(lda)
     nmf_results = pycaret.nlp.assign_model(nmf)
-
-    # tune model
-    tuned_model = pycaret.nlp.tune_model('lda', supervised_target = 'status', custom_grid = [2,4,8,10,12,16], estimator = 'lightgbm')
 
     # get config
     data_ = pycaret.nlp.get_config('data_')

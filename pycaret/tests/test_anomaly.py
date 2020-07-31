@@ -8,7 +8,7 @@ import pycaret.datasets
 
 def test():
     # loading dataset
-    data = pycaret.datasets.get_data('boston')
+    data = pycaret.datasets.get_data('anomaly')
 
     # init setup
     ano1 = pycaret.anomaly.setup(data, normalize = True, silent=True, html=False, session_id=123)
@@ -20,9 +20,6 @@ def test():
     # assign model
     iforest_results = pycaret.anomaly.assign_model(iforest)
     knn_results = pycaret.anomaly.assign_model(knn)
-
-    # tune model
-    tuned_model = pycaret.anomaly.tune_model('iforest', supervised_target = 'medv', estimator = 'xgboost')
 
     # get config
     X = pycaret.anomaly.get_config('X')
