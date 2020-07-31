@@ -34,6 +34,7 @@ PyCaret is an open source library that anybody can use. In our view the ideal ta
 Please read requirements.txt for list of requirements. They are automatically installed when pycaret is installed using pip.
 ## Note:
 It supports Python 64 bit only.
+<<<<<<< HEAD
 
 ## Authors
 - pycaret.anomaly, Moez Ali <moez.ali@queensu.ca>
@@ -45,6 +46,8 @@ It supports Python 64 bit only.
 - pycaret.regression, Moez Ali <moez.ali@queensu.ca>
 
 If you would like to contribute to PyCaret, please visit https://www.pycaret.org/contribute
+=======
+>>>>>>> dev-1.0.1
 
 ## License
 
