@@ -12,15 +12,14 @@ PyCaret is `simple`, `easy to use` and `deployment ready`. All the steps perform
 
 For more information on PyCaret, please visit our official website https://www.pycaret.org
 
+![alt text](https://github.com/pycaret/pycaret/blob/master/pycaret2-features.png)
+
 ## Current Release
 PyCaret `2.0` is now available. See `2.0` release notes. The easiest way to install pycaret is using pip. 
 
 ```python
 pip install pycaret==2.0
 ```
-
-## PyCaret can help you with:
-![alt text](https://github.com/pycaret/pycaret/blob/master/pycaret2-features.png)
 
 ## Important Links
 - 2.0 Release notes: https://github.com/pycaret/pycaret/releases/tag/2.0
