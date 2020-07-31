@@ -13,13 +13,14 @@ PyCaret is `simple`, `easy to use` and `deployment ready`. All the steps perform
 For more information on PyCaret, please visit our official website https://www.pycaret.org
 
 ## Current Release
-The first stable release pycaret version `1.0.0` is now publicly available. The easiest way to install pycaret is using pip.
+PyCaret `2.0` is now available. See `2.0` release notes. The easiest way to install pycaret is using pip. 
 
 ```python
-pip install pycaret
+pip install pycaret==2.0
 ```
 
 ## Important Links
+- 2.0 Release notes: https://github.com/pycaret/pycaret/releases/tag/2.0
 - User Guide / Documentation: https://www.pycaret.org/guide
 - Getting Started Tutorials: https://www.pycaret.org/tutorial
 - Issue Logs: https://github.com/pycaret/pycaret/issues
@@ -33,7 +34,8 @@ PyCaret is an open source library that anybody can use. In our view the ideal ta
 - Data Science Professionals and Consultants involved in building Proof of Concept projects.
 
 ## Dependencies
-Please read requirements.txt for list of requirements. They are automatically installed when pycaret is installed using pip.
+Please read requirements.txt for list of requirements. They are automatically installed when pycaret is installed using pip. `shap`, `awscli` and `psutil` is removed from hard dependency in PyCaret 2.0. Must be installed separately, if needed.
+
 ## Note:
 It supports Python 64 bit only.
 
