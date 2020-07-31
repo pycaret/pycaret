@@ -1,9 +1,0 @@
-In addition to bug fix, following upgrades are being considered for 1.0.1 release. To upvote, please email moez@pycaret.org.
-
-- Return models from compare_models. Currently compare_models() donot return any trained model object. (Impact: pycaret.classification, pycaret.regression)
-- tune_model() function to work with model object directly. In current version string parameter is passed for example tune_model('lr'). In 1.0.1 this will be changed to tune_model(lr) where lr will be an object created using create_model (Impact: pycaret.classification, pycaret.regression)
-- Allow custom tuning grids to be passed into tune_model function. Currently user cannot pass custom grid. (Impact: pycaret.classification, pycaret.regression)
-- Add matthews_corrcoef, log_loss metrics in classification. (Impact: pycaret.classification)
-- Add shuffle parameter for train-test-split in setup() function (Impact: pycaret.classification, pycaret.regression)
-- Add shuffle parameter for Kfold in setup() function (Impact: pycaret.classification, pycaret.regression)
--
