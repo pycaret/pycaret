@@ -19,6 +19,9 @@ PyCaret `2.0` is now available. See `2.0` release notes. The easiest way to inst
 pip install pycaret==2.0
 ```
 
+## PyCaret can help you with:
+![alt text](https://github.com/pycaret/pycaret/blob/master/pycaret2-features.png)
+
 ## Important Links
 - 2.0 Release notes: https://github.com/pycaret/pycaret/releases/tag/2.0
 - User Guide / Documentation: https://www.pycaret.org/guide
