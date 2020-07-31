@@ -1,4 +1,5 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
 # Copyright (C) 2019-2020 Moez Ali <moez.ali@queensu.ca>
 # License: MIT, moez.ali@queensu.ca
 
@@ -34,6 +35,8 @@ setup(
                      "datefinder==0.7.0", "datetime", "DateTime==4.3", "awscli"]
 )
 =======
+=======
+>>>>>>> dev-1.0.1
 # Copyright (C) 2019-2020 Moez Ali <moez.ali@queensu.ca>
 # License: MIT, moez.ali@queensu.ca
 
@@ -67,4 +70,7 @@ setup(
     include_package_data=True,
     install_requires=required
 )
+<<<<<<< HEAD
+>>>>>>> dev-1.0.1
+=======
 >>>>>>> dev-1.0.1
