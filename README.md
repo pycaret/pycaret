@@ -1,4 +1,4 @@
-﻿# PyCaret
+﻿﻿# PyCaret
 [![Stability](https://img.shields.io/badge/stability-stable-green.svg)](https://img.shields.io/badge/stability-stable-green.svg) [![Documentation Status](https://readthedocs.org/projects/pip/badge/?version=stable)](http://pip.pypa.io/en/stable/?badge=stable) [![PyPI version](https://badge.fury.io/py/pycaret.svg)](https://badge.fury.io/py/pycaret) [![License](https://img.shields.io/pypi/l/ansicolortags.svg)](https://img.shields.io/pypi/l/ansicolortags.svg) [![Git count](http://hits.dwyl.com/pycaret/pycaret/pycaret.svg)](http://hits.dwyl.com/pycaret/pycaret/pycaret)
 
 ## What is PyCaret?
@@ -34,23 +34,6 @@ PyCaret is an open source library that anybody can use. In our view the ideal ta
 Please read requirements.txt for list of requirements. They are automatically installed when pycaret is installed using pip.
 ## Note:
 It supports Python 64 bit only.
-<<<<<<< HEAD
-<<<<<<< HEAD
-
-## Authors
-- pycaret.anomaly, Moez Ali <moez.ali@queensu.ca>
-- pycaret.classification, Moez Ali <moez.ali@queensu.ca>
-- pycaret.clustering, Moez Ali <moez.ali@queensu.ca>
-- pycaret.datasets, Moez Ali <moez.ali@queensu.ca>
-- pycaret.nlp, Moez Ali <moez.ali@queensu.ca>
-- pycaret.preprocess, Fahad Akbar <M.akbar@queensu.ca>
-- pycaret.regression, Moez Ali <moez.ali@queensu.ca>
-
-If you would like to contribute to PyCaret, please visit https://www.pycaret.org/contribute
-=======
->>>>>>> dev-1.0.1
-=======
->>>>>>> dev-1.0.1
 
 ## License
 
