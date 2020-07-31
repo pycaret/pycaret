@@ -29,5 +29,7 @@ def test():
     data_ = pycaret.nlp.get_config('data_')
     seed = pycaret.nlp.get_config('seed')
 
+    assert 1 == 1
+    
 if __name__ == "__main__":
     test()

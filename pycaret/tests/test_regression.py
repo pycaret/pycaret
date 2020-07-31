@@ -38,5 +38,7 @@ def test():
     y_train = pycaret.regression.get_config('y_train')
     y_test = pycaret.regression.get_config('y_test')
 
+    assert 1 == 1
+    
 if __name__ == "__main__":
     test()

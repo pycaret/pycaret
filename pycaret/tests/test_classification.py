@@ -38,5 +38,7 @@ def test():
     y_train = pycaret.classification.get_config('y_train')
     y_test = pycaret.classification.get_config('y_test')
 
+    assert 1 == 1
+    
 if __name__ == "__main__":
     test()

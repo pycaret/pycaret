@@ -28,5 +28,7 @@ def test():
     X = pycaret.clustering.get_config('X')
     seed = pycaret.clustering.get_config('seed')
 
+    assert 1 == 1
+    
 if __name__ == "__main__":
     test()
