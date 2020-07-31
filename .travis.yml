@@ -9,6 +9,7 @@ before_install:
   - pip install -U pytest
   - pip install codecov
 install:
+  - travis_wait 30 mvn install
   - pip install -r requirements.txt
 script: pytest # run tests
 after_success:
