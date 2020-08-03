@@ -3,12 +3,14 @@
 
 from setuptools import setup
 
+
 def readme():
-    with open('README.md') as f:
+    with open("README.md") as f:
         README = f.read()
     return README
 
-with open('requirements.txt') as f:
+
+with open("requirements.txt") as f:
     required = f.read().splitlines()
 
 setup(
@@ -29,5 +31,5 @@ setup(
     ],
     packages=["pycaret"],
     include_package_data=True,
-    install_requires=required
+    install_requires=required,
 )

@@ -1,20 +1,22 @@
 import os, sys
+
 sys.path.insert(0, os.path.abspath(".."))
 
-#compare_models_test
+# compare_models_test
 import pytest
 import pycaret.classification
 import pycaret.datasets
 
+
 def test():
     # loading dataset
-    data = pycaret.datasets.get_data('juice')
+    data = pycaret.datasets.get_data("juice")
 
     # init setup
-    clf1 = pycaret.classification.setup(data, target='Purchase',silent=True, html=False, session_id=123)
+    clf1 = pycaret.classification.setup(data, target="Purchase", silent=True, html=False, session_id=123)
 
     # compare models
-    top3 = pycaret.classification.compare_models(n_select = 3, blacklist=['catboost'])
+    top3 = pycaret.classification.compare_models(n_select=3, blacklist=["catboost"])
 
     # tune model
     tuned_top3 = [pycaret.classification.tune_model(i) for i in top3]
@@ -26,15 +28,16 @@ def test():
     blender = pycaret.classification.blend_models(top3)
 
     # stack models
-    stacker = pycaret.classification.stack_models(estimator_list = top3)
+    stacker = pycaret.classification.stack_models(estimator_list=top3)
 
     # get config
-    X_train = pycaret.classification.get_config('X_train')
-    X_test = pycaret.classification.get_config('X_test')
-    y_train = pycaret.classification.get_config('y_train')
-    y_test = pycaret.classification.get_config('y_test')
+    X_train = pycaret.classification.get_config("X_train")
+    X_test = pycaret.classification.get_config("X_test")
+    y_train = pycaret.classification.get_config("y_train")
+    y_test = pycaret.classification.get_config("y_test")
 
     assert 1 == 1
-    
+
+
 if __name__ == "__main__":
     test()

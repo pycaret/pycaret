@@ -4,7 +4,7 @@
 
 
 def get_data(dataset, save_copy=False, profile=False, verbose=True):
-    
+
     """
       
     Description:
@@ -49,36 +49,37 @@ def get_data(dataset, save_copy=False, profile=False, verbose=True):
       
          
     """
-    
+
     import pandas as pd
     from IPython.display import display, HTML, clear_output, update_display
-    
-    address = 'https://raw.githubusercontent.com/pycaret/pycaret/master/datasets/'
-    extension = '.csv'
+
+    address = "https://raw.githubusercontent.com/pycaret/pycaret/master/datasets/"
+    extension = ".csv"
     filename = dataset
-    
+
     complete_address = address + str(dataset) + extension
-    
+
     data = pd.read_csv(complete_address)
-    
-    #create a copy for pandas profiler
+
+    # create a copy for pandas profiler
     data_for_profiling = data.copy()
-    
+
     if save_copy:
         save_name = str(dataset) + str(extension)
         data.to_csv(save_name)
-        
-    if dataset == 'index':
+
+    if dataset == "index":
         display(data)
-    
+
     else:
         if profile:
             import pandas_profiling
+
             pf = pandas_profiling.ProfileReport(data_for_profiling)
             display(pf)
-            
+
         else:
             if verbose:
                 display(data.head())
-        
+
     return data

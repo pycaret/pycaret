@@ -4,46 +4,49 @@
 # Release: PyCaret 2.0x
 # Last modified : 30/07/2020
 
-def setup(data, 
-        categorical_features = None,
-        categorical_imputation = 'constant',
-        ordinal_features = None,
-        high_cardinality_features = None,
-        numeric_features = None,
-        numeric_imputation = 'mean',
-        date_features = None,
-        ignore_features = None,
-        normalize = False,
-        normalize_method = 'zscore',
-        transformation = False,
-        transformation_method = 'yeo-johnson',
-        handle_unknown_categorical = True,             
-        unknown_categorical_method = 'least_frequent', 
-        pca = False,
-        pca_method = 'linear',
-        pca_components = None,
-        ignore_low_variance = False, 
-        combine_rare_levels = False, 
-        rare_level_threshold = 0.10, 
-        bin_numeric_features = None, 
-        remove_multicollinearity = False,
-        multicollinearity_threshold = 0.9,
-        group_features = None, 
-        group_names = None, 
-        supervised = False,
-        supervised_target = None,
-        n_jobs = -1, #added in pycaret==2.0.0
-        html = True, #added in pycaret==2.0.0
-        session_id = None,
-        log_experiment = False, #added in pycaret==2.0.0
-        experiment_name = None, #added in pycaret==2.0.0
-        log_plots = False, #added in pycaret==2.0.0
-        log_profile = False, #added in pycaret==2.0.0
-        log_data = False, #added in pycaret==2.0.0
-        silent = False, #added in pycaret==2.0.0
-        verbose = True,
-        profile = False,):
-    
+
+def setup(
+    data,
+    categorical_features=None,
+    categorical_imputation="constant",
+    ordinal_features=None,
+    high_cardinality_features=None,
+    numeric_features=None,
+    numeric_imputation="mean",
+    date_features=None,
+    ignore_features=None,
+    normalize=False,
+    normalize_method="zscore",
+    transformation=False,
+    transformation_method="yeo-johnson",
+    handle_unknown_categorical=True,
+    unknown_categorical_method="least_frequent",
+    pca=False,
+    pca_method="linear",
+    pca_components=None,
+    ignore_low_variance=False,
+    combine_rare_levels=False,
+    rare_level_threshold=0.10,
+    bin_numeric_features=None,
+    remove_multicollinearity=False,
+    multicollinearity_threshold=0.9,
+    group_features=None,
+    group_names=None,
+    supervised=False,
+    supervised_target=None,
+    n_jobs=-1,  # added in pycaret==2.0.0
+    html=True,  # added in pycaret==2.0.0
+    session_id=None,
+    log_experiment=False,  # added in pycaret==2.0.0
+    experiment_name=None,  # added in pycaret==2.0.0
+    log_plots=False,  # added in pycaret==2.0.0
+    log_profile=False,  # added in pycaret==2.0.0
+    log_data=False,  # added in pycaret==2.0.0
+    silent=False,  # added in pycaret==2.0.0
+    verbose=True,
+    profile=False,
+):
+
     """
         
     Description:
@@ -297,30 +300,31 @@ def setup(data,
       
           
     """
-    
-    #exception checking   
+
+    # exception checking
     import sys
-    
+
     from pycaret.utils import __version__
+
     ver = __version__()
 
     import logging
 
     # create logger
     global logger
-    
-    logger = logging.getLogger('logs')
+
+    logger = logging.getLogger("logs")
     logger.setLevel(logging.DEBUG)
-    
+
     # create console handler and set level to debug
     if logger.hasHandlers():
         logger.handlers.clear()
-    
-    ch = logging.FileHandler('logs.log')
+
+    ch = logging.FileHandler("logs.log")
     ch.setLevel(logging.DEBUG)
 
     # create formatter
-    formatter = logging.Formatter('%(asctime)s:%(levelname)s:%(message)s')
+    formatter = logging.Formatter("%(asctime)s:%(levelname)s:%(message)s")
 
     # add formatter to ch
     ch.setFormatter(formatter)
@@ -329,32 +333,69 @@ def setup(data,
     logger.addHandler(ch)
 
     logger.info("PyCaret Clustering Module")
-    logger.info('version ' + str(ver))
+    logger.info("version " + str(ver))
     logger.info("Initializing setup()")
 
-    #generate USI for mlflow tracking
+    # generate USI for mlflow tracking
     import secrets
+
     global USI
     USI = secrets.token_hex(nbytes=2)
-    logger.info('USI: ' + str(USI))
+    logger.info("USI: " + str(USI))
 
-    logger.info("""setup(data={}, categorical_features={}, categorical_imputation={}, ordinal_features={}, high_cardinality_features={}, 
+    logger.info(
+        """setup(data={}, categorical_features={}, categorical_imputation={}, ordinal_features={}, high_cardinality_features={}, 
                     numeric_features={}, numeric_imputation={}, date_features={}, ignore_features={}, normalize={},
                     normalize_method={}, transformation={}, transformation_method={}, handle_unknown_categorical={}, unknown_categorical_method={}, pca={}, pca_method={},
                     pca_components={}, ignore_low_variance={}, combine_rare_levels={}, rare_level_threshold={}, bin_numeric_features={},
                     remove_multicollinearity={}, multicollinearity_threshold={}, group_features={},
                     group_names={}, supervised={}, supervised_target={}, n_jobs={}, html={}, session_id={}, log_experiment={},
-                    experiment_name={}, log_plots={}, log_profile={}, log_data={}, silent={}, verbose={}, profile={})""".format(\
-            str(data.shape), str(categorical_features), str(categorical_imputation), str(ordinal_features),\
-            str(high_cardinality_features), str(numeric_features), str(numeric_imputation), str(date_features), str(ignore_features),\
-            str(normalize), str(normalize_method), str(transformation), str(transformation_method), str(handle_unknown_categorical), str(unknown_categorical_method), str(pca),\
-            str(pca_method), str(pca_components), str(ignore_low_variance), str(combine_rare_levels), str(rare_level_threshold), str(bin_numeric_features),\
-            str(remove_multicollinearity), str(multicollinearity_threshold), str(group_features),str(group_names),str(supervised), str(supervised_target), str(n_jobs), str(html),\
-            str(session_id),str(log_experiment), str(experiment_name), str(log_plots),str(log_profile), str(log_data), str(silent), str(verbose), str(profile)))
+                    experiment_name={}, log_plots={}, log_profile={}, log_data={}, silent={}, verbose={}, profile={})""".format(
+            str(data.shape),
+            str(categorical_features),
+            str(categorical_imputation),
+            str(ordinal_features),
+            str(high_cardinality_features),
+            str(numeric_features),
+            str(numeric_imputation),
+            str(date_features),
+            str(ignore_features),
+            str(normalize),
+            str(normalize_method),
+            str(transformation),
+            str(transformation_method),
+            str(handle_unknown_categorical),
+            str(unknown_categorical_method),
+            str(pca),
+            str(pca_method),
+            str(pca_components),
+            str(ignore_low_variance),
+            str(combine_rare_levels),
+            str(rare_level_threshold),
+            str(bin_numeric_features),
+            str(remove_multicollinearity),
+            str(multicollinearity_threshold),
+            str(group_features),
+            str(group_names),
+            str(supervised),
+            str(supervised_target),
+            str(n_jobs),
+            str(html),
+            str(session_id),
+            str(log_experiment),
+            str(experiment_name),
+            str(log_plots),
+            str(log_profile),
+            str(log_data),
+            str(silent),
+            str(verbose),
+            str(profile),
+        )
+    )
 
-    #logging environment and libraries
+    # logging environment and libraries
     logger.info("Checking environment")
-    
+
     from platform import python_version, platform, python_build, machine
 
     try:
@@ -379,34 +420,41 @@ def setup(data,
 
     try:
         import psutil
+
         logger.info("Memory: " + str(psutil.virtual_memory()))
         logger.info("Physical Core: " + str(psutil.cpu_count(logical=False)))
         logger.info("Logical Core: " + str(psutil.cpu_count(logical=True)))
     except:
-        logger.warning("cannot find psutil installation. memory not traceable. Install psutil using pip to enable memory logging. ")
+        logger.warning(
+            "cannot find psutil installation. memory not traceable. Install psutil using pip to enable memory logging. "
+        )
 
     logger.info("Checking libraries")
 
     try:
         from pandas import __version__
+
         logger.info("pd==" + str(__version__))
     except:
         logger.warning("pandas not found")
 
     try:
         from numpy import __version__
+
         logger.info("numpy==" + str(__version__))
     except:
         logger.warning("numpy not found")
 
     try:
         from sklearn import __version__
+
         logger.info("sklearn==" + str(__version__))
     except:
         logger.warning("sklearn not found")
 
     try:
         from kmodes import __version__
+
         logger.info("kmodes==" + str(__version__))
     except:
         logger.warning("kmodes not found")
@@ -414,566 +462,575 @@ def setup(data,
     try:
         from mlflow.version import VERSION
         import warnings
-        warnings.filterwarnings('ignore') 
+
+        warnings.filterwarnings("ignore")
         logger.info("mlflow==" + str(VERSION))
     except:
         logger.warning("mlflow not found")
 
-
     logger.info("Checking Exceptions")
 
-    #run_time
+    # run_time
     import datetime, time
+
     runtime_start = time.time()
 
     """
     error handling starts here
     """
-    
-    #checking data type
-    if hasattr(data,'shape') is False:
-        sys.exit('(Type Error): data passed must be of type pandas.DataFrame')  
 
-    #checking session_id
+    # checking data type
+    if hasattr(data, "shape") is False:
+        sys.exit("(Type Error): data passed must be of type pandas.DataFrame")
+
+    # checking session_id
     if session_id is not None:
         if type(session_id) is not int:
-            sys.exit('(Type Error): session_id parameter must be an integer.')  
-            
-    #checking normalize parameter
+            sys.exit("(Type Error): session_id parameter must be an integer.")
+
+    # checking normalize parameter
     if type(normalize) is not bool:
-        sys.exit('(Type Error): normalize parameter only accepts True or False.')
-        
-    #checking transformation parameter
+        sys.exit("(Type Error): normalize parameter only accepts True or False.")
+
+    # checking transformation parameter
     if type(transformation) is not bool:
-        sys.exit('(Type Error): transformation parameter only accepts True or False.')
-        
-    #checking categorical imputation
-    allowed_categorical_imputation = ['constant', 'mode']
+        sys.exit("(Type Error): transformation parameter only accepts True or False.")
+
+    # checking categorical imputation
+    allowed_categorical_imputation = ["constant", "mode"]
     if categorical_imputation not in allowed_categorical_imputation:
         sys.exit("(Value Error): categorical_imputation param only accepts 'constant' or 'mode' ")
-    
-    #ordinal_features
+
+    # ordinal_features
     if ordinal_features is not None:
         if type(ordinal_features) is not dict:
-            sys.exit("(Type Error): ordinal_features must be of type dictionary with column name as key and ordered values as list. ")
-    
-    #ordinal features check
+            sys.exit(
+                "(Type Error): ordinal_features must be of type dictionary with column name as key and ordered values as list. "
+            )
+
+    # ordinal features check
     if ordinal_features is not None:
         data_cols = data.columns
-        #data_cols = data_cols.drop(target)
+        # data_cols = data_cols.drop(target)
         ord_keys = ordinal_features.keys()
 
         for i in ord_keys:
             if i not in data_cols:
                 sys.exit("(Value Error) Column name passed as a key in ordinal_features param doesnt exist. ")
-                
+
         for k in ord_keys:
             if data[k].nunique() != len(ordinal_features.get(k)):
                 sys.exit("(Value Error) Levels passed in ordinal_features param doesnt match with levels in data. ")
-                
+
         for i in ord_keys:
             value_in_keys = ordinal_features.get(i)
             value_in_data = list(data[i].unique().astype(str))
             for j in value_in_keys:
                 if j not in value_in_data:
-                    text =  "Column name '" + str(i) + "' doesnt contain any level named '" + str(j) + "'."
+                    text = "Column name '" + str(i) + "' doesnt contain any level named '" + str(j) + "'."
                     sys.exit(text)
-    
-    #high_cardinality_features
+
+    # high_cardinality_features
     if high_cardinality_features is not None:
         if type(high_cardinality_features) is not list:
             sys.exit("(Type Error): high_cardinality_features param only accepts name of columns as a list. ")
-        
+
     if high_cardinality_features is not None:
         data_cols = data.columns
-        #data_cols = data_cols.drop(target)
+        # data_cols = data_cols.drop(target)
         for i in high_cardinality_features:
             if i not in data_cols:
                 sys.exit("(Value Error): Column type forced is either target column or doesn't exist in the dataset.")
-        
-    #checking numeric imputation
-    allowed_numeric_imputation = ['mean', 'median']
+
+    # checking numeric imputation
+    allowed_numeric_imputation = ["mean", "median"]
     if numeric_imputation not in allowed_numeric_imputation:
         sys.exit("(Value Error): numeric_imputation param only accepts 'mean' or 'median' ")
-        
-    #checking normalize method
-    allowed_normalize_method = ['zscore', 'minmax', 'maxabs', 'robust']
+
+    # checking normalize method
+    allowed_normalize_method = ["zscore", "minmax", "maxabs", "robust"]
     if normalize_method not in allowed_normalize_method:
-        sys.exit("(Value Error): normalize_method param only accepts 'zscore', 'minxmax', 'maxabs' or 'robust'. ")    
-    
-    #checking transformation method
-    allowed_transformation_method = ['yeo-johnson', 'quantile']
+        sys.exit("(Value Error): normalize_method param only accepts 'zscore', 'minxmax', 'maxabs' or 'robust'. ")
+
+    # checking transformation method
+    allowed_transformation_method = ["yeo-johnson", "quantile"]
     if transformation_method not in allowed_transformation_method:
-        sys.exit("(Value Error): transformation_method param only accepts 'yeo-johnson' or 'quantile' ")        
-    
-    #handle unknown categorical
+        sys.exit("(Value Error): transformation_method param only accepts 'yeo-johnson' or 'quantile' ")
+
+    # handle unknown categorical
     if type(handle_unknown_categorical) is not bool:
-        sys.exit('(Type Error): handle_unknown_categorical parameter only accepts True or False.')
-        
-    #unknown categorical method
-    unknown_categorical_method_available = ['least_frequent', 'most_frequent']
-    
-    #forced type check
+        sys.exit("(Type Error): handle_unknown_categorical parameter only accepts True or False.")
+
+    # unknown categorical method
+    unknown_categorical_method_available = ["least_frequent", "most_frequent"]
+
+    # forced type check
     all_cols = list(data.columns)
-    
-    #categorical
+
+    # categorical
     if categorical_features is not None:
         for i in categorical_features:
             if i not in all_cols:
-                sys.exit("(Value Error): Column type forced is either target column or doesn't exist in the dataset.") 
-    #numeric
+                sys.exit("(Value Error): Column type forced is either target column or doesn't exist in the dataset.")
+    # numeric
     if numeric_features is not None:
         for i in numeric_features:
             if i not in all_cols:
-                sys.exit("(Value Error): Column type forced is either target column or doesn't exist in the dataset.")    
-    
-    #date features
+                sys.exit("(Value Error): Column type forced is either target column or doesn't exist in the dataset.")
+
+    # date features
     if date_features is not None:
         for i in date_features:
             if i not in all_cols:
-                sys.exit("(Value Error): Column type forced is either target column or doesn't exist in the dataset.")      
-    
-    #drop features
+                sys.exit("(Value Error): Column type forced is either target column or doesn't exist in the dataset.")
+
+    # drop features
     if ignore_features is not None:
         for i in ignore_features:
             if i not in all_cols:
-                sys.exit("(Value Error): Feature ignored is either target column or doesn't exist in the dataset.")     
-    
-    #check pca
+                sys.exit("(Value Error): Feature ignored is either target column or doesn't exist in the dataset.")
+
+    # check pca
     if type(pca) is not bool:
-        sys.exit('(Type Error): PCA parameter only accepts True or False.')
-        
-    #pca method check
-    allowed_pca_methods = ['linear', 'kernel', 'incremental']
+        sys.exit("(Type Error): PCA parameter only accepts True or False.")
+
+    # pca method check
+    allowed_pca_methods = ["linear", "kernel", "incremental"]
     if pca_method not in allowed_pca_methods:
-        sys.exit("(Value Error): pca method param only accepts 'linear', 'kernel', or 'incremental'. ")    
-    
-    #pca components check
+        sys.exit("(Value Error): pca method param only accepts 'linear', 'kernel', or 'incremental'. ")
+
+    # pca components check
     if pca is True:
-        if pca_method is not 'linear':
+        if pca_method is not "linear":
             if pca_components is not None:
-                if(type(pca_components)) is not int:
+                if (type(pca_components)) is not int:
                     sys.exit("(Type Error): pca_components parameter must be integer when pca_method is not 'linear'. ")
 
-    #pca components check 2
+    # pca components check 2
     if pca is True:
-        if pca_method is not 'linear':
+        if pca_method is not "linear":
             if pca_components is not None:
                 if pca_components > len(data.columns):
-                    sys.exit("(Type Error): pca_components parameter cannot be greater than original features space.")                
- 
-    #pca components check 3
+                    sys.exit("(Type Error): pca_components parameter cannot be greater than original features space.")
+
+    # pca components check 3
     if pca is True:
-        if pca_method is 'linear':
+        if pca_method is "linear":
             if pca_components is not None:
                 if type(pca_components) is not float:
-                    if pca_components > len(data.columns): 
-                        sys.exit("(Type Error): pca_components parameter cannot be greater than original features space or float between 0 - 1.")      
-        
-    #check ignore_low_variance
+                    if pca_components > len(data.columns):
+                        sys.exit(
+                            "(Type Error): pca_components parameter cannot be greater than original features space or float between 0 - 1."
+                        )
+
+    # check ignore_low_variance
     if type(ignore_low_variance) is not bool:
-        sys.exit('(Type Error): ignore_low_variance parameter only accepts True or False.')
-        
-    #check ignore_low_variance
+        sys.exit("(Type Error): ignore_low_variance parameter only accepts True or False.")
+
+    # check ignore_low_variance
     if type(combine_rare_levels) is not bool:
-        sys.exit('(Type Error): combine_rare_levels parameter only accepts True or False.')
-        
-    #check rare_level_threshold
+        sys.exit("(Type Error): combine_rare_levels parameter only accepts True or False.")
+
+    # check rare_level_threshold
     if type(rare_level_threshold) is not float:
-        sys.exit('(Type Error): rare_level_threshold must be a float between 0 and 1. ')
-    
-    #bin numeric features
+        sys.exit("(Type Error): rare_level_threshold must be a float between 0 and 1. ")
+
+    # bin numeric features
     if bin_numeric_features is not None:
         all_cols = list(data.columns)
-        
+
         for i in bin_numeric_features:
             if i not in all_cols:
                 sys.exit("(Value Error): Column type forced is either target column or doesn't exist in the dataset.")
-    
-    #remove_multicollinearity
+
+    # remove_multicollinearity
     if type(remove_multicollinearity) is not bool:
-        sys.exit('(Type Error): remove_multicollinearity parameter only accepts True or False.')
-        
-    #multicollinearity_threshold
+        sys.exit("(Type Error): remove_multicollinearity parameter only accepts True or False.")
+
+    # multicollinearity_threshold
     if type(multicollinearity_threshold) is not float:
-        sys.exit('(Type Error): multicollinearity_threshold must be a float between 0 and 1. ')  
-    
-    #group features
+        sys.exit("(Type Error): multicollinearity_threshold must be a float between 0 and 1. ")
+
+    # group features
     if group_features is not None:
         if type(group_features) is not list:
-            sys.exit('(Type Error): group_features must be of type list. ')     
-    
+            sys.exit("(Type Error): group_features must be of type list. ")
+
     if group_names is not None:
         if type(group_names) is not list:
-            sys.exit('(Type Error): group_names must be of type list. ')        
+            sys.exit("(Type Error): group_names must be of type list. ")
 
-    #silent
+    # silent
     if type(silent) is not bool:
         sys.exit("(Type Error): silent parameter only accepts True or False. ")
-        
-    #html
+
+    # html
     if type(html) is not bool:
-        sys.exit('(Type Error): html parameter only accepts True or False.')
+        sys.exit("(Type Error): html parameter only accepts True or False.")
 
-    #log_experiment
+    # log_experiment
     if type(log_experiment) is not bool:
-        sys.exit('(Type Error): log_experiment parameter only accepts True or False.')
+        sys.exit("(Type Error): log_experiment parameter only accepts True or False.")
 
-    #log_plots
+    # log_plots
     if type(log_plots) is not bool:
-        sys.exit('(Type Error): log_plots parameter only accepts True or False.')
+        sys.exit("(Type Error): log_plots parameter only accepts True or False.")
 
-    #log_data
+    # log_data
     if type(log_data) is not bool:
-        sys.exit('(Type Error): log_data parameter only accepts True or False.')
+        sys.exit("(Type Error): log_data parameter only accepts True or False.")
 
-    #log_profile
+    # log_profile
     if type(log_profile) is not bool:
-        sys.exit('(Type Error): log_profile parameter only accepts True or False.')
+        sys.exit("(Type Error): log_profile parameter only accepts True or False.")
 
     """
     error handling ends here
     """
-    
+
     logger.info("Preloading libraries")
 
-    #pre-load libraries
+    # pre-load libraries
     import pandas as pd
     import ipywidgets as ipw
     from IPython.display import display, HTML, clear_output, update_display
     import datetime, time
     import secrets
     import os
-    
-    #pandas option
-    pd.set_option('display.max_columns', 500)
-    pd.set_option('display.max_rows', 500)
-    
-    #global html_param
+
+    # pandas option
+    pd.set_option("display.max_columns", 500)
+    pd.set_option("display.max_rows", 500)
+
+    # global html_param
     global html_param
-    
-    #create html_param
+
+    # create html_param
     html_param = html
 
     logger.info("Preparing display monitor")
 
-    #progress bar
+    # progress bar
     max_steps = 4
-        
-    progress = ipw.IntProgress(value=0, min=0, max=max_steps, step=1 , description='Processing: ')
-    
-        
+
+    progress = ipw.IntProgress(value=0, min=0, max=max_steps, step=1, description="Processing: ")
+
     timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
-    monitor = pd.DataFrame( [ ['Initiated' , '. . . . . . . . . . . . . . . . . .', timestampStr ], 
-                             ['Status' , '. . . . . . . . . . . . . . . . . .' , 'Loading Dependencies' ] ],
-                             #['Step' , '. . . . . . . . . . . . . . . . . .',  'Step 0 of ' + str(total_steps)] ],
-                              columns=['', ' ', '   ']).set_index('')
-    
+    monitor = pd.DataFrame(
+        [
+            ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
+            ["Status", ". . . . . . . . . . . . . . . . . .", "Loading Dependencies"],
+        ],
+        # ['Step' , '. . . . . . . . . . . . . . . . . .',  'Step 0 of ' + str(total_steps)] ],
+        columns=["", " ", "   "],
+    ).set_index("")
+
     if verbose:
         if html_param:
             display(progress)
-            display(monitor, display_id = 'monitor')
-    
+            display(monitor, display_id="monitor")
+
     logger.info("Importing libraries")
-    #general dependencies
+    # general dependencies
     import numpy as np
     import pandas as pd
     import random
-    
-    #setting sklearn config to print all parameters including default
+
+    # setting sklearn config to print all parameters including default
     import sklearn
+
     sklearn.set_config(print_changed_only=False)
-    
-    #define highlight function for function grid to display
+
+    # define highlight function for function grid to display
     def highlight_max(s):
         is_max = s == True
-        return ['background-color: lightgreen' if v else '' for v in is_max]
-    
-    #ignore warnings
+        return ["background-color: lightgreen" if v else "" for v in is_max]
+
+    # ignore warnings
     import warnings
-    warnings.filterwarnings('ignore') 
-    
+
+    warnings.filterwarnings("ignore")
+
     logger.info("Declaring global variables")
-    #defining global variables
-    global data_, X, seed, prep_pipe, prep_param, experiment__,\
-        n_jobs_param, exp_name_log, logging_param, log_plots_param
-    
+    # defining global variables
+    global data_, X, seed, prep_pipe, prep_param, experiment__, n_jobs_param, exp_name_log, logging_param, log_plots_param
+
     logger.info("Copying data for preprocessing")
-    #copy original data for pandas profiler
+    # copy original data for pandas profiler
     data_before_preprocess = data.copy()
-    
-    #copying data
+
+    # copying data
     data_ = data.copy()
-    
-    #data without target
+
+    # data without target
     if supervised:
         data_without_target = data.copy()
         data_without_target.drop(supervised_target, axis=1, inplace=True)
-    
+
     if supervised:
         data_for_preprocess = data_without_target.copy()
     else:
         data_for_preprocess = data_.copy()
-        
-    #generate seed to be used globally
+
+    # generate seed to be used globally
     if session_id is None:
-        seed = random.randint(150,9000)
+        seed = random.randint(150, 9000)
     else:
-        seed = session_id    
+        seed = session_id
 
     """
     preprocessing starts here
     """
-    
-    pd.set_option('display.max_columns', 500)
-    pd.set_option('display.max_rows', 500)
 
-    monitor.iloc[1,1:] = 'Preparing Data for Modeling'
+    pd.set_option("display.max_columns", 500)
+    pd.set_option("display.max_rows", 500)
+
+    monitor.iloc[1, 1:] = "Preparing Data for Modeling"
     if verbose:
         if html_param:
-            update_display(monitor, display_id = 'monitor')
-            
-    #define parameters for preprocessor
-    
+            update_display(monitor, display_id="monitor")
+
+    # define parameters for preprocessor
+
     logger.info("Declaring preprocessing parameters")
 
-    #categorical features
+    # categorical features
     if categorical_features is None:
         cat_features_pass = []
     else:
         cat_features_pass = categorical_features
-    
-    #numeric features
+
+    # numeric features
     if numeric_features is None:
         numeric_features_pass = []
     else:
         numeric_features_pass = numeric_features
-     
-    #drop features
+
+    # drop features
     if ignore_features is None:
         ignore_features_pass = []
     else:
         ignore_features_pass = ignore_features
-     
-    #date features
+
+    # date features
     if date_features is None:
         date_features_pass = []
     else:
         date_features_pass = date_features
-        
-    #categorical imputation strategy
-    if categorical_imputation == 'constant':
-        categorical_imputation_pass = 'not_available'
-    elif categorical_imputation == 'mode':
-        categorical_imputation_pass = 'most frequent'
-    
-    #transformation method strategy
-    if transformation_method == 'yeo-johnson':
-        trans_method_pass = 'yj'
-    elif transformation_method == 'quantile':
-        trans_method_pass = 'quantile'
-    
-    #pass method
-    if pca_method == 'linear':
-        pca_method_pass = 'pca_liner'
-            
-    elif pca_method == 'kernel':
-        pca_method_pass = 'pca_kernal'
-            
-    elif pca_method == 'incremental':
-        pca_method_pass = 'incremental'
-            
-    elif pca_method == 'pls':
-        pca_method_pass = 'pls'
-        
-    #pca components
+
+    # categorical imputation strategy
+    if categorical_imputation == "constant":
+        categorical_imputation_pass = "not_available"
+    elif categorical_imputation == "mode":
+        categorical_imputation_pass = "most frequent"
+
+    # transformation method strategy
+    if transformation_method == "yeo-johnson":
+        trans_method_pass = "yj"
+    elif transformation_method == "quantile":
+        trans_method_pass = "quantile"
+
+    # pass method
+    if pca_method == "linear":
+        pca_method_pass = "pca_liner"
+
+    elif pca_method == "kernel":
+        pca_method_pass = "pca_kernal"
+
+    elif pca_method == "incremental":
+        pca_method_pass = "incremental"
+
+    elif pca_method == "pls":
+        pca_method_pass = "pls"
+
+    # pca components
     if pca is True:
         if pca_components is None:
-            if pca_method == 'linear':
+            if pca_method == "linear":
                 pca_components_pass = 0.99
             else:
-                pca_components_pass = int((len(data.columns))*0.5)
-                
+                pca_components_pass = int((len(data.columns)) * 0.5)
+
         else:
             pca_components_pass = pca_components
-            
+
     else:
         pca_components_pass = 0.99
-        
+
     if bin_numeric_features is None:
         apply_binning_pass = False
         features_to_bin_pass = []
-    
+
     else:
         apply_binning_pass = True
         features_to_bin_pass = bin_numeric_features
-    
-    #group features
-    #=============#
-    
-    #apply grouping
+
+    # group features
+    # =============#
+
+    # apply grouping
     if group_features is not None:
         apply_grouping_pass = True
     else:
         apply_grouping_pass = False
-    
-    #group features listing
+
+    # group features listing
     if apply_grouping_pass is True:
-        
+
         if type(group_features[0]) is str:
             group_features_pass = []
             group_features_pass.append(group_features)
         else:
             group_features_pass = group_features
-            
+
     else:
-        
+
         group_features_pass = [[]]
-    
-    #group names
+
+    # group names
     if apply_grouping_pass is True:
 
         if (group_names is None) or (len(group_names) != len(group_features_pass)):
             group_names_pass = list(np.arange(len(group_features_pass)))
-            group_names_pass = ['group_' + str(i) for i in group_names_pass]
+            group_names_pass = ["group_" + str(i) for i in group_names_pass]
 
         else:
             group_names_pass = group_names
-            
+
     else:
         group_names_pass = []
-        
 
-    #unknown categorical
-    if unknown_categorical_method == 'least_frequent':
-        unknown_categorical_method_pass = 'least frequent'
-    elif unknown_categorical_method == 'most_frequent':
-        unknown_categorical_method_pass = 'most frequent'
-    
-    #ordinal_features
+    # unknown categorical
+    if unknown_categorical_method == "least_frequent":
+        unknown_categorical_method_pass = "least frequent"
+    elif unknown_categorical_method == "most_frequent":
+        unknown_categorical_method_pass = "most frequent"
+
+    # ordinal_features
     if ordinal_features is not None:
         apply_ordinal_encoding_pass = True
     else:
         apply_ordinal_encoding_pass = False
-     
-    #high cardinality
+
+    # high cardinality
     if apply_ordinal_encoding_pass is True:
         ordinal_columns_and_categories_pass = ordinal_features
     else:
         ordinal_columns_and_categories_pass = {}
-        
+
     if high_cardinality_features is not None:
         apply_cardinality_reduction_pass = True
     else:
         apply_cardinality_reduction_pass = False
-        
-    cardinal_method_pass = 'count'
-        
+
+    cardinal_method_pass = "count"
+
     if apply_cardinality_reduction_pass:
         cardinal_features_pass = high_cardinality_features
     else:
         cardinal_features_pass = []
-    
-    #display dtypes
+
+    # display dtypes
     if supervised is False:
         display_types_pass = True
     else:
         display_types_pass = False
-    
+
     if silent:
         display_types_pass = False
 
     logger.info("Importing preprocessing module")
 
-    #import library
+    # import library
     from pycaret import preprocess
-    
+
     logger.info("Creating preprocessing pipeline")
 
-    X = preprocess.Preprocess_Path_Two(train_data = data_for_preprocess, 
-                                       categorical_features = cat_features_pass,
-                                       apply_ordinal_encoding = apply_ordinal_encoding_pass,
-                                       ordinal_columns_and_categories = ordinal_columns_and_categories_pass,
-                                       apply_cardinality_reduction = apply_cardinality_reduction_pass,
-                                       cardinal_method = cardinal_method_pass,
-                                       cardinal_features = cardinal_features_pass,
-                                       numerical_features = numeric_features_pass,
-                                       time_features = date_features_pass,
-                                       features_todrop = ignore_features_pass,
-                                       display_types = display_types_pass,
-                                       numeric_imputation_strategy = numeric_imputation,
-                                       categorical_imputation_strategy = categorical_imputation_pass,
-                                       scale_data = normalize,
-                                       scaling_method = normalize_method,
-                                       Power_transform_data = transformation,
-                                       Power_transform_method = trans_method_pass,
-                                       apply_untrained_levels_treatment= handle_unknown_categorical, 
-                                       untrained_levels_treatment_method = unknown_categorical_method_pass,
-                                       apply_pca = pca,
-                                       pca_method = pca_method_pass, 
-                                       pca_variance_retained_or_number_of_components = pca_components_pass,
-                                       apply_zero_nearZero_variance = ignore_low_variance, 
-                                       club_rare_levels = combine_rare_levels, 
-                                       rara_level_threshold_percentage = rare_level_threshold,
-                                       apply_binning = apply_binning_pass, 
-                                       features_to_binn = features_to_bin_pass,
-                                       remove_multicollinearity = remove_multicollinearity,
-                                       maximum_correlation_between_features = multicollinearity_threshold,
-                                       apply_grouping = apply_grouping_pass, 
-                                       features_to_group_ListofList = group_features_pass,
-                                       group_name = group_names_pass,
-                                       random_state = seed)
-        
+    X = preprocess.Preprocess_Path_Two(
+        train_data=data_for_preprocess,
+        categorical_features=cat_features_pass,
+        apply_ordinal_encoding=apply_ordinal_encoding_pass,
+        ordinal_columns_and_categories=ordinal_columns_and_categories_pass,
+        apply_cardinality_reduction=apply_cardinality_reduction_pass,
+        cardinal_method=cardinal_method_pass,
+        cardinal_features=cardinal_features_pass,
+        numerical_features=numeric_features_pass,
+        time_features=date_features_pass,
+        features_todrop=ignore_features_pass,
+        display_types=display_types_pass,
+        numeric_imputation_strategy=numeric_imputation,
+        categorical_imputation_strategy=categorical_imputation_pass,
+        scale_data=normalize,
+        scaling_method=normalize_method,
+        Power_transform_data=transformation,
+        Power_transform_method=trans_method_pass,
+        apply_untrained_levels_treatment=handle_unknown_categorical,
+        untrained_levels_treatment_method=unknown_categorical_method_pass,
+        apply_pca=pca,
+        pca_method=pca_method_pass,
+        pca_variance_retained_or_number_of_components=pca_components_pass,
+        apply_zero_nearZero_variance=ignore_low_variance,
+        club_rare_levels=combine_rare_levels,
+        rara_level_threshold_percentage=rare_level_threshold,
+        apply_binning=apply_binning_pass,
+        features_to_binn=features_to_bin_pass,
+        remove_multicollinearity=remove_multicollinearity,
+        maximum_correlation_between_features=multicollinearity_threshold,
+        apply_grouping=apply_grouping_pass,
+        features_to_group_ListofList=group_features_pass,
+        group_name=group_names_pass,
+        random_state=seed,
+    )
+
     progress.value += 1
     logger.info("Preprocessing pipeline created successfully")
 
     try:
-        res_type = ['quit','Quit','exit','EXIT','q','Q','e','E','QUIT','Exit']
+        res_type = ["quit", "Quit", "exit", "EXIT", "q", "Q", "e", "E", "QUIT", "Exit"]
         res = preprocess.dtypes.response
         if res in res_type:
-            sys.exit("(Process Exit): setup has been interupted with user command 'quit'. setup must rerun." )
+            sys.exit("(Process Exit): setup has been interupted with user command 'quit'. setup must rerun.")
     except:
         pass
-    
 
-    #save prep pipe
+    # save prep pipe
     prep_pipe = preprocess.pipe
     prep_param = preprocess
-    
+
     logger.info("Creating grid variables")
 
-    #generate values for grid show
+    # generate values for grid show
     missing_values = data_before_preprocess.isna().sum().sum()
     if missing_values > 0:
         missing_flag = True
     else:
         missing_flag = False
-    
+
     if normalize is True:
         normalize_grid = normalize_method
     else:
-        normalize_grid = 'None'
-        
+        normalize_grid = "None"
+
     if transformation is True:
         transformation_grid = transformation_method
     else:
-        transformation_grid = 'None'
-    
+        transformation_grid = "None"
+
     if pca is True:
         pca_method_grid = pca_method
     else:
-        pca_method_grid = 'None'
-   
+        pca_method_grid = "None"
+
     if pca is True:
         pca_components_grid = pca_components_pass
     else:
-        pca_components_grid = 'None'
-        
+        pca_components_grid = "None"
+
     if combine_rare_levels:
         rare_level_threshold_grid = rare_level_threshold
     else:
-        rare_level_threshold_grid = 'None'
-    
+        rare_level_threshold_grid = "None"
+
     if bin_numeric_features is None:
         numeric_bin_grid = False
     else:
@@ -983,159 +1040,163 @@ def setup(data,
         ordinal_features_grid = True
     else:
         ordinal_features_grid = False
-    
+
     if remove_multicollinearity is False:
         multicollinearity_threshold_grid = None
     else:
         multicollinearity_threshold_grid = multicollinearity_threshold
-     
+
     if group_features is not None:
         group_features_grid = True
     else:
         group_features_grid = False
-     
+
     if high_cardinality_features is not None:
         high_cardinality_features_grid = True
     else:
         high_cardinality_features_grid = False
-        
-    learned_types = preprocess.dtypes.learent_dtypes
-    #learned_types.drop(target, inplace=True)
 
-    float_type = 0 
+    learned_types = preprocess.dtypes.learent_dtypes
+    # learned_types.drop(target, inplace=True)
+
+    float_type = 0
     cat_type = 0
 
     for i in preprocess.dtypes.learent_dtypes:
-        if 'float' in str(i):
+        if "float" in str(i):
             float_type += 1
-        elif 'object' in str(i):
+        elif "object" in str(i):
             cat_type += 1
-        elif 'int' in str(i):
+        elif "int" in str(i):
             float_type += 1
-       
-    
+
     """
     preprocessing ends here
     """
-    
-    #reset pandas option
-    pd.reset_option("display.max_rows") 
+
+    # reset pandas option
+    pd.reset_option("display.max_rows")
     pd.reset_option("display.max_columns")
-    
+
     logger.info("Creating global containers")
 
-    #create an empty list for pickling later.
+    # create an empty list for pickling later.
     if supervised is False:
         experiment__ = []
     else:
         try:
-            experiment__.append('dummy')
-            experiment__.remove('dummy')
+            experiment__.append("dummy")
+            experiment__.remove("dummy")
         except:
             experiment__ = []
-    
-    #create n_jobs_param
+
+    # create n_jobs_param
     n_jobs_param = n_jobs
 
-    #create logging parameter
+    # create logging parameter
     logging_param = log_experiment
 
-    #create exp_name_log param incase logging is False
-    exp_name_log = 'no_logging'
+    # create exp_name_log param incase logging is False
+    exp_name_log = "no_logging"
 
-    #create an empty log_plots_param
+    # create an empty log_plots_param
     if log_plots:
         log_plots_param = True
     else:
         log_plots_param = False
 
     progress.value += 1
-    
-    #monitor update
-    monitor.iloc[1,1:] = 'Compiling Results'
+
+    # monitor update
+    monitor.iloc[1, 1:] = "Compiling Results"
     if verbose:
         if html_param:
-            update_display(monitor, display_id = 'monitor')
-        
-    '''
+            update_display(monitor, display_id="monitor")
+
+    """
     Final display Starts
-    '''
-    
+    """
+
     shape = data.shape
     shape_transformed = X.shape
-    
+
     if profile:
         if verbose:
-            print('Setup Succesfully Completed! Loading Profile Now... Please Wait!')
+            print("Setup Succesfully Completed! Loading Profile Now... Please Wait!")
     else:
         if verbose:
-            print('Setup Succesfully Completed!')
+            print("Setup Succesfully Completed!")
 
-    functions = pd.DataFrame ( [ ['session_id ', seed ],
-                                 ['Original Data ', shape ],
-                                 ['Missing Values ', missing_flag],
-                                 ['Numeric Features ', str(float_type-1) ],
-                                 ['Categorical Features ', str(cat_type) ],
-                                 ['Ordinal Features ', ordinal_features_grid],
-                                 ['High Cardinality Features ', high_cardinality_features_grid],
-                                 ['Transformed Data ', shape_transformed ],
-                                 ['Numeric Imputer ', numeric_imputation],
-                                 ['Categorical Imputer ', categorical_imputation],
-                                 ['Normalize ', normalize ],
-                                 ['Normalize Method ', normalize_grid ],
-                                 ['Transformation ', transformation ],
-                                 ['Transformation Method ', transformation_grid ],
-                                 ['PCA ', pca],
-                                 ['PCA Method ', pca_method_grid],
-                                 ['PCA components ', pca_components_grid],
-                                 ['Ignore Low Variance ', ignore_low_variance],
-                                 ['Combine Rare Levels ', combine_rare_levels],
-                                 ['Rare Level Threshold ', rare_level_threshold_grid],
-                                 ['Numeric Binning ', numeric_bin_grid],
-                                 ['Remove Multicollinearity ', remove_multicollinearity],
-                                 ['Multicollinearity Threshold ', multicollinearity_threshold_grid],
-                                 ['Group Features ', group_features_grid],
-                               ], columns = ['Description', 'Value'] )
+    functions = pd.DataFrame(
+        [
+            ["session_id ", seed],
+            ["Original Data ", shape],
+            ["Missing Values ", missing_flag],
+            ["Numeric Features ", str(float_type - 1)],
+            ["Categorical Features ", str(cat_type)],
+            ["Ordinal Features ", ordinal_features_grid],
+            ["High Cardinality Features ", high_cardinality_features_grid],
+            ["Transformed Data ", shape_transformed],
+            ["Numeric Imputer ", numeric_imputation],
+            ["Categorical Imputer ", categorical_imputation],
+            ["Normalize ", normalize],
+            ["Normalize Method ", normalize_grid],
+            ["Transformation ", transformation],
+            ["Transformation Method ", transformation_grid],
+            ["PCA ", pca],
+            ["PCA Method ", pca_method_grid],
+            ["PCA components ", pca_components_grid],
+            ["Ignore Low Variance ", ignore_low_variance],
+            ["Combine Rare Levels ", combine_rare_levels],
+            ["Rare Level Threshold ", rare_level_threshold_grid],
+            ["Numeric Binning ", numeric_bin_grid],
+            ["Remove Multicollinearity ", remove_multicollinearity],
+            ["Multicollinearity Threshold ", multicollinearity_threshold_grid],
+            ["Group Features ", group_features_grid],
+        ],
+        columns=["Description", "Value"],
+    )
 
     functions_ = functions.style.apply(highlight_max)
-    
+
     progress.value += 1
-    
+
     if verbose:
         if html_param:
             clear_output()
-            print('Setup Succesfully Completed!')
+            print("Setup Succesfully Completed!")
             display(functions_)
         else:
-            print('Setup Succesfully Completed!')
+            print("Setup Succesfully Completed!")
             print(functions_.data)
-         
+
     if profile:
         try:
             import pandas_profiling
+
             pf = pandas_profiling.ProfileReport(data_before_preprocess)
             clear_output()
             display(pf)
         except:
-            print('Data Profiler Failed. No output to show, please continue with Modeling.')
+            print("Data Profiler Failed. No output to show, please continue with Modeling.")
 
-    '''
+    """
     Final display Ends
-    '''   
-    
-    #log into experiment
+    """
+
+    # log into experiment
     if logging:
-        experiment__.append(('Clustering Setup Config', functions))
-        experiment__.append(('Orignal Dataset', data_))
-        experiment__.append(('Transformed Dataset', X))
-        experiment__.append(('Transformation Pipeline', prep_pipe))
-    
-    #end runtime
+        experiment__.append(("Clustering Setup Config", functions))
+        experiment__.append(("Orignal Dataset", data_))
+        experiment__.append(("Transformed Dataset", X))
+        experiment__.append(("Transformation Pipeline", prep_pipe))
+
+    # end runtime
     runtime_end = time.time()
     runtime = np.array(runtime_end - runtime_start).round(2)
 
     if logging_param:
-        
+
         logger.info("Logging experiment in MLFlow")
 
         import mlflow
@@ -1143,41 +1204,42 @@ def setup(data,
         import os
 
         if experiment_name is None:
-            exp_name_ = 'clu-default-name'
+            exp_name_ = "clu-default-name"
         else:
             exp_name_ = experiment_name
 
-        URI = secrets.token_hex(nbytes=4)    
+        URI = secrets.token_hex(nbytes=4)
         exp_name_log = exp_name_
-        
+
         try:
             mlflow.create_experiment(exp_name_log)
         except:
             pass
 
-        #mlflow logging
+        # mlflow logging
         mlflow.set_experiment(exp_name_log)
 
-        run_name_ = 'Session Initialized ' + str(USI)
+        run_name_ = "Session Initialized " + str(USI)
         with mlflow.start_run(run_name=run_name_) as run:
 
             # Get active run to log as tag
             RunID = mlflow.active_run().info.run_id
-            
+
             k = functions.copy()
-            k.set_index('Description',drop=True,inplace=True)
+            k.set_index("Description", drop=True, inplace=True)
             kdict = k.to_dict()
-            params = kdict.get('Value')
+            params = kdict.get("Value")
             mlflow.log_params(params)
 
-            #set tag of compare_models
+            # set tag of compare_models
             mlflow.set_tag("Source", "setup")
-            
+
             import secrets
+
             URI = secrets.token_hex(nbytes=4)
             mlflow.set_tag("URI", URI)
 
-            mlflow.set_tag("USI", USI) 
+            mlflow.set_tag("USI", USI)
 
             mlflow.set_tag("Run Time", runtime)
 
@@ -1185,17 +1247,18 @@ def setup(data,
 
             # Log the transformation pipeline
             logger.info("SubProcess save_model() called ==================================")
-            save_model(prep_pipe, 'Transformation Pipeline', verbose=False)
+            save_model(prep_pipe, "Transformation Pipeline", verbose=False)
             logger.info("SubProcess save_model() end ==================================")
-            mlflow.log_artifact('Transformation Pipeline' + '.pkl')
-            size_bytes = Path('Transformation Pipeline.pkl').stat().st_size
-            size_kb = np.round(size_bytes/1000, 2)
+            mlflow.log_artifact("Transformation Pipeline" + ".pkl")
+            size_bytes = Path("Transformation Pipeline.pkl").stat().st_size
+            size_kb = np.round(size_bytes / 1000, 2)
             mlflow.set_tag("Size KB", size_kb)
-            os.remove('Transformation Pipeline.pkl')
+            os.remove("Transformation Pipeline.pkl")
 
             # Log pandas profile
             if log_profile:
                 import pandas_profiling
+
                 pf = pandas_profiling.ProfileReport(data_before_preprocess)
                 pf.to_file("Data Profile.html")
                 mlflow.log_artifact("Data Profile.html")
@@ -1205,34 +1268,49 @@ def setup(data,
 
             # Log training and testing set
             if log_data:
-                data_before_preprocess.to_csv('data.csv')
-                mlflow.log_artifact('data.csv')
-                os.remove('data.csv')
+                data_before_preprocess.to_csv("data.csv")
+                mlflow.log_artifact("data.csv")
+                os.remove("data.csv")
 
-            # Log input.txt that contains name of columns required in dataset 
+            # Log input.txt that contains name of columns required in dataset
             # to use this pipeline based on USI/URI.
 
             input_cols = list(data_before_preprocess.columns)
 
             with open("input.txt", "w") as output:
                 output.write(str(input_cols))
-            
+
             mlflow.log_artifact("input.txt")
-            os.remove('input.txt')
+            os.remove("input.txt")
 
     logger.info(str(prep_pipe))
     logger.info("setup() succesfully completed......................................")
-    
-    return X, data_, seed, prep_pipe, prep_param, experiment__,\
-        n_jobs_param, html_param, exp_name_log, logging_param, log_plots_param, USI
 
-def create_model(model = None, 
-                 num_clusters = None,
-                 ground_truth=None, #added in pycaret==2.0.0
-                 verbose=True,
-                 system=True, #added in pycaret==2.0.0
-                 **kwargs): #added in pycaret==2.0.0
-    
+    return (
+        X,
+        data_,
+        seed,
+        prep_pipe,
+        prep_param,
+        experiment__,
+        n_jobs_param,
+        html_param,
+        exp_name_log,
+        logging_param,
+        log_plots_param,
+        USI,
+    )
+
+
+def create_model(
+    model=None,
+    num_clusters=None,
+    ground_truth=None,  # added in pycaret==2.0.0
+    verbose=True,
+    system=True,  # added in pycaret==2.0.0
+    **kwargs
+):  # added in pycaret==2.0.0
+
     """  
      
     Description:
@@ -1318,24 +1396,24 @@ def create_model(model = None,
     
        
     """
-    
+
     import logging
 
     try:
-        hasattr(logger, 'name')
+        hasattr(logger, "name")
     except:
-        logger = logging.getLogger('logs')
+        logger = logging.getLogger("logs")
         logger.setLevel(logging.DEBUG)
-        
+
         # create console handler and set level to debug
         if logger.hasHandlers():
             logger.handlers.clear()
-        
-        ch = logging.FileHandler('logs.log')
+
+        ch = logging.FileHandler("logs.log")
         ch.setLevel(logging.DEBUG)
 
         # create formatter
-        formatter = logging.Formatter('%(asctime)s:%(levelname)s:%(message)s')
+        formatter = logging.Formatter("%(asctime)s:%(levelname)s:%(message)s")
 
         # add formatter to ch
         ch.setFormatter(formatter)
@@ -1344,205 +1422,226 @@ def create_model(model = None,
         logger.addHandler(ch)
 
     logger.info("Initializing create_model()")
-    logger.info("""create_model(model={}, num_clusters={}, ground_truth={}, verbose={}, system={})""".\
-        format(str(model), str(num_clusters), str(ground_truth), str(verbose), str(system)))
+    logger.info(
+        """create_model(model={}, num_clusters={}, ground_truth={}, verbose={}, system={})""".format(
+            str(model), str(num_clusters), str(ground_truth), str(verbose), str(system)
+        )
+    )
 
     logger.info("Checking exceptions")
-    
-    #exception checking   
-    import sys        
-    
-    #run_time
+
+    # exception checking
+    import sys
+
+    # run_time
     import datetime, time
+
     runtime_start = time.time()
 
-    #ignore warings
+    # ignore warings
     import warnings
-    warnings.filterwarnings('ignore') 
-    
+
+    warnings.filterwarnings("ignore")
+
     """
     error handling starts here
     """
-    
-    #checking for model parameter
+
+    # checking for model parameter
     if model is None:
-        sys.exit('(Value Error): Model parameter Missing. Please see docstring for list of available models.')
-        
-    #checking for allowed models
-    allowed_models = ['kmeans', 'ap', 'meanshift', 'sc', 'hclust', 'dbscan', 'optics', 'birch', 'kmodes']
-    
+        sys.exit("(Value Error): Model parameter Missing. Please see docstring for list of available models.")
+
+    # checking for allowed models
+    allowed_models = ["kmeans", "ap", "meanshift", "sc", "hclust", "dbscan", "optics", "birch", "kmodes"]
+
     if type(model) is str:
         if model not in allowed_models:
-            sys.exit('(Value Error): Model Not Available. Please see docstring for list of available models.')
+            sys.exit("(Value Error): Model Not Available. Please see docstring for list of available models.")
 
-    #check num_clusters parameter:
+    # check num_clusters parameter:
     if num_clusters is not None:
-        no_num_required = ['ap', 'meanshift', 'dbscan', 'optics']
-        if model in no_num_required: 
-            sys.exit('(Value Error): num_clusters parameter not required for specified model. Remove num_clusters to run this model.')
-        
-    #checking num_clusters type:
+        no_num_required = ["ap", "meanshift", "dbscan", "optics"]
+        if model in no_num_required:
+            sys.exit(
+                "(Value Error): num_clusters parameter not required for specified model. Remove num_clusters to run this model."
+            )
+
+    # checking num_clusters type:
     if num_clusters is not None:
         if num_clusters <= 1:
-            sys.exit('(Type Error): num_clusters parameter can only take value integer value greater than 1.')
+            sys.exit("(Type Error): num_clusters parameter can only take value integer value greater than 1.")
 
-    #check ground truth exist in data_
+    # check ground truth exist in data_
     if ground_truth is not None:
         if ground_truth not in data_.columns:
-            sys.exit('(Value Error): ground_truth defined doesnt exist in the dataset.')
+            sys.exit("(Value Error): ground_truth defined doesnt exist in the dataset.")
 
-    #checking verbose parameter
+    # checking verbose parameter
     if type(verbose) is not bool:
-        sys.exit('(Type Error): Verbose parameter can only take argument as True or False.') 
-        
+        sys.exit("(Type Error): Verbose parameter can only take argument as True or False.")
+
     """
     error handling ends here
     """
-    
+
     logger.info("Preloading libraries")
 
-    #pre-load libraries
+    # pre-load libraries
     import pandas as pd
     import numpy as np
     import ipywidgets as ipw
     from IPython.display import display, HTML, clear_output, update_display
     import datetime, time
-    
+
     logger.info("Setting num_cluster param")
 
-    #determine num_clusters
+    # determine num_clusters
     if num_clusters is None:
         num_clusters = 4
     else:
         num_clusters = num_clusters
-        
+
     """
     monitor starts
     """
-    
+
     logger.info("Preparing display monitor")
 
-    #progress bar and monitor control    
+    # progress bar and monitor control
     timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
-    progress = ipw.IntProgress(value=0, min=0, max=3, step=1 , description='Processing: ')
-    monitor = pd.DataFrame( [ ['Initiated' , '. . . . . . . . . . . . . . . . . .', timestampStr ], 
-                              ['Status' , '. . . . . . . . . . . . . . . . . .' , 'Initializing'] ],
-                              columns=['', ' ', '  ']).set_index('')
+    progress = ipw.IntProgress(value=0, min=0, max=3, step=1, description="Processing: ")
+    monitor = pd.DataFrame(
+        [
+            ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
+            ["Status", ". . . . . . . . . . . . . . . . . .", "Initializing"],
+        ],
+        columns=["", " ", "  "],
+    ).set_index("")
     if verbose:
         if html_param:
             display(progress)
-            display(monitor, display_id = 'monitor')
-        
+            display(monitor, display_id="monitor")
+
     progress.value += 1
-    
+
     """
     monitor ends
     """
-    
+
     logger.info("Importing untrained model")
 
-    if model == 'kmeans':
+    if model == "kmeans":
         from sklearn.cluster import KMeans
-        model = KMeans(n_clusters = num_clusters, random_state=seed, n_jobs=n_jobs_param, **kwargs)
-        full_name = 'K-Means Clustering'
 
-    elif model == 'ap':
+        model = KMeans(n_clusters=num_clusters, random_state=seed, n_jobs=n_jobs_param, **kwargs)
+        full_name = "K-Means Clustering"
+
+    elif model == "ap":
         from sklearn.cluster import AffinityPropagation
+
         model = AffinityPropagation(damping=0.5, **kwargs)
-        full_name = 'Affinity Propagation'
+        full_name = "Affinity Propagation"
 
-    elif model == 'meanshift':
+    elif model == "meanshift":
         from sklearn.cluster import MeanShift
+
         model = MeanShift(n_jobs=n_jobs_param, **kwargs)
-        full_name = 'Mean Shift Clustering'
+        full_name = "Mean Shift Clustering"
 
-    elif model == 'sc':
+    elif model == "sc":
         from sklearn.cluster import SpectralClustering
+
         model = SpectralClustering(n_clusters=num_clusters, random_state=seed, n_jobs=n_jobs_param, **kwargs)
-        full_name = 'Spectral Clustering'
+        full_name = "Spectral Clustering"
 
-    elif model == 'hclust':
+    elif model == "hclust":
         from sklearn.cluster import AgglomerativeClustering
+
         model = AgglomerativeClustering(n_clusters=num_clusters, **kwargs)
-        full_name = 'Agglomerative Clustering'
+        full_name = "Agglomerative Clustering"
 
-    elif model == 'dbscan':
+    elif model == "dbscan":
         from sklearn.cluster import DBSCAN
+
         model = DBSCAN(eps=0.5, n_jobs=n_jobs_param, **kwargs)
-        full_name = 'Density-Based Spatial Clustering'
+        full_name = "Density-Based Spatial Clustering"
 
-    elif model == 'optics':
+    elif model == "optics":
         from sklearn.cluster import OPTICS
-        model = OPTICS(n_jobs=n_jobs_param, **kwargs)
-        full_name = 'OPTICS Clustering'
 
-    elif model == 'birch':
+        model = OPTICS(n_jobs=n_jobs_param, **kwargs)
+        full_name = "OPTICS Clustering"
+
+    elif model == "birch":
         from sklearn.cluster import Birch
+
         model = Birch(n_clusters=num_clusters, **kwargs)
-        full_name = 'Birch Clustering'
-        
-    elif model == 'kmodes':
+        full_name = "Birch Clustering"
+
+    elif model == "kmodes":
         from kmodes.kmodes import KModes
+
         model = KModes(n_clusters=num_clusters, n_jobs=n_jobs_param, random_state=seed, **kwargs)
-        full_name = 'K-Modes Clustering'
-        
-    else:    
+        full_name = "K-Modes Clustering"
+
+    else:
+
         def get_model_name(e):
             return str(e).split("(")[0]
 
         model == model
         full_name = get_model_name(model)
 
-    logger.info(str(full_name) + ' Imported succesfully')
+    logger.info(str(full_name) + " Imported succesfully")
 
-    #monitor update
-    monitor.iloc[1,1:] = 'Fitting ' + str(full_name) + ' Model'
+    # monitor update
+    monitor.iloc[1, 1:] = "Fitting " + str(full_name) + " Model"
     progress.value += 1
     if verbose:
         if html_param:
-            update_display(monitor, display_id = 'monitor')
-        
-    #fitting the model
+            update_display(monitor, display_id="monitor")
+
+    # fitting the model
     model_fit_start = time.time()
     logger.info("Fitting Model")
     model.fit(X)
     model_fit_end = time.time()
 
     model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
-    
-    #Calculate unsupervised metrics
+
+    # Calculate unsupervised metrics
     logger.info("Evaluating Metrics")
 
     from sklearn import metrics
 
     metric = []
     metric_value = []
-    
-    try:
-        silhouette = metrics.silhouette_score(X,model.labels_)
-        silhouette = round(silhouette, 4)
-        metric.append('Silhouette')
-        metric_value.append(silhouette)
-        
-    except:
-        logger.warning('Cannot calculate Silhouette')
 
     try:
-        chs = metrics.calinski_harabasz_score(X,model.labels_)
+        silhouette = metrics.silhouette_score(X, model.labels_)
+        silhouette = round(silhouette, 4)
+        metric.append("Silhouette")
+        metric_value.append(silhouette)
+
+    except:
+        logger.warning("Cannot calculate Silhouette")
+
+    try:
+        chs = metrics.calinski_harabasz_score(X, model.labels_)
         chs = round(chs, 4)
-        metric.append('Calinski-Harabasz')
+        metric.append("Calinski-Harabasz")
         metric_value.append(chs)
     except:
-        logger.warning('Cannot calculate Calinski-Harabasz')
+        logger.warning("Cannot calculate Calinski-Harabasz")
 
     try:
-        db = metrics.davies_bouldin_score(X,model.labels_)
+        db = metrics.davies_bouldin_score(X, model.labels_)
         db = round(db, 4)
-        metric.append('Davies-Bouldin')
+        metric.append("Davies-Bouldin")
         metric_value.append(db)
 
     except:
-        logger.warning('Cannot calculate Davies-Bouldin')
+        logger.warning("Cannot calculate Davies-Bouldin")
 
     if ground_truth is not None:
 
@@ -1551,55 +1650,55 @@ def create_model(model = None,
         gt = np.array(data_[ground_truth])
 
         try:
-            hs = metrics.homogeneity_score(gt,model.labels_)
+            hs = metrics.homogeneity_score(gt, model.labels_)
             hs = round(hs, 4)
-            metric.append('Homogeneity Score')
+            metric.append("Homogeneity Score")
             metric_value.append(hs)
 
         except:
-            logger.warning('No ground_truth parameter found. Cannot calculate Homogeneity Score')
+            logger.warning("No ground_truth parameter found. Cannot calculate Homogeneity Score")
 
         try:
-            ari = metrics.adjusted_rand_score(gt,model.labels_)
-            ari = round(ari,4)
-            metric.append('Rand Index')
+            ari = metrics.adjusted_rand_score(gt, model.labels_)
+            ari = round(ari, 4)
+            metric.append("Rand Index")
             metric_value.append(ari)
 
         except:
-            logger.warning('No ground_truth parameter found. Cannot calculate Rand Index')
-        
+            logger.warning("No ground_truth parameter found. Cannot calculate Rand Index")
+
         try:
-            cs = metrics.completeness_score(gt,model.labels_)
+            cs = metrics.completeness_score(gt, model.labels_)
             cs = round(cs, 4)
-            metric.append('Completeness Score')
+            metric.append("Completeness Score")
             metric_value.append(cs)
         except:
-            palogger.warning('No ground_truth parameter found. Cannot calculate Completeness Score')
-    
+            palogger.warning("No ground_truth parameter found. Cannot calculate Completeness Score")
+
     try:
         logger.info("Creating Metrics dataframe")
         model_results = pd.DataFrame(metric_value)
-        model_results.columns = ['Metric']
+        model_results.columns = ["Metric"]
         model_results.set_index([metric], inplace=True)
     except:
-        logger.warning('No metric dataframe found.')
-    
-    #end runtime
+        logger.warning("No metric dataframe found.")
+
+    # end runtime
     runtime_end = time.time()
     runtime = np.array(runtime_end - runtime_start).round(2)
 
-    #mlflow logging
+    # mlflow logging
     if logging_param and system:
 
         logger.info("Creating MLFlow logs")
 
-        #Creating Logs message monitor
-        monitor.iloc[1,1:] = 'Creating Logs'
+        # Creating Logs message monitor
+        monitor.iloc[1, 1:] = "Creating Logs"
         if verbose:
             if html_param:
-                update_display(monitor, display_id = 'monitor')
+                update_display(monitor, display_id="monitor")
 
-        #import mlflow
+        # import mlflow
         import mlflow
         from pathlib import Path
         import os
@@ -1620,13 +1719,14 @@ def create_model(model = None,
                     params.pop(i)
 
             mlflow.log_params(params)
-            
-            #set tag of compare_models
+
+            # set tag of compare_models
             mlflow.set_tag("Source", "create_model")
-            
+
             import secrets
+
             URI = secrets.token_hex(nbytes=4)
-            mlflow.set_tag("URI", URI)   
+            mlflow.set_tag("URI", URI)
             mlflow.set_tag("USI", USI)
             mlflow.set_tag("Run Time", runtime)
             mlflow.set_tag("Run ID", RunID)
@@ -1634,32 +1734,32 @@ def create_model(model = None,
             # Log training time in seconds
             mlflow.log_metric("TT", model_fit_time)
             try:
-                mlflow.log_metrics(model_results.to_dict().get('Metric'))
+                mlflow.log_metrics(model_results.to_dict().get("Metric"))
             except:
                 pass
-        
+
             # Log Cluster, Distribution Plot and Elbow Plot
             if log_plots_param:
 
                 logger.info("SubProcess plot_model() called ==================================")
 
                 try:
-                    plot_model(model, plot = 'cluster', save=True, system=False)
-                    mlflow.log_artifact('Cluster.html')
+                    plot_model(model, plot="cluster", save=True, system=False)
+                    mlflow.log_artifact("Cluster.html")
                     os.remove("Cluster.html")
                 except:
                     pass
 
                 try:
-                    plot_model(model, plot = 'distribution', save=True, system=False)
-                    mlflow.log_artifact('Distribution.html')
+                    plot_model(model, plot="distribution", save=True, system=False)
+                    mlflow.log_artifact("Distribution.html")
                     os.remove("Distribution.html")
                 except:
                     pass
 
                 try:
-                    plot_model(model, plot = 'elbow', save=True, system=False)
-                    mlflow.log_artifact('Elbow.png')
+                    plot_model(model, plot="elbow", save=True, system=False)
+                    mlflow.log_artifact("Elbow.png")
                     os.remove("Elbow.png")
                 except:
                     pass
@@ -1668,16 +1768,16 @@ def create_model(model = None,
 
             # Log model and transformation pipeline
             logger.info("SubProcess save_model() called ==================================")
-            save_model(model, 'Trained Model', verbose=False)
+            save_model(model, "Trained Model", verbose=False)
             logger.info("SubProcess save_model() end ==================================")
-            mlflow.log_artifact('Trained Model' + '.pkl')
-            size_bytes = Path('Trained Model.pkl').stat().st_size
-            size_kb = np.round(size_bytes/1000, 2)
+            mlflow.log_artifact("Trained Model" + ".pkl")
+            size_bytes = Path("Trained Model.pkl").stat().st_size
+            size_kb = np.round(size_bytes / 1000, 2)
             mlflow.set_tag("Size KB", size_kb)
-            os.remove('Trained Model.pkl')
+            os.remove("Trained Model.pkl")
 
     progress.value += 1
-    
+
     if verbose:
         clear_output()
         try:
@@ -1690,10 +1790,9 @@ def create_model(model = None,
 
     return model
 
-def assign_model(model, 
-                 transformation=False,
-                 verbose=True):
-    
+
+def assign_model(model, transformation=False, verbose=True):
+
     """  
      
     Description:
@@ -1733,27 +1832,27 @@ def assign_model(model,
     ---------
   
     """
-    
-    #exception checking   
+
+    # exception checking
     import sys
-    
+
     import logging
 
     try:
-        hasattr(logger, 'name')
+        hasattr(logger, "name")
     except:
-        logger = logging.getLogger('logs')
+        logger = logging.getLogger("logs")
         logger.setLevel(logging.DEBUG)
-        
+
         # create console handler and set level to debug
         if logger.hasHandlers():
             logger.handlers.clear()
-        
-        ch = logging.FileHandler('logs.log')
+
+        ch = logging.FileHandler("logs.log")
         ch.setLevel(logging.DEBUG)
 
         # create formatter
-        formatter = logging.Formatter('%(asctime)s:%(levelname)s:%(message)s')
+        formatter = logging.Formatter("%(asctime)s:%(levelname)s:%(message)s")
 
         # add formatter to ch
         ch.setFormatter(formatter)
@@ -1762,123 +1861,129 @@ def assign_model(model,
         logger.addHandler(ch)
 
     logger.info("Initializing assign_model()")
-    logger.info("""assign_model(model={}, transformation={}, verbose={})""".\
-        format(str(model), str(transformation), str(verbose)))
+    logger.info(
+        """assign_model(model={}, transformation={}, verbose={})""".format(
+            str(model), str(transformation), str(verbose)
+        )
+    )
 
-
-    #ignore warnings
+    # ignore warnings
     import warnings
-    warnings.filterwarnings('ignore') 
-    
+
+    warnings.filterwarnings("ignore")
+
     """
     error handling starts here
     """
-    
+
     logger.info("Checking exceptions")
 
-    #determine model type and store in string
+    # determine model type and store in string
     mod_type = str(type(model))
-    
-    #checking for allowed models
-    if 'sklearn' not in mod_type and 'KModes' not in mod_type and 'SphericalKMeans' not in mod_type:
-        sys.exit('(Value Error): Model Not Recognized. Please see docstring for list of available models.') 
-        
-    #checking transformation parameter
+
+    # checking for allowed models
+    if "sklearn" not in mod_type and "KModes" not in mod_type and "SphericalKMeans" not in mod_type:
+        sys.exit("(Value Error): Model Not Recognized. Please see docstring for list of available models.")
+
+    # checking transformation parameter
     if type(transformation) is not bool:
-        sys.exit('(Type Error): Transformation parameter can only take argument as True or False.')    
-        
-    #checking verbose parameter
+        sys.exit("(Type Error): Transformation parameter can only take argument as True or False.")
+
+    # checking verbose parameter
     if type(verbose) is not bool:
-        sys.exit('(Type Error): Verbose parameter can only take argument as True or False.')     
-    
-    
+        sys.exit("(Type Error): Verbose parameter can only take argument as True or False.")
+
     """
     error handling ends here
     """
-    
+
     logger.info("Preloading libraries")
-    #pre-load libraries
+    # pre-load libraries
     import numpy as np
     import pandas as pd
     import ipywidgets as ipw
     from IPython.display import display, HTML, clear_output, update_display
     import datetime, time
-    
+
     logger.info("Copying data")
-    #copy data_
+    # copy data_
     if transformation:
         data__ = X.copy()
         logger.info("Transformation param set to True. Assigned clusters are attached on transformed dataset.")
     else:
         data__ = data_.copy()
-    
+
     logger.info("Preparing display monitor")
-    #progress bar and monitor control 
+    # progress bar and monitor control
     timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
-    progress = ipw.IntProgress(value=0, min=0, max=3, step=1 , description='Processing: ')
-    monitor = pd.DataFrame( [ ['Initiated' , '. . . . . . . . . . . . . . . . . .', timestampStr ], 
-                              ['Status' , '. . . . . . . . . . . . . . . . . .' , 'Initializing'] ],
-                              columns=['', ' ', '  ']).set_index('')
+    progress = ipw.IntProgress(value=0, min=0, max=3, step=1, description="Processing: ")
+    monitor = pd.DataFrame(
+        [
+            ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
+            ["Status", ". . . . . . . . . . . . . . . . . .", "Initializing"],
+        ],
+        columns=["", " ", "  "],
+    ).set_index("")
     if verbose:
         if html_param:
             display(progress)
-            display(monitor, display_id = 'monitor')
-        
+            display(monitor, display_id="monitor")
+
     progress.value += 1
-    
-    monitor.iloc[1,1:] = 'Inferring Clusters from Model'
-    
+
+    monitor.iloc[1, 1:] = "Inferring Clusters from Model"
+
     if verbose:
         if html_param:
-            update_display(monitor, display_id = 'monitor')
-    
+            update_display(monitor, display_id="monitor")
+
     progress.value += 1
-    
-    #calculation labels and attaching to dataframe
-    
+
+    # calculation labels and attaching to dataframe
+
     labels = []
-    
+
     for i in model.labels_:
-        a = 'Cluster ' + str(i)
+        a = "Cluster " + str(i)
         labels.append(a)
-        
-    data__['Cluster'] = labels
-    
+
+    data__["Cluster"] = labels
+
     progress.value += 1
-    
+
     logger.info("Determining Trained Model")
 
     mod_type = str(model).split("(")[0]
-    
-    if 'KMeans' in mod_type:
-        name_ = 'K-Means Clustering' 
-        
-    elif 'AffinityPropagation' in mod_type:
-        name_ = 'Affinity Propagation'
-        
-    elif 'MeanShift' in mod_type:
-        name_ = 'Mean Shift Clustering'        
-        
-    elif 'SpectralClustering' in mod_type:
-        name_ = 'Spectral Clustering'
-        
-    elif 'AgglomerativeClustering' in mod_type:
-        name_ = 'Agglomerative Clustering'
-        
-    elif 'DBSCAN' in mod_type:
-        name_ = 'Density-Based Spatial Clustering'
-        
-    elif 'OPTICS' in mod_type:
-        name_ = 'OPTICS Clustering'
-        
-    elif 'Birch' in mod_type:
-        name_ = 'Birch Clustering'
-        
-    elif 'KModes' in mod_type:
-        name_ = 'K-Modes Clustering'
-    
+
+    if "KMeans" in mod_type:
+        name_ = "K-Means Clustering"
+
+    elif "AffinityPropagation" in mod_type:
+        name_ = "Affinity Propagation"
+
+    elif "MeanShift" in mod_type:
+        name_ = "Mean Shift Clustering"
+
+    elif "SpectralClustering" in mod_type:
+        name_ = "Spectral Clustering"
+
+    elif "AgglomerativeClustering" in mod_type:
+        name_ = "Agglomerative Clustering"
+
+    elif "DBSCAN" in mod_type:
+        name_ = "Density-Based Spatial Clustering"
+
+    elif "OPTICS" in mod_type:
+        name_ = "OPTICS Clustering"
+
+    elif "Birch" in mod_type:
+        name_ = "Birch Clustering"
+
+    elif "KModes" in mod_type:
+        name_ = "K-Modes Clustering"
+
     else:
-        name_ = 'Unknown Clustering'
+        name_ = "Unknown Clustering"
 
     logger.info("Trained Model : " + str(name_))
 
@@ -1890,15 +1995,17 @@ def assign_model(model,
 
     return data__
 
-def tune_model(model=None,
-               supervised_target=None,
-               estimator=None,
-               optimize=None,
-               custom_grid = None, #added in pycaret 2.0.0
-               fold=10,
-               verbose=True): #added in pycaret 2.0.0
-    
-    
+
+def tune_model(
+    model=None,
+    supervised_target=None,
+    estimator=None,
+    optimize=None,
+    custom_grid=None,  # added in pycaret 2.0.0
+    fold=10,
+    verbose=True,
+):  # added in pycaret 2.0.0
+
     """
         
     Description:
@@ -2030,32 +2137,30 @@ def tune_model(model=None,
            
           
     """
-    
-    
-    
+
     """
     exception handling starts here
     """
-    
+
     global data_, X
-    
+
     import logging
 
     try:
-        hasattr(logger, 'name')
+        hasattr(logger, "name")
     except:
-        logger = logging.getLogger('logs')
+        logger = logging.getLogger("logs")
         logger.setLevel(logging.DEBUG)
-        
+
         # create console handler and set level to debug
         if logger.hasHandlers():
             logger.handlers.clear()
-        
-        ch = logging.FileHandler('logs.log')
+
+        ch = logging.FileHandler("logs.log")
         ch.setLevel(logging.DEBUG)
 
         # create formatter
-        formatter = logging.Formatter('%(asctime)s:%(levelname)s:%(message)s')
+        formatter = logging.Formatter("%(asctime)s:%(levelname)s:%(message)s")
 
         # add formatter to ch
         ch.setFormatter(formatter)
@@ -2064,73 +2169,130 @@ def tune_model(model=None,
         logger.addHandler(ch)
 
     logger.info("Initializing tune_model()")
-    logger.info("""tune_model(model={}, supervised_target={}, estimator={}, optimize={}, custom_grid={}, fold={}, verbose={})""".\
-        format(str(model), str(supervised_target), str(estimator), str(optimize), str(custom_grid), str(fold), str(verbose)))
+    logger.info(
+        """tune_model(model={}, supervised_target={}, estimator={}, optimize={}, custom_grid={}, fold={}, verbose={})""".format(
+            str(model), str(supervised_target), str(estimator), str(optimize), str(custom_grid), str(fold), str(verbose)
+        )
+    )
 
     logger.info("Checking exceptions")
-    
-    #ignore warnings
+
+    # ignore warnings
     import warnings
-    warnings.filterwarnings('ignore') 
-    
+
+    warnings.filterwarnings("ignore")
+
     import sys
-    
-    #run_time
+
+    # run_time
     import datetime, time
+
     runtime_start = time.time()
 
-    #checking for model parameter
+    # checking for model parameter
     if model is None:
-        sys.exit('(Value Error): Model parameter Missing. Please see docstring for list of available models.')
-        
-    #checking for allowed models
-    allowed_models = ['kmeans', 'sc', 'hclust', 'birch', 'kmodes']
-    
+        sys.exit("(Value Error): Model parameter Missing. Please see docstring for list of available models.")
+
+    # checking for allowed models
+    allowed_models = ["kmeans", "sc", "hclust", "birch", "kmodes"]
+
     if model not in allowed_models:
-        sys.exit('(Value Error): Model Not Available for Tuning. Please see docstring for list of available models.')
-    
-    #check if supervised target is None:
+        sys.exit("(Value Error): Model Not Available for Tuning. Please see docstring for list of available models.")
+
+    # check if supervised target is None:
     if supervised_target is None:
-        sys.exit('(Value Error): supervised_target cannot be None. A column name must be given for estimator.')
-    
-    #check supervised target
+        sys.exit("(Value Error): supervised_target cannot be None. A column name must be given for estimator.")
+
+    # check supervised target
     if supervised_target is not None:
         all_col = list(data_.columns)
         if supervised_target not in all_col:
-            sys.exit('(Value Error): supervised_target not recognized. It can only be one of the following: ' + str(all_col))
-    
-    #checking estimator:
+            sys.exit(
+                "(Value Error): supervised_target not recognized. It can only be one of the following: " + str(all_col)
+            )
+
+    # checking estimator:
     if estimator is not None:
-        
-        available_estimators = ['lr', 'knn', 'nb', 'dt', 'svm', 'rbfsvm', 'gpc', 'mlp', 'ridge', 'rf', 'qda', 'ada', 
-                            'gbc', 'lda', 'et', 'lasso', 'ridge', 'en', 'lar', 'llar', 'omp', 'br', 'ard', 'par', 
-                            'ransac', 'tr', 'huber', 'kr', 'svm', 'knn', 'dt', 'rf', 'et', 'ada', 'gbr', 
-                            'mlp', 'xgboost', 'lightgbm', 'catboost']
-                
+
+        available_estimators = [
+            "lr",
+            "knn",
+            "nb",
+            "dt",
+            "svm",
+            "rbfsvm",
+            "gpc",
+            "mlp",
+            "ridge",
+            "rf",
+            "qda",
+            "ada",
+            "gbc",
+            "lda",
+            "et",
+            "lasso",
+            "ridge",
+            "en",
+            "lar",
+            "llar",
+            "omp",
+            "br",
+            "ard",
+            "par",
+            "ransac",
+            "tr",
+            "huber",
+            "kr",
+            "svm",
+            "knn",
+            "dt",
+            "rf",
+            "et",
+            "ada",
+            "gbr",
+            "mlp",
+            "xgboost",
+            "lightgbm",
+            "catboost",
+        ]
+
         if estimator not in available_estimators:
-            sys.exit('(Value Error): Estimator Not Available. Please see docstring for list of available estimators.')
-    
-    
-    #checking optimize parameter
+            sys.exit("(Value Error): Estimator Not Available. Please see docstring for list of available estimators.")
+
+    # checking optimize parameter
     if optimize is not None:
-        
-        available_optimizers = ['MAE', 'MSE', 'RMSE', 'R2', 'RMSLE', 'MAPE', 'Accuracy', 'AUC', 'Recall', 'Precision', 'F1', 'Kappa']
-        
+
+        available_optimizers = [
+            "MAE",
+            "MSE",
+            "RMSE",
+            "R2",
+            "RMSLE",
+            "MAPE",
+            "Accuracy",
+            "AUC",
+            "Recall",
+            "Precision",
+            "F1",
+            "Kappa",
+        ]
+
         if optimize not in available_optimizers:
-            sys.exit('(Value Error): optimize parameter Not Available. Please see docstring for list of available parameters.')
-    
-    #checking fold parameter
+            sys.exit(
+                "(Value Error): optimize parameter Not Available. Please see docstring for list of available parameters."
+            )
+
+    # checking fold parameter
     if type(fold) is not int:
-        sys.exit('(Type Error): Fold parameter only accepts integer value.')
-    
-    
+        sys.exit("(Type Error): Fold parameter only accepts integer value.")
+
     """
     exception handling ends here
     """
-    
+
     logger.info("Preloading libraries")
 
-    #pre-load libraries
+    # pre-load libraries
     import pandas as pd
     import ipywidgets as ipw
     from ipywidgets import Output
@@ -2139,43 +2301,47 @@ def tune_model(model=None,
 
     logger.info("Preparing display monitor")
 
-    #progress bar
+    # progress bar
     if custom_grid is None:
         max_steps = 25
     else:
         max_steps = 15 + len(custom_grid)
 
-    progress = ipw.IntProgress(value=0, min=0, max=max_steps, step=1 , description='Processing: ')
-    
+    progress = ipw.IntProgress(value=0, min=0, max=max_steps, step=1, description="Processing: ")
+
     if verbose:
         if html_param:
             display(progress)
 
     timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
-    
-    monitor = pd.DataFrame( [ ['Initiated' , '. . . . . . . . . . . . . . . . . .', timestampStr ], 
-                             ['Status' , '. . . . . . . . . . . . . . . . . .' , 'Loading Dependencies'],
-                             ['Step' , '. . . . . . . . . . . . . . . . . .',  'Initializing' ] ],
-                              columns=['', ' ', '   ']).set_index('')
-    
+
+    monitor = pd.DataFrame(
+        [
+            ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
+            ["Status", ". . . . . . . . . . . . . . . . . .", "Loading Dependencies"],
+            ["Step", ". . . . . . . . . . . . . . . . . .", "Initializing"],
+        ],
+        columns=["", " ", "   "],
+    ).set_index("")
+
     monitor_out = Output()
-    
+
     if verbose:
         if html_param:
             display(monitor_out)
             with monitor_out:
-                display(monitor, display_id = 'monitor')
+                display(monitor, display_id="monitor")
 
     logger.info("Importing libraries")
 
-    #General Dependencies
+    # General Dependencies
     from sklearn.linear_model import LogisticRegression
     from sklearn.model_selection import cross_val_predict
     from sklearn import metrics
     import numpy as np
     import plotly.express as px
     from copy import deepcopy
-    
+
     logger.info("Copying environment variables")
 
     a = data_.copy()
@@ -2183,85 +2349,86 @@ def tune_model(model=None,
     c = deepcopy(prep_pipe)
     e = exp_name_log
     z = logging_param
-    
-    def retain_original(a,b,c,e,z):
-        
+
+    def retain_original(a, b, c, e, z):
+
         global data_, X, prep_pipe, exp_name_log, logging_param
-        
+
         data_ = a.copy()
         X = b.copy()
         prep_pipe = deepcopy(c)
         exp_name_log = e
         logging_param = z
-        
+
         return data_, X, prep_pipe, exp_name_log, logging_param
-            
-    #setting up cufflinks
+
+    # setting up cufflinks
     import cufflinks as cf
+
     cf.go_offline()
     cf.set_config_file(offline=False, world_readable=True)
-    
-    progress.value += 1 
-    
-    #define the problem
-    if data_[supervised_target].value_counts().count() == 2: 
-        problem = 'classification'
+
+    progress.value += 1
+
+    # define the problem
+    if data_[supervised_target].value_counts().count() == 2:
+        problem = "classification"
         logger.info("Objective : Classification")
     else:
-        problem = 'regression'    
+        problem = "regression"
         logger.info("Objective : Regression")
-    
-    #define model name
-    
+
+    # define model name
+
     logger.info("Defining Model Name")
 
-    if model == 'kmeans':
-        model_name = 'K-Means Clustering'
-    elif model == 'ap':
-        model_name = 'Affinity Propagation'
-    elif model == 'meanshift':
-        model_name = 'Mean Shift Clustering'
-    elif model == 'sc':
-        model_name = 'Spectral Clustering'
-    elif model == 'hclust':
-        model_name = 'Agglomerative Clustering'
-    elif model == 'dbscan':
-        model_name = 'Density-Based Spatial Clustering'
-    elif model == 'optics':
-        model_name = 'OPTICS Clustering'
-    elif model == 'birch':
-        model_name = 'Birch Clustering'
-    elif model == 'kmodes':
-        model_name = 'K-Modes Clustering'
-    
+    if model == "kmeans":
+        model_name = "K-Means Clustering"
+    elif model == "ap":
+        model_name = "Affinity Propagation"
+    elif model == "meanshift":
+        model_name = "Mean Shift Clustering"
+    elif model == "sc":
+        model_name = "Spectral Clustering"
+    elif model == "hclust":
+        model_name = "Agglomerative Clustering"
+    elif model == "dbscan":
+        model_name = "Density-Based Spatial Clustering"
+    elif model == "optics":
+        model_name = "OPTICS Clustering"
+    elif model == "birch":
+        model_name = "Birch Clustering"
+    elif model == "kmodes":
+        model_name = "K-Modes Clustering"
+
     logger.info("Defining Supervised Estimator")
 
-    #defining estimator:
-    if problem == 'classification' and estimator is None:
-        estimator = 'lr'
-    elif problem == 'regression' and estimator is None:
-        estimator = 'lr'        
+    # defining estimator:
+    if problem == "classification" and estimator is None:
+        estimator = "lr"
+    elif problem == "regression" and estimator is None:
+        estimator = "lr"
     else:
         estimator = estimator
-    
+
     logger.info("Defining Optimizer")
-    #defining optimizer:
-    if optimize is None and problem == 'classification':
-        optimize = 'Accuracy'
-    elif optimize is None and problem == 'regression':
-        optimize = 'R2'
+    # defining optimizer:
+    if optimize is None and problem == "classification":
+        optimize = "Accuracy"
+    elif optimize is None and problem == "regression":
+        optimize = "R2"
     else:
-        optimize=optimize
+        optimize = optimize
 
     logger.info("Optimize: " + str(optimize))
-    
-    progress.value += 1 
-            
-    #defining tuning grid
+
+    progress.value += 1
+
+    # defining tuning grid
     logger.info("Defining Tuning Grid")
 
     if custom_grid is not None:
-        
+
         logger.info("Custom Grid used")
         param_grid = custom_grid
         param_grid_with_zero = [0]
@@ -2270,233 +2437,236 @@ def tune_model(model=None,
             param_grid_with_zero.append(i)
 
     else:
-        
+
         logger.info("Pre-defined Grid used")
-        param_grid = [4, 5, 6, 8, 10, 14, 18, 25, 30, 40] 
-        param_grid_with_zero = [0, 4, 5, 6, 8, 10, 14, 18, 25, 30, 40] 
+        param_grid = [4, 5, 6, 8, 10, 14, 18, 25, 30, 40]
+        param_grid_with_zero = [0, 4, 5, 6, 8, 10, 14, 18, 25, 30, 40]
 
+    master = []
+    master_df = []
 
-    master = []; master_df = []
-    
-    monitor.iloc[1,1:] = 'Creating Clustering Model'
+    monitor.iloc[1, 1:] = "Creating Clustering Model"
     if verbose:
         if html_param:
-            update_display(monitor, display_id = 'monitor')
-    
+            update_display(monitor, display_id="monitor")
+
     """
     preprocess starts here
     """
-    
+
     logger.info("Defining setup variables for preprocessing")
-    
-    #removing target variable from data by defining new setup
+
+    # removing target variable from data by defining new setup
     _data_ = data_.copy()
     target_ = pd.DataFrame(_data_[supervised_target])
     from sklearn.preprocessing import LabelEncoder
+
     le = LabelEncoder()
     target_ = le.fit_transform(target_)
-    
+
     cat_pass = prep_param.dtypes.categorical_features
     num_pass = prep_param.dtypes.numerical_features
     time_pass = prep_param.dtypes.time_features
     ignore_pass = prep_param.dtypes.features_todrop
-    
-    #PCA
-    #---# 
-    if 'Empty' in str(prep_param.pca): 
+
+    # PCA
+    # ---#
+    if "Empty" in str(prep_param.pca):
         pca_pass = False
-        pca_method_pass = 'linear'
-    
+        pca_method_pass = "linear"
+
     else:
         pca_pass = True
-        
-        if prep_param.pca.method == 'pca_liner':
-            pca_method_pass = 'linear'
-        elif prep_param.pca.method == 'pca_kernal':
-            pca_method_pass = 'kernel'
-        elif prep_param.pca.method == 'incremental':
-            pca_method_pass = 'incremental'
-        
+
+        if prep_param.pca.method == "pca_liner":
+            pca_method_pass = "linear"
+        elif prep_param.pca.method == "pca_kernal":
+            pca_method_pass = "kernel"
+        elif prep_param.pca.method == "incremental":
+            pca_method_pass = "incremental"
+
     if pca_pass is True:
         pca_comp_pass = prep_param.pca.variance_retained
     else:
         pca_comp_pass = 0.99
-    
-    #IMPUTATION
-    if 'not_available' in prep_param.imputer.categorical_strategy:
-        cat_impute_pass = 'constant'
-    elif 'most frequent' in prep_param.imputer.categorical_strategy:
-        cat_impute_pass = 'mode'
-    
+
+    # IMPUTATION
+    if "not_available" in prep_param.imputer.categorical_strategy:
+        cat_impute_pass = "constant"
+    elif "most frequent" in prep_param.imputer.categorical_strategy:
+        cat_impute_pass = "mode"
+
     num_impute_pass = prep_param.imputer.numeric_strategy
-    
-    #NORMALIZE
-    if 'Empty' in str(prep_param.scaling):
+
+    # NORMALIZE
+    if "Empty" in str(prep_param.scaling):
         normalize_pass = False
     else:
         normalize_pass = True
-        
+
     if normalize_pass is True:
         normalize_method_pass = prep_param.scaling.function_to_apply
     else:
-        normalize_method_pass = 'zscore'
-    
-    #FEATURE TRANSFORMATION
-    if 'Empty' in str(prep_param.P_transform):
+        normalize_method_pass = "zscore"
+
+    # FEATURE TRANSFORMATION
+    if "Empty" in str(prep_param.P_transform):
         transformation_pass = False
     else:
         transformation_pass = True
-        
+
     if transformation_pass is True:
-        
-        if 'yj' in prep_param.P_transform.function_to_apply:
-            transformation_method_pass = 'yeo-johnson'
-        elif 'quantile' in prep_param.P_transform.function_to_apply:
-            transformation_method_pass = 'quantile'
-            
+
+        if "yj" in prep_param.P_transform.function_to_apply:
+            transformation_method_pass = "yeo-johnson"
+        elif "quantile" in prep_param.P_transform.function_to_apply:
+            transformation_method_pass = "quantile"
+
     else:
-        transformation_method_pass = 'yeo-johnson'
-    
-    #BIN NUMERIC FEATURES
-    if 'Empty' in str(prep_param.binn):
+        transformation_method_pass = "yeo-johnson"
+
+    # BIN NUMERIC FEATURES
+    if "Empty" in str(prep_param.binn):
         features_to_bin_pass = []
         apply_binning_pass = False
-        
+
     else:
         features_to_bin_pass = prep_param.binn.features_to_discretize
         apply_binning_pass = True
-    
-    #COMBINE RARE LEVELS
-    if 'Empty' in str(prep_param.club_R_L):
+
+    # COMBINE RARE LEVELS
+    if "Empty" in str(prep_param.club_R_L):
         combine_rare_levels_pass = False
         combine_rare_threshold_pass = 0.1
     else:
         combine_rare_levels_pass = True
         combine_rare_threshold_pass = prep_param.club_R_L.threshold
-        
-    #ZERO NERO ZERO VARIANCE
-    if 'Empty' in str(prep_param.znz):
+
+    # ZERO NERO ZERO VARIANCE
+    if "Empty" in str(prep_param.znz):
         ignore_low_variance_pass = False
     else:
         ignore_low_variance_pass = True
-    
-    #MULTI-COLLINEARITY
-    if 'Empty' in str(prep_param.fix_multi):
+
+    # MULTI-COLLINEARITY
+    if "Empty" in str(prep_param.fix_multi):
         remove_multicollinearity_pass = False
     else:
         remove_multicollinearity_pass = True
-        
+
     if remove_multicollinearity_pass is True:
         multicollinearity_threshold_pass = prep_param.fix_multi.threshold
     else:
         multicollinearity_threshold_pass = 0.9
-    
-    #UNKNOWN CATEGORICAL LEVEL
-    if 'Empty' in str(prep_param.new_levels):
+
+    # UNKNOWN CATEGORICAL LEVEL
+    if "Empty" in str(prep_param.new_levels):
         handle_unknown_categorical_pass = False
     else:
         handle_unknown_categorical_pass = True
-        
+
     if handle_unknown_categorical_pass is True:
         unknown_level_preprocess = prep_param.new_levels.replacement_strategy
-        if unknown_level_preprocess == 'least frequent':
-            unknown_categorical_method_pass = 'least_frequent'
-        elif unknown_level_preprocess == 'most frequent':
-            unknown_categorical_method_pass = 'most_frequent'
+        if unknown_level_preprocess == "least frequent":
+            unknown_categorical_method_pass = "least_frequent"
+        elif unknown_level_preprocess == "most frequent":
+            unknown_categorical_method_pass = "most_frequent"
         else:
-            unknown_categorical_method_pass = 'least_frequent'
+            unknown_categorical_method_pass = "least_frequent"
     else:
-        unknown_categorical_method_pass = 'least_frequent'
-    
-    #GROUP FEATURES
-    if 'Empty' in str(prep_param.group):
+        unknown_categorical_method_pass = "least_frequent"
+
+    # GROUP FEATURES
+    if "Empty" in str(prep_param.group):
         apply_grouping_pass = False
     else:
         apply_grouping_pass = True
-        
+
     if apply_grouping_pass is True:
         group_features_pass = prep_param.group.list_of_similar_features
     else:
         group_features_pass = None
-        
+
     if apply_grouping_pass is True:
         group_names_pass = prep_param.group.group_name
     else:
         group_names_pass = None
-    
-    #ORDINAL FEATURES
-    
-    if 'Empty' in str(prep_param.ordinal):
+
+    # ORDINAL FEATURES
+
+    if "Empty" in str(prep_param.ordinal):
         ordinal_features_pass = None
     else:
         ordinal_features_pass = prep_param.ordinal.info_as_dict
-    
-    #HIGH CARDINALITY    
-    if 'Empty' in str(prep_param.cardinality):
+
+    # HIGH CARDINALITY
+    if "Empty" in str(prep_param.cardinality):
         high_cardinality_features_pass = None
     else:
         high_cardinality_features_pass = prep_param.cardinality.feature
 
     global setup_without_target
-    
+
     logger.info("SubProcess setup() called")
-    
-    setup_without_target = setup(data = data_,
-                                 categorical_features = cat_pass,
-                                 categorical_imputation = cat_impute_pass,
-                                 ordinal_features = ordinal_features_pass,
-                                 high_cardinality_features = high_cardinality_features_pass,
-                                 numeric_features = num_pass,
-                                 numeric_imputation = num_impute_pass,
-                                 date_features = time_pass,
-                                 ignore_features = ignore_pass,
-                                 normalize = normalize_pass,
-                                 normalize_method = normalize_method_pass,
-                                 transformation = transformation_pass,
-                                 transformation_method = transformation_method_pass,
-                                 handle_unknown_categorical = handle_unknown_categorical_pass,
-                                 unknown_categorical_method = unknown_categorical_method_pass,
-                                 pca = pca_pass,
-                                 pca_components = pca_comp_pass,
-                                 pca_method = pca_method_pass,
-                                 ignore_low_variance = ignore_low_variance_pass,
-                                 combine_rare_levels = combine_rare_levels_pass,
-                                 rare_level_threshold = combine_rare_threshold_pass, 
-                                 bin_numeric_features = features_to_bin_pass,
-                                 remove_multicollinearity = remove_multicollinearity_pass, 
-                                 multicollinearity_threshold = multicollinearity_threshold_pass,
-                                 group_features = group_features_pass,
-                                 group_names = group_names_pass, 
-                                 supervised = True,
-                                 supervised_target = supervised_target,
-                                 session_id = seed,
-                                 log_experiment = False, #added in pycaret==2.0.0
-                                 profile=False,
-                                 verbose=False)
-    
+
+    setup_without_target = setup(
+        data=data_,
+        categorical_features=cat_pass,
+        categorical_imputation=cat_impute_pass,
+        ordinal_features=ordinal_features_pass,
+        high_cardinality_features=high_cardinality_features_pass,
+        numeric_features=num_pass,
+        numeric_imputation=num_impute_pass,
+        date_features=time_pass,
+        ignore_features=ignore_pass,
+        normalize=normalize_pass,
+        normalize_method=normalize_method_pass,
+        transformation=transformation_pass,
+        transformation_method=transformation_method_pass,
+        handle_unknown_categorical=handle_unknown_categorical_pass,
+        unknown_categorical_method=unknown_categorical_method_pass,
+        pca=pca_pass,
+        pca_components=pca_comp_pass,
+        pca_method=pca_method_pass,
+        ignore_low_variance=ignore_low_variance_pass,
+        combine_rare_levels=combine_rare_levels_pass,
+        rare_level_threshold=combine_rare_threshold_pass,
+        bin_numeric_features=features_to_bin_pass,
+        remove_multicollinearity=remove_multicollinearity_pass,
+        multicollinearity_threshold=multicollinearity_threshold_pass,
+        group_features=group_features_pass,
+        group_names=group_names_pass,
+        supervised=True,
+        supervised_target=supervised_target,
+        session_id=seed,
+        log_experiment=False,  # added in pycaret==2.0.0
+        profile=False,
+        verbose=False,
+    )
+
     data_without_target = setup_without_target[0]
-    
+
     logger.info("SubProcess setup() end")
 
     """
     preprocess ends here
     """
 
-    #adding dummy model in master
-    master.append('No Model Required')
-    master_df.append('No Model Required')
-    
+    # adding dummy model in master
+    master.append("No Model Required")
+    master_df.append("No Model Required")
+
     model_fit_time_list = []
 
     for i in param_grid:
-        logger.info("Fitting Model with num_clusters = " +str(i))
-        progress.value += 1                      
-        monitor.iloc[2,1:] = 'Fitting Model With ' + str(i) + ' Clusters'
+        logger.info("Fitting Model with num_clusters = " + str(i))
+        progress.value += 1
+        monitor.iloc[2, 1:] = "Fitting Model With " + str(i) + " Clusters"
         if verbose:
             if html_param:
-                update_display(monitor, display_id = 'monitor')
-                             
-        #create and assign the model to dataset d
+                update_display(monitor, display_id="monitor")
+
+        # create and assign the model to dataset d
         model_fit_start = time.time()
         logger.info("SubProcess create_model() called==================================")
         m = create_model(model=model, num_clusters=i, verbose=False, system=False)
@@ -2514,15 +2684,15 @@ def tune_model(model=None,
         master.append(m)
         master_df.append(d)
 
-        #clustering model creation end's here
-        
-    #attaching target variable back
+        # clustering model creation end's here
+
+    # attaching target variable back
     data_[str(supervised_target)] = target_
 
     logger.info("Defining Supervised Estimator")
 
-    if problem == 'classification':
-        
+    if problem == "classification":
+
         logger.info("Problem : Classification")
 
         """
@@ -2530,251 +2700,284 @@ def tune_model(model=None,
         defining estimator
         
         """
-        
-        monitor.iloc[1,1:] = 'Evaluating Clustering Model'
+
+        monitor.iloc[1, 1:] = "Evaluating Clustering Model"
         if verbose:
             if html_param:
-                update_display(monitor, display_id = 'monitor')
-                             
-        if estimator == 'lr':
+                update_display(monitor, display_id="monitor")
+
+        if estimator == "lr":
 
             from sklearn.linear_model import LogisticRegression
-            model = LogisticRegression(random_state=seed)
-            full_name = 'Logistic Regression'
 
-        elif estimator == 'knn':
+            model = LogisticRegression(random_state=seed)
+            full_name = "Logistic Regression"
+
+        elif estimator == "knn":
 
             from sklearn.neighbors import KNeighborsClassifier
-            model = KNeighborsClassifier()
-            full_name = 'K Nearest Neighbours'
 
-        elif estimator == 'nb':
+            model = KNeighborsClassifier()
+            full_name = "K Nearest Neighbours"
+
+        elif estimator == "nb":
 
             from sklearn.naive_bayes import GaussianNB
-            model = GaussianNB()
-            full_name = 'Naive Bayes'
 
-        elif estimator == 'dt':
+            model = GaussianNB()
+            full_name = "Naive Bayes"
+
+        elif estimator == "dt":
 
             from sklearn.tree import DecisionTreeClassifier
-            model = DecisionTreeClassifier(random_state=seed)
-            full_name = 'Decision Tree'
 
-        elif estimator == 'svm':
+            model = DecisionTreeClassifier(random_state=seed)
+            full_name = "Decision Tree"
+
+        elif estimator == "svm":
 
             from sklearn.linear_model import SGDClassifier
-            model = SGDClassifier(max_iter=1000, tol=0.001, random_state=seed)
-            full_name = 'Support Vector Machine'
 
-        elif estimator == 'rbfsvm':
+            model = SGDClassifier(max_iter=1000, tol=0.001, random_state=seed)
+            full_name = "Support Vector Machine"
+
+        elif estimator == "rbfsvm":
 
             from sklearn.svm import SVC
-            model = SVC(gamma='auto', C=1, probability=True, kernel='rbf', random_state=seed)
-            full_name = 'RBF SVM'
 
-        elif estimator == 'gpc':
+            model = SVC(gamma="auto", C=1, probability=True, kernel="rbf", random_state=seed)
+            full_name = "RBF SVM"
+
+        elif estimator == "gpc":
 
             from sklearn.gaussian_process import GaussianProcessClassifier
-            model = GaussianProcessClassifier(random_state=seed)
-            full_name = 'Gaussian Process Classifier'
 
-        elif estimator == 'mlp':
+            model = GaussianProcessClassifier(random_state=seed)
+            full_name = "Gaussian Process Classifier"
+
+        elif estimator == "mlp":
 
             from sklearn.neural_network import MLPClassifier
-            model = MLPClassifier(max_iter=500, random_state=seed)
-            full_name = 'Multi Level Perceptron'    
 
-        elif estimator == 'ridge':
+            model = MLPClassifier(max_iter=500, random_state=seed)
+            full_name = "Multi Level Perceptron"
+
+        elif estimator == "ridge":
 
             from sklearn.linear_model import RidgeClassifier
-            model = RidgeClassifier(random_state=seed)
-            full_name = 'Ridge Classifier'        
 
-        elif estimator == 'rf':
+            model = RidgeClassifier(random_state=seed)
+            full_name = "Ridge Classifier"
+
+        elif estimator == "rf":
 
             from sklearn.ensemble import RandomForestClassifier
-            model = RandomForestClassifier(n_estimators=10, random_state=seed)
-            full_name = 'Random Forest Classifier'    
 
-        elif estimator == 'qda':
+            model = RandomForestClassifier(n_estimators=10, random_state=seed)
+            full_name = "Random Forest Classifier"
+
+        elif estimator == "qda":
 
             from sklearn.discriminant_analysis import QuadraticDiscriminantAnalysis
-            model = QuadraticDiscriminantAnalysis()
-            full_name = 'Quadratic Discriminant Analysis' 
 
-        elif estimator == 'ada':
+            model = QuadraticDiscriminantAnalysis()
+            full_name = "Quadratic Discriminant Analysis"
+
+        elif estimator == "ada":
 
             from sklearn.ensemble import AdaBoostClassifier
+
             model = AdaBoostClassifier(random_state=seed)
-            full_name = 'AdaBoost Classifier'        
+            full_name = "AdaBoost Classifier"
 
-        elif estimator == 'gbc':
+        elif estimator == "gbc":
 
-            from sklearn.ensemble import GradientBoostingClassifier    
+            from sklearn.ensemble import GradientBoostingClassifier
+
             model = GradientBoostingClassifier(random_state=seed)
-            full_name = 'Gradient Boosting Classifier'    
+            full_name = "Gradient Boosting Classifier"
 
-        elif estimator == 'lda':
+        elif estimator == "lda":
 
             from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
+
             model = LinearDiscriminantAnalysis()
-            full_name = 'Linear Discriminant Analysis'
+            full_name = "Linear Discriminant Analysis"
 
-        elif estimator == 'et':
+        elif estimator == "et":
 
-            from sklearn.ensemble import ExtraTreesClassifier 
+            from sklearn.ensemble import ExtraTreesClassifier
+
             model = ExtraTreesClassifier(random_state=seed)
-            full_name = 'Extra Trees Classifier'
-            
-        elif estimator == 'xgboost':
-            
+            full_name = "Extra Trees Classifier"
+
+        elif estimator == "xgboost":
+
             from xgboost import XGBClassifier
+
             model = XGBClassifier(random_state=seed, n_jobs=n_jobs_param, verbosity=0)
-            full_name = 'Extreme Gradient Boosting'
-            
-        elif estimator == 'lightgbm':
-            
+            full_name = "Extreme Gradient Boosting"
+
+        elif estimator == "lightgbm":
+
             import lightgbm as lgb
+
             model = lgb.LGBMClassifier(random_state=seed)
-            full_name = 'Light Gradient Boosting Machine'
-            
-        elif estimator == 'catboost':
+            full_name = "Light Gradient Boosting Machine"
+
+        elif estimator == "catboost":
             from catboost import CatBoostClassifier
-            model = CatBoostClassifier(random_state=seed, silent=True) # Silent is True to suppress CatBoost iteration results 
-            full_name = 'CatBoost Classifier'
-        
+
+            model = CatBoostClassifier(
+                random_state=seed, silent=True
+            )  # Silent is True to suppress CatBoost iteration results
+            full_name = "CatBoost Classifier"
+
         logger.info(str(full_name) + " Imported Successfully")
 
-        progress.value += 1 
-        
+        progress.value += 1
+
         """
         start model building here
 
         """
 
-        logger.info("Creating Classifier without clusters")                     
-        acc = [];  auc = []; recall = []; prec = []; kappa = []; f1 = []
-        
-        #build model without clustering
-        monitor.iloc[2,1:] = 'Evaluating Classifier Without Clustering'
+        logger.info("Creating Classifier without clusters")
+        acc = []
+        auc = []
+        recall = []
+        prec = []
+        kappa = []
+        f1 = []
+
+        # build model without clustering
+        monitor.iloc[2, 1:] = "Evaluating Classifier Without Clustering"
         if verbose:
             if html_param:
-                update_display(monitor, display_id = 'monitor')   
+                update_display(monitor, display_id="monitor")
 
         d = master_df[1].copy()
-        d.drop(['Cluster'], axis=1, inplace=True)
+        d.drop(["Cluster"], axis=1, inplace=True)
 
-        #drop NA's caution
+        # drop NA's caution
         d.dropna(axis=0, inplace=True)
-        
-        #get_dummies to caste categorical variables for supervised learning 
+
+        # get_dummies to caste categorical variables for supervised learning
         d = pd.get_dummies(d)
 
-        #split the dataset
+        # split the dataset
         X = d.drop(supervised_target, axis=1)
         y = d[supervised_target]
 
-        #fit the model
-        logger.info("Fitting Model") 
-        model.fit(X,y)
-        
-        #generate the prediction and evaluate metric
-        logger.info("Evaluating Cross Val Predictions") 
-        pred = cross_val_predict(model,X,y,cv=fold, method = 'predict')
+        # fit the model
+        logger.info("Fitting Model")
+        model.fit(X, y)
 
-        acc_ = metrics.accuracy_score(y,pred)
+        # generate the prediction and evaluate metric
+        logger.info("Evaluating Cross Val Predictions")
+        pred = cross_val_predict(model, X, y, cv=fold, method="predict")
+
+        acc_ = metrics.accuracy_score(y, pred)
         acc.append(acc_)
 
-        recall_ = metrics.recall_score(y,pred)
+        recall_ = metrics.recall_score(y, pred)
         recall.append(recall_)
 
-        precision_ = metrics.precision_score(y,pred)
+        precision_ = metrics.precision_score(y, pred)
         prec.append(precision_)
 
-        kappa_ = metrics.cohen_kappa_score(y,pred)
+        kappa_ = metrics.cohen_kappa_score(y, pred)
         kappa.append(kappa_)
 
-        f1_ = metrics.f1_score(y,pred)
+        f1_ = metrics.f1_score(y, pred)
         f1.append(f1_)
-        
-        if hasattr(model,'predict_proba'):
-            pred_ = cross_val_predict(model,X,y,cv=fold, method = 'predict_proba')
-            pred_prob = pred_[:,1]
-            auc_ = metrics.roc_auc_score(y,pred_prob)
+
+        if hasattr(model, "predict_proba"):
+            pred_ = cross_val_predict(model, X, y, cv=fold, method="predict_proba")
+            pred_prob = pred_[:, 1]
+            auc_ = metrics.roc_auc_score(y, pred_prob)
             auc.append(auc_)
 
         else:
             auc.append(0)
 
-        for i in range(1,len(master_df)):
-            
-            progress.value += 1 
-            param_grid_val = param_grid[i-1]
-            
-            logger.info("Creating Classifier with num_clusters = " + str(param_grid_val)) 
-            
-            monitor.iloc[2,1:] = 'Evaluating Classifier With ' + str(param_grid_val) + ' Clusters'
+        for i in range(1, len(master_df)):
+
+            progress.value += 1
+            param_grid_val = param_grid[i - 1]
+
+            logger.info("Creating Classifier with num_clusters = " + str(param_grid_val))
+
+            monitor.iloc[2, 1:] = "Evaluating Classifier With " + str(param_grid_val) + " Clusters"
             if verbose:
                 if html_param:
-                    update_display(monitor, display_id = 'monitor')                
-                             
-            #prepare the dataset for supervised problem
+                    update_display(monitor, display_id="monitor")
+
+            # prepare the dataset for supervised problem
             d = master_df[i]
-            
-            #dropping NAs
+
+            # dropping NAs
             d.dropna(axis=0, inplace=True)
 
-            #get_dummies to caste categorical variables for supervised learning 
+            # get_dummies to caste categorical variables for supervised learning
             d = pd.get_dummies(d)
 
-            #split the dataset
+            # split the dataset
             X = d.drop(supervised_target, axis=1)
             y = d[supervised_target]
 
-            #fit the model
-            logger.info("Fitting Model") 
-            model.fit(X,y)
+            # fit the model
+            logger.info("Fitting Model")
+            model.fit(X, y)
 
-            #generate the prediction and evaluate metric
-            logger.info("Generating Cross Val Predictions") 
-            pred = cross_val_predict(model,X,y,cv=fold, method = 'predict')
+            # generate the prediction and evaluate metric
+            logger.info("Generating Cross Val Predictions")
+            pred = cross_val_predict(model, X, y, cv=fold, method="predict")
 
-            acc_ = metrics.accuracy_score(y,pred)
+            acc_ = metrics.accuracy_score(y, pred)
             acc.append(acc_)
 
-            recall_ = metrics.recall_score(y,pred)
+            recall_ = metrics.recall_score(y, pred)
             recall.append(recall_)
 
-            precision_ = metrics.precision_score(y,pred)
+            precision_ = metrics.precision_score(y, pred)
             prec.append(precision_)
 
-            kappa_ = metrics.cohen_kappa_score(y,pred)
+            kappa_ = metrics.cohen_kappa_score(y, pred)
             kappa.append(kappa_)
 
-            f1_ = metrics.f1_score(y,pred)
+            f1_ = metrics.f1_score(y, pred)
             f1.append(f1_)
 
-            if hasattr(model,'predict_proba'):
-                pred_ = cross_val_predict(model,X,y,cv=fold, method = 'predict_proba')
-                pred_prob = pred_[:,1]
-                auc_ = metrics.roc_auc_score(y,pred_prob)
+            if hasattr(model, "predict_proba"):
+                pred_ = cross_val_predict(model, X, y, cv=fold, method="predict_proba")
+                pred_prob = pred_[:, 1]
+                auc_ = metrics.roc_auc_score(y, pred_prob)
                 auc.append(auc_)
 
             else:
                 auc.append(0)
 
-                             
-        monitor.iloc[1,1:] = 'Compiling Results'
-        monitor.iloc[1,1:] = 'Almost Finished'
-        
+        monitor.iloc[1, 1:] = "Compiling Results"
+        monitor.iloc[1, 1:] = "Almost Finished"
+
         if verbose:
             if html_param:
-                update_display(monitor, display_id = 'monitor')
+                update_display(monitor, display_id="monitor")
 
-        logger.info("Creating metrics dataframe")                     
-        df = pd.DataFrame({'# of Clusters': param_grid_with_zero, 'Accuracy' : acc, 'AUC' : auc, 'Recall' : recall, 
-                   'Precision' : prec, 'F1' : f1, 'Kappa' : kappa})
-        
+        logger.info("Creating metrics dataframe")
+        df = pd.DataFrame(
+            {
+                "# of Clusters": param_grid_with_zero,
+                "Accuracy": acc,
+                "AUC": auc,
+                "Recall": recall,
+                "Precision": prec,
+                "F1": f1,
+                "Kappa": kappa,
+            }
+        )
+
         sorted_df = df.sort_values(by=optimize, ascending=False)
         ival = sorted_df.index[0]
 
@@ -2782,37 +2985,52 @@ def tune_model(model=None,
         best_model_df = master_df[ival]
         best_model_tt = model_fit_time_list[ival]
 
-        progress.value += 1 
+        progress.value += 1
         logger.info("Rendering Visual")
-        sd = pd.melt(df, id_vars=['# of Clusters'], value_vars=['Accuracy', 'AUC', 'Recall', 'Precision', 'F1', 'Kappa'], 
-                     var_name='Metric', value_name='Score')
+        sd = pd.melt(
+            df,
+            id_vars=["# of Clusters"],
+            value_vars=["Accuracy", "AUC", "Recall", "Precision", "F1", "Kappa"],
+            var_name="Metric",
+            value_name="Score",
+        )
 
-        fig = px.line(sd, x='# of Clusters', y='Score', color='Metric', line_shape='linear', range_y = [0,1])
-        fig.update_layout(plot_bgcolor='rgb(245,245,245)')
-        title= str(full_name) + ' Metrics and Number of Clusters'
-        fig.update_layout(title={'text': title, 'y':0.95,'x':0.45,'xanchor': 'center','yanchor': 'top'})
+        fig = px.line(sd, x="# of Clusters", y="Score", color="Metric", line_shape="linear", range_y=[0, 1])
+        fig.update_layout(plot_bgcolor="rgb(245,245,245)")
+        title = str(full_name) + " Metrics and Number of Clusters"
+        fig.update_layout(title={"text": title, "y": 0.95, "x": 0.45, "xanchor": "center", "yanchor": "top"})
 
         fig.show()
         logger.info("Visual Rendered Successfully")
 
-        #monitor = ''
+        # monitor = ''
 
         if verbose:
             if html_param:
-                update_display(monitor, display_id = 'monitor')
-        
+                update_display(monitor, display_id="monitor")
+
         if verbose:
             if html_param:
                 monitor_out.clear_output()
                 progress.close()
 
-        best_k = np.array(sorted_df.head(1)['# of Clusters'])[0]
-        best_m = round(np.array(sorted_df.head(1)[optimize])[0],4)
-        p = 'Best Model: ' + model_name + ' |' + ' Number of Clusters : ' + str(best_k) + ' | ' + str(optimize) + ' : ' + str(best_m)
+        best_k = np.array(sorted_df.head(1)["# of Clusters"])[0]
+        best_m = round(np.array(sorted_df.head(1)[optimize])[0], 4)
+        p = (
+            "Best Model: "
+            + model_name
+            + " |"
+            + " Number of Clusters : "
+            + str(best_k)
+            + " | "
+            + str(optimize)
+            + " : "
+            + str(best_m)
+        )
         print(p)
 
-    elif problem == 'regression':
-        
+    elif problem == "regression":
+
         logger.info("Problem : Regression")
 
         """
@@ -2820,315 +3038,340 @@ def tune_model(model=None,
         defining estimator
         
         """
-        
-        monitor.iloc[1,1:] = 'Evaluating Clustering Model'
+
+        monitor.iloc[1, 1:] = "Evaluating Clustering Model"
         if verbose:
             if html_param:
-                update_display(monitor, display_id = 'monitor')
-                                    
-        if estimator == 'lr':
-        
+                update_display(monitor, display_id="monitor")
+
+        if estimator == "lr":
+
             from sklearn.linear_model import LinearRegression
+
             model = LinearRegression()
-            full_name = 'Linear Regression'
-        
-        elif estimator == 'lasso':
+            full_name = "Linear Regression"
+
+        elif estimator == "lasso":
 
             from sklearn.linear_model import Lasso
-            model = Lasso(random_state=seed)
-            full_name = 'Lasso Regression'
 
-        elif estimator == 'ridge':
+            model = Lasso(random_state=seed)
+            full_name = "Lasso Regression"
+
+        elif estimator == "ridge":
 
             from sklearn.linear_model import Ridge
-            model = Ridge(random_state=seed)
-            full_name = 'Ridge Regression'
 
-        elif estimator == 'en':
+            model = Ridge(random_state=seed)
+            full_name = "Ridge Regression"
+
+        elif estimator == "en":
 
             from sklearn.linear_model import ElasticNet
-            model = ElasticNet(random_state=seed)
-            full_name = 'Elastic Net'
 
-        elif estimator == 'lar':
+            model = ElasticNet(random_state=seed)
+            full_name = "Elastic Net"
+
+        elif estimator == "lar":
 
             from sklearn.linear_model import Lars
-            model = Lars()
-            full_name = 'Least Angle Regression'
 
-        elif estimator == 'llar':
+            model = Lars()
+            full_name = "Least Angle Regression"
+
+        elif estimator == "llar":
 
             from sklearn.linear_model import LassoLars
-            model = LassoLars()
-            full_name = 'Lasso Least Angle Regression'
 
-        elif estimator == 'omp':
+            model = LassoLars()
+            full_name = "Lasso Least Angle Regression"
+
+        elif estimator == "omp":
 
             from sklearn.linear_model import OrthogonalMatchingPursuit
+
             model = OrthogonalMatchingPursuit()
-            full_name = 'Orthogonal Matching Pursuit'
+            full_name = "Orthogonal Matching Pursuit"
 
-        elif estimator == 'br':
+        elif estimator == "br":
             from sklearn.linear_model import BayesianRidge
-            model = BayesianRidge()
-            full_name = 'Bayesian Ridge Regression' 
 
-        elif estimator == 'ard':
+            model = BayesianRidge()
+            full_name = "Bayesian Ridge Regression"
+
+        elif estimator == "ard":
 
             from sklearn.linear_model import ARDRegression
-            model = ARDRegression()
-            full_name = 'Automatic Relevance Determination'        
 
-        elif estimator == 'par':
+            model = ARDRegression()
+            full_name = "Automatic Relevance Determination"
+
+        elif estimator == "par":
 
             from sklearn.linear_model import PassiveAggressiveRegressor
-            model = PassiveAggressiveRegressor(random_state=seed)
-            full_name = 'Passive Aggressive Regressor'    
 
-        elif estimator == 'ransac':
+            model = PassiveAggressiveRegressor(random_state=seed)
+            full_name = "Passive Aggressive Regressor"
+
+        elif estimator == "ransac":
 
             from sklearn.linear_model import RANSACRegressor
-            model = RANSACRegressor(random_state=seed)
-            full_name = 'Random Sample Consensus'   
 
-        elif estimator == 'tr':
+            model = RANSACRegressor(random_state=seed)
+            full_name = "Random Sample Consensus"
+
+        elif estimator == "tr":
 
             from sklearn.linear_model import TheilSenRegressor
-            model = TheilSenRegressor(random_state=seed)
-            full_name = 'TheilSen Regressor'     
 
-        elif estimator == 'huber':
+            model = TheilSenRegressor(random_state=seed)
+            full_name = "TheilSen Regressor"
+
+        elif estimator == "huber":
 
             from sklearn.linear_model import HuberRegressor
-            model = HuberRegressor()
-            full_name = 'Huber Regressor'   
 
-        elif estimator == 'kr':
+            model = HuberRegressor()
+            full_name = "Huber Regressor"
+
+        elif estimator == "kr":
 
             from sklearn.kernel_ridge import KernelRidge
-            model = KernelRidge()
-            full_name = 'Kernel Ridge'
 
-        elif estimator == 'svm':
+            model = KernelRidge()
+            full_name = "Kernel Ridge"
+
+        elif estimator == "svm":
 
             from sklearn.svm import SVR
-            model = SVR()
-            full_name = 'Support Vector Regression'  
 
-        elif estimator == 'knn':
+            model = SVR()
+            full_name = "Support Vector Regression"
+
+        elif estimator == "knn":
 
             from sklearn.neighbors import KNeighborsRegressor
-            model = KNeighborsRegressor()
-            full_name = 'Nearest Neighbors Regression' 
 
-        elif estimator == 'dt':
+            model = KNeighborsRegressor()
+            full_name = "Nearest Neighbors Regression"
+
+        elif estimator == "dt":
 
             from sklearn.tree import DecisionTreeRegressor
-            model = DecisionTreeRegressor(random_state=seed)
-            full_name = 'Decision Tree Regressor'
 
-        elif estimator == 'rf':
+            model = DecisionTreeRegressor(random_state=seed)
+            full_name = "Decision Tree Regressor"
+
+        elif estimator == "rf":
 
             from sklearn.ensemble import RandomForestRegressor
-            model = RandomForestRegressor(random_state=seed)
-            full_name = 'Random Forest Regressor'
 
-        elif estimator == 'et':
+            model = RandomForestRegressor(random_state=seed)
+            full_name = "Random Forest Regressor"
+
+        elif estimator == "et":
 
             from sklearn.ensemble import ExtraTreesRegressor
-            model = ExtraTreesRegressor(random_state=seed)
-            full_name = 'Extra Trees Regressor'    
 
-        elif estimator == 'ada':
+            model = ExtraTreesRegressor(random_state=seed)
+            full_name = "Extra Trees Regressor"
+
+        elif estimator == "ada":
 
             from sklearn.ensemble import AdaBoostRegressor
-            model = AdaBoostRegressor(random_state=seed)
-            full_name = 'AdaBoost Regressor'   
 
-        elif estimator == 'gbr':
+            model = AdaBoostRegressor(random_state=seed)
+            full_name = "AdaBoost Regressor"
+
+        elif estimator == "gbr":
 
             from sklearn.ensemble import GradientBoostingRegressor
-            model = GradientBoostingRegressor(random_state=seed)
-            full_name = 'Gradient Boosting Regressor'       
 
-        elif estimator == 'mlp':
+            model = GradientBoostingRegressor(random_state=seed)
+            full_name = "Gradient Boosting Regressor"
+
+        elif estimator == "mlp":
 
             from sklearn.neural_network import MLPRegressor
+
             model = MLPRegressor(random_state=seed)
-            full_name = 'MLP Regressor'
-            
-        elif estimator == 'xgboost':
-            
+            full_name = "MLP Regressor"
+
+        elif estimator == "xgboost":
+
             from xgboost import XGBRegressor
+
             model = XGBRegressor(random_state=seed, n_jobs=n_jobs_param, verbosity=0)
-            full_name = 'Extreme Gradient Boosting Regressor'
-            
-        elif estimator == 'lightgbm':
-            
+            full_name = "Extreme Gradient Boosting Regressor"
+
+        elif estimator == "lightgbm":
+
             import lightgbm as lgb
+
             model = lgb.LGBMRegressor(random_state=seed)
-            full_name = 'Light Gradient Boosting Machine'
-            
-        elif estimator == 'catboost':
-            
+            full_name = "Light Gradient Boosting Machine"
+
+        elif estimator == "catboost":
+
             from catboost import CatBoostRegressor
-            model = CatBoostRegressor(random_state=seed, silent = True)
-            full_name = 'CatBoost Regressor'
-            
+
+            model = CatBoostRegressor(random_state=seed, silent=True)
+            full_name = "CatBoost Regressor"
+
         logger.info(str(full_name) + " Imported Successfully")
 
-        progress.value += 1 
-        
+        progress.value += 1
+
         """
         start model building here
 
         """
-        
-        logger.info("Creating Regressor without clusters")          
+
+        logger.info("Creating Regressor without clusters")
 
         score = []
         metric = []
-        
-        #build model without clustering
-        monitor.iloc[2,1:] = 'Evaluating Regressor Without Clustering'
+
+        # build model without clustering
+        monitor.iloc[2, 1:] = "Evaluating Regressor Without Clustering"
         if verbose:
             if html_param:
-                update_display(monitor, display_id = 'monitor')   
+                update_display(monitor, display_id="monitor")
 
         d = master_df[1].copy()
-        d.drop(['Cluster'], axis=1, inplace=True)
+        d.drop(["Cluster"], axis=1, inplace=True)
 
-        #drop NA's caution
+        # drop NA's caution
         d.dropna(axis=0, inplace=True)
-        
-        #get_dummies to caste categorical variables for supervised learning 
+
+        # get_dummies to caste categorical variables for supervised learning
         d = pd.get_dummies(d)
-        
-        #split the dataset
+
+        # split the dataset
         X = d.drop(supervised_target, axis=1)
         y = d[supervised_target]
-            
-        #fit the model
-        logger.info("Fitting Model") 
-        model.fit(X,y)
 
-        #generate the prediction and evaluate metric
+        # fit the model
+        logger.info("Fitting Model")
+        model.fit(X, y)
+
+        # generate the prediction and evaluate metric
         logger.info("Generating Cross Val Predictions")
-        pred = cross_val_predict(model,X,y,cv=fold, method = 'predict')
+        pred = cross_val_predict(model, X, y, cv=fold, method="predict")
 
-        if optimize == 'R2':
-            r2_ = metrics.r2_score(y,pred)
+        if optimize == "R2":
+            r2_ = metrics.r2_score(y, pred)
             score.append(r2_)
 
-        elif optimize == 'MAE':          
-            mae_ = metrics.mean_absolute_error(y,pred)
+        elif optimize == "MAE":
+            mae_ = metrics.mean_absolute_error(y, pred)
             score.append(mae_)
 
-        elif optimize == 'MSE':
-            mse_ = metrics.mean_squared_error(y,pred)
+        elif optimize == "MSE":
+            mse_ = metrics.mean_squared_error(y, pred)
             score.append(mse_)
 
-        elif optimize == 'RMSE':
-            mse_ = metrics.mean_squared_error(y,pred)        
+        elif optimize == "RMSE":
+            mse_ = metrics.mean_squared_error(y, pred)
             rmse_ = np.sqrt(mse_)
             score.append(rmse_)
 
-        elif optimize == 'RMSLE':
-            rmsle = np.sqrt(np.mean(np.power(np.log(np.array(abs(pred))+1) - np.log(np.array(abs(y))+1), 2)))
+        elif optimize == "RMSLE":
+            rmsle = np.sqrt(np.mean(np.power(np.log(np.array(abs(pred)) + 1) - np.log(np.array(abs(y)) + 1), 2)))
             score.append(rmsle)
-            
-        elif optimize == 'MAPE':
-            
+
+        elif optimize == "MAPE":
+
             def calculate_mape(actual, prediction):
                 mask = actual != 0
-                return (np.fabs(actual - prediction)/actual)[mask].mean()
-            
-            mape = calculate_mape(y,pred)
-            score.append(mape)            
+                return (np.fabs(actual - prediction) / actual)[mask].mean()
+
+            mape = calculate_mape(y, pred)
+            score.append(mape)
 
         metric.append(str(optimize))
-        
-        for i in range(1,len(master_df)):
 
-            progress.value += 1 
-            param_grid_val = param_grid[i-1]
-            
-            logger.info("Creating Regressor with num_clusters = " + str(param_grid_val)) 
+        for i in range(1, len(master_df)):
 
-            monitor.iloc[2,1:] = 'Evaluating Regressor With ' + str(param_grid_val) + ' Clusters'
+            progress.value += 1
+            param_grid_val = param_grid[i - 1]
+
+            logger.info("Creating Regressor with num_clusters = " + str(param_grid_val))
+
+            monitor.iloc[2, 1:] = "Evaluating Regressor With " + str(param_grid_val) + " Clusters"
             if verbose:
                 if html_param:
-                    update_display(monitor, display_id = 'monitor')    
-                             
-            #prepare the dataset for supervised problem
+                    update_display(monitor, display_id="monitor")
+
+            # prepare the dataset for supervised problem
             d = master_df[i]
-                    
-            #dropping NA's
+
+            # dropping NA's
             d.dropna(axis=0, inplace=True)
-            
-            #get_dummies to caste categorical variable for supervised learning
+
+            # get_dummies to caste categorical variable for supervised learning
             d = pd.get_dummies(d)
-                        
-            #split the dataset
+
+            # split the dataset
             X = d.drop(supervised_target, axis=1)
             y = d[supervised_target]
 
-            #fit the model
-            logger.info("Fitting Model") 
-            model.fit(X,y)
+            # fit the model
+            logger.info("Fitting Model")
+            model.fit(X, y)
 
-            #generate the prediction and evaluate metric
-            logger.info("Generating Cross Val Predictions") 
-            pred = cross_val_predict(model,X,y,cv=fold, method = 'predict')
+            # generate the prediction and evaluate metric
+            logger.info("Generating Cross Val Predictions")
+            pred = cross_val_predict(model, X, y, cv=fold, method="predict")
 
-            if optimize == 'R2':
-                r2_ = metrics.r2_score(y,pred)
+            if optimize == "R2":
+                r2_ = metrics.r2_score(y, pred)
                 score.append(r2_)
-                
-            elif optimize == 'MAE':          
-                mae_ = metrics.mean_absolute_error(y,pred)
+
+            elif optimize == "MAE":
+                mae_ = metrics.mean_absolute_error(y, pred)
                 score.append(mae_)
 
-            elif optimize == 'MSE':
-                mse_ = metrics.mean_squared_error(y,pred)
+            elif optimize == "MSE":
+                mse_ = metrics.mean_squared_error(y, pred)
                 score.append(mse_)
-                
-            elif optimize == 'RMSE':
-                mse_ = metrics.mean_squared_error(y,pred)        
+
+            elif optimize == "RMSE":
+                mse_ = metrics.mean_squared_error(y, pred)
                 rmse_ = np.sqrt(mse_)
                 score.append(rmse_)
-            
-            elif optimize == 'RMSLE':
-                rmsle = np.sqrt(np.mean(np.power(np.log(np.array(abs(pred))+1) - np.log(np.array(abs(y))+1), 2)))
+
+            elif optimize == "RMSLE":
+                rmsle = np.sqrt(np.mean(np.power(np.log(np.array(abs(pred)) + 1) - np.log(np.array(abs(y)) + 1), 2)))
                 score.append(rmsle)
 
-            elif optimize == 'MAPE':
+            elif optimize == "MAPE":
 
                 def calculate_mape(actual, prediction):
                     mask = actual != 0
-                    return (np.fabs(actual - prediction)/actual)[mask].mean()
-                
-                mape = calculate_mape(y,pred)
+                    return (np.fabs(actual - prediction) / actual)[mask].mean()
+
+                mape = calculate_mape(y, pred)
                 score.append(mape)
-                
+
             metric.append(str(optimize))
-        
-        monitor.iloc[1,1:] = 'Compiling Results'
-        monitor.iloc[1,1:] = 'Finalizing'
+
+        monitor.iloc[1, 1:] = "Compiling Results"
+        monitor.iloc[1, 1:] = "Finalizing"
         if verbose:
             if html_param:
-                update_display(monitor, display_id = 'monitor')                    
+                update_display(monitor, display_id="monitor")
 
-        logger.info("Creating metrics dataframe") 
-        df = pd.DataFrame({'Clusters': param_grid_with_zero, 'Score' : score, 'Metric': metric})
-        df.columns = ['# of Clusters', optimize, 'Metric']
-        
-        #sorting to return best model
-        if optimize == 'R2':
+        logger.info("Creating metrics dataframe")
+        df = pd.DataFrame({"Clusters": param_grid_with_zero, "Score": score, "Metric": metric})
+        df.columns = ["# of Clusters", optimize, "Metric"]
+
+        # sorting to return best model
+        if optimize == "R2":
             sorted_df = df.sort_values(by=optimize, ascending=False)
-        else: 
+        else:
             sorted_df = df.sort_values(by=optimize, ascending=True)
-            
+
         ival = sorted_df.index[0]
 
         best_model = master[ival]
@@ -3137,56 +3380,72 @@ def tune_model(model=None,
 
         logger.info("Rendering Visual")
 
-        fig = px.line(df, x='# of Clusters', y=optimize, line_shape='linear', 
-                      title= str(full_name) + ' Metrics and Number of Clusters', color='Metric')
+        fig = px.line(
+            df,
+            x="# of Clusters",
+            y=optimize,
+            line_shape="linear",
+            title=str(full_name) + " Metrics and Number of Clusters",
+            color="Metric",
+        )
 
-        fig.update_layout(plot_bgcolor='rgb(245,245,245)')
-        progress.value += 1 
-        
+        fig.update_layout(plot_bgcolor="rgb(245,245,245)")
+        progress.value += 1
+
         fig.show()
 
         logger.info("Visual Rendered Successfully")
-        
-        #monitor = ''
-        
+
+        # monitor = ''
+
         if verbose:
             if html_param:
-                update_display(monitor, display_id = 'monitor')
-        
+                update_display(monitor, display_id="monitor")
+
         if verbose:
             if html_param:
                 monitor_out.clear_output()
                 progress.close()
 
-        best_k = np.array(sorted_df.head(1)['# of Clusters'])[0]
-        best_m = round(np.array(sorted_df.head(1)[optimize])[0],4)
-        p = 'Best Model: ' + model_name + ' |' + ' Number of Clusters: ' + str(best_k) + ' | ' + str(optimize) + ' : ' + str(best_m)
+        best_k = np.array(sorted_df.head(1)["# of Clusters"])[0]
+        best_m = round(np.array(sorted_df.head(1)[optimize])[0], 4)
+        p = (
+            "Best Model: "
+            + model_name
+            + " |"
+            + " Number of Clusters: "
+            + str(best_k)
+            + " | "
+            + str(optimize)
+            + " : "
+            + str(best_m)
+        )
         print(p)
-        
-    logger.info("Resetting environment to original variables")
-    org = retain_original(a,b,c,e,z)
 
-    #end runtime
+    logger.info("Resetting environment to original variables")
+    org = retain_original(a, b, c, e, z)
+
+    # end runtime
     runtime_end = time.time()
     runtime = np.array(runtime_end - runtime_start).round(2)
 
-    #mlflow logging
+    # mlflow logging
     if logging_param:
-        
+
         logger.info("Creating MLFlow logs")
 
-        #import mlflow
+        # import mlflow
         import mlflow
         from pathlib import Path
         import os
 
         mlflow.set_experiment(exp_name_log)
 
-        #Creating Logs message monitor
-        monitor.iloc[1,1:] = 'Creating Logs'
+        # Creating Logs message monitor
+        monitor.iloc[1, 1:] = "Creating Logs"
         if verbose:
             if html_param:
-                update_display(monitor, display_id = 'monitor')
+                update_display(monitor, display_id="monitor")
 
         mlflow.set_experiment(exp_name_log)
 
@@ -3204,48 +3463,46 @@ def tune_model(model=None,
                     params.pop(i)
 
             mlflow.log_params(params)
-            
-            #set tag of compare_models
+
+            # set tag of compare_models
             mlflow.set_tag("Source", "tune_model")
-            
+
             import secrets
+
             URI = secrets.token_hex(nbytes=4)
-            mlflow.set_tag("URI", URI)   
+            mlflow.set_tag("URI", URI)
             mlflow.set_tag("USI", USI)
             mlflow.set_tag("Run Time", runtime)
             mlflow.set_tag("Run ID", RunID)
 
             # Log training time in seconds
-            mlflow.log_metric("TT", best_model_tt) #change this
+            mlflow.log_metric("TT", best_model_tt)  # change this
 
             # Log plot to html
             fig.write_html("Iterations.html")
-            mlflow.log_artifact('Iterations.html')
-            os.remove('Iterations.html')
+            mlflow.log_artifact("Iterations.html")
+            os.remove("Iterations.html")
 
             # Log model and transformation pipeline
             logger.info("SubProcess save_model() called ==================================")
-            save_model(best_model, 'Trained Model', verbose=False)
+            save_model(best_model, "Trained Model", verbose=False)
             logger.info("SubProcess save_model() end ==================================")
-            mlflow.log_artifact('Trained Model' + '.pkl')
-            size_bytes = Path('Trained Model.pkl').stat().st_size
-            size_kb = np.round(size_bytes/1000, 2)
+            mlflow.log_artifact("Trained Model" + ".pkl")
+            size_bytes = Path("Trained Model.pkl").stat().st_size
+            size_kb = np.round(size_bytes / 1000, 2)
             mlflow.set_tag("Size KB", size_kb)
-            os.remove('Trained Model.pkl')
+            os.remove("Trained Model.pkl")
 
     logger.info(str(best_model))
     logger.info("tune_model() succesfully completed......................................")
 
     return best_model
 
-def plot_model(model, 
-            plot='cluster', 
-            feature = None, 
-            label = False,
-            save = False, #added in pycaret 2.0.0
-            system = True): #added in pycaret 2.0.0
-    
-    
+
+def plot_model(
+    model, plot="cluster", feature=None, label=False, save=False, system=True  # added in pycaret 2.0.0
+):  # added in pycaret 2.0.0
+
     """
           
     Description:
@@ -3303,28 +3560,28 @@ def plot_model(model,
     Visual Plot:  Prints the visual plot. 
     ------------     
 
-    """  
-    
-    #exception checking   
+    """
+
+    # exception checking
     import sys
-    
+
     import logging
 
     try:
-        hasattr(logger, 'name')
+        hasattr(logger, "name")
     except:
-        logger = logging.getLogger('logs')
+        logger = logging.getLogger("logs")
         logger.setLevel(logging.DEBUG)
-        
+
         # create console handler and set level to debug
         if logger.hasHandlers():
             logger.handlers.clear()
-        
-        ch = logging.FileHandler('logs.log')
+
+        ch = logging.FileHandler("logs.log")
         ch.setLevel(logging.DEBUG)
 
         # create formatter
-        formatter = logging.Formatter('%(asctime)s:%(levelname)s:%(message)s')
+        formatter = logging.Formatter("%(asctime)s:%(levelname)s:%(message)s")
 
         # add formatter to ch
         ch.setFormatter(formatter)
@@ -3333,8 +3590,11 @@ def plot_model(model,
         logger.addHandler(ch)
 
     logger.info("Initializing plot_model()")
-    logger.info("""plot_model(model={}, plot={}, feature={}, label={}, save={}, system={})""".\
-        format(str(model), str(plot), str(feature), str(label), str(save), str(system)))
+    logger.info(
+        """plot_model(model={}, plot={}, feature={}, label={}, save={}, system={})""".format(
+            str(model), str(plot), str(feature), str(label), str(save), str(system)
+        )
+    )
 
     """
     exception handling starts here
@@ -3342,69 +3602,69 @@ def plot_model(model,
 
     logger.info("Checking exceptions")
 
-    #plot checking
-    allowed_plots = ['cluster', 'tsne', 'elbow', 'silhouette', 'distance', 'distribution']  
+    # plot checking
+    allowed_plots = ["cluster", "tsne", "elbow", "silhouette", "distance", "distribution"]
     if plot not in allowed_plots:
-        sys.exit('(Value Error): Plot Not Available. Please see docstring for list of available plots.')
-        
+        sys.exit("(Value Error): Plot Not Available. Please see docstring for list of available plots.")
+
     if type(label) is not bool:
-        sys.exit('(Type Error): Label param only accepts True or False. ')
-        
+        sys.exit("(Type Error): Label param only accepts True or False. ")
+
     if feature is not None:
         if type(feature) is not str:
-            sys.exit('(Type Error): feature parameter must be string containing column name of dataset. ') 
-    
-    
-    
-    
-    #specific disallowed plots
-    
+            sys.exit("(Type Error): feature parameter must be string containing column name of dataset. ")
+
+    # specific disallowed plots
+
     """
     error handling ends here
     """
-    
-    #ignore warnings
+
+    # ignore warnings
     import warnings
-    warnings.filterwarnings('ignore') 
-    
+
+    warnings.filterwarnings("ignore")
+
     logger.info("Importing libraries")
-    #general dependencies
+    # general dependencies
     import pandas as pd
     import numpy as np
     import plotly.express as px
-        
-    #import cufflinks
+
+    # import cufflinks
     import cufflinks as cf
+
     cf.go_offline()
     cf.set_config_file(offline=False, world_readable=True)
-    
+
     logger.info("plot type: " + str(plot))
-    
-    if plot == 'cluster':
-        
+
+    if plot == "cluster":
+
         logger.info("SubProcess assign_model() called ==================================")
-        b = assign_model(model, verbose=False, transformation=True)           
+        b = assign_model(model, verbose=False, transformation=True)
         logger.info("SubProcess assign_model() end ==================================")
-        cluster = b['Cluster']
-        b.drop(['Cluster'], axis=1, inplace=True)
-        b = pd.get_dummies(b) #casting categorical variable
+        cluster = b["Cluster"]
+        b.drop(["Cluster"], axis=1, inplace=True)
+        b = pd.get_dummies(b)  # casting categorical variable
         c = b.copy()
-        
+
         from sklearn.decomposition import PCA
+
         pca = PCA(n_components=2, random_state=seed)
         logger.info("Fitting PCA()")
         pca_ = pca.fit_transform(b)
         pca_ = pd.DataFrame(pca_)
         pca_ = pca_.rename(columns={0: "PCA1", 1: "PCA2"})
-        pca_['Cluster'] = cluster
-        
-        if feature is not None: 
-            pca_['Feature'] = data_[feature]
+        pca_["Cluster"] = cluster
+
+        if feature is not None:
+            pca_["Feature"] = data_[feature]
         else:
-            pca_['Feature'] = data_[data_.columns[0]]
-            
+            pca_["Feature"] = data_[data_.columns[0]]
+
         if label:
-                pca_['Label'] = pca_['Feature']
+            pca_["Label"] = pca_["Feature"]
 
         """
         sorting
@@ -3418,8 +3678,8 @@ def plot_model(model,
             a = int(i.split()[1])
             clus_num.append(a)
 
-        pca_['cnum'] = clus_num
-        pca_.sort_values(by='cnum', inplace=True) 
+        pca_["cnum"] = clus_num
+        pca_.sort_values(by="cnum", inplace=True)
 
         """
         sorting ends
@@ -3428,17 +3688,14 @@ def plot_model(model,
         logger.info("Rendering Visual")
 
         if label:
-            fig = px.scatter(pca_, x="PCA1", y="PCA2", text='Label', color='Cluster', opacity=0.5)
+            fig = px.scatter(pca_, x="PCA1", y="PCA2", text="Label", color="Cluster", opacity=0.5)
         else:
-            fig = px.scatter(pca_, x="PCA1", y="PCA2", hover_data=['Feature'], color='Cluster', opacity=0.5)
+            fig = px.scatter(pca_, x="PCA1", y="PCA2", hover_data=["Feature"], color="Cluster", opacity=0.5)
 
-        fig.update_traces(textposition='top center')
-        fig.update_layout(plot_bgcolor='rgb(240,240,240)')
+        fig.update_traces(textposition="top center")
+        fig.update_layout(plot_bgcolor="rgb(240,240,240)")
 
-        fig.update_layout(
-            height=600,
-            title_text='2D Cluster PCA Plot'
-        )
+        fig.update_layout(height=600, title_text="2D Cluster PCA Plot")
 
         if system:
             fig.show()
@@ -3446,31 +3703,32 @@ def plot_model(model,
         if save:
             fig.write_html("Cluster.html")
             logger.info("Saving 'Cluster.html' in current active directory")
-        
+
         logger.info("Visual Rendered Successfully")
-        
-    elif plot == 'tsne':
-        
+
+    elif plot == "tsne":
+
         logger.info("SubProcess assign_model() called ==================================")
         b = assign_model(model, verbose=False, transformation=True)
         logger.info("SubProcess assign_model() end ==================================")
-            
-        cluster = b['Cluster']
-        b.drop(['Cluster'], axis=1, inplace=True)
-        
+
+        cluster = b["Cluster"]
+        b.drop(["Cluster"], axis=1, inplace=True)
+
         from sklearn.manifold import TSNE
+
         logger.info("Fitting TSNE()")
         X_embedded = TSNE(n_components=3, random_state=seed).fit_transform(b)
         X_embedded = pd.DataFrame(X_embedded)
-        X_embedded['Cluster'] = cluster
-        
-        if feature is not None: 
-            X_embedded['Feature'] = data_[feature]
+        X_embedded["Cluster"] = cluster
+
+        if feature is not None:
+            X_embedded["Feature"] = data_[feature]
         else:
-            X_embedded['Feature'] = data_[data_.columns[0]]
-            
+            X_embedded["Feature"] = data_[data_.columns[0]]
+
         if label:
-                X_embedded['Label'] = X_embedded['Feature']
+            X_embedded["Label"] = X_embedded["Feature"]
 
         """
         sorting
@@ -3482,44 +3740,65 @@ def plot_model(model,
             a = int(i.split()[1])
             clus_num.append(a)
 
-        X_embedded['cnum'] = clus_num
-        X_embedded.sort_values(by='cnum', inplace=True)
-        
+        X_embedded["cnum"] = clus_num
+        X_embedded.sort_values(by="cnum", inplace=True)
+
         """
         sorting ends
         """
-        
+
         import plotly.express as px
+
         df = X_embedded
-        
+
         logger.info("Rendering Visual")
 
         if label:
-            
-            fig = px.scatter_3d(df, x=0, y=1, z=2, color='Cluster', title='3d TSNE Plot for Clusters', 
-                    text = 'Label', opacity=0.7, width=900, height=800)
-            
+
+            fig = px.scatter_3d(
+                df,
+                x=0,
+                y=1,
+                z=2,
+                color="Cluster",
+                title="3d TSNE Plot for Clusters",
+                text="Label",
+                opacity=0.7,
+                width=900,
+                height=800,
+            )
+
         else:
-            fig = px.scatter_3d(df, x=0, y=1, z=2, color='Cluster', title='3d TSNE Plot for Clusters', 
-                                hover_data = ['Feature'], opacity=0.7, width=900, height=800)
-        
+            fig = px.scatter_3d(
+                df,
+                x=0,
+                y=1,
+                z=2,
+                color="Cluster",
+                title="3d TSNE Plot for Clusters",
+                hover_data=["Feature"],
+                opacity=0.7,
+                width=900,
+                height=800,
+            )
+
         if system:
             fig.show()
-        
+
         if save:
             fig.write_html("TSNE.html")
             logger.info("Saving 'TSNE.html' in current active directory")
 
         logger.info("Visual Rendered Successfully")
 
-    elif plot == 'distribution':
-        
+    elif plot == "distribution":
+
         import plotly.express as px
-        
+
         logger.info("SubProcess assign_model() called ==================================")
-        d = assign_model(model, verbose = False)
+        d = assign_model(model, verbose=False)
         logger.info("SubProcess assign_model() end ==================================")
-        
+
         """
         sorting
         """
@@ -3530,33 +3809,31 @@ def plot_model(model,
             a = int(i.split()[1])
             clus_num.append(a)
 
-        d['cnum'] = clus_num
-        d.sort_values(by='cnum', inplace=True)
+        d["cnum"] = clus_num
+        d.sort_values(by="cnum", inplace=True)
         d.reset_index(inplace=True, drop=True)
-        
+
         clus_label = []
         for i in d.cnum:
-            a = 'Cluster ' + str(i)
+            a = "Cluster " + str(i)
             clus_label.append(a)
-        
-        d.drop(['Cluster', 'cnum'], inplace=True, axis=1)
-        d['Cluster'] = clus_label
+
+        d.drop(["Cluster", "cnum"], inplace=True, axis=1)
+        d["Cluster"] = clus_label
 
         """
         sorting ends
         """
-        
+
         if feature is None:
-            x_col = 'Cluster'
+            x_col = "Cluster"
         else:
             x_col = feature
-        
+
         logger.info("Rendering Visual")
 
-        fig = px.histogram(d, x=x_col, color="Cluster",
-                   marginal="box", opacity = 0.7,
-                   hover_data=d.columns)
-        
+        fig = px.histogram(d, x=x_col, color="Cluster", marginal="box", opacity=0.7, hover_data=d.columns)
+
         if system:
             fig.show()
 
@@ -3566,14 +3843,16 @@ def plot_model(model,
 
         logger.info("Visual Rendered Successfully")
 
-    elif plot == 'elbow':
-        
+    elif plot == "elbow":
+
         from copy import deepcopy
+
         model_ = deepcopy(model)
-        
-        try: 
+
+        try:
             from yellowbrick.cluster import KElbowVisualizer
-            visualizer = KElbowVisualizer(model_,timings=False)
+
+            visualizer = KElbowVisualizer(model_, timings=False)
             logger.info("Fitting KElbowVisualizer()")
             visualizer.fit(X)
             logger.info("Rendering Visual")
@@ -3588,15 +3867,16 @@ def plot_model(model,
 
             logger.info("Visual Rendered Successfully")
 
-        except: 
+        except:
             logger.warning("Elbow plot failed")
-            sys.exit('(Type Error): Plot Type not supported for this model.')
-        
-    elif plot == 'silhouette':
-        
+            sys.exit("(Type Error): Plot Type not supported for this model.")
+
+    elif plot == "silhouette":
+
         try:
             from yellowbrick.cluster import SilhouetteVisualizer
-            visualizer = SilhouetteVisualizer(model, colors='yellowbrick')
+
+            visualizer = SilhouetteVisualizer(model, colors="yellowbrick")
             logger.info("Fitting SilhouetteVisualizer()")
             visualizer.fit(X)
             logger.info("Rendering Visual")
@@ -3612,13 +3892,14 @@ def plot_model(model,
             logger.info("Visual Rendered Successfully")
 
         except:
-            logger.warning("Solhouette Plot failed") 
-            sys.exit('(Type Error): Plot Type not supported for this model.')
-            
-    elif plot == 'distance':  
-        
-        try:    
+            logger.warning("Solhouette Plot failed")
+            sys.exit("(Type Error): Plot Type not supported for this model.")
+
+    elif plot == "distance":
+
+        try:
             from yellowbrick.cluster import InterclusterDistance
+
             visualizer = InterclusterDistance(model)
             logger.info("Fitting InterclusterDistance()")
             visualizer.fit(X)
@@ -3636,12 +3917,13 @@ def plot_model(model,
 
         except:
             logger.warning("Distance Plot failed")
-            sys.exit('(Type Error): Plot Type not supported for this model.')
+            sys.exit("(Type Error): Plot Type not supported for this model.")
 
     logger.info("plot_model() succesfully completed......................................")
 
+
 def save_model(model, model_name, verbose=True):
-    
+
     """
           
     Description:
@@ -3677,24 +3959,24 @@ def save_model(model, model_name, verbose=True):
     Success Message
          
     """
-    
+
     import logging
 
     try:
-        hasattr(logger, 'name')
+        hasattr(logger, "name")
     except:
-        logger = logging.getLogger('logs')
+        logger = logging.getLogger("logs")
         logger.setLevel(logging.DEBUG)
-        
+
         # create console handler and set level to debug
         if logger.hasHandlers():
             logger.handlers.clear()
-        
-        ch = logging.FileHandler('logs.log')
+
+        ch = logging.FileHandler("logs.log")
         ch.setLevel(logging.DEBUG)
 
         # create formatter
-        formatter = logging.Formatter('%(asctime)s:%(levelname)s:%(message)s')
+        formatter = logging.Formatter("%(asctime)s:%(levelname)s:%(message)s")
 
         # add formatter to ch
         ch.setFormatter(formatter)
@@ -3703,33 +3985,32 @@ def save_model(model, model_name, verbose=True):
         logger.addHandler(ch)
 
     logger.info("Initializing save_model()")
-    logger.info("""save_model(model={}, model_name={}, verbose={})""".\
-        format(str(model), str(model_name), str(verbose)))
+    logger.info("""save_model(model={}, model_name={}, verbose={})""".format(str(model), str(model_name), str(verbose)))
 
-    #ignore warnings
+    # ignore warnings
     import warnings
-    warnings.filterwarnings('ignore') 
-    
+
+    warnings.filterwarnings("ignore")
+
     logger.info("Appending prep pipeline")
     model_ = []
     model_.append(prep_pipe)
     model_.append(model)
-    
+
     import joblib
-    model_name = model_name + '.pkl'
+
+    model_name = model_name + ".pkl"
     joblib.dump(model_, model_name)
     if verbose:
-        print('Transformation Pipeline and Model Succesfully Saved')
+        print("Transformation Pipeline and Model Succesfully Saved")
 
-    logger.info(str(model_name) + ' saved in current working directory')
+    logger.info(str(model_name) + " saved in current working directory")
     logger.info(str(model_))
     logger.info("save_model() succesfully completed......................................")
 
-def load_model(model_name, 
-               platform = None,
-               authentication = None,
-               verbose = True):
-    
+
+def load_model(model_name, platform=None, authentication=None, verbose=True):
+
     """
           
     Description:
@@ -3769,44 +4050,45 @@ def load_model(model_name,
          
     """
 
-    #ignore warnings
+    # ignore warnings
     import warnings
-    warnings.filterwarnings('ignore') 
-    
-    #exception checking
+
+    warnings.filterwarnings("ignore")
+
+    # exception checking
     import sys
-    
+
     if platform is not None:
         if authentication is None:
             sys.exit("(Value Error): Authentication is missing.")
-        
-    #cloud provider
-    if platform == 'aws':
-        
+
+    # cloud provider
+    if platform == "aws":
+
         import boto3
-        bucketname = authentication.get('bucket')
-        filename = str(model_name) + '.pkl'
-        s3 = boto3.resource('s3')
+
+        bucketname = authentication.get("bucket")
+        filename = str(model_name) + ".pkl"
+        s3 = boto3.resource("s3")
         s3.Bucket(bucketname).download_file(filename, filename)
         filename = str(model_name)
         model = load_model(filename, verbose=False)
-        
+
         if verbose:
-            print('Transformation Pipeline and Model Sucessfully Loaded')
+            print("Transformation Pipeline and Model Sucessfully Loaded")
 
         return model
-    
+
     import joblib
-    model_name = model_name + '.pkl'
+
+    model_name = model_name + ".pkl"
     if verbose:
-        print('Transformation Pipeline and Model Sucessfully Loaded')
+        print("Transformation Pipeline and Model Sucessfully Loaded")
     return joblib.load(model_name)
 
-def predict_model(model, 
-                  data,
-                  platform=None,
-                  authentication=None):
-    
+
+def predict_model(model, data, platform=None, authentication=None):
+
     """
        
     Description:
@@ -3856,12 +4138,13 @@ def predict_model(model,
        
     
     """
-    
-    #ignore warnings
+
+    # ignore warnings
     import warnings
-    warnings.filterwarnings('ignore') 
-    
-    #general dependencies
+
+    warnings.filterwarnings("ignore")
+
+    # general dependencies
     from IPython.display import clear_output, update_display
     import numpy as np
     import pandas as pd
@@ -3869,59 +4152,55 @@ def predict_model(model,
     from sklearn import metrics
     from copy import deepcopy
     import sys
-    
-    #copy data and model
+
+    # copy data and model
     data__ = data.copy()
     model_ = deepcopy(model)
     clear_output()
-    
+
     if type(model) is str:
-        if platform == 'aws':
-            model_ = load_model(str(model), platform='aws', 
-                                   authentication={'bucket': authentication.get('bucket')},
-                                   verbose=False)
-            
+        if platform == "aws":
+            model_ = load_model(
+                str(model), platform="aws", authentication={"bucket": authentication.get("bucket")}, verbose=False
+            )
+
         else:
             model_ = load_model(str(model), verbose=False)
 
-            
-    #separate prep_data pipeline
+    # separate prep_data pipeline
     if type(model_) is list:
         prep_pipe_transformer = model_[0]
         model = model_[1]
-        
+
     else:
-        try: 
+        try:
             prep_pipe_transformer = prep_pipe
         except:
-            sys.exit('Transformation Pipeline Missing')
-    
-    #exception checking for predict param
-    if hasattr(model, 'predict'):
+            sys.exit("Transformation Pipeline Missing")
+
+    # exception checking for predict param
+    if hasattr(model, "predict"):
         pass
     else:
         sys.exit("(Type Error): Model doesn't support predict parameter.")
-    
-    
-    #predictions start here
+
+    # predictions start here
     _data_ = prep_pipe_transformer.transform(data__)
     pred = model.predict(_data_)
-    
+
     pred_ = []
-    
+
     for i in pred:
-        a = 'Cluster ' + str(i)
+        a = "Cluster " + str(i)
         pred_.append(a)
-        
-    data__['Cluster'] = pred_
-    
+
+    data__["Cluster"] = pred_
+
     return data__
 
-def deploy_model(model, 
-                 model_name, 
-                 authentication,
-                 platform = 'aws'):
-    
+
+def deploy_model(model, model_name, authentication, platform="aws"):
+
     """
        
     Description:
@@ -3981,25 +4260,25 @@ def deploy_model(model,
     
 
     """
-    
+
     import sys
     import logging
 
     try:
-        hasattr(logger, 'name')
+        hasattr(logger, "name")
     except:
-        logger = logging.getLogger('logs')
+        logger = logging.getLogger("logs")
         logger.setLevel(logging.DEBUG)
-        
+
         # create console handler and set level to debug
         if logger.hasHandlers():
             logger.handlers.clear()
-        
-        ch = logging.FileHandler('logs.log')
+
+        ch = logging.FileHandler("logs.log")
         ch.setLevel(logging.DEBUG)
 
         # create formatter
-        formatter = logging.Formatter('%(asctime)s:%(levelname)s:%(message)s')
+        formatter = logging.Formatter("%(asctime)s:%(levelname)s:%(message)s")
 
         # add formatter to ch
         ch.setFormatter(formatter)
@@ -4008,132 +4287,143 @@ def deploy_model(model,
         logger.addHandler(ch)
 
     logger.info("Initializing deploy_model()")
-    logger.info("""deploy_model(model={}, model_name={}, authentication={}, platform={})""".\
-        format(str(model), str(model_name), str(authentication), str(platform)))
+    logger.info(
+        """deploy_model(model={}, model_name={}, authentication={}, platform={})""".format(
+            str(model), str(model_name), str(authentication), str(platform)
+        )
+    )
 
-    #checking if awscli available
+    # checking if awscli available
     try:
         import awscli
     except:
         logger.error("awscli library not found. pip install awscli to use deploy_model function.")
-        sys.exit("awscli library not found. pip install awscli to use deploy_model function.")  
+        sys.exit("awscli library not found. pip install awscli to use deploy_model function.")
 
-    #ignore warnings
+    # ignore warnings
     import warnings
-    warnings.filterwarnings('ignore') 
-    
-    #general dependencies
+
+    warnings.filterwarnings("ignore")
+
+    # general dependencies
     import ipywidgets as ipw
     import pandas as pd
     from IPython.display import clear_output, update_display
     import os
 
-    if platform == 'aws':
-        
+    if platform == "aws":
+
         logger.info("Platform : AWS S3")
 
         import boto3
+
         logger.info("Saving model in current working directory")
         logger.info("SubProcess save_model() called ==================================")
-        save_model(model, model_name = model_name, verbose=False)
+        save_model(model, model_name=model_name, verbose=False)
         logger.info("SubProcess save_model() end ==================================")
-        
-        #initiaze s3
+
+        # initiaze s3
         logger.info("Initializing S3 client")
-        s3 = boto3.client('s3')
-        filename = str(model_name)+'.pkl'
-        key = str(model_name)+'.pkl'
-        bucket_name = authentication.get('bucket')
-        s3.upload_file(filename,bucket_name,key)
+        s3 = boto3.client("s3")
+        filename = str(model_name) + ".pkl"
+        key = str(model_name) + ".pkl"
+        bucket_name = authentication.get("bucket")
+        s3.upload_file(filename, bucket_name, key)
         clear_output()
         os.remove(filename)
         print("Model Succesfully Deployed on AWS S3")
         logger.info(str(model))
         logger.info("deploy_model() succesfully completed......................................")
-        
-def get_clusters(data, 
-                 model = None, 
-                 num_clusters = 4, 
-                 ignore_features = None, 
-                 normalize = True, 
-                 transformation = False,
-                 pca = False,
-                 pca_components = 0.99,
-                 ignore_low_variance=False,
-                 combine_rare_levels=False,
-                 rare_level_threshold=0.1,
-                 remove_multicollinearity=False,
-                 multicollinearity_threshold=0.9,
-                 n_jobs = None):
-    
+
+
+def get_clusters(
+    data,
+    model=None,
+    num_clusters=4,
+    ignore_features=None,
+    normalize=True,
+    transformation=False,
+    pca=False,
+    pca_components=0.99,
+    ignore_low_variance=False,
+    combine_rare_levels=False,
+    rare_level_threshold=0.1,
+    remove_multicollinearity=False,
+    multicollinearity_threshold=0.9,
+    n_jobs=None,
+):
+
     """
     Callable from any external environment without requiring setup initialization.
     
     """
-    
+
     if model is None:
-        model = 'kmeans'
-        
+        model = "kmeans"
+
     if ignore_features is None:
         ignore_features_pass = []
     else:
         ignore_features_pass = ignore_features
-    
+
     global X, data_, seed, n_jobs_param, logging_param, logger
-    
+
     data_ = data.copy()
-    
+
     seed = 99
 
     n_jobs_param = n_jobs
 
     logging_param = False
-    
+
     import logging
 
-    logger = logging.getLogger('logs')
+    logger = logging.getLogger("logs")
     logger.setLevel(logging.DEBUG)
-    
+
     # create console handler and set level to debug
     if logger.hasHandlers():
         logger.handlers.clear()
-    
-    ch = logging.FileHandler('logs.log')
+
+    ch = logging.FileHandler("logs.log")
     ch.setLevel(logging.DEBUG)
 
     # create formatter
-    formatter = logging.Formatter('%(asctime)s:%(levelname)s:%(message)s')
+    formatter = logging.Formatter("%(asctime)s:%(levelname)s:%(message)s")
 
     # add formatter to ch
     ch.setFormatter(formatter)
 
     # add ch to logger
     logger.addHandler(ch)
-    
+
     from pycaret import preprocess
-    
-    X = preprocess.Preprocess_Path_Two(train_data = data, 
-                                       features_todrop = ignore_features_pass,
-                                       display_types = False,
-                                       scale_data = normalize,
-                                       scaling_method = 'zscore',
-                                       Power_transform_data = transformation,
-                                       Power_transform_method = 'yj',
-                                       apply_pca = pca,
-                                       pca_variance_retained_or_number_of_components = pca_components,
-                                       apply_zero_nearZero_variance = ignore_low_variance,
-                                       club_rare_levels=combine_rare_levels,
-                                       rara_level_threshold_percentage=rare_level_threshold,
-                                       remove_multicollinearity=remove_multicollinearity,
-                                       maximum_correlation_between_features=multicollinearity_threshold,
-                                       random_state = seed)
-      
+
+    X = preprocess.Preprocess_Path_Two(
+        train_data=data,
+        features_todrop=ignore_features_pass,
+        display_types=False,
+        scale_data=normalize,
+        scaling_method="zscore",
+        Power_transform_data=transformation,
+        Power_transform_method="yj",
+        apply_pca=pca,
+        pca_variance_retained_or_number_of_components=pca_components,
+        apply_zero_nearZero_variance=ignore_low_variance,
+        club_rare_levels=combine_rare_levels,
+        rara_level_threshold_percentage=rare_level_threshold,
+        remove_multicollinearity=remove_multicollinearity,
+        maximum_correlation_between_features=multicollinearity_threshold,
+        random_state=seed,
+    )
+
     try:
         c = create_model(model=model, num_clusters=num_clusters, verbose=False, system=False)
     except:
         c = create_model(model=model, verbose=False, system=False)
     dataset = assign_model(c, verbose=False)
     return dataset
+
 
 def models():
 
@@ -4154,37 +4444,40 @@ def models():
 
     import pandas as pd
 
-    model_id = ['kmeans', 'ap', 'meanshift', 'sc', 'hclust', 'dbscan', 'optics', 'birch', 'kmodes']
+    model_id = ["kmeans", "ap", "meanshift", "sc", "hclust", "dbscan", "optics", "birch", "kmodes"]
 
-    model_name = ['K-Means Clustering',
-                  'Affinity Propagation',
-                  'Mean shift Clustering',
-                  'Spectral Clustering',
-                  'Agglomerative Clustering',
-                  'Density-Based Spatial Clustering',
-                  'OPTICS Clustering',
-                  'Birch Clustering',
-                  'K-Modes Clustering']
+    model_name = [
+        "K-Means Clustering",
+        "Affinity Propagation",
+        "Mean shift Clustering",
+        "Spectral Clustering",
+        "Agglomerative Clustering",
+        "Density-Based Spatial Clustering",
+        "OPTICS Clustering",
+        "Birch Clustering",
+        "K-Modes Clustering",
+    ]
 
-    model_ref = ['sklearn.cluster.KMeans',
-                  'sklearn.cluster.AffinityPropagation',
-                  'sklearn.cluster.MeanShift',
-                  'sklearn.cluster.SpectralClustering',
-                  'sklearn.cluster.AgglomerativeClustering',
-                  'sklearn.cluster.DBSCAN',
-                  'sklearn.cluster.OPTICS',
-                  'sklearn.cluster.Birch',
-                  'git/nicodv/kmodes']
+    model_ref = [
+        "sklearn.cluster.KMeans",
+        "sklearn.cluster.AffinityPropagation",
+        "sklearn.cluster.MeanShift",
+        "sklearn.cluster.SpectralClustering",
+        "sklearn.cluster.AgglomerativeClustering",
+        "sklearn.cluster.DBSCAN",
+        "sklearn.cluster.OPTICS",
+        "sklearn.cluster.Birch",
+        "git/nicodv/kmodes",
+    ]
 
-    df = pd.DataFrame({'ID' : model_id, 
-                        'Name' : model_name,
-                        'Reference' : model_ref})
+    df = pd.DataFrame({"ID": model_id, "Name": model_name, "Reference": model_ref})
 
-    df.set_index('ID', inplace=True)
+    df.set_index("ID", inplace=True)
 
     return df
 
-def get_logs(experiment_name = None, save = False):
+
+def get_logs(experiment_name=None, save=False):
 
     """
 
@@ -4219,20 +4512,23 @@ def get_logs(experiment_name = None, save = False):
 
     import mlflow
     from mlflow.tracking import MlflowClient
-    
+
     client = MlflowClient()
 
     if client.get_experiment_by_name(exp_name_log_) is None:
-        sys.exit('No active run found. Check logging parameter in setup or to get logs for inactive run pass experiment_name.')
-    
-    exp_id = client.get_experiment_by_name(exp_name_log_).experiment_id    
+        sys.exit(
+            "No active run found. Check logging parameter in setup or to get logs for inactive run pass experiment_name."
+        )
+
+    exp_id = client.get_experiment_by_name(exp_name_log_).experiment_id
     runs = mlflow.search_runs(exp_id)
 
     if save:
-        file_name = str(exp_name_log_) + '_logs.csv'
+        file_name = str(exp_name_log_) + "_logs.csv"
         runs.to_csv(file_name, index=False)
 
     return runs
+
 
 def get_config(variable):
 
@@ -4266,20 +4562,20 @@ def get_config(variable):
     import logging
 
     try:
-        hasattr(logger, 'name')
+        hasattr(logger, "name")
     except:
-        logger = logging.getLogger('logs')
+        logger = logging.getLogger("logs")
         logger.setLevel(logging.DEBUG)
-        
+
         # create console handler and set level to debug
         if logger.hasHandlers():
             logger.handlers.clear()
-        
-        ch = logging.FileHandler('logs.log')
+
+        ch = logging.FileHandler("logs.log")
         ch.setLevel(logging.DEBUG)
 
         # create formatter
-        formatter = logging.Formatter('%(asctime)s:%(levelname)s:%(message)s')
+        formatter = logging.Formatter("%(asctime)s:%(levelname)s:%(message)s")
 
         # add formatter to ch
         ch.setFormatter(formatter)
@@ -4288,48 +4584,48 @@ def get_config(variable):
         logger.addHandler(ch)
 
     logger.info("Initializing get_config()")
-    logger.info("""get_config(variable={})""".\
-        format(str(variable)))
+    logger.info("""get_config(variable={})""".format(str(variable)))
 
-    if variable == 'X':
+    if variable == "X":
         global_var = X
-    
-    if variable == 'data_':
+
+    if variable == "data_":
         global_var = data_
 
-    if variable == 'seed':
+    if variable == "seed":
         global_var = seed
 
-    if variable == 'prep_pipe':
+    if variable == "prep_pipe":
         global_var = prep_pipe
 
-    if variable == 'prep_param':
+    if variable == "prep_param":
         global_var = prep_param
-        
-    if variable == 'n_jobs_param':
+
+    if variable == "n_jobs_param":
         global_var = n_jobs_param
 
-    if variable == 'html_param':
+    if variable == "html_param":
         global_var = html_param
 
-    if variable == 'exp_name_log':
+    if variable == "exp_name_log":
         global_var = exp_name_log
 
-    if variable == 'logging_param':
+    if variable == "logging_param":
         global_var = logging_param
 
-    if variable == 'log_plots_param':
+    if variable == "log_plots_param":
         global_var = log_plots_param
 
-    if variable == 'USI':
+    if variable == "USI":
         global_var = USI
 
-    logger.info("Global variable: " + str(variable) + ' returned')
+    logger.info("Global variable: " + str(variable) + " returned")
     logger.info("get_config() succesfully completed......................................")
 
     return global_var
 
-def set_config(variable,value):
+
+def set_config(variable, value):
 
     """
     Description:
@@ -4360,20 +4656,20 @@ def set_config(variable,value):
     import logging
 
     try:
-        hasattr(logger, 'name')
+        hasattr(logger, "name")
     except:
-        logger = logging.getLogger('logs')
+        logger = logging.getLogger("logs")
         logger.setLevel(logging.DEBUG)
-        
+
         # create console handler and set level to debug
         if logger.hasHandlers():
             logger.handlers.clear()
-        
-        ch = logging.FileHandler('logs.log')
+
+        ch = logging.FileHandler("logs.log")
         ch.setLevel(logging.DEBUG)
 
         # create formatter
-        formatter = logging.Formatter('%(asctime)s:%(levelname)s:%(message)s')
+        formatter = logging.Formatter("%(asctime)s:%(levelname)s:%(message)s")
 
         # add formatter to ch
         ch.setFormatter(formatter)
@@ -4382,55 +4678,55 @@ def set_config(variable,value):
         logger.addHandler(ch)
 
     logger.info("Initializing set_config()")
-    logger.info("""set_config(variable={}, value={})""".\
-        format(str(variable), str(value)))
-        
-    if variable == 'X':
+    logger.info("""set_config(variable={}, value={})""".format(str(variable), str(value)))
+
+    if variable == "X":
         global X
         X = value
 
-    if variable == 'data_':
+    if variable == "data_":
         global data_
         data_ = value
 
-    if variable == 'seed':
+    if variable == "seed":
         global seed
         seed = value
 
-    if variable == 'prep_pipe':
+    if variable == "prep_pipe":
         global prep_pipe
         prep_pipe = value
 
-    if variable == 'prep_param':
+    if variable == "prep_param":
         global prep_param
         prep_param = value
 
-    if variable == 'n_jobs_param':
+    if variable == "n_jobs_param":
         global n_jobs_param
         n_jobs_param = value
 
-    if variable == 'html_param':
+    if variable == "html_param":
         global html_param
         html_param = value
 
-    if variable == 'exp_name_log':
+    if variable == "exp_name_log":
         global exp_name_log
         exp_name_log = value
 
-    if variable == 'logging_param':
+    if variable == "logging_param":
         global logging_param
         logging_param = value
 
-    if variable == 'log_plots_param':
+    if variable == "log_plots_param":
         global log_plots_param
         log_plots_param = value
 
-    if variable == 'USI':
+    if variable == "USI":
         global USI
         USI = value
 
-    logger.info("Global variable:  " + str(variable) + ' updated')
+    logger.info("Global variable:  " + str(variable) + " updated")
     logger.info("set_config() succesfully completed......................................")
+
 
 def get_system_logs():
 
@@ -4438,7 +4734,7 @@ def get_system_logs():
     Read and print 'logs.log' file from current active directory
     """
 
-    file = open('logs.log', 'r')
+    file = open("logs.log", "r")
     lines = file.read().splitlines()
     file.close()
 
@@ -4446,5 +4742,5 @@ def get_system_logs():
         if not line:
             continue
 
-        columns = [col.strip() for col in line.split(':') if col]
+        columns = [col.strip() for col in line.split(":") if col]
         print(columns)
