@@ -10510,6 +10510,7 @@ def load_model(model_name,
 def predict_model(estimator, 
                   data=None,
                   probability_threshold=None,
+                  categorical_labels=False, #added in pycaret==2.1.0
                   platform=None,
                   authentication=None,
                   verbose=True): #added in pycaret==2.0.0
@@ -10548,8 +10549,11 @@ def predict_model(estimator,
     threshold used to convert probability values into binary outcome. By default the
     probability threshold for all binary classifiers is 0.5 (50%). This can be changed
     using probability_threshold param.
+
+    categorical_labels: Boolean, default = False
+    If True, will output labels as-is, otherwise will output labels encoded as integers.
     
-    platform: string, default = None
+    platform : string, default = None
     Name of platform, if loading model from cloud. Current available options are:
     'aws'.
     
@@ -10626,6 +10630,16 @@ def predict_model(estimator,
     """
     exception checking ends here
     """
+
+    # function to replace encoded labels with their original values
+    # will not run if replace_labels is false
+    def replace_lables_in_column(label_column):
+        if not replace_labels:
+            return
+        _, dtypes = next(step for step in prep_pipe.steps if step[0] == "dtypes")
+        if dtypes and hasattr(dtypes, "replacement"):
+            replacement_mapper = {int(v): k for k, v in dtypes.replacement.items()}
+            label_column.replace(replacement_mapper, inplace=True)
     
     estimator = deepcopy(estimator) #lookout for an alternate of deepcopy()
     
@@ -10929,9 +10943,11 @@ def predict_model(estimator,
         
             label = pd.DataFrame(pred_)
             label.columns = ['Label']
-            label['Label']=label['Label'].astype(int)
+            label['Label'] = label['Label'].astype(int)
+            replace_lables_in_column(label['Label'])
 
             if data is None:
+                replace_lables_in_column(ytest)
                 X_test_ = pd.concat([Xtest,ytest,label], axis=1)
             else:
                 X_test_ = pd.concat([X_test_,label], axis=1) #change here
@@ -11096,9 +11112,11 @@ def predict_model(estimator,
 
             label = pd.DataFrame(pred_)
             label.columns = ['Label']
-            label['Label']=label['Label'].astype(int)
+            label['Label'] = label['Label'].astype(int)
+            replace_lables_in_column(label['Label'])
 
             if data is None:
+                replace_lables_in_column(ytest)
                 X_test_ = pd.concat([Xtest,ytest,label], axis=1) #changed
             else:
                 X_test_ = pd.concat([X_test_,label], axis=1) #change here
@@ -11201,9 +11219,11 @@ def predict_model(estimator,
            
         label = pd.DataFrame(pred_)
         label.columns = ['Label']
-        label['Label']=label['Label'].astype(int)
+        label['Label'] = label['Label'].astype(int)
+        replace_lables_in_column(label['Label'])
         
         if data is None:
+            replace_lables_in_column(ytest)
             X_test_ = pd.concat([Xtest,ytest,label], axis=1)
         else:
             X_test_ = pd.concat([X_test_,label], axis=1)
