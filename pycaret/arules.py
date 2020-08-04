@@ -2,7 +2,7 @@
 # Author: Moez Ali <moez.ali@queensu.ca>
 # License: MIT
 # Release: PyCaret 2.0x
-# Last modified : 22/07/2020
+# Last modified : 30/07/2020
 
 def setup(data, 
           transaction_id, 
@@ -57,10 +57,6 @@ def setup(data,
 
     environment:  This function returns various outputs that are stored in variable
     -----------   as tuple. They are used by other functions in pycaret.
-
-    Warnings:
-    ---------
-    None
     
     
     """
@@ -265,10 +261,6 @@ def plot_model(model,
 
     Visual Plot:  Prints the visual plot. 
     ------------
-
-    Warnings:
-    ---------
-
     
     """
     
