@@ -2,7 +2,7 @@
 # Author: Moez Ali <moez.ali@queensu.ca>
 # License: MIT
 # Release: PyCaret 2.0x
-# Last modified : 24/07/2020
+# Last modified : 30/07/2020
 
 def setup(data,  
           target,   
@@ -507,11 +507,13 @@ def setup(data,
     logger.info("machine: " + str(machine()))
     logger.info("platform: " + str(platform()))
 
-    import psutil
-    psvm = psutil.virtual_memory()
-    logger.info("Memory: " + str(psvm))
-    logger.info("Physical Core: " + str(psutil.cpu_count(logical=False)))
-    logger.info("Logical Core: " + str(psutil.cpu_count(logical=True)))
+    try:
+        import psutil
+        logger.info("Memory: " + str(psutil.virtual_memory()))
+        logger.info("Physical Core: " + str(psutil.cpu_count(logical=False)))
+        logger.info("Logical Core: " + str(psutil.cpu_count(logical=True)))
+    except:
+        logger.warning("cannot find psutil installation. memory not traceable. Install psutil using pip to enable memory logging. ")
 
     logger.info("Checking libraries")
 
@@ -552,146 +554,12 @@ def setup(data,
         logger.warning("catboost not found")
 
     try:
-        from kmodes import __version__
-        logger.info("kmodes==" + str(__version__))
-    except:
-        logger.warning("kmodes not found")
-        
-    try:
-        from pyod.version import __version__
-        logger.info("pyod==" + str(__version__))
-    except:
-        logger.warning("pyod not found")
-
-    try:
-        import warnings
-        warnings.filterwarnings('ignore')
-        from gensim import __version__ 
-        logger.info("gensim==" + str(__version__))
-    except:
-        logger.warning("gensim not found")
-
-    try:
-        from spacy import __version__
-        logger.info("spacy==" + str(__version__))
-    except:
-        logger.warning("spacy not found")
-
-    try:
-        from nltk import __version__
-        logger.info("nltk==" + str(__version__))
-    except:
-        logger.warning("nltk not found")
-
-    try:
-        from textblob import __version__
-        logger.info("textblob==" + str(__version__))
-    except:
-        logger.warning("textblob not found")
-
-    try:
-        from pyLDAvis import __version__
-        logger.info("pyLDAvis==" + str(__version__))
-    except:
-        logger.warning("pyLDAvis not found")
-
-    try:
-        from mlxtend import __version__
-        logger.info("mlxtend==" + str(__version__))
-    except:
-        logger.warning("mlxtend not found")
-
-    try:
-        from matplotlib import __version__
-        logger.info("matplotlib==" + str(__version__))
-    except:
-        logger.warning("matplotlib not found")
-
-    try:
-        from seaborn import __version__
-        logger.info("seaborn==" + str(__version__))
-    except:
-        logger.warning("seaborn not found")
-
-    try:
-        from plotly import __version__
-        logger.info("plotly==" + str(__version__))
-    except:
-        logger.warning("plotly not found")
-
-    try:
-        from cufflinks import __version__
-        logger.info("cufflinks==" + str(__version__))
-    except:
-        logger.warning("cufflinks not found")
-
-    try:
-        from yellowbrick import __version__
-        logger.info("yellowbrick==" + str(__version__))
-    except:
-        logger.warning("yellowbrick not found")
-
-    try:
-        from shap import __version__
-        logger.info("shap==" + str(__version__))
-    except:
-        logger.warning("shap not found. cannot use interpret_model without shap.")
-
-    try:
-        from pandas_profiling import __version__
-        logger.info("pandas_profiling==" + str(__version__))
-    except:
-        logger.warning("pandas_profiling not found")
-
-    try:
-        from wordcloud import __version__
-        logger.info("wordcloud==" + str(__version__))
-    except:
-        logger.warning("wordcloud not found")
-
-    try:
-        from umap import __version__
-        logger.info("umap==" + str(__version__))
-    except:
-        logger.warning("umap not found")
-
-    try:
-        from IPython import __version__
-        logger.info("IPython==" + str(__version__))
-    except:
-        logger.warning("IPython not found")
-
-    try:
-        from ipywidgets import __version__
-        logger.info("ipywidgets==" + str(__version__))
-    except:
-        logger.warning("ipywidgets not found")
-
-    try:
-        from joblib import __version__
-        logger.info("joblib==" + str(__version__))
-    except:
-        logger.warning("joblib not found")
-
-    try:
-        from imblearn import __version__
-        logger.info("imblearn==" + str(__version__))
-    except:
-        logger.warning("imblearn not found")
-
-    try:
         from mlflow.version import VERSION
         import warnings
         warnings.filterwarnings('ignore') 
         logger.info("mlflow==" + str(VERSION))
     except:
         logger.warning("mlflow not found")
-
-    try:
-        from awscli import __version__
-        logger.info("awscli==" + str(__version__))
-    except:
-        logger.warning("awscli not found. cannot use deploy_model without awscli")
 
     #run_time
     import datetime, time
@@ -2220,6 +2088,29 @@ def create_model(estimator = None,
     '''
     
     import logging
+
+    try:
+        hasattr(logger, 'name')
+    except:
+        logger = logging.getLogger('logs')
+        logger.setLevel(logging.DEBUG)
+        
+        # create console handler and set level to debug
+        if logger.hasHandlers():
+            logger.handlers.clear()
+        
+        ch = logging.FileHandler('logs.log')
+        ch.setLevel(logging.DEBUG)
+
+        # create formatter
+        formatter = logging.Formatter('%(asctime)s:%(levelname)s:%(message)s')
+
+        # add formatter to ch
+        ch.setFormatter(formatter)
+
+        # add ch to logger
+        logger.addHandler(ch)
+
     logger.info("Initializing create_model()")
     logger.info("""create_model(estimator={}, ensemble={}, method={}, fold={}, round={}, cross_validation={}, verbose={}, system={})""".\
         format(str(estimator), str(ensemble), str(method), str(fold), str(round), str(cross_validation), str(verbose), str(system)))
@@ -3084,6 +2975,29 @@ def ensemble_model(estimator,
     '''
     
     import logging
+
+    try:
+        hasattr(logger, 'name')
+    except:
+        logger = logging.getLogger('logs')
+        logger.setLevel(logging.DEBUG)
+        
+        # create console handler and set level to debug
+        if logger.hasHandlers():
+            logger.handlers.clear()
+        
+        ch = logging.FileHandler('logs.log')
+        ch.setLevel(logging.DEBUG)
+
+        # create formatter
+        formatter = logging.Formatter('%(asctime)s:%(levelname)s:%(message)s')
+
+        # add formatter to ch
+        ch.setFormatter(formatter)
+
+        # add ch to logger
+        logger.addHandler(ch)
+
     logger.info("Initializing ensemble_model()")
     logger.info("""ensemble_model(estimator={}, method={}, fold={}, n_estimators={}, round={}, choose_better={}, optimize={}, verbose={})""".\
         format(str(estimator), str(method), str(fold), str(n_estimators), str(round), str(choose_better), str(optimize), str(verbose)))
@@ -3835,6 +3749,29 @@ def plot_model(estimator,
     import sys
     
     import logging
+
+    try:
+        hasattr(logger, 'name')
+    except:
+        logger = logging.getLogger('logs')
+        logger.setLevel(logging.DEBUG)
+        
+        # create console handler and set level to debug
+        if logger.hasHandlers():
+            logger.handlers.clear()
+        
+        ch = logging.FileHandler('logs.log')
+        ch.setLevel(logging.DEBUG)
+
+        # create formatter
+        formatter = logging.Formatter('%(asctime)s:%(levelname)s:%(message)s')
+
+        # add formatter to ch
+        ch.setFormatter(formatter)
+
+        # add ch to logger
+        logger.addHandler(ch)
+
     logger.info("Initializing plot_model()")
     logger.info("""plot_model(estimator={}, plot={}, save={}, verbose={}, system={})""".\
         format(str(estimator), str(plot), str(save), str(verbose), str(system)))
@@ -4485,6 +4422,29 @@ def compare_models(blacklist = None,
     '''
 
     import logging
+
+    try:
+        hasattr(logger, 'name')
+    except:
+        logger = logging.getLogger('logs')
+        logger.setLevel(logging.DEBUG)
+        
+        # create console handler and set level to debug
+        if logger.hasHandlers():
+            logger.handlers.clear()
+        
+        ch = logging.FileHandler('logs.log')
+        ch.setLevel(logging.DEBUG)
+
+        # create formatter
+        formatter = logging.Formatter('%(asctime)s:%(levelname)s:%(message)s')
+
+        # add formatter to ch
+        ch.setFormatter(formatter)
+
+        # add ch to logger
+        logger.addHandler(ch)
+
     logger.info("Initializing compare_models()")
     logger.info("""compare_models(blacklist={}, whitelist={}, fold={}, round={}, sort={}, n_select={}, turbo={}, verbose={})""".\
         format(str(blacklist), str(whitelist), str(fold), str(round), str(sort), str(n_select), str(turbo), str(verbose)))
@@ -5357,6 +5317,29 @@ def tune_model(estimator = None,
     
     '''
     import logging
+
+    try:
+        hasattr(logger, 'name')
+    except:
+        logger = logging.getLogger('logs')
+        logger.setLevel(logging.DEBUG)
+        
+        # create console handler and set level to debug
+        if logger.hasHandlers():
+            logger.handlers.clear()
+        
+        ch = logging.FileHandler('logs.log')
+        ch.setLevel(logging.DEBUG)
+
+        # create formatter
+        formatter = logging.Formatter('%(asctime)s:%(levelname)s:%(message)s')
+
+        # add formatter to ch
+        ch.setFormatter(formatter)
+
+        # add ch to logger
+        logger.addHandler(ch)
+
     logger.info("Initializing tune_model()")
     logger.info("""tune_model(estimator={}, fold={}, round={}, n_iter={}, custom_grid={}, optimize={}, choose_better={}, verbose={})""".\
         format(str(estimator), str(fold), str(round), str(n_iter), str(custom_grid), str(optimize), str(choose_better), str(verbose)))
@@ -6696,6 +6679,29 @@ def blend_models(estimator_list = 'All',
     '''
     
     import logging
+
+    try:
+        hasattr(logger, 'name')
+    except:
+        logger = logging.getLogger('logs')
+        logger.setLevel(logging.DEBUG)
+        
+        # create console handler and set level to debug
+        if logger.hasHandlers():
+            logger.handlers.clear()
+        
+        ch = logging.FileHandler('logs.log')
+        ch.setLevel(logging.DEBUG)
+
+        # create formatter
+        formatter = logging.Formatter('%(asctime)s:%(levelname)s:%(message)s')
+
+        # add formatter to ch
+        ch.setFormatter(formatter)
+
+        # add ch to logger
+        logger.addHandler(ch)
+
     logger.info("Initializing blend_models()")
     logger.info("""blend_models(estimator_list={}, fold={}, round={}, choose_better={}, optimize={}, method={}, turbo={}, verbose={})""".\
         format(str(estimator_list), str(fold), str(round), str(choose_better), str(optimize), str(method), str(turbo), str(verbose)))
@@ -7528,6 +7534,29 @@ def stack_models(estimator_list,
     '''
     
     import logging
+
+    try:
+        hasattr(logger, 'name')
+    except:
+        logger = logging.getLogger('logs')
+        logger.setLevel(logging.DEBUG)
+        
+        # create console handler and set level to debug
+        if logger.hasHandlers():
+            logger.handlers.clear()
+        
+        ch = logging.FileHandler('logs.log')
+        ch.setLevel(logging.DEBUG)
+
+        # create formatter
+        formatter = logging.Formatter('%(asctime)s:%(levelname)s:%(message)s')
+
+        # add formatter to ch
+        ch.setFormatter(formatter)
+
+        # add ch to logger
+        logger.addHandler(ch)
+
     logger.info("Initializing stack_models()")
     logger.info("""stack_models(estimator_list={}, meta_model={}, fold={}, round={}, method={}, restack={}, plot={}, choose_better={}, optimize={}, finalize={}, verbose={})""".\
         format(str(estimator_list), str(meta_model), str(fold), str(round), str(method), str(restack), str(plot), str(choose_better), str(optimize), str(finalize), str(verbose)))
@@ -8312,6 +8341,29 @@ def create_stacknet(estimator_list,
     '''
     
     import logging
+
+    try:
+        hasattr(logger, 'name')
+    except:
+        logger = logging.getLogger('logs')
+        logger.setLevel(logging.DEBUG)
+        
+        # create console handler and set level to debug
+        if logger.hasHandlers():
+            logger.handlers.clear()
+        
+        ch = logging.FileHandler('logs.log')
+        ch.setLevel(logging.DEBUG)
+
+        # create formatter
+        formatter = logging.Formatter('%(asctime)s:%(levelname)s:%(message)s')
+
+        # add formatter to ch
+        ch.setFormatter(formatter)
+
+        # add ch to logger
+        logger.addHandler(ch)
+
     logger.info("Initializing create_stacknet()")
     logger.info("""create_stacknet(estimator_list={}, meta_model={}, fold={}, round={}, method={}, restack={}, choose_better={}, optimize={}, finalize={}, verbose={})""".\
         format(str(estimator_list), str(meta_model), str(fold), str(round), str(method), str(restack), str(choose_better), str(optimize), str(finalize), str(verbose)))
@@ -9110,11 +9162,41 @@ def interpret_model(estimator,
     import sys
     
     import logging
+
+    try:
+        hasattr(logger, 'name')
+    except:
+        logger = logging.getLogger('logs')
+        logger.setLevel(logging.DEBUG)
+        
+        # create console handler and set level to debug
+        if logger.hasHandlers():
+            logger.handlers.clear()
+        
+        ch = logging.FileHandler('logs.log')
+        ch.setLevel(logging.DEBUG)
+
+        # create formatter
+        formatter = logging.Formatter('%(asctime)s:%(levelname)s:%(message)s')
+
+        # add formatter to ch
+        ch.setFormatter(formatter)
+
+        # add ch to logger
+        logger.addHandler(ch)
+
     logger.info("Initializing interpret_model()")
     logger.info("""interpret_model(estimator={}, plot={}, feature={}, observation={})""".\
         format(str(estimator), str(plot), str(feature), str(observation)))
 
     logger.info("Checking exceptions")
+
+    #checking if shap available
+    try:
+        import shap
+    except:
+        logger.error("shap library not found. pip install shap to use interpret_model function.")
+        sys.exit("shap library not found. pip install shap to use interpret_model function.")   
 
     #allowed models
     allowed_models = ['RandomForestClassifier',
@@ -9369,6 +9451,29 @@ def calibrate_model(estimator,
     '''
     
     import logging
+
+    try:
+        hasattr(logger, 'name')
+    except:
+        logger = logging.getLogger('logs')
+        logger.setLevel(logging.DEBUG)
+        
+        # create console handler and set level to debug
+        if logger.hasHandlers():
+            logger.handlers.clear()
+        
+        ch = logging.FileHandler('logs.log')
+        ch.setLevel(logging.DEBUG)
+
+        # create formatter
+        formatter = logging.Formatter('%(asctime)s:%(levelname)s:%(message)s')
+
+        # add formatter to ch
+        ch.setFormatter(formatter)
+
+        # add ch to logger
+        logger.addHandler(ch)
+
     logger.info("Initializing calibrate_model()")
     logger.info("""calibrate_model(estimator={}, method={}, fold={}, round={}, verbose={})""".\
         format(str(estimator), str(method), str(fold), str(round), str(verbose)))
@@ -9799,6 +9904,15 @@ def calibrate_model(estimator,
     runtime_end = time.time()
     runtime = np.array(runtime_end - runtime_start).round(2)
 
+    #storing results in create_model_container
+    logger.info("Uploading results into container")
+    create_model_container.append(model_results.data)
+    display_container.append(model_results.data)
+
+    #storing results in master_model_container
+    logger.info("Uploading model into container")
+    master_model_container.append(model)
+
     #mlflow logging
     if logging_param:
         
@@ -10032,6 +10146,29 @@ def finalize_model(estimator):
     """
     
     import logging
+
+    try:
+        hasattr(logger, 'name')
+    except:
+        logger = logging.getLogger('logs')
+        logger.setLevel(logging.DEBUG)
+        
+        # create console handler and set level to debug
+        if logger.hasHandlers():
+            logger.handlers.clear()
+        
+        ch = logging.FileHandler('logs.log')
+        ch.setLevel(logging.DEBUG)
+
+        # create formatter
+        formatter = logging.Formatter('%(asctime)s:%(levelname)s:%(message)s')
+
+        # add formatter to ch
+        ch.setFormatter(formatter)
+
+        # add ch to logger
+        logger.addHandler(ch)
+
     logger.info("Initializing finalize_model()")
     logger.info("""finalize_model(estimator={})""".\
         format(str(estimator)))
@@ -10346,6 +10483,29 @@ def save_model(model, model_name, verbose=True):
     """
     
     import logging
+
+    try:
+        hasattr(logger, 'name')
+    except:
+        logger = logging.getLogger('logs')
+        logger.setLevel(logging.DEBUG)
+        
+        # create console handler and set level to debug
+        if logger.hasHandlers():
+            logger.handlers.clear()
+        
+        ch = logging.FileHandler('logs.log')
+        ch.setLevel(logging.DEBUG)
+
+        # create formatter
+        formatter = logging.Formatter('%(asctime)s:%(levelname)s:%(message)s')
+
+        # add formatter to ch
+        ch.setFormatter(formatter)
+
+        # add ch to logger
+        logger.addHandler(ch)
+
     logger.info("Initializing save_model()")
     logger.info("""save_model(model={}, model_name={}, verbose={})""".\
         format(str(model), str(model_name), str(verbose)))
@@ -11238,11 +11398,41 @@ def deploy_model(model,
     
     """
     
+    import sys
     import logging
+
+    try:
+        hasattr(logger, 'name')
+    except:
+        logger = logging.getLogger('logs')
+        logger.setLevel(logging.DEBUG)
+        
+        # create console handler and set level to debug
+        if logger.hasHandlers():
+            logger.handlers.clear()
+        
+        ch = logging.FileHandler('logs.log')
+        ch.setLevel(logging.DEBUG)
+
+        # create formatter
+        formatter = logging.Formatter('%(asctime)s:%(levelname)s:%(message)s')
+
+        # add formatter to ch
+        ch.setFormatter(formatter)
+
+        # add ch to logger
+        logger.addHandler(ch)
+
     logger.info("Initializing deploy_model()")
     logger.info("""deploy_model(model={}, model_name={}, authentication={}, platform={})""".\
         format(str(model), str(model_name), str(authentication), str(platform)))
 
+    #checking if awscli available
+    try:
+        import awscli
+    except:
+        logger.error("awscli library not found. pip install awscli to use deploy_model function.")
+        sys.exit("awscli library not found. pip install awscli to use deploy_model function.")  
 
     #ignore warnings
     import warnings
@@ -11339,6 +11529,29 @@ def optimize_threshold(estimator,
     """
     
     import logging
+
+    try:
+        hasattr(logger, 'name')
+    except:
+        logger = logging.getLogger('logs')
+        logger.setLevel(logging.DEBUG)
+        
+        # create console handler and set level to debug
+        if logger.hasHandlers():
+            logger.handlers.clear()
+        
+        ch = logging.FileHandler('logs.log')
+        ch.setLevel(logging.DEBUG)
+
+        # create formatter
+        formatter = logging.Formatter('%(asctime)s:%(levelname)s:%(message)s')
+
+        # add formatter to ch
+        ch.setFormatter(formatter)
+
+        # add ch to logger
+        logger.addHandler(ch)
+
     logger.info("Initializing optimize_threshold()")
     logger.info("""optimize_threshold(estimator={}, true_positive={}, true_negative={}, false_positive={}, false_negative={})""".\
         format(str(estimator), str(true_positive), str(true_negative), str(false_positive), str(false_negative)))
@@ -11518,6 +11731,29 @@ def automl(optimize='Accuracy', use_holdout=False):
     """
 
     import logging
+
+    try:
+        hasattr(logger, 'name')
+    except:
+        logger = logging.getLogger('logs')
+        logger.setLevel(logging.DEBUG)
+        
+        # create console handler and set level to debug
+        if logger.hasHandlers():
+            logger.handlers.clear()
+        
+        ch = logging.FileHandler('logs.log')
+        ch.setLevel(logging.DEBUG)
+
+        # create formatter
+        formatter = logging.Formatter('%(asctime)s:%(levelname)s:%(message)s')
+
+        # add formatter to ch
+        ch.setFormatter(formatter)
+
+        # add ch to logger
+        logger.addHandler(ch)
+
     logger.info("Initializing automl()")
     logger.info("""automl(optimize={}, use_holdout={})""".\
         format(str(optimize), str(use_holdout)))
@@ -11751,6 +11987,29 @@ def get_config(variable):
     """
 
     import logging
+
+    try:
+        hasattr(logger, 'name')
+    except:
+        logger = logging.getLogger('logs')
+        logger.setLevel(logging.DEBUG)
+        
+        # create console handler and set level to debug
+        if logger.hasHandlers():
+            logger.handlers.clear()
+        
+        ch = logging.FileHandler('logs.log')
+        ch.setLevel(logging.DEBUG)
+
+        # create formatter
+        formatter = logging.Formatter('%(asctime)s:%(levelname)s:%(message)s')
+
+        # add formatter to ch
+        ch.setFormatter(formatter)
+
+        # add ch to logger
+        logger.addHandler(ch)
+
     logger.info("Initializing get_config()")
     logger.info("""get_config(variable={})""".\
         format(str(variable)))
@@ -11859,6 +12118,29 @@ def set_config(variable,value):
     """
 
     import logging
+
+    try:
+        hasattr(logger, 'name')
+    except:
+        logger = logging.getLogger('logs')
+        logger.setLevel(logging.DEBUG)
+        
+        # create console handler and set level to debug
+        if logger.hasHandlers():
+            logger.handlers.clear()
+        
+        ch = logging.FileHandler('logs.log')
+        ch.setLevel(logging.DEBUG)
+
+        # create formatter
+        formatter = logging.Formatter('%(asctime)s:%(levelname)s:%(message)s')
+
+        # add formatter to ch
+        ch.setFormatter(formatter)
+
+        # add ch to logger
+        logger.addHandler(ch)
+
     logger.info("Initializing set_config()")
     logger.info("""set_config(variable={}, value={})""".\
         format(str(variable), str(value)))

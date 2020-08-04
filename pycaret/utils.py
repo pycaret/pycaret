@@ -2,7 +2,7 @@
 # Author: Moez Ali <moez.ali@queensu.ca>
 # License: MIT
 
-version_ = "pycaret-nightly-0.35"
+version_ = "2.0"
 
 def version():
     print(version_)
@@ -13,7 +13,7 @@ def __version__():
 def check_metric(actual, prediction, metric, round=4):
     
     """
-    reserved for docstring
+    Function to evaluate classification and regression metrics.
     """
     
     #general dependencies
