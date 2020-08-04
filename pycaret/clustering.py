@@ -2,7 +2,7 @@
 # Author: Moez Ali <moez.ali@queensu.ca>
 # License: MIT
 # Release: PyCaret 2.0x
-# Last modified : 24/07/2020
+# Last modified : 30/07/2020
 
 def setup(data, 
         categorical_features = None,
@@ -357,17 +357,34 @@ def setup(data,
     
     from platform import python_version, platform, python_build, machine
 
-    logger.info("python_version: " + str(python_version()))
-    logger.info("python_build: " + str(python_build()))
-    logger.info("machine: " + str(machine()))
-    logger.info("platform: " + str(platform()))
+    try:
+        logger.info("python_version: " + str(python_version()))
+    except:
+        logger.warning("cannot find platform.python_version")
 
-    import psutil
-    psvm = psutil.virtual_memory()
-    logger.info("Memory: " + str(psvm))
-    logger.info("Physical Core: " + str(psutil.cpu_count(logical=False)))
-    logger.info("Logical Core: " + str(psutil.cpu_count(logical=True)))
-    
+    try:
+        logger.info("python_build: " + str(python_build()))
+    except:
+        logger.warning("cannot find platform.python_build")
+
+    try:
+        logger.info("machine: " + str(machine()))
+    except:
+        logger.warning("cannot find platform.machine")
+
+    try:
+        logger.info("platform: " + str(platform()))
+    except:
+        logger.warning("cannot find platform.platform")
+
+    try:
+        import psutil
+        logger.info("Memory: " + str(psutil.virtual_memory()))
+        logger.info("Physical Core: " + str(psutil.cpu_count(logical=False)))
+        logger.info("Logical Core: " + str(psutil.cpu_count(logical=True)))
+    except:
+        logger.warning("cannot find psutil installation. memory not traceable. Install psutil using pip to enable memory logging. ")
+
     logger.info("Checking libraries")
 
     try:
@@ -389,150 +406,10 @@ def setup(data,
         logger.warning("sklearn not found")
 
     try:
-        from xgboost import __version__
-        logger.info("xgboost==" + str(__version__))
-    except:
-        logger.warning("xgboost not found")
-
-    try:
-        from lightgbm import __version__
-        logger.info("lightgbm==" + str(__version__))
-    except:
-        logger.warning("lightgbm not found")
-
-    try:
-        from catboost import __version__
-        logger.info("catboost==" + str(__version__))
-    except:
-        logger.warning("catboost not found")
-
-    try:
         from kmodes import __version__
         logger.info("kmodes==" + str(__version__))
     except:
         logger.warning("kmodes not found")
-        
-    try:
-        from pyod.version import __version__
-        logger.info("pyod==" + str(__version__))
-    except:
-        logger.warning("pyod not found")
-
-    try:
-        import warnings
-        warnings.filterwarnings('ignore')
-        from gensim import __version__ 
-        logger.info("gensim==" + str(__version__))
-    except:
-        logger.warning("gensim not found")
-
-    try:
-        from spacy import __version__
-        logger.info("spacy==" + str(__version__))
-    except:
-        logger.warning("spacy not found")
-
-    try:
-        from nltk import __version__
-        logger.info("nltk==" + str(__version__))
-    except:
-        logger.warning("nltk not found")
-
-    try:
-        from textblob import __version__
-        logger.info("textblob==" + str(__version__))
-    except:
-        logger.warning("textblob not found")
-
-    try:
-        from pyLDAvis import __version__
-        logger.info("pyLDAvis==" + str(__version__))
-    except:
-        logger.warning("pyLDAvis not found")
-
-    try:
-        from mlxtend import __version__
-        logger.info("mlxtend==" + str(__version__))
-    except:
-        logger.warning("mlxtend not found")
-
-    try:
-        from matplotlib import __version__
-        logger.info("matplotlib==" + str(__version__))
-    except:
-        logger.warning("matplotlib not found")
-
-    try:
-        from seaborn import __version__
-        logger.info("seaborn==" + str(__version__))
-    except:
-        logger.warning("seaborn not found")
-
-    try:
-        from plotly import __version__
-        logger.info("plotly==" + str(__version__))
-    except:
-        logger.warning("plotly not found")
-
-    try:
-        from cufflinks import __version__
-        logger.info("cufflinks==" + str(__version__))
-    except:
-        logger.warning("cufflinks not found")
-
-    try:
-        from yellowbrick import __version__
-        logger.info("yellowbrick==" + str(__version__))
-    except:
-        logger.warning("yellowbrick not found")
-
-    try:
-        from shap import __version__
-        logger.info("shap==" + str(__version__))
-    except:
-        logger.warning("shap not found. cannot use interpret_model without shap.")
-
-    try:
-        from pandas_profiling import __version__
-        logger.info("pandas_profiling==" + str(__version__))
-    except:
-        logger.warning("pandas_profiling not found")
-
-    try:
-        from wordcloud import __version__
-        logger.info("wordcloud==" + str(__version__))
-    except:
-        logger.warning("wordcloud not found")
-
-    try:
-        from umap import __version__
-        logger.info("umap==" + str(__version__))
-    except:
-        logger.warning("umap not found")
-
-    try:
-        from IPython import __version__
-        logger.info("IPython==" + str(__version__))
-    except:
-        logger.warning("IPython not found")
-
-    try:
-        from ipywidgets import __version__
-        logger.info("ipywidgets==" + str(__version__))
-    except:
-        logger.warning("ipywidgets not found")
-
-    try:
-        from joblib import __version__
-        logger.info("joblib==" + str(__version__))
-    except:
-        logger.warning("joblib not found")
-
-    try:
-        from imblearn import __version__
-        logger.info("imblearn==" + str(__version__))
-    except:
-        logger.warning("imblearn not found")
 
     try:
         from mlflow.version import VERSION
@@ -541,12 +418,6 @@ def setup(data,
         logger.info("mlflow==" + str(VERSION))
     except:
         logger.warning("mlflow not found")
-
-    try:
-        from awscli import __version__
-        logger.info("awscli==" + str(__version__))
-    except:
-        logger.warning("awscli not found. cannot use deploy_model without awscli")
 
 
     logger.info("Checking Exceptions")
@@ -1450,6 +1321,28 @@ def create_model(model = None,
     
     import logging
 
+    try:
+        hasattr(logger, 'name')
+    except:
+        logger = logging.getLogger('logs')
+        logger.setLevel(logging.DEBUG)
+        
+        # create console handler and set level to debug
+        if logger.hasHandlers():
+            logger.handlers.clear()
+        
+        ch = logging.FileHandler('logs.log')
+        ch.setLevel(logging.DEBUG)
+
+        # create formatter
+        formatter = logging.Formatter('%(asctime)s:%(levelname)s:%(message)s')
+
+        # add formatter to ch
+        ch.setFormatter(formatter)
+
+        # add ch to logger
+        logger.addHandler(ch)
+
     logger.info("Initializing create_model()")
     logger.info("""create_model(model={}, num_clusters={}, ground_truth={}, verbose={}, system={})""".\
         format(str(model), str(num_clusters), str(ground_truth), str(verbose), str(system)))
@@ -1845,6 +1738,29 @@ def assign_model(model,
     import sys
     
     import logging
+
+    try:
+        hasattr(logger, 'name')
+    except:
+        logger = logging.getLogger('logs')
+        logger.setLevel(logging.DEBUG)
+        
+        # create console handler and set level to debug
+        if logger.hasHandlers():
+            logger.handlers.clear()
+        
+        ch = logging.FileHandler('logs.log')
+        ch.setLevel(logging.DEBUG)
+
+        # create formatter
+        formatter = logging.Formatter('%(asctime)s:%(levelname)s:%(message)s')
+
+        # add formatter to ch
+        ch.setFormatter(formatter)
+
+        # add ch to logger
+        logger.addHandler(ch)
+
     logger.info("Initializing assign_model()")
     logger.info("""assign_model(model={}, transformation={}, verbose={})""".\
         format(str(model), str(transformation), str(verbose)))
@@ -1969,7 +1885,7 @@ def assign_model(model,
     if verbose:
         clear_output()
 
-    logger.info(done__.shape)
+    logger.info(data__.shape)
     logger.info("assign_model() succesfully completed......................................")
 
     return data__
@@ -2124,6 +2040,29 @@ def tune_model(model=None,
     global data_, X
     
     import logging
+
+    try:
+        hasattr(logger, 'name')
+    except:
+        logger = logging.getLogger('logs')
+        logger.setLevel(logging.DEBUG)
+        
+        # create console handler and set level to debug
+        if logger.hasHandlers():
+            logger.handlers.clear()
+        
+        ch = logging.FileHandler('logs.log')
+        ch.setLevel(logging.DEBUG)
+
+        # create formatter
+        formatter = logging.Formatter('%(asctime)s:%(levelname)s:%(message)s')
+
+        # add formatter to ch
+        ch.setFormatter(formatter)
+
+        # add ch to logger
+        logger.addHandler(ch)
+
     logger.info("Initializing tune_model()")
     logger.info("""tune_model(model={}, supervised_target={}, estimator={}, optimize={}, custom_grid={}, fold={}, verbose={})""".\
         format(str(model), str(supervised_target), str(estimator), str(optimize), str(custom_grid), str(fold), str(verbose)))
@@ -3369,9 +3308,39 @@ def plot_model(model,
     #exception checking   
     import sys
     
+    import logging
+
+    try:
+        hasattr(logger, 'name')
+    except:
+        logger = logging.getLogger('logs')
+        logger.setLevel(logging.DEBUG)
+        
+        # create console handler and set level to debug
+        if logger.hasHandlers():
+            logger.handlers.clear()
+        
+        ch = logging.FileHandler('logs.log')
+        ch.setLevel(logging.DEBUG)
+
+        # create formatter
+        formatter = logging.Formatter('%(asctime)s:%(levelname)s:%(message)s')
+
+        # add formatter to ch
+        ch.setFormatter(formatter)
+
+        # add ch to logger
+        logger.addHandler(ch)
+
+    logger.info("Initializing plot_model()")
+    logger.info("""plot_model(model={}, plot={}, feature={}, label={}, save={}, system={})""".\
+        format(str(model), str(plot), str(feature), str(label), str(save), str(system)))
+
     """
     exception handling starts here
     """
+
+    logger.info("Checking exceptions")
 
     #plot checking
     allowed_plots = ['cluster', 'tsne', 'elbow', 'silhouette', 'distance', 'distribution']  
@@ -3398,6 +3367,7 @@ def plot_model(model,
     import warnings
     warnings.filterwarnings('ignore') 
     
+    logger.info("Importing libraries")
     #general dependencies
     import pandas as pd
     import numpy as np
@@ -3408,11 +3378,13 @@ def plot_model(model,
     cf.go_offline()
     cf.set_config_file(offline=False, world_readable=True)
     
+    logger.info("plot type: " + str(plot))
     
     if plot == 'cluster':
         
-        b = assign_model(model, verbose=False, transformation=True)       
-            
+        logger.info("SubProcess assign_model() called ==================================")
+        b = assign_model(model, verbose=False, transformation=True)           
+        logger.info("SubProcess assign_model() end ==================================")
         cluster = b['Cluster']
         b.drop(['Cluster'], axis=1, inplace=True)
         b = pd.get_dummies(b) #casting categorical variable
@@ -3420,6 +3392,7 @@ def plot_model(model,
         
         from sklearn.decomposition import PCA
         pca = PCA(n_components=2, random_state=seed)
+        logger.info("Fitting PCA()")
         pca_ = pca.fit_transform(b)
         pca_ = pd.DataFrame(pca_)
         pca_ = pca_.rename(columns={0: "PCA1", 1: "PCA2"})
@@ -3436,6 +3409,9 @@ def plot_model(model,
         """
         sorting
         """
+
+        logger.info("Sorting dataframe")
+
         clus_num = []
 
         for i in pca_.Cluster:
@@ -3448,6 +3424,8 @@ def plot_model(model,
         """
         sorting ends
         """
+
+        logger.info("Rendering Visual")
 
         if label:
             fig = px.scatter(pca_, x="PCA1", y="PCA2", text='Label', color='Cluster', opacity=0.5)
@@ -3467,16 +3445,21 @@ def plot_model(model,
 
         if save:
             fig.write_html("Cluster.html")
+            logger.info("Saving 'Cluster.html' in current active directory")
         
+        logger.info("Visual Rendered Successfully")
         
     elif plot == 'tsne':
         
+        logger.info("SubProcess assign_model() called ==================================")
         b = assign_model(model, verbose=False, transformation=True)
+        logger.info("SubProcess assign_model() end ==================================")
             
         cluster = b['Cluster']
         b.drop(['Cluster'], axis=1, inplace=True)
         
         from sklearn.manifold import TSNE
+        logger.info("Fitting TSNE()")
         X_embedded = TSNE(n_components=3, random_state=seed).fit_transform(b)
         X_embedded = pd.DataFrame(X_embedded)
         X_embedded['Cluster'] = cluster
@@ -3492,6 +3475,8 @@ def plot_model(model,
         """
         sorting
         """
+        logger.info("Sorting dataframe")
+
         clus_num = []
         for i in X_embedded.Cluster:
             a = int(i.split()[1])
@@ -3507,6 +3492,8 @@ def plot_model(model,
         import plotly.express as px
         df = X_embedded
         
+        logger.info("Rendering Visual")
+
         if label:
             
             fig = px.scatter_3d(df, x=0, y=1, z=2, color='Cluster', title='3d TSNE Plot for Clusters', 
@@ -3521,16 +3508,23 @@ def plot_model(model,
         
         if save:
             fig.write_html("TSNE.html")
+            logger.info("Saving 'TSNE.html' in current active directory")
+
+        logger.info("Visual Rendered Successfully")
 
     elif plot == 'distribution':
         
         import plotly.express as px
         
+        logger.info("SubProcess assign_model() called ==================================")
         d = assign_model(model, verbose = False)
+        logger.info("SubProcess assign_model() end ==================================")
         
         """
         sorting
         """
+        logger.info("Sorting dataframe")
+
         clus_num = []
         for i in d.Cluster:
             a = int(i.split()[1])
@@ -3557,6 +3551,8 @@ def plot_model(model,
         else:
             x_col = feature
         
+        logger.info("Rendering Visual")
+
         fig = px.histogram(d, x=x_col, color="Cluster",
                    marginal="box", opacity = 0.7,
                    hover_data=d.columns)
@@ -3566,6 +3562,9 @@ def plot_model(model,
 
         if save:
             fig.write_html("Distribution.html")
+            logger.info("Saving 'Distribution.html' in current active directory")
+
+        logger.info("Visual Rendered Successfully")
 
     elif plot == 'elbow':
         
@@ -3575,16 +3574,22 @@ def plot_model(model,
         try: 
             from yellowbrick.cluster import KElbowVisualizer
             visualizer = KElbowVisualizer(model_,timings=False)
+            logger.info("Fitting KElbowVisualizer()")
             visualizer.fit(X)
+            logger.info("Rendering Visual")
             if save:
                 if system:
                     visualizer.show(outpath="Elbow.png")
                 else:
                     visualizer.show(outpath="Elbow.png", clear_figure=True)
+                logger.info("Saving 'Elbow.png' in current active directory")
             else:
-                visualizer.show()   
+                visualizer.show()
+
+            logger.info("Visual Rendered Successfully")
 
         except: 
+            logger.warning("Elbow plot failed")
             sys.exit('(Type Error): Plot Type not supported for this model.')
         
     elif plot == 'silhouette':
@@ -3592,15 +3597,22 @@ def plot_model(model,
         try:
             from yellowbrick.cluster import SilhouetteVisualizer
             visualizer = SilhouetteVisualizer(model, colors='yellowbrick')
+            logger.info("Fitting SilhouetteVisualizer()")
             visualizer.fit(X)
+            logger.info("Rendering Visual")
             if save:
                 if system:
                     visualizer.show(outpath="Silhouette.png")
                 else:
                     visualizer.show(outpath="Silhouette.png", clear_figure=True)
+                logger.info("Saving 'Silhouette.png' in current active directory")
             else:
-                visualizer.show()        
-        except: 
+                visualizer.show()
+
+            logger.info("Visual Rendered Successfully")
+
+        except:
+            logger.warning("Solhouette Plot failed") 
             sys.exit('(Type Error): Plot Type not supported for this model.')
             
     elif plot == 'distance':  
@@ -3608,17 +3620,25 @@ def plot_model(model,
         try:    
             from yellowbrick.cluster import InterclusterDistance
             visualizer = InterclusterDistance(model)
+            logger.info("Fitting InterclusterDistance()")
             visualizer.fit(X)
+            logger.info("Rendering Visual")
             if save:
                 if system:
                     visualizer.show(outpath="Distance.png")
                 else:
                     visualizer.show(outpath="Distance.png", clear_figure=True)
+                logger.info("Saving 'Distance.png' in current active directory")
             else:
                 visualizer.show()
 
+            logger.info("Visual Rendered Successfully")
+
         except:
+            logger.warning("Distance Plot failed")
             sys.exit('(Type Error): Plot Type not supported for this model.')
+
+    logger.info("plot_model() succesfully completed......................................")
 
 def save_model(model, model_name, verbose=True):
     
@@ -3659,6 +3679,29 @@ def save_model(model, model_name, verbose=True):
     """
     
     import logging
+
+    try:
+        hasattr(logger, 'name')
+    except:
+        logger = logging.getLogger('logs')
+        logger.setLevel(logging.DEBUG)
+        
+        # create console handler and set level to debug
+        if logger.hasHandlers():
+            logger.handlers.clear()
+        
+        ch = logging.FileHandler('logs.log')
+        ch.setLevel(logging.DEBUG)
+
+        # create formatter
+        formatter = logging.Formatter('%(asctime)s:%(levelname)s:%(message)s')
+
+        # add formatter to ch
+        ch.setFormatter(formatter)
+
+        # add ch to logger
+        logger.addHandler(ch)
+
     logger.info("Initializing save_model()")
     logger.info("""save_model(model={}, model_name={}, verbose={})""".\
         format(str(model), str(model_name), str(verbose)))
@@ -3818,9 +3861,6 @@ def predict_model(model,
     import warnings
     warnings.filterwarnings('ignore') 
     
-    #testing
-    #no active tests
-    
     #general dependencies
     from IPython.display import clear_output, update_display
     import numpy as np
@@ -3942,10 +3982,41 @@ def deploy_model(model,
 
     """
     
+    import sys
     import logging
+
+    try:
+        hasattr(logger, 'name')
+    except:
+        logger = logging.getLogger('logs')
+        logger.setLevel(logging.DEBUG)
+        
+        # create console handler and set level to debug
+        if logger.hasHandlers():
+            logger.handlers.clear()
+        
+        ch = logging.FileHandler('logs.log')
+        ch.setLevel(logging.DEBUG)
+
+        # create formatter
+        formatter = logging.Formatter('%(asctime)s:%(levelname)s:%(message)s')
+
+        # add formatter to ch
+        ch.setFormatter(formatter)
+
+        # add ch to logger
+        logger.addHandler(ch)
+
     logger.info("Initializing deploy_model()")
     logger.info("""deploy_model(model={}, model_name={}, authentication={}, platform={})""".\
         format(str(model), str(model_name), str(authentication), str(platform)))
+
+    #checking if awscli available
+    try:
+        import awscli
+    except:
+        logger.error("awscli library not found. pip install awscli to use deploy_model function.")
+        sys.exit("awscli library not found. pip install awscli to use deploy_model function.")  
 
     #ignore warnings
     import warnings
@@ -4193,6 +4264,29 @@ def get_config(variable):
     """
 
     import logging
+
+    try:
+        hasattr(logger, 'name')
+    except:
+        logger = logging.getLogger('logs')
+        logger.setLevel(logging.DEBUG)
+        
+        # create console handler and set level to debug
+        if logger.hasHandlers():
+            logger.handlers.clear()
+        
+        ch = logging.FileHandler('logs.log')
+        ch.setLevel(logging.DEBUG)
+
+        # create formatter
+        formatter = logging.Formatter('%(asctime)s:%(levelname)s:%(message)s')
+
+        # add formatter to ch
+        ch.setFormatter(formatter)
+
+        # add ch to logger
+        logger.addHandler(ch)
+
     logger.info("Initializing get_config()")
     logger.info("""get_config(variable={})""".\
         format(str(variable)))
@@ -4264,6 +4358,29 @@ def set_config(variable,value):
     """
 
     import logging
+
+    try:
+        hasattr(logger, 'name')
+    except:
+        logger = logging.getLogger('logs')
+        logger.setLevel(logging.DEBUG)
+        
+        # create console handler and set level to debug
+        if logger.hasHandlers():
+            logger.handlers.clear()
+        
+        ch = logging.FileHandler('logs.log')
+        ch.setLevel(logging.DEBUG)
+
+        # create formatter
+        formatter = logging.Formatter('%(asctime)s:%(levelname)s:%(message)s')
+
+        # add formatter to ch
+        ch.setFormatter(formatter)
+
+        # add ch to logger
+        logger.addHandler(ch)
+
     logger.info("Initializing set_config()")
     logger.info("""set_config(variable={}, value={})""".\
         format(str(variable), str(value)))
