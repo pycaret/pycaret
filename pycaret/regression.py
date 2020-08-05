@@ -1929,8 +1929,8 @@ def create_model(estimator = None,
                  cross_validation = True, #added in pycaret==2.0.0
                  verbose = True,
                  system = True, #added in pycaret==2.0.0
+                 compare_monitor = None,
                  **kwargs): #added in pycaret==2.0.0
-    
      
     """  
      
@@ -2012,6 +2012,9 @@ def create_model(estimator = None,
     system: Boolean, default = True
     Must remain True all times. Only to be changed by internal functions.
     
+    compare_monitor: DataFrame, default = None
+    Must remain None all times. Only to be changed by compare_models()
+
     **kwargs: 
     Additional keyword arguments to pass to the estimator.
 
@@ -2118,6 +2121,10 @@ def create_model(estimator = None,
     if type(system) is not bool:
         sys.exit('(Type Error): System parameter can only take argument as True or False.') 
 
+    #checking compare_monitor parameter
+    if compare_monitor is not None and system:
+        sys.exit('(Value Error): compare_monitor can only be used with system set to False.') 
+
     #checking cross_validation parameter
     if type(cross_validation) is not bool:
         sys.exit('(Type Error): cross_validation parameter can only take argument as True or False.') 
@@ -2141,22 +2148,30 @@ def create_model(estimator = None,
     #progress bar
     progress = ipw.IntProgress(value=0, min=0, max=fold+4, step=1 , description='Processing: ')
     master_display = pd.DataFrame(columns=['MAE','MSE','RMSE', 'R2', 'RMSLE', 'MAPE'])
-    if verbose:
-        if html_param:
-            display(progress)
     
-    #display monitor
-    timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
-    monitor = pd.DataFrame( [ ['Initiated' , '. . . . . . . . . . . . . . . . . .', timestampStr ], 
-                             ['Status' , '. . . . . . . . . . . . . . . . . .' , 'Loading Dependencies' ],
-                             ['ETC' , '. . . . . . . . . . . . . . . . . .',  'Calculating ETC'] ],
-                              columns=['', ' ', '   ']).set_index('')
+    if compare_monitor is not None:
+        in_compare = True
+        verbose = False
+        monitor = compare_monitor
+    else:
+        in_compare = False
+
+        if verbose:
+            if html_param:
+                display(progress)
+        
+        #display monitor
+        timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
+        monitor = pd.DataFrame( [ ['Initiated' , '. . . . . . . . . . . . . . . . . .', timestampStr ], 
+                                ['Status' , '. . . . . . . . . . . . . . . . . .' , 'Loading Dependencies' ],
+                                ['ETC' , '. . . . . . . . . . . . . . . . . .',  'Calculating ETC'] ],
+                                columns=['', ' ', '   ']).set_index('')
     
-    if verbose:
-        if html_param:
-            display(monitor, display_id = 'monitor')
-            display_ = display(master_display, display_id=True)
-            display_id = display_.display_id
+        if verbose:
+            if html_param:
+                display(monitor, display_id = 'monitor')
+                display_ = display(master_display, display_id=True)
+                display_id = display_.display_id
     
     #ignore warnings
     import warnings
@@ -2210,11 +2225,11 @@ def create_model(estimator = None,
     '''
     MONITOR UPDATE STARTS
     '''
-    
-    monitor.iloc[1,1:] = 'Selecting Estimator'
-    if verbose:
-        if html_param:
-            update_display(monitor, display_id = 'monitor')
+    if not in_compare:
+        monitor.iloc[1,1:] = 'Selecting Estimator'
+        if verbose:
+            if html_param:
+                update_display(monitor, display_id = 'monitor')
     
     '''
     MONITOR UPDATE ENDS
@@ -2436,15 +2451,15 @@ def create_model(estimator = None,
     '''
     MONITOR UPDATE STARTS
     '''
-    
-    if not cross_validation:
-        monitor.iloc[1,1:] = 'Fitting ' + str(full_name)
-    else:
-        monitor.iloc[1,1:] = 'Initializing CV'
-    
-    if verbose:
-        if html_param:
-            update_display(monitor, display_id = 'monitor')
+    if not in_compare:
+        if not cross_validation:
+            monitor.iloc[1,1:] = 'Fitting ' + str(full_name)
+        else:
+            monitor.iloc[1,1:] = 'Initializing CV'
+        
+        if verbose:
+            if html_param:
+                update_display(monitor, display_id = 'monitor')
     
     '''
     MONITOR UPDATE ENDS
@@ -2468,6 +2483,19 @@ def create_model(estimator = None,
         logger.info("create_models() succesfully completed......................................")
         return model
     
+    '''
+    MONITOR UPDATE STARTS
+    '''
+    if in_compare:
+        monitor.iloc[2,1:] = full_name
+        monitor.iloc[3,1:] = 'Calculating ETC'
+        if html_param:
+            update_display(monitor, display_id = 'monitor')
+
+    '''
+    MONITOR UPDATE ENDS
+    '''
+
     fold_num = 1
     
     for train_i , test_i in kf.split(data_X,data_y):
@@ -2481,7 +2509,7 @@ def create_model(estimator = None,
         '''
     
         monitor.iloc[1,1:] = 'Fitting Fold ' + str(fold_num) + ' of ' + str(fold)
-        if verbose:
+        if verbose or in_compare:
             if html_param:
                 update_display(monitor, display_id = 'monitor')
 
@@ -2534,7 +2562,7 @@ def create_model(estimator = None,
         '''
         
         fold_results = pd.DataFrame({'MAE':[mae], 'MSE': [mse], 'RMSE': [rmse], 'R2': [r2],
-                                     'RMSLE' : [rmsle], 'MAPE': [mape] }).round(round)
+                                     'RMSLE' : [rmsle], 'MAPE': [mape], 'TT (Sec)':[training_time]}).round(round)
         master_display = pd.concat([master_display, fold_results],ignore_index=True)
         fold_results = []
         
@@ -2557,12 +2585,15 @@ def create_model(estimator = None,
         '''
         MONITOR UPDATE STARTS
         '''
-
-        monitor.iloc[2,1:] = ETC
-        if verbose:
+        if not in_compare:
+            monitor.iloc[2,1:] = ETC
+            if verbose:
+                if html_param:
+                    update_display(monitor, display_id = 'monitor')
+        else:
+            monitor.iloc[3,1:] = ETC
             if html_param:
                 update_display(monitor, display_id = 'monitor')
-
         '''
         MONITOR UPDATE ENDS
         '''
@@ -2621,9 +2652,9 @@ def create_model(estimator = None,
     logger.info("Creating metrics dataframe")
 
     model_results = pd.DataFrame({'MAE': score_mae, 'MSE': score_mse, 'RMSE' : score_rmse, 'R2' : score_r2,
-                                  'RMSLE' : score_rmsle, 'MAPE' : score_mape})
+                                  'RMSLE' : score_rmsle, 'MAPE' : score_mape, 'TT (Sec)': score_training_time})
     model_avgs = pd.DataFrame({'MAE': avgs_mae, 'MSE': avgs_mse, 'RMSE' : avgs_rmse, 'R2' : avgs_r2,
-                                'RMSLE' : avgs_rmsle, 'MAPE' : avgs_mape},index=['Mean', 'SD'])
+                                'RMSLE' : avgs_rmsle, 'MAPE' : avgs_mape, 'TT (Sec)': avgs_training_time},index=['Mean', 'SD'])
 
     model_results = model_results.append(model_avgs)
     model_results = model_results.round(round)
@@ -2633,11 +2664,12 @@ def create_model(estimator = None,
     model_results = model_results.set_precision(round)
 
     #refitting the model on complete X_train, y_train
-    monitor.iloc[1,1:] = 'Finalizing Model'
-    monitor.iloc[2,1:] = 'Almost Finished'
-    if verbose:
-        if html_param:
-            update_display(monitor, display_id = 'monitor')
+    if not in_compare:
+        monitor.iloc[1,1:] = 'Finalizing Model'
+        monitor.iloc[2,1:] = 'Almost Finished'
+        if verbose:
+            if html_param:
+                update_display(monitor, display_id = 'monitor')
     
     model_fit_start = time.time()
     logger.info("Finalizing model")
@@ -2653,7 +2685,7 @@ def create_model(estimator = None,
     progress.value += 1
     
     #mlflow logging
-    if logging_param and system:
+    if not in_compare and logging_param and system:
         
         logger.info("Creating MLFlow logs")
 
@@ -3803,39 +3835,6 @@ def compare_models(blacklist = None,
     MONITOR UPDATE ENDS
     '''
     
-    logger.info("Importing untrained models")
-
-    #creating model object
-    lr = LinearRegression(n_jobs=n_jobs_param)
-    lasso = Lasso(random_state=seed)
-    ridge = Ridge(random_state=seed)
-    en = ElasticNet(random_state=seed)
-    lar = Lars()
-    llar = LassoLars()
-    omp = OrthogonalMatchingPursuit()
-    br = BayesianRidge()
-    ard = ARDRegression()
-    par = PassiveAggressiveRegressor(random_state=seed)
-    ransac = RANSACRegressor(min_samples=0.5, random_state=seed)
-    tr = TheilSenRegressor(random_state=seed, n_jobs=n_jobs_param)
-    huber = HuberRegressor()
-    kr = KernelRidge()
-    svm = SVR()
-    knn = KNeighborsRegressor(n_jobs=n_jobs_param)
-    dt = DecisionTreeRegressor(random_state=seed)
-    rf = RandomForestRegressor(random_state=seed, n_jobs=n_jobs_param)
-    et = ExtraTreesRegressor(random_state=seed, n_jobs=n_jobs_param)
-    ada = AdaBoostRegressor(random_state=seed)
-    gbr = GradientBoostingRegressor(random_state=seed)
-    mlp = MLPRegressor(random_state=seed)
-    xgboost = XGBRegressor(random_state=seed, n_jobs=n_jobs_param, verbosity=0)
-    lightgbm = lgb.LGBMRegressor(random_state=seed, n_jobs=n_jobs_param)
-    catboost = CatBoostRegressor(random_state=seed, silent = True, thread_count=n_jobs_param)
-    
-    logger.info("Import successful")
-
-    progress.value += 1
-    
     model_dict = {'Linear Regression' : 'lr',
                    'Lasso Regression' : 'lasso', 
                    'Ridge Regression' : 'ridge', 
@@ -3862,186 +3861,42 @@ def compare_models(blacklist = None,
                    'Light Gradient Boosting Machine' :  'lightgbm',
                    'CatBoost Regressor' : 'catboost'}
     
-    model_library = [lr, lasso, ridge, en, lar, llar, omp, br, ard, par, ransac, tr, huber, kr, 
-                     svm, knn, dt, rf, et, ada, gbr, mlp, xgboost, lightgbm, catboost]
+    model_dict_reversed = {v:k for k, v in model_dict.items()}
+
+    model_names = list(model_dict.keys())
+
+    model_library_str = list(model_dict.values())
     
-    model_names = ['Linear Regression',
-                   'Lasso Regression',
-                   'Ridge Regression',
-                   'Elastic Net',
-                   'Least Angle Regression',
-                   'Lasso Least Angle Regression',
-                   'Orthogonal Matching Pursuit',
-                   'Bayesian Ridge',
-                   'Automatic Relevance Determination',
-                   'Passive Aggressive Regressor',
-                   'Random Sample Consensus',
-                   'TheilSen Regressor',
-                   'Huber Regressor',
-                   'Kernel Ridge',
-                   'Support Vector Machine',
-                   'K Neighbors Regressor',
-                   'Decision Tree',
-                   'Random Forest',
-                   'Extra Trees Regressor',
-                   'AdaBoost Regressor',
-                   'Gradient Boosting Regressor',
-                   'Multi Level Perceptron',
-                   'Extreme Gradient Boosting',
-                   'Light Gradient Boosting Machine',
-                   'CatBoost Regressor']
-    
-    
-    #checking for blacklist models
-    
-    model_library_str = ['lr', 'lasso', 'ridge', 'en', 'lar', 'llar', 'omp', 'br', 'ard',
-                         'par', 'ransac', 'tr', 'huber', 'kr', 'svm', 'knn', 'dt', 'rf', 
-                         'et', 'ada', 'gbr', 'mlp', 'xgboost', 'lightgbm', 'catboost']
-    
-    model_library_str_ = ['lr', 'lasso', 'ridge', 'en', 'lar', 'llar', 'omp', 'br', 'ard',
-                         'par', 'ransac', 'tr', 'huber', 'kr', 'svm', 'knn', 'dt', 'rf', 
-                         'et', 'ada', 'gbr', 'mlp', 'xgboost', 'lightgbm', 'catboost']
+    turbo_blacklist = ['rbfsvm', 'gpc', 'mlp']
+
+    models_to_compare = []
+
+    model_store_temporary = {}
     
     if blacklist is not None:
         
         if turbo:
-            internal_blacklist = ['kr', 'ard', 'mlp']
-            compiled_blacklist = blacklist + internal_blacklist
+            compiled_blacklist = blacklist + turbo_blacklist
             blacklist = list(set(compiled_blacklist))
             
         else:
             blacklist = blacklist
         
-        for i in blacklist:
-            model_library_str_.remove(i)
-        
-        si = []
-        
-        for i in model_library_str_:
-            s = model_library_str.index(i)
-            si.append(s)
-        
-        model_library_ = []
-        model_names_= []
-        for i in si:
-            model_library_.append(model_library[i])
-            model_names_.append(model_names[i])
-            
-        model_library = model_library_
-        model_names = model_names_
+        models_to_compare = [x for x in model_library_str if not x in blacklist]
         
         
-    if blacklist is None and turbo is True:
+    elif blacklist is None and turbo is True:
         
-        model_library = [lr, lasso, ridge, en, lar, llar, omp, br, par, ransac, tr, huber, 
-                         svm, knn, dt, rf, et, ada, gbr, xgboost, lightgbm, catboost]
-    
-        model_names = ['Linear Regression',
-                       'Lasso Regression',
-                       'Ridge Regression',
-                       'Elastic Net',
-                       'Least Angle Regression',
-                       'Lasso Least Angle Regression',
-                       'Orthogonal Matching Pursuit',
-                       'Bayesian Ridge',
-                       'Passive Aggressive Regressor',
-                       'Random Sample Consensus',
-                       'TheilSen Regressor',
-                       'Huber Regressor',
-                       'Support Vector Machine',
-                       'K Neighbors Regressor',
-                       'Decision Tree',
-                       'Random Forest',
-                       'Extra Trees Regressor',
-                       'AdaBoost Regressor',
-                       'Gradient Boosting Regressor',
-                       'Extreme Gradient Boosting',
-                       'Light Gradient Boosting Machine',
-                       'CatBoost Regressor']
-    
+        models_to_compare = [x for x in model_library_str if not x in turbo_blacklist]
+
     #checking for whitelist models
     if whitelist is not None:
 
         model_library = []
         model_names = []
 
-        for i in whitelist:
-            if i == 'lr':
-                model_library.append(lr)
-                model_names.append('Linear Regression')
-            elif i == 'lasso':
-                model_library.append(lasso)
-                model_names.append('Lasso Regression')                
-            elif i == 'ridge':
-                model_library.append(ridge)
-                model_names.append('Ridge Regression')   
-            elif i == 'en':
-                model_library.append(en)
-                model_names.append('Elastic Net')   
-            elif i == 'lar':
-                model_library.append(lar)
-                model_names.append('Least Angle Regression')   
-            elif i == 'llar':
-                model_library.append(llar)
-                model_names.append('Lasso Least Angle Regression')
-            elif i == 'omp':
-                model_library.append(omp)
-                model_names.append('Orthogonal Matching Pursuit')   
-            elif i == 'br':
-                model_library.append(br)
-                model_names.append('Bayesian Ridge')
-            elif i == 'ard':
-                model_library.append(ard)
-                model_names.append('Automatic Relevance Determination')  
-            elif i == 'par':
-                model_library.append(par)
-                model_names.append('Passive Aggressive Regressor')
-            elif i == 'ransac':
-                model_library.append(ransac)
-                model_names.append('Random Sample Consensus')   
-            elif i == 'tr':
-                model_library.append(tr)
-                model_names.append('TheilSen Regressor')   
-            elif i == 'huber':
-                model_library.append(huber)
-                model_names.append('Huber Regressor')
-            elif i == 'kr':
-                model_library.append(kr)
-                model_names.append('Kernel Ridge')     
-            elif i == 'svm':
-                model_library.append(svm)
-                model_names.append('Support Vector Machine')   
-            elif i == 'knn':
-                model_library.append(knn)
-                model_names.append('K Neighbors Regressor')   
-            elif i == 'dt':
-                model_library.append(dt)
-                model_names.append('Decision Tree')   
-            elif i == 'rf':
-                model_library.append(rf)
-                model_names.append('Random Forest') 
-            elif i == 'et':
-                model_library.append(et)
-                model_names.append('Extra Trees Regressor') 
-            elif i == 'ada':
-                model_library.append(ada)
-                model_names.append('AdaBoost Regressor')  
-            elif i == 'gbr':
-                model_library.append(gbr)
-                model_names.append('Gradient Boosting Regressor')
-            elif i == 'mlp':
-                model_library.append(mlp)
-                model_names.append('Multi Level Perceptron')     
-            elif i == 'xgboost':
-                model_library.append(xgboost)
-                model_names.append('Extreme Gradient Boosting')   
-            elif i == 'lightgbm':
-                model_library.append(lightgbm)
-                model_names.append('Light Gradient Boosting Machine')   
-            elif i == 'catboost':
-                model_library.append(catboost)
-                model_names.append('CatBoost Regressor')   
-            
+        models_to_compare = [x for x in models_to_compare if x in whitelist]  
+        
     progress.value += 1
 
     
@@ -4057,10 +3912,6 @@ def compare_models(blacklist = None,
     '''
     MONITOR UPDATE ENDS
     '''
-    
-    #cross validation setup starts here
-    logger.info("Defining folds")
-    kf = KFold(fold, random_state=seed, shuffle=folds_shuffle_param)
 
     logger.info("Declaring metric variables")
     score_mae =np.empty((0,0))
@@ -4078,148 +3929,46 @@ def compare_models(blacklist = None,
     avgs_mape =np.empty((0,0))  
     avgs_training_time=np.empty((0,0))
     
-    def calculate_mape(actual, prediction):
-        mask = actual != 0
-        return (np.fabs(actual - prediction)/actual)[mask].mean()
-    
     #create URI (before loop)
     import secrets
     URI = secrets.token_hex(nbytes=4)
 
-    name_counter = 0
+    for model_str in models_to_compare:
 
-    model_store = []
+        model_nice_name = model_dict_reversed[model_str]
 
-    for model in model_library:
-
-        logger.info("Initializing " + str(model_names[name_counter]))
+        logger.info("Initializing " + model_nice_name)
 
         #run_time
         runtime_start = time.time()
 
         progress.value += 1
         
-        '''
-        MONITOR UPDATE STARTS
-        '''
-        monitor.iloc[2,1:] = model_names[name_counter]
-        monitor.iloc[3,1:] = 'Calculating ETC'
+        logger.info("SubProcess create_model() called ==================================")
         if verbose:
-            if html_param:
-                update_display(monitor, display_id = 'monitor')
+            model = create_model(model_str, fold = fold, round = round, compare_monitor = monitor, system=False)
+        else:
+            model = create_model(model_str, fold = fold, round = round, verbose = False, system=False)
+        model_store_temporary[model_nice_name] = model
+        logger.info("SubProcess create_model() end ==================================")
 
-        '''
-        MONITOR UPDATE ENDS
-        '''
-        
-        fold_num = 1
-
-        model_store_by_fold = []
-        
-        for train_i , test_i in kf.split(data_X,data_y):
-
-            logger.info("Initializing Fold " + str(fold_num))
-        
-            progress.value += 1
-            
-            t0 = time.time()
-            
-            '''
-            MONITOR UPDATE STARTS
-            '''
-                
-            monitor.iloc[1,1:] = 'Fitting Fold ' + str(fold_num) + ' of ' + str(fold)
-            if verbose:
-                if html_param:
-                    update_display(monitor, display_id = 'monitor')
-            
-            '''
-            MONITOR UPDATE ENDS
-            '''            
-     
-            Xtrain,Xtest = data_X.iloc[train_i], data_X.iloc[test_i]
-            ytrain,ytest = data_y.iloc[train_i], data_y.iloc[test_i]
-            time_start=time.time()
-            logger.info("Fitting Model")
-            model_store_by_fold.append(model.fit(Xtrain,ytrain))
-            logger.info("Evaluating Metrics")
-            time_end=time.time()
-            pred_ = model.predict(Xtest)
-            
-            try:
-                pred_ = target_inverse_transformer.inverse_transform(np.array(pred_).reshape(-1,1))
-                ytest = target_inverse_transformer.inverse_transform(np.array(ytest).reshape(-1,1))
-                pred_ = np.nan_to_num(pred_)
-                ytest = np.nan_to_num(ytest)
-
-            except:
-                pass
-                logger.info("No inverse transformer found")
-
-            logger.info("Compiling Metrics")
-            mae = metrics.mean_absolute_error(ytest,pred_)
-            mse = metrics.mean_squared_error(ytest,pred_)
-            rmse = np.sqrt(mse)
-            r2 = metrics.r2_score(ytest,pred_)
-            rmsle = np.sqrt(np.mean(np.power(np.log(np.array(abs(pred_))+1) - np.log(np.array(abs(ytest))+1), 2)))
-            mape = calculate_mape(ytest,pred_)
-            training_time=time_end-time_start
-            score_mae = np.append(score_mae,mae)
-            score_mse = np.append(score_mse,mse)
-            score_rmse = np.append(score_rmse,rmse)
-            score_rmsle = np.append(score_rmsle,rmsle)
-            score_r2 =np.append(score_r2,r2)
-            score_mape = np.append(score_mape,mape)            
-            score_training_time=np.append(score_training_time,training_time)
-                
-                
-            '''
-            TIME CALCULATION SUB-SECTION STARTS HERE
-            '''
-            t1 = time.time()
-        
-            tt = (t1 - t0) * (fold-fold_num) / 60
-            tt = np.around(tt, 2)
-        
-            if tt < 1:
-                tt = str(np.around((tt * 60), 2))
-                ETC = tt + ' Seconds Remaining'
-                
-            else:
-                tt = str (tt)
-                ETC = tt + ' Minutes Remaining'
-            
-            fold_num += 1
-            
-            '''
-            MONITOR UPDATE STARTS
-            '''
-
-            monitor.iloc[3,1:] = ETC
-            if verbose:
-                if html_param:
-                    update_display(monitor, display_id = 'monitor')
-
-            '''
-            MONITOR UPDATE ENDS
-            '''
-
-        model_store.append(model_store_by_fold[0])
+        model_results = pull()
+        compare_models_ = model_results.loc['Mean']
         
         logger.info("Calculating mean and std")
-        avgs_mae = np.append(avgs_mae,np.mean(score_mae))
-        avgs_mse = np.append(avgs_mse,np.mean(score_mse))
-        avgs_rmse = np.append(avgs_rmse,np.mean(score_rmse))
-        avgs_rmsle = np.append(avgs_rmsle,np.mean(score_rmsle))
-        avgs_r2 = np.append(avgs_r2,np.mean(score_r2))
-        avgs_mape = np.append(avgs_mape,np.mean(score_mape))
-        avgs_training_time = np.append(avgs_training_time,np.mean(score_training_time))
+        avgs_mae = np.append(avgs_mae,compare_models_['MAE'])
+        avgs_mse = np.append(avgs_mse,compare_models_['MSE'])
+        avgs_rmse = np.append(avgs_rmse,compare_models_['RMSE'])
+        avgs_rmsle = np.append(avgs_rmsle,compare_models_['RMSLE'])
+        avgs_r2 = np.append(avgs_r2,compare_models_['R2'])
+        avgs_mape = np.append(avgs_mape,compare_models_['MAPE'])
+        avgs_training_time = np.append(avgs_training_time,compare_models_['TT (Sec)'])
         
         logger.info("Creating metrics dataframe")
-        compare_models_ = pd.DataFrame({'Model':model_names[name_counter], 'MAE':avgs_mae, 'MSE':avgs_mse, 
+        compare_models_ = pd.DataFrame({'Model':model_nice_name, 'MAE':avgs_mae, 'MSE':avgs_mse, 
                            'RMSE':avgs_rmse, 'R2':avgs_r2, 'RMSLE':avgs_rmsle, 'MAPE':avgs_mape, 'TT (Sec)':avgs_training_time})
         master_display = pd.concat([master_display, compare_models_],ignore_index=True)
-        master_display = master_display.round(round)
+        #master_display = master_display.round(round)
         
         if sort == 'R2':
             master_display = master_display.sort_values(by=sort,ascending=False)
@@ -4249,7 +3998,7 @@ def compare_models(blacklist = None,
             from pathlib import Path
             import os
 
-            run_name = model_names[name_counter]
+            run_name = model_nice_name
 
             with mlflow.start_run(run_name=run_name) as run:  
 
@@ -4305,7 +4054,6 @@ def compare_models(blacklist = None,
         avgs_r2 = np.empty((0,0))
         avgs_mape = np.empty((0,0))
         avgs_training_time=np.empty((0,0))
-        name_counter += 1
   
     progress.value += 1
     
@@ -4344,19 +4092,8 @@ def compare_models(blacklist = None,
     
     model_store_final = []
 
-    logger.info("Finalizing top_n models")
-
-    logger.info("SubProcess create_model() called ==================================")
-    for i in sorted_model_names:
-        monitor.iloc[2,1:] = i
-        if verbose:
-            if html_param:
-                update_display(monitor, display_id = 'monitor')
-        progress.value += 1
-        k = model_dict.get(i)
-        m = create_model(estimator=k, verbose = False, system=False, cross_validation=True)
-        model_store_final.append(m)
-    logger.info("SubProcess create_model() end ==================================")
+    for model_name in sorted_model_names:
+        model_store_final.append(model_store_temporary[model_name])
 
     if len(model_store_final) == 1:
         model_store_final = model_store_final[0]
