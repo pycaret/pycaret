@@ -10632,9 +10632,9 @@ def predict_model(estimator,
     """
 
     # function to replace encoded labels with their original values
-    # will not run if replace_labels is false
+    # will not run if categorical_labels is false
     def replace_lables_in_column(label_column):
-        if not replace_labels:
+        if not categorical_labels:
             return
         _, dtypes = next(step for step in prep_pipe.steps if step[0] == "dtypes")
         if dtypes and hasattr(dtypes, "replacement"):
