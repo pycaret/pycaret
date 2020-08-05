@@ -28,6 +28,9 @@ def test():
     # stack models
     stacker = pycaret.classification.stack_models(estimator_list = top3)
 
+    # compare created models
+    pycaret.classification.compare_models(estimator_list=top3+tuned_top3+bagged_top3+[blender])
+
     # get config
     X_train = pycaret.classification.get_config('X_train')
     X_test = pycaret.classification.get_config('X_test')
