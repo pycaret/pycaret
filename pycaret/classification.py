@@ -1975,6 +1975,7 @@ def create_model(estimator = None,
                  cross_validation = True, #added in pycaret==2.0.0
                  verbose = True,
                  system = True, #added in pycaret==2.0.0
+                 compare_monitor = None,
                  **kwargs): #added in pycaret==2.0.0
 
     """  
@@ -2049,6 +2050,9 @@ def create_model(estimator = None,
 
     system: Boolean, default = True
     Must remain True all times. Only to be changed by internal functions.
+
+    compare_monitor: DataFrame, default = None
+    Must remain None all times. Only to be changed by compare_models()
 
     **kwargs: 
     Additional keyword arguments to pass to the estimator.
@@ -2168,6 +2172,10 @@ def create_model(estimator = None,
     if type(system) is not bool:
         sys.exit('(Type Error): System parameter can only take argument as True or False.') 
 
+    #checking compare_monitor parameter
+    if compare_monitor is not None and system:
+        sys.exit('(Value Error): compare_monitor can only be used with system set to False.') 
+
     #checking cross_validation parameter
     if type(cross_validation) is not bool:
         sys.exit('(Type Error): cross_validation parameter can only take argument as True or False.') 
@@ -2196,25 +2204,33 @@ def create_model(estimator = None,
     #progress bar
     progress = ipw.IntProgress(value=0, min=0, max=fold+4, step=1 , description='Processing: ')
     master_display = pd.DataFrame(columns=['Accuracy','AUC','Recall', 'Prec.', 'F1', 'Kappa', 'MCC'])
-    if verbose:
-        if html_param:
-            display(progress)
-    
-    #display monitor
-    timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
-    monitor = pd.DataFrame( [ ['Initiated' , '. . . . . . . . . . . . . . . . . .', timestampStr ], 
-                             ['Status' , '. . . . . . . . . . . . . . . . . .' , 'Loading Dependencies' ],
-                             ['ETC' , '. . . . . . . . . . . . . . . . . .',  'Calculating ETC'] ],
-                              columns=['', ' ', '   ']).set_index('')
-    
-    if verbose:
-        if html_param:
-            display(monitor, display_id = 'monitor')
-    
-    if verbose:
-        if html_param:
-            display_ = display(master_display, display_id=True)
-            display_id = display_.display_id
+
+    if compare_monitor is not None:
+        in_compare = True
+        verbose = False
+        monitor = compare_monitor
+    else:
+        in_compare = False
+        
+        if verbose:
+            if html_param:
+                display(progress)
+        
+        #display monitor
+        timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
+        monitor = pd.DataFrame( [ ['Initiated' , '. . . . . . . . . . . . . . . . . .', timestampStr ], 
+                                ['Status' , '. . . . . . . . . . . . . . . . . .' , 'Loading Dependencies' ],
+                                ['ETC' , '. . . . . . . . . . . . . . . . . .',  'Calculating ETC'] ],
+                                columns=['', ' ', '   ']).set_index('')
+        
+        if verbose:
+            if html_param:
+                display(monitor, display_id = 'monitor')
+        
+        if verbose:
+            if html_param:
+                display_ = display(master_display, display_id=True)
+                display_id = display_.display_id
     
     #ignore warnings
     import warnings
@@ -2267,11 +2283,11 @@ def create_model(estimator = None,
     '''
     MONITOR UPDATE STARTS
     '''
-    
-    monitor.iloc[1,1:] = 'Selecting Estimator'
-    if verbose:
-        if html_param:
-            update_display(monitor, display_id = 'monitor')
+    if not in_compare:
+        monitor.iloc[1,1:] = 'Selecting Estimator'
+        if verbose:
+            if html_param:
+                update_display(monitor, display_id = 'monitor')
     
     '''
     MONITOR UPDATE ENDS
@@ -2468,15 +2484,15 @@ def create_model(estimator = None,
     '''
     MONITOR UPDATE STARTS
     '''
-    
-    if not cross_validation:
-        monitor.iloc[1,1:] = 'Fitting ' + str(full_name)
-    else:
-        monitor.iloc[1,1:] = 'Initializing CV'
-    
-    if verbose:
-        if html_param:
-            update_display(monitor, display_id = 'monitor')
+    if not in_compare:
+        if not cross_validation:
+            monitor.iloc[1,1:] = 'Fitting ' + str(full_name)
+        else:
+            monitor.iloc[1,1:] = 'Initializing CV'
+        
+        if verbose:
+            if html_param:
+                update_display(monitor, display_id = 'monitor')
     
     '''
     MONITOR UPDATE ENDS
@@ -2512,6 +2528,19 @@ def create_model(estimator = None,
         
         return model
     
+    '''
+    MONITOR UPDATE STARTS
+    '''
+    if in_compare:
+        monitor.iloc[2,1:] = full_name
+        monitor.iloc[3,1:] = 'Calculating ETC'
+        if html_param:
+            update_display(monitor, display_id = 'monitor')
+
+    '''
+    MONITOR UPDATE ENDS
+    '''
+
     fold_num = 1
     
     for train_i , test_i in kf.split(data_X,data_y):
@@ -2525,7 +2554,7 @@ def create_model(estimator = None,
         '''
     
         monitor.iloc[1,1:] = 'Fitting Fold ' + str(fold_num) + ' of ' + str(fold)
-        if verbose:
+        if verbose or in_compare:
             if html_param:
                 update_display(monitor, display_id = 'monitor')
 
@@ -2623,7 +2652,7 @@ def create_model(estimator = None,
         '''
         
         fold_results = pd.DataFrame({'Accuracy':[sca], 'AUC': [sc], 'Recall': [recall], 
-                                     'Prec.': [precision], 'F1': [f1], 'Kappa': [kappa], 'MCC':[mcc]}).round(round)
+                                     'Prec.': [precision], 'F1': [f1], 'Kappa': [kappa], 'MCC':[mcc], 'TT (Sec)':[training_time]}).round(round)
         master_display = pd.concat([master_display, fold_results],ignore_index=True)
         fold_results = []
         
@@ -2647,11 +2676,15 @@ def create_model(estimator = None,
         MONITOR UPDATE STARTS
         '''
 
-        monitor.iloc[2,1:] = ETC
-        if verbose:
+        if not in_compare:
+            monitor.iloc[2,1:] = ETC
+            if verbose:
+                if html_param:
+                    update_display(monitor, display_id = 'monitor')
+        else:
+            monitor.iloc[3,1:] = ETC
             if html_param:
                 update_display(monitor, display_id = 'monitor')
-
         '''
         MONITOR UPDATE ENDS
         '''
@@ -2716,9 +2749,9 @@ def create_model(estimator = None,
     logger.info("Creating metrics dataframe")
 
     model_results = pd.DataFrame({'Accuracy': score_acc, 'AUC': score_auc, 'Recall' : score_recall, 'Prec.' : score_precision , 
-                     'F1' : score_f1, 'Kappa' : score_kappa, 'MCC': score_mcc})
+                     'F1' : score_f1, 'Kappa' : score_kappa, 'MCC': score_mcc, 'TT (Sec)': score_training_time})
     model_avgs = pd.DataFrame({'Accuracy': avgs_acc, 'AUC': avgs_auc, 'Recall' : avgs_recall, 'Prec.' : avgs_precision , 
-                     'F1' : avgs_f1, 'Kappa' : avgs_kappa, 'MCC': avgs_mcc},index=['Mean', 'SD'])
+                     'F1' : avgs_f1, 'Kappa' : avgs_kappa, 'MCC': avgs_mcc, 'TT (Sec)': avgs_training_time},index=['Mean', 'SD'])
 
     
     model_results = model_results.append(model_avgs)
@@ -2729,11 +2762,12 @@ def create_model(estimator = None,
     model_results = model_results.set_precision(round)
 
     #refitting the model on complete X_train, y_train
-    monitor.iloc[1,1:] = 'Finalizing Model'
-    monitor.iloc[2,1:] = 'Almost Finished'    
-    if verbose:
-        if html_param:
-            update_display(monitor, display_id = 'monitor')
+    if not in_compare:
+        monitor.iloc[1,1:] = 'Finalizing Model'
+        monitor.iloc[2,1:] = 'Almost Finished'    
+        if verbose:
+            if html_param:
+                update_display(monitor, display_id = 'monitor')
     
     model_fit_start = time.time()
     logger.info("Finalizing model")
@@ -2747,7 +2781,7 @@ def create_model(estimator = None,
     runtime = np.array(runtime_end - runtime_start).round(2)
     
     #mlflow logging
-    if logging_param and system:
+    if not in_compare and logging_param and system:
         
         logger.info("Creating MLFlow logs")
         
@@ -4627,32 +4661,6 @@ def compare_models(blacklist = None,
     MONITOR UPDATE ENDS
     '''
     
-    logger.info("Importing untrained models")
-
-    #creating model object 
-    lr = LogisticRegression(random_state=seed) #dont add n_jobs_param here. It slows doesn Logistic Regression somehow.
-    knn = KNeighborsClassifier(n_jobs=n_jobs_param)
-    nb = GaussianNB()
-    dt = DecisionTreeClassifier(random_state=seed)
-    svm = SGDClassifier(max_iter=1000, tol=0.001, random_state=seed, n_jobs=n_jobs_param)
-    rbfsvm = SVC(gamma='auto', C=1, probability=True, kernel='rbf', random_state=seed)
-    gpc = GaussianProcessClassifier(random_state=seed, n_jobs=n_jobs_param)
-    mlp = MLPClassifier(max_iter=500, random_state=seed)
-    ridge = RidgeClassifier(random_state=seed)
-    rf = RandomForestClassifier(n_estimators=10, random_state=seed, n_jobs=n_jobs_param)
-    qda = QuadraticDiscriminantAnalysis()
-    ada = AdaBoostClassifier(random_state=seed)
-    gbc = GradientBoostingClassifier(random_state=seed)
-    lda = LinearDiscriminantAnalysis()
-    et = ExtraTreesClassifier(random_state=seed, n_jobs=n_jobs_param)
-    xgboost = XGBClassifier(random_state=seed, verbosity=0, n_jobs=n_jobs_param)
-    lightgbm = lgb.LGBMClassifier(random_state=seed, n_jobs=n_jobs_param)
-    catboost = CatBoostClassifier(random_state=seed, silent = True, thread_count=n_jobs_param) 
-    
-    logger.info("Import successful")
-
-    progress.value += 1
-    
     model_dict = {'Logistic Regression' : 'lr',
                    'Linear Discriminant Analysis' : 'lda', 
                    'Ridge Classifier' : 'ridge', 
@@ -4672,158 +4680,41 @@ def compare_models(blacklist = None,
                    'MLP Classifier' : 'mlp',
                    'SVM - Radial Kernel' : 'rbfsvm'}
 
-    model_library = [lr, knn, nb, dt, svm, rbfsvm, gpc, mlp, ridge, rf, qda, ada, gbc, lda, et, xgboost, lightgbm, catboost]
+    model_dict_reversed = {v:k for k, v in model_dict.items()}
 
-    model_names = ['Logistic Regression',
-                   'K Neighbors Classifier',
-                   'Naive Bayes',
-                   'Decision Tree Classifier',
-                   'SVM - Linear Kernel',
-                   'SVM - Radial Kernel',
-                   'Gaussian Process Classifier',
-                   'MLP Classifier',
-                   'Ridge Classifier',
-                   'Random Forest Classifier',
-                   'Quadratic Discriminant Analysis',
-                   'Ada Boost Classifier',
-                   'Gradient Boosting Classifier',
-                   'Linear Discriminant Analysis',
-                   'Extra Trees Classifier',
-                   'Extreme Gradient Boosting',
-                   'Light Gradient Boosting Machine',
-                   'CatBoost Classifier']          
+    model_names = list(model_dict.keys())  
+
+    model_library_str = list(model_dict.values())     
     
-    #checking for blacklist models
-    
-    model_library_str = ['lr', 'knn', 'nb', 'dt', 'svm', 
-                         'rbfsvm', 'gpc', 'mlp', 'ridge', 
-                         'rf', 'qda', 'ada', 'gbc', 'lda', 
-                         'et', 'xgboost', 'lightgbm', 'catboost']
-    
-    model_library_str_ = ['lr', 'knn', 'nb', 'dt', 'svm', 
-                          'rbfsvm', 'gpc', 'mlp', 'ridge', 
-                          'rf', 'qda', 'ada', 'gbc', 'lda', 
-                          'et', 'xgboost', 'lightgbm', 'catboost']
-    
+    turbo_blacklist = ['rbfsvm', 'gpc', 'mlp']
+
+    models_to_compare = []
+
+    model_store_temporary = {}
+
     if blacklist is not None:
         
         if turbo:
-            internal_blacklist = ['rbfsvm', 'gpc', 'mlp']
-            compiled_blacklist = blacklist + internal_blacklist
+            compiled_blacklist = blacklist + turbo_blacklist
             blacklist = list(set(compiled_blacklist))
             
         else:
             blacklist = blacklist
         
-        for i in blacklist:
-            model_library_str_.remove(i)
-        
-        si = []
-        
-        for i in model_library_str_:
-            s = model_library_str.index(i)
-            si.append(s)
-        
-        model_library_ = []
-        model_names_= []
-        for i in si:
-            model_library_.append(model_library[i])
-            model_names_.append(model_names[i])
-            
-        model_library = model_library_
-        model_names = model_names_
+        models_to_compare = [x for x in model_library_str if not x in blacklist]
         
         
-    if blacklist is None and turbo is True:
+    elif blacklist is None and turbo is True:
         
-        model_library = [lr, knn, nb, dt, svm, ridge, rf, qda, ada, gbc, lda, et, xgboost, lightgbm, catboost]
+        models_to_compare = [x for x in model_library_str if not x in turbo_blacklist]
 
-        model_names = ['Logistic Regression',
-                       'K Neighbors Classifier',
-                       'Naive Bayes',
-                       'Decision Tree Classifier',
-                       'SVM - Linear Kernel',
-                       'Ridge Classifier',
-                       'Random Forest Classifier',
-                       'Quadratic Discriminant Analysis',
-                       'Ada Boost Classifier',
-                       'Gradient Boosting Classifier',
-                       'Linear Discriminant Analysis',
-                       'Extra Trees Classifier',
-                       'Extreme Gradient Boosting',
-                       'Light Gradient Boosting Machine',
-                       'CatBoost Classifier']
-        
     #checking for whitelist models
     if whitelist is not None:
 
         model_library = []
         model_names = []
 
-        for i in whitelist:
-            if i == 'lr':
-                model_library.append(lr)
-                model_names.append('Logistic Regression')
-            elif i == 'knn':
-                model_library.append(knn)
-                model_names.append('K Neighbors Classifier')                
-            elif i == 'nb':
-                model_library.append(nb)
-                model_names.append('Naive Bayes')   
-            elif i == 'dt':
-                model_library.append(dt)
-                model_names.append('Decision Tree Classifier')   
-            elif i == 'svm':
-                model_library.append(svm)
-                model_names.append('SVM - Linear Kernel')   
-            elif i == 'rbfsvm':
-                model_library.append(rbfsvm)
-                model_names.append('SVM - Radial Kernel')
-            elif i == 'gpc':
-                model_library.append(gpc)
-                model_names.append('Gaussian Process Classifier')   
-            elif i == 'mlp':
-                model_library.append(mlp)
-                model_names.append('MLP Classifier')   
-            elif i == 'ridge':
-                model_library.append(ridge)
-                model_names.append('Ridge Classifier')   
-            elif i == 'rf':
-                model_library.append(rf)
-                model_names.append('Random Forest Classifier')   
-            elif i == 'qda':
-                model_library.append(qda)
-                model_names.append('Quadratic Discriminant Analysis')   
-            elif i == 'ada':
-                model_library.append(ada)
-                model_names.append('Ada Boost Classifier')   
-            elif i == 'gbc':
-                model_library.append(gbc)
-                model_names.append('Gradient Boosting Classifier')   
-            elif i == 'lda':
-                model_library.append(lda)
-                model_names.append('Linear Discriminant Analysis')   
-            elif i == 'et':
-                model_library.append(et)
-                model_names.append('Extra Trees Classifier')   
-            elif i == 'xgboost':
-                model_library.append(xgboost)
-                model_names.append('Extreme Gradient Boosting') 
-            elif i == 'lightgbm':
-                model_library.append(lightgbm)
-                model_names.append('Light Gradient Boosting Machine') 
-            elif i == 'catboost':
-                model_library.append(catboost)
-                model_names.append('CatBoost Classifier')   
-
-    #multiclass check
-    model_library_multiclass = []
-    if y.value_counts().count() > 2:
-        for i in model_library:
-            model = OneVsRestClassifier(i)
-            model_library_multiclass.append(model)
-            
-        model_library = model_library_multiclass
+        models_to_compare = [x for x in models_to_compare if x in whitelist]  
         
     progress.value += 1
 
@@ -4841,10 +4732,6 @@ def compare_models(blacklist = None,
     MONITOR UPDATE ENDS
     '''
     
-    #cross validation setup starts here
-    logger.info("Defining folds")
-    kf = StratifiedKFold(fold, random_state=seed, shuffle=folds_shuffle_param)
-
     logger.info("Declaring metric variables")
     score_acc =np.empty((0,0))
     score_auc =np.empty((0,0))
@@ -4867,182 +4754,45 @@ def compare_models(blacklist = None,
     #create URI (before loop)
     import secrets
     URI = secrets.token_hex(nbytes=4)
-
-    name_counter = 0
       
-    for model in model_library:
+    for model_str in models_to_compare:
 
-        logger.info("Initializing " + str(model_names[name_counter]))
+        model_nice_name = model_dict_reversed[model_str]
+
+        logger.info("Initializing " + model_nice_name)
 
         #run_time
         runtime_start = time.time()
         
         progress.value += 1
         
-        '''
-        MONITOR UPDATE STARTS
-        '''
-        monitor.iloc[2,1:] = model_names[name_counter]
-        monitor.iloc[3,1:] = 'Calculating ETC'
+        logger.info("SubProcess create_model() called ==================================")
         if verbose:
-            if html_param:
-                update_display(monitor, display_id = 'monitor')
+            model = create_model(model_str, fold = fold, round = round, compare_monitor = monitor, system=False)
+        else:
+            model = create_model(model_str, fold = fold, round = round, verbose = False, system=False)
+        model_store_temporary[model_nice_name] = model
+        logger.info("SubProcess create_model() end ==================================")
 
-        '''
-        MONITOR UPDATE ENDS
-        '''
+        model_results = pull()
+        compare_models_ = model_results.loc['Mean']
         
-        fold_num = 1
-        
-        for train_i , test_i in kf.split(data_X,data_y):
-            
-            logger.info("Initializing Fold " + str(fold_num))
-        
-            progress.value += 1
-            
-            t0 = time.time()
-            
-            '''
-            MONITOR UPDATE STARTS
-            '''
-                
-            monitor.iloc[1,1:] = 'Fitting Fold ' + str(fold_num) + ' of ' + str(fold)
-            if verbose:
-                if html_param:
-                    update_display(monitor, display_id = 'monitor')
-            
-            '''
-            MONITOR UPDATE ENDS
-            '''            
-     
-            Xtrain,Xtest = data_X.iloc[train_i], data_X.iloc[test_i]
-            ytrain,ytest = data_y.iloc[train_i], data_y.iloc[test_i]
-            
-            if fix_imbalance_param:
-
-                logger.info("Initializing SMOTE")
-                
-                if fix_imbalance_method_param is None:
-                    from imblearn.over_sampling import SMOTE
-                    resampler = SMOTE(random_state = seed)
-                else:
-                    resampler = fix_imbalance_method_param
-
-                Xtrain,ytrain = resampler.fit_sample(Xtrain, ytrain)
-                logger.info("Resampling completed")
-
-            if hasattr(model, 'predict_proba'):
-                time_start=time.time()    
-                logger.info("Fitting Model")
-                model.fit(Xtrain,ytrain)
-                logger.info("Evaluating Metrics")
-                time_end=time.time()
-                pred_prob = model.predict_proba(Xtest)
-                pred_prob = pred_prob[:,1]
-                pred_ = model.predict(Xtest)
-                sca = metrics.accuracy_score(ytest,pred_)
-
-                if y.value_counts().count() > 2:
-                    sc = 0
-                    recall = metrics.recall_score(ytest,pred_, average='macro')                
-                    precision = metrics.precision_score(ytest,pred_, average = 'weighted')
-                    f1 = metrics.f1_score(ytest,pred_, average='weighted')
-
-                else:
-                    try:
-                        sc = metrics.roc_auc_score(ytest,pred_prob)
-                    except:
-                        sc = 0
-                        logger.warning("model has no predict_proba attribute. AUC set to 0.00")
-                    recall = metrics.recall_score(ytest,pred_)                
-                    precision = metrics.precision_score(ytest,pred_)
-                    f1 = metrics.f1_score(ytest,pred_)
-            else:
-                time_start=time.time()   
-                logger.info("Fitting Model")
-                model.fit(Xtrain,ytrain)
-                logger.info("Evaluating Metrics")
-                time_end=time.time()
-                logger.warning("model has no predict_proba attribute. pred_prob set to 0.00")
-                pred_prob = 0.00
-                pred_ = model.predict(Xtest)
-                sca = metrics.accuracy_score(ytest,pred_)
-
-                if y.value_counts().count() > 2:
-                    sc = 0
-                    recall = metrics.recall_score(ytest,pred_, average='macro')                
-                    precision = metrics.precision_score(ytest,pred_, average = 'weighted')
-                    f1 = metrics.f1_score(ytest,pred_, average='weighted')
-
-                else:
-                    try:
-                        sc = metrics.roc_auc_score(ytest,pred_prob)
-                    except:
-                        sc = 0
-                        logger.warning("model has no predict_proba attribute. AUC set to 0.00")
-                    recall = metrics.recall_score(ytest,pred_)                
-                    precision = metrics.precision_score(ytest,pred_)
-                    f1 = metrics.f1_score(ytest,pred_)
-            
-            logger.info("Compiling Metrics")
-            mcc = metrics.matthews_corrcoef(ytest,pred_)
-            kappa = metrics.cohen_kappa_score(ytest,pred_)
-            training_time= time_end - time_start
-            score_acc = np.append(score_acc,sca)
-            score_auc = np.append(score_auc,sc)
-            score_recall = np.append(score_recall,recall)
-            score_precision = np.append(score_precision,precision)
-            score_f1 =np.append(score_f1,f1)
-            score_kappa =np.append(score_kappa,kappa) 
-            score_mcc=np.append(score_mcc,mcc)
-            score_training_time=np.append(score_training_time,training_time)
-                
-            '''
-            TIME CALCULATION SUB-SECTION STARTS HERE
-            '''
-            t1 = time.time()
-        
-            tt = (t1 - t0) * (fold-fold_num) / 60
-            tt = np.around(tt, 2)
-        
-            if tt < 1:
-                tt = str(np.around((tt * 60), 2))
-                ETC = tt + ' Seconds Remaining'
-                
-            else:
-                tt = str (tt)
-                ETC = tt + ' Minutes Remaining'
-            
-            fold_num += 1
-            
-            '''
-            MONITOR UPDATE STARTS
-            '''
-
-            monitor.iloc[3,1:] = ETC
-            if verbose:
-                if html_param:
-                    update_display(monitor, display_id = 'monitor')
-
-            '''
-            MONITOR UPDATE ENDS
-            '''
         logger.info("Calculating mean and std")
-        avg_acc = np.append(avg_acc,np.mean(score_acc))
-        avg_auc = np.append(avg_auc,np.mean(score_auc))
-        avg_recall = np.append(avg_recall,np.mean(score_recall))
-        avg_precision = np.append(avg_precision,np.mean(score_precision))
-        avg_f1 = np.append(avg_f1,np.mean(score_f1))
-        avg_kappa = np.append(avg_kappa,np.mean(score_kappa))
-        avg_mcc=np.append(avg_mcc,np.mean(score_mcc))
-        avg_training_time=np.append(avg_training_time,np.mean(score_training_time))
+        avg_acc = np.append(avg_acc,compare_models_['Accuracy'])
+        avg_auc = np.append(avg_auc,compare_models_['AUC'])
+        avg_recall = np.append(avg_recall,compare_models_['Recall'])
+        avg_precision = np.append(avg_precision,compare_models_['Prec.'])
+        avg_f1 = np.append(avg_f1,compare_models_['F1'])
+        avg_kappa = np.append(avg_kappa,compare_models_['Kappa'])
+        avg_mcc=np.append(avg_mcc,compare_models_['MCC'])
+        avg_training_time=np.append(avg_training_time,compare_models_['TT (Sec)'])
         
         logger.info("Creating metrics dataframe")
-        compare_models_ = pd.DataFrame({'Model':model_names[name_counter], 'Accuracy':avg_acc, 'AUC':avg_auc, 
+        compare_models_ = pd.DataFrame({'Model':model_nice_name, 'Accuracy':avg_acc, 'AUC':avg_auc, 
                            'Recall':avg_recall, 'Prec.':avg_precision, 
                            'F1':avg_f1, 'Kappa': avg_kappa, 'MCC':avg_mcc, 'TT (Sec)':avg_training_time})
         master_display = pd.concat([master_display, compare_models_],ignore_index=True)
-        master_display = master_display.round(round)
+        #master_display = master_display.round(round)
         master_display = master_display.sort_values(by=sort,ascending=False)
         master_display.reset_index(drop=True, inplace=True)
         
@@ -5066,7 +4816,7 @@ def compare_models(blacklist = None,
             from pathlib import Path
             import os
 
-            run_name = model_names[name_counter]
+            run_name = model_nice_name
 
             with mlflow.start_run(run_name=run_name) as run:  
 
@@ -5126,9 +4876,7 @@ def compare_models(blacklist = None,
         avg_kappa = np.empty((0,0))
         avg_mcc = np.empty((0,0))
         avg_training_time = np.empty((0,0))
-        
-        name_counter += 1
-  
+          
     progress.value += 1
     
     def highlight_max(s):
@@ -5169,25 +4917,8 @@ def compare_models(blacklist = None,
     
     model_store_final = []
 
-    model_fit_start = time.time()
-
-    logger.info("Finalizing top_n models")
-
-    logger.info("SubProcess create_model() called ==================================")
-    for i in sorted_model_names:
-        monitor.iloc[2,1:] = i
-        if verbose:
-            if html_param:
-                update_display(monitor, display_id = 'monitor')
-        progress.value += 1
-        k = model_dict.get(i)
-        m = create_model(estimator=k, verbose = False, system=False, cross_validation=True)
-        model_store_final.append(m)
-    logger.info("SubProcess create_model() end ==================================")
-
-    model_fit_end = time.time()
-
-    model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
+    for model_name in sorted_model_names:
+        model_store_final.append(model_store_temporary[model_name])
 
     if len(model_store_final) == 1:
         model_store_final = model_store_final[0]
