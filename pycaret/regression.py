@@ -1164,7 +1164,7 @@ def setup(data,
     
     logger.info("Creating preprocessing pipeline")
 
-    data = preprocess.Preprocess_Path_One(train_data = data, 
+    preprocess.Preprocess_Path_One(train_data = data, 
                                           target_variable = target,
                                           categorical_features = cat_features_pass,
                                           apply_ordinal_encoding = apply_ordinal_encoding_pass, 
@@ -1214,20 +1214,12 @@ def setup(data,
                                           display_types = display_dtypes_pass, 
                                           target_transformation = transform_target, 
                                           target_transformation_method = transform_target_method_pass, 
-                                          random_state = seed)
+                                          random_state = seed,
+                                          fit_transform_and_return = False) #to save time, will not fit and transform data, as that will be done later
 
     progress.value += 1
     logger.info("Preprocessing pipeline created successfully")
     
-    if hasattr(preprocess.dtypes, 'replacement'):
-            label_encoded = preprocess.dtypes.replacement
-            label_encoded = str(label_encoded).replace("'", '')
-            label_encoded = str(label_encoded).replace("{", '')
-            label_encoded = str(label_encoded).replace("}", '')
-
-    else:
-        label_encoded = 'None'
-
     try:
         res_type = ['quit','Quit','exit','EXIT','q','Q','e','E','QUIT','Exit']
         res = preprocess.dtypes.response
@@ -1239,6 +1231,213 @@ def setup(data,
     #save prep pipe
     prep_pipe = preprocess.pipe
     
+    """
+    preprocessing ends here
+    """
+    
+    #reset pandas option
+    pd.reset_option("display.max_rows")
+    pd.reset_option("display.max_columns")
+    
+    logger.info("Creating global containers")
+
+    #create an empty list for pickling later.
+    experiment__ = []
+    
+    #create folds_shuffle_param
+    folds_shuffle_param = folds_shuffle
+
+    #create n_jobs_param
+    n_jobs_param = n_jobs
+
+    #create create_model_container
+    create_model_container = []
+
+    #create master_model_container
+    master_model_container = []
+
+    #create display container
+    display_container = []
+
+    #create logging parameter
+    logging_param = log_experiment
+
+    #create exp_name_log param incase logging is False
+    exp_name_log = 'no_logging'
+
+    #create an empty log_plots_param
+    if log_plots:
+        log_plots_param = True
+    else:
+        log_plots_param = False
+
+    #sample estimator
+    if sample_estimator is None:
+        model = LinearRegression(n_jobs=n_jobs_param)
+    else:
+        model = sample_estimator
+        
+    model_name = str(model).split("(")[0]
+    
+    if 'CatBoostRegressor' in model_name:
+        model_name = 'CatBoostRegressor'
+        
+    #creating variables to be used later in the function
+    X = data.drop(target,axis=1)
+    y = data[target]
+    
+    progress.value += 1
+    
+    if sampling is True and data.shape[0] > 25000: #change back to 25000
+    
+        split_perc = [0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,0.99]
+        split_perc_text = ['10%','20%','30%','40%','50%','60%', '70%', '80%', '90%', '100%']
+        split_perc_tt = [0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,0.99]
+        split_perc_tt_total = []
+        split_percent = []
+
+        metric_results = []
+        metric_name = []
+        
+        counter = 0
+        
+        for i in split_perc:
+            
+            progress.value += 1
+            
+            t0 = time.time()
+            
+            '''
+            MONITOR UPDATE STARTS
+            '''
+            
+            perc_text = split_perc_text[counter]
+            monitor.iloc[1,1:] = 'Fitting Model on ' + perc_text + ' sample'
+            if verbose:
+                if html_param:
+                    update_display(monitor, display_id = 'monitor')
+
+            '''
+            MONITOR UPDATE ENDS
+            '''
+    
+            X_, X__, y_, y__ = train_test_split(X, y, test_size=1-i, random_state=seed, shuffle=data_split_shuffle)
+            X_train, X_test, y_train, y_test = train_test_split(X_, y_, test_size=0.3, random_state=seed, shuffle=data_split_shuffle)
+            
+            train = prep_pipe.fit_transform(pd.concat([X_train, y_train], axis=1))
+            X_train = train.drop(target,axis=1)
+            y_train = train[target]
+
+            test = prep_pipe.fit_transform(pd.concat([X_test, y_test], axis=1))
+            X_test = test.drop(target,axis=1)
+            y_test = test[target]
+            
+            model.fit(X_train,y_train)
+            pred_ = model.predict(X_test)
+            
+            r2 = metrics.r2_score(y_test,pred_)
+            metric_results.append(r2)
+            metric_name.append('R2')
+            split_percent.append(i)
+            
+            t1 = time.time()
+                       
+            '''
+            Time calculation begins
+            '''
+          
+            tt = t1 - t0
+            total_tt = tt / i
+            split_perc_tt.pop(0)
+            
+            for remain in split_perc_tt:
+                ss = total_tt * remain
+                split_perc_tt_total.append(ss)
+                
+            ttt = sum(split_perc_tt_total) / 60
+            ttt = np.around(ttt, 2)
+        
+            if ttt < 1:
+                ttt = str(np.around((ttt * 60), 2))
+                ETC = ttt + ' Seconds Remaining'
+
+            else:
+                ttt = str (ttt)
+                ETC = ttt + ' Minutes Remaining'
+                
+            monitor.iloc[2,1:] = ETC
+            if verbose:
+                if html_param:
+                    update_display(monitor, display_id = 'monitor')
+            
+            
+            '''
+            Time calculation Ends
+            '''
+            
+            split_perc_tt_total = []
+            counter += 1
+
+        model_results = pd.DataFrame({'Sample' : split_percent, 'Metric' : metric_results, 'Metric Name': metric_name})
+        fig = px.line(model_results, x='Sample', y='Metric', color='Metric Name', line_shape='linear', range_y = [0,1])
+        fig.update_layout(plot_bgcolor='rgb(245,245,245)')
+        title= str(model_name) + ' Metric and Sample %'
+        fig.update_layout(title={'text': title, 'y':0.95,'x':0.45,'xanchor': 'center','yanchor': 'top'})
+        fig.show()
+        
+        monitor.iloc[1,1:] = 'Waiting for input'
+        if verbose:
+            if html_param:
+                update_display(monitor, display_id = 'monitor')
+        
+        
+        print('Please Enter the sample % of data you would like to use for modeling. Example: Enter 0.3 for 30%.')
+        print('Press Enter if you would like to use 100% of the data.')
+        
+        print(' ')
+        
+        sample_size = input("Sample Size: ")
+        
+        if sample_size == '' or sample_size == '1':
+            
+            X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=1-train_size, random_state=seed, shuffle=data_split_shuffle)
+        
+        else:
+            
+            sample_n = float(sample_size)
+            X_selected, X_discard, y_selected, y_discard = train_test_split(X, y, test_size=1-sample_n,  
+                                                                random_state=seed, shuffle=data_split_shuffle)
+            
+            X_train, X_test, y_train, y_test = train_test_split(X_selected, y_selected, test_size=1-train_size, 
+                                                                random_state=seed, shuffle=data_split_shuffle)
+    else:
+        
+        monitor.iloc[1,1:] = 'Splitting Data'
+        if verbose:
+            if html_param:
+                update_display(monitor, display_id = 'monitor')
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=1-train_size, random_state=seed, shuffle=data_split_shuffle)
+ 
+    train = prep_pipe.fit_transform(pd.concat([X_train, y_train], axis=1))
+    X_train = train.drop(target,axis=1)
+    y_train = train[target]
+
+    test = prep_pipe.fit_transform(pd.concat([X_test, y_test], axis=1))
+    X_test = test.drop(target,axis=1)
+    y_test = test[target]
+
+    progress.value += 1
+    
+    clear_output()
+
+    if hasattr(preprocess.dtypes, 'replacement'):
+            label_encoded = preprocess.dtypes.replacement
+            label_encoded = str(label_encoded).replace("'", '')
+            label_encoded = str(label_encoded).replace("{", '')
+            label_encoded = str(label_encoded).replace("}", '')
+
+    else:
+        label_encoded = 'None'
 
     #save target inverse transformer
     try:
@@ -1366,458 +1565,94 @@ def setup(data,
         transform_target_method_grid = None
     else:
         transform_target_method_grid = preprocess.pt_target.function_to_apply
-    
-    """
-    preprocessing ends here
-    """
-    
-    #reset pandas option
-    pd.reset_option("display.max_rows")
-    pd.reset_option("display.max_columns")
-    
-    logger.info("Creating global containers")
 
-    #create an empty list for pickling later.
-    experiment__ = []
-    
-    #create folds_shuffle_param
-    folds_shuffle_param = folds_shuffle
-
-    #create n_jobs_param
-    n_jobs_param = n_jobs
-
-    #create create_model_container
-    create_model_container = []
-
-    #create master_model_container
-    master_model_container = []
-
-    #create display container
-    display_container = []
-
-    #create logging parameter
-    logging_param = log_experiment
-
-    #create exp_name_log param incase logging is False
-    exp_name_log = 'no_logging'
-
-    #create an empty log_plots_param
-    if log_plots:
-        log_plots_param = True
-    else:
-        log_plots_param = False
-
-    #sample estimator
-    if sample_estimator is None:
-        model = LinearRegression(n_jobs=n_jobs_param)
-    else:
-        model = sample_estimator
-        
-    model_name = str(model).split("(")[0]
-    
-    if 'CatBoostRegressor' in model_name:
-        model_name = 'CatBoostRegressor'
-        
-    #creating variables to be used later in the function
-    X = data.drop(target,axis=1)
-    y = data[target]
-    
-    progress.value += 1
-    
-    if sampling is True and data.shape[0] > 25000: #change back to 25000
-    
-        split_perc = [0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,0.99]
-        split_perc_text = ['10%','20%','30%','40%','50%','60%', '70%', '80%', '90%', '100%']
-        split_perc_tt = [0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,0.99]
-        split_perc_tt_total = []
-        split_percent = []
-
-        metric_results = []
-        metric_name = []
-        
-        counter = 0
-        
-        for i in split_perc:
-            
-            progress.value += 1
-            
-            t0 = time.time()
-            
-            '''
-            MONITOR UPDATE STARTS
-            '''
-            
-            perc_text = split_perc_text[counter]
-            monitor.iloc[1,1:] = 'Fitting Model on ' + perc_text + ' sample'
-            if verbose:
-                if html_param:
-                    update_display(monitor, display_id = 'monitor')
-
-            '''
-            MONITOR UPDATE ENDS
-            '''
-    
-            X_, X__, y_, y__ = train_test_split(X, y, test_size=1-i, random_state=seed, shuffle=data_split_shuffle)
-            X_train, X_test, y_train, y_test = train_test_split(X_, y_, test_size=0.3, random_state=seed, shuffle=data_split_shuffle)
-            model.fit(X_train,y_train)
-            pred_ = model.predict(X_test)
-            
-            r2 = metrics.r2_score(y_test,pred_)
-            metric_results.append(r2)
-            metric_name.append('R2')
-            split_percent.append(i)
-            
-            t1 = time.time()
-                       
-            '''
-            Time calculation begins
-            '''
-          
-            tt = t1 - t0
-            total_tt = tt / i
-            split_perc_tt.pop(0)
-            
-            for remain in split_perc_tt:
-                ss = total_tt * remain
-                split_perc_tt_total.append(ss)
-                
-            ttt = sum(split_perc_tt_total) / 60
-            ttt = np.around(ttt, 2)
-        
-            if ttt < 1:
-                ttt = str(np.around((ttt * 60), 2))
-                ETC = ttt + ' Seconds Remaining'
-
-            else:
-                ttt = str (ttt)
-                ETC = ttt + ' Minutes Remaining'
-                
-            monitor.iloc[2,1:] = ETC
-            if verbose:
-                if html_param:
-                    update_display(monitor, display_id = 'monitor')
-            
-            
-            '''
-            Time calculation Ends
-            '''
-            
-            split_perc_tt_total = []
-            counter += 1
-
-        model_results = pd.DataFrame({'Sample' : split_percent, 'Metric' : metric_results, 'Metric Name': metric_name})
-        fig = px.line(model_results, x='Sample', y='Metric', color='Metric Name', line_shape='linear', range_y = [0,1])
-        fig.update_layout(plot_bgcolor='rgb(245,245,245)')
-        title= str(model_name) + ' Metric and Sample %'
-        fig.update_layout(title={'text': title, 'y':0.95,'x':0.45,'xanchor': 'center','yanchor': 'top'})
-        fig.show()
-        
-        monitor.iloc[1,1:] = 'Waiting for input'
-        if verbose:
-            if html_param:
-                update_display(monitor, display_id = 'monitor')
-        
-        
-        print('Please Enter the sample % of data you would like to use for modeling. Example: Enter 0.3 for 30%.')
-        print('Press Enter if you would like to use 100% of the data.')
-        
+    '''
+    Final display Starts
+    '''
+    clear_output()
+    if verbose:
         print(' ')
-        
-        sample_size = input("Sample Size: ")
-        
-        if sample_size == '' or sample_size == '1':
-            
-            X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=1-train_size, random_state=seed, shuffle=data_split_shuffle)
-            
-            '''
-            Final display Starts
-            '''
-            clear_output()
-            if verbose:
-                print(' ')
-
-            if profile:
-                print('Setup Succesfully Completed. Loading Profile Now... Please Wait!')
-            else:
-                if verbose:
-                    print('Setup Succesfully Completed.')    
-        
-            functions = pd.DataFrame ( [ ['session_id', seed ],
-                                         ['Transform Target ', transform_target],
-                                         ['Transform Target Method', transform_target_method_grid],
-                                         ['Original Data', data_before_preprocess.shape ],
-                                         ['Missing Values ', missing_flag],
-                                         ['Numeric Features ', str(float_type) ],
-                                         ['Categorical Features ', str(cat_type) ],
-                                         ['Ordinal Features ', ordinal_features_grid], #new
-                                         ['High Cardinality Features ', high_cardinality_features_grid],
-                                         ['High Cardinality Method ', high_cardinality_method_grid], #latest
-                                         ['Sampled Data', '(' + str(X_train.shape[0] + X_test.shape[0]) + ', ' + str(data_before_preprocess.shape[1]) + ')' ], 
-                                         ['Transformed Train Set', X_train.shape ], 
-                                         ['Transformed Test Set',X_test.shape ],
-                                         ['Numeric Imputer ', numeric_imputation],
-                                         ['Categorical Imputer ', categorical_imputation],
-                                         ['Normalize ', normalize ],
-                                         ['Normalize Method ', normalize_grid ],
-                                         ['Transformation ', transformation ],
-                                         ['Transformation Method ', transformation_grid ],
-                                         ['PCA ', pca],
-                                         ['PCA Method ', pca_method_grid],
-                                         ['PCA Components ', pca_components_grid],
-                                         ['Ignore Low Variance ', ignore_low_variance],
-                                         ['Combine Rare Levels ', combine_rare_levels],
-                                         ['Rare Level Threshold ', rare_level_threshold_grid],
-                                         ['Numeric Binning ', numeric_bin_grid],
-                                         ['Remove Outliers ', remove_outliers],
-                                         ['Outliers Threshold ', outliers_threshold_grid],
-                                         ['Remove Multicollinearity ', remove_multicollinearity],
-                                         ['Multicollinearity Threshold ', multicollinearity_threshold_grid],
-                                         ['Clustering ', create_clusters],
-                                         ['Clustering Iteration ', cluster_iter_grid],
-                                         ['Polynomial Features ', polynomial_features], #new
-                                         ['Polynomial Degree ', polynomial_degree_grid], #new
-                                         ['Trignometry Features ', trigonometry_features], #new
-                                         ['Polynomial Threshold ', polynomial_threshold_grid], #new
-                                         ['Group Features ', group_features_grid], #new
-                                         ['Feature Selection ', feature_selection], #new
-                                         ['Features Selection Threshold ', feature_selection_threshold_grid], #new
-                                         ['Feature Interaction ', feature_interaction], #new
-                                         ['Feature Ratio ', feature_ratio], #new
-                                         ['Interaction Threshold ', interaction_threshold_grid], #new
-                                       ], columns = ['Description', 'Value'] )
-
-            #functions_ = functions.style.hide_index()
-            functions_ = functions.style.apply(highlight_max)
-            if verbose:
-                if html_param:
-                    display(functions_)
-                else:
-                    print(functions_.data)
-            
-            if profile:
-                try:
-                    import pandas_profiling
-                    pf = pandas_profiling.ProfileReport(data_before_preprocess)
-                    clear_output()
-                    display(pf)
-                except:
-                    print('Data Profiler Failed. No output to show, please continue with Modeling.')
-            
-            '''
-            Final display Ends
-            '''   
-            
-            #log into experiment
-            experiment__.append(('Regression Setup Config', functions))
-            experiment__.append(('X_training Set', X_train))
-            experiment__.append(('y_training Set', y_train))
-            experiment__.append(('X_test Set', X_test))
-            experiment__.append(('y_test Set', y_test))
-            experiment__.append(('Transformation Pipeline', prep_pipe))
-            try:
-                experiment__.append(('Target Inverse Transformer', target_inverse_transformer))
-            except:
-                pass
-        
-        else:
-            
-            sample_n = float(sample_size)
-            X_selected, X_discard, y_selected, y_discard = train_test_split(X, y, test_size=1-sample_n,  
-                                                                random_state=seed, shuffle=data_split_shuffle)
-            
-            X_train, X_test, y_train, y_test = train_test_split(X_selected, y_selected, test_size=1-train_size, 
-                                                                random_state=seed, shuffle=data_split_shuffle)
-            clear_output()
-            
-            
-            '''
-            Final display Starts
-            '''
-            
-            clear_output()
-            if verbose:
-                print(' ')
-            
-            if profile:
-                print('Setup Succesfully Completed. Loading Profile Now... Please Wait!')
-            else:
-                if verbose:
-                    print('Setup Succesfully Completed.')
-            
-            functions = pd.DataFrame ( [ ['session_id', seed ],
-                                         ['Transform Target ', transform_target],
-                                         ['Transform Target Method', transform_target_method_grid],
-                                         ['Original Data', data_before_preprocess.shape ],
-                                         ['Missing Values ', missing_flag],
-                                         ['Numeric Features ', str(float_type) ],
-                                         ['Categorical Features ', str(cat_type) ],
-                                         ['Ordinal Features ', ordinal_features_grid], #new
-                                         ['High Cardinality Features ', high_cardinality_features_grid],
-                                         ['High Cardinality Method ', high_cardinality_method_grid], #latest
-                                         ['Sampled Data', '(' + str(X_train.shape[0] + X_test.shape[0]) + ', ' + str(data_before_preprocess.shape[1]) + ')' ], 
-                                         ['Transformed Train Set', X_train.shape ], 
-                                         ['Transformed Test Set',X_test.shape ],
-                                         ['Numeric Imputer ', numeric_imputation],
-                                         ['Categorical Imputer ', categorical_imputation],
-                                         ['Normalize ', normalize ],
-                                         ['Normalize Method ', normalize_grid ],
-                                         ['Transformation ', transformation ],
-                                         ['Transformation Method ', transformation_grid ],
-                                         ['PCA ', pca],
-                                         ['PCA Method ', pca_method_grid],
-                                         ['PCA Components ', pca_components_grid],
-                                         ['Ignore Low Variance ', ignore_low_variance],
-                                         ['Combine Rare Levels ', combine_rare_levels],
-                                         ['Rare Level Threshold ', rare_level_threshold_grid],
-                                         ['Numeric Binning ', numeric_bin_grid],
-                                         ['Remove Outliers ', remove_outliers],
-                                         ['Outliers Threshold ', outliers_threshold_grid],
-                                         ['Remove Multicollinearity ', remove_multicollinearity],
-                                         ['Multicollinearity Threshold ', multicollinearity_threshold_grid],
-                                         ['Clustering ', create_clusters],
-                                         ['Clustering Iteration ', cluster_iter_grid],
-                                         ['Polynomial Features ', polynomial_features], #new
-                                         ['Polynomial Degree ', polynomial_degree_grid], #new
-                                         ['Trignometry Features ', trigonometry_features], #new
-                                         ['Polynomial Threshold ', polynomial_threshold_grid], #new
-                                         ['Group Features ', group_features_grid], #new
-                                         ['Feature Selection ', feature_selection], #new
-                                         ['Features Selection Threshold ', feature_selection_threshold_grid], #new
-                                         ['Feature Interaction ', feature_interaction], #new
-                                         ['Feature Ratio ', feature_ratio], #new
-                                         ['Interaction Threshold ', interaction_threshold_grid], #new
-                                       ], columns = ['Description', 'Value'] )
-            
-            functions_ = functions.style.apply(highlight_max)
-            if verbose:
-                if html_param:
-                    display(functions_)
-                else:
-                    print(functions_.data)
-            
-            if profile:
-                try:
-                    import pandas_profiling
-                    pf = pandas_profiling.ProfileReport(data_before_preprocess)
-                    clear_output()
-                    display(pf)
-                except:
-                    print('Data Profiler Failed. No output to show, please continue with Modeling.')
-            
-            '''
-            Final display Ends
-            ''' 
-            
-            #log into experiment
-            experiment__.append(('Regression Setup Config', functions))
-            experiment__.append(('X_training Set', X_train))
-            experiment__.append(('y_training Set', y_train))
-            experiment__.append(('X_test Set', X_test))
-            experiment__.append(('y_test Set', y_test))
-            experiment__.append(('Transformation Pipeline', prep_pipe))
-            try:
-                experiment__.append(('Target Inverse Transformer', target_inverse_transformer))
-            except:
-                pass
-
+    if profile:
+        print('Setup Succesfully Completed. Loading Profile Now... Please Wait!')
     else:
-        
-        monitor.iloc[1,1:] = 'Splitting Data'
         if verbose:
-            if html_param:
-                update_display(monitor, display_id = 'monitor')
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=1-train_size, random_state=seed, shuffle=data_split_shuffle)
-        progress.value += 1
-        
-        clear_output()
-        
-        '''
-        Final display Starts
-        '''
-        clear_output()
-        if verbose:
-            print(' ')
-        if profile:
-            print('Setup Succesfully Completed. Loading Profile Now... Please Wait!')
+            print('Setup Succesfully Completed.')
+    functions = pd.DataFrame ( [ ['session_id', seed ],
+                                    ['Transform Target ', transform_target],
+                                    ['Transform Target Method', transform_target_method_grid],
+                                    ['Original Data', data_before_preprocess.shape ],
+                                    ['Missing Values ', missing_flag],
+                                    ['Numeric Features ', str(float_type) ],
+                                    ['Categorical Features ', str(cat_type) ],
+                                    ['Ordinal Features ', ordinal_features_grid],
+                                    ['High Cardinality Features ', high_cardinality_features_grid],
+                                    ['High Cardinality Method ', high_cardinality_method_grid],
+                                    ['Sampled Data', '(' + str(X_train.shape[0] + X_test.shape[0]) + ', ' + str(data_before_preprocess.shape[1]) + ')' ], 
+                                    ['Transformed Train Set', X_train.shape ], 
+                                    ['Transformed Test Set',X_test.shape ],
+                                    ['Numeric Imputer ', numeric_imputation],
+                                    ['Categorical Imputer ', categorical_imputation],
+                                    ['Normalize ', normalize ],
+                                    ['Normalize Method ', normalize_grid ],
+                                    ['Transformation ', transformation ],
+                                    ['Transformation Method ', transformation_grid ],
+                                    ['PCA ', pca],
+                                    ['PCA Method ', pca_method_grid],
+                                    ['PCA Components ', pca_components_grid],
+                                    ['Ignore Low Variance ', ignore_low_variance],
+                                    ['Combine Rare Levels ', combine_rare_levels],
+                                    ['Rare Level Threshold ', rare_level_threshold_grid],
+                                    ['Numeric Binning ', numeric_bin_grid],
+                                    ['Remove Outliers ', remove_outliers],
+                                    ['Outliers Threshold ', outliers_threshold_grid],
+                                    ['Remove Multicollinearity ', remove_multicollinearity],
+                                    ['Multicollinearity Threshold ', multicollinearity_threshold_grid],
+                                    ['Clustering ', create_clusters],
+                                    ['Clustering Iteration ', cluster_iter_grid],
+                                    ['Polynomial Features ', polynomial_features],
+                                    ['Polynomial Degree ', polynomial_degree_grid],
+                                    ['Trignometry Features ', trigonometry_features],
+                                    ['Polynomial Threshold ', polynomial_threshold_grid], 
+                                    ['Group Features ', group_features_grid],
+                                    ['Feature Selection ', feature_selection],
+                                    ['Features Selection Threshold ', feature_selection_threshold_grid],
+                                    ['Feature Interaction ', feature_interaction],
+                                    ['Feature Ratio ', feature_ratio],
+                                    ['Interaction Threshold ', interaction_threshold_grid],
+                                ], columns = ['Description', 'Value'] )
+    
+    functions_ = functions.style.apply(highlight_max)
+    if verbose:
+        if html_param:
+            display(functions_)
         else:
-            if verbose:
-                print('Setup Succesfully Completed.')
-        functions = pd.DataFrame ( [ ['session_id', seed ],
-                                     ['Transform Target ', transform_target],
-                                     ['Transform Target Method', transform_target_method_grid],
-                                     ['Original Data', data_before_preprocess.shape ],
-                                     ['Missing Values ', missing_flag],
-                                     ['Numeric Features ', str(float_type) ],
-                                     ['Categorical Features ', str(cat_type) ],
-                                     ['Ordinal Features ', ordinal_features_grid],
-                                     ['High Cardinality Features ', high_cardinality_features_grid],
-                                     ['High Cardinality Method ', high_cardinality_method_grid],
-                                     ['Sampled Data', '(' + str(X_train.shape[0] + X_test.shape[0]) + ', ' + str(data_before_preprocess.shape[1]) + ')' ], 
-                                     ['Transformed Train Set', X_train.shape ], 
-                                     ['Transformed Test Set',X_test.shape ],
-                                     ['Numeric Imputer ', numeric_imputation],
-                                     ['Categorical Imputer ', categorical_imputation],
-                                     ['Normalize ', normalize ],
-                                     ['Normalize Method ', normalize_grid ],
-                                     ['Transformation ', transformation ],
-                                     ['Transformation Method ', transformation_grid ],
-                                     ['PCA ', pca],
-                                     ['PCA Method ', pca_method_grid],
-                                     ['PCA Components ', pca_components_grid],
-                                     ['Ignore Low Variance ', ignore_low_variance],
-                                     ['Combine Rare Levels ', combine_rare_levels],
-                                     ['Rare Level Threshold ', rare_level_threshold_grid],
-                                     ['Numeric Binning ', numeric_bin_grid],
-                                     ['Remove Outliers ', remove_outliers],
-                                     ['Outliers Threshold ', outliers_threshold_grid],
-                                     ['Remove Multicollinearity ', remove_multicollinearity],
-                                     ['Multicollinearity Threshold ', multicollinearity_threshold_grid],
-                                     ['Clustering ', create_clusters],
-                                     ['Clustering Iteration ', cluster_iter_grid],
-                                     ['Polynomial Features ', polynomial_features],
-                                     ['Polynomial Degree ', polynomial_degree_grid],
-                                     ['Trignometry Features ', trigonometry_features],
-                                     ['Polynomial Threshold ', polynomial_threshold_grid], 
-                                     ['Group Features ', group_features_grid],
-                                     ['Feature Selection ', feature_selection],
-                                     ['Features Selection Threshold ', feature_selection_threshold_grid],
-                                     ['Feature Interaction ', feature_interaction],
-                                     ['Feature Ratio ', feature_ratio],
-                                     ['Interaction Threshold ', interaction_threshold_grid],
-                                   ], columns = ['Description', 'Value'] )
+            print(functions_.data)
         
-        functions_ = functions.style.apply(highlight_max)
-        if verbose:
-            if html_param:
-                display(functions_)
-            else:
-                print(functions_.data)
-            
-        if profile:
-            try:
-                import pandas_profiling
-                pf = pandas_profiling.ProfileReport(data_before_preprocess)
-                clear_output()
-                display(pf)
-            except:
-                print('Data Profiler Failed. No output to show, please continue with Modeling.')
-            
-        '''
-        Final display Ends
-        '''   
-        
-        #log into experiment
-        experiment__.append(('Regression Setup Config', functions))
-        experiment__.append(('X_training Set', X_train))
-        experiment__.append(('y_training Set', y_train))
-        experiment__.append(('X_test Set', X_test))
-        experiment__.append(('y_test Set', y_test))
-        experiment__.append(('Transformation Pipeline', prep_pipe))
+    if profile:
         try:
-            experiment__.append(('Target Inverse Transformer', target_inverse_transformer))
+            import pandas_profiling
+            pf = pandas_profiling.ProfileReport(data_before_preprocess)
+            clear_output()
+            display(pf)
         except:
-            pass
+            print('Data Profiler Failed. No output to show, please continue with Modeling.')
         
+    '''
+    Final display Ends
+    '''   
+    
+    #log into experiment
+    experiment__.append(('Regression Setup Config', functions))
+    experiment__.append(('X_training Set', X_train))
+    experiment__.append(('y_training Set', y_train))
+    experiment__.append(('X_test Set', X_test))
+    experiment__.append(('y_test Set', y_test))
+    experiment__.append(('Transformation Pipeline', prep_pipe))
+    try:
+        experiment__.append(('Target Inverse Transformer', target_inverse_transformer))
+    except:
+        pass
+
     #end runtime
     runtime_end = time.time()
     runtime = np.array(runtime_end - runtime_start).round(2)

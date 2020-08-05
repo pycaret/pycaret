@@ -1156,7 +1156,7 @@ def setup(data,
     
     logger.info("Creating preprocessing pipeline")
 
-    data = preprocess.Preprocess_Path_One(train_data = data, 
+    preprocess.Preprocess_Path_One(train_data = data, 
                                           target_variable = target,
                                           categorical_features = cat_features_pass,
                                           apply_ordinal_encoding = apply_ordinal_encoding_pass,
@@ -1205,20 +1205,12 @@ def setup(data,
                                           feature_interactions_top_features_to_select_percentage=interaction_threshold, 
                                           display_types = display_dtypes_pass, #this is for inferred input box
                                           target_transformation = False, #not needed for classification
-                                          random_state = seed)
+                                          random_state = seed,
+                                          fit_transform_and_return = False) #to save time, will not fit and transform data, as that will be done later
 
     progress.value += 1
     logger.info("Preprocessing pipeline created successfully")
 
-    if hasattr(preprocess.dtypes, 'replacement'):
-            label_encoded = preprocess.dtypes.replacement
-            label_encoded = str(label_encoded).replace("'", '')
-            label_encoded = str(label_encoded).replace("{", '')
-            label_encoded = str(label_encoded).replace("}", '')
-
-    else:
-        label_encoded = 'None'
-    
     try:
         res_type = ['quit','Quit','exit','EXIT','q','Q','e','E','QUIT','Exit']
         res = preprocess.dtypes.response
@@ -1231,119 +1223,6 @@ def setup(data,
         
     #save prep pipe
     prep_pipe = preprocess.pipe
-    
-    logger.info("Creating grid variables")
-
-    #generate values for grid show
-    missing_values = data_before_preprocess.isna().sum().sum()
-    if missing_values > 0:
-        missing_flag = True
-    else:
-        missing_flag = False
-    
-    if normalize is True:
-        normalize_grid = normalize_method
-    else:
-        normalize_grid = 'None'
-        
-    if transformation is True:
-        transformation_grid = transformation_method
-    else:
-        transformation_grid = 'None'
-    
-    if pca is True:
-        pca_method_grid = pca_method
-    else:
-        pca_method_grid = 'None'
-   
-    if pca is True:
-        pca_components_grid = pca_components_pass
-    else:
-        pca_components_grid = 'None'
-        
-    if combine_rare_levels:
-        rare_level_threshold_grid = rare_level_threshold
-    else:
-        rare_level_threshold_grid = 'None'
-    
-    if bin_numeric_features is None:
-        numeric_bin_grid = False
-    else:
-        numeric_bin_grid = True
-    
-    if remove_outliers is False:
-        outliers_threshold_grid = None
-    else:
-        outliers_threshold_grid = outliers_threshold
-    
-    if remove_multicollinearity is False:
-        multicollinearity_threshold_grid = None
-    else:
-        multicollinearity_threshold_grid = multicollinearity_threshold
-    
-    if create_clusters is False:
-        cluster_iter_grid = None
-    else:
-        cluster_iter_grid = cluster_iter
-    
-    if polynomial_features:
-        polynomial_degree_grid = polynomial_degree
-    else:
-        polynomial_degree_grid = None
-    
-    if polynomial_features or trigonometry_features:
-        polynomial_threshold_grid = polynomial_threshold
-    else:
-        polynomial_threshold_grid = None
-    
-    if feature_selection:
-        feature_selection_threshold_grid = feature_selection_threshold
-    else:
-        feature_selection_threshold_grid = None
-    
-    if feature_interaction or feature_ratio:
-        interaction_threshold_grid = interaction_threshold
-    else:
-        interaction_threshold_grid = None
-        
-    if ordinal_features is not None:
-        ordinal_features_grid = True
-    else:
-        ordinal_features_grid = False
-        
-    if handle_unknown_categorical:
-        unknown_categorical_method_grid = unknown_categorical_method
-    else:
-        unknown_categorical_method_grid = None
-    
-    if group_features is not None:
-        group_features_grid = True
-    else:
-        group_features_grid = False
-    
-    if high_cardinality_features is not None:
-        high_cardinality_features_grid = True
-    else:
-        high_cardinality_features_grid = False
-    
-    if high_cardinality_features_grid:
-        high_cardinality_method_grid = high_cardinality_method
-    else:
-        high_cardinality_method_grid = None
-    
-    learned_types = preprocess.dtypes.learent_dtypes
-    learned_types.drop(target, inplace=True)
-
-    float_type = 0 
-    cat_type = 0
-
-    for i in preprocess.dtypes.learent_dtypes:
-        if 'float' in str(i):
-            float_type += 1
-        elif 'object' in str(i):
-            cat_type += 1
-        elif 'int' in str(i):
-            float_type += 1
     
     """
     preprocessing ends here
@@ -1453,6 +1332,15 @@ def setup(data,
     
             X_, X__, y_, y__ = train_test_split(X, y, test_size=1-i, stratify=y, random_state=seed, shuffle=data_split_shuffle)
             X_train, X_test, y_train, y_test = train_test_split(X_, y_, test_size=0.3, stratify=y_, random_state=seed, shuffle=data_split_shuffle)
+            
+            train = prep_pipe.fit_transform(pd.concat([X_train, y_train], axis=1))
+            X_train = train.drop(target,axis=1)
+            y_train = train[target]
+
+            test = prep_pipe.fit_transform(pd.concat([X_test, y_test], axis=1))
+            X_test = test.drop(target,axis=1)
+            y_test = test[target]
+            
             model.fit(X_train,y_train)
             pred_ = model.predict(X_test)
             try:
@@ -1580,92 +1468,7 @@ def setup(data,
         if sample_size == '' or sample_size == '1':
             
             X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=1-train_size, stratify=y, random_state=seed, shuffle=data_split_shuffle)
-            
-            '''
-            Final display Starts
-            '''
-            clear_output()
-            if profile:
-                print('Setup Succesfully Completed! Loading Profile Now... Please Wait!')
-            else:
-                if verbose:
-                    print('Setup Succesfully Completed!')
-            
-            functions = pd.DataFrame ( [ ['session_id', seed ],
-                                         ['Target Type', target_type],
-                                         ['Label Encoded', label_encoded],
-                                         ['Original Data', data_before_preprocess.shape ],
-                                         ['Missing Values ', missing_flag],
-                                         ['Numeric Features ', str(float_type) ],
-                                         ['Categorical Features ', str(cat_type) ],
-                                         ['Ordinal Features ', ordinal_features_grid], 
-                                         ['High Cardinality Features ', high_cardinality_features_grid],
-                                         ['High Cardinality Method ', high_cardinality_method_grid],
-                                         ['Sampled Data', '(' + str(X_train.shape[0] + X_test.shape[0]) + ', ' + str(data_before_preprocess.shape[1]) + ')' ], 
-                                         ['Transformed Train Set', X_train.shape ], 
-                                         ['Transformed Test Set',X_test.shape ],
-                                         ['Numeric Imputer ', numeric_imputation],
-                                         ['Categorical Imputer ', categorical_imputation],
-                                         ['Normalize ', normalize ],
-                                         ['Normalize Method ', normalize_grid ],
-                                         ['Transformation ', transformation ],
-                                         ['Transformation Method ', transformation_grid ],
-                                         ['PCA ', pca],
-                                         ['PCA Method ', pca_method_grid],
-                                         ['PCA Components ', pca_components_grid],
-                                         ['Ignore Low Variance ', ignore_low_variance],
-                                         ['Combine Rare Levels ', combine_rare_levels],
-                                         ['Rare Level Threshold ', rare_level_threshold_grid],
-                                         ['Numeric Binning ', numeric_bin_grid],
-                                         ['Remove Outliers ', remove_outliers],
-                                         ['Outliers Threshold ', outliers_threshold_grid],
-                                         ['Remove Multicollinearity ', remove_multicollinearity],
-                                         ['Multicollinearity Threshold ', multicollinearity_threshold_grid],
-                                         ['Clustering ', create_clusters],
-                                         ['Clustering Iteration ', cluster_iter_grid],
-                                         ['Polynomial Features ', polynomial_features],
-                                         ['Polynomial Degree ', polynomial_degree_grid], 
-                                         ['Trignometry Features ', trigonometry_features], 
-                                         ['Polynomial Threshold ', polynomial_threshold_grid], 
-                                         ['Group Features ', group_features_grid], 
-                                         ['Feature Selection ', feature_selection],
-                                         ['Features Selection Threshold ', feature_selection_threshold_grid], 
-                                         ['Feature Interaction ', feature_interaction], 
-                                         ['Feature Ratio ', feature_ratio], 
-                                         ['Interaction Threshold ', interaction_threshold_grid],
-                                         ['Fix Imbalance', fix_imbalance_param],
-                                         ['Fix Imbalance Method', fix_imbalance_model_name] 
-                                       ], columns = ['Description', 'Value'] )
 
-            functions_ = functions.style.apply(highlight_max)
-            if verbose:
-                if html_param:
-                    display(functions_)
-                else:
-                    print(functions_.data)
-            
-            if profile:
-                try:
-                    import pandas_profiling
-                    pf = pandas_profiling.ProfileReport(data_before_preprocess)
-                    clear_output()
-                    display(pf)
-                except:
-                    print('Data Profiler Failed. No output to show, please continue with Modeling.')
-                    logger.error("Data Profiler Failed. No output to show, please continue with Modeling.")
-            
-            '''
-            Final display Ends
-            '''   
-            
-            #log into experiment
-            experiment__.append(('Classification Setup Config', functions))
-            experiment__.append(('X_training Set', X_train))
-            experiment__.append(('y_training Set', y_train))
-            experiment__.append(('X_test Set', X_test))
-            experiment__.append(('y_test Set', y_test)) 
-            experiment__.append(('Transformation Pipeline', prep_pipe))
-        
         else:
             
             sample_n = float(sample_size)
@@ -1674,96 +1477,6 @@ def setup(data,
             
             X_train, X_test, y_train, y_test = train_test_split(X_selected, y_selected, test_size=1-train_size, stratify=y_selected, 
                                                                 random_state=seed, shuffle=data_split_shuffle)
-            clear_output()
-            
-            
-            '''
-            Final display Starts
-            '''
-
-                
-            clear_output()
-            if profile:
-                print('Setup Succesfully Completed! Loading Profile Now... Please Wait!')
-            else:
-                if verbose:
-                    print('Setup Succesfully Completed!')
-                
-            functions = pd.DataFrame ( [ ['session_id', seed ],
-                                         ['Target Type', target_type],
-                                         ['Label Encoded', label_encoded],
-                                         ['Original Data', data_before_preprocess.shape ],
-                                         ['Missing Values ', missing_flag],
-                                         ['Numeric Features ', str(float_type) ],
-                                         ['Categorical Features ', str(cat_type) ],
-                                         ['Ordinal Features ', ordinal_features_grid], 
-                                         ['High Cardinality Features ', high_cardinality_features_grid],
-                                         ['High Cardinality Method ', high_cardinality_method_grid], 
-                                         ['Sampled Data', '(' + str(X_train.shape[0] + X_test.shape[0]) + ', ' + str(data_before_preprocess.shape[1]) + ')' ], 
-                                         ['Transformed Train Set', X_train.shape ], 
-                                         ['Transformed Test Set',X_test.shape ],
-                                         ['Numeric Imputer ', numeric_imputation],
-                                         ['Categorical Imputer ', categorical_imputation],
-                                         ['Normalize ', normalize ],
-                                         ['Normalize Method ', normalize_grid ],
-                                         ['Transformation ', transformation ],
-                                         ['Transformation Method ', transformation_grid ],
-                                         ['PCA ', pca],
-                                         ['PCA Method ', pca_method_grid],
-                                         ['PCA Components ', pca_components_grid],
-                                         ['Ignore Low Variance ', ignore_low_variance],
-                                         ['Combine Rare Levels ', combine_rare_levels],
-                                         ['Rare Level Threshold ', rare_level_threshold_grid],
-                                         ['Numeric Binning ', numeric_bin_grid],
-                                         ['Remove Outliers ', remove_outliers],
-                                         ['Outliers Threshold ', outliers_threshold_grid],
-                                         ['Remove Multicollinearity ', remove_multicollinearity],
-                                         ['Multicollinearity Threshold ', multicollinearity_threshold_grid],
-                                         ['Clustering ', create_clusters],
-                                         ['Clustering Iteration ', cluster_iter_grid],
-                                         ['Polynomial Features ', polynomial_features], 
-                                         ['Polynomial Degree ', polynomial_degree_grid], 
-                                         ['Trignometry Features ', trigonometry_features], 
-                                         ['Polynomial Threshold ', polynomial_threshold_grid], 
-                                         ['Group Features ', group_features_grid], 
-                                         ['Feature Selection ', feature_selection], 
-                                         ['Features Selection Threshold ', feature_selection_threshold_grid], 
-                                         ['Feature Interaction ', feature_interaction], 
-                                         ['Feature Ratio ', feature_ratio], 
-                                         ['Interaction Threshold ', interaction_threshold_grid],
-                                         ['Fix Imbalance', fix_imbalance_param],
-                                         ['Fix Imbalance Method', fix_imbalance_model_name] 
-                                       ], columns = ['Description', 'Value'] )
-            
-            #functions_ = functions.style.hide_index()
-            functions_ = functions.style.apply(highlight_max)
-            if verbose:
-                if html_param:
-                    display(functions_)
-                else:
-                    print(functions_.data)
-            
-            if profile:
-                try:
-                    import pandas_profiling
-                    pf = pandas_profiling.ProfileReport(data_before_preprocess)
-                    clear_output()
-                    display(pf)
-                except:
-                    print('Data Profiler Failed. No output to show, please continue with Modeling.')
-                    logger.error("Data Profiler Failed. No output to show, please continue with Modeling.")
-            
-            '''
-            Final display Ends
-            ''' 
-            
-            #log into experiment
-            experiment__.append(('Classification Setup Config', functions))
-            experiment__.append(('X_training Set', X_train))
-            experiment__.append(('y_training Set', y_train))
-            experiment__.append(('X_test Set', X_test))
-            experiment__.append(('y_test Set', y_test)) 
-            experiment__.append(('Transformation Pipeline', prep_pipe))
 
     else:
         
@@ -1772,94 +1485,228 @@ def setup(data,
             if html_param:
                 update_display(monitor, display_id = 'monitor')
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=1-train_size, stratify=y, random_state=seed, shuffle=data_split_shuffle)
-        progress.value += 1
         
-        clear_output()
+    train = prep_pipe.fit_transform(pd.concat([X_train, y_train], axis=1))
+    X_train = train.drop(target,axis=1)
+    y_train = train[target]
+
+    test = prep_pipe.fit_transform(pd.concat([X_test, y_test], axis=1))
+    X_test = test.drop(target,axis=1)
+    y_test = test[target]
+
+    progress.value += 1
+    
+    clear_output()
+
+    if hasattr(preprocess.dtypes, 'replacement'):
+            label_encoded = preprocess.dtypes.replacement
+            label_encoded = str(label_encoded).replace("'", '')
+            label_encoded = str(label_encoded).replace("{", '')
+            label_encoded = str(label_encoded).replace("}", '')
+
+    else:
+        label_encoded = 'None'
+    
+    logger.info("Creating grid variables")
+
+    #generate values for grid show
+    missing_values = data_before_preprocess.isna().sum().sum()
+    if missing_values > 0:
+        missing_flag = True
+    else:
+        missing_flag = False
+    
+    if normalize is True:
+        normalize_grid = normalize_method
+    else:
+        normalize_grid = 'None'
         
-        '''
-        Final display Starts
-        '''
-        clear_output()
-        if profile:
-            print('Setup Succesfully Completed! Loading Profile Now... Please Wait!')
-        else:
-            if verbose:
-                print('Setup Succesfully Completed!')
-            
-        functions = pd.DataFrame ( [ ['session_id', seed ],
-                                     ['Target Type', target_type],
-                                     ['Label Encoded', label_encoded],
-                                     ['Original Data', data_before_preprocess.shape ],
-                                     ['Missing Values ', missing_flag],
-                                     ['Numeric Features ', str(float_type) ],
-                                     ['Categorical Features ', str(cat_type) ],
-                                     ['Ordinal Features ', ordinal_features_grid],
-                                     ['High Cardinality Features ', high_cardinality_features_grid],
-                                     ['High Cardinality Method ', high_cardinality_method_grid],
-                                     ['Sampled Data', '(' + str(X_train.shape[0] + X_test.shape[0]) + ', ' + str(data_before_preprocess.shape[1]) + ')' ], 
-                                     ['Transformed Train Set', X_train.shape ], 
-                                     ['Transformed Test Set',X_test.shape ],
-                                     ['Numeric Imputer ', numeric_imputation],
-                                     ['Categorical Imputer ', categorical_imputation],
-                                     ['Normalize ', normalize ],
-                                     ['Normalize Method ', normalize_grid ],
-                                     ['Transformation ', transformation ],
-                                     ['Transformation Method ', transformation_grid ],
-                                     ['PCA ', pca],
-                                     ['PCA Method ', pca_method_grid],
-                                     ['PCA Components ', pca_components_grid],
-                                     ['Ignore Low Variance ', ignore_low_variance],
-                                     ['Combine Rare Levels ', combine_rare_levels],
-                                     ['Rare Level Threshold ', rare_level_threshold_grid],
-                                     ['Numeric Binning ', numeric_bin_grid],
-                                     ['Remove Outliers ', remove_outliers],
-                                     ['Outliers Threshold ', outliers_threshold_grid],
-                                     ['Remove Multicollinearity ', remove_multicollinearity],
-                                     ['Multicollinearity Threshold ', multicollinearity_threshold_grid],
-                                     ['Clustering ', create_clusters],
-                                     ['Clustering Iteration ', cluster_iter_grid],
-                                     ['Polynomial Features ', polynomial_features],
-                                     ['Polynomial Degree ', polynomial_degree_grid],
-                                     ['Trignometry Features ', trigonometry_features],
-                                     ['Polynomial Threshold ', polynomial_threshold_grid],
-                                     ['Group Features ', group_features_grid],
-                                     ['Feature Selection ', feature_selection],
-                                     ['Features Selection Threshold ', feature_selection_threshold_grid],
-                                     ['Feature Interaction ', feature_interaction], 
-                                     ['Feature Ratio ', feature_ratio], 
-                                     ['Interaction Threshold ', interaction_threshold_grid], 
-                                     ['Fix Imbalance', fix_imbalance_param],
-                                     ['Fix Imbalance Method', fix_imbalance_model_name] 
-                                   ], columns = ['Description', 'Value'] )
+    if transformation is True:
+        transformation_grid = transformation_method
+    else:
+        transformation_grid = 'None'
+    
+    if pca is True:
+        pca_method_grid = pca_method
+    else:
+        pca_method_grid = 'None'
+   
+    if pca is True:
+        pca_components_grid = pca_components_pass
+    else:
+        pca_components_grid = 'None'
         
-        functions_ = functions.style.apply(highlight_max)
+    if combine_rare_levels:
+        rare_level_threshold_grid = rare_level_threshold
+    else:
+        rare_level_threshold_grid = 'None'
+    
+    if bin_numeric_features is None:
+        numeric_bin_grid = False
+    else:
+        numeric_bin_grid = True
+    
+    if remove_outliers is False:
+        outliers_threshold_grid = None
+    else:
+        outliers_threshold_grid = outliers_threshold
+    
+    if remove_multicollinearity is False:
+        multicollinearity_threshold_grid = None
+    else:
+        multicollinearity_threshold_grid = multicollinearity_threshold
+    
+    if create_clusters is False:
+        cluster_iter_grid = None
+    else:
+        cluster_iter_grid = cluster_iter
+    
+    if polynomial_features:
+        polynomial_degree_grid = polynomial_degree
+    else:
+        polynomial_degree_grid = None
+    
+    if polynomial_features or trigonometry_features:
+        polynomial_threshold_grid = polynomial_threshold
+    else:
+        polynomial_threshold_grid = None
+    
+    if feature_selection:
+        feature_selection_threshold_grid = feature_selection_threshold
+    else:
+        feature_selection_threshold_grid = None
+    
+    if feature_interaction or feature_ratio:
+        interaction_threshold_grid = interaction_threshold
+    else:
+        interaction_threshold_grid = None
+        
+    if ordinal_features is not None:
+        ordinal_features_grid = True
+    else:
+        ordinal_features_grid = False
+        
+    if handle_unknown_categorical:
+        unknown_categorical_method_grid = unknown_categorical_method
+    else:
+        unknown_categorical_method_grid = None
+    
+    if group_features is not None:
+        group_features_grid = True
+    else:
+        group_features_grid = False
+    
+    if high_cardinality_features is not None:
+        high_cardinality_features_grid = True
+    else:
+        high_cardinality_features_grid = False
+    
+    if high_cardinality_features_grid:
+        high_cardinality_method_grid = high_cardinality_method
+    else:
+        high_cardinality_method_grid = None
+    
+    learned_types = preprocess.dtypes.learent_dtypes
+    learned_types.drop(target, inplace=True)
+
+    float_type = 0 
+    cat_type = 0
+
+    for i in preprocess.dtypes.learent_dtypes:
+        if 'float' in str(i):
+            float_type += 1
+        elif 'object' in str(i):
+            cat_type += 1
+        elif 'int' in str(i):
+            float_type += 1
+
+    '''
+    Final display Starts
+    '''
+
+        
+    clear_output()
+    if profile:
+        print('Setup Succesfully Completed! Loading Profile Now... Please Wait!')
+    else:
         if verbose:
-            if html_param:
-                display(functions_)
-            else:
-                print(functions_.data)
+            print('Setup Succesfully Completed!')
         
-        if profile:
-            try:
-                import pandas_profiling
-                pf = pandas_profiling.ProfileReport(data_before_preprocess)
-                clear_output()
-                display(pf)
-            except:
-                print('Data Profiler Failed. No output to show, please continue with Modeling.')
-                logger.error("Data Profiler Failed. No output to show, please continue with Modeling.")
-            
-        '''
-        Final display Ends
-        '''   
-        
-        #log into experiment
-        experiment__.append(('Classification Setup Config', functions))
-        experiment__.append(('X_training Set', X_train))
-        experiment__.append(('y_training Set', y_train))
-        experiment__.append(('X_test Set', X_test))
-        experiment__.append(('y_test Set', y_test))
-        experiment__.append(('Transformation Pipeline', prep_pipe))
+    functions = pd.DataFrame ( [ ['session_id', seed ],
+                                    ['Target Type', target_type],
+                                    ['Label Encoded', label_encoded],
+                                    ['Original Data', data_before_preprocess.shape ],
+                                    ['Missing Values ', missing_flag],
+                                    ['Numeric Features ', str(float_type) ],
+                                    ['Categorical Features ', str(cat_type) ],
+                                    ['Ordinal Features ', ordinal_features_grid], 
+                                    ['High Cardinality Features ', high_cardinality_features_grid],
+                                    ['High Cardinality Method ', high_cardinality_method_grid], 
+                                    ['Sampled Data', '(' + str(X_train.shape[0] + X_test.shape[0]) + ', ' + str(data_before_preprocess.shape[1]) + ')' ], 
+                                    ['Transformed Train Set', X_train.shape ], 
+                                    ['Transformed Test Set',X_test.shape ],
+                                    ['Numeric Imputer ', numeric_imputation],
+                                    ['Categorical Imputer ', categorical_imputation],
+                                    ['Normalize ', normalize ],
+                                    ['Normalize Method ', normalize_grid ],
+                                    ['Transformation ', transformation ],
+                                    ['Transformation Method ', transformation_grid ],
+                                    ['PCA ', pca],
+                                    ['PCA Method ', pca_method_grid],
+                                    ['PCA Components ', pca_components_grid],
+                                    ['Ignore Low Variance ', ignore_low_variance],
+                                    ['Combine Rare Levels ', combine_rare_levels],
+                                    ['Rare Level Threshold ', rare_level_threshold_grid],
+                                    ['Numeric Binning ', numeric_bin_grid],
+                                    ['Remove Outliers ', remove_outliers],
+                                    ['Outliers Threshold ', outliers_threshold_grid],
+                                    ['Remove Multicollinearity ', remove_multicollinearity],
+                                    ['Multicollinearity Threshold ', multicollinearity_threshold_grid],
+                                    ['Clustering ', create_clusters],
+                                    ['Clustering Iteration ', cluster_iter_grid],
+                                    ['Polynomial Features ', polynomial_features], 
+                                    ['Polynomial Degree ', polynomial_degree_grid], 
+                                    ['Trignometry Features ', trigonometry_features], 
+                                    ['Polynomial Threshold ', polynomial_threshold_grid], 
+                                    ['Group Features ', group_features_grid], 
+                                    ['Feature Selection ', feature_selection], 
+                                    ['Features Selection Threshold ', feature_selection_threshold_grid], 
+                                    ['Feature Interaction ', feature_interaction], 
+                                    ['Feature Ratio ', feature_ratio], 
+                                    ['Interaction Threshold ', interaction_threshold_grid],
+                                    ['Fix Imbalance', fix_imbalance_param],
+                                    ['Fix Imbalance Method', fix_imbalance_model_name] 
+                                ], columns = ['Description', 'Value'] )
+    
+    #functions_ = functions.style.hide_index()
+    functions_ = functions.style.apply(highlight_max)
+    if verbose:
+        if html_param:
+            display(functions_)
+        else:
+            print(functions_.data)
+    
+    if profile:
+        try:
+            import pandas_profiling
+            pf = pandas_profiling.ProfileReport(data_before_preprocess)
+            clear_output()
+            display(pf)
+        except:
+            print('Data Profiler Failed. No output to show, please continue with Modeling.')
+            logger.error("Data Profiler Failed. No output to show, please continue with Modeling.")
+    
+    '''
+    Final display Ends
+    ''' 
+    
+    #log into experiment
+    experiment__.append(('Classification Setup Config', functions))
+    experiment__.append(('X_training Set', X_train))
+    experiment__.append(('y_training Set', y_train))
+    experiment__.append(('X_test Set', X_test))
+    experiment__.append(('y_test Set', y_test)) 
+    experiment__.append(('Transformation Pipeline', prep_pipe))
 
     #end runtime
     runtime_end = time.time()

@@ -2310,7 +2310,7 @@ def Preprocess_Path_One(train_data,target_variable,ml_usecase=None,test_data =No
                                 apply_feature_interactions= False, feature_interactions_to_apply=['multiply','divide','add','subtract'],feature_interactions_top_features_to_select_percentage=.01,
                                 cluster_entire_data= False, range_of_clusters_to_try=20, 
                                 apply_pca = False , pca_method = 'pca_liner',pca_variance_retained_or_number_of_components =.99 ,
-                                random_state=42
+                                random_state=42, fit_transform_and_return = True
                                 
 
                                ):
@@ -2559,10 +2559,11 @@ def Preprocess_Path_One(train_data,target_variable,ml_usecase=None,test_data =No
                  ('pca',pca)
                  ])
   
-  if test_data is not None:
-    return(pipe.fit_transform(train_data),pipe.transform(test_data))
-  else:
-    return(pipe.fit_transform(train_data))
+  if fit_transform_and_return:
+    if test_data is not None:
+      return(pipe.fit_transform(train_data),pipe.transform(test_data))
+    else:
+      return(pipe.fit_transform(train_data))
 
 
 
