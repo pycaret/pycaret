@@ -1288,6 +1288,8 @@ def setup(data,
     
     progress.value += 1
     
+    transformed_data = prep_pipe.fit_transform(data)
+
     if sampling is True and data.shape[0] > 25000: #change back to 25000
     
         split_perc = [0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,0.99]
@@ -1321,8 +1323,6 @@ def setup(data,
             MONITOR UPDATE ENDS
             '''
     
-            transformed_data = prep_pipe.fit_transform(data)
-
             X_, X__, y_, y__ = train_test_split(X, y, test_size=1-i, random_state=seed, shuffle=data_split_shuffle)
             X_train, X_test, y_train, y_test = train_test_split(X_, y_, test_size=0.3, random_state=seed, shuffle=data_split_shuffle)
             
@@ -1417,16 +1417,15 @@ def setup(data,
         if verbose:
             if html_param:
                 update_display(monitor, display_id = 'monitor')
-        transformed_data = prep_pipe.fit_transform(data)
-        
+    
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=1-train_size, random_state=seed, shuffle=data_split_shuffle)
- 
-        train = prep_pipe.fit_transform(pd.concat([X_train, y_train], axis=1))
-        X_train = train.drop(target,axis=1)
-        y_train = train[target]
 
-        X_test = prep_pipe.transform(X_test)
-        y_test.update(transformed_data[target])
+    train = prep_pipe.fit_transform(pd.concat([X_train, y_train], axis=1))
+    X_train = train.drop(target,axis=1)
+    y_train = train[target]
+
+    X_test = prep_pipe.transform(X_test)
+    y_test.update(transformed_data[target])
 
     progress.value += 1
     
