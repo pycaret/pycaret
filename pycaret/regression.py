@@ -2417,14 +2417,15 @@ def create_model(estimator = None,
                             'LassoLars' : 'Lasso Least Angle Regression',
                             'PassiveAggressiveRegressor' : 'Passive Aggressive Regressor',
                             'CatBoostRegressor' : 'CatBoost Regressor',
-                            'BaggingRegressor' : 'Bagging Regressor'}
+                            'BaggingRegressor' : 'Bagging Regressor',
+                            'VotingRegressor' : 'Voting Regressor'}
 
         mn = get_model_name(estimator)
-        
+
         if 'catboost' in mn:
             mn = 'CatBoostRegressor'
 
-        if mn in model_dict_logging.keys():
+        if mn in model_dict_logging:
             full_name = model_dict_logging.get(mn)
         else:
             full_name = mn
@@ -3523,6 +3524,7 @@ def ensemble_model(estimator,
 
 def compare_models(blacklist = None,
                    whitelist = None, #added in pycaret==2.0.0
+                   estimator_list = None,
                    fold = 10, 
                    round = 4, 
                    sort = 'R2',
@@ -3574,11 +3576,16 @@ def compare_models(blacklist = None,
     ----------
     blacklist: list of strings, default = None
     In order to omit certain models from the comparison model ID's can be passed as 
-    a list of strings in blacklist param. 
+    a list of strings in blacklist param. Cannot be used with whitelist and estimator_list.
 
     whitelist: list of strings, default = None
     In order to run only certain models for the comparison, the model ID's can be 
-    passed as a list of strings in whitelist param. 
+    passed as a list of strings in whitelist param. Cannot be used with blacklist and estimator_list.
+
+    estimator_list: list of objects, default = None
+    A list of already created estimators can be passed in order to compare their metrics.
+    Indexes in the score grid will correspond to the indexes of the estimators in estimator_list.
+    Stacked models not supported. Cannot be used with blacklist and whitelist.
 
     fold: integer, default = 10
     Number of folds to be used in Kfold CV. Must be at least 2. 
@@ -3651,8 +3658,8 @@ def compare_models(blacklist = None,
         logger.addHandler(ch)
 
     logger.info("Initializing compare_models()")
-    logger.info("""compare_models(blacklist={}, whitelist={}, fold={}, round={}, sort={}, n_select={}, turbo={}, verbose={})""".\
-        format(str(blacklist), str(whitelist), str(fold), str(round), str(sort), str(n_select), str(turbo), str(verbose)))
+    logger.info("""compare_models(blacklist={}, whitelist={}, estimator_list={}, fold={}, round={}, sort={}, n_select={}, turbo={}, verbose={})""".\
+        format(str(blacklist), str(whitelist), str(estimator_list), str(fold), str(round), str(sort), str(n_select), str(turbo), str(verbose)))
 
     logger.info("Checking exceptions")
 
@@ -3678,6 +3685,13 @@ def compare_models(blacklist = None,
     if whitelist is not None:
         if blacklist is not None:
             sys.exit('(Type Error): Cannot use blacklist parameter when whitelist is used to compare models.')
+
+    #estimator_list check
+    if estimator_list is not None:
+        if blacklist is not None or whitelist is not None:
+            sys.exit('(Type Error): Cannot use estimator_list parameter when whitelist or blacklist are used to compare models.')
+        if any(isinstance(x, list) for x in estimator_list):
+            sys.exit('(Type Error): Stacked models are not yet supported in estimator_list.')
 
     #checking fold parameter
     if type(fold) is not int:
@@ -3712,15 +3726,18 @@ def compare_models(blacklist = None,
     logger.info("Preparing display monitor")
 
     #progress bar
-    if blacklist is None:
-        len_of_blacklist = 0
+    if estimator_list:
+        len_mod = len(estimator_list)
     else:
-        len_of_blacklist = len(blacklist)
-        
-    if turbo:
-        len_mod = 22 - len_of_blacklist
-    else:
-        len_mod = 25 - len_of_blacklist
+        if blacklist is None:
+            len_of_blacklist = 0
+        else:
+            len_of_blacklist = len(blacklist)
+            
+        if turbo:
+            len_mod = 22 - len_of_blacklist
+        else:
+            len_mod = 25 - len_of_blacklist
 
     #n_select param
     if type(n_select) is list:
@@ -3786,40 +3803,6 @@ def compare_models(blacklist = None,
     data_y.reset_index(drop=True, inplace=True)
     
     progress.value += 1
-    
-    logger.info("Importing libraries")
-    #import sklearn dependencies
-    from sklearn.linear_model import LinearRegression
-    from sklearn.linear_model import Ridge
-    from sklearn.linear_model import Lasso
-    from sklearn.linear_model import ElasticNet
-    from sklearn.linear_model import Lars
-    from sklearn.linear_model import LassoLars
-    from sklearn.linear_model import OrthogonalMatchingPursuit
-    from sklearn.linear_model import BayesianRidge
-    from sklearn.linear_model import ARDRegression
-    from sklearn.linear_model import PassiveAggressiveRegressor
-    from sklearn.linear_model import RANSACRegressor
-    from sklearn.linear_model import TheilSenRegressor
-    from sklearn.linear_model import HuberRegressor
-    from sklearn.kernel_ridge import KernelRidge
-    from sklearn.svm import SVR
-    from sklearn.neighbors import KNeighborsRegressor
-    from sklearn.tree import DecisionTreeRegressor
-    from sklearn.ensemble import RandomForestRegressor
-    from sklearn.ensemble import ExtraTreesRegressor
-    from sklearn.ensemble import AdaBoostRegressor
-    from sklearn.ensemble import GradientBoostingRegressor
-    from sklearn.neural_network import MLPRegressor
-    from xgboost import XGBRegressor
-    from catboost import CatBoostRegressor
-    try:
-        import lightgbm as lgb
-    except:
-        pass
-        logger.info("LightGBM import failed")
-   
-    progress.value += 1
 
     
     '''
@@ -3835,6 +3818,37 @@ def compare_models(blacklist = None,
     MONITOR UPDATE ENDS
     '''
     
+    def get_model_name(e):
+        return str(e).split("(")[0]
+
+    model_dict_logging = {'ExtraTreesRegressor' : 'Extra Trees Regressor',
+                        'GradientBoostingRegressor' : 'Gradient Boosting Regressor', 
+                        'RandomForestRegressor' : 'Random Forest',
+                        'LGBMRegressor' : 'Light Gradient Boosting Machine',
+                        'XGBRegressor' : 'Extreme Gradient Boosting',
+                        'AdaBoostRegressor' : 'AdaBoost Regressor', 
+                        'DecisionTreeRegressor' : 'Decision Tree', 
+                        'Ridge' : 'Ridge Regression',
+                        'TheilSenRegressor' : 'TheilSen Regressor', 
+                        'BayesianRidge' : 'Bayesian Ridge',
+                        'LinearRegression' : 'Linear Regression',
+                        'ARDRegression' : 'Automatic Relevance Determination', 
+                        'KernelRidge' : 'Kernel Ridge', 
+                        'RANSACRegressor' : 'Random Sample Consensus', 
+                        'HuberRegressor' : 'Huber Regressor', 
+                        'Lasso' : 'Lasso Regression', 
+                        'ElasticNet' : 'Elastic Net', 
+                        'Lars' : 'Least Angle Regression', 
+                        'OrthogonalMatchingPursuit' : 'Orthogonal Matching Pursuit', 
+                        'MLPRegressor' : 'Multi Level Perceptron',
+                        'KNeighborsRegressor' : 'K Neighbors Regressor',
+                        'SVR' : 'Support Vector Machine',
+                        'LassoLars' : 'Lasso Least Angle Regression',
+                        'PassiveAggressiveRegressor' : 'Passive Aggressive Regressor',
+                        'CatBoostRegressor' : 'CatBoost Regressor',
+                        'BaggingRegressor' : 'Bagging Regressor',
+                        'VotingRegressor' : 'Voting Regressor'}
+
     model_dict = {'Linear Regression' : 'lr',
                    'Lasso Regression' : 'lasso', 
                    'Ridge Regression' : 'ridge', 
@@ -3869,9 +3883,9 @@ def compare_models(blacklist = None,
     
     turbo_blacklist = ['rbfsvm', 'gpc', 'mlp']
 
-    models_to_compare = []
+    model_strs_to_compare = []
 
-    model_store_temporary = {}
+    model_store_final = []
     
     if blacklist is not None:
         
@@ -3882,12 +3896,12 @@ def compare_models(blacklist = None,
         else:
             blacklist = blacklist
         
-        models_to_compare = [x for x in model_library_str if not x in blacklist]
+        model_strs_to_compare = [x for x in model_library_str if not x in blacklist]
         
         
     elif blacklist is None and turbo is True:
         
-        models_to_compare = [x for x in model_library_str if not x in turbo_blacklist]
+        model_strs_to_compare = [x for x in model_library_str if not x in turbo_blacklist]
 
     #checking for whitelist models
     if whitelist is not None:
@@ -3895,7 +3909,7 @@ def compare_models(blacklist = None,
         model_library = []
         model_names = []
 
-        models_to_compare = [x for x in models_to_compare if x in whitelist]  
+        model_strs_to_compare = [x for x in model_strs_to_compare if x in whitelist]  
         
     progress.value += 1
 
@@ -3933,11 +3947,28 @@ def compare_models(blacklist = None,
     import secrets
     URI = secrets.token_hex(nbytes=4)
 
-    for model_str in models_to_compare:
+    if not estimator_list:
+        reset_index = True
+        estimator_list = model_strs_to_compare
+    else:
+        reset_index = False
 
-        model_nice_name = model_dict_reversed[model_str]
+    for idx, model in enumerate(estimator_list):
+        if isinstance(model, str):
+            model_nice_name = model_dict_reversed[model]
+            logger.info("Initializing " + model_nice_name)
+        else:
+            mn = get_model_name(model)
 
-        logger.info("Initializing " + model_nice_name)
+            if 'catboost' in mn:
+                mn = 'CatBoostRegressor'
+
+            if mn in model_dict_logging:
+                model_nice_name = model_dict_logging.get(mn)
+            else:
+                model_nice_name = mn
+            
+            logger.info("Initializing custom model " + model_nice_name)
 
         #run_time
         runtime_start = time.time()
@@ -3946,10 +3977,9 @@ def compare_models(blacklist = None,
         
         logger.info("SubProcess create_model() called ==================================")
         if verbose:
-            model = create_model(model_str, fold = fold, round = round, compare_monitor = monitor, system=False)
+            created_model = create_model(model, fold = fold, round = round, compare_monitor = monitor, system=False)
         else:
-            model = create_model(model_str, fold = fold, round = round, verbose = False, system=False)
-        model_store_temporary[model_nice_name] = model
+            created_model = create_model(model, fold = fold, round = round, verbose = False, system=False)
         logger.info("SubProcess create_model() end ==================================")
 
         model_results = pull()
@@ -3967,15 +3997,23 @@ def compare_models(blacklist = None,
         logger.info("Creating metrics dataframe")
         compare_models_ = pd.DataFrame({'Model':model_nice_name, 'MAE':avgs_mae, 'MSE':avgs_mse, 
                            'RMSE':avgs_rmse, 'R2':avgs_r2, 'RMSLE':avgs_rmsle, 'MAPE':avgs_mape, 'TT (Sec)':avgs_training_time})
-        master_display = pd.concat([master_display, compare_models_],ignore_index=True)
+        if not reset_index:
+            compare_models_.set_index(pd.Series([idx]), inplace=True)
+
+        master_display = pd.concat([master_display, compare_models_],ignore_index=reset_index)
         #master_display = master_display.round(round)
+
+        model_store_final.append((compare_models_.reset_index(drop=True)[sort][0], created_model))
         
         if sort == 'R2':
             master_display = master_display.sort_values(by=sort,ascending=False)
+            model_store_final.sort(key=lambda x: x[0], reverse=True)
         else:
             master_display = master_display.sort_values(by=sort,ascending=True)
+            model_store_final.sort(key=lambda x: x[0], reverse=False)
 
-        master_display.reset_index(drop=True, inplace=True)
+        if reset_index:
+            master_display.reset_index(drop=True, inplace=True)
         
         if verbose:
             if html_param:
@@ -4005,7 +4043,7 @@ def compare_models(blacklist = None,
                 # Get active run to log as tag
                 RunID = mlflow.active_run().info.run_id
 
-                params = model.get_params()
+                params = created_model.get_params()
 
                 for i in list(params):
                     v = params.get(i)
@@ -4032,7 +4070,7 @@ def compare_models(blacklist = None,
 
                 # Log model and transformation pipeline
                 logger.info("SubProcess save_model() called ==================================")
-                save_model(model, 'Trained Model', verbose=False)
+                save_model(created_model, 'Trained Model', verbose=False)
                 logger.info("SubProcess save_model() end ==================================")
                 mlflow.log_artifact('Trained Model' + '.pkl')
                 size_bytes = Path('Trained Model.pkl').stat().st_size
@@ -4084,16 +4122,14 @@ def compare_models(blacklist = None,
         if html_param:
             update_display(monitor, display_id = 'monitor')
 
-    sorted_model_names = list(compare_models_.data['Model'])
     if n_select < 0:
-        sorted_model_names = sorted_model_names[n_select:]
+        model_store_final = model_store_final[n_select:]
     else:
-        sorted_model_names = sorted_model_names[:n_select]
+        model_store_final = model_store_final[:n_select]
     
-    model_store_final = []
+    _, model_store_final = zip(*model_store_final)
 
-    for model_name in sorted_model_names:
-        model_store_final.append(model_store_temporary[model_name])
+    model_store_final = list(model_store_final)
 
     if len(model_store_final) == 1:
         model_store_final = model_store_final[0]
