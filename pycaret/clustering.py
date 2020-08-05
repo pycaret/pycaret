@@ -1,8 +1,8 @@
 # Module: Clustering
 # Author: Moez Ali <moez.ali@queensu.ca>
 # License: MIT
-# Release: PyCaret 2.0x
-# Last modified : 30/07/2020
+# Release: PyCaret 2.1x
+# Last modified : 05/08/2020
 
 def setup(data, 
         categorical_features = None,
