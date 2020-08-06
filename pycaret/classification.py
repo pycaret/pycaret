@@ -2,7 +2,7 @@
 # Author: Moez Ali <moez.ali@queensu.ca>
 # License: MIT
 # Release: PyCaret 2.1x
-# Last modified : 05/08/2020
+# Last modified : 06/08/2020
 
 def setup(data,  
           target,   
@@ -7331,7 +7331,7 @@ def stack_models(estimator_list,
     The output prints the score grid that shows Accuracy, AUC, Recall, Precision, 
     F1, Kappa and MCC by fold (default = 10 Folds). 
     
-    This function returns a container which is the list of all models in stacking. 
+    This function returns a trained model object. 
 
         Example:
         --------
@@ -7498,9 +7498,9 @@ def stack_models(estimator_list,
     from sklearn.base import clone
     from sklearn.ensemble import StackingClassifier
     
-    logger.info("Copying estimator list")
-    #copy estimator_list
-    estimator_list = deepcopy(estimator_list)
+    #ignore warnings
+    import warnings
+    warnings.filterwarnings('ignore') 
     
     logger.info("Defining meta model")
     #Defining meta model.

@@ -2,7 +2,7 @@
 # Author: Moez Ali <moez.ali@queensu.ca>
 # License: MIT
 # Release: PyCaret 2.1x
-# Last modified : 05/08/2020
+# Last modified : 06/08/2020
 
 def setup(data, 
           target, 
@@ -6532,10 +6532,8 @@ def stack_models(estimator_list,
                  fold = 10,
                  round = 4, 
                  restack = True, 
-                 plot = False,
                  choose_better = False, #added in pycaret==2.0.0
                  optimize = 'R2', #added in pycaret==2.0.0
-                 finalize = False,
                  verbose = True):
     
     """
@@ -6543,7 +6541,7 @@ def stack_models(estimator_list,
             
     Description:
     ------------
-    This function creates a meta model and scores it using Kfold Cross Validation.
+    This function trains a meta model and scores it using Kfold Cross Validation.
     The predictions from the base level models as passed in the estimator_list param 
     are used as input features for the meta model. The restacking parameter controls
     the ability to expose raw features to the meta model when set to True
@@ -6552,7 +6550,7 @@ def stack_models(estimator_list,
     The output prints a score grid that shows MAE, MSE, RMSE, R2, RMSLE and MAPE by 
     fold (default = 10 Folds).
     
-    This function returns a container which is the list of all models in stacking. 
+    This function returns a trained model object. 
 
         Example:
         --------
@@ -6589,10 +6587,6 @@ def stack_models(estimator_list,
     making predictions, otherwise when False, only the predicted label is passed 
     to meta model when making final predictions.
 
-    plot: Boolean, default = False
-    When plot is set to True, it will return the correlation plot of prediction
-    from all base models provided in estimator_list.
-
     choose_better: Boolean, default = False
     When set to True, base estimator is returned when the metric doesn't 
     improve by ensemble_model. This gurantees the returned object would perform 
@@ -6603,12 +6597,6 @@ def stack_models(estimator_list,
     Only used when choose_better is set to True. optimize parameter is used
     to compare emsembled model with base estimator. Values accepted in 
     optimize parameter are 'MAE', 'MSE', 'RMSE', 'R2', 'RMSLE', 'MAPE'.
-
-    finalize: Boolean, default = False
-    When finalize is set to True, it will fit the stacker on entire dataset
-    including the hold-out sample created during the setup() stage. It is not 
-    recommended to set this to True here, If you would like to fit the stacker 
-    on the entire dataset including the hold-out, use finalize_model().
     
     verbose: Boolean, default = True
     Score grid is not printed when verbose is set to False.
@@ -6621,8 +6609,8 @@ def stack_models(estimator_list,
                   Mean and standard deviation of the scores across the folds are 
                   also returned.
 
-    container:    list of all the models where last element is meta model.
-    ----------
+    model:        trained model object.
+    -----------
 
           
     """
@@ -6658,8 +6646,8 @@ def stack_models(estimator_list,
         logger.addHandler(ch)
 
     logger.info("Initializing stack_models()")
-    logger.info("""stack_models(estimator_list={}, meta_model={}, fold={}, round={}, restack={}, plot={}, choose_better={}, optimize={}, finalize={}, verbose={})""".\
-        format(str(estimator_list), str(meta_model), str(fold), str(round), str(restack), str(plot), str(choose_better), str(optimize), str(finalize), str(verbose)))
+    logger.info("""stack_models(estimator_list={}, meta_model={}, fold={}, round={}, restack={}, choose_better={}, optimize={}, verbose={})""".\
+        format(str(estimator_list), str(meta_model), str(fold), str(round), str(restack), str(choose_better), str(optimize), str(verbose)))
 
     logger.info("Checking exceptions")
 
@@ -6691,10 +6679,6 @@ def stack_models(estimator_list,
     #checking restack parameter
     if type(restack) is not bool:
         sys.exit('(Type Error): Restack parameter can only take argument as True or False.')    
-    
-    #checking plot parameter
-    if type(restack) is not bool:
-        sys.exit('(Type Error): Plot parameter can only take argument as True or False.')  
         
     #checking verbose parameter
     if type(verbose) is not bool:
@@ -6713,10 +6697,11 @@ def stack_models(estimator_list,
     from IPython.display import display, HTML, clear_output, update_display
     import time, datetime
     from copy import deepcopy
+    from sklearn.base import clone
     
-    logger.info("Copying estimator list")
-    #copy estimator_list
-    estimator_list = deepcopy(estimator_list)
+    #ignore warnings
+    import warnings
+    warnings.filterwarnings('ignore') 
     
     logger.info("Defining meta model")
     #Defining meta model. Linear Regression hardcoded for now
@@ -6724,7 +6709,7 @@ def stack_models(estimator_list,
         from sklearn.linear_model import LinearRegression
         meta_model = LinearRegression(n_jobs=n_jobs_param)
     else:
-        meta_model = deepcopy(meta_model) 
+        meta_model = clone(meta_model) 
     
     if optimize == 'MAE':
         compare_dimension = 'MAE' 
@@ -6741,14 +6726,9 @@ def stack_models(estimator_list,
 
     clear_output()
     
-    import warnings
-    warnings.filterwarnings('default')
-    warnings.warn('This function will adopt to Stackingclassifer() from sklearn in future release of PyCaret 2.x.')
-    warnings.filterwarnings('ignore')
-    
     logger.info("Preparing display monitor")
     #progress bar
-    max_progress = len(estimator_list) + fold + 4
+    max_progress = fold + 4
     progress = ipw.IntProgress(value=0, min=0, max=max_progress, step=1 , description='Processing: ')
     master_display = pd.DataFrame(columns=['MAE','MSE','RMSE', 'R2', 'RMSLE', 'MAPE'])
     if verbose:
@@ -6777,27 +6757,44 @@ def stack_models(estimator_list,
     from sklearn import metrics
     from sklearn.model_selection import KFold
     from sklearn.model_selection import cross_val_predict
-    import seaborn as sns
-    import matplotlib.pyplot as plt
+    from sklearn.ensemble import StackingRegressor
     
     progress.value += 1
 
     logger.info("Copying training dataset")
-    #defining data_X and data_y
-    if finalize:
-        data_X = X.copy()
-        data_y = y.copy()
-    else:       
-        data_X = X_train.copy()
-        data_y = y_train.copy()
-
+    #Storing X_train and y_train in data_X and data_y parameter
+    data_X = X_train.copy()
+    data_y = y_train.copy()
+    
     #reset index
-    data_X.reset_index(drop=True,inplace=True)
-    data_y.reset_index(drop=True,inplace=True)
+    data_X.reset_index(drop=True, inplace=True)
+    data_y.reset_index(drop=True, inplace=True)
     
-    #models_ for appending
-    models_ = []
+    logger.info("Defining folds")
+    #cross validation setup starts here
+    kf = KFold(fold, random_state=seed, shuffle=folds_shuffle_param)
     
+    logger.info("Declaring metric variables")
+
+    score_mae =np.empty((0,0))
+    score_mse =np.empty((0,0))
+    score_rmse =np.empty((0,0))
+    score_rmsle =np.empty((0,0))
+    score_r2 =np.empty((0,0))
+    score_mape =np.empty((0,0))
+    score_training_time=np.empty((0,0))
+    avgs_mae =np.empty((0,0))
+    avgs_mse =np.empty((0,0))
+    avgs_rmse =np.empty((0,0))
+    avgs_r2 =np.empty((0,0))
+    avgs_mape =np.empty((0,0)) 
+    avgs_rmsle =np.empty((0,0))
+    avgs_training_time=np.empty((0,0))
+    
+    def calculate_mape(actual, prediction):
+        mask = actual != 0
+        return (np.fabs(actual - prediction)/actual)[mask].mean()
+
     logger.info("Getting model names")
     #defining model_library model names
     model_names = np.zeros(0)
@@ -6823,115 +6820,34 @@ def stack_models(estimator_list,
         model_names_fixed.append(s)
         counter += 1
     
-    base_array = np.zeros((0,0))
-    base_prediction = pd.DataFrame(data_y) #changed to data_y
-    base_prediction = base_prediction.reset_index(drop=True)
-    
+    logger.info("Compiling estimator_list parameter")
+
     counter = 0
     
-    model_fit_start = time.time()
-
-    for model in estimator_list:
-        
-        logger.info("Checking base model : " + str(model_names[counter]))
-
-        '''
-        MONITOR UPDATE STARTS
-        '''
-
-        monitor.iloc[1,1:] = 'Evaluating ' + model_names[counter]
-        if verbose:
-            if html_param:
-                update_display(monitor, display_id = 'monitor')
-
-        '''
-        MONITOR UPDATE ENDS
-        '''
-        
-        #fitting and appending
-        logger.info("Fitting base model")
-        model.fit(data_X, data_y)
-        models_.append(model)
-        
-        progress.value += 1
-        
-        logger.info("Generating cross val predictions")
-        base_array = cross_val_predict(model,data_X,data_y,cv=fold, method='predict')
-        base_array_df = pd.DataFrame(base_array)
-        base_prediction = pd.concat([base_prediction,base_array_df],axis=1)
-        base_array = np.empty((0,0))
-        
+    estimator_list_tuples = []
+    
+    for i in estimator_list:
+        estimator_list_tuples.append(tuple([model_names_fixed[counter], estimator_list[counter]]))
         counter += 1
-    
-    logger.info("Base layer complete")
 
-    #defining column names now
-    target_col_name = np.array(base_prediction.columns[0])
-    model_names = np.append(target_col_name, model_names_fixed) #adding fixed column names now
-    base_prediction.columns = model_names #defining colum names now
-    
-    #defining data_X and data_y dataframe to be used in next stage.
-    
-    #drop column from base_prediction
-    base_prediction.drop(base_prediction.columns[0],axis=1,inplace=True)
-    
-    if restack:
-        data_X = pd.concat([data_X, base_prediction], axis=1)
-        
-    else:
-        data_X = base_prediction
-        
-    #data_y = base_prediction[base_prediction.columns[0]]
-    
-    #Correlation matrix of base_prediction
-    #base_prediction_cor = base_prediction.drop(base_prediction.columns[0],axis=1)
-    base_prediction_cor = base_prediction.corr()
-    
-    #Meta Modeling Starts Here
-    model = meta_model #this defines model to be used below as model = meta_model (as captured above)
-    
-    #appending in models
-    model.fit(data_X, data_y)
-    models_.append(model)
-    
-    logger.info("Defining folds")
-    kf = KFold(fold, random_state=seed, shuffle=folds_shuffle_param) #capturing fold requested by user
+    logger.info("Creating StackingRegressor()")
 
-    score_mae =np.empty((0,0))
-    score_mse =np.empty((0,0))
-    score_rmse =np.empty((0,0))
-    score_rmsle =np.empty((0,0))
-    score_r2 =np.empty((0,0))
-    score_mape =np.empty((0,0))
-    score_training_time=np.empty((0,0))
-    avgs_mae =np.empty((0,0))
-    avgs_mse =np.empty((0,0))
-    avgs_rmse =np.empty((0,0))
-    avgs_rmsle =np.empty((0,0))
-    avgs_r2 =np.empty((0,0))
-    avgs_mape =np.empty((0,0))  
-    avgs_training_time=np.empty((0,0))
+    model = StackingRegressor(estimators = estimator_list_tuples, final_estimator = meta_model, cv = fold,\
+            n_jobs = n_jobs_param, passthrough = restack)
 
-    def calculate_mape(actual, prediction):
-        mask = actual != 0
-        return (np.fabs(actual - prediction)/actual)[mask].mean()
-
-    
-    progress.value += 1
-    
     fold_num = 1
     
     for train_i , test_i in kf.split(data_X,data_y):
-
-        logger.info("Initializing Fold " + str(fold_num))
         
+        logger.info("Initializing Fold " + str(fold_num))
+
         t0 = time.time()
         
         '''
         MONITOR UPDATE STARTS
         '''
     
-        monitor.iloc[1,1:] = 'Fitting Meta Model Fold ' + str(fold_num) + ' of ' + str(fold)
+        monitor.iloc[1,1:] = 'Fitting Fold ' + str(fold_num) + ' of ' + str(fold)
         if verbose:
             if html_param:
                 update_display(monitor, display_id = 'monitor')
@@ -6940,10 +6856,8 @@ def stack_models(estimator_list,
         MONITOR UPDATE ENDS
         '''
         
-        progress.value += 1
-        
         Xtrain,Xtest = data_X.iloc[train_i], data_X.iloc[test_i]
-        ytrain,ytest = data_y.iloc[train_i], data_y.iloc[test_i]
+        ytrain,ytest = data_y.iloc[train_i], data_y.iloc[test_i]  
         time_start=time.time()
         logger.info("Fitting Model")
         model.fit(Xtrain,ytrain)
@@ -6958,14 +6872,15 @@ def stack_models(estimator_list,
             
         except:
             pass
-            
+            logger.info("No inverse transformation")
+
         logger.info("Compiling Metrics")
         time_end=time.time()
         mae = metrics.mean_absolute_error(ytest,pred_)
         mse = metrics.mean_squared_error(ytest,pred_)
         rmse = np.sqrt(mse)
-        r2 = metrics.r2_score(ytest,pred_)
         rmsle = np.sqrt(np.mean(np.power(np.log(np.array(abs(pred_))+1) - np.log(np.array(abs(ytest))+1), 2)))
+        r2 = metrics.r2_score(ytest,pred_)
         mape = calculate_mape(ytest,pred_)
         training_time=time_end-time_start
         score_mae = np.append(score_mae,mae)
@@ -6975,6 +6890,8 @@ def stack_models(estimator_list,
         score_r2 =np.append(score_r2,r2)
         score_mape = np.append(score_mape,mape)
         score_training_time=np.append(score_training_time,training_time)
+        progress.value += 1
+        
         
         '''
         
@@ -6983,18 +6900,14 @@ def stack_models(estimator_list,
         
         '''
         
-        fold_results = pd.DataFrame({'MAE':[mae], 'MSE': [mse], 'RMSE': [rmse], 
-                                     'R2': [r2], 'RMSLE': [rmsle], 'MAPE': [mape]}).round(round)
+        fold_results = pd.DataFrame({'MAE':[mae], 'MSE': [mse], 'RMSE': [rmse], 'R2': [r2],
+                                     'RMSLE' : [rmsle], 'MAPE': [mape] }).round(round)
         master_display = pd.concat([master_display, fold_results],ignore_index=True)
         fold_results = []
         
-        
         '''
-        
         TIME CALCULATION SUB-SECTION STARTS HERE
-        
         '''
-        
         t1 = time.time()
         
         tt = (t1 - t0) * (fold-fold_num) / 60
@@ -7007,13 +6920,12 @@ def stack_models(estimator_list,
         else:
             tt = str (tt)
             ETC = tt + ' Minutes Remaining'
-        
+            
         '''
         MONITOR UPDATE STARTS
         '''
 
         monitor.iloc[2,1:] = ETC
-        
         if verbose:
             if html_param:
                 update_display(monitor, display_id = 'monitor')
@@ -7021,16 +6933,11 @@ def stack_models(estimator_list,
         '''
         MONITOR UPDATE ENDS
         '''
-        
-        #update_display(ETC, display_id = 'ETC')
             
         fold_num += 1
         
-        
         '''
-        
         TIME CALCULATION ENDS HERE
-        
         '''
         
         if verbose:
@@ -7043,11 +6950,9 @@ def stack_models(estimator_list,
         Update_display() ends here
         
         '''
-     
-    model_fit_end = time.time()
-    model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
-    
+
     logger.info("Calculating mean and std")
+
     mean_mae=np.mean(score_mae)
     mean_mse=np.mean(score_mse)
     mean_rmse=np.mean(score_rmse)
@@ -7077,32 +6982,43 @@ def stack_models(estimator_list,
     avgs_mape = np.append(avgs_mape, std_mape)
     avgs_training_time=np.append(avgs_training_time, mean_training_time)
     avgs_training_time=np.append(avgs_training_time, std_training_time)
+    
+    progress.value += 1
+    
+    logger.info("Creating metrics dataframe")
 
-    logger.info("Creating metrics dataframe")  
     model_results = pd.DataFrame({'MAE': score_mae, 'MSE': score_mse, 'RMSE' : score_rmse, 'R2' : score_r2,
                                   'RMSLE' : score_rmsle, 'MAPE' : score_mape})
     model_avgs = pd.DataFrame({'MAE': avgs_mae, 'MSE': avgs_mse, 'RMSE' : avgs_rmse, 'R2' : avgs_r2,
                                 'RMSLE' : avgs_rmsle, 'MAPE' : avgs_mape},index=['Mean', 'SD'])
-  
-    model_results = model_results.append(model_avgs)
-    model_results = model_results.round(round)  
 
-    # yellow the mean
+    model_results = model_results.append(model_avgs)
+    model_results = model_results.round(round)
+    
+    #Yellow the mean
     model_results=model_results.style.apply(lambda x: ['background: yellow' if (x.name == 'Mean') else '' for i in x], axis=1)
     model_results = model_results.set_precision(round)
+
+    #refitting the model on complete X_train, y_train
+    monitor.iloc[1,1:] = 'Finalizing Model'
+    monitor.iloc[2,1:] = 'Almost Finished'
+    if verbose:
+        if html_param:
+            update_display(monitor, display_id = 'monitor')
+    
+    model_fit_start = time.time()
+    logger.info("Finalizing model")
+    model.fit(data_X, data_y)
+    model_fit_end = time.time()
+
+    model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
+    
+    #end runtime
+    runtime_end = time.time()
+    runtime = np.array(runtime_end - runtime_start).round(2)
+
     progress.value += 1
     
-    #appending method into models_
-    models_.append(restack)
-    
-    #storing results in create_model_container
-    logger.info("Uploading results into container")
-    create_model_container.append(model_results.data)
-    display_container.append(model_results.data)
-
-    #storing results in master_model_container
-    logger.info("Uploading model into container")
-    master_model_container.append(models_)
 
     '''
     When choose_better sets to True. optimize metric in scoregrid is
@@ -7116,7 +7032,7 @@ def stack_models(estimator_list,
     stack_model_results = create_model_container[-1][compare_dimension][-2:][0]
     
     scorer.append(stack_model_results)
-
+    
     if choose_better:
 
         logger.info("choose_better activated")
@@ -7146,6 +7062,8 @@ def stack_models(estimator_list,
         logger.info("SubProcess create_model() called ==================================")
         logger.info("choose_better completed")
 
+    progress.value += 1
+
     #returning better model
     if compare_dimension == 'R2':
         index_scorer = scorer.index(max(scorer))
@@ -7153,23 +7071,17 @@ def stack_models(estimator_list,
         index_scorer = scorer.index(min(scorer))
 
     if index_scorer == 0:
-        models_ = models_
+        model = model
     else:
-        models_ = base_models_[index_scorer-1]
-    
-    if plot:
-        logger.info("Plotting correlation heatmap")
-        clear_output()
-        plt.subplots(figsize=(15,7))
-        ax = sns.heatmap(base_prediction_cor, vmin=0.2, vmax=1, center=0,cmap='magma', square=True, annot=True, 
-                         linewidths=1)
-        ax.set_ylim(sorted(ax.get_xlim(), reverse=True))
+        model = base_models_[index_scorer-1]
     
     #end runtime
     runtime_end = time.time()
     runtime = np.array(runtime_end - runtime_start).round(2)
 
-    if logging_param and not finalize:
+    progress.value += 1
+
+    if logging_param:
         
         logger.info("Creating MLFlow logs")
 
@@ -7189,7 +7101,7 @@ def stack_models(estimator_list,
             # Get active run to log as tag
             RunID = mlflow.active_run().info.run_id
 
-            params = meta_model.get_params()
+            params = model.get_params()
 
             for i in list(params):
                 v = params.get(i)
@@ -7213,7 +7125,7 @@ def stack_models(estimator_list,
 
             # Log model and transformation pipeline
             logger.info("SubProcess save_model() called ==================================")
-            save_model(models_, 'Trained Model', verbose=False)
+            save_model(model, 'Trained Model', verbose=False)
             logger.info("SubProcess save_model() end ==================================")
             mlflow.log_artifact('Trained Model' + '.pkl')
             size_bytes = Path('Trained Model.pkl').stat().st_size
@@ -7229,19 +7141,8 @@ def stack_models(estimator_list,
             mlflow.log_artifact('Results.html')
             os.remove('Results.html')
 
-            if log_plots_param:
-
-                plt.subplots(figsize=(15,7))
-                ax = sns.heatmap(base_prediction_cor, vmin=0.2, vmax=1, center=0,cmap='magma', square=True, annot=True, 
-                                linewidths=1)
-                ax.set_ylim(sorted(ax.get_xlim(), reverse=True))
-                plt.savefig("Stacking Heatmap.png")
-                mlflow.log_artifact('Stacking Heatmap.png')
-                os.remove('Stacking Heatmap.png')
-                plt.close()
-
             # Generate hold-out predictions and save as html
-            holdout = predict_model(models_, verbose=False)
+            holdout = predict_model(model, verbose=False)
             holdout_score = pull()
             display_container.pop(-1)
             holdout_score.to_html('Holdout.html', col_space=65, justify='left')
@@ -7255,14 +7156,16 @@ def stack_models(estimator_list,
         else:
             print(model_results.data)
 
+    progress.value += 1
+    
     logger.info("create_model_container: " + str(len(create_model_container)))
     logger.info("master_model_container: " + str(len(master_model_container)))
     logger.info("display_container: " + str(len(display_container)))
 
-    logger.info(str(models_))
+    logger.info(str(model))
     logger.info("stack_models() succesfully completed......................................")
 
-    return models_
+    return model
 
 def plot_model(estimator, 
                plot = 'residuals',
