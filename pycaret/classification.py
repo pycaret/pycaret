@@ -7312,19 +7312,17 @@ def stack_models(estimator_list,
                  meta_model = None, 
                  fold = 10,
                  round = 4, 
-                 method = 'soft', 
+                 method = 'auto', 
                  restack = True, 
-                 plot = False,
                  choose_better = False, #added in pycaret==2.0.0
                  optimize = 'Accuracy', #added in pycaret==2.0.0
-                 finalize = False,
                  verbose = True):
     
     """
             
     Description:
     ------------
-    This function creates a meta model and scores it using Stratified Cross Validation.
+    This function trains a meta model and scores it using Stratified Cross Validation.
     The predictions from the base level models as passed in the estimator_list param 
     are used as input features for the meta model. The restacking parameter controls
     the ability to expose raw features to the meta model when set to True
@@ -7365,18 +7363,16 @@ def stack_models(estimator_list,
     round: integer, default = 4
     Number of decimal places the metrics in the score grid will be rounded to.
 
-    method: string, default = 'soft'
-    'soft', uses predicted probabilities as an input to the meta model.
-    'hard', uses predicted class labels as an input to the meta model. 
+    method: string, default = 'auto'
+    - if ‘auto’, it will try to invoke, for each estimator, 'predict_proba', 
+    'decision_function' or 'predict' in that order.
+    - otherwise, one of 'predict_proba', 'decision_function' or 'predict'. 
+    If the method is not implemented by the estimator, it will raise an error.
 
     restack: Boolean, default = True
     When restack is set to True, raw data will be exposed to meta model when
     making predictions, otherwise when False, only the predicted label or
     probabilities is passed to meta model when making final predictions.
-
-    plot: Boolean, default = False
-    When plot is set to True, it will return the correlation plot of prediction
-    from all base models provided in estimator_list.
 
     choose_better: Boolean, default = False
     When set to set to True, base estimator is returned when the metric doesn't 
@@ -7389,12 +7385,6 @@ def stack_models(estimator_list,
     to compare emsembled model with base estimator. Values accepted in 
     optimize parameter are 'Accuracy', 'AUC', 'Recall', 'Precision', 'F1', 
     'Kappa', 'MCC'.
-
-    finalize: Boolean, default = False
-    When finalize is set to True, it will fit the stacker on entire dataset
-    including the hold-out sample created during the setup() stage. It is not 
-    recommended to set this to True here, If you would like to fit the stacker 
-    on the entire dataset including the hold-out, use finalize_model().
     
     verbose: Boolean, default = True
     Score grid is not printed when verbose is set to False.
@@ -7407,22 +7397,15 @@ def stack_models(estimator_list,
                   Kappa and MCC. Mean and standard deviation of the scores across 
                   the folds are also returned.
 
-    container:    list of all the models where last element is meta model.
-    ----------
+    model:        trained model object.
+    -----------
 
     Warnings:
     ---------
-    -  When the method is forced to be 'soft' and estimator_list param includes 
-       estimators that donot support the predict_proba method such as 'svm' or 
-       'ridge',  predicted values for those specific estimators only are used 
-       instead of probability  when building the meta_model. The same rule applies
-       when the stacker is used under predict_model() function.
-        
+      
     -  If target variable is multiclass (more than 2 classes), AUC will be returned 
        as zero (0.0).
-       
-    -  method 'soft' not supported for when target is multiclass.
-         
+                
             
     """
     
@@ -7457,8 +7440,8 @@ def stack_models(estimator_list,
         logger.addHandler(ch)
 
     logger.info("Initializing stack_models()")
-    logger.info("""stack_models(estimator_list={}, meta_model={}, fold={}, round={}, method={}, restack={}, plot={}, choose_better={}, optimize={}, finalize={}, verbose={})""".\
-        format(str(estimator_list), str(meta_model), str(fold), str(round), str(method), str(restack), str(plot), str(choose_better), str(optimize), str(finalize), str(verbose)))
+    logger.info("""stack_models(estimator_list={}, meta_model={}, fold={}, round={}, method={}, restack={}, choose_better={}, optimize={}, verbose={})""".\
+        format(str(estimator_list), str(meta_model), str(fold), str(round), str(method), str(restack), str(choose_better), str(optimize), str(verbose)))
 
     logger.info("Checking exceptions")
 
@@ -7469,10 +7452,6 @@ def stack_models(estimator_list,
     import datetime, time
     runtime_start = time.time()
 
-    #change method param to 'hard' for multiclass
-    if y.value_counts().count() > 2:
-        method = 'hard'
-
     #checking error for estimator_list
     for i in estimator_list:
         if 'sklearn' not in str(type(i)) and 'CatBoostClassifier' not in str(type(i)):
@@ -7482,11 +7461,6 @@ def stack_models(estimator_list,
     if meta_model is not None:
         if 'sklearn' not in str(type(meta_model)) and 'CatBoostClassifier' not in str(type(meta_model)):
             sys.exit("(Value Error): estimator_list parameter only accepts trained model object")
-    
-    #stacking with multiclass
-    if y.value_counts().count() > 2:
-        if method == 'soft':
-            sys.exit("(Type Error): method 'soft' not supported for multiclass problems.")
             
     #checking fold parameter
     if type(fold) is not int:
@@ -7497,17 +7471,13 @@ def stack_models(estimator_list,
         sys.exit('(Type Error): Round parameter only accepts integer value.')
  
     #checking method parameter
-    available_method = ['soft', 'hard']
+    available_method = ['auto', 'predict_proba', 'decision_function', 'predict']
     if method not in available_method:
-        sys.exit("(Value Error): Method parameter only accepts 'soft' or 'hard' as a parameter. See Docstring for details.")
+        sys.exit("(Value Error): Method parameter not acceptable. It only accepts 'auto', 'predict_proba', 'decision_function', 'predict'.")
     
     #checking restack parameter
     if type(restack) is not bool:
         sys.exit('(Type Error): Restack parameter can only take argument as True or False.')    
-    
-    #checking plot parameter
-    if type(restack) is not bool:
-        sys.exit('(Type Error): Plot parameter can only take argument as True or False.')  
         
     #checking verbose parameter
     if type(verbose) is not bool:
@@ -7526,6 +7496,7 @@ def stack_models(estimator_list,
     from IPython.display import display, HTML, clear_output, update_display
     from copy import deepcopy
     from sklearn.base import clone
+    from sklearn.ensemble import StackingClassifier
     
     logger.info("Copying estimator list")
     #copy estimator_list
@@ -7537,14 +7508,9 @@ def stack_models(estimator_list,
         from sklearn.linear_model import LogisticRegression
         meta_model = LogisticRegression()
     else:
-        meta_model = deepcopy(meta_model)
+        meta_model = clone(meta_model)
         
     clear_output()
-
-    import warnings
-    warnings.filterwarnings('default')
-    warnings.warn('This function will adopt to Stackingclassifer() from sklearn in future release of PyCaret 2.x.')
-    warnings.filterwarnings('ignore')
 
     if optimize == 'Accuracy':
         compare_dimension = 'Accuracy' 
@@ -7563,7 +7529,7 @@ def stack_models(estimator_list,
 
     logger.info("Preparing display monitor")
     #progress bar
-    max_progress = len(estimator_list) + fold + 4
+    max_progress = fold + 4
     progress = ipw.IntProgress(value=0, min=0, max=max_progress, step=1 , description='Processing: ')
     master_display = pd.DataFrame(columns=['Accuracy','AUC','Recall', 'Prec.', 'F1', 'Kappa', 'MCC'])
     if verbose:
@@ -7592,32 +7558,39 @@ def stack_models(estimator_list,
     from sklearn import metrics
     from sklearn.model_selection import StratifiedKFold
     from sklearn.model_selection import cross_val_predict
-    import seaborn as sns
-    import matplotlib.pyplot as plt
     
+    logger.info("Defining folds")
+    #cross validation setup starts here
+    kf = StratifiedKFold(fold, random_state=seed, shuffle=folds_shuffle_param)
+
+    logger.info("Declaring metric variables")
+    score_auc =np.empty((0,0))
+    score_acc =np.empty((0,0))
+    score_recall =np.empty((0,0))
+    score_precision =np.empty((0,0))
+    score_f1 =np.empty((0,0))
+    score_kappa =np.empty((0,0))
+    score_mcc =np.empty((0,0))
+    score_training_time =np.empty((0,0))
+    avgs_auc =np.empty((0,0))
+    avgs_acc =np.empty((0,0))
+    avgs_recall =np.empty((0,0))
+    avgs_precision =np.empty((0,0))
+    avgs_f1 =np.empty((0,0))
+    avgs_kappa =np.empty((0,0))
+    avgs_mcc =np.empty((0,0))
+    avgs_training_time =np.empty((0,0))
+
     progress.value += 1
-    
-    #Capturing the method of stacking required by user. method='soft' means 'predict_proba' else 'predict'
-    if method == 'soft':
-        predict_method = 'predict_proba'
-    elif method == 'hard':
-        predict_method = 'predict'
-    
+
     logger.info("Copying training dataset")
-    #defining data_X and data_y
-    if finalize:
-        data_X = X.copy()
-        data_y = y.copy()
-    else:       
-        data_X = X_train.copy()
-        data_y = y_train.copy()
-        
-    #reset index
-    data_X.reset_index(drop=True,inplace=True)
-    data_y.reset_index(drop=True,inplace=True)
+    #Storing X_train and y_train in data_X and data_y parameter
+    data_X = X_train.copy()
+    data_y = y_train.copy()
     
-    #models_ for appending
-    models_ = []
+    #reset index
+    data_X.reset_index(drop=True, inplace=True)
+    data_y.reset_index(drop=True, inplace=True)
     
     logger.info("Getting model names")
     #defining model_library model names
@@ -7637,130 +7610,44 @@ def stack_models(estimator_list,
     model_names = model_names_fixed
     
     model_names_fixed = []
-    
+
     counter = 0
     for i in model_names:
         s = str(i) + '_' + str(counter)
         model_names_fixed.append(s)
         counter += 1
-    
-    base_array = np.zeros((0,0))
-    base_prediction = pd.DataFrame(data_y) #changed to data_y
-    base_prediction = base_prediction.reset_index(drop=True)
-    
+
+    logger.info("Compiling estimator_list parameter")
+
     counter = 0
     
-    model_fit_start = time.time()
-
-    for model in estimator_list:
-
-        logger.info("Checking base model : " + str(model_names[counter]))
-
-        '''
-        MONITOR UPDATE STARTS
-        '''
-
-        monitor.iloc[1,1:] = 'Evaluating ' + model_names[counter]
-        if verbose:
-            if html_param:
-                update_display(monitor, display_id = 'monitor')
-
-        '''
-        MONITOR UPDATE ENDS
-        '''
-
-        #fitting and appending
-        logger.info("Fitting base model")
-        model.fit(data_X, data_y)
-        models_.append(model)
-        
-        progress.value += 1
-        
-        logger.info("Generating cross val predictions")
-        try:
-            base_array = cross_val_predict(model,data_X,data_y,cv=fold, method=predict_method)
-        except:
-            base_array = cross_val_predict(model,data_X,data_y,cv=fold, method='predict')
-        if method == 'soft':
-            try:
-                base_array = base_array[:,1]
-            except:
-                base_array = base_array
-        elif method == 'hard':
-            base_array = base_array
-        base_array_df = pd.DataFrame(base_array)
-        base_prediction = pd.concat([base_prediction,base_array_df],axis=1)
-        base_array = np.empty((0,0))
-        
+    estimator_list_tuples = []
+    
+    for i in estimator_list:
+        estimator_list_tuples.append(tuple([model_names_fixed[counter], estimator_list[counter]]))
         counter += 1
 
-    logger.info("Base layer complete")
+    logger.info("Creating StackingClassifier()")
 
-    #fill nas for base_prediction
-    base_prediction.fillna(value=0, inplace=True)
-    
-    #defining column names now
-    target_col_name = np.array(base_prediction.columns[0])
-    model_names = np.append(target_col_name, model_names_fixed) #added fixed here
-    base_prediction.columns = model_names #defining colum names now
-    
-    #defining data_X and data_y dataframe to be used in next stage.
-    
-    #drop column from base_prediction
-    base_prediction.drop(base_prediction.columns[0],axis=1,inplace=True)
-    
-    if restack:
-        data_X = pd.concat([data_X, base_prediction], axis=1)
-        
-    else:
-        data_X = base_prediction
-    
-    #Correlation matrix of base_prediction
-    #base_prediction_cor = base_prediction.drop(base_prediction.columns[0],axis=1)
-    base_prediction_cor = base_prediction.corr()
-    
-    #Meta Modeling Starts Here
-    model = meta_model #this defines model to be used below as model = meta_model (as captured above)
-    
-    #appending in models
-    model.fit(data_X, data_y)
-    models_.append(model)
-    
-    logger.info("Defining folds")
-    kf = StratifiedKFold(fold, random_state=seed, shuffle=folds_shuffle_param) #capturing fold requested by user
+    model = StackingClassifier(estimators = estimator_list_tuples, final_estimator = meta_model, cv = fold,\
+            stack_method = method, n_jobs = n_jobs_param, passthrough = restack)
 
-    score_auc =np.empty((0,0))
-    score_acc =np.empty((0,0))
-    score_recall =np.empty((0,0))
-    score_precision =np.empty((0,0))
-    score_f1 =np.empty((0,0))
-    score_kappa =np.empty((0,0))
-    score_mcc =np.empty((0,0))
-    score_training_time =np.empty((0,0))
-    avgs_auc =np.empty((0,0))
-    avgs_acc =np.empty((0,0))
-    avgs_recall =np.empty((0,0))
-    avgs_precision =np.empty((0,0))
-    avgs_f1 =np.empty((0,0))
-    avgs_kappa =np.empty((0,0))
-    avgs_mcc =np.empty((0,0))
-    avgs_training_time =np.empty((0,0))
-    
-    progress.value += 1
-    
+
+    model_fit_start = time.time()
+
     fold_num = 1
     
     for train_i , test_i in kf.split(data_X,data_y):
-        
-        logger.info("Initializing Fold " + str(fold_num))
 
+        logger.info("Initializing Fold " + str(fold_num))
+        
         t0 = time.time()
         
         '''
         MONITOR UPDATE STARTS
         '''
     
-        monitor.iloc[1,1:] = 'Fitting Meta Model Fold ' + str(fold_num) + ' of ' + str(fold)
+        monitor.iloc[1,1:] = 'Fitting Fold ' + str(fold_num) + ' of ' + str(fold)
         if verbose:
             if html_param:
                 update_display(monitor, display_id = 'monitor')
@@ -7768,51 +7655,45 @@ def stack_models(estimator_list,
         '''
         MONITOR UPDATE ENDS
         '''
-        
-        progress.value += 1
-        
+    
         Xtrain,Xtest = data_X.iloc[train_i], data_X.iloc[test_i]
         ytrain,ytest = data_y.iloc[train_i], data_y.iloc[test_i]
-        
+        time_start=time.time()
+
         if fix_imbalance_param:
+            
             logger.info("Initializing SMOTE")
+
             if fix_imbalance_method_param is None:
                 from imblearn.over_sampling import SMOTE
-                resampler = SMOTE(random_state = seed)
+                resampler = SMOTE(random_state=seed)
             else:
                 resampler = fix_imbalance_method_param
 
             Xtrain,ytrain = resampler.fit_sample(Xtrain, ytrain)
             logger.info("Resampling completed")
 
-        time_start=time.time()
         logger.info("Fitting Model")
         model.fit(Xtrain,ytrain)
         logger.info("Evaluating Metrics")
-        
-        try:
-            pred_prob = model.predict_proba(Xtest)
-            pred_prob = pred_prob[:,1]
-        except:
-            pass
+        pred_prob = model.predict_proba(Xtest)
+        pred_prob = pred_prob[:,1]
         pred_ = model.predict(Xtest)
         sca = metrics.accuracy_score(ytest,pred_)
-        try: 
-            sc = metrics.roc_auc_score(ytest,pred_prob)
-        except:
-            sc = 0
-            
+        
         if y.value_counts().count() > 2:
-            recall = metrics.recall_score(ytest,pred_,average='macro')
-            precision = metrics.precision_score(ytest,pred_,average='weighted')
-            f1 = metrics.f1_score(ytest,pred_,average='weighted')
+            sc = 0
+            recall = metrics.recall_score(ytest,pred_, average='macro')                
+            precision = metrics.precision_score(ytest,pred_, average = 'weighted')
+            f1 = metrics.f1_score(ytest,pred_, average='weighted')
             
         else:
-            recall = metrics.recall_score(ytest,pred_)
+            sc = metrics.roc_auc_score(ytest,pred_prob)
+            recall = metrics.recall_score(ytest,pred_)                
             precision = metrics.precision_score(ytest,pred_)
             f1 = metrics.f1_score(ytest,pred_)
         
-        logger.info("Compiling Metrics")
+        logger.info("Compiling Metrics")        
         time_end=time.time()
         kappa = metrics.cohen_kappa_score(ytest,pred_)
         mcc = metrics.matthews_corrcoef(ytest,pred_)
@@ -7823,9 +7704,11 @@ def stack_models(estimator_list,
         score_precision = np.append(score_precision,precision)
         score_f1 =np.append(score_f1,f1)
         score_kappa =np.append(score_kappa,kappa)
-        score_mcc =np.append(score_mcc,mcc)
-        score_training_time =np.append(score_training_time,training_time)
-        
+        score_mcc=np.append(score_mcc,mcc)
+        score_training_time = np.append(score_training_time,training_time)
+   
+        progress.value += 1
+                
         '''
         
         This section handles time calculation and is created to update_display() as code loops through 
@@ -7838,13 +7721,9 @@ def stack_models(estimator_list,
         master_display = pd.concat([master_display, fold_results],ignore_index=True)
         fold_results = []
         
-        
         '''
-        
         TIME CALCULATION SUB-SECTION STARTS HERE
-        
         '''
-        
         t1 = time.time()
         
         tt = (t1 - t0) * (fold-fold_num) / 60
@@ -7857,13 +7736,12 @@ def stack_models(estimator_list,
         else:
             tt = str (tt)
             ETC = tt + ' Minutes Remaining'
-        
+            
         '''
         MONITOR UPDATE STARTS
         '''
 
         monitor.iloc[2,1:] = ETC
-        
         if verbose:
             if html_param:
                 update_display(monitor, display_id = 'monitor')
@@ -7871,16 +7749,11 @@ def stack_models(estimator_list,
         '''
         MONITOR UPDATE ENDS
         '''
-        
-        #update_display(ETC, display_id = 'ETC')
             
         fold_num += 1
         
-        
         '''
-        
         TIME CALCULATION ENDS HERE
-        
         '''
         
         if verbose:
@@ -7893,11 +7766,9 @@ def stack_models(estimator_list,
         Update_display() ends here
         
         '''
-
-    model_fit_end = time.time()
-    model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
-
+    
     logger.info("Calculating mean and std")
+
     mean_acc=np.mean(score_acc)
     mean_auc=np.mean(score_auc)
     mean_recall=np.mean(score_recall)
@@ -7905,7 +7776,8 @@ def stack_models(estimator_list,
     mean_f1=np.mean(score_f1)
     mean_kappa=np.mean(score_kappa)
     mean_mcc=np.mean(score_mcc)
-    mean_training_time=np.sum(score_training_time)
+    mean_training_time=np.sum(score_training_time) #changed it to sum from mean 
+    
     std_acc=np.std(score_acc)
     std_auc=np.std(score_auc)
     std_recall=np.std(score_recall)
@@ -7929,36 +7801,57 @@ def stack_models(estimator_list,
     avgs_kappa = np.append(avgs_kappa, std_kappa)
     avgs_mcc = np.append(avgs_mcc, mean_mcc)
     avgs_mcc = np.append(avgs_mcc, std_mcc)
+    
     avgs_training_time = np.append(avgs_training_time, mean_training_time)
     avgs_training_time = np.append(avgs_training_time, std_training_time)
-
+    
+    progress.value += 1
+    
     logger.info("Creating metrics dataframe")
+
     model_results = pd.DataFrame({'Accuracy': score_acc, 'AUC': score_auc, 'Recall' : score_recall, 'Prec.' : score_precision , 
-                     'F1' : score_f1, 'Kappa' : score_kappa,'MCC':score_mcc})
+                     'F1' : score_f1, 'Kappa' : score_kappa, 'MCC': score_mcc})
     model_avgs = pd.DataFrame({'Accuracy': avgs_acc, 'AUC': avgs_auc, 'Recall' : avgs_recall, 'Prec.' : avgs_precision , 
-                     'F1' : avgs_f1, 'Kappa' : avgs_kappa,'MCC':avgs_mcc},index=['Mean', 'SD'])
-  
+                     'F1' : avgs_f1, 'Kappa' : avgs_kappa, 'MCC': avgs_mcc},index=['Mean', 'SD'])
+
+    
     model_results = model_results.append(model_avgs)
     model_results = model_results.round(round)
-
+    
     # yellow the mean
     model_results=model_results.style.apply(lambda x: ['background: yellow' if (x.name == 'Mean') else '' for i in x], axis=1)
     model_results = model_results.set_precision(round)
+
+    #refitting the model on complete X_train, y_train
+    monitor.iloc[1,1:] = 'Finalizing Model'
+    monitor.iloc[2,1:] = 'Almost Finished'    
+    if verbose:
+        if html_param:
+            update_display(monitor, display_id = 'monitor')
+    
+    model_fit_start = time.time()
+    logger.info("Finalizing model")
+    model.fit(data_X, data_y)
+    model_fit_end = time.time()
+
+    model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
+    
     progress.value += 1
-    
-    #appending method and restack param into models_
-    models_.append(method)
-    models_.append(restack)
-    
+
+    #end runtime
+    runtime_end = time.time()
+    runtime = np.array(runtime_end - runtime_start).round(2)
+
     #storing results in create_model_container
     logger.info("Uploading results into container")
     create_model_container.append(model_results.data)
-    if not finalize:
-        display_container.append(model_results.data)
+    display_container.append(model_results.data)
 
     #storing results in master_model_container
     logger.info("Uploading model into container")
-    master_model_container.append(models_)
+    master_model_container.append(model)    
+
+    progress.value += 1
 
     '''
     When choose_better sets to True. optimize metric in scoregrid is
@@ -8008,23 +7901,15 @@ def stack_models(estimator_list,
     index_scorer = scorer.index(max(scorer))
     
     if index_scorer == 0:
-        models_ = models_
+        model = model
     else:
-        models_ = base_models_[index_scorer-1]
-
-    if plot:
-        logger.info("Plotting correlation heatmap")
-        clear_output()
-        plt.subplots(figsize=(15,7))
-        ax = sns.heatmap(base_prediction_cor, vmin=0.2, vmax=1, center=0,cmap='magma', square=True, annot=True, 
-                         linewidths=1)
-        ax.set_ylim(sorted(ax.get_xlim(), reverse=True))
+        model = base_models_[index_scorer-1]
 
     #end runtime
     runtime_end = time.time()
     runtime = np.array(runtime_end - runtime_start).round(2)
 
-    if logging_param and not finalize:
+    if logging_param:
         
         logger.info("Creating MLFlow logs")
 
@@ -8044,7 +7929,7 @@ def stack_models(estimator_list,
             # Get active run to log as tag
             RunID = mlflow.active_run().info.run_id
 
-            params = meta_model.get_params()
+            params = model.get_params()
 
             for i in list(params):
                 v = params.get(i)
@@ -8068,7 +7953,7 @@ def stack_models(estimator_list,
 
             # Log model and transformation pipeline
             logger.info("SubProcess save_model() called ==================================")
-            save_model(models_, 'Trained Model', verbose=False)
+            save_model(model, 'Trained Model', verbose=False)
             logger.info("SubProcess save_model() end ==================================")
             mlflow.log_artifact('Trained Model' + '.pkl')
             size_bytes = Path('Trained Model.pkl').stat().st_size
@@ -8084,19 +7969,8 @@ def stack_models(estimator_list,
             mlflow.log_artifact('Results.html')
             os.remove('Results.html')
 
-            if log_plots_param:
-
-                plt.subplots(figsize=(15,7))
-                ax = sns.heatmap(base_prediction_cor, vmin=0.2, vmax=1, center=0,cmap='magma', square=True, annot=True, 
-                                linewidths=1)
-                ax.set_ylim(sorted(ax.get_xlim(), reverse=True))
-                plt.savefig("Stacking Heatmap.png")
-                mlflow.log_artifact('Stacking Heatmap.png')
-                os.remove('Stacking Heatmap.png')
-                plt.close()
-
             # Generate hold-out predictions and save as html
-            holdout = predict_model(models_, verbose=False)
+            holdout = predict_model(model, verbose=False)
             holdout_score = pull()
             display_container.pop(-1)
             holdout_score.to_html('Holdout.html', col_space=65, justify='left')
@@ -8114,10 +7988,10 @@ def stack_models(estimator_list,
     logger.info("master_model_container: " + str(len(master_model_container)))
     logger.info("display_container: " + str(len(display_container)))
 
-    logger.info(str(models_))
+    logger.info(str(model))
     logger.info("stack_models() succesfully completed......................................")
 
-    return models_
+    return model
 
 def interpret_model(estimator,
                    plot = 'summary',
