@@ -4,11 +4,11 @@
 [![Build Status](https://travis-ci.com/pycaret/pycaret.svg?branch=master)](https://travis-ci.com/pycaret/pycaret) [![Stability](https://img.shields.io/badge/stability-stable-green.svg)](https://img.shields.io/badge/stability-stable-green.svg) [![Documentation Status](https://readthedocs.org/projects/pip/badge/?version=stable)](http://pip.pypa.io/en/stable/?badge=stable) [![PyPI version](https://badge.fury.io/py/pycaret.svg)](https://badge.fury.io/py/pycaret) [![License](https://img.shields.io/pypi/l/ansicolortags.svg)](https://img.shields.io/pypi/l/ansicolortags.svg) [![Git count](http://hits.dwyl.com/pycaret/pycaret/pycaret.svg)](http://hits.dwyl.com/pycaret/pycaret/pycaret)
 
 ## What is PyCaret?
-PyCaret is an open source `low-code` machine learning library in Python that aims to reduce the hypothesis to insights cycle time in a ML experiment. It enables data scientists to perform end-to-end experiments quickly and efficiently. In comparison with the other open source machine learning libraries, PyCaret is an alternative low-code library that can be used to perform complex machine learning tasks with only few lines of code. PyCaret is essentially a Python wrapper around several machine learning libraries and frameworks such as `scikit-learn`, `XGBoost`, `Microsoft LightGBM`, `spaCy` and many more. 
+PyCaret is an open-source `low-code` machine learning library in Python that aims to reduce the hypothesis to insights cycle time in an ML experiment. It enables data scientists to perform end-to-end experiments quickly and efficiently. In comparison with the other open-source machine learning libraries, PyCaret is an alternative low-code library that can be used to perform complex machine learning tasks with only a few lines of code. PyCaret is essentially a Python wrapper around several machine learning libraries and frameworks such as `scikit-learn`, `XGBoost`, `Microsoft LightGBM`, `spaCy`, and many more. 
 
-The design and simplicity of PyCaret is inspired by the emerging role of `citizen data scientists`, a term first used by Gartner. Citizen Data Scientists are `power users` who can perform both simple and moderately sophisticated analytical tasks that would previously have required more expertise. Seasoned data scientists are often difficult to find and expensive to hire but citizen data scientists can be an effective way to mitigate this gap and address data related challenges in business setting.
+The design and simplicity of PyCaret are inspired by the emerging role of `citizen data scientists`, a term first used by Gartner. Citizen Data Scientists are `power users` who can perform both simple and moderately sophisticated analytical tasks that would previously have required more expertise. Seasoned data scientists are often difficult to find and expensive to hire but citizen data scientists can be an effective way to mitigate this gap and address data-related challenges in a business setting.
 
-PyCaret is `simple`, `easy to use` and `deployment ready`. All the steps performed in a ML experiment can be reproduced using a pipeline that is automatically developed and orchestrated in PyCaret as you progress through the experiment. A `pipeline` can be saved in a binary file format that is transferable across environments.
+PyCaret is `simple`, `easy to use` and `deployment-ready`. All the steps performed in an ML experiment can be reproduced using a pipeline that is automatically developed and orchestrated in PyCaret as you progress through the experiment. A `pipeline` can be saved in a binary file format that is transferable across environments.
 
 For more information on PyCaret, please visit our official website https://www.pycaret.org
 
@@ -28,7 +28,7 @@ pip install pycaret==2.0
 - Issue Logs: https://github.com/pycaret/pycaret/issues
 
 ## Who should use PyCaret?
-PyCaret is an open source library that anybody can use. In our view the ideal target audience of PyCaret is: <br />
+PyCaret is an open-source library that anybody can use. In our view, the ideal target audience of PyCaret is: <br />
 
 - Experienced Data Scientists who want to increase productivity.
 - Citizen Data Scientists who prefer a low code machine learning solution.
@@ -36,7 +36,7 @@ PyCaret is an open source library that anybody can use. In our view the ideal ta
 - Data Science Professionals and Consultants involved in building Proof of Concept projects.
 
 ## Dependencies
-Please read requirements.txt for list of requirements. They are automatically installed when pycaret is installed using pip. `shap`, `awscli` and `psutil` is removed from hard dependency in PyCaret 2.0. Must be installed separately, if needed.
+Please read requirements.txt for the list of requirements. They are automatically installed when pycaret is installed using pip. However, `shap`, `awscli` and `psutil` are removed from hard dependency in PyCaret 2.0 so they must be installed separately, if needed.
 
 ## Note:
 It supports Python 64 bit only.
