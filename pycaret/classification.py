@@ -3,8 +3,10 @@
 # License: MIT
 # Release: PyCaret 2.1x
 # Last modified : 05/08/2020
+from pycaret import gcp_utils, azure_utils
 
-def setup(data,  
+
+def setup(data,
           target,   
           train_size = 0.7, 
           sampling = True, 
@@ -9467,6 +9469,12 @@ def load_model(model_name,
     
      When platform = 'aws': 
      {'bucket' : 'Name of Bucket on S3'}
+
+     When platform = 'gcp':
+     {'project': 'gcp_pycaret', 'bucket' : 'pycaret-test'}
+
+     When platform = 'azure':
+     {'container': 'pycaret-test'}
     
     verbose: Boolean, default = True
     Success message is not printed when verbose is set to False.
@@ -9502,6 +9510,42 @@ def load_model(model_name,
         
         if verbose:
             print('Transformation Pipeline and Model Sucessfully Loaded')
+
+        return model
+    elif platform == 'gcp':
+        import gcp_utils as gcp_utils
+        if verbose:
+            print('loading model from GCP')
+        bucket_name = authentication.get('bucket')
+        project_name = authentication.get('project')
+        filename = str(model_name) + '.pkl'
+
+        model_downloaded = gcp_utils.download_blob(project_name,
+                                                   bucket_name, filename, filename)
+
+        model = load_model(model_name, verbose=False)
+
+        if verbose:
+            print('Transformation Pipeline and Model Successfully Loaded')
+        return model
+    elif platform == 'azure':
+        import azure_utils as azure_utils
+        if verbose:
+            print('Loading model from Microsoft Azure')
+
+        container_name = authentication.get('container')
+        filename = str(model_name) + '.pkl'
+
+        model_downloaded = azure_utils.download_blob(container_name,
+                                                     filename, filename)
+
+        model = load_model(model_name, verbose=False)
+
+        if verbose:
+            print('Transformation Pipeline and Model Successfully Loaded')
+        return model
+    else:
+        raise NotImplemnetedError('Platform { } is not supported by pycaret or illegal option'.format(platform))
 
         return model
 
@@ -10270,6 +10314,24 @@ def deploy_model(model,
            - Default Region Name (can be seen under Global settings on your AWS console)
            - Default output format (must be left blank)
 
+        For GCP users:
+        --------------
+        Before deploying a model to Google Cloud Platform (GCP), environment variables
+        must be configured using the command line interface:
+
+           - authentication = {'project': 'gcp_pycaret', 'bucket' : 'pycaret-test'}
+
+        For AZURE users:
+        --------------
+        Before deploying a model to an AWS S3 ('aws'), environment variables must be
+        configured using the command line interface. To configure AWS env. variables,
+        type aws configure in your python command line. The following information is
+        required which can be generated using the Identity and Access Management (IAM)
+        portal of your amazon console account:
+
+           - authentication = {'container': 'pycaret-test'}
+
+
     Parameters
     ----------
     model : object
@@ -10283,9 +10345,16 @@ def deploy_model(model,
       
      When platform = 'aws': 
      {'bucket' : 'Name of Bucket on S3'}
+
+     When platform = 'gcp':
+     {'project': 'gcp_pycaret', 'bucket' : 'pycaret-test'}
+
+     When platform = 'azure':
+     {'container': 'pycaret-test'}
+
     
     platform: string, default = 'aws'
-    Name of platform for deployment. Current available options are: 'aws'.
+    Name of platform for deployment. Current available options are: 'aws', 'gcp' and 'azure'.
 
     Returns:
     --------    
@@ -10370,6 +10439,31 @@ def deploy_model(model,
         print("Model Succesfully Deployed on AWS S3")
         logger.info(str(model))
         logger.info("deploy_model() succesfully completed......................................")
+
+    elif platform == 'gcp':
+        import gcp_utils as gcp_utils
+        save_model(model, model_name=model_name, verbose=False)
+        filename = str(model_name) + '.pkl'
+        key = str(model_name) + '.pkl'
+        bucket_name = authentication.get('bucket')
+        project_name = authentication.get('project')
+        print('Deploying model to Google Cloud Platform')
+        # Create Bucket
+        gcp_utils.create_bucket(project_name, bucket_name)
+        gcp_utils.upload_blob(project_name, bucket_name, filename, key)
+
+    elif platform == 'azure':
+        import azure_utils as azure_utils
+        print('Deploying model to Microsoft Azure')
+        save_model(model, model_name=model_name, verbose=False)
+        filename = str(model_name) + '.pkl'
+        key = str(model_name) + '.pkl'
+        container_name = authentication.get('container')
+        container_client = azure_utils.create_container(container_name)
+        azure_utils.upload_blob(container_name, filename, key)
+
+    else:
+        raise NotImplementederror(f'Platform {platform} is not supported by pycaret or illegal option')
         
 def optimize_threshold(estimator, 
                        true_positive = 0, 
