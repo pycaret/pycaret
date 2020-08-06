@@ -18,4 +18,4 @@ catboost_info
 /dist
 .vscode/settings.json
 /logs.log
-/pycaret/__pycache__
+pycaret/__pycache__/
