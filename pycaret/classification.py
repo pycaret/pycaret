@@ -9527,7 +9527,7 @@ def load_model(model_name,
             print('Transformation Pipeline and Model Successfully Loaded')
         return model
 
-    elif platform == 'azure':
+    else platform == 'azure':
         if verbose:
             print('Loading model from Microsoft Azure')
 
@@ -9542,10 +9542,10 @@ def load_model(model_name,
         if verbose:
             print('Transformation Pipeline and Model Successfully Loaded')
         return model
-    else:
-        raise NotImplemnetedError('Platform { } is not supported by pycaret or illegal option'.format(platform))
+    # else:
+    #     raise NotImplemnetedError('Platform { } is not supported by pycaret or illegal option'.format(platform))
 
-        return model
+        # return model
 
     import joblib
     model_name = model_name + '.pkl'
