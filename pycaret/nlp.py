@@ -16,9 +16,6 @@ def setup(data,
           verbose = True): #added in pycaret==2.0.0)
     
     """
-        
-    Description:
-    ------------
     This function initializes the environment in pycaret. setup() must called before
     executing any other function in pycaret. It takes one mandatory parameter:
     dataframe {array-like, sparse matrix} or object of type list. If a dataframe is 
@@ -26,64 +23,64 @@ def setup(data,
     type list, no target parameter is required. All other parameters are optional. 
     This module only supports English Language at this time.
 
-        Example
-        -------
-        from pycaret.datasets import get_data
-        kiva = get_data('kiva')
-        experiment_name = setup(data = kiva, target = 'en')
+    Example
+    -------
+    >>> from pycaret.datasets import get_data
+    >>> kiva = get_data('kiva')
+    >>> experiment_name = setup(data = kiva, target = 'en')
 
-        'kiva' is a pandas Dataframe.
+    'kiva' is a pandas Dataframe.
         
     Parameters
     ----------
-    data : {array-like, sparse matrix}, shape (n_samples, n_features) where n_samples 
-    is the number of samples and n_features is the number of features or object of type
-    list with n length.
+    data : {array-like, sparse matrix}
+        Shape (n_samples, n_features) where n_samples is the number of samples and n_features
+        is the number of features or object of type list with n length.
 
     target: string
-    If data is of type DataFrame, name of column containing text values must be passed as 
-    string. 
+        If data is of type DataFrame, name of column containing text values must be passed as 
+        string. 
     
     custom_stopwords: list, default = None
-    list containing custom stopwords.
+        List containing custom stopwords.
 
     html: bool, default = True
-    If set to False, prevents runtime display of monitor. This must be set to False
-    when using environment that doesnt support HTML.
+        If set to False, prevents runtime display of monitor. This must be set to False
+        when using environment that doesnt support HTML.
 
     session_id: int, default = None
-    If None, a random seed is generated and returned in the Information grid. The 
-    unique number is then distributed as a seed in all functions used during the 
-    experiment. This can be used for later reproducibility of the entire experiment.
+        If None, a random seed is generated and returned in the Information grid. The 
+        unique number is then distributed as a seed in all functions used during the 
+        experiment. This can be used for later reproducibility of the entire experiment.
 
     log_experiment: bool, default = True
-    When set to True, all metrics and parameters are logged on MLFlow server.
+        When set to True, all metrics and parameters are logged on MLFlow server.
 
     experiment_name: str, default = None
-    Name of experiment for logging. When set to None, 'nlp' is by default used as 
-    alias for the experiment name.
+        Name of experiment for logging. When set to None, 'nlp' is by default used as 
+        alias for the experiment name.
 
     log_plots: bool, default = False
-    When set to True, specific plots are logged in MLflow as a png file. By default,
-    it is set to False. 
+        When set to True, specific plots are logged in MLflow as a png file. By default,
+        it is set to False. 
 
     log_data: bool, default = False
-    When set to True, train and test dataset are logged as csv. 
+        When set to True, train and test dataset are logged as csv. 
 
     verbose: Boolean, default = True
-    Information grid is not printed when verbose is set to False.
+        Information grid is not printed when verbose is set to False.
 
-    Returns:
+    Returns
+    -------
+    info_grid
+        Information grid is printed.
+
+    environment
+        This function returns various outputs that are stored in variable
+        as tuple. They are used by other functions in pycaret.
+
+    Warnings
     --------
-
-    info grid:    Information grid is printed.
-    -----------      
-
-    environment:  This function returns various outputs that are stored in variable
-    -----------   as tuple. They are used by other functions in pycaret.
-
-    Warnings:
-    ---------
     - Some functionalities in pycaret.nlp requires you to have english language model. 
       The language model is not downloaded automatically when you install pycaret. 
       You will have to download two models using your Anaconda Prompt or python 
@@ -854,60 +851,54 @@ def create_model(model=None,
                  system=True, #added in pycaret==2.0.0
                  **kwargs): #added in pycaret==2.0.0
     
-    """  
-     
-    Description:
-    ------------
+    """
     This function creates a model on the dataset passed as a data param during 
     the setup stage. setup() function must be called before using create_model().
 
     This function returns a trained model object. 
 
-        Example
-        -------
-        from pycaret.datasets import get_data
-        kiva = get_data('kiva')
-        experiment_name = setup(data = kiva, target = 'en')
-        
-        lda = create_model('lda')
+    Example
+    -------
+    >>> from pycaret.datasets import get_data
+    >>> kiva = get_data('kiva')
+    >>> experiment_name = setup(data = kiva, target = 'en')
+    >>> lda = create_model('lda')
 
-        This will return trained Latent Dirichlet Allocation model.
+    This will return trained Latent Dirichlet Allocation model.
 
     Parameters
     ----------
     model : string, default = None
+        Enter ID of the model available in model library.
 
-    Enter ID of the model available in model library.
-
-    ID          Model  
-    ------      ---------
-    'lda'       Latent Dirichlet Allocation         
-    'lsi'       Latent Semantic Indexing           
-    'hdp'       Hierarchical Dirichlet Process
-    'rp'        Random Projections
-    'nmf'       Non-Negative Matrix Factorization
+        ID          Model  
+        ------      ---------
+        'lda'       Latent Dirichlet Allocation         
+        'lsi'       Latent Semantic Indexing           
+        'hdp'       Hierarchical Dirichlet Process
+        'rp'        Random Projections
+        'nmf'       Non-Negative Matrix Factorization
    
     multi_core: Boolean, default = False
-    True would utilize all CPU cores to parallelize and speed up model training. Only
-    available for 'lda'. For all other models, the multi_core parameter is ignored.
+        True would utilize all CPU cores to parallelize and speed up model training. Only
+        available for 'lda'. For all other models, the multi_core parameter is ignored.
 
     num_topics: integer, default = 4
-    Number of topics to be created. If None, default is set to 4.
+        Number of topics to be created. If None, default is set to 4.
 
     verbose: Boolean, default = True
-    Status update is not printed when verbose is set to False.
+        Status update is not printed when verbose is set to False.
 
     system: Boolean, default = True
-    Must remain True all times. Only to be changed by internal functions.
+        Must remain True all times. Only to be changed by internal functions.
 
     **kwargs: 
-    Additional keyword arguments to pass to the estimator.
+        Additional keyword arguments to pass to the estimator.
 
-    Returns:
-    --------
-
-    model:   trained model object
-    ------
+    Returns
+    -------
+    model
+        Trained model object.
      
     """
     
@@ -1288,10 +1279,7 @@ def assign_model(model,
                  verbose=True):
     
     
-    """  
-     
-    Description:
-    ------------
+    """
     This function assigns each of the data point in the dataset passed during setup
     stage to one of the topic using trained model object passed as model param.
     create_model() function must be called before using assign_model().
@@ -1299,29 +1287,27 @@ def assign_model(model,
     This function returns dataframe with topic weights, dominant topic and % of the
     dominant topic (where applicable).
 
-        Example
-        -------
-        from pycaret.datasets import get_data
-        kiva = get_data('kiva')
-        experiment_name = setup(data = kiva, target = 'en')        
-        lda = create_model('lda')
-        
-        lda_df = assign_model(lda)
-        
-        This will return a dataframe with inferred topics using trained model.
+    Example
+    -------
+    >>> from pycaret.datasets import get_data
+    >>> kiva = get_data('kiva')
+    >>> experiment_name = setup(data = kiva, target = 'en')        
+    >>> lda = create_model('lda')
+    >>> lda_df = assign_model(lda)
+    
+    This will return a dataframe with inferred topics using trained model.
 
     Parameters
     ----------
     model : trained model object, default = None
 
     verbose: Boolean, default = True
-    Status update is not printed when verbose is set to False.
+        Status update is not printed when verbose is set to False.
 
-    Returns:
-    --------
-
-    dataframe:   Returns dataframe with inferred topics using trained model object.
-    ---------
+    Returns
+    -------
+    pandas.DataFrame
+        Returns dataframe with inferred topics using trained model object.
       
     
     """
@@ -1642,9 +1628,6 @@ def plot_model(model = None,
     
     
     """
-          
-    Description:
-    ------------
     This function takes a trained model object (optional) and returns a plot based 
     on the inferred dataset by internally calling assign_model before generating a
     plot. Where a model parameter is not passed, a plot on the entire dataset will 
@@ -1653,71 +1636,69 @@ def plot_model(model = None,
     model object will return a plot based on the first topic i.e.  'Topic 0'. This 
     can be changed using the topic_num param. 
 
-        Example:
-        --------
-        from pycaret.datasets import get_data
-        kiva = get_data('kiva')
-        experiment_name = setup(data = kiva, target = 'en')        
-        lda = create_model('lda')
-        
-        plot_model(lda, plot = 'frequency')
+    Example
+    -------
+    >>> from pycaret.datasets import get_data
+    >>> kiva = get_data('kiva')
+    >>> experiment_name = setup(data = kiva, target = 'en')        
+    >>> lda = create_model('lda')
+    >>> plot_model(lda, plot = 'frequency')
 
-        This will return a frequency plot on a trained Latent Dirichlet Allocation 
-        model for all documents in 'Topic 0'. The topic number can be changed as 
-        follows:
-        
-        plot_model(lda, plot = 'frequency', topic_num = 'Topic 1')
-        
-        This will now return a frequency plot on a trained LDA model for all 
-        documents inferred in 'Topic 1'.
-        
-        Alternatively, if following is used:
-        
-        plot_model(plot = 'frequency')
-        
-        This will return frequency plot on the entire training corpus compiled 
-        during setup stage.
+    This will return a frequency plot on a trained Latent Dirichlet Allocation 
+    model for all documents in 'Topic 0'. The topic number can be changed as 
+    follows:
+    
+    >>> plot_model(lda, plot = 'frequency', topic_num = 'Topic 1')
+    
+    This will now return a frequency plot on a trained LDA model for all 
+    documents inferred in 'Topic 1'.
+    
+    Alternatively, if following is used:
+    
+    >>> plot_model(plot = 'frequency')
+    
+    This will return frequency plot on the entire training corpus compiled 
+    during setup stage.
 
     Parameters
     ----------
     model : object, default = none
-    A trained model object can be passed. Model must be created using create_model().
+        A trained model object can be passed. Model must be created using create_model().
 
     plot : string, default = 'frequency'
-    Enter abbreviation for type of plot. The current list of plots supported are:
+        Enter abbreviation for type of plot. The current list of plots supported are:
 
-    Name                           Abbreviated String     
-    ---------                      ------------------     
-    Word Token Frequency           'frequency'              
-    Word Distribution Plot         'distribution'
-    Bigram Frequency Plot          'bigram' 
-    Trigram Frequency Plot         'trigram'
-    Sentiment Polarity Plot        'sentiment'
-    Part of Speech Frequency       'pos'
-    t-SNE (3d) Dimension Plot      'tsne'
-    Topic Model (pyLDAvis)         'topic_model'
-    Topic Infer Distribution       'topic_distribution'
-    Wordcloud                      'wordcloud'
-    UMAP Dimensionality Plot       'umap'
+        Name                           Abbreviated String     
+        ---------                      ------------------     
+        Word Token Frequency           'frequency'              
+        Word Distribution Plot         'distribution'
+        Bigram Frequency Plot          'bigram' 
+        Trigram Frequency Plot         'trigram'
+        Sentiment Polarity Plot        'sentiment'
+        Part of Speech Frequency       'pos'
+        t-SNE (3d) Dimension Plot      'tsne'
+        Topic Model (pyLDAvis)         'topic_model'
+        Topic Infer Distribution       'topic_distribution'
+        Wordcloud                      'wordcloud'
+        UMAP Dimensionality Plot       'umap'
 
     topic_num : string, default = None
-    Topic number to be passed as a string. If set to None, default generation will 
-    be on 'Topic 0'
+        Topic number to be passed as a string. If set to None, default generation will 
+        be on 'Topic 0'
     
     save: Boolean, default = False
-    Plot is saved as png file in local directory when save parameter set to True.
+        Plot is saved as png file in local directory when save parameter set to True.
 
     system: Boolean, default = True
-    Must remain True all times. Only to be changed by internal functions.
+        Must remain True all times. Only to be changed by internal functions.
 
-    Returns:
+    Returns
+    -------
+    Visual_Plot
+        Prints the visual plot. 
+
+    Warnings
     --------
-
-    Visual Plot:  Prints the visual plot. 
-    ------------
-
-    Warnings:
-    ---------
     -  'pos' and 'umap' plot not available at model level. Hence the model parameter is 
        ignored. The result will always be based on the entire training corpus.
     
@@ -2368,9 +2349,6 @@ def tune_model(model=None,
 
 
     """
-
-    Description:
-    ------------
     This function tunes the num_topics model parameter using a predefined grid with
     the objective of optimizing a supervised learning metric as defined in the optimize
     param. You can choose the supervised estimator from a large library available in 
@@ -2378,128 +2356,124 @@ def tune_model(model=None,
 
     This function returns the tuned model object.
 
-        Example
-        -------
-        from pycaret.datasets import get_data
-        kiva = get_data('kiva')
-        experiment_name = setup(data = kiva, target = 'en')        
-        
-        tuned_lda = tune_model(model = 'lda', supervised_target = 'status') 
+    Example
+    -------
+    >>> from pycaret.datasets import get_data
+    >>> kiva = get_data('kiva')
+    >>> experiment_name = setup(data = kiva, target = 'en')        
+    >>> tuned_lda = tune_model(model = 'lda', supervised_target = 'status') 
 
-        This will return trained Latent Dirichlet Allocation model. 
+    This will return trained Latent Dirichlet Allocation model. 
 
     Parameters
     ----------
     model : string, default = None
+        Enter ID of the models available in model library:
 
-    Enter ID of the models available in model library:
-
-    ID          Model  
-    ------      ---------
-    'lda'       Latent Dirichlet Allocation         
-    'lsi'       Latent Semantic Indexing           
-    'hdp'       Hierarchical Dirichlet Process
-    'rp'        Random Projections
-    'nmf'       Non-Negative Matrix Factorization
+        ID          Model  
+        ------      ---------
+        'lda'       Latent Dirichlet Allocation         
+        'lsi'       Latent Semantic Indexing           
+        'hdp'       Hierarchical Dirichlet Process
+        'rp'        Random Projections
+        'nmf'       Non-Negative Matrix Factorization
 
     multi_core: Boolean, default = False
-    True would utilize all CPU cores to parallelize and speed up model training. Only
-    available for 'lda'. For all other models, multi_core parameter is ignored.
+        True would utilize all CPU cores to parallelize and speed up model training. Only
+        available for 'lda'. For all other models, multi_core parameter is ignored.
 
     supervised_target: string
-    Name of the target column for supervised learning. If None, the mdel coherence value
-    is used as the objective function.
+        Name of the target column for supervised learning. If None, the mdel coherence value
+        is used as the objective function.
 
     estimator: string, default = None
+        ID          Name                            Task      
+        --------    ----------                      ----------     
+        'lr'        Logistic Regression             Classification
+        'knn'       K Nearest Neighbour             Classification
+        'nb'        Naive Bayes                     Classification            
+        'dt'        Decision Tree Classifier        Classification                   
+        'svm'       SVM - Linear Kernel             Classification	            
+        'rbfsvm'    SVM - Radial Kernel             Classification               
+        'gpc'       Gaussian Process Classifier     Classification                  
+        'mlp'       Multi Level Perceptron          Classification                  
+        'ridge'     Ridge Classifier                Classification
+        'rf'        Random Forest Classifier        Classification                   
+        'qda'       Quadratic Discriminant Analysis Classification                  
+        'ada'       Ada Boost Classifier            Classification                 
+        'gbc'       Gradient Boosting Classifier    Classification                          
+        'lda'       Linear Discriminant Analysis    Classification                  
+        'et'        Extra Trees Classifier          Classification                   
+        'xgboost'   Extreme Gradient Boosting       Classification              
+        'lightgbm'  Light Gradient Boosting         Classification              
+        'catboost'  CatBoost Classifier             Classification
+        'lr'        Linear Regression               Regression                   
+        'lasso'     Lasso Regression                Regression
+        'ridge'     Ridge Regression                Regression
+        'en'        Elastic Net                     Regression
+        'lar'       Least Angle Regression          Regression        
+        'llar'      Lasso Least Angle Regression    Regression                   
+        'omp'       Orthogonal Matching Pursuit     Regression                     
+        'br'        Bayesian Ridge                  Regression                   
+        'ard'       Automatic Relevance Determ.     Regression                  
+        'par'       Passive Aggressive Regressor    Regression                    
+        'ransac'    Random Sample Consensus         Regression       
+        'tr'        TheilSen Regressor              Regression                   
+        'huber'     Huber Regressor                 Regression                               
+        'kr'        Kernel Ridge                    Regression                                     
+        'svm'       Support Vector Machine          Regression                           
+        'knn'       K Neighbors Regressor           Regression                           
+        'dt'        Decision Tree                   Regression                                    
+        'rf'        Random Forest                   Regression                                    
+        'et'        Extra Trees Regressor           Regression                            
+        'ada'       AdaBoost Regressor              Regression                                   
+        'gbr'       Gradient Boosting               Regression                               
+        'mlp'       Multi Level Perceptron          Regression                          
+        'xgboost'   Extreme Gradient Boosting       Regression                              
+        'lightgbm'  Light Gradient Boosting         Regression                    
+        'catboost'  CatBoost Regressor              Regression   
 
-    ID          Name                            Task      
-    --------    ----------                      ----------     
-    'lr'        Logistic Regression             Classification
-    'knn'       K Nearest Neighbour             Classification
-    'nb'        Naive Bayes                     Classification            
-    'dt'        Decision Tree Classifier        Classification                   
-    'svm'       SVM - Linear Kernel             Classification	            
-    'rbfsvm'    SVM - Radial Kernel             Classification               
-    'gpc'       Gaussian Process Classifier     Classification                  
-    'mlp'       Multi Level Perceptron          Classification                  
-    'ridge'     Ridge Classifier                Classification
-    'rf'        Random Forest Classifier        Classification                   
-    'qda'       Quadratic Discriminant Analysis Classification                  
-    'ada'       Ada Boost Classifier            Classification                 
-    'gbc'       Gradient Boosting Classifier    Classification                          
-    'lda'       Linear Discriminant Analysis    Classification                  
-    'et'        Extra Trees Classifier          Classification                   
-    'xgboost'   Extreme Gradient Boosting       Classification              
-    'lightgbm'  Light Gradient Boosting         Classification              
-    'catboost'  CatBoost Classifier             Classification
-    'lr'        Linear Regression               Regression                   
-    'lasso'     Lasso Regression                Regression
-    'ridge'     Ridge Regression                Regression
-    'en'        Elastic Net                     Regression
-    'lar'       Least Angle Regression          Regression        
-    'llar'      Lasso Least Angle Regression    Regression                   
-    'omp'       Orthogonal Matching Pursuit     Regression                     
-    'br'        Bayesian Ridge                  Regression                   
-    'ard'       Automatic Relevance Determ.     Regression                  
-    'par'       Passive Aggressive Regressor    Regression                    
-    'ransac'    Random Sample Consensus         Regression       
-    'tr'        TheilSen Regressor              Regression                   
-    'huber'     Huber Regressor                 Regression                               
-    'kr'        Kernel Ridge                    Regression                                     
-    'svm'       Support Vector Machine          Regression                           
-    'knn'       K Neighbors Regressor           Regression                           
-    'dt'        Decision Tree                   Regression                                    
-    'rf'        Random Forest                   Regression                                    
-    'et'        Extra Trees Regressor           Regression                            
-    'ada'       AdaBoost Regressor              Regression                                   
-    'gbr'       Gradient Boosting               Regression                               
-    'mlp'       Multi Level Perceptron          Regression                          
-    'xgboost'   Extreme Gradient Boosting       Regression                              
-    'lightgbm'  Light Gradient Boosting         Regression                    
-    'catboost'  CatBoost Regressor              Regression   
+        If set to None, Linear / Logistic model is used by default.
 
-    If set to None, Linear / Logistic model is used by default.
-    
     optimize: string, default = None
-    
-    custom_grid: list, default = None
-    By default, a pre-defined number of topics is iterated over to 
-    optimize the supervised objective. To overwrite default iteration,
-    pass a list of num_topics to iterate over in custom_grid param.
+        For Classification tasks:
+            Accuracy, AUC, Recall, Precision, F1, Kappa
+        
+        For Regression tasks:
+            MAE, MSE, RMSE, R2, RMSLE, MAPE
+            
+        If set to None, default is 'Accuracy' for classification and 'R2' for 
+        regression tasks.
 
-    For Classification tasks:
-    Accuracy, AUC, Recall, Precision, F1, Kappa
-    
-    For Regression tasks:
-    MAE, MSE, RMSE, R2, ME
-    
-    If set to None, default is 'Accuracy' for classification and 'R2' for 
-    regression tasks.
+    custom_grid: list, default = None
+        By default, a pre-defined number of topics is iterated over to 
+        optimize the supervised objective. To overwrite default iteration,
+        pass a list of num_topics to iterate over in custom_grid param.
 
     auto_fe: boolean, default = True
-    Automatic text feature engineering. Only used when supervised_target is
-    passed. When set to true, it will generate text based features such as 
-    polarity, subjectivity, wordcounts to be used in supervised learning.
-    Ignored when supervised_target is set to None.
+        Automatic text feature engineering. Only used when supervised_target is
+        passed. When set to true, it will generate text based features such as 
+        polarity, subjectivity, wordcounts to be used in supervised learning.
+        Ignored when supervised_target is set to None.
 
     fold: integer, default = 10
-    Number of folds to be used in Kfold CV. Must be at least 2. 
+        Number of folds to be used in Kfold CV. Must be at least 2. 
 
     verbose: Boolean, default = True
-    Status update is not printed when verbose is set to False.
+        Status update is not printed when verbose is set to False.
     
-    Returns:
+    Returns
+    -------
+    Visual_Plot
+        Visual plot with k number of topics on x-axis with metric to
+        optimize on y-axis. Coherence is used when learning is 
+        unsupervised. Also, prints the best model metric.
+
+    model
+        trained model object with best K number of topics.
+
+    Warnings
     --------
-
-    visual plot:  Visual plot with k number of topics on x-axis with metric to
-    -----------   optimize on y-axis. Coherence is used when learning is 
-                  unsupervised. Also, prints the best model metric.
-
-    model:        trained model object with best K number of topics.
-    -----------
-
-    Warnings:
-    ---------
     - Random Projections ('rp') and Non Negative Matrix Factorization ('nmf')
       is not available for unsupervised learning. Error is raised when 'rp' or
       'nmf' is passed without supervised_target.
@@ -3397,34 +3371,29 @@ def tune_model(model=None,
 def evaluate_model(model):
     
     """
-          
-    Description:
-    ------------
     This function displays the user interface for all the available plots 
     for a given model. It internally uses the plot_model() function. 
     
-        Example:
-        --------
-        from pycaret.datasets import get_data
-        kiva = get_data('kiva')
-        experiment_name = setup(data = kiva, target = 'en')     
-        lda = create_model('lda')
-        
-        evaluate_model(lda)
-        
-        This will display the User Interface for all of the plots for 
-        given model. 
+    Example
+    -------
+    >>> from pycaret.datasets import get_data
+    >>> kiva = get_data('kiva')
+    >>> experiment_name = setup(data = kiva, target = 'en')     
+    >>> lda = create_model('lda')
+    >>> evaluate_model(lda)
+    
+    This will display the User Interface for all of the plots for 
+    given model. 
 
     Parameters
     ----------
     model : object, default = none
-    A trained model object should be passed. 
+        A trained model object should be passed. 
 
-    Returns:
-    --------
-
-    User Interface:  Displays the user interface for plotting.
-    --------------
+    Returns
+    -------
+    User_Interface
+        Displays the user interface for plotting.
            
     """
         
@@ -3475,38 +3444,34 @@ def save_model(model, model_name,
                verbose=True): #added in pycaret==2.0.0
     
     """
-          
-    Description:
-    ------------
     This function saves the trained model object into the current active 
     directory as a pickle file for later use. 
     
-        Example:
-        --------
-        from pycaret.datasets import get_data
-        kiva = get_data('kiva')
-        experiment_name = setup(data = kiva, target = 'en')
-        lda = create_model('lda')
-        
-        save_model(lda, 'lda_model_23122019')
-        
-        This will save the model as a binary pickle file in the current 
-        directory. 
+    Example
+    -------
+    >>> from pycaret.datasets import get_data
+    >>> kiva = get_data('kiva')
+    >>> experiment_name = setup(data = kiva, target = 'en')
+    >>> lda = create_model('lda')
+    >>> save_model(lda, 'lda_model_23122019')
+    
+    This will save the model as a binary pickle file in the current 
+    directory. 
 
     Parameters
     ----------
     model : object, default = none
-    A trained model object should be passed.
+        A trained model object should be passed.
     
     model_name : string, default = none
-    Name of pickle file to be passed as a string.
+        Name of pickle file to be passed as a string.
 
     verbose : bool, default = True
-    When set to False, success message is not printed.
+        When set to False, success message is not printed.
 
-    Returns:
-    --------    
-    Success Message
+    Returns
+    -------
+    Success_Message
        
          
     """
@@ -3551,30 +3516,27 @@ def load_model(model_name,
                verbose=True): #added in pycaret==2.0.0
     
     """
-          
-    Description:
-    ------------
     This function loads a previously saved model from the current active directory 
     into the current python environment. Load object must be a pickle file.
     
-        Example:
-        --------
-        saved_lda = load_model('lda_model_23122019')
-        
-        This will call the trained model in saved_lr variable using model_name param.
-        The file must be in current directory.
+    Example
+    -------
+    >>> saved_lda = load_model('lda_model_23122019')
+    
+    This will call the trained model in saved_lr variable using model_name param.
+    The file must be in current directory.
 
     Parameters
     ----------
     model_name : string, default = none
-    Name of pickle file to be passed as a string.
+        Name of pickle file to be passed as a string.
 
     verbose : bool, default = True
-    When set to False, success message is not printed.
+        When set to False, success message is not printed.
 
-    Returns:
-    --------    
-    Success Message
+    Returns
+    -------    
+    Success_Message
          
     """
         
@@ -3601,18 +3563,19 @@ def get_topics(data, text, model=None, num_topics=4):
 def models():
 
     """
-
-    Description:
-    ------------
     Returns table of models available in model library.
 
-        Example
-        -------
-        all_models = models()
+    Example
+    -------
+    >>> all_models = models()
 
-        This will return pandas dataframe with all available 
-        models and their metadata.     
-    
+    This will return pandas dataframe with all available 
+    models and their metadata.
+
+    Returns
+    -------
+    pandas.DataFrame
+
     """
 
     import pandas as pd
@@ -3642,27 +3605,27 @@ def models():
 def get_logs(experiment_name = None, save = False):
 
     """
-
-    Description:
-    ------------
     Returns a table with experiment logs consisting
     run details, parameter, metrics and tags. 
 
-        Example
-        -------
-        logs = get_logs()
+    Example
+    -------
+    >>> logs = get_logs()
 
-        This will return pandas dataframe.
+    This will return pandas dataframe.
 
     Parameters
     ----------
     experiment_name : string, default = None
-    When set to None current active run is used.
+        When set to None current active run is used.
 
     save : bool, default = False
-    When set to True, csv file is saved in current directory.
-      
-    
+        When set to True, csv file is saved in current directory.
+
+    Returns
+    -------
+    pandas.DataFrame
+
     """
 
     import sys
@@ -3691,8 +3654,6 @@ def get_logs(experiment_name = None, save = False):
 def get_config(variable):
 
     """
-    Description:
-    ------------
     This function is used to access global environment variables.
     Following variables can be accessed:
 
@@ -3708,13 +3669,16 @@ def get_config(variable):
     - log_plots_param: log_plots param set through setup
     - USI: Unique session ID parameter set through setup
 
-        Example:
-        --------
-        text = get_config('text') 
+    Example
+    -------
+    >>> text = get_config('text') 
 
-        This will return transformed dataset.
-          
-      
+    This will return transformed dataset.
+
+    Returns
+    -------
+    variable
+
     """
 
     import logging
@@ -3786,8 +3750,6 @@ def get_config(variable):
 def set_config(variable,value):
 
     """
-    Description:
-    ------------
     This function is used to reset global environment variables.
     Following variables can be accessed:
 
@@ -3803,11 +3765,11 @@ def set_config(variable,value):
     - log_plots_param: log_plots param set through setup
     - USI: Unique session ID parameter set through setup
 
-        Example:
-        --------
-        set_config('seed', 123) 
+    Example
+    -------
+    >>> set_config('seed', 123) 
 
-        This will set the global seed to '123'.
+    This will set the global seed to '123'.
 
     """
 

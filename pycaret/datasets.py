@@ -6,45 +6,41 @@
 def get_data(dataset, save_copy=False, profile=False, verbose=True):
     
     """
-      
-    Description:
-    ------------
     This function loads sample datasets that are available in the pycaret git 
     repository. The full list of available datasets and their descriptions can
     be viewed by calling index.
 
-        Example
-        -------
-        data = get_data('index')
+    Example
+    -------
+    >>> data = get_data('index')
 
-        This will display the list of available datasets that can be loaded 
-        using the get_data() function. For example, to load the credit dataset:
-        
-        credit = get_data('credit')
+    This will display the list of available datasets that can be loaded 
+    using the get_data() function. For example, to load the credit dataset:
+    
+    >>> credit = get_data('credit')
         
     Parameters
     ----------
     dataset : string 
-    index value of dataset
+        Index value of dataset
     
     save_copy : bool, default = False
-    When set to true, it saves a copy of the dataset to your local active directory.
+        When set to true, it saves a copy of the dataset to your local active directory.
     
     profile: bool, default = False
-    If set to true, a data profile for Exploratory Data Analysis will be displayed 
-    in an interactive HTML report. 
+        If set to true, a data profile for Exploratory Data Analysis will be displayed 
+        in an interactive HTML report. 
 
     verbose: bool, default = True
-    When set to False, head of data is not displayed.
+        When set to False, head of data is not displayed.
     
-    Returns:
+    Returns
+    -------
+    pandas.DataFrame
+        Pandas dataframe is returned.
+
+    Warnings
     --------
-
-    DataFrame:    Pandas dataframe is returned. 
-    ----------      
-
-    Warnings:
-    ---------
     - Use of get_data() requires internet connection.
       
          
