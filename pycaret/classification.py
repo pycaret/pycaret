@@ -9519,7 +9519,7 @@ def load_model(model_name,
         project_name = authentication.get('project')
         filename = str(model_name) + '.pkl'
 
-        model_downloaded = gcp_utils.download_blob(project_name,
+        model_downloaded = download_blob_gcp(project_name,
                                                    bucket_name, filename, filename)
 
         model = load_model(model_downloaded, verbose=False)
@@ -9536,7 +9536,7 @@ def load_model(model_name,
         container_name = authentication.get('container')
         filename = str(model_name) + '.pkl'
 
-        model_downloaded = azure_utils.download_blob(container_name,
+        model_downloaded = download_blob_azure(container_name,
                                                      filename, filename)
 
         model = load_model(model_downloaded, verbose=False)
@@ -10460,10 +10460,11 @@ def deploy_model(model,
         key = str(model_name) + '.pkl'
         bucket_name = authentication.get('bucket')
         project_name = authentication.get('project')
-        print('Deploying model to Google Cloud Platform')
+        logger.info('Deploying model to Google Cloud Platform')
         # Create Bucket
-        create_bucket(project_name, bucket_name)
-        upload_blob(project_name, bucket_name, filename, key)
+        create_bucket_gcp(project_name, bucket_name)
+        upload_blob_gcp(project_name, bucket_name, filename, key)
+        logger.info('Deployed model Successfully on Google Cloud Platform')
 
     elif platform == 'azure':
         print('Deploying model to Microsoft Azure')
@@ -10471,8 +10472,8 @@ def deploy_model(model,
         filename = str(model_name) + '.pkl'
         key = str(model_name) + '.pkl'
         container_name = authentication.get('container')
-        container_client = create_container(container_name)
-        upload_blob(container_name, filename, key)
+        container_client = create_container_azure(container_name)
+        upload_blob_azure(container_name, filename, key)
 
     else:
         raise NotImplementederror(f'Platform {platform} is not supported by pycaret or illegal option')
@@ -11259,7 +11260,7 @@ def get_system_logs():
 
 from google.cloud import storage
 
-def create_bucket(project_name, bucket_name):
+def create_bucket_gcp(project_name, bucket_name):
     """Creates a new bucket."""
     # bucket_name = "your-new-bucket-name"
 
@@ -11274,7 +11275,7 @@ def create_bucket(project_name, bucket_name):
         raise FileExistsError('{} already exists'.format(bucket_name))
 
 
-def upload_blob(project_name, bucket_name, source_file_name, destination_blob_name):
+def upload_blob_gcp(project_name, bucket_name, source_file_name, destination_blob_name):
     """Uploads a file to the bucket."""
     # bucket_name = "your-bucket-name"
     # source_file_name = "local/path/to/file"
@@ -11293,7 +11294,7 @@ def upload_blob(project_name, bucket_name, source_file_name, destination_blob_na
     )
 
 
-def download_blob(project_name, bucket_name, source_blob_name, destination_file_name):
+def download_blob_gcp(project_name, bucket_name, source_blob_name, destination_file_name):
     """Downloads a blob from the bucket."""
     # bucket_name = "your-bucket-name"
     # source_blob_name = "storage-object-name"
@@ -11320,14 +11321,14 @@ import os, uuid
 from azure.storage.blob import BlobServiceClient, BlobClient, ContainerClient
 
 
-def create_container(container_name):
+def create_container_azure(container_name):
 
   # Create the container
   container_client = blob_service_client.create_container(container_name)
 
   return container_client
 
-def upload_blob(container_name, source_file_name, destination_blob_name):
+def upload_blob_azure(container_name, source_file_name, destination_blob_name):
 
   # Create a blob client using the local file name as the name for the blob
   blob_client = blob_service_client.get_blob_client(container=container_name, blob=destination_blob_name)
@@ -11339,7 +11340,7 @@ def upload_blob(container_name, source_file_name, destination_blob_name):
       blob_client.upload_blob(data)
 
 
-def download_blob(container_name, source_blob_name, destination_file_name):
+def download_blob_azure(container_name, source_blob_name, destination_file_name):
   # Download the blob to a local file
   print("\nDownloading blob to \n\t" + destination_file_name)
 
