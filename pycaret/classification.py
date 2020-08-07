@@ -7943,7 +7943,10 @@ def stack_models(estimator_list,
                 if len(str(v)) > 250:
                     params.pop(i)
             
-            mlflow.log_params(params)
+            try:
+                mlflow.log_params(params)
+            except:
+                pass
             
             mlflow.log_metrics({"Accuracy": avgs_acc[0], "AUC": avgs_auc[0], "Recall": avgs_recall[0], "Precision" : avgs_precision[0],
                                 "F1": avgs_f1[0], "Kappa": avgs_kappa[0], "MCC": avgs_mcc[0]})
@@ -9156,6 +9159,7 @@ def finalize_model(estimator):
     model_final = clone(estimator)
     clear_output()
     model_final.fit(X,y)
+    model = create_model(estimator=estimator, verbose=False, system=False)
     results = pull()
 
     #end runtime
@@ -9197,8 +9201,9 @@ def finalize_model(estimator):
             # get metrics of non-finalized model and log it
 
             # Log metrics
-            mlflow.log_metrics({"Accuracy": results.iloc[-2]['Accuracy'], "AUC": results.iloc[-2]['AUC'], "Recall": results.iloc[-2]['Recall'], "Precision" : results.iloc[-2]['Prec.'],
-                                "F1": results.iloc[-2]['F1'], "Kappa": results.iloc[-2]['Kappa'], "MCC": results.iloc[-2]['MCC']})
+            mlflow.log_metrics({"Accuracy": results.iloc[-2]['Accuracy'], "AUC": results.iloc[-2]['AUC'], "Recall": results.iloc[-2]['Recall'],\
+                                "Precision" : results.iloc[-2]['Prec.'], "F1": results.iloc[-2]['F1'], "Kappa": results.iloc[-2]['Kappa'],\
+                                "MCC": results.iloc[-2]['MCC']})
 
             #set tag of compare_models
             mlflow.set_tag("Source", "finalize_model")

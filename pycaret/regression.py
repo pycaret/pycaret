@@ -7108,7 +7108,10 @@ def stack_models(estimator_list,
                 if len(str(v)) > 250:
                     params.pop(i)
             
-            mlflow.log_params(params)
+            try:
+                mlflow.log_params(params)
+            except:
+                pass
             
             mlflow.log_metrics({"MAE": avgs_mae[0], "MSE": avgs_mse[0], "RMSE": avgs_rmse[0], "R2" : avgs_r2[0],
                                 "RMSLE": avgs_rmsle[0], "MAPE": avgs_mape[0]})
@@ -7983,78 +7986,30 @@ def finalize_model(estimator):
                         'PassiveAggressiveRegressor' : 'Passive Aggressive Regressor',
                         'CatBoostRegressor' : 'CatBoost Regressor',
                         'BaggingRegressor' : 'Bagging Regressor',
-                        'VotingRegressor' : 'Voting Regressor'}
+                        'VotingRegressor' : 'Voting Regressor',
+                        'StackingRegressor' : 'Stacking Regressor'}
                             
-    if type(estimator) is not list:
+    
 
-        if hasattr(estimator, 'voting'):
-            mn = 'VotingRegressor'
-        else:
-            mn = get_model_name(estimator)
-
-        if 'BaggingRegressor' in mn:
-            mn = get_model_name(estimator.base_estimator_)
-
-        if 'catboost' in mn:
-            mn = 'CatBoostRegressor'
-
-    if type(estimator) is list:
-        if type(estimator[0]) is not list:
-            full_name = 'Stacking Regressor'
-        else:
-            full_name = 'Stacking Regressor (Multi-layer)'
+    if hasattr(estimator, 'voting'):
+        mn = 'VotingRegressor'
     else:
-        full_name = model_dict_logging.get(mn)
+        mn = get_model_name(estimator)
 
-    if type(estimator) is list:
-        
-        if type(estimator[0]) is not list:
-            
-            logger.info("Finalizing Stacking Regressor")
+    if 'BaggingRegressor' in mn:
+        mn = get_model_name(estimator.base_estimator_)
 
-            """
-            Single Layer Stacker
-            """
-            
-            stacker_final = deepcopy(estimator)
-            stack_restack = stacker_final.pop()
-            stack_meta_final = stacker_final.pop()
-            
-            logger.info("SubProcess stack_models() called ==================================")
-            model_final = stack_models(estimator_list = stacker_final, 
-                                       meta_model = stack_meta_final, 
-                                       restack = stack_restack,
-                                       finalize=True, 
-                                       verbose=False)
-            logger.info("SubProcess stack_models() end ==================================")
-            
-        else:
-            
-            """
-            multiple layer stacknet
-            """
-            
-            logger.info("Finalizing Multi-layer Stacking Regressor")
+    if 'catboost' in mn:
+        mn = 'CatBoostRegressor'
 
-            stacker_final = deepcopy(estimator)
-            stack_restack = stacker_final.pop()
-            stack_meta_final = stacker_final.pop()
-            
-            logger.info("SubProcess create_stacknet() called ==================================")
-            model_final = create_stacknet(estimator_list = stacker_final,
-                                          meta_model = stack_meta_final,
-                                          restack = stack_restack,
-                                          finalize = True,
-                                          verbose = False)
-            logger.info("SubProcess create_stacknet() end ==================================")
+    full_name = model_dict_logging.get(mn)
 
-        pull_results = pull() 
-
-    else:
-        logger.info("Finalizing " + str(full_name))
-        model_final = clone(estimator)
-        clear_output()
-        model_final.fit(X,y)
+    logger.info("Finalizing " + str(full_name))
+    model_final = clone(estimator)
+    clear_output()
+    model_final.fit(X,y)
+    model = create_model(estimator=estimator, verbose=False, system=False)
+    results = pull()
     
     #end runtime
     runtime_end = time.time()
@@ -8077,56 +8032,9 @@ def finalize_model(estimator):
             # Get active run to log as tag
             RunID = mlflow.active_run().info.run_id
 
-            # Log model parameters
-            try:
-                params = model_final.get_params()
-
-                for i in list(params):
-                    v = params.get(i)
-                    if len(str(v)) > 250:
-                        params.pop(i)
-
-                mlflow.log_params(params)
-            
-            except:
-                pass
-            
-            # get metrics of non-finalized model and log it
-
-            try:
-                logger.info("SubProcess create_model() called ==================================")
-                c = create_model(estimator, verbose=False, system=False)
-                logger.info("SubProcess create_model() end ==================================")
-                cr = pull()
-                log_mae = cr.loc['Mean']['MAE'] 
-                log_mse = cr.loc['Mean']['MSE'] 
-                log_rmse = cr.loc['Mean']['RMSE'] 
-                log_r2 = cr.loc['Mean']['R2'] 
-                log_rmsle = cr.loc['Mean']['RMSLE'] 
-                log_mape = cr.loc['Mean']['MAPE'] 
-
-                mlflow.log_metric("MAE", log_mae)
-                mlflow.log_metric("MSE", log_mse)
-                mlflow.log_metric("RMSE", log_rmse)
-                mlflow.log_metric("R2", log_r2)
-                mlflow.log_metric("RMSLE", log_rmsle)
-                mlflow.log_metric("MAPE", log_mape)
-
-            except:
-                cr = pull_results
-                log_mae = cr.loc['Mean']['MAE'] 
-                log_mse = cr.loc['Mean']['MSE'] 
-                log_rmse = cr.loc['Mean']['RMSE'] 
-                log_r2 = cr.loc['Mean']['R2'] 
-                log_rmsle = cr.loc['Mean']['RMSLE'] 
-                log_mape = cr.loc['Mean']['MAPE'] 
-
-                mlflow.log_metric("MAE", log_mae)
-                mlflow.log_metric("MSE", log_mse)
-                mlflow.log_metric("RMSE", log_rmse)
-                mlflow.log_metric("R2", log_r2)
-                mlflow.log_metric("RMSLE", log_rmsle)
-                mlflow.log_metric("MAPE", log_mape)
+            # Log metrics
+            mlflow.log_metrics({"MAE": results.iloc[-2]['MAE'], "MSE": results.iloc[-2]['MSE'], "RMSE": results.iloc[-2]['RMSE'], "R2" : results.iloc[-2]['R2'],
+                                "RMSLE": results.iloc[-2]['RMSLE'], "MAPE": results.iloc[-2]['MAPE']})
 
             #set tag of compare_models
             mlflow.set_tag("Source", "finalize_model")
