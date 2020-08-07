@@ -2,7 +2,7 @@
 # Author: Moez Ali <moez.ali@queensu.ca>
 # License: MIT
 # Release: PyCaret 2.1x
-# Last modified : 06/08/2020
+# Last modified : 07/08/2020
 
 def setup(data,  
           target,   
@@ -9268,7 +9268,7 @@ def finalize_model(estimator):
 
     return model_final
 
-def save_model(model, model_name, verbose=True):
+def save_model(model, model_name, model_only=False, verbose=True):
     
     """
           
@@ -9297,6 +9297,10 @@ def save_model(model, model_name, verbose=True):
     model_name : string, default = none
     Name of pickle file to be passed as a string.
     
+    model_only : bool, default = False
+    When set to True, only trained model object is saved and all the 
+    transformations are ignored.
+
     verbose: Boolean, default = True
     Success message is not printed when verbose is set to False.
 
@@ -9308,6 +9312,7 @@ def save_model(model, model_name, verbose=True):
     """
     
     import logging
+    from copy import deepcopy
 
     try:
         hasattr(logger, 'name')
@@ -9334,16 +9339,19 @@ def save_model(model, model_name, verbose=True):
     logger.info("Initializing save_model()")
     logger.info("""save_model(model={}, model_name={}, verbose={})""".\
         format(str(model), str(model_name), str(verbose)))
-
     
     #ignore warnings
     import warnings
     warnings.filterwarnings('ignore') 
     
-    logger.info("Appending prep pipeline")
-    model_ = []
-    model_.append(prep_pipe)
-    model_.append(model)
+    logger.info("Adding model into prep_pipe")
+
+    if model_only:
+        model_ = deepcopy(model)
+        logger.warning("Only Model saved. Transformations in prep_pipe are ignored.")
+    else:
+        model_ = deepcopy(prep_pipe)
+        model_.steps.append(['trained model',model]) 
     
     import joblib
     model_name = model_name + '.pkl'
@@ -9436,20 +9444,16 @@ def load_model(model_name,
 def predict_model(estimator, 
                   data=None,
                   probability_threshold=None,
-                  platform=None,
-                  authentication=None,
                   verbose=True): #added in pycaret==2.0.0
     
     """
        
     Description:
     ------------
-    This function is used to predict new data using a trained estimator. It accepts
-    an estimator created using one of the function in pycaret that returns a trained 
-    model object or a list of trained model objects created using stack_models() or 
-    create_stacknet(). New unseen data can be passed to data param as pandas Dataframe. 
-    If data is not passed, the test / hold-out set separated at the time of setup() is
-    used to generate predictions. 
+    This function is used to predict label and probability score on the new dataset
+    using a trained estimator. New unseen data can be passed to data param as pandas 
+    Dataframe. If data is not passed, the test / hold-out set separated at the time of 
+    setup() is used to generate predictions. 
     
         Example:
         --------
@@ -9462,9 +9466,8 @@ def predict_model(estimator,
         
     Parameters
     ----------
-    estimator : object or list of objects / string,  default = None
-    When estimator is passed as string, load_model() is called internally to load the
-    pickle file from active directory or cloud platform when platform param is passed.
+    estimator : object, default = none
+    A trained model object / pipeline should be passed as an estimator. 
      
     data : {array-like, sparse matrix}, shape (n_samples, n_features) where n_samples 
     is the number of samples and n_features is the number of features. All features 
@@ -9474,19 +9477,6 @@ def predict_model(estimator,
     threshold used to convert probability values into binary outcome. By default the
     probability threshold for all binary classifiers is 0.5 (50%). This can be changed
     using probability_threshold param.
-    
-    platform: string, default = None
-    Name of platform, if loading model from cloud. Current available options are:
-    'aws'.
-    
-    authentication : dict
-    dictionary of applicable authentication tokens. 
-    
-     When platform = 'aws': 
-     {'bucket' : 'Name of Bucket on S3'}
-    
-    system: Boolean, default = True
-    Must remain True all times. Only to be changed by internal functions.
 
     verbose: Boolean, default = True
     Holdout score grid is not printed when verbose is set to False.
@@ -9494,22 +9484,13 @@ def predict_model(estimator,
     Returns:
     --------
 
-    info grid:  Information grid is printed when data is None.
-    ----------      
+    Predictions:  Predictions (Label and Score) column attached to the original dataset
+    -----------   and returned as pandas dataframe.
 
-    Warnings:
-    ---------
-    - if the estimator passed is created using finalize_model() then the metrics 
-      printed in the information grid maybe misleading as the model is trained on
-      the complete dataset including the test / hold-out set. Once finalize_model() 
-      is used, the model is considered ready for deployment and should be used on new 
-      unseen datasets only.
-           
+    score grid:   A table containing the scoring metrics on hold-out / test set.
+    -----------       
     
     """
-    
-    #testing
-    #no active test
     
     #ignore warnings
     import warnings
@@ -9552,62 +9533,13 @@ def predict_model(estimator,
     """
     exception checking ends here
     """
-    
-    estimator = deepcopy(estimator) #lookout for an alternate of deepcopy()
-    
-    try:
-        clear_output()
-    except:
-        pass
-    
-    if type(estimator) is str:
-        if platform == 'aws':
-            estimator_ = load_model(str(estimator), platform='aws', 
-                                   authentication={'bucket': authentication.get('bucket')},
-                                   verbose=False)
-            
-        else:
-            estimator_ = load_model(str(estimator), verbose=False)
-            
-    else:
-        
-        estimator_ = estimator
 
-    if type(estimator_) is list:
-
-        if 'sklearn.pipeline.Pipeline' in str(type(estimator_[0])):
-
-            prep_pipe_transformer = estimator_.pop(0)
-            model = estimator_[0]
-            estimator = estimator_[0]
-                
-        else:
-            
-            try:
-
-                prep_pipe_transformer = prep_pipe
-                model = estimator
-                estimator = estimator
-                
-            except:
-                
-                sys.exit("(Type Error): Transformation Pipe Missing. ")
-            
-    else:
-        
-        try:
-
-            prep_pipe_transformer = prep_pipe
-            model = estimator
-            estimator = estimator
-            
-        except:
-            
-            sys.exit("(Type Error): Transformation Pipe Missing. ")
-        
     #dataset
     if data is None:
         
+        if 'Pipeline' in str(type(estimator)):
+            estimator = estimator[-1]
+
         Xtest = X_test.copy()
         ytest = y_test.copy()
         X_test_ = X_test.copy()
@@ -9617,532 +9549,127 @@ def predict_model(estimator,
         ytest.reset_index(drop=True, inplace=True)
         X_test_.reset_index(drop=True, inplace=True)
         y_test_.reset_index(drop=True, inplace=True)
-        
-        model = estimator
-        estimator_ = estimator
-        
+
     else:
-        
-        Xtest = prep_pipe_transformer.transform(data)                     
-        X_test_ = data.copy() #original concater
 
-        Xtest.reset_index(drop=True, inplace=True)
-        X_test_.reset_index(drop=True, inplace=True)
-    
-        estimator_ = estimator
-
-    if type(estimator) is list:
-        
-        if type(estimator[0]) is list:
-        
-            """
-            Multiple Layer Stacking
-            """
-            
-            #utility
-            stacker = model
-            restack = stacker.pop()
-            stacker_method = stacker.pop()
-            #stacker_method = stacker_method[0]
-            stacker_meta = stacker.pop()
-            stacker_base = stacker.pop(0)
-
-            #base model names
-            base_model_names = []
-
-            #defining base_level_names
-            for i in stacker_base:
-                b = str(i).split("(")[0]
-                base_model_names.append(b)
-
-            base_level_fixed = []
-
-            for i in base_model_names:
-                if 'CatBoostClassifier' in i:
-                    a = 'CatBoostClassifier'
-                    base_level_fixed.append(a)
-                else:
-                    base_level_fixed.append(i)
-
-            base_level_fixed_2 = []
-
-            counter = 0
-            for i in base_level_fixed:
-                s = str(i) + '_' + 'BaseLevel_' + str(counter)
-                base_level_fixed_2.append(s)
-                counter += 1
-
-            base_level_fixed = base_level_fixed_2
-
-            """
-            base level predictions
-            """
-            base_pred = []
-            for i in stacker_base:
-                if 'soft' in stacker_method:
-                    try:
-                        a = i.predict_proba(Xtest) #change
-                        a = a[:,1]
-                    except:
-                        a = i.predict(Xtest) #change
-                else:
-                    a = i.predict(Xtest) #change
-                base_pred.append(a)
-
-            base_pred_df = pd.DataFrame()
-            for i in base_pred:
-                a = pd.DataFrame(i)
-                base_pred_df = pd.concat([base_pred_df, a], axis=1)
-
-            base_pred_df.columns = base_level_fixed
-            
-            base_pred_df_no_restack = base_pred_df.copy()
-            base_pred_df = pd.concat([Xtest,base_pred_df], axis=1)
-
-
-            """
-            inter level predictions
-            """
-
-            inter_pred = []
-            combined_df = pd.DataFrame(base_pred_df)
-
-            inter_counter = 0
-
-            for level in stacker:
-                
-                inter_pred_df = pd.DataFrame()
-
-                model_counter = 0 
-
-                for model in level:
-                    
-                    try:
-                        if inter_counter == 0:
-                            if 'soft' in stacker_method: #changed
-                                try:
-                                    p = model.predict_proba(base_pred_df)
-                                    p = p[:,1]
-                                except:
-                                    try:
-                                        p = model.predict_proba(base_pred_df_no_restack)
-                                        p = p[:,1]                                    
-                                    except:
-                                        try:
-                                            p = model.predict(base_pred_df)
-                                        except:
-                                            p = model.predict(base_pred_df_no_restack)
-                            else:
-                                try:
-                                    p = model.predict(base_pred_df)
-                                except:
-                                    p = model.predict(base_pred_df_no_restack)
-                        else:
-                            if 'soft' in stacker_method:
-                                try:
-                                    p = model.predict_proba(last_level_df)
-                                    p = p[:,1]
-                                except:
-                                    p = model.predict(last_level_df)
-                            else:
-                                p = model.predict(last_level_df)
-                    except:
-                        if 'soft' in stacker_method:
-                            try:
-                                p = model.predict_proba(combined_df)
-                                p = p[:,1]
-                            except:
-                                p = model.predict(combined_df)        
-                    
-                    p = pd.DataFrame(p)
-                    
-                    col = str(model).split("(")[0]
-                    if 'CatBoostClassifier' in col:
-                        col = 'CatBoostClassifier'
-                    col = col + '_InterLevel_' + str(inter_counter) + '_' + str(model_counter)
-                    p.columns = [col]
-
-                    inter_pred_df = pd.concat([inter_pred_df, p], axis=1)
-
-                    model_counter += 1
-
-                last_level_df = inter_pred_df.copy()
-
-                inter_counter += 1
-
-                combined_df = pd.concat([combined_df,inter_pred_df], axis=1)
-
-            """
-            meta final predictions
-            """
-
-            #final meta predictions
-            
-            try:
-                pred_ = stacker_meta.predict(combined_df)
-            except:
-                pred_ = stacker_meta.predict(inter_pred_df)
-
-            try:
-                pred_prob = stacker_meta.predict_proba(combined_df)
-                
-                if len(pred_prob[0]) > 2:
-                    p_counter = 0
-                    d = []
-                    for i in range(0,len(pred_prob)):
-                        d.append(pred_prob[i][pred_[p_counter]])
-                        p_counter += 1
-
-                    pred_prob = d
-                    
-                else:
-                    pred_prob = pred_prob[:,1]
-                    
-            except:
-                try:
-                    pred_prob = stacker_meta.predict_proba(inter_pred_df)
-                    
-                    if len(pred_prob[0]) > 2:
-                        p_counter = 0
-                        d = []
-                        for i in range(0,len(pred_prob)):
-                            d.append(pred_prob[i][pred_[p_counter]])
-                            p_counter += 1
-
-                        pred_prob = d
-
-                    else:
-                        pred_prob = pred_prob[:,1]
-                    
-                except:
-                    pass
-
-            #print('Success')
-            
-            if probability_threshold is not None:
-                try:
-                    pred_ = (pred_prob >= probability_threshold).astype(int)
-                except:
-                    pass
-
-            if data is None:
-                sca = metrics.accuracy_score(ytest,pred_)
-
-                try:
-                    sc = metrics.roc_auc_score(ytest,pred_prob,average='weighted')
-                except:
-                    sc = 0
-
-                if y.value_counts().count() > 2:
-                    recall = metrics.recall_score(ytest,pred_, average='macro')
-                    precision = metrics.precision_score(ytest,pred_, average = 'weighted')
-                    f1 = metrics.f1_score(ytest,pred_, average='weighted')
-
-                else:
-                    recall = metrics.recall_score(ytest,pred_)
-                    precision = metrics.precision_score(ytest,pred_)
-                    f1 = metrics.f1_score(ytest,pred_)  
-                    
-                    
-                kappa = metrics.cohen_kappa_score(ytest,pred_)
-                mcc = metrics.matthews_corrcoef(ytest,pred_)
-                
-                df_score = pd.DataFrame( {'Model' : 'Stacking Classifier', 'Accuracy' : [sca], 'AUC' : [sc], 'Recall' : [recall], 'Prec.' : [precision],
-                                    'F1' : [f1], 'Kappa' : [kappa], 'MCC':[mcc]})
-                df_score = df_score.round(4)
-                if verbose:
-                    display(df_score)
-        
-            label = pd.DataFrame(pred_)
-            label.columns = ['Label']
-            label['Label']=label['Label'].astype(int)
-
-            if data is None:
-                X_test_ = pd.concat([Xtest,ytest,label], axis=1)
-            else:
-                X_test_ = pd.concat([X_test_,label], axis=1) #change here
-
-            if hasattr(stacker_meta,'predict_proba'):
-                try:
-                    score = pd.DataFrame(pred_prob)
-                    score.columns = ['Score']
-                    score = score.round(4)
-                    X_test_ = pd.concat([X_test_,score], axis=1)
-                except:
-                    pass
-
+        if 'Pipeline' in str(type(estimator)):
+            pass
         else:
-            
-            """
-            Single Layer Stacking
-            """
-            
-            #copy
-            stacker = model
-            
-            #restack
-            restack = stacker.pop()
-            
-            #method
-            method = stacker.pop()
-
-            #separate metamodel
-            meta_model = stacker.pop()
-
-            model_names = []
-            for i in stacker:
-                model_names = np.append(model_names, str(i).split("(")[0])
-
-            model_names_fixed = []
-
-            for i in model_names:
-                if 'CatBoostClassifier' in i:
-                    a = 'CatBoostClassifier'
-                    model_names_fixed.append(a)
-                else:
-                    model_names_fixed.append(i)
-
-            model_names = model_names_fixed
-
-            model_names_fixed = []
-            counter = 0
-
-            for i in model_names:
-                s = str(i) + '_' + str(counter)
-                model_names_fixed.append(s)
-                counter += 1
-
-            model_names = model_names_fixed
-
-            base_pred = []
-
-            for i in stacker:
-                if method == 'hard':
-                    #print('done')
-                    p = i.predict(Xtest) #change
-
-                else:
-                    
-                    try:
-                        p = i.predict_proba(Xtest) #change
-                        p = p[:,1]
-                    except:
-                        p = i.predict(Xtest) #change
-
-                base_pred.append(p)
-
-            df = pd.DataFrame()
-            for i in base_pred:
-                i = pd.DataFrame(i)
-                df = pd.concat([df,i], axis=1)
-
-            df.columns = model_names
-            
-            df_restack = pd.concat([Xtest,df], axis=1) #change
-
-            #ytest = ytest #change
-
-            #meta predictions starts here
-            
-            df.fillna(value=0,inplace=True)
-            df_restack.fillna(value=0,inplace=True)
-            
-            #restacking check
             try:
-                pred_ = meta_model.predict(df)
-            except:
-                pred_ = meta_model.predict(df_restack) 
-                
-            try:
-                pred_prob = meta_model.predict_proba(df)
-                
-                if len(pred_prob[0]) > 2:
-                    p_counter = 0
-                    d = []
-                    for i in range(0,len(pred_prob)):
-                        d.append(pred_prob[i][pred_[p_counter]])
-                        p_counter += 1
-
-                    pred_prob = d
-                    
-                else:
-                    pred_prob = pred_prob[:,1]
+                estimator_ = deepcopy(prep_pipe)
+                estimator_.steps.append(['trained model',estimator])
+                estimator = estimator_
+                del(estimator_)
 
             except:
-                
-                try:
-                    pred_prob = meta_model.predict_proba(df_restack)
-                    
-                    if len(pred_prob[0]) > 2:
-                        p_counter = 0
-                        d = []
-                        for i in range(0,len(pred_prob)):
-                            d.append(pred_prob[i][pred_[p_counter]])
-                            p_counter += 1
-
-                        pred_prob = d
-                        
-                    else:
-                        pred_prob = pred_prob[:,1]
-                except:
-                    pass
+                sys.exit("Pipeline not found")
             
-            if probability_threshold is not None:
-                try:
-                    pred_ = (pred_prob >= probability_threshold).astype(int)
-                except:
-                    pass
+        Xtest = data.copy()
+        X_test_ = data.copy()
+        
+    #model name
+    full_name = str(estimator).split("(")[0]
+    def putSpace(input):
+        words = re.findall('[A-Z][a-z]*', input)
+        words = ' '.join(words)
+        return words  
+    full_name = putSpace(full_name)
+
+    if full_name == 'Gaussian N B':
+        full_name = 'Naive Bayes'
+
+    elif full_name == 'M L P Classifier':
+        full_name = 'MLP Classifier'
+
+    elif full_name == 'S G D Classifier':
+        full_name = 'SVM - Linear Kernel'
+
+    elif full_name == 'S V C':
+        full_name = 'SVM - Radial Kernel'
+
+    elif full_name == 'X G B Classifier':
+        full_name = 'Extreme Gradient Boosting'
+
+    elif full_name == 'L G B M Classifier':
+        full_name = 'Light Gradient Boosting Machine'
+
+    elif 'Cat Boost Classifier' in full_name:
+        full_name = 'CatBoost Classifier'
+
+    #prediction starts here
+    
+    pred_ = estimator.predict(Xtest)
+    
+    try:
+        pred_prob = estimator.predict_proba(Xtest)
+        
+        if len(pred_prob[0]) > 2:
+            p_counter = 0
+            d = []
+            for i in range(0,len(pred_prob)):
+                d.append(pred_prob[i][pred_[p_counter]])
+                p_counter += 1
+                
+            pred_prob = d
             
-            if data is None:
-                
-                sca = metrics.accuracy_score(ytest,pred_)
+        else:
+            pred_prob = pred_prob[:,1]
 
-                try:
-                    sc = metrics.roc_auc_score(ytest,pred_prob)
-                except:
-                    sc = 0
-
-                if y.value_counts().count() > 2:
-                    recall = metrics.recall_score(ytest,pred_, average='macro')
-                    precision = metrics.precision_score(ytest,pred_, average = 'weighted')
-                    f1 = metrics.f1_score(ytest,pred_, average='weighted')
-                else:
-                    recall = metrics.recall_score(ytest,pred_)
-                    precision = metrics.precision_score(ytest,pred_)
-                    f1 = metrics.f1_score(ytest,pred_)
-                    
-                kappa = metrics.cohen_kappa_score(ytest,pred_)
-                mcc = metrics.matthews_corrcoef(ytest,pred_)
-                
-                df_score = pd.DataFrame( {'Model' : 'Stacking Classifier', 'Accuracy' : [sca], 'AUC' : [sc], 'Recall' : [recall], 'Prec.' : [precision],
-                                    'F1' : [f1], 'Kappa' : [kappa], 'MCC':[mcc]})
-                df_score = df_score.round(4)
-                if verbose:
-                    display(df_score)
-
-            label = pd.DataFrame(pred_)
-            label.columns = ['Label']
-            label['Label']=label['Label'].astype(int)
-
-            if data is None:
-                X_test_ = pd.concat([Xtest,ytest,label], axis=1) #changed
-            else:
-                X_test_ = pd.concat([X_test_,label], axis=1) #change here
-      
-            if hasattr(meta_model,'predict_proba'):
-                try:
-                    score = pd.DataFrame(pred_prob)
-                    score.columns = ['Score']
-                    score = score.round(4)
-                    X_test_ = pd.concat([X_test_,score], axis=1)
-                except:
-                    pass
-
-    else:
-        
-        #model name
-        full_name = str(model).split("(")[0]
-        def putSpace(input):
-            words = re.findall('[A-Z][a-z]*', input)
-            words = ' '.join(words)
-            return words  
-        full_name = putSpace(full_name)
-
-        if full_name == 'Gaussian N B':
-            full_name = 'Naive Bayes'
-
-        elif full_name == 'M L P Classifier':
-            full_name = 'MLP Classifier'
-
-        elif full_name == 'S G D Classifier':
-            full_name = 'SVM - Linear Kernel'
-
-        elif full_name == 'S V C':
-            full_name = 'SVM - Radial Kernel'
-
-        elif full_name == 'X G B Classifier':
-            full_name = 'Extreme Gradient Boosting'
-
-        elif full_name == 'L G B M Classifier':
-            full_name = 'Light Gradient Boosting Machine'
-
-        elif 'Cat Boost Classifier' in full_name:
-            full_name = 'CatBoost Classifier'
-
-        
-        #prediction starts here
-        
-        pred_ = model.predict(Xtest)
-        
+    except:
+        pass
+    
+    if probability_threshold is not None:
         try:
-            pred_prob = model.predict_proba(Xtest)
-            
-            if len(pred_prob[0]) > 2:
-                p_counter = 0
-                d = []
-                for i in range(0,len(pred_prob)):
-                    d.append(pred_prob[i][pred_[p_counter]])
-                    p_counter += 1
-                    
-                pred_prob = d
-                
-            else:
-                pred_prob = pred_prob[:,1]
+            pred_ = (pred_prob >= probability_threshold).astype(int)
         except:
             pass
-        
-        if probability_threshold is not None:
-            try:
-                pred_ = (pred_prob >= probability_threshold).astype(int)
-            except:
-                pass
-        
-        if data is None:
-  
-            sca = metrics.accuracy_score(ytest,pred_)
+    
+    if data is None:
 
-            try:
-                sc = metrics.roc_auc_score(ytest,pred_prob)
-            except:
-                sc = 0
-            
-            if y.value_counts().count() > 2:
-                recall = metrics.recall_score(ytest,pred_, average='macro')
-                precision = metrics.precision_score(ytest,pred_, average = 'weighted')
-                f1 = metrics.f1_score(ytest,pred_, average='weighted')
-            else:
-                recall = metrics.recall_score(ytest,pred_)
-                precision = metrics.precision_score(ytest,pred_)
-                f1 = metrics.f1_score(ytest,pred_)                
-                
-            kappa = metrics.cohen_kappa_score(ytest,pred_)
-            mcc = metrics.matthews_corrcoef(ytest,pred_)
+        sca = metrics.accuracy_score(ytest,pred_)
 
-            df_score = pd.DataFrame( {'Model' : [full_name], 'Accuracy' : [sca], 'AUC' : [sc], 'Recall' : [recall], 'Prec.' : [precision],
-                                'F1' : [f1], 'Kappa' : [kappa], 'MCC':[mcc]})
-            df_score = df_score.round(4)
-            
-            if verbose:
-                display(df_score)
-           
-        label = pd.DataFrame(pred_)
-        label.columns = ['Label']
-        label['Label']=label['Label'].astype(int)
+        try:
+            sc = metrics.roc_auc_score(ytest,pred_prob)
+        except:
+            sc = 0
         
-        if data is None:
-            X_test_ = pd.concat([Xtest,ytest,label], axis=1)
+        if y.value_counts().count() > 2:
+            recall = metrics.recall_score(ytest,pred_, average='macro')
+            precision = metrics.precision_score(ytest,pred_, average = 'weighted')
+            f1 = metrics.f1_score(ytest,pred_, average='weighted')
         else:
-            X_test_ = pd.concat([X_test_,label], axis=1)
+            recall = metrics.recall_score(ytest,pred_)
+            precision = metrics.precision_score(ytest,pred_)
+            f1 = metrics.f1_score(ytest,pred_)                
+            
+        kappa = metrics.cohen_kappa_score(ytest,pred_)
+        mcc = metrics.matthews_corrcoef(ytest,pred_)
+
+        df_score = pd.DataFrame( {'Model' : [full_name], 'Accuracy' : [sca], 'AUC' : [sc], 'Recall' : [recall], 'Prec.' : [precision],
+                            'F1' : [f1], 'Kappa' : [kappa], 'MCC':[mcc]})
+        df_score = df_score.round(4)
         
-        if hasattr(model,'predict_proba'):
-            try:
-                score = pd.DataFrame(pred_prob)
-                score.columns = ['Score']
-                score = score.round(4)
-                X_test_ = pd.concat([X_test_,score], axis=1)
-            except:
-                pass
+        if verbose:
+            display(df_score)
         
+    label = pd.DataFrame(pred_)
+    label.columns = ['Label']
+    label['Label']=label['Label'].astype(int)
+    
+    if data is None:
+        X_test_ = pd.concat([Xtest,ytest,label], axis=1)
+    else:
+        X_test_ = pd.concat([X_test_,label], axis=1)
+    
+    if hasattr(estimator,'predict_proba'):
+        try:
+            score = pd.DataFrame(pred_prob)
+            score.columns = ['Score']
+            score = score.round(4)
+            X_test_ = pd.concat([X_test_,score], axis=1)
+        except:
+            pass
+    
     #store predictions on hold-out in display_container
     try:
         display_container.append(df_score)
