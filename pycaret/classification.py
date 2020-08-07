@@ -7676,8 +7676,12 @@ def stack_models(estimator_list,
         logger.info("Fitting Model")
         model.fit(Xtrain,ytrain)
         logger.info("Evaluating Metrics")
-        pred_prob = model.predict_proba(Xtest)
-        pred_prob = pred_prob[:,1]
+
+        try:
+            pred_prob = model.predict_proba(Xtest)
+            pred_prob = pred_prob[:,1]
+        except:
+            pass
         pred_ = model.predict(Xtest)
         sca = metrics.accuracy_score(ytest,pred_)
         
@@ -7688,7 +7692,10 @@ def stack_models(estimator_list,
             f1 = metrics.f1_score(ytest,pred_, average='weighted')
             
         else:
-            sc = metrics.roc_auc_score(ytest,pred_prob)
+            try:
+                sc = metrics.roc_auc_score(ytest,pred_prob)
+            except:
+                sc = 0
             recall = metrics.recall_score(ytest,pred_)                
             precision = metrics.precision_score(ytest,pred_)
             f1 = metrics.f1_score(ytest,pred_)
@@ -9116,96 +9123,41 @@ def finalize_model(estimator):
                             'LinearDiscriminantAnalysis' : 'Linear Discriminant Analysis',
                             'CatBoostClassifier' : 'CatBoost Classifier',
                             'BaggingClassifier' : 'Bagging Classifier',
-                            'VotingClassifier' : 'Voting Classifier'}
+                            'VotingClassifier' : 'Voting Classifier',
+                            'StackingClassifier' : 'Stacking Classifier'}
                             
-    if type(estimator) is not list:
 
-        if len(estimator.classes_) > 2:
+    if len(estimator.classes_) > 2:
 
-            if hasattr(estimator, 'voting'):
-                mn = get_model_name(estimator)
-            else:
-                mn = get_model_name(estimator.estimator)
-
+        if hasattr(estimator, 'voting'):
+            mn = get_model_name(estimator)
         else:
-
-            if hasattr(estimator, 'voting'):
-                mn = 'VotingClassifier'
-            else:
-                mn = get_model_name(estimator)
-
-            if 'BaggingClassifier' in mn:
-                mn = get_model_name(estimator.base_estimator_)
-
-            if 'CalibratedClassifierCV' in mn:
-                mn = get_model_name(estimator.base_estimator)
-
-        if 'catboost' in mn:
-            mn = 'CatBoostClassifier'
-
-    if type(estimator) is list:
-        if type(estimator[0]) is not list:
-            full_name = 'Stacking Classifier'
-        else:
-            full_name = 'Stacking Classifier (Multi-layer)'
-    else:
-        full_name = model_dict_logging.get(mn)
-
-    if type(estimator) is list:
-        
-        if type(estimator[0]) is not list:
-            
-            logger.info("Finalizing Stacking Classifier")
-
-            """
-            Single Layer Stacker
-            """
-            
-            stacker_final = deepcopy(estimator)
-            stack_restack = stacker_final.pop()
-            stack_method_final = stacker_final.pop()
-            stack_meta_final = stacker_final.pop()
-            
-            logger.info("SubProcess stack_models() called ==================================")
-            model_final = stack_models(estimator_list = stacker_final, 
-                                       meta_model = stack_meta_final, 
-                                       method = stack_method_final,
-                                       restack = stack_restack,
-                                       finalize=True, 
-                                       verbose=False)
-            logger.info("SubProcess stack_models() end ==================================")
-            
-        else:
-            
-            """
-            multiple layer stacknet
-            """
-            
-            logger.info("Finalizing Multi-layer Stacking Classifier")
-
-            stacker_final = deepcopy(estimator)
-            stack_restack = stacker_final.pop()
-            stack_method_final = stacker_final.pop()[0]
-            stack_meta_final = stacker_final.pop()
-            
-            logger.info("SubProcess create_stacknet() called ==================================")
-            model_final = create_stacknet(estimator_list = stacker_final,
-                                          meta_model = stack_meta_final,
-                                          method = stack_method_final,
-                                          restack = stack_restack,
-                                          finalize = True,
-                                          verbose = False)
-            logger.info("SubProcess create_stacknet() called ==================================")
-
-        pull_results = pull() 
+            mn = get_model_name(estimator.estimator)
 
     else:
-        
-        logger.info("Finalizing " + str(full_name))
-        model_final = clone(estimator)
-        clear_output()
-        model_final.fit(X,y)
+
+        if hasattr(estimator, 'voting'):
+            mn = 'VotingClassifier'
+        else:
+            mn = get_model_name(estimator)
+
+        if 'BaggingClassifier' in mn:
+            mn = get_model_name(estimator.base_estimator_)
+
+        if 'CalibratedClassifierCV' in mn:
+            mn = get_model_name(estimator.base_estimator)
+
+    if 'catboost' in mn:
+        mn = 'CatBoostClassifier'
+
+    full_name = model_dict_logging.get(mn)
     
+    logger.info("Finalizing " + str(full_name))
+    model_final = clone(estimator)
+    clear_output()
+    model_final.fit(X,y)
+    results = pull()
+
     #end runtime
     runtime_end = time.time()
     runtime = np.array(runtime_end - runtime_start).round(2)
@@ -9244,44 +9196,9 @@ def finalize_model(estimator):
             
             # get metrics of non-finalized model and log it
 
-            try:
-                logger.info("SubProcess create_model() called ==================================")
-                c = create_model(estimator, verbose=False, system=False)
-                logger.info("SubProcess create_model() end ==================================")
-                cr = pull()
-                log_accuracy = cr.loc['Mean']['Accuracy'] 
-                log_auc = cr.loc['Mean']['AUC'] 
-                log_recall = cr.loc['Mean']['Recall'] 
-                log_precision = cr.loc['Mean']['Prec.'] 
-                log_f1 = cr.loc['Mean']['F1'] 
-                log_kappa = cr.loc['Mean']['Kappa'] 
-                log_mcc = cr.loc['Mean']['MCC']
-
-                mlflow.log_metric("Accuracy", log_accuracy)
-                mlflow.log_metric("AUC", log_auc)
-                mlflow.log_metric("Recall", log_recall)
-                mlflow.log_metric("Precision", log_precision)
-                mlflow.log_metric("F1", log_f1)
-                mlflow.log_metric("Kappa", log_kappa)
-                mlflow.log_metric("MCC", log_mcc)
-
-            except:
-                cr = pull_results
-                log_accuracy = cr.loc['Mean']['Accuracy'] 
-                log_auc = cr.loc['Mean']['AUC'] 
-                log_recall = cr.loc['Mean']['Recall'] 
-                log_precision = cr.loc['Mean']['Prec.'] 
-                log_f1 = cr.loc['Mean']['F1'] 
-                log_kappa = cr.loc['Mean']['Kappa'] 
-                log_mcc = cr.loc['Mean']['MCC']
-
-                mlflow.log_metric("Accuracy", log_accuracy)
-                mlflow.log_metric("AUC", log_auc)
-                mlflow.log_metric("Recall", log_recall)
-                mlflow.log_metric("Precision", log_precision)
-                mlflow.log_metric("F1", log_f1)
-                mlflow.log_metric("Kappa", log_kappa)
-                mlflow.log_metric("MCC", log_mcc)
+            # Log metrics
+            mlflow.log_metrics({"Accuracy": results.iloc[-2]['Accuracy'], "AUC": results.iloc[-2]['AUC'], "Recall": results.iloc[-2]['Recall'], "Precision" : results.iloc[-2]['Prec.'],
+                                "F1": results.iloc[-2]['F1'], "Kappa": results.iloc[-2]['Kappa'], "MCC": results.iloc[-2]['MCC']})
 
             #set tag of compare_models
             mlflow.set_tag("Source", "finalize_model")
