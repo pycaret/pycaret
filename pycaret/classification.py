@@ -9606,6 +9606,12 @@ def predict_model(estimator,
     
      When platform = 'aws': 
      {'bucket' : 'Name of Bucket on S3'}
+
+      When platform = 'gcp':
+     {'project': 'gcp_pycaret', 'bucket' : 'pycaret-test'}
+
+     When platform = 'azure':
+     {'container': 'pycaret-test'}
     
     system: Boolean, default = True
     Must remain True all times. Only to be changed by internal functions.
