@@ -69,7 +69,7 @@ def get_data(dataset, save_copy=False, profile=False, verbose=True):
     
     if save_copy:
         save_name = filename
-        data.to_csv(save_name)
+        data.to_csv(save_name, index=False)
         
     if dataset == 'index':
         display(data)
