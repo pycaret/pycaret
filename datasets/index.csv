@@ -52,3 +52,4 @@ house,Multivariate,Regression,SalePrice,1461,81,Y
 insurance,Multivariate,Regression,charges,1338,7,N
 parkinsons,Multivariate,Regression,PPE,5875,22,N
 traffic,Multivariate,Regression,traffic_volume,48204,8,N
+CTG, Multivariate, Classification (Multiclass), NSP, 2129,40,Y
