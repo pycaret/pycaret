@@ -9521,7 +9521,7 @@ def load_model(model_name,
         model_downloaded = download_blob_gcp(project_name,
                                                    bucket_name, filename, filename)
 
-        model = load_model(model_downloaded, verbose=False)
+        model = load_model(model_name, verbose=False)
 
         if verbose:
             print('Transformation Pipeline and Model Successfully Loaded')
@@ -9537,7 +9537,7 @@ def load_model(model_name,
         model_downloaded = download_blob_azure(container_name,
                                                      filename, filename)
 
-        model = load_model(model_downloaded, verbose=False)
+        model = load_model(model_name, verbose=False)
 
         if verbose:
             print('Transformation Pipeline and Model Successfully Loaded')
