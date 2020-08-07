@@ -2,7 +2,6 @@
 # Author: Moez Ali <moez.ali@queensu.ca>
 # License: MIT
 
-
 def get_data(dataset, save_copy=False, profile=False, verbose=True):
     
     """
@@ -51,21 +50,25 @@ def get_data(dataset, save_copy=False, profile=False, verbose=True):
     """
     
     import pandas as pd
+    import os.path
     from IPython.display import display, HTML, clear_output, update_display
     
     address = 'https://raw.githubusercontent.com/pycaret/pycaret/master/datasets/'
     extension = '.csv'
-    filename = dataset
+    filename = str(dataset) + extension
     
-    complete_address = address + str(dataset) + extension
+    complete_address = address + filename
     
-    data = pd.read_csv(complete_address)
+    if os.path.isfile(filename):
+        data = pd.read_csv(filename)
+    else:
+        data = pd.read_csv(complete_address)
     
     #create a copy for pandas profiler
     data_for_profiling = data.copy()
     
     if save_copy:
-        save_name = str(dataset) + str(extension)
+        save_name = filename
         data.to_csv(save_name)
         
     if dataset == 'index':
