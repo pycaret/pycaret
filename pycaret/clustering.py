@@ -1,8 +1,8 @@
 # Module: Clustering
 # Author: Moez Ali <moez.ali@queensu.ca>
 # License: MIT
-# Release: PyCaret 2.0x
-# Last modified : 30/07/2020
+# Release: PyCaret 2.1x
+# Last modified : 05/08/2020
 
 def setup(data, 
         categorical_features = None,
@@ -1448,7 +1448,7 @@ def create_model(model = None,
 
     elif model == 'ap':
         from sklearn.cluster import AffinityPropagation
-        model = AffinityPropagation(damping=0.5, **kwargs)
+        model = AffinityPropagation(**kwargs)
         full_name = 'Affinity Propagation'
 
     elif model == 'meanshift':
@@ -1468,7 +1468,7 @@ def create_model(model = None,
 
     elif model == 'dbscan':
         from sklearn.cluster import DBSCAN
-        model = DBSCAN(eps=0.5, n_jobs=n_jobs_param, **kwargs)
+        model = DBSCAN(n_jobs=n_jobs_param, **kwargs)
         full_name = 'Density-Based Spatial Clustering'
 
     elif model == 'optics':
