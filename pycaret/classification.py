@@ -9700,12 +9700,12 @@ def predict_model(estimator,
                                    verbose=False)
 
         elif platform == 'gcp':
-            estimator_ = load_model(str(estimator), platform='gcp',
-                                   authentication={'project': 'gcp_pycaret', 'bucket': 'pycaret-test'},
+            estimator_ = load_model(estimator, platform='gcp',
+                                   authentication=authentication,
                                    verbose=False)
         elif platform == 'azure':
             estimator_ = load_model(str(estimator), platform='azure',
-                                   authentication={'container': 'pycaret-test'},
+                                   authentication=authentication,
                                    verbose=False)
         else:
             estimator_ = load_model(str(estimator), verbose=False)
