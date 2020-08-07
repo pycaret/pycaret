@@ -10455,7 +10455,6 @@ def deploy_model(model,
         logger.info("deploy_model() succesfully completed......................................")
 
     elif platform == 'gcp':
-        import gcp_utils as gcp_utils
         save_model(model, model_name=model_name, verbose=False)
         filename = str(model_name) + '.pkl'
         key = str(model_name) + '.pkl'
@@ -10463,18 +10462,17 @@ def deploy_model(model,
         project_name = authentication.get('project')
         print('Deploying model to Google Cloud Platform')
         # Create Bucket
-        gcp_utils.create_bucket(project_name, bucket_name)
-        gcp_utils.upload_blob(project_name, bucket_name, filename, key)
+        create_bucket(project_name, bucket_name)
+        upload_blob(project_name, bucket_name, filename, key)
 
     elif platform == 'azure':
-        import azure_utils as azure_utils
         print('Deploying model to Microsoft Azure')
         save_model(model, model_name=model_name, verbose=False)
         filename = str(model_name) + '.pkl'
         key = str(model_name) + '.pkl'
         container_name = authentication.get('container')
-        container_client = azure_utils.create_container(container_name)
-        azure_utils.upload_blob(container_name, filename, key)
+        container_client = create_container(container_name)
+        upload_blob(container_name, filename, key)
 
     else:
         raise NotImplementederror(f'Platform {platform} is not supported by pycaret or illegal option')
@@ -11255,3 +11253,105 @@ def get_system_logs():
 
         columns = [col.strip() for col in line.split(':') if col]
         print(columns)
+
+
+# Google Cloud Utilities
+
+from google.cloud import storage
+
+def create_bucket(project_name, bucket_name):
+    """Creates a new bucket."""
+    # bucket_name = "your-new-bucket-name"
+
+    storage_client = storage.Client(project_name)
+
+    buckets = storage_client.list_buckets()
+
+    if bucket_name not in buckets:
+        bucket = storage_client.create_bucket(bucket_name)
+        print("Bucket {} created".format(bucket.name))
+    else:
+        raise FileExistsError('{} already exists'.format(bucket_name))
+
+
+def upload_blob(project_name, bucket_name, source_file_name, destination_blob_name):
+    """Uploads a file to the bucket."""
+    # bucket_name = "your-bucket-name"
+    # source_file_name = "local/path/to/file"
+    # destination_blob_name = "storage-object-name"
+
+    storage_client = storage.Client(project_name)
+    bucket = storage_client.bucket(bucket_name)
+    blob = bucket.blob(destination_blob_name)
+
+    blob.upload_from_filename(source_file_name)
+
+    print(
+        "File {} uploaded to {}.".format(
+            source_file_name, destination_blob_name
+        )
+    )
+
+
+def download_blob(project_name, bucket_name, source_blob_name, destination_file_name):
+    """Downloads a blob from the bucket."""
+    # bucket_name = "your-bucket-name"
+    # source_blob_name = "storage-object-name"
+    # destination_file_name = "local/path/to/file"
+
+    storage_client = storage.Client(project_name)
+
+    bucket = storage_client.bucket(bucket_name)
+    blob = bucket.blob(source_blob_name)
+
+    if destination_file_name is not None:
+        blob.download_to_filename(destination_file_name)
+
+        print(
+            "Blob {} downloaded to {}.".format(
+                source_blob_name, destination_file_name
+            )
+        )
+
+    return blob
+
+# Azure Utilities
+import os, uuid
+from azure.storage.blob import BlobServiceClient, BlobClient, ContainerClient
+
+
+def create_container(container_name):
+
+  # Create the container
+  container_client = blob_service_client.create_container(container_name)
+
+  return container_client
+
+def upload_blob(container_name, source_file_name, destination_blob_name):
+
+  # Create a blob client using the local file name as the name for the blob
+  blob_client = blob_service_client.get_blob_client(container=container_name, blob=destination_blob_name)
+
+  print("\nUploading to Azure Storage as blob:\n\t" + source_file_name)
+
+  # Upload the created file
+  with open(source_file_name, "rb") as data:
+      blob_client.upload_blob(data)
+
+
+def download_blob(container_name, source_blob_name, destination_file_name):
+  # Download the blob to a local file
+  print("\nDownloading blob to \n\t" + destination_file_name)
+
+  # Create a blob client using the local file name as the name for the blob
+  blob_client = blob_service_client.get_blob_client(container=container_name, blob=source_blob_name)
+
+  if destination_file_name is not None:
+        with open(destination_file_name, "wb") as download_file:
+          download_file.write(blob_client.download_blob().readall())
+
+        print(
+            "Blob {} downloaded to {}.".format(
+                source_blob_name, destination_file_name
+            )
+        )
