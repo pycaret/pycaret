@@ -3,8 +3,6 @@
 # License: MIT
 # Release: PyCaret 2.1x
 # Last modified : 05/08/2020
-from pycaret import gcp_utils, azure_utils
-
 
 def setup(data,
           target,   
@@ -9512,6 +9510,7 @@ def load_model(model_name,
             print('Transformation Pipeline and Model Sucessfully Loaded')
 
         return model
+
     elif platform == 'gcp':
         import gcp_utils as gcp_utils
         if verbose:
@@ -9523,11 +9522,12 @@ def load_model(model_name,
         model_downloaded = gcp_utils.download_blob(project_name,
                                                    bucket_name, filename, filename)
 
-        model = load_model(model_name, verbose=False)
+        model = load_model(model_downloaded, verbose=False)
 
         if verbose:
             print('Transformation Pipeline and Model Successfully Loaded')
         return model
+
     elif platform == 'azure':
         import azure_utils as azure_utils
         if verbose:
@@ -9539,7 +9539,7 @@ def load_model(model_name,
         model_downloaded = azure_utils.download_blob(container_name,
                                                      filename, filename)
 
-        model = load_model(model_name, verbose=False)
+        model = load_model(model_downloaded, verbose=False)
 
         if verbose:
             print('Transformation Pipeline and Model Successfully Loaded')
@@ -9687,7 +9687,15 @@ def predict_model(estimator,
             estimator_ = load_model(str(estimator), platform='aws', 
                                    authentication={'bucket': authentication.get('bucket')},
                                    verbose=False)
-            
+
+        elif platform == 'gcp':
+            estimator_ = load_model(str(estimator), platform='gcp',
+                                   authentication={'project': 'gcp_pycaret', 'bucket': 'pycaret-test'},
+                                   verbose=False)
+        elif platform == 'azure':
+            estimator_ = load_model(str(estimator), platform='azure',
+                                   authentication={'container': 'pycaret-test'},
+                                   verbose=False)
         else:
             estimator_ = load_model(str(estimator), verbose=False)
             
