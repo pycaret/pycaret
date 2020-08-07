@@ -9496,7 +9496,15 @@ def load_model(model_name,
             sys.exit("(Value Error): Authentication is missing.")
         
     #cloud provider
-    if platform == 'aws':
+    if platform is None:
+
+        import joblib
+        model_name = model_name + '.pkl'
+        if verbose:
+            print('Transformation Pipeline and Model Sucessfully Loaded')
+        return joblib.load(model_name)
+
+    elif platform == 'aws':
         
         import boto3
         bucketname = authentication.get('bucket')
@@ -9527,7 +9535,7 @@ def load_model(model_name,
             print('Transformation Pipeline and Model Successfully Loaded')
         return model
 
-    else platform == 'azure':
+    elif platform == 'azure':
         if verbose:
             print('Loading model from Microsoft Azure')
 
@@ -9542,16 +9550,15 @@ def load_model(model_name,
         if verbose:
             print('Transformation Pipeline and Model Successfully Loaded')
         return model
-    # else:
-    #     raise NotImplemnetedError('Platform { } is not supported by pycaret or illegal option'.format(platform))
-
+    else:
+        logger.info('Platform { } is not supported by pycaret or illegal option'.format(platform))
         # return model
 
-    import joblib
-    model_name = model_name + '.pkl'
-    if verbose:
-        print('Transformation Pipeline and Model Sucessfully Loaded')
-    return joblib.load(model_name)
+    # import joblib
+    # model_name = model_name + '.pkl'
+    # if verbose:
+    #     print('Transformation Pipeline and Model Sucessfully Loaded')
+    # return joblib.load(model_name)
 
 def predict_model(estimator, 
                   data=None,
