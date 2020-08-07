@@ -9512,7 +9512,6 @@ def load_model(model_name,
         return model
 
     elif platform == 'gcp':
-        import gcp_utils as gcp_utils
         if verbose:
             print('loading model from GCP')
         bucket_name = authentication.get('bucket')
@@ -9529,7 +9528,6 @@ def load_model(model_name,
         return model
 
     elif platform == 'azure':
-        import azure_utils as azure_utils
         if verbose:
             print('Loading model from Microsoft Azure')
 
