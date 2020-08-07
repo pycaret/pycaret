@@ -2319,7 +2319,7 @@ def create_model(estimator = None,
         
         from sklearn.tree import DecisionTreeRegressor
         model = DecisionTreeRegressor(random_state=seed, **kwargs)
-        full_name = 'Decision Tree Regressor'
+        full_name = 'Decision Tree'
         
     elif estimator == 'rf':
         
