@@ -24,6 +24,9 @@ PyCaret `2.0` is now available. See `2.0` release notes. The easiest way to inst
 pip install pycaret==2.0
 ```
 
+## Python:
+Installation is only supported by the 64-bit version of Python.
+
 ## Important Links
 - 2.0 Release notes: https://github.com/pycaret/pycaret/releases/tag/2.0
 - User Guide / Documentation: https://www.pycaret.org/guide
@@ -40,9 +43,6 @@ PyCaret is an open source library that anybody can use. In our view the ideal ta
 
 ## Dependencies
 Please read requirements.txt for list of requirements. They are automatically installed when pycaret is installed using pip. `shap`, `awscli` and `psutil` is removed from hard dependency in PyCaret 2.0. Must be installed separately, if needed.
-
-## Note:
-It supports Python 64 bit only.
 
 ## License
 
