@@ -134,11 +134,11 @@ def create_model(metric='confidence',
         Other available metrics include 'support', 'lift', 'leverage', 'conviction'. 
         These metrics are computed as follows:
 
-        - support(A->C) = support(A+C) [aka 'support'], range: [0, 1]
-        - confidence(A->C) = support(A+C) / support(A), range: [0, 1]
-        - lift(A->C) = confidence(A->C) / support(C), range: [0, inf]
-        - leverage(A->C) = support(A->C) - support(A)*support(C), range: [-1, 1]
-        - conviction = [1 - support(C)] / [1 - confidence(A->C)], range: [0, inf]
+        * support(A->C) = support(A+C) [aka 'support'], range: [0, 1]
+        * confidence(A->C) = support(A+C) / support(A), range: [0, 1]
+        * lift(A->C) = confidence(A->C) / support(C), range: [0, inf]
+        * leverage(A->C) = support(A->C) - support(A)*support(C), range: [-1, 1]
+        * conviction = [1 - support(C)] / [1 - confidence(A->C)], range: [0, inf]
     
     threshold : float, default = 0.5
         Minimal threshold for the evaluation metric, via the `metric` parameter,
@@ -224,12 +224,10 @@ def plot_model(model,
         DataFrame returned by trained model using create_model(). 
 
     plot : string, default = '2d'
-        Enter abbreviation of type of plot. The current list of plots supported are:
+        Enter abbreviation of type of plot. The current list of plots supported are (Name - Abbreviated String):
 
-        Name                                 Abbreviated String     
-        ---------                            ------------------     
-        Support, Confidence and Lift (2d)    '2d'
-        Support, Confidence and Lift (3d)    '3d'
+        * Support, Confidence and Lift (2d) - '2d'
+        * Support, Confidence and Lift (3d) - '3d'
   
     
     Returns

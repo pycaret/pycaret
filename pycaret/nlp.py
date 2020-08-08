@@ -869,15 +869,13 @@ def create_model(model=None,
     Parameters
     ----------
     model : string, default = None
-        Enter ID of the model available in model library.
+        Enter ID of the model available in model library (ID - Model):
 
-        ID          Model  
-        ------      ---------
-        'lda'       Latent Dirichlet Allocation         
-        'lsi'       Latent Semantic Indexing           
-        'hdp'       Hierarchical Dirichlet Process
-        'rp'        Random Projections
-        'nmf'       Non-Negative Matrix Factorization
+        * 'lda' - Latent Dirichlet Allocation         
+        * 'lsi' - Latent Semantic Indexing           
+        * 'hdp' - Hierarchical Dirichlet Process
+        * 'rp' - Random Projections
+        * 'nmf' - Non-Negative Matrix Factorization
    
     multi_core: Boolean, default = False
         True would utilize all CPU cores to parallelize and speed up model training. Only
@@ -1666,21 +1664,18 @@ def plot_model(model = None,
         A trained model object can be passed. Model must be created using create_model().
 
     plot : string, default = 'frequency'
-        Enter abbreviation for type of plot. The current list of plots supported are:
-
-        Name                           Abbreviated String     
-        ---------                      ------------------     
-        Word Token Frequency           'frequency'              
-        Word Distribution Plot         'distribution'
-        Bigram Frequency Plot          'bigram' 
-        Trigram Frequency Plot         'trigram'
-        Sentiment Polarity Plot        'sentiment'
-        Part of Speech Frequency       'pos'
-        t-SNE (3d) Dimension Plot      'tsne'
-        Topic Model (pyLDAvis)         'topic_model'
-        Topic Infer Distribution       'topic_distribution'
-        Wordcloud                      'wordcloud'
-        UMAP Dimensionality Plot       'umap'
+        Enter abbreviation for type of plot. The current list of plots supported are (Name - Abbreviated String):
+        * Word Token Frequency - 'frequency'              
+        * Word Distribution Plot - 'distribution'
+        * Bigram Frequency Plot - 'bigram' 
+        * Trigram Frequency Plot - 'trigram'
+        * Sentiment Polarity Plot - 'sentiment'
+        * Part of Speech Frequency - 'pos'
+        * t-SNE (3d) Dimension Plot - 'tsne'
+        * Topic Model (pyLDAvis) - 'topic_model'
+        * Topic Infer Distribution - 'topic_distribution'
+        * Wordcloud - 'wordcloud'
+        * UMAP Dimensionality Plot - 'umap'
 
     topic_num : string, default = None
         Topic number to be passed as a string. If set to None, default generation will 
@@ -2368,15 +2363,13 @@ def tune_model(model=None,
     Parameters
     ----------
     model : string, default = None
-        Enter ID of the models available in model library:
+        Enter ID of the models available in model library (ID - Model):
 
-        ID          Model  
-        ------      ---------
-        'lda'       Latent Dirichlet Allocation         
-        'lsi'       Latent Semantic Indexing           
-        'hdp'       Hierarchical Dirichlet Process
-        'rp'        Random Projections
-        'nmf'       Non-Negative Matrix Factorization
+        * 'lda' - Latent Dirichlet Allocation         
+        * 'lsi' - Latent Semantic Indexing           
+        * 'hdp' - Hierarchical Dirichlet Process
+        * 'rp' - Random Projections
+        * 'nmf' - Non-Negative Matrix Factorization
 
     multi_core: Boolean, default = False
         True would utilize all CPU cores to parallelize and speed up model training. Only
@@ -2387,51 +2380,54 @@ def tune_model(model=None,
         is used as the objective function.
 
     estimator: string, default = None
-        ID          Name                            Task      
-        --------    ----------                      ----------     
-        'lr'        Logistic Regression             Classification
-        'knn'       K Nearest Neighbour             Classification
-        'nb'        Naive Bayes                     Classification            
-        'dt'        Decision Tree Classifier        Classification                   
-        'svm'       SVM - Linear Kernel             Classification	            
-        'rbfsvm'    SVM - Radial Kernel             Classification               
-        'gpc'       Gaussian Process Classifier     Classification                  
-        'mlp'       Multi Level Perceptron          Classification                  
-        'ridge'     Ridge Classifier                Classification
-        'rf'        Random Forest Classifier        Classification                   
-        'qda'       Quadratic Discriminant Analysis Classification                  
-        'ada'       Ada Boost Classifier            Classification                 
-        'gbc'       Gradient Boosting Classifier    Classification                          
-        'lda'       Linear Discriminant Analysis    Classification                  
-        'et'        Extra Trees Classifier          Classification                   
-        'xgboost'   Extreme Gradient Boosting       Classification              
-        'lightgbm'  Light Gradient Boosting         Classification              
-        'catboost'  CatBoost Classifier             Classification
-        'lr'        Linear Regression               Regression                   
-        'lasso'     Lasso Regression                Regression
-        'ridge'     Ridge Regression                Regression
-        'en'        Elastic Net                     Regression
-        'lar'       Least Angle Regression          Regression        
-        'llar'      Lasso Least Angle Regression    Regression                   
-        'omp'       Orthogonal Matching Pursuit     Regression                     
-        'br'        Bayesian Ridge                  Regression                   
-        'ard'       Automatic Relevance Determ.     Regression                  
-        'par'       Passive Aggressive Regressor    Regression                    
-        'ransac'    Random Sample Consensus         Regression       
-        'tr'        TheilSen Regressor              Regression                   
-        'huber'     Huber Regressor                 Regression                               
-        'kr'        Kernel Ridge                    Regression                                     
-        'svm'       Support Vector Machine          Regression                           
-        'knn'       K Neighbors Regressor           Regression                           
-        'dt'        Decision Tree                   Regression                                    
-        'rf'        Random Forest                   Regression                                    
-        'et'        Extra Trees Regressor           Regression                            
-        'ada'       AdaBoost Regressor              Regression                                   
-        'gbr'       Gradient Boosting               Regression                               
-        'mlp'       Multi Level Perceptron          Regression                          
-        'xgboost'   Extreme Gradient Boosting       Regression                              
-        'lightgbm'  Light Gradient Boosting         Regression                    
-        'catboost'  CatBoost Regressor              Regression   
+        For Classification (ID - Name):
+
+        * 'lr' - Logistic Regression             
+        * 'knn' - K Nearest Neighbour             
+        * 'nb' - Naive Bayes                                 
+        * 'dt' - Decision Tree Classifier                           
+        * 'svm' - SVM - Linear Kernel             	            
+        * 'rbfsvm' - SVM - Radial Kernel                            
+        * 'gpc' - Gaussian Process Classifier                       
+        * 'mlp' - Multi Level Perceptron                            
+        * 'ridge' - Ridge Classifier                
+        * 'rf' - Random Forest Classifier                           
+        * 'qda' - Quadratic Discriminant Analysis                   
+        * 'ada' - Ada Boost Classifier                             
+        * 'gbc' - Gradient Boosting Classifier                              
+        * 'lda' - Linear Discriminant Analysis                      
+        * 'et' - Extra Trees Classifier                             
+        * 'xgboost' - Extreme Gradient Boosting                     
+        * 'lightgbm' - Light Gradient Boosting                       
+        * 'catboost' - CatBoost Classifier             
+
+        For Regression (ID - Name):
+
+        * 'lr' - Linear Regression                                
+        * 'lasso' - Lasso Regression              
+        * 'ridge' - Ridge Regression              
+        * 'en' - Elastic Net                   
+        * 'lar' - Least Angle Regression                
+        * 'llar' - Lasso Least Angle Regression                     
+        * 'omp' - Orthogonal Matching Pursuit                        
+        * 'br' - Bayesian Ridge                                   
+        * 'ard' - Automatic Relevance Determ.                     
+        * 'par' - Passive Aggressive Regressor                      
+        * 'ransac' - Random Sample Consensus              
+        * 'tr' - TheilSen Regressor                               
+        * 'huber' - Huber Regressor                                              
+        * 'kr' - Kernel Ridge                                                       
+        * 'svm' - Support Vector Machine                                   
+        * 'knn' - K Neighbors Regressor                                    
+        * 'dt' - Decision Tree                                                     
+        * 'rf' - Random Forest                                                     
+        * 'et' - Extra Trees Regressor                                     
+        * 'ada' - AdaBoost Regressor                                               
+        * 'gbr' - Gradient Boosting                                            
+        * 'mlp' - Multi Level Perceptron                                  
+        * 'xgboost' - Extreme Gradient Boosting                                   
+        * 'lightgbm' - Light Gradient Boosting                           
+        * 'catboost' - CatBoost Regressor               
 
         If set to None, Linear / Logistic model is used by default.
 

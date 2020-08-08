@@ -1952,35 +1952,33 @@ def create_model(estimator = None,
     estimator : string / object, default = None
         Enter ID of the estimators available in model library or pass an untrained model 
         object consistent with fit / predict API to train and evaluate model. All estimators 
-        support binary or multiclass problem. List of estimators in model library:
+        support binary or multiclass problem. List of estimators in model library (ID - Name):
 
-        ID          Name      
-        --------    ----------     
-        'lr'        Linear Regression                   
-        'lasso'     Lasso Regression                
-        'ridge'     Ridge Regression                
-        'en'        Elastic Net                   
-        'lar'       Least Angle Regression                  
-        'llar'      Lasso Least Angle Regression                   
-        'omp'       Orthogonal Matching Pursuit                     
-        'br'        Bayesian Ridge                   
-        'ard'       Automatic Relevance Determination                  
-        'par'       Passive Aggressive Regressor                    
-        'ransac'    Random Sample Consensus       
-        'tr'        TheilSen Regressor                   
-        'huber'     Huber Regressor                               
-        'kr'        Kernel Ridge                                     
-        'svm'       Support Vector Machine                           
-        'knn'       K Neighbors Regressor                           
-        'dt'        Decision Tree                                    
-        'rf'        Random Forest                                    
-        'et'        Extra Trees Regressor                            
-        'ada'       AdaBoost Regressor                              
-        'gbr'       Gradient Boosting Regressor                               
-        'mlp'       Multi Level Perceptron                          
-        'xgboost'   Extreme Gradient Boosting                   
-        'lightgbm'  Light Gradient Boosting                    
-        'catboost'  CatBoost Regressor                         
+        * 'lr' - Linear Regression                   
+        * 'lasso' - Lasso Regression                
+        * 'ridge' - Ridge Regression                
+        * 'en' - Elastic Net                   
+        * 'lar' - Least Angle Regression                  
+        * 'llar' - Lasso Least Angle Regression                   
+        * 'omp' - Orthogonal Matching Pursuit                     
+        * 'br' - Bayesian Ridge                   
+        * 'ard' - Automatic Relevance Determination                  
+        * 'par' - Passive Aggressive Regressor                    
+        * 'ransac' - Random Sample Consensus       
+        * 'tr' - TheilSen Regressor                   
+        * 'huber' - Huber Regressor                               
+        * 'kr' - Kernel Ridge                                     
+        * 'svm' - Support Vector Machine                           
+        * 'knn' - K Neighbors Regressor                           
+        * 'dt' - Decision Tree                                    
+        * 'rf' - Random Forest                                    
+        * 'et' - Extra Trees Regressor                            
+        * 'ada' - AdaBoost Regressor                              
+        * 'gbr' - Gradient Boosting Regressor                               
+        * 'mlp' - Multi Level Perceptron                          
+        * 'xgboost' - Extreme Gradient Boosting                   
+        * 'lightgbm' - Light Gradient Boosting                    
+        * 'catboost' - CatBoost Regressor                         
 
     ensemble: Boolean, default = False
         True would result in an ensemble of estimator using the method parameter defined. 
@@ -7166,19 +7164,17 @@ def plot_model(estimator,
         A trained model object should be passed as an estimator. 
    
     plot : string, default = residual
-        Enter abbreviation of type of plot. The current list of plots supported are:
+        Enter abbreviation of type of plot. The current list of plots supported are (Plot - Name):
 
-        Plot            Name                             
-        ------          ---------                       
-        'residuals'     Residuals Plot
-        'error'         Prediction Error Plot
-        'cooks'         Cooks Distance Plot                         
-        'rfe'           Recursive Feat. Selection                     
-        'learning'      Learning Curve                           
-        'vc'            Validation Curve                               
-        'manifold'      Manifold Learning                        
-        'feature'       Feature Importance                        
-        'parameter'     Model Hyperparameter                    
+        * 'residuals' - Residuals Plot
+        * 'error' - Prediction Error Plot
+        * 'cooks' - Cooks Distance Plot                         
+        * 'rfe' - Recursive Feat. Selection                     
+        * 'learning' - Learning Curve                           
+        * 'vc' - Validation Curve                               
+        * 'manifold' - Manifold Learning                        
+        * 'feature' - Feature Importance                        
+        * 'parameter' - Model Hyperparameter                    
 
     save: Boolean, default = False
         When set to True, Plot is saved as a 'png' file in current working directory.
