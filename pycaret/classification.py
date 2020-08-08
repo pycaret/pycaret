@@ -5,8 +5,14 @@
 # Last modified : 07/08/2020
 
 def _declare_classification_metric_vars():
+
+    import numpy as np
+
     score_auc, score_acc, score_recall, score_precision, score_f1, score_kappa, score_mcc, score_training_time = [np.empty((0, 0))]*8
     avgs_auc, avgs_acc, avgs_recall, avgs_precision, avgs_f1, avgs_kappa, avgs_mcc, avgs_training_time = [np.empty((0, 0))]*8
+
+    return (score_auc, score_acc, score_recall, score_precision, score_f1, score_kappa, score_mcc, score_training_time,
+            avgs_auc, avgs_acc, avgs_recall, avgs_precision, avgs_f1, avgs_kappa, avgs_mcc, avgs_training_time)
 
 
 def setup(data,  
