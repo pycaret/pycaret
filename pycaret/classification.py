@@ -9271,8 +9271,8 @@ def save_model(model, model_name, model_only=False, verbose=True):
         logger.addHandler(ch)
 
     logger.info("Initializing save_model()")
-    logger.info("""save_model(model={}, model_name={}, verbose={})""".\
-        format(str(model), str(model_name), str(verbose)))
+    logger.info("""save_model(model={}, model_name={}, model_only={}, verbose={})""".\
+        format(str(model), str(model_name), str(model_only), str(verbose)))
     
     #ignore warnings
     import warnings
