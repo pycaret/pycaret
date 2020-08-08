@@ -55,9 +55,6 @@ def test():
     pycaret.utils.check_metric(actual, prediction, "RMSLE")
     pycaret.utils.check_metric(actual, prediction, "MAPE")
 
-    # enable colab
-    pycaret.utils.enable_colab()
-
     assert 1 == 1
 
 if __name__ == "__main__":
