@@ -1996,28 +1996,26 @@ def create_model(estimator = None,
     estimator : string / object, default = None
         Enter ID of the estimators available in model library or pass an untrained model 
         object consistent with fit / predict API to train and evaluate model. All estimators 
-        support binary or multiclass problem. List of estimators in model library:
+        support binary or multiclass problem. List of estimators in model library (ID - Name):
 
-        ID          Name      
-        --------    ----------     
-        'lr'        Logistic Regression             
-        'knn'       K Nearest Neighbour            
-        'nb'        Naive Bayes             
-        'dt'        Decision Tree Classifier                   
-        'svm'       SVM - Linear Kernel	            
-        'rbfsvm'    SVM - Radial Kernel               
-        'gpc'       Gaussian Process Classifier                  
-        'mlp'       Multi Level Perceptron                  
-        'ridge'     Ridge Classifier                
-        'rf'        Random Forest Classifier                   
-        'qda'       Quadratic Discriminant Analysis                  
-        'ada'       Ada Boost Classifier                 
-        'gbc'       Gradient Boosting Classifier                  
-        'lda'       Linear Discriminant Analysis                  
-        'et'        Extra Trees Classifier                   
-        'xgboost'   Extreme Gradient Boosting              
-        'lightgbm'  Light Gradient Boosting              
-        'catboost'  CatBoost Classifier             
+        * 'lr' - Logistic Regression             
+        * 'knn' - K Nearest Neighbour            
+        * 'nb' - Naive Bayes             
+        * 'dt' - Decision Tree Classifier                   
+        * 'svm' - SVM - Linear Kernel	            
+        * 'rbfsvm' - SVM - Radial Kernel               
+        * 'gpc' - Gaussian Process Classifier                  
+        * 'mlp' - Multi Level Perceptron                  
+        * 'ridge' - Ridge Classifier                
+        * 'rf' - Random Forest Classifier                   
+        * 'qda' - Quadratic Discriminant Analysis                  
+        * 'ada' - Ada Boost Classifier                 
+        * 'gbc' - Gradient Boosting Classifier                  
+        * 'lda' - Linear Discriminant Analysis                  
+        * 'et' - Extra Trees Classifier                   
+        * 'xgboost' - Extreme Gradient Boosting              
+        * 'lightgbm' - Light Gradient Boosting              
+        * 'catboost' - CatBoost Classifier             
 
     ensemble: Boolean, default = False
         True would result in an ensemble of estimator using the method parameter defined. 
@@ -3669,25 +3667,23 @@ def plot_model(estimator,
         A trained model object should be passed as an estimator. 
 
     plot : string, default = auc
-        Enter abbreviation of type of plot. The current list of plots supported are:
+        Enter abbreviation of type of plot. The current list of plots supported are (Plot - Name):
 
-        Plot                    Name
-        ------------------      -----------------------           
-        'auc'                   Area Under the Curve                 
-        'threshold'             Discrimination Threshold           
-        'pr'                    Precision Recall Curve                  
-        'confusion_matrix'      Confusion Matrix    
-        'error'                 Class Prediction Error                
-        'class_report'          Classification Report        
-        'boundary'              Decision Boundary            
-        'rfe'                   Recursive Feature Selection                 
-        'learning'              Learning Curve             
-        'manifold'              Manifold Learning            
-        'calibration'           Calibration Curve         
-        'vc'                    Validation Curve                  
-        'dimension'             Dimension Learning           
-        'feature'               Feature Importance              
-        'parameter'             Model Hyperparameter          
+        * 'auc' - Area Under the Curve                 
+        * 'threshold' - Discrimination Threshold           
+        * 'pr' - Precision Recall Curve                  
+        * 'confusion_matrix' - Confusion Matrix    
+        * 'error' - Class Prediction Error                
+        * 'class_report' - Classification Report        
+        * 'boundary' - Decision Boundary            
+        * 'rfe' - Recursive Feature Selection                 
+        * 'learning' - Learning Curve             
+        * 'manifold' - Manifold Learning            
+        * 'calibration' - Calibration Curve         
+        * 'vc' - Validation Curve                  
+        * 'dimension' - Dimension Learning           
+        * 'feature' - Feature Importance              
+        * 'parameter' - Model Hyperparameter          
 
     save: Boolean, default = False
         When set to True, Plot is saved as a 'png' file in current working directory.
