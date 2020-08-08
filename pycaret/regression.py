@@ -8352,7 +8352,7 @@ def predict_model(estimator,
     import re
     from sklearn import metrics
     from copy import deepcopy
-    from IPython.display import display, clear_output, update_display
+    from IPython.display import clear_output, update_display, display
     
     def calculate_mape(actual, prediction):
         mask = actual != 0
