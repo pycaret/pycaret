@@ -7,7 +7,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Welcome to pycaret’s documentation! &mdash; pycaret 1.0.1 documentation</title>
+  <title>Welcome to pycaret’s documentation! &mdash; pycaret 2.0.0 documentation</title>
   
 
   
@@ -336,34 +336,34 @@ MAPE by fold (default = 10 Fold).</p>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>estimator</strong> (<em>string / object</em><em>, </em><em>default = None</em>) – <p>Enter ID of the estimators available in model library or pass an untrained model
 object consistent with fit / predict API to train and evaluate model. All estimators
-support binary or multiclass problem. List of estimators in model library:</p>
-<p>ID          Name
-——–    ———-
-‘lr’        Linear Regression
-‘lasso’     Lasso Regression
-‘ridge’     Ridge Regression
-‘en’        Elastic Net
-‘lar’       Least Angle Regression
-‘llar’      Lasso Least Angle Regression
-‘omp’       Orthogonal Matching Pursuit
-‘br’        Bayesian Ridge
-‘ard’       Automatic Relevance Determination
-‘par’       Passive Aggressive Regressor
-‘ransac’    Random Sample Consensus
-‘tr’        TheilSen Regressor
-‘huber’     Huber Regressor
-‘kr’        Kernel Ridge
-‘svm’       Support Vector Machine
-‘knn’       K Neighbors Regressor
-‘dt’        Decision Tree
-‘rf’        Random Forest
-‘et’        Extra Trees Regressor
-‘ada’       AdaBoost Regressor
-‘gbr’       Gradient Boosting Regressor
-‘mlp’       Multi Level Perceptron
-‘xgboost’   Extreme Gradient Boosting
-‘lightgbm’  Light Gradient Boosting
-‘catboost’  CatBoost Regressor</p>
+support binary or multiclass problem. List of estimators in model library (ID - Name):</p>
+<ul>
+<li><p>’lr’ - Linear Regression</p></li>
+<li><p>’lasso’ - Lasso Regression</p></li>
+<li><p>’ridge’ - Ridge Regression</p></li>
+<li><p>’en’ - Elastic Net</p></li>
+<li><p>’lar’ - Least Angle Regression</p></li>
+<li><p>’llar’ - Lasso Least Angle Regression</p></li>
+<li><p>’omp’ - Orthogonal Matching Pursuit</p></li>
+<li><p>’br’ - Bayesian Ridge</p></li>
+<li><p>’ard’ - Automatic Relevance Determination</p></li>
+<li><p>’par’ - Passive Aggressive Regressor</p></li>
+<li><p>’ransac’ - Random Sample Consensus</p></li>
+<li><p>’tr’ - TheilSen Regressor</p></li>
+<li><p>’huber’ - Huber Regressor</p></li>
+<li><p>’kr’ - Kernel Ridge</p></li>
+<li><p>’svm’ - Support Vector Machine</p></li>
+<li><p>’knn’ - K Neighbors Regressor</p></li>
+<li><p>’dt’ - Decision Tree</p></li>
+<li><p>’rf’ - Random Forest</p></li>
+<li><p>’et’ - Extra Trees Regressor</p></li>
+<li><p>’ada’ - AdaBoost Regressor</p></li>
+<li><p>’gbr’ - Gradient Boosting Regressor</p></li>
+<li><p>’mlp’ - Multi Level Perceptron</p></li>
+<li><p>’xgboost’ - Extreme Gradient Boosting</p></li>
+<li><p>’lightgbm’ - Light Gradient Boosting</p></li>
+<li><p>’catboost’ - CatBoost Regressor</p></li>
+</ul>
 </p></li>
 <li><p><strong>ensemble</strong> (<em>Boolean</em><em>, </em><em>default = False</em>) – True would result in an ensemble of estimator using the method parameter defined.</p></li>
 <li><p><strong>method</strong> (<em>String</em><em>, </em><em>'Bagging'</em><em> or </em><em>'Boosting'</em><em>, </em><em>default = None.</em>) – method must be defined when ensemble is set to True. Default method is set to None.</p></li>
@@ -769,18 +769,18 @@ certain cases. See list of plots supported below.</p>
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>estimator</strong> (<em>object</em><em>, </em><em>default = none</em>) – A trained model object should be passed as an estimator.</p></li>
-<li><p><strong>plot</strong> (<em>string</em><em>, </em><em>default = residual</em>) – <p>Enter abbreviation of type of plot. The current list of plots supported are:</p>
-<p>Plot            Name
-——          ———
-‘residuals’     Residuals Plot
-‘error’         Prediction Error Plot
-‘cooks’         Cooks Distance Plot
-‘rfe’           Recursive Feat. Selection
-‘learning’      Learning Curve
-‘vc’            Validation Curve
-‘manifold’      Manifold Learning
-‘feature’       Feature Importance
-‘parameter’     Model Hyperparameter</p>
+<li><p><strong>plot</strong> (<em>string</em><em>, </em><em>default = residual</em>) – <p>Enter abbreviation of type of plot. The current list of plots supported are (Plot - Name):</p>
+<ul>
+<li><p>’residuals’ - Residuals Plot</p></li>
+<li><p>’error’ - Prediction Error Plot</p></li>
+<li><p>’cooks’ - Cooks Distance Plot</p></li>
+<li><p>’rfe’ - Recursive Feat. Selection</p></li>
+<li><p>’learning’ - Learning Curve</p></li>
+<li><p>’vc’ - Validation Curve</p></li>
+<li><p>’manifold’ - Manifold Learning</p></li>
+<li><p>’feature’ - Feature Importance</p></li>
+<li><p>’parameter’ - Model Hyperparameter</p></li>
+</ul>
 </p></li>
 <li><p><strong>save</strong> (<em>Boolean</em><em>, </em><em>default = False</em>) – When set to True, Plot is saved as a ‘png’ file in current working directory.</p></li>
 <li><p><strong>verbose</strong> (<em>Boolean</em><em>, </em><em>default = True</em>) – Progress bar not shown when verbose set to False.</p></li>
@@ -798,55 +798,38 @@ certain cases. See list of plots supported below.</p>
 
 <dl class="py function">
 <dt id="pycaret.regression.predict_model">
-<code class="sig-prename descclassname">pycaret.regression.</code><code class="sig-name descname">predict_model</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">estimator</span></em>, <em class="sig-param"><span class="n">data</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">platform</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">authentication</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">round</span><span class="o">=</span><span class="default_value">4</span></em>, <em class="sig-param"><span class="n">verbose</span><span class="o">=</span><span class="default_value">True</span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycaret.regression.predict_model" title="Permalink to this definition">¶</a></dt>
-<dd><p>This function is used to predict new data using a trained estimator. It accepts
-an estimator created using one of the function in pycaret that returns a trained
-model object or a list of trained model objects created using stack_models() or
-create_stacknet(). New unseen data can be passed to data param as pandas Dataframe.
-If data is not passed, the test / hold-out set separated at the time of setup() is
-used to generate predictions.</p>
-<p class="rubric">Example</p>
-<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">pycaret.datasets</span> <span class="kn">import</span> <span class="n">get_data</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">boston</span> <span class="o">=</span> <span class="n">get_data</span><span class="p">(</span><span class="s1">&#39;boston&#39;</span><span class="p">)</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">experiment_name</span> <span class="o">=</span> <span class="n">setup</span><span class="p">(</span><span class="n">data</span> <span class="o">=</span> <span class="n">boston</span><span class="p">,</span>  <span class="n">target</span> <span class="o">=</span> <span class="s1">&#39;medv&#39;</span><span class="p">)</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">lr</span> <span class="o">=</span> <span class="n">create_model</span><span class="p">(</span><span class="s1">&#39;lr&#39;</span><span class="p">)</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">lr_predictions_holdout</span> <span class="o">=</span> <span class="n">predict_model</span><span class="p">(</span><span class="n">lr</span><span class="p">)</span>
-</pre></div>
-</div>
+<code class="sig-prename descclassname">pycaret.regression.</code><code class="sig-name descname">predict_model</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">estimator</span></em>, <em class="sig-param"><span class="n">data</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">round</span><span class="o">=</span><span class="default_value">4</span></em>, <em class="sig-param"><span class="n">verbose</span><span class="o">=</span><span class="default_value">True</span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycaret.regression.predict_model" title="Permalink to this definition">¶</a></dt>
+<dd><p>This function is used to predict target value on the new dataset using a trained
+estimator. New unseen data can be passed to data param as pandas Dataframe.
+If data is not passed, the test / hold-out set separated at the time of
+setup() is used to generate predictions.</p>
+<blockquote>
+<div><p>from pycaret.datasets import get_data
+boston = get_data(‘boston’)
+experiment_name = setup(data = boston,  target = ‘medv’)
+lr = create_model(‘lr’)</p>
+<p>lr_predictions_holdout = predict_model(lr)</p>
+</div></blockquote>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>estimator</strong> (<em>object</em><em> or </em><em>list of objects / string</em><em>,  </em><em>default = None</em>) – When estimator is passed as string, load_model() is called internally to load the
-pickle file from active directory or cloud platform when platform param is passed.</p></li>
+<li><p><strong>estimator</strong> (<em>object</em><em>, </em><em>default = none</em>) – A trained model object / pipeline should be passed as an estimator.</p></li>
 <li><p><strong>data</strong> (<em>{array-like</em><em>, </em><em>sparse matrix}</em>) – shape (n_samples, n_features) where n_samples is the number of samples and n_features is the number of features.
 All features used during training must be present in the new dataset.</p></li>
-<li><p><strong>platform</strong> (<em>string</em><em>, </em><em>default = None</em>) – Name of platform, if loading model from cloud. Current available options are:
-‘aws’.</p></li>
-<li><p><strong>authentication</strong> (<em>dict</em>) – <p>dictionary of applicable authentication tokens.</p>
-<p>When platform = ‘aws’:
-{‘bucket’ : ‘Name of Bucket on S3’}</p>
-</p></li>
 <li><p><strong>round</strong> (<em>integer</em><em>, </em><em>default = 4</em>) – Number of decimal places the predicted labels will be rounded to.</p></li>
 <li><p><strong>verbose</strong> (<em>Boolean</em><em>, </em><em>default = True</em>) – Holdout score grid is not printed when verbose is set to False.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns</dt>
-<dd class="field-even"><p>Information grid is printed when data is None.</p>
-</dd>
-<dt class="field-odd">Return type</dt>
-<dd class="field-odd"><p>info_grid</p>
+<dd class="field-even"><p><ul class="simple">
+<li><p><strong>Predictions</strong> (<em>Predictions (Label and Score) column attached to the original dataset</em>)</p></li>
+<li><p><em>———–   and returned as pandas dataframe.</em></p></li>
+<li><p><strong>score grid</strong> (<em>A table containing the scoring metrics on hold-out / test set.</em>)</p></li>
+<li><p><em>———–</em></p></li>
+</ul>
+</p>
 </dd>
 </dl>
-<div class="admonition warning">
-<p class="admonition-title">Warning</p>
-<ul class="simple">
-<li><p>if the estimator passed is created using finalize_model() then the metrics
-printed in the information grid maybe misleading as the model is trained on
-the complete dataset including the test / hold-out set. Once finalize_model()
-is used, the model is considered ready for deployment and should be used on new
-unseen datasets only.</p></li>
-</ul>
-</div>
 </dd></dl>
 
 <dl class="py function">
@@ -865,24 +848,25 @@ unseen datasets only.</p></li>
 
 <dl class="py function">
 <dt id="pycaret.regression.save_model">
-<code class="sig-prename descclassname">pycaret.regression.</code><code class="sig-name descname">save_model</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">model</span></em>, <em class="sig-param"><span class="n">model_name</span></em>, <em class="sig-param"><span class="n">verbose</span><span class="o">=</span><span class="default_value">True</span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycaret.regression.save_model" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">pycaret.regression.</code><code class="sig-name descname">save_model</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">model</span></em>, <em class="sig-param"><span class="n">model_name</span></em>, <em class="sig-param"><span class="n">model_only</span><span class="o">=</span><span class="default_value">False</span></em>, <em class="sig-param"><span class="n">verbose</span><span class="o">=</span><span class="default_value">True</span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycaret.regression.save_model" title="Permalink to this definition">¶</a></dt>
 <dd><p>This function saves the transformation pipeline and trained model object
 into the current active directory as a pickle file for later use.</p>
-<p class="rubric">Example</p>
-<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">pycaret.datasets</span> <span class="kn">import</span> <span class="n">get_data</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">boston</span> <span class="o">=</span> <span class="n">get_data</span><span class="p">(</span><span class="s1">&#39;boston&#39;</span><span class="p">)</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">experiment_name</span> <span class="o">=</span> <span class="n">setup</span><span class="p">(</span><span class="n">data</span> <span class="o">=</span> <span class="n">boston</span><span class="p">,</span>  <span class="n">target</span> <span class="o">=</span> <span class="s1">&#39;medv&#39;</span><span class="p">)</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">lr</span> <span class="o">=</span> <span class="n">create_model</span><span class="p">(</span><span class="s1">&#39;lr&#39;</span><span class="p">)</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">save_model</span><span class="p">(</span><span class="n">lr</span><span class="p">,</span> <span class="s1">&#39;lr_model_23122019&#39;</span><span class="p">)</span>
-</pre></div>
-</div>
+<blockquote>
+<div><p>from pycaret.datasets import get_data
+boston = get_data(‘boston’)
+experiment_name = setup(data = boston,  target = ‘medv’)
+lr = create_model(‘lr’)</p>
+<p>save_model(lr, ‘lr_model_23122019’)</p>
 <p>This will save the transformation pipeline and model as a binary pickle
 file in the current directory.</p>
+</div></blockquote>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>model</strong> (<em>object</em><em>, </em><em>default = none</em>) – A trained model object should be passed as an estimator.</p></li>
 <li><p><strong>model_name</strong> (<em>string</em><em>, </em><em>default = none</em>) – Name of pickle file to be passed as a string.</p></li>
+<li><p><strong>model_only</strong> (<em>bool</em><em>, </em><em>default = False</em>) – When set to True, only trained model object is saved and all the
+transformations are ignored.</p></li>
 <li><p><strong>verbose</strong> (<em>Boolean</em><em>, </em><em>default = True</em>) – Success message is not printed when verbose is set to False.</p></li>
 </ul>
 </dd>
@@ -1535,27 +1519,27 @@ F1, Kappa and MCC by fold (default = 10 Fold).</p>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>estimator</strong> (<em>string / object</em><em>, </em><em>default = None</em>) – <p>Enter ID of the estimators available in model library or pass an untrained model
 object consistent with fit / predict API to train and evaluate model. All estimators
-support binary or multiclass problem. List of estimators in model library:</p>
-<p>ID          Name
-——–    ———-
-‘lr’        Logistic Regression
-‘knn’       K Nearest Neighbour
-‘nb’        Naive Bayes
-‘dt’        Decision Tree Classifier
-‘svm’       SVM - Linear Kernel
-‘rbfsvm’    SVM - Radial Kernel
-‘gpc’       Gaussian Process Classifier
-‘mlp’       Multi Level Perceptron
-‘ridge’     Ridge Classifier
-‘rf’        Random Forest Classifier
-‘qda’       Quadratic Discriminant Analysis
-‘ada’       Ada Boost Classifier
-‘gbc’       Gradient Boosting Classifier
-‘lda’       Linear Discriminant Analysis
-‘et’        Extra Trees Classifier
-‘xgboost’   Extreme Gradient Boosting
-‘lightgbm’  Light Gradient Boosting
-‘catboost’  CatBoost Classifier</p>
+support binary or multiclass problem. List of estimators in model library (ID - Name):</p>
+<ul>
+<li><p>’lr’ - Logistic Regression</p></li>
+<li><p>’knn’ - K Nearest Neighbour</p></li>
+<li><p>’nb’ - Naive Bayes</p></li>
+<li><p>’dt’ - Decision Tree Classifier</p></li>
+<li><p>’svm’ - SVM - Linear Kernel</p></li>
+<li><p>’rbfsvm’ - SVM - Radial Kernel</p></li>
+<li><p>’gpc’ - Gaussian Process Classifier</p></li>
+<li><p>’mlp’ - Multi Level Perceptron</p></li>
+<li><p>’ridge’ - Ridge Classifier</p></li>
+<li><p>’rf’ - Random Forest Classifier</p></li>
+<li><p>’qda’ - Quadratic Discriminant Analysis</p></li>
+<li><p>’ada’ - Ada Boost Classifier</p></li>
+<li><p>’gbc’ - Gradient Boosting Classifier</p></li>
+<li><p>’lda’ - Linear Discriminant Analysis</p></li>
+<li><p>’et’ - Extra Trees Classifier</p></li>
+<li><p>’xgboost’ - Extreme Gradient Boosting</p></li>
+<li><p>’lightgbm’ - Light Gradient Boosting</p></li>
+<li><p>’catboost’ - CatBoost Classifier</p></li>
+</ul>
 </p></li>
 <li><p><strong>ensemble</strong> (<em>Boolean</em><em>, </em><em>default = False</em>) – True would result in an ensemble of estimator using the method parameter defined.</p></li>
 <li><p><strong>method</strong> (<em>String</em><em>, </em><em>'Bagging'</em><em> or </em><em>'Boosting'</em><em>, </em><em>default = None.</em>) – method must be defined when ensemble is set to True. Default method is set to None.</p></li>
@@ -2031,24 +2015,24 @@ certain cases. See list of plots supported below.</p>
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>estimator</strong> (<em>object</em><em>, </em><em>default = none</em>) – A trained model object should be passed as an estimator.</p></li>
-<li><p><strong>plot</strong> (<em>string</em><em>, </em><em>default = auc</em>) – <p>Enter abbreviation of type of plot. The current list of plots supported are:</p>
-<p>Plot                    Name
-——————      ———————–
-‘auc’                   Area Under the Curve
-‘threshold’             Discrimination Threshold
-‘pr’                    Precision Recall Curve
-‘confusion_matrix’      Confusion Matrix
-‘error’                 Class Prediction Error
-‘class_report’          Classification Report
-‘boundary’              Decision Boundary
-‘rfe’                   Recursive Feature Selection
-‘learning’              Learning Curve
-‘manifold’              Manifold Learning
-‘calibration’           Calibration Curve
-‘vc’                    Validation Curve
-‘dimension’             Dimension Learning
-‘feature’               Feature Importance
-‘parameter’             Model Hyperparameter</p>
+<li><p><strong>plot</strong> (<em>string</em><em>, </em><em>default = auc</em>) – <p>Enter abbreviation of type of plot. The current list of plots supported are (Plot - Name):</p>
+<ul>
+<li><p>’auc’ - Area Under the Curve</p></li>
+<li><p>’threshold’ - Discrimination Threshold</p></li>
+<li><p>’pr’ - Precision Recall Curve</p></li>
+<li><p>’confusion_matrix’ - Confusion Matrix</p></li>
+<li><p>’error’ - Class Prediction Error</p></li>
+<li><p>’class_report’ - Classification Report</p></li>
+<li><p>’boundary’ - Decision Boundary</p></li>
+<li><p>’rfe’ - Recursive Feature Selection</p></li>
+<li><p>’learning’ - Learning Curve</p></li>
+<li><p>’manifold’ - Manifold Learning</p></li>
+<li><p>’calibration’ - Calibration Curve</p></li>
+<li><p>’vc’ - Validation Curve</p></li>
+<li><p>’dimension’ - Dimension Learning</p></li>
+<li><p>’feature’ - Feature Importance</p></li>
+<li><p>’parameter’ - Model Hyperparameter</p></li>
+</ul>
 </p></li>
 <li><p><strong>save</strong> (<em>Boolean</em><em>, </em><em>default = False</em>) – When set to True, Plot is saved as a ‘png’ file in current working directory.</p></li>
 <li><p><strong>verbose</strong> (<em>Boolean</em><em>, </em><em>default = True</em>) – Progress bar not shown when verbose set to False.</p></li>
@@ -2629,14 +2613,14 @@ the setup stage. setup() function must be called before using create_model().</p
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>model</strong> (<em>string</em><em>, </em><em>default = None</em>) – <p>Enter ID of the model available in model library.</p>
-<p>ID          Model
-——      ———
-‘lda’       Latent Dirichlet Allocation
-‘lsi’       Latent Semantic Indexing
-‘hdp’       Hierarchical Dirichlet Process
-‘rp’        Random Projections
-‘nmf’       Non-Negative Matrix Factorization</p>
+<li><p><strong>model</strong> (<em>string</em><em>, </em><em>default = None</em>) – <p>Enter ID of the model available in model library (ID - Model):</p>
+<ul>
+<li><p>’lda’ - Latent Dirichlet Allocation</p></li>
+<li><p>’lsi’ - Latent Semantic Indexing</p></li>
+<li><p>’hdp’ - Hierarchical Dirichlet Process</p></li>
+<li><p>’rp’ - Random Projections</p></li>
+<li><p>’nmf’ - Non-Negative Matrix Factorization</p></li>
+</ul>
 </p></li>
 <li><p><strong>multi_core</strong> (<em>Boolean</em><em>, </em><em>default = False</em>) – True would utilize all CPU cores to parallelize and speed up model training. Only
 available for ‘lda’. For all other models, the multi_core parameter is ignored.</p></li>
@@ -2837,21 +2821,18 @@ during setup stage.</p>
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>model</strong> (<em>object</em><em>, </em><em>default = none</em>) – A trained model object can be passed. Model must be created using create_model().</p></li>
-<li><p><strong>plot</strong> (<em>string</em><em>, </em><em>default = 'frequency'</em>) – <p>Enter abbreviation for type of plot. The current list of plots supported are:</p>
-<p>Name                           Abbreviated String
-———                      ——————
-Word Token Frequency           ‘frequency’
-Word Distribution Plot         ‘distribution’
-Bigram Frequency Plot          ‘bigram’
-Trigram Frequency Plot         ‘trigram’
-Sentiment Polarity Plot        ‘sentiment’
-Part of Speech Frequency       ‘pos’
-t-SNE (3d) Dimension Plot      ‘tsne’
-Topic Model (pyLDAvis)         ‘topic_model’
-Topic Infer Distribution       ‘topic_distribution’
-Wordcloud                      ‘wordcloud’
-UMAP Dimensionality Plot       ‘umap’</p>
-</p></li>
+<li><p><strong>plot</strong> (<em>string</em><em>, </em><em>default = 'frequency'</em>) – Enter abbreviation for type of plot. The current list of plots supported are (Name - Abbreviated String):
+* Word Token Frequency - ‘frequency’
+* Word Distribution Plot - ‘distribution’
+* Bigram Frequency Plot - ‘bigram’
+* Trigram Frequency Plot - ‘trigram’
+* Sentiment Polarity Plot - ‘sentiment’
+* Part of Speech Frequency - ‘pos’
+* t-SNE (3d) Dimension Plot - ‘tsne’
+* Topic Model (pyLDAvis) - ‘topic_model’
+* Topic Infer Distribution - ‘topic_distribution’
+* Wordcloud - ‘wordcloud’
+* UMAP Dimensionality Plot - ‘umap’</p></li>
 <li><p><strong>topic_num</strong> (<em>string</em><em>, </em><em>default = None</em>) – Topic number to be passed as a string. If set to None, default generation will
 be on ‘Topic 0’</p></li>
 <li><p><strong>save</strong> (<em>Boolean</em><em>, </em><em>default = False</em>) – Plot is saved as png file in local directory when save parameter set to True.</p></li>
@@ -3017,64 +2998,68 @@ pycaret. By default, supervised estimator is Linear.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>model</strong> (<em>string</em><em>, </em><em>default = None</em>) – <p>Enter ID of the models available in model library:</p>
-<p>ID          Model
-——      ———
-‘lda’       Latent Dirichlet Allocation
-‘lsi’       Latent Semantic Indexing
-‘hdp’       Hierarchical Dirichlet Process
-‘rp’        Random Projections
-‘nmf’       Non-Negative Matrix Factorization</p>
+<li><p><strong>model</strong> (<em>string</em><em>, </em><em>default = None</em>) – <p>Enter ID of the models available in model library (ID - Model):</p>
+<ul>
+<li><p>’lda’ - Latent Dirichlet Allocation</p></li>
+<li><p>’lsi’ - Latent Semantic Indexing</p></li>
+<li><p>’hdp’ - Hierarchical Dirichlet Process</p></li>
+<li><p>’rp’ - Random Projections</p></li>
+<li><p>’nmf’ - Non-Negative Matrix Factorization</p></li>
+</ul>
 </p></li>
 <li><p><strong>multi_core</strong> (<em>Boolean</em><em>, </em><em>default = False</em>) – True would utilize all CPU cores to parallelize and speed up model training. Only
 available for ‘lda’. For all other models, multi_core parameter is ignored.</p></li>
 <li><p><strong>supervised_target</strong> (<em>string</em>) – Name of the target column for supervised learning. If None, the mdel coherence value
 is used as the objective function.</p></li>
-<li><p><strong>estimator</strong> (<em>string</em><em>, </em><em>default = None</em>) – <p>ID          Name                            Task
-——–    ———-                      ———-
-‘lr’        Logistic Regression             Classification
-‘knn’       K Nearest Neighbour             Classification
-‘nb’        Naive Bayes                     Classification
-‘dt’        Decision Tree Classifier        Classification
-‘svm’       SVM - Linear Kernel             Classification
-‘rbfsvm’    SVM - Radial Kernel             Classification
-‘gpc’       Gaussian Process Classifier     Classification
-‘mlp’       Multi Level Perceptron          Classification
-‘ridge’     Ridge Classifier                Classification
-‘rf’        Random Forest Classifier        Classification
-‘qda’       Quadratic Discriminant Analysis Classification
-‘ada’       Ada Boost Classifier            Classification
-‘gbc’       Gradient Boosting Classifier    Classification
-‘lda’       Linear Discriminant Analysis    Classification
-‘et’        Extra Trees Classifier          Classification
-‘xgboost’   Extreme Gradient Boosting       Classification
-‘lightgbm’  Light Gradient Boosting         Classification
-‘catboost’  CatBoost Classifier             Classification
-‘lr’        Linear Regression               Regression
-‘lasso’     Lasso Regression                Regression
-‘ridge’     Ridge Regression                Regression
-‘en’        Elastic Net                     Regression
-‘lar’       Least Angle Regression          Regression
-‘llar’      Lasso Least Angle Regression    Regression
-‘omp’       Orthogonal Matching Pursuit     Regression
-‘br’        Bayesian Ridge                  Regression
-‘ard’       Automatic Relevance Determ.     Regression
-‘par’       Passive Aggressive Regressor    Regression
-‘ransac’    Random Sample Consensus         Regression
-‘tr’        TheilSen Regressor              Regression
-‘huber’     Huber Regressor                 Regression
-‘kr’        Kernel Ridge                    Regression
-‘svm’       Support Vector Machine          Regression
-‘knn’       K Neighbors Regressor           Regression
-‘dt’        Decision Tree                   Regression
-‘rf’        Random Forest                   Regression
-‘et’        Extra Trees Regressor           Regression
-‘ada’       AdaBoost Regressor              Regression
-‘gbr’       Gradient Boosting               Regression
-‘mlp’       Multi Level Perceptron          Regression
-‘xgboost’   Extreme Gradient Boosting       Regression
-‘lightgbm’  Light Gradient Boosting         Regression
-‘catboost’  CatBoost Regressor              Regression</p>
+<li><p><strong>estimator</strong> (<em>string</em><em>, </em><em>default = None</em>) – <p>For Classification (ID - Name):</p>
+<ul>
+<li><p>’lr’ - Logistic Regression</p></li>
+<li><p>’knn’ - K Nearest Neighbour</p></li>
+<li><p>’nb’ - Naive Bayes</p></li>
+<li><p>’dt’ - Decision Tree Classifier</p></li>
+<li><p>’svm’ - SVM - Linear Kernel</p></li>
+<li><p>’rbfsvm’ - SVM - Radial Kernel</p></li>
+<li><p>’gpc’ - Gaussian Process Classifier</p></li>
+<li><p>’mlp’ - Multi Level Perceptron</p></li>
+<li><p>’ridge’ - Ridge Classifier</p></li>
+<li><p>’rf’ - Random Forest Classifier</p></li>
+<li><p>’qda’ - Quadratic Discriminant Analysis</p></li>
+<li><p>’ada’ - Ada Boost Classifier</p></li>
+<li><p>’gbc’ - Gradient Boosting Classifier</p></li>
+<li><p>’lda’ - Linear Discriminant Analysis</p></li>
+<li><p>’et’ - Extra Trees Classifier</p></li>
+<li><p>’xgboost’ - Extreme Gradient Boosting</p></li>
+<li><p>’lightgbm’ - Light Gradient Boosting</p></li>
+<li><p>’catboost’ - CatBoost Classifier</p></li>
+</ul>
+<p>For Regression (ID - Name):</p>
+<ul>
+<li><p>’lr’ - Linear Regression</p></li>
+<li><p>’lasso’ - Lasso Regression</p></li>
+<li><p>’ridge’ - Ridge Regression</p></li>
+<li><p>’en’ - Elastic Net</p></li>
+<li><p>’lar’ - Least Angle Regression</p></li>
+<li><p>’llar’ - Lasso Least Angle Regression</p></li>
+<li><p>’omp’ - Orthogonal Matching Pursuit</p></li>
+<li><p>’br’ - Bayesian Ridge</p></li>
+<li><p>’ard’ - Automatic Relevance Determ.</p></li>
+<li><p>’par’ - Passive Aggressive Regressor</p></li>
+<li><p>’ransac’ - Random Sample Consensus</p></li>
+<li><p>’tr’ - TheilSen Regressor</p></li>
+<li><p>’huber’ - Huber Regressor</p></li>
+<li><p>’kr’ - Kernel Ridge</p></li>
+<li><p>’svm’ - Support Vector Machine</p></li>
+<li><p>’knn’ - K Neighbors Regressor</p></li>
+<li><p>’dt’ - Decision Tree</p></li>
+<li><p>’rf’ - Random Forest</p></li>
+<li><p>’et’ - Extra Trees Regressor</p></li>
+<li><p>’ada’ - AdaBoost Regressor</p></li>
+<li><p>’gbr’ - Gradient Boosting</p></li>
+<li><p>’mlp’ - Multi Level Perceptron</p></li>
+<li><p>’xgboost’ - Extreme Gradient Boosting</p></li>
+<li><p>’lightgbm’ - Light Gradient Boosting</p></li>
+<li><p>’catboost’ - CatBoost Regressor</p></li>
+</ul>
 <p>If set to None, Linear / Logistic model is used by default.</p>
 </p></li>
 <li><p><strong>optimize</strong> (<em>string</em><em>, </em><em>default = None</em>) – <dl class="simple">
@@ -3177,18 +3162,18 @@ the setup stage. setup() function must be called before using create_model().</p
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>model</strong> (<em>string / object</em><em>, </em><em>default = None</em>) – <p>Enter ID of the models available in model library or pass an untrained model
 object consistent with fit / predict API to train and evaluate model. List of
-models available in model library:</p>
-<p>ID              Model
-——          ———–
-‘kmeans’        K-Means Clustering
-‘ap’            Affinity Propagation
-‘meanshift’     Mean shift Clustering
-‘sc’            Spectral Clustering
-‘hclust’        Agglomerative Clustering
-‘dbscan’        Density-Based Spatial Clustering
-‘optics’        OPTICS Clustering
-‘birch’         Birch Clustering
-‘kmodes’        K-Modes Clustering</p>
+models available in model library (ID - Model):</p>
+<ul>
+<li><p>’kmeans’ - K-Means Clustering</p></li>
+<li><p>’ap’ - Affinity Propagation</p></li>
+<li><p>’meanshift’ - Mean shift Clustering</p></li>
+<li><p>’sc’ - Spectral Clustering</p></li>
+<li><p>’hclust’ - Agglomerative Clustering</p></li>
+<li><p>’dbscan’ - Density-Based Spatial Clustering</p></li>
+<li><p>’optics’ - OPTICS Clustering</p></li>
+<li><p>’birch’ - Birch Clustering</p></li>
+<li><p>’kmodes’ - K-Modes Clustering</p></li>
+</ul>
 </p></li>
 <li><p><strong>num_clusters</strong> (<em>int</em><em>, </em><em>default = None</em>) – Number of clusters to be generated with the dataset. If None, num_clusters
 is set to 4.</p></li>
@@ -3422,15 +3407,15 @@ generating a plot.</p>
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>model</strong> (<em>object</em><em>, </em><em>default = none</em>) – A trained model object can be passed. Model must be created using create_model().</p></li>
-<li><p><strong>plot</strong> (<em>string</em><em>, </em><em>default = 'cluster'</em>) – <p>Enter abbreviation for type of plot. The current list of plots supported are:</p>
-<p>Plot            Name
-———       ———–
-‘cluster’       Cluster PCA Plot (2d)
-‘tsne’          Cluster TSnE (3d)
-‘elbow’         Elbow Plot
-‘silhouette’    Silhouette Plot
-‘distance’      Distance Plot
-‘distribution’  Distribution Plot</p>
+<li><p><strong>plot</strong> (<em>string</em><em>, </em><em>default = 'cluster'</em>) – <p>Enter abbreviation for type of plot. The current list of plots supported are (Plot - Name):</p>
+<ul>
+<li><p>’cluster’ - Cluster PCA Plot (2d)</p></li>
+<li><p>’tsne’ - Cluster TSnE (3d)</p></li>
+<li><p>’elbow’ - Elbow Plot</p></li>
+<li><p>’silhouette’ - Silhouette Plot</p></li>
+<li><p>’distance’ - Distance Plot</p></li>
+<li><p>’distribution’ - Distribution Plot</p></li>
+</ul>
 </p></li>
 <li><p><strong>feature</strong> (<em>string</em><em>, </em><em>default = None</em>) – Name of feature column for x-axis of when plot = ‘distribution’. When plot is
 ‘cluster’ or ‘tsne’ feature column is used as a hoverover tooltip and/or label
@@ -3741,65 +3726,69 @@ By default, supervised estimator is Linear.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>model</strong> (<em>string</em><em>, </em><em>default = None</em>) – <p>Enter ID of the models available in model library:</p>
-<p>ID              Name
-——          ———–
-‘kmeans’        K-Means Clustering
-‘ap’            Affinity Propagation
-‘meanshift’     Mean shift Clustering
-‘sc’            Spectral Clustering
-‘hclust’        Agglomerative Clustering
-‘dbscan’        Density-Based Spatial Clustering
-‘optics’        OPTICS Clustering
-‘birch’         Birch Clustering
-‘kmodes’        K-Modes Clustering</p>
+<li><p><strong>model</strong> (<em>string</em><em>, </em><em>default = None</em>) – <p>Enter ID of the models available in model library (ID - Name):</p>
+<ul>
+<li><p>’kmeans’ - K-Means Clustering</p></li>
+<li><p>’ap’ - Affinity Propagation</p></li>
+<li><p>’meanshift’ - Mean shift Clustering</p></li>
+<li><p>’sc’ - Spectral Clustering</p></li>
+<li><p>’hclust’ - Agglomerative Clustering</p></li>
+<li><p>’dbscan’ - Density-Based Spatial Clustering</p></li>
+<li><p>’optics’ - OPTICS Clustering</p></li>
+<li><p>’birch’ - Birch Clustering</p></li>
+<li><p>’kmodes’ - K-Modes Clustering</p></li>
+</ul>
 </p></li>
 <li><p><strong>supervised_target</strong> (<em>string</em>) – Name of the target column for supervised learning.</p></li>
-<li><p><strong>estimator</strong> (<em>string</em><em>, </em><em>default = None</em>) – <p>ID          Name                            Task
-——–    ———-                      ———-
-‘lr’        Logistic Regression             Classification
-‘knn’       K Nearest Neighbour             Classification
-‘nb’        Naive Bayes                     Classification
-‘dt’        Decision Tree Classifier        Classification
-‘svm’       SVM - Linear Kernel             Classification
-‘rbfsvm’    SVM - Radial Kernel             Classification
-‘gpc’       Gaussian Process Classifier     Classification
-‘mlp’       Multi Level Perceptron          Classification
-‘ridge’     Ridge Classifier                Classification
-‘rf’        Random Forest Classifier        Classification
-‘qda’       Quadratic Discriminant Analysis Classification
-‘ada’       Ada Boost Classifier            Classification
-‘gbc’       Gradient Boosting Classifier    Classification
-‘lda’       Linear Discriminant Analysis    Classification
-‘et’        Extra Trees Classifier          Classification
-‘xgboost’   Extreme Gradient Boosting       Classification
-‘lightgbm’  Light Gradient Boosting         Classification
-‘catboost’  CatBoost Classifier             Classification
-‘lr’        Linear Regression               Regression
-‘lasso’     Lasso Regression                Regression
-‘ridge’     Ridge Regression                Regression
-‘en’        Elastic Net                     Regression
-‘lar’       Least Angle Regression          Regression
-‘llar’      Lasso Least Angle Regression    Regression
-‘omp’       Orthogonal Matching Pursuit     Regression
-‘br’        Bayesian Ridge                  Regression
-‘ard’       Automatic Relevance Determ.     Regression
-‘par’       Passive Aggressive Regressor    Regression
-‘ransac’    Random Sample Consensus         Regression
-‘tr’        TheilSen Regressor              Regression
-‘huber’     Huber Regressor                 Regression
-‘kr’        Kernel Ridge                    Regression
-‘svm’       Support Vector Machine          Regression
-‘knn’       K Neighbors Regressor           Regression
-‘dt’        Decision Tree                   Regression
-‘rf’        Random Forest                   Regression
-‘et’        Extra Trees Regressor           Regression
-‘ada’       AdaBoost Regressor              Regression
-‘gbr’       Gradient Boosting               Regression
-‘mlp’       Multi Level Perceptron          Regression
-‘xgboost’   Extreme Gradient Boosting       Regression
-‘lightgbm’  Light Gradient Boosting         Regression
-‘catboost’  CatBoost Regressor              Regression</p>
+<li><p><strong>estimator</strong> (<em>string</em><em>, </em><em>default = None</em>) – <p>For Classification (ID - Name):</p>
+<ul>
+<li><p>’lr’ - Logistic Regression</p></li>
+<li><p>’knn’ - K Nearest Neighbour</p></li>
+<li><p>’nb’ - Naive Bayes</p></li>
+<li><p>’dt’ - Decision Tree Classifier</p></li>
+<li><p>’svm’ - SVM - Linear Kernel</p></li>
+<li><p>’rbfsvm’ - SVM - Radial Kernel</p></li>
+<li><p>’gpc’ - Gaussian Process Classifier</p></li>
+<li><p>’mlp’ - Multi Level Perceptron</p></li>
+<li><p>’ridge’ - Ridge Classifier</p></li>
+<li><p>’rf’ - Random Forest Classifier</p></li>
+<li><p>’qda’ - Quadratic Discriminant Analysis</p></li>
+<li><p>’ada’ - Ada Boost Classifier</p></li>
+<li><p>’gbc’ - Gradient Boosting Classifier</p></li>
+<li><p>’lda’ - Linear Discriminant Analysis</p></li>
+<li><p>’et’ - Extra Trees Classifier</p></li>
+<li><p>’xgboost’ - Extreme Gradient Boosting</p></li>
+<li><p>’lightgbm’ - Light Gradient Boosting</p></li>
+<li><p>’catboost’ - CatBoost Classifier</p></li>
+</ul>
+<p>For Regression (ID - Name):</p>
+<ul>
+<li><p>’lr’ - Linear Regression</p></li>
+<li><p>’lasso’ - Lasso Regression</p></li>
+<li><p>’ridge’ - Ridge Regression</p></li>
+<li><p>’en’ - Elastic Net</p></li>
+<li><p>’lar’ - Least Angle Regression</p></li>
+<li><p>’llar’ - Lasso Least Angle Regression</p></li>
+<li><p>’omp’ - Orthogonal Matching Pursuit</p></li>
+<li><p>’br’ - Bayesian Ridge</p></li>
+<li><p>’ard’ - Automatic Relevance Determ.</p></li>
+<li><p>’par’ - Passive Aggressive Regressor</p></li>
+<li><p>’ransac’ - Random Sample Consensus</p></li>
+<li><p>’tr’ - TheilSen Regressor</p></li>
+<li><p>’huber’ - Huber Regressor</p></li>
+<li><p>’kr’ - Kernel Ridge</p></li>
+<li><p>’svm’ - Support Vector Machine</p></li>
+<li><p>’knn’ - K Neighbors Regressor</p></li>
+<li><p>’dt’ - Decision Tree</p></li>
+<li><p>’rf’ - Random Forest</p></li>
+<li><p>’et’ - Extra Trees Regressor</p></li>
+<li><p>’ada’ - AdaBoost Regressor</p></li>
+<li><p>’gbr’ - Gradient Boosting</p></li>
+<li><p>’mlp’ - Multi Level Perceptron</p></li>
+<li><p>’xgboost’ - Extreme Gradient Boosting</p></li>
+<li><p>’lightgbm’ - Light Gradient Boosting</p></li>
+<li><p>’catboost’ - CatBoost Regressor</p></li>
+</ul>
 <p>If set to None, Linear / Logistic model is used by default.</p>
 </p></li>
 <li><p><strong>optimize</strong> (<em>string</em><em>, </em><em>default = None</em>) – <dl class="simple">
@@ -3898,20 +3887,20 @@ the setup stage. setup() function must be called before using create_model().</p
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>model</strong> (<em>string / object</em><em>, </em><em>default = None</em>) – <p>Enter ID of the models available in model library or pass an untrained model
 object consistent with fit / predict API to train and evaluate model. List of
-models available in model library:</p>
-<p>ID          Model
-——-     ———
-‘abod’      Angle-base Outlier Detection
-‘cluster’   Clustering-Based Local Outlier
-‘cof’       Connectivity-Based Outlier Factor
-‘histogram’ Histogram-based Outlier Detection
-‘knn’       k-Nearest Neighbors Detector
-‘lof’       Local Outlier Factor
-‘svm’       One-class SVM detector
-‘pca’       Principal Component Analysis
-‘mcd’       Minimum Covariance Determinant
-‘sod’       Subspace Outlier Detection
-‘sos’       Stochastic Outlier Selection</p>
+models available in model library (ID - Model):</p>
+<ul>
+<li><p>’abod’ - Angle-base Outlier Detection</p></li>
+<li><p>’cluster’ - Clustering-Based Local Outlier</p></li>
+<li><p>’cof’ - Connectivity-Based Outlier Factor</p></li>
+<li><p>’histogram’ - Histogram-based Outlier Detection</p></li>
+<li><p>’knn’ - k-Nearest Neighbors Detector</p></li>
+<li><p>’lof’ - Local Outlier Factor</p></li>
+<li><p>’svm’ - One-class SVM detector</p></li>
+<li><p>’pca’ - Principal Component Analysis</p></li>
+<li><p>’mcd’ - Minimum Covariance Determinant</p></li>
+<li><p>’sod’ - Subspace Outlier Detection</p></li>
+<li><p>’sos’ - Stochastic Outlier Selection</p></li>
+</ul>
 </p></li>
 <li><p><strong>fraction</strong> (<em>float</em><em>, </em><em>default = 0.05</em>) – The percentage / proportion of outliers in the dataset.</p></li>
 <li><p><strong>verbose</strong> (<em>Boolean</em><em>, </em><em>default = True</em>) – Status update is not printed when verbose is set to False.</p></li>
@@ -4122,11 +4111,11 @@ generating a plot.</p>
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>model</strong> (<em>object</em>) – A trained model object can be passed. Model must be created using create_model().</p></li>
-<li><p><strong>plot</strong> (<em>string</em><em>, </em><em>default = 'tsne'</em>) – <p>Enter abbreviation of type of plot. The current list of plots supported are:</p>
-<p>Plot        Name
-——-     ———-
-‘tsne’      t-SNE (3d) Dimension Plot
-‘umap’      UMAP Dimensionality Plot</p>
+<li><p><strong>plot</strong> (<em>string</em><em>, </em><em>default = 'tsne'</em>) – <p>Enter abbreviation of type of plot. The current list of plots supported are (Plot - Name):</p>
+<ul>
+<li><p>’tsne’ - t-SNE (3d) Dimension Plot</p></li>
+<li><p>’umap’ - UMAP Dimensionality Plot</p></li>
+</ul>
 </p></li>
 <li><p><strong>feature</strong> (<em>string</em><em>, </em><em>default = None</em>) – Feature column is used as a hoverover tooltip. By default, first of column of the
 dataset is chosen as hoverover tooltip, when no feature is passed.</p></li>
@@ -4431,71 +4420,75 @@ library available in pycaret. By default, supervised estimator is Linear.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>model</strong> (<em>string</em><em>, </em><em>default = None</em>) – <p>Enter ID of the models available in model library:</p>
-<p>ID          Model
-——-     ———
-‘abod’      Angle-base Outlier Detection
-‘cluster’   Clustering-Based Local Outlier
-‘cof’       Connectivity-Based Outlier Factor
-‘histogram’ Histogram-based Outlier Detection
-‘knn’       k-Nearest Neighbors Detector
-‘lof’       Local Outlier Factor
-‘svm’       One-class SVM detector
-‘pca’       Principal Component Analysis
-‘mcd’       Minimum Covariance Determinant
-‘sod’       Subspace Outlier Detection
-‘sos’       Stochastic Outlier Selection</p>
+<li><p><strong>model</strong> (<em>string</em><em>, </em><em>default = None</em>) – <p>Enter ID of the models available in model library (ID - Model):</p>
+<ul>
+<li><p>’abod’ - Angle-base Outlier Detection</p></li>
+<li><p>’cluster’ - Clustering-Based Local Outlier</p></li>
+<li><p>’cof’ - Connectivity-Based Outlier Factor</p></li>
+<li><p>’histogram’ - Histogram-based Outlier Detection</p></li>
+<li><p>’knn’ - k-Nearest Neighbors Detector</p></li>
+<li><p>’lof’ - Local Outlier Factor</p></li>
+<li><p>’svm’ - One-class SVM detector</p></li>
+<li><p>’pca’ - Principal Component Analysis</p></li>
+<li><p>’mcd’ - Minimum Covariance Determinant</p></li>
+<li><p>’sod’ - Subspace Outlier Detection</p></li>
+<li><p>’sos’ - Stochastic Outlier Selection</p></li>
+</ul>
 </p></li>
 <li><p><strong>supervised_target</strong> (<em>string</em>) – Name of the target column for supervised learning.</p></li>
 <li><p><strong>method</strong> (<em>string</em><em>, </em><em>default = 'drop'</em>) – When method set to drop, it will drop the outlier rows from training dataset
 of supervised estimator, when method set to ‘surrogate’, it will use the
 decision function and label as a feature without dropping the outliers from
 training dataset.</p></li>
-<li><p><strong>estimator</strong> (<em>string</em><em>, </em><em>default = None</em>) – <p>ID          Name                            Task
-——–    ———-                      ———-
-‘lr’        Logistic Regression             Classification
-‘knn’       K Nearest Neighbour             Classification
-‘nb’        Naive Bayes                     Classification
-‘dt’        Decision Tree Classifier        Classification
-‘svm’       SVM - Linear Kernel             Classification
-‘rbfsvm’    SVM - Radial Kernel             Classification
-‘gpc’       Gaussian Process Classifier     Classification
-‘mlp’       Multi Level Perceptron          Classification
-‘ridge’     Ridge Classifier                Classification
-‘rf’        Random Forest Classifier        Classification
-‘qda’       Quadratic Discriminant Analysis Classification
-‘ada’       Ada Boost Classifier            Classification
-‘gbc’       Gradient Boosting Classifier    Classification
-‘lda’       Linear Discriminant Analysis    Classification
-‘et’        Extra Trees Classifier          Classification
-‘xgboost’   Extreme Gradient Boosting       Classification
-‘lightgbm’  Light Gradient Boosting         Classification
-‘catboost’  CatBoost Classifier             Classification
-‘lr’        Linear Regression               Regression
-‘lasso’     Lasso Regression                Regression
-‘ridge’     Ridge Regression                Regression
-‘en’        Elastic Net                     Regression
-‘lar’       Least Angle Regression          Regression
-‘llar’      Lasso Least Angle Regression    Regression
-‘omp’       Orthogonal Matching Pursuit     Regression
-‘br’        Bayesian Ridge                  Regression
-‘ard’       Automatic Relevance Determ.     Regression
-‘par’       Passive Aggressive Regressor    Regression
-‘ransac’    Random Sample Consensus         Regression
-‘tr’        TheilSen Regressor              Regression
-‘huber’     Huber Regressor                 Regression
-‘kr’        Kernel Ridge                    Regression
-‘svm’       Support Vector Machine          Regression
-‘knn’       K Neighbors Regressor           Regression
-‘dt’        Decision Tree                   Regression
-‘rf’        Random Forest                   Regression
-‘et’        Extra Trees Regressor           Regression
-‘ada’       AdaBoost Regressor              Regression
-‘gbr’       Gradient Boosting               Regression
-‘mlp’       Multi Level Perceptron          Regression
-‘xgboost’   Extreme Gradient Boosting       Regression
-‘lightgbm’  Light Gradient Boosting         Regression
-‘catboost’  CatBoost Regressor              Regression</p>
+<li><p><strong>estimator</strong> (<em>string</em><em>, </em><em>default = None</em>) – <p>For Classification (ID - Name):</p>
+<ul>
+<li><p>’lr’ - Logistic Regression</p></li>
+<li><p>’knn’ - K Nearest Neighbour</p></li>
+<li><p>’nb’ - Naive Bayes</p></li>
+<li><p>’dt’ - Decision Tree Classifier</p></li>
+<li><p>’svm’ - SVM - Linear Kernel</p></li>
+<li><p>’rbfsvm’ - SVM - Radial Kernel</p></li>
+<li><p>’gpc’ - Gaussian Process Classifier</p></li>
+<li><p>’mlp’ - Multi Level Perceptron</p></li>
+<li><p>’ridge’ - Ridge Classifier</p></li>
+<li><p>’rf’ - Random Forest Classifier</p></li>
+<li><p>’qda’ - Quadratic Discriminant Analysis</p></li>
+<li><p>’ada’ - Ada Boost Classifier</p></li>
+<li><p>’gbc’ - Gradient Boosting Classifier</p></li>
+<li><p>’lda’ - Linear Discriminant Analysis</p></li>
+<li><p>’et’ - Extra Trees Classifier</p></li>
+<li><p>’xgboost’ - Extreme Gradient Boosting</p></li>
+<li><p>’lightgbm’ - Light Gradient Boosting</p></li>
+<li><p>’catboost’ - CatBoost Classifier</p></li>
+</ul>
+<p>For Regression (ID - Name):</p>
+<ul>
+<li><p>’lr’ - Linear Regression</p></li>
+<li><p>’lasso’ - Lasso Regression</p></li>
+<li><p>’ridge’ - Ridge Regression</p></li>
+<li><p>’en’ - Elastic Net</p></li>
+<li><p>’lar’ - Least Angle Regression</p></li>
+<li><p>’llar’ - Lasso Least Angle Regression</p></li>
+<li><p>’omp’ - Orthogonal Matching Pursuit</p></li>
+<li><p>’br’ - Bayesian Ridge</p></li>
+<li><p>’ard’ - Automatic Relevance Determ.</p></li>
+<li><p>’par’ - Passive Aggressive Regressor</p></li>
+<li><p>’ransac’ - Random Sample Consensus</p></li>
+<li><p>’tr’ - TheilSen Regressor</p></li>
+<li><p>’huber’ - Huber Regressor</p></li>
+<li><p>’kr’ - Kernel Ridge</p></li>
+<li><p>’svm’ - Support Vector Machine</p></li>
+<li><p>’knn’ - K Neighbors Regressor</p></li>
+<li><p>’dt’ - Decision Tree</p></li>
+<li><p>’rf’ - Random Forest</p></li>
+<li><p>’et’ - Extra Trees Regressor</p></li>
+<li><p>’ada’ - AdaBoost Regressor</p></li>
+<li><p>’gbr’ - Gradient Boosting</p></li>
+<li><p>’mlp’ - Multi Level Perceptron</p></li>
+<li><p>’xgboost’ - Extreme Gradient Boosting</p></li>
+<li><p>’lightgbm’ - Light Gradient Boosting</p></li>
+<li><p>’catboost’ - CatBoost Regressor</p></li>
+</ul>
 <p>If set to None, Linear model is used by default for both classification
 and regression tasks.</p>
 </p></li>
@@ -4647,11 +4640,11 @@ conviction.</p>
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>model</strong> (<em>DataFrame</em><em>, </em><em>default = none</em>) – DataFrame returned by trained model using create_model().</p></li>
-<li><p><strong>plot</strong> (<em>string</em><em>, </em><em>default = '2d'</em>) – <p>Enter abbreviation of type of plot. The current list of plots supported are:</p>
-<p>Name                                 Abbreviated String
-———                            ——————
-Support, Confidence and Lift (2d)    ‘2d’
-Support, Confidence and Lift (3d)    ‘3d’</p>
+<li><p><strong>plot</strong> (<em>string</em><em>, </em><em>default = '2d'</em>) – <p>Enter abbreviation of type of plot. The current list of plots supported are (Name - Abbreviated String):</p>
+<ul>
+<li><p>Support, Confidence and Lift (2d) - ‘2d’</p></li>
+<li><p>Support, Confidence and Lift (3d) - ‘3d’</p></li>
+</ul>
 </p></li>
 </ul>
 </dd>
