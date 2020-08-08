@@ -66,9 +66,6 @@ def setup(data,
           profile = False):
     
     """
-        
-    Description:
-    ------------    
     This function initializes the environment in pycaret and creates the transformation
     pipeline to prepare the data for modeling and deployment. setup() must called before
     executing any other function in pycaret. It takes two mandatory parameters:
@@ -76,359 +73,358 @@ def setup(data,
     
     All other parameters are optional.
 
-        Example
-        -------
-        from pycaret.datasets import get_data
-        juice = get_data('juice')
-        
-        experiment_name = setup(data = juice,  target = 'Purchase')
+    Example
+    -------
+    >>> from pycaret.datasets import get_data
+    >>> juice = get_data('juice')
+    >>> experiment_name = setup(data = juice,  target = 'Purchase')
 
-        'juice' is a pandas DataFrame and 'Purchase' is the name of target column.
-        
+    'juice' is a pandas DataFrame and 'Purchase' is the name of target column.
+
     Parameters
     ----------
-    data : {array-like, sparse matrix}, shape (n_samples, n_features) where n_samples 
-    is the number of samples and n_features is the number of features.
+    data : {array-like, sparse matrix}
+        Shape (n_samples, n_features) where n_samples is the number of samples and n_features is the number of features.
 
     target: string
-    Name of the target column to be passed in as a string. The target variable could 
-    be binary or multiclass. In case of a multiclass target, all estimators are wrapped
-    with a OneVsRest classifier.
+        Name of the target column to be passed in as a string. The target variable could 
+        be binary or multiclass. In case of a multiclass target, all estimators are wrapped
+        with a OneVsRest classifier.
 
     train_size: float, default = 0.7
-    Size of the training set. By default, 70% of the data will be used for training 
-    and validation. The remaining data will be used for a test / hold-out set.
+        Size of the training set. By default, 70% of the data will be used for training 
+        and validation. The remaining data will be used for a test / hold-out set.
 
     sampling: bool, default = True
-    When the sample size exceeds 25,000 samples, pycaret will build a base estimator
-    at various sample sizes from the original dataset. This will return a performance 
-    plot of AUC, Accuracy, Recall, Precision, Kappa and F1 values at various sample 
-    levels, that will assist in deciding the preferred sample size for modeling. 
-    The desired sample size must then be entered for training and validation in the 
-    pycaret environment. When sample_size entered is less than 1, the remaining dataset 
-    (1 - sample) is used for fitting the model only when finalize_model() is called.
+        When the sample size exceeds 25,000 samples, pycaret will build a base estimator
+        at various sample sizes from the original dataset. This will return a performance 
+        plot of AUC, Accuracy, Recall, Precision, Kappa and F1 values at various sample 
+        levels, that will assist in deciding the preferred sample size for modeling. 
+        The desired sample size must then be entered for training and validation in the 
+        pycaret environment. When sample_size entered is less than 1, the remaining dataset 
+        (1 - sample) is used for fitting the model only when finalize_model() is called.
     
     sample_estimator: object, default = None
-    If None, Logistic Regression is used by default.
+        If None, Logistic Regression is used by default.
     
     categorical_features: string, default = None
-    If the inferred data types are not correct, categorical_features can be used to
-    overwrite the inferred type. If when running setup the type of 'column1' is
-    inferred as numeric instead of categorical, then this parameter can be used 
-    to overwrite the type by passing categorical_features = ['column1'].
+        If the inferred data types are not correct, categorical_features can be used to
+        overwrite the inferred type. If when running setup the type of 'column1' is
+        inferred as numeric instead of categorical, then this parameter can be used 
+        to overwrite the type by passing categorical_features = ['column1'].
     
     categorical_imputation: string, default = 'constant'
-    If missing values are found in categorical features, they will be imputed with
-    a constant 'not_available' value. The other available option is 'mode' which 
-    imputes the missing value using most frequent value in the training dataset. 
+        If missing values are found in categorical features, they will be imputed with
+        a constant 'not_available' value. The other available option is 'mode' which 
+        imputes the missing value using most frequent value in the training dataset. 
     
     ordinal_features: dictionary, default = None
-    When the data contains ordinal features, they must be encoded differently using 
-    the ordinal_features param. If the data has a categorical variable with values
-    of 'low', 'medium', 'high' and it is known that low < medium < high, then it can 
-    be passed as ordinal_features = { 'column_name' : ['low', 'medium', 'high'] }. 
-    The list sequence must be in increasing order from lowest to highest.
+        When the data contains ordinal features, they must be encoded differently using 
+        the ordinal_features param. If the data has a categorical variable with values
+        of 'low', 'medium', 'high' and it is known that low < medium < high, then it can 
+        be passed as ordinal_features = { 'column_name' : ['low', 'medium', 'high'] }. 
+        The list sequence must be in increasing order from lowest to highest.
     
     high_cardinality_features: string, default = None
-    When the data containts features with high cardinality, they can be compressed
-    into fewer levels by passing them as a list of column names with high cardinality.
-    Features are compressed using method defined in high_cardinality_method param.
+        When the data containts features with high cardinality, they can be compressed
+        into fewer levels by passing them as a list of column names with high cardinality.
+        Features are compressed using method defined in high_cardinality_method param.
     
     high_cardinality_method: string, default = 'frequency'
-    When method set to 'frequency' it will replace the original value of feature
-    with the frequency distribution and convert the feature into numeric. Other
-    available method is 'clustering' which performs the clustering on statistical
-    attribute of data and replaces the original value of feature with cluster label.
-    The number of clusters is determined using a combination of Calinski-Harabasz and 
-    Silhouette criterion. 
+        When method set to 'frequency' it will replace the original value of feature
+        with the frequency distribution and convert the feature into numeric. Other
+        available method is 'clustering' which performs the clustering on statistical
+        attribute of data and replaces the original value of feature with cluster label.
+        The number of clusters is determined using a combination of Calinski-Harabasz and 
+        Silhouette criterion. 
           
     numeric_features: string, default = None
-    If the inferred data types are not correct, numeric_features can be used to
-    overwrite the inferred type. If when running setup the type of 'column1' is 
-    inferred as a categorical instead of numeric, then this parameter can be used 
-    to overwrite by passing numeric_features = ['column1'].    
+        If the inferred data types are not correct, numeric_features can be used to
+        overwrite the inferred type. If when running setup the type of 'column1' is 
+        inferred as a categorical instead of numeric, then this parameter can be used 
+        to overwrite by passing numeric_features = ['column1'].    
 
     numeric_imputation: string, default = 'mean'
-    If missing values are found in numeric features, they will be imputed with the 
-    mean value of the feature. The other available option is 'median' which imputes 
-    the value using the median value in the training dataset. 
+        If missing values are found in numeric features, they will be imputed with the 
+        mean value of the feature. The other available option is 'median' which imputes 
+        the value using the median value in the training dataset. 
     
     date_features: string, default = None
-    If the data has a DateTime column that is not automatically detected when running
-    setup, this parameter can be used by passing date_features = 'date_column_name'. 
-    It can work with multiple date columns. Date columns are not used in modeling. 
-    Instead, feature extraction is performed and date columns are dropped from the 
-    dataset. If the date column includes a time stamp, features related to time will 
-    also be extracted.
+        If the data has a DateTime column that is not automatically detected when running
+        setup, this parameter can be used by passing date_features = 'date_column_name'. 
+        It can work with multiple date columns. Date columns are not used in modeling. 
+        Instead, feature extraction is performed and date columns are dropped from the 
+        dataset. If the date column includes a time stamp, features related to time will 
+        also be extracted.
     
     ignore_features: string, default = None
-    If any feature should be ignored for modeling, it can be passed to the param
-    ignore_features. The ID and DateTime columns when inferred, are automatically 
-    set to ignore for modeling. 
+        If any feature should be ignored for modeling, it can be passed to the param
+        ignore_features. The ID and DateTime columns when inferred, are automatically 
+        set to ignore for modeling. 
     
     normalize: bool, default = False
-    When set to True, the feature space is transformed using the normalized_method
-    param. Generally, linear algorithms perform better with normalized data however, 
-    the results may vary and it is advised to run multiple experiments to evaluate
-    the benefit of normalization.
+        When set to True, the feature space is transformed using the normalized_method
+        param. Generally, linear algorithms perform better with normalized data however, 
+        the results may vary and it is advised to run multiple experiments to evaluate
+        the benefit of normalization.
     
     normalize_method: string, default = 'zscore'
-    Defines the method to be used for normalization. By default, normalize method
-    is set to 'zscore'. The standard zscore is calculated as z = (x - u) / s. The
-    other available options are:
+        Defines the method to be used for normalization. By default, normalize method
+        is set to 'zscore'. The standard zscore is calculated as z = (x - u) / s. The
+        other available options are:
     
-    'minmax'    : scales and translates each feature individually such that it is in 
-                  the range of 0 - 1.
-    
-    'maxabs'    : scales and translates each feature individually such that the maximal 
-                  absolute value of each feature will be 1.0. It does not shift/center 
-                  the data, and thus does not destroy any sparsity.
-    
-    'robust'    : scales and translates each feature according to the Interquartile range.
-                  When the dataset contains outliers, robust scaler often gives better
-                  results.
+        'minmax'    : scales and translates each feature individually such that it is in 
+                    the range of 0 - 1.
+        
+        'maxabs'    : scales and translates each feature individually such that the maximal 
+                    absolute value of each feature will be 1.0. It does not shift/center 
+                    the data, and thus does not destroy any sparsity.
+        
+        'robust'    : scales and translates each feature according to the Interquartile range.
+                    When the dataset contains outliers, robust scaler often gives better
+                    results.
     
     transformation: bool, default = False
-    When set to True, a power transformation is applied to make the data more normal /
-    Gaussian-like. This is useful for modeling issues related to heteroscedasticity or 
-    other situations where normality is desired. The optimal parameter for stabilizing 
-    variance and minimizing skewness is estimated through maximum likelihood.
+        When set to True, a power transformation is applied to make the data more normal /
+        Gaussian-like. This is useful for modeling issues related to heteroscedasticity or 
+        other situations where normality is desired. The optimal parameter for stabilizing 
+        variance and minimizing skewness is estimated through maximum likelihood.
     
     transformation_method: string, default = 'yeo-johnson'
-    Defines the method for transformation. By default, the transformation method is set
-    to 'yeo-johnson'. The other available option is 'quantile' transformation. Both 
-    the transformation transforms the feature set to follow a Gaussian-like or normal
-    distribution. Note that the quantile transformer is non-linear and may distort linear 
-    correlations between variables measured at the same scale.
+        Defines the method for transformation. By default, the transformation method is set
+        to 'yeo-johnson'. The other available option is 'quantile' transformation. Both 
+        the transformation transforms the feature set to follow a Gaussian-like or normal
+        distribution. Note that the quantile transformer is non-linear and may distort linear 
+        correlations between variables measured at the same scale.
     
     handle_unknown_categorical: bool, default = True
-    When set to True, unknown categorical levels in new / unseen data are replaced by
-    the most or least frequent level as learned in the training data. The method is 
-    defined under the unknown_categorical_method param.
+        When set to True, unknown categorical levels in new / unseen data are replaced by
+        the most or least frequent level as learned in the training data. The method is 
+        defined under the unknown_categorical_method param.
     
     unknown_categorical_method: string, default = 'least_frequent'
-    Method used to replace unknown categorical levels in unseen data. Method can be
-    set to 'least_frequent' or 'most_frequent'.
+        Method used to replace unknown categorical levels in unseen data. Method can be
+        set to 'least_frequent' or 'most_frequent'.
     
     pca: bool, default = False
-    When set to True, dimensionality reduction is applied to project the data into 
-    a lower dimensional space using the method defined in pca_method param. In 
-    supervised learning pca is generally performed when dealing with high feature
-    space and memory is a constraint. Note that not all datasets can be decomposed
-    efficiently using a linear PCA technique and that applying PCA may result in loss 
-    of information. As such, it is advised to run multiple experiments with different 
-    pca_methods to evaluate the impact. 
+        When set to True, dimensionality reduction is applied to project the data into 
+        a lower dimensional space using the method defined in pca_method param. In 
+        supervised learning pca is generally performed when dealing with high feature
+        space and memory is a constraint. Note that not all datasets can be decomposed
+        efficiently using a linear PCA technique and that applying PCA may result in loss 
+        of information. As such, it is advised to run multiple experiments with different 
+        pca_methods to evaluate the impact. 
 
     pca_method: string, default = 'linear'
-    The 'linear' method performs Linear dimensionality reduction using Singular Value 
-    Decomposition. The other available options are:
-    
-    kernel      : dimensionality reduction through the use of RVF kernel.  
-    
-    incremental : replacement for 'linear' pca when the dataset to be decomposed is 
-                  too large to fit in memory
-    
+        The 'linear' method performs Linear dimensionality reduction using Singular Value 
+        Decomposition. The other available options are:
+        
+        kernel      : dimensionality reduction through the use of RVF kernel.  
+        
+        incremental : replacement for 'linear' pca when the dataset to be decomposed is 
+                    too large to fit in memory
+
     pca_components: int/float, default = 0.99
-    Number of components to keep. if pca_components is a float, it is treated as a 
-    target percentage for information retention. When pca_components is an integer
-    it is treated as the number of features to be kept. pca_components must be strictly
-    less than the original number of features in the dataset.
+        Number of components to keep. if pca_components is a float, it is treated as a 
+        target percentage for information retention. When pca_components is an integer
+        it is treated as the number of features to be kept. pca_components must be strictly
+        less than the original number of features in the dataset.
     
     ignore_low_variance: bool, default = False
-    When set to True, all categorical features with statistically insignificant variances 
-    are removed from the dataset. The variance is calculated using the ratio of unique 
-    values to the number of samples, and the ratio of the most common value to the 
-    frequency of the second most common value.
+        When set to True, all categorical features with statistically insignificant variances 
+        are removed from the dataset. The variance is calculated using the ratio of unique 
+        values to the number of samples, and the ratio of the most common value to the 
+        frequency of the second most common value.
     
     combine_rare_levels: bool, default = False
-    When set to True, all levels in categorical features below the threshold defined 
-    in rare_level_threshold param are combined together as a single level. There must be 
-    atleast two levels under the threshold for this to take effect. rare_level_threshold
-    represents the percentile distribution of level frequency. Generally, this technique 
-    is applied to limit a sparse matrix caused by high numbers of levels in categorical 
-    features. 
+        When set to True, all levels in categorical features below the threshold defined 
+        in rare_level_threshold param are combined together as a single level. There must be 
+        atleast two levels under the threshold for this to take effect. rare_level_threshold
+        represents the percentile distribution of level frequency. Generally, this technique 
+        is applied to limit a sparse matrix caused by high numbers of levels in categorical 
+        features. 
     
     rare_level_threshold: float, default = 0.1
-    Percentile distribution below which rare categories are combined. Only comes into
-    effect when combine_rare_levels is set to True.
+        Percentile distribution below which rare categories are combined. Only comes into
+        effect when combine_rare_levels is set to True.
     
     bin_numeric_features: list, default = None
-    When a list of numeric features is passed they are transformed into categorical
-    features using KMeans, where values in each bin have the same nearest center of a 
-    1D k-means cluster. The number of clusters are determined based on the 'sturges' 
-    method. It is only optimal for gaussian data and underestimates the number of bins 
-    for large non-gaussian datasets.
+        When a list of numeric features is passed they are transformed into categorical
+        features using KMeans, where values in each bin have the same nearest center of a 
+        1D k-means cluster. The number of clusters are determined based on the 'sturges' 
+        method. It is only optimal for gaussian data and underestimates the number of bins 
+        for large non-gaussian datasets.
     
     remove_outliers: bool, default = False
-    When set to True, outliers from the training data are removed using PCA linear
-    dimensionality reduction using the Singular Value Decomposition technique.
+        When set to True, outliers from the training data are removed using PCA linear
+        dimensionality reduction using the Singular Value Decomposition technique.
     
     outliers_threshold: float, default = 0.05
-    The percentage / proportion of outliers in the dataset can be defined using
-    the outliers_threshold param. By default, 0.05 is used which means 0.025 of the 
-    values on each side of the distribution's tail are dropped from training data.
+        The percentage / proportion of outliers in the dataset can be defined using
+        the outliers_threshold param. By default, 0.05 is used which means 0.025 of the 
+        values on each side of the distribution's tail are dropped from training data.
     
     remove_multicollinearity: bool, default = False
-    When set to True, the variables with inter-correlations higher than the threshold
-    defined under the multicollinearity_threshold param are dropped. When two features
-    are highly correlated with each other, the feature that is less correlated with 
-    the target variable is dropped. 
+        When set to True, the variables with inter-correlations higher than the threshold
+        defined under the multicollinearity_threshold param are dropped. When two features
+        are highly correlated with each other, the feature that is less correlated with 
+        the target variable is dropped. 
 
     multicollinearity_threshold: float, default = 0.9
-    Threshold used for dropping the correlated features. Only comes into effect when 
-    remove_multicollinearity is set to True.
+        Threshold used for dropping the correlated features. Only comes into effect when 
+        remove_multicollinearity is set to True.
     
     remove_perfect_collinearity: bool, default = False
-    When set to True, perfect collinearity (features with correlation = 1) is removed
-    from the dataset, When two features are 100% correlated, one of it is randomly 
-    dropped from the dataset.
+        When set to True, perfect collinearity (features with correlation = 1) is removed
+        from the dataset, When two features are 100% correlated, one of it is randomly 
+        dropped from the dataset.
     
     create_clusters: bool, default = False
-    When set to True, an additional feature is created where each instance is assigned
-    to a cluster. The number of clusters is determined using a combination of 
-    Calinski-Harabasz and Silhouette criterion. 
+        When set to True, an additional feature is created where each instance is assigned
+        to a cluster. The number of clusters is determined using a combination of 
+        Calinski-Harabasz and Silhouette criterion. 
     
     cluster_iter: int, default = 20
-    Number of iterations used to create a cluster. Each iteration represents cluster 
-    size. Only comes into effect when create_clusters param is set to True.
+        Number of iterations used to create a cluster. Each iteration represents cluster 
+        size. Only comes into effect when create_clusters param is set to True.
     
     polynomial_features: bool, default = False
-    When set to True, new features are created based on all polynomial combinations 
-    that exist within the numeric features in a dataset to the degree defined in 
-    polynomial_degree param. 
+        When set to True, new features are created based on all polynomial combinations 
+        that exist within the numeric features in a dataset to the degree defined in 
+        polynomial_degree param. 
     
     polynomial_degree: int, default = 2
-    Degree of polynomial features. For example, if an input sample is two dimensional 
-    and of the form [a, b], the polynomial features with degree = 2 are: 
-    [1, a, b, a^2, ab, b^2].
+        Degree of polynomial features. For example, if an input sample is two dimensional 
+        and of the form [a, b], the polynomial features with degree = 2 are: 
+        [1, a, b, a^2, ab, b^2].
     
     trigonometry_features: bool, default = False
-    When set to True, new features are created based on all trigonometric combinations 
-    that exist within the numeric features in a dataset to the degree defined in the
-    polynomial_degree param.
+        When set to True, new features are created based on all trigonometric combinations 
+        that exist within the numeric features in a dataset to the degree defined in the
+        polynomial_degree param.
     
     polynomial_threshold: float, default = 0.1
-    This is used to compress a sparse matrix of polynomial and trigonometric features.
-    Polynomial and trigonometric features whose feature importance based on the 
-    combination of Random Forest, AdaBoost and Linear correlation falls within the 
-    percentile of the defined threshold are kept in the dataset. Remaining features 
-    are dropped before further processing.
+        This is used to compress a sparse matrix of polynomial and trigonometric features.
+        Polynomial and trigonometric features whose feature importance based on the 
+        combination of Random Forest, AdaBoost and Linear correlation falls within the 
+        percentile of the defined threshold are kept in the dataset. Remaining features 
+        are dropped before further processing.
     
     group_features: list or list of list, default = None
-    When a dataset contains features that have related characteristics, the group_features
-    param can be used for statistical feature extraction. For example, if a dataset has 
-    numeric features that are related with each other (i.e 'Col1', 'Col2', 'Col3'), a list 
-    containing the column names can be passed under group_features to extract statistical 
-    information such as the mean, median, mode and standard deviation.
+        When a dataset contains features that have related characteristics, the group_features
+        param can be used for statistical feature extraction. For example, if a dataset has 
+        numeric features that are related with each other (i.e 'Col1', 'Col2', 'Col3'), a list 
+        containing the column names can be passed under group_features to extract statistical 
+        information such as the mean, median, mode and standard deviation.
     
     group_names: list, default = None
-    When group_features is passed, a name of the group can be passed into the group_names 
-    param as a list containing strings. The length of a group_names list must equal to the 
-    length  of group_features. When the length doesn't match or the name is not passed, new 
-    features are sequentially named such as group_1, group_2 etc.
+        When group_features is passed, a name of the group can be passed into the group_names 
+        param as a list containing strings. The length of a group_names list must equal to the 
+        length  of group_features. When the length doesn't match or the name is not passed, new 
+        features are sequentially named such as group_1, group_2 etc.
     
     feature_selection: bool, default = False
-    When set to True, a subset of features are selected using a combination of various
-    permutation importance techniques including Random Forest, Adaboost and Linear 
-    correlation with target variable. The size of the subset is dependent on the 
-    feature_selection_param. Generally, this is used to constrain the feature space 
-    in order to improve efficiency in modeling. When polynomial_features and 
-    feature_interaction  are used, it is highly recommended to define the 
-    feature_selection_threshold param with a lower value.
+        When set to True, a subset of features are selected using a combination of various
+        permutation importance techniques including Random Forest, Adaboost and Linear 
+        correlation with target variable. The size of the subset is dependent on the 
+        feature_selection_param. Generally, this is used to constrain the feature space 
+        in order to improve efficiency in modeling. When polynomial_features and 
+        feature_interaction  are used, it is highly recommended to define the 
+        feature_selection_threshold param with a lower value.
 
     feature_selection_threshold: float, default = 0.8
-    Threshold used for feature selection (including newly created polynomial features).
-    A higher value will result in a higher feature space. It is recommended to do multiple
-    trials with different values of feature_selection_threshold specially in cases where 
-    polynomial_features and feature_interaction are used. Setting a very low value may be 
-    efficient but could result in under-fitting.
+        Threshold used for feature selection (including newly created polynomial features).
+        A higher value will result in a higher feature space. It is recommended to do multiple
+        trials with different values of feature_selection_threshold specially in cases where 
+        polynomial_features and feature_interaction are used. Setting a very low value may be 
+        efficient but could result in under-fitting.
     
     feature_interaction: bool, default = False 
-    When set to True, it will create new features by interacting (a * b) for all numeric 
-    variables in the dataset including polynomial and trigonometric features (if created). 
-    This feature is not scalable and may not work as expected on datasets with large 
-    feature space.
+        When set to True, it will create new features by interacting (a * b) for all numeric 
+        variables in the dataset including polynomial and trigonometric features (if created). 
+        This feature is not scalable and may not work as expected on datasets with large 
+        feature space.
     
     feature_ratio: bool, default = False
-    When set to True, it will create new features by calculating the ratios (a / b) of all 
-    numeric variables in the dataset. This feature is not scalable and may not work as 
-    expected on datasets with large feature space.
+        When set to True, it will create new features by calculating the ratios (a / b) of all 
+        numeric variables in the dataset. This feature is not scalable and may not work as 
+        expected on datasets with large feature space.
     
     interaction_threshold: bool, default = 0.01
-    Similar to polynomial_threshold, It is used to compress a sparse matrix of newly 
-    created features through interaction. Features whose importance based on the 
-    combination  of  Random Forest, AdaBoost and Linear correlation falls within the 
-    percentile of the  defined threshold are kept in the dataset. Remaining features 
-    are dropped before further processing.
+        Similar to polynomial_threshold, It is used to compress a sparse matrix of newly 
+        created features through interaction. Features whose importance based on the 
+        combination  of  Random Forest, AdaBoost and Linear correlation falls within the 
+        percentile of the  defined threshold are kept in the dataset. Remaining features 
+        are dropped before further processing.
     
     fix_imbalance: bool, default = False
-    When dataset has unequal distribution of target class it can be fixed using
-    fix_imbalance parameter. When set to True, SMOTE (Synthetic Minority Over-sampling 
-    Technique) is applied by default to create synthetic datapoints for minority class.
+        When dataset has unequal distribution of target class it can be fixed using
+        fix_imbalance parameter. When set to True, SMOTE (Synthetic Minority Over-sampling 
+        Technique) is applied by default to create synthetic datapoints for minority class.
 
     fix_imbalance_method: obj, default = None
-    When fix_imbalance is set to True and fix_imbalance_method is None, 'smote' is applied 
-    by default to oversample minority class during cross validation. This parameter
-    accepts any module from 'imblearn' that supports 'fit_resample' method.
+        When fix_imbalance is set to True and fix_imbalance_method is None, 'smote' is applied 
+        by default to oversample minority class during cross validation. This parameter
+        accepts any module from 'imblearn' that supports 'fit_resample' method.
 
     data_split_shuffle: bool, default = True
-    If set to False, prevents shuffling of rows when splitting data.
+        If set to False, prevents shuffling of rows when splitting data.
 
     folds_shuffle: bool, default = False
-    If set to False, prevents shuffling of rows when using cross validation.
+        If set to False, prevents shuffling of rows when using cross validation.
 
     n_jobs: int, default = -1
-    The number of jobs to run in parallel (for functions that supports parallel 
-    processing) -1 means using all processors. To run all functions on single processor 
-    set n_jobs to None.
+        The number of jobs to run in parallel (for functions that supports parallel 
+        processing) -1 means using all processors. To run all functions on single processor 
+        set n_jobs to None.
 
     html: bool, default = True
-    If set to False, prevents runtime display of monitor. This must be set to False
-    when using environment that doesnt support HTML.
+        If set to False, prevents runtime display of monitor. This must be set to False
+        when using environment that doesnt support HTML.
 
     session_id: int, default = None
-    If None, a random seed is generated and returned in the Information grid. The 
-    unique number is then distributed as a seed in all functions used during the 
-    experiment. This can be used for later reproducibility of the entire experiment.
+        If None, a random seed is generated and returned in the Information grid. The 
+        unique number is then distributed as a seed in all functions used during the 
+        experiment. This can be used for later reproducibility of the entire experiment.
     
     log_experiment: bool, default = False
-    When set to True, all metrics and parameters are logged on MLFlow server.
+        When set to True, all metrics and parameters are logged on MLFlow server.
 
     experiment_name: str, default = None
-    Name of experiment for logging. When set to None, 'clf' is by default used as 
-    alias for the experiment name.
+        Name of experiment for logging. When set to None, 'clf' is by default used as 
+        alias for the experiment name.
 
     log_plots: bool, default = False
-    When set to True, specific plots are logged in MLflow as a png file. By default,
-    it is set to False. 
+        When set to True, specific plots are logged in MLflow as a png file. By default,
+        it is set to False. 
 
     log_profile: bool, default = False
-    When set to True, data profile is also logged on MLflow as a html file. By default,
-    it is set to False. 
+        When set to True, data profile is also logged on MLflow as a html file. By default,
+        it is set to False. 
 
     log_data: bool, default = False
-    When set to True, train and test dataset are logged as csv. 
+        When set to True, train and test dataset are logged as csv. 
 
     silent: bool, default = False
-    When set to True, confirmation of data types is not required. All preprocessing will 
-    be performed assuming automatically inferred data types. Not recommended for direct use 
-    except for established pipelines.
+        When set to True, confirmation of data types is not required. All preprocessing will 
+        be performed assuming automatically inferred data types. Not recommended for direct use 
+        except for established pipelines.
     
     verbose: Boolean, default = True
-    Information grid is not printed when verbose is set to False.
+        Information grid is not printed when verbose is set to False.
 
     profile: bool, default = False
-    If set to true, a data profile for Exploratory Data Analysis will be displayed 
-    in an interactive HTML report. 
+        If set to true, a data profile for Exploratory Data Analysis will be displayed 
+        in an interactive HTML report. 
     
-    Returns:
-    --------
+    Returns
+    -------
+    info_grid
+        Information grid is printed.
 
-    info grid:    Information grid is printed.
-    -----------      
-
-    environment:  This function returns various outputs that are stored in variables
-    -----------   as tuples. They are used by other functions in pycaret.
+    environment
+        This function returns various outputs that are stored in variables
+        as tuples. They are used by other functions in pycaret.
       
        
     """
@@ -1978,9 +1974,6 @@ def create_model(estimator = None,
                  **kwargs): #added in pycaret==2.0.0
 
     """  
-     
-    Description:
-    ------------
     This function creates a model and scores it using Stratified Cross Validation. 
     The output prints a score grid that shows Accuracy, AUC, Recall, Precision, 
     F1, Kappa and MCC by fold (default = 10 Fold). 
@@ -1989,83 +1982,81 @@ def create_model(estimator = None,
 
     setup() function must be called before using create_model()
 
-        Example
-        -------
-        from pycaret.datasets import get_data
-        juice = get_data('juice')
-        experiment_name = setup(data = juice,  target = 'Purchase')
-        
-        lr = create_model('lr')
+    Example
+    -------
+    >>> from pycaret.datasets import get_data
+    >>> juice = get_data('juice')
+    >>> experiment_name = setup(data = juice,  target = 'Purchase')
+    >>> lr = create_model('lr')
 
-        This will create a trained Logistic Regression model.
+    This will create a trained Logistic Regression model.
 
     Parameters
     ----------
     estimator : string / object, default = None
+        Enter ID of the estimators available in model library or pass an untrained model 
+        object consistent with fit / predict API to train and evaluate model. All estimators 
+        support binary or multiclass problem. List of estimators in model library:
 
-    Enter ID of the estimators available in model library or pass an untrained model 
-    object consistent with fit / predict API to train and evaluate model. All estimators 
-    support binary or multiclass problem. List of estimators in model library:
-
-    ID          Name      
-    --------    ----------     
-    'lr'        Logistic Regression             
-    'knn'       K Nearest Neighbour            
-    'nb'        Naive Bayes             
-    'dt'        Decision Tree Classifier                   
-    'svm'       SVM - Linear Kernel	            
-    'rbfsvm'    SVM - Radial Kernel               
-    'gpc'       Gaussian Process Classifier                  
-    'mlp'       Multi Level Perceptron                  
-    'ridge'     Ridge Classifier                
-    'rf'        Random Forest Classifier                   
-    'qda'       Quadratic Discriminant Analysis                  
-    'ada'       Ada Boost Classifier                 
-    'gbc'       Gradient Boosting Classifier                  
-    'lda'       Linear Discriminant Analysis                  
-    'et'        Extra Trees Classifier                   
-    'xgboost'   Extreme Gradient Boosting              
-    'lightgbm'  Light Gradient Boosting              
-    'catboost'  CatBoost Classifier             
+        ID          Name      
+        --------    ----------     
+        'lr'        Logistic Regression             
+        'knn'       K Nearest Neighbour            
+        'nb'        Naive Bayes             
+        'dt'        Decision Tree Classifier                   
+        'svm'       SVM - Linear Kernel	            
+        'rbfsvm'    SVM - Radial Kernel               
+        'gpc'       Gaussian Process Classifier                  
+        'mlp'       Multi Level Perceptron                  
+        'ridge'     Ridge Classifier                
+        'rf'        Random Forest Classifier                   
+        'qda'       Quadratic Discriminant Analysis                  
+        'ada'       Ada Boost Classifier                 
+        'gbc'       Gradient Boosting Classifier                  
+        'lda'       Linear Discriminant Analysis                  
+        'et'        Extra Trees Classifier                   
+        'xgboost'   Extreme Gradient Boosting              
+        'lightgbm'  Light Gradient Boosting              
+        'catboost'  CatBoost Classifier             
 
     ensemble: Boolean, default = False
-    True would result in an ensemble of estimator using the method parameter defined. 
+        True would result in an ensemble of estimator using the method parameter defined. 
 
     method: String, 'Bagging' or 'Boosting', default = None.
-    method must be defined when ensemble is set to True. Default method is set to None. 
+        method must be defined when ensemble is set to True. Default method is set to None. 
 
     fold: integer, default = 10
-    Number of folds to be used in Kfold CV. Must be at least 2. 
+        Number of folds to be used in Kfold CV. Must be at least 2. 
 
     round: integer, default = 4
-    Number of decimal places the metrics in the score grid will be rounded to. 
+        Number of decimal places the metrics in the score grid will be rounded to. 
 
     cross_validation: bool, default = True
-    When cross_validation set to False fold parameter is ignored and model is trained
-    on entire training dataset. No metric evaluation is returned. 
+        When cross_validation set to False fold parameter is ignored and model is trained
+        on entire training dataset. No metric evaluation is returned. 
 
     verbose: Boolean, default = True
-    Score grid is not printed when verbose is set to False.
+        Score grid is not printed when verbose is set to False.
 
     system: Boolean, default = True
-    Must remain True all times. Only to be changed by internal functions.
+        Must remain True all times. Only to be changed by internal functions.
 
     **kwargs: 
     Additional keyword arguments to pass to the estimator.
 
-    Returns:
+    Returns
+    -------
+    score_grid
+        A table containing the scores of the model across the kfolds. 
+        Scoring metrics used are Accuracy, AUC, Recall, Precision, F1, 
+        Kappa and MCC. Mean and standard deviation of the scores across 
+        the folds are highlighted in yellow.
+
+    model
+        trained model object
+
+    Warnings
     --------
-
-    score grid:   A table containing the scores of the model across the kfolds. 
-    -----------   Scoring metrics used are Accuracy, AUC, Recall, Precision, F1, 
-                  Kappa and MCC. Mean and standard deviation of the scores across 
-                  the folds are highlighted in yellow.
-
-    model:        trained model object
-    -----------
-
-    Warnings:
-    ---------
     - 'svm' and 'ridge' doesn't support predict_proba method. As such, AUC will be
       returned as zero (0.0)
      
@@ -2075,9 +2066,7 @@ def create_model(estimator = None,
     - 'rbfsvm' and 'gpc' uses non-linear kernel and hence the fit time complexity is 
       more than quadratic. These estimators are hard to scale on datasets with more 
       than 10,000 samples.
-    
-      
-  
+
     """
 
 
@@ -2887,10 +2876,6 @@ def ensemble_model(estimator,
                    optimize = 'Accuracy', #added in pycaret==2.0.0
                    verbose = True):
     """
-       
-    
-    Description:
-    ------------
     This function ensembles the trained base estimator using the method defined in 
     'method' param (default = 'Bagging'). The output prints a score grid that shows 
     Accuracy, AUC, Recall, Precision, F1, Kappa and MCC by fold (default = 10 Fold). 
@@ -2899,68 +2884,67 @@ def ensemble_model(estimator,
 
     Model must be created using create_model() or tune_model().
 
-        Example
-        -------
-        from pycaret.datasets import get_data
-        juice = get_data('juice')
-        experiment_name = setup(data = juice,  target = 'Purchase')
-        dt = create_model('dt')
-        
-        ensembled_dt = ensemble_model(dt)
+    Example
+    -------
+    >>> from pycaret.datasets import get_data
+    >>> juice = get_data('juice')
+    >>> experiment_name = setup(data = juice,  target = 'Purchase')
+    >>> dt = create_model('dt')
+    >>> ensembled_dt = ensemble_model(dt)
 
-        This will return an ensembled Decision Tree model using 'Bagging'.
-        
+    This will return an ensembled Decision Tree model using 'Bagging'.
+    
     Parameters
     ----------
     estimator : object, default = None
 
     method: String, default = 'Bagging'
-    Bagging method will create an ensemble meta-estimator that fits base 
-    classifiers each on random subsets of the original dataset. The other
-    available method is 'Boosting' which will create a meta-estimators by
-    fitting a classifier on the original dataset and then fits additional 
-    copies of the classifier on the same dataset but where the weights of 
-    incorrectly classified instances are adjusted such that subsequent 
-    classifiers focus more on difficult cases.
+        Bagging method will create an ensemble meta-estimator that fits base 
+        classifiers each on random subsets of the original dataset. The other
+        available method is 'Boosting' which will create a meta-estimators by
+        fitting a classifier on the original dataset and then fits additional 
+        copies of the classifier on the same dataset but where the weights of 
+        incorrectly classified instances are adjusted such that subsequent 
+        classifiers focus more on difficult cases.
     
     fold: integer, default = 10
-    Number of folds to be used in Kfold CV. Must be at least 2.
+        Number of folds to be used in Kfold CV. Must be at least 2.
     
     n_estimators: integer, default = 10
-    The number of base estimators in the ensemble.
-    In case of perfect fit, the learning procedure is stopped early.
+        The number of base estimators in the ensemble.
+        In case of perfect fit, the learning procedure is stopped early.
 
     round: integer, default = 4
-    Number of decimal places the metrics in the score grid will be rounded to.
+        Number of decimal places the metrics in the score grid will be rounded to.
 
     choose_better: Boolean, default = False
-    When set to set to True, base estimator is returned when the metric doesn't 
-    improve by ensemble_model. This gurantees the returned object would perform 
-    atleast equivalent to base estimator created using create_model or model 
-    returned by compare_models.
+        When set to set to True, base estimator is returned when the metric doesn't 
+        improve by ensemble_model. This gurantees the returned object would perform 
+        atleast equivalent to base estimator created using create_model or model 
+        returned by compare_models.
 
     optimize: string, default = 'Accuracy'
-    Only used when choose_better is set to True. optimize parameter is used
-    to compare emsembled model with base estimator. Values accepted in 
-    optimize parameter are 'Accuracy', 'AUC', 'Recall', 'Precision', 'F1', 
-    'Kappa', 'MCC'.
+        Only used when choose_better is set to True. optimize parameter is used
+        to compare emsembled model with base estimator. Values accepted in 
+        optimize parameter are 'Accuracy', 'AUC', 'Recall', 'Precision', 'F1', 
+        'Kappa', 'MCC'.
 
     verbose: Boolean, default = True
-    Score grid is not printed when verbose is set to False.
+        Score grid is not printed when verbose is set to False.
 
-    Returns:
-    --------
+    Returns
+    -------
+    score_grid
+        A table containing the scores of the model across the kfolds. 
+        Scoring metrics used are Accuracy, AUC, Recall, Precision, F1, 
+        Kappa and MCC. Mean and standard deviation of the scores across 
+        the folds are also returned.
 
-    score grid:   A table containing the scores of the model across the kfolds. 
-    -----------   Scoring metrics used are Accuracy, AUC, Recall, Precision, F1, 
-                  Kappa and MCC. Mean and standard deviation of the scores across 
-                  the folds are also returned.
+    model
+        Trained ensembled model object.
 
-    model:        trained ensembled model object
-    -----------
-
-    Warnings:
-    ---------  
+    Warnings
+    --------  
     - If target variable is multiclass (more than 2 classes), AUC will be returned 
       as zero (0.0).
         
@@ -3663,69 +3647,64 @@ def plot_model(estimator,
     
     
     """
-          
-    Description:
-    ------------
     This function takes a trained model object and returns a plot based on the
     test / hold-out set. The process may require the model to be re-trained in
     certain cases. See list of plots supported below. 
     
     Model must be created using create_model() or tune_model().
 
-        Example:
-        --------
-        from pycaret.datasets import get_data
-        juice = get_data('juice')
-        experiment_name = setup(data = juice,  target = 'Purchase')
-        lr = create_model('lr')
-        
-        plot_model(lr)
+    Example
+    -------
+    >>> from pycaret.datasets import get_data
+    >>> juice = get_data('juice')
+    >>> experiment_name = setup(data = juice,  target = 'Purchase')
+    >>> lr = create_model('lr')
+    >>> plot_model(lr)
 
-        This will return an AUC plot of a trained Logistic Regression model.
+    This will return an AUC plot of a trained Logistic Regression model.
 
     Parameters
     ----------
     estimator : object, default = none
-    A trained model object should be passed as an estimator. 
+        A trained model object should be passed as an estimator. 
 
     plot : string, default = auc
-    Enter abbreviation of type of plot. The current list of plots supported are:
+        Enter abbreviation of type of plot. The current list of plots supported are:
 
-    Plot                    Name
-    ------------------      -----------------------           
-    'auc'                   Area Under the Curve                 
-    'threshold'             Discrimination Threshold           
-    'pr'                    Precision Recall Curve                  
-    'confusion_matrix'      Confusion Matrix    
-    'error'                 Class Prediction Error                
-    'class_report'          Classification Report        
-    'boundary'              Decision Boundary            
-    'rfe'                   Recursive Feature Selection                 
-    'learning'              Learning Curve             
-    'manifold'              Manifold Learning            
-    'calibration'           Calibration Curve         
-    'vc'                    Validation Curve                  
-    'dimension'             Dimension Learning           
-    'feature'               Feature Importance              
-    'parameter'             Model Hyperparameter          
+        Plot                    Name
+        ------------------      -----------------------           
+        'auc'                   Area Under the Curve                 
+        'threshold'             Discrimination Threshold           
+        'pr'                    Precision Recall Curve                  
+        'confusion_matrix'      Confusion Matrix    
+        'error'                 Class Prediction Error                
+        'class_report'          Classification Report        
+        'boundary'              Decision Boundary            
+        'rfe'                   Recursive Feature Selection                 
+        'learning'              Learning Curve             
+        'manifold'              Manifold Learning            
+        'calibration'           Calibration Curve         
+        'vc'                    Validation Curve                  
+        'dimension'             Dimension Learning           
+        'feature'               Feature Importance              
+        'parameter'             Model Hyperparameter          
 
     save: Boolean, default = False
-    When set to True, Plot is saved as a 'png' file in current working directory.
+        When set to True, Plot is saved as a 'png' file in current working directory.
 
     verbose: Boolean, default = True
-    Progress bar not shown when verbose set to False. 
+        Progress bar not shown when verbose set to False. 
 
     system: Boolean, default = True
-    Must remain True all times. Only to be changed by internal functions.
+        Must remain True all times. Only to be changed by internal functions.
 
-    Returns:
+    Returns
+    -------
+    Visual_Plot
+        Prints the visual plot. 
+
+    Warnings
     --------
-
-    Visual Plot:  Prints the visual plot. 
-    ------------
-
-    Warnings:
-    ---------
     -  'svm' and 'ridge' doesn't support the predict_proba method. As such, AUC and 
         calibration plots are not available for these estimators.
        
@@ -4322,9 +4301,6 @@ def compare_models(blacklist = None,
                    verbose = True): #added in pycaret==2.0.0
     
     """
-      
-    Description:
-    ------------
     This function train all the models available in the model library and scores them 
     using Stratified Cross Validation. The output prints a score grid with Accuracy, 
     AUC, Recall, Precision, F1, Kappa and MCC (averaged accross folds), determined by
@@ -4338,71 +4314,70 @@ def compare_models(blacklist = None,
     When turbo is set to True ('rbfsvm', 'gpc' and 'mlp') are excluded due to longer
     training time. By default turbo param is set to True.        
 
-        Example:
-        --------
-        from pycaret.datasets import get_data
-        juice = get_data('juice')
-        experiment_name = setup(data = juice,  target = 'Purchase')
-        
-        best_model = compare_models() 
+    Example
+    -------
+    >>> from pycaret.datasets import get_data
+    >>> juice = get_data('juice')
+    >>> experiment_name = setup(data = juice,  target = 'Purchase')
+    >>> best_model = compare_models() 
 
-        This will return the averaged score grid of all the models except 'rbfsvm', 'gpc' 
-        and 'mlp'. When turbo param is set to False, all models including 'rbfsvm', 'gpc' 
-        and 'mlp' are used but this may result in longer training time.
-        
-        best_model = compare_models( blacklist = [ 'knn', 'gbc' ] , turbo = False) 
+    This will return the averaged score grid of all the models except 'rbfsvm', 'gpc' 
+    and 'mlp'. When turbo param is set to False, all models including 'rbfsvm', 'gpc' 
+    and 'mlp' are used but this may result in longer training time.
+    
+    >>> best_model = compare_models( blacklist = [ 'knn', 'gbc' ] , turbo = False) 
 
-        This will return a comparison of all models except K Nearest Neighbour and
-        Gradient Boosting Classifier.
-        
-        best_model = compare_models( blacklist = [ 'knn', 'gbc' ] , turbo = True) 
+    This will return a comparison of all models except K Nearest Neighbour and
+    Gradient Boosting Classifier.
+    
+    >>> best_model = compare_models( blacklist = [ 'knn', 'gbc' ] , turbo = True) 
 
-        This will return comparison of all models except K Nearest Neighbour, 
-        Gradient Boosting Classifier, SVM (RBF), Gaussian Process Classifier and
-        Multi Level Perceptron.
+    This will return comparison of all models except K Nearest Neighbour, 
+    Gradient Boosting Classifier, SVM (RBF), Gaussian Process Classifier and
+    Multi Level Perceptron.
         
 
     Parameters
     ----------
     blacklist: list of strings, default = None
-    In order to omit certain models from the comparison model ID's can be passed as 
-    a list of strings in blacklist param. 
+        In order to omit certain models from the comparison model ID's can be passed as 
+        a list of strings in blacklist param. 
 
     whitelist: list of strings, default = None
-    In order to run only certain models for the comparison, the model ID's can be 
-    passed as a list of strings in whitelist param. 
+        In order to run only certain models for the comparison, the model ID's can be 
+        passed as a list of strings in whitelist param. 
 
     fold: integer, default = 10
-    Number of folds to be used in Kfold CV. Must be at least 2. 
+        Number of folds to be used in Kfold CV. Must be at least 2. 
 
     round: integer, default = 4
-    Number of decimal places the metrics in the score grid will be rounded to.
+        Number of decimal places the metrics in the score grid will be rounded to.
   
     sort: string, default = 'Accuracy'
-    The scoring measure specified is used for sorting the average score grid
-    Other options are 'AUC', 'Recall', 'Precision', 'F1', 'Kappa' and 'MCC'.
+        The scoring measure specified is used for sorting the average score grid
+        Other options are 'AUC', 'Recall', 'Precision', 'F1', 'Kappa' and 'MCC'.
 
     n_select: int, default = 1
-    Number of top_n models to return. use negative argument for bottom selection.
-    for example, n_select = -3 means bottom 3 models.
+        Number of top_n models to return. use negative argument for bottom selection.
+        for example, n_select = -3 means bottom 3 models.
 
     turbo: Boolean, default = True
-    When turbo is set to True, it blacklists estimators that have longer
-    training time.
+        When turbo is set to True, it blacklists estimators that have longer
+        training time.
 
     verbose: Boolean, default = True
-    Score grid is not printed when verbose is set to False.
+        Score grid is not printed when verbose is set to False.
     
-    Returns:
+    Returns
+    -------
+    score_grid
+        A table containing the scores of the model across the kfolds. 
+        Scoring metrics used are Accuracy, AUC, Recall, Precision, F1, 
+        Kappa and MCC. Mean and standard deviation of the scores across 
+        the folds are also returned.
+
+    Warnings
     --------
-
-    score grid:   A table containing the scores of the model across the kfolds. 
-    -----------   Scoring metrics used are Accuracy, AUC, Recall, Precision, F1, 
-                  Kappa and MCC. Mean and standard deviation of the scores across 
-                  the folds are also returned.
-
-    Warnings:
-    ---------
     - compare_models() though attractive, might be time consuming with large 
       datasets. By default turbo is set to True, which blacklists models that
       have longer training times. Changing turbo parameter to False may result 
@@ -5225,25 +5200,21 @@ def tune_model(estimator = None,
     
       
     """
-        
-    Description:
-    ------------
     This function tunes the hyperparameters of a model and scores it using Stratified 
     Cross Validation. The output prints a score grid that shows Accuracy, AUC, Recall
     Precision, F1, Kappa and MCC by fold (by default = 10 Folds).
 
     This function returns a trained model object.  
 
-        Example
-        -------
-        from pycaret.datasets import get_data
-        juice = get_data('juice')
-        experiment_name = setup(data = juice,  target = 'Purchase')
-        xgboost = create_model('xgboost')
+    Example
+    -------
+    >>> from pycaret.datasets import get_data
+    >>> juice = get_data('juice')
+    >>> experiment_name = setup(data = juice,  target = 'Purchase')
+    >>> xgboost = create_model('xgboost')
+    >>> tuned_xgboost = tune_model(xgboost) 
 
-        tuned_xgboost = tune_model(xgboost) 
-
-        This will tune the hyperparameters of Extreme Gradient Boosting Classifier.
+    This will tune the hyperparameters of Extreme Gradient Boosting Classifier.
 
 
     Parameters
@@ -5251,46 +5222,46 @@ def tune_model(estimator = None,
     estimator : object, default = None
 
     fold: integer, default = 10
-    Number of folds to be used in Kfold CV. Must be at least 2. 
+        Number of folds to be used in Kfold CV. Must be at least 2. 
 
     round: integer, default = 4
-    Number of decimal places the metrics in the score grid will be rounded to. 
+        Number of decimal places the metrics in the score grid will be rounded to. 
 
     n_iter: integer, default = 10
-    Number of iterations within the Random Grid Search. For every iteration, 
-    the model randomly selects one value from the pre-defined grid of hyperparameters.
+        Number of iterations within the Random Grid Search. For every iteration, 
+        the model randomly selects one value from the pre-defined grid of hyperparameters.
 
     custom_grid: dictionary, default = None
-    To use custom hyperparameters for tuning pass a dictionary with parameter name
-    and values to be iterated. When set to None it uses pre-defined tuning grid.  
+        To use custom hyperparameters for tuning pass a dictionary with parameter name
+        and values to be iterated. When set to None it uses pre-defined tuning grid.  
 
     optimize: string, default = 'accuracy'
-    Measure used to select the best model through hyperparameter tuning.
-    The default scoring measure is 'Accuracy'. Other measures include 'AUC',
-    'Recall', 'Precision', 'F1'. 
+        Measure used to select the best model through hyperparameter tuning.
+        The default scoring measure is 'Accuracy'. Other measures include 'AUC',
+        'Recall', 'Precision', 'F1'. 
 
     choose_better: Boolean, default = False
-    When set to set to True, base estimator is returned when the performance doesn't 
-    improve by tune_model. This gurantees the returned object would perform atleast 
-    equivalent to base estimator created using create_model or model returned by 
-    compare_models.
+        When set to set to True, base estimator is returned when the performance doesn't 
+        improve by tune_model. This gurantees the returned object would perform atleast 
+        equivalent to base estimator created using create_model or model returned by 
+        compare_models.
 
     verbose: Boolean, default = True
-    Score grid is not printed when verbose is set to False.
+        Score grid is not printed when verbose is set to False.
 
-    Returns:
+    Returns
+    -------
+    score_grid
+        A table containing the scores of the model across the kfolds. 
+        Scoring metrics used are Accuracy, AUC, Recall, Precision, F1, 
+        Kappa and MCC. Mean and standard deviation of the scores across 
+        the folds are also returned.
+
+    model
+        Trained and tuned model object. 
+
+    Warnings
     --------
-
-    score grid:   A table containing the scores of the model across the kfolds. 
-    -----------   Scoring metrics used are Accuracy, AUC, Recall, Precision, F1, 
-                  Kappa and MCC. Mean and standard deviation of the scores across 
-                  the folds are also returned.
-
-    model:        trained and tuned model object. 
-    -----------
-
-    Warnings:
-    ---------
    
     - If target variable is multiclass (more than 2 classes), optimize param 'AUC' is 
       not acceptable.
@@ -6474,9 +6445,6 @@ def blend_models(estimator_list = 'All',
                  verbose = True):
     
     """
-        
-    Description:
-    ------------
     This function creates a Soft Voting / Majority Rule classifier for all the 
     estimators in the model library (excluding the few when turbo is True) or 
     for specific trained estimators passed as a list in estimator_list param.
@@ -6486,73 +6454,71 @@ def blend_models(estimator_list = 'All',
 
     This function returns a trained model object.  
 
-        Example:
-        --------
-        from pycaret.datasets import get_data
-        juice = get_data('juice')
-        experiment_name = setup(data = juice,  target = 'Purchase')
-        
-        blend_all = blend_models() 
+    Example
+    -------
+    >>> from pycaret.datasets import get_data
+    >>> juice = get_data('juice')
+    >>> experiment_name = setup(data = juice,  target = 'Purchase')
+    >>> blend_all = blend_models() 
 
-        This will create a VotingClassifier for all models in the model library 
-        except for 'rbfsvm', 'gpc' and 'mlp'.
+    This will create a VotingClassifier for all models in the model library 
+    except for 'rbfsvm', 'gpc' and 'mlp'.
 
-        For specific models, you can use:
+    For specific models, you can use:
 
-        lr = create_model('lr')
-        rf = create_model('rf')
-        knn = create_model('knn')
+    >>> lr = create_model('lr')
+    >>> rf = create_model('rf')
+    >>> knn = create_model('knn')
+    >>> blend_three = blend_models(estimator_list = [lr,rf,knn])
 
-        blend_three = blend_models(estimator_list = [lr,rf,knn])
-    
-        This will create a VotingClassifier of lr, rf and knn.
+    This will create a VotingClassifier of lr, rf and knn.
 
     Parameters
     ----------
     estimator_list : string ('All') or list of object, default = 'All'
 
     fold: integer, default = 10
-    Number of folds to be used in Kfold CV. Must be at least 2. 
+        Number of folds to be used in Kfold CV. Must be at least 2. 
 
     round: integer, default = 4
-    Number of decimal places the metrics in the score grid will be rounded to.
+        Number of decimal places the metrics in the score grid will be rounded to.
 
     choose_better: Boolean, default = False
-    When set to set to True, base estimator is returned when the metric doesn't 
-    improve by ensemble_model. This gurantees the returned object would perform 
-    atleast equivalent to base estimator created using create_model or model 
-    returned by compare_models.
+        When set to set to True, base estimator is returned when the metric doesn't 
+        improve by ensemble_model. This gurantees the returned object would perform 
+        atleast equivalent to base estimator created using create_model or model 
+        returned by compare_models.
 
     optimize: string, default = 'Accuracy'
-    Only used when choose_better is set to True. optimize parameter is used
-    to compare emsembled model with base estimator. Values accepted in 
-    optimize parameter are 'Accuracy', 'AUC', 'Recall', 'Precision', 'F1', 
-    'Kappa', 'MCC'.
+        Only used when choose_better is set to True. optimize parameter is used
+        to compare emsembled model with base estimator. Values accepted in 
+        optimize parameter are 'Accuracy', 'AUC', 'Recall', 'Precision', 'F1', 
+        'Kappa', 'MCC'.
 
     method: string, default = 'hard'
-    'hard' uses predicted class labels for majority rule voting.'soft', predicts 
-    the class label based on the argmax of the sums of the predicted probabilities, 
-    which is recommended for an ensemble of well-calibrated classifiers. 
+        'hard' uses predicted class labels for majority rule voting.'soft', predicts 
+        the class label based on the argmax of the sums of the predicted probabilities, 
+        which is recommended for an ensemble of well-calibrated classifiers. 
 
     turbo: Boolean, default = True
-    When turbo is set to True, it blacklists estimator that uses Radial Kernel.
+        When turbo is set to True, it blacklists estimator that uses Radial Kernel.
 
     verbose: Boolean, default = True
-    Score grid is not printed when verbose is set to False.
+        Score grid is not printed when verbose is set to False.
 
-    Returns:
+    Returns
+    -------
+    score_grid
+        A table containing the scores of the model across the kfolds. 
+        Scoring metrics used are Accuracy, AUC, Recall, Precision, F1, 
+        Kappa and MCC. Mean and standard deviation of the scores across 
+        the folds are also returned.
+
+    model
+        Trained Voting Classifier model object. 
+
+    Warnings
     --------
-
-    score grid:   A table containing the scores of the model across the kfolds. 
-    -----------   Scoring metrics used are Accuracy, AUC, Recall, Precision, F1, 
-                  Kappa and MCC. Mean and standard deviation of the scores across 
-                  the folds are also returned.
-
-    model:        trained Voting Classifier model object. 
-    -----------
-
-    Warnings:
-    ---------
     - When passing estimator_list with method set to 'soft'. All the models in the
       estimator_list must support predict_proba function. 'svm' and 'ridge' doesnt
       support the predict_proba and hence an exception will be raised.
@@ -7319,9 +7285,6 @@ def stack_models(estimator_list,
                  verbose = True):
     
     """
-            
-    Description:
-    ------------
     This function trains a meta model and scores it using Stratified Cross Validation.
     The predictions from the base level models as passed in the estimator_list param 
     are used as input features for the meta model. The restacking parameter controls
@@ -7333,80 +7296,74 @@ def stack_models(estimator_list,
     
     This function returns a trained model object. 
 
-        Example:
-        --------
-        from pycaret.datasets import get_data
-        juice = get_data('juice')
-        experiment_name = setup(data = juice,  target = 'Purchase')
-        dt = create_model('dt')
-        rf = create_model('rf')
-        ada = create_model('ada')
-        ridge = create_model('ridge')
-        knn = create_model('knn')
+    Example
+    -------
+    >>> from pycaret.datasets import get_data
+    >>> juice = get_data('juice')
+    >>> experiment_name = setup(data = juice,  target = 'Purchase')
+    >>> dt = create_model('dt')
+    >>> rf = create_model('rf')
+    >>> ada = create_model('ada')
+    >>> ridge = create_model('ridge')
+    >>> knn = create_model('knn')
+    >>> stacked_models = stack_models(estimator_list=[dt,rf,ada,ridge,knn])
 
-        stacked_models = stack_models(estimator_list=[dt,rf,ada,ridge,knn])
-
-        This will create a meta model that will use the predictions of all the 
-        models provided in estimator_list param. By default, the meta model is 
-        Logistic Regression but can be changed with meta_model param.
+    This will create a meta model that will use the predictions of all the 
+    models provided in estimator_list param. By default, the meta model is 
+    Logistic Regression but can be changed with meta_model param.
 
     Parameters
     ----------
     estimator_list : list of objects
 
     meta_model : object, default = None
-    if set to None, Logistic Regression is used as a meta model.
+        If set to None, Logistic Regression is used as a meta model.
 
     fold: integer, default = 10
-    Number of folds to be used in Kfold CV. Must be at least 2. 
+        Number of folds to be used in Kfold CV. Must be at least 2. 
 
     round: integer, default = 4
-    Number of decimal places the metrics in the score grid will be rounded to.
+        Number of decimal places the metrics in the score grid will be rounded to.
 
     method: string, default = 'auto'
-    - if ‘auto’, it will try to invoke, for each estimator, 'predict_proba', 
-    'decision_function' or 'predict' in that order.
-    - otherwise, one of 'predict_proba', 'decision_function' or 'predict'. 
-    If the method is not implemented by the estimator, it will raise an error.
+        - if ‘auto’, it will try to invoke, for each estimator, 'predict_proba', 'decision_function' or 'predict' in that order.
+        - otherwise, one of 'predict_proba', 'decision_function' or 'predict'. If the method is not implemented by the estimator, it will raise an error.
 
     restack: Boolean, default = True
-    When restack is set to True, raw data will be exposed to meta model when
-    making predictions, otherwise when False, only the predicted label or
-    probabilities is passed to meta model when making final predictions.
+        When restack is set to True, raw data will be exposed to meta model when
+        making predictions, otherwise when False, only the predicted label or
+        probabilities is passed to meta model when making final predictions.
 
     choose_better: Boolean, default = False
-    When set to set to True, base estimator is returned when the metric doesn't 
-    improve by ensemble_model. This gurantees the returned object would perform 
-    atleast equivalent to base estimator created using create_model or model 
-    returned by compare_models.
+        When set to set to True, base estimator is returned when the metric doesn't 
+        improve by ensemble_model. This gurantees the returned object would perform 
+        atleast equivalent to base estimator created using create_model or model 
+        returned by compare_models.
 
     optimize: string, default = 'Accuracy'
-    Only used when choose_better is set to True. optimize parameter is used
-    to compare emsembled model with base estimator. Values accepted in 
-    optimize parameter are 'Accuracy', 'AUC', 'Recall', 'Precision', 'F1', 
-    'Kappa', 'MCC'.
+        Only used when choose_better is set to True. optimize parameter is used
+        to compare emsembled model with base estimator. Values accepted in 
+        optimize parameter are 'Accuracy', 'AUC', 'Recall', 'Precision', 'F1', 
+        'Kappa', 'MCC'.
     
     verbose: Boolean, default = True
-    Score grid is not printed when verbose is set to False.
+        Score grid is not printed when verbose is set to False.
 
-    Returns:
+    Returns
+    -------
+    score_grid
+        A table containing the scores of the model across the kfolds. 
+        Scoring metrics used are Accuracy, AUC, Recall, Precision, F1, 
+        Kappa and MCC. Mean and standard deviation of the scores across 
+        the folds are also returned.
+
+    model
+        Trained model object.
+
+    Warnings
     --------
+    -  If target variable is multiclass (more than 2 classes), AUC will be returned as zero (0.0).
 
-    score grid:   A table containing the scores of the model across the kfolds. 
-    -----------   Scoring metrics used are Accuracy, AUC, Recall, Precision, F1, 
-                  Kappa and MCC. Mean and standard deviation of the scores across 
-                  the folds are also returned.
-
-    model:        trained model object.
-    -----------
-
-    Warnings:
-    ---------
-      
-    -  If target variable is multiclass (more than 2 classes), AUC will be returned 
-       as zero (0.0).
-                
-            
     """
     
     '''
@@ -8010,9 +7967,6 @@ def interpret_model(estimator,
     
     
     """
-          
-    Description:
-    ------------
     This function takes a trained model object and returns an interpretation plot 
     based on the test / hold-out set. It only supports tree based algorithms. 
 
@@ -8022,47 +7976,46 @@ def interpret_model(estimator,
 
     For more information : https://shap.readthedocs.io/en/latest/
 
-        Example
-        -------
-        from pycaret.datasets import get_data
-        juice = get_data('juice')
-        experiment_name = setup(data = juice,  target = 'Purchase')
-        dt = create_model('dt')
-        
-        interpret_model(dt)
+    Example
+    -------
+    >>> from pycaret.datasets import get_data
+    >>> juice = get_data('juice')
+    >>> experiment_name = setup(data = juice,  target = 'Purchase')
+    >>> dt = create_model('dt')
+    >>> interpret_model(dt)
 
-        This will return a summary interpretation plot of Decision Tree model.
+    This will return a summary interpretation plot of Decision Tree model.
 
     Parameters
     ----------
     estimator : object, default = none
-    A trained tree based model object should be passed as an estimator. 
+        A trained tree based model object should be passed as an estimator. 
 
     plot : string, default = 'summary'
-    other available options are 'correlation' and 'reason'.
+        Other available options are 'correlation' and 'reason'.
 
     feature: string, default = None
-    This parameter is only needed when plot = 'correlation'. By default feature is 
-    set to None which means the first column of the dataset will be used as a variable. 
-    A feature parameter must be passed to change this.
+        This parameter is only needed when plot = 'correlation'. By default feature is 
+        set to None which means the first column of the dataset will be used as a variable. 
+        A feature parameter must be passed to change this.
 
     observation: integer, default = None
-    This parameter only comes into effect when plot is set to 'reason'. If no observation
-    number is provided, it will return an analysis of all observations with the option
-    to select the feature on x and y axes through drop down interactivity. For analysis at
-    the sample level, an observation parameter must be passed with the index value of the
-    observation in test / hold-out set. 
+        This parameter only comes into effect when plot is set to 'reason'. If no observation
+        number is provided, it will return an analysis of all observations with the option
+        to select the feature on x and y axes through drop down interactivity. For analysis at
+        the sample level, an observation parameter must be passed with the index value of the
+        observation in test / hold-out set. 
 
-    Returns:
-    --------
+    Returns
+    -------
+    Visual_Plot
+        Returns the visual plot.
+        Returns the interactive JS plot when plot = 'reason'.
 
-    Visual Plot:  Returns the visual plot.
-    -----------   Returns the interactive JS plot when plot = 'reason'.
-
-    Warnings:
-    --------- 
+    Warnings
+    -------- 
     - interpret_model doesn't support multiclass problems.
-         
+
     """
     
     
@@ -8292,10 +8245,7 @@ def calibrate_model(estimator,
                     round=4,
                     verbose=True):
     
-    """  
-     
-    Description:
-    ------------
+    """
     This function takes the input of trained estimator and performs probability 
     calibration with sigmoid or isotonic regression. The output prints a score 
     grid that shows Accuracy, AUC, Recall, Precision, F1, Kappa and MCC by fold 
@@ -8306,48 +8256,47 @@ def calibrate_model(estimator,
 
     This function returns a trained model object. 
 
-        Example
-        -------
-        from pycaret.datasets import get_data
-        juice = get_data('juice')
-        experiment_name = setup(data = juice,  target = 'Purchase')
-        dt_boosted = create_model('dt', ensemble = True, method = 'Boosting')
-        
-        calibrated_dt = calibrate_model(dt_boosted)
+    Example
+    -------
+    >>> from pycaret.datasets import get_data
+    >>> juice = get_data('juice')
+    >>> experiment_name = setup(data = juice,  target = 'Purchase')
+    >>> dt_boosted = create_model('dt', ensemble = True, method = 'Boosting')
+    >>> calibrated_dt = calibrate_model(dt_boosted)
 
-        This will return Calibrated Boosted Decision Tree Model.
+    This will return Calibrated Boosted Decision Tree Model.
 
     Parameters
     ----------
     estimator : object
     
     method : string, default = 'sigmoid'
-    The method to use for calibration. Can be 'sigmoid' which corresponds to Platt's 
-    method or 'isotonic' which is a non-parametric approach. It is not advised to use
-    isotonic calibration with too few calibration samples
+        The method to use for calibration. Can be 'sigmoid' which corresponds to Platt's 
+        method or 'isotonic' which is a non-parametric approach. It is not advised to use
+        isotonic calibration with too few calibration samples
 
     fold: integer, default = 10
-    Number of folds to be used in Kfold CV. Must be at least 2. 
+        Number of folds to be used in Kfold CV. Must be at least 2. 
 
     round: integer, default = 4
-    Number of decimal places the metrics in the score grid will be rounded to. 
+        Number of decimal places the metrics in the score grid will be rounded to. 
 
     verbose: Boolean, default = True
-    Score grid is not printed when verbose is set to False.
+        Score grid is not printed when verbose is set to False.
 
-    Returns:
+    Returns
+    -------
+    score_grid
+        A table containing the scores of the model across the kfolds. 
+        Scoring metrics used are Accuracy, AUC, Recall, Precision, F1, 
+        Kappa and MCC. Mean and standard deviation of the scores across 
+        the folds are also returned.
+
+    model
+        trained and calibrated model object.
+
+    Warnings
     --------
-
-    score grid:   A table containing the scores of the model across the kfolds. 
-    -----------   Scoring metrics used are Accuracy, AUC, Recall, Precision, F1, 
-                  Kappa and MCC. Mean and standard deviation of the scores across 
-                  the folds are also returned.
-
-    model:        trained and calibrated model object.
-    -----------
-
-    Warnings:
-    ---------
     - Avoid isotonic calibration with too few calibration samples (<1000) since it 
       tends to overfit.
       
@@ -8949,36 +8898,30 @@ def calibrate_model(estimator,
 def evaluate_model(estimator):
     
     """
-          
-    Description:
-    ------------
     This function displays a user interface for all of the available plots for 
     a given estimator. It internally uses the plot_model() function. 
     
-        Example:
-        --------
-        from pycaret.datasets import get_data
-        juice = get_data('juice')
-        experiment_name = setup(data = juice,  target = 'Purchase')
-        lr = create_model('lr')
-        
-        evaluate_model(lr)
-        
-        This will display the User Interface for all of the plots for a given
-        estimator.
+    Example
+    -------
+    >>> from pycaret.datasets import get_data
+    >>> juice = get_data('juice')
+    >>> experiment_name = setup(data = juice,  target = 'Purchase')
+    >>> lr = create_model('lr')
+    >>> evaluate_model(lr)
+    
+    This will display the User Interface for all of the plots for a given
+    estimator.
 
     Parameters
     ----------
     estimator : object, default = none
-    A trained model object should be passed as an estimator. 
+        A trained model object should be passed as an estimator. 
 
-    Returns:
-    --------
+    Returns
+    -------
+    User_Interface
+        Displays the user interface for plotting.
 
-    User Interface:  Displays the user interface for plotting.
-    --------------
-       
-         
     """
         
         
@@ -9018,37 +8961,32 @@ def evaluate_model(estimator):
 def finalize_model(estimator):
     
     """
-          
-    Description:
-    ------------
     This function fits the estimator onto the complete dataset passed during the
     setup() stage. The purpose of this function is to prepare for final model
     deployment after experimentation. 
     
-        Example:
-        --------
-        from pycaret.datasets import get_data
-        juice = get_data('juice')
-        experiment_name = setup(data = juice,  target = 'Purchase')
-        lr = create_model('lr')
-        
-        final_lr = finalize_model(lr)
-        
-        This will return the final model object fitted to complete dataset. 
+    Example
+    -------
+    >>> from pycaret.datasets import get_data
+    >>> juice = get_data('juice')
+    >>> experiment_name = setup(data = juice,  target = 'Purchase')
+    >>> lr = create_model('lr')
+    >>> final_lr = finalize_model(lr)
+    
+    This will return the final model object fitted to complete dataset. 
 
     Parameters
     ----------
     estimator : object, default = none
-    A trained model object should be passed as an estimator. 
+        A trained model object should be passed as an estimator. 
 
-    Returns:
+    Returns
+    -------
+    model
+        Trained model object fitted on complete dataset.
+
+    Warnings
     --------
-
-    Model:  Trained model object fitted on complete dataset.
-    ------   
-
-    Warnings:
-    ---------
     - If the model returned by finalize_model(), is used on predict_model() without 
       passing a new unseen dataset, then the information grid printed is misleading 
       as the model is trained on the complete dataset including test / hold-out sample. 
@@ -9271,42 +9209,38 @@ def finalize_model(estimator):
 def save_model(model, model_name, model_only=False, verbose=True):
     
     """
-          
-    Description:
-    ------------
     This function saves the transformation pipeline and trained model object 
     into the current active directory as a pickle file for later use. 
     
-        Example:
-        --------
-        from pycaret.datasets import get_data
-        juice = get_data('juice')
-        experiment_name = setup(data = juice,  target = 'Purchase')
-        lr = create_model('lr')
-        
-        save_model(lr, 'lr_model_23122019')
-        
-        This will save the transformation pipeline and model as a binary pickle
-        file in the current active directory. 
+    Example
+    -------
+    >>> from pycaret.datasets import get_data
+    >>> juice = get_data('juice')
+    >>> experiment_name = setup(data = juice,  target = 'Purchase')
+    >>> lr = create_model('lr')
+    >>> save_model(lr, 'lr_model_23122019')
+    
+    This will save the transformation pipeline and model as a binary pickle
+    file in the current active directory. 
 
     Parameters
     ----------
     model : object, default = none
-    A trained model object should be passed as an estimator. 
+        A trained model object should be passed as an estimator. 
     
     model_name : string, default = none
-    Name of pickle file to be passed as a string.
+        Name of pickle file to be passed as a string.
     
     model_only : bool, default = False
-    When set to True, only trained model object is saved and all the 
-    transformations are ignored.
+        When set to True, only trained model object is saved and all the 
+        transformations are ignored.
 
     verbose: Boolean, default = True
-    Success message is not printed when verbose is set to False.
+        Success message is not printed when verbose is set to False.
 
-    Returns:
-    --------    
-    Success Message
+    Returns
+    -------
+    Success_Message
     
          
     """
@@ -9369,41 +9303,38 @@ def load_model(model_name,
                verbose=True):
     
     """
-          
-    Description:
-    ------------
     This function loads a previously saved transformation pipeline and model 
     from the current active directory into the current python environment. 
     Load object must be a pickle file.
     
-        Example:
-        --------
-        saved_lr = load_model('lr_model_23122019')
-        
-        This will load the previously saved model in saved_lr variable. The file 
-        must be in the current directory.
+    Example
+    -------
+    >>> saved_lr = load_model('lr_model_23122019')
+    
+    This will load the previously saved model in saved_lr variable. The file 
+    must be in the current directory.
 
     Parameters
     ----------
     model_name : string, default = none
-    Name of pickle file to be passed as a string.
+        Name of pickle file to be passed as a string.
       
     platform: string, default = None
-    Name of platform, if loading model from cloud. Current available options are:
-    'aws'.
+        Name of platform, if loading model from cloud. Current available options are:
+        'aws'.
     
     authentication : dict
-    dictionary of applicable authentication tokens. 
-    
-     When platform = 'aws': 
-     {'bucket' : 'Name of Bucket on S3'}
+        Dictionary of applicable authentication tokens. 
+
+        When platform = 'aws': 
+        {'bucket' : 'Name of Bucket on S3'}
     
     verbose: Boolean, default = True
-    Success message is not printed when verbose is set to False.
+        Success message is not printed when verbose is set to False.
 
-    Returns:
-    --------    
-    Success Message
+    Returns
+    -------
+    Success_Message
        
          
     """
@@ -9447,48 +9378,44 @@ def predict_model(estimator,
                   verbose=True): #added in pycaret==2.0.0
     
     """
-       
-    Description:
-    ------------
     This function is used to predict label and probability score on the new dataset
     using a trained estimator. New unseen data can be passed to data param as pandas 
     Dataframe. If data is not passed, the test / hold-out set separated at the time of 
     setup() is used to generate predictions. 
     
-        Example:
-        --------
-        from pycaret.datasets import get_data
-        juice = get_data('juice')
-        experiment_name = setup(data = juice,  target = 'Purchase')
-        lr = create_model('lr')
-        
-        lr_predictions_holdout = predict_model(lr)
+    Example
+    -------
+    >>> from pycaret.datasets import get_data
+    >>> juice = get_data('juice')
+    >>> experiment_name = setup(data = juice,  target = 'Purchase')
+    >>> lr = create_model('lr')
+    >>> lr_predictions_holdout = predict_model(lr)
         
     Parameters
     ----------
     estimator : object, default = none
-    A trained model object / pipeline should be passed as an estimator. 
+        A trained model object / pipeline should be passed as an estimator. 
      
-    data : {array-like, sparse matrix}, shape (n_samples, n_features) where n_samples 
-    is the number of samples and n_features is the number of features. All features 
-    used during training must be present in the new dataset.
+    data : {array-like, sparse matrix}
+        Shape (n_samples, n_features) where n_samples is the number of samples and n_features is the number of features.
+        All features used during training must be present in the new dataset.
     
     probability_threshold : float, default = None
-    threshold used to convert probability values into binary outcome. By default the
-    probability threshold for all binary classifiers is 0.5 (50%). This can be changed
-    using probability_threshold param.
+        Threshold used to convert probability values into binary outcome. By default the
+        probability threshold for all binary classifiers is 0.5 (50%). This can be changed
+        using probability_threshold param.
 
     verbose: Boolean, default = True
-    Holdout score grid is not printed when verbose is set to False.
+        Holdout score grid is not printed when verbose is set to False.
 
-    Returns:
-    --------
+    Returns
+    -------
+    Predictions
+        Predictions (Label and Score) column attached to the original dataset
+        and returned as pandas dataframe.
 
-    Predictions:  Predictions (Label and Score) column attached to the original dataset
-    -----------   and returned as pandas dataframe.
-
-    score grid:   A table containing the scoring metrics on hold-out / test set.
-    -----------       
+    score_grid
+        A table containing the scoring metrics on hold-out / test set.
     
     """
     
@@ -9684,9 +9611,6 @@ def deploy_model(model,
                  platform = 'aws'):
     
     """
-       
-    Description:
-    ------------
     (In Preview)
 
     This function deploys the transformation pipeline and trained model object for
@@ -9694,54 +9618,53 @@ def deploy_model(model,
     param along with the applicable authentication tokens which are passed as a
     dictionary to the authentication param.
     
-        Example:
-        --------
-        from pycaret.datasets import get_data
-        juice = get_data('juice')
-        experiment_name = setup(data = juice,  target = 'Purchase')
-        lr = create_model('lr')
-        
-        deploy_model(model = lr, model_name = 'deploy_lr', platform = 'aws', 
-                     authentication = {'bucket' : 'pycaret-test'})
-        
-        This will deploy the model on an AWS S3 account under bucket 'pycaret-test'
-        
-        For AWS users:
-        --------------
-        Before deploying a model to an AWS S3 ('aws'), environment variables must be 
-        configured using the command line interface. To configure AWS env. variables, 
-        type aws configure in your python command line. The following information is
-        required which can be generated using the Identity and Access Management (IAM) 
-        portal of your amazon console account:
+    Example
+    -------
+    >>> from pycaret.datasets import get_data
+    >>> juice = get_data('juice')
+    >>> experiment_name = setup(data = juice,  target = 'Purchase')
+    >>> lr = create_model('lr')
+    >>> deploy_model(model = lr, model_name = 'deploy_lr', platform = 'aws', authentication = {'bucket' : 'pycaret-test'})
     
-           - AWS Access Key ID
-           - AWS Secret Key Access
-           - Default Region Name (can be seen under Global settings on your AWS console)
-           - Default output format (must be left blank)
+    This will deploy the model on an AWS S3 account under bucket 'pycaret-test'
+    
+    Notes
+    -----
+    For AWS users:
+    Before deploying a model to an AWS S3 ('aws'), environment variables must be 
+    configured using the command line interface. To configure AWS env. variables, 
+    type aws configure in your python command line. The following information is
+    required which can be generated using the Identity and Access Management (IAM) 
+    portal of your amazon console account:
+
+    - AWS Access Key ID
+    - AWS Secret Key Access
+    - Default Region Name (can be seen under Global settings on your AWS console)
+    - Default output format (must be left blank)
 
     Parameters
     ----------
     model : object
-    A trained model object should be passed as an estimator. 
+        A trained model object should be passed as an estimator. 
     
     model_name : string
-    Name of model to be passed as a string.
+        Name of model to be passed as a string.
     
     authentication : dict
-    dictionary of applicable authentication tokens. 
+        Dictionary of applicable authentication tokens. 
       
-     When platform = 'aws': 
-     {'bucket' : 'Name of Bucket on S3'}
+        When platform = 'aws': 
+        {'bucket' : 'Name of Bucket on S3'}
     
     platform: string, default = 'aws'
-    Name of platform for deployment. Current available options are: 'aws'.
+        Name of platform for deployment. Current available options are: 'aws'.
 
-    Returns:
-    --------    
-    Success Message
+    Returns
+    -------
+    Success_Message
     
-    Warnings:
-    ---------
+    Warnings
+    --------
     - This function uses file storage services to deploy the model on cloud platform. 
       As such, this is efficient for batch-use. Where the production objective is to 
       obtain prediction at an instance level, this may not be the efficient choice as 
@@ -9827,9 +9750,6 @@ def optimize_threshold(estimator,
                        false_negative = 0):
     
     """
-       
-    Description:
-    ------------
     This function optimizes probability threshold for a trained model using custom cost
     function that can be defined using combination of True Positives, True Negatives,
     False Positives (also known as Type I error), and False Negatives (Type II error).
@@ -9837,44 +9757,41 @@ def optimize_threshold(estimator,
     This function returns a plot of optimized cost as a function of probability 
     threshold between 0 to 100. 
 
-        Example
-        -------
-        from pycaret.datasets import get_data
-        juice = get_data('juice')
-        experiment_name = setup(data = juice,  target = 'Purchase')
-        
-        lr = create_model('lr')
-        
-        optimize_threshold(lr, true_negative = 10, false_negative = -100)
+    Example
+    -------
+    >>> from pycaret.datasets import get_data
+    >>> juice = get_data('juice')
+    >>> experiment_name = setup(data = juice,  target = 'Purchase')
+    >>> lr = create_model('lr')
+    >>> optimize_threshold(lr, true_negative = 10, false_negative = -100)
 
-        This will return a plot of optimized cost as a function of probability threshold.
+    This will return a plot of optimized cost as a function of probability threshold.
 
     Parameters
     ----------
     estimator : object
-    A trained model object should be passed as an estimator. 
+        A trained model object should be passed as an estimator. 
     
     true_positive : int, default = 0
-    Cost function or returns when prediction is true positive.  
+        Cost function or returns when prediction is true positive.  
     
     true_negative : int, default = 0
-    Cost function or returns when prediction is true negative.
+        Cost function or returns when prediction is true negative.
     
     false_positive : int, default = 0
-    Cost function or returns when prediction is false positive.    
+        Cost function or returns when prediction is false positive.    
     
     false_negative : int, default = 0
-    Cost function or returns when prediction is false negative.       
+        Cost function or returns when prediction is false negative.       
     
     
-    Returns:
+    Returns
+    -------
+    Visual_Plot
+        Prints the visual plot. 
+
+    Warnings
     --------
-
-    Visual Plot:  Prints the visual plot. 
-    ------------
-
-    Warnings:
-    ---------
     - This function is not supported for multiclass problems.
       
        
@@ -10065,21 +9982,18 @@ def optimize_threshold(estimator,
 def automl(optimize='Accuracy', use_holdout=False):
     
     """
-    Description:
-    ------------
     This function returns the best model out of all models created in 
     current active environment based on metric defined in optimize parameter. 
 
     Parameters
     ----------
     optimize : string, default = 'Accuracy'
-    Other values you can pass in optimize param are 'AUC', 'Recall', 'Precision',
-    'F1', 'Kappa', and 'MCC'.
+        Other values you can pass in optimize param are 'AUC', 'Recall', 'Precision',
+        'F1', 'Kappa', and 'MCC'.
 
     use_holdout: bool, default = False
-    When set to True, metrics are evaluated on holdout set instead of CV.
-    
-    
+        When set to True, metrics are evaluated on holdout set instead of CV.
+
     """
 
     import logging
@@ -10157,32 +10071,40 @@ def automl(optimize='Accuracy', use_holdout=False):
     return automl_finalized
 
 def pull():
+    """
+    Returns latest displayed table.
+
+    Returns
+    -------
+    pandas.DataFrame
+        Equivalent to get_config('display_container')[-1]
+
+    """
     return display_container[-1]
 
 def models(type=None):
 
     """
-
-    Description:
-    ------------
     Returns table of models available in model library.
 
-        Example
-        -------
-        all_models = models()
+    Example
+    -------
+    >>> all_models = models()
 
-        This will return pandas dataframe with all available 
-        models and their metadata.
+    This will return pandas dataframe with all available 
+    models and their metadata.
 
     Parameters
     ----------
     type : string, default = None
-    
-      - linear : filters and only return linear models
-      - tree : filters and only return tree based models
-      - ensemble : filters and only return ensemble models
+        - linear : filters and only return linear models
+        - tree : filters and only return tree based models
+        - ensemble : filters and only return ensemble models
       
-    
+    Returns
+    -------
+    pandas.DataFrame
+
     """
     
     import pandas as pd
@@ -10253,27 +10175,27 @@ def models(type=None):
 def get_logs(experiment_name = None, save = False):
 
     """
-
-    Description:
-    ------------
     Returns a table with experiment logs consisting
     run details, parameter, metrics and tags. 
 
-        Example
-        -------
-        logs = get_logs()
+    Example
+    -------
+    >>> logs = get_logs()
 
-        This will return pandas dataframe.
+    This will return pandas dataframe.
 
     Parameters
     ----------
     experiment_name : string, default = None
-    When set to None current active run is used.
+        When set to None current active run is used.
 
     save : bool, default = False
-    When set to True, csv file is saved in current directory.
-      
-    
+        When set to True, csv file is saved in current directory.
+
+    Returns
+    -------
+    pandas.DataFrame
+
     """
 
     import sys
@@ -10303,8 +10225,6 @@ def get_logs(experiment_name = None, save = False):
 def get_config(variable):
 
     """
-    Description:
-    ------------
     This function is used to access global environment variables.
     Following variables can be accessed:
 
@@ -10329,13 +10249,16 @@ def get_config(variable):
     - fix_imbalance_param: fix_imbalance param set through setup
     - fix_imbalance_method_param: fix_imbalance_method param set through setup
 
-        Example:
-        --------
-        X_train = get_config('X_train') 
+    Example
+    -------
+    >>> X_train = get_config('X_train') 
 
-        This will return X_train transformed dataset.
-          
-      
+    This will return X_train transformed dataset.
+
+    Returns
+    -------
+    variable
+
     """
 
     import logging
@@ -10434,8 +10357,6 @@ def get_config(variable):
 def set_config(variable,value):
 
     """
-    Description:
-    ------------
     This function is used to reset global environment variables.
     Following variables can be accessed:
 
@@ -10460,13 +10381,12 @@ def set_config(variable,value):
     - fix_imbalance_param: fix_imbalance param set through setup
     - fix_imbalance_method_param: fix_imbalance_method param set through setup
 
-        Example:
-        --------
-        set_config('seed', 123) 
+    Example
+    -------
+    >>> set_config('seed', 123) 
 
-        This will set the global seed to '123'.
-            
-      
+    This will set the global seed to '123'.
+
     """
 
     import logging

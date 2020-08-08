@@ -20,14 +20,24 @@ Regression
 .. automodule:: pycaret.regression
    :members:
 
+Classification
+===================
+.. automodule:: pycaret.classification
+   :members:
+
 NLP
 ===================
 .. automodule:: pycaret.nlp
    :members:
 
-Preprocess
+Clustering
 ===================
-.. automodule:: pycaret.preprocess
+.. automodule:: pycaret.clustering
+   :members:
+
+Anomaly
+===================
+.. automodule:: pycaret.anomaly
    :members:
 
 Datasets
@@ -35,24 +45,9 @@ Datasets
 .. automodule:: pycaret.datasets
    :members:
 
-Clustering
-===================
-.. automodule:: pycaret.Clustering
-   :members:
-
-Classification
-===================
-.. automodule:: pycaret.Classification
-   :members:
-
 Arules
 ===================
 .. automodule:: pycaret.arules
-   :members:
-
-Anomaly
-===================
-.. automodule:: pycaret.anomaly
    :members:
 
 Indices and tables
