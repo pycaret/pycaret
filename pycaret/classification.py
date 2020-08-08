@@ -9697,18 +9697,18 @@ def predict_model(estimator,
         if platform == 'aws':
             estimator_ = load_model(str(estimator), platform='aws', 
                                    authentication={'bucket': authentication.get('bucket')},
-                                   verbose=False)
+                                   verbose=verbose)
 
         elif platform == 'gcp':
             estimator_ = load_model(estimator, platform='gcp',
                                    authentication=authentication,
-                                   verbose=False)
+                                   verbose=verbose)
         elif platform == 'azure':
             estimator_ = load_model(str(estimator), platform='azure',
                                    authentication=authentication,
-                                   verbose=False)
+                                   verbose=verbose)
         else:
-            estimator_ = load_model(str(estimator), verbose=False)
+            estimator_ = load_model(str(estimator), verbose=verbose)
             
     else:
         
@@ -11325,34 +11325,41 @@ def download_blob_gcp(project_name, bucket_name, source_blob_name, destination_f
 import os, uuid
 from azure.storage.blob import BlobServiceClient, BlobClient, ContainerClient
 
-
 def create_container_azure(container_name):
 
-  # Create the container
-  container_client = blob_service_client.create_container(container_name)
+    # Create the container
+    connect_str = os.getenv('AZURE_STORAGE_CONNECTION_STRING')
+    blob_service_client = BlobServiceClient.from_connection_string(connect_str)
+    container_client = blob_service_client.create_container(container_name)
 
-  return container_client
+    return container_client
+
 
 def upload_blob_azure(container_name, source_file_name, destination_blob_name):
 
-  # Create a blob client using the local file name as the name for the blob
-  blob_client = blob_service_client.get_blob_client(container=container_name, blob=destination_blob_name)
+    connect_str = os.getenv('AZURE_STORAGE_CONNECTION_STRING')
 
-  print("\nUploading to Azure Storage as blob:\n\t" + source_file_name)
+    blob_service_client = BlobServiceClient.from_connection_string(connect_str)
+    # Create a blob client using the local file name as the name for the blob
+    blob_client = blob_service_client.get_blob_client(container=container_name, blob=destination_blob_name)
 
-  # Upload the created file
-  with open(source_file_name, "rb") as data:
+    print("\nUploading to Azure Storage as blob:\n\t" + source_file_name)
+
+    # Upload the created file
+    with open(source_file_name, "rb") as data:
       blob_client.upload_blob(data)
 
 
 def download_blob_azure(container_name, source_blob_name, destination_file_name):
-  # Download the blob to a local file
-  print("\nDownloading blob to \n\t" + destination_file_name)
+    # Download the blob to a local file
+    print("\nDownloading blob to \n\t" + destination_file_name)
 
-  # Create a blob client using the local file name as the name for the blob
-  blob_client = blob_service_client.get_blob_client(container=container_name, blob=source_blob_name)
+    connect_str = os.getenv('AZURE_STORAGE_CONNECTION_STRING')
+    blob_service_client = BlobServiceClient.from_connection_string(connect_str)
+    # Create a blob client using the local file name as the name for the blob
+    blob_client = blob_service_client.get_blob_client(container=container_name, blob=source_blob_name)
 
-  if destination_file_name is not None:
+    if destination_file_name is not None:
         with open(destination_file_name, "wb") as download_file:
           download_file.write(blob_client.download_blob().readall())
 
