@@ -2,7 +2,7 @@
 # Author: Moez Ali <moez.ali@queensu.ca>
 # License: MIT
 # Release: PyCaret 2.1x
-# Last modified : 06/08/2020
+# Last modified : 07/08/2020
 
 def setup(data, 
           target, 
@@ -8100,7 +8100,7 @@ def finalize_model(estimator):
 
     return model_final
 
-def save_model(model, model_name, verbose=True):
+def save_model(model, model_name, model_only=False, verbose=True):
     
     """
           
@@ -8115,9 +8115,9 @@ def save_model(model, model_name, verbose=True):
         boston = get_data('boston')
         experiment_name = setup(data = boston,  target = 'medv')
         lr = create_model('lr')
-        
+
         save_model(lr, 'lr_model_23122019')
-        
+
         This will save the transformation pipeline and model as a binary pickle
         file in the current directory. 
 
@@ -8128,7 +8128,11 @@ def save_model(model, model_name, verbose=True):
     
     model_name : string, default = none
     Name of pickle file to be passed as a string.
-    
+
+    model_only : bool, default = False
+    When set to True, only trained model object is saved and all the 
+    transformations are ignored.
+
     verbose: Boolean, default = True
     Success message is not printed when verbose is set to False.
 
@@ -8140,6 +8144,7 @@ def save_model(model, model_name, verbose=True):
     """
     
     import logging
+    from copy import deepcopy
 
     try:
         hasattr(logger, 'name')
@@ -8164,18 +8169,19 @@ def save_model(model, model_name, verbose=True):
         logger.addHandler(ch)
 
     logger.info("Initializing save_model()")
-    logger.info("""save_model(model={}, model_name={}, verbose={})""".\
-        format(str(model), str(model_name), str(verbose)))
+    logger.info("""save_model(model={}, model_name={}, model_only={}, verbose={})""".\
+        format(str(model), str(model_name), str(model_only), str(verbose)))
 
     #ignore warnings
     import warnings
     warnings.filterwarnings('ignore') 
     
-    logger.info("Appending prep pipeline")
-    model_ = []
-    model_.append(prep_pipe)
-    model_.append(model)
-    model_.append(target_inverse_transformer)
+    if model_only:
+        model_ = deepcopy(model)
+        logger.warning("Only Model saved. Transformations in prep_pipe are ignored.")
+    else:
+        model_ = deepcopy(prep_pipe)
+        model_.steps.append(['trained model',model])
     
     import joblib
     model_name = model_name + '.pkl'
@@ -8269,8 +8275,6 @@ def load_model(model_name,
 
 def predict_model(estimator, 
                   data=None,
-                  platform=None,
-                  authentication=None,
                   round=4,
                   verbose=True): #added in pycaret==2.0.0
     
@@ -8278,12 +8282,10 @@ def predict_model(estimator,
        
     Description:
     ------------
-    This function is used to predict new data using a trained estimator. It accepts
-    an estimator created using one of the function in pycaret that returns a trained 
-    model object or a list of trained model objects created using stack_models() or 
-    create_stacknet(). New unseen data can be passed to data param as pandas Dataframe. 
-    If data is not passed, the test / hold-out set separated at the time of setup() is
-    used to generate predictions. 
+    This function is used to predict target value on the new dataset using a trained 
+    estimator. New unseen data can be passed to data param as pandas Dataframe. 
+    If data is not passed, the test / hold-out set separated at the time of 
+    setup() is used to generate predictions. 
     
         Example:
         --------
@@ -8296,24 +8298,13 @@ def predict_model(estimator,
         
     Parameters
     ----------
-    estimator : object or list of objects / string,  default = None
-    When estimator is passed as string, load_model() is called internally to load the
-    pickle file from active directory or cloud platform when platform param is passed.
+    estimator : object, default = none
+    A trained model object / pipeline should be passed as an estimator. 
     
     data : {array-like, sparse matrix}, shape (n_samples, n_features) where n_samples 
     is the number of samples and n_features is the number of features. All features 
     used during training must be present in the new dataset.
     
-    platform: string, default = None
-    Name of platform, if loading model from cloud. Current available options are:
-    'aws'.
-    
-    authentication : dict
-    dictionary of applicable authentication tokens. 
-    
-     When platform = 'aws': 
-     {'bucket' : 'Name of Bucket on S3'}
-     
     round: integer, default = 4
     Number of decimal places the predicted labels will be rounded to.
     
@@ -8323,99 +8314,43 @@ def predict_model(estimator,
     Returns:
     --------
 
-    info grid:    Information grid is printed when data is None.
-    ----------      
-    
-    Warnings:
-    ---------
-    - if the estimator passed is created using finalize_model() then the metrics 
-      printed in the information grid maybe misleading as the model is trained on
-      the complete dataset including the test / hold-out set. Once finalize_model() 
-      is used, the model is considered ready for deployment and should be used on new 
-      unseen datasets only.
-      
-    
+    Predictions:  Predictions (Label and Score) column attached to the original dataset
+    -----------   and returned as pandas dataframe.
+
+    score grid:   A table containing the scoring metrics on hold-out / test set.
+    -----------              
     
     """
     
-    #ignore warnings
+    # ignore warnings
     import warnings
     warnings.filterwarnings('ignore') 
-    
-    #testing
-    #global pred_, target_transformer
-    
-    #general dependencies
+
+    # general dependencies
     import sys
     import numpy as np
     import pandas as pd
     import re
     from sklearn import metrics
     from copy import deepcopy
-    from IPython.display import clear_output, update_display
+    from IPython.display import clear_output, update_display, display
     
     def calculate_mape(actual, prediction):
         mask = actual != 0
         return (np.fabs(actual - prediction)/actual)[mask].mean()
-    
-    estimator = deepcopy(estimator)
-
-    try:
-        clear_output()
-    except:
-        pass
-    
-    if type(estimator) is str:
-        if platform == 'aws':
-            estimator_ = load_model(str(estimator), platform='aws', 
-                                   authentication={'bucket': authentication.get('bucket')},
-                                   verbose=False)
-            
-        else:
-            estimator_ = load_model(str(estimator), verbose=False)
-            
-    else:
         
-        estimator_ = estimator
+    # retrieve target transformation
+    try:
+        target_transformer = target_inverse_transformer
+    except:
+        target_transformer = estimator.steps[13][1].p_transform_target # make it dynamic instead of hardcoding no 13
             
-    if type(estimator_) is list:
-
-        if 'sklearn.pipeline.Pipeline' in str(type(estimator_[0])):
-
-            prep_pipe_transformer = estimator_.pop(0)
-            model = estimator_[0]
-            estimator = estimator_[0]
-            target_transformer = estimator_[1]
-
-        else:
-            
-            try:
-
-                prep_pipe_transformer = prep_pipe
-                target_transformer = target_inverse_transformer
-                model = estimator
-                estimator = estimator
-                
-            except:
-                
-                sys.exit("(Type Error): Transformation Pipeline Missing. ")
-            
-    else:
-
-        try:
-
-            prep_pipe_transformer = prep_pipe
-            target_transformer = target_inverse_transformer
-            model = estimator
-            estimator = estimator
-            
-        except:
-            
-            sys.exit("(Type Error): Transformation Pipeline Missing. ")
-            
-    #dataset
+    # dataset
     if data is None:
         
+        if 'Pipeline' in str(type(estimator)):
+            estimator = estimator[-1]
+
         Xtest = X_test.copy()
         ytest = y_test.copy()
         X_test_ = X_test.copy()
@@ -8425,371 +8360,110 @@ def predict_model(estimator,
         ytest.reset_index(drop=True, inplace=True)
         X_test_.reset_index(drop=True, inplace=True)
         y_test_.reset_index(drop=True, inplace=True)
-        
-        model = estimator
-        estimator_ = estimator
-        
+
     else:
         
-        Xtest = prep_pipe_transformer.transform(data)                     
-        X_test_ = data.copy() #original concater
-        
-        Xtest.reset_index(drop=True, inplace=True)
-        X_test_.reset_index(drop=True, inplace=True)
-        
-        estimator_ = estimator
-
-    if type(estimator) is list:
-        
-        if type(estimator[0]) is list:
-        
-            """
-            Multiple Layer Stacking
-            """
-            
-            #utility
-            stacker = model
-            restack = stacker.pop()
-            #stacker_method = stacker.pop()
-            #stacker_method = stacker_method[0]
-            stacker_meta = stacker.pop()
-            stacker_base = stacker.pop(0)
-
-            #base model names
-            base_model_names = []
-
-            #defining base_level_names
-            for i in stacker_base:
-                b = str(i).split("(")[0]
-                base_model_names.append(b)
-
-            base_level_fixed = []
-
-            for i in base_model_names:
-                if 'CatBoostRegressor' in i:
-                    a = 'CatBoostRegressor'
-                    base_level_fixed.append(a)
-                else:
-                    base_level_fixed.append(i)
-
-            base_level_fixed_2 = []
-
-            counter = 0
-            for i in base_level_fixed:
-                s = str(i) + '_' + 'BaseLevel_' + str(counter)
-                base_level_fixed_2.append(s)
-                counter += 1
-
-            base_level_fixed = base_level_fixed_2
-
-            """
-            base level predictions
-            """
-            base_pred = []
-            for i in stacker_base:
-                a = i.predict(Xtest) #change
-                base_pred.append(a)
-
-            base_pred_df = pd.DataFrame()
-            for i in base_pred:
-                a = pd.DataFrame(i)
-                base_pred_df = pd.concat([base_pred_df, a], axis=1)
-
-            base_pred_df.columns = base_level_fixed
-            
-            base_pred_df_no_restack = base_pred_df.copy()
-            base_pred_df = pd.concat([Xtest,base_pred_df], axis=1)
-            
-
-            """
-            inter level predictions
-            """
-
-            inter_pred = []
-            combined_df = pd.DataFrame(base_pred_df)
-
-            inter_counter = 0
-
-            for level in stacker:
-
-                inter_pred_df = pd.DataFrame()
-
-                model_counter = 0 
-
-                for model in level:
-                    try:
-                        if inter_counter == 0:
-                            try:
-                                p = model.predict(base_pred_df)
-                            except:
-                                p = model.predict(base_pred_df_no_restack)
-                            
-                        else:
-                            p = model.predict(last_level_df)
-            
-                    except:
-                        p = model.predict(combined_df)
-
-                    p = pd.DataFrame(p)
-
-                    col = str(model).split("(")[0]
-                    if 'CatBoostRegressor' in col:
-                        col = 'CatBoostRegressor'
-                    col = col + '_InterLevel_' + str(inter_counter) + '_' + str(model_counter)
-                    p.columns = [col]
-
-                    inter_pred_df = pd.concat([inter_pred_df, p], axis=1)
-
-                    model_counter += 1
-
-                last_level_df = inter_pred_df.copy()
-
-                inter_counter += 1
-
-                combined_df = pd.concat([combined_df,inter_pred_df], axis=1)
-
-            """
-            meta final predictions
-            """
-
-            #final meta predictions
-            try:
-                pred_ = stacker_meta.predict(combined_df)
-            except:
-                pred_ = stacker_meta.predict(inter_pred_df)
-            
-            try:
-                pred_ = target_transformer.inverse_transform(np.array(pred_).reshape(-1,1))
-                pred_ = np.nan_to_num(pred_)
-                
-            except:
-                pred_ = np.nan_to_num(pred_)
-                
-            if data is None:
-                
-                try:
-                    ytest = target_transformer.inverse_transform(np.array(ytest).reshape(-1,1))
-                    ytest = pd.DataFrame(np.nan_to_num(ytest))
-                    
-                except:
-                    pass
-                mae = metrics.mean_absolute_error(ytest,pred_)
-                mse = metrics.mean_squared_error(ytest,pred_)
-                rmse = np.sqrt(mse)
-                rmsle = np.sqrt(np.mean(np.power(np.log(np.array(abs(pred_))+1) - np.log(np.array(abs(ytest))+1), 2)))
-                r2 = metrics.r2_score(ytest,pred_)
-                mape = calculate_mape(ytest,pred_)
-
-                df_score = pd.DataFrame( {'Model' : 'Stacking Regressor', 'MAE' : [mae], 'MSE' : [mse], 'RMSE' : [rmse], 
-                                          'R2' : [r2], 'RMSLE' : [rmsle], 'MAPE' : [mape]})
-                df_score = df_score.round(round)
-                if verbose:
-                    display(df_score)
-        
-            label = pd.DataFrame(pred_)
-            label = label.round(round)
-            label.columns = ['Label']
-            label['Label']=label['Label']
-
-            if data is None:
-                X_test_ = pd.concat([Xtest,ytest,label], axis=1)
-            else:
-                X_test_ = pd.concat([X_test_,label], axis=1)
-
+        if 'Pipeline' in str(type(estimator)):
+            pass
         else:
-            
-            """
-            Single Layer Stacking
-            """
-            
-            #copy
-            stacker = model
-            
-            #restack
-            restack = stacker.pop()
-
-            #separate metamodel
-            meta_model = stacker.pop()
-
-            model_names = []
-            for i in stacker:
-                model_names = np.append(model_names, str(i).split("(")[0])
-
-            model_names_fixed = []
-
-            for i in model_names:
-                if 'CatBoostRegressor' in i:
-                    a = 'CatBoostRegressor'
-                    model_names_fixed.append(a)
-                else:
-                    model_names_fixed.append(i)
-
-            model_names = model_names_fixed
-
-            model_names_fixed = []
-            counter = 0
-
-            for i in model_names:
-                s = str(i) + '_' + str(counter)
-                model_names_fixed.append(s)
-                counter += 1
-
-            model_names = model_names_fixed
-
-            base_pred = []
-
-            for i in stacker:
-                p = i.predict(Xtest) #change
-                base_pred.append(p)
-
-            df = pd.DataFrame()
-            for i in base_pred:
-                i = pd.DataFrame(i)
-                df = pd.concat([df,i], axis=1)
-
-            df.columns = model_names
-            
-            df_restack = pd.concat([Xtest,df], axis=1) #change
-
-            #ytest = y_test
-
-            #meta predictions starts here
-
-            #restacking check
             try:
-                pred_ = meta_model.predict(df)
+                estimator_ = deepcopy(prep_pipe)
+                estimator_.steps.append(['trained model',estimator])
+                estimator = estimator_
+                del(estimator_)
+
             except:
-                pred_ = meta_model.predict(df_restack) 
-                
-            try:
-                pred_ = target_transformer.inverse_transform(np.array(pred_).reshape(-1,1))
-                pred_ = np.nan_to_num(pred_)
-                
-            except:
-                pred_ = np.nan_to_num(pred_)
+                sys.exit("Pipeline not found")
             
-            if data is None:
-                
-                try:
-                    ytest = target_transformer.inverse_transform(np.array(ytest).reshape(-1,1))
-                    ytest = pd.DataFrame(np.nan_to_num(ytest))
-                    
-                except:
-                    pass
-                
-                mae = metrics.mean_absolute_error(ytest,pred_)
-                mse = metrics.mean_squared_error(ytest,pred_)
-                rmse = np.sqrt(mse)
-                rmsle = np.sqrt(np.mean(np.power(np.log(np.array(abs(pred_))+1) - np.log(np.array(abs(ytest))+1), 2)))
-                r2 = metrics.r2_score(ytest,pred_)
-                mape = calculate_mape(ytest,pred_)
+        Xtest = data.copy()
+        X_test_ = data.copy()
 
-                df_score = pd.DataFrame( {'Model' : 'Stacking Regressor', 'MAE' : [mae], 'MSE' : [mse], 'RMSE' : [rmse], 
-                                          'R2' : [r2], 'RMSLE' : [rmsle], 'MAPE' : [mape]})
-                df_score = df_score.round(round)
+    # model name
+    full_name = str(estimator).split("(")[0]
+    def putSpace(input):
+        words = re.findall('[A-Z][a-z]*', input)
+        words = ' '.join(words)
+        return words  
+    full_name = putSpace(full_name)
 
-                if verbose:
-                    display(df_score)
-                
-            label = pd.DataFrame(pred_)
-            label = label.round(round)
-            label.columns = ['Label']
-            label['Label']=label['Label']
+    if full_name == 'A R D Regression':
+        full_name = 'Automatic Relevance Determination'
 
-            if data is None:
-                X_test_ = pd.concat([Xtest,ytest,label], axis=1)
-            else:
-                X_test_ = pd.concat([X_test_,label], axis=1)
+    elif full_name == 'M L P Regressor':
+        full_name = 'MLP Regressor'
 
+    elif full_name == 'R A N S A C Regressor':
+        full_name = 'RANSAC Regressor'
 
-    else:
+    elif full_name == 'S V R':
+        full_name = 'Support Vector Regressor'
         
-        #model name
-        full_name = str(model).split("(")[0]
-        def putSpace(input):
-            words = re.findall('[A-Z][a-z]*', input)
-            words = ' '.join(words)
-            return words  
-        full_name = putSpace(full_name)
+    elif full_name == 'Lars':
+        full_name = 'Least Angle Regression'
+        
+    elif full_name == 'X G B Regressor':
+        full_name = 'Extreme Gradient Boosting Regressor'
 
-        if full_name == 'A R D Regression':
-            full_name = 'Automatic Relevance Determination'
+    elif full_name == 'L G B M Regressor':
+        full_name = 'Light Gradient Boosting Machine'
 
-        elif full_name == 'M L P Regressor':
-            full_name = 'MLP Regressor'
+    elif 'Cat Boost Regressor' in full_name:
+        full_name = 'CatBoost Regressor'
 
-        elif full_name == 'R A N S A C Regressor':
-            full_name = 'RANSAC Regressor'
+    # prediction starts here
+    pred_ = estimator.predict(Xtest)
 
-        elif full_name == 'S V R':
-            full_name = 'Support Vector Regressor'
-            
-        elif full_name == 'Lars':
-            full_name = 'Least Angle Regression'
-            
-        elif full_name == 'X G B Regressor':
-            full_name = 'Extreme Gradient Boosting Regressor'
+    try:
+        pred_ = target_transformer.inverse_transform(np.array(pred_).reshape(-1,1))
+        pred_ = np.nan_to_num(pred_)
 
-        elif full_name == 'L G B M Regressor':
-            full_name = 'Light Gradient Boosting Machine'
-
-        elif 'Cat Boost Regressor' in full_name:
-            full_name = 'CatBoost Regressor'
-
-        #prediction starts here
-        pred_ = model.predict(Xtest)
+    except:
+        pred_ = np.nan_to_num(pred_)
+        
+    if data is None:
         
         try:
-            pred_ = target_transformer.inverse_transform(np.array(pred_).reshape(-1,1))
-            pred_ = np.nan_to_num(pred_)
-        
+            ytest = target_transformer.inverse_transform(np.array(ytest).reshape(-1,1))
+            ytest = pd.DataFrame(np.nan_to_num(ytest))
+
         except:
-            pred_ = np.nan_to_num(pred_)
-            
-        if data is None:
-            
-            try:
-                ytest = target_transformer.inverse_transform(np.array(ytest).reshape(-1,1))
-                ytest = pd.DataFrame(np.nan_to_num(ytest))
+            pass
 
-            except:
-                pass
+        mae = metrics.mean_absolute_error(ytest,pred_)
+        mse = metrics.mean_squared_error(ytest,pred_)
+        rmse = np.sqrt(mse)
+        rmsle = np.sqrt(np.mean(np.power(np.log(np.array(abs(pred_))+1) - np.log(np.array(abs(ytest))+1), 2)))
+        r2 = metrics.r2_score(ytest,pred_)
+        mape = calculate_mape(ytest,pred_)
+                    
+        df_score = pd.DataFrame( {'Model' : [full_name], 'MAE' : [mae], 'MSE' : [mse], 'RMSE' : [rmse], 
+                                    'R2' : [r2], 'RMSLE' : [rmsle], 'MAPE' : mape })
+        df_score = df_score.round(4)
 
-            mae = metrics.mean_absolute_error(ytest,pred_)
-            mse = metrics.mean_squared_error(ytest,pred_)
-            rmse = np.sqrt(mse)
-            rmsle = np.sqrt(np.mean(np.power(np.log(np.array(abs(pred_))+1) - np.log(np.array(abs(ytest))+1), 2)))
-            r2 = metrics.r2_score(ytest,pred_)
-            mape = calculate_mape(ytest,pred_)
-                        
-            df_score = pd.DataFrame( {'Model' : [full_name], 'MAE' : [mae], 'MSE' : [mse], 'RMSE' : [rmse], 
-                                      'R2' : [r2], 'RMSLE' : [rmsle], 'MAPE' : [mape] })
-            df_score = df_score.round(4)
-
-            if verbose:
-                display(df_score)
-        
-            label = pd.DataFrame(pred_)
-            label = label.round(round)
-            label.columns = ['Label']
-            label['Label']=label['Label']
-
+        if verbose:
+            display(df_score)
+    
         label = pd.DataFrame(pred_)
         label = label.round(round)
         label.columns = ['Label']
         label['Label']=label['Label']
-        
-        if data is None:
-            X_test_ = pd.concat([Xtest,ytest,label], axis=1)
-        else:
-            X_test_ = pd.concat([X_test_,label], axis=1)
 
-    #store predictions on hold-out in display_container
+    label = pd.DataFrame(pred_)
+    label = label.round(round)
+    label.columns = ['Label']
+    label['Label']=label['Label']
+    
+    if data is None:
+        X_test_ = pd.concat([Xtest,ytest,label], axis=1)
+    else:
+        X_test_ = pd.concat([X_test_,label], axis=1)
+
+    # store predictions on hold-out in display_container
     try:
         display_container.append(df_score)
     except:
         pass
-    
+
     return X_test_
 
 def deploy_model(model, 
