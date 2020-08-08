@@ -21,7 +21,7 @@ nltk
 mlxtend
 pyod
 catboost
-pandas-profiling>=2.3.0
+pandas-profiling>=2.8.0
 kmodes>=0.10.1
 datefinder>=0.7.0
 DateTime>=4.3
