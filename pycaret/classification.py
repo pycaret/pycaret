@@ -4,6 +4,11 @@
 # Release: PyCaret 2.1x
 # Last modified : 07/08/2020
 
+def _declare_classification_metric_vars():
+    score_auc, score_acc, score_recall, score_precision, score_f1, score_kappa, score_mcc, score_training_time = [np.empty((0, 0))]*8
+    avgs_auc, avgs_acc, avgs_recall, avgs_precision, avgs_f1, avgs_kappa, avgs_mcc, avgs_training_time = [np.empty((0, 0))]*8
+
+
 def setup(data,  
           target,   
           train_size = 0.7, 
@@ -2235,22 +2240,9 @@ def create_model(estimator = None,
 
     logger.info("Declaring metric variables")
 
-    score_auc =np.empty((0,0))
-    score_acc =np.empty((0,0))
-    score_recall =np.empty((0,0))
-    score_precision =np.empty((0,0))
-    score_f1 =np.empty((0,0))
-    score_kappa =np.empty((0,0))
-    score_mcc =np.empty((0,0))
-    score_training_time =np.empty((0,0))
-    avgs_auc =np.empty((0,0))
-    avgs_acc =np.empty((0,0))
-    avgs_recall =np.empty((0,0))
-    avgs_precision =np.empty((0,0))
-    avgs_f1 =np.empty((0,0))
-    avgs_kappa =np.empty((0,0))
-    avgs_mcc =np.empty((0,0))
-    avgs_training_time =np.empty((0,0))
+    (score_auc, score_acc, score_recall, score_precision, score_f1, score_kappa, score_mcc, score_training_time,
+     avgs_auc, avgs_acc, avgs_recall, avgs_precision, avgs_f1, avgs_kappa, avgs_mcc,
+     avgs_training_time) = _declare_classification_metric_vars()
     
   
     '''
@@ -3224,22 +3216,10 @@ def ensemble_model(estimator,
     kf = StratifiedKFold(fold, random_state=seed, shuffle=folds_shuffle_param)
     
     logger.info("Declaring metric variables")
-    score_auc =np.empty((0,0))
-    score_acc =np.empty((0,0))
-    score_recall =np.empty((0,0))
-    score_precision =np.empty((0,0))
-    score_f1 =np.empty((0,0))
-    score_kappa =np.empty((0,0))
-    score_mcc =np.empty((0,0))
-    score_training_time =np.empty((0,0))
-    avgs_auc =np.empty((0,0))
-    avgs_acc =np.empty((0,0))
-    avgs_recall =np.empty((0,0))
-    avgs_precision =np.empty((0,0))
-    avgs_f1 =np.empty((0,0))
-    avgs_kappa =np.empty((0,0))
-    avgs_mcc =np.empty((0,0))
-    avgs_training_time =np.empty((0,0))
+
+    (score_auc, score_acc, score_recall, score_precision, score_f1, score_kappa, score_mcc, score_training_time,
+     avgs_auc, avgs_acc, avgs_recall, avgs_precision, avgs_f1, avgs_kappa, avgs_mcc,
+     avgs_training_time) = _declare_classification_metric_vars()
     
     
     fold_num = 1 
@@ -4821,23 +4801,11 @@ def compare_models(blacklist = None,
     kf = StratifiedKFold(fold, random_state=seed, shuffle=folds_shuffle_param)
 
     logger.info("Declaring metric variables")
-    score_acc =np.empty((0,0))
-    score_auc =np.empty((0,0))
-    score_recall =np.empty((0,0))
-    score_precision =np.empty((0,0))
-    score_f1 =np.empty((0,0))
-    score_kappa =np.empty((0,0))
-    score_acc_running = np.empty((0,0)) ##running total
-    score_mcc=np.empty((0,0))
-    score_training_time=np.empty((0,0))
-    avg_acc = np.empty((0,0))
-    avg_auc = np.empty((0,0))
-    avg_recall = np.empty((0,0))
-    avg_precision = np.empty((0,0))
-    avg_f1 = np.empty((0,0))
-    avg_kappa = np.empty((0,0))
-    avg_mcc=np.empty((0,0))
-    avg_training_time=np.empty((0,0))
+
+    (score_auc, score_acc, score_recall, score_precision, score_f1, score_kappa, score_mcc, score_training_time,
+     avg_auc, avg_acc, avg_recall, avg_precision, avg_f1, avg_kappa, avg_mcc,
+     avg_training_time) = _declare_classification_metric_vars()
+
     
     #create URI (before loop)
     import secrets
@@ -5520,22 +5488,10 @@ def tune_model(estimator = None,
     kf = StratifiedKFold(fold, random_state=seed, shuffle=folds_shuffle_param)
 
     logger.info("Declaring metric variables")
-    score_auc =np.empty((0,0))
-    score_acc =np.empty((0,0))
-    score_recall =np.empty((0,0))
-    score_precision =np.empty((0,0))
-    score_f1 =np.empty((0,0))
-    score_kappa =np.empty((0,0))
-    score_mcc=np.empty((0,0))
-    score_training_time=np.empty((0,0))
-    avgs_auc =np.empty((0,0))
-    avgs_acc =np.empty((0,0))
-    avgs_recall =np.empty((0,0))
-    avgs_precision =np.empty((0,0))
-    avgs_f1 =np.empty((0,0))
-    avgs_kappa =np.empty((0,0))
-    avgs_mcc=np.empty((0,0))
-    avgs_training_time=np.empty((0,0))
+
+    (score_auc, score_acc, score_recall, score_precision, score_f1, score_kappa, score_mcc, score_training_time,
+     avgs_auc, avgs_acc, avgs_recall, avgs_precision, avgs_f1, avgs_kappa, avgs_mcc,
+     avgs_training_time) = _declare_classification_metric_vars()
     
     
     '''
@@ -6714,32 +6670,11 @@ def blend_models(estimator_list = 'All',
     progress.value += 1
     
     logger.info("Declaring metric variables")
-    score_auc =np.empty((0,0))
-    score_acc =np.empty((0,0))
-    score_recall =np.empty((0,0))
-    score_precision =np.empty((0,0))
-    score_f1 =np.empty((0,0))
-    score_kappa =np.empty((0,0))
-    score_mcc =np.empty((0,0))
-    score_training_time =np.empty((0,0))
-    
-    avgs_auc =np.empty((0,0))
-    avgs_acc =np.empty((0,0))
-    avgs_recall =np.empty((0,0))
-    avgs_precision =np.empty((0,0))
-    avgs_f1 =np.empty((0,0))
-    avgs_kappa =np.empty((0,0))
-    avgs_mcc =np.empty((0,0))
-    avgs_training_time =np.empty((0,0))
-    
-    avg_acc = np.empty((0,0))
-    avg_auc = np.empty((0,0))
-    avg_recall = np.empty((0,0))
-    avg_precision = np.empty((0,0))
-    avg_f1 = np.empty((0,0))
-    avg_kappa = np.empty((0,0))
-    avg_mcc = np.empty((0,0))
-    avg_training_time = np.empty((0,0))
+
+    (score_auc, score_acc, score_recall, score_precision, score_f1, score_kappa, score_mcc, score_training_time,
+     avgs_auc, avgs_acc, avgs_recall, avgs_precision, avgs_f1, avgs_kappa, avgs_mcc,
+     avgs_training_time) = _declare_classification_metric_vars()
+
     
     logger.info("Defining folds")
     kf = StratifiedKFold(fold, random_state=seed, shuffle=folds_shuffle_param)
@@ -7521,22 +7456,10 @@ def stack_models(estimator_list,
     kf = StratifiedKFold(fold, random_state=seed, shuffle=folds_shuffle_param)
 
     logger.info("Declaring metric variables")
-    score_auc =np.empty((0,0))
-    score_acc =np.empty((0,0))
-    score_recall =np.empty((0,0))
-    score_precision =np.empty((0,0))
-    score_f1 =np.empty((0,0))
-    score_kappa =np.empty((0,0))
-    score_mcc =np.empty((0,0))
-    score_training_time =np.empty((0,0))
-    avgs_auc =np.empty((0,0))
-    avgs_acc =np.empty((0,0))
-    avgs_recall =np.empty((0,0))
-    avgs_precision =np.empty((0,0))
-    avgs_f1 =np.empty((0,0))
-    avgs_kappa =np.empty((0,0))
-    avgs_mcc =np.empty((0,0))
-    avgs_training_time =np.empty((0,0))
+
+    (score_auc, score_acc, score_recall, score_precision, score_f1, score_kappa, score_mcc, score_training_time,
+     avgs_auc, avgs_acc, avgs_recall, avgs_precision, avgs_f1, avgs_kappa, avgs_mcc,
+     avgs_training_time) = _declare_classification_metric_vars()
 
     progress.value += 1
 
@@ -8482,22 +8405,10 @@ def calibrate_model(estimator,
     kf = StratifiedKFold(fold, random_state=seed, shuffle=folds_shuffle_param)
 
     logger.info("Declaring metric variables")
-    score_auc =np.empty((0,0))
-    score_acc =np.empty((0,0))
-    score_recall =np.empty((0,0))
-    score_precision =np.empty((0,0))
-    score_f1 =np.empty((0,0))
-    score_kappa =np.empty((0,0))
-    score_mcc =np.empty((0,0))
-    score_training_time =np.empty((0,0))
-    avgs_auc =np.empty((0,0))
-    avgs_acc =np.empty((0,0))
-    avgs_recall =np.empty((0,0))
-    avgs_precision =np.empty((0,0))
-    avgs_f1 =np.empty((0,0))
-    avgs_kappa =np.empty((0,0))
-    avgs_mcc =np.empty((0,0))
-    avgs_training_time =np.empty((0,0))
+
+    (score_auc, score_acc, score_recall, score_precision, score_f1, score_kappa, score_mcc, score_training_time,
+     avgs_auc, avgs_acc, avgs_recall, avgs_precision, avgs_f1, avgs_kappa, avgs_mcc,
+     avgs_training_time) = _declare_classification_metric_vars()
   
     '''
     MONITOR UPDATE STARTS
