@@ -11263,12 +11263,30 @@ def get_system_logs():
 
 # Google Cloud Utilities
 
-from google.cloud import storage
+
 
 def create_bucket_gcp(project_name, bucket_name):
-    """Creates a new bucket."""
-    # bucket_name = "your-new-bucket-name"
 
+    """
+    Description:
+    ------------
+    Creates a bucket on Google Cloud Platform if it does not exists already
+
+        Example
+        -------
+        create_bucket_gcp(project_name='GCP-Essentials', bucket_name='test-pycaret-gcp')
+
+    Parameters
+    ----------
+    project_name : string
+    A Project name on GCP Platform (Must have been created from console).
+
+    bucket_name : string
+    Name of the storage bucket to be created if does not exists already.
+
+    """
+    # bucket_name = "your-new-bucket-name"
+    from google.cloud import storage
     storage_client = storage.Client(project_name)
 
     buckets = storage_client.list_buckets()
@@ -11281,11 +11299,34 @@ def create_bucket_gcp(project_name, bucket_name):
 
 
 def upload_blob_gcp(project_name, bucket_name, source_file_name, destination_blob_name):
-    """Uploads a file to the bucket."""
+    """
+    Description:
+    ------------
+    Upload blob to GCP storage bucket
+
+        Example
+        -------
+        upload_blob_gcp(project_name='GCP-Essentials', bucket_name='test-pycaret-gcp', source_file_name='model-101.pkl', destination_blob_name='model-101.pkl')
+
+    Parameters
+    ----------
+    project_name : string
+    A Project name on GCP Platform (Must have been created from console).
+
+    bucket_name : string
+    Name of the storage bucket to be created if does not exists already.
+
+    source_file_name : string
+    A blob/file name to copy to GCP
+
+    destination_blob_name : string
+    Name of the destination file to be stored on GCP
+
+    """
     # bucket_name = "your-bucket-name"
     # source_file_name = "local/path/to/file"
     # destination_blob_name = "storage-object-name"
-
+    from google.cloud import storage
     storage_client = storage.Client(project_name)
     bucket = storage_client.bucket(bucket_name)
     blob = bucket.blob(destination_blob_name)
@@ -11300,11 +11341,34 @@ def upload_blob_gcp(project_name, bucket_name, source_file_name, destination_blo
 
 
 def download_blob_gcp(project_name, bucket_name, source_blob_name, destination_file_name):
-    """Downloads a blob from the bucket."""
+    """
+    Description:
+    ------------
+    Download a blob from GCP storage bucket
+
+        Example
+        -------
+        download_blob_gcp(project_name='GCP-Essentials', bucket_name='test-pycaret-gcp', source_blob_name='model-101.pkl', destination_file_name='model-101.pkl')
+
+    Parameters
+    ----------
+    project_name : string
+    A Project name on GCP Platform (Must have been created from console).
+
+    bucket_name : string
+    Name of the storage bucket to be created if does not exists already.
+
+    source_blob_name : string
+    A blob/file name to download from GCP bucket
+
+    destination_file_name : string
+    Name of the destination file to be stored locally
+
+    """
     # bucket_name = "your-bucket-name"
     # source_blob_name = "storage-object-name"
     # destination_file_name = "local/path/to/file"
-
+    from google.cloud import storage
     storage_client = storage.Client(project_name)
 
     bucket = storage_client.bucket(bucket_name)
@@ -11322,12 +11386,28 @@ def download_blob_gcp(project_name, bucket_name, source_blob_name, destination_f
     return blob
 
 # Azure Utilities
-import os, uuid
-from azure.storage.blob import BlobServiceClient, BlobClient, ContainerClient
-
 def create_container_azure(container_name):
+    """
+    Description:
+    ------------
+    Creates a storage container on Azure Platform. gets the connection string from the environment variables.
+
+        Example
+        -------
+        container_client = create_container_azure(container_name='test-pycaret-azure')
+
+        returns containter_client handle
+
+    Parameters
+    ----------
+    container_name : string
+    Name of the storage container to be created if does not exists already.
+
+    """
 
     # Create the container
+    import os, uuid
+    from azure.storage.blob import BlobServiceClient, BlobClient, ContainerClient
     connect_str = os.getenv('AZURE_STORAGE_CONNECTION_STRING')
     blob_service_client = BlobServiceClient.from_connection_string(connect_str)
     container_client = blob_service_client.create_container(container_name)
@@ -11336,7 +11416,31 @@ def create_container_azure(container_name):
 
 
 def upload_blob_azure(container_name, source_file_name, destination_blob_name):
+    """
+    Description:
+    ------------
+    Upload blob to Azure storage  container
 
+        Example
+        -------
+        upload_blob_azure(container_name='test-pycaret-azure', source_file_name='model-101.pkl', destination_blob_name='model-101.pkl')
+
+    Parameters
+    ----------
+
+    container_name : string
+    Name of the storage bucket to be created if does not exists already.
+
+    source_file_name : string
+    A blob/file name to copy to Azure
+
+    destination_blob_name : string
+    Name of the destination file to be stored on Azure
+
+    """
+
+    import os, uuid
+    from azure.storage.blob import BlobServiceClient, BlobClient, ContainerClient
     connect_str = os.getenv('AZURE_STORAGE_CONNECTION_STRING')
 
     blob_service_client = BlobServiceClient.from_connection_string(connect_str)
@@ -11351,7 +11455,32 @@ def upload_blob_azure(container_name, source_file_name, destination_blob_name):
 
 
 def download_blob_azure(container_name, source_blob_name, destination_file_name):
-    # Download the blob to a local file
+
+    """
+    Description:
+    ------------
+    Download blob from Azure storage  container
+
+        Example
+        -------
+        download_blob_azure(container_name='test-pycaret-azure', source_blob_name='model-101.pkl', destination_file_name='model-101.pkl')
+
+    Parameters
+    ----------
+
+    container_name : string
+    Name of the storage bucket to be created if does not exists already.
+
+    source_blob_name : string
+    A blob/file name to download from Azure storage container
+
+    destination_file_name : string
+    Name of the destination file to be stored locally
+
+    """
+
+    import os, uuid
+    from azure.storage.blob import BlobServiceClient, BlobClient, ContainerClient
     print("\nDownloading blob to \n\t" + destination_file_name)
 
     connect_str = os.getenv('AZURE_STORAGE_CONNECTION_STRING')
