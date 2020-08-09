@@ -4,17 +4,6 @@
 # Release: PyCaret 2.1x
 # Last modified : 07/08/2020
 
-def _declare_classification_metric_vars():
-
-    import numpy as np
-
-    score_auc, score_acc, score_recall, score_precision, score_f1, score_kappa, score_mcc, score_training_time = [np.empty((0, 0))]*8
-    avgs_auc, avgs_acc, avgs_recall, avgs_precision, avgs_f1, avgs_kappa, avgs_mcc, avgs_training_time = [np.empty((0, 0))]*8
-
-    return (score_auc, score_acc, score_recall, score_precision, score_f1, score_kappa, score_mcc, score_training_time,
-            avgs_auc, avgs_acc, avgs_recall, avgs_precision, avgs_f1, avgs_kappa, avgs_mcc, avgs_training_time)
-
-
 def setup(data,  
           target,   
           train_size = 0.7, 
@@ -2248,7 +2237,7 @@ def create_model(estimator = None,
 
     (score_auc, score_acc, score_recall, score_precision, score_f1, score_kappa, score_mcc, score_training_time,
      avgs_auc, avgs_acc, avgs_recall, avgs_precision, avgs_f1, avgs_kappa, avgs_mcc,
-     avgs_training_time) = _declare_classification_metric_vars()
+     avgs_training_time) = [np.empty((0, 0))]*16
     
   
     '''
@@ -3225,7 +3214,7 @@ def ensemble_model(estimator,
 
     (score_auc, score_acc, score_recall, score_precision, score_f1, score_kappa, score_mcc, score_training_time,
      avgs_auc, avgs_acc, avgs_recall, avgs_precision, avgs_f1, avgs_kappa, avgs_mcc,
-     avgs_training_time) = _declare_classification_metric_vars()
+     avgs_training_time) = [np.empty((0, 0))]*16
     
     
     fold_num = 1 
@@ -4810,7 +4799,7 @@ def compare_models(blacklist = None,
 
     (score_auc, score_acc, score_recall, score_precision, score_f1, score_kappa, score_mcc, score_training_time,
      avg_auc, avg_acc, avg_recall, avg_precision, avg_f1, avg_kappa, avg_mcc,
-     avg_training_time) = _declare_classification_metric_vars()
+     avg_training_time) = [np.empty((0, 0))]*16
 
     
     #create URI (before loop)
@@ -5497,7 +5486,7 @@ def tune_model(estimator = None,
 
     (score_auc, score_acc, score_recall, score_precision, score_f1, score_kappa, score_mcc, score_training_time,
      avgs_auc, avgs_acc, avgs_recall, avgs_precision, avgs_f1, avgs_kappa, avgs_mcc,
-     avgs_training_time) = _declare_classification_metric_vars()
+     avgs_training_time) = [np.empty((0, 0))]*16
     
     
     '''
@@ -6679,7 +6668,7 @@ def blend_models(estimator_list = 'All',
 
     (score_auc, score_acc, score_recall, score_precision, score_f1, score_kappa, score_mcc, score_training_time,
      avgs_auc, avgs_acc, avgs_recall, avgs_precision, avgs_f1, avgs_kappa, avgs_mcc,
-     avgs_training_time) = _declare_classification_metric_vars()
+     avgs_training_time) = [np.empty((0, 0))]*16
 
     
     logger.info("Defining folds")
@@ -7465,7 +7454,7 @@ def stack_models(estimator_list,
 
     (score_auc, score_acc, score_recall, score_precision, score_f1, score_kappa, score_mcc, score_training_time,
      avgs_auc, avgs_acc, avgs_recall, avgs_precision, avgs_f1, avgs_kappa, avgs_mcc,
-     avgs_training_time) = _declare_classification_metric_vars()
+     avgs_training_time) = [np.empty((0, 0))]*16
 
     progress.value += 1
 
@@ -8414,7 +8403,7 @@ def calibrate_model(estimator,
 
     (score_auc, score_acc, score_recall, score_precision, score_f1, score_kappa, score_mcc, score_training_time,
      avgs_auc, avgs_acc, avgs_recall, avgs_precision, avgs_f1, avgs_kappa, avgs_mcc,
-     avgs_training_time) = _declare_classification_metric_vars()
+     avgs_training_time) = [np.empty((0, 0))]*16
   
     '''
     MONITOR UPDATE STARTS

@@ -2179,20 +2179,8 @@ def create_model(estimator = None,
     
     logger.info("Declaring metric variables")
 
-    score_mae =np.empty((0,0))
-    score_mse =np.empty((0,0))
-    score_rmse =np.empty((0,0))
-    score_rmsle =np.empty((0,0))
-    score_r2 =np.empty((0,0))
-    score_mape =np.empty((0,0))
-    score_training_time=np.empty((0,0))
-    avgs_mae =np.empty((0,0))
-    avgs_mse =np.empty((0,0))
-    avgs_rmse =np.empty((0,0))
-    avgs_r2 =np.empty((0,0))
-    avgs_mape =np.empty((0,0)) 
-    avgs_rmsle =np.empty((0,0))
-    avgs_training_time=np.empty((0,0))
+    (score_mae, score_mse, score_rmse, score_rmsle, score_r2, score_mape, score_training_time,
+     avgs_mae, avgs_mse, avgs_rmse, avgs_r2, avgs_mape,  avgs_rmsle, avgs_training_time) = [np.empty((0, 0))]*14
     
     def calculate_mape(actual, prediction):
         mask = actual != 0
@@ -4044,20 +4032,9 @@ def compare_models(blacklist = None,
     kf = KFold(fold, random_state=seed, shuffle=folds_shuffle_param)
 
     logger.info("Declaring metric variables")
-    score_mae =np.empty((0,0))
-    score_mse =np.empty((0,0))
-    score_rmse =np.empty((0,0))
-    score_rmsle =np.empty((0,0))
-    score_r2 =np.empty((0,0))
-    score_mape =np.empty((0,0))
-    score_training_time=np.empty((0,0))
-    avgs_mae =np.empty((0,0))
-    avgs_mse =np.empty((0,0))
-    avgs_rmse =np.empty((0,0))
-    avgs_rmsle =np.empty((0,0))
-    avgs_r2 =np.empty((0,0))
-    avgs_mape =np.empty((0,0))  
-    avgs_training_time=np.empty((0,0))
+
+    (score_mae, score_mse, score_rmse, score_rmsle, score_r2, score_mape, score_training_time,
+     avgs_mae, avgs_mse, avgs_rmse, avgs_r2, avgs_mape, avgs_rmsle, avgs_training_time) = [np.empty((0, 0))] * 14
     
     def calculate_mape(actual, prediction):
         mask = actual != 0
@@ -4591,20 +4568,9 @@ def blend_models(estimator_list = 'All',
     progress.value += 1
     
     logger.info("Declaring metric variables")
-    score_mae =np.empty((0,0))
-    score_mse =np.empty((0,0))
-    score_rmse =np.empty((0,0))
-    score_rmsle =np.empty((0,0))
-    score_r2 =np.empty((0,0))
-    score_mape =np.empty((0,0))
-    score_training_time=np.empty((0,0))
-    avgs_mae =np.empty((0,0))
-    avgs_mse =np.empty((0,0))
-    avgs_rmse =np.empty((0,0))
-    avgs_rmsle =np.empty((0,0))
-    avgs_r2 =np.empty((0,0))
-    avgs_mape =np.empty((0,0))
-    avgs_training_time=np.empty((0,0))
+
+    (score_mae, score_mse, score_rmse, score_rmsle, score_r2, score_mape, score_training_time,
+     avgs_mae, avgs_mse, avgs_rmse, avgs_r2, avgs_mape, avgs_rmsle, avgs_training_time) = [np.empty((0, 0))] * 14
     
     def calculate_mape(actual, prediction):
         mask = actual != 0
@@ -5462,20 +5428,9 @@ def tune_model(estimator,
     kf = KFold(fold, random_state=seed, shuffle=folds_shuffle_param)
 
     logger.info("Declaring metric variables")
-    score_mae =np.empty((0,0))
-    score_mse =np.empty((0,0))
-    score_rmse =np.empty((0,0))
-    score_rmsle =np.empty((0,0))
-    score_r2 =np.empty((0,0))
-    score_mape =np.empty((0,0))
-    score_training_time=np.empty((0,0))
-    avgs_mae =np.empty((0,0))
-    avgs_mse =np.empty((0,0))
-    avgs_rmse =np.empty((0,0))
-    avgs_rmsle =np.empty((0,0))
-    avgs_r2 =np.empty((0,0))
-    avgs_mape =np.empty((0,0))
-    avgs_training_time=np.empty((0,0))
+
+    (score_mae, score_mse, score_rmse, score_rmsle, score_r2, score_mape, score_training_time,
+     avgs_mae, avgs_mse, avgs_rmse, avgs_r2, avgs_mape, avgs_rmsle, avgs_training_time) = [np.empty((0, 0))] * 14
     
     def calculate_mape(actual, prediction):
         mask = actual != 0
@@ -6742,20 +6697,8 @@ def stack_models(estimator_list,
     
     logger.info("Declaring metric variables")
 
-    score_mae =np.empty((0,0))
-    score_mse =np.empty((0,0))
-    score_rmse =np.empty((0,0))
-    score_rmsle =np.empty((0,0))
-    score_r2 =np.empty((0,0))
-    score_mape =np.empty((0,0))
-    score_training_time=np.empty((0,0))
-    avgs_mae =np.empty((0,0))
-    avgs_mse =np.empty((0,0))
-    avgs_rmse =np.empty((0,0))
-    avgs_r2 =np.empty((0,0))
-    avgs_mape =np.empty((0,0)) 
-    avgs_rmsle =np.empty((0,0))
-    avgs_training_time=np.empty((0,0))
+    (score_mae, score_mse, score_rmse, score_rmsle, score_r2, score_mape, score_training_time,
+     avgs_mae, avgs_mse, avgs_rmse, avgs_r2, avgs_mape, avgs_rmsle, avgs_training_time) = [np.empty((0, 0))] * 14
     
     def calculate_mape(actual, prediction):
         mask = actual != 0
