@@ -28,6 +28,15 @@ def test():
     # stack models
     stacker = pycaret.classification.stack_models(estimator_list = top3)
 
+    # select best model
+    best = pycaret.classification.automl(optimize = 'MCC')
+
+    # hold out predictions
+    predict_holdout = pycaret.classification.predict_model(best)
+
+    # predictions on new dataset
+    predict_holdout = pycaret.classification.predict_model(best, data=data)
+
     # get config
     X_train = pycaret.classification.get_config('X_train')
     X_test = pycaret.classification.get_config('X_test')

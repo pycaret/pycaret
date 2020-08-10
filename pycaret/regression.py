@@ -2,7 +2,7 @@
 # Author: Moez Ali <moez.ali@queensu.ca>
 # License: MIT
 # Release: PyCaret 2.1x
-# Last modified : 05/08/2020
+# Last modified : 07/08/2020
 
 def setup(data, 
           target, 
@@ -66,9 +66,6 @@ def setup(data,
           profile = False):
     
     """
-        
-    Description:
-    ------------    
     This function initializes the environment in pycaret and creates the transformation
     pipeline to prepare the data for modeling and deployment. setup() must called before
     executing any other function in pycaret. It takes two mandatory parameters:
@@ -76,359 +73,358 @@ def setup(data,
     
     All other parameters are optional.
 
-        Example
-        -------
-        from pycaret.datasets import get_data
-        boston = get_data('boston')
-        
-        experiment_name = setup(data = boston,  target = 'medv')
+    Example
+    -------
+    >>> from pycaret.datasets import get_data
+    >>> boston = get_data('boston')
+    
+    >>> experiment_name = setup(data = boston,  target = 'medv')
 
-        'boston' is a pandas DataFrame and 'medv' is the name of target column.
+    'boston' is a pandas DataFrame and 'medv' is the name of target column.
 
     Parameters
     ----------
-    data : {array-like, sparse matrix}, shape (n_samples, n_features) where n_samples 
-    is the number of samples and n_features is the number of features.
+    data : {array-like, sparse matrix}
+        Shape (n_samples, n_features) where n_samples is the number of samples and n_features is the number of features.
 
     target: string
-    Name of target column to be passed in as string. 
+        Name of target column to be passed in as string. 
     
     train_size: float, default = 0.7
-    Size of the training set. By default, 70% of the data will be used for training 
-    and validation. The remaining data will be used for test / hold-out set.
+        Size of the training set. By default, 70% of the data will be used for training 
+        and validation. The remaining data will be used for test / hold-out set.
 
     sampling: bool, default = True
-    When the sample size exceeds 25,000 samples, pycaret will build a base estimator
-    at various sample sizes from the original dataset. This will return a performance 
-    plot of R2 values at various sample levels, that will assist in deciding the 
-    preferred sample size for modeling.  The desired sample size must then be entered 
-    for training and validation in the  pycaret environment. When sample_size entered 
-    is less than 1, the remaining dataset (1 - sample) is used for fitting the model 
-    only when finalize_model() is called.
+        When the sample size exceeds 25,000 samples, pycaret will build a base estimator
+        at various sample sizes from the original dataset. This will return a performance 
+        plot of R2 values at various sample levels, that will assist in deciding the 
+        preferred sample size for modeling.  The desired sample size must then be entered 
+        for training and validation in the  pycaret environment. When sample_size entered 
+        is less than 1, the remaining dataset (1 - sample) is used for fitting the model 
+        only when finalize_model() is called.
     
     sample_estimator: object, default = None
-    If None, Linear Regression is used by default.
+        If None, Linear Regression is used by default.
     
     categorical_features: string, default = None
-    If the inferred data types are not correct, categorical_features can be used to
-    overwrite the inferred type. If when running setup the type of 'column1' is
-    inferred as numeric instead of categorical, then this parameter can be used 
-    to overwrite the type by passing categorical_features = ['column1'].
+        If the inferred data types are not correct, categorical_features can be used to
+        overwrite the inferred type. If when running setup the type of 'column1' is
+        inferred as numeric instead of categorical, then this parameter can be used 
+        to overwrite the type by passing categorical_features = ['column1'].
     
     categorical_imputation: string, default = 'constant'
-    If missing values are found in categorical features, they will be imputed with
-    a constant 'not_available' value. The other available option is 'mode' which 
-    imputes the missing value using most frequent value in the training dataset. 
+        If missing values are found in categorical features, they will be imputed with
+        a constant 'not_available' value. The other available option is 'mode' which 
+        imputes the missing value using most frequent value in the training dataset. 
     
     ordinal_features: dictionary, default = None
-    When the data contains ordinal features, they must be encoded differently using 
-    the ordinal_features param. If the data has a categorical variable with values
-    of 'low', 'medium', 'high' and it is known that low < medium < high, then it can 
-    be passed as ordinal_features = { 'column_name' : ['low', 'medium', 'high'] }. 
-    The list sequence must be in increasing order from lowest to highest.
+        When the data contains ordinal features, they must be encoded differently using 
+        the ordinal_features param. If the data has a categorical variable with values
+        of 'low', 'medium', 'high' and it is known that low < medium < high, then it can 
+        be passed as ordinal_features = { 'column_name' : ['low', 'medium', 'high'] }. 
+        The list sequence must be in increasing order from lowest to highest.
     
     high_cardinality_features: string, default = None
-    When the data containts features with high cardinality, they can be compressed
-    into fewer levels by passing them as a list of column names with high cardinality.
-    Features are compressed using method defined in high_cardinality_method param.
+        When the data containts features with high cardinality, they can be compressed
+        into fewer levels by passing them as a list of column names with high cardinality.
+        Features are compressed using method defined in high_cardinality_method param.
     
     high_cardinality_method: string, default = 'frequency'
-    When method set to 'frequency' it will replace the original value of feature
-    with the frequency distribution and convert the feature into numeric. Other
-    available method is 'clustering' which performs the clustering on statistical
-    attribute of data and replaces the original value of feature with cluster label.
-    The number of clusters is determined using a combination of Calinski-Harabasz and 
-    Silhouette criterion. 
+        When method set to 'frequency' it will replace the original value of feature
+        with the frequency distribution and convert the feature into numeric. Other
+        available method is 'clustering' which performs the clustering on statistical
+        attribute of data and replaces the original value of feature with cluster label.
+        The number of clusters is determined using a combination of Calinski-Harabasz and 
+        Silhouette criterion. 
     
     numeric_features: string, default = None
-    If the inferred data types are not correct, numeric_features can be used to
-    overwrite the inferred type. If when running setup the type of 'column1' is 
-    inferred as a categorical instead of numeric, then this parameter can be used 
-    to overwrite by passing numeric_features = ['column1'].    
+        If the inferred data types are not correct, numeric_features can be used to
+        overwrite the inferred type. If when running setup the type of 'column1' is 
+        inferred as a categorical instead of numeric, then this parameter can be used 
+        to overwrite by passing numeric_features = ['column1'].    
 
     numeric_imputation: string, default = 'mean'
-    If missing values are found in numeric features, they will be imputed with the 
-    mean value of the feature. The other available option is 'median' which imputes 
-    the value using the median value in the training dataset. 
+        If missing values are found in numeric features, they will be imputed with the 
+        mean value of the feature. The other available option is 'median' which imputes 
+        the value using the median value in the training dataset. 
     
     date_features: string, default = None
-    If the data has a DateTime column that is not automatically detected when running
-    setup, this parameter can be used by passing date_features = 'date_column_name'. 
-    It can work with multiple date columns. Date columns are not used in modeling. 
-    Instead, feature extraction is performed and date columns are dropped from the 
-    dataset. If the date column includes a time stamp, features related to time will 
-    also be extracted.
+        If the data has a DateTime column that is not automatically detected when running
+        setup, this parameter can be used by passing date_features = 'date_column_name'. 
+        It can work with multiple date columns. Date columns are not used in modeling. 
+        Instead, feature extraction is performed and date columns are dropped from the 
+        dataset. If the date column includes a time stamp, features related to time will 
+        also be extracted.
     
     ignore_features: string, default = None
-    If any feature should be ignored for modeling, it can be passed to the param
-    ignore_features. The ID and DateTime columns when inferred, are automatically 
-    set to ignore for modeling. 
+        If any feature should be ignored for modeling, it can be passed to the param
+        ignore_features. The ID and DateTime columns when inferred, are automatically 
+        set to ignore for modeling. 
     
     normalize: bool, default = False
-    When set to True, the feature space is transformed using the normalized_method
-    param. Generally, linear algorithms perform better with normalized data however, 
-    the results may vary and it is advised to run multiple experiments to evaluate
-    the benefit of normalization.
+        When set to True, the feature space is transformed using the normalized_method
+        param. Generally, linear algorithms perform better with normalized data however, 
+        the results may vary and it is advised to run multiple experiments to evaluate
+        the benefit of normalization.
     
     normalize_method: string, default = 'zscore'
-    Defines the method to be used for normalization. By default, normalize method
-    is set to 'zscore'. The standard zscore is calculated as z = (x - u) / s. The
-    other available options are:
-    
-    'minmax'    : scales and translates each feature individually such that it is in 
-                  the range of 0 - 1.
-    
-    'maxabs'    : scales and translates each feature individually such that the maximal 
-                  absolute value of each feature will be 1.0. It does not shift/center 
-                  the data, and thus does not destroy any sparsity.
-    
-    'robust'    : scales and translates each feature according to the Interquartile range.
-                  When the dataset contains outliers, robust scaler often gives better
-                  results.
+        Defines the method to be used for normalization. By default, normalize method
+        is set to 'zscore'. The standard zscore is calculated as z = (x - u) / s. The
+        other available options are:
+        
+        'minmax'    : scales and translates each feature individually such that it is in 
+                    the range of 0 - 1.
+        
+        'maxabs'    : scales and translates each feature individually such that the maximal 
+                    absolute value of each feature will be 1.0. It does not shift/center 
+                    the data, and thus does not destroy any sparsity.
+        
+        'robust'    : scales and translates each feature according to the Interquartile range.
+                    When the dataset contains outliers, robust scaler often gives better
+                    results.
     
     transformation: bool, default = False
-    When set to True, a power transformation is applied to make the data more normal /
-    Gaussian-like. This is useful for modeling issues related to heteroscedasticity or 
-    other situations where normality is desired. The optimal parameter for stabilizing 
-    variance and minimizing skewness is estimated through maximum likelihood.
+        When set to True, a power transformation is applied to make the data more normal /
+        Gaussian-like. This is useful for modeling issues related to heteroscedasticity or 
+        other situations where normality is desired. The optimal parameter for stabilizing 
+        variance and minimizing skewness is estimated through maximum likelihood.
     
     transformation_method: string, default = 'yeo-johnson'
-    Defines the method for transformation. By default, the transformation method is set
-    to 'yeo-johnson'. The other available option is 'quantile' transformation. Both 
-    the transformation transforms the feature set to follow a Gaussian-like or normal
-    distribution. Note that the quantile transformer is non-linear and may distort linear 
-    correlations between variables measured at the same scale.
+        Defines the method for transformation. By default, the transformation method is set
+        to 'yeo-johnson'. The other available option is 'quantile' transformation. Both 
+        the transformation transforms the feature set to follow a Gaussian-like or normal
+        distribution. Note that the quantile transformer is non-linear and may distort linear 
+        correlations between variables measured at the same scale.
     
     handle_unknown_categorical: bool, default = True
-    When set to True, unknown categorical levels in new / unseen data are replaced by
-    the most or least frequent level as learned in the training data. The method is 
-    defined under the unknown_categorical_method param.
+        When set to True, unknown categorical levels in new / unseen data are replaced by
+        the most or least frequent level as learned in the training data. The method is 
+        defined under the unknown_categorical_method param.
     
     unknown_categorical_method: string, default = 'least_frequent'
-    Method used to replace unknown categorical levels in unseen data. Method can be
-    set to 'least_frequent' or 'most_frequent'.
+        Method used to replace unknown categorical levels in unseen data. Method can be
+        set to 'least_frequent' or 'most_frequent'.
     
     pca: bool, default = False
-    When set to True, dimensionality reduction is applied to project the data into 
-    a lower dimensional space using the method defined in pca_method param. In 
-    supervised learning pca is generally performed when dealing with high feature
-    space and memory is a constraint. Note that not all datasets can be decomposed
-    efficiently using a linear PCA technique and that applying PCA may result in loss 
-    of information. As such, it is advised to run multiple experiments with different 
-    pca_methods to evaluate the impact. 
+        When set to True, dimensionality reduction is applied to project the data into 
+        a lower dimensional space using the method defined in pca_method param. In 
+        supervised learning pca is generally performed when dealing with high feature
+        space and memory is a constraint. Note that not all datasets can be decomposed
+        efficiently using a linear PCA technique and that applying PCA may result in loss 
+        of information. As such, it is advised to run multiple experiments with different 
+        pca_methods to evaluate the impact. 
 
     pca_method: string, default = 'linear'
-    The 'linear' method performs Linear dimensionality reduction using Singular Value 
-    Decomposition. The other available options are:
-    
-    kernel      : dimensionality reduction through the use of RVF kernel.  
-    
-    incremental : replacement for 'linear' pca when the dataset to be decomposed is 
-                  too large to fit in memory
-    
+        The 'linear' method performs Linear dimensionality reduction using Singular Value 
+        Decomposition. The other available options are:
+        
+        kernel      : dimensionality reduction through the use of RVF kernel.  
+        
+        incremental : replacement for 'linear' pca when the dataset to be decomposed is 
+                    too large to fit in memory
+
     pca_components: int/float, default = 0.99
-    Number of components to keep. if pca_components is a float, it is treated as a 
-    target percentage for information retention. When pca_components is an integer
-    it is treated as the number of features to be kept. pca_components must be strictly
-    less than the original number of features in the dataset.
+        Number of components to keep. if pca_components is a float, it is treated as a 
+        target percentage for information retention. When pca_components is an integer
+        it is treated as the number of features to be kept. pca_components must be strictly
+        less than the original number of features in the dataset.
     
     ignore_low_variance: bool, default = False
-    When set to True, all categorical features with statistically insignificant variances 
-    are removed from the dataset. The variance is calculated using the ratio of unique 
-    values to the number of samples, and the ratio of the most common value to the 
-    frequency of the second most common value.
+        When set to True, all categorical features with statistically insignificant variances 
+        are removed from the dataset. The variance is calculated using the ratio of unique 
+        values to the number of samples, and the ratio of the most common value to the 
+        frequency of the second most common value.
     
     combine_rare_levels: bool, default = False
-    When set to True, all levels in categorical features below the threshold defined 
-    in rare_level_threshold param are combined together as a single level. There must be 
-    atleast two levels under the threshold for this to take effect. rare_level_threshold
-    represents the percentile distribution of level frequency. Generally, this technique 
-    is applied to limit a sparse matrix caused by high numbers of levels in categorical 
-    features. 
+        When set to True, all levels in categorical features below the threshold defined 
+        in rare_level_threshold param are combined together as a single level. There must be 
+        atleast two levels under the threshold for this to take effect. rare_level_threshold
+        represents the percentile distribution of level frequency. Generally, this technique 
+        is applied to limit a sparse matrix caused by high numbers of levels in categorical 
+        features. 
     
     rare_level_threshold: float, default = 0.1
-    Percentile distribution below which rare categories are combined. Only comes into
-    effect when combine_rare_levels is set to True.
+        Percentile distribution below which rare categories are combined. Only comes into
+        effect when combine_rare_levels is set to True.
     
     bin_numeric_features: list, default = None
-    When a list of numeric features is passed they are transformed into categorical
-    features using KMeans, where values in each bin have the same nearest center of a 
-    1D k-means cluster. The number of clusters are determined based on the 'sturges' 
-    method. It is only optimal for gaussian data and underestimates the number of bins 
-    for large non-gaussian datasets.
+        When a list of numeric features is passed they are transformed into categorical
+        features using KMeans, where values in each bin have the same nearest center of a 
+        1D k-means cluster. The number of clusters are determined based on the 'sturges' 
+        method. It is only optimal for gaussian data and underestimates the number of bins 
+        for large non-gaussian datasets.
     
     remove_outliers: bool, default = False
-    When set to True, outliers from the training data are removed using PCA linear
-    dimensionality reduction using the Singular Value Decomposition technique.
+        When set to True, outliers from the training data are removed using PCA linear
+        dimensionality reduction using the Singular Value Decomposition technique.
     
     outliers_threshold: float, default = 0.05
-    The percentage / proportion of outliers in the dataset can be defined using
-    the outliers_threshold param. By default, 0.05 is used which means 0.025 of the 
-    values on each side of the distribution's tail are dropped from training data.
+        The percentage / proportion of outliers in the dataset can be defined using
+        the outliers_threshold param. By default, 0.05 is used which means 0.025 of the 
+        values on each side of the distribution's tail are dropped from training data.
     
     remove_multicollinearity: bool, default = False
-    When set to True, the variables with inter-correlations higher than the threshold
-    defined under the multicollinearity_threshold param are dropped. When two features
-    are highly correlated with each other, the feature that is less correlated with 
-    the target variable is dropped. 
+        When set to True, the variables with inter-correlations higher than the threshold
+        defined under the multicollinearity_threshold param are dropped. When two features
+        are highly correlated with each other, the feature that is less correlated with 
+        the target variable is dropped. 
     
     multicollinearity_threshold: float, default = 0.9
-    Threshold used for dropping the correlated features. Only comes into effect when 
-    remove_multicollinearity is set to True.
+        Threshold used for dropping the correlated features. Only comes into effect when 
+        remove_multicollinearity is set to True.
     
     remove_perfect_collinearity: bool, default = False
-    When set to True, perfect collinearity (features with correlation = 1) is removed
-    from the dataset, When two features are 100% correlated, one of it is randomly 
-    dropped from the dataset.
+        When set to True, perfect collinearity (features with correlation = 1) is removed
+        from the dataset, When two features are 100% correlated, one of it is randomly 
+        dropped from the dataset.
 
     create_clusters: bool, default = False
-    When set to True, an additional feature is created where each instance is assigned
-    to a cluster. The number of clusters is determined using a combination of 
-    Calinski-Harabasz and Silhouette criterion. 
+        When set to True, an additional feature is created where each instance is assigned
+        to a cluster. The number of clusters is determined using a combination of 
+        Calinski-Harabasz and Silhouette criterion. 
     
     cluster_iter: int, default = 20
-    Number of iterations used to create a cluster. Each iteration represents cluster 
-    size. Only comes into effect when create_clusters param is set to True.
+        Number of iterations used to create a cluster. Each iteration represents cluster 
+        size. Only comes into effect when create_clusters param is set to True.
     
     polynomial_features: bool, default = False
-    When set to True, new features are created based on all polynomial combinations 
-    that exist within the numeric features in a dataset to the degree defined in 
-    polynomial_degree param. 
+        When set to True, new features are created based on all polynomial combinations 
+        that exist within the numeric features in a dataset to the degree defined in 
+        polynomial_degree param. 
     
     polynomial_degree: int, default = 2
-    Degree of polynomial features. For example, if an input sample is two dimensional 
-    and of the form [a, b], the polynomial features with degree = 2 are: 
-    [1, a, b, a^2, ab, b^2].
+        Degree of polynomial features. For example, if an input sample is two dimensional 
+        and of the form [a, b], the polynomial features with degree = 2 are: 
+        [1, a, b, a^2, ab, b^2].
     
     trigonometry_features: bool, default = False
-    When set to True, new features are created based on all trigonometric combinations 
-    that exist within the numeric features in a dataset to the degree defined in the
-    polynomial_degree param.
+        When set to True, new features are created based on all trigonometric combinations 
+        that exist within the numeric features in a dataset to the degree defined in the
+        polynomial_degree param.
     
     polynomial_threshold: float, default = 0.1
-    This is used to compress a sparse matrix of polynomial and trigonometric features.
-    Polynomial and trigonometric features whose feature importance based on the 
-    combination of Random Forest, AdaBoost and Linear correlation falls within the 
-    percentile of the defined threshold are kept in the dataset. Remaining features 
-    are dropped before further processing.
+        This is used to compress a sparse matrix of polynomial and trigonometric features.
+        Polynomial and trigonometric features whose feature importance based on the 
+        combination of Random Forest, AdaBoost and Linear correlation falls within the 
+        percentile of the defined threshold are kept in the dataset. Remaining features 
+        are dropped before further processing.
     
     group_features: list or list of list, default = None
-    When a dataset contains features that have related characteristics, the group_features
-    param can be used for statistical feature extraction. For example, if a dataset has 
-    numeric features that are related with each other (i.e 'Col1', 'Col2', 'Col3'), a list 
-    containing the column names can be passed under group_features to extract statistical 
-    information such as the mean, median, mode and standard deviation.
+        When a dataset contains features that have related characteristics, the group_features
+        param can be used for statistical feature extraction. For example, if a dataset has 
+        numeric features that are related with each other (i.e 'Col1', 'Col2', 'Col3'), a list 
+        containing the column names can be passed under group_features to extract statistical 
+        information such as the mean, median, mode and standard deviation.
     
     group_names: list, default = None
-    When group_features is passed, a name of the group can be passed into the group_names 
-    param as a list containing strings. The length of a group_names list must equal to the 
-    length  of group_features. When the length doesn't match or the name is not passed, new 
-    features are sequentially named such as group_1, group_2 etc.
+        When group_features is passed, a name of the group can be passed into the group_names 
+        param as a list containing strings. The length of a group_names list must equal to the 
+        length  of group_features. When the length doesn't match or the name is not passed, new 
+        features are sequentially named such as group_1, group_2 etc.
     
     feature_selection: bool, default = False
-    When set to True, a subset of features are selected using a combination of various
-    permutation importance techniques including Random Forest, Adaboost and Linear 
-    correlation with target variable. The size of the subset is dependent on the 
-    feature_selection_param. Generally, this is used to constrain the feature space 
-    in order to improve efficiency in modeling. When polynomial_features and 
-    feature_interaction  are used, it is highly recommended to define the 
-    feature_selection_threshold param with a lower value.
+        When set to True, a subset of features are selected using a combination of various
+        permutation importance techniques including Random Forest, Adaboost and Linear 
+        correlation with target variable. The size of the subset is dependent on the 
+        feature_selection_param. Generally, this is used to constrain the feature space 
+        in order to improve efficiency in modeling. When polynomial_features and 
+        feature_interaction  are used, it is highly recommended to define the 
+        feature_selection_threshold param with a lower value.
 
     feature_selection_threshold: float, default = 0.8
-    Threshold used for feature selection (including newly created polynomial features).
-    A higher value will result in a higher feature space. It is recommended to do multiple
-    trials with different values of feature_selection_threshold specially in cases where 
-    polynomial_features and feature_interaction are used. Setting a very low value may be 
-    efficient but could result in under-fitting.
+        Threshold used for feature selection (including newly created polynomial features).
+        A higher value will result in a higher feature space. It is recommended to do multiple
+        trials with different values of feature_selection_threshold specially in cases where 
+        polynomial_features and feature_interaction are used. Setting a very low value may be 
+        efficient but could result in under-fitting.
     
     feature_interaction: bool, default = False 
-    When set to True, it will create new features by interacting (a * b) for all numeric 
-    variables in the dataset including polynomial and trigonometric features (if created). 
-    This feature is not scalable and may not work as expected on datasets with large 
-    feature space.
+        When set to True, it will create new features by interacting (a * b) for all numeric 
+        variables in the dataset including polynomial and trigonometric features (if created). 
+        This feature is not scalable and may not work as expected on datasets with large 
+        feature space.
     
     feature_ratio: bool, default = False
-    When set to True, it will create new features by calculating the ratios (a / b) of all 
-    numeric variables in the dataset. This feature is not scalable and may not work as 
-    expected on datasets with large feature space.
+        When set to True, it will create new features by calculating the ratios (a / b) of all 
+        numeric variables in the dataset. This feature is not scalable and may not work as 
+        expected on datasets with large feature space.
     
     interaction_threshold: bool, default = 0.01
-    Similar to polynomial_threshold, It is used to compress a sparse matrix of newly 
-    created features through interaction. Features whose importance based on the 
-    combination  of  Random Forest, AdaBoost and Linear correlation falls within the 
-    percentile of the  defined threshold are kept in the dataset. Remaining features 
-    are dropped before further processing.
+        Similar to polynomial_threshold, It is used to compress a sparse matrix of newly 
+        created features through interaction. Features whose importance based on the 
+        combination  of  Random Forest, AdaBoost and Linear correlation falls within the 
+        percentile of the  defined threshold are kept in the dataset. Remaining features 
+        are dropped before further processing.
     
     transform_target: bool, default = False
-    When set to True, target variable is transformed using the method defined in
-    transform_target_method param. Target transformation is applied separately from 
-    feature transformations. 
+        When set to True, target variable is transformed using the method defined in
+        transform_target_method param. Target transformation is applied separately from 
+        feature transformations. 
     
     transform_target_method: string, default = 'box-cox'
-    'Box-cox' and 'yeo-johnson' methods are supported. Box-Cox requires input data to 
-    be strictly positive, while Yeo-Johnson supports both positive or negative data.
-    When transform_target_method is 'box-cox' and target variable contains negative
-    values, method is internally forced to 'yeo-johnson' to avoid exceptions.
+        'Box-cox' and 'yeo-johnson' methods are supported. Box-Cox requires input data to 
+        be strictly positive, while Yeo-Johnson supports both positive or negative data.
+        When transform_target_method is 'box-cox' and target variable contains negative
+        values, method is internally forced to 'yeo-johnson' to avoid exceptions.
 
     data_split_shuffle: bool, default = True
-    If set to False, prevents shuffling of rows when splitting data.
+        If set to False, prevents shuffling of rows when splitting data.
 
     folds_shuffle: bool, default = True
-    If set to False, prevents shuffling of rows when using cross validation.
+        If set to False, prevents shuffling of rows when using cross validation.
 
     n_jobs: int, default = -1
-    The number of jobs to run in parallel (for functions that supports parallel 
-    processing) -1 means using all processors. To run all functions on single processor 
-    set n_jobs to None.
+        The number of jobs to run in parallel (for functions that supports parallel 
+        processing) -1 means using all processors. To run all functions on single processor 
+        set n_jobs to None.
 
     html: bool, default = True
-    If set to False, prevents runtime display of monitor. This must be set to False
-    when using environment that doesnt support HTML.
+        If set to False, prevents runtime display of monitor. This must be set to False
+        when using environment that doesnt support HTML.
     
     session_id: int, default = None
-    If None, a random seed is generated and returned in the Information grid. The 
-    unique number is then distributed as a seed in all functions used during the 
-    experiment. This can be used for later reproducibility of the entire experiment.
+        If None, a random seed is generated and returned in the Information grid. The 
+        unique number is then distributed as a seed in all functions used during the 
+        experiment. This can be used for later reproducibility of the entire experiment.
 
     log_experiment: bool, default = False
-    When set to True, all metrics and parameters are logged on MLFlow server.
+        When set to True, all metrics and parameters are logged on MLFlow server.
 
     experiment_name: str, default = None
-    Name of experiment for logging. When set to None, 'reg' is by default used as 
-    alias for the experiment name.
+        Name of experiment for logging. When set to None, 'reg' is by default used as 
+        alias for the experiment name.
 
     log_plots: bool, default = False
-    When set to True, specific plots are logged in MLflow as a png file. By default,
-    it is set to False. 
+        When set to True, specific plots are logged in MLflow as a png file. By default,
+        it is set to False. 
 
     log_profile: bool, default = False
-    When set to True, data profile is also logged on MLflow as a html file. By default,
-    it is set to False. 
+        When set to True, data profile is also logged on MLflow as a html file. By default,
+        it is set to False. 
 
     log_data: bool, default = False
-    When set to True, train and test dataset are logged as csv. 
+        When set to True, train and test dataset are logged as csv. 
     
     silent: bool, default = False
-    When set to True, confirmation of data types is not required. All preprocessing will 
-    be performed assuming automatically inferred data types. Not recommended for direct use 
-    except for established pipelines.
+        When set to True, confirmation of data types is not required. All preprocessing will 
+        be performed assuming automatically inferred data types. Not recommended for direct use 
+        except for established pipelines.
 
     verbose: Boolean, default = True
-    Information grid is not printed when verbose is set to False.
+        Information grid is not printed when verbose is set to False.
 
     profile: bool, default = False
-    If set to true, a data profile for Exploratory Data Analysis will be displayed 
-    in an interactive HTML report. 
+        If set to true, a data profile for Exploratory Data Analysis will be displayed 
+        in an interactive HTML report. 
     
-    Returns:
-    --------
+    Returns
+    -------
+    info_grid
+        Information grid is printed.
 
-    info grid:    Information grid is printed.
-    -----------      
-
-    environment:  This function returns various outputs that are stored in variable
-    -----------   as tuple. They are used by other functions in pycaret.
-      
+    environment
+        This function returns various outputs that are stored in variable
+        as tuple. They are used by other functions in pycaret.
       
     """
     
@@ -1932,10 +1928,7 @@ def create_model(estimator = None,
                  **kwargs): #added in pycaret==2.0.0
     
      
-    """  
-     
-    Description:
-    ------------
+    """
     This function creates a model and scores it using Kfold Cross Validation. 
     The output prints a score grid that shows MAE, MSE, RMSE, RMSLE, R2 and 
     MAPE by fold (default = 10 Fold).
@@ -1944,88 +1937,84 @@ def create_model(estimator = None,
 
     setup() function must be called before using create_model()
 
-        Example
-        -------
-        from pycaret.datasets import get_data
-        boston = get_data('boston')
-        experiment_name = setup(data = boston,  target = 'medv')
-        
-        lr = create_model('lr')
+    Example
+    -------
+    >>> from pycaret.datasets import get_data
+    >>> boston = get_data('boston')
+    >>> experiment_name = setup(data = boston,  target = 'medv')
+    
+    >>> lr = create_model('lr')
 
-        This will create a trained Linear Regression model.
+    This will create a trained Linear Regression model.
 
     Parameters
     ----------
     estimator : string / object, default = None
+        Enter ID of the estimators available in model library or pass an untrained model 
+        object consistent with fit / predict API to train and evaluate model. All estimators 
+        support binary or multiclass problem. List of estimators in model library (ID - Name):
 
-    Enter ID of the estimators available in model library or pass an untrained model 
-    object consistent with fit / predict API to train and evaluate model. All estimators 
-    support binary or multiclass problem. List of estimators in model library:
-
-    ID          Name      
-    --------    ----------     
-    'lr'        Linear Regression                   
-    'lasso'     Lasso Regression                
-    'ridge'     Ridge Regression                
-    'en'        Elastic Net                   
-    'lar'       Least Angle Regression                  
-    'llar'      Lasso Least Angle Regression                   
-    'omp'       Orthogonal Matching Pursuit                     
-    'br'        Bayesian Ridge                   
-    'ard'       Automatic Relevance Determination                  
-    'par'       Passive Aggressive Regressor                    
-    'ransac'    Random Sample Consensus       
-    'tr'        TheilSen Regressor                   
-    'huber'     Huber Regressor                               
-    'kr'        Kernel Ridge                                     
-    'svm'       Support Vector Machine                           
-    'knn'       K Neighbors Regressor                           
-    'dt'        Decision Tree                                    
-    'rf'        Random Forest                                    
-    'et'        Extra Trees Regressor                            
-    'ada'       AdaBoost Regressor                              
-    'gbr'       Gradient Boosting Regressor                               
-    'mlp'       Multi Level Perceptron                          
-    'xgboost'   Extreme Gradient Boosting                   
-    'lightgbm'  Light Gradient Boosting                    
-    'catboost'  CatBoost Regressor                         
+        * 'lr' - Linear Regression                   
+        * 'lasso' - Lasso Regression                
+        * 'ridge' - Ridge Regression                
+        * 'en' - Elastic Net                   
+        * 'lar' - Least Angle Regression                  
+        * 'llar' - Lasso Least Angle Regression                   
+        * 'omp' - Orthogonal Matching Pursuit                     
+        * 'br' - Bayesian Ridge                   
+        * 'ard' - Automatic Relevance Determination                  
+        * 'par' - Passive Aggressive Regressor                    
+        * 'ransac' - Random Sample Consensus       
+        * 'tr' - TheilSen Regressor                   
+        * 'huber' - Huber Regressor                               
+        * 'kr' - Kernel Ridge                                     
+        * 'svm' - Support Vector Machine                           
+        * 'knn' - K Neighbors Regressor                           
+        * 'dt' - Decision Tree                                    
+        * 'rf' - Random Forest                                    
+        * 'et' - Extra Trees Regressor                            
+        * 'ada' - AdaBoost Regressor                              
+        * 'gbr' - Gradient Boosting Regressor                               
+        * 'mlp' - Multi Level Perceptron                          
+        * 'xgboost' - Extreme Gradient Boosting                   
+        * 'lightgbm' - Light Gradient Boosting                    
+        * 'catboost' - CatBoost Regressor                         
 
     ensemble: Boolean, default = False
-    True would result in an ensemble of estimator using the method parameter defined. 
+        True would result in an ensemble of estimator using the method parameter defined. 
 
     method: String, 'Bagging' or 'Boosting', default = None.
-    method must be defined when ensemble is set to True. Default method is set to None. 
+        method must be defined when ensemble is set to True. Default method is set to None. 
 
     fold: integer, default = 10
-    Number of folds to be used in Kfold CV. Must be at least 2. 
+        Number of folds to be used in Kfold CV. Must be at least 2. 
 
     round: integer, default = 4
-    Number of decimal places the metrics in the score grid will be rounded to. 
+        Number of decimal places the metrics in the score grid will be rounded to. 
 
     cross_validation: bool, default = True
-    When cross_validation set to False fold parameter is ignored and model is trained
-    on entire training dataset. No metric evaluation is returned. 
+        When cross_validation set to False fold parameter is ignored and model is trained
+        on entire training dataset. No metric evaluation is returned. 
 
     verbose: Boolean, default = True
-    Score grid is not printed when verbose is set to False.
+        Score grid is not printed when verbose is set to False.
     
     system: Boolean, default = True
-    Must remain True all times. Only to be changed by internal functions.
+        Must remain True all times. Only to be changed by internal functions.
     
     **kwargs: 
-    Additional keyword arguments to pass to the estimator.
+        Additional keyword arguments to pass to the estimator.
 
-    Returns:
-    --------
+    Returns
+    -------
+    score_grid
+        A table containing the scores of the model across the kfolds. 
+        Scoring metrics used are MAE, MSE, RMSE, RMSLE, R2 and MAPE. 
+        Mean and standard deviation of the scores across the folds are 
+        also returned.
 
-    score grid:   A table containing the scores of the model across the kfolds. 
-    -----------   Scoring metrics used are MAE, MSE, RMSE, RMSLE, R2 and MAPE. 
-                  Mean and standard deviation of the scores across the folds are 
-                  also returned.
-
-    model:        trained model object
-    -----------
-
+    model
+        Trained model object.
   
     """
 
@@ -2319,7 +2308,7 @@ def create_model(estimator = None,
         
         from sklearn.tree import DecisionTreeRegressor
         model = DecisionTreeRegressor(random_state=seed, **kwargs)
-        full_name = 'Decision Tree Regressor'
+        full_name = 'Decision Tree'
         
     elif estimator == 'rf':
         
@@ -2790,9 +2779,6 @@ def ensemble_model(estimator,
                    optimize = 'R2', #added in pycaret==2.0.0
                    verbose = True):
     """
-    
-    Description:
-    ------------
     This function ensembles the trained base estimator using the method defined 
     in 'method' param (default = 'Bagging'). The output prints a score grid that 
     shows MAE, MSE, RMSE, R2, RMSLE and MAPE by fold (default CV = 10 Folds).
@@ -2801,66 +2787,64 @@ def ensemble_model(estimator,
 
     Model must be created using create_model() or tune_model().
 
-        Example:
-        --------
-        from pycaret.datasets import get_data
-        boston = get_data('boston')
-        experiment_name = setup(data = boston,  target = 'medv')
-        dt = create_model('dt')
-        
-        ensembled_dt = ensemble_model(dt)
+    Example
+    --------
+    >>> from pycaret.datasets import get_data
+    >>> boston = get_data('boston')
+    >>> experiment_name = setup(data = boston,  target = 'medv')
+    >>> dt = create_model('dt')
+    >>> ensembled_dt = ensemble_model(dt)
 
-        This will return an ensembled Decision Tree model using 'Bagging'.
+    This will return an ensembled Decision Tree model using 'Bagging'.
 
     Parameters
     ----------
     estimator : object, default = None
 
     method: String, default = 'Bagging'
-    Bagging method will create an ensemble meta-estimator that fits base 
-    regressor each on random subsets of the original dataset. The other
-    available method is 'Boosting' that fits a regressor on the original 
-    dataset and then fits additional copies of the regressor on the same 
-    dataset but where the weights of instances are adjusted according to 
-    the error of the current prediction. As such, subsequent regressors 
-    focus more on difficult cases.
+        Bagging method will create an ensemble meta-estimator that fits base 
+        regressor each on random subsets of the original dataset. The other
+        available method is 'Boosting' that fits a regressor on the original 
+        dataset and then fits additional copies of the regressor on the same 
+        dataset but where the weights of instances are adjusted according to 
+        the error of the current prediction. As such, subsequent regressors 
+        focus more on difficult cases.
     
     fold: integer, default = 10
-    Number of folds to be used in Kfold CV. Must be at least 2.
+        Number of folds to be used in Kfold CV. Must be at least 2.
     
     n_estimators: integer, default = 10
-    The number of base estimators in the ensemble.
-    In case of perfect fit, the learning procedure is stopped early.
+        The number of base estimators in the ensemble.
+        In case of perfect fit, the learning procedure is stopped early.
 
     round: integer, default = 4
-    Number of decimal places the metrics in the score grid will be rounded to.
+        Number of decimal places the metrics in the score grid will be rounded to.
 
     choose_better: Boolean, default = False
-    When set to set to True, base estimator is returned when the metric doesn't 
-    improve by ensemble_model. This gurantees the returned object would perform 
-    atleast equivalent to base estimator created using create_model or model 
-    returned by compare_models.
+        When set to set to True, base estimator is returned when the metric doesn't 
+        improve by ensemble_model. This gurantees the returned object would perform 
+        atleast equivalent to base estimator created using create_model or model 
+        returned by compare_models.
 
     optimize: string, default = 'R2'
-    Only used when choose_better is set to True. optimize parameter is used
-    to compare emsembled model with base estimator. Values accepted in 
-    optimize parameter are 'MAE', 'MSE', 'RMSE', 'R2', 'RMSLE', 'MAPE'.
+        Only used when choose_better is set to True. optimize parameter is used
+        to compare emsembled model with base estimator. Values accepted in 
+        optimize parameter are 'MAE', 'MSE', 'RMSE', 'R2', 'RMSLE', 'MAPE'.
 
     verbose: Boolean, default = True
-    Score grid is not printed when verbose is set to False.
+        Score grid is not printed when verbose is set to False.
 
 
-    Returns:
-    --------
+    Returns
+    -------
+    score_grid
+        A table containing the scores of the model across the kfolds. 
+        Scoring metrics used are MAE, MSE, RMSE, R2, RMSLE and MAPE.
+        Mean and standard deviation of the scores across the folds are 
+        also returned.
 
-    score grid:   A table containing the scores of the model across the kfolds. 
-    -----------   Scoring metrics used are MAE, MSE, RMSE, R2, RMSLE and MAPE.
-                  Mean and standard deviation of the scores across the folds are 
-                  also returned.
-
-    model:        trained ensembled model object
-    -----------
-
+    model
+        Trained ensembled model object.
     
     """
     
@@ -3499,10 +3483,6 @@ def compare_models(blacklist = None,
                    verbose = True): #added in pycaret==2.0.0
     
     """
-       
-   
-    Description:
-    ------------
     This function train all the models available in the model library and scores them 
     using Kfold Cross Validation. The output prints a score grid with MAE, MSE 
     RMSE, R2, RMSLE and MAPE (averaged accross folds), determined by fold parameter.
@@ -3515,70 +3495,69 @@ def compare_models(blacklist = None,
     When turbo is set to True ('kr', 'ard' and 'mlp') are excluded due to longer
     training times. By default turbo param is set to True.
 
-        Example:
-        --------
-        from pycaret.datasets import get_data
-        boston = get_data('boston')
-        experiment_name = setup(data = boston,  target = 'medv')
+    Example
+    --------
+    >>> from pycaret.datasets import get_data
+    >>> boston = get_data('boston')
+    >>> experiment_name = setup(data = boston,  target = 'medv')
+    >>> best_model = compare_models() 
 
-        best_model = compare_models() 
+    This will return the averaged score grid of all models except 'kr', 'ard' 
+    and 'mlp'. When turbo param is set to False, all models including 'kr',
+    'ard' and 'mlp' are used, but this may result in longer training times.
+    
+    >>> best_model = compare_models(blacklist = ['knn','gbr'], turbo = False) 
 
-        This will return the averaged score grid of all models except 'kr', 'ard' 
-        and 'mlp'. When turbo param is set to False, all models including 'kr',
-        'ard' and 'mlp' are used, but this may result in longer training times.
-        
-        best_model = compare_models(blacklist = ['knn','gbr'], turbo = False) 
+    This will return a comparison of all models except K Nearest Neighbour and
+    Gradient Boosting Regressor.
+    
+    >>> best_model = compare_models(blacklist = ['knn','gbr'] , turbo = True) 
 
-        This will return a comparison of all models except K Nearest Neighbour and
-        Gradient Boosting Regressor.
-        
-        best_model = compare_models(blacklist = ['knn','gbr'] , turbo = True) 
-
-        This will return a comparison of all models except K Nearest Neighbour, 
-        Gradient Boosting Regressor, Kernel Ridge Regressor, Automatic Relevance
-        Determinant and Multi Level Perceptron.
+    This will return a comparison of all models except K Nearest Neighbour, 
+    Gradient Boosting Regressor, Kernel Ridge Regressor, Automatic Relevance
+    Determinant and Multi Level Perceptron.
         
     Parameters
     ----------
     blacklist: list of strings, default = None
-    In order to omit certain models from the comparison model ID's can be passed as 
-    a list of strings in blacklist param. 
+        In order to omit certain models from the comparison model ID's can be passed as 
+        a list of strings in blacklist param. 
 
     whitelist: list of strings, default = None
-    In order to run only certain models for the comparison, the model ID's can be 
-    passed as a list of strings in whitelist param. 
+        In order to run only certain models for the comparison, the model ID's can be 
+        passed as a list of strings in whitelist param. 
 
     fold: integer, default = 10
-    Number of folds to be used in Kfold CV. Must be at least 2. 
+        Number of folds to be used in Kfold CV. Must be at least 2. 
 
     round: integer, default = 4
-    Number of decimal places the metrics in the score grid will be rounded to.
+        Number of decimal places the metrics in the score grid will be rounded to.
   
     sort: string, default = 'MAE'
-    The scoring measure specified is used for sorting the average score grid
-    Other options are 'MAE', 'MSE', 'RMSE', 'R2', 'RMSLE' and 'MAPE'.
+        The scoring measure specified is used for sorting the average score grid
+        Other options are 'MAE', 'MSE', 'RMSE', 'R2', 'RMSLE' and 'MAPE'.
 
     n_select: int, default = 1
-    Number of top_n models to return. use negative argument for bottom selection.
-    for example, n_select = -3 means bottom 3 models.
+        Number of top_n models to return. use negative argument for bottom selection.
+        for example, n_select = -3 means bottom 3 models.
 
     turbo: Boolean, default = True
-    When turbo is set to True, it blacklists estimators that have longer
-    training times.
+        When turbo is set to True, it blacklists estimators that have longer
+        training times.
 
     verbose: Boolean, default = True
-    Score grid is not printed when verbose is set to False.
+        Score grid is not printed when verbose is set to False.
     
-    Returns:
+    Returns
+    -------
+    score_grid
+        A table containing the scores of the model across the kfolds. 
+        Scoring metrics used are MAE, MSE, RMSE, R2, RMSLE and MAPE
+        Mean and standard deviation of the scores across the folds is
+        also returned.
+
+    Warnings
     --------
-
-    score grid:   A table containing the scores of the model across the kfolds. 
-    -----------   Scoring metrics used are MAE, MSE, RMSE, R2, RMSLE and MAPE
-                  Mean and standard deviation of the scores across the folds is
-                  also returned.
-
-    Warnings:
-    ---------
     - compare_models() though attractive, might be time consuming with large 
       datasets. By default turbo is set to True, which blacklists models that
       have longer training times. Changing turbo parameter to False may result 
@@ -4392,9 +4371,6 @@ def blend_models(estimator_list = 'All',
                  verbose = True):
     
     """
-        
-    Description:
-    ------------
     This function creates an ensemble meta-estimator that fits a base regressor on 
     the whole dataset. It then averages the predictions to form a final prediction. 
     By default, this function will use all estimators in the model library (excl. 
@@ -4405,64 +4381,62 @@ def blend_models(estimator_list = 'All',
 
     This function returns a trained model object.  
 
-        Example:
-        --------
-        from pycaret.datasets import get_data
-        boston = get_data('boston')
-        experiment_name = setup(data = boston,  target = 'medv')
-        
-        blend_all = blend_models() 
+    Example
+    --------
+    >>> from pycaret.datasets import get_data
+    >>> boston = get_data('boston')
+    >>> experiment_name = setup(data = boston,  target = 'medv')
+    >>> blend_all = blend_models() 
 
-        This will result in VotingRegressor for all models in the library except 'ard',
-        'kr' and 'mlp'.
-        
-        For specific models, you can use:
-
-        lr = create_model('lr')
-        rf = create_model('rf')
-        knn = create_model('knn')
-
-        blend_three = blend_models(estimator_list = [lr,rf,knn])
+    This will result in VotingRegressor for all models in the library except 'ard',
+    'kr' and 'mlp'.
     
-        This will create a VotingRegressor of lr, rf and knn.
+    For specific models, you can use:
+
+    >>> lr = create_model('lr')
+    >>> rf = create_model('rf')
+    >>> knn = create_model('knn')
+    >>> blend_three = blend_models(estimator_list = [lr,rf,knn])
+
+    This will create a VotingRegressor of lr, rf and knn.
 
     Parameters
     ----------
     estimator_list : string ('All') or list of objects, default = 'All'
 
     fold: integer, default = 10
-    Number of folds to be used in Kfold CV. Must be at least 2. 
+       Number of folds to be used in Kfold CV. Must be at least 2. 
 
     round: integer, default = 4
-    Number of decimal places the metrics in the score grid will be rounded to.
+      Number of decimal places the metrics in the score grid will be rounded to.
 
     choose_better: Boolean, default = False
-    When set to True, base estimator is returned when the metric doesn't 
-    improve by ensemble_model. This gurantees the returned object would perform 
-    atleast equivalent to base estimator created using create_model or model 
-    returned by compare_models.
+        When set to True, base estimator is returned when the metric doesn't 
+        improve by ensemble_model. This gurantees the returned object would perform 
+        atleast equivalent to base estimator created using create_model or model 
+        returned by compare_models.
 
     optimize: string, default = 'R2'
-    Only used when choose_better is set to True. optimize parameter is used
-    to compare emsembled model with base estimator. Values accepted in 
-    optimize parameter are 'MAE', 'MSE', 'RMSE', 'R2', 'RMSLE', 'MAPE'.
+        Only used when choose_better is set to True. optimize parameter is used
+        to compare emsembled model with base estimator. Values accepted in 
+        optimize parameter are 'MAE', 'MSE', 'RMSE', 'R2', 'RMSLE', 'MAPE'.
 
     turbo: Boolean, default = True
-    When turbo is set to True, it blacklists estimator that uses Radial Kernel.
+        When turbo is set to True, it blacklists estimator that uses Radial Kernel.
 
     verbose: Boolean, default = True
-    Score grid is not printed when verbose is set to False.
+        Score grid is not printed when verbose is set to False.
 
-    Returns:
-    --------
+    Returns
+    -------
+    score_grid
+        A table containing the scores of the model across the kfolds. 
+        Scoring metrics used are MAE, MSE, RMSE, R2, RMSLE and MAPE. 
+        Mean and standard deviation of the scores across the folds are 
+        also returned.
 
-    score grid:   A table containing the scores of the model across the kfolds. 
-    -----------   Scoring metrics used are MAE, MSE, RMSE, R2, RMSLE and MAPE. 
-                  Mean and standard deviation of the scores across the folds are 
-                  also returned.
-
-    model:        trained Voting Regressor model object. 
-    -----------
+    model
+        Trained Voting Regressor model object. 
        
   
     """
@@ -5174,9 +5148,6 @@ def tune_model(estimator,
     
       
     """
-        
-    Description:
-    ------------
     This function tunes the hyperparameters of a model and scores it using Kfold 
     Cross Validation. The output prints the score grid that shows MAE, MSE, RMSE, 
     R2, RMSLE and MAPE by fold (by default = 10 Folds).
@@ -5185,62 +5156,61 @@ def tune_model(estimator,
 
     tune_model() only accepts a string parameter for estimator.
 
-        Example
-        -------
-        from pycaret.datasets import get_data
-        boston = get_data('boston')
-        experiment_name = setup(data = boston,  target = 'medv')
-        xgboost = create_model('xgboost')
+    Example
+    -------
+    >>> from pycaret.datasets import get_data
+    >>> boston = get_data('boston')
+    >>> experiment_name = setup(data = boston,  target = 'medv')
+    >>> xgboost = create_model('xgboost')
+    >>> tuned_xgboost = tune_model(xgboost) 
 
-        tuned_xgboost = tune_model(xgboost) 
-
-        This will tune the hyperparameters of Extreme Gradient Boosting Regressor.
+    This will tune the hyperparameters of Extreme Gradient Boosting Regressor.
 
     Parameters
     ----------
     estimator : object, default = None
 
     fold: integer, default = 10
-    Number of folds to be used in Kfold CV. Must be at least 2. 
+        Number of folds to be used in Kfold CV. Must be at least 2. 
 
     round: integer, default = 4
-    Number of decimal places the metrics in the score grid will be rounded to. 
+        Number of decimal places the metrics in the score grid will be rounded to. 
 
     n_iter: integer, default = 10
-    Number of iterations within the Random Grid Search. For every iteration, 
-    the model randomly selects one value from the pre-defined grid of hyperparameters.
+        Number of iterations within the Random Grid Search. For every iteration, 
+        the model randomly selects one value from the pre-defined grid of hyperparameters.
 
     custom_grid: dictionary, default = None
-    To use custom hyperparameters for tuning pass a dictionary with parameter name
-    and values to be iterated. When set to None it uses pre-defined tuning grid.  
+        To use custom hyperparameters for tuning pass a dictionary with parameter name
+        and values to be iterated. When set to None it uses pre-defined tuning grid.  
 
     optimize: string, default = 'R2'
-    Measure used to select the best model through hyperparameter tuning.
-    The default scoring measure is 'R2'. Other measures include 'MAE', 'MSE', 'RMSE',
-    'RMSLE', 'MAPE'. When using 'RMSE' or 'RMSLE' the base scorer is 'MSE' and when using
-    'MAPE' the base scorer is 'MAE'.
+        Measure used to select the best model through hyperparameter tuning.
+        The default scoring measure is 'R2'. Other measures include 'MAE', 'MSE', 'RMSE',
+        'RMSLE', 'MAPE'. When using 'RMSE' or 'RMSLE' the base scorer is 'MSE' and when using
+        'MAPE' the base scorer is 'MAE'.
 
     choose_better: Boolean, default = False
-    When set to set to True, base estimator is returned when the metric doesn't improve 
-    by tune_model. This gurantees the returned object would perform atleast equivalent 
-    to base estimator created using create_model or model returned by compare_models.
+        When set to set to True, base estimator is returned when the metric doesn't improve 
+        by tune_model. This gurantees the returned object would perform atleast equivalent 
+        to base estimator created using create_model or model returned by compare_models.
 
     verbose: Boolean, default = True
-    Score grid is not printed when verbose is set to False.
+        Score grid is not printed when verbose is set to False.
 
-    Returns:
+    Returns
+    -------
+    score_grid
+        A table containing the scores of the model across the kfolds. 
+        Scoring metrics used are MAE, MSE, RMSE, R2, RMSLE and MAPE.
+        Mean and standard deviation of the scores across the folds are 
+        also returned.
+
+    model
+        trained model object
+
+    Warnings
     --------
-
-    score grid:   A table containing the scores of the model across the kfolds. 
-    -----------   Scoring metrics used are MAE, MSE, RMSE, R2, RMSLE and MAPE.
-                  Mean and standard deviation of the scores across the folds are 
-                  also returned.
-
-    model:        trained model object
-    -----------
-
-    Warnings:
-    ---------
     - estimator parameter takes an abbreviated string. Passing a trained model object
       returns an error. The tune_model() function internally calls create_model() 
       before tuning the hyperparameters.
@@ -6532,18 +6502,12 @@ def stack_models(estimator_list,
                  fold = 10,
                  round = 4, 
                  restack = True, 
-                 plot = False,
                  choose_better = False, #added in pycaret==2.0.0
                  optimize = 'R2', #added in pycaret==2.0.0
-                 finalize = False,
                  verbose = True):
     
     """
-      
-            
-    Description:
-    ------------
-    This function creates a meta model and scores it using Kfold Cross Validation.
+    This function trains a meta model and scores it using Kfold Cross Validation.
     The predictions from the base level models as passed in the estimator_list param 
     are used as input features for the meta model. The restacking parameter controls
     the ability to expose raw features to the meta model when set to True
@@ -6552,78 +6516,66 @@ def stack_models(estimator_list,
     The output prints a score grid that shows MAE, MSE, RMSE, R2, RMSLE and MAPE by 
     fold (default = 10 Folds).
     
-    This function returns a container which is the list of all models in stacking. 
+    This function returns a trained model object. 
 
-        Example:
-        --------
-        from pycaret.datasets import get_data
-        boston = get_data('boston')
-        experiment_name = setup(data = boston,  target = 'medv')
-        dt = create_model('dt')
-        rf = create_model('rf')
-        ada = create_model('ada')
-        ridge = create_model('ridge')
-        knn = create_model('knn')
+    Example
+    --------
+    >>> from pycaret.datasets import get_data
+    >>> boston = get_data('boston')
+    >>> experiment_name = setup(data = boston,  target = 'medv')
+    >>> dt = create_model('dt')
+    >>> rf = create_model('rf')
+    >>> ada = create_model('ada')
+    >>> ridge = create_model('ridge')
+    >>> knn = create_model('knn')
+    >>>  stacked_models = stack_models(estimator_list=[dt,rf,ada,ridge,knn])
 
-        stacked_models = stack_models(estimator_list=[dt,rf,ada,ridge,knn])
-
-        This will create a meta model that will use the predictions of all the 
-        models provided in estimator_list param. By default, the meta model is 
-        Linear Regression but can be changed with meta_model param.
+    This will create a meta model that will use the predictions of all the 
+    models provided in estimator_list param. By default, the meta model is 
+    Linear Regression but can be changed with meta_model param.
 
     Parameters
     ----------
     estimator_list : list of object
 
     meta_model : object, default = None
-    if set to None, Linear Regression is used as a meta model.
+        If set to None, Linear Regression is used as a meta model.
 
     fold: integer, default = 10
-    Number of folds to be used in Kfold CV. Must be at least 2. 
+        Number of folds to be used in Kfold CV. Must be at least 2. 
 
     round: integer, default = 4
-    Number of decimal places the metrics in the score grid will be rounded to.
+        Number of decimal places the metrics in the score grid will be rounded to.
 
     restack: Boolean, default = True
-    When restack is set to True, raw data will be exposed to meta model when
-    making predictions, otherwise when False, only the predicted label is passed 
-    to meta model when making final predictions.
-
-    plot: Boolean, default = False
-    When plot is set to True, it will return the correlation plot of prediction
-    from all base models provided in estimator_list.
+        When restack is set to True, raw data will be exposed to meta model when
+        making predictions, otherwise when False, only the predicted label is passed 
+        to meta model when making final predictions.
 
     choose_better: Boolean, default = False
-    When set to True, base estimator is returned when the metric doesn't 
-    improve by ensemble_model. This gurantees the returned object would perform 
-    atleast equivalent to base estimator created using create_model or model 
-    returned by compare_models.
+        When set to True, base estimator is returned when the metric doesn't 
+        improve by ensemble_model. This gurantees the returned object would perform 
+        atleast equivalent to base estimator created using create_model or model 
+        returned by compare_models.
 
     optimize: string, default = 'R2'
-    Only used when choose_better is set to True. optimize parameter is used
-    to compare emsembled model with base estimator. Values accepted in 
-    optimize parameter are 'MAE', 'MSE', 'RMSE', 'R2', 'RMSLE', 'MAPE'.
-
-    finalize: Boolean, default = False
-    When finalize is set to True, it will fit the stacker on entire dataset
-    including the hold-out sample created during the setup() stage. It is not 
-    recommended to set this to True here, If you would like to fit the stacker 
-    on the entire dataset including the hold-out, use finalize_model().
+        Only used when choose_better is set to True. optimize parameter is used
+        to compare emsembled model with base estimator. Values accepted in 
+        optimize parameter are 'MAE', 'MSE', 'RMSE', 'R2', 'RMSLE', 'MAPE'.
     
     verbose: Boolean, default = True
-    Score grid is not printed when verbose is set to False.
+        Score grid is not printed when verbose is set to False.
 
-    Returns:
-    --------
+    Returns
+    -------
+    score_grid
+        A table containing the scores of the model across the kfolds. 
+        Scoring metrics used are MAE, MSE, RMSE, R2, RMSLE and MAPE.
+        Mean and standard deviation of the scores across the folds are 
+        also returned.
 
-    score grid:   A table containing the scores of the model across the kfolds. 
-    -----------   Scoring metrics used are MAE, MSE, RMSE, R2, RMSLE and MAPE.
-                  Mean and standard deviation of the scores across the folds are 
-                  also returned.
-
-    container:    list of all the models where last element is meta model.
-    ----------
-
+    model
+        Trained model object.
           
     """
     
@@ -6658,8 +6610,8 @@ def stack_models(estimator_list,
         logger.addHandler(ch)
 
     logger.info("Initializing stack_models()")
-    logger.info("""stack_models(estimator_list={}, meta_model={}, fold={}, round={}, restack={}, plot={}, choose_better={}, optimize={}, finalize={}, verbose={})""".\
-        format(str(estimator_list), str(meta_model), str(fold), str(round), str(restack), str(plot), str(choose_better), str(optimize), str(finalize), str(verbose)))
+    logger.info("""stack_models(estimator_list={}, meta_model={}, fold={}, round={}, restack={}, choose_better={}, optimize={}, verbose={})""".\
+        format(str(estimator_list), str(meta_model), str(fold), str(round), str(restack), str(choose_better), str(optimize), str(verbose)))
 
     logger.info("Checking exceptions")
 
@@ -6691,10 +6643,6 @@ def stack_models(estimator_list,
     #checking restack parameter
     if type(restack) is not bool:
         sys.exit('(Type Error): Restack parameter can only take argument as True or False.')    
-    
-    #checking plot parameter
-    if type(restack) is not bool:
-        sys.exit('(Type Error): Plot parameter can only take argument as True or False.')  
         
     #checking verbose parameter
     if type(verbose) is not bool:
@@ -6713,10 +6661,11 @@ def stack_models(estimator_list,
     from IPython.display import display, HTML, clear_output, update_display
     import time, datetime
     from copy import deepcopy
+    from sklearn.base import clone
     
-    logger.info("Copying estimator list")
-    #copy estimator_list
-    estimator_list = deepcopy(estimator_list)
+    #ignore warnings
+    import warnings
+    warnings.filterwarnings('ignore') 
     
     logger.info("Defining meta model")
     #Defining meta model. Linear Regression hardcoded for now
@@ -6724,7 +6673,7 @@ def stack_models(estimator_list,
         from sklearn.linear_model import LinearRegression
         meta_model = LinearRegression(n_jobs=n_jobs_param)
     else:
-        meta_model = deepcopy(meta_model) 
+        meta_model = clone(meta_model) 
     
     if optimize == 'MAE':
         compare_dimension = 'MAE' 
@@ -6741,14 +6690,9 @@ def stack_models(estimator_list,
 
     clear_output()
     
-    import warnings
-    warnings.filterwarnings('default')
-    warnings.warn('This function will adopt to Stackingclassifer() from sklearn in future release of PyCaret 2.x.')
-    warnings.filterwarnings('ignore')
-    
     logger.info("Preparing display monitor")
     #progress bar
-    max_progress = len(estimator_list) + fold + 4
+    max_progress = fold + 4
     progress = ipw.IntProgress(value=0, min=0, max=max_progress, step=1 , description='Processing: ')
     master_display = pd.DataFrame(columns=['MAE','MSE','RMSE', 'R2', 'RMSLE', 'MAPE'])
     if verbose:
@@ -6777,27 +6721,44 @@ def stack_models(estimator_list,
     from sklearn import metrics
     from sklearn.model_selection import KFold
     from sklearn.model_selection import cross_val_predict
-    import seaborn as sns
-    import matplotlib.pyplot as plt
+    from sklearn.ensemble import StackingRegressor
     
     progress.value += 1
 
     logger.info("Copying training dataset")
-    #defining data_X and data_y
-    if finalize:
-        data_X = X.copy()
-        data_y = y.copy()
-    else:       
-        data_X = X_train.copy()
-        data_y = y_train.copy()
-
+    #Storing X_train and y_train in data_X and data_y parameter
+    data_X = X_train.copy()
+    data_y = y_train.copy()
+    
     #reset index
-    data_X.reset_index(drop=True,inplace=True)
-    data_y.reset_index(drop=True,inplace=True)
+    data_X.reset_index(drop=True, inplace=True)
+    data_y.reset_index(drop=True, inplace=True)
     
-    #models_ for appending
-    models_ = []
+    logger.info("Defining folds")
+    #cross validation setup starts here
+    kf = KFold(fold, random_state=seed, shuffle=folds_shuffle_param)
     
+    logger.info("Declaring metric variables")
+
+    score_mae =np.empty((0,0))
+    score_mse =np.empty((0,0))
+    score_rmse =np.empty((0,0))
+    score_rmsle =np.empty((0,0))
+    score_r2 =np.empty((0,0))
+    score_mape =np.empty((0,0))
+    score_training_time=np.empty((0,0))
+    avgs_mae =np.empty((0,0))
+    avgs_mse =np.empty((0,0))
+    avgs_rmse =np.empty((0,0))
+    avgs_r2 =np.empty((0,0))
+    avgs_mape =np.empty((0,0)) 
+    avgs_rmsle =np.empty((0,0))
+    avgs_training_time=np.empty((0,0))
+    
+    def calculate_mape(actual, prediction):
+        mask = actual != 0
+        return (np.fabs(actual - prediction)/actual)[mask].mean()
+
     logger.info("Getting model names")
     #defining model_library model names
     model_names = np.zeros(0)
@@ -6823,115 +6784,34 @@ def stack_models(estimator_list,
         model_names_fixed.append(s)
         counter += 1
     
-    base_array = np.zeros((0,0))
-    base_prediction = pd.DataFrame(data_y) #changed to data_y
-    base_prediction = base_prediction.reset_index(drop=True)
-    
+    logger.info("Compiling estimator_list parameter")
+
     counter = 0
     
-    model_fit_start = time.time()
-
-    for model in estimator_list:
-        
-        logger.info("Checking base model : " + str(model_names[counter]))
-
-        '''
-        MONITOR UPDATE STARTS
-        '''
-
-        monitor.iloc[1,1:] = 'Evaluating ' + model_names[counter]
-        if verbose:
-            if html_param:
-                update_display(monitor, display_id = 'monitor')
-
-        '''
-        MONITOR UPDATE ENDS
-        '''
-        
-        #fitting and appending
-        logger.info("Fitting base model")
-        model.fit(data_X, data_y)
-        models_.append(model)
-        
-        progress.value += 1
-        
-        logger.info("Generating cross val predictions")
-        base_array = cross_val_predict(model,data_X,data_y,cv=fold, method='predict')
-        base_array_df = pd.DataFrame(base_array)
-        base_prediction = pd.concat([base_prediction,base_array_df],axis=1)
-        base_array = np.empty((0,0))
-        
+    estimator_list_tuples = []
+    
+    for i in estimator_list:
+        estimator_list_tuples.append(tuple([model_names_fixed[counter], estimator_list[counter]]))
         counter += 1
-    
-    logger.info("Base layer complete")
 
-    #defining column names now
-    target_col_name = np.array(base_prediction.columns[0])
-    model_names = np.append(target_col_name, model_names_fixed) #adding fixed column names now
-    base_prediction.columns = model_names #defining colum names now
-    
-    #defining data_X and data_y dataframe to be used in next stage.
-    
-    #drop column from base_prediction
-    base_prediction.drop(base_prediction.columns[0],axis=1,inplace=True)
-    
-    if restack:
-        data_X = pd.concat([data_X, base_prediction], axis=1)
-        
-    else:
-        data_X = base_prediction
-        
-    #data_y = base_prediction[base_prediction.columns[0]]
-    
-    #Correlation matrix of base_prediction
-    #base_prediction_cor = base_prediction.drop(base_prediction.columns[0],axis=1)
-    base_prediction_cor = base_prediction.corr()
-    
-    #Meta Modeling Starts Here
-    model = meta_model #this defines model to be used below as model = meta_model (as captured above)
-    
-    #appending in models
-    model.fit(data_X, data_y)
-    models_.append(model)
-    
-    logger.info("Defining folds")
-    kf = KFold(fold, random_state=seed, shuffle=folds_shuffle_param) #capturing fold requested by user
+    logger.info("Creating StackingRegressor()")
 
-    score_mae =np.empty((0,0))
-    score_mse =np.empty((0,0))
-    score_rmse =np.empty((0,0))
-    score_rmsle =np.empty((0,0))
-    score_r2 =np.empty((0,0))
-    score_mape =np.empty((0,0))
-    score_training_time=np.empty((0,0))
-    avgs_mae =np.empty((0,0))
-    avgs_mse =np.empty((0,0))
-    avgs_rmse =np.empty((0,0))
-    avgs_rmsle =np.empty((0,0))
-    avgs_r2 =np.empty((0,0))
-    avgs_mape =np.empty((0,0))  
-    avgs_training_time=np.empty((0,0))
+    model = StackingRegressor(estimators = estimator_list_tuples, final_estimator = meta_model, cv = fold,\
+            n_jobs = n_jobs_param, passthrough = restack)
 
-    def calculate_mape(actual, prediction):
-        mask = actual != 0
-        return (np.fabs(actual - prediction)/actual)[mask].mean()
-
-    
-    progress.value += 1
-    
     fold_num = 1
     
     for train_i , test_i in kf.split(data_X,data_y):
-
-        logger.info("Initializing Fold " + str(fold_num))
         
+        logger.info("Initializing Fold " + str(fold_num))
+
         t0 = time.time()
         
         '''
         MONITOR UPDATE STARTS
         '''
     
-        monitor.iloc[1,1:] = 'Fitting Meta Model Fold ' + str(fold_num) + ' of ' + str(fold)
+        monitor.iloc[1,1:] = 'Fitting Fold ' + str(fold_num) + ' of ' + str(fold)
         if verbose:
             if html_param:
                 update_display(monitor, display_id = 'monitor')
@@ -6940,10 +6820,8 @@ def stack_models(estimator_list,
         MONITOR UPDATE ENDS
         '''
         
-        progress.value += 1
-        
         Xtrain,Xtest = data_X.iloc[train_i], data_X.iloc[test_i]
-        ytrain,ytest = data_y.iloc[train_i], data_y.iloc[test_i]
+        ytrain,ytest = data_y.iloc[train_i], data_y.iloc[test_i]  
         time_start=time.time()
         logger.info("Fitting Model")
         model.fit(Xtrain,ytrain)
@@ -6958,14 +6836,15 @@ def stack_models(estimator_list,
             
         except:
             pass
-            
+            logger.info("No inverse transformation")
+
         logger.info("Compiling Metrics")
         time_end=time.time()
         mae = metrics.mean_absolute_error(ytest,pred_)
         mse = metrics.mean_squared_error(ytest,pred_)
         rmse = np.sqrt(mse)
-        r2 = metrics.r2_score(ytest,pred_)
         rmsle = np.sqrt(np.mean(np.power(np.log(np.array(abs(pred_))+1) - np.log(np.array(abs(ytest))+1), 2)))
+        r2 = metrics.r2_score(ytest,pred_)
         mape = calculate_mape(ytest,pred_)
         training_time=time_end-time_start
         score_mae = np.append(score_mae,mae)
@@ -6975,6 +6854,8 @@ def stack_models(estimator_list,
         score_r2 =np.append(score_r2,r2)
         score_mape = np.append(score_mape,mape)
         score_training_time=np.append(score_training_time,training_time)
+        progress.value += 1
+        
         
         '''
         
@@ -6983,18 +6864,14 @@ def stack_models(estimator_list,
         
         '''
         
-        fold_results = pd.DataFrame({'MAE':[mae], 'MSE': [mse], 'RMSE': [rmse], 
-                                     'R2': [r2], 'RMSLE': [rmsle], 'MAPE': [mape]}).round(round)
+        fold_results = pd.DataFrame({'MAE':[mae], 'MSE': [mse], 'RMSE': [rmse], 'R2': [r2],
+                                     'RMSLE' : [rmsle], 'MAPE': [mape] }).round(round)
         master_display = pd.concat([master_display, fold_results],ignore_index=True)
         fold_results = []
         
-        
         '''
-        
         TIME CALCULATION SUB-SECTION STARTS HERE
-        
         '''
-        
         t1 = time.time()
         
         tt = (t1 - t0) * (fold-fold_num) / 60
@@ -7007,13 +6884,12 @@ def stack_models(estimator_list,
         else:
             tt = str (tt)
             ETC = tt + ' Minutes Remaining'
-        
+            
         '''
         MONITOR UPDATE STARTS
         '''
 
         monitor.iloc[2,1:] = ETC
-        
         if verbose:
             if html_param:
                 update_display(monitor, display_id = 'monitor')
@@ -7021,16 +6897,11 @@ def stack_models(estimator_list,
         '''
         MONITOR UPDATE ENDS
         '''
-        
-        #update_display(ETC, display_id = 'ETC')
             
         fold_num += 1
         
-        
         '''
-        
         TIME CALCULATION ENDS HERE
-        
         '''
         
         if verbose:
@@ -7043,11 +6914,9 @@ def stack_models(estimator_list,
         Update_display() ends here
         
         '''
-     
-    model_fit_end = time.time()
-    model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
-    
+
     logger.info("Calculating mean and std")
+
     mean_mae=np.mean(score_mae)
     mean_mse=np.mean(score_mse)
     mean_rmse=np.mean(score_rmse)
@@ -7077,32 +6946,43 @@ def stack_models(estimator_list,
     avgs_mape = np.append(avgs_mape, std_mape)
     avgs_training_time=np.append(avgs_training_time, mean_training_time)
     avgs_training_time=np.append(avgs_training_time, std_training_time)
+    
+    progress.value += 1
+    
+    logger.info("Creating metrics dataframe")
 
-    logger.info("Creating metrics dataframe")  
     model_results = pd.DataFrame({'MAE': score_mae, 'MSE': score_mse, 'RMSE' : score_rmse, 'R2' : score_r2,
                                   'RMSLE' : score_rmsle, 'MAPE' : score_mape})
     model_avgs = pd.DataFrame({'MAE': avgs_mae, 'MSE': avgs_mse, 'RMSE' : avgs_rmse, 'R2' : avgs_r2,
                                 'RMSLE' : avgs_rmsle, 'MAPE' : avgs_mape},index=['Mean', 'SD'])
-  
-    model_results = model_results.append(model_avgs)
-    model_results = model_results.round(round)  
 
-    # yellow the mean
+    model_results = model_results.append(model_avgs)
+    model_results = model_results.round(round)
+    
+    #Yellow the mean
     model_results=model_results.style.apply(lambda x: ['background: yellow' if (x.name == 'Mean') else '' for i in x], axis=1)
     model_results = model_results.set_precision(round)
+
+    #refitting the model on complete X_train, y_train
+    monitor.iloc[1,1:] = 'Finalizing Model'
+    monitor.iloc[2,1:] = 'Almost Finished'
+    if verbose:
+        if html_param:
+            update_display(monitor, display_id = 'monitor')
+    
+    model_fit_start = time.time()
+    logger.info("Finalizing model")
+    model.fit(data_X, data_y)
+    model_fit_end = time.time()
+
+    model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
+    
+    #end runtime
+    runtime_end = time.time()
+    runtime = np.array(runtime_end - runtime_start).round(2)
+
     progress.value += 1
     
-    #appending method into models_
-    models_.append(restack)
-    
-    #storing results in create_model_container
-    logger.info("Uploading results into container")
-    create_model_container.append(model_results.data)
-    display_container.append(model_results.data)
-
-    #storing results in master_model_container
-    logger.info("Uploading model into container")
-    master_model_container.append(models_)
 
     '''
     When choose_better sets to True. optimize metric in scoregrid is
@@ -7116,7 +6996,7 @@ def stack_models(estimator_list,
     stack_model_results = create_model_container[-1][compare_dimension][-2:][0]
     
     scorer.append(stack_model_results)
-
+    
     if choose_better:
 
         logger.info("choose_better activated")
@@ -7146,6 +7026,8 @@ def stack_models(estimator_list,
         logger.info("SubProcess create_model() called ==================================")
         logger.info("choose_better completed")
 
+    progress.value += 1
+
     #returning better model
     if compare_dimension == 'R2':
         index_scorer = scorer.index(max(scorer))
@@ -7153,23 +7035,17 @@ def stack_models(estimator_list,
         index_scorer = scorer.index(min(scorer))
 
     if index_scorer == 0:
-        models_ = models_
+        model = model
     else:
-        models_ = base_models_[index_scorer-1]
-    
-    if plot:
-        logger.info("Plotting correlation heatmap")
-        clear_output()
-        plt.subplots(figsize=(15,7))
-        ax = sns.heatmap(base_prediction_cor, vmin=0.2, vmax=1, center=0,cmap='magma', square=True, annot=True, 
-                         linewidths=1)
-        ax.set_ylim(sorted(ax.get_xlim(), reverse=True))
+        model = base_models_[index_scorer-1]
     
     #end runtime
     runtime_end = time.time()
     runtime = np.array(runtime_end - runtime_start).round(2)
 
-    if logging_param and not finalize:
+    progress.value += 1
+
+    if logging_param:
         
         logger.info("Creating MLFlow logs")
 
@@ -7189,14 +7065,17 @@ def stack_models(estimator_list,
             # Get active run to log as tag
             RunID = mlflow.active_run().info.run_id
 
-            params = meta_model.get_params()
+            params = model.get_params()
 
             for i in list(params):
                 v = params.get(i)
                 if len(str(v)) > 250:
                     params.pop(i)
             
-            mlflow.log_params(params)
+            try:
+                mlflow.log_params(params)
+            except:
+                pass
             
             mlflow.log_metrics({"MAE": avgs_mae[0], "MSE": avgs_mse[0], "RMSE": avgs_rmse[0], "R2" : avgs_r2[0],
                                 "RMSLE": avgs_rmsle[0], "MAPE": avgs_mape[0]})
@@ -7213,7 +7092,7 @@ def stack_models(estimator_list,
 
             # Log model and transformation pipeline
             logger.info("SubProcess save_model() called ==================================")
-            save_model(models_, 'Trained Model', verbose=False)
+            save_model(model, 'Trained Model', verbose=False)
             logger.info("SubProcess save_model() end ==================================")
             mlflow.log_artifact('Trained Model' + '.pkl')
             size_bytes = Path('Trained Model.pkl').stat().st_size
@@ -7229,19 +7108,8 @@ def stack_models(estimator_list,
             mlflow.log_artifact('Results.html')
             os.remove('Results.html')
 
-            if log_plots_param:
-
-                plt.subplots(figsize=(15,7))
-                ax = sns.heatmap(base_prediction_cor, vmin=0.2, vmax=1, center=0,cmap='magma', square=True, annot=True, 
-                                linewidths=1)
-                ax.set_ylim(sorted(ax.get_xlim(), reverse=True))
-                plt.savefig("Stacking Heatmap.png")
-                mlflow.log_artifact('Stacking Heatmap.png')
-                os.remove('Stacking Heatmap.png')
-                plt.close()
-
             # Generate hold-out predictions and save as html
-            holdout = predict_model(models_, verbose=False)
+            holdout = predict_model(model, verbose=False)
             holdout_score = pull()
             display_container.pop(-1)
             holdout_score.to_html('Holdout.html', col_space=65, justify='left')
@@ -7255,14 +7123,16 @@ def stack_models(estimator_list,
         else:
             print(model_results.data)
 
+    progress.value += 1
+    
     logger.info("create_model_container: " + str(len(create_model_container)))
     logger.info("master_model_container: " + str(len(master_model_container)))
     logger.info("display_container: " + str(len(display_container)))
 
-    logger.info(str(models_))
+    logger.info(str(model))
     logger.info("stack_models() succesfully completed......................................")
 
-    return models_
+    return model
 
 def plot_model(estimator, 
                plot = 'residuals',
@@ -7272,63 +7142,55 @@ def plot_model(estimator,
     
     
     """
-          
-    Description:
-    ------------
     This function takes a trained model object and returns a plot based on the
     test / hold-out set. The process may require the model to be re-trained in
     certain cases. See list of plots supported below. 
     
     Model must be created using create_model() or tune_model().
 
-        Example:
-        --------
-        from pycaret.datasets import get_data
-        boston = get_data('boston')
-        experiment_name = setup(data = boston,  target = 'medv')
-        lr = create_model('lr')
-        
-        plot_model(lr)
+    Example
+    --------
+    >>> from pycaret.datasets import get_data
+    >>> boston = get_data('boston')
+    >>> experiment_name = setup(data = boston,  target = 'medv')
+    >>> lr = create_model('lr')
+    >>> plot_model(lr)
 
-        This will return an residuals plot of a trained Linear Regression model.
+    This will return an residuals plot of a trained Linear Regression model.
 
     Parameters
     ----------
     estimator : object, default = none
-    A trained model object should be passed as an estimator. 
+        A trained model object should be passed as an estimator. 
    
     plot : string, default = residual
-    Enter abbreviation of type of plot. The current list of plots supported are:
+        Enter abbreviation of type of plot. The current list of plots supported are (Plot - Name):
 
-    Plot            Name                             
-    ------          ---------                       
-    'residuals'     Residuals Plot
-    'error'         Prediction Error Plot
-    'cooks'         Cooks Distance Plot                         
-    'rfe'           Recursive Feat. Selection                     
-    'learning'      Learning Curve                           
-    'vc'            Validation Curve                               
-    'manifold'      Manifold Learning                        
-    'feature'       Feature Importance                        
-    'parameter'     Model Hyperparameter                    
+        * 'residuals' - Residuals Plot
+        * 'error' - Prediction Error Plot
+        * 'cooks' - Cooks Distance Plot                         
+        * 'rfe' - Recursive Feat. Selection                     
+        * 'learning' - Learning Curve                           
+        * 'vc' - Validation Curve                               
+        * 'manifold' - Manifold Learning                        
+        * 'feature' - Feature Importance                        
+        * 'parameter' - Model Hyperparameter                    
 
     save: Boolean, default = False
-    When set to True, Plot is saved as a 'png' file in current working directory.
+        When set to True, Plot is saved as a 'png' file in current working directory.
 
     verbose: Boolean, default = True
-    Progress bar not shown when verbose set to False. 
+        Progress bar not shown when verbose set to False. 
 
     system: Boolean, default = True
-    Must remain True all times. Only to be changed by internal functions.
+        Must remain True all times. Only to be changed by internal functions.
 
 
-    Returns:
-    --------
+    Returns
+    -------
+    Visual_Plot
+        Prints the visual plot. 
 
-    Visual Plot:  Prints the visual plot. 
-    ------------
-
-                
     """  
     
     
@@ -7704,9 +7566,6 @@ def interpret_model(estimator,
     
     
     """
-          
-    Description:
-    ------------
     This function takes a trained model object and returns an interpretation plot 
     based on the test / hold-out set. It only supports tree based algorithms. 
 
@@ -7716,44 +7575,42 @@ def interpret_model(estimator,
 
     For more information : https://shap.readthedocs.io/en/latest/
 
-        Example:
-        --------
-        from pycaret.datasets import get_data
-        boston = get_data('boston')
-        experiment_name = setup(data = boston,  target = 'medv')
-        dt = create_model('dt')
-        
-        interpret_model(dt)
+    Example
+    --------
+    >>> from pycaret.datasets import get_data
+    >>> boston = get_data('boston')
+    >>> experiment_name = setup(data = boston,  target = 'medv')
+    >>> dt = create_model('dt')
+    >>> interpret_model(dt)
 
-        This will return a summary interpretation plot of Decision Tree model.
+    This will return a summary interpretation plot of Decision Tree model.
 
     Parameters
     ----------
     estimator : object, default = none
-    A trained tree based model object should be passed as an estimator. 
+        A trained tree based model object should be passed as an estimator. 
 
     plot : string, default = 'summary'
-    other available options are 'correlation' and 'reason'.
+        Other available options are 'correlation' and 'reason'.
 
     feature: string, default = None
-    This parameter is only needed when plot = 'correlation'. By default feature is 
-    set to None which means the first column of the dataset will be used as a variable. 
-    A feature parameter must be passed to change this.
+        This parameter is only needed when plot = 'correlation'. By default feature is 
+        set to None which means the first column of the dataset will be used as a variable. 
+        A feature parameter must be passed to change this.
 
     observation: integer, default = None
-    This parameter only comes into effect when plot is set to 'reason'. If no observation
-    number is provided, it will return an analysis of all observations with the option
-    to select the feature on x and y axes through drop down interactivity. For analysis at
-    the sample level, an observation parameter must be passed with the index value of the
-    observation in test / hold-out set. 
+        This parameter only comes into effect when plot is set to 'reason'. If no observation
+        number is provided, it will return an analysis of all observations with the option
+        to select the feature on x and y axes through drop down interactivity. For analysis at
+        the sample level, an observation parameter must be passed with the index value of the
+        observation in test / hold-out set. 
 
-    Returns:
-    --------
+    Returns
+    -------
+    Visual_Plot
+        Returns the visual plot.
+        Returns the interactive JS plot when plot = 'reason'.
 
-    Visual Plot:  Returns the visual plot.
-    -----------   Returns the interactive JS plot when plot = 'reason'.
-
-         
     """
     
     
@@ -7901,37 +7758,30 @@ def evaluate_model(estimator):
     
     
     """
-          
-    Description:
-    ------------
     This function displays a user interface for all of the available plots for 
     a given estimator. It internally uses the plot_model() function. 
     
-        Example:
-        --------
-        from pycaret.datasets import get_data
-        boston = get_data('boston')
-        experiment_name = setup(data = boston,  target = 'medv')
-        lr = create_model('lr')
-        
-        evaluate_model(lr)
-        
-        This will display the User Interface for all of the plots for a given
-        estimator.
+    Example
+    --------
+    >>> from pycaret.datasets import get_data
+    >>> boston = get_data('boston')
+    >>> experiment_name = setup(data = boston,  target = 'medv')
+    >>> lr = create_model('lr')
+    >>> evaluate_model(lr)
+    
+    This will display the User Interface for all of the plots for a given
+    estimator.
 
     Parameters
     ----------
     estimator : object, default = none
-    A trained model object should be passed as an estimator. 
+        A trained model object should be passed as an estimator. 
 
-    Returns:
-    --------
+    Returns
+    -------
+    User_Interface
+        Displays the user interface for plotting.    
 
-    User Interface:  Displays the user interface for plotting.
-    --------------
-    
-         
-         
     """
         
         
@@ -7965,37 +7815,32 @@ def evaluate_model(estimator):
 def finalize_model(estimator):
     
     """
-          
-    Description:
-    ------------
     This function fits the estimator onto the complete dataset passed during the
     setup() stage. The purpose of this function is to prepare for final model
     deployment after experimentation. 
     
-        Example:
-        --------
-        from pycaret.datasets import get_data
-        boston = get_data('boston')
-        experiment_name = setup(data = boston,  target = 'medv')
-        lr = create_model('lr')
-        
-        final_lr = finalize_model(lr)
-        
-        This will return the final model object fitted to complete dataset. 
+    Example
+    --------
+    >>> from pycaret.datasets import get_data
+    >>> boston = get_data('boston')
+    >>> experiment_name = setup(data = boston,  target = 'medv')
+    >>> lr = create_model('lr')
+    >>> final_lr = finalize_model(lr)
+    
+    This will return the final model object fitted to complete dataset. 
 
     Parameters
     ----------
     estimator : object, default = none
-    A trained model object should be passed as an estimator. 
+        A trained model object should be passed as an estimator. 
 
-    Returns:
+    Returns
+    -------
+    model
+        Trained model object fitted on complete dataset.
+
+    Warnings
     --------
-
-    Model:  Trained model object fitted on complete dataset.
-    ------   
-
-    Warnings:
-    ---------
     - If the model returned by finalize_model(), is used on predict_model() without 
       passing a new unseen dataset, then the information grid printed is misleading 
       as the model is trained on the complete dataset including test / hold-out sample. 
@@ -8080,78 +7925,30 @@ def finalize_model(estimator):
                         'PassiveAggressiveRegressor' : 'Passive Aggressive Regressor',
                         'CatBoostRegressor' : 'CatBoost Regressor',
                         'BaggingRegressor' : 'Bagging Regressor',
-                        'VotingRegressor' : 'Voting Regressor'}
+                        'VotingRegressor' : 'Voting Regressor',
+                        'StackingRegressor' : 'Stacking Regressor'}
                             
-    if type(estimator) is not list:
+    
 
-        if hasattr(estimator, 'voting'):
-            mn = 'VotingRegressor'
-        else:
-            mn = get_model_name(estimator)
-
-        if 'BaggingRegressor' in mn:
-            mn = get_model_name(estimator.base_estimator_)
-
-        if 'catboost' in mn:
-            mn = 'CatBoostRegressor'
-
-    if type(estimator) is list:
-        if type(estimator[0]) is not list:
-            full_name = 'Stacking Regressor'
-        else:
-            full_name = 'Stacking Regressor (Multi-layer)'
+    if hasattr(estimator, 'voting'):
+        mn = 'VotingRegressor'
     else:
-        full_name = model_dict_logging.get(mn)
+        mn = get_model_name(estimator)
 
-    if type(estimator) is list:
-        
-        if type(estimator[0]) is not list:
-            
-            logger.info("Finalizing Stacking Regressor")
+    if 'BaggingRegressor' in mn:
+        mn = get_model_name(estimator.base_estimator_)
 
-            """
-            Single Layer Stacker
-            """
-            
-            stacker_final = deepcopy(estimator)
-            stack_restack = stacker_final.pop()
-            stack_meta_final = stacker_final.pop()
-            
-            logger.info("SubProcess stack_models() called ==================================")
-            model_final = stack_models(estimator_list = stacker_final, 
-                                       meta_model = stack_meta_final, 
-                                       restack = stack_restack,
-                                       finalize=True, 
-                                       verbose=False)
-            logger.info("SubProcess stack_models() end ==================================")
-            
-        else:
-            
-            """
-            multiple layer stacknet
-            """
-            
-            logger.info("Finalizing Multi-layer Stacking Regressor")
+    if 'catboost' in mn:
+        mn = 'CatBoostRegressor'
 
-            stacker_final = deepcopy(estimator)
-            stack_restack = stacker_final.pop()
-            stack_meta_final = stacker_final.pop()
-            
-            logger.info("SubProcess create_stacknet() called ==================================")
-            model_final = create_stacknet(estimator_list = stacker_final,
-                                          meta_model = stack_meta_final,
-                                          restack = stack_restack,
-                                          finalize = True,
-                                          verbose = False)
-            logger.info("SubProcess create_stacknet() end ==================================")
+    full_name = model_dict_logging.get(mn)
 
-        pull_results = pull() 
-
-    else:
-        logger.info("Finalizing " + str(full_name))
-        model_final = clone(estimator)
-        clear_output()
-        model_final.fit(X,y)
+    logger.info("Finalizing " + str(full_name))
+    model_final = clone(estimator)
+    clear_output()
+    model_final.fit(X,y)
+    model = create_model(estimator=estimator, verbose=False, system=False)
+    results = pull()
     
     #end runtime
     runtime_end = time.time()
@@ -8174,56 +7971,9 @@ def finalize_model(estimator):
             # Get active run to log as tag
             RunID = mlflow.active_run().info.run_id
 
-            # Log model parameters
-            try:
-                params = model_final.get_params()
-
-                for i in list(params):
-                    v = params.get(i)
-                    if len(str(v)) > 250:
-                        params.pop(i)
-
-                mlflow.log_params(params)
-            
-            except:
-                pass
-            
-            # get metrics of non-finalized model and log it
-
-            try:
-                logger.info("SubProcess create_model() called ==================================")
-                c = create_model(estimator, verbose=False, system=False)
-                logger.info("SubProcess create_model() end ==================================")
-                cr = pull()
-                log_mae = cr.loc['Mean']['MAE'] 
-                log_mse = cr.loc['Mean']['MSE'] 
-                log_rmse = cr.loc['Mean']['RMSE'] 
-                log_r2 = cr.loc['Mean']['R2'] 
-                log_rmsle = cr.loc['Mean']['RMSLE'] 
-                log_mape = cr.loc['Mean']['MAPE'] 
-
-                mlflow.log_metric("MAE", log_mae)
-                mlflow.log_metric("MSE", log_mse)
-                mlflow.log_metric("RMSE", log_rmse)
-                mlflow.log_metric("R2", log_r2)
-                mlflow.log_metric("RMSLE", log_rmsle)
-                mlflow.log_metric("MAPE", log_mape)
-
-            except:
-                cr = pull_results
-                log_mae = cr.loc['Mean']['MAE'] 
-                log_mse = cr.loc['Mean']['MSE'] 
-                log_rmse = cr.loc['Mean']['RMSE'] 
-                log_r2 = cr.loc['Mean']['R2'] 
-                log_rmsle = cr.loc['Mean']['RMSLE'] 
-                log_mape = cr.loc['Mean']['MAPE'] 
-
-                mlflow.log_metric("MAE", log_mae)
-                mlflow.log_metric("MSE", log_mse)
-                mlflow.log_metric("RMSE", log_rmse)
-                mlflow.log_metric("R2", log_r2)
-                mlflow.log_metric("RMSLE", log_rmsle)
-                mlflow.log_metric("MAPE", log_mape)
+            # Log metrics
+            mlflow.log_metrics({"MAE": results.iloc[-2]['MAE'], "MSE": results.iloc[-2]['MSE'], "RMSE": results.iloc[-2]['RMSE'], "R2" : results.iloc[-2]['R2'],
+                                "RMSLE": results.iloc[-2]['RMSLE'], "MAPE": results.iloc[-2]['MAPE']})
 
             #set tag of compare_models
             mlflow.set_tag("Source", "finalize_model")
@@ -8289,46 +8039,49 @@ def finalize_model(estimator):
 
     return model_final
 
-def save_model(model, model_name, verbose=True):
+def save_model(model, model_name, model_only=False, verbose=True):
     
     """
-          
-    Description:
-    ------------
     This function saves the transformation pipeline and trained model object 
     into the current active directory as a pickle file for later use. 
     
+
         Example:
         --------
         from pycaret.datasets import get_data
         boston = get_data('boston')
         experiment_name = setup(data = boston,  target = 'medv')
         lr = create_model('lr')
-        
+
         save_model(lr, 'lr_model_23122019')
-        
+
         This will save the transformation pipeline and model as a binary pickle
         file in the current directory. 
+
 
     Parameters
     ----------
     model : object, default = none
-    A trained model object should be passed as an estimator. 
+        A trained model object should be passed as an estimator. 
     
     model_name : string, default = none
-    Name of pickle file to be passed as a string.
+        Name of pickle file to be passed as a string.
     
+    model_only : bool, default = False
+        When set to True, only trained model object is saved and all the 
+        transformations are ignored.
+   
     verbose: Boolean, default = True
-    Success message is not printed when verbose is set to False.
+        Success message is not printed when verbose is set to False.
 
-    Returns:
+    Returns
     --------    
-    Success Message
-          
-            
+    Success_Message
+
     """
     
     import logging
+    from copy import deepcopy
 
     try:
         hasattr(logger, 'name')
@@ -8353,18 +8106,19 @@ def save_model(model, model_name, verbose=True):
         logger.addHandler(ch)
 
     logger.info("Initializing save_model()")
-    logger.info("""save_model(model={}, model_name={}, verbose={})""".\
-        format(str(model), str(model_name), str(verbose)))
+    logger.info("""save_model(model={}, model_name={}, model_only={}, verbose={})""".\
+        format(str(model), str(model_name), str(model_only), str(verbose)))
 
     #ignore warnings
     import warnings
     warnings.filterwarnings('ignore') 
     
-    logger.info("Appending prep pipeline")
-    model_ = []
-    model_.append(prep_pipe)
-    model_.append(model)
-    model_.append(target_inverse_transformer)
+    if model_only:
+        model_ = deepcopy(model)
+        logger.warning("Only Model saved. Transformations in prep_pipe are ignored.")
+    else:
+        model_ = deepcopy(prep_pipe)
+        model_.steps.append(['trained model',model])
     
     import joblib
     model_name = model_name + '.pkl'
@@ -8382,41 +8136,38 @@ def load_model(model_name,
                verbose=True):
     
     """
-          
-    Description:
-    ------------
     This function loads a previously saved transformation pipeline and model 
     from the current active directory into the current python environment. 
     Load object must be a pickle file.
     
-        Example:
-        --------
-        saved_lr = load_model('lr_model_23122019')
-        
-        This will load the previously saved model in saved_lr variable. The file 
-        must be in the current directory.
+    Example
+    --------
+    >>> saved_lr = load_model('lr_model_23122019')
+    
+    This will load the previously saved model in saved_lr variable. The file 
+    must be in the current directory.
 
     Parameters
     ----------
     model_name : string, default = none
-    Name of pickle file to be passed as a string.
+        Name of pickle file to be passed as a string.
     
     platform: string, default = None
-    Name of platform, if loading model from cloud. Current available options are:
-    'aws'.
+        Name of platform, if loading model from cloud. Current available options are:
+        'aws'.
     
     authentication : dict
-    dictionary of applicable authentication tokens. 
-    
-     When platform = 'aws': 
-     {'bucket' : 'Name of Bucket on S3'}
+        dictionary of applicable authentication tokens. 
+        
+        When platform = 'aws': 
+        {'bucket' : 'Name of Bucket on S3'}
     
     verbose: Boolean, default = True
-    Success message is not printed when verbose is set to False.
+        Success message is not printed when verbose is set to False.
 
-    Returns:
+    Returns
     --------    
-    Success Message
+    Success_Message
           
         
     """
@@ -8458,8 +8209,6 @@ def load_model(model_name,
 
 def predict_model(estimator, 
                   data=None,
-                  platform=None,
-                  authentication=None,
                   round=4,
                   verbose=True): #added in pycaret==2.0.0
     
@@ -8467,12 +8216,10 @@ def predict_model(estimator,
        
     Description:
     ------------
-    This function is used to predict new data using a trained estimator. It accepts
-    an estimator created using one of the function in pycaret that returns a trained 
-    model object or a list of trained model objects created using stack_models() or 
-    create_stacknet(). New unseen data can be passed to data param as pandas Dataframe. 
-    If data is not passed, the test / hold-out set separated at the time of setup() is
-    used to generate predictions. 
+    This function is used to predict target value on the new dataset using a trained 
+    estimator. New unseen data can be passed to data param as pandas Dataframe. 
+    If data is not passed, the test / hold-out set separated at the time of 
+    setup() is used to generate predictions. 
     
         Example:
         --------
@@ -8485,126 +8232,59 @@ def predict_model(estimator,
         
     Parameters
     ----------
-    estimator : object or list of objects / string,  default = None
-    When estimator is passed as string, load_model() is called internally to load the
-    pickle file from active directory or cloud platform when platform param is passed.
+    estimator : object, default = none
+        A trained model object / pipeline should be passed as an estimator. 
     
-    data : {array-like, sparse matrix}, shape (n_samples, n_features) where n_samples 
-    is the number of samples and n_features is the number of features. All features 
-    used during training must be present in the new dataset.
+    data : {array-like, sparse matrix}
+        shape (n_samples, n_features) where n_samples is the number of samples and n_features is the number of features.
+        All features used during training must be present in the new dataset.
     
-    platform: string, default = None
-    Name of platform, if loading model from cloud. Current available options are:
-    'aws'.
-    
-    authentication : dict
-    dictionary of applicable authentication tokens. 
-    
-     When platform = 'aws': 
-     {'bucket' : 'Name of Bucket on S3'}
-     
     round: integer, default = 4
-    Number of decimal places the predicted labels will be rounded to.
+        Number of decimal places the predicted labels will be rounded to.
     
     verbose: Boolean, default = True
-    Holdout score grid is not printed when verbose is set to False.
+        Holdout score grid is not printed when verbose is set to False.
 
-    Returns:
-    --------
+    Returns
+    -------
+    
+    Predictions:  Predictions (Label and Score) column attached to the original dataset
+    -----------   and returned as pandas dataframe.
 
-    info grid:    Information grid is printed when data is None.
-    ----------      
-    
-    Warnings:
-    ---------
-    - if the estimator passed is created using finalize_model() then the metrics 
-      printed in the information grid maybe misleading as the model is trained on
-      the complete dataset including the test / hold-out set. Once finalize_model() 
-      is used, the model is considered ready for deployment and should be used on new 
-      unseen datasets only.
-      
-    
+    score grid:   A table containing the scoring metrics on hold-out / test set.
+    -----------              
     
     """
     
-    #ignore warnings
+    # ignore warnings
     import warnings
     warnings.filterwarnings('ignore') 
-    
-    #testing
-    #global pred_, target_transformer
-    
-    #general dependencies
+
+    # general dependencies
     import sys
     import numpy as np
     import pandas as pd
     import re
     from sklearn import metrics
     from copy import deepcopy
-    from IPython.display import clear_output, update_display
+    from IPython.display import clear_output, update_display, display
     
     def calculate_mape(actual, prediction):
         mask = actual != 0
         return (np.fabs(actual - prediction)/actual)[mask].mean()
-    
-    estimator = deepcopy(estimator)
-
-    try:
-        clear_output()
-    except:
-        pass
-    
-    if type(estimator) is str:
-        if platform == 'aws':
-            estimator_ = load_model(str(estimator), platform='aws', 
-                                   authentication={'bucket': authentication.get('bucket')},
-                                   verbose=False)
-            
-        else:
-            estimator_ = load_model(str(estimator), verbose=False)
-            
-    else:
         
-        estimator_ = estimator
+    # retrieve target transformation
+    try:
+        target_transformer = target_inverse_transformer
+    except:
+        target_transformer = estimator.steps[13][1].p_transform_target # make it dynamic instead of hardcoding no 13
             
-    if type(estimator_) is list:
-
-        if 'sklearn.pipeline.Pipeline' in str(type(estimator_[0])):
-
-            prep_pipe_transformer = estimator_.pop(0)
-            model = estimator_[0]
-            estimator = estimator_[0]
-            target_transformer = estimator_[1]
-
-        else:
-            
-            try:
-
-                prep_pipe_transformer = prep_pipe
-                target_transformer = target_inverse_transformer
-                model = estimator
-                estimator = estimator
-                
-            except:
-                
-                sys.exit("(Type Error): Transformation Pipeline Missing. ")
-            
-    else:
-
-        try:
-
-            prep_pipe_transformer = prep_pipe
-            target_transformer = target_inverse_transformer
-            model = estimator
-            estimator = estimator
-            
-        except:
-            
-            sys.exit("(Type Error): Transformation Pipeline Missing. ")
-            
-    #dataset
+    # dataset
     if data is None:
         
+        if 'Pipeline' in str(type(estimator)):
+            estimator = estimator[-1]
+
         Xtest = X_test.copy()
         ytest = y_test.copy()
         X_test_ = X_test.copy()
@@ -8614,371 +8294,110 @@ def predict_model(estimator,
         ytest.reset_index(drop=True, inplace=True)
         X_test_.reset_index(drop=True, inplace=True)
         y_test_.reset_index(drop=True, inplace=True)
-        
-        model = estimator
-        estimator_ = estimator
-        
+
     else:
         
-        Xtest = prep_pipe_transformer.transform(data)                     
-        X_test_ = data.copy() #original concater
-        
-        Xtest.reset_index(drop=True, inplace=True)
-        X_test_.reset_index(drop=True, inplace=True)
-        
-        estimator_ = estimator
-
-    if type(estimator) is list:
-        
-        if type(estimator[0]) is list:
-        
-            """
-            Multiple Layer Stacking
-            """
-            
-            #utility
-            stacker = model
-            restack = stacker.pop()
-            #stacker_method = stacker.pop()
-            #stacker_method = stacker_method[0]
-            stacker_meta = stacker.pop()
-            stacker_base = stacker.pop(0)
-
-            #base model names
-            base_model_names = []
-
-            #defining base_level_names
-            for i in stacker_base:
-                b = str(i).split("(")[0]
-                base_model_names.append(b)
-
-            base_level_fixed = []
-
-            for i in base_model_names:
-                if 'CatBoostRegressor' in i:
-                    a = 'CatBoostRegressor'
-                    base_level_fixed.append(a)
-                else:
-                    base_level_fixed.append(i)
-
-            base_level_fixed_2 = []
-
-            counter = 0
-            for i in base_level_fixed:
-                s = str(i) + '_' + 'BaseLevel_' + str(counter)
-                base_level_fixed_2.append(s)
-                counter += 1
-
-            base_level_fixed = base_level_fixed_2
-
-            """
-            base level predictions
-            """
-            base_pred = []
-            for i in stacker_base:
-                a = i.predict(Xtest) #change
-                base_pred.append(a)
-
-            base_pred_df = pd.DataFrame()
-            for i in base_pred:
-                a = pd.DataFrame(i)
-                base_pred_df = pd.concat([base_pred_df, a], axis=1)
-
-            base_pred_df.columns = base_level_fixed
-            
-            base_pred_df_no_restack = base_pred_df.copy()
-            base_pred_df = pd.concat([Xtest,base_pred_df], axis=1)
-            
-
-            """
-            inter level predictions
-            """
-
-            inter_pred = []
-            combined_df = pd.DataFrame(base_pred_df)
-
-            inter_counter = 0
-
-            for level in stacker:
-
-                inter_pred_df = pd.DataFrame()
-
-                model_counter = 0 
-
-                for model in level:
-                    try:
-                        if inter_counter == 0:
-                            try:
-                                p = model.predict(base_pred_df)
-                            except:
-                                p = model.predict(base_pred_df_no_restack)
-                            
-                        else:
-                            p = model.predict(last_level_df)
-            
-                    except:
-                        p = model.predict(combined_df)
-
-                    p = pd.DataFrame(p)
-
-                    col = str(model).split("(")[0]
-                    if 'CatBoostRegressor' in col:
-                        col = 'CatBoostRegressor'
-                    col = col + '_InterLevel_' + str(inter_counter) + '_' + str(model_counter)
-                    p.columns = [col]
-
-                    inter_pred_df = pd.concat([inter_pred_df, p], axis=1)
-
-                    model_counter += 1
-
-                last_level_df = inter_pred_df.copy()
-
-                inter_counter += 1
-
-                combined_df = pd.concat([combined_df,inter_pred_df], axis=1)
-
-            """
-            meta final predictions
-            """
-
-            #final meta predictions
-            try:
-                pred_ = stacker_meta.predict(combined_df)
-            except:
-                pred_ = stacker_meta.predict(inter_pred_df)
-            
-            try:
-                pred_ = target_transformer.inverse_transform(np.array(pred_).reshape(-1,1))
-                pred_ = np.nan_to_num(pred_)
-                
-            except:
-                pred_ = np.nan_to_num(pred_)
-                
-            if data is None:
-                
-                try:
-                    ytest = target_transformer.inverse_transform(np.array(ytest).reshape(-1,1))
-                    ytest = pd.DataFrame(np.nan_to_num(ytest))
-                    
-                except:
-                    pass
-                mae = metrics.mean_absolute_error(ytest,pred_)
-                mse = metrics.mean_squared_error(ytest,pred_)
-                rmse = np.sqrt(mse)
-                rmsle = np.sqrt(np.mean(np.power(np.log(np.array(abs(pred_))+1) - np.log(np.array(abs(ytest))+1), 2)))
-                r2 = metrics.r2_score(ytest,pred_)
-                mape = calculate_mape(ytest,pred_)
-
-                df_score = pd.DataFrame( {'Model' : 'Stacking Regressor', 'MAE' : [mae], 'MSE' : [mse], 'RMSE' : [rmse], 
-                                          'R2' : [r2], 'RMSLE' : [rmsle], 'MAPE' : [mape]})
-                df_score = df_score.round(round)
-                if verbose:
-                    display(df_score)
-        
-            label = pd.DataFrame(pred_)
-            label = label.round(round)
-            label.columns = ['Label']
-            label['Label']=label['Label']
-
-            if data is None:
-                X_test_ = pd.concat([Xtest,ytest,label], axis=1)
-            else:
-                X_test_ = pd.concat([X_test_,label], axis=1)
-
+        if 'Pipeline' in str(type(estimator)):
+            pass
         else:
-            
-            """
-            Single Layer Stacking
-            """
-            
-            #copy
-            stacker = model
-            
-            #restack
-            restack = stacker.pop()
-
-            #separate metamodel
-            meta_model = stacker.pop()
-
-            model_names = []
-            for i in stacker:
-                model_names = np.append(model_names, str(i).split("(")[0])
-
-            model_names_fixed = []
-
-            for i in model_names:
-                if 'CatBoostRegressor' in i:
-                    a = 'CatBoostRegressor'
-                    model_names_fixed.append(a)
-                else:
-                    model_names_fixed.append(i)
-
-            model_names = model_names_fixed
-
-            model_names_fixed = []
-            counter = 0
-
-            for i in model_names:
-                s = str(i) + '_' + str(counter)
-                model_names_fixed.append(s)
-                counter += 1
-
-            model_names = model_names_fixed
-
-            base_pred = []
-
-            for i in stacker:
-                p = i.predict(Xtest) #change
-                base_pred.append(p)
-
-            df = pd.DataFrame()
-            for i in base_pred:
-                i = pd.DataFrame(i)
-                df = pd.concat([df,i], axis=1)
-
-            df.columns = model_names
-            
-            df_restack = pd.concat([Xtest,df], axis=1) #change
-
-            #ytest = y_test
-
-            #meta predictions starts here
-
-            #restacking check
             try:
-                pred_ = meta_model.predict(df)
+                estimator_ = deepcopy(prep_pipe)
+                estimator_.steps.append(['trained model',estimator])
+                estimator = estimator_
+                del(estimator_)
+
             except:
-                pred_ = meta_model.predict(df_restack) 
-                
-            try:
-                pred_ = target_transformer.inverse_transform(np.array(pred_).reshape(-1,1))
-                pred_ = np.nan_to_num(pred_)
-                
-            except:
-                pred_ = np.nan_to_num(pred_)
+                sys.exit("Pipeline not found")
             
-            if data is None:
-                
-                try:
-                    ytest = target_transformer.inverse_transform(np.array(ytest).reshape(-1,1))
-                    ytest = pd.DataFrame(np.nan_to_num(ytest))
-                    
-                except:
-                    pass
-                
-                mae = metrics.mean_absolute_error(ytest,pred_)
-                mse = metrics.mean_squared_error(ytest,pred_)
-                rmse = np.sqrt(mse)
-                rmsle = np.sqrt(np.mean(np.power(np.log(np.array(abs(pred_))+1) - np.log(np.array(abs(ytest))+1), 2)))
-                r2 = metrics.r2_score(ytest,pred_)
-                mape = calculate_mape(ytest,pred_)
+        Xtest = data.copy()
+        X_test_ = data.copy()
 
-                df_score = pd.DataFrame( {'Model' : 'Stacking Regressor', 'MAE' : [mae], 'MSE' : [mse], 'RMSE' : [rmse], 
-                                          'R2' : [r2], 'RMSLE' : [rmsle], 'MAPE' : [mape]})
-                df_score = df_score.round(round)
+    # model name
+    full_name = str(estimator).split("(")[0]
+    def putSpace(input):
+        words = re.findall('[A-Z][a-z]*', input)
+        words = ' '.join(words)
+        return words  
+    full_name = putSpace(full_name)
 
-                if verbose:
-                    display(df_score)
-                
-            label = pd.DataFrame(pred_)
-            label = label.round(round)
-            label.columns = ['Label']
-            label['Label']=label['Label']
+    if full_name == 'A R D Regression':
+        full_name = 'Automatic Relevance Determination'
 
-            if data is None:
-                X_test_ = pd.concat([Xtest,ytest,label], axis=1)
-            else:
-                X_test_ = pd.concat([X_test_,label], axis=1)
+    elif full_name == 'M L P Regressor':
+        full_name = 'MLP Regressor'
 
+    elif full_name == 'R A N S A C Regressor':
+        full_name = 'RANSAC Regressor'
 
-    else:
+    elif full_name == 'S V R':
+        full_name = 'Support Vector Regressor'
         
-        #model name
-        full_name = str(model).split("(")[0]
-        def putSpace(input):
-            words = re.findall('[A-Z][a-z]*', input)
-            words = ' '.join(words)
-            return words  
-        full_name = putSpace(full_name)
+    elif full_name == 'Lars':
+        full_name = 'Least Angle Regression'
+        
+    elif full_name == 'X G B Regressor':
+        full_name = 'Extreme Gradient Boosting Regressor'
 
-        if full_name == 'A R D Regression':
-            full_name = 'Automatic Relevance Determination'
+    elif full_name == 'L G B M Regressor':
+        full_name = 'Light Gradient Boosting Machine'
 
-        elif full_name == 'M L P Regressor':
-            full_name = 'MLP Regressor'
+    elif 'Cat Boost Regressor' in full_name:
+        full_name = 'CatBoost Regressor'
 
-        elif full_name == 'R A N S A C Regressor':
-            full_name = 'RANSAC Regressor'
+    # prediction starts here
+    pred_ = estimator.predict(Xtest)
 
-        elif full_name == 'S V R':
-            full_name = 'Support Vector Regressor'
-            
-        elif full_name == 'Lars':
-            full_name = 'Least Angle Regression'
-            
-        elif full_name == 'X G B Regressor':
-            full_name = 'Extreme Gradient Boosting Regressor'
+    try:
+        pred_ = target_transformer.inverse_transform(np.array(pred_).reshape(-1,1))
+        pred_ = np.nan_to_num(pred_)
 
-        elif full_name == 'L G B M Regressor':
-            full_name = 'Light Gradient Boosting Machine'
-
-        elif 'Cat Boost Regressor' in full_name:
-            full_name = 'CatBoost Regressor'
-
-        #prediction starts here
-        pred_ = model.predict(Xtest)
+    except:
+        pred_ = np.nan_to_num(pred_)
+        
+    if data is None:
         
         try:
-            pred_ = target_transformer.inverse_transform(np.array(pred_).reshape(-1,1))
-            pred_ = np.nan_to_num(pred_)
-        
+            ytest = target_transformer.inverse_transform(np.array(ytest).reshape(-1,1))
+            ytest = pd.DataFrame(np.nan_to_num(ytest))
+
         except:
-            pred_ = np.nan_to_num(pred_)
-            
-        if data is None:
-            
-            try:
-                ytest = target_transformer.inverse_transform(np.array(ytest).reshape(-1,1))
-                ytest = pd.DataFrame(np.nan_to_num(ytest))
+            pass
 
-            except:
-                pass
+        mae = metrics.mean_absolute_error(ytest,pred_)
+        mse = metrics.mean_squared_error(ytest,pred_)
+        rmse = np.sqrt(mse)
+        rmsle = np.sqrt(np.mean(np.power(np.log(np.array(abs(pred_))+1) - np.log(np.array(abs(ytest))+1), 2)))
+        r2 = metrics.r2_score(ytest,pred_)
+        mape = calculate_mape(ytest,pred_)
+                    
+        df_score = pd.DataFrame( {'Model' : [full_name], 'MAE' : [mae], 'MSE' : [mse], 'RMSE' : [rmse], 
+                                    'R2' : [r2], 'RMSLE' : [rmsle], 'MAPE' : mape })
+        df_score = df_score.round(4)
 
-            mae = metrics.mean_absolute_error(ytest,pred_)
-            mse = metrics.mean_squared_error(ytest,pred_)
-            rmse = np.sqrt(mse)
-            rmsle = np.sqrt(np.mean(np.power(np.log(np.array(abs(pred_))+1) - np.log(np.array(abs(ytest))+1), 2)))
-            r2 = metrics.r2_score(ytest,pred_)
-            mape = calculate_mape(ytest,pred_)
-                        
-            df_score = pd.DataFrame( {'Model' : [full_name], 'MAE' : [mae], 'MSE' : [mse], 'RMSE' : [rmse], 
-                                      'R2' : [r2], 'RMSLE' : [rmsle], 'MAPE' : [mape] })
-            df_score = df_score.round(4)
-
-            if verbose:
-                display(df_score)
-        
-            label = pd.DataFrame(pred_)
-            label = label.round(round)
-            label.columns = ['Label']
-            label['Label']=label['Label']
-
+        if verbose:
+            display(df_score)
+    
         label = pd.DataFrame(pred_)
         label = label.round(round)
         label.columns = ['Label']
         label['Label']=label['Label']
-        
-        if data is None:
-            X_test_ = pd.concat([Xtest,ytest,label], axis=1)
-        else:
-            X_test_ = pd.concat([X_test_,label], axis=1)
 
-    #store predictions on hold-out in display_container
+    label = pd.DataFrame(pred_)
+    label = label.round(round)
+    label.columns = ['Label']
+    label['Label']=label['Label']
+    
+    if data is None:
+        X_test_ = pd.concat([Xtest,ytest,label], axis=1)
+    else:
+        X_test_ = pd.concat([X_test_,label], axis=1)
+
+    # store predictions on hold-out in display_container
     try:
         display_container.append(df_score)
     except:
         pass
-    
+
     return X_test_
 
 def deploy_model(model, 
@@ -8987,9 +8406,6 @@ def deploy_model(model,
                  platform = 'aws'):
     
     """
-       
-    Description:
-    ------------
     (In Preview)
     
     This function deploys the transformation pipeline and trained model object for
@@ -8997,54 +8413,53 @@ def deploy_model(model,
     param along with the applicable authentication tokens which are passed as a
     dictionary to the authentication param.
     
-        Example:
-        --------
-        from pycaret.datasets import get_data
-        boston = get_data('boston')
-        experiment_name = setup(data = boston,  target = 'medv')
-        lr = create_model('lr')
-        
-        deploy_model(model = lr, model_name = 'deploy_lr', platform = 'aws', 
-                     authentication = {'bucket' : 'pycaret-test'})
-        
-        This will deploy the model on AWS S3 account under bucket 'pycaret-test'
-        
-        For AWS users:
-        --------------
-        Before deploying a model to an AWS S3 ('aws'), environment variables must be 
-        configured using the command line interface. To configure AWS env. variables, 
-        type aws configure in your python command line. The following information is
-        required which can be generated using the Identity and Access Management (IAM) 
-        portal of your amazon console account:
+    Example
+    --------
+    >>> from pycaret.datasets import get_data
+    >>> boston = get_data('boston')
+    >>> experiment_name = setup(data = boston,  target = 'medv')
+    >>> lr = create_model('lr')
+    >>> deploy_model(model = lr, model_name = 'deploy_lr', platform = 'aws', authentication = {'bucket' : 'pycaret-test'})
     
-           - AWS Access Key ID
-           - AWS Secret Key Access
-           - Default Region Name (can be seen under Global settings on your AWS console)
-           - Default output format (must be left blank)
+    This will deploy the model on AWS S3 account under bucket 'pycaret-test'
+    
+    Notes
+    -----
+    For AWS users:
+    Before deploying a model to an AWS S3 ('aws'), environment variables must be 
+    configured using the command line interface. To configure AWS env. variables, 
+    type aws configure in your python command line. The following information is
+    required which can be generated using the Identity and Access Management (IAM) 
+    portal of your amazon console account:
+
+    - AWS Access Key ID
+    - AWS Secret Key Access
+    - Default Region Name (can be seen under Global settings on your AWS console)
+    - Default output format (must be left blank)
 
     Parameters
     ----------
     model : object
-    A trained model object should be passed as an estimator. 
+        A trained model object should be passed as an estimator. 
     
     model_name : string
-    Name of model to be passed as a string.
+        Name of model to be passed as a string.
     
     authentication : dict
-    dictionary of applicable authentication tokens. 
+        Dictionary of applicable authentication tokens. 
       
-     When platform = 'aws': 
-     {'bucket' : 'Name of Bucket on S3'}
+        When platform = 'aws': 
+        {'bucket' : 'Name of Bucket on S3'}
     
     platform: string, default = 'aws'
-    Name of platform for deployment. Current available options are: 'aws'.
+        Name of platform for deployment. Current available options are: 'aws'.
 
-    Returns:
+    Returns
     --------    
-    Success Message
+    Success_Message
     
-    Warnings:
-    ---------
+    Warnings
+    --------
     - This function uses file storage services to deploy the model on cloud platform. 
       As such, this is efficient for batch-use. Where the production objective is to 
       obtain prediction at an instance level, this may not be the efficient choice as 
@@ -9127,19 +8542,17 @@ def deploy_model(model,
 def automl(optimize='R2', use_holdout=False):
 
     """
-    Description:
-    ------------
     This function returns the best model out of all models created in 
     current active environment based on metric defined in optimize parameter. 
 
     Parameters
     ----------
     optimize : string, default = 'R2'
-    Other values you can pass in optimize param are 'MAE', 'MSE', 'RMSE',
-    'RMSLE', and 'MAPE'. 
+        Other values you can pass in optimize param are 'MAE', 'MSE', 'RMSE',
+        'RMSLE', and 'MAPE'. 
 
     use_holdout: bool, default = False
-    When set to True, metrics are evaluated on holdout set instead of CV.
+        When set to True, metrics are evaluated on holdout set instead of CV.
     
     """
 
@@ -9220,32 +8633,39 @@ def automl(optimize='R2', use_holdout=False):
     return automl_finalized
     
 def pull():
+    """
+    Returns latest displayed table.
+
+    Returns
+    -------
+    pandas.DataFrame
+        Equivalent to get_config('display_container')[-1]
+
+    """
     return display_container[-1]
 
 def models(type=None):
 
     """
-
-    Description:
-    ------------
     Returns table of models available in model library.
 
-        Example
-        -------
-        all_models = models()
+    Example
+    -------
+    >>> all_models = models()
 
-        This will return pandas dataframe with all available 
-        models and their metadata.
+    This will return pandas dataframe with all available 
+    models and their metadata.
 
     Parameters
     ----------
     type : string, default = None
-    
-      - linear : filters and only return linear models
-      - tree : filters and only return tree based models
-      - ensemble : filters and only return ensemble models
+        - linear : filters and only return linear models
+        - tree : filters and only return tree based models
+        - ensemble : filters and only return ensemble models
       
-    
+    Returns
+    -------
+    pandas.DataFrame
     """
 
     import pandas as pd
@@ -9333,27 +8753,26 @@ def models(type=None):
 def get_logs(experiment_name = None, save = False):
 
     """
-
-    Description:
-    ------------
     Returns a table with experiment logs consisting
     run details, parameter, metrics and tags. 
 
-        Example
-        -------
-        logs = get_logs()
+    Example
+    -------
+    >>> logs = get_logs()
 
-        This will return pandas dataframe.
+    This will return pandas dataframe.
 
     Parameters
     ----------
     experiment_name : string, default = None
-    When set to None current active run is used.
+        When set to None current active run is used.
 
     save : bool, default = False
-    When set to True, csv file is saved in current directory.
+        When set to True, csv file is saved in current directory.
       
-    
+    Returns
+    -------
+    pandas.DataFrame
     """
     
     import sys
@@ -9383,8 +8802,6 @@ def get_logs(experiment_name = None, save = False):
 def get_config(variable):
 
     """
-    Description:
-    ------------
     This function is used to access global environment variables.
     Following variables can be accessed:
 
@@ -9408,13 +8825,15 @@ def get_config(variable):
     - log_plots_param: log_plots param set through setup
     - USI: Unique session ID parameter set through setup
 
-        Example:
-        --------
-        X_train = get_config('X_train') 
+    Example
+    --------
+    >>> X_train = get_config('X_train') 
 
-        This will return X_train transformed dataset.
-          
-      
+    This will return X_train transformed dataset.
+        
+    Returns
+    -------
+    variable
     """
 
     import logging
@@ -9510,8 +8929,6 @@ def get_config(variable):
 def set_config(variable,value):
 
     """
-    Description:
-    ------------
     This function is used to reset global environment variables.
     Following variables can be accessed:
 
@@ -9535,12 +8952,12 @@ def set_config(variable,value):
     - log_plots_param: log_plots param set through setup
     - USI: Unique session ID parameter set through setup
 
-        Example:
-        --------
-        set_config('seed', 123) 
+    Example
+    --------
+    >>> set_config('seed', 123) 
 
-        This will set the global seed to '123'.
-            
+    This will set the global seed to '123'.
+        
       
     """
 
@@ -9654,7 +9071,7 @@ def set_config(variable,value):
 def get_system_logs():
 
     """
-    Read and print 'logs.log' file from current active directory
+    Read and print 'logs.log' file from current active directory.
     """
 
     file = open('logs.log', 'r')

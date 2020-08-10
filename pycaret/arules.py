@@ -11,9 +11,6 @@ def setup(data,
           session_id = None):
     
     """
-      
-    Description:
-    ------------
     This function initializes the environment in pycaret. setup() must called before
     executing any other function in pycaret. It takes three mandatory parameters:
     (i) dataframe {array-like, sparse matrix}, (ii) transaction_id param identifying 
@@ -21,43 +18,40 @@ def setup(data,
     normally found in any transactional dataset. pycaret will internally convert the
     dataframe into a sparse matrix which is required for association rules mining.
     
-        Example
-        -------
-        from pycaret.datasets import get_data
-        france get_data('france')
-        
-        experiment_name = setup(data = data, transaction_id = 'InvoiceNo', 
-                                item_id = 'ProductName')
+    Example
+    -------
+    >>> from pycaret.datasets import get_data
+    >>> france = get_data('france')
+    >>> experiment_name = setup(data = data, transaction_id = 'InvoiceNo', item_id = 'ProductName')
         
     Parameters
     ----------
-    data : {array-like, sparse matrix}, shape (n_samples, n_features) where n_samples 
-    is the number of samples and n_features is the number of features.
+    data : {array-like, sparse matrix}
+        Shape (n_samples, n_features) where n_samples is the number of samples and n_features is the number of features.
 
     transaction_id: string
-    Name of column representing transaction id. This will be used to pivot the matrix.
+        Name of column representing transaction id. This will be used to pivot the matrix.
 
     item_id: string
-    Name of column used for creation of rules. Normally, this will be the variable of
-    interest.
+        Name of column used for creation of rules. Normally, this will be the variable of
+        interest.
     
     ignore_items: list, default = None
-    list of strings to be ignored when considering rule mining.
+        List of strings to be ignored when considering rule mining.
 
     session_id: int, default = None
-    If None, a random seed is generated and returned in the Information grid. The 
-    unique number is then distributed as a seed in all functions used during the 
-    experiment. This can be used for later reproducibility of the entire experiment.
+        If None, a random seed is generated and returned in the Information grid. The 
+        unique number is then distributed as a seed in all functions used during the 
+        experiment. This can be used for later reproducibility of the entire experiment.
 
-    Returns:
-    --------
+    Returns
+    -------
+    info_grid
+        Information grid is printed.
 
-    info grid:    Information grid is printed.
-    -----------      
-
-    environment:  This function returns various outputs that are stored in variable
-    -----------   as tuple. They are used by other functions in pycaret.
-    
+    environment
+        This function returns various outputs that are stored in variable
+        as tuple. They are used by other functions in pycaret.
     
     """
    
@@ -118,71 +112,58 @@ def create_model(metric='confidence',
                  min_support = 0.05,
                  round = 4):
     
-    """  
-     
-    Description:
-    ------------
+    """
     This function creates an association rules model using data and identifiers 
     passed at setup stage. This function internally transforms the data for 
     association rule mining.
 
     setup() function must be called before using create_model()
 
-        Example
-        -------
-        from pycaret.datasets import get_data
-        france get_data('france')        
-        experiment_name = setup(data = data, transaction_id = 'InvoiceNo', 
-                                item_id = 'ProductName')
+    Example
+    -------
+    >>> from pycaret.datasets import get_data
+    >>> france = get_data('france')        
+    >>> experiment_name = setup(data = data, transaction_id = 'InvoiceNo', item_id = 'ProductName')
 
-        This will return dataframe containing rules sorted by metric param. 
+    This will return dataframe containing rules sorted by metric param. 
 
     Parameters
     ----------
     metric : string, default = 'confidence'
-    Metric to evaluate if a rule is of interest. Default is set to confidence. 
-    Other available metrics include 'support', 'lift', 'leverage', 'conviction'. 
-    These metrics are computed as follows:
+        Metric to evaluate if a rule is of interest. Default is set to confidence. 
+        Other available metrics include 'support', 'lift', 'leverage', 'conviction'. 
+        These metrics are computed as follows:
 
-    - support(A->C) = support(A+C) [aka 'support'], range: [0, 1]
-
-    - confidence(A->C) = support(A+C) / support(A), range: [0, 1]
-
-    - lift(A->C) = confidence(A->C) / support(C), range: [0, inf]
-
-    - leverage(A->C) = support(A->C) - support(A)*support(C),
-      range: [-1, 1]
-
-    - conviction = [1 - support(C)] / [1 - confidence(A->C)],
-      range: [0, inf]
+        * support(A->C) = support(A+C) [aka 'support'], range: [0, 1]
+        * confidence(A->C) = support(A+C) / support(A), range: [0, 1]
+        * lift(A->C) = confidence(A->C) / support(C), range: [0, inf]
+        * leverage(A->C) = support(A->C) - support(A)*support(C), range: [-1, 1]
+        * conviction = [1 - support(C)] / [1 - confidence(A->C)], range: [0, inf]
     
     threshold : float, default = 0.5
-    Minimal threshold for the evaluation metric, via the `metric` parameter,
-    to decide whether a candidate rule is of interest.
+        Minimal threshold for the evaluation metric, via the `metric` parameter,
+        to decide whether a candidate rule is of interest.
     
     min_support : float, default = 0.05
-    A float between 0 and 1 for minumum support of the itemsets returned.
-    The support is computed as the fraction `transactions_where_item(s)_occur /
-    total_transactions`.
+        A float between 0 and 1 for minumum support of the itemsets returned.
+        The support is computed as the fraction `transactions_where_item(s)_occur /
+        total_transactions`.
     
     round: integer, default = 4
-    Number of decimal places metrics in score grid will be rounded to. 
+        Number of decimal places metrics in score grid will be rounded to. 
 
+    Returns
+    -------
+    pandas.DataFrame
+        Dataframe containing rules of interest with all metrics
+        including antecedents, consequents, antecedent support,
+        consequent support, support, confidence, lift, leverage,
+        conviction.
 
-    Returns:
+    Warnings
     --------
-
-    DataFrame:   Dataframe containing rules of interest with all metrics
-    ---------    including antecedents, consequents, antecedent support,
-                 consequent support, support, confidence, lift, leverage,
-                 conviction.
-
-    Warnings:
-    ---------
-
     - Setting low values for min_support may increase training time.
   
-     
     """
         
     
@@ -228,39 +209,31 @@ def plot_model(model,
                plot = '2d'):
     
     """
-      
-    Description:
-    ------------
     This function takes a model dataframe returned by create_model() function. 
     '2d' and '3d' plots are available.
 
-        Example:
-        --------
-        
-        rule1 = create_model(metric='confidence', threshold=0.7, min_support=0.05)
-        plot_model(rule1, plot='2d')
-        plot_model(rule1, plot='3d')
+    Example
+    -------
+    >>> rule1 = create_model(metric='confidence', threshold=0.7, min_support=0.05)
+    >>> plot_model(rule1, plot='2d')
+    >>> plot_model(rule1, plot='3d')
 
     Parameters
     ----------
-
     model : DataFrame, default = none
-    DataFrame returned by trained model using create_model(). 
+        DataFrame returned by trained model using create_model(). 
 
     plot : string, default = '2d'
-    Enter abbreviation of type of plot. The current list of plots supported are:
+        Enter abbreviation of type of plot. The current list of plots supported are (Name - Abbreviated String):
 
-    Name                                 Abbreviated String     
-    ---------                            ------------------     
-    Support, Confidence and Lift (2d)    '2d'
-    Support, Confidence and Lift (3d)    '3d'
+        * Support, Confidence and Lift (2d) - '2d'
+        * Support, Confidence and Lift (3d) - '3d'
   
     
-    Returns:
-    --------
-
-    Visual Plot:  Prints the visual plot. 
-    ------------
+    Returns
+    -------
+    Visual_Plot
+        Prints the visual plot.
     
     """
     
@@ -336,8 +309,7 @@ def get_rules(data,
               min_support = 0.05):
     
     """
-    Magic function to get Association Rules in Power Query / Power BI.    
-    
+    Magic function to get Association Rules in Power Query / Power BI.
     """
     
     s = setup(data=data, transaction_id=transaction_id, item_id=item_id, ignore_items = ignore_items)
