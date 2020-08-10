@@ -31,10 +31,12 @@ def test():
     result = pycaret.classification.predict_model(final_model, data = data_unseen)
     actual=test[target].reset_index()
     actual=actual["Purchase"].astype(np.int64)
+    actual=actual.drop("index", axis=1)
     # provisional support
     prediction=result["Label"].dropna(axis=0, how="any")
     prediction=prediction.reset_index()
     prediction=prediction["Label"].astype(np.int64)
+    prediction=prediction.drop("index", axis=1)
 
     # check metric(classification)
     pycaret.utils.check_metric(actual, prediction, "Accuracy")
@@ -52,11 +54,14 @@ def test():
     reg1 = pycaret.regression.setup(data, target="medv", silent=True, html=False, session_id=123)
     model = pycaret.regression.create_model("lightgbm")
     data_unseen = test.drop(columns=target)
-    result = pycaret.regression.predict_model(model, data=data_unseen)
+    final_model = pycaret.regression.finalize_model(model)
+    result = pycaret.regression.predict_model(final_model, data=data_unseen)
     actual = test[target].reset_index()
+    actual=actual.drop("index", axis=1)
     # provisional support
     prediction=result["Label"].dropna(axis=0, how="any")
     prediction = result["Label"].reset_index()
+    prediction=prediction.drop("index", axis=1)
 
     # check metric(regression)
     pycaret.utils.check_metric(actual, prediction, "MAE")
