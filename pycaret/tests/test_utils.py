@@ -31,12 +31,10 @@ def test():
     result = pycaret.classification.predict_model(final_model, data = data_unseen)
     actual=test[target].reset_index()
     actual=actual["Purchase"].astype(np.int64)
-    actual=actual.drop("index", axis=1)
     # provisional support
     prediction=result["Label"].dropna(axis=0, how="any")
     prediction=prediction.reset_index()
     prediction=prediction["Label"].astype(np.int64)
-    prediction=prediction.drop("index", axis=1)
 
     # check metric(classification)
     pycaret.utils.check_metric(actual, prediction, "Accuracy")
