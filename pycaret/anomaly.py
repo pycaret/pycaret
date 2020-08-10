@@ -2,7 +2,7 @@
 # Author: Moez Ali <moez.ali@queensu.ca>
 # License: MIT
 # Release: PyCaret 2.0x
-# Last modified : 30/07/2020
+# Last modified : 10/08/2020
 
 def setup(data, 
           categorical_features = None,
@@ -3361,7 +3361,7 @@ def plot_model(model,
     
     logger.info("plot_model() succesfully completed......................................")
 
-def save_model(model, model_name, verbose=True):
+def save_model(model, model_name, model_only=False, verbose=True):
     
     """
     This function saves the transformation pipeline and trained model object 
@@ -3385,6 +3385,10 @@ def save_model(model, model_name, verbose=True):
     
     model_name : string, default = none
         Name of pickle file to be passed as a string.
+
+    model_only : bool, default = False
+        When set to True, only trained model object is saved and all the 
+        transformations are ignored.
 
     verbose : bool, default = True
         When set to False, success message is not printed.
@@ -3421,17 +3425,21 @@ def save_model(model, model_name, verbose=True):
         logger.addHandler(ch)
 
     logger.info("Initializing save_model()")
-    logger.info("""save_model(model={}, model_name={}, verbose={})""".\
-        format(str(model), str(model_name), str(verbose)))
+    logger.info("""save_model(model={}, model_name={}, model_only={}, verbose={})""".\
+        format(str(model), str(model_name), str(model_only), str(verbose)))
 
     #ignore warnings
     import warnings
     warnings.filterwarnings('ignore') 
     
-    logger.info("Appending prep pipeline")
-    model_ = []
-    model_.append(prep_pipe)
-    model_.append(model)
+    logger.info("Adding model into prep_pipe")
+
+    if model_only:
+        model_ = deepcopy(model)
+        logger.warning("Only Model saved. Transformations in prep_pipe are ignored.")
+    else:
+        model_ = deepcopy(prep_pipe)
+        model_.steps.append(['trained model',model]) 
     
     import joblib
     model_name = model_name + '.pkl'
@@ -3520,9 +3528,7 @@ def load_model(model_name,
     return joblib.load(model_name)
 
 def predict_model(model, 
-                  data,
-                  platform=None,
-                  authentication=None):
+                  data):
     
     """
     This function is used to predict new data using a trained model. It requires a
@@ -3546,16 +3552,6 @@ def predict_model(model,
     data : {array-like, sparse matrix}
         Shape (n_samples, n_features) where n_samples is the number of samples and n_features is the number of features.
         All features used during training must be present in the new dataset.
-    
-    platform: string, default = None
-        Name of platform, if loading model from cloud. Current available options are:
-        'aws'.
-    
-    authentication : dict
-        Dictionary of applicable authentication tokens. 
-        
-        When platform = 'aws': 
-        {'bucket' : 'Name of Bucket on S3'}
      
     Returns
     -------
@@ -3582,41 +3578,16 @@ def predict_model(model,
     
     #copy data and model
     data__ = data.copy()
-    model_ = deepcopy(model)
-    clear_output()
-    
-    if type(model) is str:
-        if platform == 'aws':
-            model_ = load_model(str(model), platform='aws', 
-                                   authentication={'bucket': authentication.get('bucket')},
-                                   verbose=False)
-            
-        else:
-            model_ = load_model(str(model), verbose=False)
-            
-        
-    #separate prep_data pipeline
-    if type(model_) is list:
-        prep_pipe_transformer = model_[0]
-        model = model_[1]
-        
-    else:
-        try: 
-            prep_pipe_transformer = prep_pipe
-        except:
-            sys.exit('Transformation Pipeline Missing')
-    
+
     #exception checking for predict param
     if hasattr(model, 'predict'):
         pass
     else:
         sys.exit("(Type Error): Model doesn't support predict parameter.")
     
-    
     #predictions start here
-    _data_ = prep_pipe_transformer.transform(data__)
-    pred = model.predict(_data_)
-    pred_score = model.decision_function(_data_)
+    pred = model.predict(data)
+    pred_score = model.decision_function(data)
         
     data__['Label'] = pred
     data__['Score'] = pred_score
