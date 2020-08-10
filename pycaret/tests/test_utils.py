@@ -54,6 +54,8 @@ def test():
     data_unseen = test.drop(columns=target)
     result = pycaret.regression.predict_model(model, data=data_unseen)
     actual = test[target].reset_index()
+    # provisional support
+    prediction=result["Label"].dropna(axis=0, how="any")
     prediction = result["Label"].reset_index()
 
     # check metric(regression)
