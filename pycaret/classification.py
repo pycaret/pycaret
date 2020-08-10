@@ -2,7 +2,7 @@
 # Author: Moez Ali <moez.ali@queensu.ca>
 # License: MIT
 # Release: PyCaret 2.1x
-# Last modified : 07/08/2020
+# Last modified : 10/08/2020
 
 def setup(data,  
           target,   
@@ -949,18 +949,17 @@ def setup(data,
     cf.go_offline()
     cf.set_config_file(offline=False, world_readable=True)
     
+    #declaring global variables to be accessed by other functions
+    logger.info("Declaring global variables")
+    global X, y, X_train, X_test, y_train, y_test, seed, prep_pipe, experiment__,\
+        folds_shuffle_param, n_jobs_param, create_model_container, master_model_container,\
+        display_container, exp_name_log, logging_param, log_plots_param,\
+        fix_imbalance_param, fix_imbalance_method_param, data_before_preprocess
+
     logger.info("Copying data for preprocessing")
     
     #copy original data for pandas profiler
     data_before_preprocess = data.copy()
-    
-    logger.info("Declaring global variables")
-
-    #declaring global variables to be accessed by other functions
-    global X, y, X_train, X_test, y_train, y_test, seed, prep_pipe, experiment__,\
-        folds_shuffle_param, n_jobs_param, create_model_container, master_model_container,\
-        display_container, exp_name_log, logging_param, log_plots_param,\
-        fix_imbalance_param, fix_imbalance_method_param
     
     #generate seed to be used globally
     if session_id is None:
@@ -1939,18 +1938,6 @@ def setup(data,
                 os.remove('Train.csv')
                 os.remove('Test.csv')
 
-            # Log input.txt that contains name of columns required in dataset 
-            # to use this pipeline based on USI/URI.
-
-            input_cols = list(data_before_preprocess.columns)
-            input_cols.remove(target)
-
-            with open("input.txt", "w") as output:
-                output.write(str(input_cols))
-            
-            mlflow.log_artifact("input.txt")
-            os.remove('input.txt')
-
     logger.info("create_model_container " + str(len(create_model_container)))
     logger.info("master_model_container " + str(len(master_model_container)))
     logger.info("display_container " + str(len(display_container)))
@@ -1961,7 +1948,7 @@ def setup(data,
     return X, y, X_train, X_test, y_train, y_test, seed, prep_pipe, experiment__,\
         folds_shuffle_param, n_jobs_param, html_param, create_model_container, master_model_container,\
         display_container, exp_name_log, logging_param, log_plots_param, USI,\
-        fix_imbalance_param, fix_imbalance_method_param, logger
+        fix_imbalance_param, fix_imbalance_method_param, logger, data_before_preprocess
 
 def create_model(estimator = None, 
                  ensemble = False, 
@@ -2793,6 +2780,7 @@ def create_model(estimator = None,
             # Generate hold-out predictions and save as html
             holdout = predict_model(model, verbose=False)
             holdout_score = pull()
+            del(holdout)
             display_container.pop(-1)
             holdout_score.to_html('Holdout.html', col_space=65, justify='left')
             mlflow.log_artifact('Holdout.html')
@@ -2828,14 +2816,27 @@ def create_model(estimator = None,
                 logger.info("SubProcess plot_model() end ==================================")
             
             # Log model and transformation pipeline
-            logger.info("SubProcess save_model() called ==================================")
-            save_model(model, 'Trained Model', verbose=False)
-            logger.info("SubProcess save_model() end ==================================")
-            mlflow.log_artifact('Trained Model' + '.pkl')
-            size_bytes = Path('Trained Model.pkl').stat().st_size
-            size_kb = np.round(size_bytes/1000, 2)
-            mlflow.set_tag("Size KB", size_kb)
-            os.remove('Trained Model.pkl')
+            from copy import deepcopy
+
+            # get default conda env
+            from mlflow.sklearn import get_default_conda_env
+            default_conda_env = get_default_conda_env()
+            default_conda_env['name'] = str(exp_name_log) + '-env'
+            default_conda_env.get('dependencies').pop(-3)
+            dependencies = default_conda_env.get('dependencies')[-1]
+            from pycaret.utils import __version__
+            dep = 'pycaret==' + str(__version__())
+            dependencies['pip'] = [dep]
+            
+            # define model signature
+            from mlflow.models.signature import infer_signature
+            signature = infer_signature(data_before_preprocess)
+
+            # log model as sklearn flavor
+            prep_pipe_temp = deepcopy(prep_pipe)
+            prep_pipe_temp.steps.append(['trained model', model])
+            mlflow.sklearn.log_model(prep_pipe_temp, "model", conda_env = default_conda_env, signature = signature)
+            del(prep_pipe_temp)
 
     progress.value += 1
 
@@ -3568,19 +3569,10 @@ def ensemble_model(estimator,
             # Log training time in seconds
             mlflow.log_metric("TT", model_fit_time)
 
-            # Log model and transformation pipeline
-            logger.info("SubProcess save_model() called ==================================")
-            save_model(model, 'Trained Model', verbose=False)
-            logger.info("SubProcess save_model() end ==================================")
-            mlflow.log_artifact('Trained Model' + '.pkl')
-            size_bytes = Path('Trained Model.pkl').stat().st_size
-            size_kb = np.round(size_bytes/1000, 2)
-            mlflow.set_tag("Size KB", size_kb)
-            os.remove('Trained Model.pkl')
-
             # Generate hold-out predictions and save as html
             holdout = predict_model(model, verbose=False)
             holdout_score = pull()
+            del(holdout)
             display_container.pop(-1)
             holdout_score.to_html('Holdout.html', col_space=65, justify='left')
             mlflow.log_artifact('Holdout.html')
@@ -3618,6 +3610,29 @@ def ensemble_model(estimator,
             model_results.data.to_html('Results.html', col_space=65, justify='left')
             mlflow.log_artifact('Results.html')
             os.remove('Results.html')
+
+            # Log model and transformation pipeline
+            from copy import deepcopy
+
+            # get default conda env
+            from mlflow.sklearn import get_default_conda_env
+            default_conda_env = get_default_conda_env()
+            default_conda_env['name'] = str(exp_name_log) + '-env'
+            default_conda_env.get('dependencies').pop(-3)
+            dependencies = default_conda_env.get('dependencies')[-1]
+            from pycaret.utils import __version__
+            dep = 'pycaret==' + str(__version__())
+            dependencies['pip'] = [dep]
+            
+            # define model signature
+            from mlflow.models.signature import infer_signature
+            signature = infer_signature(data_before_preprocess)
+
+            # log model as sklearn flavor
+            prep_pipe_temp = deepcopy(prep_pipe)
+            prep_pipe_temp.steps.append(['trained model', model])
+            mlflow.sklearn.log_model(prep_pipe_temp, "model", conda_env = default_conda_env, signature = signature)
+            del(prep_pipe_temp)
 
     if verbose:
         clear_output()
@@ -5071,14 +5086,27 @@ def compare_models(blacklist = None,
                 mlflow.log_metric("TT", avg_training_time[0])
 
                 # Log model and transformation pipeline
-                logger.info("SubProcess save_model() called ==================================")
-                save_model(model, 'Trained Model', verbose=False)
-                logger.info("SubProcess save_model() end ==================================")
-                mlflow.log_artifact('Trained Model' + '.pkl')
-                size_bytes = Path('Trained Model.pkl').stat().st_size
-                size_kb = np.round(size_bytes/1000, 2)
-                mlflow.set_tag("Size KB", size_kb)
-                os.remove('Trained Model.pkl')
+                from copy import deepcopy
+
+                # get default conda env
+                from mlflow.sklearn import get_default_conda_env
+                default_conda_env = get_default_conda_env()
+                default_conda_env['name'] = str(exp_name_log) + '-env'
+                default_conda_env.get('dependencies').pop(-3)
+                dependencies = default_conda_env.get('dependencies')[-1]
+                from pycaret.utils import __version__
+                dep = 'pycaret==' + str(__version__())
+                dependencies['pip'] = [dep]
+                
+                # define model signature
+                from mlflow.models.signature import infer_signature
+                signature = infer_signature(data_before_preprocess)
+
+                # log model as sklearn flavor
+                prep_pipe_temp = deepcopy(prep_pipe)
+                prep_pipe_temp.steps.append(['trained model', model])
+                mlflow.sklearn.log_model(prep_pipe_temp, "model", conda_env = default_conda_env, signature = signature)
+                del(prep_pipe_temp)
 
         score_acc =np.empty((0,0))
         score_auc =np.empty((0,0))
@@ -6356,16 +6384,6 @@ def tune_model(estimator = None,
             # Log training time in seconds
             mlflow.log_metric("TT", model_fit_time)
 
-            # Log model and transformation pipeline
-            logger.info("SubProcess save_model() called ==================================")
-            save_model(best_model, 'Trained Model', verbose=False)
-            logger.info("SubProcess save_model() end ==================================")
-            mlflow.log_artifact('Trained Model' + '.pkl')
-            size_bytes = Path('Trained Model.pkl').stat().st_size
-            size_kb = np.round(size_bytes/1000, 2)
-            mlflow.set_tag("Size KB", size_kb)
-            os.remove('Trained Model.pkl')
-
             # Log the CV results as model_results.html artifact
             model_results.data.to_html('Results.html', col_space=65, justify='left')
             mlflow.log_artifact('Results.html')
@@ -6374,6 +6392,7 @@ def tune_model(estimator = None,
             # Generate hold-out predictions and save as html
             holdout = predict_model(best_model, verbose=False)
             holdout_score = pull()
+            del(holdout)
             display_container.pop(-1)
             holdout_score.to_html('Holdout.html', col_space=65, justify='left')
             mlflow.log_artifact('Holdout.html')
@@ -6414,6 +6433,29 @@ def tune_model(estimator = None,
             dd.to_html('Iterations.html', col_space=75, justify='left')
             mlflow.log_artifact('Iterations.html')
             os.remove('Iterations.html')
+
+            # Log model and transformation pipeline
+            from copy import deepcopy
+
+            # get default conda env
+            from mlflow.sklearn import get_default_conda_env
+            default_conda_env = get_default_conda_env()
+            default_conda_env['name'] = str(exp_name_log) + '-env'
+            default_conda_env.get('dependencies').pop(-3)
+            dependencies = default_conda_env.get('dependencies')[-1]
+            from pycaret.utils import __version__
+            dep = 'pycaret==' + str(__version__())
+            dependencies['pip'] = [dep]
+            
+            # define model signature
+            from mlflow.models.signature import infer_signature
+            signature = infer_signature(data_before_preprocess)
+
+            # log model as sklearn flavor
+            prep_pipe_temp = deepcopy(prep_pipe)
+            prep_pipe_temp.steps.append(['trained model', best_model])
+            mlflow.sklearn.log_model(prep_pipe_temp, "model", conda_env = default_conda_env, signature = signature)
+            del(prep_pipe_temp)
         
     if verbose:
         clear_output()
@@ -7204,19 +7246,10 @@ def blend_models(estimator_list = 'All',
             mlflow.log_metrics({"Accuracy": avgs_acc[0], "AUC": avgs_auc[0], "Recall": avgs_recall[0], "Precision" : avgs_precision[0],
                                 "F1": avgs_f1[0], "Kappa": avgs_kappa[0], "MCC": avgs_mcc[0]})
             
-            # Log model and transformation pipeline
-            logger.info("SubProcess save_model() called ==================================")
-            save_model(model, 'Trained Model', verbose=False)
-            logger.info("SubProcess save_model() end ==================================")
-            mlflow.log_artifact('Trained Model' + '.pkl')
-            size_bytes = Path('Trained Model.pkl').stat().st_size
-            size_kb = np.round(size_bytes/1000, 2)
-            mlflow.set_tag("Size KB", size_kb)
-            os.remove('Trained Model.pkl')
-            
             # Generate hold-out predictions and save as html
             holdout = predict_model(model, verbose=False)
             holdout_score = pull()
+            del(holdout)
             display_container.pop(-1)
             holdout_score.to_html('Holdout.html', col_space=65, justify='left')
             mlflow.log_artifact('Holdout.html')
@@ -7253,6 +7286,29 @@ def blend_models(estimator_list = 'All',
             model_results.data.to_html('Results.html', col_space=65, justify='left')
             mlflow.log_artifact('Results.html')
             os.remove('Results.html')
+
+            # Log model and transformation pipeline
+            from copy import deepcopy
+
+            # get default conda env
+            from mlflow.sklearn import get_default_conda_env
+            default_conda_env = get_default_conda_env()
+            default_conda_env['name'] = str(exp_name_log) + '-env'
+            default_conda_env.get('dependencies').pop(-3)
+            dependencies = default_conda_env.get('dependencies')[-1]
+            from pycaret.utils import __version__
+            dep = 'pycaret==' + str(__version__())
+            dependencies['pip'] = [dep]
+            
+            # define model signature
+            from mlflow.models.signature import infer_signature
+            signature = infer_signature(data_before_preprocess)
+
+            # log model as sklearn flavor
+            prep_pipe_temp = deepcopy(prep_pipe)
+            prep_pipe_temp.steps.append(['trained model', model])
+            mlflow.sklearn.log_model(prep_pipe_temp, "model", conda_env = default_conda_env, signature = signature)
+            del(prep_pipe_temp)
 
     if verbose:
         clear_output()
@@ -7914,16 +7970,6 @@ def stack_models(estimator_list,
             mlflow.set_tag("Run Time", runtime)
             mlflow.set_tag("Run ID", RunID)
 
-            # Log model and transformation pipeline
-            logger.info("SubProcess save_model() called ==================================")
-            save_model(model, 'Trained Model', verbose=False)
-            logger.info("SubProcess save_model() end ==================================")
-            mlflow.log_artifact('Trained Model' + '.pkl')
-            size_bytes = Path('Trained Model.pkl').stat().st_size
-            size_kb = np.round(size_bytes/1000, 2)
-            mlflow.set_tag("Size KB", size_kb)
-            os.remove('Trained Model.pkl')
-
             # Log training time of compare_models
             mlflow.log_metric("TT", model_fit_time)
 
@@ -7935,10 +7981,34 @@ def stack_models(estimator_list,
             # Generate hold-out predictions and save as html
             holdout = predict_model(model, verbose=False)
             holdout_score = pull()
+            del(holdout)
             display_container.pop(-1)
             holdout_score.to_html('Holdout.html', col_space=65, justify='left')
             mlflow.log_artifact('Holdout.html')
             os.remove('Holdout.html')
+
+            # Log model and transformation pipeline
+            from copy import deepcopy
+
+            # get default conda env
+            from mlflow.sklearn import get_default_conda_env
+            default_conda_env = get_default_conda_env()
+            default_conda_env['name'] = str(exp_name_log) + '-env'
+            default_conda_env.get('dependencies').pop(-3)
+            dependencies = default_conda_env.get('dependencies')[-1]
+            from pycaret.utils import __version__
+            dep = 'pycaret==' + str(__version__())
+            dependencies['pip'] = [dep]
+            
+            # define model signature
+            from mlflow.models.signature import infer_signature
+            signature = infer_signature(data_before_preprocess)
+
+            # log model as sklearn flavor
+            prep_pipe_temp = deepcopy(prep_pipe)
+            prep_pipe_temp.steps.append(['trained model', model])
+            mlflow.sklearn.log_model(prep_pipe_temp, "model", conda_env = default_conda_env, signature = signature)
+            del(prep_pipe_temp)
 
     if verbose:
         clear_output()
@@ -8832,6 +8902,7 @@ def calibrate_model(estimator,
             # Generate hold-out predictions and save as html
             holdout = predict_model(model, verbose=False)
             holdout_score = pull()
+            del(holdout)
             display_container.pop(-1)
             holdout_score.to_html('Holdout.html', col_space=65, justify='left')
             mlflow.log_artifact('Holdout.html')
@@ -8866,14 +8937,27 @@ def calibrate_model(estimator,
                 logger.info("SubProcess plot_model() end ==================================")
 
             # Log model and transformation pipeline
-            logger.info("SubProcess save_model() called ==================================")
-            save_model(model, 'Trained Model', verbose=False)
-            logger.info("SubProcess save_model() end ==================================")
-            mlflow.log_artifact('Trained Model' + '.pkl')
-            size_bytes = Path('Trained Model.pkl').stat().st_size
-            size_kb = np.round(size_bytes/1000, 2)
-            mlflow.set_tag("Size KB", size_kb)
-            os.remove('Trained Model.pkl')
+            from copy import deepcopy
+
+            # get default conda env
+            from mlflow.sklearn import get_default_conda_env
+            default_conda_env = get_default_conda_env()
+            default_conda_env['name'] = str(exp_name_log) + '-env'
+            default_conda_env.get('dependencies').pop(-3)
+            dependencies = default_conda_env.get('dependencies')[-1]
+            from pycaret.utils import __version__
+            dep = 'pycaret==' + str(__version__())
+            dependencies['pip'] = [dep]
+            
+            # define model signature
+            from mlflow.models.signature import infer_signature
+            signature = infer_signature(data_before_preprocess)
+
+            # log model as sklearn flavor
+            prep_pipe_temp = deepcopy(prep_pipe)
+            prep_pipe_temp.steps.append(['trained model', model])
+            mlflow.sklearn.log_model(prep_pipe_temp, "model", conda_env = default_conda_env, signature = signature)
+            del(prep_pipe_temp)
 
     if verbose:
         clear_output()
@@ -9184,14 +9268,27 @@ def finalize_model(estimator):
                 logger.info("SubProcess plot_model() end ==================================")
 
             # Log model and transformation pipeline
-            logger.info("SubProcess save_model() called ==================================")
-            save_model(model_final, 'Trained Model', verbose=False)
-            logger.info("SubProcess save_model() end ==================================")
-            mlflow.log_artifact('Trained Model' + '.pkl')
-            size_bytes = Path('Trained Model.pkl').stat().st_size
-            size_kb = np.round(size_bytes/1000, 2)
-            mlflow.set_tag("Size KB", size_kb)
-            os.remove('Trained Model.pkl')
+            from copy import deepcopy
+
+            # get default conda env
+            from mlflow.sklearn import get_default_conda_env
+            default_conda_env = get_default_conda_env()
+            default_conda_env['name'] = str(exp_name_log) + '-env'
+            default_conda_env.get('dependencies').pop(-3)
+            dependencies = default_conda_env.get('dependencies')[-1]
+            from pycaret.utils import __version__
+            dep = 'pycaret==' + str(__version__())
+            dependencies['pip'] = [dep]
+            
+            # define model signature
+            from mlflow.models.signature import infer_signature
+            signature = infer_signature(data_before_preprocess)
+
+            # log model as sklearn flavor
+            prep_pipe_temp = deepcopy(prep_pipe)
+            prep_pipe_temp.steps.append(['trained model', model_final])
+            mlflow.sklearn.log_model(prep_pipe_temp, "model", conda_env = default_conda_env, signature = signature)
+            del(prep_pipe_temp)
 
     logger.info("create_model_container: " + str(len(create_model_container)))
     logger.info("master_model_container: " + str(len(master_model_container)))
@@ -10244,6 +10341,7 @@ def get_config(variable):
     - USI: Unique session ID parameter set through setup
     - fix_imbalance_param: fix_imbalance param set through setup
     - fix_imbalance_method_param: fix_imbalance_method param set through setup
+    - data_before_preprocess: data before preprocessing
 
     Example
     -------
@@ -10345,6 +10443,9 @@ def get_config(variable):
     if variable == 'fix_imbalance_method_param':
         global_var = fix_imbalance_method_param
 
+    if variable == 'data_before_preprocess':
+        global_var = data_before_preprocess
+
     logger.info("Global variable: " + str(variable) + ' returned')
     logger.info("get_config() succesfully completed......................................")
 
@@ -10376,6 +10477,7 @@ def set_config(variable,value):
     - USI: Unique session ID parameter set through setup
     - fix_imbalance_param: fix_imbalance param set through setup
     - fix_imbalance_method_param: fix_imbalance_method param set through setup
+    - data_before_preprocess: data before preprocessing
 
     Example
     -------
@@ -10492,6 +10594,10 @@ def set_config(variable,value):
     if variable == 'fix_imbalance_method_param':
         global fix_imbalance_method_param
         fix_imbalance_method_param = value
+
+    if variable == 'data_before_preprocess':
+        global data_before_preprocess
+        data_before_preprocess = value
 
     logger.info("Global variable:  " + str(variable) + ' updated')
     logger.info("set_config() succesfully completed......................................")

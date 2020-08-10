@@ -11,6 +11,7 @@ catboost_info
 /cli_app.py
 /logo.png
 /mlruns
+/model
 /Results.html
 /build
 /pycaret_nightly.egg-info
