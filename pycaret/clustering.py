@@ -1167,11 +1167,8 @@ def setup(data,
             import secrets
             URI = secrets.token_hex(nbytes=4)
             mlflow.set_tag("URI", URI)
-
             mlflow.set_tag("USI", USI) 
-
             mlflow.set_tag("Run Time", runtime)
-
             mlflow.set_tag("Run ID", RunID)
 
             # Log the transformation pipeline
@@ -1179,9 +1176,6 @@ def setup(data,
             save_model(prep_pipe, 'Transformation Pipeline', verbose=False)
             logger.info("SubProcess save_model() end ==================================")
             mlflow.log_artifact('Transformation Pipeline' + '.pkl')
-            size_bytes = Path('Transformation Pipeline.pkl').stat().st_size
-            size_kb = np.round(size_bytes/1000, 2)
-            mlflow.set_tag("Size KB", size_kb)
             os.remove('Transformation Pipeline.pkl')
 
             # Log pandas profile
@@ -1199,17 +1193,6 @@ def setup(data,
                 data_before_preprocess.to_csv('data.csv')
                 mlflow.log_artifact('data.csv')
                 os.remove('data.csv')
-
-            # Log input.txt that contains name of columns required in dataset 
-            # to use this pipeline based on USI/URI.
-
-            input_cols = list(data_before_preprocess.columns)
-
-            with open("input.txt", "w") as output:
-                output.write(str(input_cols))
-            
-            mlflow.log_artifact("input.txt")
-            os.remove('input.txt')
 
     logger.info(str(prep_pipe))
     logger.info("setup() succesfully completed......................................")
@@ -1651,14 +1634,27 @@ def create_model(model = None,
                 logger.info("SubProcess plot_model() end ==================================")
 
             # Log model and transformation pipeline
-            logger.info("SubProcess save_model() called ==================================")
-            save_model(model, 'Trained Model', verbose=False)
-            logger.info("SubProcess save_model() end ==================================")
-            mlflow.log_artifact('Trained Model' + '.pkl')
-            size_bytes = Path('Trained Model.pkl').stat().st_size
-            size_kb = np.round(size_bytes/1000, 2)
-            mlflow.set_tag("Size KB", size_kb)
-            os.remove('Trained Model.pkl')
+            from copy import deepcopy
+
+            # get default conda env
+            from mlflow.sklearn import get_default_conda_env
+            default_conda_env = get_default_conda_env()
+            default_conda_env['name'] = str(exp_name_log) + '-env'
+            default_conda_env.get('dependencies').pop(-3)
+            dependencies = default_conda_env.get('dependencies')[-1]
+            from pycaret.utils import __version__
+            dep = 'pycaret==' + str(__version__())
+            dependencies['pip'] = [dep]
+            
+            # define model signature
+            from mlflow.models.signature import infer_signature
+            signature = infer_signature(data_)
+
+            # log model as sklearn flavor
+            prep_pipe_temp = deepcopy(prep_pipe)
+            prep_pipe_temp.steps.append(['trained model', model])
+            mlflow.sklearn.log_model(prep_pipe_temp, "model", conda_env = default_conda_env, signature = signature)
+            del(prep_pipe_temp)
 
     progress.value += 1
     
@@ -3169,14 +3165,19 @@ def tune_model(model=None,
             RunID = mlflow.active_run().info.run_id
 
             # Log model parameters
-            params = best_model.get_params()
 
-            for i in list(params):
-                v = params.get(i)
-                if len(str(v)) > 250:
-                    params.pop(i)
+            try:
+                params = best_model.get_params()
 
-            mlflow.log_params(params)
+                for i in list(params):
+                    v = params.get(i)
+                    if len(str(v)) > 250:
+                        params.pop(i)
+
+                mlflow.log_params(params)
+            
+            except:
+                pass
             
             #set tag of compare_models
             mlflow.set_tag("Source", "tune_model")
@@ -3197,14 +3198,27 @@ def tune_model(model=None,
             os.remove('Iterations.html')
 
             # Log model and transformation pipeline
-            logger.info("SubProcess save_model() called ==================================")
-            save_model(best_model, 'Trained Model', verbose=False)
-            logger.info("SubProcess save_model() end ==================================")
-            mlflow.log_artifact('Trained Model' + '.pkl')
-            size_bytes = Path('Trained Model.pkl').stat().st_size
-            size_kb = np.round(size_bytes/1000, 2)
-            mlflow.set_tag("Size KB", size_kb)
-            os.remove('Trained Model.pkl')
+            from copy import deepcopy
+
+            # get default conda env
+            from mlflow.sklearn import get_default_conda_env
+            default_conda_env = get_default_conda_env()
+            default_conda_env['name'] = str(exp_name_log) + '-env'
+            default_conda_env.get('dependencies').pop(-3)
+            dependencies = default_conda_env.get('dependencies')[-1]
+            from pycaret.utils import __version__
+            dep = 'pycaret==' + str(__version__())
+            dependencies['pip'] = [dep]
+            
+            # define model signature
+            from mlflow.models.signature import infer_signature
+            signature = infer_signature(data_)
+
+            # log model as sklearn flavor
+            prep_pipe_temp = deepcopy(prep_pipe)
+            prep_pipe_temp.steps.append(['trained model', best_model])
+            mlflow.sklearn.log_model(prep_pipe_temp, "model", conda_env = default_conda_env, signature = signature)
+            del(prep_pipe_temp)
 
     logger.info(str(best_model))
     logger.info("tune_model() succesfully completed......................................")
