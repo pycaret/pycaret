@@ -29,12 +29,16 @@ def test():
     data_unseen = test.drop(columns=target)
     final_model = pycaret.classification.finalize_model(model)
     result = pycaret.classification.predict_model(final_model, data = data_unseen)
-    actual=test[target].reset_index()
-    actual=actual["Purchase"].astype(np.int64)
+    actual = test[target]
+    prediction = result["Label"]
+    
     # provisional support
-    prediction=result["Label"].dropna(axis=0, how="any")
-    prediction=prediction.reset_index()
-    prediction=prediction["Label"].astype(np.int64)
+    actual = actual.dropna(axis=0, how="any")
+    actual = actual.reset_index()
+    actual = actual["Purchase"].astype(np.int64)
+    prediction = prediction.dropna(axis=0, how="any")
+    prediction = prediction.reset_index()
+    prediction = prediction["Label"].astype(np.int64)
 
     # check metric(classification)
     pycaret.utils.check_metric(actual, prediction, "Accuracy")
@@ -55,12 +59,14 @@ def test():
     final_model = pycaret.regression.finalize_model(model)
     result = pycaret.regression.predict_model(final_model, data=data_unseen)
     actual = test[target]
+    prediction = result["Label"]
+    
+    # provisional support
     actual = actual.dropna(axis=0, how="any")
     actual = actual.reset_index()
     actual=actual.drop("index", axis=1)
-    # provisional support
-    prediction = result["Label"].dropna(axis=0, how="any")
-    prediction = result["Label"].reset_index()
+    prediction = prediction.dropna(axis=0, how="any")
+    prediction = prediction.reset_index()
     prediction=prediction.drop("index", axis=1)
 
     # check metric(regression)
