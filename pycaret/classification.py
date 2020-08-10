@@ -11263,8 +11263,6 @@ def get_system_logs():
 
 # Google Cloud Utilities
 
-
-
 def create_bucket_gcp(project_name, bucket_name):
 
     """
