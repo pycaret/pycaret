@@ -1,9 +1,13 @@
 import os, sys
 sys.path.insert(0, os.path.abspath(".."))
 
+import numpy  as np
+import pandas as pd
 import pytest
+import pycaret.utils
 import pycaret.classification
 import pycaret.datasets
+import pycaret.regression
 import sklearn.model_selection
 import sklearn.preprocessing
 
@@ -20,12 +24,17 @@ def test():
     le = le.fit(data[target])
     data[target] = le.transform(data[target])
     train, test = sklearn.model_selection.train_test_split(data, train_size=0.8, random_state=1)
-    clf1 = pycaret.classification.setup(train, target=target, silent=True, html=False, session_id=123)
+    clf1 = pycaret.classification.setup(train, target=target,silent=True, html=False, session_id=123)
     model = pycaret.classification.create_model("lightgbm")
     data_unseen = test.drop(columns=target)
-    result = pycaret.classification.predict_model(model, data=data_unseen)
-    actual = test[target]
-    prediction = result["Label"]
+    final_model = pycaret.classification.finalize_model(model)
+    result = pycaret.classification.predict_model(final_model, data = data_unseen)
+    actual=test[target].reset_index()
+    actual=actual["Purchase"].astype(np.int64)
+    # provisional support
+    prediction=result["Label"].dropna(axis=0, how="any")
+    prediction=prediction.reset_index()
+    prediction=prediction["Label"].astype(np.int64)
 
     # check metric(classification)
     pycaret.utils.check_metric(actual, prediction, "Accuracy")
