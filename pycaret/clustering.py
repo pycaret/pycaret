@@ -2,7 +2,7 @@
 # Author: Moez Ali <moez.ali@queensu.ca>
 # License: MIT
 # Release: PyCaret 2.1x
-# Last modified : 05/08/2020
+# Last modified : 10/08/2020
 
 def setup(data, 
         categorical_features = None,
@@ -3831,7 +3831,11 @@ def predict_model(model,
         sys.exit("(Type Error): Model doesn't support predict parameter.")
     
     #predictions start here
-    pred = model.predict(data)
+    if 'Pipeline' in str(type(model)):
+        pred = model.predict(data)
+    else:
+        _data_ = prep_pipe.transform(data__)
+        pred = model.predict(_data_)
     
     pred_ = []
     

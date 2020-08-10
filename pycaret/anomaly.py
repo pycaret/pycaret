@@ -3401,6 +3401,7 @@ def save_model(model, model_name, model_only=False, verbose=True):
     """
     
     import logging
+    from copy import deepcopy
 
     try:
         hasattr(logger, 'name')
@@ -3586,8 +3587,13 @@ def predict_model(model,
         sys.exit("(Type Error): Model doesn't support predict parameter.")
     
     #predictions start here
-    pred = model.predict(data)
-    pred_score = model.decision_function(data)
+    if 'Pipeline' in str(type(model)):
+        pred = model.predict(data)
+        pred_score = model.decision_function(data)
+    else:
+        _data_ = prep_pipe.transform(data__)
+        pred = model.predict(_data_)
+        pred_score = model.decision_function(_data_)        
         
     data__['Label'] = pred
     data__['Score'] = pred_score
