@@ -54,10 +54,12 @@ def test():
     data_unseen = test.drop(columns=target)
     final_model = pycaret.regression.finalize_model(model)
     result = pycaret.regression.predict_model(final_model, data=data_unseen)
-    actual = test[target].reset_index()
+    actual = test[target]
+    actual = actual.dropna(axis=0, how="any")
+    actual = actual.reset_index()
     actual=actual.drop("index", axis=1)
     # provisional support
-    prediction=result["Label"].dropna(axis=0, how="any")
+    prediction = result["Label"].dropna(axis=0, how="any")
     prediction = result["Label"].reset_index()
     prediction=prediction.drop("index", axis=1)
 
