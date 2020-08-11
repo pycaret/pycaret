@@ -9360,7 +9360,7 @@ def load_model(model_name,
         return joblib.load(model_name)
     # cloud providers
     elif platform == 'aws':
-        logger.info('loading model from AWS')
+        print('loading model from AWS')
 
         import boto3
         bucketname = authentication.get('bucket')
@@ -9369,44 +9369,45 @@ def load_model(model_name,
         s3.Bucket(bucketname).download_file(filename, filename)
         filename = str(model_name)
         model = load_model(filename, verbose=False)
+        model = load_model(filename, verbose=False)
 
         if verbose:
-            logger.info('Transformation Pipeline and Model Successfully Loaded')
+            print('Transformation Pipeline and Model Successfully Loaded')
 
         return model
 
     elif platform == 'gcp':
         if verbose:
-            logger.info('loading model from GCP')
+            print('loading model from GCP')
         bucket_name = authentication.get('bucket')
         project_name = authentication.get('project')
         filename = str(model_name) + '.pkl'
 
-        model_downloaded = download_blob_gcp(project_name,
-                                             bucket_name, filename, filename)
+        model_downloaded = _download_blob_gcp(project_name,
+                                              bucket_name, filename, filename)
 
         model = load_model(model_name, verbose=False)
 
         if verbose:
-            logger.info('Transformation Pipeline and Model Successfully Loaded')
+            logger('Transformation Pipeline and Model Successfully Loaded')
         return model
 
     elif platform == 'azure':
         if verbose:
-            logger.info('Loading model from Microsoft Azure')
+            print('Loading model from Microsoft Azure')
 
         container_name = authentication.get('container')
         filename = str(model_name) + '.pkl'
 
-        model_downloaded = download_blob_azure(container_name, filename, filename)
+        model_downloaded = _download_blob_azure(container_name, filename, filename)
 
         model = load_model(model_name, verbose=False)
 
         if verbose:
-            logger.info('Transformation Pipeline and Model Successfully Loaded')
+            print('Transformation Pipeline and Model Successfully Loaded')
         return model
     else:
-        logger.info('Platform { } is not supported by pycaret or illegal option'.format(platform))
+        print('Platform { } is not supported by pycaret or illegal option'.format(platform))
         # return model
 
     # import joblib
@@ -9688,16 +9689,29 @@ def deploy_model(model,
 
     For GCP users:
     --------------
-    Before deploying a model to Google Cloud Platform (GCP), environment variables
-    must be configured using the command line interface.
-    - authentication = {'project': 'gcp_pycaret', 'bucket' : 'pycaret-test'}
+    Before deploying a model to Google Cloud Platform (GCP), user has to create Project
+    on the platform from consol. To do that, user must have google cloud account or
+    create new one. After creating a service account, down the JSON authetication file
+    and configure  GOOGLE_APPLICATION_CREDENTIALS= <path-to-json> from command line. If
+    using google-colab then authetication can be done using `google.colab` auth method.
+    Read below link for more details.
+
+    https://cloud.google.com/docs/authentication/production
+
+    - Google Cloud Project
+    - Service Account Authetication
 
     For AZURE users:
     --------------
     Before deploying a model to Microsoft's Azure (Azure), environment variables
-    for connection string must be set.
+    for connection string must be set. In order to get connection string, user has
+    to create account of Azure. Once it is done, create a Storage account. In the settings
+    section of storage account, user can get the connection string.
 
-    - authentication = {'container': 'pycaret-test'}
+    Read below link for more details.
+    https://docs.microsoft.com/en-us/azure/storage/blobs/storage-quickstart-blobs-python?toc=%2Fpython%2Fazure%2FTOC.json
+
+    - Azure Storage Account
 
     Parameters
     ----------
@@ -9821,8 +9835,8 @@ def deploy_model(model,
         project_name = authentication.get('project')
         logger.info('Deploying model to Google Cloud Platform')
         # Create Bucket
-        create_bucket_gcp(project_name, bucket_name)
-        upload_blob_gcp(project_name, bucket_name, filename, key)
+        _create_bucket_gcp(project_name, bucket_name)
+        _upload_blob_gcp(project_name, bucket_name, filename, key)
         logger.info('Deployed model Successfully on Google Cloud Platform')
 
     elif platform == 'azure':
@@ -9838,8 +9852,8 @@ def deploy_model(model,
         filename = str(model_name) + '.pkl'
         key = str(model_name) + '.pkl'
         container_name = authentication.get('container')
-        container_client = create_container_azure(container_name)
-        upload_blob_azure(container_name, filename, key)
+        container_client = _create_container_azure(container_name)
+        _upload_blob_azure(container_name, filename, key)
 
     else:
         logger.error('Platform {} is not supported by pycaret or illegal option'.format(platform))
@@ -10621,13 +10635,13 @@ def get_system_logs():
 
 # Google Cloud Utilities
 
-def create_bucket_gcp(project_name, bucket_name):
+def _create_bucket_gcp(project_name, bucket_name):
     """
     Creates a bucket on Google Cloud Platform if it does not exists already
 
     Example
     -------
-    >>> create_bucket_gcp(project_name='GCP-Essentials', bucket_name='test-pycaret-gcp')
+    >>> _create_bucket_gcp(project_name='GCP-Essentials', bucket_name='test-pycaret-gcp')
 
     Parameters
     ----------
@@ -10655,14 +10669,14 @@ def create_bucket_gcp(project_name, bucket_name):
         raise FileExistsError('{} already exists'.format(bucket_name))
 
 
-def upload_blob_gcp(project_name, bucket_name, source_file_name, destination_blob_name):
+def _upload_blob_gcp(project_name, bucket_name, source_file_name, destination_blob_name):
 
     """
     Upload blob to GCP storage bucket
 
     Example
     -------
-    >>> upload_blob_gcp(project_name='GCP-Essentials', bucket_name='test-pycaret-gcp', \
+    >>> _upload_blob_gcp(project_name='GCP-Essentials', bucket_name='test-pycaret-gcp', \
                         source_file_name='model-101.pkl', destination_blob_name='model-101.pkl')
 
     Parameters
@@ -10701,13 +10715,13 @@ def upload_blob_gcp(project_name, bucket_name, source_file_name, destination_blo
     )
 
 
-def download_blob_gcp(project_name, bucket_name, source_blob_name, destination_file_name):
+def _download_blob_gcp(project_name, bucket_name, source_blob_name, destination_file_name):
     """
     Download a blob from GCP storage bucket
 
     Example
     -------
-    >>> download_blob_gcp(project_name='GCP-Essentials', bucket_name='test-pycaret-gcp', \
+    >>> _download_blob_gcp(project_name='GCP-Essentials', bucket_name='test-pycaret-gcp', \
                           source_blob_name='model-101.pkl', destination_file_name='model-101.pkl')
 
     Parameters
@@ -10726,7 +10740,7 @@ def download_blob_gcp(project_name, bucket_name, source_blob_name, destination_f
 
     Returns
     -------
-    None
+    Model Object
     """
 
     # bucket_name = "your-bucket-name"
@@ -10750,13 +10764,13 @@ def download_blob_gcp(project_name, bucket_name, source_blob_name, destination_f
     return blob
 
 # Azure Utilities
-def create_container_azure(container_name):
+def _create_container_azure(container_name):
     """
     Creates a storage container on Azure Platform. gets the connection string from the environment variables.
 
     Example
     -------
-    >>>  container_client = create_container_azure(container_name='test-pycaret-azure')
+    >>>  container_client = _create_container_azure(container_name='test-pycaret-azure')
 
     Parameters
     ----------
@@ -10778,13 +10792,13 @@ def create_container_azure(container_name):
     return container_client
 
 
-def upload_blob_azure(container_name, source_file_name, destination_blob_name):
+def _upload_blob_azure(container_name, source_file_name, destination_blob_name):
     """
     Upload blob to Azure storage  container
 
     Example
     -------
-    >>>  upload_blob_azure(container_name='test-pycaret-azure', source_file_name='model-101.pkl', \
+    >>>  _upload_blob_azure(container_name='test-pycaret-azure', source_file_name='model-101.pkl', \
                            destination_blob_name='model-101.pkl')
 
     Parameters
@@ -10818,13 +10832,13 @@ def upload_blob_azure(container_name, source_file_name, destination_blob_name):
       blob_client.upload_blob(data)
 
 
-def download_blob_azure(container_name, source_blob_name, destination_file_name):
+def _download_blob_azure(container_name, source_blob_name, destination_file_name):
     """
     Download blob from Azure storage  container
 
     Example
     -------
-    >>>  download_blob_azure(container_name='test-pycaret-azure', source_blob_name='model-101.pkl', \
+    >>>  _download_blob_azure(container_name='test-pycaret-azure', source_blob_name='model-101.pkl', \
                              destination_file_name='model-101.pkl')
 
     Parameters
