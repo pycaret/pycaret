@@ -32,9 +32,6 @@ def test():
     # set config
     pycaret.anomaly.set_config('seed', 123) 
     
-    # get logs
-    logs = pycaret.anomaly.get_logs()
-    
     # save model
     pycaret.anomaly.save_model(knn, 'knn_model_23122019')
     
