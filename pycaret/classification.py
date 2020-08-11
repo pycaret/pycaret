@@ -9389,7 +9389,7 @@ def load_model(model_name,
         model = load_model(model_name, verbose=False)
 
         if verbose:
-            logger('Transformation Pipeline and Model Successfully Loaded')
+            print('Transformation Pipeline and Model Successfully Loaded')
         return model
 
     elif platform == 'azure':
