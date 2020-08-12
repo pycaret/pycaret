@@ -30,19 +30,37 @@ def test():
 
     # select best model
     best = pycaret.classification.automl(optimize = 'MCC')
-
+    
     # hold out predictions
     predict_holdout = pycaret.classification.predict_model(best)
 
     # predictions on new dataset
     predict_holdout = pycaret.classification.predict_model(best, data=data)
 
+    # calibrate model
+    calibrated_best = pycaret.classification.calibrate_model(best)
+
+    # finalize model
+    final_best = pycaret.classification.finalize_model(best)
+
+    # save model
+    pycaret.classification.save_model(best, 'best_model_23122019')
+ 
+    # load model
+    saved_best = pycaret.classification.load_model('best_model_23122019')
+    
+    # returns table of models
+    all_models = pycaret.classification.models()
+    
     # get config
     X_train = pycaret.classification.get_config('X_train')
     X_test = pycaret.classification.get_config('X_test')
     y_train = pycaret.classification.get_config('y_train')
     y_test = pycaret.classification.get_config('y_test')
 
+    # set config
+    pycaret.classification.set_config('seed', 123) 
+    
     assert 1 == 1
     
 if __name__ == "__main__":
