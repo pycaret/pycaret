@@ -2,7 +2,7 @@
 # Author: Moez Ali <moez.ali@queensu.ca>
 # License: MIT
 # Release: PyCaret 2.1x
-# Last modified : 10/08/2020
+# Last modified : 12/08/2020
 
 def setup(data,  
           target,   
@@ -9449,9 +9449,9 @@ def load_model(model_name,
         if verbose:
             print('Transformation Pipeline and Model Successfully Loaded')
         return joblib.load(model_name)
+    
     # cloud providers
     elif platform == 'aws':
-        print('loading model from AWS')
 
         import boto3
         bucketname = authentication.get('bucket')
@@ -9468,8 +9468,7 @@ def load_model(model_name,
         return model
 
     elif platform == 'gcp':
-        if verbose:
-            print('loading model from GCP')
+
         bucket_name = authentication.get('bucket')
         project_name = authentication.get('project')
         filename = str(model_name) + '.pkl'
@@ -9484,8 +9483,6 @@ def load_model(model_name,
         return model
 
     elif platform == 'azure':
-        if verbose:
-            print('Loading model from Microsoft Azure')
 
         container_name = authentication.get('container')
         filename = str(model_name) + '.pkl'
@@ -9499,14 +9496,6 @@ def load_model(model_name,
         return model
     else:
         print('Platform { } is not supported by pycaret or illegal option'.format(platform))
-        # return model
-
-    # import joblib
-    # model_name = model_name + '.pkl'
-    # if verbose:
-    #     print('Transformation Pipeline and Model Sucessfully Loaded')
-    #
-    # return joblib.load(model_name)
 
 def predict_model(estimator, 
                   data=None,
@@ -9792,8 +9781,8 @@ def deploy_model(model,
     - Google Cloud Project
     - Service Account Authetication
 
-    For AZURE users:
-    --------------
+    For Azure users:
+    ---------------
     Before deploying a model to Microsoft's Azure (Azure), environment variables
     for connection string must be set. In order to get connection string, user has
     to create account of Azure. Once it is done, create a Storage account. In the settings
@@ -9870,13 +9859,6 @@ def deploy_model(model,
     logger.info("""deploy_model(model={}, model_name={}, authentication={}, platform={})""".\
         format(str(model), str(model_name), str(authentication), str(platform)))
 
-    #checking if awscli available
-    try:
-        import awscli
-    except:
-        logger.error("awscli library not found. pip install awscli to use deploy_model function.")
-        sys.exit("awscli library not found. pip install awscli to use deploy_model function.")  
-
     #ignore warnings
     import warnings
     warnings.filterwarnings('ignore') 
@@ -9888,8 +9870,15 @@ def deploy_model(model,
     import os
 
     if platform == 'aws':
-
+        
         logger.info("Platform : AWS S3")
+
+        #checking if awscli available
+        try:
+            import awscli
+        except:
+            logger.error("awscli library not found. pip install awscli to use deploy_model function.")
+            sys.exit("awscli library not found. pip install awscli to use deploy_model function.")  
         
         import boto3
         
@@ -9908,48 +9897,74 @@ def deploy_model(model,
         clear_output()
         os.remove(filename)
         print("Model Succesfully Deployed on AWS S3")
+        logger.info("Model Succesfully Deployed on AWS S3")
         logger.info(str(model))
-        logger.info("deploy_model() succesfully completed......................................")
 
     elif platform == 'gcp':
+
+        logger.info("Platform : GCP")
 
         try:
             import google.cloud
         except:
-            logger.error("google.cloud library not found. pip install google.cloud to use deploy_model function with GCP.")
-            sys.exit("google.cloud library not found. pip install google.cloud to use deploy_model function with GCP.")
+            logger.error("google-cloud-storage library not found. pip install google-cloud-storage to use deploy_model function with GCP.")
+            sys.exit("google-cloud-storage library not found. pip install google-cloud-storage to use deploy_model function with GCP.")
 
+        logger.info("Saving model in active working directory")
+        logger.info("SubProcess save_model() called ==================================")
         save_model(model, model_name=model_name, verbose=False)
+        logger.info("SubProcess save_model() end ==================================")
+
+        # initialize deployment
         filename = str(model_name) + '.pkl'
         key = str(model_name) + '.pkl'
         bucket_name = authentication.get('bucket')
         project_name = authentication.get('project')
-        logger.info('Deploying model to Google Cloud Platform')
-        # Create Bucket
         _create_bucket_gcp(project_name, bucket_name)
         _upload_blob_gcp(project_name, bucket_name, filename, key)
-        logger.info('Deployed model Successfully on Google Cloud Platform')
+        os.remove(filename)
+        print("Model Succesfully Deployed on GCP")
+        logger.info("Model Succesfully Deployed on GCP")
+        logger.info(str(model))
 
     elif platform == 'azure':
 
         try:
             import azure.storage.blob
         except:
-            logger.error("azure.storage.blob library not found. pip install azure-storage-blob to use deploy_model function with Azure.")
-            sys.exit("azure.storage.blob library not found. pip install azure-storage-blob to use deploy_model function with Azure.")
+            logger.error("azure-storage-blob library not found. pip install azure-storage-blob to use deploy_model function with Azure.")
+            sys.exit("azure-storage-blob library not found. pip install azure-storage-blob to use deploy_model function with Azure.")
 
-        logger.info('Deploying model to Microsoft Azure')
+        logger.info("Platform : Azure Blob Storage")
+
+        logger.info("Saving model in active working directory")
+        logger.info("SubProcess save_model() called ==================================")
         save_model(model, model_name=model_name, verbose=False)
+        logger.info("SubProcess save_model() end ==================================")
+
+        # initialize deployment
         filename = str(model_name) + '.pkl'
         key = str(model_name) + '.pkl'
         container_name = authentication.get('container')
-        container_client = _create_container_azure(container_name)
-        _upload_blob_azure(container_name, filename, key)
+        try:
+            container_client = _create_container_azure(container_name)
+            _upload_blob_azure(container_name, filename, key)
+            del(container_client)
+        except:
+            _upload_blob_azure(container_name, filename, key)
+
+        os.remove(filename)
+
+        print("Model Succesfully Deployed on Azure Storage Blob")
+        logger.info("Model Succesfully Deployed on Azure Storage Blob")
+        logger.info(str(model))
 
     else:
         logger.error('Platform {} is not supported by pycaret or illegal option'.format(platform))
         sys.exit('Platform {} is not supported by pycaret or illegal option'.format(platform))
         
+    logger.info("deploy_model() succesfully completed......................................")
+
 def optimize_threshold(estimator, 
                        true_positive = 0, 
                        true_negative = 0, 
@@ -10888,7 +10903,6 @@ def _create_container_azure(container_name):
     connect_str = os.getenv('AZURE_STORAGE_CONNECTION_STRING')
     blob_service_client = BlobServiceClient.from_connection_string(connect_str)
     container_client = blob_service_client.create_container(container_name)
-    logger.info('{} has been created successfully on Azure platform')
     return container_client
 
 
@@ -10925,11 +10939,9 @@ def _upload_blob_azure(container_name, source_file_name, destination_blob_name):
     # Create a blob client using the local file name as the name for the blob
     blob_client = blob_service_client.get_blob_client(container=container_name, blob=destination_blob_name)
 
-    logger.info("\nUploading to Azure Storage as blob:\n\t" + source_file_name)
-
     # Upload the created file
     with open(source_file_name, "rb") as data:
-      blob_client.upload_blob(data)
+      blob_client.upload_blob(data, overwrite=True)
 
 
 def _download_blob_azure(container_name, source_blob_name, destination_file_name):
@@ -10959,7 +10971,6 @@ def _download_blob_azure(container_name, source_blob_name, destination_file_name
 
     import os, uuid
     from azure.storage.blob import BlobServiceClient, BlobClient, ContainerClient
-    print("\nDownloading blob to \n\t" + destination_file_name)
 
     connect_str = os.getenv('AZURE_STORAGE_CONNECTION_STRING')
     blob_service_client = BlobServiceClient.from_connection_string(connect_str)
@@ -10969,9 +10980,3 @@ def _download_blob_azure(container_name, source_blob_name, destination_file_name
     if destination_file_name is not None:
         with open(destination_file_name, "wb") as download_file:
           download_file.write(blob_client.download_blob().readall())
-
-        logger.info(
-            "Blob {} downloaded to {}.".format(
-                source_blob_name, destination_file_name
-            )
-        )
