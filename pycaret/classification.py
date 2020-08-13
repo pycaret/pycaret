@@ -1486,7 +1486,7 @@ def setup(data,
                 metric_name.append('Recall')
                 split_percent.append(i)
                 
-            #recall
+            #precision
             if y.value_counts().count() > 2:
                 precision = metrics.precision_score(y_test,pred_, average='weighted')
                 metric_results.append(precision)
