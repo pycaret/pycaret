@@ -2,7 +2,7 @@
 # Author: Moez Ali <moez.ali@queensu.ca>
 # License: MIT
 # Release: PyCaret 2.1x
-# Last modified : 10/08/2020
+# Last modified : 13/08/2020
 
 def setup(data, 
           target, 
@@ -957,7 +957,7 @@ def setup(data,
     #declaring global variables to be accessed by other functions
     global X, y, X_train, X_test, y_train, y_test, seed, prep_pipe, target_inverse_transformer, experiment__,\
         preprocess, folds_shuffle_param, n_jobs_param, create_model_container, master_model_container,\
-        display_container, exp_name_log, logging_param, log_plots_param, data_before_preprocess
+        display_container, exp_name_log, logging_param, log_plots_param, data_before_preprocess, target_param
 
     logger.info("Copying data for preprocessing")
     #copy original data for pandas profiler
@@ -1403,6 +1403,9 @@ def setup(data,
     else:
         log_plots_param = False
 
+    # create target param
+    target_param = target
+
     #sample estimator
     if sample_estimator is None:
         model = LinearRegression(n_jobs=n_jobs_param)
@@ -1714,7 +1717,7 @@ def setup(data,
     return X, y, X_train, X_test, y_train, y_test, seed, prep_pipe, target_inverse_transformer,\
         experiment__, folds_shuffle_param, n_jobs_param, html_param, create_model_container,\
         master_model_container, display_container, exp_name_log, logging_param, log_plots_param, USI,\
-        data_before_preprocess
+        data_before_preprocess, target_param
 
 def create_model(estimator = None, 
                  ensemble = False, 
@@ -2548,12 +2551,13 @@ def create_model(estimator = None,
             
             # define model signature
             from mlflow.models.signature import infer_signature
-            signature = infer_signature(data_before_preprocess)
+            signature = infer_signature(data_before_preprocess.drop([target_param], axis=1))
+            input_example = data_before_preprocess.drop([target_param], axis=1).iloc[0].to_dict()
 
             # log model as sklearn flavor
             prep_pipe_temp = deepcopy(prep_pipe)
             prep_pipe_temp.steps.append(['trained model', model])
-            mlflow.sklearn.log_model(prep_pipe_temp, "model", conda_env = default_conda_env, signature = signature)
+            mlflow.sklearn.log_model(prep_pipe_temp, "model", conda_env = default_conda_env, signature = signature, input_example = input_example)
             del(prep_pipe_temp)
 
     progress.value += 1
@@ -3274,14 +3278,15 @@ def ensemble_model(estimator,
             
             # define model signature
             from mlflow.models.signature import infer_signature
-            signature = infer_signature(data_before_preprocess)
+            signature = infer_signature(data_before_preprocess.drop([target_param], axis=1))
+            input_example = data_before_preprocess.drop([target_param], axis=1).iloc[0].to_dict()
 
             # log model as sklearn flavor
             prep_pipe_temp = deepcopy(prep_pipe)
             prep_pipe_temp.steps.append(['trained model', model])
-            mlflow.sklearn.log_model(prep_pipe_temp, "model", conda_env = default_conda_env, signature = signature)
+            mlflow.sklearn.log_model(prep_pipe_temp, "model", conda_env = default_conda_env, signature = signature, input_example = input_example)
             del(prep_pipe_temp)
-
+            
     if verbose:
         clear_output()
         if html_param:
@@ -4102,12 +4107,13 @@ def compare_models(blacklist = None,
                 
                 # define model signature
                 from mlflow.models.signature import infer_signature
-                signature = infer_signature(data_before_preprocess)
+                signature = infer_signature(data_before_preprocess.drop([target_param], axis=1))
+                input_example = data_before_preprocess.drop([target_param], axis=1).iloc[0].to_dict()
 
                 # log model as sklearn flavor
                 prep_pipe_temp = deepcopy(prep_pipe)
                 prep_pipe_temp.steps.append(['trained model', model])
-                mlflow.sklearn.log_model(prep_pipe_temp, "model", conda_env = default_conda_env, signature = signature)
+                mlflow.sklearn.log_model(prep_pipe_temp, "model", conda_env = default_conda_env, signature = signature, input_example = input_example)
                 del(prep_pipe_temp)
 
         score_mae =np.empty((0,0))
@@ -4967,12 +4973,13 @@ def blend_models(estimator_list = 'All',
             
             # define model signature
             from mlflow.models.signature import infer_signature
-            signature = infer_signature(data_before_preprocess)
+            signature = infer_signature(data_before_preprocess.drop([target_param], axis=1))
+            input_example = data_before_preprocess.drop([target_param], axis=1).iloc[0].to_dict()
 
             # log model as sklearn flavor
             prep_pipe_temp = deepcopy(prep_pipe)
             prep_pipe_temp.steps.append(['trained model', model])
-            mlflow.sklearn.log_model(prep_pipe_temp, "model", conda_env = default_conda_env, signature = signature)
+            mlflow.sklearn.log_model(prep_pipe_temp, "model", conda_env = default_conda_env, signature = signature, input_example = input_example)
             del(prep_pipe_temp)
 
     if verbose:
@@ -6339,12 +6346,13 @@ def tune_model(estimator,
             
             # define model signature
             from mlflow.models.signature import infer_signature
-            signature = infer_signature(data_before_preprocess)
+            signature = infer_signature(data_before_preprocess.drop([target_param], axis=1))
+            input_example = data_before_preprocess.drop([target_param], axis=1).iloc[0].to_dict()
 
             # log model as sklearn flavor
             prep_pipe_temp = deepcopy(prep_pipe)
-            prep_pipe_temp.steps.append(['trained model', best_model])
-            mlflow.sklearn.log_model(prep_pipe_temp, "model", conda_env = default_conda_env, signature = signature)
+            prep_pipe_temp.steps.append(['trained model', model])
+            mlflow.sklearn.log_model(prep_pipe_temp, "model", conda_env = default_conda_env, signature = signature, input_example = input_example)
             del(prep_pipe_temp)
 
     if verbose:
@@ -6975,6 +6983,34 @@ def stack_models(estimator_list,
             mlflow.log_artifact('Holdout.html')
             os.remove('Holdout.html')
 
+            # Log AUC and Confusion Matrix plot
+            if log_plots_param:
+
+                logger.info("SubProcess plot_model() called ==================================")
+
+                try:
+                    plot_model(model, plot = 'residuals', verbose=False, save=True, system=False)
+                    mlflow.log_artifact('Residuals.png')
+                    os.remove("Residuals.png")
+                except:
+                    pass
+
+                try:
+                    plot_model(model, plot = 'error', verbose=False, save=True, system=False)
+                    mlflow.log_artifact('Prediction Error.png')
+                    os.remove("Prediction Error.png")
+                except:
+                    pass
+
+                try:
+                    plot_model(model, plot = 'feature', verbose=False, save=True, system=False)
+                    mlflow.log_artifact('Feature Importance.png')
+                    os.remove("Feature Importance.png")
+                except:
+                    pass
+
+                logger.info("SubProcess plot_model() end ==================================")
+
             # Log model and transformation pipeline
             from copy import deepcopy
 
@@ -6990,12 +7026,13 @@ def stack_models(estimator_list,
             
             # define model signature
             from mlflow.models.signature import infer_signature
-            signature = infer_signature(data_before_preprocess)
+            signature = infer_signature(data_before_preprocess.drop([target_param], axis=1))
+            input_example = data_before_preprocess.drop([target_param], axis=1).iloc[0].to_dict()
 
             # log model as sklearn flavor
             prep_pipe_temp = deepcopy(prep_pipe)
             prep_pipe_temp.steps.append(['trained model', model])
-            mlflow.sklearn.log_model(prep_pipe_temp, "model", conda_env = default_conda_env, signature = signature)
+            mlflow.sklearn.log_model(prep_pipe_temp, "model", conda_env = default_conda_env, signature = signature, input_example = input_example)
             del(prep_pipe_temp)
 
     if verbose:
@@ -8025,7 +8062,6 @@ def save_model(model, model_name, model_only=False, verbose=True):
     logger.info(str(model_))
     logger.info("save_model() succesfully completed......................................")
 
-
 def load_model(model_name,
                platform=None,
                authentication=None,
@@ -8148,7 +8184,6 @@ def load_model(model_name,
     #     print('Transformation Pipeline and Model Sucessfully Loaded')
     #
     # return joblib.load(model_name)
-
 
 def predict_model(estimator, 
                   data=None,
@@ -8352,7 +8387,6 @@ def predict_model(estimator,
         X_test_.set_index('index', drop=True, inplace=True)
 
     return X_test_
-
 
 def deploy_model(model,
                  model_name,
@@ -8564,7 +8598,6 @@ def deploy_model(model,
     else:
         logger.error('Platform {} is not supported by pycaret or illegal option'.format(platform))
         sys.exit('Platform {} is not supported by pycaret or illegal option'.format(platform))
-
 
 def automl(optimize='R2', use_holdout=False):
 
@@ -8852,6 +8885,7 @@ def get_config(variable):
     - log_plots_param: log_plots param set through setup
     - USI: Unique session ID parameter set through setup
     - data_before_preprocess: data before preprocessing
+    - target_param: name of target variable
 
     Example
     --------
@@ -8952,6 +8986,9 @@ def get_config(variable):
     if variable == 'data_before_preprocess':
         global_var = data_before_preprocess
 
+    if variable == 'target_param':
+        global_var = target_param
+
     logger.info("Global variable: " + str(variable) + ' returned')
     logger.info("get_config() succesfully completed......................................")
 
@@ -8983,6 +9020,7 @@ def set_config(variable,value):
     - log_plots_param: log_plots param set through setup
     - USI: Unique session ID parameter set through setup
     - data_before_preprocess: data before preprocessing
+    - target_param: name of target variable
 
     Example
     --------
@@ -9101,6 +9139,10 @@ def set_config(variable,value):
         global data_before_preprocess
         data_before_preprocess = value
 
+    if variable == 'target_param':
+        global target_param
+        target_param = value
+
     logger.info("Global variable:  " + str(variable) + ' updated')
     logger.info("set_config() succesfully completed......................................")
 
@@ -9120,8 +9162,6 @@ def get_system_logs():
 
         columns = [col.strip() for col in line.split(':') if col]
         print(columns)
-
-# Google Cloud Utilities
 
 def _create_bucket_gcp(project_name, bucket_name):
     """
@@ -9155,7 +9195,6 @@ def _create_bucket_gcp(project_name, bucket_name):
         logger.info("Bucket {} created".format(bucket.name))
     else:
         raise FileExistsError('{} already exists'.format(bucket_name))
-
 
 def _upload_blob_gcp(project_name, bucket_name, source_file_name, destination_blob_name):
 
@@ -9201,7 +9240,6 @@ def _upload_blob_gcp(project_name, bucket_name, source_file_name, destination_bl
             source_file_name, destination_blob_name
         )
     )
-
 
 def _download_blob_gcp(project_name, bucket_name, source_blob_name, destination_file_name):
     """
@@ -9251,7 +9289,6 @@ def _download_blob_gcp(project_name, bucket_name, source_blob_name, destination_
 
     return blob
 
-# Azure Utilities
 def _create_container_azure(container_name):
     """
     Creates a storage container on Azure Platform. gets the connection string from the environment variables.
@@ -9278,7 +9315,6 @@ def _create_container_azure(container_name):
     container_client = blob_service_client.create_container(container_name)
     logger.info('{} has been created successfully on Azure platform')
     return container_client
-
 
 def _upload_blob_azure(container_name, source_file_name, destination_blob_name):
     """
@@ -9318,7 +9354,6 @@ def _upload_blob_azure(container_name, source_file_name, destination_blob_name):
     # Upload the created file
     with open(source_file_name, "rb") as data:
       blob_client.upload_blob(data)
-
 
 def _download_blob_azure(container_name, source_blob_name, destination_file_name):
     """
