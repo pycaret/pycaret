@@ -9597,6 +9597,7 @@ def predict_model(estimator,
         X_test_ = X_test.copy()
         y_test_ = y_test.copy()
         
+        index = None
         Xtest.reset_index(drop=True, inplace=True)
         ytest.reset_index(drop=True, inplace=True)
         X_test_.reset_index(drop=True, inplace=True)
@@ -9618,6 +9619,12 @@ def predict_model(estimator,
             
         Xtest = data.copy()
         X_test_ = data.copy()
+        Xtest.reset_index(drop=True, inplace=True)
+        X_test_.reset_index(inplace=True)
+
+        index = X_test_['index']
+        X_test_.drop('index', axis=1, inplace=True)
+        
         
     #model name
     full_name = str(estimator).split("(")[0]
@@ -9727,6 +9734,10 @@ def predict_model(estimator,
         display_container.append(df_score)
     except:
         pass
+
+    if index is not None:
+        X_test_['index'] = index
+        X_test_.set_index('index', drop=True, inplace=True)
 
     return X_test_
 
