@@ -2,7 +2,7 @@
 # Author: Moez Ali <moez.ali@queensu.ca>
 # License: MIT
 # Release: PyCaret 2.1x
-# Last modified : 10/08/2020
+# Last modified : 12/08/2020
 
 from pycaret.utils import get_logger, Display, color_df
 
@@ -1643,8 +1643,8 @@ def setup(
                 metric_results.append(recall)
                 metric_name.append("Recall")
                 split_percent.append(i)
-
-            # recall
+                
+            #precision
             if y.value_counts().count() > 2:
                 precision = metrics.precision_score(y_test, pred_, average="weighted")
                 metric_results.append(precision)
@@ -8791,22 +8791,27 @@ def load_model(model_name, platform=None, authentication=None, verbose=True):
       
     platform: string, default = None
         Name of platform, if loading model from cloud. Current available options are:
-        'aws'.
+        'aws', 'gcp' and 'azure'.
     
     authentication : dict
-        Dictionary of applicable authentication tokens. 
+        dictionary of applicable authentication tokens.
 
-        When platform = 'aws': 
+        When platform = 'aws':
         {'bucket' : 'Name of Bucket on S3'}
+
+        When platform = 'gcp':
+        {'project': 'gcp_pycaret', 'bucket' : 'pycaret-test'}
+
+        When platform = 'azure':
+        {'container': 'pycaret-test'}
     
     verbose: Boolean, default = True
         Success message is not printed when verbose is set to False.
 
     Returns
     -------
-    Success_Message
-       
-         
+    Model Object
+
     """
 
     # ignore warnings
@@ -8821,8 +8826,16 @@ def load_model(model_name, platform=None, authentication=None, verbose=True):
         if authentication is None:
             sys.exit("(Value Error): Authentication is missing.")
 
-    # cloud provider
-    if platform == "aws":
+    if platform is None:
+
+        import joblib
+        model_name = model_name + '.pkl'
+        if verbose:
+            print('Transformation Pipeline and Model Successfully Loaded')
+        return joblib.load(model_name)
+    
+    # cloud providers
+    elif platform == 'aws':
 
         import boto3
 
@@ -8832,18 +8845,42 @@ def load_model(model_name, platform=None, authentication=None, verbose=True):
         s3.Bucket(bucketname).download_file(filename, filename)
         filename = str(model_name)
         model = load_model(filename, verbose=False)
+        model = load_model(filename, verbose=False)
 
         if verbose:
-            print("Transformation Pipeline and Model Sucessfully Loaded")
+            print('Transformation Pipeline and Model Successfully Loaded')
 
         return model
 
-    import joblib
+    elif platform == 'gcp':
 
-    model_name = model_name + ".pkl"
-    if verbose:
-        print("Transformation Pipeline and Model Sucessfully Loaded")
-    return joblib.load(model_name)
+        bucket_name = authentication.get('bucket')
+        project_name = authentication.get('project')
+        filename = str(model_name) + '.pkl'
+
+        model_downloaded = _download_blob_gcp(project_name,
+                                              bucket_name, filename, filename)
+
+        model = load_model(model_name, verbose=False)
+
+        if verbose:
+            print('Transformation Pipeline and Model Successfully Loaded')
+        return model
+
+    elif platform == 'azure':
+
+        container_name = authentication.get('container')
+        filename = str(model_name) + '.pkl'
+
+        model_downloaded = _download_blob_azure(container_name, filename, filename)
+
+        model = load_model(model_name, verbose=False)
+
+        if verbose:
+            print('Transformation Pipeline and Model Successfully Loaded')
+        return model
+    else:
+        print('Platform { } is not supported by pycaret or illegal option'.format(platform))
 
 
 def predict_model(
@@ -9134,6 +9171,32 @@ def deploy_model(model, model_name, authentication, platform="aws"):
     - Default Region Name (can be seen under Global settings on your AWS console)
     - Default output format (must be left blank)
 
+    For GCP users:
+    --------------
+    Before deploying a model to Google Cloud Platform (GCP), user has to create Project
+    on the platform from consol. To do that, user must have google cloud account or
+    create new one. After creating a service account, down the JSON authetication file
+    and configure  GOOGLE_APPLICATION_CREDENTIALS= <path-to-json> from command line. If
+    using google-colab then authetication can be done using `google.colab` auth method.
+    Read below link for more details.
+
+    https://cloud.google.com/docs/authentication/production
+
+    - Google Cloud Project
+    - Service Account Authetication
+
+    For Azure users:
+    ---------------
+    Before deploying a model to Microsoft's Azure (Azure), environment variables
+    for connection string must be set. In order to get connection string, user has
+    to create account of Azure. Once it is done, create a Storage account. In the settings
+    section of storage account, user can get the connection string.
+
+    Read below link for more details.
+    https://docs.microsoft.com/en-us/azure/storage/blobs/storage-quickstart-blobs-python?toc=%2Fpython%2Fazure%2FTOC.json
+
+    - Azure Storage Account
+
     Parameters
     ----------
     model : object
@@ -9143,13 +9206,19 @@ def deploy_model(model, model_name, authentication, platform="aws"):
         Name of model to be passed as a string.
     
     authentication : dict
-        Dictionary of applicable authentication tokens. 
-      
-        When platform = 'aws': 
+        Dictionary of applicable authentication tokens.
+
+        When platform = 'aws':
         {'bucket' : 'Name of Bucket on S3'}
+
+        When platform = 'gcp':
+        {'project': 'gcp_pycaret', 'bucket' : 'pycaret-test'}
+
+        When platform = 'azure':
+        {'container': 'pycaret-test'}
     
     platform: string, default = 'aws'
-        Name of platform for deployment. Current available options are: 'aws'.
+        Name of platform for deployment. Current available options are: 'aws', 'gcp' and 'azure'
 
     Returns
     -------
@@ -9176,18 +9245,7 @@ def deploy_model(model, model_name, authentication, platform="aws"):
         )
     )
 
-    # checking if awscli available
-    try:
-        import awscli
-    except:
-        logger.error(
-            "awscli library not found. pip install awscli to use deploy_model function."
-        )
-        sys.exit(
-            "awscli library not found. pip install awscli to use deploy_model function."
-        )
-
-    # ignore warnings
+    #ignore warnings
     import warnings
 
     warnings.filterwarnings("ignore")
@@ -9198,10 +9256,17 @@ def deploy_model(model, model_name, authentication, platform="aws"):
     from IPython.display import clear_output, update_display
     import os
 
-    if platform == "aws":
-
+    if platform == 'aws':
+        
         logger.info("Platform : AWS S3")
 
+        #checking if awscli available
+        try:
+            import awscli
+        except:
+            logger.error("awscli library not found. pip install awscli to use deploy_model function.")
+            sys.exit("awscli library not found. pip install awscli to use deploy_model function.")  
+        
         import boto3
 
         logger.info("Saving model in active working directory")
@@ -9219,16 +9284,80 @@ def deploy_model(model, model_name, authentication, platform="aws"):
         clear_output()
         os.remove(filename)
         print("Model Succesfully Deployed on AWS S3")
+        logger.info("Model Succesfully Deployed on AWS S3")
         logger.info(str(model))
-        logger.info(
-            "deploy_model() succesfully completed......................................"
-        )
 
+    elif platform == 'gcp':
 
-def optimize_threshold(
-    estimator, true_positive=0, true_negative=0, false_positive=0, false_negative=0
-):
+        logger.info("Platform : GCP")
 
+        try:
+            import google.cloud
+        except:
+            logger.error("google-cloud-storage library not found. pip install google-cloud-storage to use deploy_model function with GCP.")
+            sys.exit("google-cloud-storage library not found. pip install google-cloud-storage to use deploy_model function with GCP.")
+
+        logger.info("Saving model in active working directory")
+        logger.info("SubProcess save_model() called ==================================")
+        save_model(model, model_name=model_name, verbose=False)
+        logger.info("SubProcess save_model() end ==================================")
+
+        # initialize deployment
+        filename = str(model_name) + '.pkl'
+        key = str(model_name) + '.pkl'
+        bucket_name = authentication.get('bucket')
+        project_name = authentication.get('project')
+        _create_bucket_gcp(project_name, bucket_name)
+        _upload_blob_gcp(project_name, bucket_name, filename, key)
+        os.remove(filename)
+        print("Model Succesfully Deployed on GCP")
+        logger.info("Model Succesfully Deployed on GCP")
+        logger.info(str(model))
+
+    elif platform == 'azure':
+
+        try:
+            import azure.storage.blob
+        except:
+            logger.error("azure-storage-blob library not found. pip install azure-storage-blob to use deploy_model function with Azure.")
+            sys.exit("azure-storage-blob library not found. pip install azure-storage-blob to use deploy_model function with Azure.")
+
+        logger.info("Platform : Azure Blob Storage")
+
+        logger.info("Saving model in active working directory")
+        logger.info("SubProcess save_model() called ==================================")
+        save_model(model, model_name=model_name, verbose=False)
+        logger.info("SubProcess save_model() end ==================================")
+
+        # initialize deployment
+        filename = str(model_name) + '.pkl'
+        key = str(model_name) + '.pkl'
+        container_name = authentication.get('container')
+        try:
+            container_client = _create_container_azure(container_name)
+            _upload_blob_azure(container_name, filename, key)
+            del(container_client)
+        except:
+            _upload_blob_azure(container_name, filename, key)
+
+        os.remove(filename)
+
+        print("Model Succesfully Deployed on Azure Storage Blob")
+        logger.info("Model Succesfully Deployed on Azure Storage Blob")
+        logger.info(str(model))
+
+    else:
+        logger.error('Platform {} is not supported by pycaret or illegal option'.format(platform))
+        sys.exit('Platform {} is not supported by pycaret or illegal option'.format(platform))
+        
+    logger.info("deploy_model() succesfully completed......................................")
+
+def optimize_threshold(estimator, 
+                       true_positive = 0, 
+                       true_negative = 0, 
+                       false_positive = 0, 
+                       false_negative = 0):
+    
     """
     This function optimizes probability threshold for a trained model using custom cost
     function that can be defined using combination of True Positives, True Negatives,
@@ -10498,9 +10627,8 @@ def get_system_logs():
         if not line:
             continue
 
-        columns = [col.strip() for col in line.split(":") if col]
+        columns = [col.strip() for col in line.split(':') if col]
         print(columns)
-
 
 def _fix_imbalance(Xtrain, ytrain, fix_imbalance_method_param=None):
     logger = get_logger()
@@ -10516,3 +10644,236 @@ def _fix_imbalance(Xtrain, ytrain, fix_imbalance_method_param=None):
     Xtrain, ytrain = resampler.fit_sample(Xtrain, ytrain)
     logger.info("Resampling completed")
     return Xtrain, ytrain
+
+# Google Cloud Utilities
+
+def _create_bucket_gcp(project_name, bucket_name):
+    """
+    Creates a bucket on Google Cloud Platform if it does not exists already
+
+    Example
+    -------
+    >>> _create_bucket_gcp(project_name='GCP-Essentials', bucket_name='test-pycaret-gcp')
+
+    Parameters
+    ----------
+    project_name : string
+        A Project name on GCP Platform (Must have been created from console).
+
+    bucket_name : string
+        Name of the storage bucket to be created if does not exists already.
+
+    Returns
+    -------
+    None
+    """
+
+    # bucket_name = "your-new-bucket-name"
+    from google.cloud import storage
+    storage_client = storage.Client(project_name)
+
+    buckets = storage_client.list_buckets()
+
+    if bucket_name not in buckets:
+        bucket = storage_client.create_bucket(bucket_name)
+        logger.info("Bucket {} created".format(bucket.name))
+    else:
+        raise FileExistsError('{} already exists'.format(bucket_name))
+
+
+def _upload_blob_gcp(project_name, bucket_name, source_file_name, destination_blob_name):
+
+    """
+    Upload blob to GCP storage bucket
+
+    Example
+    -------
+    >>> _upload_blob_gcp(project_name='GCP-Essentials', bucket_name='test-pycaret-gcp', \
+                        source_file_name='model-101.pkl', destination_blob_name='model-101.pkl')
+
+    Parameters
+    ----------
+    project_name : string
+        A Project name on GCP Platform (Must have been created from console).
+
+    bucket_name : string
+        Name of the storage bucket to be created if does not exists already.
+
+    source_file_name : string
+        A blob/file name to copy to GCP
+
+    destination_blob_name : string
+        Name of the destination file to be stored on GCP
+
+    Returns
+    -------
+    None
+    """
+
+    # bucket_name = "your-bucket-name"
+    # source_file_name = "local/path/to/file"
+    # destination_blob_name = "storage-object-name"
+    from google.cloud import storage
+    storage_client = storage.Client(project_name)
+    bucket = storage_client.bucket(bucket_name)
+    blob = bucket.blob(destination_blob_name)
+
+    blob.upload_from_filename(source_file_name)
+
+    logger.info(
+        "File {} uploaded to {}.".format(
+            source_file_name, destination_blob_name
+        )
+    )
+
+
+def _download_blob_gcp(project_name, bucket_name, source_blob_name, destination_file_name):
+    """
+    Download a blob from GCP storage bucket
+
+    Example
+    -------
+    >>> _download_blob_gcp(project_name='GCP-Essentials', bucket_name='test-pycaret-gcp', \
+                          source_blob_name='model-101.pkl', destination_file_name='model-101.pkl')
+
+    Parameters
+    ----------
+    project_name : string
+        A Project name on GCP Platform (Must have been created from console).
+
+    bucket_name : string
+        Name of the storage bucket to be created if does not exists already.
+
+    source_blob_name : string
+        A blob/file name to download from GCP bucket
+
+    destination_file_name : string
+        Name of the destination file to be stored locally
+
+    Returns
+    -------
+    Model Object
+    """
+
+    # bucket_name = "your-bucket-name"
+    # source_blob_name = "storage-object-name"
+    # destination_file_name = "local/path/to/file"
+    from google.cloud import storage
+    storage_client = storage.Client(project_name)
+
+    bucket = storage_client.bucket(bucket_name)
+    blob = bucket.blob(source_blob_name)
+
+    if destination_file_name is not None:
+        blob.download_to_filename(destination_file_name)
+
+        logger.info(
+            "Blob {} downloaded to {}.".format(
+                source_blob_name, destination_file_name
+            )
+        )
+
+    return blob
+
+# Azure Utilities
+def _create_container_azure(container_name):
+    """
+    Creates a storage container on Azure Platform. gets the connection string from the environment variables.
+
+    Example
+    -------
+    >>>  container_client = _create_container_azure(container_name='test-pycaret-azure')
+
+    Parameters
+    ----------
+    container_name : string
+        Name of the storage container to be created if does not exists already.
+
+    Returns
+    -------
+    cotainer_client
+    """
+
+    # Create the container
+    import os, uuid
+    from azure.storage.blob import BlobServiceClient, BlobClient, ContainerClient
+    connect_str = os.getenv('AZURE_STORAGE_CONNECTION_STRING')
+    blob_service_client = BlobServiceClient.from_connection_string(connect_str)
+    container_client = blob_service_client.create_container(container_name)
+    return container_client
+
+
+def _upload_blob_azure(container_name, source_file_name, destination_blob_name):
+    """
+    Upload blob to Azure storage  container
+
+    Example
+    -------
+    >>>  _upload_blob_azure(container_name='test-pycaret-azure', source_file_name='model-101.pkl', \
+                           destination_blob_name='model-101.pkl')
+
+    Parameters
+    ----------
+    container_name : string
+        Name of the storage bucket to be created if does not exists already.
+
+    source_file_name : string
+        A blob/file name to copy to Azure
+
+    destination_blob_name : string
+        Name of the destination file to be stored on Azure
+
+    Returns
+    -------
+    None
+    """
+
+    import os, uuid
+    from azure.storage.blob import BlobServiceClient, BlobClient, ContainerClient
+    connect_str = os.getenv('AZURE_STORAGE_CONNECTION_STRING')
+
+    blob_service_client = BlobServiceClient.from_connection_string(connect_str)
+    # Create a blob client using the local file name as the name for the blob
+    blob_client = blob_service_client.get_blob_client(container=container_name, blob=destination_blob_name)
+
+    # Upload the created file
+    with open(source_file_name, "rb") as data:
+      blob_client.upload_blob(data, overwrite=True)
+
+
+def _download_blob_azure(container_name, source_blob_name, destination_file_name):
+    """
+    Download blob from Azure storage  container
+
+    Example
+    -------
+    >>>  _download_blob_azure(container_name='test-pycaret-azure', source_blob_name='model-101.pkl', \
+                             destination_file_name='model-101.pkl')
+
+    Parameters
+    ----------
+    container_name : string
+        Name of the storage bucket to be created if does not exists already.
+
+    source_blob_name : string
+        A blob/file name to download from Azure storage container
+
+    destination_file_name : string
+        Name of the destination file to be stored locally
+
+    Returns
+    -------
+    None
+    """
+
+    import os, uuid
+    from azure.storage.blob import BlobServiceClient, BlobClient, ContainerClient
+
+    connect_str = os.getenv('AZURE_STORAGE_CONNECTION_STRING')
+    blob_service_client = BlobServiceClient.from_connection_string(connect_str)
+    # Create a blob client using the local file name as the name for the blob
+    blob_client = blob_service_client.get_blob_client(container=container_name, blob=source_blob_name)
+
+    if destination_file_name is not None:
+        with open(destination_file_name, "wb") as download_file:
+          download_file.write(blob_client.download_blob().readall())

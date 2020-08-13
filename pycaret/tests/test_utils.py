@@ -41,13 +41,27 @@ def test():
     prediction = prediction["Label"].astype(np.int64)
 
     # check metric(classification)
-    pycaret.utils.check_metric(actual, prediction, "Accuracy")
-    pycaret.utils.check_metric(actual, prediction, "Recall")
-    pycaret.utils.check_metric(actual, prediction, "Precision")
-    pycaret.utils.check_metric(actual, prediction, "F1")
-    pycaret.utils.check_metric(actual, prediction, "Kappa")
-    pycaret.utils.check_metric(actual, prediction, "AUC")
-    pycaret.utils.check_metric(actual, prediction, "MCC")
+    accuracy = pycaret.utils.check_metric(actual, prediction, "Accuracy")
+    assert accuracy >= 0
+    assert accuracy <= 1
+    recall = pycaret.utils.check_metric(actual, prediction, "Recall")
+    assert recall >= 0
+    assert recall <= 1
+    precision = pycaret.utils.check_metric(actual, prediction, "Precision")
+    assert precision >= 0
+    assert precision <= 1
+    f1 = pycaret.utils.check_metric(actual, prediction, "F1")
+    assert f1 >= 0
+    assert f1 <= 1
+    kappa = pycaret.utils.check_metric(actual, prediction, "Kappa")
+    assert kappa >= -1
+    assert kappa <= 1
+    auc = pycaret.utils.check_metric(actual, prediction, "AUC")
+    assert auc >= 0
+    assert auc <= 1
+    mcc = pycaret.utils.check_metric(actual, prediction, "MCC")
+    assert mcc >= -1
+    assert mcc <= 1
 
     # preparation(regression)
     data = pycaret.datasets.get_data("boston")
@@ -70,12 +84,19 @@ def test():
     prediction=prediction.drop("index", axis=1)
 
     # check metric(regression)
-    pycaret.utils.check_metric(actual, prediction, "MAE")
-    pycaret.utils.check_metric(actual, prediction, "MSE")
-    pycaret.utils.check_metric(actual, prediction, "RMSE")
-    pycaret.utils.check_metric(actual, prediction, "R2")
-    pycaret.utils.check_metric(actual, prediction, "RMSLE")
-    pycaret.utils.check_metric(actual, prediction, "MAPE")
+    mae = pycaret.utils.check_metric(actual, prediction, "MAE")
+    assert mae >= 0
+    mse = pycaret.utils.check_metric(actual, prediction, "MSE")
+    assert mse >= 0
+    rmse = pycaret.utils.check_metric(actual, prediction, "RMSE")
+    assert rmse >= 0
+    r2 = pycaret.utils.check_metric(actual, prediction, "R2")
+    assert r2 <= 1
+    rmsle = pycaret.utils.check_metric(actual, prediction, "RMSLE")
+    assert rmsle >= 0
+    mape = pycaret.utils.check_metric(actual, prediction, "MAPE")
+    # provisional support
+    # assert mape >= 0
 
     assert 1 == 1
 
