@@ -54,6 +54,7 @@ def setup(data,
           data_split_shuffle = True, #added in pycaret==2.0.0
           folds_shuffle = False, #added in pycaret==2.0.0
           n_jobs = -1, #added in pycaret==2.0.0
+          use_gpu = False, #added in pycaret==2.1
           html = True, #added in pycaret==2.0.0
           session_id = None,
           log_experiment = False, #added in pycaret==2.0.0
@@ -377,6 +378,9 @@ def setup(data,
         The number of jobs to run in parallel (for functions that supports parallel 
         processing) -1 means using all processors. To run all functions on single processor 
         set n_jobs to None.
+
+    use_gpu: bool, default = False
+        If set to True, algorithms that supports gpu are trained using gpu.
 
     html: bool, default = True
         If set to False, prevents runtime display of monitor. This must be set to False
@@ -957,7 +961,8 @@ def setup(data,
     #declaring global variables to be accessed by other functions
     global X, y, X_train, X_test, y_train, y_test, seed, prep_pipe, target_inverse_transformer, experiment__,\
         preprocess, folds_shuffle_param, n_jobs_param, create_model_container, master_model_container,\
-        display_container, exp_name_log, logging_param, log_plots_param, data_before_preprocess, target_param
+        display_container, exp_name_log, logging_param, log_plots_param, data_before_preprocess, target_param,\
+        gpu_param
 
     logger.info("Copying data for preprocessing")
     #copy original data for pandas profiler
@@ -1405,6 +1410,9 @@ def setup(data,
 
     # create target param
     target_param = target
+
+    # create gpu param
+    gpu_param = use_gpu
 
     #sample estimator
     if sample_estimator is None:
@@ -8886,6 +8894,7 @@ def get_config(variable):
     - USI: Unique session ID parameter set through setup
     - data_before_preprocess: data before preprocessing
     - target_param: name of target variable
+    - gpu_param: use_gpu param configured through setup
 
     Example
     --------
@@ -8989,6 +8998,9 @@ def get_config(variable):
     if variable == 'target_param':
         global_var = target_param
 
+    if variable == 'gpu_param':
+        global_var = gpu_param
+
     logger.info("Global variable: " + str(variable) + ' returned')
     logger.info("get_config() succesfully completed......................................")
 
@@ -9021,6 +9033,7 @@ def set_config(variable,value):
     - USI: Unique session ID parameter set through setup
     - data_before_preprocess: data before preprocessing
     - target_param: name of target variable
+    - gpu_param: use_gpu param configured through setup
 
     Example
     --------
@@ -9142,6 +9155,10 @@ def set_config(variable,value):
     if variable == 'target_param':
         global target_param
         target_param = value
+
+    if variable == 'gpu_param':
+        global gpu_param
+        gpu_param = value
 
     logger.info("Global variable:  " + str(variable) + ' updated')
     logger.info("set_config() succesfully completed......................................")
