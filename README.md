@@ -23,7 +23,7 @@ PyCaret `2.0` is now available. See `2.0` release notes. The easiest way to inst
 pip install pycaret==2.0
 ```
 
-## Optional Installation
+## Optional dependencies
 Following libraries are not hard dependencies and are not automatically installed when you install PyCaret. To use all functionalities of PyCaret, these optional dependencies must be installed.
 
 ```
@@ -52,9 +52,6 @@ PyCaret is an open source library that anybody can use. In our view the ideal ta
 - Citizen Data Scientists who prefer a low code machine learning solution.
 - Students of Data Science.
 - Data Science Professionals and Consultants involved in building Proof of Concept projects.
-
-## Dependencies
-Please read requirements.txt for list of requirements. They are automatically installed when pycaret is installed using pip. `shap`, `awscli` and `psutil` is removed from hard dependency in PyCaret 2.0. Must be installed separately, if needed.
 
 ## License
 
