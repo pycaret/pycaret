@@ -2,7 +2,7 @@
 # Author: Moez Ali <moez.ali@queensu.ca>
 # License: MIT
 # Release: PyCaret 2.0x
-# Last modified : 10/08/2020
+# Last modified : 13/08/2020
 
 def setup(data, 
           categorical_features = None,
@@ -1561,11 +1561,12 @@ def create_model(model = None,
             # define model signature
             from mlflow.models.signature import infer_signature
             signature = infer_signature(data_)
+            input_example = data_.iloc[0].to_dict()
 
             # log model as sklearn flavor
             prep_pipe_temp = deepcopy(prep_pipe)
             prep_pipe_temp.steps.append(['trained model', model])
-            mlflow.sklearn.log_model(prep_pipe_temp, "model", conda_env = default_conda_env, signature = signature)
+            mlflow.sklearn.log_model(prep_pipe_temp, "model", conda_env = default_conda_env, signature = signature, input_example = input_example)
             del(prep_pipe_temp)
 
     progress.value += 1
@@ -3164,11 +3165,12 @@ def tune_model(model=None,
             # define model signature
             from mlflow.models.signature import infer_signature
             signature = infer_signature(data_)
+            input_example = data_.iloc[0].to_dict()
 
             # log model as sklearn flavor
             prep_pipe_temp = deepcopy(prep_pipe)
-            prep_pipe_temp.steps.append(['trained model', best_model])
-            mlflow.sklearn.log_model(prep_pipe_temp, "model", conda_env = default_conda_env, signature = signature)
+            prep_pipe_temp.steps.append(['trained model', model])
+            mlflow.sklearn.log_model(prep_pipe_temp, "model", conda_env = default_conda_env, signature = signature, input_example = input_example)
             del(prep_pipe_temp)
     
     logger.info(str(best_model))
