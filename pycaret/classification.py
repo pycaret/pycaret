@@ -10630,16 +10630,6 @@ def predict_model(estimator,
     """
     exception checking ends here
     """
-
-    # function to replace encoded labels with their original values
-    # will not run if categorical_labels is false
-    def replace_lables_in_column(label_column):
-        if not categorical_labels:
-            return
-        _, dtypes = next(step for step in prep_pipe.steps if step[0] == "dtypes")
-        if dtypes and hasattr(dtypes, "replacement"):
-            replacement_mapper = {int(v): k for k, v in dtypes.replacement.items()}
-            label_column.replace(replacement_mapper, inplace=True)
     
     estimator = deepcopy(estimator) #lookout for an alternate of deepcopy()
     
@@ -10693,6 +10683,17 @@ def predict_model(estimator,
             
             sys.exit("(Type Error): Transformation Pipe Missing. ")
         
+    _, dtypes = next(step for step in prep_pipe_transformer.steps if step[0] == "dtypes")
+
+    # function to replace encoded labels with their original values
+    # will not run if categorical_labels is false
+    def replace_lables_in_column(label_column):
+        if not categorical_labels:
+            return
+        if dtypes and hasattr(dtypes, "replacement"):
+            replacement_mapper = {int(v): k for k, v in dtypes.replacement.items()}
+            label_column.replace(replacement_mapper, inplace=True)
+
     #dataset
     if data is None:
         
