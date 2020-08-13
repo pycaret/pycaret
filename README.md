@@ -19,9 +19,19 @@ For more information on PyCaret, please visit our official website https://www.p
 ## Current Release
 PyCaret `2.0` is now available. See `2.0` release notes. The easiest way to install pycaret is using pip. 
 
-
 ```python
 pip install pycaret==2.0
+```
+
+## Optional Installation
+Following libraries are not hard dependencies and are not automatically installed when you install PyCaret. To use all functionalities of PyCaret, these optional dependencies must be installed.
+
+```
+pip install psutil
+pip install awscli 
+pip install azure-storage-blob
+pip install google-cloud-storage
+pip install shap
 ```
 
 ## Python:
