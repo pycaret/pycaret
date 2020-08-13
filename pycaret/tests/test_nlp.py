@@ -21,6 +21,21 @@ def test():
 
     # evaluate model
     pycaret.nlp.evaluate_model(lda)
+    
+    # save model
+    pycaret.nlp.save_model(lda, 'lda_model_23122019')
+    
+    # load model
+    saved_lda = pycaret.nlp.load_model('lda_model_23122019')
+    
+    # returns table of models
+    all_models = pycaret.nlp.models()
+    
+    # get config
+    text = pycaret.nlp.get_config('text') 
+    
+    # set config
+    pycaret.nlp.set_config('seed', 123) 
 
     assert 1 == 1
     
