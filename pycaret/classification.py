@@ -54,6 +54,7 @@ def setup(data,
           data_split_shuffle = True, #added in pycaret==2.0.0
           folds_shuffle = False, #added in pycaret==2.0.0
           n_jobs = -1, #added in pycaret==2.0.0
+          use_gpu = False, #added in pycaret==2.1
           html = True, #added in pycaret==2.0.0
           session_id = None,
           log_experiment = False, #added in pycaret==2.0.0
@@ -377,6 +378,9 @@ def setup(data,
         The number of jobs to run in parallel (for functions that supports parallel 
         processing) -1 means using all processors. To run all functions on single processor 
         set n_jobs to None.
+
+    use_gpu: bool, default = False
+        If set to True, algorithms that supports gpu are trained using gpu.
 
     html: bool, default = True
         If set to False, prevents runtime display of monitor. This must be set to False
@@ -792,7 +796,6 @@ def setup(data,
     if type(interaction_threshold) is not float:
         sys.exit('(Type Error): interaction_threshold must be a float between 0 and 1. ')  
         
-        
     #forced type check
     all_cols = list(data.columns)
     all_cols.remove(target)
@@ -845,6 +848,10 @@ def setup(data,
     #html
     if type(html) is not bool:
         sys.exit('(Type Error): html parameter only accepts True or False.')
+
+    #use_gpu
+    if type(use_gpu) is not bool:
+        sys.exit('(Type Error): use_gpu parameter only accepts True or False.')
 
     #folds_shuffle
     if type(folds_shuffle) is not bool:
@@ -955,7 +962,7 @@ def setup(data,
         folds_shuffle_param, n_jobs_param, create_model_container, master_model_container,\
         display_container, exp_name_log, logging_param, log_plots_param,\
         fix_imbalance_param, fix_imbalance_method_param, data_before_preprocess,\
-        target_param
+        target_param, gpu_param
 
     logger.info("Copying data for preprocessing")
     
@@ -1393,6 +1400,9 @@ def setup(data,
     # create target_param var
     target_param = target
 
+    # create gpu_param var
+    gpu_param = use_gpu
+
     #sample estimator
     if sample_estimator is None:
         model = LogisticRegression()
@@ -1769,7 +1779,8 @@ def setup(data,
     return X, y, X_train, X_test, y_train, y_test, seed, prep_pipe, experiment__,\
         folds_shuffle_param, n_jobs_param, html_param, create_model_container, master_model_container,\
         display_container, exp_name_log, logging_param, log_plots_param, USI,\
-        fix_imbalance_param, fix_imbalance_method_param, logger, data_before_preprocess, target_param
+        fix_imbalance_param, fix_imbalance_method_param, logger, data_before_preprocess, target_param,\
+        gpu_param
 
 def create_model(estimator = None, 
                  ensemble = False, 
@@ -10362,6 +10373,7 @@ def get_config(variable):
     - fix_imbalance_method_param: fix_imbalance_method param set through setup
     - data_before_preprocess: data before preprocessing
     - target_param: name of target variable
+    - gpu_param: use_gpu param configured through setup
 
     Example
     -------
@@ -10469,6 +10481,9 @@ def get_config(variable):
     if variable == 'target_param':
         global_var = target_param
 
+    if variable == 'gpu_param':
+        global_var = gpu_param
+
     logger.info("Global variable: " + str(variable) + ' returned')
     logger.info("get_config() succesfully completed......................................")
 
@@ -10502,6 +10517,7 @@ def set_config(variable,value):
     - fix_imbalance_method_param: fix_imbalance_method param set through setup
     - data_before_preprocess: data before preprocessing
     - target_param: name of target variable
+    - gpu_param: use_gpu param configured through setup
 
     Example
     -------
@@ -10626,6 +10642,10 @@ def set_config(variable,value):
     if variable == 'target_param':
         global target_param
         target_param = value
+
+    if variable == 'gpu_param':
+        global gpu_param
+        gpu_param = value
 
     logger.info("Global variable:  " + str(variable) + ' updated')
     logger.info("set_config() succesfully completed......................................")
