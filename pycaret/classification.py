@@ -2043,6 +2043,7 @@ def create_model(
     cross_validation=True,  # added in pycaret==2.0.0
     verbose=True,
     system=True,  # added in pycaret==2.0.0
+    return_fit_time=False,
     display=None,
     **kwargs,
 ):  # added in pycaret==2.0.0
@@ -2112,6 +2113,9 @@ def create_model(
 
     system: Boolean, default = True
         Must remain True all times. Only to be changed by internal functions.
+    
+    return_fit_time: Boolean, default = False
+        Must remain False all times. Only to be changed by internal functions.
 
     **kwargs: 
     Additional keyword arguments to pass to the estimator.
@@ -2176,11 +2180,15 @@ def create_model(
     available_estimators = set(_all_models_internal.index)
 
     # only raise exception of estimator is of type string.
-    if type(estimator) is str:
+    if isinstance(estimator, str):
         if estimator not in available_estimators:
             sys.exit(
-                "(Value Error): Estimator Not Available. Please see docstring for list of available estimators."
+                f"(Value Error): Estimator {estimator} Not Available. Please see docstring for list of available estimators."
             )
+    elif not hasattr(estimator, "fit"):
+        sys.exit(
+            f"(Value Error): Estimator {estimator} does not have the required fit() method."
+        )
 
     # checking error for ensemble:
     if type(ensemble) is not bool:
@@ -2291,6 +2299,13 @@ def create_model(
 
     warnings.filterwarnings("ignore")
 
+    logger.info("Importing libraries")
+
+    # general dependencies
+    import numpy as np
+    from sklearn import metrics
+    from sklearn.model_selection import StratifiedKFold
+
     logger.info("Copying training dataset")
 
     # Storing X_train and y_train in data_X and data_y parameter
@@ -2301,12 +2316,8 @@ def create_model(
     data_X.reset_index(drop=True, inplace=True)
     data_y.reset_index(drop=True, inplace=True)
 
-    logger.info("Importing libraries")
-
-    # general dependencies
-    import numpy as np
-    from sklearn import metrics
-    from sklearn.model_selection import StratifiedKFold
+    # setting numpy seed
+    np.random.seed(seed)
 
     display.move_progress()
 
@@ -2330,7 +2341,7 @@ def create_model(
 
     logger.info("Importing untrained model")
 
-    if estimator in available_estimators:
+    if isinstance(estimator, str) and estimator in available_estimators:
         model_definition = _all_models_internal.loc[estimator]
         model_args = model_definition["Args"]
         model_args = {**model_args, **kwargs}
@@ -2341,7 +2352,7 @@ def create_model(
 
         model = estimator
 
-        if y.value_counts().count() > 2:
+        if not hasattr(estimator, "estimators") and y.value_counts().count() > 2:
             full_name = _get_model_name(estimator.estimator)
         else:
             full_name = _get_model_name(estimator)
@@ -2371,10 +2382,7 @@ def create_model(
 
     onevsrest_model_definition = _all_models_internal.loc["OneVsRest"]
     # multiclass checking
-    if (
-        y.value_counts().count() > 2
-        and not type(model) is onevsrest_model_definition["Class"]
-    ):
+    if y.value_counts().count() > 2 and not _is_special_model(model):
         logger.info("Target variable is Multiclass. OneVsRestClassifier activated")
 
         model = onevsrest_model_definition["Class"](
@@ -2755,6 +2763,10 @@ def create_model(
     logger.info(
         "create_model() succesfully completed......................................"
     )
+
+    if return_fit_time:
+        return (model, model_fit_time)
+
     return model
 
 
@@ -2767,6 +2779,7 @@ def ensemble_model(
     choose_better=False,  # added in pycaret==2.0.0
     optimize="Accuracy",  # added in pycaret==2.0.0
     verbose=True,
+    display=None,
 ):
     """
     This function ensembles the trained base estimator using the method defined in 
@@ -2876,6 +2889,12 @@ def ensemble_model(
 
     runtime_start = time.time()
 
+    # Check for estimator
+    if not hasattr(estimator, "fit"):
+        sys.exit(
+            f"(Value Error): Estimator {estimator} does not have the required fit() method."
+        )
+
     # Check for allowed method
     available_method = ["Bagging", "Boosting"]
     if method not in available_method:
@@ -2886,24 +2905,31 @@ def ensemble_model(
     # check boosting conflict
     if method == "Boosting":
 
-        from sklearn.ensemble import AdaBoostClassifier
+        boosting_model_definition = _all_models_internal.loc["ada"]
+
+        check_model = estimator
 
         try:
-            if hasattr(estimator, "n_classes_"):
-                if estimator.n_classes_ > 2:
-                    check_model = estimator.estimator
-                    check_model = AdaBoostClassifier(
-                        check_model, n_estimators=10, random_state=seed
-                    )
-                    from sklearn.multiclass import OneVsRestClassifier
-
-                    check_model = OneVsRestClassifier(check_model)
-                    check_model.fit(X_train, y_train)
-            else:
-                check_model = AdaBoostClassifier(
-                    estimator, n_estimators=10, random_state=seed
+            if y.value_counts().count() > 2:
+                check_model = check_model.estimator
+                check_model = boosting_model_definition["Class"](
+                    check_model,
+                    n_estimators=n_estimators,
+                    **boosting_model_definition["Args"],
                 )
-                check_model.fit(X_train, y_train)
+                onevsrest_model_definition = _all_models_internal.loc["OneVsRest"]
+                check_model = onevsrest_model_definition["Class"](
+                    model, **onevsrest_model_definition["Args"]
+                )
+
+            else:
+                check_model = boosting_model_definition["Class"](
+                    check_model,
+                    n_estimators=n_estimators,
+                    **boosting_model_definition["Args"],
+                )
+
+            check_model.fit(X_train, y_train)
         except:
             sys.exit(
                 "(Type Error): Estimator does not provide class_weights or predict_proba function and hence not supported for the Boosting method. Change the estimator or method to 'Bagging'."
@@ -2927,6 +2953,20 @@ def ensemble_model(
             "(Type Error): Verbose parameter can only take argument as True or False."
         )
 
+    # checking optimize parameter
+    allowed_optimize = get_metrics()["Name"]
+    if optimize not in allowed_optimize.to_list():
+        sys.exit(
+            f"(Value Error): Optimize method {optimize} not supported. See docstring for list of available parameters."
+        )
+
+    # checking optimize parameter for multiclass
+    if y.value_counts().count() > 2:
+        if not all_metrics[all_metrics["Name"] == optimize].iloc[0]["Multiclass"]:
+            sys.exit(
+                f"(Type Error): Optimization metric {optimize} not supported for multiclass problems. See docstring for list of other optimization parameters."
+            )
+
     """
     
     ERROR HANDLING ENDS HERE
@@ -2937,41 +2977,28 @@ def ensemble_model(
 
     # pre-load libraries
     import pandas as pd
-    import ipywidgets as ipw
-    from IPython.display import display, HTML, clear_output, update_display
 
-    logger.info("Preparing display monitor")
-
-    # progress bar
-    progress = ipw.IntProgress(
-        value=0, min=0, max=fold + 4, step=1, description="Processing: "
-    )
-    master_display = pd.DataFrame(
-        columns=["Accuracy", "AUC", "Recall", "Prec.", "F1", "Kappa", "MCC"]
-    )
-    if verbose:
-        if html_param:
-            display(progress)
-
-    # display monitor
-    timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
-    monitor = pd.DataFrame(
-        [
+    if not display:
+        progress_args = {"max": fold + 2 + 4}
+        master_display_columns = all_metrics["Display Name"].to_list()
+        timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
+        monitor_rows = [
             ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
             ["Status", ". . . . . . . . . . . . . . . . . .", "Loading Dependencies"],
             ["ETC", ". . . . . . . . . . . . . . . . . .", "Calculating ETC"],
-        ],
-        columns=["", " ", "   "],
-    ).set_index("")
+        ]
+        display = Display(
+            verbose,
+            html_param,
+            progress_args,
+            master_display_columns,
+            monitor_rows,
+            logger=logger,
+        )
 
-    if verbose:
-        if html_param:
-            display(monitor, display_id="monitor")
-
-    if verbose:
-        if html_param:
-            display_ = display(master_display, display_id=True)
-            display_id = display_.display_id
+        display.display_progress()
+        display.display_monitor()
+        display.display_master_display()
 
     logger.info("Importing libraries")
 
@@ -2995,22 +3022,16 @@ def ensemble_model(
     data_X.reset_index(drop=True, inplace=True)
     data_y.reset_index(drop=True, inplace=True)
 
-    progress.value += 1
+    display.move_progress()
 
-    if optimize == "Accuracy":
-        compare_dimension = "Accuracy"
-    elif optimize == "AUC":
-        compare_dimension = "AUC"
-    elif optimize == "Recall":
-        compare_dimension = "Recall"
-    elif optimize == "Precision":
-        compare_dimension = "Prec."
-    elif optimize == "F1":
-        compare_dimension = "F1"
-    elif optimize == "Kappa":
-        compare_dimension = "Kappa"
-    elif optimize == "MCC":
-        compare_dimension = "MCC"
+    # setting numpy seed
+    np.random.seed(seed)
+
+    # setting optimize parameter
+
+    optimize = all_metrics[all_metrics["Name"] == optimize].iloc[0]
+    compare_dimension = optimize["Display Name"]
+    optimize = optimize["SearchCV Param"]
 
     logger.info("Checking base model")
 
@@ -3029,19 +3050,16 @@ def ensemble_model(
     MONITOR UPDATE STARTS
     """
 
-    monitor.iloc[1, 1:] = "Selecting Estimator"
-    if verbose:
-        if html_param:
-            update_display(monitor, display_id="monitor")
+    display.update_monitor(1, "Selecting Estimator")
+    display.display_monitor()
 
     """
     MONITOR UPDATE ENDS
     """
 
     model = _estimator_
-    if hasattr(model, "n_classes_"):
-        if model.n_classes_ > 2:
-            model = model.estimator
+    if y.value_counts().count() > 2:
+        model = model.estimator
 
     logger.info("Importing untrained ensembler")
 
@@ -3075,347 +3093,25 @@ def ensemble_model(
             model, **onevsrest_model_definition["Args"]
         )
 
-    progress.value += 1
+    display.move_progress()
 
-    """
-    MONITOR UPDATE STARTS
-    """
-
-    monitor.iloc[1, 1:] = "Initializing CV"
-    if verbose:
-        if html_param:
-            update_display(monitor, display_id="monitor")
-
-    """
-    MONITOR UPDATE ENDS
-    """
-    logger.info("Defining folds")
-    kf = StratifiedKFold(fold, random_state=seed, shuffle=folds_shuffle_param)
-
-    logger.info("Declaring metric variables")
-    score_auc = np.empty((0, 0))
-    score_acc = np.empty((0, 0))
-    score_recall = np.empty((0, 0))
-    score_precision = np.empty((0, 0))
-    score_f1 = np.empty((0, 0))
-    score_kappa = np.empty((0, 0))
-    score_mcc = np.empty((0, 0))
-    score_training_time = np.empty((0, 0))
-    avgs_auc = np.empty((0, 0))
-    avgs_acc = np.empty((0, 0))
-    avgs_recall = np.empty((0, 0))
-    avgs_precision = np.empty((0, 0))
-    avgs_f1 = np.empty((0, 0))
-    avgs_kappa = np.empty((0, 0))
-    avgs_mcc = np.empty((0, 0))
-    avgs_training_time = np.empty((0, 0))
-
-    fold_num = 1
-
-    for train_i, test_i in kf.split(data_X, data_y):
-
-        logger.info("Initializing Fold " + str(fold_num))
-
-        t0 = time.time()
-
-        """
-        MONITOR UPDATE STARTS
-        """
-
-        monitor.iloc[1, 1:] = "Fitting Fold " + str(fold_num) + " of " + str(fold)
-        if verbose:
-            if html_param:
-                update_display(monitor, display_id="monitor")
-
-        """
-        MONITOR UPDATE ENDS
-        """
-
-        Xtrain, Xtest = data_X.iloc[train_i], data_X.iloc[test_i]
-        ytrain, ytest = data_y.iloc[train_i], data_y.iloc[test_i]
-        time_start = time.time()
-
-        if fix_imbalance_param:
-            Xtrain, ytrain = _fix_imbalance(Xtrain, ytrain, fix_imbalance_method_param)
-
-        if hasattr(model, "predict_proba"):
-            logger.info("Fitting Model")
-            model.fit(Xtrain, ytrain)
-            logger.info("Evaluating Metrics")
-            pred_prob = model.predict_proba(Xtest)
-            pred_prob = pred_prob[:, 1]
-            pred_ = model.predict(Xtest)
-            sca = metrics.accuracy_score(ytest, pred_)
-
-            if y.value_counts().count() > 2:
-                sc = 0
-                recall = metrics.recall_score(ytest, pred_, average="macro")
-                precision = metrics.precision_score(ytest, pred_, average="weighted")
-                f1 = metrics.f1_score(ytest, pred_, average="weighted")
-
-            else:
-                try:
-                    sc = metrics.roc_auc_score(ytest, pred_prob)
-                except:
-                    sc = 0
-                    logger.warning(
-                        "model has no predict_proba attribute. AUC set to 0.00"
-                    )
-                recall = metrics.recall_score(ytest, pred_)
-                precision = metrics.precision_score(ytest, pred_)
-                f1 = metrics.f1_score(ytest, pred_)
-        else:
-            logger.info("Fitting Model")
-            model.fit(Xtrain, ytrain)
-            logger.info("Evaluating Metrics")
-            pred_prob = 0.00
-            logger.warning(
-                "model has no predict_proba attribute. pred_prob set to 0.00"
-            )
-            pred_ = model.predict(Xtest)
-            sca = metrics.accuracy_score(ytest, pred_)
-
-            if y.value_counts().count() > 2:
-                sc = 0
-                recall = metrics.recall_score(ytest, pred_, average="macro")
-                precision = metrics.precision_score(ytest, pred_, average="weighted")
-                f1 = metrics.f1_score(ytest, pred_, average="weighted")
-
-            else:
-                try:
-                    sc = metrics.roc_auc_score(ytest, pred_prob)
-                except:
-                    sc = 0
-                    logger.warning(
-                        "model has no predict_proba attribute. AUC set to 0.00"
-                    )
-                recall = metrics.recall_score(ytest, pred_)
-                precision = metrics.precision_score(ytest, pred_)
-                f1 = metrics.f1_score(ytest, pred_)
-
-        logger.info("Compiling Metrics")
-        time_end = time.time()
-        kappa = metrics.cohen_kappa_score(ytest, pred_)
-        mcc = metrics.matthews_corrcoef(ytest, pred_)
-        training_time = time_end - time_start
-        score_acc = np.append(score_acc, sca)
-        score_auc = np.append(score_auc, sc)
-        score_recall = np.append(score_recall, recall)
-        score_precision = np.append(score_precision, precision)
-        score_f1 = np.append(score_f1, f1)
-        score_kappa = np.append(score_kappa, kappa)
-        score_mcc = np.append(score_mcc, mcc)
-        score_training_time = np.append(score_training_time, training_time)
-        progress.value += 1
-
-        """
-        This section is created to update_display() as code loops through the fold defined.
-        """
-
-        fold_results = pd.DataFrame(
-            {
-                "Accuracy": [sca],
-                "AUC": [sc],
-                "Recall": [recall],
-                "Prec.": [precision],
-                "F1": [f1],
-                "Kappa": [kappa],
-                "MCC": [mcc],
-            }
-        ).round(round)
-        master_display = pd.concat([master_display, fold_results], ignore_index=True)
-        fold_results = []
-
-        """
-        
-        TIME CALCULATION SUB-SECTION STARTS HERE
-        
-        """
-        t1 = time.time()
-
-        tt = (t1 - t0) * (fold - fold_num) / 60
-        tt = np.around(tt, 2)
-
-        if tt < 1:
-            tt = str(np.around((tt * 60), 2))
-            ETC = tt + " Seconds Remaining"
-
-        else:
-            tt = str(tt)
-            ETC = tt + " Minutes Remaining"
-
-        if verbose:
-            if html_param:
-                update_display(ETC, display_id="ETC")
-
-        fold_num += 1
-
-        """
-        MONITOR UPDATE STARTS
-        """
-
-        monitor.iloc[-1, 1:] = ETC
-        if verbose:
-            if html_param:
-                update_display(monitor, display_id="monitor")
-
-        """
-        MONITOR UPDATE ENDS
-        """
-
-        """
-        
-        TIME CALCULATION ENDS HERE
-        
-        """
-
-        if verbose:
-            if html_param:
-                update_display(master_display, display_id=display_id)
-
-        """
-        
-        Update_display() ends here
-        
-        """
-
-    logger.info("Calculating mean and std")
-    mean_acc = np.mean(score_acc)
-    mean_auc = np.mean(score_auc)
-    mean_recall = np.mean(score_recall)
-    mean_precision = np.mean(score_precision)
-    mean_f1 = np.mean(score_f1)
-    mean_kappa = np.mean(score_kappa)
-    mean_mcc = np.mean(score_mcc)
-    mean_training_time = np.sum(score_training_time)
-    std_acc = np.std(score_acc)
-    std_auc = np.std(score_auc)
-    std_recall = np.std(score_recall)
-    std_precision = np.std(score_precision)
-    std_f1 = np.std(score_f1)
-    std_kappa = np.std(score_kappa)
-    std_mcc = np.std(score_mcc)
-    std_training_time = np.std(score_training_time)
-
-    avgs_acc = np.append(avgs_acc, mean_acc)
-    avgs_acc = np.append(avgs_acc, std_acc)
-    avgs_auc = np.append(avgs_auc, mean_auc)
-    avgs_auc = np.append(avgs_auc, std_auc)
-    avgs_recall = np.append(avgs_recall, mean_recall)
-    avgs_recall = np.append(avgs_recall, std_recall)
-    avgs_precision = np.append(avgs_precision, mean_precision)
-    avgs_precision = np.append(avgs_precision, std_precision)
-    avgs_f1 = np.append(avgs_f1, mean_f1)
-    avgs_f1 = np.append(avgs_f1, std_f1)
-    avgs_kappa = np.append(avgs_kappa, mean_kappa)
-    avgs_kappa = np.append(avgs_kappa, std_kappa)
-
-    avgs_mcc = np.append(avgs_mcc, mean_mcc)
-    avgs_mcc = np.append(avgs_mcc, std_mcc)
-
-    avgs_training_time = np.append(avgs_training_time, mean_training_time)
-    avgs_training_time = np.append(avgs_training_time, std_training_time)
-
-    logger.info("Creating metrics dataframe")
-    model_results = pd.DataFrame(
-        {
-            "Accuracy": score_acc,
-            "AUC": score_auc,
-            "Recall": score_recall,
-            "Prec.": score_precision,
-            "F1": score_f1,
-            "Kappa": score_kappa,
-            "MCC": score_mcc,
-        }
+    logger.info("SubProcess create_model() called ==================================")
+    model, model_fit_time = create_model(
+        estimator=model,
+        system=False,
+        return_fit_time=True,
+        display=display,
+        fold=fold,
+        round=round,
     )
-    model_results_unpivot = pd.melt(
-        model_results,
-        value_vars=["Accuracy", "AUC", "Recall", "Prec.", "F1", "Kappa", "MCC"],
-    )
-    model_results_unpivot.columns = ["Metric", "Measure"]
-    model_avgs = pd.DataFrame(
-        {
-            "Accuracy": avgs_acc,
-            "AUC": avgs_auc,
-            "Recall": avgs_recall,
-            "Prec.": avgs_precision,
-            "F1": avgs_f1,
-            "Kappa": avgs_kappa,
-            "MCC": avgs_mcc,
-        },
-        index=["Mean", "SD"],
-    )
+    best_model = model
+    model_results = pull()
+    logger.info("SubProcess create_model() called ==================================")
 
-    model_results = model_results.append(model_avgs)
-    model_results = model_results.round(round)
-
-    # yellow the mean
-    model_results = model_results.style.apply(
-        lambda x: ["background: yellow" if (x.name == "Mean") else "" for i in x],
-        axis=1,
-    )
-    model_results = model_results.set_precision(round)
-
-    progress.value += 1
-
-    # refitting the model on complete X_train, y_train
-    monitor.iloc[1, 1:] = "Finalizing Model"
-    monitor.iloc[2, 1:] = "Almost Finished"
-    if verbose:
-        if html_param:
-            update_display(monitor, display_id="monitor")
-
-    model_fit_start = time.time()
-    logger.info("Finalizing model")
-    model.fit(data_X, data_y)
-    model_fit_end = time.time()
-
-    model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
-
-    # storing results in create_model_container
-    logger.info("Uploading results into container")
-    create_model_container.append(model_results.data)
-    display_container.append(model_results.data)
-
-    # storing results in master_model_container
-    logger.info("Uploading model into container")
-    master_model_container.append(model)
-
-    progress.value += 1
-
-    """
-    When choose_better sets to True. optimize metric in scoregrid is
-    compared with base model created using create_model so that ensemble_model
-    functions return the model with better score only. This will ensure 
-    model performance is atleast equivalent to what is seen is compare_models 
-    """
     if choose_better:
-
-        logger.info("choose_better activated")
-
-        if verbose:
-            if html_param:
-                monitor.iloc[1, 1:] = "Compiling Final Results"
-                monitor.iloc[2, 1:] = "Almost Finished"
-                update_display(monitor, display_id="monitor")
-
-        # creating base model for comparison
-        logger.info(
-            "SubProcess create_model() called =================================="
+        model = _choose_better(
+            estimator, _estimator_, best_model, compare_dimension, fold, display
         )
-        base_model = create_model(estimator=estimator, verbose=False, system=False)
-        logger.info("SubProcess create_model() end ==================================")
-        base_model_results = create_model_container[-1][compare_dimension][-2:][0]
-        ensembled_model_results = create_model_container[-2][compare_dimension][-2:][0]
-
-        if ensembled_model_results > base_model_results:
-            model = model
-        else:
-            model = base_model
-
-        # re-instate display_constainer state
-        display_container.pop(-1)
-        logger.info("choose_better completed")
 
     # end runtime
     runtime_end = time.time()
@@ -3426,11 +3122,9 @@ def ensemble_model(
         logger.info("Creating MLFlow logs")
 
         # Creating Logs message monitor
-        monitor.iloc[1, 1:] = "Creating Logs"
-        monitor.iloc[2, 1:] = "Almost Finished"
-        if verbose:
-            if html_param:
-                update_display(monitor, display_id="monitor")
+        display.update_monitor(1, "Creating Logs")
+        display.update_monitor(2, "Almost Finished")
+        display.display_monitor()
 
         import mlflow
         from pathlib import Path
@@ -3454,13 +3148,10 @@ def ensemble_model(
             mlflow.log_params(params)
             mlflow.log_metrics(
                 {
-                    "Accuracy": avgs_acc[0],
-                    "AUC": avgs_auc[0],
-                    "Recall": avgs_recall[0],
-                    "Precision": avgs_precision[0],
-                    "F1": avgs_f1[0],
-                    "Kappa": avgs_kappa[0],
-                    "MCC": avgs_mcc[0],
+                    k: v
+                    for k, v in model_results.drop("TT (Sec)", axis=1)
+                    .loc["Mean"]
+                    .items()
                 }
             )
 
@@ -3530,7 +3221,7 @@ def ensemble_model(
                 )
 
             # Log the CV results as model_results.html artifact
-            model_results.data.to_html("Results.html", col_space=65, justify="left")
+            model_results.to_html("Results.html", col_space=65, justify="left")
             mlflow.log_artifact("Results.html")
             os.remove("Results.html")
 
@@ -3571,14 +3262,8 @@ def ensemble_model(
             )
             del prep_pipe_temp
 
-    if verbose:
-        clear_output()
-        if html_param:
-            display(model_results)
-        else:
-            print(model_results.data)
-    else:
-        clear_output()
+    model_results = color_df(model_results, "yellow", ["Mean"], axis=1)
+    display.display(model_results, clear=True)
 
     logger.info("create_model_container: " + str(len(create_model_container)))
     logger.info("master_model_container: " + str(len(master_model_container)))
@@ -3598,6 +3283,7 @@ def plot_model(
     save=False,  # added in pycaret 2.0.0
     verbose=True,  # added in pycaret 2.0.0
     system=True,
+    display=None,
 ):  # added in pycaret 2.0.0
 
     """
@@ -3773,17 +3459,13 @@ def plot_model(
     logger.info("Preloading libraries")
     # pre-load libraries
     import pandas as pd
-    import ipywidgets as ipw
-    from IPython.display import display, HTML, clear_output, update_display
 
-    logger.info("Preparing display monitor")
-    # progress bar
-    progress = ipw.IntProgress(
-        value=0, min=0, max=5, step=1, description="Processing: "
-    )
-    if verbose:
-        if html_param:
-            display(progress)
+    if not display:
+        progress_args = {"max": 5}
+        display = Display(
+            verbose, html_param, progress_args, None, None, logger=logger,
+        )
+        display.display_progress()
 
     # ignore warnings
     import warnings
@@ -3796,12 +3478,12 @@ def plot_model(
     import numpy as np
     import pandas as pd
 
-    progress.value += 1
+    display.move_progress()
 
     # defining estimator as model locally
     model = estimator
 
-    progress.value += 1
+    display.move_progress()
 
     # plots used for logging (controlled through plots_log_param)
     # AUC, #Confusion Matrix and #Feature Importance
@@ -3812,14 +3494,14 @@ def plot_model(
 
         from yellowbrick.classifier import ROCAUC
 
-        progress.value += 1
+        display.move_progress()
         visualizer = ROCAUC(model)
         logger.info("Fitting Model")
         visualizer.fit(X_train, y_train)
-        progress.value += 1
+        display.move_progress()
         logger.info("Scoring test/hold-out set")
         visualizer.score(X_test, y_test)
-        progress.value += 1
+        display.move_progress()
         clear_output()
         if save:
             logger.info("Saving 'AUC.png' in current active directory")
@@ -3836,14 +3518,14 @@ def plot_model(
 
         from yellowbrick.classifier import DiscriminationThreshold
 
-        progress.value += 1
+        display.move_progress()
         visualizer = DiscriminationThreshold(model, random_state=seed)
         logger.info("Fitting Model")
         visualizer.fit(X_train, y_train)
-        progress.value += 1
+        display.move_progress()
         logger.info("Scoring test/hold-out set")
         visualizer.score(X_test, y_test)
-        progress.value += 1
+        display.move_progress()
         clear_output()
         if save:
             logger.info("Saving 'Threshold Curve.png' in current active directory")
@@ -3860,14 +3542,14 @@ def plot_model(
 
         from yellowbrick.classifier import PrecisionRecallCurve
 
-        progress.value += 1
+        display.move_progress()
         visualizer = PrecisionRecallCurve(model, random_state=seed)
         logger.info("Fitting Model")
         visualizer.fit(X_train, y_train)
-        progress.value += 1
+        display.move_progress()
         logger.info("Scoring test/hold-out set")
         visualizer.score(X_test, y_test)
-        progress.value += 1
+        display.move_progress()
         clear_output()
         if save:
             logger.info("Saving 'Precision Recall.png' in current active directory")
@@ -3884,16 +3566,16 @@ def plot_model(
 
         from yellowbrick.classifier import ConfusionMatrix
 
-        progress.value += 1
+        display.move_progress()
         visualizer = ConfusionMatrix(
             model, random_state=seed, fontsize=15, cmap="Greens"
         )
         logger.info("Fitting Model")
         visualizer.fit(X_train, y_train)
-        progress.value += 1
+        display.move_progress()
         logger.info("Scoring test/hold-out set")
         visualizer.score(X_test, y_test)
-        progress.value += 1
+        display.move_progress()
         clear_output()
         if save:
             logger.info("Saving 'Confusion Matrix.png' in current active directory")
@@ -3910,14 +3592,14 @@ def plot_model(
 
         from yellowbrick.classifier import ClassPredictionError
 
-        progress.value += 1
+        display.move_progress()
         visualizer = ClassPredictionError(model, random_state=seed)
         logger.info("Fitting Model")
         visualizer.fit(X_train, y_train)
-        progress.value += 1
+        display.move_progress()
         logger.info("Scoring test/hold-out set")
         visualizer.score(X_test, y_test)
-        progress.value += 1
+        display.move_progress()
         clear_output()
         if save:
             logger.info(
@@ -3936,14 +3618,14 @@ def plot_model(
 
         from yellowbrick.classifier import ClassificationReport
 
-        progress.value += 1
+        display.move_progress()
         visualizer = ClassificationReport(model, random_state=seed, support=True)
         logger.info("Fitting Model")
         visualizer.fit(X_train, y_train)
-        progress.value += 1
+        display.move_progress()
         logger.info("Scoring test/hold-out set")
         visualizer.score(X_test, y_test)
-        progress.value += 1
+        display.move_progress()
         clear_output()
         if save:
             logger.info(
@@ -3967,7 +3649,7 @@ def plot_model(
 
         model2 = deepcopy(estimator)
 
-        progress.value += 1
+        display.move_progress()
 
         X_train_transformed = X_train.copy()
         X_test_transformed = X_test.copy()
@@ -3981,7 +3663,7 @@ def plot_model(
         X_train_transformed = pca.fit_transform(X_train_transformed)
         X_test_transformed = pca.fit_transform(X_test_transformed)
 
-        progress.value += 1
+        display.move_progress()
 
         y_train_transformed = y_train.copy()
         y_test_transformed = y_test.copy()
@@ -3997,7 +3679,7 @@ def plot_model(
             classes=["A", "B"],
         )
         viz_.draw(X_test_transformed, y_test_transformed)
-        progress.value += 1
+        display.move_progress()
         clear_output()
         if save:
             logger.info("Saving 'Decision Boundary.png' in current active directory")
@@ -4014,12 +3696,12 @@ def plot_model(
 
         from yellowbrick.model_selection import RFECV
 
-        progress.value += 1
+        display.move_progress()
         visualizer = RFECV(model, cv=10)
-        progress.value += 1
+        display.move_progress()
         logger.info("Fitting Model")
         visualizer.fit(X_train, y_train)
-        progress.value += 1
+        display.move_progress()
         clear_output()
         if save:
             logger.info(
@@ -4040,15 +3722,15 @@ def plot_model(
 
         from yellowbrick.model_selection import LearningCurve
 
-        progress.value += 1
+        display.move_progress()
         sizes = np.linspace(0.3, 1.0, 10)
         visualizer = LearningCurve(
             model, cv=10, train_sizes=sizes, n_jobs=n_jobs_param, random_state=seed
         )
-        progress.value += 1
+        display.move_progress()
         logger.info("Fitting Model")
         visualizer.fit(X_train, y_train)
-        progress.value += 1
+        display.move_progress()
         clear_output()
         if save:
             logger.info("Saving 'Learning Curve.png' in current active directory")
@@ -4065,13 +3747,13 @@ def plot_model(
 
         from yellowbrick.features import Manifold
 
-        progress.value += 1
+        display.move_progress()
         X_train_transformed = X_train.select_dtypes(include="float64")
         visualizer = Manifold(manifold="tsne", random_state=seed)
-        progress.value += 1
+        display.move_progress()
         logger.info("Fitting Model")
         visualizer.fit_transform(X_train_transformed, y_train)
-        progress.value += 1
+        display.move_progress()
         clear_output()
         if save:
             logger.info("Saving 'Manifold Plot.png' in current active directory")
@@ -4094,14 +3776,14 @@ def plot_model(
         ax1 = plt.subplot2grid((3, 1), (0, 0), rowspan=2)
 
         ax1.plot([0, 1], [0, 1], "k:", label="Perfectly calibrated")
-        progress.value += 1
+        display.move_progress()
         logger.info("Scoring test/hold-out set")
         prob_pos = model.predict_proba(X_test)[:, 1]
         prob_pos = (prob_pos - prob_pos.min()) / (prob_pos.max() - prob_pos.min())
         fraction_of_positives, mean_predicted_value = calibration_curve(
             y_test, prob_pos, n_bins=10
         )
-        progress.value += 1
+        display.move_progress()
         ax1.plot(
             mean_predicted_value,
             fraction_of_positives,
@@ -4117,7 +3799,7 @@ def plot_model(
         ax1.set_facecolor("white")
         ax1.grid(b=True, color="grey", linewidth=0.5, linestyle="-")
         plt.tight_layout()
-        progress.value += 1
+        display.move_progress()
         clear_output()
         if save:
             logger.info("Saving 'Calibration Plot.png' in current active directory")
@@ -4199,7 +3881,7 @@ def plot_model(
 
         logger.info("param_name: " + str(param_name))
 
-        progress.value += 1
+        display.move_progress()
 
         from yellowbrick.model_selection import ValidationCurve
 
@@ -4212,7 +3894,7 @@ def plot_model(
         )
         logger.info("Fitting Model")
         viz.fit(X_train, y_train)
-        progress.value += 1
+        display.move_progress()
         clear_output()
         if save:
             logger.info("Saving 'Validation Curve.png' in current active directory")
@@ -4231,7 +3913,7 @@ def plot_model(
         from sklearn.preprocessing import StandardScaler
         from sklearn.decomposition import PCA
 
-        progress.value += 1
+        display.move_progress()
         X_train_transformed = X_train.select_dtypes(include="float64")
         logger.info("Fitting StandardScaler()")
         X_train_transformed = StandardScaler().fit_transform(X_train_transformed)
@@ -4243,13 +3925,13 @@ def plot_model(
         pca = PCA(n_components=features, random_state=seed)
         logger.info("Fitting PCA()")
         X_train_transformed = pca.fit_transform(X_train_transformed)
-        progress.value += 1
+        display.move_progress()
         classes = y_train.unique().tolist()
         visualizer = RadViz(classes=classes, alpha=0.25)
         logger.info("Fitting Model")
         visualizer.fit(X_train_transformed, y_train_transformed)
         visualizer.transform(X_train_transformed)
-        progress.value += 1
+        display.move_progress()
         clear_output()
         if save:
             logger.info("Saving 'Dimension Plot.png' in current active directory")
@@ -4276,16 +3958,16 @@ def plot_model(
         sorted_df = sorted_df.head(10)
         sorted_df = sorted_df.sort_values(by="Value")
         my_range = range(1, len(sorted_df.index) + 1)
-        progress.value += 1
+        display.move_progress()
         plt.figure(figsize=(8, 5))
         plt.hlines(y=my_range, xmin=0, xmax=sorted_df["Value"], color="skyblue")
         plt.plot(sorted_df["Value"], my_range, "o")
-        progress.value += 1
+        display.move_progress()
         plt.yticks(my_range, sorted_df["Variable"])
         plt.title("Feature Importance Plot")
         plt.xlabel("Variable Importance")
         plt.ylabel("Features")
-        progress.value += 1
+        display.move_progress()
         clear_output()
         if save:
             logger.info("Saving 'Feature Importance.png' in current active directory")
@@ -4461,7 +4143,7 @@ def compare_models(
                     )
             elif not hasattr(i, "fit"):
                 sys.exit(
-                    "(Value Error): Estimator {i} does not have the required fit() method."
+                    f"(Value Error): Estimator {i} does not have the required fit() method."
                 )
 
     # whitelist and blacklist together check
@@ -4482,7 +4164,7 @@ def compare_models(
     allowed_sort = get_metrics()["Name"]
     if sort not in allowed_sort.to_list():
         sys.exit(
-            "(Value Error): Sort method not supported. See docstring for list of available parameters."
+            f"(Value Error): Sort method {sort} not supported. See docstring for list of available parameters."
         )
 
     # checking optimize parameter for multiclass
@@ -4515,22 +4197,8 @@ def compare_models(
     elif blacklist:
         len_mod -= len(blacklist)
 
-    # n_select param
-    if type(n_select) is list:
-        n_select_num = len(n_select)
-    else:
-        n_select_num = abs(n_select)
-
-    if n_select_num > len_mod:
-        n_select_num = len_mod
-
-    if whitelist is not None:
-        opt = 10
-    else:
-        opt = 25
-
     if not display:
-        progress_args = {"max": (fold * len_mod) + opt + n_select_num}
+        progress_args = {"max": ((fold + 4) * len_mod) + 4 + len_mod}
         master_display_columns = ["Model"] + all_metrics["Display Name"].to_list()
         timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
         monitor_rows = [
@@ -4612,7 +4280,11 @@ def compare_models(
 
     for i, model in enumerate(model_library):
 
-        if not isinstance(model, str) and y.value_counts().count() > 2:
+        if (
+            not hasattr(model, "estimators")
+            and not isinstance(model, str)
+            and y.value_counts().count() > 2
+        ):
             model_name = _get_model_name(model.estimator)
         else:
             model_name = _get_model_name(model)
@@ -4659,7 +4331,9 @@ def compare_models(
         logger.info("Creating metrics dataframe")
         compare_models_ = pd.DataFrame(model_results.loc["Mean"]).T
         compare_models_.insert(0, "Model", model_name)
-        compare_models_.insert(0, "Object", model)
+        compare_models_.insert(0, "Object", [model])
+        compare_models_.insert(0, "index", [i])
+        compare_models_.set_index("index", drop=True, inplace=True)
         if master_display is None:
             master_display = compare_models_
         else:
@@ -4668,7 +4342,7 @@ def compare_models(
             )
         master_display = master_display.round(round)
         master_display = master_display.sort_values(by=sort, ascending=False)
-        master_display.reset_index(drop=True, inplace=True)
+        # master_display.reset_index(drop=True, inplace=True)
 
         master_display_ = master_display.drop("Object", axis=1).style.set_precision(
             round
@@ -4966,6 +4640,12 @@ def tune_model(
             "(Type Error): The behavior of tune_model in version 1.0.1 is changed. Please pass trained model object."
         )
 
+    # Check for estimator
+    if not hasattr(estimator, "fit"):
+        sys.exit(
+            f"(Value Error): Estimator {estimator} does not have the required fit() method."
+        )
+
     # restrict VotingClassifier
     if hasattr(estimator, "voting"):
         sys.exit("(Type Error): VotingClassifier not allowed under tune_model().")
@@ -4983,19 +4663,17 @@ def tune_model(
         sys.exit("(Type Error): n_iter parameter only accepts integer value.")
 
     # checking optimize parameter
-    allowed_optimize = all_metrics[all_metrics["SearchCV Param"].notnull()][
-        "Name"
-    ].to_list()
-    if optimize not in allowed_optimize:
+    allowed_optimize = get_metrics()["Name"]
+    if optimize not in allowed_optimize.to_list():
         sys.exit(
-            "(Value Error): Optimization method not supported. See docstring for list of available parameters."
+            f"(Value Error): Optimize method {optimize} not supported. See docstring for list of available parameters."
         )
 
     # checking optimize parameter for multiclass
     if y.value_counts().count() > 2:
-        if optimize == "AUC":
+        if not all_metrics[all_metrics["Name"] == optimize].iloc[0]["Multiclass"]:
             sys.exit(
-                "(Type Error): AUC metric not supported for multiclass problems. See docstring for list of other optimization parameters."
+                f"(Type Error): Optimization metric {optimize} not supported for multiclass problems. See docstring for list of other optimization parameters."
             )
 
     if type(n_iter) is not int:
@@ -5019,7 +4697,7 @@ def tune_model(
     import pandas as pd
 
     if not display:
-        progress_args = {"max": fold + 6}
+        progress_args = {"max": fold + 3 + 4}
         master_display_columns = all_metrics["Display Name"].to_list()
         timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
         monitor_rows = [
@@ -5045,10 +4723,13 @@ def tune_model(
 
     warnings.filterwarnings("ignore")
 
-    # ignore warnings
-    import warnings
-
-    warnings.filterwarnings("ignore")
+    logger.info("Importing libraries")
+    # general dependencies
+    import random
+    import numpy as np
+    from sklearn import metrics
+    from sklearn.model_selection import StratifiedKFold
+    from sklearn.model_selection import RandomizedSearchCV
 
     logger.info("Copying training dataset")
     # Storing X_train and y_train in data_X and data_y parameter
@@ -5060,14 +4741,6 @@ def tune_model(
     data_y.reset_index(drop=True, inplace=True)
 
     display.move_progress()
-
-    logger.info("Importing libraries")
-    # general dependencies
-    import random
-    import numpy as np
-    from sklearn import metrics
-    from sklearn.model_selection import StratifiedKFold
-    from sklearn.model_selection import RandomizedSearchCV
 
     # setting numpy seed
     np.random.seed(seed)
@@ -5147,8 +4820,6 @@ def tune_model(
     best_model_param = model_grid.best_params_
 
     display.move_progress()
-    display.move_progress()
-    display.move_progress()
 
     logger.info("Random search completed")
 
@@ -5160,50 +4831,22 @@ def tune_model(
         best_model = model
 
     logger.info("SubProcess create_model() called ==================================")
-    model = create_model(
-        estimator=model, system=False, display=display, fold=fold, round=round
+    model, model_fit_time = create_model(
+        estimator=model,
+        system=False,
+        return_fit_time=True,
+        display=display,
+        fold=fold,
+        round=round,
     )
     best_model = model
     model_results = pull()
     logger.info("SubProcess create_model() called ==================================")
 
-    """
-    When choose_better sets to True. optimize metric in scoregrid is
-    compared with base model created using create_model so that tune_model
-    functions return the model with better score only. This will ensure 
-    model performance is atleast equivalent to what is seen is compare_models 
-    """
     if choose_better:
-        display.update_monitor(1, "Compiling Final Results")
-        display.update_monitor(2, "Almost Finished")
-        display.display_monitor()
-
-        # creating base model for comparison
-        logger.info(
-            "SubProcess create_model() called =================================="
+        model = _choose_better(
+            estimator, _estimator_, best_model, compare_dimension, fold, display
         )
-        if estimator in ["Bagging", "ada"]:
-            base_model = create_model(
-                estimator=_estimator_, verbose=False, system=False, fold=fold
-            )
-        else:
-            base_model = create_model(
-                estimator=estimator, verbose=False, system=False, fold=fold
-            )
-        logger.info(
-            "SubProcess create_model() called =================================="
-        )
-        base_model_results = create_model_container[-1][compare_dimension][-2:][0]
-        tuned_model_results = create_model_container[-2][compare_dimension][-2:][0]
-
-        if tuned_model_results > base_model_results:
-            best_model = best_model
-        else:
-            best_model = base_model
-
-        # re-instate display_constainer state
-        display_container.pop(-1)
-        logger.info("choose_better completed")
 
     # end runtime
     runtime_end = time.time()
@@ -5244,7 +4887,7 @@ def tune_model(
             mlflow.log_metrics(
                 {
                     k: v
-                    for k, v in model_results.rename(columns={"TT (Sec)": "TT"})
+                    for k, v in model_results.drop("TT (Sec)", axis=1)
                     .loc["Mean"]
                     .items()
                 }
@@ -5261,9 +4904,8 @@ def tune_model(
             mlflow.set_tag("Run Time", runtime)
             mlflow.set_tag("Run ID", RunID)
 
-            # TODO NEEDS TO BE REPLACED
             # Log training time in seconds
-            # mlflow.log_metric("TT", model_fit_time)
+            mlflow.log_metric("TT", model_fit_time)
 
             # Log the CV results as model_results.html artifact
             model_results.to_html("Results.html", col_space=65, justify="left")
@@ -5390,6 +5032,7 @@ def blend_models(
     method="hard",
     turbo=True,
     verbose=True,
+    display=None,
 ):
 
     """
@@ -5524,39 +5167,22 @@ def blend_models(
                 "(Value Error): estimator_list parameter only accepts 'All' as string or list of trained models."
             )
 
-    if estimator_list != "All":
         for i in estimator_list:
-            if "sklearn" not in str(type(i)) and "CatBoostClassifier" not in str(
-                type(i)
-            ):
+            if not hasattr(i, "fit"):
                 sys.exit(
-                    "(Value Error): estimator_list parameter only accepts 'All' as string or trained model object."
+                    f"(Value Error): Estimator {i} does not have the required fit() method."
                 )
 
-    # checking method param with estimator list
-    if estimator_list != "All":
+        # checking method param with estimator list
         if method == "soft":
 
             check = 0
 
             for i in estimator_list:
-                if hasattr(i, "predict_proba"):
-                    pass
-                else:
-                    check += 1
-
-            if check >= 1:
-                sys.exit(
-                    "(Type Error): Estimator list contains estimator that doesnt support probabilities and method is forced to soft. Either change the method or drop the estimator."
-                )
-
-    # checking catboost:
-    if estimator_list != "All":
-        for i in estimator_list:
-            if "CatBoostClassifier" in str(i):
-                sys.exit(
-                    "(Type Error): CatBoost Classifier not supported in this function."
-                )
+                if not hasattr(i, "predict_proba"):
+                    sys.exit(
+                        "(Type Error): Estimator list contains estimator that doesnt support probabilities and method is forced to soft. Either change the method or drop the estimator."
+                    )
 
     # checking fold parameter
     if type(fold) is not int:
@@ -5585,6 +5211,20 @@ def blend_models(
             "(Type Error): Verbose parameter can only take argument as True or False."
         )
 
+    # checking optimize parameter
+    allowed_optimize = get_metrics()["Name"]
+    if optimize not in allowed_optimize.to_list():
+        sys.exit(
+            f"(Value Error): Optimize method {optimize} not supported. See docstring for list of available parameters."
+        )
+
+    # checking optimize parameter for multiclass
+    if y.value_counts().count() > 2:
+        if not all_metrics[all_metrics["Name"] == optimize].iloc[0]["Multiclass"]:
+            sys.exit(
+                f"(Type Error): Optimization metric {optimize} not supported for multiclass problems. See docstring for list of other optimization parameters."
+            )
+
     """
     
     ERROR HANDLING ENDS HERE
@@ -5594,40 +5234,31 @@ def blend_models(
     logger.info("Preloading libraries")
     # pre-load libraries
     import pandas as pd
-    import ipywidgets as ipw
-    from IPython.display import display, HTML, clear_output, update_display
 
-    logger.info("Preparing display monitor")
-    # progress bar
-    progress = ipw.IntProgress(
-        value=0, min=0, max=fold + 4, step=1, description="Processing: "
-    )
-    master_display = pd.DataFrame(
-        columns=["Accuracy", "AUC", "Recall", "Prec.", "F1", "Kappa", "MCC"]
-    )
-    if verbose:
-        if html_param:
-            display(progress)
+    # estimator_list_flag
+    all_flag = estimator_list == "All"
 
-    # display monitor
-    timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
-    monitor = pd.DataFrame(
-        [
+    if not display:
+        all_models_offset = len(models()) if all_flag else 0
+        progress_args = {"max": fold + 2 + 4 + all_models_offset}
+        master_display_columns = all_metrics["Display Name"].to_list()
+        timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
+        monitor_rows = [
             ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
             ["Status", ". . . . . . . . . . . . . . . . . .", "Loading Dependencies"],
             ["ETC", ". . . . . . . . . . . . . . . . . .", "Calculating ETC"],
-        ],
-        columns=["", " ", "   "],
-    ).set_index("")
-
-    if verbose:
-        if html_param:
-            display(monitor, display_id="monitor")
-
-    if verbose:
-        if html_param:
-            display_ = display(master_display, display_id=True)
-            display_id = display_.display_id
+        ]
+        display = Display(
+            verbose,
+            html_param,
+            progress_args,
+            master_display_columns,
+            monitor_rows,
+            logger=logger,
+        )
+        display.display_progress()
+        display.display_monitor()
+        display.display_master_display()
 
     # ignore warnings
     import warnings
@@ -5638,7 +5269,6 @@ def blend_models(
     # general dependencies
     import numpy as np
     from sklearn import metrics
-    from sklearn.model_selection import StratifiedKFold
     from sklearn.ensemble import VotingClassifier
     import re
 
@@ -5651,595 +5281,101 @@ def blend_models(
     data_X.reset_index(drop=True, inplace=True)
     data_y.reset_index(drop=True, inplace=True)
 
-    if optimize == "Accuracy":
-        compare_dimension = "Accuracy"
-    elif optimize == "AUC":
-        compare_dimension = "AUC"
-    elif optimize == "Recall":
-        compare_dimension = "Recall"
-    elif optimize == "Precision":
-        compare_dimension = "Prec."
-    elif optimize == "F1":
-        compare_dimension = "F1"
-    elif optimize == "Kappa":
-        compare_dimension = "Kappa"
-    elif optimize == "MCC":
-        compare_dimension = "MCC"
+    # setting numpy seed
+    np.random.seed(seed)
 
-    # estimator_list_flag
-    if estimator_list == "All":
-        all_flag = True
-    else:
-        all_flag = False
+    # setting optimize parameter
+    optimize = all_metrics[all_metrics["Name"] == optimize].iloc[0]
+    compare_dimension = optimize["Display Name"]
+    optimize = optimize["SearchCV Param"]
 
-    progress.value += 1
-
-    logger.info("Declaring metric variables")
-    score_auc = np.empty((0, 0))
-    score_acc = np.empty((0, 0))
-    score_recall = np.empty((0, 0))
-    score_precision = np.empty((0, 0))
-    score_f1 = np.empty((0, 0))
-    score_kappa = np.empty((0, 0))
-    score_mcc = np.empty((0, 0))
-    score_training_time = np.empty((0, 0))
-
-    avgs_auc = np.empty((0, 0))
-    avgs_acc = np.empty((0, 0))
-    avgs_recall = np.empty((0, 0))
-    avgs_precision = np.empty((0, 0))
-    avgs_f1 = np.empty((0, 0))
-    avgs_kappa = np.empty((0, 0))
-    avgs_mcc = np.empty((0, 0))
-    avgs_training_time = np.empty((0, 0))
-
-    avg_acc = np.empty((0, 0))
-    avg_auc = np.empty((0, 0))
-    avg_recall = np.empty((0, 0))
-    avg_precision = np.empty((0, 0))
-    avg_f1 = np.empty((0, 0))
-    avg_kappa = np.empty((0, 0))
-    avg_mcc = np.empty((0, 0))
-    avg_training_time = np.empty((0, 0))
-
-    logger.info("Defining folds")
-    kf = StratifiedKFold(fold, random_state=seed, shuffle=folds_shuffle_param)
+    display.move_progress()
 
     """
     MONITOR UPDATE STARTS
     """
 
-    monitor.iloc[1, 1:] = "Compiling Estimators"
-    if verbose:
-        if html_param:
-            update_display(monitor, display_id="monitor")
+    display.update_monitor(1, "Compiling Estimators")
+    display.display_monitor()
 
     """
     MONITOR UPDATE ENDS
     """
 
-    if estimator_list == "All":
-
-        logger.info("Importing untrained models")
-        from sklearn.linear_model import LogisticRegression
-        from sklearn.neighbors import KNeighborsClassifier
-        from sklearn.naive_bayes import GaussianNB
-        from sklearn.tree import DecisionTreeClassifier
-        from sklearn.linear_model import SGDClassifier
-        from sklearn.svm import SVC
-        from sklearn.gaussian_process import GaussianProcessClassifier
-        from sklearn.neural_network import MLPClassifier
-        from sklearn.linear_model import RidgeClassifier
-        from sklearn.ensemble import RandomForestClassifier
-        from sklearn.discriminant_analysis import QuadraticDiscriminantAnalysis
-        from sklearn.ensemble import AdaBoostClassifier
-        from sklearn.ensemble import GradientBoostingClassifier
-        from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
-        from sklearn.ensemble import ExtraTreesClassifier
-        from sklearn.ensemble import BaggingClassifier
-        from xgboost import XGBClassifier
-        import lightgbm as lgb
-
-        lr = LogisticRegression(
-            random_state=seed
-        )  # don't add n_jobs parameter as it slows down the LR
-        knn = KNeighborsClassifier(n_jobs=n_jobs_param)
-        nb = GaussianNB()
-        dt = DecisionTreeClassifier(random_state=seed)
-        svm = SGDClassifier(
-            max_iter=1000, tol=0.001, random_state=seed, n_jobs=n_jobs_param
-        )
-        rbfsvm = SVC(
-            gamma="auto", C=1, probability=True, kernel="rbf", random_state=seed
-        )
-        gpc = GaussianProcessClassifier(random_state=seed, n_jobs=n_jobs_param)
-        mlp = MLPClassifier(max_iter=500, random_state=seed)
-        ridge = RidgeClassifier(random_state=seed)
-        rf = RandomForestClassifier(
-            n_estimators=10, random_state=seed, n_jobs=n_jobs_param
-        )
-        qda = QuadraticDiscriminantAnalysis()
-        ada = AdaBoostClassifier(random_state=seed)
-        gbc = GradientBoostingClassifier(random_state=seed)
-        lda = LinearDiscriminantAnalysis()
-        et = ExtraTreesClassifier(random_state=seed, n_jobs=n_jobs_param)
-        xgboost = XGBClassifier(random_state=seed, verbosity=0, n_jobs=n_jobs_param)
-        lightgbm = lgb.LGBMClassifier(random_state=seed, n_jobs=n_jobs_param)
-
-        logger.info("Import successful")
-
-        progress.value += 1
-
-        logger.info("Defining estimator list")
+    if all_flag:
+        models_to_check = models(internal=True)
+        models_to_check = models_to_check[models_to_check["Special"] == False]
+        if method == "soft":
+            models_to_check = models_to_check[models_to_check["Soft Voting"] == True]
         if turbo:
-            if method == "hard":
-                estimator_list = [
-                    lr,
-                    knn,
-                    nb,
-                    dt,
-                    svm,
-                    ridge,
-                    rf,
-                    qda,
-                    ada,
-                    gbc,
-                    lda,
-                    et,
-                    xgboost,
-                    lightgbm,
-                ]
-                voting = "hard"
-            elif method == "soft":
-                estimator_list = [
-                    lr,
-                    knn,
-                    nb,
-                    dt,
-                    rf,
-                    qda,
-                    ada,
-                    gbc,
-                    lda,
-                    et,
-                    xgboost,
-                    lightgbm,
-                ]
-                voting = "soft"
-        else:
-            if method == "hard":
-                estimator_list = [
-                    lr,
-                    knn,
-                    nb,
-                    dt,
-                    svm,
-                    rbfsvm,
-                    gpc,
-                    mlp,
-                    ridge,
-                    rf,
-                    qda,
-                    ada,
-                    gbc,
-                    lda,
-                    et,
-                    xgboost,
-                    lightgbm,
-                ]
-                voting = "hard"
-            elif method == "soft":
-                estimator_list = [
-                    lr,
-                    knn,
-                    nb,
-                    dt,
-                    rbfsvm,
-                    gpc,
-                    mlp,
-                    rf,
-                    qda,
-                    ada,
-                    gbc,
-                    lda,
-                    et,
-                    xgboost,
-                    lightgbm,
-                ]
-                voting = "soft"
-
+            models_to_check = models_to_check[models_to_check["Turbo"] == True]
+        estimator_list_str = models_to_check.index.to_list()
+        estimator_list = []
+        for model in estimator_list_str:
+            model_name = _get_model_name(model)
+            logger.info(
+                "SubProcess create_model() called =================================="
+            )
+            model = create_model(
+                estimator=model, system=False, verbose=False, fold=fold, round=round,
+            )
+            # re-instate display_constainer state
+            display_container.pop(-1)
+            logger.info(
+                "SubProcess create_model() called =================================="
+            )
+            estimator_list.append((model_name, model))
+            display.move_progress()
     else:
+        model_names = []
+        model_names_counter = {}
+        for x in estimator_list:
+            if y.value_counts().count() > 2:
+                name = _get_model_name(x.estimator)
+            else:
+                name = _get_model_name(x)
+            if name in model_names_counter:
+                model_names_counter[name] += 1
+                name += f"_{model_names_counter[name]-1}"
+            else:
+                model_names_counter[name] = 1
+            model_names.append(name)
 
-        estimator_list = estimator_list
-        voting = method
+        estimator_list = list(zip(model_names, estimator_list))
 
-    logger.info("Defining model names in estimator_list")
-    model_names = []
+    # if y.value_counts().count() > 2:
+    #    estimator_list = [x.estimator for x in estimator_list]
 
-    for names in estimator_list:
-
-        model_names = np.append(model_names, str(names).split("(")[0])
-
-    def putSpace(input):
-        words = re.findall("[A-Z][a-z]*", input)
-        words = " ".join(words)
-        return words
-
-    model_names_modified = []
-
-    for i in model_names:
-
-        model_names_modified.append(putSpace(i))
-        model_names = model_names_modified
-
-    model_names_final = []
-
-    for j in model_names_modified:
-
-        if j == "Gaussian N B":
-            model_names_final.append("Naive Bayes")
-
-        elif j == "M L P Classifier":
-            model_names_final.append("MLP Classifier")
-
-        elif j == "S G D Classifier":
-            model_names_final.append("SVM - Linear Kernel")
-
-        elif j == "S V C":
-            model_names_final.append("SVM - Radial Kernel")
-
-        elif j == "X G B Classifier":
-            model_names_final.append("Extreme Gradient Boosting")
-
-        elif j == "L G B M Classifier":
-            model_names_final.append("Light Gradient Boosting Machine")
-
-        else:
-            model_names_final.append(j)
-
-    model_names = model_names_final
-
-    # adding n in model_names to avoid duplicate exception when custom list is passed for eg. BaggingClassifier
-
-    model_names_n = []
-    counter = 0
-
-    for i in model_names:
-        mn = str(i) + "_" + str(counter)
-        model_names_n.append(mn)
-        counter += 1
-
-    model_names = model_names_n
-
-    estimator_list = estimator_list
-
-    estimator_list_ = zip(model_names, estimator_list)
-    estimator_list_ = set(estimator_list_)
-    estimator_list_ = list(estimator_list_)
-
+    votingclassifier_model_definition = _all_models_internal.loc["Voting"]
     try:
-        model = VotingClassifier(
-            estimators=estimator_list_, voting=voting, n_jobs=n_jobs_param
+        model = votingclassifier_model_definition["Class"](
+            estimators=estimator_list, voting=method, n_jobs=n_jobs_param
         )
-        model.fit(data_X, data_y)
         logger.info("n_jobs multiple passed")
     except:
         logger.info("n_jobs multiple failed")
-        model = VotingClassifier(estimators=estimator_list_, voting=voting)
-
-    progress.value += 1
-
-    """
-    MONITOR UPDATE STARTS
-    """
-
-    monitor.iloc[1, 1:] = "Initializing CV"
-    if verbose:
-        if html_param:
-            update_display(monitor, display_id="monitor")
-
-    """
-    MONITOR UPDATE ENDS
-    """
-
-    fold_num = 1
-
-    for train_i, test_i in kf.split(data_X, data_y):
-
-        logger.info("Initializing Fold " + str(fold_num))
-
-        progress.value += 1
-
-        t0 = time.time()
-
-        """
-        MONITOR UPDATE STARTS
-        """
-
-        monitor.iloc[1, 1:] = "Fitting Fold " + str(fold_num) + " of " + str(fold)
-        if verbose:
-            if html_param:
-                update_display(monitor, display_id="monitor")
-
-        """
-        MONITOR UPDATE ENDS
-        """
-
-        Xtrain, Xtest = data_X.iloc[train_i], data_X.iloc[test_i]
-        ytrain, ytest = data_y.iloc[train_i], data_y.iloc[test_i]
-        time_start = time.time()
-
-        if fix_imbalance_param:
-            Xtrain, ytrain = _fix_imbalance(Xtrain, ytrain, fix_imbalance_method_param)
-
-        if voting == "hard":
-            logger.info("Fitting Model")
-            model.fit(Xtrain, ytrain)
-            logger.info("Evaluating Metrics")
-            pred_prob = 0.0
-            logger.warning(
-                "model has no predict_proba attribute. pred_prob set to 0.00"
-            )
-            pred_ = model.predict(Xtest)
-            sca = metrics.accuracy_score(ytest, pred_)
-            sc = 0.0
-            if y.value_counts().count() > 2:
-                recall = metrics.recall_score(ytest, pred_, average="macro")
-                precision = metrics.precision_score(ytest, pred_, average="weighted")
-                f1 = metrics.f1_score(ytest, pred_, average="weighted")
-            else:
-                recall = metrics.recall_score(ytest, pred_)
-                precision = metrics.precision_score(ytest, pred_)
-                f1 = metrics.f1_score(ytest, pred_)
-
-        else:
-            logger.info("Fitting Model")
-            model.fit(Xtrain, ytrain)
-            logger.info("Evaluating Metrics")
-            pred_ = model.predict(Xtest)
-            sca = metrics.accuracy_score(ytest, pred_)
-
-            if y.value_counts().count() > 2:
-                pred_prob = 0
-                sc = 0
-                recall = metrics.recall_score(ytest, pred_, average="macro")
-                precision = metrics.precision_score(ytest, pred_, average="weighted")
-                f1 = metrics.f1_score(ytest, pred_, average="weighted")
-            else:
-                try:
-                    pred_prob = model.predict_proba(Xtest)
-                    pred_prob = pred_prob[:, 1]
-                    sc = metrics.roc_auc_score(ytest, pred_prob)
-                except:
-                    sc = 0
-                recall = metrics.recall_score(ytest, pred_)
-                precision = metrics.precision_score(ytest, pred_)
-                f1 = metrics.f1_score(ytest, pred_)
-
-        logger.info("Compiling Metrics")
-        time_end = time.time()
-        kappa = metrics.cohen_kappa_score(ytest, pred_)
-        mcc = metrics.matthews_corrcoef(ytest, pred_)
-        training_time = time_end - time_start
-        score_acc = np.append(score_acc, sca)
-        score_auc = np.append(score_auc, sc)
-        score_recall = np.append(score_recall, recall)
-        score_precision = np.append(score_precision, precision)
-        score_f1 = np.append(score_f1, f1)
-        score_kappa = np.append(score_kappa, kappa)
-        score_mcc = np.append(score_mcc, mcc)
-        score_training_time = np.append(score_training_time, training_time)
-
-        """
-        
-        This section handles time calculation and is created to update_display() as code loops through 
-        the fold defined.
-        
-        """
-
-        fold_results = pd.DataFrame(
-            {
-                "Accuracy": [sca],
-                "AUC": [sc],
-                "Recall": [recall],
-                "Prec.": [precision],
-                "F1": [f1],
-                "Kappa": [kappa],
-                "MCC": [mcc],
-            }
-        ).round(round)
-        master_display = pd.concat([master_display, fold_results], ignore_index=True)
-        fold_results = []
-
-        """
-        TIME CALCULATION SUB-SECTION STARTS HERE
-        """
-        t1 = time.time()
-
-        tt = (t1 - t0) * (fold - fold_num) / 60
-        tt = np.around(tt, 2)
-
-        if tt < 1:
-            tt = str(np.around((tt * 60), 2))
-            ETC = tt + " Seconds Remaining"
-
-        else:
-            tt = str(tt)
-            ETC = tt + " Minutes Remaining"
-
-        fold_num += 1
-
-        """
-        MONITOR UPDATE STARTS
-        """
-
-        monitor.iloc[-1, 1:] = ETC
-        if verbose:
-            if html_param:
-                update_display(monitor, display_id="monitor")
-
-        """
-        MONITOR UPDATE ENDS
-        """
-
-        """
-        TIME CALCULATION ENDS HERE
-        """
-
-        if verbose:
-            if html_param:
-                update_display(master_display, display_id=display_id)
-
-        """
-        
-        Update_display() ends here
-        
-        """
-    logger.info("Calculating mean and std")
-    mean_acc = np.mean(score_acc)
-    mean_auc = np.mean(score_auc)
-    mean_recall = np.mean(score_recall)
-    mean_precision = np.mean(score_precision)
-    mean_f1 = np.mean(score_f1)
-    mean_kappa = np.mean(score_kappa)
-    mean_mcc = np.mean(score_mcc)
-    mean_training_time = np.sum(score_training_time)
-    std_acc = np.std(score_acc)
-    std_auc = np.std(score_auc)
-    std_recall = np.std(score_recall)
-    std_precision = np.std(score_precision)
-    std_f1 = np.std(score_f1)
-    std_kappa = np.std(score_kappa)
-    std_mcc = np.std(score_mcc)
-    std_training_time = np.std(score_training_time)
-
-    avgs_acc = np.append(avgs_acc, mean_acc)
-    avgs_acc = np.append(avgs_acc, std_acc)
-    avgs_auc = np.append(avgs_auc, mean_auc)
-    avgs_auc = np.append(avgs_auc, std_auc)
-    avgs_recall = np.append(avgs_recall, mean_recall)
-    avgs_recall = np.append(avgs_recall, std_recall)
-    avgs_precision = np.append(avgs_precision, mean_precision)
-    avgs_precision = np.append(avgs_precision, std_precision)
-    avgs_f1 = np.append(avgs_f1, mean_f1)
-    avgs_f1 = np.append(avgs_f1, std_f1)
-    avgs_kappa = np.append(avgs_kappa, mean_kappa)
-    avgs_kappa = np.append(avgs_kappa, std_kappa)
-
-    avgs_mcc = np.append(avgs_mcc, mean_mcc)
-    avgs_mcc = np.append(avgs_mcc, std_mcc)
-    avgs_training_time = np.append(avgs_training_time, mean_training_time)
-    avgs_training_time = np.append(avgs_training_time, std_training_time)
-
-    progress.value += 1
-
-    logger.info("Creating metrics dataframe")
-    model_results = pd.DataFrame(
-        {
-            "Accuracy": score_acc,
-            "AUC": score_auc,
-            "Recall": score_recall,
-            "Prec.": score_precision,
-            "F1": score_f1,
-            "Kappa": score_kappa,
-            "MCC": score_mcc,
-        }
-    )
-    model_avgs = pd.DataFrame(
-        {
-            "Accuracy": avgs_acc,
-            "AUC": avgs_auc,
-            "Recall": avgs_recall,
-            "Prec.": avgs_precision,
-            "F1": avgs_f1,
-            "Kappa": avgs_kappa,
-            "MCC": avgs_mcc,
-        },
-        index=["Mean", "SD"],
-    )
-    model_results = model_results.append(model_avgs)
-    model_results = model_results.round(round)
-
-    # yellow the mean
-    model_results = model_results.style.apply(
-        lambda x: ["background: yellow" if (x.name == "Mean") else "" for i in x],
-        axis=1,
-    )
-    model_results = model_results.set_precision(round)
-
-    progress.value += 1
-
-    # refitting the model on complete X_train, y_train
-    monitor.iloc[1, 1:] = "Finalizing Model"
-    monitor.iloc[2, 1:] = "Almost Finished"
-
-    if verbose:
-        if html_param:
-            update_display(monitor, display_id="monitor")
-
-    model_fit_start = time.time()
-    logger.info("Finalizing model")
-    model.fit(data_X, data_y)
-    model_fit_end = time.time()
-
-    model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
-
-    progress.value += 1
-
-    # storing results in create_model_container
-    logger.info("Uploading results into container")
-    create_model_container.append(model_results.data)
-    display_container.append(model_results.data)
-
-    # storing results in master_model_container
-    logger.info("Uploading model into container")
-    master_model_container.append(model)
-
-    """
-    When choose_better sets to True. optimize metric in scoregrid is
-    compared with base model created using create_model so that stack_models
-    functions return the model with better score only. This will ensure 
-    model performance is atleast equivalent to what is seen in compare_models 
-    """
-
-    scorer = []
-
-    blend_model_results = create_model_container[-1][compare_dimension][-2:][0]
-
-    scorer.append(blend_model_results)
-
-    if choose_better and all_flag is False:
-        logger.info("choose_better activated")
-        if verbose:
-            if html_param:
-                monitor.iloc[1, 1:] = "Compiling Final Results"
-                monitor.iloc[2, 1:] = "Almost Finished"
-                update_display(monitor, display_id="monitor")
-
-        base_models_ = []
-        logger.info(
-            "SubProcess create_model() called =================================="
+        model = votingclassifier_model_definition["Class"](
+            estimators=estimator_list, voting=method
         )
-        for i in estimator_list:
-            m = create_model(i, verbose=False, system=False)
-            s = create_model_container[-1][compare_dimension][-2:][0]
-            scorer.append(s)
-            base_models_.append(m)
 
-            # re-instate display_constainer state
-            display_container.pop(-1)
+    display.move_progress()
 
-        logger.info(
-            "SubProcess create_model() called =================================="
+    logger.info("SubProcess create_model() called ==================================")
+    model, model_fit_time = create_model(
+        estimator=model,
+        system=False,
+        return_fit_time=True,
+        display=display,
+        fold=fold,
+        round=round,
+    )
+    model_results = pull()
+    logger.info("SubProcess create_model() called ==================================")
+
+    if choose_better and not all_flag:
+        model = _choose_better_list(
+            model, estimator_list, compare_dimension, fold, display
         )
-        logger.info("choose_better completed")
-
-    index_scorer = scorer.index(max(scorer))
-
-    if index_scorer == 0:
-        model = model
-    else:
-        model = base_models_[index_scorer - 1]
 
     # end runtime
     runtime_end = time.time()
@@ -6250,11 +5386,9 @@ def blend_models(
         logger.info("Creating MLFlow logs")
 
         # Creating Logs message monitor
-        monitor.iloc[1, 1:] = "Creating Logs"
-        monitor.iloc[2, 1:] = "Almost Finished"
-        if verbose:
-            if html_param:
-                update_display(monitor, display_id="monitor")
+        display.update_monitor(1, "Creating Logs")
+        display.update_monitor(2, "Almost Finished")
+        display.display_monitor()
 
         import mlflow
         from pathlib import Path
@@ -6267,13 +5401,10 @@ def blend_models(
 
             mlflow.log_metrics(
                 {
-                    "Accuracy": avgs_acc[0],
-                    "AUC": avgs_auc[0],
-                    "Recall": avgs_recall[0],
-                    "Precision": avgs_precision[0],
-                    "F1": avgs_f1[0],
-                    "Kappa": avgs_kappa[0],
-                    "MCC": avgs_mcc[0],
+                    k: v
+                    for k, v in model_results.drop("TT (Sec)", axis=1)
+                    .loc["Mean"]
+                    .items()
                 }
             )
 
@@ -6325,7 +5456,7 @@ def blend_models(
                 )
 
             # Log the CV results as model_results.html artifact
-            model_results.data.to_html("Results.html", col_space=65, justify="left")
+            model_results.to_html("Results.html", col_space=65, justify="left")
             mlflow.log_artifact("Results.html")
             os.remove("Results.html")
 
@@ -6366,12 +5497,8 @@ def blend_models(
             )
             del prep_pipe_temp
 
-    if verbose:
-        clear_output()
-        if html_param:
-            display(model_results)
-        else:
-            print(model_results.data)
+    model_results = color_df(model_results, "yellow", ["Mean"], axis=1)
+    display.display(model_results, clear=True)
 
     logger.info("create_model_container: " + str(len(create_model_container)))
     logger.info("master_model_container: " + str(len(master_model_container)))
@@ -6395,6 +5522,7 @@ def stack_models(
     choose_better=False,  # added in pycaret==2.0.0
     optimize="Accuracy",  # added in pycaret==2.0.0
     verbose=True,
+    display=None,
 ):
 
     """
@@ -6514,18 +5642,16 @@ def stack_models(
 
     # checking error for estimator_list
     for i in estimator_list:
-        if "sklearn" not in str(type(i)) and "CatBoostClassifier" not in str(type(i)):
+        if not hasattr(i, "fit"):
             sys.exit(
-                "(Value Error): estimator_list parameter only trained model object"
+                f"(Value Error): Estimator {i} does not have the required fit() method."
             )
 
     # checking meta model
     if meta_model is not None:
-        if "sklearn" not in str(type(meta_model)) and "CatBoostClassifier" not in str(
-            type(meta_model)
-        ):
+        if not hasattr(meta_model, "fit"):
             sys.exit(
-                "(Value Error): estimator_list parameter only accepts trained model object"
+                f"(Value Error): Meta Model {i} does not have the required fit() method."
             )
 
     # checking fold parameter
@@ -6555,6 +5681,20 @@ def stack_models(
             "(Type Error): Verbose parameter can only take argument as True or False."
         )
 
+    # checking optimize parameter
+    allowed_optimize = get_metrics()["Name"]
+    if optimize not in allowed_optimize.to_list():
+        sys.exit(
+            f"(Value Error): Optimize method {optimize} not supported. See docstring for list of available parameters."
+        )
+
+    # checking optimize parameter for multiclass
+    if y.value_counts().count() > 2:
+        if not all_metrics[all_metrics["Name"] == optimize].iloc[0]["Multiclass"]:
+            sys.exit(
+                f"(Type Error): Optimization metric {optimize} not supported for multiclass problems. See docstring for list of other optimization parameters."
+            )
+
     """
     
     ERROR HANDLING ENDS HERE
@@ -6564,8 +5704,6 @@ def stack_models(
     logger.info("Preloading libraries")
     # pre-load libraries
     import pandas as pd
-    import ipywidgets as ipw
-    from IPython.display import display, HTML, clear_output, update_display
     from copy import deepcopy
     from sklearn.base import clone
     from sklearn.ensemble import StackingClassifier
@@ -6578,92 +5716,38 @@ def stack_models(
     logger.info("Defining meta model")
     # Defining meta model.
     if meta_model == None:
-        from sklearn.linear_model import LogisticRegression
-
-        meta_model = LogisticRegression()
+        estimator = "lr"
+        meta_model_definition = _all_models_internal.loc[estimator]
+        meta_model_args = meta_model_definition["Args"]
+        meta_model = meta_model_definition["Class"](**meta_model_args)
     else:
         meta_model = clone(meta_model)
 
-    clear_output()
-
-    if optimize == "Accuracy":
-        compare_dimension = "Accuracy"
-    elif optimize == "AUC":
-        compare_dimension = "AUC"
-    elif optimize == "Recall":
-        compare_dimension = "Recall"
-    elif optimize == "Precision":
-        compare_dimension = "Prec."
-    elif optimize == "F1":
-        compare_dimension = "F1"
-    elif optimize == "Kappa":
-        compare_dimension = "Kappa"
-    elif optimize == "MCC":
-        compare_dimension = "MCC"
-
-    logger.info("Preparing display monitor")
-    # progress bar
-    max_progress = fold + 4
-    progress = ipw.IntProgress(
-        value=0, min=0, max=max_progress, step=1, description="Processing: "
-    )
-    master_display = pd.DataFrame(
-        columns=["Accuracy", "AUC", "Recall", "Prec.", "F1", "Kappa", "MCC"]
-    )
-    if verbose:
-        if html_param:
-            display(progress)
-
-    # display monitor
-    timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
-    monitor = pd.DataFrame(
-        [
+    if not display:
+        progress_args = {"max": fold + 2 + 4}
+        master_display_columns = all_metrics["Display Name"].to_list()
+        timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
+        monitor_rows = [
             ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
             ["Status", ". . . . . . . . . . . . . . . . . .", "Loading Dependencies"],
             ["ETC", ". . . . . . . . . . . . . . . . . .", "Calculating ETC"],
-        ],
-        columns=["", " ", "   "],
-    ).set_index("")
-
-    if verbose:
-        if html_param:
-            display(monitor, display_id="monitor")
-
-    if verbose:
-        if html_param:
-            display_ = display(master_display, display_id=True)
-            display_id = display_.display_id
+        ]
+        display = Display(
+            verbose,
+            html_param,
+            progress_args,
+            master_display_columns,
+            monitor_rows,
+            logger=logger,
+        )
+        display.display_progress()
+        display.display_monitor()
+        display.display_master_display()
 
     logger.info("Importing libraries")
     # dependencies
     import numpy as np
     from sklearn import metrics
-    from sklearn.model_selection import StratifiedKFold
-    from sklearn.model_selection import cross_val_predict
-
-    logger.info("Defining folds")
-    # cross validation setup starts here
-    kf = StratifiedKFold(fold, random_state=seed, shuffle=folds_shuffle_param)
-
-    logger.info("Declaring metric variables")
-    score_auc = np.empty((0, 0))
-    score_acc = np.empty((0, 0))
-    score_recall = np.empty((0, 0))
-    score_precision = np.empty((0, 0))
-    score_f1 = np.empty((0, 0))
-    score_kappa = np.empty((0, 0))
-    score_mcc = np.empty((0, 0))
-    score_training_time = np.empty((0, 0))
-    avgs_auc = np.empty((0, 0))
-    avgs_acc = np.empty((0, 0))
-    avgs_recall = np.empty((0, 0))
-    avgs_precision = np.empty((0, 0))
-    avgs_f1 = np.empty((0, 0))
-    avgs_kappa = np.empty((0, 0))
-    avgs_mcc = np.empty((0, 0))
-    avgs_training_time = np.empty((0, 0))
-
-    progress.value += 1
 
     logger.info("Copying training dataset")
     # Storing X_train and y_train in data_X and data_y parameter
@@ -6674,47 +5758,49 @@ def stack_models(
     data_X.reset_index(drop=True, inplace=True)
     data_y.reset_index(drop=True, inplace=True)
 
+    # setting numpy seed
+    np.random.seed(seed)
+
+    # setting optimize parameter
+    optimize = all_metrics[all_metrics["Name"] == optimize].iloc[0]
+    compare_dimension = optimize["Display Name"]
+    optimize = optimize["SearchCV Param"]
+
+    display.move_progress()
+
+    """
+    MONITOR UPDATE STARTS
+    """
+
+    display.update_monitor(1, "Compiling Estimators")
+    display.display_monitor()
+
+    """
+    MONITOR UPDATE ENDS
+    """
+
     logger.info("Getting model names")
-    # defining model_library model names
-    model_names = np.zeros(0)
-    for item in estimator_list:
-        model_names = np.append(model_names, str(item).split("(")[0])
-
-    model_names_fixed = []
-
-    for i in model_names:
-        if "CatBoostClassifier" in i:
-            a = "CatBoostClassifier"
-            model_names_fixed.append(a)
+    model_names = []
+    model_names_counter = {}
+    for x in estimator_list:
+        if y.value_counts().count() > 2:
+            name = _get_model_name(x.estimator)
         else:
-            model_names_fixed.append(i)
+            name = _get_model_name(x)
+        if name in model_names_counter:
+            model_names_counter[name] += 1
+            name += f"_{model_names_counter[name]-1}"
+        else:
+            model_names_counter[name] = 1
+        model_names.append(name)
 
-    model_names = model_names_fixed
-
-    model_names_fixed = []
-
-    counter = 0
-    for i in model_names:
-        s = str(i) + "_" + str(counter)
-        model_names_fixed.append(s)
-        counter += 1
-
-    logger.info("Compiling estimator_list parameter")
-
-    counter = 0
-
-    estimator_list_tuples = []
-
-    for i in estimator_list:
-        estimator_list_tuples.append(
-            tuple([model_names_fixed[counter], estimator_list[counter]])
-        )
-        counter += 1
+    estimator_list = list(zip(model_names, estimator_list))
 
     logger.info("Creating StackingClassifier()")
 
-    model = StackingClassifier(
-        estimators=estimator_list_tuples,
+    stackingclassifier_model_definition = _all_models_internal.loc["Stacking"]
+    model = stackingclassifier_model_definition["Class"](
+        estimators=estimator_list,
         final_estimator=meta_model,
         cv=fold,
         stack_method=method,
@@ -6722,305 +5808,24 @@ def stack_models(
         passthrough=restack,
     )
 
-    model_fit_start = time.time()
+    display.move_progress()
 
-    fold_num = 1
-
-    for train_i, test_i in kf.split(data_X, data_y):
-
-        logger.info("Initializing Fold " + str(fold_num))
-
-        t0 = time.time()
-
-        """
-        MONITOR UPDATE STARTS
-        """
-
-        monitor.iloc[1, 1:] = "Fitting Fold " + str(fold_num) + " of " + str(fold)
-        if verbose:
-            if html_param:
-                update_display(monitor, display_id="monitor")
-
-        """
-        MONITOR UPDATE ENDS
-        """
-
-        Xtrain, Xtest = data_X.iloc[train_i], data_X.iloc[test_i]
-        ytrain, ytest = data_y.iloc[train_i], data_y.iloc[test_i]
-        time_start = time.time()
-
-        if fix_imbalance_param:
-            Xtrain, ytrain = _fix_imbalance(Xtrain, ytrain, fix_imbalance_method_param)
-
-        logger.info("Fitting Model")
-        model.fit(Xtrain, ytrain)
-        logger.info("Evaluating Metrics")
-
-        try:
-            pred_prob = model.predict_proba(Xtest)
-            pred_prob = pred_prob[:, 1]
-        except:
-            pass
-        pred_ = model.predict(Xtest)
-        sca = metrics.accuracy_score(ytest, pred_)
-
-        if y.value_counts().count() > 2:
-            sc = 0
-            recall = metrics.recall_score(ytest, pred_, average="macro")
-            precision = metrics.precision_score(ytest, pred_, average="weighted")
-            f1 = metrics.f1_score(ytest, pred_, average="weighted")
-
-        else:
-            try:
-                sc = metrics.roc_auc_score(ytest, pred_prob)
-            except:
-                sc = 0
-            recall = metrics.recall_score(ytest, pred_)
-            precision = metrics.precision_score(ytest, pred_)
-            f1 = metrics.f1_score(ytest, pred_)
-
-        logger.info("Compiling Metrics")
-        time_end = time.time()
-        kappa = metrics.cohen_kappa_score(ytest, pred_)
-        mcc = metrics.matthews_corrcoef(ytest, pred_)
-        training_time = time_end - time_start
-        score_acc = np.append(score_acc, sca)
-        score_auc = np.append(score_auc, sc)
-        score_recall = np.append(score_recall, recall)
-        score_precision = np.append(score_precision, precision)
-        score_f1 = np.append(score_f1, f1)
-        score_kappa = np.append(score_kappa, kappa)
-        score_mcc = np.append(score_mcc, mcc)
-        score_training_time = np.append(score_training_time, training_time)
-
-        progress.value += 1
-
-        """
-        
-        This section handles time calculation and is created to update_display() as code loops through 
-        the fold defined.
-        
-        """
-
-        fold_results = pd.DataFrame(
-            {
-                "Accuracy": [sca],
-                "AUC": [sc],
-                "Recall": [recall],
-                "Prec.": [precision],
-                "F1": [f1],
-                "Kappa": [kappa],
-                "MCC": [mcc],
-            }
-        ).round(round)
-        master_display = pd.concat([master_display, fold_results], ignore_index=True)
-        fold_results = []
-
-        """
-        TIME CALCULATION SUB-SECTION STARTS HERE
-        """
-        t1 = time.time()
-
-        tt = (t1 - t0) * (fold - fold_num) / 60
-        tt = np.around(tt, 2)
-
-        if tt < 1:
-            tt = str(np.around((tt * 60), 2))
-            ETC = tt + " Seconds Remaining"
-
-        else:
-            tt = str(tt)
-            ETC = tt + " Minutes Remaining"
-
-        """
-        MONITOR UPDATE STARTS
-        """
-
-        monitor.iloc[-1, 1:] = ETC
-        if verbose:
-            if html_param:
-                update_display(monitor, display_id="monitor")
-
-        """
-        MONITOR UPDATE ENDS
-        """
-
-        fold_num += 1
-
-        """
-        TIME CALCULATION ENDS HERE
-        """
-
-        if verbose:
-            if html_param:
-                update_display(master_display, display_id=display_id)
-
-        """
-        
-        Update_display() ends here
-        
-        """
-
-    logger.info("Calculating mean and std")
-
-    mean_acc = np.mean(score_acc)
-    mean_auc = np.mean(score_auc)
-    mean_recall = np.mean(score_recall)
-    mean_precision = np.mean(score_precision)
-    mean_f1 = np.mean(score_f1)
-    mean_kappa = np.mean(score_kappa)
-    mean_mcc = np.mean(score_mcc)
-    mean_training_time = np.sum(score_training_time)  # changed it to sum from mean
-
-    std_acc = np.std(score_acc)
-    std_auc = np.std(score_auc)
-    std_recall = np.std(score_recall)
-    std_precision = np.std(score_precision)
-    std_f1 = np.std(score_f1)
-    std_kappa = np.std(score_kappa)
-    std_mcc = np.std(score_mcc)
-    std_training_time = np.std(score_training_time)
-
-    avgs_acc = np.append(avgs_acc, mean_acc)
-    avgs_acc = np.append(avgs_acc, std_acc)
-    avgs_auc = np.append(avgs_auc, mean_auc)
-    avgs_auc = np.append(avgs_auc, std_auc)
-    avgs_recall = np.append(avgs_recall, mean_recall)
-    avgs_recall = np.append(avgs_recall, std_recall)
-    avgs_precision = np.append(avgs_precision, mean_precision)
-    avgs_precision = np.append(avgs_precision, std_precision)
-    avgs_f1 = np.append(avgs_f1, mean_f1)
-    avgs_f1 = np.append(avgs_f1, std_f1)
-    avgs_kappa = np.append(avgs_kappa, mean_kappa)
-    avgs_kappa = np.append(avgs_kappa, std_kappa)
-    avgs_mcc = np.append(avgs_mcc, mean_mcc)
-    avgs_mcc = np.append(avgs_mcc, std_mcc)
-
-    avgs_training_time = np.append(avgs_training_time, mean_training_time)
-    avgs_training_time = np.append(avgs_training_time, std_training_time)
-
-    progress.value += 1
-
-    logger.info("Creating metrics dataframe")
-
-    model_results = pd.DataFrame(
-        {
-            "Accuracy": score_acc,
-            "AUC": score_auc,
-            "Recall": score_recall,
-            "Prec.": score_precision,
-            "F1": score_f1,
-            "Kappa": score_kappa,
-            "MCC": score_mcc,
-        }
+    logger.info("SubProcess create_model() called ==================================")
+    model, model_fit_time = create_model(
+        estimator=model,
+        system=False,
+        return_fit_time=True,
+        display=display,
+        fold=fold,
+        round=round,
     )
-    model_avgs = pd.DataFrame(
-        {
-            "Accuracy": avgs_acc,
-            "AUC": avgs_auc,
-            "Recall": avgs_recall,
-            "Prec.": avgs_precision,
-            "F1": avgs_f1,
-            "Kappa": avgs_kappa,
-            "MCC": avgs_mcc,
-        },
-        index=["Mean", "SD"],
-    )
-
-    model_results = model_results.append(model_avgs)
-    model_results = model_results.round(round)
-
-    # yellow the mean
-    model_results = model_results.style.apply(
-        lambda x: ["background: yellow" if (x.name == "Mean") else "" for i in x],
-        axis=1,
-    )
-    model_results = model_results.set_precision(round)
-
-    # refitting the model on complete X_train, y_train
-    monitor.iloc[1, 1:] = "Finalizing Model"
-    monitor.iloc[2, 1:] = "Almost Finished"
-    if verbose:
-        if html_param:
-            update_display(monitor, display_id="monitor")
-
-    model_fit_start = time.time()
-    logger.info("Finalizing model")
-    model.fit(data_X, data_y)
-    model_fit_end = time.time()
-
-    model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
-
-    progress.value += 1
-
-    # end runtime
-    runtime_end = time.time()
-    runtime = np.array(runtime_end - runtime_start).round(2)
-
-    # storing results in create_model_container
-    logger.info("Uploading results into container")
-    create_model_container.append(model_results.data)
-    display_container.append(model_results.data)
-
-    # storing results in master_model_container
-    logger.info("Uploading model into container")
-    master_model_container.append(model)
-
-    progress.value += 1
-
-    """
-    When choose_better sets to True. optimize metric in scoregrid is
-    compared with base model created using create_model so that stack_models
-    functions return the model with better score only. This will ensure 
-    model performance is atleast equivalent to what is seen in compare_models 
-    """
-
-    scorer = []
-
-    stack_model_results = create_model_container[-1][compare_dimension][-2:][0]
-
-    scorer.append(stack_model_results)
+    model_results = pull()
+    logger.info("SubProcess create_model() called ==================================")
 
     if choose_better:
-        logger.info("choose_better activated")
-
-        if verbose:
-            if html_param:
-                monitor.iloc[1, 1:] = "Compiling Final Results"
-                monitor.iloc[2, 1:] = "Almost Finished"
-                update_display(monitor, display_id="monitor")
-
-        base_models_ = []
-        logger.info(
-            "SubProcess create_model() called =================================="
+        model = _choose_better_list(
+            model, estimator_list, compare_dimension, fold, display
         )
-        for i in estimator_list:
-            m = create_model(i, verbose=False, system=False)
-            s = create_model_container[-1][compare_dimension][-2:][0]
-            scorer.append(s)
-            base_models_.append(m)
-
-            # re-instate display_constainer state
-            display_container.pop(-1)
-
-        meta_model_clone = clone(meta_model)
-        mm = create_model(meta_model_clone, verbose=False, system=False)
-        base_models_.append(mm)
-        s = create_model_container[-1][compare_dimension][-2:][0]
-        scorer.append(s)
-
-        # re-instate display_constainer state
-        display_container.pop(-1)
-        logger.info("SubProcess create_model() end ==================================")
-        logger.info("choose_better completed")
-
-    # returning better model
-    index_scorer = scorer.index(max(scorer))
-
-    if index_scorer == 0:
-        model = model
-    else:
-        model = base_models_[index_scorer - 1]
 
     # end runtime
     runtime_end = time.time()
@@ -7035,11 +5840,9 @@ def stack_models(
         import os
 
         # Creating Logs message monitor
-        monitor.iloc[1, 1:] = "Creating Logs"
-        monitor.iloc[2, 1:] = "Almost Finished"
-        if verbose:
-            if html_param:
-                update_display(monitor, display_id="monitor")
+        display.update_monitor(1, "Creating Logs")
+        display.update_monitor(2, "Almost Finished")
+        display.display_monitor()
 
         with mlflow.start_run(run_name="Stacking Classifier") as run:
 
@@ -7060,13 +5863,10 @@ def stack_models(
 
             mlflow.log_metrics(
                 {
-                    "Accuracy": avgs_acc[0],
-                    "AUC": avgs_auc[0],
-                    "Recall": avgs_recall[0],
-                    "Precision": avgs_precision[0],
-                    "F1": avgs_f1[0],
-                    "Kappa": avgs_kappa[0],
-                    "MCC": avgs_mcc[0],
+                    k: v
+                    for k, v in model_results.drop("TT (Sec)", axis=1)
+                    .loc["Mean"]
+                    .items()
                 }
             )
 
@@ -7085,7 +5885,7 @@ def stack_models(
             mlflow.log_metric("TT", model_fit_time)
 
             # Log the CV results as model_results.html artifact
-            model_results.data.to_html("Results.html", col_space=65, justify="left")
+            model_results.to_html("Results.html", col_space=65, justify="left")
             mlflow.log_artifact("Results.html")
             os.remove("Results.html")
 
@@ -7177,12 +5977,8 @@ def stack_models(
             )
             del prep_pipe_temp
 
-    if verbose:
-        clear_output()
-        if html_param:
-            display(model_results)
-        else:
-            print(model_results.data)
+    model_results = color_df(model_results, "yellow", ["Mean"], axis=1)
+    display.display(model_results, clear=True)
 
     logger.info("create_model_container: " + str(len(create_model_container)))
     logger.info("master_model_container: " + str(len(master_model_container)))
@@ -7661,6 +6457,13 @@ def calibrate_model(estimator, method="sigmoid", fold=10, round=4, verbose=True)
 
     warnings.filterwarnings("ignore")
 
+    logger.info("Importing libraries")
+    # general dependencies
+    import numpy as np
+    from sklearn import metrics
+    from sklearn.model_selection import StratifiedKFold
+    from sklearn.calibration import CalibratedClassifierCV
+
     logger.info("Copying training dataset")
     # Storing X_train and y_train in data_X and data_y parameter
     data_X = X_train.copy()
@@ -7670,12 +6473,8 @@ def calibrate_model(estimator, method="sigmoid", fold=10, round=4, verbose=True)
     data_X.reset_index(drop=True, inplace=True)
     data_y.reset_index(drop=True, inplace=True)
 
-    logger.info("Importing libraries")
-    # general dependencies
-    import numpy as np
-    from sklearn import metrics
-    from sklearn.model_selection import StratifiedKFold
-    from sklearn.calibration import CalibratedClassifierCV
+    # setting numpy seed
+    np.random.seed(seed)
 
     progress.value += 1
 
@@ -8343,58 +7142,15 @@ def finalize_model(estimator):
 
     logger.info("Getting model name")
 
-    # determine runname for logging
-    def get_model_name(e):
-        return str(e).split("(")[0]
+    _estimator_ = estimator
 
-    model_dict_logging = {
-        "ExtraTreesClassifier": "Extra Trees Classifier",
-        "GradientBoostingClassifier": "Gradient Boosting Classifier",
-        "RandomForestClassifier": "Random Forest Classifier",
-        "LGBMClassifier": "Light Gradient Boosting Machine",
-        "XGBClassifier": "Extreme Gradient Boosting",
-        "AdaBoostClassifier": "Ada Boost Classifier",
-        "DecisionTreeClassifier": "Decision Tree Classifier",
-        "RidgeClassifier": "Ridge Classifier",
-        "LogisticRegression": "Logistic Regression",
-        "KNeighborsClassifier": "K Neighbors Classifier",
-        "GaussianNB": "Naive Bayes",
-        "SGDClassifier": "SVM - Linear Kernel",
-        "SVC": "SVM - Radial Kernel",
-        "GaussianProcessClassifier": "Gaussian Process Classifier",
-        "MLPClassifier": "MLP Classifier",
-        "QuadraticDiscriminantAnalysis": "Quadratic Discriminant Analysis",
-        "LinearDiscriminantAnalysis": "Linear Discriminant Analysis",
-        "CatBoostClassifier": "CatBoost Classifier",
-        "BaggingClassifier": "Bagging Classifier",
-        "VotingClassifier": "Voting Classifier",
-        "StackingClassifier": "Stacking Classifier",
-    }
+    if y.value_counts().count() > 2:
+        if not hasattr(estimator, "voting"):
+            estimator = estimator.estimator
 
-    if len(estimator.classes_) > 2:
+    full_name = _get_model_name(estimator)
 
-        if hasattr(estimator, "voting"):
-            mn = get_model_name(estimator)
-        else:
-            mn = get_model_name(estimator.estimator)
-
-    else:
-
-        if hasattr(estimator, "voting"):
-            mn = "VotingClassifier"
-        else:
-            mn = get_model_name(estimator)
-
-        if "BaggingClassifier" in mn:
-            mn = get_model_name(estimator.base_estimator_)
-
-        if "CalibratedClassifierCV" in mn:
-            mn = get_model_name(estimator.base_estimator)
-
-    if "catboost" in mn:
-        mn = "CatBoostClassifier"
-
-    full_name = model_dict_logging.get(mn)
+    estimator = _estimator_
 
     logger.info("Finalizing " + str(full_name))
     model_final = clone(estimator)
@@ -8835,23 +7591,18 @@ def predict_model(
                 "(Type Error) probability_threshold parameter cannot be used when target is multi-class. "
             )
 
-    # probability_threshold allowed types
-    if probability_threshold is not None:
+        # probability_threshold allowed types
         allowed_types = [int, float]
         if type(probability_threshold) not in allowed_types:
             sys.exit(
                 "(Type Error) probability_threshold parameter only accepts value between 0 to 1. "
             )
 
-    # probability_threshold allowed types
-    if probability_threshold is not None:
         if probability_threshold > 1:
             sys.exit(
                 "(Type Error) probability_threshold parameter only accepts value between 0 to 1. "
             )
 
-    # probability_threshold allowed types
-    if probability_threshold is not None:
         if probability_threshold < 0:
             sys.exit(
                 "(Type Error) probability_threshold parameter only accepts value between 0 to 1. "
@@ -8908,35 +7659,7 @@ def predict_model(
             label_column.replace(replacement_mapper, inplace=True)
 
     # model name
-    full_name = str(estimator).split("(")[0]
-
-    def putSpace(input):
-        words = re.findall("[A-Z][a-z]*", input)
-        words = " ".join(words)
-        return words
-
-    full_name = putSpace(full_name)
-
-    if full_name == "Gaussian N B":
-        full_name = "Naive Bayes"
-
-    elif full_name == "M L P Classifier":
-        full_name = "MLP Classifier"
-
-    elif full_name == "S G D Classifier":
-        full_name = "SVM - Linear Kernel"
-
-    elif full_name == "S V C":
-        full_name = "SVM - Radial Kernel"
-
-    elif full_name == "X G B Classifier":
-        full_name = "Extreme Gradient Boosting"
-
-    elif full_name == "L G B M Classifier":
-        full_name = "Light Gradient Boosting Machine"
-
-    elif "Cat Boost Classifier" in full_name:
-        full_name = "CatBoost Classifier"
+    full_name = _get_model_name(estimator)
 
     # prediction starts here
 
@@ -9560,20 +8283,23 @@ def automl(optimize="Accuracy", use_holdout=False):
         )
     )
 
-    if optimize == "Accuracy":
-        compare_dimension = "Accuracy"
-    elif optimize == "AUC":
-        compare_dimension = "AUC"
-    elif optimize == "Recall":
-        compare_dimension = "Recall"
-    elif optimize == "Precision":
-        compare_dimension = "Prec."
-    elif optimize == "F1":
-        compare_dimension = "F1"
-    elif optimize == "Kappa":
-        compare_dimension = "Kappa"
-    elif optimize == "MCC":
-        compare_dimension = "MCC"
+    # checking optimize parameter
+    allowed_optimize = get_metrics()["Name"]
+    if optimize not in allowed_optimize.to_list():
+        sys.exit(
+            f"(Value Error): Optimize method {optimize} not supported. See docstring for list of available parameters."
+        )
+
+    # checking optimize parameter for multiclass
+    if y.value_counts().count() > 2:
+        if not all_metrics[all_metrics["Name"] == optimize].iloc[0]["Multiclass"]:
+            sys.exit(
+                f"(Type Error): Optimization metric {optimize} not supported for multiclass problems. See docstring for list of other optimization parameters."
+            )
+
+    optimize = all_metrics[all_metrics["Name"] == optimize].iloc[0]
+    compare_dimension = optimize["Display Name"]
+    optimize = optimize["SearchCV Param"]
 
     scorer = []
 
@@ -9628,6 +8354,16 @@ def _get_model_id(e):
             return row[0]
 
     return None
+
+
+def _is_special_model(e):
+    all_models = models(internal=True)
+    model_definition = None
+    for row in all_models.itertuples():
+        if type(e) is row.Class:
+            return row.Special
+
+    return False
 
 
 def _get_model_name(e):
@@ -9688,14 +8424,20 @@ def get_metrics():
             else "f1",
             True,
         ),
-        ("kappa", "Kappa", "Kappa", metrics.make_scorer(metrics.cohen_kappa_score)),
+        (
+            "kappa",
+            "Kappa",
+            "Kappa",
+            metrics.make_scorer(metrics.cohen_kappa_score),
+            True,
+        ),
         (
             "mcc",
             "MCC",
             "MCC",
             "roc_auc"
             if y.value_counts().count() > 2
-            else make_scorer(metrics.matthews_corrcoef),
+            else metrics.make_scorer(metrics.matthews_corrcoef),
             True,
         ),
         ("tt", "TT", "TT (Sec)", None, True),
@@ -9855,7 +8597,7 @@ def models(type=None, internal=False):
                 "sklearn.ensemble.StackingClassifier",
                 False,
             ),
-            ("voting", "Voting Classifier", "sklearn.ensemble.VotingClassifier", False),
+            ("Voting", "Voting Classifier", "sklearn.ensemble.VotingClassifier", False),
             (
                 "OneVsRest",
                 "One Vs Rest Classifier",
@@ -10215,8 +8957,19 @@ def models(type=None, internal=False):
             except:
                 return False
 
+        def is_soft_voting_supported(e):
+            try:
+                x = e()
+                return bool(hasattr(x, "predict_proba"))
+            except:
+                return False
+
         df_internal["Boosting Supported"] = [
             is_boosting_supported(x) for x in df_internal["Class"]
+        ]
+
+        df_internal["Soft Voting"] = [
+            is_soft_voting_supported(x) for x in df_internal["Class"]
         ]
 
     df = pd.DataFrame(rows)
@@ -10575,6 +9328,93 @@ def _fix_imbalance(Xtrain, ytrain, fix_imbalance_method_param=None):
     Xtrain, ytrain = resampler.fit_sample(Xtrain, ytrain)
     logger.info("Resampling completed")
     return Xtrain, ytrain
+
+
+def _choose_better(
+    estimator, _estimator_, best_model, compare_dimension, fold, display=None
+):
+    """
+    When choose_better sets to True. optimize metric in scoregrid is
+    compared with base model created using create_model so that tune_model
+    functions return the model with better score only. This will ensure 
+    model performance is atleast equivalent to what is seen is compare_models 
+    """
+    logger = get_logger()
+    logger.info("choose_better activated")
+    if display:
+        display.update_monitor(1, "Compiling Final Results")
+        display.update_monitor(2, "Almost Finished")
+        display.display_monitor()
+
+    # creating base model for comparison
+    logger.info("SubProcess create_model() called ==================================")
+    if isinstance(estimator, str) and estimator in ["Bagging", "ada"]:
+        base_model = create_model(
+            estimator=_estimator_, verbose=False, system=False, fold=fold
+        )
+    else:
+        base_model = create_model(
+            estimator=estimator, verbose=False, system=False, fold=fold
+        )
+    logger.info("SubProcess create_model() called ==================================")
+    base_model_results = create_model_container[-1][compare_dimension][-2:][0]
+    tuned_model_results = create_model_container[-2][compare_dimension][-2:][0]
+
+    if tuned_model_results > base_model_results:
+        best_model = best_model
+    else:
+        best_model = base_model
+
+    # re-instate display_constainer state
+    display_container.pop(-1)
+    logger.info("choose_better completed")
+    return best_model
+
+
+def _choose_better_list(model, estimator_list, compare_dimension, fold, display=None):
+    """
+    When choose_better sets to True. optimize metric in scoregrid is
+    compared with base model created using create_model so that stack_models
+    functions return the model with better score only. This will ensure 
+    model performance is atleast equivalent to what is seen in compare_models 
+    
+    This method is intended for blend_models and stack_models.
+    """
+
+    logger = get_logger()
+    logger.info("choose_better activated")
+    display.update_monitor(1, "Compiling Final Results")
+    display.update_monitor(2, "Almost Finished")
+    display.display_monitor()
+
+    scorer = []
+
+    blend_model_results = create_model_container[-1][compare_dimension][-2:][0]
+
+    scorer.append(blend_model_results)
+
+    base_models_ = []
+    logger.info("SubProcess create_model() called ==================================")
+    for n, i in estimator_list:
+        m = create_model(i, verbose=False, system=False, fold=fold)
+        s = create_model_container[-1][compare_dimension][-2:][0]
+        scorer.append(s)
+        base_models_.append(m)
+
+        # re-instate display_constainer state
+        display_container.pop(-1)
+
+    logger.info("SubProcess create_model() called ==================================")
+
+    index_scorer = scorer.index(max(scorer))
+
+    if index_scorer == 0:
+        model = model
+    else:
+        model = base_models_[index_scorer - 1]
+
+    logger.info("choose_better completed")
+    return model
 
 
 def _create_bucket_gcp(project_name, bucket_name):
