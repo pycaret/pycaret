@@ -15,19 +15,14 @@ For more information on PyCaret, please visit our official website https://www.p
    
 
 
-Regression
-===================
-.. automodule:: pycaret.regression
-   :members:
-
 Classification
 ===================
 .. automodule:: pycaret.classification
    :members:
 
-NLP
+Regression
 ===================
-.. automodule:: pycaret.nlp
+.. automodule:: pycaret.regression
    :members:
 
 Clustering
@@ -40,14 +35,19 @@ Anomaly
 .. automodule:: pycaret.anomaly
    :members:
 
-Datasets
+NLP
 ===================
-.. automodule:: pycaret.datasets
+.. automodule:: pycaret.nlp
    :members:
 
 Arules
 ===================
 .. automodule:: pycaret.arules
+   :members:
+
+Datasets
+===================
+.. automodule:: pycaret.datasets
    :members:
 
 Indices and tables
