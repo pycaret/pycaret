@@ -9796,7 +9796,9 @@ def deploy_model(model,
         bucket_name = authentication.get('bucket')
         s3.upload_file(filename,bucket_name,key)
         clear_output()
+        
         os.remove(filename)
+        
         print("Model Succesfully Deployed on AWS S3")
         logger.info("Model Succesfully Deployed on AWS S3")
         logger.info(str(model))
@@ -9821,9 +9823,14 @@ def deploy_model(model,
         key = str(model_name) + '.pkl'
         bucket_name = authentication.get('bucket')
         project_name = authentication.get('project')
-        _create_bucket_gcp(project_name, bucket_name)
-        _upload_blob_gcp(project_name, bucket_name, filename, key)
+        try:
+            _create_bucket_gcp(project_name, bucket_name)
+            _upload_blob_gcp(project_name, bucket_name, filename, key)
+        except:
+            _upload_blob_gcp(project_name, bucket_name, filename, key)
+        
         os.remove(filename)
+        
         print("Model Succesfully Deployed on GCP")
         logger.info("Model Succesfully Deployed on GCP")
         logger.info(str(model))
