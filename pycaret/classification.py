@@ -2295,6 +2295,9 @@ def create_model(estimator = None,
         if fix_imbalance_param:
             logger.info("Initializing SMOTE")
             if fix_imbalance_method_param is None:
+                import six
+                import sys
+                sys.modules['sklearn.externals.six'] = six
                 from imblearn.over_sampling import SMOTE
                 resampler = SMOTE(random_state=seed)
             else:
@@ -2348,6 +2351,9 @@ def create_model(estimator = None,
             logger.info("Initializing SMOTE")
 
             if fix_imbalance_method_param is None:
+                import six
+                import sys
+                sys.modules['sklearn.externals.six'] = six
                 from imblearn.over_sampling import SMOTE
                 resampler = SMOTE(random_state=seed)
             else:
@@ -3103,6 +3109,9 @@ def ensemble_model(estimator,
             logger.info("Initializing SMOTE")
             
             if fix_imbalance_method_param is None:
+                import six
+                import sys
+                sys.modules['sklearn.externals.six'] = six
                 from imblearn.over_sampling import SMOTE
                 resampler = SMOTE(random_state=seed)
             else:
@@ -4743,6 +4752,9 @@ def compare_models(blacklist = None,
                 logger.info("Initializing SMOTE")
                 
                 if fix_imbalance_method_param is None:
+                    import six
+                    import sys
+                    sys.modules['sklearn.externals.six'] = six
                     from imblearn.over_sampling import SMOTE
                     resampler = SMOTE(random_state = seed)
                 else:
@@ -5910,6 +5922,9 @@ def tune_model(estimator = None,
             logger.info("Initializing SMOTE")
 
             if fix_imbalance_method_param is None:
+                import six
+                import sys
+                sys.modules['sklearn.externals.six'] = six
                 from imblearn.over_sampling import SMOTE
                 resampler = SMOTE(random_state = seed)
             else:
@@ -6813,6 +6828,9 @@ def blend_models(estimator_list = 'All',
         if fix_imbalance_param:
             logger.info("Initializing SMOTE")
             if fix_imbalance_method_param is None:
+                import six
+                import sys
+                sys.modules['sklearn.externals.six'] = six
                 from imblearn.over_sampling import SMOTE
                 resampler = SMOTE(random_state = seed)
             else:
@@ -7511,6 +7529,9 @@ def stack_models(estimator_list,
             logger.info("Initializing SMOTE")
 
             if fix_imbalance_method_param is None:
+                import six
+                import sys
+                sys.modules['sklearn.externals.six'] = six
                 from imblearn.over_sampling import SMOTE
                 resampler = SMOTE(random_state=seed)
             else:
@@ -8498,6 +8519,9 @@ def calibrate_model(estimator,
             logger.info("Initializing SMOTE")
 
             if fix_imbalance_method_param is None:
+                import six
+                import sys
+                sys.modules['sklearn.externals.six'] = six
                 from imblearn.over_sampling import SMOTE
                 resampler = SMOTE(random_state = seed)
             else:
