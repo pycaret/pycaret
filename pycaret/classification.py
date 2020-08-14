@@ -58,6 +58,7 @@ def setup(
     data_split_shuffle=True,  # added in pycaret==2.0.0
     folds_shuffle=False,  # added in pycaret==2.0.0
     n_jobs=-1,  # added in pycaret==2.0.0
+    use_gpu=False,  # added in pycaret==2.1
     html=True,  # added in pycaret==2.0.0
     session_id=None,
     log_experiment=False,  # added in pycaret==2.0.0
@@ -74,7 +75,7 @@ def setup(
     This function initializes the environment in pycaret and creates the transformation
     pipeline to prepare the data for modeling and deployment. setup() must called before
     executing any other function in pycaret. It takes two mandatory parameters:
-    dataframe {array-like, sparse matrix} and name of the target column. 
+    data and name of the target column.
     
     All other parameters are optional.
 
@@ -84,11 +85,11 @@ def setup(
     >>> juice = get_data('juice')
     >>> experiment_name = setup(data = juice,  target = 'Purchase')
 
-    'juice' is a pandas DataFrame and 'Purchase' is the name of target column.
+    'juice' is a pandas.DataFrame  and 'Purchase' is the name of target column.
 
     Parameters
     ----------
-    data : {array-like, sparse matrix}
+    data : pandas.DataFrame
         Shape (n_samples, n_features) where n_samples is the number of samples and n_features is the number of features.
 
     target: string
@@ -383,6 +384,9 @@ def setup(
         processing) -1 means using all processors. To run all functions on single processor 
         set n_jobs to None.
 
+    use_gpu: bool, default = False
+        If set to True, algorithms that supports gpu are trained using gpu.
+
     html: bool, default = True
         If set to False, prevents runtime display of monitor. This must be set to False
         when using environment that doesnt support HTML.
@@ -445,8 +449,6 @@ def setup(
     from pycaret.utils import __version__
 
     ver = __version__()
-
-    import logging
 
     # create logger
     global logger
@@ -964,6 +966,10 @@ def setup(
     if type(html) is not bool:
         sys.exit("(Type Error): html parameter only accepts True or False.")
 
+    # use_gpu
+    if type(use_gpu) is not bool:
+        sys.exit("(Type Error): use_gpu parameter only accepts True or False.")
+
     # folds_shuffle
     if type(folds_shuffle) is not bool:
         sys.exit("(Type Error): folds_shuffle parameter only accepts True or False.")
@@ -1081,7 +1087,7 @@ def setup(
 
     # declaring global variables to be accessed by other functions
     logger.info("Declaring global variables")
-    global X, y, X_train, X_test, y_train, y_test, seed, prep_pipe, experiment__, folds_shuffle_param, n_jobs_param, create_model_container, master_model_container, display_container, exp_name_log, logging_param, log_plots_param, fix_imbalance_param, fix_imbalance_method_param, data_before_preprocess, all_models, _all_models_internal, all_metrics
+    global X, y, X_train, X_test, y_train, y_test, seed, prep_pipe, experiment__, folds_shuffle_param, n_jobs_param, create_model_container, master_model_container, display_container, exp_name_log, logging_param, log_plots_param, fix_imbalance_param, fix_imbalance_method_param, data_before_preprocess, target_param, gpu_param, all_models, _all_models_internal, all_metrics
 
     logger.info("Copying data for preprocessing")
 
@@ -1522,6 +1528,12 @@ def setup(
     else:
         fix_imbalance_model_name = str(fix_imbalance_method_param).split("(")[0]
 
+    # create target_param var
+    target_param = target
+
+    # create gpu_param var
+    gpu_param = use_gpu
+
     # sample estimator
     if sample_estimator is None:
         model = LogisticRegression()
@@ -1762,109 +1774,6 @@ def setup(
                 shuffle=data_split_shuffle,
             )
 
-            """
-            Final display Starts
-            """
-            clear_output()
-            if profile:
-                print(
-                    "Setup Succesfully Completed! Loading Profile Now... Please Wait!"
-                )
-            else:
-                if verbose:
-                    print("Setup Succesfully Completed!")
-
-            functions = pd.DataFrame(
-                [
-                    ["session_id", seed],
-                    ["Target Type", target_type],
-                    ["Label Encoded", label_encoded],
-                    ["Original Data", data_before_preprocess.shape],
-                    ["Missing Values ", missing_flag],
-                    ["Numeric Features ", str(float_type)],
-                    ["Categorical Features ", str(cat_type)],
-                    ["Ordinal Features ", ordinal_features_grid],
-                    ["High Cardinality Features ", high_cardinality_features_grid],
-                    ["High Cardinality Method ", high_cardinality_method_grid],
-                    [
-                        "Sampled Data",
-                        "("
-                        + str(X_train.shape[0] + X_test.shape[0])
-                        + ", "
-                        + str(data_before_preprocess.shape[1])
-                        + ")",
-                    ],
-                    ["Transformed Train Set", X_train.shape],
-                    ["Transformed Test Set", X_test.shape],
-                    ["Numeric Imputer ", numeric_imputation],
-                    ["Categorical Imputer ", categorical_imputation],
-                    ["Normalize ", normalize],
-                    ["Normalize Method ", normalize_grid],
-                    ["Transformation ", transformation],
-                    ["Transformation Method ", transformation_grid],
-                    ["PCA ", pca],
-                    ["PCA Method ", pca_method_grid],
-                    ["PCA Components ", pca_components_grid],
-                    ["Ignore Low Variance ", ignore_low_variance],
-                    ["Combine Rare Levels ", combine_rare_levels],
-                    ["Rare Level Threshold ", rare_level_threshold_grid],
-                    ["Numeric Binning ", numeric_bin_grid],
-                    ["Remove Outliers ", remove_outliers],
-                    ["Outliers Threshold ", outliers_threshold_grid],
-                    ["Remove Multicollinearity ", remove_multicollinearity],
-                    ["Multicollinearity Threshold ", multicollinearity_threshold_grid],
-                    ["Clustering ", create_clusters],
-                    ["Clustering Iteration ", cluster_iter_grid],
-                    ["Polynomial Features ", polynomial_features],
-                    ["Polynomial Degree ", polynomial_degree_grid],
-                    ["Trignometry Features ", trigonometry_features],
-                    ["Polynomial Threshold ", polynomial_threshold_grid],
-                    ["Group Features ", group_features_grid],
-                    ["Feature Selection ", feature_selection],
-                    ["Features Selection Threshold ", feature_selection_threshold_grid],
-                    ["Feature Interaction ", feature_interaction],
-                    ["Feature Ratio ", feature_ratio],
-                    ["Interaction Threshold ", interaction_threshold_grid],
-                    ["Fix Imbalance", fix_imbalance_param],
-                    ["Fix Imbalance Method", fix_imbalance_model_name],
-                ],
-                columns=["Description", "Value"],
-            )
-
-            functions_ = functions.style.apply(highlight_max)
-            if verbose:
-                if html_param:
-                    display(functions_)
-                else:
-                    print(functions_.data)
-
-            if profile:
-                try:
-                    import pandas_profiling
-
-                    pf = pandas_profiling.ProfileReport(data_before_preprocess)
-                    clear_output()
-                    display(pf)
-                except:
-                    print(
-                        "Data Profiler Failed. No output to show, please continue with Modeling."
-                    )
-                    logger.error(
-                        "Data Profiler Failed. No output to show, please continue with Modeling."
-                    )
-
-            """
-            Final display Ends
-            """
-
-            # log into experiment
-            experiment__.append(("Classification Setup Config", functions))
-            experiment__.append(("X_training Set", X_train))
-            experiment__.append(("y_training Set", y_train))
-            experiment__.append(("X_test Set", X_test))
-            experiment__.append(("y_test Set", y_test))
-            experiment__.append(("Transformation Pipeline", prep_pipe))
-
         else:
 
             sample_n = float(sample_size)
@@ -1885,112 +1794,6 @@ def setup(
                 random_state=seed,
                 shuffle=data_split_shuffle,
             )
-            clear_output()
-
-            """
-            Final display Starts
-            """
-
-            clear_output()
-            if profile:
-                print(
-                    "Setup Succesfully Completed! Loading Profile Now... Please Wait!"
-                )
-            else:
-                if verbose:
-                    print("Setup Succesfully Completed!")
-
-            functions = pd.DataFrame(
-                [
-                    ["session_id", seed],
-                    ["Target Type", target_type],
-                    ["Label Encoded", label_encoded],
-                    ["Original Data", data_before_preprocess.shape],
-                    ["Missing Values ", missing_flag],
-                    ["Numeric Features ", str(float_type)],
-                    ["Categorical Features ", str(cat_type)],
-                    ["Ordinal Features ", ordinal_features_grid],
-                    ["High Cardinality Features ", high_cardinality_features_grid],
-                    ["High Cardinality Method ", high_cardinality_method_grid],
-                    [
-                        "Sampled Data",
-                        "("
-                        + str(X_train.shape[0] + X_test.shape[0])
-                        + ", "
-                        + str(data_before_preprocess.shape[1])
-                        + ")",
-                    ],
-                    ["Transformed Train Set", X_train.shape],
-                    ["Transformed Test Set", X_test.shape],
-                    ["Numeric Imputer ", numeric_imputation],
-                    ["Categorical Imputer ", categorical_imputation],
-                    ["Normalize ", normalize],
-                    ["Normalize Method ", normalize_grid],
-                    ["Transformation ", transformation],
-                    ["Transformation Method ", transformation_grid],
-                    ["PCA ", pca],
-                    ["PCA Method ", pca_method_grid],
-                    ["PCA Components ", pca_components_grid],
-                    ["Ignore Low Variance ", ignore_low_variance],
-                    ["Combine Rare Levels ", combine_rare_levels],
-                    ["Rare Level Threshold ", rare_level_threshold_grid],
-                    ["Numeric Binning ", numeric_bin_grid],
-                    ["Remove Outliers ", remove_outliers],
-                    ["Outliers Threshold ", outliers_threshold_grid],
-                    ["Remove Multicollinearity ", remove_multicollinearity],
-                    ["Multicollinearity Threshold ", multicollinearity_threshold_grid],
-                    ["Clustering ", create_clusters],
-                    ["Clustering Iteration ", cluster_iter_grid],
-                    ["Polynomial Features ", polynomial_features],
-                    ["Polynomial Degree ", polynomial_degree_grid],
-                    ["Trignometry Features ", trigonometry_features],
-                    ["Polynomial Threshold ", polynomial_threshold_grid],
-                    ["Group Features ", group_features_grid],
-                    ["Feature Selection ", feature_selection],
-                    ["Features Selection Threshold ", feature_selection_threshold_grid],
-                    ["Feature Interaction ", feature_interaction],
-                    ["Feature Ratio ", feature_ratio],
-                    ["Interaction Threshold ", interaction_threshold_grid],
-                    ["Fix Imbalance", fix_imbalance_param],
-                    ["Fix Imbalance Method", fix_imbalance_model_name],
-                ],
-                columns=["Description", "Value"],
-            )
-
-            # functions_ = functions.style.hide_index()
-            functions_ = functions.style.apply(highlight_max)
-            if verbose:
-                if html_param:
-                    display(functions_)
-                else:
-                    print(functions_.data)
-
-            if profile:
-                try:
-                    import pandas_profiling
-
-                    pf = pandas_profiling.ProfileReport(data_before_preprocess)
-                    clear_output()
-                    display(pf)
-                except:
-                    print(
-                        "Data Profiler Failed. No output to show, please continue with Modeling."
-                    )
-                    logger.error(
-                        "Data Profiler Failed. No output to show, please continue with Modeling."
-                    )
-
-            """
-            Final display Ends
-            """
-
-            # log into experiment
-            experiment__.append(("Classification Setup Config", functions))
-            experiment__.append(("X_training Set", X_train))
-            experiment__.append(("y_training Set", y_train))
-            experiment__.append(("X_test Set", X_test))
-            experiment__.append(("y_test Set", y_test))
-            experiment__.append(("Transformation Pipeline", prep_pipe))
 
     else:
 
@@ -2008,108 +1811,106 @@ def setup(
         )
         progress.value += 1
 
-        clear_output()
-
-        """
-        Final display Starts
-        """
-        clear_output()
-        if profile:
-            print("Setup Succesfully Completed! Loading Profile Now... Please Wait!")
-        else:
-            if verbose:
-                print("Setup Succesfully Completed!")
-
-        functions = pd.DataFrame(
-            [
-                ["session_id", seed],
-                ["Target Type", target_type],
-                ["Label Encoded", label_encoded],
-                ["Original Data", data_before_preprocess.shape],
-                ["Missing Values ", missing_flag],
-                ["Numeric Features ", str(float_type)],
-                ["Categorical Features ", str(cat_type)],
-                ["Ordinal Features ", ordinal_features_grid],
-                ["High Cardinality Features ", high_cardinality_features_grid],
-                ["High Cardinality Method ", high_cardinality_method_grid],
-                [
-                    "Sampled Data",
-                    "("
-                    + str(X_train.shape[0] + X_test.shape[0])
-                    + ", "
-                    + str(data_before_preprocess.shape[1])
-                    + ")",
-                ],
-                ["Transformed Train Set", X_train.shape],
-                ["Transformed Test Set", X_test.shape],
-                ["Numeric Imputer ", numeric_imputation],
-                ["Categorical Imputer ", categorical_imputation],
-                ["Normalize ", normalize],
-                ["Normalize Method ", normalize_grid],
-                ["Transformation ", transformation],
-                ["Transformation Method ", transformation_grid],
-                ["PCA ", pca],
-                ["PCA Method ", pca_method_grid],
-                ["PCA Components ", pca_components_grid],
-                ["Ignore Low Variance ", ignore_low_variance],
-                ["Combine Rare Levels ", combine_rare_levels],
-                ["Rare Level Threshold ", rare_level_threshold_grid],
-                ["Numeric Binning ", numeric_bin_grid],
-                ["Remove Outliers ", remove_outliers],
-                ["Outliers Threshold ", outliers_threshold_grid],
-                ["Remove Multicollinearity ", remove_multicollinearity],
-                ["Multicollinearity Threshold ", multicollinearity_threshold_grid],
-                ["Clustering ", create_clusters],
-                ["Clustering Iteration ", cluster_iter_grid],
-                ["Polynomial Features ", polynomial_features],
-                ["Polynomial Degree ", polynomial_degree_grid],
-                ["Trignometry Features ", trigonometry_features],
-                ["Polynomial Threshold ", polynomial_threshold_grid],
-                ["Group Features ", group_features_grid],
-                ["Feature Selection ", feature_selection],
-                ["Features Selection Threshold ", feature_selection_threshold_grid],
-                ["Feature Interaction ", feature_interaction],
-                ["Feature Ratio ", feature_ratio],
-                ["Interaction Threshold ", interaction_threshold_grid],
-                ["Fix Imbalance", fix_imbalance_param],
-                ["Fix Imbalance Method", fix_imbalance_model_name],
-            ],
-            columns=["Description", "Value"],
-        )
-
-        functions_ = functions.style.apply(highlight_max)
+    """
+    Final display Starts
+    """
+    clear_output()
+    if profile:
+        print("Setup Succesfully Completed! Loading Profile Now... Please Wait!")
+    else:
         if verbose:
-            if html_param:
-                display(functions_)
-            else:
-                print(functions_.data)
+            print("Setup Succesfully Completed!")
 
-        if profile:
-            try:
-                import pandas_profiling
+    functions = pd.DataFrame(
+        [
+            ["session_id", seed],
+            ["Target Type", target_type],
+            ["Label Encoded", label_encoded],
+            ["Original Data", data_before_preprocess.shape],
+            ["Missing Values ", missing_flag],
+            ["Numeric Features ", str(float_type)],
+            ["Categorical Features ", str(cat_type)],
+            ["Ordinal Features ", ordinal_features_grid],
+            ["High Cardinality Features ", high_cardinality_features_grid],
+            ["High Cardinality Method ", high_cardinality_method_grid],
+            [
+                "Sampled Data",
+                "("
+                + str(X_train.shape[0] + X_test.shape[0])
+                + ", "
+                + str(data_before_preprocess.shape[1])
+                + ")",
+            ],
+            ["Transformed Train Set", X_train.shape],
+            ["Transformed Test Set", X_test.shape],
+            ["Numeric Imputer ", numeric_imputation],
+            ["Categorical Imputer ", categorical_imputation],
+            ["Normalize ", normalize],
+            ["Normalize Method ", normalize_grid],
+            ["Transformation ", transformation],
+            ["Transformation Method ", transformation_grid],
+            ["PCA ", pca],
+            ["PCA Method ", pca_method_grid],
+            ["PCA Components ", pca_components_grid],
+            ["Ignore Low Variance ", ignore_low_variance],
+            ["Combine Rare Levels ", combine_rare_levels],
+            ["Rare Level Threshold ", rare_level_threshold_grid],
+            ["Numeric Binning ", numeric_bin_grid],
+            ["Remove Outliers ", remove_outliers],
+            ["Outliers Threshold ", outliers_threshold_grid],
+            ["Remove Multicollinearity ", remove_multicollinearity],
+            ["Multicollinearity Threshold ", multicollinearity_threshold_grid],
+            ["Clustering ", create_clusters],
+            ["Clustering Iteration ", cluster_iter_grid],
+            ["Polynomial Features ", polynomial_features],
+            ["Polynomial Degree ", polynomial_degree_grid],
+            ["Trignometry Features ", trigonometry_features],
+            ["Polynomial Threshold ", polynomial_threshold_grid],
+            ["Group Features ", group_features_grid],
+            ["Feature Selection ", feature_selection],
+            ["Features Selection Threshold ", feature_selection_threshold_grid],
+            ["Feature Interaction ", feature_interaction],
+            ["Feature Ratio ", feature_ratio],
+            ["Interaction Threshold ", interaction_threshold_grid],
+            ["Fix Imbalance", fix_imbalance_param],
+            ["Fix Imbalance Method", fix_imbalance_model_name],
+        ],
+        columns=["Description", "Value"],
+    )
 
-                pf = pandas_profiling.ProfileReport(data_before_preprocess)
-                clear_output()
-                display(pf)
-            except:
-                print(
-                    "Data Profiler Failed. No output to show, please continue with Modeling."
-                )
-                logger.error(
-                    "Data Profiler Failed. No output to show, please continue with Modeling."
-                )
+    functions_ = functions.style.apply(highlight_max)
+    if verbose:
+        if html_param:
+            display(functions_)
+        else:
+            print(functions_.data)
 
-        """
-        Final display Ends
-        """
+    if profile:
+        try:
+            import pandas_profiling
 
-        # log into experiment
-        experiment__.append(("Classification Setup Config", functions))
-        experiment__.append(("X_training Set", X_train))
-        experiment__.append(("y_training Set", y_train))
-        experiment__.append(("X_test Set", X_test))
-        experiment__.append(("y_test Set", y_test))
-        experiment__.append(("Transformation Pipeline", prep_pipe))
+            pf = pandas_profiling.ProfileReport(data_before_preprocess)
+            clear_output()
+            display(pf)
+        except:
+            print(
+                "Data Profiler Failed. No output to show, please continue with Modeling."
+            )
+            logger.error(
+                "Data Profiler Failed. No output to show, please continue with Modeling."
+            )
+
+    """
+    Final display Ends
+    """
+
+    # log into experiment
+    experiment__.append(("Classification Setup Config", functions))
+    experiment__.append(("X_training Set", X_train))
+    experiment__.append(("y_training Set", y_train))
+    experiment__.append(("X_test Set", X_test))
+    experiment__.append(("y_test Set", y_test))
+    experiment__.append(("Transformation Pipeline", prep_pipe))
 
     all_models = models()
     _all_models_internal = models(internal=True)
@@ -2228,6 +2029,8 @@ def setup(
         fix_imbalance_method_param,
         logger,
         data_before_preprocess,
+        target_param,
+        gpu_param,
     )
 
 
@@ -2911,7 +2714,12 @@ def create_model(
             # define model signature
             from mlflow.models.signature import infer_signature
 
-            signature = infer_signature(data_before_preprocess)
+            signature = infer_signature(
+                data_before_preprocess.drop([target_param], axis=1)
+            )
+            input_example = (
+                data_before_preprocess.drop([target_param], axis=1).iloc[0].to_dict()
+            )
 
             # log model as sklearn flavor
             prep_pipe_temp = deepcopy(prep_pipe)
@@ -2921,6 +2729,7 @@ def create_model(
                 "model",
                 conda_env=default_conda_env,
                 signature=signature,
+                input_example=input_example,
             )
             del prep_pipe_temp
 
@@ -3743,7 +3552,12 @@ def ensemble_model(
             # define model signature
             from mlflow.models.signature import infer_signature
 
-            signature = infer_signature(data_before_preprocess)
+            signature = infer_signature(
+                data_before_preprocess.drop([target_param], axis=1)
+            )
+            input_example = (
+                data_before_preprocess.drop([target_param], axis=1).iloc[0].to_dict()
+            )
 
             # log model as sklearn flavor
             prep_pipe_temp = deepcopy(prep_pipe)
@@ -3753,6 +3567,7 @@ def ensemble_model(
                 "model",
                 conda_env=default_conda_env,
                 signature=signature,
+                input_example=input_example,
             )
             del prep_pipe_temp
 
@@ -4935,7 +4750,14 @@ def compare_models(
                 # define model signature
                 from mlflow.models.signature import infer_signature
 
-                signature = infer_signature(data_before_preprocess)
+                signature = infer_signature(
+                    data_before_preprocess.drop([target_param], axis=1)
+                )
+                input_example = (
+                    data_before_preprocess.drop([target_param], axis=1)
+                    .iloc[0]
+                    .to_dict()
+                )
 
                 # log model as sklearn flavor
                 prep_pipe_temp = deepcopy(prep_pipe)
@@ -4945,6 +4767,7 @@ def compare_models(
                     "model",
                     conda_env=default_conda_env,
                     signature=signature,
+                    input_example=input_example,
                 )
                 del prep_pipe_temp
 
@@ -5524,16 +5347,22 @@ def tune_model(
             # define model signature
             from mlflow.models.signature import infer_signature
 
-            signature = infer_signature(data_before_preprocess)
+            signature = infer_signature(
+                data_before_preprocess.drop([target_param], axis=1)
+            )
+            input_example = (
+                data_before_preprocess.drop([target_param], axis=1).iloc[0].to_dict()
+            )
 
             # log model as sklearn flavor
             prep_pipe_temp = deepcopy(prep_pipe)
-            prep_pipe_temp.steps.append(["trained model", best_model])
+            prep_pipe_temp.steps.append(["trained model", model])
             mlflow.sklearn.log_model(
                 prep_pipe_temp,
                 "model",
                 conda_env=default_conda_env,
                 signature=signature,
+                input_example=input_example,
             )
             del prep_pipe_temp
 
@@ -6518,7 +6347,12 @@ def blend_models(
             # define model signature
             from mlflow.models.signature import infer_signature
 
-            signature = infer_signature(data_before_preprocess)
+            signature = infer_signature(
+                data_before_preprocess.drop([target_param], axis=1)
+            )
+            input_example = (
+                data_before_preprocess.drop([target_param], axis=1).iloc[0].to_dict()
+            )
 
             # log model as sklearn flavor
             prep_pipe_temp = deepcopy(prep_pipe)
@@ -6528,6 +6362,7 @@ def blend_models(
                 "model",
                 conda_env=default_conda_env,
                 signature=signature,
+                input_example=input_example,
             )
             del prep_pipe_temp
 
@@ -7263,6 +7098,48 @@ def stack_models(
             mlflow.log_artifact("Holdout.html")
             os.remove("Holdout.html")
 
+            # Log AUC and Confusion Matrix plot
+            if log_plots_param:
+
+                logger.info(
+                    "SubProcess plot_model() called =================================="
+                )
+
+                try:
+                    plot_model(
+                        model, plot="auc", verbose=False, save=True, system=False
+                    )
+                    mlflow.log_artifact("AUC.png")
+                    os.remove("AUC.png")
+                except:
+                    pass
+
+                try:
+                    plot_model(
+                        model,
+                        plot="confusion_matrix",
+                        verbose=False,
+                        save=True,
+                        system=False,
+                    )
+                    mlflow.log_artifact("Confusion Matrix.png")
+                    os.remove("Confusion Matrix.png")
+                except:
+                    pass
+
+                try:
+                    plot_model(
+                        model, plot="feature", verbose=False, save=True, system=False
+                    )
+                    mlflow.log_artifact("Feature Importance.png")
+                    os.remove("Feature Importance.png")
+                except:
+                    pass
+
+                logger.info(
+                    "SubProcess plot_model() end =================================="
+                )
+
             # Log model and transformation pipeline
             from copy import deepcopy
 
@@ -7281,7 +7158,12 @@ def stack_models(
             # define model signature
             from mlflow.models.signature import infer_signature
 
-            signature = infer_signature(data_before_preprocess)
+            signature = infer_signature(
+                data_before_preprocess.drop([target_param], axis=1)
+            )
+            input_example = (
+                data_before_preprocess.drop([target_param], axis=1).iloc[0].to_dict()
+            )
 
             # log model as sklearn flavor
             prep_pipe_temp = deepcopy(prep_pipe)
@@ -7291,6 +7173,7 @@ def stack_models(
                 "model",
                 conda_env=default_conda_env,
                 signature=signature,
+                input_example=input_example,
             )
             del prep_pipe_temp
 
@@ -8294,7 +8177,12 @@ def calibrate_model(estimator, method="sigmoid", fold=10, round=4, verbose=True)
             # define model signature
             from mlflow.models.signature import infer_signature
 
-            signature = infer_signature(data_before_preprocess)
+            signature = infer_signature(
+                data_before_preprocess.drop([target_param], axis=1)
+            )
+            input_example = (
+                data_before_preprocess.drop([target_param], axis=1).iloc[0].to_dict()
+            )
 
             # log model as sklearn flavor
             prep_pipe_temp = deepcopy(prep_pipe)
@@ -8304,6 +8192,7 @@ def calibrate_model(estimator, method="sigmoid", fold=10, round=4, verbose=True)
                 "model",
                 conda_env=default_conda_env,
                 signature=signature,
+                input_example=input_example,
             )
             del prep_pipe_temp
 
@@ -8869,7 +8758,11 @@ def load_model(model_name, platform=None, authentication=None, verbose=True):
 
 
 def predict_model(
-    estimator, data=None, probability_threshold=None, verbose=True
+    estimator,
+    data=None,
+    probability_threshold=None,
+    categorical_labels=False,
+    verbose=True,
 ):  # added in pycaret==2.0.0
 
     """
@@ -8891,7 +8784,7 @@ def predict_model(
     estimator : object, default = none
         A trained model object / pipeline should be passed as an estimator. 
      
-    data : {array-like, sparse matrix}
+    data : pandas.DataFrame
         Shape (n_samples, n_features) where n_samples is the number of samples and n_features is the number of features.
         All features used during training must be present in the new dataset.
     
@@ -8899,6 +8792,9 @@ def predict_model(
         Threshold used to convert probability values into binary outcome. By default the
         probability threshold for all binary classifiers is 0.5 (50%). This can be changed
         using probability_threshold param.
+
+    categorical_labels: Boolean, default = False
+        If True, will output labels as-is, otherwise will output labels encoded as integers.
 
     verbose: Boolean, default = True
         Holdout score grid is not printed when verbose is set to False.
@@ -8976,6 +8872,9 @@ def predict_model(
         X_test_ = X_test.copy()
         y_test_ = y_test.copy()
 
+        _, dtypes = next(step for step in prep_pipe.steps if step[0] == "dtypes")
+
+        index = None
         Xtest.reset_index(drop=True, inplace=True)
         ytest.reset_index(drop=True, inplace=True)
         X_test_.reset_index(drop=True, inplace=True)
@@ -8984,9 +8883,12 @@ def predict_model(
     else:
 
         if "Pipeline" in str(type(estimator)):
-            pass
+            _, dtypes = next(step for step in estimator.steps if step[0] == "dtypes")
         else:
             try:
+                _, dtypes = next(
+                    step for step in prep_pipe.steps if step[0] == "dtypes"
+                )
                 estimator_ = deepcopy(prep_pipe)
                 estimator_.steps.append(["trained model", estimator])
                 estimator = estimator_
@@ -8997,6 +8899,13 @@ def predict_model(
 
         Xtest = data.copy()
         X_test_ = data.copy()
+
+    # function to replace encoded labels with their original values
+    # will not run if categorical_labels is false
+    def replace_lables_in_column(label_column):
+        if dtypes and hasattr(dtypes, "replacement"):
+            replacement_mapper = {int(v): k for k, v in dtypes.replacement.items()}
+            label_column.replace(replacement_mapper, inplace=True)
 
     # model name
     full_name = str(estimator).split("(")[0]
@@ -9098,11 +9007,15 @@ def predict_model(
     label = pd.DataFrame(pred_)
     label.columns = ["Label"]
     label["Label"] = label["Label"].astype(int)
+    if categorical_labels:
+        replace_lables_in_column(label["Label"])
 
     if data is None:
+        if categorical_labels:
+            replace_lables_in_column(ytest)
         X_test_ = pd.concat([Xtest, ytest, label], axis=1)
     else:
-        X_test_ = pd.concat([X_test_, label], axis=1)
+        X_test_.insert(len(X_test_.columns), "Label", label["Label"])
 
     if hasattr(estimator, "predict_proba"):
         try:
@@ -9300,8 +9213,11 @@ def deploy_model(model, model_name, authentication, platform="aws"):
         key = str(model_name) + ".pkl"
         bucket_name = authentication.get("bucket")
         project_name = authentication.get("project")
-        _create_bucket_gcp(project_name, bucket_name)
-        _upload_blob_gcp(project_name, bucket_name, filename, key)
+        try:
+            _create_bucket_gcp(project_name, bucket_name)
+            _upload_blob_gcp(project_name, bucket_name, filename, key)
+        except:
+            _upload_blob_gcp(project_name, bucket_name, filename, key)
         os.remove(filename)
         print("Model Succesfully Deployed on GCP")
         logger.info("Model Succesfully Deployed on GCP")
@@ -10393,6 +10309,8 @@ def get_config(variable):
     - fix_imbalance_param: fix_imbalance param set through setup
     - fix_imbalance_method_param: fix_imbalance_method param set through setup
     - data_before_preprocess: data before preprocessing
+    - target_param: name of target variable
+    - gpu_param: use_gpu param configured through setup
 
     Example
     -------
@@ -10414,65 +10332,71 @@ def get_config(variable):
     if variable == "X":
         global_var = X
 
-    if variable == "y":
+    elif variable == "y":
         global_var = y
 
-    if variable == "X_train":
+    elif variable == "X_train":
         global_var = X_train
 
-    if variable == "X_test":
+    elif variable == "X_test":
         global_var = X_test
 
-    if variable == "y_train":
+    elif variable == "y_train":
         global_var = y_train
 
-    if variable == "y_test":
+    elif variable == "y_test":
         global_var = y_test
 
-    if variable == "seed":
+    elif variable == "seed":
         global_var = seed
 
-    if variable == "prep_pipe":
+    elif variable == "prep_pipe":
         global_var = prep_pipe
 
-    if variable == "folds_shuffle_param":
+    elif variable == "folds_shuffle_param":
         global_var = folds_shuffle_param
 
-    if variable == "n_jobs_param":
+    elif variable == "n_jobs_param":
         global_var = n_jobs_param
 
-    if variable == "html_param":
+    elif variable == "html_param":
         global_var = html_param
 
-    if variable == "create_model_container":
+    elif variable == "create_model_container":
         global_var = create_model_container
 
-    if variable == "master_model_container":
+    elif variable == "master_model_container":
         global_var = master_model_container
 
-    if variable == "display_container":
+    elif variable == "display_container":
         global_var = display_container
 
-    if variable == "exp_name_log":
+    elif variable == "exp_name_log":
         global_var = exp_name_log
 
-    if variable == "logging_param":
+    elif variable == "logging_param":
         global_var = logging_param
 
-    if variable == "log_plots_param":
+    elif variable == "log_plots_param":
         global_var = log_plots_param
 
-    if variable == "USI":
+    elif variable == "USI":
         global_var = USI
 
-    if variable == "fix_imbalance_param":
+    elif variable == "fix_imbalance_param":
         global_var = fix_imbalance_param
 
-    if variable == "fix_imbalance_method_param":
+    elif variable == "fix_imbalance_method_param":
         global_var = fix_imbalance_method_param
 
-    if variable == "data_before_preprocess":
+    elif variable == "data_before_preprocess":
         global_var = data_before_preprocess
+
+    elif variable == "target_param":
+        global_var = target_param
+
+    elif variable == "gpu_param":
+        global_var = gpu_param
 
     logger.info("Global variable: " + str(variable) + " returned")
     logger.info(
@@ -10638,6 +10562,10 @@ def _fix_imbalance(Xtrain, ytrain, fix_imbalance_method_param=None):
     logger.info("Initializing SMOTE")
 
     if fix_imbalance_method_param is None:
+        import six
+        import sys
+
+        sys.modules["sklearn.externals.six"] = six
         from imblearn.over_sampling import SMOTE
 
         resampler = SMOTE(random_state=seed)
@@ -10647,9 +10575,6 @@ def _fix_imbalance(Xtrain, ytrain, fix_imbalance_method_param=None):
     Xtrain, ytrain = resampler.fit_sample(Xtrain, ytrain)
     logger.info("Resampling completed")
     return Xtrain, ytrain
-
-
-# Google Cloud Utilities
 
 
 def _create_bucket_gcp(project_name, bucket_name):
@@ -10784,7 +10709,6 @@ def _download_blob_gcp(
     return blob
 
 
-# Azure Utilities
 def _create_container_azure(container_name):
     """
     Creates a storage container on Azure Platform. gets the connection string from the environment variables.

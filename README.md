@@ -19,18 +19,30 @@ For more information on PyCaret, please visit our official website https://www.p
 ## Current Release
 PyCaret `2.0` is now available. See `2.0` release notes. The easiest way to install pycaret is using pip. 
 
-
 ```python
 pip install pycaret==2.0
 ```
 
+## Optional dependencies
+Following libraries are not hard dependencies and are not automatically installed when you install PyCaret. To use all functionalities of PyCaret, these optional dependencies must be installed.
+
+```
+pip install psutil
+pip install awscli 
+pip install azure-storage-blob
+pip install google-cloud-storage
+pip install shap
+```
+
 ## Python:
-Installation is only supported by the 64-bit version of Python.
+Installation is only supported on 64-bit version of Python.
 
 ## Important Links
-- 2.0 Release notes: https://github.com/pycaret/pycaret/releases/tag/2.0
-- User Guide / Documentation: https://www.pycaret.org/guide
-- Getting Started Tutorials: https://www.pycaret.org/tutorial
+- Release notes : https://github.com/pycaret/pycaret/releases/tag/2.0
+- User Guide : https://www.pycaret.org/guide
+- Getting Started Tutorials : https://github.com/pycaret/pycaret/tree/master/tutorials `not updated for PyCaret 2.0`
+- Example Notebooks : https://github.com/pycaret/pycaret/tree/master/examples
+- Other Resources : https://github.com/pycaret/pycaret/tree/master/resources 
 - Issue Logs: https://github.com/pycaret/pycaret/issues
 
 ## Who should use PyCaret?
@@ -41,8 +53,12 @@ PyCaret is an open source library that anybody can use. In our view the ideal ta
 - Students of Data Science.
 - Data Science Professionals and Consultants involved in building Proof of Concept projects.
 
-## Dependencies
-Please read requirements.txt for list of requirements. They are automatically installed when pycaret is installed using pip. `shap`, `awscli` and `psutil` is removed from hard dependency in PyCaret 2.0. Must be installed separately, if needed.
+## Current Contributors
+<a href="https://github.com/pycaret/pycaret/graphs/contributors">
+  <img src="https://contributors-img.web.app/image?repo=pycaret/pycaret" />
+</a>
+
+Made with [contributors-img](https://contributors-img.web.app).
 
 ## License
 

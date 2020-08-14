@@ -2,7 +2,7 @@
 # Author: Moez Ali <moez.ali@queensu.ca>
 # License: MIT
 # Release: PyCaret 2.1x
-# Last modified : 10/08/2020
+# Last modified : 13/08/2020
 
 def setup(data, 
         categorical_features = None,
@@ -47,7 +47,7 @@ def setup(data,
     """
     This function initializes the environment in pycaret. setup() must called before
     executing any other function in pycaret. It takes one mandatory parameter:
-    dataframe {array-like, sparse matrix}. 
+    data.
 
     Example
     -------
@@ -55,12 +55,12 @@ def setup(data,
     >>> jewellery = get_data('jewellery')
     >>> experiment_name = setup(data = jewellery, normalize = True)
     
-    'jewellery' is a pandas Dataframe.
+    'jewellery' is a pandas.DataFrame.
 
     Parameters
     ----------
-    data : {array-like, sparse matrix}
-        Shape (n_samples, n_features) where n_samples is the number of samples and n_features is the number of features in dataframe.
+    data : pandas.DataFrame
+        Shape (n_samples, n_features) where n_samples is the number of samples and n_features is the number of features.
     
     categorical_features: string, default = None
         If the inferred data types are not correct, categorical_features can be used to
@@ -1649,11 +1649,12 @@ def create_model(model = None,
             # define model signature
             from mlflow.models.signature import infer_signature
             signature = infer_signature(data_)
+            input_example = data_.iloc[0].to_dict()
 
             # log model as sklearn flavor
             prep_pipe_temp = deepcopy(prep_pipe)
             prep_pipe_temp.steps.append(['trained model', model])
-            mlflow.sklearn.log_model(prep_pipe_temp, "model", conda_env = default_conda_env, signature = signature)
+            mlflow.sklearn.log_model(prep_pipe_temp, "model", conda_env = default_conda_env, signature = signature, input_example = input_example)
             del(prep_pipe_temp)
 
     progress.value += 1
@@ -1679,7 +1680,7 @@ def assign_model(model,
     stage to one of the clusters using trained model object passed as model param.
     create_model() function must be called before using assign_model().
     
-    This function returns a pandas Dataframe.
+    This function returns a pandas.DataFrame.
 
     Example
     -------
@@ -1689,7 +1690,7 @@ def assign_model(model,
     >>> kmeans = create_model('kmeans')
     >>> kmeans_df = assign_model(kmeans)
 
-    This will return a dataframe with inferred clusters using trained model.
+    This will return a pandas.DataFrame with inferred clusters using trained model.
 
     Parameters
     ----------
@@ -1705,7 +1706,7 @@ def assign_model(model,
     Returns
     -------
     pandas.DataFrame
-        Returns a dataframe with assigned clusters using a trained model.
+        Returns a DataFrame with assigned clusters using a trained model.
   
     """
     
@@ -3213,11 +3214,12 @@ def tune_model(model=None,
             # define model signature
             from mlflow.models.signature import infer_signature
             signature = infer_signature(data_)
+            input_example = data_.iloc[0].to_dict()
 
             # log model as sklearn flavor
             prep_pipe_temp = deepcopy(prep_pipe)
-            prep_pipe_temp.steps.append(['trained model', best_model])
-            mlflow.sklearn.log_model(prep_pipe_temp, "model", conda_env = default_conda_env, signature = signature)
+            prep_pipe_temp.steps.append(['trained model', model])
+            mlflow.sklearn.log_model(prep_pipe_temp, "model", conda_env = default_conda_env, signature = signature, input_example = input_example)
             del(prep_pipe_temp)
 
     logger.info(str(best_model))
@@ -3790,7 +3792,7 @@ def predict_model(model,
     """
     This function is used to predict new data using a trained model. It requires a
     trained model object created using one of the function in pycaret that returns 
-    a trained model object. New data must be passed to data param as pandas Dataframe. 
+    a trained model object. New data must be passed to data param as pandas.DataFrame.
     
     Example
     -------
@@ -3805,7 +3807,7 @@ def predict_model(model,
     model : object,  default = None
         A trained model object / pipeline should be passed as an estimator. 
     
-    data : {array-like, sparse matrix}
+    data : pandas.DataFrame
         Shape (n_samples, n_features) where n_samples is the number of samples and n_features 
         is the number of features. All features used during training must be present in the 
         new dataset.
@@ -4083,7 +4085,7 @@ def models():
     -------
     >>> all_models = models()
 
-    This will return pandas dataframe with all available 
+    This will return pandas.DataFrame with all available
     models and their metadata.
     
     Returns
@@ -4134,7 +4136,7 @@ def get_logs(experiment_name = None, save = False):
     -------
     >>> logs = get_logs()
 
-    This will return pandas dataframe.
+    This will return pandas.DataFrame.
 
     Parameters
     ----------

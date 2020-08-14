@@ -2,7 +2,7 @@
 # Author: Moez Ali <moez.ali@queensu.ca>
 # License: MIT
 # Release: PyCaret 2.0x
-# Last modified : 10/08/2020
+# Last modified : 13/08/2020
 
 def setup(data, 
           categorical_features = None,
@@ -47,7 +47,7 @@ def setup(data,
     """
     This function initializes the environment in pycaret. setup() must called before
     executing any other function in pycaret. It takes one mandatory parameter:
-    dataframe {array-like, sparse matrix}. 
+    data.
 
     Example
     -------
@@ -55,12 +55,12 @@ def setup(data,
     >>> anomaly = get_data('anomaly')
     >>> experiment_name = setup(data = anomaly, normalize = True)
     
-    'anomaly' is a pandas Dataframe.
+    'anomaly' is a pands.DataFrame.
 
     Parameters
     ----------
-    data : {array-like, sparse matrix}
-        Shape (n_samples, n_features) where n_samples is the number of samples and n_features is the number of features in dataframe.
+    data : pands.DataFrame
+        Shape (n_samples, n_features) where n_samples is the number of samples and n_features is the number of features.
     
     categorical_features: string, default = None
         If the inferred data types are not correct, categorical_features can be used to
@@ -1561,11 +1561,12 @@ def create_model(model = None,
             # define model signature
             from mlflow.models.signature import infer_signature
             signature = infer_signature(data_)
+            input_example = data_.iloc[0].to_dict()
 
             # log model as sklearn flavor
             prep_pipe_temp = deepcopy(prep_pipe)
             prep_pipe_temp.steps.append(['trained model', model])
-            mlflow.sklearn.log_model(prep_pipe_temp, "model", conda_env = default_conda_env, signature = signature)
+            mlflow.sklearn.log_model(prep_pipe_temp, "model", conda_env = default_conda_env, signature = signature, input_example = input_example)
             del(prep_pipe_temp)
 
     progress.value += 1
@@ -3164,11 +3165,12 @@ def tune_model(model=None,
             # define model signature
             from mlflow.models.signature import infer_signature
             signature = infer_signature(data_)
+            input_example = data_.iloc[0].to_dict()
 
             # log model as sklearn flavor
             prep_pipe_temp = deepcopy(prep_pipe)
-            prep_pipe_temp.steps.append(['trained model', best_model])
-            mlflow.sklearn.log_model(prep_pipe_temp, "model", conda_env = default_conda_env, signature = signature)
+            prep_pipe_temp.steps.append(['trained model', model])
+            mlflow.sklearn.log_model(prep_pipe_temp, "model", conda_env = default_conda_env, signature = signature, input_example = input_example)
             del(prep_pipe_temp)
     
     logger.info(str(best_model))
@@ -3563,7 +3565,7 @@ def predict_model(model,
         When model is passed as string, load_model() is called internally to load the
         pickle file from active directory or cloud platform when platform param is passed.
     
-    data : {array-like, sparse matrix}
+    data : pandas.DataFrame
         Shape (n_samples, n_features) where n_samples is the number of samples and n_features is the number of features.
         All features used during training must be present in the new dataset.
      
