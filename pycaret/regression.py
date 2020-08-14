@@ -81,11 +81,11 @@ def setup(data,
     
     >>> experiment_name = setup(data = boston,  target = 'medv')
 
-    'boston' is a pandas DataFrame and 'medv' is the name of target column.
+    'boston' is a pandas.DataFrame and 'medv' is the name of target column.
 
     Parameters
     ----------
-    data : {array-like, sparse matrix}
+    data : pandas.DataFrame
         Shape (n_samples, n_features) where n_samples is the number of samples and n_features is the number of features.
 
     target: string
@@ -8203,7 +8203,7 @@ def predict_model(estimator,
     Description:
     ------------
     This function is used to predict target value on the new dataset using a trained 
-    estimator. New unseen data can be passed to data param as pandas Dataframe. 
+    estimator. New unseen data can be passed to data param as pandas.DataFrame.
     If data is not passed, the test / hold-out set separated at the time of 
     setup() is used to generate predictions. 
     
@@ -8221,7 +8221,7 @@ def predict_model(estimator,
     estimator : object, default = none
         A trained model object / pipeline should be passed as an estimator. 
     
-    data : {array-like, sparse matrix}
+    data : pandas.DataFrame
         shape (n_samples, n_features) where n_samples is the number of samples and n_features is the number of features.
         All features used during training must be present in the new dataset.
     
@@ -8235,7 +8235,7 @@ def predict_model(estimator,
     -------
     
     Predictions:  Predictions (Label and Score) column attached to the original dataset
-    -----------   and returned as pandas dataframe.
+    -----------   and returned as pandas.DataFrame.
 
     score grid:   A table containing the scoring metrics on hold-out / test set.
     -----------              

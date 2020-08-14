@@ -13,10 +13,10 @@ def setup(data,
     """
     This function initializes the environment in pycaret. setup() must called before
     executing any other function in pycaret. It takes three mandatory parameters:
-    (i) dataframe {array-like, sparse matrix}, (ii) transaction_id param identifying 
+    (i) data, (ii) transaction_id param identifying
     basket and (iii) item_id param used to create rules. These three params are 
     normally found in any transactional dataset. pycaret will internally convert the
-    dataframe into a sparse matrix which is required for association rules mining.
+    pandas.DataFrame into a sparse matrix which is required for association rules mining.
     
     Example
     -------
@@ -26,7 +26,7 @@ def setup(data,
         
     Parameters
     ----------
-    data : {array-like, sparse matrix}
+    data : pandas.DataFrame
         Shape (n_samples, n_features) where n_samples is the number of samples and n_features is the number of features.
 
     transaction_id: string
@@ -125,7 +125,7 @@ def create_model(metric='confidence',
     >>> france = get_data('france')        
     >>> experiment_name = setup(data = data, transaction_id = 'InvoiceNo', item_id = 'ProductName')
 
-    This will return dataframe containing rules sorted by metric param. 
+    This will return pandas.DataFrame containing rules sorted by metric param.
 
     Parameters
     ----------
@@ -220,8 +220,8 @@ def plot_model(model,
 
     Parameters
     ----------
-    model : DataFrame, default = none
-        DataFrame returned by trained model using create_model(). 
+    model : pandas.DataFrame, default = none
+        pandas.DataFrame returned by trained model using create_model().
 
     plot : string, default = '2d'
         Enter abbreviation of type of plot. The current list of plots supported are (Name - Abbreviated String):

@@ -70,7 +70,7 @@ def setup(data,
     This function initializes the environment in pycaret and creates the transformation
     pipeline to prepare the data for modeling and deployment. setup() must called before
     executing any other function in pycaret. It takes two mandatory parameters:
-    dataframe {array-like, sparse matrix} and name of the target column. 
+    data and name of the target column.
     
     All other parameters are optional.
 
@@ -80,11 +80,11 @@ def setup(data,
     >>> juice = get_data('juice')
     >>> experiment_name = setup(data = juice,  target = 'Purchase')
 
-    'juice' is a pandas DataFrame and 'Purchase' is the name of target column.
+    'juice' is a pandas.DataFrame  and 'Purchase' is the name of target column.
 
     Parameters
     ----------
-    data : {array-like, sparse matrix}
+    data : pandas.DataFrame
         Shape (n_samples, n_features) where n_samples is the number of samples and n_features is the number of features.
 
     target: string
@@ -9395,7 +9395,7 @@ def predict_model(estimator,
     estimator : object, default = none
         A trained model object / pipeline should be passed as an estimator. 
      
-    data : {array-like, sparse matrix}
+    data : pandas.DataFrame
         Shape (n_samples, n_features) where n_samples is the number of samples and n_features is the number of features.
         All features used during training must be present in the new dataset.
     
