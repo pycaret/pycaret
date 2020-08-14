@@ -47,7 +47,7 @@ def setup(data,
     """
     This function initializes the environment in pycaret. setup() must called before
     executing any other function in pycaret. It takes one mandatory parameter:
-    dataframe {array-like, sparse matrix}. 
+    data.
 
     Example
     -------
@@ -1690,7 +1690,7 @@ def assign_model(model,
     >>> kmeans = create_model('kmeans')
     >>> kmeans_df = assign_model(kmeans)
 
-    This will return a Dataframe with inferred clusters using trained model.
+    This will return a pandas.DataFrame with inferred clusters using trained model.
 
     Parameters
     ----------
