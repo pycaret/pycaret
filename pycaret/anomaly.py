@@ -1,8 +1,8 @@
 # Module: Anomaly Detection
 # Author: Moez Ali <moez.ali@queensu.ca>
 # License: MIT
-# Release: PyCaret 2.0x
-# Last modified : 13/08/2020
+# Release: PyCaret 2.1
+# Last modified : 14/08/2020
 
 def setup(data, 
           categorical_features = None,
@@ -1796,6 +1796,204 @@ def assign_model(model,
 
     return data__
 
+def plot_model(model,
+               plot = 'tsne',
+               feature = None,
+               save = False, #added in pycaret 2.0.0
+               system = True): #added in pycaret 2.0.0
+               
+    
+    """
+    This function takes a trained model object and returns a plot on the dataset 
+    passed during setup stage. This function internally calls assign_model before 
+    generating a plot.  
+
+    Example
+    -------
+    >>> from pycaret.datasets import get_data
+    >>> anomaly = get_data('anomaly')
+    >>> experiment_name = setup(data = anomaly, normalize = True)
+    >>> knn = create_model('knn')
+    >>> plot_model(knn)
+
+    Parameters
+    ----------
+    model : object
+        A trained model object can be passed. Model must be created using create_model().
+
+    plot : string, default = 'tsne'
+        Enter abbreviation of type of plot. The current list of plots supported are (Plot - Name):
+
+        * 'tsne' - t-SNE (3d) Dimension Plot
+        * 'umap' - UMAP Dimensionality Plot
+
+    feature : string, default = None
+        Feature column is used as a hoverover tooltip. By default, first of column of the
+        dataset is chosen as hoverover tooltip, when no feature is passed.
+    
+    save: Boolean, default = False
+        Plot is saved as png file in local directory when save parameter set to True.
+
+    system: Boolean, default = True
+        Must remain True all times. Only to be changed by internal functions.
+
+    Returns
+    -------
+    Visual_Plot
+        Prints the visual plot. 
+
+    """  
+    
+    #exception checking   
+    import sys
+    
+    import logging
+
+    try:
+        hasattr(logger, 'name')
+    except:
+        logger = logging.getLogger('logs')
+        logger.setLevel(logging.DEBUG)
+        
+        # create console handler and set level to debug
+        if logger.hasHandlers():
+            logger.handlers.clear()
+        
+        ch = logging.FileHandler('logs.log')
+        ch.setLevel(logging.DEBUG)
+
+        # create formatter
+        formatter = logging.Formatter('%(asctime)s:%(levelname)s:%(message)s')
+
+        # add formatter to ch
+        ch.setFormatter(formatter)
+
+        # add ch to logger
+        logger.addHandler(ch)
+
+    logger.info("Initializing plot_model()")
+    logger.info("""plot_model(model={}, plot={}, feature={}, save={}, system={})""".\
+        format(str(model), str(plot), str(feature), str(save), str(system)))
+
+    #ignore warnings
+    import warnings
+    warnings.filterwarnings('ignore') 
+        
+    """
+    exception handling starts here
+    """
+    
+    logger.info("Checking exceptions")
+
+    #plot checking
+    allowed_plots = ['tsne', 'umap']  
+    if plot not in allowed_plots:
+        sys.exit('(Value Error): Plot Not Available. Please see docstring for list of available plots.')
+     
+
+    
+    """
+    error handling ends here
+    """
+    
+    logger.info("Importing libraries")
+    #import dependencies
+    import pandas as pd
+    import numpy
+    
+    #import cufflinks
+    import cufflinks as cf
+    cf.go_offline()
+    cf.set_config_file(offline=False, world_readable=True)
+
+    logger.info("plot type: " + str(plot))
+
+    if plot == 'tsne':
+        
+        logger.info("SubProcess assign_model() called ==================================")
+        b = assign_model(model, verbose=False, transformation=True, score=False)
+        logger.info("SubProcess assign_model() end ==================================")
+        Label = pd.DataFrame(b['Label'])
+        b.dropna(axis=0, inplace=True) #droping rows with NA's
+        b.drop(['Label'], axis=1, inplace=True)
+        
+        logger.info("Getting dummies to cast categorical variables")
+        b = pd.get_dummies(b) #casting categorical variables
+
+        from sklearn.manifold import TSNE
+        logger.info("Fitting TSNE()")
+        X_embedded = TSNE(n_components=3).fit_transform(b)
+
+        X = pd.DataFrame(X_embedded)
+        X['Label'] = Label
+        
+        if feature is not None: 
+            X['Feature'] = data_[feature]
+        else:
+            X['Feature'] = data_[data_.columns[0]]
+
+        import plotly.express as px
+        df = X
+
+        logger.info("Rendering Visual")
+
+        fig = px.scatter_3d(df, x=0, y=1, z=2, hover_data=['Feature'], color='Label', title='3d TSNE Plot for Outliers', 
+                                opacity=0.7, width=900, height=800)
+            
+            
+        if system:
+            fig.show()
+
+        logger.info("Visual Rendered Successfully")
+
+        if save:
+            fig.write_html("TSNE.html")
+            logger.info("Saving 'TSNE.html' in current active directory") 
+
+    elif plot == 'umap':
+        
+        logger.info("SubProcess assign_model() called ==================================")
+        b = assign_model(model, verbose=False, transformation=True, score=False)
+        logger.info("SubProcess assign_model() end ==================================")
+
+        Label = pd.DataFrame(b['Label'])
+        b.dropna(axis=0, inplace=True) #droping rows with NA's
+        b.drop(['Label'], axis=1, inplace=True)
+        
+        logger.info("Getting dummies to cast categorical variables")
+        b = pd.get_dummies(b) #casting categorical variables
+        
+        import umap
+        reducer = umap.UMAP()
+        logger.info("Fitting UMAP()")
+        embedding = reducer.fit_transform(b)
+        X = pd.DataFrame(embedding)
+
+        import plotly.express as px
+        df = X
+        df['Label'] = Label
+        
+        if feature is not None: 
+            df['Feature'] = data_[feature]
+        else:
+            df['Feature'] = data_[data_.columns[0]]
+        
+        logger.info("Rendering Visual")
+
+        fig = px.scatter(df, x=0, y=1,
+                      color='Label', title='uMAP Plot for Outliers', hover_data=['Feature'], opacity=0.7, 
+                         width=900, height=800)
+        if system:
+            fig.show() 
+
+        logger.info("Visual Rendered Successfully")
+        
+        if save:
+            fig.write_html("UMAP.html")
+            logger.info("Saving 'UMAP.html' in current active directory") 
+    
+    logger.info("plot_model() succesfully completed......................................")
+
 def tune_model(model=None,
                supervised_target=None,
                method='drop',
@@ -3178,204 +3376,6 @@ def tune_model(model=None,
 
     return best_model
 
-def plot_model(model,
-               plot = 'tsne',
-               feature = None,
-               save = False, #added in pycaret 2.0.0
-               system = True): #added in pycaret 2.0.0
-               
-    
-    """
-    This function takes a trained model object and returns a plot on the dataset 
-    passed during setup stage. This function internally calls assign_model before 
-    generating a plot.  
-
-    Example
-    -------
-    >>> from pycaret.datasets import get_data
-    >>> anomaly = get_data('anomaly')
-    >>> experiment_name = setup(data = anomaly, normalize = True)
-    >>> knn = create_model('knn')
-    >>> plot_model(knn)
-
-    Parameters
-    ----------
-    model : object
-        A trained model object can be passed. Model must be created using create_model().
-
-    plot : string, default = 'tsne'
-        Enter abbreviation of type of plot. The current list of plots supported are (Plot - Name):
-
-        * 'tsne' - t-SNE (3d) Dimension Plot
-        * 'umap' - UMAP Dimensionality Plot
-
-    feature : string, default = None
-        Feature column is used as a hoverover tooltip. By default, first of column of the
-        dataset is chosen as hoverover tooltip, when no feature is passed.
-    
-    save: Boolean, default = False
-        Plot is saved as png file in local directory when save parameter set to True.
-
-    system: Boolean, default = True
-        Must remain True all times. Only to be changed by internal functions.
-
-    Returns
-    -------
-    Visual_Plot
-        Prints the visual plot. 
-
-    """  
-    
-    #exception checking   
-    import sys
-    
-    import logging
-
-    try:
-        hasattr(logger, 'name')
-    except:
-        logger = logging.getLogger('logs')
-        logger.setLevel(logging.DEBUG)
-        
-        # create console handler and set level to debug
-        if logger.hasHandlers():
-            logger.handlers.clear()
-        
-        ch = logging.FileHandler('logs.log')
-        ch.setLevel(logging.DEBUG)
-
-        # create formatter
-        formatter = logging.Formatter('%(asctime)s:%(levelname)s:%(message)s')
-
-        # add formatter to ch
-        ch.setFormatter(formatter)
-
-        # add ch to logger
-        logger.addHandler(ch)
-
-    logger.info("Initializing plot_model()")
-    logger.info("""plot_model(model={}, plot={}, feature={}, save={}, system={})""".\
-        format(str(model), str(plot), str(feature), str(save), str(system)))
-
-    #ignore warnings
-    import warnings
-    warnings.filterwarnings('ignore') 
-        
-    """
-    exception handling starts here
-    """
-    
-    logger.info("Checking exceptions")
-
-    #plot checking
-    allowed_plots = ['tsne', 'umap']  
-    if plot not in allowed_plots:
-        sys.exit('(Value Error): Plot Not Available. Please see docstring for list of available plots.')
-     
-
-    
-    """
-    error handling ends here
-    """
-    
-    logger.info("Importing libraries")
-    #import dependencies
-    import pandas as pd
-    import numpy
-    
-    #import cufflinks
-    import cufflinks as cf
-    cf.go_offline()
-    cf.set_config_file(offline=False, world_readable=True)
-
-    logger.info("plot type: " + str(plot))
-
-    if plot == 'tsne':
-        
-        logger.info("SubProcess assign_model() called ==================================")
-        b = assign_model(model, verbose=False, transformation=True, score=False)
-        logger.info("SubProcess assign_model() end ==================================")
-        Label = pd.DataFrame(b['Label'])
-        b.dropna(axis=0, inplace=True) #droping rows with NA's
-        b.drop(['Label'], axis=1, inplace=True)
-        
-        logger.info("Getting dummies to cast categorical variables")
-        b = pd.get_dummies(b) #casting categorical variables
-
-        from sklearn.manifold import TSNE
-        logger.info("Fitting TSNE()")
-        X_embedded = TSNE(n_components=3).fit_transform(b)
-
-        X = pd.DataFrame(X_embedded)
-        X['Label'] = Label
-        
-        if feature is not None: 
-            X['Feature'] = data_[feature]
-        else:
-            X['Feature'] = data_[data_.columns[0]]
-
-        import plotly.express as px
-        df = X
-
-        logger.info("Rendering Visual")
-
-        fig = px.scatter_3d(df, x=0, y=1, z=2, hover_data=['Feature'], color='Label', title='3d TSNE Plot for Outliers', 
-                                opacity=0.7, width=900, height=800)
-            
-            
-        if system:
-            fig.show()
-
-        logger.info("Visual Rendered Successfully")
-
-        if save:
-            fig.write_html("TSNE.html")
-            logger.info("Saving 'TSNE.html' in current active directory") 
-
-    elif plot == 'umap':
-        
-        logger.info("SubProcess assign_model() called ==================================")
-        b = assign_model(model, verbose=False, transformation=True, score=False)
-        logger.info("SubProcess assign_model() end ==================================")
-
-        Label = pd.DataFrame(b['Label'])
-        b.dropna(axis=0, inplace=True) #droping rows with NA's
-        b.drop(['Label'], axis=1, inplace=True)
-        
-        logger.info("Getting dummies to cast categorical variables")
-        b = pd.get_dummies(b) #casting categorical variables
-        
-        import umap
-        reducer = umap.UMAP()
-        logger.info("Fitting UMAP()")
-        embedding = reducer.fit_transform(b)
-        X = pd.DataFrame(embedding)
-
-        import plotly.express as px
-        df = X
-        df['Label'] = Label
-        
-        if feature is not None: 
-            df['Feature'] = data_[feature]
-        else:
-            df['Feature'] = data_[data_.columns[0]]
-        
-        logger.info("Rendering Visual")
-
-        fig = px.scatter(df, x=0, y=1,
-                      color='Label', title='uMAP Plot for Outliers', hover_data=['Feature'], opacity=0.7, 
-                         width=900, height=800)
-        if system:
-            fig.show() 
-
-        logger.info("Visual Rendered Successfully")
-        
-        if save:
-            fig.write_html("UMAP.html")
-            logger.info("Saving 'UMAP.html' in current active directory") 
-    
-    logger.info("plot_model() succesfully completed......................................")
-
 def save_model(model, model_name, model_only=False, verbose=True):
     
     """
@@ -3745,91 +3745,6 @@ def deploy_model(model,
         logger.info(str(model))
         logger.info("deploy_model() succesfully completed......................................")
 
-def get_outliers(data, 
-                 model = None, 
-                 fraction=0.05, 
-                 ignore_features = None, 
-                 normalize = True, 
-                 transformation = False,
-                 pca = False,
-                 pca_components = 0.99,
-                 ignore_low_variance=False,
-                 combine_rare_levels=False,
-                 rare_level_threshold=0.1,
-                 remove_multicollinearity=False,
-                 multicollinearity_threshold=0.9,
-                 n_jobs = None):
-    
-    """
-    Magic function to get outliers in Power Query / Power BI.    
-    
-    """
-    
-    if model is None:
-        model = 'knn'
-        
-    if ignore_features is None:
-        ignore_features_pass = []
-    else:
-        ignore_features_pass = ignore_features
-    
-    global X, data_, seed, n_jobs_param, logging_param, logger
-    
-    n_jobs_param = n_jobs
-
-    logging_param = False
-
-    import logging
-
-    logger = logging.getLogger('logs')
-    logger.setLevel(logging.DEBUG)
-    
-    # create console handler and set level to debug
-    if logger.hasHandlers():
-        logger.handlers.clear()
-    
-    ch = logging.FileHandler('logs.log')
-    ch.setLevel(logging.DEBUG)
-
-    # create formatter
-    formatter = logging.Formatter('%(asctime)s:%(levelname)s:%(message)s')
-
-    # add formatter to ch
-    ch.setFormatter(formatter)
-
-    # add ch to logger
-    logger.addHandler(ch)
-    
-    data_ = data.copy()
-    
-    seed = 99
-    
-    from pycaret import preprocess
-    
-    X = preprocess.Preprocess_Path_Two(train_data = data, 
-                                       features_todrop = ignore_features_pass,
-                                       display_types = False,
-                                       scale_data = normalize,
-                                       scaling_method = 'zscore',
-                                       Power_transform_data = transformation,
-                                       Power_transform_method = 'yj',
-                                       apply_pca = pca,
-                                       pca_variance_retained_or_number_of_components=pca_components,
-                                       apply_zero_nearZero_variance = ignore_low_variance,
-                                       club_rare_levels=combine_rare_levels,
-                                       rara_level_threshold_percentage=rare_level_threshold,
-                                       remove_multicollinearity=remove_multicollinearity,
-                                       maximum_correlation_between_features=multicollinearity_threshold,
-                                       random_state = seed)
-    
-    
-    
-    c = create_model(model=model, fraction=fraction, verbose=False, system=False)
-    
-    dataset = assign_model(c, verbose=False)
-    
-    return dataset
-
 def models():
 
     """
@@ -4149,3 +4064,88 @@ def get_system_logs():
 
         columns = [col.strip() for col in line.split(':') if col]
         print(columns)
+
+def get_outliers(data, 
+                 model = None, 
+                 fraction=0.05, 
+                 ignore_features = None, 
+                 normalize = True, 
+                 transformation = False,
+                 pca = False,
+                 pca_components = 0.99,
+                 ignore_low_variance=False,
+                 combine_rare_levels=False,
+                 rare_level_threshold=0.1,
+                 remove_multicollinearity=False,
+                 multicollinearity_threshold=0.9,
+                 n_jobs = None):
+    
+    """
+    Magic function to get outliers in Power Query / Power BI.    
+    
+    """
+    
+    if model is None:
+        model = 'knn'
+        
+    if ignore_features is None:
+        ignore_features_pass = []
+    else:
+        ignore_features_pass = ignore_features
+    
+    global X, data_, seed, n_jobs_param, logging_param, logger
+    
+    n_jobs_param = n_jobs
+
+    logging_param = False
+
+    import logging
+
+    logger = logging.getLogger('logs')
+    logger.setLevel(logging.DEBUG)
+    
+    # create console handler and set level to debug
+    if logger.hasHandlers():
+        logger.handlers.clear()
+    
+    ch = logging.FileHandler('logs.log')
+    ch.setLevel(logging.DEBUG)
+
+    # create formatter
+    formatter = logging.Formatter('%(asctime)s:%(levelname)s:%(message)s')
+
+    # add formatter to ch
+    ch.setFormatter(formatter)
+
+    # add ch to logger
+    logger.addHandler(ch)
+    
+    data_ = data.copy()
+    
+    seed = 99
+    
+    from pycaret import preprocess
+    
+    X = preprocess.Preprocess_Path_Two(train_data = data, 
+                                       features_todrop = ignore_features_pass,
+                                       display_types = False,
+                                       scale_data = normalize,
+                                       scaling_method = 'zscore',
+                                       Power_transform_data = transformation,
+                                       Power_transform_method = 'yj',
+                                       apply_pca = pca,
+                                       pca_variance_retained_or_number_of_components=pca_components,
+                                       apply_zero_nearZero_variance = ignore_low_variance,
+                                       club_rare_levels=combine_rare_levels,
+                                       rara_level_threshold_percentage=rare_level_threshold,
+                                       remove_multicollinearity=remove_multicollinearity,
+                                       maximum_correlation_between_features=multicollinearity_threshold,
+                                       random_state = seed)
+    
+    
+    
+    c = create_model(model=model, fraction=fraction, verbose=False, system=False)
+    
+    dataset = assign_model(c, verbose=False)
+    
+    return dataset

@@ -1,8 +1,8 @@
 # Module: Natural Language Processing
 # Author: Moez Ali <moez.ali@queensu.ca>
 # License: MIT
-# Release: PyCaret 2.0x
-# Last modified : 30/07/2020
+# Release: PyCaret 2.1
+# Last modified : 14/08/2020
 
 def setup(data, 
           target=None,
@@ -3542,20 +3542,6 @@ def load_model(model_name,
         print('Model Sucessfully Loaded')
     return joblib.load(model_name)
 
-def get_topics(data, text, model=None, num_topics=4):
-    
-    """
-    Callable from any external environment without requiring setup initialization.    
-    """
-    
-    if model is None:
-        model = 'lda'
-        
-    s = setup(data=data, target=text)
-    c = create_model(model=model, num_topics=num_topics, verbose=False)
-    dataset = assign_model(c, verbose=False)
-    return dataset
-
 def models():
 
     """
@@ -3856,3 +3842,17 @@ def get_system_logs():
 
         columns = [col.strip() for col in line.split(':') if col]
         print(columns)
+
+def get_topics(data, text, model=None, num_topics=4):
+    
+    """
+    Callable from any external environment without requiring setup initialization.    
+    """
+    
+    if model is None:
+        model = 'lda'
+        
+    s = setup(data=data, target=text)
+    c = create_model(model=model, num_topics=num_topics, verbose=False)
+    dataset = assign_model(c, verbose=False)
+    return dataset
