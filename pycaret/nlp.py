@@ -18,7 +18,7 @@ def setup(data,
     """
     This function initializes the environment in pycaret. setup() must called before
     executing any other function in pycaret. It takes one mandatory parameter:
-    dataframe {array-like, sparse matrix} or object of type list. If a dataframe is 
+    data, a pandas.Dataframe or object of type list. If a pandas.Dataframe is
     passed, target column containing text must be specified. When data passed is of 
     type list, no target parameter is required. All other parameters are optional. 
     This module only supports English Language at this time.
@@ -29,16 +29,16 @@ def setup(data,
     >>> kiva = get_data('kiva')
     >>> experiment_name = setup(data = kiva, target = 'en')
 
-    'kiva' is a pandas Dataframe.
+    'kiva' is a pandas.Dataframe.
         
     Parameters
     ----------
-    data : {array-like, sparse matrix}
-        Shape (n_samples, n_features) where n_samples is the number of samples and n_features
-        is the number of features or object of type list with n length.
+    data : pandas.Dataframe or list
+        pandas.Dataframe with shape (n_samples, n_features) where n_samples is the number of samples and n_features
+        is the number of features, or object of type list with n length.
 
     target: string
-        If data is of type DataFrame, name of column containing text values must be passed as 
+        If data is of type pandas.Dataframe, name of column containing text values must be passed as
         string. 
     
     custom_stopwords: list, default = None
@@ -255,7 +255,7 @@ def setup(data,
     #if dataframe is passed then target is mandatory
     if hasattr(data,'shape'):
         if target is None:   
-            sys.exit('(Type Error): When DataFrame is passed as data param. Target column containing text must be specified in target param.')  
+            sys.exit('(Type Error): When pandas.Dataframe is passed as data param. Target column containing text must be specified in target param.')
             
     #checking target parameter
     if target is not None:
@@ -1282,7 +1282,7 @@ def assign_model(model,
     stage to one of the topic using trained model object passed as model param.
     create_model() function must be called before using assign_model().
     
-    This function returns dataframe with topic weights, dominant topic and % of the
+    This function returns a pandas.Dataframe with topic weights, dominant topic and % of the
     dominant topic (where applicable).
 
     Example
@@ -1293,7 +1293,7 @@ def assign_model(model,
     >>> lda = create_model('lda')
     >>> lda_df = assign_model(lda)
     
-    This will return a dataframe with inferred topics using trained model.
+    This will return a pandas.Dataframe with inferred topics using trained model.
 
     Parameters
     ----------
@@ -1305,7 +1305,7 @@ def assign_model(model,
     Returns
     -------
     pandas.DataFrame
-        Returns dataframe with inferred topics using trained model object.
+        Returns a DataFrame with inferred topics using trained model object.
       
     
     """
@@ -3565,7 +3565,7 @@ def models():
     -------
     >>> all_models = models()
 
-    This will return pandas dataframe with all available 
+    This will return pandas.DataFrame with all available
     models and their metadata.
 
     Returns
@@ -3608,7 +3608,7 @@ def get_logs(experiment_name = None, save = False):
     -------
     >>> logs = get_logs()
 
-    This will return pandas dataframe.
+    This will return pandas.DataFrame.
 
     Parameters
     ----------
@@ -3654,7 +3654,7 @@ def get_config(variable):
     Following variables can be accessed:
 
     - text: Tokenized words as a list with length = # documents
-    - data_: Dataframe containing text after all processing
+    - data_: pandas.DataFrame containing text after all processing
     - corpus: List containing tuples of id to word mapping
     - id2word: gensim.corpora.dictionary.Dictionary  
     - seed: random state set through session_id
@@ -3750,7 +3750,7 @@ def set_config(variable,value):
     Following variables can be accessed:
 
     - text: Tokenized words as a list with length = # documents
-    - data_: Dataframe containing text after all processing
+    - data_: pandas.DataFrame containing text after all processing
     - corpus: List containing tuples of id to word mapping
     - id2word: gensim.corpora.dictionary.Dictionary 
     - seed: random state set through session_id
