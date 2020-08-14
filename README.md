@@ -58,6 +58,8 @@ PyCaret is an open source library that anybody can use. In our view the ideal ta
   <img src="https://contributors-img.web.app/image?repo=pycaret/pycaret" />
 </a>
 
+Made with [contributors-img](https://contributors-img.web.app).
+
 ## License
 
 Copyright 2019-2020 Moez Ali <moez.ali@queensu.ca>
