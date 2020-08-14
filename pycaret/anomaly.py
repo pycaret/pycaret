@@ -55,11 +55,11 @@ def setup(data,
     >>> anomaly = get_data('anomaly')
     >>> experiment_name = setup(data = anomaly, normalize = True)
     
-    'anomaly' is a pands.DataFrame.
+    'anomaly' is a pandas.DataFrame.
 
     Parameters
     ----------
-    data : pands.DataFrame
+    data : pandas.DataFrame
         Shape (n_samples, n_features) where n_samples is the number of samples and n_features is the number of features.
     
     categorical_features: string, default = None
