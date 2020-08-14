@@ -2,7 +2,7 @@
 # Author: Moez Ali <moez.ali@queensu.ca>
 # License: MIT
 
-version_ = "2.0"
+version_ = "2.1-14082020"
 
 def version():
     print(version_)
