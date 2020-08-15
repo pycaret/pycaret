@@ -567,6 +567,10 @@ def setup(data,
 
     logger.info("Checking Exceptions")
 
+    #checking data type
+    if hasattr(data,'shape') is False:
+        sys.exit('(Type Error): data passed must be of type pandas.DataFrame')
+
     #checking train size parameter
     if type(train_size) is not float:
         sys.exit('(Type Error): train_size parameter only accepts float value.')
@@ -9232,7 +9236,7 @@ def predict_model(estimator,
     """
     exception checking starts here
     """
-    
+
     model_name = str(estimator).split("(")[0]
     if probability_threshold is not None:
         if 'OneVsRestClassifier' in model_name:

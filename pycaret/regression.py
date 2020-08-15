@@ -577,6 +577,10 @@ def setup(data,
 
     logger.info("Checking Exceptions")
 
+    #checking data type
+    if hasattr(data,'shape') is False:
+        sys.exit('(Type Error): data passed must be of type pandas.DataFrame')
+
     #checking train size parameter
     if type(train_size) is not float:
         sys.exit('(Type Error): train_size parameter only accepts float value.')

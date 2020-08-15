@@ -57,6 +57,10 @@ def setup(data,
    
     #exception checking   
     import sys
+
+    #checking data type
+    if hasattr(data,'shape') is False:
+        sys.exit('(Type Error): data passed must be of type pandas.DataFrame')
     
     #ignore warnings
     import warnings
