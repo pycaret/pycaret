@@ -9294,11 +9294,6 @@ def predict_model(estimator,
             
         Xtest = data.copy()
         X_test_ = data.copy()
-        Xtest.reset_index(drop=True, inplace=True)
-        X_test_.reset_index(inplace=True)
-
-        index = X_test_['index']
-        X_test_.drop('index', axis=1, inplace=True)
         
     # function to replace encoded labels with their original values
     # will not run if categorical_labels is false
@@ -9401,7 +9396,7 @@ def predict_model(estimator,
         replace_lables_in_column(ytest)
         X_test_ = pd.concat([Xtest,ytest,label], axis=1)
     else:
-        X_test_ = pd.concat([X_test_,label], axis=1)
+        X_test_.insert(len(X_test_.columns), "Label", label["Label"])
     
     if hasattr(estimator,'predict_proba'):
         try:
@@ -9417,10 +9412,6 @@ def predict_model(estimator,
         display_container.append(df_score)
     except:
         pass
-
-    if index is not None:
-        X_test_['index'] = index
-        X_test_.set_index('index', drop=True, inplace=True)
 
     return X_test_
 
