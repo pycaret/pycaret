@@ -5,70 +5,72 @@
 # Last modified : 12/08/2020
 
 from pycaret.utils import get_logger, Display, color_df
+import pandas
+from typing import List, Set, Dict, Tuple, Optional, Any
 
 
 def setup(
-    data,
-    target,
-    train_size=0.7,
-    sampling=True,
+    data: pandas.DataFrame,
+    target: str,
+    train_size: float = 0.7,
+    sampling: bool = True,
     sample_estimator=None,
-    categorical_features=None,
-    categorical_imputation="constant",
-    ordinal_features=None,
-    high_cardinality_features=None,
-    high_cardinality_method="frequency",
-    numeric_features=None,
-    numeric_imputation="mean",
-    date_features=None,
-    ignore_features=None,
-    normalize=False,
-    normalize_method="zscore",
-    transformation=False,
-    transformation_method="yeo-johnson",
-    handle_unknown_categorical=True,
-    unknown_categorical_method="least_frequent",
-    pca=False,
-    pca_method="linear",
-    pca_components=None,
-    ignore_low_variance=False,
-    combine_rare_levels=False,
-    rare_level_threshold=0.10,
-    bin_numeric_features=None,
-    remove_outliers=False,
-    outliers_threshold=0.05,
-    remove_multicollinearity=False,
-    multicollinearity_threshold=0.9,
-    remove_perfect_collinearity=False,  # added in pycaret==2.0.0
-    create_clusters=False,
-    cluster_iter=20,
-    polynomial_features=False,
-    polynomial_degree=2,
-    trigonometry_features=False,
-    polynomial_threshold=0.1,
-    group_features=None,
-    group_names=None,
-    feature_selection=False,
-    feature_selection_threshold=0.8,
-    feature_interaction=False,
-    feature_ratio=False,
-    interaction_threshold=0.01,
-    fix_imbalance=False,  # added in pycaret==2.0.0
-    fix_imbalance_method=None,  # added in pycaret==2.0.0
-    data_split_shuffle=True,  # added in pycaret==2.0.0
-    folds_shuffle=False,  # added in pycaret==2.0.0
-    n_jobs=-1,  # added in pycaret==2.0.0
-    use_gpu=False,  # added in pycaret==2.1
-    html=True,  # added in pycaret==2.0.0
-    session_id=None,
-    log_experiment=False,  # added in pycaret==2.0.0
-    experiment_name=None,  # added in pycaret==2.0.0
-    log_plots=False,  # added in pycaret==2.0.0
-    log_profile=False,  # added in pycaret==2.0.0
-    log_data=False,  # added in pycaret==2.0.0
-    silent=False,
-    verbose=True,  # added in pycaret==2.0.0
-    profile=False,
+    categorical_features: List[str] = None,
+    categorical_imputation: str = "constant",
+    ordinal_features: List[str] = None,
+    high_cardinality_features: List[str] = None,
+    high_cardinality_method: str = "frequency",
+    numeric_features: List[str] = None,
+    numeric_imputation: str = "mean",
+    date_features: List[str] = None,
+    ignore_features: List[str] = None,
+    normalize: bool = False,
+    normalize_method: str = "zscore",
+    transformation: bool = False,
+    transformation_method: str = "yeo-johnson",
+    handle_unknown_categorical: bool = True,
+    unknown_categorical_method: str = "least_frequent",
+    pca: bool = False,
+    pca_method: str = "linear",
+    pca_components: float = None,
+    ignore_low_variance: bool = False,
+    combine_rare_levels: bool = False,
+    rare_level_threshold: float = 0.10,
+    bin_numeric_features: list = None,
+    remove_outliers: bool = False,
+    outliers_threshold: float = 0.05,
+    remove_multicollinearity: bool = False,
+    multicollinearity_threshold: float = 0.9,
+    remove_perfect_collinearity: bool = False,  # added in pycaret==2.0.0
+    create_clusters: bool = False,
+    cluster_iter: int = 20,
+    polynomial_features: bool = False,
+    polynomial_degree: int = 2,
+    trigonometry_features: bool = False,
+    polynomial_threshold: float = 0.1,
+    group_features: List[str] = None,
+    group_names: List[str] = None,
+    feature_selection: bool = False,
+    feature_selection_threshold: float = 0.8,
+    feature_interaction: bool = False,
+    feature_ratio: bool = False,
+    interaction_threshold: float = 0.01,
+    fix_imbalance: bool = False,  # added in pycaret==2.0.0
+    fix_imbalance_method: str = None,  # added in pycaret==2.0.0
+    data_split_shuffle: bool = True,  # added in pycaret==2.0.0
+    folds_shuffle: bool = False,  # added in pycaret==2.0.0
+    n_jobs: int = -1,  # added in pycaret==2.0.0
+    use_gpu: bool = False,  # added in pycaret==2.1
+    html: bool = True,  # added in pycaret==2.0.0
+    session_id: int = None,
+    log_experiment: bool = False,  # added in pycaret==2.0.0
+    experiment_name: str =None,  # added in pycaret==2.0.0
+    log_plots: bool = False,  # added in pycaret==2.0.0
+    log_profile: bool = False,  # added in pycaret==2.0.0
+    log_data: bool = False,  # added in pycaret==2.0.0
+    silent: bool = False,
+    verbose: bool = True,  # added in pycaret==2.0.0
+    profile: bool = False,
 ):
 
     """
@@ -299,7 +301,7 @@ def setup(
         that exist within the numeric features in a dataset to the degree defined in 
         polynomial_degree param. 
     
-    polynomial_degree: int, default = 2
+    polynomial_degree: int, default = 2pca_method_pass
         Degree of polynomial features. For example, if an input sample is two dimensional 
         and of the form [a, b], the polynomial features with degree = 2 are: 
         [1, a, b, a^2, ab, b^2].
@@ -620,9 +622,9 @@ def setup(
 
     logger.info("Checking Exceptions")
 
-    #checking data type
-    if hasattr(data,'shape') is False:
-        sys.exit('(Type Error): data passed must be of type pandas.DataFrame')
+    # checking data type
+    if hasattr(data, "shape") is False:
+        sys.exit("(Type Error): data passed must be of type pandas.DataFrame")
 
     # checking train size parameter
     if type(train_size) is not float:
@@ -1617,7 +1619,7 @@ def setup(
             X_train, X_test, y_train, y_test = train_test_split(
                 X_,
                 y_,
-                test_size=1-train_size,
+                test_size=1 - train_size,
                 stratify=y_,
                 random_state=seed,
                 shuffle=data_split_shuffle,
@@ -2039,15 +2041,15 @@ def setup(
 
 
 def compare_models(
-    blacklist=None,
-    whitelist=None,  # added in pycaret==2.0.0
-    fold=10,
-    round=4,
-    sort="Accuracy",
-    n_select=1,  # added in pycaret==2.0.0
-    turbo=True,
-    verbose=True,
-    display=None,
+    blacklist: List[str] = None,
+    whitelist: list = None,  # added in pycaret==2.0.0
+    fold: int = 10,
+    round: int = 4,
+    sort: str = "Accuracy",
+    n_select: int = 1,  # added in pycaret==2.0.0
+    turbo: bool = True,
+    verbose: bool = True,
+    display: Display = None,
 ):  # added in pycaret==2.0.0
 
     """
@@ -2555,15 +2557,15 @@ def compare_models(
 
 def create_model(
     estimator=None,
-    ensemble=False,
-    method=None,
-    fold=10,
-    round=4,
-    cross_validation=True,  # added in pycaret==2.0.0
-    verbose=True,
-    system=True,  # added in pycaret==2.0.0
-    return_fit_time=False,
-    display=None,
+    ensemble: bool = False,
+    method: str = None,
+    fold: int = 10,
+    round: int = 4,
+    cross_validation: bool = True,  # added in pycaret==2.0.0
+    verbose: bool = True,
+    system: bool = True,  # added in pycaret==2.0.0
+    return_fit_time: bool = False,
+    display: Display = None,
     **kwargs,
 ):  # added in pycaret==2.0.0
 
@@ -3291,14 +3293,14 @@ def create_model(
 
 def tune_model(
     estimator=None,
-    fold=10,
-    round=4,
-    n_iter=10,
-    custom_grid=None,  # added in pycaret==2.0.0
-    optimize="Accuracy",
-    choose_better=False,  # added in pycaret==2.0.0
-    verbose=True,
-    display=None,
+    fold: int = 10,
+    round: int = 4,
+    n_iter: int = 10,
+    custom_grid: dict = None,  # added in pycaret==2.0.0
+    optimize: str = "Accuracy",
+    choose_better: bool = False,  # added in pycaret==2.0.0
+    verbose: bool = True,
+    display: Display = None,
     **kwargs,
 ):
 
@@ -3798,14 +3800,14 @@ def tune_model(
 
 def ensemble_model(
     estimator,
-    method="Bagging",
-    fold=10,
-    n_estimators=10,
-    round=4,
-    choose_better=False,  # added in pycaret==2.0.0
-    optimize="Accuracy",  # added in pycaret==2.0.0
-    verbose=True,
-    display=None,
+    method: str = "Bagging",
+    fold: int = 10,
+    n_estimators: int = 10,
+    round: int = 4,
+    choose_better: bool = False,  # added in pycaret==2.0.0
+    optimize: str = "Accuracy",  # added in pycaret==2.0.0
+    verbose: bool = True,
+    display: Display = None,
 ):
     """
     This function ensembles the trained base estimator using the method defined in 
@@ -4305,14 +4307,14 @@ def ensemble_model(
 
 def blend_models(
     estimator_list="All",
-    fold=10,
-    round=4,
-    choose_better=False,  # added in pycaret==2.0.0
-    optimize="Accuracy",  # added in pycaret==2.0.0
-    method="hard",
-    turbo=True,
-    verbose=True,
-    display=None,
+    fold: int = 10,
+    round: int = 4,
+    choose_better: bool = False,  # added in pycaret==2.0.0
+    optimize: str = "Accuracy",  # added in pycaret==2.0.0
+    method: str = "hard",
+    turbo: bool = True,
+    verbose: bool = True,
+    display: Display = None,
 ):
 
     """
@@ -4793,16 +4795,16 @@ def blend_models(
 
 
 def stack_models(
-    estimator_list,
+    estimator_list: list,
     meta_model=None,
-    fold=10,
-    round=4,
-    method="auto",
-    restack=True,
-    choose_better=False,  # added in pycaret==2.0.0
-    optimize="Accuracy",  # added in pycaret==2.0.0
-    verbose=True,
-    display=None,
+    fold: int = 10,
+    round: int = 4,
+    method: str = "auto",
+    restack: bool = True,
+    choose_better: bool = False,  # added in pycaret==2.0.0
+    optimize: str = "Accuracy",  # added in pycaret==2.0.0
+    verbose: bool = True,
+    display: Display = None,
 ):
 
     """
@@ -5274,11 +5276,11 @@ def stack_models(
 
 def plot_model(
     estimator,
-    plot="auc",
-    save=False,  # added in pycaret 2.0.0
-    verbose=True,  # added in pycaret 2.0.0
-    system=True,
-    display=None,
+    plot: str = "auc",
+    save: bool = False,  # added in pycaret 2.0.0
+    verbose: bool = True,  # added in pycaret 2.0.0
+    system: bool = True,
+    display: Display = None,
 ):  # added in pycaret 2.0.0
 
     """
@@ -5497,7 +5499,7 @@ def plot_model(
         logger.info("Scoring test/hold-out set")
         visualizer.score(X_test, y_test)
         display.move_progress()
-        clear_output()
+        display.clear_output()
         if save:
             logger.info("Saving 'AUC.png' in current active directory")
             if system:
@@ -5521,7 +5523,7 @@ def plot_model(
         logger.info("Scoring test/hold-out set")
         visualizer.score(X_test, y_test)
         display.move_progress()
-        clear_output()
+        display.clear_output()
         if save:
             logger.info("Saving 'Threshold Curve.png' in current active directory")
             if system:
@@ -5545,7 +5547,7 @@ def plot_model(
         logger.info("Scoring test/hold-out set")
         visualizer.score(X_test, y_test)
         display.move_progress()
-        clear_output()
+        display.clear_output()
         if save:
             logger.info("Saving 'Precision Recall.png' in current active directory")
             if system:
@@ -5571,7 +5573,7 @@ def plot_model(
         logger.info("Scoring test/hold-out set")
         visualizer.score(X_test, y_test)
         display.move_progress()
-        clear_output()
+        display.clear_output()
         if save:
             logger.info("Saving 'Confusion Matrix.png' in current active directory")
             if system:
@@ -5595,7 +5597,7 @@ def plot_model(
         logger.info("Scoring test/hold-out set")
         visualizer.score(X_test, y_test)
         display.move_progress()
-        clear_output()
+        display.clear_output()
         if save:
             logger.info(
                 "Saving 'Class Prediction Error.png' in current active directory"
@@ -5621,7 +5623,7 @@ def plot_model(
         logger.info("Scoring test/hold-out set")
         visualizer.score(X_test, y_test)
         display.move_progress()
-        clear_output()
+        display.clear_output()
         if save:
             logger.info(
                 "Saving 'Classification Report.png' in current active directory"
@@ -5675,7 +5677,7 @@ def plot_model(
         )
         viz_.draw(X_test_transformed, y_test_transformed)
         display.move_progress()
-        clear_output()
+        display.clear_output()
         if save:
             logger.info("Saving 'Decision Boundary.png' in current active directory")
             if system:
@@ -5697,7 +5699,7 @@ def plot_model(
         logger.info("Fitting Model")
         visualizer.fit(X_train, y_train)
         display.move_progress()
-        clear_output()
+        display.clear_output()
         if save:
             logger.info(
                 "Saving 'Recursive Feature Selection.png' in current active directory"
@@ -5726,7 +5728,7 @@ def plot_model(
         logger.info("Fitting Model")
         visualizer.fit(X_train, y_train)
         display.move_progress()
-        clear_output()
+        display.clear_output()
         if save:
             logger.info("Saving 'Learning Curve.png' in current active directory")
             if system:
@@ -5749,7 +5751,7 @@ def plot_model(
         logger.info("Fitting Model")
         visualizer.fit_transform(X_train_transformed, y_train)
         display.move_progress()
-        clear_output()
+        display.clear_output()
         if save:
             logger.info("Saving 'Manifold Plot.png' in current active directory")
             if system:
@@ -5795,7 +5797,7 @@ def plot_model(
         ax1.grid(b=True, color="grey", linewidth=0.5, linestyle="-")
         plt.tight_layout()
         display.move_progress()
-        clear_output()
+        display.clear_output()
         if save:
             logger.info("Saving 'Calibration Plot.png' in current active directory")
             if system:
@@ -5869,7 +5871,7 @@ def plot_model(
             param_range = np.arange(100, 1000, 100)
 
         else:
-            clear_output()
+            display.clear_output()
             sys.exit(
                 "(Type Error): Plot not supported for this estimator. Try different estimator."
             )
@@ -5890,7 +5892,7 @@ def plot_model(
         logger.info("Fitting Model")
         viz.fit(X_train, y_train)
         display.move_progress()
-        clear_output()
+        display.clear_output()
         if save:
             logger.info("Saving 'Validation Curve.png' in current active directory")
             if system:
@@ -5927,7 +5929,7 @@ def plot_model(
         visualizer.fit(X_train_transformed, y_train_transformed)
         visualizer.transform(X_train_transformed)
         display.move_progress()
-        clear_output()
+        display.clear_output()
         if save:
             logger.info("Saving 'Dimension Plot.png' in current active directory")
             if system:
@@ -5963,7 +5965,7 @@ def plot_model(
         plt.xlabel("Variable Importance")
         plt.ylabel("Features")
         display.move_progress()
-        clear_output()
+        display.clear_output()
         if save:
             logger.info("Saving 'Feature Importance.png' in current active directory")
             if system:
@@ -5978,7 +5980,7 @@ def plot_model(
 
     elif plot == "parameter":
 
-        clear_output()
+        display.clear_output()
         param_df = pd.DataFrame.from_dict(
             estimator.get_params(estimator), orient="index", columns=["Parameters"]
         )
@@ -6056,7 +6058,9 @@ def evaluate_model(estimator):
     )
 
 
-def interpret_model(estimator, plot="summary", feature=None, observation=None):
+def interpret_model(
+    estimator, plot: str = "summary", feature: str = None, observation: int = None
+):
 
     """
     This function takes a trained model object and returns an interpretation plot 
@@ -6358,7 +6362,13 @@ def interpret_model(estimator, plot="summary", feature=None, observation=None):
     )
 
 
-def calibrate_model(estimator, method="sigmoid", fold=10, round=4, verbose=True):
+def calibrate_model(
+    estimator,
+    method: str = "sigmoid",
+    fold: int = 10,
+    round: int = 4,
+    verbose: bool = True,
+):
 
     """
     This function takes the input of trained estimator and performs probability 
@@ -7079,7 +7089,11 @@ def calibrate_model(estimator, method="sigmoid", fold=10, round=4, verbose=True)
 
 
 def optimize_threshold(
-    estimator, true_positive=0, true_negative=0, false_positive=0, false_negative=0
+    estimator,
+    true_positive: int = 0,
+    true_negative: int = 0,
+    false_positive: int = 0,
+    false_negative: int = 0,
 ):
 
     """
@@ -7341,7 +7355,10 @@ def optimize_threshold(
 
 
 def predict_model(
-    estimator, data=None, probability_threshold=None, verbose=True,
+    estimator,
+    data: pandas.DataFrame = None,
+    probability_threshold: float = None,
+    verbose: bool = True,
 ):  # added in pycaret==2.0.0
 
     """
@@ -7814,7 +7831,7 @@ def finalize_model(estimator):
     return model_final
 
 
-def deploy_model(model, model_name, authentication, platform="aws"):
+def deploy_model(model, model_name: str, authentication: dict, platform: str = "aws"):
 
     """
     (In Preview)
@@ -8051,7 +8068,7 @@ def deploy_model(model, model_name, authentication, platform="aws"):
     )
 
 
-def save_model(model, model_name, model_only=False, verbose=True):
+def save_model(model, model_name: str, model_only: bool = False, verbose: bool = True):
 
     """
     This function saves the transformation pipeline and trained model object 
@@ -8129,7 +8146,9 @@ def save_model(model, model_name, model_only=False, verbose=True):
     )
 
 
-def load_model(model_name, platform=None, authentication=None, verbose=True):
+def load_model(
+    model_name, platform: str = None, authentication: dict = None, verbose: bool = True
+):
 
     """
     This function loads a previously saved transformation pipeline and model 
@@ -8248,7 +8267,7 @@ def load_model(model_name, platform=None, authentication=None, verbose=True):
         )
 
 
-def automl(optimize="Accuracy", use_holdout=False):
+def automl(optimize: str = "Accuracy", use_holdout: bool = False):
 
     """
     This function returns the best model out of all models created in 
@@ -8324,7 +8343,7 @@ def automl(optimize="Accuracy", use_holdout=False):
     return automl_finalized
 
 
-def pull():
+def pull() -> pandas.DataFrame:
     """
     Returns latest displayed table.
 
@@ -8337,7 +8356,7 @@ def pull():
     return display_container[-1]
 
 
-def models(type=None, internal=False):
+def models(type: str = None, internal: bool = False) -> pandas.DataFrame:
 
     """
     Returns table of models available in model library.
@@ -8870,7 +8889,7 @@ def models(type=None, internal=False):
     return filter_model_df_by_type(df)
 
 
-def get_metrics():
+def get_metrics() -> pandas.DataFrame:
     try:
         return all_metrics
     except:
@@ -8936,7 +8955,7 @@ def get_metrics():
     return df
 
 
-def get_logs(experiment_name=None, save=False):
+def get_logs(experiment_name: str = None, save: bool = False) -> pandas.DataFrame:
 
     """
     Returns a table with experiment logs consisting
@@ -8989,7 +9008,7 @@ def get_logs(experiment_name=None, save=False):
     return runs
 
 
-def get_config(variable):
+def get_config(variable: str):
 
     """
     This function is used to access global environment variables.
@@ -9113,7 +9132,7 @@ def get_config(variable):
     return global_var
 
 
-def set_config(variable, value):
+def set_config(variable: str, value):
 
     """
     This function is used to reset global environment variables.
@@ -9264,7 +9283,7 @@ def get_system_logs():
         print(columns)
 
 
-def _get_model_id(e):
+def _get_model_id(e) -> str:
     all_models = models(internal=True)
     model_definition = None
     for row in all_models.itertuples():
@@ -9274,7 +9293,7 @@ def _get_model_id(e):
     return None
 
 
-def _is_special_model(e):
+def _is_special_model(e) -> bool:
     all_models = models(internal=True)
     model_definition = None
     for row in all_models.itertuples():
@@ -9284,7 +9303,7 @@ def _is_special_model(e):
     return False
 
 
-def _get_model_name(e):
+def _get_model_name(e) -> str:
     all_models = models(internal=True)
     if isinstance(e, str) and e in all_models.index:
         model_id = e
@@ -9301,7 +9320,11 @@ def _get_model_name(e):
     return name
 
 
-def _fix_imbalance(Xtrain, ytrain, fix_imbalance_method_param=None):
+def _fix_imbalance(
+    Xtrain: pandas.DataFrame,
+    ytrain: pandas.DataFrame,
+    fix_imbalance_method_param: bool = None,
+) -> Tuple[pandas.DataFrame, pandas.DataFrame]:
     logger = get_logger()
     logger.info("Initializing SMOTE")
 
@@ -9322,7 +9345,12 @@ def _fix_imbalance(Xtrain, ytrain, fix_imbalance_method_param=None):
 
 
 def _choose_better(
-    estimator, _estimator_, best_model, compare_dimension, fold, display=None
+    estimator,
+    _estimator_,
+    best_model,
+    compare_dimension: str,
+    fold: int,
+    display: Display = None,
 ):
     """
     When choose_better sets to True. optimize metric in scoregrid is
@@ -9362,7 +9390,9 @@ def _choose_better(
     return best_model
 
 
-def _choose_better_list(model, estimator_list, compare_dimension, fold, display=None):
+def _choose_better_list(
+    model, estimator_list, compare_dimension: str, fold: int, display: Display = None
+):
     """
     When choose_better sets to True. optimize metric in scoregrid is
     compared with base model created using create_model so that stack_models
@@ -9408,7 +9438,7 @@ def _choose_better_list(model, estimator_list, compare_dimension, fold, display=
     return model
 
 
-def _create_bucket_gcp(project_name, bucket_name):
+def _create_bucket_gcp(project_name: str, bucket_name: str):
     """
     Creates a bucket on Google Cloud Platform if it does not exists already
 
@@ -9444,7 +9474,10 @@ def _create_bucket_gcp(project_name, bucket_name):
 
 
 def _upload_blob_gcp(
-    project_name, bucket_name, source_file_name, destination_blob_name
+    project_name: str,
+    bucket_name: str,
+    source_file_name: str,
+    destination_blob_name: str,
 ):
 
     """
@@ -9491,7 +9524,10 @@ def _upload_blob_gcp(
 
 
 def _download_blob_gcp(
-    project_name, bucket_name, source_blob_name, destination_file_name
+    project_name: str,
+    bucket_name: str,
+    source_blob_name: str,
+    destination_file_name: str,
 ):
     """
     Download a blob from GCP storage bucket
@@ -9540,7 +9576,7 @@ def _download_blob_gcp(
     return blob
 
 
-def _create_container_azure(container_name):
+def _create_container_azure(container_name: str):
     """
     Creates a storage container on Azure Platform. gets the connection string from the environment variables.
 
@@ -9568,7 +9604,9 @@ def _create_container_azure(container_name):
     return container_client
 
 
-def _upload_blob_azure(container_name, source_file_name, destination_blob_name):
+def _upload_blob_azure(
+    container_name: str, source_file_name: str, destination_blob_name: str
+):
     """
     Upload blob to Azure storage  container
 
@@ -9609,7 +9647,9 @@ def _upload_blob_azure(container_name, source_file_name, destination_blob_name):
         blob_client.upload_blob(data, overwrite=True)
 
 
-def _download_blob_azure(container_name, source_blob_name, destination_file_name):
+def _download_blob_azure(
+    container_name: str, source_blob_name: str, destination_file_name: str
+):
     """
     Download blob from Azure storage  container
 
