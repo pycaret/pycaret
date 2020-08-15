@@ -6,7 +6,9 @@
 ## What is PyCaret?
 PyCaret is an open source `low-code` machine learning library in Python that aims to reduce the hypothesis to insights cycle time in a ML experiment. It enables data scientists to perform end-to-end experiments quickly and efficiently. In comparison with the other open source machine learning libraries, PyCaret is an alternative low-code library that can be used to perform complex machine learning tasks with only few lines of code. PyCaret is essentially a Python wrapper around several machine learning libraries and frameworks such as `scikit-learn`, `XGBoost`, `Microsoft LightGBM`, `spaCy` and many more. 
 
-The design and simplicity of PyCaret is inspired by the emerging role of `citizen data scientists`, a term first used by Gartner. Citizen Data Scientists are `power users` who can perform both simple and moderately sophisticated analytical tasks that would previously have required more expertise. Seasoned data scientists are often difficult to find and expensive to hire but citizen data scientists can be an effective way to mitigate this gap and address data related challenges in business setting.
+The design and simplicity of PyCaret is inspired by the emerging role of `citizen data scientists`, a term first used by Gartner. Citizen Data Scientists are `power users` who can perform both simple and moderately sophisticated analytical tasks that would previously have required more expertise. Seasoned data scientists are often difficult to find and expensive to hire but citizen data scientists can be an effective way to mitigate this gap and address data related challenges in business setting. 
+
+PyCaret is a great library which not only simplifies the machine learning tasks for citizen data scientists but also helps new startups to reduce the cost of investing in a team of data scientists. Therefore, this library has not only helped the citizen data scientists but has also helped individuals who want to start exploring the field of data science, having no prior knowledge in this field.
 
 PyCaret is `simple`, `easy to use` and `deployment ready`. All the steps performed in a ML experiment can be reproduced using a pipeline that is automatically developed and orchestrated in PyCaret as you progress through the experiment. A `pipeline` can be saved in a binary file format that is transferable across environments.
 
@@ -21,10 +23,26 @@ PyCaret `2.0` is now available. See `2.0` release notes. The easiest way to inst
 pip install pycaret==2.0
 ```
 
+## Optional dependencies
+Following libraries are not hard dependencies and are not automatically installed when you install PyCaret. To use all functionalities of PyCaret, these optional dependencies must be installed.
+
+```shell
+pip install psutil
+pip install awscli 
+pip install azure-storage-blob
+pip install google-cloud-storage
+pip install shap
+```
+
+## Python:
+Installation is only supported on 64-bit version of Python.
+
 ## Important Links
-- 2.0 Release notes: https://github.com/pycaret/pycaret/releases/tag/2.0
-- User Guide / Documentation: https://www.pycaret.org/guide
-- Getting Started Tutorials: https://www.pycaret.org/tutorial
+- Release notes : https://github.com/pycaret/pycaret/releases/tag/2.0
+- User Guide : https://www.pycaret.org/guide
+- Getting Started Tutorials : https://github.com/pycaret/pycaret/tree/master/tutorials `not updated for PyCaret 2.0`
+- Example Notebooks : https://github.com/pycaret/pycaret/tree/master/examples
+- Other Resources : https://github.com/pycaret/pycaret/tree/master/resources 
 - Issue Logs: https://github.com/pycaret/pycaret/issues
 
 ## Who should use PyCaret?
@@ -35,11 +53,12 @@ PyCaret is an open source library that anybody can use. In our view the ideal ta
 - Students of Data Science.
 - Data Science Professionals and Consultants involved in building Proof of Concept projects.
 
-## Dependencies
-Please read requirements.txt for list of requirements. They are automatically installed when pycaret is installed using pip. `shap`, `awscli` and `psutil` is removed from hard dependency in PyCaret 2.0. Must be installed separately, if needed.
+## Current Contributors
+<a href="https://github.com/pycaret/pycaret/graphs/contributors">
+  <img src="https://contributors-img.web.app/image?repo=pycaret/pycaret" />
+</a>
 
-## Note:
-It supports Python 64 bit only.
+Made with [contributors-img](https://contributors-img.web.app).
 
 ## License
 

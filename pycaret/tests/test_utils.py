@@ -1,0 +1,104 @@
+import os, sys
+sys.path.insert(0, os.path.abspath(".."))
+
+import numpy  as np
+import pandas as pd
+import pytest
+import pycaret.utils
+import pycaret.classification
+import pycaret.datasets
+import pycaret.regression
+import sklearn.model_selection
+import sklearn.preprocessing
+
+
+def test():
+    # version
+    pycaret.utils.version()
+    pycaret.utils.__version__()
+
+    # preparation(classification)
+    data = pycaret.datasets.get_data("juice")
+    target = "Purchase"
+    le = sklearn.preprocessing.LabelEncoder()
+    le = le.fit(data[target])
+    data[target] = le.transform(data[target])
+    train, test = sklearn.model_selection.train_test_split(data, train_size=0.8, random_state=1)
+    clf1 = pycaret.classification.setup(train, target=target,silent=True, html=False, session_id=123)
+    model = pycaret.classification.create_model("lightgbm")
+    data_unseen = test.drop(columns=target)
+    final_model = pycaret.classification.finalize_model(model)
+    result = pycaret.classification.predict_model(final_model, data = data_unseen)
+    actual = test[target]
+    prediction = result["Label"]
+    
+    # provisional support
+    actual = actual.dropna(axis=0, how="any")
+    actual = actual.reset_index()
+    actual = actual["Purchase"].astype(np.int64)
+    prediction = prediction.dropna(axis=0, how="any")
+    prediction = prediction.reset_index()
+    prediction = prediction["Label"].astype(np.int64)
+
+    # check metric(classification)
+    accuracy = pycaret.utils.check_metric(actual, prediction, "Accuracy")
+    assert accuracy >= 0
+    assert accuracy <= 1
+    recall = pycaret.utils.check_metric(actual, prediction, "Recall")
+    assert recall >= 0
+    assert recall <= 1
+    precision = pycaret.utils.check_metric(actual, prediction, "Precision")
+    assert precision >= 0
+    assert precision <= 1
+    f1 = pycaret.utils.check_metric(actual, prediction, "F1")
+    assert f1 >= 0
+    assert f1 <= 1
+    kappa = pycaret.utils.check_metric(actual, prediction, "Kappa")
+    assert kappa >= -1
+    assert kappa <= 1
+    auc = pycaret.utils.check_metric(actual, prediction, "AUC")
+    assert auc >= 0
+    assert auc <= 1
+    mcc = pycaret.utils.check_metric(actual, prediction, "MCC")
+    assert mcc >= -1
+    assert mcc <= 1
+
+    # preparation(regression)
+    data = pycaret.datasets.get_data("boston")
+    target = "medv"
+    train, test = sklearn.model_selection.train_test_split(data, train_size=0.8, random_state=1)
+    reg1 = pycaret.regression.setup(data, target="medv", silent=True, html=False, session_id=123)
+    model = pycaret.regression.create_model("lightgbm")
+    data_unseen = test.drop(columns=target)
+    final_model = pycaret.regression.finalize_model(model)
+    result = pycaret.regression.predict_model(final_model, data=data_unseen)
+    actual = test[target]
+    prediction = result["Label"]
+    
+    # provisional support
+    actual = actual.dropna(axis=0, how="any")
+    actual = actual.reset_index()
+    actual=actual.drop("index", axis=1)
+    prediction = prediction.dropna(axis=0, how="any")
+    prediction = prediction.reset_index()
+    prediction=prediction.drop("index", axis=1)
+
+    # check metric(regression)
+    mae = pycaret.utils.check_metric(actual, prediction, "MAE")
+    assert mae >= 0
+    mse = pycaret.utils.check_metric(actual, prediction, "MSE")
+    assert mse >= 0
+    rmse = pycaret.utils.check_metric(actual, prediction, "RMSE")
+    assert rmse >= 0
+    r2 = pycaret.utils.check_metric(actual, prediction, "R2")
+    assert r2 <= 1
+    rmsle = pycaret.utils.check_metric(actual, prediction, "RMSLE")
+    assert rmsle >= 0
+    mape = pycaret.utils.check_metric(actual, prediction, "MAPE")
+    # provisional support
+    # assert mape >= 0
+
+    assert 1 == 1
+
+if __name__ == "__main__":
+    test()

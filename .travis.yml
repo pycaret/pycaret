@@ -10,6 +10,7 @@ before_install:
   - pip install codecov
 install:
   - pip install -r requirements.txt
+  - python -m spacy download en
 script: pytest # run tests
 after_success:
   - codecov # submit coverage

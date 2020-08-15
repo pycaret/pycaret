@@ -1,7 +1,6 @@
 import os, sys
 sys.path.insert(0, os.path.abspath(".."))
 
-#compare_models_test
 import pytest
 import pycaret.arules
 import pycaret.datasets
@@ -11,12 +10,13 @@ def test():
     data = pycaret.datasets.get_data("france")
 
     # init setup
-    arul101 = pycaret.arules.setup(data = data, 
-                    transaction_id = "InvoiceNo",
-                    item_id = "Description", session_id=123)
+    arul101 = pycaret.arules.setup(data = data, transaction_id = "InvoiceNo", item_id = "Description", session_id = 123)
 
     # create model
     model = pycaret.arules.create_model()
+    
+    # get rules
+    rules = pycaret.arules.get_rules(data = data, transaction_id = "InvoiceNo", item_id = "Description")
 
     assert 1 == 1
 

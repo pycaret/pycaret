@@ -1,8 +1,8 @@
 # Module: Clustering
 # Author: Moez Ali <moez.ali@queensu.ca>
 # License: MIT
-# Release: PyCaret 2.0x
-# Last modified : 30/07/2020
+# Release: PyCaret 2.1
+# Last modified : 14/08/2020
 
 def setup(data, 
         categorical_features = None,
@@ -45,257 +45,248 @@ def setup(data,
         profile = False,):
     
     """
-        
-    Description:
-    ------------
     This function initializes the environment in pycaret. setup() must called before
     executing any other function in pycaret. It takes one mandatory parameter:
-    dataframe {array-like, sparse matrix}. 
+    data.
 
-        Example
-        -------
-        from pycaret.datasets import get_data
-        jewellery = get_data('jewellery')
-
-        experiment_name = setup(data = jewellery, normalize = True)
-        
-        'jewellery' is a pandas Dataframe.
+    Example
+    -------
+    >>> from pycaret.datasets import get_data
+    >>> jewellery = get_data('jewellery')
+    >>> experiment_name = setup(data = jewellery, normalize = True)
+    
+    'jewellery' is a pandas.DataFrame.
 
     Parameters
     ----------
-    data : {array-like, sparse matrix}, shape (n_samples, n_features) where n_samples 
-    is the number of samples and n_features is the number of features in dataframe.
+    data : pandas.DataFrame
+        Shape (n_samples, n_features) where n_samples is the number of samples and n_features is the number of features.
     
     categorical_features: string, default = None
-    If the inferred data types are not correct, categorical_features can be used to
-    overwrite the inferred type. If when running setup the type of 'column1' is
-    inferred as numeric instead of categorical, then this parameter can be used 
-    to overwrite the type by passing categorical_features = ['column1'].
+        If the inferred data types are not correct, categorical_features can be used to
+        overwrite the inferred type. If when running setup the type of 'column1' is
+        inferred as numeric instead of categorical, then this parameter can be used 
+        to overwrite the type by passing categorical_features = ['column1'].
     
     categorical_imputation: string, default = 'constant'
-    If missing values are found in categorical features, they will be imputed with
-    a constant 'not_available' value. The other available option is 'mode' which 
-    imputes the missing value using most frequent value in the training dataset. 
+        If missing values are found in categorical features, they will be imputed with
+        a constant 'not_available' value. The other available option is 'mode' which 
+        imputes the missing value using most frequent value in the training dataset. 
     
     ordinal_features: dictionary, default = None
-    When the data contains ordinal features, they must be encoded differently using 
-    the ordinal_features param. If the data has a categorical variable with values
-    of 'low', 'medium', 'high' and it is known that low < medium < high, then it can 
-    be passed as ordinal_features = { 'column_name' : ['low', 'medium', 'high'] }. 
-    The list sequence must be in increasing order from lowest to highest.
+        When the data contains ordinal features, they must be encoded differently using 
+        the ordinal_features param. If the data has a categorical variable with values
+        of 'low', 'medium', 'high' and it is known that low < medium < high, then it can 
+        be passed as ordinal_features = { 'column_name' : ['low', 'medium', 'high'] }. 
+        The list sequence must be in increasing order from lowest to highest.
     
     high_cardinality_features: string, default = None
-    When the data containts features with high cardinality, they can be compressed
-    into fewer levels by passing them as a list of column names with high cardinality.
-    Features are compressed using frequency distribution. As such original features
-    are replaced with the frequency distribution and converted into numeric variable. 
+        When the data containts features with high cardinality, they can be compressed
+        into fewer levels by passing them as a list of column names with high cardinality.
+        Features are compressed using frequency distribution. As such original features
+        are replaced with the frequency distribution and converted into numeric variable. 
     
     numeric_features: string, default = None
-    If the inferred data types are not correct, numeric_features can be used to
-    overwrite the inferred type. If when running setup the type of 'column1' is 
-    inferred as a categorical instead of numeric, then this parameter can be used 
-    to overwrite by passing numeric_features = ['column1'].    
+        If the inferred data types are not correct, numeric_features can be used to
+        overwrite the inferred type. If when running setup the type of 'column1' is 
+        inferred as a categorical instead of numeric, then this parameter can be used 
+        to overwrite by passing numeric_features = ['column1'].    
 
     numeric_imputation: string, default = 'mean'
-    If missing values are found in numeric features, they will be imputed with the 
-    mean value of the feature. The other available option is 'median' which imputes 
-    the value using the median value in the training dataset. 
+        If missing values are found in numeric features, they will be imputed with the 
+        mean value of the feature. The other available option is 'median' which imputes 
+        the value using the median value in the training dataset. 
     
     date_features: string, default = None
-    If the data has a DateTime column that is not automatically detected when running
-    setup, this parameter can be used by passing date_features = 'date_column_name'. 
-    It can work with multiple date columns. Date columns are not used in modeling. 
-    Instead, feature extraction is performed and date columns are dropped from the 
-    dataset. If the date column includes a time stamp, features related to time will 
-    also be extracted.
+        If the data has a DateTime column that is not automatically detected when running
+        setup, this parameter can be used by passing date_features = 'date_column_name'. 
+        It can work with multiple date columns. Date columns are not used in modeling. 
+        Instead, feature extraction is performed and date columns are dropped from the 
+        dataset. If the date column includes a time stamp, features related to time will 
+        also be extracted.
     
     ignore_features: string, default = None
-    If any feature should be ignored for modeling, it can be passed to the param
-    ignore_features. The ID and DateTime columns when inferred, are automatically 
-    set to ignore for modeling. 
+        If any feature should be ignored for modeling, it can be passed to the param
+        ignore_features. The ID and DateTime columns when inferred, are automatically 
+        set to ignore for modeling. 
     
     normalize: bool, default = False
-    When set to True, the feature space is transformed using the normalized_method
-    param. Generally, linear algorithms perform better with normalized data however, 
-    the results may vary and it is advised to run multiple experiments to evaluate
-    the benefit of normalization.
+        When set to True, the feature space is transformed using the normalized_method
+        param. Generally, linear algorithms perform better with normalized data however, 
+        the results may vary and it is advised to run multiple experiments to evaluate
+        the benefit of normalization.
     
     normalize_method: string, default = 'zscore'
-    Defines the method to be used for normalization. By default, normalize method
-    is set to 'zscore'. The standard zscore is calculated as z = (x - u) / s. The
-    other available options are:
+        Defines the method to be used for normalization. By default, normalize method
+        is set to 'zscore'. The standard zscore is calculated as z = (x - u) / s. The
+        other available options are:
     
-    'minmax'    : scales and translates each feature individually such that it is in 
-                  the range of 0 - 1.
-    
-    'maxabs'    : scales and translates each feature individually such that the maximal 
-                  absolute value of each feature will be 1.0. It does not shift/center 
-                  the data, and thus does not destroy any sparsity.
-    
-    'robust'    : scales and translates each feature according to the Interquartile range.
-                  When the dataset contains outliers, robust scaler often gives better
-                  results.
+        'minmax'    : scales and translates each feature individually such that it is in 
+                    the range of 0 - 1.
+        
+        'maxabs'    : scales and translates each feature individually such that the maximal 
+                    absolute value of each feature will be 1.0. It does not shift/center 
+                    the data, and thus does not destroy any sparsity.
+        
+        'robust'    : scales and translates each feature according to the Interquartile range.
+                    When the dataset contains outliers, robust scaler often gives better
+                    results.
     
     transformation: bool, default = False
-    When set to True, a power transformation is applied to make the data more normal /
-    Gaussian-like. This is useful for modeling issues related to heteroscedasticity or 
-    other situations where normality is desired. The optimal parameter for stabilizing 
-    variance and minimizing skewness is estimated through maximum likelihood.
+        When set to True, a power transformation is applied to make the data more normal /
+        Gaussian-like. This is useful for modeling issues related to heteroscedasticity or 
+        other situations where normality is desired. The optimal parameter for stabilizing 
+        variance and minimizing skewness is estimated through maximum likelihood.
     
     transformation_method: string, default = 'yeo-johnson'
-    Defines the method for transformation. By default, the transformation method is set
-    to 'yeo-johnson'. The other available option is 'quantile' transformation. Both 
-    the transformation transforms the feature set to follow a Gaussian-like or normal
-    distribution. Note that the quantile transformer is non-linear and may distort linear 
-    correlations between variables measured at the same scale.
+        Defines the method for transformation. By default, the transformation method is set
+        to 'yeo-johnson'. The other available option is 'quantile' transformation. Both 
+        the transformation transforms the feature set to follow a Gaussian-like or normal
+        distribution. Note that the quantile transformer is non-linear and may distort linear 
+        correlations between variables measured at the same scale.
     
     handle_unknown_categorical: bool, default = True
-    When set to True, unknown categorical levels in new / unseen data are replaced by
-    the most or least frequent level as learned in the training data. The method is 
-    defined under the unknown_categorical_method param.
+        When set to True, unknown categorical levels in new / unseen data are replaced by
+        the most or least frequent level as learned in the training data. The method is 
+        defined under the unknown_categorical_method param.
     
     unknown_categorical_method: string, default = 'least_frequent'
-    Method used to replace unknown categorical levels in unseen data. Method can be
-    set to 'least_frequent' or 'most_frequent'.
+        Method used to replace unknown categorical levels in unseen data. Method can be
+        set to 'least_frequent' or 'most_frequent'.
     
     pca: bool, default = False
-    When set to True, dimensionality reduction is applied to project the data into 
-    a lower dimensional space using the method defined in pca_method param. In 
-    supervised learning pca is generally performed when dealing with high feature
-    space and memory is a constraint. Note that not all datasets can be decomposed
-    efficiently using a linear PCA technique and that applying PCA may result in loss 
-    of information. As such, it is advised to run multiple experiments with different 
-    pca_methods to evaluate the impact. 
+        When set to True, dimensionality reduction is applied to project the data into 
+        a lower dimensional space using the method defined in pca_method param. In 
+        supervised learning pca is generally performed when dealing with high feature
+        space and memory is a constraint. Note that not all datasets can be decomposed
+        efficiently using a linear PCA technique and that applying PCA may result in loss 
+        of information. As such, it is advised to run multiple experiments with different 
+        pca_methods to evaluate the impact. 
 
     pca_method: string, default = 'linear'
-    The 'linear' method performs Linear dimensionality reduction using Singular Value 
-    Decomposition. The other available options are:
-    
-    kernel      : dimensionality reduction through the use of RVF kernel.  
-    
-    incremental : replacement for 'linear' pca when the dataset to be decomposed is 
-                  too large to fit in memory
+        The 'linear' method performs Linear dimensionality reduction using Singular Value 
+        Decomposition. The other available options are:
+        
+        kernel      : dimensionality reduction through the use of RVF kernel.  
+        
+        incremental : replacement for 'linear' pca when the dataset to be decomposed is 
+                    too large to fit in memory
     
     pca_components: int/float, default = 0.99
-    Number of components to keep. if pca_components is a float, it is treated as a 
-    target percentage for information retention. When pca_components is an integer
-    it is treated as the number of features to be kept. pca_components must be strictly
-    less than the original number of features in the dataset.
+        Number of components to keep. if pca_components is a float, it is treated as a 
+        target percentage for information retention. When pca_components is an integer
+        it is treated as the number of features to be kept. pca_components must be strictly
+        less than the original number of features in the dataset.
     
     ignore_low_variance: bool, default = False
-    When set to True, all categorical features with statistically insignificant variances 
-    are removed from the dataset. The variance is calculated using the ratio of unique 
-    values to the number of samples, and the ratio of the most common value to the 
-    frequency of the second most common value.
+        When set to True, all categorical features with statistically insignificant variances 
+        are removed from the dataset. The variance is calculated using the ratio of unique 
+        values to the number of samples, and the ratio of the most common value to the 
+        frequency of the second most common value.
     
     combine_rare_levels: bool, default = False
-    When set to True, all levels in categorical features below the threshold defined 
-    in rare_level_threshold param are combined together as a single level. There must be 
-    atleast two levels under the threshold for this to take effect. rare_level_threshold
-    represents the percentile distribution of level frequency. Generally, this technique 
-    is applied to limit a sparse matrix caused by high numbers of levels in categorical 
-    features. 
+        When set to True, all levels in categorical features below the threshold defined 
+        in rare_level_threshold param are combined together as a single level. There must be 
+        atleast two levels under the threshold for this to take effect. rare_level_threshold
+        represents the percentile distribution of level frequency. Generally, this technique 
+        is applied to limit a sparse matrix caused by high numbers of levels in categorical 
+        features. 
     
     rare_level_threshold: float, default = 0.1
-    Percentile distribution below which rare categories are combined. Only comes into
-    effect when combine_rare_levels is set to True.
+        Percentile distribution below which rare categories are combined. Only comes into
+        effect when combine_rare_levels is set to True.
     
     bin_numeric_features: list, default = None
-    When a list of numeric features is passed they are transformed into categorical
-    features using KMeans, where values in each bin have the same nearest center of a 
-    1D k-means cluster. The number of clusters are determined based on the 'sturges' 
-    method. It is only optimal for gaussian data and underestimates the number of bins 
-    for large non-gaussian datasets.
+        When a list of numeric features is passed they are transformed into categorical
+        features using KMeans, where values in each bin have the same nearest center of a 
+        1D k-means cluster. The number of clusters are determined based on the 'sturges' 
+        method. It is only optimal for gaussian data and underestimates the number of bins 
+        for large non-gaussian datasets.
     
     remove_multicollinearity: bool, default = False
-    When set to True, the variables with inter-correlations higher than the threshold
-    defined under the multicollinearity_threshold param are dropped. When two features
-    are highly correlated with each other, the feature with higher average correlation 
-    in the feature space is dropped. 
+        When set to True, the variables with inter-correlations higher than the threshold
+        defined under the multicollinearity_threshold param are dropped. When two features
+        are highly correlated with each other, the feature with higher average correlation 
+        in the feature space is dropped. 
     
     multicollinearity_threshold: float, default = 0.9
-    Threshold used for dropping the correlated features. Only comes into effect when 
-    remove_multicollinearity is set to True.
+        Threshold used for dropping the correlated features. Only comes into effect when 
+        remove_multicollinearity is set to True.
     
     group_features: list or list of list, default = None
-    When a dataset contains features that have related characteristics, the group_features
-    param can be used for statistical feature extraction. For example, if a dataset has 
-    numeric features that are related with each other (i.e 'Col1', 'Col2', 'Col3'), a list 
-    containing the column names can be passed under group_features to extract statistical 
-    information such as the mean, median, mode and standard deviation.
+        When a dataset contains features that have related characteristics, the group_features
+        param can be used for statistical feature extraction. For example, if a dataset has 
+        numeric features that are related with each other (i.e 'Col1', 'Col2', 'Col3'), a list 
+        containing the column names can be passed under group_features to extract statistical 
+        information such as the mean, median, mode and standard deviation.
     
     group_names: list, default = None
-    When group_features is passed, a name of the group can be passed into the group_names 
-    param as a list containing strings. The length of a group_names list must equal to the 
-    length  of group_features. When the length doesn't match or the name is not passed, new 
-    features are sequentially named such as group_1, group_2 etc.
+        When group_features is passed, a name of the group can be passed into the group_names 
+        param as a list containing strings. The length of a group_names list must equal to the 
+        length  of group_features. When the length doesn't match or the name is not passed, new 
+        features are sequentially named such as group_1, group_2 etc.
     
     supervised: bool, default = False
-    When set to True, supervised_target column is ignored for transformation. This
-    param is only for internal use. 
+        When set to True, supervised_target column is ignored for transformation. This
+        param is only for internal use. 
     
     supervised_target: string, default = None
-    Name of supervised_target column that will be ignored for transformation. Only
-    applciable when tune_model() function is used. This param is only for internal use.
+        Name of supervised_target column that will be ignored for transformation. Only
+        applciable when tune_model() function is used. This param is only for internal use.
 
     n_jobs: int, default = -1
-    The number of jobs to run in parallel (for functions that supports parallel 
-    processing) -1 means using all processors. To run all functions on single processor 
-    set n_jobs to None.
+        The number of jobs to run in parallel (for functions that supports parallel 
+        processing) -1 means using all processors. To run all functions on single processor 
+        set n_jobs to None.
 
     html: bool, default = True
-    If set to False, prevents runtime display of monitor. This must be set to False
-    when using environment that doesnt support HTML.
+        If set to False, prevents runtime display of monitor. This must be set to False
+        when using environment that doesnt support HTML.
 
     session_id: int, default = None
-    If None, a random seed is generated and returned in the Information grid. The 
-    unique number is then distributed as a seed in all functions used during the 
-    experiment. This can be used for later reproducibility of the entire experiment.
+        If None, a random seed is generated and returned in the Information grid. The 
+        unique number is then distributed as a seed in all functions used during the 
+        experiment. This can be used for later reproducibility of the entire experiment.
 
     log_experiment: bool, default = True
-    When set to True, all metrics and parameters are logged on MLFlow server.
+        When set to True, all metrics and parameters are logged on MLFlow server.
 
     experiment_name: str, default = None
-    Name of experiment for logging. When set to None, 'clu' is by default used as 
-    alias for the experiment name.
+        Name of experiment for logging. When set to None, 'clu' is by default used as 
+        alias for the experiment name.
 
     log_plots: bool, default = False
-    When set to True, specific plots are logged in MLflow as a png file. By default,
-    it is set to False. 
+        When set to True, specific plots are logged in MLflow as a png file. By default,
+        it is set to False. 
 
     log_profile: bool, default = False
-    When set to True, data profile is also logged on MLflow as a html file. By default,
-    it is set to False. 
+        When set to True, data profile is also logged on MLflow as a html file. By default,
+        it is set to False. 
 
     log_data: bool, default = False
-    When set to True, train and test dataset are logged as csv. 
+        When set to True, train and test dataset are logged as csv. 
 
     silent: bool, default = False
-    When set to True, confirmation of data types is not required. All preprocessing will 
-    be performed assuming automatically inferred data types. Not recommended for direct use 
-    except for established pipelines.
+        When set to True, confirmation of data types is not required. All preprocessing will 
+        be performed assuming automatically inferred data types. Not recommended for direct use 
+        except for established pipelines.
 
     verbose: Boolean, default = True
-    Information grid is not printed when verbose is set to False.
+        Information grid is not printed when verbose is set to False.
     
     profile: bool, default = False
-    If set to true, a data profile for Exploratory Data Analysis will be displayed 
-    in an interactive HTML report. 
+        If set to true, a data profile for Exploratory Data Analysis will be displayed 
+        in an interactive HTML report. 
 
-    Returns:
-    --------
+    Returns
+    -------
+    info_grid
+        Information grid is printed.
 
-    info grid:    Information grid is printed.
-    -----------      
+    environment
+        This function returns various outputs that are stored in variable
+        as tuple. They are used by other functions in pycaret.
 
-    environment:  This function returns various outputs that are stored in variable
-    -----------   as tuple. They are used by other functions in pycaret.
-
-    Warnings:
-    ---------
-    None
-      
-          
     """
     
     #exception checking   
@@ -1176,11 +1167,8 @@ def setup(data,
             import secrets
             URI = secrets.token_hex(nbytes=4)
             mlflow.set_tag("URI", URI)
-
             mlflow.set_tag("USI", USI) 
-
             mlflow.set_tag("Run Time", runtime)
-
             mlflow.set_tag("Run ID", RunID)
 
             # Log the transformation pipeline
@@ -1188,9 +1176,6 @@ def setup(data,
             save_model(prep_pipe, 'Transformation Pipeline', verbose=False)
             logger.info("SubProcess save_model() end ==================================")
             mlflow.log_artifact('Transformation Pipeline' + '.pkl')
-            size_bytes = Path('Transformation Pipeline.pkl').stat().st_size
-            size_kb = np.round(size_bytes/1000, 2)
-            mlflow.set_tag("Size KB", size_kb)
             os.remove('Transformation Pipeline.pkl')
 
             # Log pandas profile
@@ -1209,17 +1194,6 @@ def setup(data,
                 mlflow.log_artifact('data.csv')
                 os.remove('data.csv')
 
-            # Log input.txt that contains name of columns required in dataset 
-            # to use this pipeline based on USI/URI.
-
-            input_cols = list(data_before_preprocess.columns)
-
-            with open("input.txt", "w") as output:
-                output.write(str(input_cols))
-            
-            mlflow.log_artifact("input.txt")
-            os.remove('input.txt')
-
     logger.info(str(prep_pipe))
     logger.info("setup() succesfully completed......................................")
     
@@ -1233,75 +1207,68 @@ def create_model(model = None,
                  system=True, #added in pycaret==2.0.0
                  **kwargs): #added in pycaret==2.0.0
     
-    """  
-     
-    Description:
-    ------------
+    """
     This function creates a model on the dataset passed as a data param during 
     the setup stage. setup() function must be called before using create_model().
 
     This function returns a trained model object. 
 
-        Example
-        -------
-        from pycaret.datasets import get_data
-        jewellery = get_data('jewellery')
-        experiment_name = setup(data = jewellery, normalize = True)
-        
-        kmeans = create_model('kmeans')
+    Example
+    -------
+    >>> from pycaret.datasets import get_data
+    >>> jewellery = get_data('jewellery')
+    >>> experiment_name = setup(data = jewellery, normalize = True)
+    >>> kmeans = create_model('kmeans')
 
-        This will return a trained K-Means clustering model.
+    This will return a trained K-Means clustering model.
 
     Parameters
     ----------
     model : string / object, default = None
-    
-    Enter ID of the models available in model library or pass an untrained model 
-    object consistent with fit / predict API to train and evaluate model. List of 
-    models available in model library:
+        Enter ID of the models available in model library or pass an untrained model 
+        object consistent with fit / predict API to train and evaluate model. List of 
+        models available in model library (ID - Model):
 
-    ID              Model   
-    ------          -----------
-    'kmeans'        K-Means Clustering
-    'ap'            Affinity Propagation
-    'meanshift'     Mean shift Clustering
-    'sc'            Spectral Clustering
-    'hclust'        Agglomerative Clustering
-    'dbscan'        Density-Based Spatial Clustering
-    'optics'        OPTICS Clustering                               
-    'birch'         Birch Clustering                                 
-    'kmodes'        K-Modes Clustering                              
+        * 'kmeans' - K-Means Clustering
+        * 'ap' - Affinity Propagation
+        * 'meanshift' - Mean shift Clustering
+        * 'sc' - Spectral Clustering
+        * 'hclust' - Agglomerative Clustering
+        * 'dbscan' - Density-Based Spatial Clustering
+        * 'optics' - OPTICS Clustering                               
+        * 'birch' - Birch Clustering                                 
+        * 'kmodes' - K-Modes Clustering                              
     
     num_clusters: int, default = None
-    Number of clusters to be generated with the dataset. If None, num_clusters 
-    is set to 4. 
+        Number of clusters to be generated with the dataset. If None, num_clusters 
+        is set to 4. 
 
     ground_truth: string, default = None
-    When ground_truth is provided, Homogeneity Score, Rand Index, and 
-    Completeness Score is evaluated and printer along with other metrics.
+        When ground_truth is provided, Homogeneity Score, Rand Index, and 
+        Completeness Score is evaluated and printer along with other metrics.
 
     verbose: Boolean, default = True
-    Status update is not printed when verbose is set to False.
+        Status update is not printed when verbose is set to False.
 
     system: Boolean, default = True
-    Must remain True all times. Only to be changed by internal functions.
+        Must remain True all times. Only to be changed by internal functions.
 
     **kwargs: 
-    Additional keyword arguments to pass to the estimator.
+        Additional keyword arguments to pass to the estimator.
 
-    Returns:
+    Returns
+    -------
+    score_grid
+        A table containing the Silhouette, Calinski-Harabasz,  
+        Davies-Bouldin, Homogeneity Score, Rand Index, and 
+        Completeness Score. Last 3 are only evaluated when
+        ground_truth param is provided.
+
+    model
+        trained model object
+
+    Warnings
     --------
-
-    score grid:   A table containing the Silhouette, Calinski-Harabasz,  
-    -----------   Davies-Bouldin, Homogeneity Score, Rand Index, and 
-                  Completeness Score. Last 3 are only evaluated when
-                  ground_truth param is provided.
-
-    model:        trained model object
-    ------
-
-    Warnings:
-    ---------
     - num_clusters not required for Affinity Propagation ('ap'), Mean shift 
       clustering ('meanshift'), Density-Based Spatial Clustering ('dbscan')
       and OPTICS Clustering ('optics'). num_clusters param for these models 
@@ -1448,7 +1415,7 @@ def create_model(model = None,
 
     elif model == 'ap':
         from sklearn.cluster import AffinityPropagation
-        model = AffinityPropagation(damping=0.5, **kwargs)
+        model = AffinityPropagation(**kwargs)
         full_name = 'Affinity Propagation'
 
     elif model == 'meanshift':
@@ -1468,7 +1435,7 @@ def create_model(model = None,
 
     elif model == 'dbscan':
         from sklearn.cluster import DBSCAN
-        model = DBSCAN(eps=0.5, n_jobs=n_jobs_param, **kwargs)
+        model = DBSCAN(n_jobs=n_jobs_param, **kwargs)
         full_name = 'Density-Based Spatial Clustering'
 
     elif model == 'optics':
@@ -1667,14 +1634,28 @@ def create_model(model = None,
                 logger.info("SubProcess plot_model() end ==================================")
 
             # Log model and transformation pipeline
-            logger.info("SubProcess save_model() called ==================================")
-            save_model(model, 'Trained Model', verbose=False)
-            logger.info("SubProcess save_model() end ==================================")
-            mlflow.log_artifact('Trained Model' + '.pkl')
-            size_bytes = Path('Trained Model.pkl').stat().st_size
-            size_kb = np.round(size_bytes/1000, 2)
-            mlflow.set_tag("Size KB", size_kb)
-            os.remove('Trained Model.pkl')
+            from copy import deepcopy
+
+            # get default conda env
+            from mlflow.sklearn import get_default_conda_env
+            default_conda_env = get_default_conda_env()
+            default_conda_env['name'] = str(exp_name_log) + '-env'
+            default_conda_env.get('dependencies').pop(-3)
+            dependencies = default_conda_env.get('dependencies')[-1]
+            from pycaret.utils import __version__
+            dep = 'pycaret==' + str(__version__())
+            dependencies['pip'] = [dep]
+            
+            # define model signature
+            from mlflow.models.signature import infer_signature
+            signature = infer_signature(data_)
+            input_example = data_.iloc[0].to_dict()
+
+            # log model as sklearn flavor
+            prep_pipe_temp = deepcopy(prep_pipe)
+            prep_pipe_temp.steps.append(['trained model', model])
+            mlflow.sklearn.log_model(prep_pipe_temp, "model", conda_env = default_conda_env, signature = signature, input_example = input_example)
+            del(prep_pipe_temp)
 
     progress.value += 1
     
@@ -1694,43 +1675,38 @@ def assign_model(model,
                  transformation=False,
                  verbose=True):
     
-    """  
-     
-    Description:
-    ------------
+    """
     This function assigns each of the data point in the dataset passed during setup
     stage to one of the clusters using trained model object passed as model param.
     create_model() function must be called before using assign_model().
     
-    This function returns a pandas Dataframe.
+    This function returns a pandas.DataFrame.
 
-        Example
-        -------
-        from pycaret.datasets import get_data
-        jewellery = get_data('jewellery')
-        experiment_name = setup(data = jewellery, normalize = True)
-        kmeans = create_model('kmeans')
-        
-        kmeans_df = assign_model(kmeans)
+    Example
+    -------
+    >>> from pycaret.datasets import get_data
+    >>> jewellery = get_data('jewellery')
+    >>> experiment_name = setup(data = jewellery, normalize = True)
+    >>> kmeans = create_model('kmeans')
+    >>> kmeans_df = assign_model(kmeans)
 
-        This will return a dataframe with inferred clusters using trained model.
+    This will return a pandas.DataFrame with inferred clusters using trained model.
 
     Parameters
     ----------
     model: trained model object, default = None
     
     transformation: bool, default = False
-    When set to True, assigned clusters are returned on transformed dataset instead 
-    of original dataset passed during setup().
+        When set to True, assigned clusters are returned on transformed dataset instead 
+        of original dataset passed during setup().
     
     verbose: Boolean, default = True
-    Status update is not printed when verbose is set to False.
+        Status update is not printed when verbose is set to False.
 
-    Returns:
-    --------
-
-    dataframe:   Returns a dataframe with assigned clusters using a trained model.
-    ---------
+    Returns
+    -------
+    pandas.DataFrame
+        Returns a DataFrame with assigned clusters using a trained model.
   
     """
     
@@ -1890,6 +1866,401 @@ def assign_model(model,
 
     return data__
 
+def plot_model(model, 
+            plot='cluster', 
+            feature = None, 
+            label = False,
+            save = False, #added in pycaret 2.0.0
+            system = True): #added in pycaret 2.0.0
+    
+    
+    """
+    This function takes a trained model object and returns a plot on the dataset 
+    passed during setup stage. This function internally calls assign_model before 
+    generating a plot.  
+
+    Example
+    -------
+    >>> from pycaret.datasets import get_data
+    >>> jewellery = get_data('jewellery')
+    >>> experiment_name = setup(data = jewellery, normalize = True)
+    >>> kmeans = create_model('kmeans')
+    >>> plot_model(kmeans)
+
+    This will return a cluster scatter plot (by default). 
+
+    Parameters
+    ----------
+    model : object, default = none
+        A trained model object can be passed. Model must be created using create_model().
+
+    plot : string, default = 'cluster'
+        Enter abbreviation for type of plot. The current list of plots supported are (Plot - Name):
+
+        * 'cluster' - Cluster PCA Plot (2d)              
+        * 'tsne' - Cluster TSnE (3d)
+        * 'elbow' - Elbow Plot 
+        * 'silhouette' - Silhouette Plot         
+        * 'distance' - Distance Plot   
+        * 'distribution' - Distribution Plot
+    
+    feature : string, default = None
+        Name of feature column for x-axis of when plot = 'distribution'. When plot is
+        'cluster' or 'tsne' feature column is used as a hoverover tooltip and/or label
+        when label is set to True. If no feature name is passed in 'cluster' or 'tsne'
+        by default the first of column of dataset is chosen as hoverover tooltip.
+    
+    label : bool, default = False
+        When set to True, data labels are shown in 'cluster' and 'tsne' plot.
+    
+    save: Boolean, default = False
+        Plot is saved as png file in local directory when save parameter set to True.
+
+    system: Boolean, default = True
+        Must remain True all times. Only to be changed by internal functions.
+
+    Returns
+    -------
+    Visual_Plot
+        Prints the visual plot. 
+
+    """  
+    
+    #exception checking   
+    import sys
+    
+    import logging
+
+    try:
+        hasattr(logger, 'name')
+    except:
+        logger = logging.getLogger('logs')
+        logger.setLevel(logging.DEBUG)
+        
+        # create console handler and set level to debug
+        if logger.hasHandlers():
+            logger.handlers.clear()
+        
+        ch = logging.FileHandler('logs.log')
+        ch.setLevel(logging.DEBUG)
+
+        # create formatter
+        formatter = logging.Formatter('%(asctime)s:%(levelname)s:%(message)s')
+
+        # add formatter to ch
+        ch.setFormatter(formatter)
+
+        # add ch to logger
+        logger.addHandler(ch)
+
+    logger.info("Initializing plot_model()")
+    logger.info("""plot_model(model={}, plot={}, feature={}, label={}, save={}, system={})""".\
+        format(str(model), str(plot), str(feature), str(label), str(save), str(system)))
+
+    """
+    exception handling starts here
+    """
+
+    logger.info("Checking exceptions")
+
+    #plot checking
+    allowed_plots = ['cluster', 'tsne', 'elbow', 'silhouette', 'distance', 'distribution']  
+    if plot not in allowed_plots:
+        sys.exit('(Value Error): Plot Not Available. Please see docstring for list of available plots.')
+        
+    if type(label) is not bool:
+        sys.exit('(Type Error): Label param only accepts True or False. ')
+        
+    if feature is not None:
+        if type(feature) is not str:
+            sys.exit('(Type Error): feature parameter must be string containing column name of dataset. ') 
+    
+    
+    
+    
+    #specific disallowed plots
+    
+    """
+    error handling ends here
+    """
+    
+    #ignore warnings
+    import warnings
+    warnings.filterwarnings('ignore') 
+    
+    logger.info("Importing libraries")
+    #general dependencies
+    import pandas as pd
+    import numpy as np
+    import plotly.express as px
+        
+    #import cufflinks
+    import cufflinks as cf
+    cf.go_offline()
+    cf.set_config_file(offline=False, world_readable=True)
+    
+    logger.info("plot type: " + str(plot))
+    
+    if plot == 'cluster':
+        
+        logger.info("SubProcess assign_model() called ==================================")
+        b = assign_model(model, verbose=False, transformation=True)           
+        logger.info("SubProcess assign_model() end ==================================")
+        cluster = b['Cluster']
+        b.drop(['Cluster'], axis=1, inplace=True)
+        b = pd.get_dummies(b) #casting categorical variable
+        c = b.copy()
+        
+        from sklearn.decomposition import PCA
+        pca = PCA(n_components=2, random_state=seed)
+        logger.info("Fitting PCA()")
+        pca_ = pca.fit_transform(b)
+        pca_ = pd.DataFrame(pca_)
+        pca_ = pca_.rename(columns={0: "PCA1", 1: "PCA2"})
+        pca_['Cluster'] = cluster
+        
+        if feature is not None: 
+            pca_['Feature'] = data_[feature]
+        else:
+            pca_['Feature'] = data_[data_.columns[0]]
+            
+        if label:
+                pca_['Label'] = pca_['Feature']
+
+        """
+        sorting
+        """
+
+        logger.info("Sorting dataframe")
+
+        clus_num = []
+
+        for i in pca_.Cluster:
+            a = int(i.split()[1])
+            clus_num.append(a)
+
+        pca_['cnum'] = clus_num
+        pca_.sort_values(by='cnum', inplace=True) 
+
+        """
+        sorting ends
+        """
+
+        logger.info("Rendering Visual")
+
+        if label:
+            fig = px.scatter(pca_, x="PCA1", y="PCA2", text='Label', color='Cluster', opacity=0.5)
+        else:
+            fig = px.scatter(pca_, x="PCA1", y="PCA2", hover_data=['Feature'], color='Cluster', opacity=0.5)
+
+        fig.update_traces(textposition='top center')
+        fig.update_layout(plot_bgcolor='rgb(240,240,240)')
+
+        fig.update_layout(
+            height=600,
+            title_text='2D Cluster PCA Plot'
+        )
+
+        if system:
+            fig.show()
+
+        if save:
+            fig.write_html("Cluster.html")
+            logger.info("Saving 'Cluster.html' in current active directory")
+        
+        logger.info("Visual Rendered Successfully")
+        
+    elif plot == 'tsne':
+        
+        logger.info("SubProcess assign_model() called ==================================")
+        b = assign_model(model, verbose=False, transformation=True)
+        logger.info("SubProcess assign_model() end ==================================")
+            
+        cluster = b['Cluster']
+        b.drop(['Cluster'], axis=1, inplace=True)
+        
+        from sklearn.manifold import TSNE
+        logger.info("Fitting TSNE()")
+        X_embedded = TSNE(n_components=3, random_state=seed).fit_transform(b)
+        X_embedded = pd.DataFrame(X_embedded)
+        X_embedded['Cluster'] = cluster
+        
+        if feature is not None: 
+            X_embedded['Feature'] = data_[feature]
+        else:
+            X_embedded['Feature'] = data_[data_.columns[0]]
+            
+        if label:
+                X_embedded['Label'] = X_embedded['Feature']
+
+        """
+        sorting
+        """
+        logger.info("Sorting dataframe")
+
+        clus_num = []
+        for i in X_embedded.Cluster:
+            a = int(i.split()[1])
+            clus_num.append(a)
+
+        X_embedded['cnum'] = clus_num
+        X_embedded.sort_values(by='cnum', inplace=True)
+        
+        """
+        sorting ends
+        """
+        
+        import plotly.express as px
+        df = X_embedded
+        
+        logger.info("Rendering Visual")
+
+        if label:
+            
+            fig = px.scatter_3d(df, x=0, y=1, z=2, color='Cluster', title='3d TSNE Plot for Clusters', 
+                    text = 'Label', opacity=0.7, width=900, height=800)
+            
+        else:
+            fig = px.scatter_3d(df, x=0, y=1, z=2, color='Cluster', title='3d TSNE Plot for Clusters', 
+                                hover_data = ['Feature'], opacity=0.7, width=900, height=800)
+        
+        if system:
+            fig.show()
+        
+        if save:
+            fig.write_html("TSNE.html")
+            logger.info("Saving 'TSNE.html' in current active directory")
+
+        logger.info("Visual Rendered Successfully")
+
+    elif plot == 'distribution':
+        
+        import plotly.express as px
+        
+        logger.info("SubProcess assign_model() called ==================================")
+        d = assign_model(model, verbose = False)
+        logger.info("SubProcess assign_model() end ==================================")
+        
+        """
+        sorting
+        """
+        logger.info("Sorting dataframe")
+
+        clus_num = []
+        for i in d.Cluster:
+            a = int(i.split()[1])
+            clus_num.append(a)
+
+        d['cnum'] = clus_num
+        d.sort_values(by='cnum', inplace=True)
+        d.reset_index(inplace=True, drop=True)
+        
+        clus_label = []
+        for i in d.cnum:
+            a = 'Cluster ' + str(i)
+            clus_label.append(a)
+        
+        d.drop(['Cluster', 'cnum'], inplace=True, axis=1)
+        d['Cluster'] = clus_label
+
+        """
+        sorting ends
+        """
+        
+        if feature is None:
+            x_col = 'Cluster'
+        else:
+            x_col = feature
+        
+        logger.info("Rendering Visual")
+
+        fig = px.histogram(d, x=x_col, color="Cluster",
+                   marginal="box", opacity = 0.7,
+                   hover_data=d.columns)
+        
+        if system:
+            fig.show()
+
+        if save:
+            fig.write_html("Distribution.html")
+            logger.info("Saving 'Distribution.html' in current active directory")
+
+        logger.info("Visual Rendered Successfully")
+
+    elif plot == 'elbow':
+        
+        from copy import deepcopy
+        model_ = deepcopy(model)
+        
+        try: 
+            from yellowbrick.cluster import KElbowVisualizer
+            visualizer = KElbowVisualizer(model_,timings=False)
+            logger.info("Fitting KElbowVisualizer()")
+            visualizer.fit(X)
+            logger.info("Rendering Visual")
+            if save:
+                if system:
+                    visualizer.show(outpath="Elbow.png")
+                else:
+                    visualizer.show(outpath="Elbow.png", clear_figure=True)
+                logger.info("Saving 'Elbow.png' in current active directory")
+            else:
+                visualizer.show()
+
+            logger.info("Visual Rendered Successfully")
+
+        except: 
+            logger.warning("Elbow plot failed")
+            sys.exit('(Type Error): Plot Type not supported for this model.')
+        
+    elif plot == 'silhouette':
+        
+        try:
+            from yellowbrick.cluster import SilhouetteVisualizer
+            visualizer = SilhouetteVisualizer(model, colors='yellowbrick')
+            logger.info("Fitting SilhouetteVisualizer()")
+            visualizer.fit(X)
+            logger.info("Rendering Visual")
+            if save:
+                if system:
+                    visualizer.show(outpath="Silhouette.png")
+                else:
+                    visualizer.show(outpath="Silhouette.png", clear_figure=True)
+                logger.info("Saving 'Silhouette.png' in current active directory")
+            else:
+                visualizer.show()
+
+            logger.info("Visual Rendered Successfully")
+
+        except:
+            logger.warning("Solhouette Plot failed") 
+            sys.exit('(Type Error): Plot Type not supported for this model.')
+            
+    elif plot == 'distance':  
+        
+        try:    
+            from yellowbrick.cluster import InterclusterDistance
+            visualizer = InterclusterDistance(model)
+            logger.info("Fitting InterclusterDistance()")
+            visualizer.fit(X)
+            logger.info("Rendering Visual")
+            if save:
+                if system:
+                    visualizer.show(outpath="Distance.png")
+                else:
+                    visualizer.show(outpath="Distance.png", clear_figure=True)
+                logger.info("Saving 'Distance.png' in current active directory")
+            else:
+                visualizer.show()
+
+            logger.info("Visual Rendered Successfully")
+
+        except:
+            logger.warning("Distance Plot failed")
+            sys.exit('(Type Error): Plot Type not supported for this model.')
+
+    logger.info("plot_model() succesfully completed......................................")
+
 def tune_model(model=None,
                supervised_target=None,
                estimator=None,
@@ -1900,9 +2271,6 @@ def tune_model(model=None,
     
     
     """
-        
-    Description:
-    ------------
     This function tunes the num_clusters model parameter using a predefined grid with
     the objective of optimizing a supervised learning metric as defined in the optimize
     param. You can choose the supervised estimator from a large library available in pycaret.
@@ -1910,120 +2278,117 @@ def tune_model(model=None,
     
     This function returns the tuned model object.
     
-        Example
-        -------
-        from pycaret.datasets import get_data
-        boston = get_data('boston')
-        experiment_name = setup(data = boston, normalize = True)
-        
-        tuned_kmeans = tune_model(model = 'kmeans', supervised_target = 'medv') 
+    Example
+    -------
+    >>> from pycaret.datasets import get_data
+    >>> boston = get_data('boston')
+    >>> experiment_name = setup(data = boston, normalize = True)
+    >>> tuned_kmeans = tune_model(model = 'kmeans', supervised_target = 'medv') 
 
-        This will return tuned K-Means Clustering Model.
+    This will return tuned K-Means Clustering Model.
 
     Parameters
     ----------
     model : string, default = None
-
-    Enter ID of the models available in model library:
-    
-    ID              Name   
-    ------          -----------
-    'kmeans'        K-Means Clustering
-    'ap'            Affinity Propagation
-    'meanshift'     Mean shift Clustering
-    'sc'            Spectral Clustering
-    'hclust'        Agglomerative Clustering
-    'dbscan'        Density-Based Spatial Clustering
-    'optics'        OPTICS Clustering                               
-    'birch'         Birch Clustering                                 
-    'kmodes'        K-Modes Clustering    
+        Enter ID of the models available in model library (ID - Name):
+        
+        * 'kmeans' - K-Means Clustering
+        * 'ap' - Affinity Propagation
+        * 'meanshift' - Mean shift Clustering
+        * 'sc' - Spectral Clustering
+        * 'hclust' - Agglomerative Clustering
+        * 'dbscan' - Density-Based Spatial Clustering
+        * 'optics' - OPTICS Clustering                               
+        * 'birch' - Birch Clustering                                 
+        * 'kmodes' - K-Modes Clustering    
     
     supervised_target: string
-    Name of the target column for supervised learning.
-    
+        Name of the target column for supervised learning.
+        
     estimator: string, default = None
+        For Classification (ID - Name):
 
-    ID          Name                            Task      
-    --------    ----------                      ----------     
-    'lr'        Logistic Regression             Classification
-    'knn'       K Nearest Neighbour             Classification
-    'nb'        Naive Bayes                     Classification            
-    'dt'        Decision Tree Classifier        Classification                   
-    'svm'       SVM - Linear Kernel             Classification	            
-    'rbfsvm'    SVM - Radial Kernel             Classification               
-    'gpc'       Gaussian Process Classifier     Classification                  
-    'mlp'       Multi Level Perceptron          Classification                  
-    'ridge'     Ridge Classifier                Classification
-    'rf'        Random Forest Classifier        Classification                   
-    'qda'       Quadratic Discriminant Analysis Classification                  
-    'ada'       Ada Boost Classifier            Classification                 
-    'gbc'       Gradient Boosting Classifier    Classification                          
-    'lda'       Linear Discriminant Analysis    Classification                  
-    'et'        Extra Trees Classifier          Classification                   
-    'xgboost'   Extreme Gradient Boosting       Classification              
-    'lightgbm'  Light Gradient Boosting         Classification              
-    'catboost'  CatBoost Classifier             Classification
-    'lr'        Linear Regression               Regression                   
-    'lasso'     Lasso Regression                Regression
-    'ridge'     Ridge Regression                Regression
-    'en'        Elastic Net                     Regression
-    'lar'       Least Angle Regression          Regression        
-    'llar'      Lasso Least Angle Regression    Regression                   
-    'omp'       Orthogonal Matching Pursuit     Regression                     
-    'br'        Bayesian Ridge                  Regression                   
-    'ard'       Automatic Relevance Determ.     Regression                  
-    'par'       Passive Aggressive Regressor    Regression                    
-    'ransac'    Random Sample Consensus         Regression       
-    'tr'        TheilSen Regressor              Regression                   
-    'huber'     Huber Regressor                 Regression                               
-    'kr'        Kernel Ridge                    Regression                                     
-    'svm'       Support Vector Machine          Regression                           
-    'knn'       K Neighbors Regressor           Regression                           
-    'dt'        Decision Tree                   Regression                                    
-    'rf'        Random Forest                   Regression                                    
-    'et'        Extra Trees Regressor           Regression                            
-    'ada'       AdaBoost Regressor              Regression                                   
-    'gbr'       Gradient Boosting               Regression                               
-    'mlp'       Multi Level Perceptron          Regression                          
-    'xgboost'   Extreme Gradient Boosting       Regression                              
-    'lightgbm'  Light Gradient Boosting         Regression                    
-    'catboost'  CatBoost Regressor              Regression           
-    
-    If set to None, Linear / Logistic model is used by default.
+        * 'lr' - Logistic Regression             
+        * 'knn' - K Nearest Neighbour             
+        * 'nb' - Naive Bayes                                 
+        * 'dt' - Decision Tree Classifier                           
+        * 'svm' - SVM - Linear Kernel             	            
+        * 'rbfsvm' - SVM - Radial Kernel                            
+        * 'gpc' - Gaussian Process Classifier                       
+        * 'mlp' - Multi Level Perceptron                            
+        * 'ridge' - Ridge Classifier                
+        * 'rf' - Random Forest Classifier                           
+        * 'qda' - Quadratic Discriminant Analysis                   
+        * 'ada' - Ada Boost Classifier                             
+        * 'gbc' - Gradient Boosting Classifier                              
+        * 'lda' - Linear Discriminant Analysis                      
+        * 'et' - Extra Trees Classifier                             
+        * 'xgboost' - Extreme Gradient Boosting                     
+        * 'lightgbm' - Light Gradient Boosting                       
+        * 'catboost' - CatBoost Classifier             
+        
+        For Regression (ID - Name):
+
+        * 'lr' - Linear Regression                                
+        * 'lasso' - Lasso Regression              
+        * 'ridge' - Ridge Regression              
+        * 'en' - Elastic Net                   
+        * 'lar' - Least Angle Regression                
+        * 'llar' - Lasso Least Angle Regression                     
+        * 'omp' - Orthogonal Matching Pursuit                        
+        * 'br' - Bayesian Ridge                                   
+        * 'ard' - Automatic Relevance Determ.                     
+        * 'par' - Passive Aggressive Regressor                      
+        * 'ransac' - Random Sample Consensus              
+        * 'tr' - TheilSen Regressor                               
+        * 'huber' - Huber Regressor                                              
+        * 'kr' - Kernel Ridge                                                       
+        * 'svm' - Support Vector Machine                                   
+        * 'knn' - K Neighbors Regressor                                    
+        * 'dt' - Decision Tree                                                     
+        * 'rf' - Random Forest                                                     
+        * 'et' - Extra Trees Regressor                                     
+        * 'ada' - AdaBoost Regressor                                               
+        * 'gbr' - Gradient Boosting                                            
+        * 'mlp' - Multi Level Perceptron                                  
+        * 'xgboost' - Extreme Gradient Boosting                                   
+        * 'lightgbm' - Light Gradient Boosting                           
+        * 'catboost' - CatBoost Regressor                       
+        
+        If set to None, Linear / Logistic model is used by default.
     
     optimize: string, default = None
-    
-    custom_grid: list, default = None
-    By default, a pre-defined number of clusters is iterated over to 
-    optimize the supervised objective. To overwrite default iteration,
-    pass a list of num_clusters to iterate over in custom_grid param.
-
-    For Classification tasks:
-    Accuracy, AUC, Recall, Precision, F1, Kappa
-    
-    For Regression tasks:
-    MAE, MSE, RMSE, R2, RMSLE, MAPE
-    
+        For Classification tasks:
+            Accuracy, AUC, Recall, Precision, F1, Kappa
+        
+        For Regression tasks:
+            MAE, MSE, RMSE, R2, RMSLE, MAPE
+            
     If set to None, default is 'Accuracy' for classification and 'R2' for 
     regression tasks.
     
+    custom_grid: list, default = None
+        By default, a pre-defined number of clusters is iterated over to 
+        optimize the supervised objective. To overwrite default iteration,
+        pass a list of num_clusters to iterate over in custom_grid param.
+    
     fold: integer, default = 10
-    Number of folds to be used in Kfold CV. Must be at least 2. 
+        Number of folds to be used in Kfold CV. Must be at least 2. 
 
     verbose: Boolean, default = True
-    Status update is not printed when verbose is set to False.
+        Status update is not printed when verbose is set to False.
 
-    Returns:
-    --------
-
-    visual plot:  Visual plot with num_clusters param on x-axis with metric to
-    -----------   optimize on y-axis. Also, prints the best model metric.
+    Returns
+    -------
+    Visual_Plot
+        Visual plot with num_clusters param on x-axis with metric to
+        optimize on y-axis. Also, prints the best model metric.
     
-    model:        trained model object with best num_clusters param. 
-    -----------
+    model
+        trained model object with best num_clusters param. 
 
-    Warnings:
-    ---------
+    Warnings
+    --------
     - Affinity Propagation, Mean shift clustering, Density-Based Spatial Clustering
       and OPTICS Clustering cannot be used in this function since they donot support
       num_clusters param.
@@ -3196,14 +3561,19 @@ def tune_model(model=None,
             RunID = mlflow.active_run().info.run_id
 
             # Log model parameters
-            params = best_model.get_params()
 
-            for i in list(params):
-                v = params.get(i)
-                if len(str(v)) > 250:
-                    params.pop(i)
+            try:
+                params = best_model.get_params()
 
-            mlflow.log_params(params)
+                for i in list(params):
+                    v = params.get(i)
+                    if len(str(v)) > 250:
+                        params.pop(i)
+
+                mlflow.log_params(params)
+            
+            except:
+                pass
             
             #set tag of compare_models
             mlflow.set_tag("Source", "tune_model")
@@ -3224,634 +3594,67 @@ def tune_model(model=None,
             os.remove('Iterations.html')
 
             # Log model and transformation pipeline
-            logger.info("SubProcess save_model() called ==================================")
-            save_model(best_model, 'Trained Model', verbose=False)
-            logger.info("SubProcess save_model() end ==================================")
-            mlflow.log_artifact('Trained Model' + '.pkl')
-            size_bytes = Path('Trained Model.pkl').stat().st_size
-            size_kb = np.round(size_bytes/1000, 2)
-            mlflow.set_tag("Size KB", size_kb)
-            os.remove('Trained Model.pkl')
+            from copy import deepcopy
+
+            # get default conda env
+            from mlflow.sklearn import get_default_conda_env
+            default_conda_env = get_default_conda_env()
+            default_conda_env['name'] = str(exp_name_log) + '-env'
+            default_conda_env.get('dependencies').pop(-3)
+            dependencies = default_conda_env.get('dependencies')[-1]
+            from pycaret.utils import __version__
+            dep = 'pycaret==' + str(__version__())
+            dependencies['pip'] = [dep]
+            
+            # define model signature
+            from mlflow.models.signature import infer_signature
+            signature = infer_signature(data_)
+            input_example = data_.iloc[0].to_dict()
+
+            # log model as sklearn flavor
+            prep_pipe_temp = deepcopy(prep_pipe)
+            prep_pipe_temp.steps.append(['trained model', model])
+            mlflow.sklearn.log_model(prep_pipe_temp, "model", conda_env = default_conda_env, signature = signature, input_example = input_example)
+            del(prep_pipe_temp)
 
     logger.info(str(best_model))
     logger.info("tune_model() succesfully completed......................................")
 
     return best_model
 
-def plot_model(model, 
-            plot='cluster', 
-            feature = None, 
-            label = False,
-            save = False, #added in pycaret 2.0.0
-            system = True): #added in pycaret 2.0.0
-    
-    
-    """
-          
-    Description:
-    ------------
-    This function takes a trained model object and returns a plot on the dataset 
-    passed during setup stage. This function internally calls assign_model before 
-    generating a plot.  
-
-        Example:
-        --------
-        from pycaret.datasets import get_data
-        jewellery = get_data('jewellery')
-        experiment_name = setup(data = jewellery, normalize = True)
-        kmeans = create_model('kmeans')
-        
-        plot_model(kmeans)
-
-        This will return a cluster scatter plot (by default). 
-
-    Parameters
-    ----------
-    model : object, default = none
-    A trained model object can be passed. Model must be created using create_model().
-
-    plot : string, default = 'cluster'
-    Enter abbreviation for type of plot. The current list of plots supported are:
-
-    Plot            Name                               
-    ---------       -----------               
-    'cluster'       Cluster PCA Plot (2d)              
-    'tsne'          Cluster TSnE (3d)
-    'elbow'         Elbow Plot 
-    'silhouette'    Silhouette Plot         
-    'distance'      Distance Plot   
-    'distribution'  Distribution Plot
-    
-    feature : string, default = None
-    Name of feature column for x-axis of when plot = 'distribution'. When plot is
-    'cluster' or 'tsne' feature column is used as a hoverover tooltip and/or label
-    when label is set to True. If no feature name is passed in 'cluster' or 'tsne'
-    by default the first of column of dataset is chosen as hoverover tooltip.
-    
-    label : bool, default = False
-    When set to True, data labels are shown in 'cluster' and 'tsne' plot.
-    
-    save: Boolean, default = False
-    Plot is saved as png file in local directory when save parameter set to True.
-
-    system: Boolean, default = True
-    Must remain True all times. Only to be changed by internal functions.
-
-    Returns:
-    --------
-
-    Visual Plot:  Prints the visual plot. 
-    ------------     
-
-    """  
-    
-    #exception checking   
-    import sys
-    
-    import logging
-
-    try:
-        hasattr(logger, 'name')
-    except:
-        logger = logging.getLogger('logs')
-        logger.setLevel(logging.DEBUG)
-        
-        # create console handler and set level to debug
-        if logger.hasHandlers():
-            logger.handlers.clear()
-        
-        ch = logging.FileHandler('logs.log')
-        ch.setLevel(logging.DEBUG)
-
-        # create formatter
-        formatter = logging.Formatter('%(asctime)s:%(levelname)s:%(message)s')
-
-        # add formatter to ch
-        ch.setFormatter(formatter)
-
-        # add ch to logger
-        logger.addHandler(ch)
-
-    logger.info("Initializing plot_model()")
-    logger.info("""plot_model(model={}, plot={}, feature={}, label={}, save={}, system={})""".\
-        format(str(model), str(plot), str(feature), str(label), str(save), str(system)))
-
-    """
-    exception handling starts here
-    """
-
-    logger.info("Checking exceptions")
-
-    #plot checking
-    allowed_plots = ['cluster', 'tsne', 'elbow', 'silhouette', 'distance', 'distribution']  
-    if plot not in allowed_plots:
-        sys.exit('(Value Error): Plot Not Available. Please see docstring for list of available plots.')
-        
-    if type(label) is not bool:
-        sys.exit('(Type Error): Label param only accepts True or False. ')
-        
-    if feature is not None:
-        if type(feature) is not str:
-            sys.exit('(Type Error): feature parameter must be string containing column name of dataset. ') 
-    
-    
-    
-    
-    #specific disallowed plots
-    
-    """
-    error handling ends here
-    """
-    
-    #ignore warnings
-    import warnings
-    warnings.filterwarnings('ignore') 
-    
-    logger.info("Importing libraries")
-    #general dependencies
-    import pandas as pd
-    import numpy as np
-    import plotly.express as px
-        
-    #import cufflinks
-    import cufflinks as cf
-    cf.go_offline()
-    cf.set_config_file(offline=False, world_readable=True)
-    
-    logger.info("plot type: " + str(plot))
-    
-    if plot == 'cluster':
-        
-        logger.info("SubProcess assign_model() called ==================================")
-        b = assign_model(model, verbose=False, transformation=True)           
-        logger.info("SubProcess assign_model() end ==================================")
-        cluster = b['Cluster']
-        b.drop(['Cluster'], axis=1, inplace=True)
-        b = pd.get_dummies(b) #casting categorical variable
-        c = b.copy()
-        
-        from sklearn.decomposition import PCA
-        pca = PCA(n_components=2, random_state=seed)
-        logger.info("Fitting PCA()")
-        pca_ = pca.fit_transform(b)
-        pca_ = pd.DataFrame(pca_)
-        pca_ = pca_.rename(columns={0: "PCA1", 1: "PCA2"})
-        pca_['Cluster'] = cluster
-        
-        if feature is not None: 
-            pca_['Feature'] = data_[feature]
-        else:
-            pca_['Feature'] = data_[data_.columns[0]]
-            
-        if label:
-                pca_['Label'] = pca_['Feature']
-
-        """
-        sorting
-        """
-
-        logger.info("Sorting dataframe")
-
-        clus_num = []
-
-        for i in pca_.Cluster:
-            a = int(i.split()[1])
-            clus_num.append(a)
-
-        pca_['cnum'] = clus_num
-        pca_.sort_values(by='cnum', inplace=True) 
-
-        """
-        sorting ends
-        """
-
-        logger.info("Rendering Visual")
-
-        if label:
-            fig = px.scatter(pca_, x="PCA1", y="PCA2", text='Label', color='Cluster', opacity=0.5)
-        else:
-            fig = px.scatter(pca_, x="PCA1", y="PCA2", hover_data=['Feature'], color='Cluster', opacity=0.5)
-
-        fig.update_traces(textposition='top center')
-        fig.update_layout(plot_bgcolor='rgb(240,240,240)')
-
-        fig.update_layout(
-            height=600,
-            title_text='2D Cluster PCA Plot'
-        )
-
-        if system:
-            fig.show()
-
-        if save:
-            fig.write_html("Cluster.html")
-            logger.info("Saving 'Cluster.html' in current active directory")
-        
-        logger.info("Visual Rendered Successfully")
-        
-    elif plot == 'tsne':
-        
-        logger.info("SubProcess assign_model() called ==================================")
-        b = assign_model(model, verbose=False, transformation=True)
-        logger.info("SubProcess assign_model() end ==================================")
-            
-        cluster = b['Cluster']
-        b.drop(['Cluster'], axis=1, inplace=True)
-        
-        from sklearn.manifold import TSNE
-        logger.info("Fitting TSNE()")
-        X_embedded = TSNE(n_components=3, random_state=seed).fit_transform(b)
-        X_embedded = pd.DataFrame(X_embedded)
-        X_embedded['Cluster'] = cluster
-        
-        if feature is not None: 
-            X_embedded['Feature'] = data_[feature]
-        else:
-            X_embedded['Feature'] = data_[data_.columns[0]]
-            
-        if label:
-                X_embedded['Label'] = X_embedded['Feature']
-
-        """
-        sorting
-        """
-        logger.info("Sorting dataframe")
-
-        clus_num = []
-        for i in X_embedded.Cluster:
-            a = int(i.split()[1])
-            clus_num.append(a)
-
-        X_embedded['cnum'] = clus_num
-        X_embedded.sort_values(by='cnum', inplace=True)
-        
-        """
-        sorting ends
-        """
-        
-        import plotly.express as px
-        df = X_embedded
-        
-        logger.info("Rendering Visual")
-
-        if label:
-            
-            fig = px.scatter_3d(df, x=0, y=1, z=2, color='Cluster', title='3d TSNE Plot for Clusters', 
-                    text = 'Label', opacity=0.7, width=900, height=800)
-            
-        else:
-            fig = px.scatter_3d(df, x=0, y=1, z=2, color='Cluster', title='3d TSNE Plot for Clusters', 
-                                hover_data = ['Feature'], opacity=0.7, width=900, height=800)
-        
-        if system:
-            fig.show()
-        
-        if save:
-            fig.write_html("TSNE.html")
-            logger.info("Saving 'TSNE.html' in current active directory")
-
-        logger.info("Visual Rendered Successfully")
-
-    elif plot == 'distribution':
-        
-        import plotly.express as px
-        
-        logger.info("SubProcess assign_model() called ==================================")
-        d = assign_model(model, verbose = False)
-        logger.info("SubProcess assign_model() end ==================================")
-        
-        """
-        sorting
-        """
-        logger.info("Sorting dataframe")
-
-        clus_num = []
-        for i in d.Cluster:
-            a = int(i.split()[1])
-            clus_num.append(a)
-
-        d['cnum'] = clus_num
-        d.sort_values(by='cnum', inplace=True)
-        d.reset_index(inplace=True, drop=True)
-        
-        clus_label = []
-        for i in d.cnum:
-            a = 'Cluster ' + str(i)
-            clus_label.append(a)
-        
-        d.drop(['Cluster', 'cnum'], inplace=True, axis=1)
-        d['Cluster'] = clus_label
-
-        """
-        sorting ends
-        """
-        
-        if feature is None:
-            x_col = 'Cluster'
-        else:
-            x_col = feature
-        
-        logger.info("Rendering Visual")
-
-        fig = px.histogram(d, x=x_col, color="Cluster",
-                   marginal="box", opacity = 0.7,
-                   hover_data=d.columns)
-        
-        if system:
-            fig.show()
-
-        if save:
-            fig.write_html("Distribution.html")
-            logger.info("Saving 'Distribution.html' in current active directory")
-
-        logger.info("Visual Rendered Successfully")
-
-    elif plot == 'elbow':
-        
-        from copy import deepcopy
-        model_ = deepcopy(model)
-        
-        try: 
-            from yellowbrick.cluster import KElbowVisualizer
-            visualizer = KElbowVisualizer(model_,timings=False)
-            logger.info("Fitting KElbowVisualizer()")
-            visualizer.fit(X)
-            logger.info("Rendering Visual")
-            if save:
-                if system:
-                    visualizer.show(outpath="Elbow.png")
-                else:
-                    visualizer.show(outpath="Elbow.png", clear_figure=True)
-                logger.info("Saving 'Elbow.png' in current active directory")
-            else:
-                visualizer.show()
-
-            logger.info("Visual Rendered Successfully")
-
-        except: 
-            logger.warning("Elbow plot failed")
-            sys.exit('(Type Error): Plot Type not supported for this model.')
-        
-    elif plot == 'silhouette':
-        
-        try:
-            from yellowbrick.cluster import SilhouetteVisualizer
-            visualizer = SilhouetteVisualizer(model, colors='yellowbrick')
-            logger.info("Fitting SilhouetteVisualizer()")
-            visualizer.fit(X)
-            logger.info("Rendering Visual")
-            if save:
-                if system:
-                    visualizer.show(outpath="Silhouette.png")
-                else:
-                    visualizer.show(outpath="Silhouette.png", clear_figure=True)
-                logger.info("Saving 'Silhouette.png' in current active directory")
-            else:
-                visualizer.show()
-
-            logger.info("Visual Rendered Successfully")
-
-        except:
-            logger.warning("Solhouette Plot failed") 
-            sys.exit('(Type Error): Plot Type not supported for this model.')
-            
-    elif plot == 'distance':  
-        
-        try:    
-            from yellowbrick.cluster import InterclusterDistance
-            visualizer = InterclusterDistance(model)
-            logger.info("Fitting InterclusterDistance()")
-            visualizer.fit(X)
-            logger.info("Rendering Visual")
-            if save:
-                if system:
-                    visualizer.show(outpath="Distance.png")
-                else:
-                    visualizer.show(outpath="Distance.png", clear_figure=True)
-                logger.info("Saving 'Distance.png' in current active directory")
-            else:
-                visualizer.show()
-
-            logger.info("Visual Rendered Successfully")
-
-        except:
-            logger.warning("Distance Plot failed")
-            sys.exit('(Type Error): Plot Type not supported for this model.')
-
-    logger.info("plot_model() succesfully completed......................................")
-
-def save_model(model, model_name, verbose=True):
-    
-    """
-          
-    Description:
-    ------------
-    This function saves the transformation pipeline and trained model object 
-    into the current active directory as a pickle file for later use. 
-    
-        Example:
-        --------
-        from pycaret.datasets import get_data
-        jewellery = get_data('jewellery')
-        experiment_name = setup(data = jewellery, normalize = True)
-        kmeans = create_model('kmeans')
-        
-        save_model(kmeans, 'kmeans_model_23122019')
-        
-        This will save the transformation pipeline and model as a binary pickle
-        file in the current directory. 
-
-    Parameters
-    ----------
-    model : object, default = none
-    A trained model object should be passed.
-    
-    model_name : string, default = none
-    Name of pickle file to be passed as a string.
-
-    verbose : bool, default = True
-    When set to False, success message is not printed.
-
-    Returns:
-    --------    
-    Success Message
-         
-    """
-    
-    import logging
-
-    try:
-        hasattr(logger, 'name')
-    except:
-        logger = logging.getLogger('logs')
-        logger.setLevel(logging.DEBUG)
-        
-        # create console handler and set level to debug
-        if logger.hasHandlers():
-            logger.handlers.clear()
-        
-        ch = logging.FileHandler('logs.log')
-        ch.setLevel(logging.DEBUG)
-
-        # create formatter
-        formatter = logging.Formatter('%(asctime)s:%(levelname)s:%(message)s')
-
-        # add formatter to ch
-        ch.setFormatter(formatter)
-
-        # add ch to logger
-        logger.addHandler(ch)
-
-    logger.info("Initializing save_model()")
-    logger.info("""save_model(model={}, model_name={}, verbose={})""".\
-        format(str(model), str(model_name), str(verbose)))
-
-    #ignore warnings
-    import warnings
-    warnings.filterwarnings('ignore') 
-    
-    logger.info("Appending prep pipeline")
-    model_ = []
-    model_.append(prep_pipe)
-    model_.append(model)
-    
-    import joblib
-    model_name = model_name + '.pkl'
-    joblib.dump(model_, model_name)
-    if verbose:
-        print('Transformation Pipeline and Model Succesfully Saved')
-
-    logger.info(str(model_name) + ' saved in current working directory')
-    logger.info(str(model_))
-    logger.info("save_model() succesfully completed......................................")
-
-def load_model(model_name, 
-               platform = None,
-               authentication = None,
-               verbose = True):
-    
-    """
-          
-    Description:
-    ------------
-    This function loads a previously saved transformation pipeline and model 
-    from the current active directory into the current python environment. 
-    Load object must be a pickle file.
-    
-        Example:
-        --------
-        saved_kmeans = load_model('kmeans_model_23122019')
-        
-        This will load the previously saved model in saved_lr variable. The file 
-        must be in the current directory.
-
-    Parameters
-    ----------
-    model_name : string, default = none
-    Name of pickle file to be passed as a string.
-
-    platform: string, default = None
-    Name of platform, if loading model from cloud. Current available options are:
-    'aws'.
-    
-    authentication : dict
-    dictionary of applicable authentication tokens. 
-    
-     When platform = 'aws': 
-     {'bucket' : 'Name of Bucket on S3'}
-     
-    verbose: Boolean, default = True
-    Success message is not printed when verbose is set to False. 
-    
-    Returns:
-    --------    
-    Success Message
-         
-    """
-
-    #ignore warnings
-    import warnings
-    warnings.filterwarnings('ignore') 
-    
-    #exception checking
-    import sys
-    
-    if platform is not None:
-        if authentication is None:
-            sys.exit("(Value Error): Authentication is missing.")
-        
-    #cloud provider
-    if platform == 'aws':
-        
-        import boto3
-        bucketname = authentication.get('bucket')
-        filename = str(model_name) + '.pkl'
-        s3 = boto3.resource('s3')
-        s3.Bucket(bucketname).download_file(filename, filename)
-        filename = str(model_name)
-        model = load_model(filename, verbose=False)
-        
-        if verbose:
-            print('Transformation Pipeline and Model Sucessfully Loaded')
-
-        return model
-    
-    import joblib
-    model_name = model_name + '.pkl'
-    if verbose:
-        print('Transformation Pipeline and Model Sucessfully Loaded')
-    return joblib.load(model_name)
-
 def predict_model(model, 
-                  data,
-                  platform=None,
-                  authentication=None):
+                  data):
     
     """
-       
-    Description:
-    ------------
     This function is used to predict new data using a trained model. It requires a
     trained model object created using one of the function in pycaret that returns 
-    a trained model object. New data must be passed to data param as pandas Dataframe. 
+    a trained model object. New data must be passed to data param as pandas.DataFrame.
     
-        Example:
-        --------
-        from pycaret.datasets import get_data
-        jewellery = get_data('jewellery')
-        experiment_name = setup(data = jewellery)
-        kmeans = create_model('kmeans')
-        
-        kmeans_predictions = predict_model(model = kmeans, data = jewellery)
+    Example
+    -------
+    >>> from pycaret.datasets import get_data
+    >>> jewellery = get_data('jewellery')
+    >>> experiment_name = setup(data = jewellery)
+    >>> kmeans = create_model('kmeans')
+    >>> kmeans_predictions = predict_model(model = kmeans, data = jewellery)
         
     Parameters
     ----------
-    model : object / string,  default = None
-    When model is passed as string, load_model() is called internally to load the
-    pickle file from active directory or cloud platform when platform param is passed.
+    model : object,  default = None
+        A trained model object / pipeline should be passed as an estimator. 
     
-    data : {array-like, sparse matrix}, shape (n_samples, n_features) where n_samples 
-    is the number of samples and n_features is the number of features. All features 
-    used during training must be present in the new dataset.
-    
-    platform: string, default = None
-    Name of platform, if loading model from cloud. Current available options are:
-    'aws'.
-    
-    authentication : dict
-    dictionary of applicable authentication tokens. 
-    
-     When platform = 'aws': 
-     {'bucket' : 'Name of Bucket on S3'}
+    data : pandas.DataFrame
+        Shape (n_samples, n_features) where n_samples is the number of samples and n_features 
+        is the number of features. All features used during training must be present in the 
+        new dataset.
      
-    Returns:
+    Returns
+    -------
+    info_grid
+        Information grid is printed when data is None.
+
+    Warnings
     --------
-
-    info grid:  Information grid is printed when data is None.
-    ----------      
-
-    Warnings:
-    ---------
     - Models that donot support 'predict' function cannot be used in predict_model(). 
        
     
@@ -3872,40 +3675,19 @@ def predict_model(model,
     
     #copy data and model
     data__ = data.copy()
-    model_ = deepcopy(model)
-    clear_output()
-    
-    if type(model) is str:
-        if platform == 'aws':
-            model_ = load_model(str(model), platform='aws', 
-                                   authentication={'bucket': authentication.get('bucket')},
-                                   verbose=False)
-            
-        else:
-            model_ = load_model(str(model), verbose=False)
 
-            
-    #separate prep_data pipeline
-    if type(model_) is list:
-        prep_pipe_transformer = model_[0]
-        model = model_[1]
-        
-    else:
-        try: 
-            prep_pipe_transformer = prep_pipe
-        except:
-            sys.exit('Transformation Pipeline Missing')
-    
     #exception checking for predict param
     if hasattr(model, 'predict'):
         pass
     else:
         sys.exit("(Type Error): Model doesn't support predict parameter.")
     
-    
     #predictions start here
-    _data_ = prep_pipe_transformer.transform(data__)
-    pred = model.predict(_data_)
+    if 'Pipeline' in str(type(model)):
+        pred = model.predict(data)
+    else:
+        _data_ = prep_pipe.transform(data__)
+        pred = model.predict(_data_)
     
     pred_ = []
     
@@ -3923,9 +3705,6 @@ def deploy_model(model,
                  platform = 'aws'):
     
     """
-       
-    Description:
-    ------------
     (In Preview)
 
     This function deploys the transformation pipeline and trained model object for
@@ -3933,51 +3712,50 @@ def deploy_model(model,
     param along with the applicable authentication tokens which are passed as a
     dictionary to the authentication param.
     
-        Example:
-        --------
-        from pycaret.datasets import get_data
-        jewellery = get_data('jewellery')
-        experiment_name = setup(data = jewellery,  normalize = True)
-        kmeans = create_model('kmeans')
-        
-        deploy_model(model = kmeans, model_name = 'deploy_kmeans', platform = 'aws', 
-                     authentication = {'bucket' : 'pycaret-test'})
-        
-        This will deploy the model on an AWS S3 account under bucket 'pycaret-test'
-        
-        For AWS users:
-        --------------
-        Before deploying a model to an AWS S3 ('aws'), environment variables must be 
-        configured using the command line interface. To configure AWS env. variables, 
-        type aws configure in your python command line. The following information is
-        required which can be generated using the Identity and Access Management (IAM) 
-        portal of your amazon console account:
+    Example
+    -------
+    >>> from pycaret.datasets import get_data
+    >>> jewellery = get_data('jewellery')
+    >>> experiment_name = setup(data = jewellery,  normalize = True)
+    >>> kmeans = create_model('kmeans')
+    >>> deploy_model(model = kmeans, model_name = 'deploy_kmeans', platform = 'aws', authentication = {'bucket' : 'pycaret-test'})
     
-           - AWS Access Key ID
-           - AWS Secret Key Access
-           - Default Region Name (can be seen under Global settings on your AWS console)
-           - Default output format (must be left blank)
+    This will deploy the model on an AWS S3 account under bucket 'pycaret-test'
+    
+    Notes
+    -----
+    For AWS users:
+    Before deploying a model to an AWS S3 ('aws'), environment variables must be 
+    configured using the command line interface. To configure AWS env. variables, 
+    type aws configure in your python command line. The following information is
+    required which can be generated using the Identity and Access Management (IAM) 
+    portal of your amazon console account:
+
+    - AWS Access Key ID
+    - AWS Secret Key Access
+    - Default Region Name (can be seen under Global settings on your AWS console)
+    - Default output format (must be left blank)
 
     Parameters
     ----------
     model : object
-    A trained model object should be passed as an estimator. 
+        A trained model object should be passed as an estimator. 
     
     model_name : string
-    Name of model to be passed as a string.
+        Name of model to be passed as a string.
     
     authentication : dict
-    dictionary of applicable authentication tokens. 
-      
-     When platform = 'aws': 
-     {'bucket' : 'Name of Bucket on S3'}
+        Dictionary of applicable authentication tokens. 
+        
+        When platform = 'aws': 
+        {'bucket' : 'Name of Bucket on S3'}
     
     platform: string, default = 'aws'
-    Name of platform for deployment. Current available options are: 'aws'.
+        Name of platform for deployment. Current available options are: 'aws'.
 
-    Returns:
-    --------    
-    Success Message
+    Returns
+    -------    
+    Success_Message
     
 
     """
@@ -4050,106 +3828,187 @@ def deploy_model(model,
         print("Model Succesfully Deployed on AWS S3")
         logger.info(str(model))
         logger.info("deploy_model() succesfully completed......................................")
-        
-def get_clusters(data, 
-                 model = None, 
-                 num_clusters = 4, 
-                 ignore_features = None, 
-                 normalize = True, 
-                 transformation = False,
-                 pca = False,
-                 pca_components = 0.99,
-                 ignore_low_variance=False,
-                 combine_rare_levels=False,
-                 rare_level_threshold=0.1,
-                 remove_multicollinearity=False,
-                 multicollinearity_threshold=0.9,
-                 n_jobs = None):
+
+def save_model(model, model_name, model_only=False, verbose=True):
     
     """
-    Callable from any external environment without requiring setup initialization.
+    This function saves the transformation pipeline and trained model object 
+    into the current active directory as a pickle file for later use. 
     
+    Example
+    -------
+    >>> from pycaret.datasets import get_data
+    >>> jewellery = get_data('jewellery')
+    >>> experiment_name = setup(data = jewellery, normalize = True)
+    >>> kmeans = create_model('kmeans')
+    >>> save_model(kmeans, 'kmeans_model_23122019')
+    
+    This will save the transformation pipeline and model as a binary pickle
+    file in the current directory. 
+
+    Parameters
+    ----------
+    model : object, default = none
+        A trained model object should be passed.
+    
+    model_name : string, default = none
+        Name of pickle file to be passed as a string.
+    
+    model_only : bool, default = False
+        When set to True, only trained model object is saved and all the 
+        transformations are ignored.
+    
+    verbose : bool, default = True
+        When set to False, success message is not printed.
+
+    Returns
+    -------    
+    Success_Message
+         
     """
-    
-    if model is None:
-        model = 'kmeans'
-        
-    if ignore_features is None:
-        ignore_features_pass = []
-    else:
-        ignore_features_pass = ignore_features
-    
-    global X, data_, seed, n_jobs_param, logging_param, logger
-    
-    data_ = data.copy()
-    
-    seed = 99
-
-    n_jobs_param = n_jobs
-
-    logging_param = False
     
     import logging
+    from copy import deepcopy
 
-    logger = logging.getLogger('logs')
-    logger.setLevel(logging.DEBUG)
-    
-    # create console handler and set level to debug
-    if logger.hasHandlers():
-        logger.handlers.clear()
-    
-    ch = logging.FileHandler('logs.log')
-    ch.setLevel(logging.DEBUG)
-
-    # create formatter
-    formatter = logging.Formatter('%(asctime)s:%(levelname)s:%(message)s')
-
-    # add formatter to ch
-    ch.setFormatter(formatter)
-
-    # add ch to logger
-    logger.addHandler(ch)
-    
-    from pycaret import preprocess
-    
-    X = preprocess.Preprocess_Path_Two(train_data = data, 
-                                       features_todrop = ignore_features_pass,
-                                       display_types = False,
-                                       scale_data = normalize,
-                                       scaling_method = 'zscore',
-                                       Power_transform_data = transformation,
-                                       Power_transform_method = 'yj',
-                                       apply_pca = pca,
-                                       pca_variance_retained_or_number_of_components = pca_components,
-                                       apply_zero_nearZero_variance = ignore_low_variance,
-                                       club_rare_levels=combine_rare_levels,
-                                       rara_level_threshold_percentage=rare_level_threshold,
-                                       remove_multicollinearity=remove_multicollinearity,
-                                       maximum_correlation_between_features=multicollinearity_threshold,
-                                       random_state = seed)
-      
     try:
-        c = create_model(model=model, num_clusters=num_clusters, verbose=False, system=False)
+        hasattr(logger, 'name')
     except:
-        c = create_model(model=model, verbose=False, system=False)
-    dataset = assign_model(c, verbose=False)
-    return dataset
+        logger = logging.getLogger('logs')
+        logger.setLevel(logging.DEBUG)
+        
+        # create console handler and set level to debug
+        if logger.hasHandlers():
+            logger.handlers.clear()
+        
+        ch = logging.FileHandler('logs.log')
+        ch.setLevel(logging.DEBUG)
 
+        # create formatter
+        formatter = logging.Formatter('%(asctime)s:%(levelname)s:%(message)s')
+
+        # add formatter to ch
+        ch.setFormatter(formatter)
+
+        # add ch to logger
+        logger.addHandler(ch)
+
+    logger.info("Initializing save_model()")
+    logger.info("""save_model(model={}, model_name={}, verbose={})""".\
+        format(str(model), str(model_name), str(verbose)))
+
+    #ignore warnings
+    import warnings
+    warnings.filterwarnings('ignore') 
+    
+    logger.info("Adding model into prep_pipe")
+
+    if model_only:
+        model_ = deepcopy(model)
+        logger.warning("Only Model saved. Transformations in prep_pipe are ignored.")
+    else:
+        model_ = deepcopy(prep_pipe)
+        model_.steps.append(['trained model',model]) 
+    
+    import joblib
+    model_name = model_name + '.pkl'
+    joblib.dump(model_, model_name)
+    if verbose:
+        print('Transformation Pipeline and Model Succesfully Saved')
+
+    logger.info(str(model_name) + ' saved in current working directory')
+    logger.info(str(model_))
+    logger.info("save_model() succesfully completed......................................")
+
+def load_model(model_name, 
+               platform = None,
+               authentication = None,
+               verbose = True):
+    
+    """
+    This function loads a previously saved transformation pipeline and model 
+    from the current active directory into the current python environment. 
+    Load object must be a pickle file.
+    
+    Example
+    -------
+    >>> saved_kmeans = load_model('kmeans_model_23122019')
+    
+    This will load the previously saved model in saved_lr variable. The file 
+    must be in the current directory.
+
+    Parameters
+    ----------
+    model_name : string, default = none
+        Name of pickle file to be passed as a string.
+
+    platform: string, default = None
+        Name of platform, if loading model from cloud. Current available options are:
+        'aws'.
+    
+    authentication : dict
+        Dictionary of applicable authentication tokens. 
+        
+        When platform = 'aws': 
+        {'bucket' : 'Name of Bucket on S3'}
+     
+    verbose: Boolean, default = True
+        Success message is not printed when verbose is set to False. 
+    
+    Returns
+    -------    
+    Success_Message
+         
+    """
+
+    #ignore warnings
+    import warnings
+    warnings.filterwarnings('ignore') 
+    
+    #exception checking
+    import sys
+    
+    if platform is not None:
+        if authentication is None:
+            sys.exit("(Value Error): Authentication is missing.")
+        
+    #cloud provider
+    if platform == 'aws':
+        
+        import boto3
+        bucketname = authentication.get('bucket')
+        filename = str(model_name) + '.pkl'
+        s3 = boto3.resource('s3')
+        s3.Bucket(bucketname).download_file(filename, filename)
+        filename = str(model_name)
+        model = load_model(filename, verbose=False)
+        
+        if verbose:
+            print('Transformation Pipeline and Model Sucessfully Loaded')
+
+        return model
+    
+    import joblib
+    model_name = model_name + '.pkl'
+    if verbose:
+        print('Transformation Pipeline and Model Sucessfully Loaded')
+    return joblib.load(model_name)
+        
 def models():
 
     """
-
-    Description:
-    ------------
     Returns table of models available in model library.
 
-        Example
-        -------
-        all_models = models()
+    Example
+    -------
+    >>> all_models = models()
 
-        This will return pandas dataframe with all available 
-        models and their metadata.     
+    This will return pandas.DataFrame with all available
+    models and their metadata.
     
+    Returns
+    -------
+    pandas.DataFrame
+
     """
 
     import pandas as pd
@@ -4187,27 +4046,27 @@ def models():
 def get_logs(experiment_name = None, save = False):
 
     """
-
-    Description:
-    ------------
     Returns a table with experiment logs consisting
     run details, parameter, metrics and tags. 
 
-        Example
-        -------
-        logs = get_logs()
+    Example
+    -------
+    >>> logs = get_logs()
 
-        This will return pandas dataframe.
+    This will return pandas.DataFrame.
 
     Parameters
     ----------
     experiment_name : string, default = None
-    When set to None current active run is used.
+        When set to None current active run is used.
 
     save : bool, default = False
-    When set to True, csv file is saved in current directory.
+        When set to True, csv file is saved in current directory.
       
-    
+    Returns
+    -------
+    pandas.DataFrame
+
     """
 
     import sys
@@ -4237,8 +4096,6 @@ def get_logs(experiment_name = None, save = False):
 def get_config(variable):
 
     """
-    Description:
-    ------------
     This function is used to access global environment variables.
     Following variables can be accessed:
 
@@ -4254,13 +4111,16 @@ def get_config(variable):
     - log_plots_param: log_plots param set through setup
     - USI: Unique session ID parameter set through setup
 
-        Example:
-        --------
-        X = get_config('X') 
+    Example
+    -------
+    >>> X = get_config('X') 
 
-        This will return transformed dataset.
+    This will return transformed dataset.
           
-      
+    Returns
+    -------
+    variable
+
     """
 
     import logging
@@ -4332,8 +4192,6 @@ def get_config(variable):
 def set_config(variable,value):
 
     """
-    Description:
-    ------------
     This function is used to reset global environment variables.
     Following variables can be accessed:
 
@@ -4349,11 +4207,11 @@ def set_config(variable,value):
     - log_plots_param: log_plots param set through setup
     - USI: Unique session ID parameter set through setup
 
-        Example:
-        --------
-        set_config('seed', 123) 
+    Example
+    -------
+    >>> set_config('seed', 123) 
 
-        This will set the global seed to '123'.
+    This will set the global seed to '123'.
 
     """
 
@@ -4448,3 +4306,86 @@ def get_system_logs():
 
         columns = [col.strip() for col in line.split(':') if col]
         print(columns)
+
+def get_clusters(data, 
+                 model = None, 
+                 num_clusters = 4, 
+                 ignore_features = None, 
+                 normalize = True, 
+                 transformation = False,
+                 pca = False,
+                 pca_components = 0.99,
+                 ignore_low_variance=False,
+                 combine_rare_levels=False,
+                 rare_level_threshold=0.1,
+                 remove_multicollinearity=False,
+                 multicollinearity_threshold=0.9,
+                 n_jobs = None):
+    
+    """
+    Callable from any external environment without requiring setup initialization.
+    """
+    
+    if model is None:
+        model = 'kmeans'
+        
+    if ignore_features is None:
+        ignore_features_pass = []
+    else:
+        ignore_features_pass = ignore_features
+    
+    global X, data_, seed, n_jobs_param, logging_param, logger
+    
+    data_ = data.copy()
+    
+    seed = 99
+
+    n_jobs_param = n_jobs
+
+    logging_param = False
+    
+    import logging
+
+    logger = logging.getLogger('logs')
+    logger.setLevel(logging.DEBUG)
+    
+    # create console handler and set level to debug
+    if logger.hasHandlers():
+        logger.handlers.clear()
+    
+    ch = logging.FileHandler('logs.log')
+    ch.setLevel(logging.DEBUG)
+
+    # create formatter
+    formatter = logging.Formatter('%(asctime)s:%(levelname)s:%(message)s')
+
+    # add formatter to ch
+    ch.setFormatter(formatter)
+
+    # add ch to logger
+    logger.addHandler(ch)
+    
+    from pycaret import preprocess
+    
+    X = preprocess.Preprocess_Path_Two(train_data = data, 
+                                       features_todrop = ignore_features_pass,
+                                       display_types = False,
+                                       scale_data = normalize,
+                                       scaling_method = 'zscore',
+                                       Power_transform_data = transformation,
+                                       Power_transform_method = 'yj',
+                                       apply_pca = pca,
+                                       pca_variance_retained_or_number_of_components = pca_components,
+                                       apply_zero_nearZero_variance = ignore_low_variance,
+                                       club_rare_levels=combine_rare_levels,
+                                       rara_level_threshold_percentage=rare_level_threshold,
+                                       remove_multicollinearity=remove_multicollinearity,
+                                       maximum_correlation_between_features=multicollinearity_threshold,
+                                       random_state = seed)
+      
+    try:
+        c = create_model(model=model, num_clusters=num_clusters, verbose=False, system=False)
+    except:
+        c = create_model(model=model, verbose=False, system=False)
+    dataset = assign_model(c, verbose=False)
+    return dataset

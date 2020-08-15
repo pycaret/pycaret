@@ -11,6 +11,7 @@ catboost_info
 /cli_app.py
 /logo.png
 /mlruns
+/model
 /Results.html
 /build
 /pycaret_nightly.egg-info
@@ -18,3 +19,5 @@ catboost_info
 /dist
 .vscode/settings.json
 /logs.log
+pycaret/__pycache__/
+pycaret/tests/__pycache__/

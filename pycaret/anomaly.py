@@ -1,8 +1,8 @@
 # Module: Anomaly Detection
 # Author: Moez Ali <moez.ali@queensu.ca>
 # License: MIT
-# Release: PyCaret 2.0x
-# Last modified : 30/07/2020
+# Release: PyCaret 2.1
+# Last modified : 14/08/2020
 
 def setup(data, 
           categorical_features = None,
@@ -45,248 +45,244 @@ def setup(data,
           profile = False):
     
     """
-        
-    Description:
-    ------------
     This function initializes the environment in pycaret. setup() must called before
     executing any other function in pycaret. It takes one mandatory parameter:
-    dataframe {array-like, sparse matrix}. 
+    data.
 
-        Example
-        -------
-        from pycaret.datasets import get_data
-        anomaly = get_data('anomaly')
-
-        experiment_name = setup(data = anomaly, normalize = True)
-        
-        'anomaly' is a pandas Dataframe.
+    Example
+    -------
+    >>> from pycaret.datasets import get_data
+    >>> anomaly = get_data('anomaly')
+    >>> experiment_name = setup(data = anomaly, normalize = True)
+    
+    'anomaly' is a pandas.DataFrame.
 
     Parameters
     ----------
-    data : {array-like, sparse matrix}, shape (n_samples, n_features) where n_samples 
-    is the number of samples and n_features is the number of features in dataframe.
+    data : pandas.DataFrame
+        Shape (n_samples, n_features) where n_samples is the number of samples and n_features is the number of features.
     
     categorical_features: string, default = None
-    If the inferred data types are not correct, categorical_features can be used to
-    overwrite the inferred type. If when running setup the type of 'column1' is
-    inferred as numeric instead of categorical, then this parameter can be used 
-    to overwrite the type by passing categorical_features = ['column1'].
+        If the inferred data types are not correct, categorical_features can be used to
+        overwrite the inferred type. If when running setup the type of 'column1' is
+        inferred as numeric instead of categorical, then this parameter can be used 
+        to overwrite the type by passing categorical_features = ['column1'].
     
     categorical_imputation: string, default = 'constant'
-    If missing values are found in categorical features, they will be imputed with
-    a constant 'not_available' value. The other available option is 'mode' which 
-    imputes the missing value using most frequent value in the training dataset. 
+        If missing values are found in categorical features, they will be imputed with
+        a constant 'not_available' value. The other available option is 'mode' which 
+        imputes the missing value using most frequent value in the training dataset. 
     
     ordinal_features: dictionary, default = None
-    When the data contains ordinal features, they must be encoded differently using 
-    the ordinal_features param. If the data has a categorical variable with values
-    of 'low', 'medium', 'high' and it is known that low < medium < high, then it can 
-    be passed as ordinal_features = { 'column_name' : ['low', 'medium', 'high'] }. 
-    The list sequence must be in increasing order from lowest to highest.
+        When the data contains ordinal features, they must be encoded differently using 
+        the ordinal_features param. If the data has a categorical variable with values
+        of 'low', 'medium', 'high' and it is known that low < medium < high, then it can 
+        be passed as ordinal_features = { 'column_name' : ['low', 'medium', 'high'] }. 
+        The list sequence must be in increasing order from lowest to highest.
     
     high_cardinality_features: string, default = None
-    When the data containts features with high cardinality, they can be compressed
-    into fewer levels by passing them as a list of column names with high cardinality.
-    Features are compressed using frequency distribution. As such original features
-    are replaced with the frequency distribution and converted into numeric variable. 
+        When the data containts features with high cardinality, they can be compressed
+        into fewer levels by passing them as a list of column names with high cardinality.
+        Features are compressed using frequency distribution. As such original features
+        are replaced with the frequency distribution and converted into numeric variable. 
     
     numeric_features: string, default = None
-    If the inferred data types are not correct, numeric_features can be used to
-    overwrite the inferred type. If when running setup the type of 'column1' is 
-    inferred as a categorical instead of numeric, then this parameter can be used 
-    to overwrite by passing numeric_features = ['column1'].    
+        If the inferred data types are not correct, numeric_features can be used to
+        overwrite the inferred type. If when running setup the type of 'column1' is 
+        inferred as a categorical instead of numeric, then this parameter can be used 
+        to overwrite by passing numeric_features = ['column1'].    
 
     numeric_imputation: string, default = 'mean'
-    If missing values are found in numeric features, they will be imputed with the 
-    mean value of the feature. The other available option is 'median' which imputes 
-    the value using the median value in the training dataset. 
+        If missing values are found in numeric features, they will be imputed with the 
+        mean value of the feature. The other available option is 'median' which imputes 
+        the value using the median value in the training dataset. 
     
     date_features: string, default = None
-    If the data has a DateTime column that is not automatically detected when running
-    setup, this parameter can be used by passing date_features = 'date_column_name'. 
-    It can work with multiple date columns. Date columns are not used in modeling. 
-    Instead, feature extraction is performed and date columns are dropped from the 
-    dataset. If the date column includes a time stamp, features related to time will 
-    also be extracted.
+        If the data has a DateTime column that is not automatically detected when running
+        setup, this parameter can be used by passing date_features = 'date_column_name'. 
+        It can work with multiple date columns. Date columns are not used in modeling. 
+        Instead, feature extraction is performed and date columns are dropped from the 
+        dataset. If the date column includes a time stamp, features related to time will 
+        also be extracted.
     
     ignore_features: string, default = None
-    If any feature should be ignored for modeling, it can be passed to the param
-    ignore_features. The ID and DateTime columns when inferred, are automatically 
-    set to ignore for modeling. 
+        If any feature should be ignored for modeling, it can be passed to the param
+        ignore_features. The ID and DateTime columns when inferred, are automatically 
+        set to ignore for modeling. 
     
     normalize: bool, default = False
-    When set to True, the feature space is transformed using the normalized_method
-    param. Generally, linear algorithms perform better with normalized data however, 
-    the results may vary and it is advised to run multiple experiments to evaluate
-    the benefit of normalization.
+        When set to True, the feature space is transformed using the normalized_method
+        param. Generally, linear algorithms perform better with normalized data however, 
+        the results may vary and it is advised to run multiple experiments to evaluate
+        the benefit of normalization.
     
     normalize_method: string, default = 'zscore'
-    Defines the method to be used for normalization. By default, normalize method
-    is set to 'zscore'. The standard zscore is calculated as z = (x - u) / s. The
-    other available options are:
-    
-    'minmax'    : scales and translates each feature individually such that it is in 
-                  the range of 0 - 1.
-    
-    'maxabs'    : scales and translates each feature individually such that the maximal 
-                  absolute value of each feature will be 1.0. It does not shift/center 
-                  the data, and thus does not destroy any sparsity.
-    
-    'robust'    : scales and translates each feature according to the Interquartile range.
-                  When the dataset contains outliers, robust scaler often gives better
-                  results.
+        Defines the method to be used for normalization. By default, normalize method
+        is set to 'zscore'. The standard zscore is calculated as z = (x - u) / s. The
+        other available options are:
+        
+        'minmax'    : scales and translates each feature individually such that it is in 
+                    the range of 0 - 1.
+        
+        'maxabs'    : scales and translates each feature individually such that the maximal 
+                    absolute value of each feature will be 1.0. It does not shift/center 
+                    the data, and thus does not destroy any sparsity.
+        
+        'robust'    : scales and translates each feature according to the Interquartile range.
+                    When the dataset contains outliers, robust scaler often gives better
+                    results.
     
     transformation: bool, default = False
-    When set to True, a power transformation is applied to make the data more normal /
-    Gaussian-like. This is useful for modeling issues related to heteroscedasticity or 
-    other situations where normality is desired. The optimal parameter for stabilizing 
-    variance and minimizing skewness is estimated through maximum likelihood.
+        When set to True, a power transformation is applied to make the data more normal /
+        Gaussian-like. This is useful for modeling issues related to heteroscedasticity or 
+        other situations where normality is desired. The optimal parameter for stabilizing 
+        variance and minimizing skewness is estimated through maximum likelihood.
     
     transformation_method: string, default = 'yeo-johnson'
-    Defines the method for transformation. By default, the transformation method is set
-    to 'yeo-johnson'. The other available option is 'quantile' transformation. Both 
-    the transformation transforms the feature set to follow a Gaussian-like or normal
-    distribution. Note that the quantile transformer is non-linear and may distort linear 
-    correlations between variables measured at the same scale.
+        Defines the method for transformation. By default, the transformation method is set
+        to 'yeo-johnson'. The other available option is 'quantile' transformation. Both 
+        the transformation transforms the feature set to follow a Gaussian-like or normal
+        distribution. Note that the quantile transformer is non-linear and may distort linear 
+        correlations between variables measured at the same scale.
     
     handle_unknown_categorical: bool, default = True
-    When set to True, unknown categorical levels in new / unseen data are replaced by
-    the most or least frequent level as learned in the training data. The method is 
-    defined under the unknown_categorical_method param.
+        When set to True, unknown categorical levels in new / unseen data are replaced by
+        the most or least frequent level as learned in the training data. The method is 
+        defined under the unknown_categorical_method param.
     
     unknown_categorical_method: string, default = 'least_frequent'
-    Method used to replace unknown categorical levels in unseen data. Method can be
-    set to 'least_frequent' or 'most_frequent'.
+        Method used to replace unknown categorical levels in unseen data. Method can be
+        set to 'least_frequent' or 'most_frequent'.
     
     pca: bool, default = False
-    When set to True, dimensionality reduction is applied to project the data into 
-    a lower dimensional space using the method defined in pca_method param. In 
-    supervised learning pca is generally performed when dealing with high feature
-    space and memory is a constraint. Note that not all datasets can be decomposed
-    efficiently using a linear PCA technique and that applying PCA may result in loss 
-    of information. As such, it is advised to run multiple experiments with different 
-    pca_methods to evaluate the impact. 
+        When set to True, dimensionality reduction is applied to project the data into 
+        a lower dimensional space using the method defined in pca_method param. In 
+        supervised learning pca is generally performed when dealing with high feature
+        space and memory is a constraint. Note that not all datasets can be decomposed
+        efficiently using a linear PCA technique and that applying PCA may result in loss 
+        of information. As such, it is advised to run multiple experiments with different 
+        pca_methods to evaluate the impact. 
 
     pca_method: string, default = 'linear'
-    The 'linear' method performs Linear dimensionality reduction using Singular Value 
-    Decomposition. The other available options are:
-    
-    kernel      : dimensionality reduction through the use of RVF kernel.  
-    
-    incremental : replacement for 'linear' pca when the dataset to be decomposed is 
-                  too large to fit in memory
+        The 'linear' method performs Linear dimensionality reduction using Singular Value 
+        Decomposition. The other available options are:
+        
+        kernel      : dimensionality reduction through the use of RVF kernel.  
+        
+        incremental : replacement for 'linear' pca when the dataset to be decomposed is 
+                    too large to fit in memory
     
     pca_components: int/float, default = 0.99
-    Number of components to keep. if pca_components is a float, it is treated as a 
-    target percentage for information retention. When pca_components is an integer
-    it is treated as the number of features to be kept. pca_components must be strictly
-    less than the original number of features in the dataset.
-    
-    ignore_low_variance: bool, default = False
-    When set to True, all categorical features with statistically insignificant variances 
-    are removed from the dataset. The variance is calculated using the ratio of unique 
-    values to the number of samples, and the ratio of the most common value to the 
-    frequency of the second most common value.
+        Number of components to keep. if pca_components is a float, it is treated as a 
+        target percentage for information retention. When pca_components is an integer
+        it is treated as the number of features to be kept. pca_components must be strictly
+        less than the original number of features in the dataset.
+        
+        ignore_low_variance: bool, default = False
+        When set to True, all categorical features with statistically insignificant variances 
+        are removed from the dataset. The variance is calculated using the ratio of unique 
+        values to the number of samples, and the ratio of the most common value to the 
+        frequency of the second most common value.
     
     combine_rare_levels: bool, default = False
-    When set to True, all levels in categorical features below the threshold defined 
-    in rare_level_threshold param are combined together as a single level. There must be 
-    atleast two levels under the threshold for this to take effect. rare_level_threshold
-    represents the percentile distribution of level frequency. Generally, this technique 
-    is applied to limit a sparse matrix caused by high numbers of levels in categorical 
-    features. 
-    
-    rare_level_threshold: float, default = 0.1
-    Percentile distribution below which rare categories are combined. Only comes into
-    effect when combine_rare_levels is set to True.
+        When set to True, all levels in categorical features below the threshold defined 
+        in rare_level_threshold param are combined together as a single level. There must be 
+        atleast two levels under the threshold for this to take effect. rare_level_threshold
+        represents the percentile distribution of level frequency. Generally, this technique 
+        is applied to limit a sparse matrix caused by high numbers of levels in categorical 
+        features. 
+        
+        rare_level_threshold: float, default = 0.1
+        Percentile distribution below which rare categories are combined. Only comes into
+        effect when combine_rare_levels is set to True.
     
     bin_numeric_features: list, default = None
-    When a list of numeric features is passed they are transformed into categorical
-    features using KMeans, where values in each bin have the same nearest center of a 
-    1D k-means cluster. The number of clusters are determined based on the 'sturges' 
-    method. It is only optimal for gaussian data and underestimates the number of bins 
-    for large non-gaussian datasets.
+        When a list of numeric features is passed they are transformed into categorical
+        features using KMeans, where values in each bin have the same nearest center of a 
+        1D k-means cluster. The number of clusters are determined based on the 'sturges' 
+        method. It is only optimal for gaussian data and underestimates the number of bins 
+        for large non-gaussian datasets.
     
     remove_multicollinearity: bool, default = False
-    When set to True, the variables with inter-correlations higher than the threshold
-    defined under the multicollinearity_threshold param are dropped. When two features
-    are highly correlated with each other, the feature with higher average correlation 
-    in the feature space is dropped. 
+        When set to True, the variables with inter-correlations higher than the threshold
+        defined under the multicollinearity_threshold param are dropped. When two features
+        are highly correlated with each other, the feature with higher average correlation 
+        in the feature space is dropped. 
     
     multicollinearity_threshold: float, default = 0.9
-    Threshold used for dropping the correlated features. Only comes into effect when 
-    remove_multicollinearity is set to True.
+        Threshold used for dropping the correlated features. Only comes into effect when 
+        remove_multicollinearity is set to True.
     
     group_features: list or list of list, default = None
-    When a dataset contains features that have related characteristics, the group_features
-    param can be used for statistical feature extraction. For example, if a dataset has 
-    numeric features that are related with each other (i.e 'Col1', 'Col2', 'Col3'), a list 
-    containing the column names can be passed under group_features to extract statistical 
-    information such as the mean, median, mode and standard deviation.
+        When a dataset contains features that have related characteristics, the group_features
+        param can be used for statistical feature extraction. For example, if a dataset has 
+        numeric features that are related with each other (i.e 'Col1', 'Col2', 'Col3'), a list 
+        containing the column names can be passed under group_features to extract statistical 
+        information such as the mean, median, mode and standard deviation.
     
     group_names: list, default = None
-    When group_features is passed, a name of the group can be passed into the group_names 
-    param as a list containing strings. The length of a group_names list must equal to the 
-    length  of group_features. When the length doesn't match or the name is not passed, new 
-    features are sequentially named such as group_1, group_2 etc.
+        When group_features is passed, a name of the group can be passed into the group_names 
+        param as a list containing strings. The length of a group_names list must equal to the 
+        length  of group_features. When the length doesn't match or the name is not passed, new 
+        features are sequentially named such as group_1, group_2 etc.
     
     supervised: bool, default = False
-    When set to True, supervised_target column is ignored for transformation. This
-    param is only for internal use. 
+        When set to True, supervised_target column is ignored for transformation. This
+        param is only for internal use. 
     
     supervised_target: string, default = None
-    Name of supervised_target column that will be ignored for transformation. Only
-    applicable when tune_model() function is used. This param is only for internal use.
+        Name of supervised_target column that will be ignored for transformation. Only
+        applicable when tune_model() function is used. This param is only for internal use.
 
     n_jobs: int, default = -1
-    The number of jobs to run in parallel (for functions that supports parallel 
-    processing) -1 means using all processors. To run all functions on single processor 
-    set n_jobs to None.
+        The number of jobs to run in parallel (for functions that supports parallel 
+        processing) -1 means using all processors. To run all functions on single processor 
+        set n_jobs to None.
 
     html: bool, default = True
-    If set to False, prevents runtime display of monitor. This must be set to False
-    when using environment that doesnt support HTML.
+        If set to False, prevents runtime display of monitor. This must be set to False
+        when using environment that doesnt support HTML.
 
     session_id: int, default = None
-    If None, a random seed is generated and returned in the Information grid. The 
-    unique number is then distributed as a seed in all functions used during the 
-    experiment. This can be used for later reproducibility of the entire experiment.
+        If None, a random seed is generated and returned in the Information grid. The 
+        unique number is then distributed as a seed in all functions used during the 
+        experiment. This can be used for later reproducibility of the entire experiment.
     
     log_experiment: bool, default = True
-    When set to True, all metrics and parameters are logged on MLFlow server.
+        When set to True, all metrics and parameters are logged on MLFlow server.
 
     experiment_name: str, default = None
-    Name of experiment for logging. When set to None, 'clf' is by default used as 
-    alias for the experiment name.    
+        Name of experiment for logging. When set to None, 'clf' is by default used as 
+        alias for the experiment name.    
 
     log_plots: bool, default = False
-    When set to True, specific plots are logged in MLflow as a png file. By default,
-    it is set to False. 
+        When set to True, specific plots are logged in MLflow as a png file. By default,
+        it is set to False. 
 
     log_profile: bool, default = False
-    When set to True, data profile is also logged on MLflow as a html file. By default,
-    it is set to False. 
+        When set to True, data profile is also logged on MLflow as a html file. By default,
+        it is set to False. 
 
     silent: bool, default = False
-    When set to True, confirmation of data types is not required. All preprocessing will 
-    be performed assuming automatically inferred data types. Not recommended for direct use 
-    except for established pipelines.
+        When set to True, confirmation of data types is not required. All preprocessing will 
+        be performed assuming automatically inferred data types. Not recommended for direct use 
+        except for established pipelines.
 
     verbose: Boolean, default = True
-    Information grid is not printed when verbose is set to False.
+        Information grid is not printed when verbose is set to False.
 
     profile: bool, default = False
-    If set to true, a data profile for Exploratory Data Analysis will be displayed 
-    in an interactive HTML report. 
+        If set to true, a data profile for Exploratory Data Analysis will be displayed 
+        in an interactive HTML report. 
     
-    Returns:
-    --------
+    Returns
+    -------
+    info_grid
+        Information grid is printed.
 
-    info grid:    Information grid is printed.
-    -----------      
-
-    environment:  This function returns various outputs that are stored in variable
-    -----------   as tuple. They are used by other functions in pycaret.
+    environment
+        This function returns various outputs that are stored in variable
+        as tuple. They are used by other functions in pycaret.
       
           
     """
@@ -1166,11 +1162,8 @@ def setup(data,
             import secrets
             URI = secrets.token_hex(nbytes=4)
             mlflow.set_tag("URI", URI)
-
             mlflow.set_tag("USI", USI) 
-
             mlflow.set_tag("Run Time", runtime)
-
             mlflow.set_tag("Run ID", RunID)
 
             # Log the transformation pipeline
@@ -1178,9 +1171,6 @@ def setup(data,
             save_model(prep_pipe, 'Transformation Pipeline', verbose=False)
             logger.info("SubProcess save_model() end ==================================")
             mlflow.log_artifact('Transformation Pipeline' + '.pkl')
-            size_bytes = Path('Transformation Pipeline.pkl').stat().st_size
-            size_kb = np.round(size_bytes/1000, 2)
-            mlflow.set_tag("Size KB", size_kb)
             os.remove('Transformation Pipeline.pkl')
 
             # Log pandas profile
@@ -1199,17 +1189,6 @@ def setup(data,
                 mlflow.log_artifact('data.csv')
                 os.remove('data.csv')
 
-            # Log input.txt that contains name of columns required in dataset 
-            # to use this pipeline based on USI/URI.
-
-            input_cols = list(data_before_preprocess.columns)
-
-            with open("input.txt", "w") as output:
-                output.write(str(input_cols))
-            
-            mlflow.log_artifact("input.txt")
-            os.remove('input.txt')
-
     logger.info(str(prep_pipe))
     logger.info("setup() succesfully completed......................................")
 
@@ -1222,66 +1201,57 @@ def create_model(model = None,
                  system=True, #added in pycaret==2.0.0
                  **kwargs): #added in pycaret==2.0.0
     
-    """  
-     
-    Description:
-    ------------
+    """
     This function creates a model on the dataset passed as a data param during 
     the setup stage. setup() function must be called before using create_model().
 
     This function returns a trained model object. 
     
-        Example
-        -------
-        from pycaret.datasets import get_data
-        anomaly = get_data('anomaly')
-        experiment_name = setup(data = anomaly, normalize = True)
-        
-        knn = create_model('knn')
+    Example
+    -------
+    >>> from pycaret.datasets import get_data
+    >>> anomaly = get_data('anomaly')
+    >>> experiment_name = setup(data = anomaly, normalize = True)
+    >>> knn = create_model('knn')
 
-        This will return trained k-Nearest Neighbors model.
+    This will return trained k-Nearest Neighbors model.
 
     Parameters
     ----------
     model : string / object, default = None
-    
-    Enter ID of the models available in model library or pass an untrained model 
-    object consistent with fit / predict API to train and evaluate model. List of 
-    models available in model library:
+        Enter ID of the models available in model library or pass an untrained model 
+        object consistent with fit / predict API to train and evaluate model. List of 
+        models available in model library (ID - Model):
 
-    ID          Model   
-    -------     ---------
-    'abod'      Angle-base Outlier Detection       
-    'cluster'   Clustering-Based Local Outlier            
-    'cof'       Connectivity-Based Outlier Factor                 
-    'histogram' Histogram-based Outlier Detection          
-    'knn'       k-Nearest Neighbors Detector                       
-    'lof'       Local Outlier Factor                            
-    'svm'       One-class SVM detector                          
-    'pca'       Principal Component Analysis                    
-    'mcd'       Minimum Covariance Determinant                    
-    'sod'       Subspace Outlier Detection                       
-    'sos'       Stochastic Outlier Selection                       
+        * 'abod' - Angle-base Outlier Detection       
+        * 'cluster' - Clustering-Based Local Outlier            
+        * 'cof' - Connectivity-Based Outlier Factor                 
+        * 'histogram' - Histogram-based Outlier Detection          
+        * 'knn' - k-Nearest Neighbors Detector                       
+        * 'lof' - Local Outlier Factor                            
+        * 'svm' - One-class SVM detector                          
+        * 'pca' - Principal Component Analysis                    
+        * 'mcd' - Minimum Covariance Determinant                    
+        * 'sod' - Subspace Outlier Detection                       
+        * 'sos' - Stochastic Outlier Selection                       
 
     fraction: float, default = 0.05
-    The percentage / proportion of outliers in the dataset.
+        The percentage / proportion of outliers in the dataset.
 
     verbose: Boolean, default = True
-    Status update is not printed when verbose is set to False.
+        Status update is not printed when verbose is set to False.
 
     system: Boolean, default = True
-    Must remain True all times. Only to be changed by internal functions.
+        Must remain True all times. Only to be changed by internal functions.
 
     **kwargs: 
-    Additional keyword arguments to pass to the estimator.
+        Additional keyword arguments to pass to the estimator.
 
-    Returns:
-    --------
+    Returns
+    -------
+    model
+        Trained model object.
 
-    model:    trained model object
-    ------
-      
-       
     """
     
     import logging
@@ -1576,14 +1546,28 @@ def create_model(model = None,
                 logger.info("SubProcess plot_model() end ==================================")
 
             # Log model and transformation pipeline
-            logger.info("SubProcess save_model() called ==================================")
-            save_model(model, 'Trained Model', verbose=False)
-            logger.info("SubProcess save_model() end ==================================")
-            mlflow.log_artifact('Trained Model' + '.pkl')
-            size_bytes = Path('Trained Model.pkl').stat().st_size
-            size_kb = np.round(size_bytes/1000, 2)
-            mlflow.set_tag("Size KB", size_kb)
-            os.remove('Trained Model.pkl')
+            from copy import deepcopy
+
+            # get default conda env
+            from mlflow.sklearn import get_default_conda_env
+            default_conda_env = get_default_conda_env()
+            default_conda_env['name'] = str(exp_name_log) + '-env'
+            default_conda_env.get('dependencies').pop(-3)
+            dependencies = default_conda_env.get('dependencies')[-1]
+            from pycaret.utils import __version__
+            dep = 'pycaret==' + str(__version__())
+            dependencies['pip'] = [dep]
+            
+            # define model signature
+            from mlflow.models.signature import infer_signature
+            signature = infer_signature(data_)
+            input_example = data_.iloc[0].to_dict()
+
+            # log model as sklearn flavor
+            prep_pipe_temp = deepcopy(prep_pipe)
+            prep_pipe_temp.steps.append(['trained model', model])
+            mlflow.sklearn.log_model(prep_pipe_temp, "model", conda_env = default_conda_env, signature = signature, input_example = input_example)
+            del(prep_pipe_temp)
 
     progress.value += 1
     
@@ -1600,10 +1584,7 @@ def assign_model(model,
                  score=True,
                  verbose=True):
     
-    """  
-     
-    Description:
-    ------------
+    """
     This function flags each of the data point in the dataset passed during setup
     stage as either outlier or inlier (1 = outlier, 0 = inlier) using trained model
     object passed as model param. create_model() function must be called before using 
@@ -1612,38 +1593,36 @@ def assign_model(model,
     This function returns dataframe with Outlier flag (1 = outlier, 0 = inlier) and 
     decision score, when score is set to True.
 
-        Example
-        -------
-        from pycaret.datasets import get_data
-        anomaly = get_data('anomaly')
-        experiment_name = setup(data = anomaly, normalize = True)
-        knn = create_model('knn')
-        
-        knn_df = assign_model(knn)
+    Example
+    -------
+    >>> from pycaret.datasets import get_data
+    >>> anomaly = get_data('anomaly')
+    >>> experiment_name = setup(data = anomaly, normalize = True)
+    >>> knn = create_model('knn')
+    >>> knn_df = assign_model(knn)
 
-        This will return a dataframe with inferred outliers using trained model.
+    This will return a dataframe with inferred outliers using trained model.
 
     Parameters
     ----------
     model : trained model object, default = None
     
     transformation: bool, default = False
-    When set to True, assigned outliers are returned on transformed dataset instead 
-    of original dataset passed during setup().
+        When set to True, assigned outliers are returned on transformed dataset instead 
+        of original dataset passed during setup().
     
     score: Boolean, default = True
-    The outlier scores of the training data. The higher, the more abnormal. 
-    Outliers tend to have higher scores. This value is available once the model 
-    is fitted. If set to False, it will only return the flag (1 = outlier, 0 = inlier).
+        The outlier scores of the training data. The higher, the more abnormal. 
+        Outliers tend to have higher scores. This value is available once the model 
+        is fitted. If set to False, it will only return the flag (1 = outlier, 0 = inlier).
 
     verbose: Boolean, default = True
-    Status update is not printed when verbose is set to False.
+        Status update is not printed when verbose is set to False.
 
-    Returns:
-    --------
-
-    dataframe:   Returns a dataframe with inferred outliers using a trained model.
-    ---------
+    Returns
+    -------
+    pandas.DataFrame
+        Returns a dataframe with inferred outliers using a trained model.
   
     """
     
@@ -1817,6 +1796,204 @@ def assign_model(model,
 
     return data__
 
+def plot_model(model,
+               plot = 'tsne',
+               feature = None,
+               save = False, #added in pycaret 2.0.0
+               system = True): #added in pycaret 2.0.0
+               
+    
+    """
+    This function takes a trained model object and returns a plot on the dataset 
+    passed during setup stage. This function internally calls assign_model before 
+    generating a plot.  
+
+    Example
+    -------
+    >>> from pycaret.datasets import get_data
+    >>> anomaly = get_data('anomaly')
+    >>> experiment_name = setup(data = anomaly, normalize = True)
+    >>> knn = create_model('knn')
+    >>> plot_model(knn)
+
+    Parameters
+    ----------
+    model : object
+        A trained model object can be passed. Model must be created using create_model().
+
+    plot : string, default = 'tsne'
+        Enter abbreviation of type of plot. The current list of plots supported are (Plot - Name):
+
+        * 'tsne' - t-SNE (3d) Dimension Plot
+        * 'umap' - UMAP Dimensionality Plot
+
+    feature : string, default = None
+        Feature column is used as a hoverover tooltip. By default, first of column of the
+        dataset is chosen as hoverover tooltip, when no feature is passed.
+    
+    save: Boolean, default = False
+        Plot is saved as png file in local directory when save parameter set to True.
+
+    system: Boolean, default = True
+        Must remain True all times. Only to be changed by internal functions.
+
+    Returns
+    -------
+    Visual_Plot
+        Prints the visual plot. 
+
+    """  
+    
+    #exception checking   
+    import sys
+    
+    import logging
+
+    try:
+        hasattr(logger, 'name')
+    except:
+        logger = logging.getLogger('logs')
+        logger.setLevel(logging.DEBUG)
+        
+        # create console handler and set level to debug
+        if logger.hasHandlers():
+            logger.handlers.clear()
+        
+        ch = logging.FileHandler('logs.log')
+        ch.setLevel(logging.DEBUG)
+
+        # create formatter
+        formatter = logging.Formatter('%(asctime)s:%(levelname)s:%(message)s')
+
+        # add formatter to ch
+        ch.setFormatter(formatter)
+
+        # add ch to logger
+        logger.addHandler(ch)
+
+    logger.info("Initializing plot_model()")
+    logger.info("""plot_model(model={}, plot={}, feature={}, save={}, system={})""".\
+        format(str(model), str(plot), str(feature), str(save), str(system)))
+
+    #ignore warnings
+    import warnings
+    warnings.filterwarnings('ignore') 
+        
+    """
+    exception handling starts here
+    """
+    
+    logger.info("Checking exceptions")
+
+    #plot checking
+    allowed_plots = ['tsne', 'umap']  
+    if plot not in allowed_plots:
+        sys.exit('(Value Error): Plot Not Available. Please see docstring for list of available plots.')
+     
+
+    
+    """
+    error handling ends here
+    """
+    
+    logger.info("Importing libraries")
+    #import dependencies
+    import pandas as pd
+    import numpy
+    
+    #import cufflinks
+    import cufflinks as cf
+    cf.go_offline()
+    cf.set_config_file(offline=False, world_readable=True)
+
+    logger.info("plot type: " + str(plot))
+
+    if plot == 'tsne':
+        
+        logger.info("SubProcess assign_model() called ==================================")
+        b = assign_model(model, verbose=False, transformation=True, score=False)
+        logger.info("SubProcess assign_model() end ==================================")
+        Label = pd.DataFrame(b['Label'])
+        b.dropna(axis=0, inplace=True) #droping rows with NA's
+        b.drop(['Label'], axis=1, inplace=True)
+        
+        logger.info("Getting dummies to cast categorical variables")
+        b = pd.get_dummies(b) #casting categorical variables
+
+        from sklearn.manifold import TSNE
+        logger.info("Fitting TSNE()")
+        X_embedded = TSNE(n_components=3).fit_transform(b)
+
+        X = pd.DataFrame(X_embedded)
+        X['Label'] = Label
+        
+        if feature is not None: 
+            X['Feature'] = data_[feature]
+        else:
+            X['Feature'] = data_[data_.columns[0]]
+
+        import plotly.express as px
+        df = X
+
+        logger.info("Rendering Visual")
+
+        fig = px.scatter_3d(df, x=0, y=1, z=2, hover_data=['Feature'], color='Label', title='3d TSNE Plot for Outliers', 
+                                opacity=0.7, width=900, height=800)
+            
+            
+        if system:
+            fig.show()
+
+        logger.info("Visual Rendered Successfully")
+
+        if save:
+            fig.write_html("TSNE.html")
+            logger.info("Saving 'TSNE.html' in current active directory") 
+
+    elif plot == 'umap':
+        
+        logger.info("SubProcess assign_model() called ==================================")
+        b = assign_model(model, verbose=False, transformation=True, score=False)
+        logger.info("SubProcess assign_model() end ==================================")
+
+        Label = pd.DataFrame(b['Label'])
+        b.dropna(axis=0, inplace=True) #droping rows with NA's
+        b.drop(['Label'], axis=1, inplace=True)
+        
+        logger.info("Getting dummies to cast categorical variables")
+        b = pd.get_dummies(b) #casting categorical variables
+        
+        import umap
+        reducer = umap.UMAP()
+        logger.info("Fitting UMAP()")
+        embedding = reducer.fit_transform(b)
+        X = pd.DataFrame(embedding)
+
+        import plotly.express as px
+        df = X
+        df['Label'] = Label
+        
+        if feature is not None: 
+            df['Feature'] = data_[feature]
+        else:
+            df['Feature'] = data_[data_.columns[0]]
+        
+        logger.info("Rendering Visual")
+
+        fig = px.scatter(df, x=0, y=1,
+                      color='Label', title='uMAP Plot for Outliers', hover_data=['Feature'], opacity=0.7, 
+                         width=900, height=800)
+        if system:
+            fig.show() 
+
+        logger.info("Visual Rendered Successfully")
+        
+        if save:
+            fig.write_html("UMAP.html")
+            logger.info("Saving 'UMAP.html' in current active directory") 
+    
+    logger.info("plot_model() succesfully completed......................................")
+
 def tune_model(model=None,
                supervised_target=None,
                method='drop',
@@ -1828,9 +2005,6 @@ def tune_model(model=None,
     
     
     """
-        
-    Description:
-    ------------
     This function tunes the fraction parameter using a predefined grid with
     the objective of optimizing a supervised learning metric as defined in 
     the optimize param. You can choose the supervised estimator from a large 
@@ -1838,127 +2012,123 @@ def tune_model(model=None,
     
     This function returns the tuned model object.
     
-        Example
-        -------
-        from pycaret.datasets import get_data
-        boston = get_data('boston')
-        experiment_name = setup(data = boston, normalize = True)
-        
-        tuned_knn = tune_model(model = 'knn', supervised_target = 'medv') 
-        
-        This will return tuned k-Nearest Neighbors model.
+    Example
+    -------
+    >>> from pycaret.datasets import get_data
+    >>> boston = get_data('boston')
+    >>> experiment_name = setup(data = boston, normalize = True)
+    >>> tuned_knn = tune_model(model = 'knn', supervised_target = 'medv') 
+    
+    This will return tuned k-Nearest Neighbors model.
 
     Parameters
     ----------
     model : string, default = None
+        Enter ID of the models available in model library (ID - Model):
 
-    Enter ID of the models available in model library:
-    
-    ID          Model   
-    -------     ---------
-    'abod'      Angle-base Outlier Detection       
-    'cluster'   Clustering-Based Local Outlier            
-    'cof'       Connectivity-Based Outlier Factor                 
-    'histogram' Histogram-based Outlier Detection          
-    'knn'       k-Nearest Neighbors Detector                       
-    'lof'       Local Outlier Factor                            
-    'svm'       One-class SVM detector                          
-    'pca'       Principal Component Analysis                    
-    'mcd'       Minimum Covariance Determinant                    
-    'sod'       Subspace Outlier Detection                       
-    'sos'       Stochastic Outlier Selection    
+        * 'abod' - Angle-base Outlier Detection       
+        * 'cluster' - Clustering-Based Local Outlier            
+        * 'cof' - Connectivity-Based Outlier Factor                 
+        * 'histogram' - Histogram-based Outlier Detection          
+        * 'knn' - k-Nearest Neighbors Detector                       
+        * 'lof' - Local Outlier Factor                            
+        * 'svm' - One-class SVM detector                          
+        * 'pca' - Principal Component Analysis                    
+        * 'mcd' - Minimum Covariance Determinant                    
+        * 'sod' - Subspace Outlier Detection                       
+        * 'sos' - Stochastic Outlier Selection    
     
     supervised_target: string
-    Name of the target column for supervised learning.
+        Name of the target column for supervised learning.
     
     method: string, default = 'drop'
-    When method set to drop, it will drop the outlier rows from training dataset 
-    of supervised estimator, when method set to 'surrogate', it will use the
-    decision function and label as a feature without dropping the outliers from
-    training dataset.
+        When method set to drop, it will drop the outlier rows from training dataset 
+        of supervised estimator, when method set to 'surrogate', it will use the
+        decision function and label as a feature without dropping the outliers from
+        training dataset.
     
     estimator: string, default = None
+        For Classification (ID - Name):
 
-    ID          Name                            Task      
-    --------    ----------                      ----------     
-    'lr'        Logistic Regression             Classification
-    'knn'       K Nearest Neighbour             Classification
-    'nb'        Naive Bayes                     Classification            
-    'dt'        Decision Tree Classifier        Classification                   
-    'svm'       SVM - Linear Kernel             Classification	            
-    'rbfsvm'    SVM - Radial Kernel             Classification               
-    'gpc'       Gaussian Process Classifier     Classification                  
-    'mlp'       Multi Level Perceptron          Classification                  
-    'ridge'     Ridge Classifier                Classification
-    'rf'        Random Forest Classifier        Classification                   
-    'qda'       Quadratic Discriminant Analysis Classification                  
-    'ada'       Ada Boost Classifier            Classification                 
-    'gbc'       Gradient Boosting Classifier    Classification                          
-    'lda'       Linear Discriminant Analysis    Classification                  
-    'et'        Extra Trees Classifier          Classification                   
-    'xgboost'   Extreme Gradient Boosting       Classification              
-    'lightgbm'  Light Gradient Boosting         Classification              
-    'catboost'  CatBoost Classifier             Classification
-    'lr'        Linear Regression               Regression                   
-    'lasso'     Lasso Regression                Regression
-    'ridge'     Ridge Regression                Regression
-    'en'        Elastic Net                     Regression
-    'lar'       Least Angle Regression          Regression        
-    'llar'      Lasso Least Angle Regression    Regression                   
-    'omp'       Orthogonal Matching Pursuit     Regression                     
-    'br'        Bayesian Ridge                  Regression                   
-    'ard'       Automatic Relevance Determ.     Regression                  
-    'par'       Passive Aggressive Regressor    Regression                    
-    'ransac'    Random Sample Consensus         Regression       
-    'tr'        TheilSen Regressor              Regression                   
-    'huber'     Huber Regressor                 Regression                               
-    'kr'        Kernel Ridge                    Regression                                     
-    'svm'       Support Vector Machine          Regression                           
-    'knn'       K Neighbors Regressor           Regression                           
-    'dt'        Decision Tree                   Regression                                    
-    'rf'        Random Forest                   Regression                                    
-    'et'        Extra Trees Regressor           Regression                            
-    'ada'       AdaBoost Regressor              Regression                                   
-    'gbr'       Gradient Boosting               Regression                               
-    'mlp'       Multi Level Perceptron          Regression                          
-    'xgboost'   Extreme Gradient Boosting       Regression                              
-    'lightgbm'  Light Gradient Boosting         Regression                    
-    'catboost'  CatBoost Regressor              Regression     
-    
-    If set to None, Linear model is used by default for both classification
-    and regression tasks.
+        * 'lr' - Logistic Regression             
+        * 'knn' - K Nearest Neighbour             
+        * 'nb' - Naive Bayes                                 
+        * 'dt' - Decision Tree Classifier                           
+        * 'svm' - SVM - Linear Kernel             	            
+        * 'rbfsvm' - SVM - Radial Kernel                            
+        * 'gpc' - Gaussian Process Classifier                       
+        * 'mlp' - Multi Level Perceptron                            
+        * 'ridge' - Ridge Classifier                
+        * 'rf' - Random Forest Classifier                           
+        * 'qda' - Quadratic Discriminant Analysis                   
+        * 'ada' - Ada Boost Classifier                             
+        * 'gbc' - Gradient Boosting Classifier                              
+        * 'lda' - Linear Discriminant Analysis                      
+        * 'et' - Extra Trees Classifier                             
+        * 'xgboost' - Extreme Gradient Boosting                     
+        * 'lightgbm' - Light Gradient Boosting                       
+        * 'catboost' - CatBoost Classifier             
+
+        For Regression (ID - Name):
+
+        * 'lr' - Linear Regression                                  
+        * 'lasso' - Lasso Regression              
+        * 'ridge' - Ridge Regression              
+        * 'en' - Elastic Net                   
+        * 'lar' - Least Angle Regression                
+        * 'llar' - Lasso Least Angle Regression                     
+        * 'omp' - Orthogonal Matching Pursuit                        
+        * 'br' - Bayesian Ridge                                   
+        * 'ard' - Automatic Relevance Determ.                     
+        * 'par' - Passive Aggressive Regressor                      
+        * 'ransac' - Random Sample Consensus              
+        * 'tr' - TheilSen Regressor                               
+        * 'huber' - Huber Regressor                                              
+        * 'kr' - Kernel Ridge                                                       
+        * 'svm' - Support Vector Machine                                   
+        * 'knn' - K Neighbors Regressor                                    
+        * 'dt' - Decision Tree                                                     
+        * 'rf' - Random Forest                                                     
+        * 'et' - Extra Trees Regressor                                     
+        * 'ada' - AdaBoost Regressor                                               
+        * 'gbr' - Gradient Boosting                                            
+        * 'mlp' - Multi Level Perceptron                                  
+        * 'xgboost' - Extreme Gradient Boosting                                   
+        * 'lightgbm' - Light Gradient Boosting                           
+        * 'catboost' - CatBoost Regressor                 
+        
+        If set to None, Linear model is used by default for both classification
+        and regression tasks.
     
     optimize: string, default = None
+        For Classification tasks:
+            Accuracy, AUC, Recall, Precision, F1, Kappa
+        
+        For Regression tasks:
+            MAE, MSE, RMSE, R2, RMSLE, MAPE
+        
+        If set to None, default is 'Accuracy' for classification and 'R2' for 
+        regression tasks.
     
     custom_grid: list, default = None
-    By default, a pre-defined list of fraction values is iterated over to 
-    optimize the supervised objective. To overwrite default iteration,
-    pass a list of fraction value to iterate over in custom_grid param.
-
-    For Classification tasks:
-    Accuracy, AUC, Recall, Precision, F1, Kappa
-    
-    For Regression tasks:
-    MAE, MSE, RMSE, R2, RMSLE, MAPE
-    
-    If set to None, default is 'Accuracy' for classification and 'R2' for 
-    regression tasks.
+        By default, a pre-defined list of fraction values is iterated over to 
+        optimize the supervised objective. To overwrite default iteration,
+        pass a list of fraction value to iterate over in custom_grid param.
     
     fold: integer, default = 10
-    Number of folds to be used in Kfold CV. Must be at least 2. 
+        Number of folds to be used in Kfold CV. Must be at least 2. 
 
     verbose: Boolean, default = True
-    Status update is not printed when verbose is set to False.
+        Status update is not printed when verbose is set to False.
 
-    Returns:
-    --------
-
-    visual plot:  Visual plot with fraction param on x-axis with metric to
-    -----------   optimize on y-axis. Also, prints the best model metric.
+    Returns
+    -------
+    Visual_Plot
+        Visual plot with fraction param on x-axis with metric to
+        optimize on y-axis. Also, prints the best model metric.
     
-    model:        trained model object with best fraction param. 
-    -----------
-
+    model
+        trained model object with best fraction param. 
           
     """
     
@@ -3146,14 +3316,18 @@ def tune_model(model=None,
             RunID = mlflow.active_run().info.run_id
 
             # Log model parameters
-            params = best_model.get_params()
 
-            for i in list(params):
-                v = params.get(i)
-                if len(str(v)) > 250:
-                    params.pop(i)
+            try:   
+                params = best_model.get_params()
 
-            mlflow.log_params(params)
+                for i in list(params):
+                    v = params.get(i)
+                    if len(str(v)) > 250:
+                        params.pop(i)
+
+                mlflow.log_params(params)
+            except:
+                pass
             
             #set tag of compare_models
             mlflow.set_tag("Source", "tune_model")
@@ -3174,266 +3348,75 @@ def tune_model(model=None,
             os.remove('Iterations.html')
 
             # Log model and transformation pipeline
-            logger.info("SubProcess save_model() called ==================================")
-            save_model(best_model, 'Trained Model', verbose=False)
-            logger.info("SubProcess save_model() end ==================================")
-            mlflow.log_artifact('Trained Model' + '.pkl')
-            size_bytes = Path('Trained Model.pkl').stat().st_size
-            size_kb = np.round(size_bytes/1000, 2)
-            mlflow.set_tag("Size KB", size_kb)
-            os.remove('Trained Model.pkl')
+            from copy import deepcopy
+            
+            # get default conda env
+            from mlflow.sklearn import get_default_conda_env
+            default_conda_env = get_default_conda_env()
+            default_conda_env['name'] = str(exp_name_log) + '-env'
+            default_conda_env.get('dependencies').pop(-3)
+            dependencies = default_conda_env.get('dependencies')[-1]
+            from pycaret.utils import __version__
+            dep = 'pycaret==' + str(__version__())
+            dependencies['pip'] = [dep]
+            
+            # define model signature
+            from mlflow.models.signature import infer_signature
+            signature = infer_signature(data_)
+            input_example = data_.iloc[0].to_dict()
+
+            # log model as sklearn flavor
+            prep_pipe_temp = deepcopy(prep_pipe)
+            prep_pipe_temp.steps.append(['trained model', model])
+            mlflow.sklearn.log_model(prep_pipe_temp, "model", conda_env = default_conda_env, signature = signature, input_example = input_example)
+            del(prep_pipe_temp)
     
     logger.info(str(best_model))
     logger.info("tune_model() succesfully completed......................................")
 
     return best_model
 
-def plot_model(model,
-               plot = 'tsne',
-               feature = None,
-               save = False, #added in pycaret 2.0.0
-               system = True): #added in pycaret 2.0.0
-               
+def save_model(model, model_name, model_only=False, verbose=True):
     
     """
-          
-    Description:
-    ------------
-    This function takes a trained model object and returns a plot on the dataset 
-    passed during setup stage. This function internally calls assign_model before 
-    generating a plot.  
-
-        Example:
-        --------
-        from pycaret.datasets import get_data
-        anomaly = get_data('anomaly')
-        experiment_name = setup(data = anomaly, normalize = True)
-        knn = create_model('knn')
-        
-        plot_model(knn)
-
-    Parameters
-    ----------
-
-    model : object
-    A trained model object can be passed. Model must be created using create_model().
-
-    plot : string, default = 'tsne'
-    Enter abbreviation of type of plot. The current list of plots supported are:
-
-    Plot        Name                                
-    -------     ----------             
-    'tsne'      t-SNE (3d) Dimension Plot
-    'umap'      UMAP Dimensionality Plot
-
-    feature : string, default = None
-    feature column is used as a hoverover tooltip. By default, first of column of the
-    dataset is chosen as hoverover tooltip, when no feature is passed.
-    
-    save: Boolean, default = False
-    Plot is saved as png file in local directory when save parameter set to True.
-
-    system: Boolean, default = True
-    Must remain True all times. Only to be changed by internal functions.
-
-    Returns:
-    --------
-
-    Visual Plot:  Prints the visual plot. 
-    ------------ 
-
-    """  
-    
-    #exception checking   
-    import sys
-    
-    import logging
-
-    try:
-        hasattr(logger, 'name')
-    except:
-        logger = logging.getLogger('logs')
-        logger.setLevel(logging.DEBUG)
-        
-        # create console handler and set level to debug
-        if logger.hasHandlers():
-            logger.handlers.clear()
-        
-        ch = logging.FileHandler('logs.log')
-        ch.setLevel(logging.DEBUG)
-
-        # create formatter
-        formatter = logging.Formatter('%(asctime)s:%(levelname)s:%(message)s')
-
-        # add formatter to ch
-        ch.setFormatter(formatter)
-
-        # add ch to logger
-        logger.addHandler(ch)
-
-    logger.info("Initializing plot_model()")
-    logger.info("""plot_model(model={}, plot={}, feature={}, save={}, system={})""".\
-        format(str(model), str(plot), str(feature), str(save), str(system)))
-
-    #ignore warnings
-    import warnings
-    warnings.filterwarnings('ignore') 
-        
-    """
-    exception handling starts here
-    """
-    
-    logger.info("Checking exceptions")
-
-    #plot checking
-    allowed_plots = ['tsne', 'umap']  
-    if plot not in allowed_plots:
-        sys.exit('(Value Error): Plot Not Available. Please see docstring for list of available plots.')
-     
-
-    
-    """
-    error handling ends here
-    """
-    
-    logger.info("Importing libraries")
-    #import dependencies
-    import pandas as pd
-    import numpy
-    
-    #import cufflinks
-    import cufflinks as cf
-    cf.go_offline()
-    cf.set_config_file(offline=False, world_readable=True)
-
-    logger.info("plot type: " + str(plot))
-
-    if plot == 'tsne':
-        
-        logger.info("SubProcess assign_model() called ==================================")
-        b = assign_model(model, verbose=False, transformation=True, score=False)
-        logger.info("SubProcess assign_model() end ==================================")
-        Label = pd.DataFrame(b['Label'])
-        b.dropna(axis=0, inplace=True) #droping rows with NA's
-        b.drop(['Label'], axis=1, inplace=True)
-        
-        logger.info("Getting dummies to cast categorical variables")
-        b = pd.get_dummies(b) #casting categorical variables
-
-        from sklearn.manifold import TSNE
-        logger.info("Fitting TSNE()")
-        X_embedded = TSNE(n_components=3).fit_transform(b)
-
-        X = pd.DataFrame(X_embedded)
-        X['Label'] = Label
-        
-        if feature is not None: 
-            X['Feature'] = data_[feature]
-        else:
-            X['Feature'] = data_[data_.columns[0]]
-
-        import plotly.express as px
-        df = X
-
-        logger.info("Rendering Visual")
-
-        fig = px.scatter_3d(df, x=0, y=1, z=2, hover_data=['Feature'], color='Label', title='3d TSNE Plot for Outliers', 
-                                opacity=0.7, width=900, height=800)
-            
-            
-        if system:
-            fig.show()
-
-        logger.info("Visual Rendered Successfully")
-
-        if save:
-            fig.write_html("TSNE.html")
-            logger.info("Saving 'TSNE.html' in current active directory") 
-
-    elif plot == 'umap':
-        
-        logger.info("SubProcess assign_model() called ==================================")
-        b = assign_model(model, verbose=False, transformation=True, score=False)
-        logger.info("SubProcess assign_model() end ==================================")
-
-        Label = pd.DataFrame(b['Label'])
-        b.dropna(axis=0, inplace=True) #droping rows with NA's
-        b.drop(['Label'], axis=1, inplace=True)
-        
-        logger.info("Getting dummies to cast categorical variables")
-        b = pd.get_dummies(b) #casting categorical variables
-        
-        import umap
-        reducer = umap.UMAP()
-        logger.info("Fitting UMAP()")
-        embedding = reducer.fit_transform(b)
-        X = pd.DataFrame(embedding)
-
-        import plotly.express as px
-        df = X
-        df['Label'] = Label
-        
-        if feature is not None: 
-            df['Feature'] = data_[feature]
-        else:
-            df['Feature'] = data_[data_.columns[0]]
-        
-        logger.info("Rendering Visual")
-
-        fig = px.scatter(df, x=0, y=1,
-                      color='Label', title='uMAP Plot for Outliers', hover_data=['Feature'], opacity=0.7, 
-                         width=900, height=800)
-        if system:
-            fig.show() 
-
-        logger.info("Visual Rendered Successfully")
-        
-        if save:
-            fig.write_html("UMAP.html")
-            logger.info("Saving 'UMAP.html' in current active directory") 
-    
-    logger.info("plot_model() succesfully completed......................................")
-
-def save_model(model, model_name, verbose=True):
-    
-    """
-          
-    Description:
-    ------------
     This function saves the transformation pipeline and trained model object 
     into the current active directory as a pickle file for later use. 
     
-        Example:
-        --------
-        from pycaret.datasets import get_data
-        anomaly = get_data('anomaly')
-        experiment_name = setup(data = anomaly, normalize = True)
-        knn = create_model('knn')
-        
-        save_model(knn, 'knn_model_23122019')
-        
-        This will save the transformation pipeline and model as a binary pickle
-        file in the current directory. 
+    Example
+    -------
+    >>> from pycaret.datasets import get_data
+    >>> anomaly = get_data('anomaly')
+    >>> experiment_name = setup(data = anomaly, normalize = True)
+    >>> knn = create_model('knn')  
+    >>> save_model(knn, 'knn_model_23122019')
+    
+    This will save the transformation pipeline and model as a binary pickle
+    file in the current directory. 
 
     Parameters
     ----------
     model : object, default = none
-    A trained model object should be passed.
+        A trained model object should be passed.
     
     model_name : string, default = none
-    Name of pickle file to be passed as a string.
+        Name of pickle file to be passed as a string.
+
+    model_only : bool, default = False
+        When set to True, only trained model object is saved and all the 
+        transformations are ignored.
 
     verbose : bool, default = True
-    When set to False, success message is not printed.
+        When set to False, success message is not printed.
 
-    Returns:
-    --------    
-    Success Message
+    Returns
+    -------
+    Success_Message
        
          
     """
     
     import logging
+    from copy import deepcopy
 
     try:
         hasattr(logger, 'name')
@@ -3458,17 +3441,21 @@ def save_model(model, model_name, verbose=True):
         logger.addHandler(ch)
 
     logger.info("Initializing save_model()")
-    logger.info("""save_model(model={}, model_name={}, verbose={})""".\
-        format(str(model), str(model_name), str(verbose)))
+    logger.info("""save_model(model={}, model_name={}, model_only={}, verbose={})""".\
+        format(str(model), str(model_name), str(model_only), str(verbose)))
 
     #ignore warnings
     import warnings
     warnings.filterwarnings('ignore') 
     
-    logger.info("Appending prep pipeline")
-    model_ = []
-    model_.append(prep_pipe)
-    model_.append(model)
+    logger.info("Adding model into prep_pipe")
+
+    if model_only:
+        model_ = deepcopy(model)
+        logger.warning("Only Model saved. Transformations in prep_pipe are ignored.")
+    else:
+        model_ = deepcopy(prep_pipe)
+        model_.steps.append(['trained model',model]) 
     
     import joblib
     model_name = model_name + '.pkl'
@@ -3486,41 +3473,38 @@ def load_model(model_name,
                verbose=True):
     
     """
-          
-    Description:
-    ------------
     This function loads a previously saved transformation pipeline and model 
     from the current active directory into the current python environment. 
     Load object must be a pickle file.
     
-        Example:
-        --------
-        saved_knn = load_model('knn_model_23122019')
-        
-        This will load the previously saved model in saved_lr variable. The file 
-        must be in the current directory.
+    Example
+    -------
+    >>> saved_knn = load_model('knn_model_23122019')
+    
+    This will load the previously saved model in saved_lr variable. The file 
+    must be in the current directory.
 
     Parameters
     ----------
     model_name : string, default = none
-    Name of pickle file to be passed as a string.
+        Name of pickle file to be passed as a string.
 
     platform: string, default = None
-    Name of platform, if loading model from cloud. Current available options are:
-    'aws'.
+        Name of platform, if loading model from cloud. Current available options are:
+        'aws'.
     
     authentication : dict
-    dictionary of applicable authentication tokens. 
+        Dictionary of applicable authentication tokens. 
     
-     When platform = 'aws': 
-     {'bucket' : 'Name of Bucket on S3'}
+        When platform = 'aws': 
+        {'bucket' : 'Name of Bucket on S3'}
 
     verbose: Boolean, default = True
-    Success message is not printed when verbose is set to False. 
+        Success message is not printed when verbose is set to False. 
 
-    Returns:
-    --------    
-    Success Message  
+    Returns
+    -------    
+    Success_Message  
        
          
     """
@@ -3560,53 +3544,35 @@ def load_model(model_name,
     return joblib.load(model_name)
 
 def predict_model(model, 
-                  data,
-                  platform=None,
-                  authentication=None):
+                  data):
     
     """
-       
-    Description:
-    ------------
     This function is used to predict new data using a trained model. It requires a
     trained model object created using one of the function in pycaret that returns 
     a trained model object. New data must be passed to data param as pandas Dataframe. 
     
-        Example:
-        --------
-        from pycaret.datasets import get_data
-        anomaly = get_data('anomaly')
-        experiment_name = setup(data = anomaly)
-        knn = create_model('knn')
-        
-        knn_predictions = predict_model(model = knn, data = anomaly)
+    Example
+    -------
+    >>> from pycaret.datasets import get_data
+    >>> anomaly = get_data('anomaly')
+    >>> experiment_name = setup(data = anomaly)
+    >>> knn = create_model('knn')
+    >>> knn_predictions = predict_model(model = knn, data = anomaly)
         
     Parameters
     ----------
     model : object / string,  default = None
-    When model is passed as string, load_model() is called internally to load the
-    pickle file from active directory or cloud platform when platform param is passed.
+        When model is passed as string, load_model() is called internally to load the
+        pickle file from active directory or cloud platform when platform param is passed.
     
-    data : {array-like, sparse matrix}, shape (n_samples, n_features) where n_samples 
-    is the number of samples and n_features is the number of features. All features 
-    used during training must be present in the new dataset.
-    
-    platform: string, default = None
-    Name of platform, if loading model from cloud. Current available options are:
-    'aws'.
-    
-    authentication : dict
-    dictionary of applicable authentication tokens. 
-    
-     When platform = 'aws': 
-     {'bucket' : 'Name of Bucket on S3'}
+    data : pandas.DataFrame
+        Shape (n_samples, n_features) where n_samples is the number of samples and n_features is the number of features.
+        All features used during training must be present in the new dataset.
      
-    Returns:
-    --------
-
-    info grid:  Information grid is printed when data is None.
-    ----------      
-             
+    Returns
+    -------
+    info_grid
+        Information grid is printed when data is None.             
     
     """
     
@@ -3628,41 +3594,21 @@ def predict_model(model,
     
     #copy data and model
     data__ = data.copy()
-    model_ = deepcopy(model)
-    clear_output()
-    
-    if type(model) is str:
-        if platform == 'aws':
-            model_ = load_model(str(model), platform='aws', 
-                                   authentication={'bucket': authentication.get('bucket')},
-                                   verbose=False)
-            
-        else:
-            model_ = load_model(str(model), verbose=False)
-            
-        
-    #separate prep_data pipeline
-    if type(model_) is list:
-        prep_pipe_transformer = model_[0]
-        model = model_[1]
-        
-    else:
-        try: 
-            prep_pipe_transformer = prep_pipe
-        except:
-            sys.exit('Transformation Pipeline Missing')
-    
+
     #exception checking for predict param
     if hasattr(model, 'predict'):
         pass
     else:
         sys.exit("(Type Error): Model doesn't support predict parameter.")
     
-    
     #predictions start here
-    _data_ = prep_pipe_transformer.transform(data__)
-    pred = model.predict(_data_)
-    pred_score = model.decision_function(_data_)
+    if 'Pipeline' in str(type(model)):
+        pred = model.predict(data)
+        pred_score = model.decision_function(data)
+    else:
+        _data_ = prep_pipe.transform(data__)
+        pred = model.predict(_data_)
+        pred_score = model.decision_function(_data_)        
         
     data__['Label'] = pred
     data__['Score'] = pred_score
@@ -3675,9 +3621,6 @@ def deploy_model(model,
                  platform = 'aws'):
     
     """
-       
-    Description:
-    ------------
     (In Preview)
 
     This function deploys the transformation pipeline and trained model object for
@@ -3685,51 +3628,50 @@ def deploy_model(model,
     param along with the applicable authentication tokens which are passed as a
     dictionary to the authentication param.
     
-        Example:
-        --------
-        from pycaret.datasets import get_data
-        anomaly = get_data('anomaly')
-        experiment_name = setup(data = anomaly, normalize=True)
-        knn = create_model('knn')
-        
-        deploy_model(model = knn, model_name = 'deploy_knn', platform = 'aws', 
-                     authentication = {'bucket' : 'pycaret-test'})
-        
-        This will deploy the model on an AWS S3 account under bucket 'pycaret-test'
-        
-        For AWS users:
-        --------------
-        Before deploying a model to an AWS S3 ('aws'), environment variables must be 
-        configured using the command line interface. To configure AWS env. variables, 
-        type aws configure in your python command line. The following information is
-        required which can be generated using the Identity and Access Management (IAM) 
-        portal of your amazon console account:
+    Example
+    -------
+    >>> from pycaret.datasets import get_data
+    >>> anomaly = get_data('anomaly')
+    >>> experiment_name = setup(data = anomaly, normalize=True)
+    >>> knn = create_model('knn')
+    >>> deploy_model(model = knn, model_name = 'deploy_knn', platform = 'aws', authentication = {'bucket' : 'pycaret-test'})
     
-           - AWS Access Key ID
-           - AWS Secret Key Access
-           - Default Region Name (can be seen under Global settings on your AWS console)
-           - Default output format (must be left blank)
+    This will deploy the model on an AWS S3 account under bucket 'pycaret-test'
+    
+    Notes
+    -----
+    For AWS users:
+    Before deploying a model to an AWS S3 ('aws'), environment variables must be 
+    configured using the command line interface. To configure AWS env. variables, 
+    type aws configure in your python command line. The following information is
+    required which can be generated using the Identity and Access Management (IAM) 
+    portal of your amazon console account:
+
+    - AWS Access Key ID
+    - AWS Secret Key Access
+    - Default Region Name (can be seen under Global settings on your AWS console)
+    - Default output format (must be left blank)
 
     Parameters
     ----------
     model : object
-    A trained model object should be passed as an estimator. 
+        A trained model object should be passed as an estimator. 
     
     model_name : string
-    Name of model to be passed as a string.
+        Name of model to be passed as a string.
     
     authentication : dict
-    dictionary of applicable authentication tokens. 
-      
-     When platform = 'aws': 
-     {'bucket' : 'Name of Bucket on S3'}
+        Dictionary of applicable authentication tokens. 
+        
+        When platform = 'aws': 
+        {'bucket' : 'Name of Bucket on S3'}
     
     platform: string, default = 'aws'
-    Name of platform for deployment. Current available options are: 'aws'.
+        Name of platform for deployment. Current available options are: 'aws'.
 
-    Returns:
-    --------    
-    Success Message
+    Returns
+    -------    
+    Success_Message
       
        
     """
@@ -3803,106 +3745,22 @@ def deploy_model(model,
         logger.info(str(model))
         logger.info("deploy_model() succesfully completed......................................")
 
-def get_outliers(data, 
-                 model = None, 
-                 fraction=0.05, 
-                 ignore_features = None, 
-                 normalize = True, 
-                 transformation = False,
-                 pca = False,
-                 pca_components = 0.99,
-                 ignore_low_variance=False,
-                 combine_rare_levels=False,
-                 rare_level_threshold=0.1,
-                 remove_multicollinearity=False,
-                 multicollinearity_threshold=0.9,
-                 n_jobs = None):
-    
-    """
-    Magic function to get outliers in Power Query / Power BI.    
-    
-    """
-    
-    if model is None:
-        model = 'knn'
-        
-    if ignore_features is None:
-        ignore_features_pass = []
-    else:
-        ignore_features_pass = ignore_features
-    
-    global X, data_, seed, n_jobs_param, logging_param, logger
-    
-    n_jobs_param = n_jobs
-
-    logging_param = False
-
-    import logging
-
-    logger = logging.getLogger('logs')
-    logger.setLevel(logging.DEBUG)
-    
-    # create console handler and set level to debug
-    if logger.hasHandlers():
-        logger.handlers.clear()
-    
-    ch = logging.FileHandler('logs.log')
-    ch.setLevel(logging.DEBUG)
-
-    # create formatter
-    formatter = logging.Formatter('%(asctime)s:%(levelname)s:%(message)s')
-
-    # add formatter to ch
-    ch.setFormatter(formatter)
-
-    # add ch to logger
-    logger.addHandler(ch)
-    
-    data_ = data.copy()
-    
-    seed = 99
-    
-    from pycaret import preprocess
-    
-    X = preprocess.Preprocess_Path_Two(train_data = data, 
-                                       features_todrop = ignore_features_pass,
-                                       display_types = False,
-                                       scale_data = normalize,
-                                       scaling_method = 'zscore',
-                                       Power_transform_data = transformation,
-                                       Power_transform_method = 'yj',
-                                       apply_pca = pca,
-                                       pca_variance_retained_or_number_of_components=pca_components,
-                                       apply_zero_nearZero_variance = ignore_low_variance,
-                                       club_rare_levels=combine_rare_levels,
-                                       rara_level_threshold_percentage=rare_level_threshold,
-                                       remove_multicollinearity=remove_multicollinearity,
-                                       maximum_correlation_between_features=multicollinearity_threshold,
-                                       random_state = seed)
-    
-    
-    
-    c = create_model(model=model, fraction=fraction, verbose=False, system=False)
-    
-    dataset = assign_model(c, verbose=False)
-    
-    return dataset
-
 def models():
 
     """
-
-    Description:
-    ------------
     Returns table of models available in model library.
 
-        Example
-        -------
-        all_models = models()
+    Example
+    -------
+    >>> all_models = models()
 
-        This will return pandas dataframe with all available 
-        models and their metadata.     
+    This will return pandas dataframe with all available 
+    models and their metadata.     
     
+    Returns
+    -------
+    pandas.DataFrame
+
     """
 
     import pandas as pd
@@ -3946,27 +3804,27 @@ def models():
 def get_logs(experiment_name = None, save = False):
 
     """
-
-    Description:
-    ------------
     Returns a table with experiment logs consisting
     run details, parameter, metrics and tags. 
 
-        Example
-        -------
-        logs = get_logs()
+    Example
+    -------
+    >>> logs = get_logs()
 
-        This will return pandas dataframe.
+    This will return pandas dataframe.
 
     Parameters
     ----------
     experiment_name : string, default = None
-    When set to None current active run is used.
+        When set to None current active run is used.
 
     save : bool, default = False
-    When set to True, csv file is saved in current directory.
+        When set to True, csv file is saved in current directory.
       
-    
+    Returns
+    -------
+    pandas.DataFrame
+
     """
 
     import sys
@@ -3996,8 +3854,6 @@ def get_logs(experiment_name = None, save = False):
 def get_config(variable):
 
     """
-    Description:
-    ------------
     This function is used to access global environment variables.
     Following variables can be accessed:
 
@@ -4013,12 +3869,15 @@ def get_config(variable):
     - log_plots_param: log_plots param set through setup
     - USI: Unique session ID parameter set through setup
 
-        Example:
-        --------
-        X = get_config('X') 
+    Example
+    -------
+    >>> X = get_config('X') 
 
-        This will return transformed dataset.
-          
+    This will return transformed dataset.
+
+    Returns
+    -------
+    variable
       
     """
 
@@ -4091,8 +3950,6 @@ def get_config(variable):
 def set_config(variable,value):
 
     """
-    Description:
-    ------------
     This function is used to reset global environment variables.
     Following variables can be accessed:
 
@@ -4108,11 +3965,11 @@ def set_config(variable,value):
     - log_plots_param: log_plots param set through setup
     - USI: Unique session ID parameter set through setup
 
-        Example:
-        --------
-        set_config('seed', 123) 
+    Example
+    -------
+    >>> set_config('seed', 123) 
 
-        This will set the global seed to '123'.
+    This will set the global seed to '123'.
 
     """
 
@@ -4207,3 +4064,88 @@ def get_system_logs():
 
         columns = [col.strip() for col in line.split(':') if col]
         print(columns)
+
+def get_outliers(data, 
+                 model = None, 
+                 fraction=0.05, 
+                 ignore_features = None, 
+                 normalize = True, 
+                 transformation = False,
+                 pca = False,
+                 pca_components = 0.99,
+                 ignore_low_variance=False,
+                 combine_rare_levels=False,
+                 rare_level_threshold=0.1,
+                 remove_multicollinearity=False,
+                 multicollinearity_threshold=0.9,
+                 n_jobs = None):
+    
+    """
+    Magic function to get outliers in Power Query / Power BI.    
+    
+    """
+    
+    if model is None:
+        model = 'knn'
+        
+    if ignore_features is None:
+        ignore_features_pass = []
+    else:
+        ignore_features_pass = ignore_features
+    
+    global X, data_, seed, n_jobs_param, logging_param, logger
+    
+    n_jobs_param = n_jobs
+
+    logging_param = False
+
+    import logging
+
+    logger = logging.getLogger('logs')
+    logger.setLevel(logging.DEBUG)
+    
+    # create console handler and set level to debug
+    if logger.hasHandlers():
+        logger.handlers.clear()
+    
+    ch = logging.FileHandler('logs.log')
+    ch.setLevel(logging.DEBUG)
+
+    # create formatter
+    formatter = logging.Formatter('%(asctime)s:%(levelname)s:%(message)s')
+
+    # add formatter to ch
+    ch.setFormatter(formatter)
+
+    # add ch to logger
+    logger.addHandler(ch)
+    
+    data_ = data.copy()
+    
+    seed = 99
+    
+    from pycaret import preprocess
+    
+    X = preprocess.Preprocess_Path_Two(train_data = data, 
+                                       features_todrop = ignore_features_pass,
+                                       display_types = False,
+                                       scale_data = normalize,
+                                       scaling_method = 'zscore',
+                                       Power_transform_data = transformation,
+                                       Power_transform_method = 'yj',
+                                       apply_pca = pca,
+                                       pca_variance_retained_or_number_of_components=pca_components,
+                                       apply_zero_nearZero_variance = ignore_low_variance,
+                                       club_rare_levels=combine_rare_levels,
+                                       rara_level_threshold_percentage=rare_level_threshold,
+                                       remove_multicollinearity=remove_multicollinearity,
+                                       maximum_correlation_between_features=multicollinearity_threshold,
+                                       random_state = seed)
+    
+    
+    
+    c = create_model(model=model, fraction=fraction, verbose=False, system=False)
+    
+    dataset = assign_model(c, verbose=False)
+    
+    return dataset

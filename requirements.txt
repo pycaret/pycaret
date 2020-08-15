@@ -21,12 +21,14 @@ nltk
 mlxtend
 pyod
 catboost
-pandas-profiling>=2.3.0
+pandas-profiling>=2.8.0
 kmodes>=0.10.1
 datefinder>=0.7.0
 DateTime>=4.3
 mlflow
 imbalanced-learn
 #psutil - removing it as causing problem in Dockerfile
-#awscli - removing it as its only needed for deploy_model() 
-#shap - removing shap as it's causing issues building Docker image. 
+#awscli - only required in deploy_model for AWS
+#azure-storage-blob - only required in deploy_model for Azure
+#google-cloud-storage - only required in deploy_model for GCP
+#shap - removing shap as it's causing issues building Docker image.
