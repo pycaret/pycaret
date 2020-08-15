@@ -9396,8 +9396,8 @@ def predict_model(estimator,
         replace_lables_in_column(ytest)
         X_test_ = pd.concat([Xtest,ytest,label], axis=1)
     else:
-        X_test_.insert(len(X_test_.columns), "Label", label["Label"])
-    
+        X_test_.insert(len(X_test_.columns), "Label", label["Label"].to_list())
+
     if hasattr(estimator,'predict_proba'):
         try:
             score = pd.DataFrame(pred_prob)
