@@ -4255,19 +4255,13 @@ def compare_models(
 
     models_to_check = models()
     if turbo:
-        models_to_check = models_to_check[models_to_check["Turbo"] == True]
+        model_library = models_to_check[models_to_check["Turbo"] == True]
     if blacklist:
-        models_to_check = models_to_check.drop(index=blacklist)
+        model_library = models_to_check.drop(index=blacklist)
     if whitelist:
-        str_whitelist = list(set([x for x in whitelist if isinstance(x, str)]))
-        models_whitelist = [x for x in whitelist if not isinstance(x, str)]
-        models_to_check = models_to_check.loc[str_whitelist]
-    else:
-        whitelist = []
-        str_whitelist = []
-        models_whitelist = []
-
-    model_library = models_to_check.index.to_list() + models_whitelist
+        model_library = [
+            models_to_check.loc[x] if isinstance(x, str) else x for x in whitelist
+        ]
 
     display.move_progress()
 
