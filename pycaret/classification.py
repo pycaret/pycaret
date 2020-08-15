@@ -7511,7 +7511,6 @@ def predict_model(
     estimator,
     data=None,
     probability_threshold=None,
-    categorical_labels=False,
     verbose=True,
 ):  # added in pycaret==2.0.0
 
@@ -7619,7 +7618,6 @@ def predict_model(
 
         _, dtypes = next(step for step in prep_pipe.steps if step[0] == "dtypes")
 
-        index = None
         Xtest.reset_index(drop=True, inplace=True)
         ytest.reset_index(drop=True, inplace=True)
         X_test_.reset_index(drop=True, inplace=True)
@@ -7724,12 +7722,10 @@ def predict_model(
     label = pd.DataFrame(pred_)
     label.columns = ["Label"]
     label["Label"] = label["Label"].astype(int)
-    if categorical_labels:
-        replace_lables_in_column(label["Label"])
+    replace_lables_in_column(label["Label"])
 
     if data is None:
-        if categorical_labels:
-            replace_lables_in_column(ytest)
+        replace_lables_in_column(ytest)
         X_test_ = pd.concat([Xtest, ytest, label], axis=1)
     else:
         X_test_.insert(len(X_test_.columns), "Label", label["Label"])
@@ -9650,4 +9646,3 @@ def _download_blob_azure(container_name, source_blob_name, destination_file_name
     if destination_file_name is not None:
         with open(destination_file_name, "wb") as download_file:
             download_file.write(blob_client.download_blob().readall())
-
