@@ -1,8 +1,8 @@
 # Module: Association Rules Mining
 # Author: Moez Ali <moez.ali@queensu.ca>
 # License: MIT
-# Release: PyCaret 2.0x
-# Last modified : 30/07/2020
+# Release: PyCaret 2.1
+# Last modified : 14/08/2020
 
 def setup(data, 
           transaction_id, 
@@ -57,6 +57,10 @@ def setup(data,
    
     #exception checking   
     import sys
+
+    #checking data type
+    if hasattr(data,'shape') is False:
+        sys.exit('(Type Error): data passed must be of type pandas.DataFrame')
     
     #ignore warnings
     import warnings

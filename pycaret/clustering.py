@@ -1,8 +1,8 @@
 # Module: Clustering
 # Author: Moez Ali <moez.ali@queensu.ca>
 # License: MIT
-# Release: PyCaret 2.1x
-# Last modified : 13/08/2020
+# Release: PyCaret 2.1
+# Last modified : 14/08/2020
 
 def setup(data, 
         categorical_features = None,
@@ -1866,6 +1866,401 @@ def assign_model(model,
 
     return data__
 
+def plot_model(model, 
+            plot='cluster', 
+            feature = None, 
+            label = False,
+            save = False, #added in pycaret 2.0.0
+            system = True): #added in pycaret 2.0.0
+    
+    
+    """
+    This function takes a trained model object and returns a plot on the dataset 
+    passed during setup stage. This function internally calls assign_model before 
+    generating a plot.  
+
+    Example
+    -------
+    >>> from pycaret.datasets import get_data
+    >>> jewellery = get_data('jewellery')
+    >>> experiment_name = setup(data = jewellery, normalize = True)
+    >>> kmeans = create_model('kmeans')
+    >>> plot_model(kmeans)
+
+    This will return a cluster scatter plot (by default). 
+
+    Parameters
+    ----------
+    model : object, default = none
+        A trained model object can be passed. Model must be created using create_model().
+
+    plot : string, default = 'cluster'
+        Enter abbreviation for type of plot. The current list of plots supported are (Plot - Name):
+
+        * 'cluster' - Cluster PCA Plot (2d)              
+        * 'tsne' - Cluster TSnE (3d)
+        * 'elbow' - Elbow Plot 
+        * 'silhouette' - Silhouette Plot         
+        * 'distance' - Distance Plot   
+        * 'distribution' - Distribution Plot
+    
+    feature : string, default = None
+        Name of feature column for x-axis of when plot = 'distribution'. When plot is
+        'cluster' or 'tsne' feature column is used as a hoverover tooltip and/or label
+        when label is set to True. If no feature name is passed in 'cluster' or 'tsne'
+        by default the first of column of dataset is chosen as hoverover tooltip.
+    
+    label : bool, default = False
+        When set to True, data labels are shown in 'cluster' and 'tsne' plot.
+    
+    save: Boolean, default = False
+        Plot is saved as png file in local directory when save parameter set to True.
+
+    system: Boolean, default = True
+        Must remain True all times. Only to be changed by internal functions.
+
+    Returns
+    -------
+    Visual_Plot
+        Prints the visual plot. 
+
+    """  
+    
+    #exception checking   
+    import sys
+    
+    import logging
+
+    try:
+        hasattr(logger, 'name')
+    except:
+        logger = logging.getLogger('logs')
+        logger.setLevel(logging.DEBUG)
+        
+        # create console handler and set level to debug
+        if logger.hasHandlers():
+            logger.handlers.clear()
+        
+        ch = logging.FileHandler('logs.log')
+        ch.setLevel(logging.DEBUG)
+
+        # create formatter
+        formatter = logging.Formatter('%(asctime)s:%(levelname)s:%(message)s')
+
+        # add formatter to ch
+        ch.setFormatter(formatter)
+
+        # add ch to logger
+        logger.addHandler(ch)
+
+    logger.info("Initializing plot_model()")
+    logger.info("""plot_model(model={}, plot={}, feature={}, label={}, save={}, system={})""".\
+        format(str(model), str(plot), str(feature), str(label), str(save), str(system)))
+
+    """
+    exception handling starts here
+    """
+
+    logger.info("Checking exceptions")
+
+    #plot checking
+    allowed_plots = ['cluster', 'tsne', 'elbow', 'silhouette', 'distance', 'distribution']  
+    if plot not in allowed_plots:
+        sys.exit('(Value Error): Plot Not Available. Please see docstring for list of available plots.')
+        
+    if type(label) is not bool:
+        sys.exit('(Type Error): Label param only accepts True or False. ')
+        
+    if feature is not None:
+        if type(feature) is not str:
+            sys.exit('(Type Error): feature parameter must be string containing column name of dataset. ') 
+    
+    
+    
+    
+    #specific disallowed plots
+    
+    """
+    error handling ends here
+    """
+    
+    #ignore warnings
+    import warnings
+    warnings.filterwarnings('ignore') 
+    
+    logger.info("Importing libraries")
+    #general dependencies
+    import pandas as pd
+    import numpy as np
+    import plotly.express as px
+        
+    #import cufflinks
+    import cufflinks as cf
+    cf.go_offline()
+    cf.set_config_file(offline=False, world_readable=True)
+    
+    logger.info("plot type: " + str(plot))
+    
+    if plot == 'cluster':
+        
+        logger.info("SubProcess assign_model() called ==================================")
+        b = assign_model(model, verbose=False, transformation=True)           
+        logger.info("SubProcess assign_model() end ==================================")
+        cluster = b['Cluster']
+        b.drop(['Cluster'], axis=1, inplace=True)
+        b = pd.get_dummies(b) #casting categorical variable
+        c = b.copy()
+        
+        from sklearn.decomposition import PCA
+        pca = PCA(n_components=2, random_state=seed)
+        logger.info("Fitting PCA()")
+        pca_ = pca.fit_transform(b)
+        pca_ = pd.DataFrame(pca_)
+        pca_ = pca_.rename(columns={0: "PCA1", 1: "PCA2"})
+        pca_['Cluster'] = cluster
+        
+        if feature is not None: 
+            pca_['Feature'] = data_[feature]
+        else:
+            pca_['Feature'] = data_[data_.columns[0]]
+            
+        if label:
+                pca_['Label'] = pca_['Feature']
+
+        """
+        sorting
+        """
+
+        logger.info("Sorting dataframe")
+
+        clus_num = []
+
+        for i in pca_.Cluster:
+            a = int(i.split()[1])
+            clus_num.append(a)
+
+        pca_['cnum'] = clus_num
+        pca_.sort_values(by='cnum', inplace=True) 
+
+        """
+        sorting ends
+        """
+
+        logger.info("Rendering Visual")
+
+        if label:
+            fig = px.scatter(pca_, x="PCA1", y="PCA2", text='Label', color='Cluster', opacity=0.5)
+        else:
+            fig = px.scatter(pca_, x="PCA1", y="PCA2", hover_data=['Feature'], color='Cluster', opacity=0.5)
+
+        fig.update_traces(textposition='top center')
+        fig.update_layout(plot_bgcolor='rgb(240,240,240)')
+
+        fig.update_layout(
+            height=600,
+            title_text='2D Cluster PCA Plot'
+        )
+
+        if system:
+            fig.show()
+
+        if save:
+            fig.write_html("Cluster.html")
+            logger.info("Saving 'Cluster.html' in current active directory")
+        
+        logger.info("Visual Rendered Successfully")
+        
+    elif plot == 'tsne':
+        
+        logger.info("SubProcess assign_model() called ==================================")
+        b = assign_model(model, verbose=False, transformation=True)
+        logger.info("SubProcess assign_model() end ==================================")
+            
+        cluster = b['Cluster']
+        b.drop(['Cluster'], axis=1, inplace=True)
+        
+        from sklearn.manifold import TSNE
+        logger.info("Fitting TSNE()")
+        X_embedded = TSNE(n_components=3, random_state=seed).fit_transform(b)
+        X_embedded = pd.DataFrame(X_embedded)
+        X_embedded['Cluster'] = cluster
+        
+        if feature is not None: 
+            X_embedded['Feature'] = data_[feature]
+        else:
+            X_embedded['Feature'] = data_[data_.columns[0]]
+            
+        if label:
+                X_embedded['Label'] = X_embedded['Feature']
+
+        """
+        sorting
+        """
+        logger.info("Sorting dataframe")
+
+        clus_num = []
+        for i in X_embedded.Cluster:
+            a = int(i.split()[1])
+            clus_num.append(a)
+
+        X_embedded['cnum'] = clus_num
+        X_embedded.sort_values(by='cnum', inplace=True)
+        
+        """
+        sorting ends
+        """
+        
+        import plotly.express as px
+        df = X_embedded
+        
+        logger.info("Rendering Visual")
+
+        if label:
+            
+            fig = px.scatter_3d(df, x=0, y=1, z=2, color='Cluster', title='3d TSNE Plot for Clusters', 
+                    text = 'Label', opacity=0.7, width=900, height=800)
+            
+        else:
+            fig = px.scatter_3d(df, x=0, y=1, z=2, color='Cluster', title='3d TSNE Plot for Clusters', 
+                                hover_data = ['Feature'], opacity=0.7, width=900, height=800)
+        
+        if system:
+            fig.show()
+        
+        if save:
+            fig.write_html("TSNE.html")
+            logger.info("Saving 'TSNE.html' in current active directory")
+
+        logger.info("Visual Rendered Successfully")
+
+    elif plot == 'distribution':
+        
+        import plotly.express as px
+        
+        logger.info("SubProcess assign_model() called ==================================")
+        d = assign_model(model, verbose = False)
+        logger.info("SubProcess assign_model() end ==================================")
+        
+        """
+        sorting
+        """
+        logger.info("Sorting dataframe")
+
+        clus_num = []
+        for i in d.Cluster:
+            a = int(i.split()[1])
+            clus_num.append(a)
+
+        d['cnum'] = clus_num
+        d.sort_values(by='cnum', inplace=True)
+        d.reset_index(inplace=True, drop=True)
+        
+        clus_label = []
+        for i in d.cnum:
+            a = 'Cluster ' + str(i)
+            clus_label.append(a)
+        
+        d.drop(['Cluster', 'cnum'], inplace=True, axis=1)
+        d['Cluster'] = clus_label
+
+        """
+        sorting ends
+        """
+        
+        if feature is None:
+            x_col = 'Cluster'
+        else:
+            x_col = feature
+        
+        logger.info("Rendering Visual")
+
+        fig = px.histogram(d, x=x_col, color="Cluster",
+                   marginal="box", opacity = 0.7,
+                   hover_data=d.columns)
+        
+        if system:
+            fig.show()
+
+        if save:
+            fig.write_html("Distribution.html")
+            logger.info("Saving 'Distribution.html' in current active directory")
+
+        logger.info("Visual Rendered Successfully")
+
+    elif plot == 'elbow':
+        
+        from copy import deepcopy
+        model_ = deepcopy(model)
+        
+        try: 
+            from yellowbrick.cluster import KElbowVisualizer
+            visualizer = KElbowVisualizer(model_,timings=False)
+            logger.info("Fitting KElbowVisualizer()")
+            visualizer.fit(X)
+            logger.info("Rendering Visual")
+            if save:
+                if system:
+                    visualizer.show(outpath="Elbow.png")
+                else:
+                    visualizer.show(outpath="Elbow.png", clear_figure=True)
+                logger.info("Saving 'Elbow.png' in current active directory")
+            else:
+                visualizer.show()
+
+            logger.info("Visual Rendered Successfully")
+
+        except: 
+            logger.warning("Elbow plot failed")
+            sys.exit('(Type Error): Plot Type not supported for this model.')
+        
+    elif plot == 'silhouette':
+        
+        try:
+            from yellowbrick.cluster import SilhouetteVisualizer
+            visualizer = SilhouetteVisualizer(model, colors='yellowbrick')
+            logger.info("Fitting SilhouetteVisualizer()")
+            visualizer.fit(X)
+            logger.info("Rendering Visual")
+            if save:
+                if system:
+                    visualizer.show(outpath="Silhouette.png")
+                else:
+                    visualizer.show(outpath="Silhouette.png", clear_figure=True)
+                logger.info("Saving 'Silhouette.png' in current active directory")
+            else:
+                visualizer.show()
+
+            logger.info("Visual Rendered Successfully")
+
+        except:
+            logger.warning("Solhouette Plot failed") 
+            sys.exit('(Type Error): Plot Type not supported for this model.')
+            
+    elif plot == 'distance':  
+        
+        try:    
+            from yellowbrick.cluster import InterclusterDistance
+            visualizer = InterclusterDistance(model)
+            logger.info("Fitting InterclusterDistance()")
+            visualizer.fit(X)
+            logger.info("Rendering Visual")
+            if save:
+                if system:
+                    visualizer.show(outpath="Distance.png")
+                else:
+                    visualizer.show(outpath="Distance.png", clear_figure=True)
+                logger.info("Saving 'Distance.png' in current active directory")
+            else:
+                visualizer.show()
+
+            logger.info("Visual Rendered Successfully")
+
+        except:
+            logger.warning("Distance Plot failed")
+            sys.exit('(Type Error): Plot Type not supported for this model.')
+
+    logger.info("plot_model() succesfully completed......................................")
+
 def tune_model(model=None,
                supervised_target=None,
                estimator=None,
@@ -3227,565 +3622,6 @@ def tune_model(model=None,
 
     return best_model
 
-def plot_model(model, 
-            plot='cluster', 
-            feature = None, 
-            label = False,
-            save = False, #added in pycaret 2.0.0
-            system = True): #added in pycaret 2.0.0
-    
-    
-    """
-    This function takes a trained model object and returns a plot on the dataset 
-    passed during setup stage. This function internally calls assign_model before 
-    generating a plot.  
-
-    Example
-    -------
-    >>> from pycaret.datasets import get_data
-    >>> jewellery = get_data('jewellery')
-    >>> experiment_name = setup(data = jewellery, normalize = True)
-    >>> kmeans = create_model('kmeans')
-    >>> plot_model(kmeans)
-
-    This will return a cluster scatter plot (by default). 
-
-    Parameters
-    ----------
-    model : object, default = none
-        A trained model object can be passed. Model must be created using create_model().
-
-    plot : string, default = 'cluster'
-        Enter abbreviation for type of plot. The current list of plots supported are (Plot - Name):
-
-        * 'cluster' - Cluster PCA Plot (2d)              
-        * 'tsne' - Cluster TSnE (3d)
-        * 'elbow' - Elbow Plot 
-        * 'silhouette' - Silhouette Plot         
-        * 'distance' - Distance Plot   
-        * 'distribution' - Distribution Plot
-    
-    feature : string, default = None
-        Name of feature column for x-axis of when plot = 'distribution'. When plot is
-        'cluster' or 'tsne' feature column is used as a hoverover tooltip and/or label
-        when label is set to True. If no feature name is passed in 'cluster' or 'tsne'
-        by default the first of column of dataset is chosen as hoverover tooltip.
-    
-    label : bool, default = False
-        When set to True, data labels are shown in 'cluster' and 'tsne' plot.
-    
-    save: Boolean, default = False
-        Plot is saved as png file in local directory when save parameter set to True.
-
-    system: Boolean, default = True
-        Must remain True all times. Only to be changed by internal functions.
-
-    Returns
-    -------
-    Visual_Plot
-        Prints the visual plot. 
-
-    """  
-    
-    #exception checking   
-    import sys
-    
-    import logging
-
-    try:
-        hasattr(logger, 'name')
-    except:
-        logger = logging.getLogger('logs')
-        logger.setLevel(logging.DEBUG)
-        
-        # create console handler and set level to debug
-        if logger.hasHandlers():
-            logger.handlers.clear()
-        
-        ch = logging.FileHandler('logs.log')
-        ch.setLevel(logging.DEBUG)
-
-        # create formatter
-        formatter = logging.Formatter('%(asctime)s:%(levelname)s:%(message)s')
-
-        # add formatter to ch
-        ch.setFormatter(formatter)
-
-        # add ch to logger
-        logger.addHandler(ch)
-
-    logger.info("Initializing plot_model()")
-    logger.info("""plot_model(model={}, plot={}, feature={}, label={}, save={}, system={})""".\
-        format(str(model), str(plot), str(feature), str(label), str(save), str(system)))
-
-    """
-    exception handling starts here
-    """
-
-    logger.info("Checking exceptions")
-
-    #plot checking
-    allowed_plots = ['cluster', 'tsne', 'elbow', 'silhouette', 'distance', 'distribution']  
-    if plot not in allowed_plots:
-        sys.exit('(Value Error): Plot Not Available. Please see docstring for list of available plots.')
-        
-    if type(label) is not bool:
-        sys.exit('(Type Error): Label param only accepts True or False. ')
-        
-    if feature is not None:
-        if type(feature) is not str:
-            sys.exit('(Type Error): feature parameter must be string containing column name of dataset. ') 
-    
-    
-    
-    
-    #specific disallowed plots
-    
-    """
-    error handling ends here
-    """
-    
-    #ignore warnings
-    import warnings
-    warnings.filterwarnings('ignore') 
-    
-    logger.info("Importing libraries")
-    #general dependencies
-    import pandas as pd
-    import numpy as np
-    import plotly.express as px
-        
-    #import cufflinks
-    import cufflinks as cf
-    cf.go_offline()
-    cf.set_config_file(offline=False, world_readable=True)
-    
-    logger.info("plot type: " + str(plot))
-    
-    if plot == 'cluster':
-        
-        logger.info("SubProcess assign_model() called ==================================")
-        b = assign_model(model, verbose=False, transformation=True)           
-        logger.info("SubProcess assign_model() end ==================================")
-        cluster = b['Cluster']
-        b.drop(['Cluster'], axis=1, inplace=True)
-        b = pd.get_dummies(b) #casting categorical variable
-        c = b.copy()
-        
-        from sklearn.decomposition import PCA
-        pca = PCA(n_components=2, random_state=seed)
-        logger.info("Fitting PCA()")
-        pca_ = pca.fit_transform(b)
-        pca_ = pd.DataFrame(pca_)
-        pca_ = pca_.rename(columns={0: "PCA1", 1: "PCA2"})
-        pca_['Cluster'] = cluster
-        
-        if feature is not None: 
-            pca_['Feature'] = data_[feature]
-        else:
-            pca_['Feature'] = data_[data_.columns[0]]
-            
-        if label:
-                pca_['Label'] = pca_['Feature']
-
-        """
-        sorting
-        """
-
-        logger.info("Sorting dataframe")
-
-        clus_num = []
-
-        for i in pca_.Cluster:
-            a = int(i.split()[1])
-            clus_num.append(a)
-
-        pca_['cnum'] = clus_num
-        pca_.sort_values(by='cnum', inplace=True) 
-
-        """
-        sorting ends
-        """
-
-        logger.info("Rendering Visual")
-
-        if label:
-            fig = px.scatter(pca_, x="PCA1", y="PCA2", text='Label', color='Cluster', opacity=0.5)
-        else:
-            fig = px.scatter(pca_, x="PCA1", y="PCA2", hover_data=['Feature'], color='Cluster', opacity=0.5)
-
-        fig.update_traces(textposition='top center')
-        fig.update_layout(plot_bgcolor='rgb(240,240,240)')
-
-        fig.update_layout(
-            height=600,
-            title_text='2D Cluster PCA Plot'
-        )
-
-        if system:
-            fig.show()
-
-        if save:
-            fig.write_html("Cluster.html")
-            logger.info("Saving 'Cluster.html' in current active directory")
-        
-        logger.info("Visual Rendered Successfully")
-        
-    elif plot == 'tsne':
-        
-        logger.info("SubProcess assign_model() called ==================================")
-        b = assign_model(model, verbose=False, transformation=True)
-        logger.info("SubProcess assign_model() end ==================================")
-            
-        cluster = b['Cluster']
-        b.drop(['Cluster'], axis=1, inplace=True)
-        
-        from sklearn.manifold import TSNE
-        logger.info("Fitting TSNE()")
-        X_embedded = TSNE(n_components=3, random_state=seed).fit_transform(b)
-        X_embedded = pd.DataFrame(X_embedded)
-        X_embedded['Cluster'] = cluster
-        
-        if feature is not None: 
-            X_embedded['Feature'] = data_[feature]
-        else:
-            X_embedded['Feature'] = data_[data_.columns[0]]
-            
-        if label:
-                X_embedded['Label'] = X_embedded['Feature']
-
-        """
-        sorting
-        """
-        logger.info("Sorting dataframe")
-
-        clus_num = []
-        for i in X_embedded.Cluster:
-            a = int(i.split()[1])
-            clus_num.append(a)
-
-        X_embedded['cnum'] = clus_num
-        X_embedded.sort_values(by='cnum', inplace=True)
-        
-        """
-        sorting ends
-        """
-        
-        import plotly.express as px
-        df = X_embedded
-        
-        logger.info("Rendering Visual")
-
-        if label:
-            
-            fig = px.scatter_3d(df, x=0, y=1, z=2, color='Cluster', title='3d TSNE Plot for Clusters', 
-                    text = 'Label', opacity=0.7, width=900, height=800)
-            
-        else:
-            fig = px.scatter_3d(df, x=0, y=1, z=2, color='Cluster', title='3d TSNE Plot for Clusters', 
-                                hover_data = ['Feature'], opacity=0.7, width=900, height=800)
-        
-        if system:
-            fig.show()
-        
-        if save:
-            fig.write_html("TSNE.html")
-            logger.info("Saving 'TSNE.html' in current active directory")
-
-        logger.info("Visual Rendered Successfully")
-
-    elif plot == 'distribution':
-        
-        import plotly.express as px
-        
-        logger.info("SubProcess assign_model() called ==================================")
-        d = assign_model(model, verbose = False)
-        logger.info("SubProcess assign_model() end ==================================")
-        
-        """
-        sorting
-        """
-        logger.info("Sorting dataframe")
-
-        clus_num = []
-        for i in d.Cluster:
-            a = int(i.split()[1])
-            clus_num.append(a)
-
-        d['cnum'] = clus_num
-        d.sort_values(by='cnum', inplace=True)
-        d.reset_index(inplace=True, drop=True)
-        
-        clus_label = []
-        for i in d.cnum:
-            a = 'Cluster ' + str(i)
-            clus_label.append(a)
-        
-        d.drop(['Cluster', 'cnum'], inplace=True, axis=1)
-        d['Cluster'] = clus_label
-
-        """
-        sorting ends
-        """
-        
-        if feature is None:
-            x_col = 'Cluster'
-        else:
-            x_col = feature
-        
-        logger.info("Rendering Visual")
-
-        fig = px.histogram(d, x=x_col, color="Cluster",
-                   marginal="box", opacity = 0.7,
-                   hover_data=d.columns)
-        
-        if system:
-            fig.show()
-
-        if save:
-            fig.write_html("Distribution.html")
-            logger.info("Saving 'Distribution.html' in current active directory")
-
-        logger.info("Visual Rendered Successfully")
-
-    elif plot == 'elbow':
-        
-        from copy import deepcopy
-        model_ = deepcopy(model)
-        
-        try: 
-            from yellowbrick.cluster import KElbowVisualizer
-            visualizer = KElbowVisualizer(model_,timings=False)
-            logger.info("Fitting KElbowVisualizer()")
-            visualizer.fit(X)
-            logger.info("Rendering Visual")
-            if save:
-                if system:
-                    visualizer.show(outpath="Elbow.png")
-                else:
-                    visualizer.show(outpath="Elbow.png", clear_figure=True)
-                logger.info("Saving 'Elbow.png' in current active directory")
-            else:
-                visualizer.show()
-
-            logger.info("Visual Rendered Successfully")
-
-        except: 
-            logger.warning("Elbow plot failed")
-            sys.exit('(Type Error): Plot Type not supported for this model.')
-        
-    elif plot == 'silhouette':
-        
-        try:
-            from yellowbrick.cluster import SilhouetteVisualizer
-            visualizer = SilhouetteVisualizer(model, colors='yellowbrick')
-            logger.info("Fitting SilhouetteVisualizer()")
-            visualizer.fit(X)
-            logger.info("Rendering Visual")
-            if save:
-                if system:
-                    visualizer.show(outpath="Silhouette.png")
-                else:
-                    visualizer.show(outpath="Silhouette.png", clear_figure=True)
-                logger.info("Saving 'Silhouette.png' in current active directory")
-            else:
-                visualizer.show()
-
-            logger.info("Visual Rendered Successfully")
-
-        except:
-            logger.warning("Solhouette Plot failed") 
-            sys.exit('(Type Error): Plot Type not supported for this model.')
-            
-    elif plot == 'distance':  
-        
-        try:    
-            from yellowbrick.cluster import InterclusterDistance
-            visualizer = InterclusterDistance(model)
-            logger.info("Fitting InterclusterDistance()")
-            visualizer.fit(X)
-            logger.info("Rendering Visual")
-            if save:
-                if system:
-                    visualizer.show(outpath="Distance.png")
-                else:
-                    visualizer.show(outpath="Distance.png", clear_figure=True)
-                logger.info("Saving 'Distance.png' in current active directory")
-            else:
-                visualizer.show()
-
-            logger.info("Visual Rendered Successfully")
-
-        except:
-            logger.warning("Distance Plot failed")
-            sys.exit('(Type Error): Plot Type not supported for this model.')
-
-    logger.info("plot_model() succesfully completed......................................")
-
-def save_model(model, model_name, model_only=False, verbose=True):
-    
-    """
-    This function saves the transformation pipeline and trained model object 
-    into the current active directory as a pickle file for later use. 
-    
-    Example
-    -------
-    >>> from pycaret.datasets import get_data
-    >>> jewellery = get_data('jewellery')
-    >>> experiment_name = setup(data = jewellery, normalize = True)
-    >>> kmeans = create_model('kmeans')
-    >>> save_model(kmeans, 'kmeans_model_23122019')
-    
-    This will save the transformation pipeline and model as a binary pickle
-    file in the current directory. 
-
-    Parameters
-    ----------
-    model : object, default = none
-        A trained model object should be passed.
-    
-    model_name : string, default = none
-        Name of pickle file to be passed as a string.
-    
-    model_only : bool, default = False
-        When set to True, only trained model object is saved and all the 
-        transformations are ignored.
-    
-    verbose : bool, default = True
-        When set to False, success message is not printed.
-
-    Returns
-    -------    
-    Success_Message
-         
-    """
-    
-    import logging
-    from copy import deepcopy
-
-    try:
-        hasattr(logger, 'name')
-    except:
-        logger = logging.getLogger('logs')
-        logger.setLevel(logging.DEBUG)
-        
-        # create console handler and set level to debug
-        if logger.hasHandlers():
-            logger.handlers.clear()
-        
-        ch = logging.FileHandler('logs.log')
-        ch.setLevel(logging.DEBUG)
-
-        # create formatter
-        formatter = logging.Formatter('%(asctime)s:%(levelname)s:%(message)s')
-
-        # add formatter to ch
-        ch.setFormatter(formatter)
-
-        # add ch to logger
-        logger.addHandler(ch)
-
-    logger.info("Initializing save_model()")
-    logger.info("""save_model(model={}, model_name={}, verbose={})""".\
-        format(str(model), str(model_name), str(verbose)))
-
-    #ignore warnings
-    import warnings
-    warnings.filterwarnings('ignore') 
-    
-    logger.info("Adding model into prep_pipe")
-
-    if model_only:
-        model_ = deepcopy(model)
-        logger.warning("Only Model saved. Transformations in prep_pipe are ignored.")
-    else:
-        model_ = deepcopy(prep_pipe)
-        model_.steps.append(['trained model',model]) 
-    
-    import joblib
-    model_name = model_name + '.pkl'
-    joblib.dump(model_, model_name)
-    if verbose:
-        print('Transformation Pipeline and Model Succesfully Saved')
-
-    logger.info(str(model_name) + ' saved in current working directory')
-    logger.info(str(model_))
-    logger.info("save_model() succesfully completed......................................")
-
-def load_model(model_name, 
-               platform = None,
-               authentication = None,
-               verbose = True):
-    
-    """
-    This function loads a previously saved transformation pipeline and model 
-    from the current active directory into the current python environment. 
-    Load object must be a pickle file.
-    
-    Example
-    -------
-    >>> saved_kmeans = load_model('kmeans_model_23122019')
-    
-    This will load the previously saved model in saved_lr variable. The file 
-    must be in the current directory.
-
-    Parameters
-    ----------
-    model_name : string, default = none
-        Name of pickle file to be passed as a string.
-
-    platform: string, default = None
-        Name of platform, if loading model from cloud. Current available options are:
-        'aws'.
-    
-    authentication : dict
-        Dictionary of applicable authentication tokens. 
-        
-        When platform = 'aws': 
-        {'bucket' : 'Name of Bucket on S3'}
-     
-    verbose: Boolean, default = True
-        Success message is not printed when verbose is set to False. 
-    
-    Returns
-    -------    
-    Success_Message
-         
-    """
-
-    #ignore warnings
-    import warnings
-    warnings.filterwarnings('ignore') 
-    
-    #exception checking
-    import sys
-    
-    if platform is not None:
-        if authentication is None:
-            sys.exit("(Value Error): Authentication is missing.")
-        
-    #cloud provider
-    if platform == 'aws':
-        
-        import boto3
-        bucketname = authentication.get('bucket')
-        filename = str(model_name) + '.pkl'
-        s3 = boto3.resource('s3')
-        s3.Bucket(bucketname).download_file(filename, filename)
-        filename = str(model_name)
-        model = load_model(filename, verbose=False)
-        
-        if verbose:
-            print('Transformation Pipeline and Model Sucessfully Loaded')
-
-        return model
-    
-    import joblib
-    model_name = model_name + '.pkl'
-    if verbose:
-        print('Transformation Pipeline and Model Sucessfully Loaded')
-    return joblib.load(model_name)
-
 def predict_model(model, 
                   data):
     
@@ -3992,90 +3828,171 @@ def deploy_model(model,
         print("Model Succesfully Deployed on AWS S3")
         logger.info(str(model))
         logger.info("deploy_model() succesfully completed......................................")
-        
-def get_clusters(data, 
-                 model = None, 
-                 num_clusters = 4, 
-                 ignore_features = None, 
-                 normalize = True, 
-                 transformation = False,
-                 pca = False,
-                 pca_components = 0.99,
-                 ignore_low_variance=False,
-                 combine_rare_levels=False,
-                 rare_level_threshold=0.1,
-                 remove_multicollinearity=False,
-                 multicollinearity_threshold=0.9,
-                 n_jobs = None):
+
+def save_model(model, model_name, model_only=False, verbose=True):
     
     """
-    Callable from any external environment without requiring setup initialization.
+    This function saves the transformation pipeline and trained model object 
+    into the current active directory as a pickle file for later use. 
+    
+    Example
+    -------
+    >>> from pycaret.datasets import get_data
+    >>> jewellery = get_data('jewellery')
+    >>> experiment_name = setup(data = jewellery, normalize = True)
+    >>> kmeans = create_model('kmeans')
+    >>> save_model(kmeans, 'kmeans_model_23122019')
+    
+    This will save the transformation pipeline and model as a binary pickle
+    file in the current directory. 
+
+    Parameters
+    ----------
+    model : object, default = none
+        A trained model object should be passed.
+    
+    model_name : string, default = none
+        Name of pickle file to be passed as a string.
+    
+    model_only : bool, default = False
+        When set to True, only trained model object is saved and all the 
+        transformations are ignored.
+    
+    verbose : bool, default = True
+        When set to False, success message is not printed.
+
+    Returns
+    -------    
+    Success_Message
+         
     """
-    
-    if model is None:
-        model = 'kmeans'
-        
-    if ignore_features is None:
-        ignore_features_pass = []
-    else:
-        ignore_features_pass = ignore_features
-    
-    global X, data_, seed, n_jobs_param, logging_param, logger
-    
-    data_ = data.copy()
-    
-    seed = 99
-
-    n_jobs_param = n_jobs
-
-    logging_param = False
     
     import logging
+    from copy import deepcopy
 
-    logger = logging.getLogger('logs')
-    logger.setLevel(logging.DEBUG)
-    
-    # create console handler and set level to debug
-    if logger.hasHandlers():
-        logger.handlers.clear()
-    
-    ch = logging.FileHandler('logs.log')
-    ch.setLevel(logging.DEBUG)
-
-    # create formatter
-    formatter = logging.Formatter('%(asctime)s:%(levelname)s:%(message)s')
-
-    # add formatter to ch
-    ch.setFormatter(formatter)
-
-    # add ch to logger
-    logger.addHandler(ch)
-    
-    from pycaret import preprocess
-    
-    X = preprocess.Preprocess_Path_Two(train_data = data, 
-                                       features_todrop = ignore_features_pass,
-                                       display_types = False,
-                                       scale_data = normalize,
-                                       scaling_method = 'zscore',
-                                       Power_transform_data = transformation,
-                                       Power_transform_method = 'yj',
-                                       apply_pca = pca,
-                                       pca_variance_retained_or_number_of_components = pca_components,
-                                       apply_zero_nearZero_variance = ignore_low_variance,
-                                       club_rare_levels=combine_rare_levels,
-                                       rara_level_threshold_percentage=rare_level_threshold,
-                                       remove_multicollinearity=remove_multicollinearity,
-                                       maximum_correlation_between_features=multicollinearity_threshold,
-                                       random_state = seed)
-      
     try:
-        c = create_model(model=model, num_clusters=num_clusters, verbose=False, system=False)
+        hasattr(logger, 'name')
     except:
-        c = create_model(model=model, verbose=False, system=False)
-    dataset = assign_model(c, verbose=False)
-    return dataset
+        logger = logging.getLogger('logs')
+        logger.setLevel(logging.DEBUG)
+        
+        # create console handler and set level to debug
+        if logger.hasHandlers():
+            logger.handlers.clear()
+        
+        ch = logging.FileHandler('logs.log')
+        ch.setLevel(logging.DEBUG)
 
+        # create formatter
+        formatter = logging.Formatter('%(asctime)s:%(levelname)s:%(message)s')
+
+        # add formatter to ch
+        ch.setFormatter(formatter)
+
+        # add ch to logger
+        logger.addHandler(ch)
+
+    logger.info("Initializing save_model()")
+    logger.info("""save_model(model={}, model_name={}, verbose={})""".\
+        format(str(model), str(model_name), str(verbose)))
+
+    #ignore warnings
+    import warnings
+    warnings.filterwarnings('ignore') 
+    
+    logger.info("Adding model into prep_pipe")
+
+    if model_only:
+        model_ = deepcopy(model)
+        logger.warning("Only Model saved. Transformations in prep_pipe are ignored.")
+    else:
+        model_ = deepcopy(prep_pipe)
+        model_.steps.append(['trained model',model]) 
+    
+    import joblib
+    model_name = model_name + '.pkl'
+    joblib.dump(model_, model_name)
+    if verbose:
+        print('Transformation Pipeline and Model Succesfully Saved')
+
+    logger.info(str(model_name) + ' saved in current working directory')
+    logger.info(str(model_))
+    logger.info("save_model() succesfully completed......................................")
+
+def load_model(model_name, 
+               platform = None,
+               authentication = None,
+               verbose = True):
+    
+    """
+    This function loads a previously saved transformation pipeline and model 
+    from the current active directory into the current python environment. 
+    Load object must be a pickle file.
+    
+    Example
+    -------
+    >>> saved_kmeans = load_model('kmeans_model_23122019')
+    
+    This will load the previously saved model in saved_lr variable. The file 
+    must be in the current directory.
+
+    Parameters
+    ----------
+    model_name : string, default = none
+        Name of pickle file to be passed as a string.
+
+    platform: string, default = None
+        Name of platform, if loading model from cloud. Current available options are:
+        'aws'.
+    
+    authentication : dict
+        Dictionary of applicable authentication tokens. 
+        
+        When platform = 'aws': 
+        {'bucket' : 'Name of Bucket on S3'}
+     
+    verbose: Boolean, default = True
+        Success message is not printed when verbose is set to False. 
+    
+    Returns
+    -------    
+    Success_Message
+         
+    """
+
+    #ignore warnings
+    import warnings
+    warnings.filterwarnings('ignore') 
+    
+    #exception checking
+    import sys
+    
+    if platform is not None:
+        if authentication is None:
+            sys.exit("(Value Error): Authentication is missing.")
+        
+    #cloud provider
+    if platform == 'aws':
+        
+        import boto3
+        bucketname = authentication.get('bucket')
+        filename = str(model_name) + '.pkl'
+        s3 = boto3.resource('s3')
+        s3.Bucket(bucketname).download_file(filename, filename)
+        filename = str(model_name)
+        model = load_model(filename, verbose=False)
+        
+        if verbose:
+            print('Transformation Pipeline and Model Sucessfully Loaded')
+
+        return model
+    
+    import joblib
+    model_name = model_name + '.pkl'
+    if verbose:
+        print('Transformation Pipeline and Model Sucessfully Loaded')
+    return joblib.load(model_name)
+        
 def models():
 
     """
@@ -4389,3 +4306,86 @@ def get_system_logs():
 
         columns = [col.strip() for col in line.split(':') if col]
         print(columns)
+
+def get_clusters(data, 
+                 model = None, 
+                 num_clusters = 4, 
+                 ignore_features = None, 
+                 normalize = True, 
+                 transformation = False,
+                 pca = False,
+                 pca_components = 0.99,
+                 ignore_low_variance=False,
+                 combine_rare_levels=False,
+                 rare_level_threshold=0.1,
+                 remove_multicollinearity=False,
+                 multicollinearity_threshold=0.9,
+                 n_jobs = None):
+    
+    """
+    Callable from any external environment without requiring setup initialization.
+    """
+    
+    if model is None:
+        model = 'kmeans'
+        
+    if ignore_features is None:
+        ignore_features_pass = []
+    else:
+        ignore_features_pass = ignore_features
+    
+    global X, data_, seed, n_jobs_param, logging_param, logger
+    
+    data_ = data.copy()
+    
+    seed = 99
+
+    n_jobs_param = n_jobs
+
+    logging_param = False
+    
+    import logging
+
+    logger = logging.getLogger('logs')
+    logger.setLevel(logging.DEBUG)
+    
+    # create console handler and set level to debug
+    if logger.hasHandlers():
+        logger.handlers.clear()
+    
+    ch = logging.FileHandler('logs.log')
+    ch.setLevel(logging.DEBUG)
+
+    # create formatter
+    formatter = logging.Formatter('%(asctime)s:%(levelname)s:%(message)s')
+
+    # add formatter to ch
+    ch.setFormatter(formatter)
+
+    # add ch to logger
+    logger.addHandler(ch)
+    
+    from pycaret import preprocess
+    
+    X = preprocess.Preprocess_Path_Two(train_data = data, 
+                                       features_todrop = ignore_features_pass,
+                                       display_types = False,
+                                       scale_data = normalize,
+                                       scaling_method = 'zscore',
+                                       Power_transform_data = transformation,
+                                       Power_transform_method = 'yj',
+                                       apply_pca = pca,
+                                       pca_variance_retained_or_number_of_components = pca_components,
+                                       apply_zero_nearZero_variance = ignore_low_variance,
+                                       club_rare_levels=combine_rare_levels,
+                                       rara_level_threshold_percentage=rare_level_threshold,
+                                       remove_multicollinearity=remove_multicollinearity,
+                                       maximum_correlation_between_features=multicollinearity_threshold,
+                                       random_state = seed)
+      
+    try:
+        c = create_model(model=model, num_clusters=num_clusters, verbose=False, system=False)
+    except:
+        c = create_model(model=model, verbose=False, system=False)
+    dataset = assign_model(c, verbose=False)
+    return dataset

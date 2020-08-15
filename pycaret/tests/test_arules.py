@@ -1,7 +1,6 @@
 import os, sys
 sys.path.insert(0, os.path.abspath(".."))
 
-#compare_models_test
 import pytest
 import pycaret.arules
 import pycaret.datasets
