@@ -2034,6 +2034,521 @@ def setup(
     )
 
 
+def compare_models(
+    blacklist=None,
+    whitelist=None,  # added in pycaret==2.0.0
+    fold=10,
+    round=4,
+    sort="Accuracy",
+    n_select=1,  # added in pycaret==2.0.0
+    turbo=True,
+    verbose=True,
+    display=None,
+):  # added in pycaret==2.0.0
+
+    """
+    This function train all the models available in the model library and scores them 
+    using Stratified Cross Validation. The output prints a score grid with Accuracy, 
+    AUC, Recall, Precision, F1, Kappa and MCC (averaged accross folds), determined by
+    fold parameter.
+    
+    This function returns the best model based on metric defined in sort parameter. 
+    
+    To select top N models, use n_select parameter that is set to 1 by default.
+    Where n_select parameter > 1, it will return a list of trained model objects.
+
+    When turbo is set to True ('rbfsvm', 'gpc' and 'mlp') are excluded due to longer
+    training time. By default turbo param is set to True.        
+
+    Example
+    -------
+    >>> from pycaret.datasets import get_data
+    >>> juice = get_data('juice')
+    >>> experiment_name = setup(data = juice,  target = 'Purchase')
+    >>> best_model = compare_models() 
+
+    This will return the averaged score grid of all the models except 'rbfsvm', 'gpc' 
+    and 'mlp'. When turbo param is set to False, all models including 'rbfsvm', 'gpc' 
+    and 'mlp' are used but this may result in longer training time.
+    
+    >>> best_model = compare_models( blacklist = [ 'knn', 'gbc' ] , turbo = False) 
+
+    This will return a comparison of all models except K Nearest Neighbour and
+    Gradient Boosting Classifier.
+    
+    >>> best_model = compare_models( blacklist = [ 'knn', 'gbc' ] , turbo = True) 
+
+    This will return comparison of all models except K Nearest Neighbour, 
+    Gradient Boosting Classifier, SVM (RBF), Gaussian Process Classifier and
+    Multi Level Perceptron.
+        
+
+    Parameters
+    ----------
+    blacklist: list of strings, default = None
+        In order to omit certain models from the comparison model ID's can be passed as 
+        a list of strings in blacklist param. 
+
+    whitelist: list of strings, default = None
+        In order to run only certain models for the comparison, the model ID's can be 
+        passed as a list of strings in whitelist param. 
+
+    fold: integer, default = 10
+        Number of folds to be used in Kfold CV. Must be at least 2. 
+
+    round: integer, default = 4
+        Number of decimal places the metrics in the score grid will be rounded to.
+  
+    sort: string, default = 'Accuracy'
+        The scoring measure specified is used for sorting the average score grid
+        Other options are 'AUC', 'Recall', 'Precision', 'F1', 'Kappa' and 'MCC'.
+
+    n_select: int, default = 1
+        Number of top_n models to return. use negative argument for bottom selection.
+        for example, n_select = -3 means bottom 3 models.
+
+    turbo: Boolean, default = True
+        When turbo is set to True, it blacklists estimators that have longer
+        training time.
+
+    verbose: Boolean, default = True
+        Score grid is not printed when verbose is set to False.
+    
+    Returns
+    -------
+    score_grid
+        A table containing the scores of the model across the kfolds. 
+        Scoring metrics used are Accuracy, AUC, Recall, Precision, F1, 
+        Kappa and MCC. Mean and standard deviation of the scores across 
+        the folds are also returned.
+
+    Warnings
+    --------
+    - compare_models() though attractive, might be time consuming with large 
+      datasets. By default turbo is set to True, which blacklists models that
+      have longer training times. Changing turbo parameter to False may result 
+      in very high training times with datasets where number of samples exceed 
+      10,000.
+      
+    - If target variable is multiclass (more than 2 classes), AUC will be 
+      returned as zero (0.0)      
+             
+    
+    """
+
+    """
+    
+    ERROR HANDLING STARTS HERE
+    
+    """
+
+    logger = get_logger()
+
+    logger.info("Initializing compare_models()")
+    logger.info(
+        """compare_models(blacklist={}, whitelist={}, fold={}, round={}, sort={}, n_select={}, turbo={}, verbose={})""".format(
+            str(blacklist),
+            str(whitelist),
+            str(fold),
+            str(round),
+            str(sort),
+            str(n_select),
+            str(turbo),
+            str(verbose),
+        )
+    )
+
+    logger.info("Checking exceptions")
+
+    # exception checking
+    import sys
+
+    # checking error for blacklist (string)
+    available_estimators = all_models.index
+
+    if blacklist != None:
+        for i in blacklist:
+            if i not in available_estimators:
+                sys.exit(
+                    f"(Value Error): Estimator Not Available {i}. Please see docstring for list of available estimators."
+                )
+
+    if whitelist != None:
+        for i in whitelist:
+            if isinstance(i, str):
+                if i not in available_estimators:
+                    sys.exit(
+                        f"(Value Error): Estimator {i} Not Available. Please see docstring for list of available estimators."
+                    )
+            elif not hasattr(i, "fit"):
+                sys.exit(
+                    f"(Value Error): Estimator {i} does not have the required fit() method."
+                )
+
+    # whitelist and blacklist together check
+    if whitelist is not None and blacklist is not None:
+        sys.exit(
+            "(Type Error): Cannot use blacklist parameter when whitelist is used to compare models."
+        )
+
+    # checking fold parameter
+    if type(fold) is not int:
+        sys.exit("(Type Error): Fold parameter only accepts integer value.")
+
+    # checking round parameter
+    if type(round) is not int:
+        sys.exit("(Type Error): Round parameter only accepts integer value.")
+
+    # checking sort parameter
+    allowed_sort = get_metrics()["Name"]
+    if sort not in allowed_sort.to_list():
+        sys.exit(
+            f"(Value Error): Sort method {sort} not supported. See docstring for list of available parameters."
+        )
+
+    # checking optimize parameter for multiclass
+    if y.value_counts().count() > 2:
+        if not all_metrics[all_metrics["Name"] == sort].iloc[0]["Multiclass"]:
+            sys.exit(
+                f"(Type Error): {sort} metric not supported for multiclass problems. See docstring for list of other optimization parameters."
+            )
+
+    """
+    
+    ERROR HANDLING ENDS HERE
+    
+    """
+
+    logger.info("Preloading libraries")
+
+    # pre-load libraries
+    import pandas as pd
+    import datetime, time
+
+    pd.set_option("display.max_columns", 500)
+
+    logger.info("Preparing display monitor")
+
+    len_mod = len(all_models[all_models["Turbo"] == True]) if turbo else len(all_models)
+
+    if whitelist:
+        len_mod = len(whitelist)
+    elif blacklist:
+        len_mod -= len(blacklist)
+
+    if not display:
+        progress_args = {"max": ((fold + 4) * len_mod) + 4 + len_mod}
+        master_display_columns = ["Model"] + all_metrics["Display Name"].to_list()
+        timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
+        monitor_rows = [
+            ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
+            ["Status", ". . . . . . . . . . . . . . . . . .", "Loading Dependencies"],
+            ["Estimator", ". . . . . . . . . . . . . . . . . .", "Compiling Library"],
+            ["ETC", ". . . . . . . . . . . . . . . . . .", "Calculating ETC"],
+        ]
+        display = Display(
+            verbose,
+            html_param,
+            progress_args,
+            master_display_columns,
+            monitor_rows,
+            logger=logger,
+        )
+
+        display.display_progress()
+        display.display_monitor()
+        display.display_master_display()
+
+    # ignore warnings
+    import warnings
+
+    warnings.filterwarnings("ignore")
+
+    # general dependencies
+    import numpy as np
+    import random
+    from sklearn import metrics
+    import pandas.io.formats.style
+
+    logger.info("Copying training dataset")
+    # defining X_train and y_train as data_X and data_y
+    data_X = X_train
+    data_y = y_train
+
+    display.move_progress()
+
+    # defining sort parameter (making Precision equivalent to Prec. )
+
+    sort = all_metrics[all_metrics["Name"] == sort].iloc[0]["Display Name"]
+
+    """
+    MONITOR UPDATE STARTS
+    """
+
+    display.update_monitor(1, "Loading Estimator")
+    display.display_monitor()
+
+    """
+    MONITOR UPDATE ENDS
+    """
+
+    models_to_check = models()
+    if turbo:
+        model_library = models_to_check[models_to_check["Turbo"] == True]
+    if blacklist:
+        model_library = models_to_check.drop(index=blacklist)
+    if whitelist:
+        model_library = [
+            models_to_check.loc[x] if isinstance(x, str) else x for x in whitelist
+        ]
+
+    display.move_progress()
+
+    # create URI (before loop)
+    import secrets
+
+    URI = secrets.token_hex(nbytes=4)
+
+    master_display = None
+
+    for i, model in enumerate(model_library):
+
+        if (
+            not hasattr(model, "estimators")
+            and not isinstance(model, str)
+            and y.value_counts().count() > 2
+        ):
+            model_name = _get_model_name(model.estimator)
+        else:
+            model_name = _get_model_name(model)
+
+        if isinstance(model, str):
+            logger.info("Initializing " + model_name)
+        else:
+            logger.info("Initializing custom model " + model_name)
+
+        # run_time
+        runtime_start = time.time()
+
+        display.move_progress()
+
+        """
+        MONITOR UPDATE STARTS
+        """
+
+        display.update_monitor(2, model_name)
+        display.update_monitor(3, "Calculating ETC")
+        display.display_monitor()
+
+        """
+        MONITOR UPDATE ENDS
+        """
+        display.replace_master_display(None)
+
+        logger.info(
+            "SubProcess create_model() called =================================="
+        )
+        model = create_model(
+            estimator=model,
+            system=False,
+            verbose=False,
+            display=display,
+            fold=fold,
+            round=round,
+        )
+        model_results = pull()
+        logger.info(
+            "SubProcess create_model() called =================================="
+        )
+
+        logger.info("Creating metrics dataframe")
+        compare_models_ = pd.DataFrame(model_results.loc["Mean"]).T
+        compare_models_.insert(0, "Model", model_name)
+        compare_models_.insert(0, "Object", [model])
+        compare_models_.insert(0, "index", [i])
+        compare_models_.set_index("index", drop=True, inplace=True)
+        if master_display is None:
+            master_display = compare_models_
+        else:
+            master_display = pd.concat(
+                [master_display, compare_models_], ignore_index=True
+            )
+        master_display = master_display.round(round)
+        master_display = master_display.sort_values(by=sort, ascending=False)
+        # master_display.reset_index(drop=True, inplace=True)
+
+        master_display_ = master_display.drop("Object", axis=1).style.set_precision(
+            round
+        )
+        master_display_ = master_display_.set_properties(**{"text-align": "left"})
+        master_display_ = master_display_.set_table_styles(
+            [dict(selector="th", props=[("text-align", "left")])]
+        )
+
+        display.replace_master_display(master_display_)
+
+        display.display_master_display()
+        # end runtime
+        runtime_end = time.time()
+        runtime = np.array(runtime_end - runtime_start).round(2)
+
+        """
+        MLflow logging starts here
+        """
+
+        if logging_param:
+
+            logger.info("Creating MLFlow logs")
+
+            import mlflow
+            from pathlib import Path
+            import os
+
+            run_name = model_name
+
+            with mlflow.start_run(run_name=run_name) as run:
+
+                # Get active run to log as tag
+                RunID = mlflow.active_run().info.run_id
+
+                params = model.get_params()
+
+                for i in list(params):
+                    v = params.get(i)
+                    if len(str(v)) > 250:
+                        params.pop(i)
+
+                mlflow.log_params(params)
+
+                # set tag of compare_models
+                mlflow.set_tag("Source", "compare_models")
+                mlflow.set_tag("URI", URI)
+                mlflow.set_tag("USI", USI)
+                mlflow.set_tag("Run Time", runtime)
+                mlflow.set_tag("Run ID", RunID)
+
+                # Log top model metrics
+                mlflow.log_metrics(
+                    {
+                        k: v
+                        for k, v in master_display.drop(
+                            ["Object", "Model", "TT (Sec)"], axis=1
+                        )
+                        .iloc[0]
+                        .items()
+                    }
+                )
+
+                # Log model and transformation pipeline
+                from copy import deepcopy
+
+                # get default conda env
+                from mlflow.sklearn import get_default_conda_env
+
+                default_conda_env = get_default_conda_env()
+                default_conda_env["name"] = str(exp_name_log) + "-env"
+                default_conda_env.get("dependencies").pop(-3)
+                dependencies = default_conda_env.get("dependencies")[-1]
+                from pycaret.utils import __version__
+
+                dep = "pycaret==" + str(__version__())
+                dependencies["pip"] = [dep]
+
+                # define model signature
+                from mlflow.models.signature import infer_signature
+
+                signature = infer_signature(
+                    data_before_preprocess.drop([target_param], axis=1)
+                )
+                input_example = (
+                    data_before_preprocess.drop([target_param], axis=1)
+                    .iloc[0]
+                    .to_dict()
+                )
+
+                # log model as sklearn flavor
+                prep_pipe_temp = deepcopy(prep_pipe)
+                prep_pipe_temp.steps.append(["trained model", model])
+                mlflow.sklearn.log_model(
+                    prep_pipe_temp,
+                    "model",
+                    conda_env=default_conda_env,
+                    signature=signature,
+                    input_example=input_example,
+                )
+                del prep_pipe_temp
+
+    display.move_progress()
+
+    def highlight_max(s):
+        to_highlight = s == s.max()
+        return ["background-color: yellow" if v else "" for v in to_highlight]
+
+    def highlight_cols(s):
+        color = "lightgrey"
+        return "background-color: %s" % color
+
+    if y.value_counts().count() > 2:
+
+        compare_models_ = (
+            master_display.drop("Object", axis=1)
+            .style.apply(
+                highlight_max,
+                subset=["Accuracy", "Recall", "Prec.", "F1", "Kappa", "MCC"],
+            )
+            .applymap(highlight_cols, subset=["TT (Sec)"])
+        )
+    else:
+
+        compare_models_ = (
+            master_display.drop("Object", axis=1)
+            .style.apply(
+                highlight_max,
+                subset=["Accuracy", "AUC", "Recall", "Prec.", "F1", "Kappa", "MCC"],
+            )
+            .applymap(highlight_cols, subset=["TT (Sec)"])
+        )
+
+    compare_models_ = compare_models_.set_precision(round)
+    compare_models_ = compare_models_.set_properties(**{"text-align": "left"})
+    compare_models_ = compare_models_.set_table_styles(
+        [dict(selector="th", props=[("text-align", "left")])]
+    )
+
+    display.move_progress()
+
+    display.update_monitor(1, "Compiling Final Model")
+    display.update_monitor(3, "Almost Finished")
+    display.display_monitor()
+
+    sorted_models = master_display["Object"].to_list()
+    if n_select < 0:
+        sorted_models = sorted_models[n_select:]
+    else:
+        sorted_models = sorted_models[:n_select]
+
+    if len(sorted_models) == 1:
+        sorted_models = sorted_models[0]
+
+    display.display(compare_models_, clear=True)
+
+    pd.reset_option("display.max_columns")
+
+    # store in display container
+    display_container.append(compare_models_.data)
+
+    logger.info("create_model_container: " + str(len(create_model_container)))
+    logger.info("master_model_container: " + str(len(master_model_container)))
+    logger.info("display_container: " + str(len(display_container)))
+
+    logger.info(str(sorted_models))
+    logger.info(
+        "compare_models() succesfully completed......................................"
+    )
+
+    return sorted_models
+
+
 def create_model(
     estimator=None,
     ensemble=False,
@@ -2770,1746 +3285,6 @@ def create_model(
     return model
 
 
-def ensemble_model(
-    estimator,
-    method="Bagging",
-    fold=10,
-    n_estimators=10,
-    round=4,
-    choose_better=False,  # added in pycaret==2.0.0
-    optimize="Accuracy",  # added in pycaret==2.0.0
-    verbose=True,
-    display=None,
-):
-    """
-    This function ensembles the trained base estimator using the method defined in 
-    'method' param (default = 'Bagging'). The output prints a score grid that shows 
-    Accuracy, AUC, Recall, Precision, F1, Kappa and MCC by fold (default = 10 Fold). 
-
-    This function returns a trained model object.  
-
-    Model must be created using create_model() or tune_model().
-
-    Example
-    -------
-    >>> from pycaret.datasets import get_data
-    >>> juice = get_data('juice')
-    >>> experiment_name = setup(data = juice,  target = 'Purchase')
-    >>> dt = create_model('dt')
-    >>> ensembled_dt = ensemble_model(dt)
-
-    This will return an ensembled Decision Tree model using 'Bagging'.
-    
-    Parameters
-    ----------
-    estimator : object, default = None
-
-    method: String, default = 'Bagging'
-        Bagging method will create an ensemble meta-estimator that fits base 
-        classifiers each on random subsets of the original dataset. The other
-        available method is 'Boosting' which will create a meta-estimators by
-        fitting a classifier on the original dataset and then fits additional 
-        copies of the classifier on the same dataset but where the weights of 
-        incorrectly classified instances are adjusted such that subsequent 
-        classifiers focus more on difficult cases.
-    
-    fold: integer, default = 10
-        Number of folds to be used in Kfold CV. Must be at least 2.
-    
-    n_estimators: integer, default = 10
-        The number of base estimators in the ensemble.
-        In case of perfect fit, the learning procedure is stopped early.
-
-    round: integer, default = 4
-        Number of decimal places the metrics in the score grid will be rounded to.
-
-    choose_better: Boolean, default = False
-        When set to set to True, base estimator is returned when the metric doesn't 
-        improve by ensemble_model. This gurantees the returned object would perform 
-        atleast equivalent to base estimator created using create_model or model 
-        returned by compare_models.
-
-    optimize: string, default = 'Accuracy'
-        Only used when choose_better is set to True. optimize parameter is used
-        to compare emsembled model with base estimator. Values accepted in 
-        optimize parameter are 'Accuracy', 'AUC', 'Recall', 'Precision', 'F1', 
-        'Kappa', 'MCC'.
-
-    verbose: Boolean, default = True
-        Score grid is not printed when verbose is set to False.
-
-    Returns
-    -------
-    score_grid
-        A table containing the scores of the model across the kfolds. 
-        Scoring metrics used are Accuracy, AUC, Recall, Precision, F1, 
-        Kappa and MCC. Mean and standard deviation of the scores across 
-        the folds are also returned.
-
-    model
-        Trained ensembled model object.
-
-    Warnings
-    --------  
-    - If target variable is multiclass (more than 2 classes), AUC will be returned 
-      as zero (0.0).
-        
-    
-    """
-
-    """
-    
-    ERROR HANDLING STARTS HERE
-    
-    """
-
-    logger = get_logger()
-
-    logger.info("Initializing ensemble_model()")
-    logger.info(
-        """ensemble_model(estimator={}, method={}, fold={}, n_estimators={}, round={}, choose_better={}, optimize={}, verbose={})""".format(
-            str(estimator),
-            str(method),
-            str(fold),
-            str(n_estimators),
-            str(round),
-            str(choose_better),
-            str(optimize),
-            str(verbose),
-        )
-    )
-
-    logger.info("Checking exceptions")
-
-    # exception checking
-    import sys
-
-    # run_time
-    import datetime, time
-
-    runtime_start = time.time()
-
-    # Check for estimator
-    if not hasattr(estimator, "fit"):
-        sys.exit(
-            f"(Value Error): Estimator {estimator} does not have the required fit() method."
-        )
-
-    # Check for allowed method
-    available_method = ["Bagging", "Boosting"]
-    if method not in available_method:
-        sys.exit(
-            "(Value Error): Method parameter only accepts two values 'Bagging' or 'Boosting'."
-        )
-
-    # check boosting conflict
-    if method == "Boosting":
-
-        boosting_model_definition = _all_models_internal.loc["ada"]
-
-        check_model = estimator
-
-        try:
-            if y.value_counts().count() > 2:
-                check_model = check_model.estimator
-                check_model = boosting_model_definition["Class"](
-                    check_model,
-                    n_estimators=n_estimators,
-                    **boosting_model_definition["Args"],
-                )
-                onevsrest_model_definition = _all_models_internal.loc["OneVsRest"]
-                check_model = onevsrest_model_definition["Class"](
-                    model, **onevsrest_model_definition["Args"]
-                )
-
-            else:
-                check_model = boosting_model_definition["Class"](
-                    check_model,
-                    n_estimators=n_estimators,
-                    **boosting_model_definition["Args"],
-                )
-
-            check_model.fit(X_train, y_train)
-        except:
-            sys.exit(
-                "(Type Error): Estimator does not provide class_weights or predict_proba function and hence not supported for the Boosting method. Change the estimator or method to 'Bagging'."
-            )
-
-    # checking fold parameter
-    if type(fold) is not int:
-        sys.exit("(Type Error): Fold parameter only accepts integer value.")
-
-    # checking n_estimators parameter
-    if type(n_estimators) is not int:
-        sys.exit("(Type Error): n_estimators parameter only accepts integer value.")
-
-    # checking round parameter
-    if type(round) is not int:
-        sys.exit("(Type Error): Round parameter only accepts integer value.")
-
-    # checking verbose parameter
-    if type(verbose) is not bool:
-        sys.exit(
-            "(Type Error): Verbose parameter can only take argument as True or False."
-        )
-
-    # checking optimize parameter
-    allowed_optimize = get_metrics()["Name"]
-    if optimize not in allowed_optimize.to_list():
-        sys.exit(
-            f"(Value Error): Optimize method {optimize} not supported. See docstring for list of available parameters."
-        )
-
-    # checking optimize parameter for multiclass
-    if y.value_counts().count() > 2:
-        if not all_metrics[all_metrics["Name"] == optimize].iloc[0]["Multiclass"]:
-            sys.exit(
-                f"(Type Error): Optimization metric {optimize} not supported for multiclass problems. See docstring for list of other optimization parameters."
-            )
-
-    """
-    
-    ERROR HANDLING ENDS HERE
-    
-    """
-
-    logger.info("Preloading libraries")
-
-    # pre-load libraries
-    import pandas as pd
-
-    if not display:
-        progress_args = {"max": fold + 2 + 4}
-        master_display_columns = all_metrics["Display Name"].to_list()
-        timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
-        monitor_rows = [
-            ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
-            ["Status", ". . . . . . . . . . . . . . . . . .", "Loading Dependencies"],
-            ["ETC", ". . . . . . . . . . . . . . . . . .", "Calculating ETC"],
-        ]
-        display = Display(
-            verbose,
-            html_param,
-            progress_args,
-            master_display_columns,
-            monitor_rows,
-            logger=logger,
-        )
-
-        display.display_progress()
-        display.display_monitor()
-        display.display_master_display()
-
-    logger.info("Importing libraries")
-
-    # dependencies
-    import numpy as np
-    from sklearn import metrics
-    from sklearn.model_selection import StratifiedKFold
-
-    # ignore warnings
-    import warnings
-
-    warnings.filterwarnings("ignore")
-
-    logger.info("Copying training dataset")
-
-    # Storing X_train and y_train in data_X and data_y parameter
-    data_X = X_train.copy()
-    data_y = y_train.copy()
-
-    # reset index
-    data_X.reset_index(drop=True, inplace=True)
-    data_y.reset_index(drop=True, inplace=True)
-
-    display.move_progress()
-
-    # setting numpy seed
-    np.random.seed(seed)
-
-    # setting optimize parameter
-
-    optimize = all_metrics[all_metrics["Name"] == optimize].iloc[0]
-    compare_dimension = optimize["Display Name"]
-    optimize = optimize["SearchCV Param"]
-
-    logger.info("Checking base model")
-
-    _estimator_ = estimator
-
-    if y.value_counts().count() > 2:
-        estimator = _get_model_id(estimator.estimator)
-    else:
-        estimator = _get_model_id(estimator)
-
-    estimator_definition = _all_models_internal.loc[estimator]
-    estimator_name = estimator_definition["Name"]
-    logger.info(f"Base model : {estimator_name}")
-
-    """
-    MONITOR UPDATE STARTS
-    """
-
-    display.update_monitor(1, "Selecting Estimator")
-    display.display_monitor()
-
-    """
-    MONITOR UPDATE ENDS
-    """
-
-    model = _estimator_
-    if y.value_counts().count() > 2:
-        model = model.estimator
-
-    logger.info("Importing untrained ensembler")
-
-    if method == "Bagging":
-        logger.info("Ensemble method set to Bagging")
-        bagging_model_definition = _all_models_internal.loc["Bagging"]
-
-        model = bagging_model_definition["Class"](
-            model,
-            bootstrap=True,
-            n_estimators=n_estimators,
-            **bagging_model_definition["Args"],
-        )
-
-    else:
-        logger.info("Ensemble method set to Boosting")
-        boosting_model_definition = _all_models_internal.loc["ada"]
-        model = boosting_model_definition["Class"](
-            model, n_estimators=n_estimators, **boosting_model_definition["Args"]
-        )
-
-    onevsrest_model_definition = _all_models_internal.loc["OneVsRest"]
-    # multiclass checking
-    if (
-        y.value_counts().count() > 2
-        and not type(model) is onevsrest_model_definition["Class"]
-    ):
-        logger.info("Target variable is Multiclass. OneVsRestClassifier activated")
-
-        model = onevsrest_model_definition["Class"](
-            model, **onevsrest_model_definition["Args"]
-        )
-
-    display.move_progress()
-
-    logger.info("SubProcess create_model() called ==================================")
-    model, model_fit_time = create_model(
-        estimator=model,
-        system=False,
-        return_fit_time=True,
-        display=display,
-        fold=fold,
-        round=round,
-    )
-    best_model = model
-    model_results = pull()
-    logger.info("SubProcess create_model() called ==================================")
-
-    if choose_better:
-        model = _choose_better(
-            estimator, _estimator_, best_model, compare_dimension, fold, display
-        )
-
-    # end runtime
-    runtime_end = time.time()
-    runtime = np.array(runtime_end - runtime_start).round(2)
-
-    if logging_param:
-
-        logger.info("Creating MLFlow logs")
-
-        # Creating Logs message monitor
-        display.update_monitor(1, "Creating Logs")
-        display.update_monitor(2, "Almost Finished")
-        display.display_monitor()
-
-        import mlflow
-        from pathlib import Path
-        import os
-
-        mlflow.set_experiment(exp_name_log)
-        full_name = estimator_name
-
-        with mlflow.start_run(run_name=full_name) as run:
-
-            # Get active run to log as tag
-            RunID = mlflow.active_run().info.run_id
-
-            params = model.get_params()
-
-            for i in list(params):
-                v = params.get(i)
-                if len(str(v)) > 250:
-                    params.pop(i)
-
-            mlflow.log_params(params)
-            mlflow.log_metrics(
-                {
-                    k: v
-                    for k, v in model_results.drop("TT (Sec)", axis=1)
-                    .loc["Mean"]
-                    .items()
-                }
-            )
-
-            # set tag of compare_models
-            mlflow.set_tag("Source", "ensemble_model")
-
-            import secrets
-
-            URI = secrets.token_hex(nbytes=4)
-            mlflow.set_tag("URI", URI)
-            mlflow.set_tag("USI", USI)
-            mlflow.set_tag("Run Time", runtime)
-            mlflow.set_tag("Run ID", RunID)
-
-            # Log training time in seconds
-            mlflow.log_metric("TT", model_fit_time)
-
-            # Generate hold-out predictions and save as html
-            holdout = predict_model(model, verbose=False)
-            holdout_score = pull()
-            del holdout
-            display_container.pop(-1)
-            holdout_score.to_html("Holdout.html", col_space=65, justify="left")
-            mlflow.log_artifact("Holdout.html")
-            os.remove("Holdout.html")
-
-            # Log AUC and Confusion Matrix plot
-            if log_plots_param:
-
-                logger.info(
-                    "SubProcess plot_model() called =================================="
-                )
-
-                try:
-                    plot_model(
-                        model, plot="auc", verbose=False, save=True, system=False
-                    )
-                    mlflow.log_artifact("AUC.png")
-                    os.remove("AUC.png")
-                except:
-                    pass
-
-                try:
-                    plot_model(
-                        model,
-                        plot="confusion_matrix",
-                        verbose=False,
-                        save=True,
-                        system=False,
-                    )
-                    mlflow.log_artifact("Confusion Matrix.png")
-                    os.remove("Confusion Matrix.png")
-                except:
-                    pass
-
-                try:
-                    plot_model(
-                        model, plot="feature", verbose=False, save=True, system=False
-                    )
-                    mlflow.log_artifact("Feature Importance.png")
-                    os.remove("Feature Importance.png")
-                except:
-                    pass
-
-                logger.info(
-                    "SubProcess plot_model() end =================================="
-                )
-
-            # Log the CV results as model_results.html artifact
-            model_results.to_html("Results.html", col_space=65, justify="left")
-            mlflow.log_artifact("Results.html")
-            os.remove("Results.html")
-
-            # Log model and transformation pipeline
-            from copy import deepcopy
-
-            # get default conda env
-            from mlflow.sklearn import get_default_conda_env
-
-            default_conda_env = get_default_conda_env()
-            default_conda_env["name"] = str(exp_name_log) + "-env"
-            default_conda_env.get("dependencies").pop(-3)
-            dependencies = default_conda_env.get("dependencies")[-1]
-            from pycaret.utils import __version__
-
-            dep = "pycaret==" + str(__version__())
-            dependencies["pip"] = [dep]
-
-            # define model signature
-            from mlflow.models.signature import infer_signature
-
-            signature = infer_signature(
-                data_before_preprocess.drop([target_param], axis=1)
-            )
-            input_example = (
-                data_before_preprocess.drop([target_param], axis=1).iloc[0].to_dict()
-            )
-
-            # log model as sklearn flavor
-            prep_pipe_temp = deepcopy(prep_pipe)
-            prep_pipe_temp.steps.append(["trained model", model])
-            mlflow.sklearn.log_model(
-                prep_pipe_temp,
-                "model",
-                conda_env=default_conda_env,
-                signature=signature,
-                input_example=input_example,
-            )
-            del prep_pipe_temp
-
-    model_results = color_df(model_results, "yellow", ["Mean"], axis=1)
-    display.display(model_results, clear=True)
-
-    logger.info("create_model_container: " + str(len(create_model_container)))
-    logger.info("master_model_container: " + str(len(master_model_container)))
-    logger.info("display_container: " + str(len(display_container)))
-
-    logger.info(str(model))
-    logger.info(
-        "ensemble_model() succesfully completed......................................"
-    )
-
-    return model
-
-
-def plot_model(
-    estimator,
-    plot="auc",
-    save=False,  # added in pycaret 2.0.0
-    verbose=True,  # added in pycaret 2.0.0
-    system=True,
-    display=None,
-):  # added in pycaret 2.0.0
-
-    """
-    This function takes a trained model object and returns a plot based on the
-    test / hold-out set. The process may require the model to be re-trained in
-    certain cases. See list of plots supported below. 
-    
-    Model must be created using create_model() or tune_model().
-
-    Example
-    -------
-    >>> from pycaret.datasets import get_data
-    >>> juice = get_data('juice')
-    >>> experiment_name = setup(data = juice,  target = 'Purchase')
-    >>> lr = create_model('lr')
-    >>> plot_model(lr)
-
-    This will return an AUC plot of a trained Logistic Regression model.
-
-    Parameters
-    ----------
-    estimator : object, default = none
-        A trained model object should be passed as an estimator. 
-
-    plot : string, default = auc
-        Enter abbreviation of type of plot. The current list of plots supported are (Plot - Name):
-
-        * 'auc' - Area Under the Curve                 
-        * 'threshold' - Discrimination Threshold           
-        * 'pr' - Precision Recall Curve                  
-        * 'confusion_matrix' - Confusion Matrix    
-        * 'error' - Class Prediction Error                
-        * 'class_report' - Classification Report        
-        * 'boundary' - Decision Boundary            
-        * 'rfe' - Recursive Feature Selection                 
-        * 'learning' - Learning Curve             
-        * 'manifold' - Manifold Learning            
-        * 'calibration' - Calibration Curve         
-        * 'vc' - Validation Curve                  
-        * 'dimension' - Dimension Learning           
-        * 'feature' - Feature Importance              
-        * 'parameter' - Model Hyperparameter          
-
-    save: Boolean, default = False
-        When set to True, Plot is saved as a 'png' file in current working directory.
-
-    verbose: Boolean, default = True
-        Progress bar not shown when verbose set to False. 
-
-    system: Boolean, default = True
-        Must remain True all times. Only to be changed by internal functions.
-
-    Returns
-    -------
-    Visual_Plot
-        Prints the visual plot. 
-
-    Warnings
-    --------
-    -  'svm' and 'ridge' doesn't support the predict_proba method. As such, AUC and 
-        calibration plots are not available for these estimators.
-       
-    -   When the 'max_features' parameter of a trained model object is not equal to 
-        the number of samples in training set, the 'rfe' plot is not available.
-              
-    -   'calibration', 'threshold', 'manifold' and 'rfe' plots are not available for
-         multiclass problems.
-                
-
-    """
-
-    """
-    
-    ERROR HANDLING STARTS HERE
-    
-    """
-
-    # exception checking
-    import sys
-
-    logger = get_logger()
-
-    logger.info("Initializing plot_model()")
-    logger.info(
-        """plot_model(estimator={}, plot={}, save={}, verbose={}, system={})""".format(
-            str(estimator), str(plot), str(save), str(verbose), str(system)
-        )
-    )
-
-    logger.info("Checking exceptions")
-
-    # checking plots (string)
-    available_plots = [
-        "auc",
-        "threshold",
-        "pr",
-        "confusion_matrix",
-        "error",
-        "class_report",
-        "boundary",
-        "rfe",
-        "learning",
-        "manifold",
-        "calibration",
-        "vc",
-        "dimension",
-        "feature",
-        "parameter",
-    ]
-
-    if plot not in available_plots:
-        sys.exit(
-            "(Value Error): Plot Not Available. Please see docstring for list of available Plots."
-        )
-
-    # multiclass plot exceptions:
-    multiclass_not_available = ["calibration", "threshold", "manifold", "rfe"]
-    if y.value_counts().count() > 2:
-        if plot in multiclass_not_available:
-            sys.exit(
-                "(Value Error): Plot Not Available for multiclass problems. Please see docstring for list of available Plots."
-            )
-
-    # exception for CatBoost
-    if "CatBoostClassifier" in str(type(estimator)):
-        sys.exit(
-            "(Estimator Error): CatBoost estimator is not compatible with plot_model function, try using Catboost with interpret_model instead."
-        )
-
-    # checking for auc plot
-    if not hasattr(estimator, "predict_proba") and plot == "auc":
-        sys.exit(
-            "(Type Error): AUC plot not available for estimators with no predict_proba attribute."
-        )
-
-    # checking for auc plot
-    if not hasattr(estimator, "predict_proba") and plot == "auc":
-        sys.exit(
-            "(Type Error): AUC plot not available for estimators with no predict_proba attribute."
-        )
-
-    # checking for calibration plot
-    if not hasattr(estimator, "predict_proba") and plot == "calibration":
-        sys.exit(
-            "(Type Error): Calibration plot not available for estimators with no predict_proba attribute."
-        )
-
-    # checking for rfe
-    if (
-        hasattr(estimator, "max_features")
-        and plot == "rfe"
-        and estimator.max_features_ != X_train.shape[1]
-    ):
-        sys.exit(
-            "(Type Error): RFE plot not available when max_features parameter is not set to None."
-        )
-
-    # checking for feature plot
-    if (
-        not (hasattr(estimator, "coef_") or hasattr(estimator, "feature_importances_"))
-        and plot == "feature"
-    ):
-        sys.exit(
-            "(Type Error): Feature Importance plot not available for estimators that doesnt support coef_ or feature_importances_ attribute."
-        )
-
-    """
-    
-    ERROR HANDLING ENDS HERE
-    
-    """
-
-    logger.info("Preloading libraries")
-    # pre-load libraries
-    import pandas as pd
-
-    if not display:
-        progress_args = {"max": 5}
-        display = Display(
-            verbose, html_param, progress_args, None, None, logger=logger,
-        )
-        display.display_progress()
-
-    # ignore warnings
-    import warnings
-
-    warnings.filterwarnings("ignore")
-
-    logger.info("Importing libraries")
-    # general dependencies
-    import matplotlib.pyplot as plt
-    import numpy as np
-    import pandas as pd
-
-    display.move_progress()
-
-    # defining estimator as model locally
-    model = estimator
-
-    display.move_progress()
-
-    # plots used for logging (controlled through plots_log_param)
-    # AUC, #Confusion Matrix and #Feature Importance
-
-    logger.info("plot type: " + str(plot))
-
-    if plot == "auc":
-
-        from yellowbrick.classifier import ROCAUC
-
-        display.move_progress()
-        visualizer = ROCAUC(model)
-        logger.info("Fitting Model")
-        visualizer.fit(X_train, y_train)
-        display.move_progress()
-        logger.info("Scoring test/hold-out set")
-        visualizer.score(X_test, y_test)
-        display.move_progress()
-        clear_output()
-        if save:
-            logger.info("Saving 'AUC.png' in current active directory")
-            if system:
-                visualizer.show(outpath="AUC.png")
-            else:
-                visualizer.show(outpath="AUC.png", clear_figure=True)
-        else:
-            visualizer.show()
-
-        logger.info("Visual Rendered Successfully")
-
-    elif plot == "threshold":
-
-        from yellowbrick.classifier import DiscriminationThreshold
-
-        display.move_progress()
-        visualizer = DiscriminationThreshold(model, random_state=seed)
-        logger.info("Fitting Model")
-        visualizer.fit(X_train, y_train)
-        display.move_progress()
-        logger.info("Scoring test/hold-out set")
-        visualizer.score(X_test, y_test)
-        display.move_progress()
-        clear_output()
-        if save:
-            logger.info("Saving 'Threshold Curve.png' in current active directory")
-            if system:
-                visualizer.show(outpath="Threshold Curve.png")
-            else:
-                visualizer.show(outpath="Threshold Curve.png", clear_figure=True)
-        else:
-            visualizer.show()
-
-        logger.info("Visual Rendered Successfully")
-
-    elif plot == "pr":
-
-        from yellowbrick.classifier import PrecisionRecallCurve
-
-        display.move_progress()
-        visualizer = PrecisionRecallCurve(model, random_state=seed)
-        logger.info("Fitting Model")
-        visualizer.fit(X_train, y_train)
-        display.move_progress()
-        logger.info("Scoring test/hold-out set")
-        visualizer.score(X_test, y_test)
-        display.move_progress()
-        clear_output()
-        if save:
-            logger.info("Saving 'Precision Recall.png' in current active directory")
-            if system:
-                visualizer.show(outpath="Precision Recall.png")
-            else:
-                visualizer.show(outpath="Precision Recall.png", clear_figure=True)
-        else:
-            visualizer.show()
-
-        logger.info("Visual Rendered Successfully")
-
-    elif plot == "confusion_matrix":
-
-        from yellowbrick.classifier import ConfusionMatrix
-
-        display.move_progress()
-        visualizer = ConfusionMatrix(
-            model, random_state=seed, fontsize=15, cmap="Greens"
-        )
-        logger.info("Fitting Model")
-        visualizer.fit(X_train, y_train)
-        display.move_progress()
-        logger.info("Scoring test/hold-out set")
-        visualizer.score(X_test, y_test)
-        display.move_progress()
-        clear_output()
-        if save:
-            logger.info("Saving 'Confusion Matrix.png' in current active directory")
-            if system:
-                visualizer.show(outpath="Confusion Matrix.png")
-            else:
-                visualizer.show(outpath="Confusion Matrix.png", clear_figure=True)
-        else:
-            visualizer.show()
-
-        logger.info("Visual Rendered Successfully")
-
-    elif plot == "error":
-
-        from yellowbrick.classifier import ClassPredictionError
-
-        display.move_progress()
-        visualizer = ClassPredictionError(model, random_state=seed)
-        logger.info("Fitting Model")
-        visualizer.fit(X_train, y_train)
-        display.move_progress()
-        logger.info("Scoring test/hold-out set")
-        visualizer.score(X_test, y_test)
-        display.move_progress()
-        clear_output()
-        if save:
-            logger.info(
-                "Saving 'Class Prediction Error.png' in current active directory"
-            )
-            if system:
-                visualizer.show(outpath="Class Prediction Error.png")
-            else:
-                visualizer.show(outpath="Class Prediction Error.png", clear_figure=True)
-        else:
-            visualizer.show()
-
-        logger.info("Visual Rendered Successfully")
-
-    elif plot == "class_report":
-
-        from yellowbrick.classifier import ClassificationReport
-
-        display.move_progress()
-        visualizer = ClassificationReport(model, random_state=seed, support=True)
-        logger.info("Fitting Model")
-        visualizer.fit(X_train, y_train)
-        display.move_progress()
-        logger.info("Scoring test/hold-out set")
-        visualizer.score(X_test, y_test)
-        display.move_progress()
-        clear_output()
-        if save:
-            logger.info(
-                "Saving 'Classification Report.png' in current active directory"
-            )
-            if system:
-                visualizer.show(outpath="Classification Report.png")
-            else:
-                visualizer.show(outpath="Classification Report.png", clear_figure=True)
-        else:
-            visualizer.show()
-
-        logger.info("Visual Rendered Successfully")
-
-    elif plot == "boundary":
-
-        from sklearn.preprocessing import StandardScaler
-        from sklearn.decomposition import PCA
-        from yellowbrick.contrib.classifier import DecisionViz
-        from copy import deepcopy
-
-        model2 = deepcopy(estimator)
-
-        display.move_progress()
-
-        X_train_transformed = X_train.copy()
-        X_test_transformed = X_test.copy()
-        X_train_transformed = X_train_transformed.select_dtypes(include="float64")
-        X_test_transformed = X_test_transformed.select_dtypes(include="float64")
-        logger.info("Fitting StandardScaler()")
-        X_train_transformed = StandardScaler().fit_transform(X_train_transformed)
-        X_test_transformed = StandardScaler().fit_transform(X_test_transformed)
-        pca = PCA(n_components=2, random_state=seed)
-        logger.info("Fitting PCA()")
-        X_train_transformed = pca.fit_transform(X_train_transformed)
-        X_test_transformed = pca.fit_transform(X_test_transformed)
-
-        display.move_progress()
-
-        y_train_transformed = y_train.copy()
-        y_test_transformed = y_test.copy()
-        y_train_transformed = np.array(y_train_transformed)
-        y_test_transformed = np.array(y_test_transformed)
-
-        viz_ = DecisionViz(model2)
-        logger.info("Fitting Model")
-        viz_.fit(
-            X_train_transformed,
-            y_train_transformed,
-            features=["Feature One", "Feature Two"],
-            classes=["A", "B"],
-        )
-        viz_.draw(X_test_transformed, y_test_transformed)
-        display.move_progress()
-        clear_output()
-        if save:
-            logger.info("Saving 'Decision Boundary.png' in current active directory")
-            if system:
-                viz_.show(outpath="Decision Boundary.png")
-            else:
-                viz_.show(outpath="Decision Boundary.png", clear_figure=True)
-        else:
-            viz_.show()
-
-        logger.info("Visual Rendered Successfully")
-
-    elif plot == "rfe":
-
-        from yellowbrick.model_selection import RFECV
-
-        display.move_progress()
-        visualizer = RFECV(model, cv=10)
-        display.move_progress()
-        logger.info("Fitting Model")
-        visualizer.fit(X_train, y_train)
-        display.move_progress()
-        clear_output()
-        if save:
-            logger.info(
-                "Saving 'Recursive Feature Selection.png' in current active directory"
-            )
-            if system:
-                visualizer.show(outpath="Recursive Feature Selection.png")
-            else:
-                visualizer.show(
-                    outpath="Recursive Feature Selection.png", clear_figure=True
-                )
-        else:
-            visualizer.show()
-
-        logger.info("Visual Rendered Successfully")
-
-    elif plot == "learning":
-
-        from yellowbrick.model_selection import LearningCurve
-
-        display.move_progress()
-        sizes = np.linspace(0.3, 1.0, 10)
-        visualizer = LearningCurve(
-            model, cv=10, train_sizes=sizes, n_jobs=n_jobs_param, random_state=seed
-        )
-        display.move_progress()
-        logger.info("Fitting Model")
-        visualizer.fit(X_train, y_train)
-        display.move_progress()
-        clear_output()
-        if save:
-            logger.info("Saving 'Learning Curve.png' in current active directory")
-            if system:
-                visualizer.show(outpath="Learning Curve.png")
-            else:
-                visualizer.show(outpath="Learning Curve.png", clear_figure=True)
-        else:
-            visualizer.show()
-
-        logger.info("Visual Rendered Successfully")
-
-    elif plot == "manifold":
-
-        from yellowbrick.features import Manifold
-
-        display.move_progress()
-        X_train_transformed = X_train.select_dtypes(include="float64")
-        visualizer = Manifold(manifold="tsne", random_state=seed)
-        display.move_progress()
-        logger.info("Fitting Model")
-        visualizer.fit_transform(X_train_transformed, y_train)
-        display.move_progress()
-        clear_output()
-        if save:
-            logger.info("Saving 'Manifold Plot.png' in current active directory")
-            if system:
-                visualizer.show(outpath="Manifold Plot.png")
-            else:
-                visualizer.show(outpath="Manifold Plot.png", clear_figure=True)
-        else:
-            visualizer.show()
-
-        logger.info("Visual Rendered Successfully")
-
-    elif plot == "calibration":
-
-        from sklearn.calibration import calibration_curve
-
-        model_name = str(model).split("(")[0]
-
-        plt.figure(figsize=(7, 6))
-        ax1 = plt.subplot2grid((3, 1), (0, 0), rowspan=2)
-
-        ax1.plot([0, 1], [0, 1], "k:", label="Perfectly calibrated")
-        display.move_progress()
-        logger.info("Scoring test/hold-out set")
-        prob_pos = model.predict_proba(X_test)[:, 1]
-        prob_pos = (prob_pos - prob_pos.min()) / (prob_pos.max() - prob_pos.min())
-        fraction_of_positives, mean_predicted_value = calibration_curve(
-            y_test, prob_pos, n_bins=10
-        )
-        display.move_progress()
-        ax1.plot(
-            mean_predicted_value,
-            fraction_of_positives,
-            "s-",
-            label="%s" % (model_name,),
-        )
-
-        ax1.set_ylabel("Fraction of positives")
-        ax1.set_ylim([0, 1])
-        ax1.set_xlim([0, 1])
-        ax1.legend(loc="lower right")
-        ax1.set_title("Calibration plots  (reliability curve)")
-        ax1.set_facecolor("white")
-        ax1.grid(b=True, color="grey", linewidth=0.5, linestyle="-")
-        plt.tight_layout()
-        display.move_progress()
-        clear_output()
-        if save:
-            logger.info("Saving 'Calibration Plot.png' in current active directory")
-            if system:
-                plt.savefig("Calibration Plot.png")
-            else:
-                plt.show()
-        else:
-            plt.show()
-
-        logger.info("Visual Rendered Successfully")
-
-    elif plot == "vc":
-
-        model_name = str(model).split("(")[0]
-
-        logger.info("Determining param_name")
-
-        # SGD Classifier
-        if model_name == "SGDClassifier":
-            param_name = "l1_ratio"
-            param_range = np.arange(0, 1, 0.01)
-
-        elif model_name == "LinearDiscriminantAnalysis":
-            sys.exit(
-                "(Value Error): Shrinkage Parameter not supported in Validation Curve Plot."
-            )
-
-        # tree based models
-        elif hasattr(model, "max_depth"):
-            param_name = "max_depth"
-            param_range = np.arange(1, 11)
-
-        # knn
-        elif hasattr(model, "n_neighbors"):
-            param_name = "n_neighbors"
-            param_range = np.arange(1, 11)
-
-        # MLP / Ridge
-        elif hasattr(model, "alpha"):
-            param_name = "alpha"
-            param_range = np.arange(0, 1, 0.1)
-
-        # Logistic Regression
-        elif hasattr(model, "C"):
-            param_name = "C"
-            param_range = np.arange(1, 11)
-
-        # Bagging / Boosting
-        elif hasattr(model, "n_estimators"):
-            param_name = "n_estimators"
-            param_range = np.arange(1, 100, 10)
-
-        # Bagging / Boosting / gbc / ada /
-        elif hasattr(model, "n_estimators"):
-            param_name = "n_estimators"
-            param_range = np.arange(1, 100, 10)
-
-        # Naive Bayes
-        elif hasattr(model, "var_smoothing"):
-            param_name = "var_smoothing"
-            param_range = np.arange(0.1, 1, 0.01)
-
-        # QDA
-        elif hasattr(model, "reg_param"):
-            param_name = "reg_param"
-            param_range = np.arange(0, 1, 0.1)
-
-        # GPC
-        elif hasattr(model, "max_iter_predict"):
-            param_name = "max_iter_predict"
-            param_range = np.arange(100, 1000, 100)
-
-        else:
-            clear_output()
-            sys.exit(
-                "(Type Error): Plot not supported for this estimator. Try different estimator."
-            )
-
-        logger.info("param_name: " + str(param_name))
-
-        display.move_progress()
-
-        from yellowbrick.model_selection import ValidationCurve
-
-        viz = ValidationCurve(
-            model,
-            param_name=param_name,
-            param_range=param_range,
-            cv=10,
-            random_state=seed,
-        )
-        logger.info("Fitting Model")
-        viz.fit(X_train, y_train)
-        display.move_progress()
-        clear_output()
-        if save:
-            logger.info("Saving 'Validation Curve.png' in current active directory")
-            if system:
-                viz.show(outpath="Validation Curve.png")
-            else:
-                viz.show(outpath="Validation Curve.png", clear_figure=True)
-        else:
-            viz.show()
-
-        logger.info("Visual Rendered Successfully")
-
-    elif plot == "dimension":
-
-        from yellowbrick.features import RadViz
-        from sklearn.preprocessing import StandardScaler
-        from sklearn.decomposition import PCA
-
-        display.move_progress()
-        X_train_transformed = X_train.select_dtypes(include="float64")
-        logger.info("Fitting StandardScaler()")
-        X_train_transformed = StandardScaler().fit_transform(X_train_transformed)
-        y_train_transformed = np.array(y_train)
-
-        features = min(round(len(X_train.columns) * 0.3, 0), 5)
-        features = int(features)
-
-        pca = PCA(n_components=features, random_state=seed)
-        logger.info("Fitting PCA()")
-        X_train_transformed = pca.fit_transform(X_train_transformed)
-        display.move_progress()
-        classes = y_train.unique().tolist()
-        visualizer = RadViz(classes=classes, alpha=0.25)
-        logger.info("Fitting Model")
-        visualizer.fit(X_train_transformed, y_train_transformed)
-        visualizer.transform(X_train_transformed)
-        display.move_progress()
-        clear_output()
-        if save:
-            logger.info("Saving 'Dimension Plot.png' in current active directory")
-            if system:
-                visualizer.show(outpath="Dimension Plot.png")
-            else:
-                visualizer.show(outpath="Dimension Plot.png", clear_figure=True)
-        else:
-            visualizer.show()
-
-        logger.info("Visual Rendered Successfully")
-
-    elif plot == "feature":
-
-        if hasattr(estimator, "coef_"):
-            variables = abs(model.coef_[0])
-        else:
-            logger.warning("No coef_ found. Trying feature_importances_")
-            variables = abs(model.feature_importances_)
-        col_names = np.array(X_train.columns)
-        coef_df = pd.DataFrame({"Variable": X_train.columns, "Value": variables})
-        sorted_df = coef_df.sort_values(by="Value")
-        sorted_df = sorted_df.sort_values(by="Value", ascending=False)
-        sorted_df = sorted_df.head(10)
-        sorted_df = sorted_df.sort_values(by="Value")
-        my_range = range(1, len(sorted_df.index) + 1)
-        display.move_progress()
-        plt.figure(figsize=(8, 5))
-        plt.hlines(y=my_range, xmin=0, xmax=sorted_df["Value"], color="skyblue")
-        plt.plot(sorted_df["Value"], my_range, "o")
-        display.move_progress()
-        plt.yticks(my_range, sorted_df["Variable"])
-        plt.title("Feature Importance Plot")
-        plt.xlabel("Variable Importance")
-        plt.ylabel("Features")
-        display.move_progress()
-        clear_output()
-        if save:
-            logger.info("Saving 'Feature Importance.png' in current active directory")
-            if system:
-                plt.savefig("Feature Importance.png")
-            else:
-                plt.savefig("Feature Importance.png")
-                plt.close()
-        else:
-            plt.show()
-
-        logger.info("Visual Rendered Successfully")
-
-    elif plot == "parameter":
-
-        clear_output()
-        param_df = pd.DataFrame.from_dict(
-            estimator.get_params(estimator), orient="index", columns=["Parameters"]
-        )
-        display(param_df)
-        logger.info("Visual Rendered Successfully")
-
-    logger.info(
-        "plot_model() succesfully completed......................................"
-    )
-
-
-def compare_models(
-    blacklist=None,
-    whitelist=None,  # added in pycaret==2.0.0
-    fold=10,
-    round=4,
-    sort="Accuracy",
-    n_select=1,  # added in pycaret==2.0.0
-    turbo=True,
-    verbose=True,
-    display=None,
-):  # added in pycaret==2.0.0
-
-    """
-    This function train all the models available in the model library and scores them 
-    using Stratified Cross Validation. The output prints a score grid with Accuracy, 
-    AUC, Recall, Precision, F1, Kappa and MCC (averaged accross folds), determined by
-    fold parameter.
-    
-    This function returns the best model based on metric defined in sort parameter. 
-    
-    To select top N models, use n_select parameter that is set to 1 by default.
-    Where n_select parameter > 1, it will return a list of trained model objects.
-
-    When turbo is set to True ('rbfsvm', 'gpc' and 'mlp') are excluded due to longer
-    training time. By default turbo param is set to True.        
-
-    Example
-    -------
-    >>> from pycaret.datasets import get_data
-    >>> juice = get_data('juice')
-    >>> experiment_name = setup(data = juice,  target = 'Purchase')
-    >>> best_model = compare_models() 
-
-    This will return the averaged score grid of all the models except 'rbfsvm', 'gpc' 
-    and 'mlp'. When turbo param is set to False, all models including 'rbfsvm', 'gpc' 
-    and 'mlp' are used but this may result in longer training time.
-    
-    >>> best_model = compare_models( blacklist = [ 'knn', 'gbc' ] , turbo = False) 
-
-    This will return a comparison of all models except K Nearest Neighbour and
-    Gradient Boosting Classifier.
-    
-    >>> best_model = compare_models( blacklist = [ 'knn', 'gbc' ] , turbo = True) 
-
-    This will return comparison of all models except K Nearest Neighbour, 
-    Gradient Boosting Classifier, SVM (RBF), Gaussian Process Classifier and
-    Multi Level Perceptron.
-        
-
-    Parameters
-    ----------
-    blacklist: list of strings, default = None
-        In order to omit certain models from the comparison model ID's can be passed as 
-        a list of strings in blacklist param. 
-
-    whitelist: list of strings, default = None
-        In order to run only certain models for the comparison, the model ID's can be 
-        passed as a list of strings in whitelist param. 
-
-    fold: integer, default = 10
-        Number of folds to be used in Kfold CV. Must be at least 2. 
-
-    round: integer, default = 4
-        Number of decimal places the metrics in the score grid will be rounded to.
-  
-    sort: string, default = 'Accuracy'
-        The scoring measure specified is used for sorting the average score grid
-        Other options are 'AUC', 'Recall', 'Precision', 'F1', 'Kappa' and 'MCC'.
-
-    n_select: int, default = 1
-        Number of top_n models to return. use negative argument for bottom selection.
-        for example, n_select = -3 means bottom 3 models.
-
-    turbo: Boolean, default = True
-        When turbo is set to True, it blacklists estimators that have longer
-        training time.
-
-    verbose: Boolean, default = True
-        Score grid is not printed when verbose is set to False.
-    
-    Returns
-    -------
-    score_grid
-        A table containing the scores of the model across the kfolds. 
-        Scoring metrics used are Accuracy, AUC, Recall, Precision, F1, 
-        Kappa and MCC. Mean and standard deviation of the scores across 
-        the folds are also returned.
-
-    Warnings
-    --------
-    - compare_models() though attractive, might be time consuming with large 
-      datasets. By default turbo is set to True, which blacklists models that
-      have longer training times. Changing turbo parameter to False may result 
-      in very high training times with datasets where number of samples exceed 
-      10,000.
-      
-    - If target variable is multiclass (more than 2 classes), AUC will be 
-      returned as zero (0.0)      
-             
-    
-    """
-
-    """
-    
-    ERROR HANDLING STARTS HERE
-    
-    """
-
-    logger = get_logger()
-
-    logger.info("Initializing compare_models()")
-    logger.info(
-        """compare_models(blacklist={}, whitelist={}, fold={}, round={}, sort={}, n_select={}, turbo={}, verbose={})""".format(
-            str(blacklist),
-            str(whitelist),
-            str(fold),
-            str(round),
-            str(sort),
-            str(n_select),
-            str(turbo),
-            str(verbose),
-        )
-    )
-
-    logger.info("Checking exceptions")
-
-    # exception checking
-    import sys
-
-    # checking error for blacklist (string)
-    available_estimators = all_models.index
-
-    if blacklist != None:
-        for i in blacklist:
-            if i not in available_estimators:
-                sys.exit(
-                    f"(Value Error): Estimator Not Available {i}. Please see docstring for list of available estimators."
-                )
-
-    if whitelist != None:
-        for i in whitelist:
-            if isinstance(i, str):
-                if i not in available_estimators:
-                    sys.exit(
-                        f"(Value Error): Estimator {i} Not Available. Please see docstring for list of available estimators."
-                    )
-            elif not hasattr(i, "fit"):
-                sys.exit(
-                    f"(Value Error): Estimator {i} does not have the required fit() method."
-                )
-
-    # whitelist and blacklist together check
-    if whitelist is not None and blacklist is not None:
-        sys.exit(
-            "(Type Error): Cannot use blacklist parameter when whitelist is used to compare models."
-        )
-
-    # checking fold parameter
-    if type(fold) is not int:
-        sys.exit("(Type Error): Fold parameter only accepts integer value.")
-
-    # checking round parameter
-    if type(round) is not int:
-        sys.exit("(Type Error): Round parameter only accepts integer value.")
-
-    # checking sort parameter
-    allowed_sort = get_metrics()["Name"]
-    if sort not in allowed_sort.to_list():
-        sys.exit(
-            f"(Value Error): Sort method {sort} not supported. See docstring for list of available parameters."
-        )
-
-    # checking optimize parameter for multiclass
-    if y.value_counts().count() > 2:
-        if not all_metrics[all_metrics["Name"] == sort].iloc[0]["Multiclass"]:
-            sys.exit(
-                f"(Type Error): {sort} metric not supported for multiclass problems. See docstring for list of other optimization parameters."
-            )
-
-    """
-    
-    ERROR HANDLING ENDS HERE
-    
-    """
-
-    logger.info("Preloading libraries")
-
-    # pre-load libraries
-    import pandas as pd
-    import datetime, time
-
-    pd.set_option("display.max_columns", 500)
-
-    logger.info("Preparing display monitor")
-
-    len_mod = len(all_models[all_models["Turbo"] == True]) if turbo else len(all_models)
-
-    if whitelist:
-        len_mod = len(whitelist)
-    elif blacklist:
-        len_mod -= len(blacklist)
-
-    if not display:
-        progress_args = {"max": ((fold + 4) * len_mod) + 4 + len_mod}
-        master_display_columns = ["Model"] + all_metrics["Display Name"].to_list()
-        timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
-        monitor_rows = [
-            ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
-            ["Status", ". . . . . . . . . . . . . . . . . .", "Loading Dependencies"],
-            ["Estimator", ". . . . . . . . . . . . . . . . . .", "Compiling Library"],
-            ["ETC", ". . . . . . . . . . . . . . . . . .", "Calculating ETC"],
-        ]
-        display = Display(
-            verbose,
-            html_param,
-            progress_args,
-            master_display_columns,
-            monitor_rows,
-            logger=logger,
-        )
-
-        display.display_progress()
-        display.display_monitor()
-        display.display_master_display()
-
-    # ignore warnings
-    import warnings
-
-    warnings.filterwarnings("ignore")
-
-    # general dependencies
-    import numpy as np
-    import random
-    from sklearn import metrics
-    import pandas.io.formats.style
-
-    logger.info("Copying training dataset")
-    # defining X_train and y_train as data_X and data_y
-    data_X = X_train
-    data_y = y_train
-
-    display.move_progress()
-
-    # defining sort parameter (making Precision equivalent to Prec. )
-
-    sort = all_metrics[all_metrics["Name"] == sort].iloc[0]["Display Name"]
-
-    """
-    MONITOR UPDATE STARTS
-    """
-
-    display.update_monitor(1, "Loading Estimator")
-    display.display_monitor()
-
-    """
-    MONITOR UPDATE ENDS
-    """
-
-    models_to_check = models()
-    if turbo:
-        model_library = models_to_check[models_to_check["Turbo"] == True]
-    if blacklist:
-        model_library = models_to_check.drop(index=blacklist)
-    if whitelist:
-        model_library = [
-            models_to_check.loc[x] if isinstance(x, str) else x for x in whitelist
-        ]
-
-    display.move_progress()
-
-    # create URI (before loop)
-    import secrets
-
-    URI = secrets.token_hex(nbytes=4)
-
-    master_display = None
-
-    for i, model in enumerate(model_library):
-
-        if (
-            not hasattr(model, "estimators")
-            and not isinstance(model, str)
-            and y.value_counts().count() > 2
-        ):
-            model_name = _get_model_name(model.estimator)
-        else:
-            model_name = _get_model_name(model)
-
-        if isinstance(model, str):
-            logger.info("Initializing " + model_name)
-        else:
-            logger.info("Initializing custom model " + model_name)
-
-        # run_time
-        runtime_start = time.time()
-
-        display.move_progress()
-
-        """
-        MONITOR UPDATE STARTS
-        """
-
-        display.update_monitor(2, model_name)
-        display.update_monitor(3, "Calculating ETC")
-        display.display_monitor()
-
-        """
-        MONITOR UPDATE ENDS
-        """
-        display.replace_master_display(None)
-
-        logger.info(
-            "SubProcess create_model() called =================================="
-        )
-        model = create_model(
-            estimator=model,
-            system=False,
-            verbose=False,
-            display=display,
-            fold=fold,
-            round=round,
-        )
-        model_results = pull()
-        logger.info(
-            "SubProcess create_model() called =================================="
-        )
-
-        logger.info("Creating metrics dataframe")
-        compare_models_ = pd.DataFrame(model_results.loc["Mean"]).T
-        compare_models_.insert(0, "Model", model_name)
-        compare_models_.insert(0, "Object", [model])
-        compare_models_.insert(0, "index", [i])
-        compare_models_.set_index("index", drop=True, inplace=True)
-        if master_display is None:
-            master_display = compare_models_
-        else:
-            master_display = pd.concat(
-                [master_display, compare_models_], ignore_index=True
-            )
-        master_display = master_display.round(round)
-        master_display = master_display.sort_values(by=sort, ascending=False)
-        # master_display.reset_index(drop=True, inplace=True)
-
-        master_display_ = master_display.drop("Object", axis=1).style.set_precision(
-            round
-        )
-        master_display_ = master_display_.set_properties(**{"text-align": "left"})
-        master_display_ = master_display_.set_table_styles(
-            [dict(selector="th", props=[("text-align", "left")])]
-        )
-
-        display.replace_master_display(master_display_)
-
-        display.display_master_display()
-        # end runtime
-        runtime_end = time.time()
-        runtime = np.array(runtime_end - runtime_start).round(2)
-
-        """
-        MLflow logging starts here
-        """
-
-        if logging_param:
-
-            logger.info("Creating MLFlow logs")
-
-            import mlflow
-            from pathlib import Path
-            import os
-
-            run_name = model_name
-
-            with mlflow.start_run(run_name=run_name) as run:
-
-                # Get active run to log as tag
-                RunID = mlflow.active_run().info.run_id
-
-                params = model.get_params()
-
-                for i in list(params):
-                    v = params.get(i)
-                    if len(str(v)) > 250:
-                        params.pop(i)
-
-                mlflow.log_params(params)
-
-                # set tag of compare_models
-                mlflow.set_tag("Source", "compare_models")
-                mlflow.set_tag("URI", URI)
-                mlflow.set_tag("USI", USI)
-                mlflow.set_tag("Run Time", runtime)
-                mlflow.set_tag("Run ID", RunID)
-
-                # Log top model metrics
-                mlflow.log_metrics(
-                    {
-                        k: v
-                        for k, v in master_display.drop(
-                            ["Object", "Model", "TT (Sec)"], axis=1
-                        )
-                        .iloc[0]
-                        .items()
-                    }
-                )
-
-                # Log model and transformation pipeline
-                from copy import deepcopy
-
-                # get default conda env
-                from mlflow.sklearn import get_default_conda_env
-
-                default_conda_env = get_default_conda_env()
-                default_conda_env["name"] = str(exp_name_log) + "-env"
-                default_conda_env.get("dependencies").pop(-3)
-                dependencies = default_conda_env.get("dependencies")[-1]
-                from pycaret.utils import __version__
-
-                dep = "pycaret==" + str(__version__())
-                dependencies["pip"] = [dep]
-
-                # define model signature
-                from mlflow.models.signature import infer_signature
-
-                signature = infer_signature(
-                    data_before_preprocess.drop([target_param], axis=1)
-                )
-                input_example = (
-                    data_before_preprocess.drop([target_param], axis=1)
-                    .iloc[0]
-                    .to_dict()
-                )
-
-                # log model as sklearn flavor
-                prep_pipe_temp = deepcopy(prep_pipe)
-                prep_pipe_temp.steps.append(["trained model", model])
-                mlflow.sklearn.log_model(
-                    prep_pipe_temp,
-                    "model",
-                    conda_env=default_conda_env,
-                    signature=signature,
-                    input_example=input_example,
-                )
-                del prep_pipe_temp
-
-    display.move_progress()
-
-    def highlight_max(s):
-        to_highlight = s == s.max()
-        return ["background-color: yellow" if v else "" for v in to_highlight]
-
-    def highlight_cols(s):
-        color = "lightgrey"
-        return "background-color: %s" % color
-
-    if y.value_counts().count() > 2:
-
-        compare_models_ = (
-            master_display.drop("Object", axis=1)
-            .style.apply(
-                highlight_max,
-                subset=["Accuracy", "Recall", "Prec.", "F1", "Kappa", "MCC"],
-            )
-            .applymap(highlight_cols, subset=["TT (Sec)"])
-        )
-    else:
-
-        compare_models_ = (
-            master_display.drop("Object", axis=1)
-            .style.apply(
-                highlight_max,
-                subset=["Accuracy", "AUC", "Recall", "Prec.", "F1", "Kappa", "MCC"],
-            )
-            .applymap(highlight_cols, subset=["TT (Sec)"])
-        )
-
-    compare_models_ = compare_models_.set_precision(round)
-    compare_models_ = compare_models_.set_properties(**{"text-align": "left"})
-    compare_models_ = compare_models_.set_table_styles(
-        [dict(selector="th", props=[("text-align", "left")])]
-    )
-
-    display.move_progress()
-
-    display.update_monitor(1, "Compiling Final Model")
-    display.update_monitor(3, "Almost Finished")
-    display.display_monitor()
-
-    sorted_models = master_display["Object"].to_list()
-    if n_select < 0:
-        sorted_models = sorted_models[n_select:]
-    else:
-        sorted_models = sorted_models[:n_select]
-
-    if len(sorted_models) == 1:
-        sorted_models = sorted_models[0]
-
-    display.display(compare_models_, clear=True)
-
-    pd.reset_option("display.max_columns")
-
-    # store in display container
-    display_container.append(compare_models_.data)
-
-    logger.info("create_model_container: " + str(len(create_model_container)))
-    logger.info("master_model_container: " + str(len(master_model_container)))
-    logger.info("display_container: " + str(len(display_container)))
-
-    logger.info(str(sorted_models))
-    logger.info(
-        "compare_models() succesfully completed......................................"
-    )
-
-    return sorted_models
-
-
 def tune_model(
     estimator=None,
     fold=10,
@@ -5015,6 +3790,513 @@ def tune_model(
     )
 
     return best_model
+
+
+def ensemble_model(
+    estimator,
+    method="Bagging",
+    fold=10,
+    n_estimators=10,
+    round=4,
+    choose_better=False,  # added in pycaret==2.0.0
+    optimize="Accuracy",  # added in pycaret==2.0.0
+    verbose=True,
+    display=None,
+):
+    """
+    This function ensembles the trained base estimator using the method defined in 
+    'method' param (default = 'Bagging'). The output prints a score grid that shows 
+    Accuracy, AUC, Recall, Precision, F1, Kappa and MCC by fold (default = 10 Fold). 
+
+    This function returns a trained model object.  
+
+    Model must be created using create_model() or tune_model().
+
+    Example
+    -------
+    >>> from pycaret.datasets import get_data
+    >>> juice = get_data('juice')
+    >>> experiment_name = setup(data = juice,  target = 'Purchase')
+    >>> dt = create_model('dt')
+    >>> ensembled_dt = ensemble_model(dt)
+
+    This will return an ensembled Decision Tree model using 'Bagging'.
+    
+    Parameters
+    ----------
+    estimator : object, default = None
+
+    method: String, default = 'Bagging'
+        Bagging method will create an ensemble meta-estimator that fits base 
+        classifiers each on random subsets of the original dataset. The other
+        available method is 'Boosting' which will create a meta-estimators by
+        fitting a classifier on the original dataset and then fits additional 
+        copies of the classifier on the same dataset but where the weights of 
+        incorrectly classified instances are adjusted such that subsequent 
+        classifiers focus more on difficult cases.
+    
+    fold: integer, default = 10
+        Number of folds to be used in Kfold CV. Must be at least 2.
+    
+    n_estimators: integer, default = 10
+        The number of base estimators in the ensemble.
+        In case of perfect fit, the learning procedure is stopped early.
+
+    round: integer, default = 4
+        Number of decimal places the metrics in the score grid will be rounded to.
+
+    choose_better: Boolean, default = False
+        When set to set to True, base estimator is returned when the metric doesn't 
+        improve by ensemble_model. This gurantees the returned object would perform 
+        atleast equivalent to base estimator created using create_model or model 
+        returned by compare_models.
+
+    optimize: string, default = 'Accuracy'
+        Only used when choose_better is set to True. optimize parameter is used
+        to compare emsembled model with base estimator. Values accepted in 
+        optimize parameter are 'Accuracy', 'AUC', 'Recall', 'Precision', 'F1', 
+        'Kappa', 'MCC'.
+
+    verbose: Boolean, default = True
+        Score grid is not printed when verbose is set to False.
+
+    Returns
+    -------
+    score_grid
+        A table containing the scores of the model across the kfolds. 
+        Scoring metrics used are Accuracy, AUC, Recall, Precision, F1, 
+        Kappa and MCC. Mean and standard deviation of the scores across 
+        the folds are also returned.
+
+    model
+        Trained ensembled model object.
+
+    Warnings
+    --------  
+    - If target variable is multiclass (more than 2 classes), AUC will be returned 
+      as zero (0.0).
+        
+    
+    """
+
+    """
+    
+    ERROR HANDLING STARTS HERE
+    
+    """
+
+    logger = get_logger()
+
+    logger.info("Initializing ensemble_model()")
+    logger.info(
+        """ensemble_model(estimator={}, method={}, fold={}, n_estimators={}, round={}, choose_better={}, optimize={}, verbose={})""".format(
+            str(estimator),
+            str(method),
+            str(fold),
+            str(n_estimators),
+            str(round),
+            str(choose_better),
+            str(optimize),
+            str(verbose),
+        )
+    )
+
+    logger.info("Checking exceptions")
+
+    # exception checking
+    import sys
+
+    # run_time
+    import datetime, time
+
+    runtime_start = time.time()
+
+    # Check for estimator
+    if not hasattr(estimator, "fit"):
+        sys.exit(
+            f"(Value Error): Estimator {estimator} does not have the required fit() method."
+        )
+
+    # Check for allowed method
+    available_method = ["Bagging", "Boosting"]
+    if method not in available_method:
+        sys.exit(
+            "(Value Error): Method parameter only accepts two values 'Bagging' or 'Boosting'."
+        )
+
+    # check boosting conflict
+    if method == "Boosting":
+
+        boosting_model_definition = _all_models_internal.loc["ada"]
+
+        check_model = estimator
+
+        try:
+            if y.value_counts().count() > 2:
+                check_model = check_model.estimator
+                check_model = boosting_model_definition["Class"](
+                    check_model,
+                    n_estimators=n_estimators,
+                    **boosting_model_definition["Args"],
+                )
+                onevsrest_model_definition = _all_models_internal.loc["OneVsRest"]
+                check_model = onevsrest_model_definition["Class"](
+                    model, **onevsrest_model_definition["Args"]
+                )
+
+            else:
+                check_model = boosting_model_definition["Class"](
+                    check_model,
+                    n_estimators=n_estimators,
+                    **boosting_model_definition["Args"],
+                )
+
+            check_model.fit(X_train, y_train)
+        except:
+            sys.exit(
+                "(Type Error): Estimator does not provide class_weights or predict_proba function and hence not supported for the Boosting method. Change the estimator or method to 'Bagging'."
+            )
+
+    # checking fold parameter
+    if type(fold) is not int:
+        sys.exit("(Type Error): Fold parameter only accepts integer value.")
+
+    # checking n_estimators parameter
+    if type(n_estimators) is not int:
+        sys.exit("(Type Error): n_estimators parameter only accepts integer value.")
+
+    # checking round parameter
+    if type(round) is not int:
+        sys.exit("(Type Error): Round parameter only accepts integer value.")
+
+    # checking verbose parameter
+    if type(verbose) is not bool:
+        sys.exit(
+            "(Type Error): Verbose parameter can only take argument as True or False."
+        )
+
+    # checking optimize parameter
+    allowed_optimize = get_metrics()["Name"]
+    if optimize not in allowed_optimize.to_list():
+        sys.exit(
+            f"(Value Error): Optimize method {optimize} not supported. See docstring for list of available parameters."
+        )
+
+    # checking optimize parameter for multiclass
+    if y.value_counts().count() > 2:
+        if not all_metrics[all_metrics["Name"] == optimize].iloc[0]["Multiclass"]:
+            sys.exit(
+                f"(Type Error): Optimization metric {optimize} not supported for multiclass problems. See docstring for list of other optimization parameters."
+            )
+
+    """
+    
+    ERROR HANDLING ENDS HERE
+    
+    """
+
+    logger.info("Preloading libraries")
+
+    # pre-load libraries
+    import pandas as pd
+
+    if not display:
+        progress_args = {"max": fold + 2 + 4}
+        master_display_columns = all_metrics["Display Name"].to_list()
+        timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
+        monitor_rows = [
+            ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
+            ["Status", ". . . . . . . . . . . . . . . . . .", "Loading Dependencies"],
+            ["ETC", ". . . . . . . . . . . . . . . . . .", "Calculating ETC"],
+        ]
+        display = Display(
+            verbose,
+            html_param,
+            progress_args,
+            master_display_columns,
+            monitor_rows,
+            logger=logger,
+        )
+
+        display.display_progress()
+        display.display_monitor()
+        display.display_master_display()
+
+    logger.info("Importing libraries")
+
+    # dependencies
+    import numpy as np
+    from sklearn import metrics
+    from sklearn.model_selection import StratifiedKFold
+
+    # ignore warnings
+    import warnings
+
+    warnings.filterwarnings("ignore")
+
+    logger.info("Copying training dataset")
+
+    # Storing X_train and y_train in data_X and data_y parameter
+    data_X = X_train.copy()
+    data_y = y_train.copy()
+
+    # reset index
+    data_X.reset_index(drop=True, inplace=True)
+    data_y.reset_index(drop=True, inplace=True)
+
+    display.move_progress()
+
+    # setting numpy seed
+    np.random.seed(seed)
+
+    # setting optimize parameter
+
+    optimize = all_metrics[all_metrics["Name"] == optimize].iloc[0]
+    compare_dimension = optimize["Display Name"]
+    optimize = optimize["SearchCV Param"]
+
+    logger.info("Checking base model")
+
+    _estimator_ = estimator
+
+    if y.value_counts().count() > 2:
+        estimator = _get_model_id(estimator.estimator)
+    else:
+        estimator = _get_model_id(estimator)
+
+    estimator_definition = _all_models_internal.loc[estimator]
+    estimator_name = estimator_definition["Name"]
+    logger.info(f"Base model : {estimator_name}")
+
+    """
+    MONITOR UPDATE STARTS
+    """
+
+    display.update_monitor(1, "Selecting Estimator")
+    display.display_monitor()
+
+    """
+    MONITOR UPDATE ENDS
+    """
+
+    model = _estimator_
+    if y.value_counts().count() > 2:
+        model = model.estimator
+
+    logger.info("Importing untrained ensembler")
+
+    if method == "Bagging":
+        logger.info("Ensemble method set to Bagging")
+        bagging_model_definition = _all_models_internal.loc["Bagging"]
+
+        model = bagging_model_definition["Class"](
+            model,
+            bootstrap=True,
+            n_estimators=n_estimators,
+            **bagging_model_definition["Args"],
+        )
+
+    else:
+        logger.info("Ensemble method set to Boosting")
+        boosting_model_definition = _all_models_internal.loc["ada"]
+        model = boosting_model_definition["Class"](
+            model, n_estimators=n_estimators, **boosting_model_definition["Args"]
+        )
+
+    onevsrest_model_definition = _all_models_internal.loc["OneVsRest"]
+    # multiclass checking
+    if (
+        y.value_counts().count() > 2
+        and not type(model) is onevsrest_model_definition["Class"]
+    ):
+        logger.info("Target variable is Multiclass. OneVsRestClassifier activated")
+
+        model = onevsrest_model_definition["Class"](
+            model, **onevsrest_model_definition["Args"]
+        )
+
+    display.move_progress()
+
+    logger.info("SubProcess create_model() called ==================================")
+    model, model_fit_time = create_model(
+        estimator=model,
+        system=False,
+        return_fit_time=True,
+        display=display,
+        fold=fold,
+        round=round,
+    )
+    best_model = model
+    model_results = pull()
+    logger.info("SubProcess create_model() called ==================================")
+
+    if choose_better:
+        model = _choose_better(
+            estimator, _estimator_, best_model, compare_dimension, fold, display
+        )
+
+    # end runtime
+    runtime_end = time.time()
+    runtime = np.array(runtime_end - runtime_start).round(2)
+
+    if logging_param:
+
+        logger.info("Creating MLFlow logs")
+
+        # Creating Logs message monitor
+        display.update_monitor(1, "Creating Logs")
+        display.update_monitor(2, "Almost Finished")
+        display.display_monitor()
+
+        import mlflow
+        from pathlib import Path
+        import os
+
+        mlflow.set_experiment(exp_name_log)
+        full_name = estimator_name
+
+        with mlflow.start_run(run_name=full_name) as run:
+
+            # Get active run to log as tag
+            RunID = mlflow.active_run().info.run_id
+
+            params = model.get_params()
+
+            for i in list(params):
+                v = params.get(i)
+                if len(str(v)) > 250:
+                    params.pop(i)
+
+            mlflow.log_params(params)
+            mlflow.log_metrics(
+                {
+                    k: v
+                    for k, v in model_results.drop("TT (Sec)", axis=1)
+                    .loc["Mean"]
+                    .items()
+                }
+            )
+
+            # set tag of compare_models
+            mlflow.set_tag("Source", "ensemble_model")
+
+            import secrets
+
+            URI = secrets.token_hex(nbytes=4)
+            mlflow.set_tag("URI", URI)
+            mlflow.set_tag("USI", USI)
+            mlflow.set_tag("Run Time", runtime)
+            mlflow.set_tag("Run ID", RunID)
+
+            # Log training time in seconds
+            mlflow.log_metric("TT", model_fit_time)
+
+            # Generate hold-out predictions and save as html
+            holdout = predict_model(model, verbose=False)
+            holdout_score = pull()
+            del holdout
+            display_container.pop(-1)
+            holdout_score.to_html("Holdout.html", col_space=65, justify="left")
+            mlflow.log_artifact("Holdout.html")
+            os.remove("Holdout.html")
+
+            # Log AUC and Confusion Matrix plot
+            if log_plots_param:
+
+                logger.info(
+                    "SubProcess plot_model() called =================================="
+                )
+
+                try:
+                    plot_model(
+                        model, plot="auc", verbose=False, save=True, system=False
+                    )
+                    mlflow.log_artifact("AUC.png")
+                    os.remove("AUC.png")
+                except:
+                    pass
+
+                try:
+                    plot_model(
+                        model,
+                        plot="confusion_matrix",
+                        verbose=False,
+                        save=True,
+                        system=False,
+                    )
+                    mlflow.log_artifact("Confusion Matrix.png")
+                    os.remove("Confusion Matrix.png")
+                except:
+                    pass
+
+                try:
+                    plot_model(
+                        model, plot="feature", verbose=False, save=True, system=False
+                    )
+                    mlflow.log_artifact("Feature Importance.png")
+                    os.remove("Feature Importance.png")
+                except:
+                    pass
+
+                logger.info(
+                    "SubProcess plot_model() end =================================="
+                )
+
+            # Log the CV results as model_results.html artifact
+            model_results.to_html("Results.html", col_space=65, justify="left")
+            mlflow.log_artifact("Results.html")
+            os.remove("Results.html")
+
+            # Log model and transformation pipeline
+            from copy import deepcopy
+
+            # get default conda env
+            from mlflow.sklearn import get_default_conda_env
+
+            default_conda_env = get_default_conda_env()
+            default_conda_env["name"] = str(exp_name_log) + "-env"
+            default_conda_env.get("dependencies").pop(-3)
+            dependencies = default_conda_env.get("dependencies")[-1]
+            from pycaret.utils import __version__
+
+            dep = "pycaret==" + str(__version__())
+            dependencies["pip"] = [dep]
+
+            # define model signature
+            from mlflow.models.signature import infer_signature
+
+            signature = infer_signature(
+                data_before_preprocess.drop([target_param], axis=1)
+            )
+            input_example = (
+                data_before_preprocess.drop([target_param], axis=1).iloc[0].to_dict()
+            )
+
+            # log model as sklearn flavor
+            prep_pipe_temp = deepcopy(prep_pipe)
+            prep_pipe_temp.steps.append(["trained model", model])
+            mlflow.sklearn.log_model(
+                prep_pipe_temp,
+                "model",
+                conda_env=default_conda_env,
+                signature=signature,
+                input_example=input_example,
+            )
+            del prep_pipe_temp
+
+    model_results = color_df(model_results, "yellow", ["Mean"], axis=1)
+    display.display(model_results, clear=True)
+
+    logger.info("create_model_container: " + str(len(create_model_container)))
+    logger.info("master_model_container: " + str(len(master_model_container)))
+    logger.info("display_container: " + str(len(display_container)))
+
+    logger.info(str(model))
+    logger.info(
+        "ensemble_model() succesfully completed......................................"
+    )
+
+    return model
 
 
 def blend_models(
@@ -5984,6 +5266,790 @@ def stack_models(
     )
 
     return model
+
+
+def plot_model(
+    estimator,
+    plot="auc",
+    save=False,  # added in pycaret 2.0.0
+    verbose=True,  # added in pycaret 2.0.0
+    system=True,
+    display=None,
+):  # added in pycaret 2.0.0
+
+    """
+    This function takes a trained model object and returns a plot based on the
+    test / hold-out set. The process may require the model to be re-trained in
+    certain cases. See list of plots supported below. 
+    
+    Model must be created using create_model() or tune_model().
+
+    Example
+    -------
+    >>> from pycaret.datasets import get_data
+    >>> juice = get_data('juice')
+    >>> experiment_name = setup(data = juice,  target = 'Purchase')
+    >>> lr = create_model('lr')
+    >>> plot_model(lr)
+
+    This will return an AUC plot of a trained Logistic Regression model.
+
+    Parameters
+    ----------
+    estimator : object, default = none
+        A trained model object should be passed as an estimator. 
+
+    plot : string, default = auc
+        Enter abbreviation of type of plot. The current list of plots supported are (Plot - Name):
+
+        * 'auc' - Area Under the Curve                 
+        * 'threshold' - Discrimination Threshold           
+        * 'pr' - Precision Recall Curve                  
+        * 'confusion_matrix' - Confusion Matrix    
+        * 'error' - Class Prediction Error                
+        * 'class_report' - Classification Report        
+        * 'boundary' - Decision Boundary            
+        * 'rfe' - Recursive Feature Selection                 
+        * 'learning' - Learning Curve             
+        * 'manifold' - Manifold Learning            
+        * 'calibration' - Calibration Curve         
+        * 'vc' - Validation Curve                  
+        * 'dimension' - Dimension Learning           
+        * 'feature' - Feature Importance              
+        * 'parameter' - Model Hyperparameter          
+
+    save: Boolean, default = False
+        When set to True, Plot is saved as a 'png' file in current working directory.
+
+    verbose: Boolean, default = True
+        Progress bar not shown when verbose set to False. 
+
+    system: Boolean, default = True
+        Must remain True all times. Only to be changed by internal functions.
+
+    Returns
+    -------
+    Visual_Plot
+        Prints the visual plot. 
+
+    Warnings
+    --------
+    -  'svm' and 'ridge' doesn't support the predict_proba method. As such, AUC and 
+        calibration plots are not available for these estimators.
+       
+    -   When the 'max_features' parameter of a trained model object is not equal to 
+        the number of samples in training set, the 'rfe' plot is not available.
+              
+    -   'calibration', 'threshold', 'manifold' and 'rfe' plots are not available for
+         multiclass problems.
+                
+
+    """
+
+    """
+    
+    ERROR HANDLING STARTS HERE
+    
+    """
+
+    # exception checking
+    import sys
+
+    logger = get_logger()
+
+    logger.info("Initializing plot_model()")
+    logger.info(
+        """plot_model(estimator={}, plot={}, save={}, verbose={}, system={})""".format(
+            str(estimator), str(plot), str(save), str(verbose), str(system)
+        )
+    )
+
+    logger.info("Checking exceptions")
+
+    # checking plots (string)
+    available_plots = [
+        "auc",
+        "threshold",
+        "pr",
+        "confusion_matrix",
+        "error",
+        "class_report",
+        "boundary",
+        "rfe",
+        "learning",
+        "manifold",
+        "calibration",
+        "vc",
+        "dimension",
+        "feature",
+        "parameter",
+    ]
+
+    if plot not in available_plots:
+        sys.exit(
+            "(Value Error): Plot Not Available. Please see docstring for list of available Plots."
+        )
+
+    # multiclass plot exceptions:
+    multiclass_not_available = ["calibration", "threshold", "manifold", "rfe"]
+    if y.value_counts().count() > 2:
+        if plot in multiclass_not_available:
+            sys.exit(
+                "(Value Error): Plot Not Available for multiclass problems. Please see docstring for list of available Plots."
+            )
+
+    # exception for CatBoost
+    if "CatBoostClassifier" in str(type(estimator)):
+        sys.exit(
+            "(Estimator Error): CatBoost estimator is not compatible with plot_model function, try using Catboost with interpret_model instead."
+        )
+
+    # checking for auc plot
+    if not hasattr(estimator, "predict_proba") and plot == "auc":
+        sys.exit(
+            "(Type Error): AUC plot not available for estimators with no predict_proba attribute."
+        )
+
+    # checking for auc plot
+    if not hasattr(estimator, "predict_proba") and plot == "auc":
+        sys.exit(
+            "(Type Error): AUC plot not available for estimators with no predict_proba attribute."
+        )
+
+    # checking for calibration plot
+    if not hasattr(estimator, "predict_proba") and plot == "calibration":
+        sys.exit(
+            "(Type Error): Calibration plot not available for estimators with no predict_proba attribute."
+        )
+
+    # checking for rfe
+    if (
+        hasattr(estimator, "max_features")
+        and plot == "rfe"
+        and estimator.max_features_ != X_train.shape[1]
+    ):
+        sys.exit(
+            "(Type Error): RFE plot not available when max_features parameter is not set to None."
+        )
+
+    # checking for feature plot
+    if (
+        not (hasattr(estimator, "coef_") or hasattr(estimator, "feature_importances_"))
+        and plot == "feature"
+    ):
+        sys.exit(
+            "(Type Error): Feature Importance plot not available for estimators that doesnt support coef_ or feature_importances_ attribute."
+        )
+
+    """
+    
+    ERROR HANDLING ENDS HERE
+    
+    """
+
+    logger.info("Preloading libraries")
+    # pre-load libraries
+    import pandas as pd
+
+    if not display:
+        progress_args = {"max": 5}
+        display = Display(
+            verbose, html_param, progress_args, None, None, logger=logger,
+        )
+        display.display_progress()
+
+    # ignore warnings
+    import warnings
+
+    warnings.filterwarnings("ignore")
+
+    logger.info("Importing libraries")
+    # general dependencies
+    import matplotlib.pyplot as plt
+    import numpy as np
+    import pandas as pd
+
+    display.move_progress()
+
+    # defining estimator as model locally
+    model = estimator
+
+    display.move_progress()
+
+    # plots used for logging (controlled through plots_log_param)
+    # AUC, #Confusion Matrix and #Feature Importance
+
+    logger.info("plot type: " + str(plot))
+
+    if plot == "auc":
+
+        from yellowbrick.classifier import ROCAUC
+
+        display.move_progress()
+        visualizer = ROCAUC(model)
+        logger.info("Fitting Model")
+        visualizer.fit(X_train, y_train)
+        display.move_progress()
+        logger.info("Scoring test/hold-out set")
+        visualizer.score(X_test, y_test)
+        display.move_progress()
+        clear_output()
+        if save:
+            logger.info("Saving 'AUC.png' in current active directory")
+            if system:
+                visualizer.show(outpath="AUC.png")
+            else:
+                visualizer.show(outpath="AUC.png", clear_figure=True)
+        else:
+            visualizer.show()
+
+        logger.info("Visual Rendered Successfully")
+
+    elif plot == "threshold":
+
+        from yellowbrick.classifier import DiscriminationThreshold
+
+        display.move_progress()
+        visualizer = DiscriminationThreshold(model, random_state=seed)
+        logger.info("Fitting Model")
+        visualizer.fit(X_train, y_train)
+        display.move_progress()
+        logger.info("Scoring test/hold-out set")
+        visualizer.score(X_test, y_test)
+        display.move_progress()
+        clear_output()
+        if save:
+            logger.info("Saving 'Threshold Curve.png' in current active directory")
+            if system:
+                visualizer.show(outpath="Threshold Curve.png")
+            else:
+                visualizer.show(outpath="Threshold Curve.png", clear_figure=True)
+        else:
+            visualizer.show()
+
+        logger.info("Visual Rendered Successfully")
+
+    elif plot == "pr":
+
+        from yellowbrick.classifier import PrecisionRecallCurve
+
+        display.move_progress()
+        visualizer = PrecisionRecallCurve(model, random_state=seed)
+        logger.info("Fitting Model")
+        visualizer.fit(X_train, y_train)
+        display.move_progress()
+        logger.info("Scoring test/hold-out set")
+        visualizer.score(X_test, y_test)
+        display.move_progress()
+        clear_output()
+        if save:
+            logger.info("Saving 'Precision Recall.png' in current active directory")
+            if system:
+                visualizer.show(outpath="Precision Recall.png")
+            else:
+                visualizer.show(outpath="Precision Recall.png", clear_figure=True)
+        else:
+            visualizer.show()
+
+        logger.info("Visual Rendered Successfully")
+
+    elif plot == "confusion_matrix":
+
+        from yellowbrick.classifier import ConfusionMatrix
+
+        display.move_progress()
+        visualizer = ConfusionMatrix(
+            model, random_state=seed, fontsize=15, cmap="Greens"
+        )
+        logger.info("Fitting Model")
+        visualizer.fit(X_train, y_train)
+        display.move_progress()
+        logger.info("Scoring test/hold-out set")
+        visualizer.score(X_test, y_test)
+        display.move_progress()
+        clear_output()
+        if save:
+            logger.info("Saving 'Confusion Matrix.png' in current active directory")
+            if system:
+                visualizer.show(outpath="Confusion Matrix.png")
+            else:
+                visualizer.show(outpath="Confusion Matrix.png", clear_figure=True)
+        else:
+            visualizer.show()
+
+        logger.info("Visual Rendered Successfully")
+
+    elif plot == "error":
+
+        from yellowbrick.classifier import ClassPredictionError
+
+        display.move_progress()
+        visualizer = ClassPredictionError(model, random_state=seed)
+        logger.info("Fitting Model")
+        visualizer.fit(X_train, y_train)
+        display.move_progress()
+        logger.info("Scoring test/hold-out set")
+        visualizer.score(X_test, y_test)
+        display.move_progress()
+        clear_output()
+        if save:
+            logger.info(
+                "Saving 'Class Prediction Error.png' in current active directory"
+            )
+            if system:
+                visualizer.show(outpath="Class Prediction Error.png")
+            else:
+                visualizer.show(outpath="Class Prediction Error.png", clear_figure=True)
+        else:
+            visualizer.show()
+
+        logger.info("Visual Rendered Successfully")
+
+    elif plot == "class_report":
+
+        from yellowbrick.classifier import ClassificationReport
+
+        display.move_progress()
+        visualizer = ClassificationReport(model, random_state=seed, support=True)
+        logger.info("Fitting Model")
+        visualizer.fit(X_train, y_train)
+        display.move_progress()
+        logger.info("Scoring test/hold-out set")
+        visualizer.score(X_test, y_test)
+        display.move_progress()
+        clear_output()
+        if save:
+            logger.info(
+                "Saving 'Classification Report.png' in current active directory"
+            )
+            if system:
+                visualizer.show(outpath="Classification Report.png")
+            else:
+                visualizer.show(outpath="Classification Report.png", clear_figure=True)
+        else:
+            visualizer.show()
+
+        logger.info("Visual Rendered Successfully")
+
+    elif plot == "boundary":
+
+        from sklearn.preprocessing import StandardScaler
+        from sklearn.decomposition import PCA
+        from yellowbrick.contrib.classifier import DecisionViz
+        from copy import deepcopy
+
+        model2 = deepcopy(estimator)
+
+        display.move_progress()
+
+        X_train_transformed = X_train.copy()
+        X_test_transformed = X_test.copy()
+        X_train_transformed = X_train_transformed.select_dtypes(include="float64")
+        X_test_transformed = X_test_transformed.select_dtypes(include="float64")
+        logger.info("Fitting StandardScaler()")
+        X_train_transformed = StandardScaler().fit_transform(X_train_transformed)
+        X_test_transformed = StandardScaler().fit_transform(X_test_transformed)
+        pca = PCA(n_components=2, random_state=seed)
+        logger.info("Fitting PCA()")
+        X_train_transformed = pca.fit_transform(X_train_transformed)
+        X_test_transformed = pca.fit_transform(X_test_transformed)
+
+        display.move_progress()
+
+        y_train_transformed = y_train.copy()
+        y_test_transformed = y_test.copy()
+        y_train_transformed = np.array(y_train_transformed)
+        y_test_transformed = np.array(y_test_transformed)
+
+        viz_ = DecisionViz(model2)
+        logger.info("Fitting Model")
+        viz_.fit(
+            X_train_transformed,
+            y_train_transformed,
+            features=["Feature One", "Feature Two"],
+            classes=["A", "B"],
+        )
+        viz_.draw(X_test_transformed, y_test_transformed)
+        display.move_progress()
+        clear_output()
+        if save:
+            logger.info("Saving 'Decision Boundary.png' in current active directory")
+            if system:
+                viz_.show(outpath="Decision Boundary.png")
+            else:
+                viz_.show(outpath="Decision Boundary.png", clear_figure=True)
+        else:
+            viz_.show()
+
+        logger.info("Visual Rendered Successfully")
+
+    elif plot == "rfe":
+
+        from yellowbrick.model_selection import RFECV
+
+        display.move_progress()
+        visualizer = RFECV(model, cv=10)
+        display.move_progress()
+        logger.info("Fitting Model")
+        visualizer.fit(X_train, y_train)
+        display.move_progress()
+        clear_output()
+        if save:
+            logger.info(
+                "Saving 'Recursive Feature Selection.png' in current active directory"
+            )
+            if system:
+                visualizer.show(outpath="Recursive Feature Selection.png")
+            else:
+                visualizer.show(
+                    outpath="Recursive Feature Selection.png", clear_figure=True
+                )
+        else:
+            visualizer.show()
+
+        logger.info("Visual Rendered Successfully")
+
+    elif plot == "learning":
+
+        from yellowbrick.model_selection import LearningCurve
+
+        display.move_progress()
+        sizes = np.linspace(0.3, 1.0, 10)
+        visualizer = LearningCurve(
+            model, cv=10, train_sizes=sizes, n_jobs=n_jobs_param, random_state=seed
+        )
+        display.move_progress()
+        logger.info("Fitting Model")
+        visualizer.fit(X_train, y_train)
+        display.move_progress()
+        clear_output()
+        if save:
+            logger.info("Saving 'Learning Curve.png' in current active directory")
+            if system:
+                visualizer.show(outpath="Learning Curve.png")
+            else:
+                visualizer.show(outpath="Learning Curve.png", clear_figure=True)
+        else:
+            visualizer.show()
+
+        logger.info("Visual Rendered Successfully")
+
+    elif plot == "manifold":
+
+        from yellowbrick.features import Manifold
+
+        display.move_progress()
+        X_train_transformed = X_train.select_dtypes(include="float64")
+        visualizer = Manifold(manifold="tsne", random_state=seed)
+        display.move_progress()
+        logger.info("Fitting Model")
+        visualizer.fit_transform(X_train_transformed, y_train)
+        display.move_progress()
+        clear_output()
+        if save:
+            logger.info("Saving 'Manifold Plot.png' in current active directory")
+            if system:
+                visualizer.show(outpath="Manifold Plot.png")
+            else:
+                visualizer.show(outpath="Manifold Plot.png", clear_figure=True)
+        else:
+            visualizer.show()
+
+        logger.info("Visual Rendered Successfully")
+
+    elif plot == "calibration":
+
+        from sklearn.calibration import calibration_curve
+
+        model_name = str(model).split("(")[0]
+
+        plt.figure(figsize=(7, 6))
+        ax1 = plt.subplot2grid((3, 1), (0, 0), rowspan=2)
+
+        ax1.plot([0, 1], [0, 1], "k:", label="Perfectly calibrated")
+        display.move_progress()
+        logger.info("Scoring test/hold-out set")
+        prob_pos = model.predict_proba(X_test)[:, 1]
+        prob_pos = (prob_pos - prob_pos.min()) / (prob_pos.max() - prob_pos.min())
+        fraction_of_positives, mean_predicted_value = calibration_curve(
+            y_test, prob_pos, n_bins=10
+        )
+        display.move_progress()
+        ax1.plot(
+            mean_predicted_value,
+            fraction_of_positives,
+            "s-",
+            label="%s" % (model_name,),
+        )
+
+        ax1.set_ylabel("Fraction of positives")
+        ax1.set_ylim([0, 1])
+        ax1.set_xlim([0, 1])
+        ax1.legend(loc="lower right")
+        ax1.set_title("Calibration plots  (reliability curve)")
+        ax1.set_facecolor("white")
+        ax1.grid(b=True, color="grey", linewidth=0.5, linestyle="-")
+        plt.tight_layout()
+        display.move_progress()
+        clear_output()
+        if save:
+            logger.info("Saving 'Calibration Plot.png' in current active directory")
+            if system:
+                plt.savefig("Calibration Plot.png")
+            else:
+                plt.show()
+        else:
+            plt.show()
+
+        logger.info("Visual Rendered Successfully")
+
+    elif plot == "vc":
+
+        model_name = str(model).split("(")[0]
+
+        logger.info("Determining param_name")
+
+        # SGD Classifier
+        if model_name == "SGDClassifier":
+            param_name = "l1_ratio"
+            param_range = np.arange(0, 1, 0.01)
+
+        elif model_name == "LinearDiscriminantAnalysis":
+            sys.exit(
+                "(Value Error): Shrinkage Parameter not supported in Validation Curve Plot."
+            )
+
+        # tree based models
+        elif hasattr(model, "max_depth"):
+            param_name = "max_depth"
+            param_range = np.arange(1, 11)
+
+        # knn
+        elif hasattr(model, "n_neighbors"):
+            param_name = "n_neighbors"
+            param_range = np.arange(1, 11)
+
+        # MLP / Ridge
+        elif hasattr(model, "alpha"):
+            param_name = "alpha"
+            param_range = np.arange(0, 1, 0.1)
+
+        # Logistic Regression
+        elif hasattr(model, "C"):
+            param_name = "C"
+            param_range = np.arange(1, 11)
+
+        # Bagging / Boosting
+        elif hasattr(model, "n_estimators"):
+            param_name = "n_estimators"
+            param_range = np.arange(1, 100, 10)
+
+        # Bagging / Boosting / gbc / ada /
+        elif hasattr(model, "n_estimators"):
+            param_name = "n_estimators"
+            param_range = np.arange(1, 100, 10)
+
+        # Naive Bayes
+        elif hasattr(model, "var_smoothing"):
+            param_name = "var_smoothing"
+            param_range = np.arange(0.1, 1, 0.01)
+
+        # QDA
+        elif hasattr(model, "reg_param"):
+            param_name = "reg_param"
+            param_range = np.arange(0, 1, 0.1)
+
+        # GPC
+        elif hasattr(model, "max_iter_predict"):
+            param_name = "max_iter_predict"
+            param_range = np.arange(100, 1000, 100)
+
+        else:
+            clear_output()
+            sys.exit(
+                "(Type Error): Plot not supported for this estimator. Try different estimator."
+            )
+
+        logger.info("param_name: " + str(param_name))
+
+        display.move_progress()
+
+        from yellowbrick.model_selection import ValidationCurve
+
+        viz = ValidationCurve(
+            model,
+            param_name=param_name,
+            param_range=param_range,
+            cv=10,
+            random_state=seed,
+        )
+        logger.info("Fitting Model")
+        viz.fit(X_train, y_train)
+        display.move_progress()
+        clear_output()
+        if save:
+            logger.info("Saving 'Validation Curve.png' in current active directory")
+            if system:
+                viz.show(outpath="Validation Curve.png")
+            else:
+                viz.show(outpath="Validation Curve.png", clear_figure=True)
+        else:
+            viz.show()
+
+        logger.info("Visual Rendered Successfully")
+
+    elif plot == "dimension":
+
+        from yellowbrick.features import RadViz
+        from sklearn.preprocessing import StandardScaler
+        from sklearn.decomposition import PCA
+
+        display.move_progress()
+        X_train_transformed = X_train.select_dtypes(include="float64")
+        logger.info("Fitting StandardScaler()")
+        X_train_transformed = StandardScaler().fit_transform(X_train_transformed)
+        y_train_transformed = np.array(y_train)
+
+        features = min(round(len(X_train.columns) * 0.3, 0), 5)
+        features = int(features)
+
+        pca = PCA(n_components=features, random_state=seed)
+        logger.info("Fitting PCA()")
+        X_train_transformed = pca.fit_transform(X_train_transformed)
+        display.move_progress()
+        classes = y_train.unique().tolist()
+        visualizer = RadViz(classes=classes, alpha=0.25)
+        logger.info("Fitting Model")
+        visualizer.fit(X_train_transformed, y_train_transformed)
+        visualizer.transform(X_train_transformed)
+        display.move_progress()
+        clear_output()
+        if save:
+            logger.info("Saving 'Dimension Plot.png' in current active directory")
+            if system:
+                visualizer.show(outpath="Dimension Plot.png")
+            else:
+                visualizer.show(outpath="Dimension Plot.png", clear_figure=True)
+        else:
+            visualizer.show()
+
+        logger.info("Visual Rendered Successfully")
+
+    elif plot == "feature":
+
+        if hasattr(estimator, "coef_"):
+            variables = abs(model.coef_[0])
+        else:
+            logger.warning("No coef_ found. Trying feature_importances_")
+            variables = abs(model.feature_importances_)
+        col_names = np.array(X_train.columns)
+        coef_df = pd.DataFrame({"Variable": X_train.columns, "Value": variables})
+        sorted_df = coef_df.sort_values(by="Value")
+        sorted_df = sorted_df.sort_values(by="Value", ascending=False)
+        sorted_df = sorted_df.head(10)
+        sorted_df = sorted_df.sort_values(by="Value")
+        my_range = range(1, len(sorted_df.index) + 1)
+        display.move_progress()
+        plt.figure(figsize=(8, 5))
+        plt.hlines(y=my_range, xmin=0, xmax=sorted_df["Value"], color="skyblue")
+        plt.plot(sorted_df["Value"], my_range, "o")
+        display.move_progress()
+        plt.yticks(my_range, sorted_df["Variable"])
+        plt.title("Feature Importance Plot")
+        plt.xlabel("Variable Importance")
+        plt.ylabel("Features")
+        display.move_progress()
+        clear_output()
+        if save:
+            logger.info("Saving 'Feature Importance.png' in current active directory")
+            if system:
+                plt.savefig("Feature Importance.png")
+            else:
+                plt.savefig("Feature Importance.png")
+                plt.close()
+        else:
+            plt.show()
+
+        logger.info("Visual Rendered Successfully")
+
+    elif plot == "parameter":
+
+        clear_output()
+        param_df = pd.DataFrame.from_dict(
+            estimator.get_params(estimator), orient="index", columns=["Parameters"]
+        )
+        display(param_df)
+        logger.info("Visual Rendered Successfully")
+
+    logger.info(
+        "plot_model() succesfully completed......................................"
+    )
+
+
+def evaluate_model(estimator):
+
+    """
+    This function displays a user interface for all of the available plots for 
+    a given estimator. It internally uses the plot_model() function. 
+    
+    Example
+    -------
+    >>> from pycaret.datasets import get_data
+    >>> juice = get_data('juice')
+    >>> experiment_name = setup(data = juice,  target = 'Purchase')
+    >>> lr = create_model('lr')
+    >>> evaluate_model(lr)
+    
+    This will display the User Interface for all of the plots for a given
+    estimator.
+
+    Parameters
+    ----------
+    estimator : object, default = none
+        A trained model object should be passed as an estimator. 
+
+    Returns
+    -------
+    User_Interface
+        Displays the user interface for plotting.
+
+    """
+
+    from ipywidgets import widgets
+    from ipywidgets.widgets import interact, fixed, interact_manual
+
+    a = widgets.ToggleButtons(
+        options=[
+            ("Hyperparameters", "parameter"),
+            ("AUC", "auc"),
+            ("Confusion Matrix", "confusion_matrix"),
+            ("Threshold", "threshold"),
+            ("Precision Recall", "pr"),
+            ("Error", "error"),
+            ("Class Report", "class_report"),
+            ("Feature Selection", "rfe"),
+            ("Learning Curve", "learning"),
+            ("Manifold Learning", "manifold"),
+            ("Calibration Curve", "calibration"),
+            ("Validation Curve", "vc"),
+            ("Dimensions", "dimension"),
+            ("Feature Importance", "feature"),
+            ("Decision Boundary", "boundary"),
+        ],
+        description="Plot Type:",
+        disabled=False,
+        button_style="",  # 'success', 'info', 'warning', 'danger' or ''
+        icons=[""],
+    )
+
+    d = interact(
+        plot_model,
+        estimator=fixed(estimator),
+        plot=a,
+        save=fixed(False),
+        verbose=fixed(True),
+        system=fixed(True),
+    )
 
 
 def interpret_model(estimator, plot="summary", feature=None, observation=None):
@@ -7008,983 +7074,6 @@ def calibrate_model(estimator, method="sigmoid", fold=10, round=4, verbose=True)
     return model
 
 
-def evaluate_model(estimator):
-
-    """
-    This function displays a user interface for all of the available plots for 
-    a given estimator. It internally uses the plot_model() function. 
-    
-    Example
-    -------
-    >>> from pycaret.datasets import get_data
-    >>> juice = get_data('juice')
-    >>> experiment_name = setup(data = juice,  target = 'Purchase')
-    >>> lr = create_model('lr')
-    >>> evaluate_model(lr)
-    
-    This will display the User Interface for all of the plots for a given
-    estimator.
-
-    Parameters
-    ----------
-    estimator : object, default = none
-        A trained model object should be passed as an estimator. 
-
-    Returns
-    -------
-    User_Interface
-        Displays the user interface for plotting.
-
-    """
-
-    from ipywidgets import widgets
-    from ipywidgets.widgets import interact, fixed, interact_manual
-
-    a = widgets.ToggleButtons(
-        options=[
-            ("Hyperparameters", "parameter"),
-            ("AUC", "auc"),
-            ("Confusion Matrix", "confusion_matrix"),
-            ("Threshold", "threshold"),
-            ("Precision Recall", "pr"),
-            ("Error", "error"),
-            ("Class Report", "class_report"),
-            ("Feature Selection", "rfe"),
-            ("Learning Curve", "learning"),
-            ("Manifold Learning", "manifold"),
-            ("Calibration Curve", "calibration"),
-            ("Validation Curve", "vc"),
-            ("Dimensions", "dimension"),
-            ("Feature Importance", "feature"),
-            ("Decision Boundary", "boundary"),
-        ],
-        description="Plot Type:",
-        disabled=False,
-        button_style="",  # 'success', 'info', 'warning', 'danger' or ''
-        icons=[""],
-    )
-
-    d = interact(
-        plot_model,
-        estimator=fixed(estimator),
-        plot=a,
-        save=fixed(False),
-        verbose=fixed(True),
-        system=fixed(True),
-    )
-
-
-def finalize_model(estimator):
-
-    """
-    This function fits the estimator onto the complete dataset passed during the
-    setup() stage. The purpose of this function is to prepare for final model
-    deployment after experimentation. 
-    
-    Example
-    -------
-    >>> from pycaret.datasets import get_data
-    >>> juice = get_data('juice')
-    >>> experiment_name = setup(data = juice,  target = 'Purchase')
-    >>> lr = create_model('lr')
-    >>> final_lr = finalize_model(lr)
-    
-    This will return the final model object fitted to complete dataset. 
-
-    Parameters
-    ----------
-    estimator : object, default = none
-        A trained model object should be passed as an estimator. 
-
-    Returns
-    -------
-    model
-        Trained model object fitted on complete dataset.
-
-    Warnings
-    --------
-    - If the model returned by finalize_model(), is used on predict_model() without 
-      passing a new unseen dataset, then the information grid printed is misleading 
-      as the model is trained on the complete dataset including test / hold-out sample. 
-      Once finalize_model() is used, the model is considered ready for deployment and
-      should be used on new unseens dataset only.
-       
-         
-    """
-
-    logger = get_logger()
-
-    logger.info("Initializing finalize_model()")
-    logger.info("""finalize_model(estimator={})""".format(str(estimator)))
-
-    # ignore warnings
-    import warnings
-
-    warnings.filterwarnings("ignore")
-
-    # run_time
-    import datetime, time
-
-    runtime_start = time.time()
-
-    logger.info("Importing libraries")
-    # import depedencies
-    from IPython.display import clear_output, update_display
-    from sklearn.base import clone
-    from copy import deepcopy
-    import numpy as np
-
-    logger.info("Getting model name")
-
-    _estimator_ = estimator
-
-    if y.value_counts().count() > 2:
-        if not hasattr(estimator, "voting"):
-            estimator = estimator.estimator
-
-    full_name = _get_model_name(estimator)
-
-    estimator = _estimator_
-
-    logger.info("Finalizing " + str(full_name))
-    model_final = clone(estimator)
-    clear_output()
-    model_final.fit(X, y)
-    model = create_model(estimator=estimator, verbose=False, system=False)
-    results = pull()
-
-    # end runtime
-    runtime_end = time.time()
-    runtime = np.array(runtime_end - runtime_start).round(2)
-
-    # mlflow logging
-    if logging_param:
-
-        logger.info("Creating MLFlow logs")
-
-        # import mlflow
-        import mlflow
-        from pathlib import Path
-        import mlflow.sklearn
-        import os
-
-        mlflow.set_experiment(exp_name_log)
-
-        with mlflow.start_run(run_name=full_name) as run:
-
-            # Get active run to log as tag
-            RunID = mlflow.active_run().info.run_id
-
-            # Log model parameters
-            try:
-                params = model_final.get_params()
-
-                for i in list(params):
-                    v = params.get(i)
-                    if len(str(v)) > 250:
-                        params.pop(i)
-
-                mlflow.log_params(params)
-
-            except:
-                pass
-
-            # get metrics of non-finalized model and log it
-
-            # Log metrics
-            mlflow.log_metrics(
-                {
-                    "Accuracy": results.iloc[-2]["Accuracy"],
-                    "AUC": results.iloc[-2]["AUC"],
-                    "Recall": results.iloc[-2]["Recall"],
-                    "Precision": results.iloc[-2]["Prec."],
-                    "F1": results.iloc[-2]["F1"],
-                    "Kappa": results.iloc[-2]["Kappa"],
-                    "MCC": results.iloc[-2]["MCC"],
-                }
-            )
-
-            # set tag of compare_models
-            mlflow.set_tag("Source", "finalize_model")
-
-            # create MRI (model registration id)
-            mlflow.set_tag("Final", True)
-
-            import secrets
-
-            URI = secrets.token_hex(nbytes=4)
-            mlflow.set_tag("URI", URI)
-            mlflow.set_tag("USI", USI)
-            mlflow.set_tag("Run Time", runtime)
-            mlflow.set_tag("Run ID", RunID)
-
-            # Log training time in seconds
-            mlflow.log_metric("TT", runtime)
-
-            # Log AUC and Confusion Matrix plot
-            if log_plots_param:
-
-                logger.info(
-                    "SubProcess plot_model() called =================================="
-                )
-
-                try:
-                    plot_model(
-                        model_final, plot="auc", verbose=False, save=True, system=False
-                    )
-                    mlflow.log_artifact("AUC.png")
-                    os.remove("AUC.png")
-                except:
-                    pass
-
-                try:
-                    plot_model(
-                        model_final,
-                        plot="confusion_matrix",
-                        verbose=False,
-                        save=True,
-                        system=False,
-                    )
-                    mlflow.log_artifact("Confusion Matrix.png")
-                    os.remove("Confusion Matrix.png")
-                except:
-                    pass
-
-                try:
-                    plot_model(
-                        model_final,
-                        plot="feature",
-                        verbose=False,
-                        save=True,
-                        system=False,
-                    )
-                    mlflow.log_artifact("Feature Importance.png")
-                    os.remove("Feature Importance.png")
-                except:
-                    pass
-
-                logger.info(
-                    "SubProcess plot_model() end =================================="
-                )
-
-            # Log model and transformation pipeline
-            from copy import deepcopy
-
-            # get default conda env
-            from mlflow.sklearn import get_default_conda_env
-
-            default_conda_env = get_default_conda_env()
-            default_conda_env["name"] = str(exp_name_log) + "-env"
-            default_conda_env.get("dependencies").pop(-3)
-            dependencies = default_conda_env.get("dependencies")[-1]
-            from pycaret.utils import __version__
-
-            dep = "pycaret==" + str(__version__())
-            dependencies["pip"] = [dep]
-
-            # define model signature
-            from mlflow.models.signature import infer_signature
-
-            signature = infer_signature(data_before_preprocess)
-
-            # log model as sklearn flavor
-            prep_pipe_temp = deepcopy(prep_pipe)
-            prep_pipe_temp.steps.append(["trained model", model_final])
-            mlflow.sklearn.log_model(
-                prep_pipe_temp,
-                "model",
-                conda_env=default_conda_env,
-                signature=signature,
-            )
-            del prep_pipe_temp
-
-    logger.info("create_model_container: " + str(len(create_model_container)))
-    logger.info("master_model_container: " + str(len(master_model_container)))
-    logger.info("display_container: " + str(len(display_container)))
-
-    logger.info(str(model_final))
-    logger.info(
-        "finalize_model() succesfully completed......................................"
-    )
-
-    return model_final
-
-
-def save_model(model, model_name, model_only=False, verbose=True):
-
-    """
-    This function saves the transformation pipeline and trained model object 
-    into the current active directory as a pickle file for later use. 
-    
-    Example
-    -------
-    >>> from pycaret.datasets import get_data
-    >>> juice = get_data('juice')
-    >>> experiment_name = setup(data = juice,  target = 'Purchase')
-    >>> lr = create_model('lr')
-    >>> save_model(lr, 'lr_model_23122019')
-    
-    This will save the transformation pipeline and model as a binary pickle
-    file in the current active directory. 
-
-    Parameters
-    ----------
-    model : object, default = none
-        A trained model object should be passed as an estimator. 
-    
-    model_name : string, default = none
-        Name of pickle file to be passed as a string.
-    
-    model_only : bool, default = False
-        When set to True, only trained model object is saved and all the 
-        transformations are ignored.
-
-    verbose: Boolean, default = True
-        Success message is not printed when verbose is set to False.
-
-    Returns
-    -------
-    Success_Message
-    
-         
-    """
-
-    from copy import deepcopy
-
-    logger = get_logger()
-
-    logger.info("Initializing save_model()")
-    logger.info(
-        """save_model(model={}, model_name={}, model_only={}, verbose={})""".format(
-            str(model), str(model_name), str(model_only), str(verbose)
-        )
-    )
-
-    # ignore warnings
-    import warnings
-
-    warnings.filterwarnings("ignore")
-
-    logger.info("Adding model into prep_pipe")
-
-    if model_only:
-        model_ = deepcopy(model)
-        logger.warning("Only Model saved. Transformations in prep_pipe are ignored.")
-    else:
-        model_ = deepcopy(prep_pipe)
-        model_.steps.append(["trained model", model])
-
-    import joblib
-
-    model_name = model_name + ".pkl"
-    joblib.dump(model_, model_name)
-    if verbose:
-        print("Transformation Pipeline and Model Succesfully Saved")
-
-    logger.info(str(model_name) + " saved in current working directory")
-    logger.info(str(model_))
-    logger.info(
-        "save_model() succesfully completed......................................"
-    )
-
-
-def load_model(model_name, platform=None, authentication=None, verbose=True):
-
-    """
-    This function loads a previously saved transformation pipeline and model 
-    from the current active directory into the current python environment. 
-    Load object must be a pickle file.
-    
-    Example
-    -------
-    >>> saved_lr = load_model('lr_model_23122019')
-    
-    This will load the previously saved model in saved_lr variable. The file 
-    must be in the current directory.
-
-    Parameters
-    ----------
-    model_name : string, default = none
-        Name of pickle file to be passed as a string.
-      
-    platform: string, default = None
-        Name of platform, if loading model from cloud. Current available options are:
-        'aws', 'gcp' and 'azure'.
-    
-    authentication : dict
-        dictionary of applicable authentication tokens.
-
-        When platform = 'aws':
-        {'bucket' : 'Name of Bucket on S3'}
-
-        When platform = 'gcp':
-        {'project': 'gcp_pycaret', 'bucket' : 'pycaret-test'}
-
-        When platform = 'azure':
-        {'container': 'pycaret-test'}
-    
-    verbose: Boolean, default = True
-        Success message is not printed when verbose is set to False.
-
-    Returns
-    -------
-    Model Object
-
-    """
-
-    # ignore warnings
-    import warnings
-
-    warnings.filterwarnings("ignore")
-
-    # exception checking
-    import sys
-
-    if platform is not None:
-        if authentication is None:
-            sys.exit("(Value Error): Authentication is missing.")
-
-    if platform is None:
-
-        import joblib
-
-        model_name = model_name + ".pkl"
-        if verbose:
-            print("Transformation Pipeline and Model Successfully Loaded")
-        return joblib.load(model_name)
-
-    # cloud providers
-    elif platform == "aws":
-
-        import boto3
-
-        bucketname = authentication.get("bucket")
-        filename = str(model_name) + ".pkl"
-        s3 = boto3.resource("s3")
-        s3.Bucket(bucketname).download_file(filename, filename)
-        filename = str(model_name)
-        model = load_model(filename, verbose=False)
-        model = load_model(filename, verbose=False)
-
-        if verbose:
-            print("Transformation Pipeline and Model Successfully Loaded")
-
-        return model
-
-    elif platform == "gcp":
-
-        bucket_name = authentication.get("bucket")
-        project_name = authentication.get("project")
-        filename = str(model_name) + ".pkl"
-
-        model_downloaded = _download_blob_gcp(
-            project_name, bucket_name, filename, filename
-        )
-
-        model = load_model(model_name, verbose=False)
-
-        if verbose:
-            print("Transformation Pipeline and Model Successfully Loaded")
-        return model
-
-    elif platform == "azure":
-
-        container_name = authentication.get("container")
-        filename = str(model_name) + ".pkl"
-
-        model_downloaded = _download_blob_azure(container_name, filename, filename)
-
-        model = load_model(model_name, verbose=False)
-
-        if verbose:
-            print("Transformation Pipeline and Model Successfully Loaded")
-        return model
-    else:
-        print(
-            "Platform { } is not supported by pycaret or illegal option".format(
-                platform
-            )
-        )
-
-
-def predict_model(
-    estimator,
-    data=None,
-    probability_threshold=None,
-    verbose=True,
-):  # added in pycaret==2.0.0
-
-    """
-    This function is used to predict label and probability score on the new dataset
-    using a trained estimator. New unseen data can be passed to data param as pandas 
-    Dataframe. If data is not passed, the test / hold-out set separated at the time of 
-    setup() is used to generate predictions. 
-    
-    Example
-    -------
-    >>> from pycaret.datasets import get_data
-    >>> juice = get_data('juice')
-    >>> experiment_name = setup(data = juice,  target = 'Purchase')
-    >>> lr = create_model('lr')
-    >>> lr_predictions_holdout = predict_model(lr)
-        
-    Parameters
-    ----------
-    estimator : object, default = none
-        A trained model object / pipeline should be passed as an estimator. 
-     
-    data : pandas.DataFrame
-        Shape (n_samples, n_features) where n_samples is the number of samples and n_features is the number of features.
-        All features used during training must be present in the new dataset.
-    
-    probability_threshold : float, default = None
-        Threshold used to convert probability values into binary outcome. By default the
-        probability threshold for all binary classifiers is 0.5 (50%). This can be changed
-        using probability_threshold param.
-
-    categorical_labels: Boolean, default = False
-        If True, will output labels as-is, otherwise will output labels encoded as integers.
-
-    verbose: Boolean, default = True
-        Holdout score grid is not printed when verbose is set to False.
-
-    Returns
-    -------
-    Predictions
-        Predictions (Label and Score) column attached to the original dataset
-        and returned as pandas dataframe.
-
-    score_grid
-        A table containing the scoring metrics on hold-out / test set.
-    
-    """
-
-    # ignore warnings
-    import warnings
-
-    warnings.filterwarnings("ignore")
-
-    # general dependencies
-    import sys
-    import numpy as np
-    import pandas as pd
-    import re
-    from sklearn import metrics
-    from copy import deepcopy
-    from IPython.display import clear_output, display, update_display
-
-    """
-    exception checking starts here
-    """
-
-    model_name = str(estimator).split("(")[0]
-    if probability_threshold is not None:
-        if "OneVsRestClassifier" in model_name:
-            sys.exit(
-                "(Type Error) probability_threshold parameter cannot be used when target is multi-class. "
-            )
-
-        # probability_threshold allowed types
-        allowed_types = [int, float]
-        if type(probability_threshold) not in allowed_types:
-            sys.exit(
-                "(Type Error) probability_threshold parameter only accepts value between 0 to 1. "
-            )
-
-        if probability_threshold > 1:
-            sys.exit(
-                "(Type Error) probability_threshold parameter only accepts value between 0 to 1. "
-            )
-
-        if probability_threshold < 0:
-            sys.exit(
-                "(Type Error) probability_threshold parameter only accepts value between 0 to 1. "
-            )
-
-    """
-    exception checking ends here
-    """
-
-    # dataset
-    if data is None:
-
-        if "Pipeline" in str(type(estimator)):
-            estimator = estimator[-1]
-
-        Xtest = X_test.copy()
-        ytest = y_test.copy()
-        X_test_ = X_test.copy()
-        y_test_ = y_test.copy()
-
-        _, dtypes = next(step for step in prep_pipe.steps if step[0] == "dtypes")
-
-        Xtest.reset_index(drop=True, inplace=True)
-        ytest.reset_index(drop=True, inplace=True)
-        X_test_.reset_index(drop=True, inplace=True)
-        y_test_.reset_index(drop=True, inplace=True)
-
-    else:
-
-        if "Pipeline" in str(type(estimator)):
-            _, dtypes = next(step for step in estimator.steps if step[0] == "dtypes")
-        else:
-            try:
-                _, dtypes = next(
-                    step for step in prep_pipe.steps if step[0] == "dtypes"
-                )
-                estimator_ = deepcopy(prep_pipe)
-                estimator_.steps.append(["trained model", estimator])
-                estimator = estimator_
-                del estimator_
-
-            except:
-                sys.exit("Pipeline not found")
-
-        Xtest = data.copy()
-        X_test_ = data.copy()
-
-    # function to replace encoded labels with their original values
-    # will not run if categorical_labels is false
-    def replace_lables_in_column(label_column):
-        if dtypes and hasattr(dtypes, "replacement"):
-            replacement_mapper = {int(v): k for k, v in dtypes.replacement.items()}
-            label_column.replace(replacement_mapper, inplace=True)
-
-    # model name
-    full_name = _get_model_name(estimator)
-
-    # prediction starts here
-
-    pred_ = estimator.predict(Xtest)
-
-    try:
-        pred_prob = estimator.predict_proba(Xtest)
-
-        if len(pred_prob[0]) > 2:
-            p_counter = 0
-            d = []
-            for i in range(0, len(pred_prob)):
-                d.append(pred_prob[i][pred_[p_counter]])
-                p_counter += 1
-
-            pred_prob = d
-
-        else:
-            pred_prob = pred_prob[:, 1]
-
-    except:
-        pass
-
-    if probability_threshold is not None:
-        try:
-            pred_ = (pred_prob >= probability_threshold).astype(int)
-        except:
-            pass
-
-    if data is None:
-
-        sca = metrics.accuracy_score(ytest, pred_)
-
-        try:
-            sc = metrics.roc_auc_score(ytest, pred_prob)
-        except:
-            sc = 0
-
-        if y.value_counts().count() > 2:
-            recall = metrics.recall_score(ytest, pred_, average="macro")
-            precision = metrics.precision_score(ytest, pred_, average="weighted")
-            f1 = metrics.f1_score(ytest, pred_, average="weighted")
-        else:
-            recall = metrics.recall_score(ytest, pred_)
-            precision = metrics.precision_score(ytest, pred_)
-            f1 = metrics.f1_score(ytest, pred_)
-
-        kappa = metrics.cohen_kappa_score(ytest, pred_)
-        mcc = metrics.matthews_corrcoef(ytest, pred_)
-
-        df_score = pd.DataFrame(
-            {
-                "Model": [full_name],
-                "Accuracy": [sca],
-                "AUC": [sc],
-                "Recall": [recall],
-                "Prec.": [precision],
-                "F1": [f1],
-                "Kappa": [kappa],
-                "MCC": [mcc],
-            }
-        )
-        df_score = df_score.round(4)
-
-        if verbose:
-            display(df_score)
-
-    label = pd.DataFrame(pred_)
-    label.columns = ["Label"]
-    label["Label"] = label["Label"].astype(int)
-    replace_lables_in_column(label["Label"])
-
-    if data is None:
-        replace_lables_in_column(ytest)
-        X_test_ = pd.concat([Xtest, ytest, label], axis=1)
-    else:
-        X_test_.insert(len(X_test_.columns), "Label", label["Label"])
-
-    if hasattr(estimator, "predict_proba"):
-        try:
-            score = pd.DataFrame(pred_prob)
-            score.columns = ["Score"]
-            score = score.round(4)
-            X_test_ = pd.concat([X_test_, score], axis=1)
-        except:
-            pass
-
-    # store predictions on hold-out in display_container
-    try:
-        display_container.append(df_score)
-    except:
-        pass
-
-    return X_test_
-
-
-def deploy_model(model, model_name, authentication, platform="aws"):
-
-    """
-    (In Preview)
-
-    This function deploys the transformation pipeline and trained model object for
-    production use. The platform of deployment can be defined under the platform
-    param along with the applicable authentication tokens which are passed as a
-    dictionary to the authentication param.
-    
-    Example
-    -------
-    >>> from pycaret.datasets import get_data
-    >>> juice = get_data('juice')
-    >>> experiment_name = setup(data = juice,  target = 'Purchase')
-    >>> lr = create_model('lr')
-    >>> deploy_model(model = lr, model_name = 'deploy_lr', platform = 'aws', authentication = {'bucket' : 'pycaret-test'})
-    
-    This will deploy the model on an AWS S3 account under bucket 'pycaret-test'
-    
-    Notes
-    -----
-    For AWS users:
-    Before deploying a model to an AWS S3 ('aws'), environment variables must be 
-    configured using the command line interface. To configure AWS env. variables, 
-    type aws configure in your python command line. The following information is
-    required which can be generated using the Identity and Access Management (IAM) 
-    portal of your amazon console account:
-
-    - AWS Access Key ID
-    - AWS Secret Key Access
-    - Default Region Name (can be seen under Global settings on your AWS console)
-    - Default output format (must be left blank)
-
-    For GCP users:
-    --------------
-    Before deploying a model to Google Cloud Platform (GCP), user has to create Project
-    on the platform from consol. To do that, user must have google cloud account or
-    create new one. After creating a service account, down the JSON authetication file
-    and configure  GOOGLE_APPLICATION_CREDENTIALS= <path-to-json> from command line. If
-    using google-colab then authetication can be done using `google.colab` auth method.
-    Read below link for more details.
-
-    https://cloud.google.com/docs/authentication/production
-
-    - Google Cloud Project
-    - Service Account Authetication
-
-    For Azure users:
-    ---------------
-    Before deploying a model to Microsoft's Azure (Azure), environment variables
-    for connection string must be set. In order to get connection string, user has
-    to create account of Azure. Once it is done, create a Storage account. In the settings
-    section of storage account, user can get the connection string.
-
-    Read below link for more details.
-    https://docs.microsoft.com/en-us/azure/storage/blobs/storage-quickstart-blobs-python?toc=%2Fpython%2Fazure%2FTOC.json
-
-    - Azure Storage Account
-
-    Parameters
-    ----------
-    model : object
-        A trained model object should be passed as an estimator. 
-    
-    model_name : string
-        Name of model to be passed as a string.
-    
-    authentication : dict
-        Dictionary of applicable authentication tokens.
-
-        When platform = 'aws':
-        {'bucket' : 'Name of Bucket on S3'}
-
-        When platform = 'gcp':
-        {'project': 'gcp_pycaret', 'bucket' : 'pycaret-test'}
-
-        When platform = 'azure':
-        {'container': 'pycaret-test'}
-    
-    platform: string, default = 'aws'
-        Name of platform for deployment. Current available options are: 'aws', 'gcp' and 'azure'
-
-    Returns
-    -------
-    Success_Message
-    
-    Warnings
-    --------
-    - This function uses file storage services to deploy the model on cloud platform. 
-      As such, this is efficient for batch-use. Where the production objective is to 
-      obtain prediction at an instance level, this may not be the efficient choice as 
-      it transmits the binary pickle file between your local python environment and
-      the platform. 
-    
-    """
-
-    import sys
-
-    logger = get_logger()
-
-    logger.info("Initializing deploy_model()")
-    logger.info(
-        """deploy_model(model={}, model_name={}, authentication={}, platform={})""".format(
-            str(model), str(model_name), str(authentication), str(platform)
-        )
-    )
-
-    # ignore warnings
-    import warnings
-
-    warnings.filterwarnings("ignore")
-
-    # general dependencies
-    import ipywidgets as ipw
-    import pandas as pd
-    from IPython.display import clear_output, update_display
-    import os
-
-    if platform == "aws":
-
-        logger.info("Platform : AWS S3")
-
-        # checking if awscli available
-        try:
-            import awscli
-        except:
-            logger.error(
-                "awscli library not found. pip install awscli to use deploy_model function."
-            )
-            sys.exit(
-                "awscli library not found. pip install awscli to use deploy_model function."
-            )
-
-        import boto3
-
-        logger.info("Saving model in active working directory")
-        logger.info("SubProcess save_model() called ==================================")
-        save_model(model, model_name=model_name, verbose=False)
-        logger.info("SubProcess save_model() end ==================================")
-
-        # initiaze s3
-        logger.info("Initializing S3 client")
-        s3 = boto3.client("s3")
-        filename = str(model_name) + ".pkl"
-        key = str(model_name) + ".pkl"
-        bucket_name = authentication.get("bucket")
-        s3.upload_file(filename, bucket_name, key)
-        clear_output()
-        os.remove(filename)
-        print("Model Succesfully Deployed on AWS S3")
-        logger.info("Model Succesfully Deployed on AWS S3")
-        logger.info(str(model))
-
-    elif platform == "gcp":
-
-        logger.info("Platform : GCP")
-
-        try:
-            import google.cloud
-        except:
-            logger.error(
-                "google-cloud-storage library not found. pip install google-cloud-storage to use deploy_model function with GCP."
-            )
-            sys.exit(
-                "google-cloud-storage library not found. pip install google-cloud-storage to use deploy_model function with GCP."
-            )
-
-        logger.info("Saving model in active working directory")
-        logger.info("SubProcess save_model() called ==================================")
-        save_model(model, model_name=model_name, verbose=False)
-        logger.info("SubProcess save_model() end ==================================")
-
-        # initialize deployment
-        filename = str(model_name) + ".pkl"
-        key = str(model_name) + ".pkl"
-        bucket_name = authentication.get("bucket")
-        project_name = authentication.get("project")
-        try:
-            _create_bucket_gcp(project_name, bucket_name)
-            _upload_blob_gcp(project_name, bucket_name, filename, key)
-        except:
-            _upload_blob_gcp(project_name, bucket_name, filename, key)
-        os.remove(filename)
-        print("Model Succesfully Deployed on GCP")
-        logger.info("Model Succesfully Deployed on GCP")
-        logger.info(str(model))
-
-    elif platform == "azure":
-
-        try:
-            import azure.storage.blob
-        except:
-            logger.error(
-                "azure-storage-blob library not found. pip install azure-storage-blob to use deploy_model function with Azure."
-            )
-            sys.exit(
-                "azure-storage-blob library not found. pip install azure-storage-blob to use deploy_model function with Azure."
-            )
-
-        logger.info("Platform : Azure Blob Storage")
-
-        logger.info("Saving model in active working directory")
-        logger.info("SubProcess save_model() called ==================================")
-        save_model(model, model_name=model_name, verbose=False)
-        logger.info("SubProcess save_model() end ==================================")
-
-        # initialize deployment
-        filename = str(model_name) + ".pkl"
-        key = str(model_name) + ".pkl"
-        container_name = authentication.get("container")
-        try:
-            container_client = _create_container_azure(container_name)
-            _upload_blob_azure(container_name, filename, key)
-            del container_client
-        except:
-            _upload_blob_azure(container_name, filename, key)
-
-        os.remove(filename)
-
-        print("Model Succesfully Deployed on Azure Storage Blob")
-        logger.info("Model Succesfully Deployed on Azure Storage Blob")
-        logger.info(str(model))
-
-    else:
-        logger.error(
-            "Platform {} is not supported by pycaret or illegal option".format(platform)
-        )
-        sys.exit(
-            "Platform {} is not supported by pycaret or illegal option".format(platform)
-        )
-
-    logger.info(
-        "deploy_model() succesfully completed......................................"
-    )
-
-
 def optimize_threshold(
     estimator, true_positive=0, true_negative=0, false_positive=0, false_negative=0
 ):
@@ -8247,6 +7336,914 @@ def optimize_threshold(
     )
 
 
+def predict_model(
+    estimator, data=None, probability_threshold=None, verbose=True,
+):  # added in pycaret==2.0.0
+
+    """
+    This function is used to predict label and probability score on the new dataset
+    using a trained estimator. New unseen data can be passed to data param as pandas 
+    Dataframe. If data is not passed, the test / hold-out set separated at the time of 
+    setup() is used to generate predictions. 
+    
+    Example
+    -------
+    >>> from pycaret.datasets import get_data
+    >>> juice = get_data('juice')
+    >>> experiment_name = setup(data = juice,  target = 'Purchase')
+    >>> lr = create_model('lr')
+    >>> lr_predictions_holdout = predict_model(lr)
+        
+    Parameters
+    ----------
+    estimator : object, default = none
+        A trained model object / pipeline should be passed as an estimator. 
+     
+    data : pandas.DataFrame
+        Shape (n_samples, n_features) where n_samples is the number of samples and n_features is the number of features.
+        All features used during training must be present in the new dataset.
+    
+    probability_threshold : float, default = None
+        Threshold used to convert probability values into binary outcome. By default the
+        probability threshold for all binary classifiers is 0.5 (50%). This can be changed
+        using probability_threshold param.
+
+    categorical_labels: Boolean, default = False
+        If True, will output labels as-is, otherwise will output labels encoded as integers.
+
+    verbose: Boolean, default = True
+        Holdout score grid is not printed when verbose is set to False.
+
+    Returns
+    -------
+    Predictions
+        Predictions (Label and Score) column attached to the original dataset
+        and returned as pandas dataframe.
+
+    score_grid
+        A table containing the scoring metrics on hold-out / test set.
+    
+    """
+
+    # ignore warnings
+    import warnings
+
+    warnings.filterwarnings("ignore")
+
+    # general dependencies
+    import sys
+    import numpy as np
+    import pandas as pd
+    import re
+    from sklearn import metrics
+    from copy import deepcopy
+    from IPython.display import clear_output, display, update_display
+
+    """
+    exception checking starts here
+    """
+
+    model_name = str(estimator).split("(")[0]
+    if probability_threshold is not None:
+        if "OneVsRestClassifier" in model_name:
+            sys.exit(
+                "(Type Error) probability_threshold parameter cannot be used when target is multi-class. "
+            )
+
+        # probability_threshold allowed types
+        allowed_types = [int, float]
+        if type(probability_threshold) not in allowed_types:
+            sys.exit(
+                "(Type Error) probability_threshold parameter only accepts value between 0 to 1. "
+            )
+
+        if probability_threshold > 1:
+            sys.exit(
+                "(Type Error) probability_threshold parameter only accepts value between 0 to 1. "
+            )
+
+        if probability_threshold < 0:
+            sys.exit(
+                "(Type Error) probability_threshold parameter only accepts value between 0 to 1. "
+            )
+
+    """
+    exception checking ends here
+    """
+
+    # dataset
+    if data is None:
+
+        if "Pipeline" in str(type(estimator)):
+            estimator = estimator[-1]
+
+        Xtest = X_test.copy()
+        ytest = y_test.copy()
+        X_test_ = X_test.copy()
+        y_test_ = y_test.copy()
+
+        _, dtypes = next(step for step in prep_pipe.steps if step[0] == "dtypes")
+
+        Xtest.reset_index(drop=True, inplace=True)
+        ytest.reset_index(drop=True, inplace=True)
+        X_test_.reset_index(drop=True, inplace=True)
+        y_test_.reset_index(drop=True, inplace=True)
+
+    else:
+
+        if "Pipeline" in str(type(estimator)):
+            _, dtypes = next(step for step in estimator.steps if step[0] == "dtypes")
+        else:
+            try:
+                _, dtypes = next(
+                    step for step in prep_pipe.steps if step[0] == "dtypes"
+                )
+                estimator_ = deepcopy(prep_pipe)
+                estimator_.steps.append(["trained model", estimator])
+                estimator = estimator_
+                del estimator_
+
+            except:
+                sys.exit("Pipeline not found")
+
+        Xtest = data.copy()
+        X_test_ = data.copy()
+
+    # function to replace encoded labels with their original values
+    # will not run if categorical_labels is false
+    def replace_lables_in_column(label_column):
+        if dtypes and hasattr(dtypes, "replacement"):
+            replacement_mapper = {int(v): k for k, v in dtypes.replacement.items()}
+            label_column.replace(replacement_mapper, inplace=True)
+
+    # model name
+    full_name = _get_model_name(estimator)
+
+    # prediction starts here
+
+    pred_ = estimator.predict(Xtest)
+
+    try:
+        pred_prob = estimator.predict_proba(Xtest)
+
+        if len(pred_prob[0]) > 2:
+            p_counter = 0
+            d = []
+            for i in range(0, len(pred_prob)):
+                d.append(pred_prob[i][pred_[p_counter]])
+                p_counter += 1
+
+            pred_prob = d
+
+        else:
+            pred_prob = pred_prob[:, 1]
+
+    except:
+        pass
+
+    if probability_threshold is not None:
+        try:
+            pred_ = (pred_prob >= probability_threshold).astype(int)
+        except:
+            pass
+
+    if data is None:
+
+        sca = metrics.accuracy_score(ytest, pred_)
+
+        try:
+            sc = metrics.roc_auc_score(ytest, pred_prob)
+        except:
+            sc = 0
+
+        if y.value_counts().count() > 2:
+            recall = metrics.recall_score(ytest, pred_, average="macro")
+            precision = metrics.precision_score(ytest, pred_, average="weighted")
+            f1 = metrics.f1_score(ytest, pred_, average="weighted")
+        else:
+            recall = metrics.recall_score(ytest, pred_)
+            precision = metrics.precision_score(ytest, pred_)
+            f1 = metrics.f1_score(ytest, pred_)
+
+        kappa = metrics.cohen_kappa_score(ytest, pred_)
+        mcc = metrics.matthews_corrcoef(ytest, pred_)
+
+        df_score = pd.DataFrame(
+            {
+                "Model": [full_name],
+                "Accuracy": [sca],
+                "AUC": [sc],
+                "Recall": [recall],
+                "Prec.": [precision],
+                "F1": [f1],
+                "Kappa": [kappa],
+                "MCC": [mcc],
+            }
+        )
+        df_score = df_score.round(4)
+
+        if verbose:
+            display(df_score)
+
+    label = pd.DataFrame(pred_)
+    label.columns = ["Label"]
+    label["Label"] = label["Label"].astype(int)
+    replace_lables_in_column(label["Label"])
+
+    if data is None:
+        replace_lables_in_column(ytest)
+        X_test_ = pd.concat([Xtest, ytest, label], axis=1)
+    else:
+        X_test_.insert(len(X_test_.columns), "Label", label["Label"])
+
+    if hasattr(estimator, "predict_proba"):
+        try:
+            score = pd.DataFrame(pred_prob)
+            score.columns = ["Score"]
+            score = score.round(4)
+            X_test_ = pd.concat([X_test_, score], axis=1)
+        except:
+            pass
+
+    # store predictions on hold-out in display_container
+    try:
+        display_container.append(df_score)
+    except:
+        pass
+
+    return X_test_
+
+
+def finalize_model(estimator):
+
+    """
+    This function fits the estimator onto the complete dataset passed during the
+    setup() stage. The purpose of this function is to prepare for final model
+    deployment after experimentation. 
+    
+    Example
+    -------
+    >>> from pycaret.datasets import get_data
+    >>> juice = get_data('juice')
+    >>> experiment_name = setup(data = juice,  target = 'Purchase')
+    >>> lr = create_model('lr')
+    >>> final_lr = finalize_model(lr)
+    
+    This will return the final model object fitted to complete dataset. 
+
+    Parameters
+    ----------
+    estimator : object, default = none
+        A trained model object should be passed as an estimator. 
+
+    Returns
+    -------
+    model
+        Trained model object fitted on complete dataset.
+
+    Warnings
+    --------
+    - If the model returned by finalize_model(), is used on predict_model() without 
+      passing a new unseen dataset, then the information grid printed is misleading 
+      as the model is trained on the complete dataset including test / hold-out sample. 
+      Once finalize_model() is used, the model is considered ready for deployment and
+      should be used on new unseens dataset only.
+       
+         
+    """
+
+    logger = get_logger()
+
+    logger.info("Initializing finalize_model()")
+    logger.info("""finalize_model(estimator={})""".format(str(estimator)))
+
+    # ignore warnings
+    import warnings
+
+    warnings.filterwarnings("ignore")
+
+    # run_time
+    import datetime, time
+
+    runtime_start = time.time()
+
+    logger.info("Importing libraries")
+    # import depedencies
+    from IPython.display import clear_output, update_display
+    from sklearn.base import clone
+    from copy import deepcopy
+    import numpy as np
+
+    logger.info("Getting model name")
+
+    _estimator_ = estimator
+
+    if y.value_counts().count() > 2:
+        if not hasattr(estimator, "voting"):
+            estimator = estimator.estimator
+
+    full_name = _get_model_name(estimator)
+
+    estimator = _estimator_
+
+    logger.info("Finalizing " + str(full_name))
+    model_final = clone(estimator)
+    clear_output()
+    model_final.fit(X, y)
+    model = create_model(estimator=estimator, verbose=False, system=False)
+    results = pull()
+
+    # end runtime
+    runtime_end = time.time()
+    runtime = np.array(runtime_end - runtime_start).round(2)
+
+    # mlflow logging
+    if logging_param:
+
+        logger.info("Creating MLFlow logs")
+
+        # import mlflow
+        import mlflow
+        from pathlib import Path
+        import mlflow.sklearn
+        import os
+
+        mlflow.set_experiment(exp_name_log)
+
+        with mlflow.start_run(run_name=full_name) as run:
+
+            # Get active run to log as tag
+            RunID = mlflow.active_run().info.run_id
+
+            # Log model parameters
+            try:
+                params = model_final.get_params()
+
+                for i in list(params):
+                    v = params.get(i)
+                    if len(str(v)) > 250:
+                        params.pop(i)
+
+                mlflow.log_params(params)
+
+            except:
+                pass
+
+            # get metrics of non-finalized model and log it
+
+            # Log metrics
+            mlflow.log_metrics(
+                {
+                    "Accuracy": results.iloc[-2]["Accuracy"],
+                    "AUC": results.iloc[-2]["AUC"],
+                    "Recall": results.iloc[-2]["Recall"],
+                    "Precision": results.iloc[-2]["Prec."],
+                    "F1": results.iloc[-2]["F1"],
+                    "Kappa": results.iloc[-2]["Kappa"],
+                    "MCC": results.iloc[-2]["MCC"],
+                }
+            )
+
+            # set tag of compare_models
+            mlflow.set_tag("Source", "finalize_model")
+
+            # create MRI (model registration id)
+            mlflow.set_tag("Final", True)
+
+            import secrets
+
+            URI = secrets.token_hex(nbytes=4)
+            mlflow.set_tag("URI", URI)
+            mlflow.set_tag("USI", USI)
+            mlflow.set_tag("Run Time", runtime)
+            mlflow.set_tag("Run ID", RunID)
+
+            # Log training time in seconds
+            mlflow.log_metric("TT", runtime)
+
+            # Log AUC and Confusion Matrix plot
+            if log_plots_param:
+
+                logger.info(
+                    "SubProcess plot_model() called =================================="
+                )
+
+                try:
+                    plot_model(
+                        model_final, plot="auc", verbose=False, save=True, system=False
+                    )
+                    mlflow.log_artifact("AUC.png")
+                    os.remove("AUC.png")
+                except:
+                    pass
+
+                try:
+                    plot_model(
+                        model_final,
+                        plot="confusion_matrix",
+                        verbose=False,
+                        save=True,
+                        system=False,
+                    )
+                    mlflow.log_artifact("Confusion Matrix.png")
+                    os.remove("Confusion Matrix.png")
+                except:
+                    pass
+
+                try:
+                    plot_model(
+                        model_final,
+                        plot="feature",
+                        verbose=False,
+                        save=True,
+                        system=False,
+                    )
+                    mlflow.log_artifact("Feature Importance.png")
+                    os.remove("Feature Importance.png")
+                except:
+                    pass
+
+                logger.info(
+                    "SubProcess plot_model() end =================================="
+                )
+
+            # Log model and transformation pipeline
+            from copy import deepcopy
+
+            # get default conda env
+            from mlflow.sklearn import get_default_conda_env
+
+            default_conda_env = get_default_conda_env()
+            default_conda_env["name"] = str(exp_name_log) + "-env"
+            default_conda_env.get("dependencies").pop(-3)
+            dependencies = default_conda_env.get("dependencies")[-1]
+            from pycaret.utils import __version__
+
+            dep = "pycaret==" + str(__version__())
+            dependencies["pip"] = [dep]
+
+            # define model signature
+            from mlflow.models.signature import infer_signature
+
+            signature = infer_signature(data_before_preprocess)
+
+            # log model as sklearn flavor
+            prep_pipe_temp = deepcopy(prep_pipe)
+            prep_pipe_temp.steps.append(["trained model", model_final])
+            mlflow.sklearn.log_model(
+                prep_pipe_temp,
+                "model",
+                conda_env=default_conda_env,
+                signature=signature,
+            )
+            del prep_pipe_temp
+
+    logger.info("create_model_container: " + str(len(create_model_container)))
+    logger.info("master_model_container: " + str(len(master_model_container)))
+    logger.info("display_container: " + str(len(display_container)))
+
+    logger.info(str(model_final))
+    logger.info(
+        "finalize_model() succesfully completed......................................"
+    )
+
+    return model_final
+
+
+def deploy_model(model, model_name, authentication, platform="aws"):
+
+    """
+    (In Preview)
+
+    This function deploys the transformation pipeline and trained model object for
+    production use. The platform of deployment can be defined under the platform
+    param along with the applicable authentication tokens which are passed as a
+    dictionary to the authentication param.
+    
+    Example
+    -------
+    >>> from pycaret.datasets import get_data
+    >>> juice = get_data('juice')
+    >>> experiment_name = setup(data = juice,  target = 'Purchase')
+    >>> lr = create_model('lr')
+    >>> deploy_model(model = lr, model_name = 'deploy_lr', platform = 'aws', authentication = {'bucket' : 'pycaret-test'})
+    
+    This will deploy the model on an AWS S3 account under bucket 'pycaret-test'
+    
+    Notes
+    -----
+    For AWS users:
+    Before deploying a model to an AWS S3 ('aws'), environment variables must be 
+    configured using the command line interface. To configure AWS env. variables, 
+    type aws configure in your python command line. The following information is
+    required which can be generated using the Identity and Access Management (IAM) 
+    portal of your amazon console account:
+
+    - AWS Access Key ID
+    - AWS Secret Key Access
+    - Default Region Name (can be seen under Global settings on your AWS console)
+    - Default output format (must be left blank)
+
+    For GCP users:
+    --------------
+    Before deploying a model to Google Cloud Platform (GCP), user has to create Project
+    on the platform from consol. To do that, user must have google cloud account or
+    create new one. After creating a service account, down the JSON authetication file
+    and configure  GOOGLE_APPLICATION_CREDENTIALS= <path-to-json> from command line. If
+    using google-colab then authetication can be done using `google.colab` auth method.
+    Read below link for more details.
+
+    https://cloud.google.com/docs/authentication/production
+
+    - Google Cloud Project
+    - Service Account Authetication
+
+    For Azure users:
+    ---------------
+    Before deploying a model to Microsoft's Azure (Azure), environment variables
+    for connection string must be set. In order to get connection string, user has
+    to create account of Azure. Once it is done, create a Storage account. In the settings
+    section of storage account, user can get the connection string.
+
+    Read below link for more details.
+    https://docs.microsoft.com/en-us/azure/storage/blobs/storage-quickstart-blobs-python?toc=%2Fpython%2Fazure%2FTOC.json
+
+    - Azure Storage Account
+
+    Parameters
+    ----------
+    model : object
+        A trained model object should be passed as an estimator. 
+    
+    model_name : string
+        Name of model to be passed as a string.
+    
+    authentication : dict
+        Dictionary of applicable authentication tokens.
+
+        When platform = 'aws':
+        {'bucket' : 'Name of Bucket on S3'}
+
+        When platform = 'gcp':
+        {'project': 'gcp_pycaret', 'bucket' : 'pycaret-test'}
+
+        When platform = 'azure':
+        {'container': 'pycaret-test'}
+    
+    platform: string, default = 'aws'
+        Name of platform for deployment. Current available options are: 'aws', 'gcp' and 'azure'
+
+    Returns
+    -------
+    Success_Message
+    
+    Warnings
+    --------
+    - This function uses file storage services to deploy the model on cloud platform. 
+      As such, this is efficient for batch-use. Where the production objective is to 
+      obtain prediction at an instance level, this may not be the efficient choice as 
+      it transmits the binary pickle file between your local python environment and
+      the platform. 
+    
+    """
+
+    import sys
+
+    logger = get_logger()
+
+    logger.info("Initializing deploy_model()")
+    logger.info(
+        """deploy_model(model={}, model_name={}, authentication={}, platform={})""".format(
+            str(model), str(model_name), str(authentication), str(platform)
+        )
+    )
+
+    # ignore warnings
+    import warnings
+
+    warnings.filterwarnings("ignore")
+
+    # general dependencies
+    import ipywidgets as ipw
+    import pandas as pd
+    from IPython.display import clear_output, update_display
+    import os
+
+    if platform == "aws":
+
+        logger.info("Platform : AWS S3")
+
+        # checking if awscli available
+        try:
+            import awscli
+        except:
+            logger.error(
+                "awscli library not found. pip install awscli to use deploy_model function."
+            )
+            sys.exit(
+                "awscli library not found. pip install awscli to use deploy_model function."
+            )
+
+        import boto3
+
+        logger.info("Saving model in active working directory")
+        logger.info("SubProcess save_model() called ==================================")
+        save_model(model, model_name=model_name, verbose=False)
+        logger.info("SubProcess save_model() end ==================================")
+
+        # initiaze s3
+        logger.info("Initializing S3 client")
+        s3 = boto3.client("s3")
+        filename = str(model_name) + ".pkl"
+        key = str(model_name) + ".pkl"
+        bucket_name = authentication.get("bucket")
+        s3.upload_file(filename, bucket_name, key)
+        clear_output()
+        os.remove(filename)
+        print("Model Succesfully Deployed on AWS S3")
+        logger.info("Model Succesfully Deployed on AWS S3")
+        logger.info(str(model))
+
+    elif platform == "gcp":
+
+        logger.info("Platform : GCP")
+
+        try:
+            import google.cloud
+        except:
+            logger.error(
+                "google-cloud-storage library not found. pip install google-cloud-storage to use deploy_model function with GCP."
+            )
+            sys.exit(
+                "google-cloud-storage library not found. pip install google-cloud-storage to use deploy_model function with GCP."
+            )
+
+        logger.info("Saving model in active working directory")
+        logger.info("SubProcess save_model() called ==================================")
+        save_model(model, model_name=model_name, verbose=False)
+        logger.info("SubProcess save_model() end ==================================")
+
+        # initialize deployment
+        filename = str(model_name) + ".pkl"
+        key = str(model_name) + ".pkl"
+        bucket_name = authentication.get("bucket")
+        project_name = authentication.get("project")
+        try:
+            _create_bucket_gcp(project_name, bucket_name)
+            _upload_blob_gcp(project_name, bucket_name, filename, key)
+        except:
+            _upload_blob_gcp(project_name, bucket_name, filename, key)
+        os.remove(filename)
+        print("Model Succesfully Deployed on GCP")
+        logger.info("Model Succesfully Deployed on GCP")
+        logger.info(str(model))
+
+    elif platform == "azure":
+
+        try:
+            import azure.storage.blob
+        except:
+            logger.error(
+                "azure-storage-blob library not found. pip install azure-storage-blob to use deploy_model function with Azure."
+            )
+            sys.exit(
+                "azure-storage-blob library not found. pip install azure-storage-blob to use deploy_model function with Azure."
+            )
+
+        logger.info("Platform : Azure Blob Storage")
+
+        logger.info("Saving model in active working directory")
+        logger.info("SubProcess save_model() called ==================================")
+        save_model(model, model_name=model_name, verbose=False)
+        logger.info("SubProcess save_model() end ==================================")
+
+        # initialize deployment
+        filename = str(model_name) + ".pkl"
+        key = str(model_name) + ".pkl"
+        container_name = authentication.get("container")
+        try:
+            container_client = _create_container_azure(container_name)
+            _upload_blob_azure(container_name, filename, key)
+            del container_client
+        except:
+            _upload_blob_azure(container_name, filename, key)
+
+        os.remove(filename)
+
+        print("Model Succesfully Deployed on Azure Storage Blob")
+        logger.info("Model Succesfully Deployed on Azure Storage Blob")
+        logger.info(str(model))
+
+    else:
+        logger.error(
+            "Platform {} is not supported by pycaret or illegal option".format(platform)
+        )
+        sys.exit(
+            "Platform {} is not supported by pycaret or illegal option".format(platform)
+        )
+
+    logger.info(
+        "deploy_model() succesfully completed......................................"
+    )
+
+
+def save_model(model, model_name, model_only=False, verbose=True):
+
+    """
+    This function saves the transformation pipeline and trained model object 
+    into the current active directory as a pickle file for later use. 
+    
+    Example
+    -------
+    >>> from pycaret.datasets import get_data
+    >>> juice = get_data('juice')
+    >>> experiment_name = setup(data = juice,  target = 'Purchase')
+    >>> lr = create_model('lr')
+    >>> save_model(lr, 'lr_model_23122019')
+    
+    This will save the transformation pipeline and model as a binary pickle
+    file in the current active directory. 
+
+    Parameters
+    ----------
+    model : object, default = none
+        A trained model object should be passed as an estimator. 
+    
+    model_name : string, default = none
+        Name of pickle file to be passed as a string.
+    
+    model_only : bool, default = False
+        When set to True, only trained model object is saved and all the 
+        transformations are ignored.
+
+    verbose: Boolean, default = True
+        Success message is not printed when verbose is set to False.
+
+    Returns
+    -------
+    Success_Message
+    
+         
+    """
+
+    from copy import deepcopy
+
+    logger = get_logger()
+
+    logger.info("Initializing save_model()")
+    logger.info(
+        """save_model(model={}, model_name={}, model_only={}, verbose={})""".format(
+            str(model), str(model_name), str(model_only), str(verbose)
+        )
+    )
+
+    # ignore warnings
+    import warnings
+
+    warnings.filterwarnings("ignore")
+
+    logger.info("Adding model into prep_pipe")
+
+    if model_only:
+        model_ = deepcopy(model)
+        logger.warning("Only Model saved. Transformations in prep_pipe are ignored.")
+    else:
+        model_ = deepcopy(prep_pipe)
+        model_.steps.append(["trained model", model])
+
+    import joblib
+
+    model_name = model_name + ".pkl"
+    joblib.dump(model_, model_name)
+    if verbose:
+        print("Transformation Pipeline and Model Succesfully Saved")
+
+    logger.info(str(model_name) + " saved in current working directory")
+    logger.info(str(model_))
+    logger.info(
+        "save_model() succesfully completed......................................"
+    )
+
+
+def load_model(model_name, platform=None, authentication=None, verbose=True):
+
+    """
+    This function loads a previously saved transformation pipeline and model 
+    from the current active directory into the current python environment. 
+    Load object must be a pickle file.
+    
+    Example
+    -------
+    >>> saved_lr = load_model('lr_model_23122019')
+    
+    This will load the previously saved model in saved_lr variable. The file 
+    must be in the current directory.
+
+    Parameters
+    ----------
+    model_name : string, default = none
+        Name of pickle file to be passed as a string.
+      
+    platform: string, default = None
+        Name of platform, if loading model from cloud. Current available options are:
+        'aws', 'gcp' and 'azure'.
+    
+    authentication : dict
+        dictionary of applicable authentication tokens.
+
+        When platform = 'aws':
+        {'bucket' : 'Name of Bucket on S3'}
+
+        When platform = 'gcp':
+        {'project': 'gcp_pycaret', 'bucket' : 'pycaret-test'}
+
+        When platform = 'azure':
+        {'container': 'pycaret-test'}
+    
+    verbose: Boolean, default = True
+        Success message is not printed when verbose is set to False.
+
+    Returns
+    -------
+    Model Object
+
+    """
+
+    # ignore warnings
+    import warnings
+
+    warnings.filterwarnings("ignore")
+
+    # exception checking
+    import sys
+
+    if platform is not None:
+        if authentication is None:
+            sys.exit("(Value Error): Authentication is missing.")
+
+    if platform is None:
+
+        import joblib
+
+        model_name = model_name + ".pkl"
+        if verbose:
+            print("Transformation Pipeline and Model Successfully Loaded")
+        return joblib.load(model_name)
+
+    # cloud providers
+    elif platform == "aws":
+
+        import boto3
+
+        bucketname = authentication.get("bucket")
+        filename = str(model_name) + ".pkl"
+        s3 = boto3.resource("s3")
+        s3.Bucket(bucketname).download_file(filename, filename)
+        filename = str(model_name)
+        model = load_model(filename, verbose=False)
+        model = load_model(filename, verbose=False)
+
+        if verbose:
+            print("Transformation Pipeline and Model Successfully Loaded")
+
+        return model
+
+    elif platform == "gcp":
+
+        bucket_name = authentication.get("bucket")
+        project_name = authentication.get("project")
+        filename = str(model_name) + ".pkl"
+
+        model_downloaded = _download_blob_gcp(
+            project_name, bucket_name, filename, filename
+        )
+
+        model = load_model(model_name, verbose=False)
+
+        if verbose:
+            print("Transformation Pipeline and Model Successfully Loaded")
+        return model
+
+    elif platform == "azure":
+
+        container_name = authentication.get("container")
+        filename = str(model_name) + ".pkl"
+
+        model_downloaded = _download_blob_azure(container_name, filename, filename)
+
+        model = load_model(model_name, verbose=False)
+
+        if verbose:
+            print("Transformation Pipeline and Model Successfully Loaded")
+        return model
+    else:
+        print(
+            "Platform { } is not supported by pycaret or illegal option".format(
+                platform
+            )
+        )
+
+
 def automl(optimize="Accuracy", use_holdout=False):
 
     """
@@ -8334,109 +8331,6 @@ def pull():
 
     """
     return display_container[-1]
-
-
-def _get_model_id(e):
-    all_models = models(internal=True)
-    model_definition = None
-    for row in all_models.itertuples():
-        if type(e) is row.Class:
-            return row[0]
-
-    return None
-
-
-def _is_special_model(e):
-    all_models = models(internal=True)
-    model_definition = None
-    for row in all_models.itertuples():
-        if type(e) is row.Class:
-            return row.Special
-
-    return False
-
-
-def _get_model_name(e):
-    all_models = models(internal=True)
-    if isinstance(e, str) and e in all_models.index:
-        model_id = e
-    else:
-        model_id = _get_model_id(e)
-
-    if model_id is not None:
-        name = all_models.loc[model_id]["Name"]
-    else:
-        name = str(e).split("(")[0]
-        if "catboost" in name:
-            name = "CatBoostClassifier"
-
-    return name
-
-
-def get_metrics():
-    try:
-        return all_metrics
-    except:
-        pass
-
-    import pandas as pd
-    import numpy as np
-    from sklearn import metrics
-
-    columns = ["ID", "Name", "Display Name", "SearchCV Param", "Multiclass"]
-    rows = [
-        ("acc", "Accuracy", "Accuracy", "accuracy", True),
-        ("auc", "AUC", "AUC", "roc_auc", False),
-        (
-            "recall",
-            "Recall",
-            "Recall",
-            metrics.make_scorer(metrics.recall_score, average="macro")
-            if y.value_counts().count() > 2
-            else "recall",
-            True,
-        ),
-        (
-            "precision",
-            "Precision",
-            "Prec.",
-            metrics.make_scorer(metrics.precision_score, average="weighted")
-            if y.value_counts().count() > 2
-            else "precision",
-            True,
-        ),
-        (
-            "f1",
-            "F1",
-            "F1",
-            metrics.make_scorer(metrics.f1_score, average="weighted")
-            if y.value_counts().count() > 2
-            else "f1",
-            True,
-        ),
-        (
-            "kappa",
-            "Kappa",
-            "Kappa",
-            metrics.make_scorer(metrics.cohen_kappa_score),
-            True,
-        ),
-        (
-            "mcc",
-            "MCC",
-            "MCC",
-            "roc_auc"
-            if y.value_counts().count() > 2
-            else metrics.make_scorer(metrics.matthews_corrcoef),
-            True,
-        ),
-        ("tt", "TT", "TT (Sec)", None, True),
-    ]
-    df = pd.DataFrame(rows)
-    df.columns = columns
-
-    df.set_index("ID", inplace=True)
-    return df
 
 
 def models(type=None, internal=False):
@@ -8972,6 +8866,72 @@ def models(type=None, internal=False):
     return filter_model_df_by_type(df)
 
 
+def get_metrics():
+    try:
+        return all_metrics
+    except:
+        pass
+
+    import pandas as pd
+    import numpy as np
+    from sklearn import metrics
+
+    columns = ["ID", "Name", "Display Name", "SearchCV Param", "Multiclass"]
+    rows = [
+        ("acc", "Accuracy", "Accuracy", "accuracy", True),
+        ("auc", "AUC", "AUC", "roc_auc", False),
+        (
+            "recall",
+            "Recall",
+            "Recall",
+            metrics.make_scorer(metrics.recall_score, average="macro")
+            if y.value_counts().count() > 2
+            else "recall",
+            True,
+        ),
+        (
+            "precision",
+            "Precision",
+            "Prec.",
+            metrics.make_scorer(metrics.precision_score, average="weighted")
+            if y.value_counts().count() > 2
+            else "precision",
+            True,
+        ),
+        (
+            "f1",
+            "F1",
+            "F1",
+            metrics.make_scorer(metrics.f1_score, average="weighted")
+            if y.value_counts().count() > 2
+            else "f1",
+            True,
+        ),
+        (
+            "kappa",
+            "Kappa",
+            "Kappa",
+            metrics.make_scorer(metrics.cohen_kappa_score),
+            True,
+        ),
+        (
+            "mcc",
+            "MCC",
+            "MCC",
+            "roc_auc"
+            if y.value_counts().count() > 2
+            else metrics.make_scorer(metrics.matthews_corrcoef),
+            True,
+        ),
+        ("tt", "TT", "TT (Sec)", None, True),
+    ]
+    df = pd.DataFrame(rows)
+    df.columns = columns
+
+    df.set_index("ID", inplace=True)
+    return df
+
+
 def get_logs(experiment_name=None, save=False):
 
     """
@@ -9298,6 +9258,43 @@ def get_system_logs():
 
         columns = [col.strip() for col in line.split(":") if col]
         print(columns)
+
+
+def _get_model_id(e):
+    all_models = models(internal=True)
+    model_definition = None
+    for row in all_models.itertuples():
+        if type(e) is row.Class:
+            return row[0]
+
+    return None
+
+
+def _is_special_model(e):
+    all_models = models(internal=True)
+    model_definition = None
+    for row in all_models.itertuples():
+        if type(e) is row.Class:
+            return row.Special
+
+    return False
+
+
+def _get_model_name(e):
+    all_models = models(internal=True)
+    if isinstance(e, str) and e in all_models.index:
+        model_id = e
+    else:
+        model_id = _get_model_id(e)
+
+    if model_id is not None:
+        name = all_models.loc[model_id]["Name"]
+    else:
+        name = str(e).split("(")[0]
+        if "catboost" in name:
+            name = "CatBoostClassifier"
+
+    return name
 
 
 def _fix_imbalance(Xtrain, ytrain, fix_imbalance_method_param=None):
