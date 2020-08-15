@@ -1461,7 +1461,7 @@ def setup(data,
             '''
     
             X_, X__, y_, y__ = train_test_split(X, y, test_size=1-i, stratify=y, random_state=seed, shuffle=data_split_shuffle)
-            X_train, X_test, y_train, y_test = train_test_split(X_, y_, test_size=0.3, stratify=y_, random_state=seed, shuffle=data_split_shuffle)
+            X_train, X_test, y_train, y_test = train_test_split(X_, y_, test_size=1-train_size, stratify=y_, random_state=seed, shuffle=data_split_shuffle)
             model.fit(X_train,y_train)
             pred_ = model.predict(X_test)
             try:
