@@ -2,7 +2,7 @@
 # Author: Moez Ali <moez.ali@queensu.ca>
 # License: MIT
 # Release: PyCaret 2.1
-# Last modified : 14/08/2020
+# Last modified : 16/08/2020
 
 def setup(data,  
           target,   
@@ -9678,66 +9678,62 @@ def finalize_model(estimator):
 
 def deploy_model(model, 
                  model_name, 
-                 authentication,
-                 platform = 'aws'):
+                 platform,
+                 authentication):
     
     """
-    (In Preview)
-
     This function deploys the transformation pipeline and trained model object for
     production use. The platform of deployment can be defined under the platform
     param along with the applicable authentication tokens which are passed as a
     dictionary to the authentication param.
-    
-    Example
-    -------
-    >>> from pycaret.datasets import get_data
-    >>> juice = get_data('juice')
-    >>> experiment_name = setup(data = juice,  target = 'Purchase')
-    >>> lr = create_model('lr')
-    >>> deploy_model(model = lr, model_name = 'deploy_lr', platform = 'aws', authentication = {'bucket' : 'pycaret-test'})
-    
-    This will deploy the model on an AWS S3 account under bucket 'pycaret-test'
-    
-    Notes
-    -----
-    For AWS users:
+        
+    Platform: AWS
+    -------------
     Before deploying a model to an AWS S3 ('aws'), environment variables must be 
     configured using the command line interface. To configure AWS env. variables, 
     type aws configure in your python command line. The following information is
     required which can be generated using the Identity and Access Management (IAM) 
-    portal of your amazon console account:
+    portal of your AWS console account:
 
     - AWS Access Key ID
     - AWS Secret Key Access
     - Default Region Name (can be seen under Global settings on your AWS console)
     - Default output format (must be left blank)
 
-    For GCP users:
+    >>> from pycaret.datasets import get_data
+    >>> juice = get_data('juice')
+    >>> experiment_name = setup(data = juice,  target = 'Purchase')
+    >>> lr = create_model('lr')
+    >>> deploy_model(model = lr, model_name = 'deploy_lr', platform = 'aws', authentication = {'bucket' : 'bucket-name'})
+
+    Platform: GCP
     --------------
-    Before deploying a model to Google Cloud Platform (GCP), user has to create Project
-    on the platform from consol. To do that, user must have google cloud account or
-    create new one. After creating a service account, down the JSON authetication file
-    and configure  GOOGLE_APPLICATION_CREDENTIALS= <path-to-json> from command line. If
-    using google-colab then authetication can be done using `google.colab` auth method.
-    Read below link for more details.
+    Before deploying a model to Google Cloud Platform (GCP), project must be created either
+    using command line or GCP console. Once project is created, you must create a service 
+    account and download the service account key as a JSON file, which is then used to 
+    set environment variable. 
 
-    https://cloud.google.com/docs/authentication/production
+    Learn more : https://cloud.google.com/docs/authentication/production
 
-    - Google Cloud Project
-    - Service Account Authetication
+    >>> from pycaret.datasets import get_data
+    >>> juice = get_data('juice')
+    >>> experiment_name = setup(data = juice,  target = 'Purchase')
+    >>> lr = create_model('lr')
+    >>> os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = 'c:/path-to-json-file.json' 
+    >>> deploy_model(model = lr, model_name = 'deploy_lr', platform = 'gcp', authentication = {'project' : 'project-name', 'bucket' : 'bucket-name'})
 
-    For Azure users:
+    Platform: Azure
     ---------------
-    Before deploying a model to Microsoft's Azure (Azure), environment variables
-    for connection string must be set. In order to get connection string, user has
-    to create account of Azure. Once it is done, create a Storage account. In the settings
-    section of storage account, user can get the connection string.
+    Before deploying a model to Microsoft Azure, environment variables for connection 
+    string must be set. Connection string can be obtained from 'Access Keys' of your 
+    storage account in Azure.
 
-    Read below link for more details.
-    https://docs.microsoft.com/en-us/azure/storage/blobs/storage-quickstart-blobs-python?toc=%2Fpython%2Fazure%2FTOC.json
-
-    - Azure Storage Account
+    >>> from pycaret.datasets import get_data
+    >>> juice = get_data('juice')
+    >>> experiment_name = setup(data = juice,  target = 'Purchase')
+    >>> lr = create_model('lr')
+    >>> os.environ['AZURE_STORAGE_CONNECTION_STRING'] = 'connection-string-here' 
+    >>> deploy_model(model = lr, model_name = 'deploy_lr', platform = 'azure', authentication = {'container' : 'container-name'})
 
     Parameters
     ----------
@@ -9747,20 +9743,21 @@ def deploy_model(model,
     model_name : string
         Name of model to be passed as a string.
     
+    platform: string
+        Name of platform for deployment. 
+        Currently accepts: 'aws', 'gcp', 'azure'
+
     authentication : dict
         Dictionary of applicable authentication tokens.
 
         When platform = 'aws':
-        {'bucket' : 'Name of Bucket on S3'}
+        {'bucket' : 'name of bucket'}
 
         When platform = 'gcp':
-        {'project': 'gcp_pycaret', 'bucket' : 'pycaret-test'}
+        {'project': 'name of project', 'bucket' : 'name of bucket'}
 
         When platform = 'azure':
-        {'container': 'pycaret-test'}
-    
-    platform: string, default = 'aws'
-        Name of platform for deployment. Current available options are: 'aws', 'gcp' and 'azure'
+        {'container': 'name of container'}
 
     Returns
     -------
@@ -10032,20 +10029,20 @@ def load_model(model_name,
         Name of pickle file to be passed as a string.
       
     platform: string, default = None
-        Name of platform, if loading model from cloud. Current available options are:
-        'aws', 'gcp' and 'azure'.
+        Name of platform, if loading model from cloud. 
+        Currently available options are: 'aws', 'gcp', 'azure'.
     
     authentication : dict
         dictionary of applicable authentication tokens.
 
         When platform = 'aws':
-        {'bucket' : 'Name of Bucket on S3'}
+        {'bucket' : 'name of bucket'}
 
         When platform = 'gcp':
-        {'project': 'gcp_pycaret', 'bucket' : 'pycaret-test'}
+        {'project': 'name of project', 'bucket' : 'name of bucket'}
 
         When platform = 'azure':
-        {'container': 'pycaret-test'}
+        {'container': 'name of container'}
     
     verbose: Boolean, default = True
         Success message is not printed when verbose is set to False.
