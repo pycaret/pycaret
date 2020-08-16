@@ -2043,15 +2043,16 @@ def compare_models(
     MONITOR UPDATE ENDS
     """
 
-    models_to_check = models()
-    if turbo:
-        model_library = models_to_check[models_to_check["Turbo"] == True]
-    if blacklist:
-        model_library = models_to_check.drop(index=blacklist)
     if whitelist:
-        model_library = [
-            models_to_check.loc[x] if isinstance(x, str) else x for x in whitelist
-        ]
+        model_library = whitelist
+    else:
+        if turbo:
+            model_library = models()
+            model_library = list(model_library[model_library["Turbo"] == True].index)
+        else:
+            model_library = list(models().index)
+        if blacklist:
+            model_library = [x for x in model_library if x not in blacklist]
 
     display.move_progress()
 
@@ -2449,7 +2450,7 @@ def create_model(
     if isinstance(estimator, str):
         if estimator not in available_estimators:
             sys.exit(
-                f"(Value Error): Estimator {estimator} Not Available. Please see docstring for list of available estimators."
+                f"(Value Error): Estimator {estimator} not available. Please see docstring for list of available estimators."
             )
     elif not hasattr(estimator, "fit"):
         sys.exit(
