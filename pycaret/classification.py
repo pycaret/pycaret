@@ -9172,7 +9172,6 @@ def optimize_threshold(estimator,
 def predict_model(estimator, 
                   data=None,
                   probability_threshold=None,
-                  categorical_labels=False,
                   verbose=True): #added in pycaret==2.0.0
     
     """
@@ -9202,9 +9201,6 @@ def predict_model(estimator,
         Threshold used to convert probability values into binary outcome. By default the
         probability threshold for all binary classifiers is 0.5 (50%). This can be changed
         using probability_threshold param.
-
-    categorical_labels: Boolean, default = False
-        If True, will output labels as-is, otherwise will output labels encoded as integers.
 
     verbose: Boolean, default = True
         Holdout score grid is not printed when verbose is set to False.
@@ -9298,11 +9294,6 @@ def predict_model(estimator,
             
         Xtest = data.copy()
         X_test_ = data.copy()
-        Xtest.reset_index(drop=True, inplace=True)
-        X_test_.reset_index(inplace=True)
-
-        index = X_test_['index']
-        X_test_.drop('index', axis=1, inplace=True)
         
     # function to replace encoded labels with their original values
     # will not run if categorical_labels is false
@@ -9399,16 +9390,14 @@ def predict_model(estimator,
     label = pd.DataFrame(pred_)
     label.columns = ['Label']
     label['Label']=label['Label'].astype(int)
-    if categorical_labels:
-        replace_lables_in_column(label['Label'])
+    replace_lables_in_column(label['Label'])
     
     if data is None:
-        if categorical_labels:
-            replace_lables_in_column(ytest)
+        replace_lables_in_column(ytest)
         X_test_ = pd.concat([Xtest,ytest,label], axis=1)
     else:
-        X_test_ = pd.concat([X_test_,label], axis=1)
-    
+        X_test_.insert(len(X_test_.columns), "Label", label["Label"].to_list())
+
     if hasattr(estimator,'predict_proba'):
         try:
             score = pd.DataFrame(pred_prob)
@@ -9423,10 +9412,6 @@ def predict_model(estimator,
         display_container.append(df_score)
     except:
         pass
-
-    if index is not None:
-        X_test_['index'] = index
-        X_test_.set_index('index', drop=True, inplace=True)
 
     return X_test_
 
