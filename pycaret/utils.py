@@ -268,12 +268,15 @@ class Display:
     def display(self, df, clear=False, override=None):
         if (self.verbose and self.html_param and override != False) or override == True:
             if clear:
-                clear_output()
+                self.clear_output()
             display(df)
         elif (
             self.verbose and not self.html_param and override != False
         ) or override == True:
             print(df.data)
+
+    def clear_output(self):
+        clear_output()
 
     def __init__(
         self,
