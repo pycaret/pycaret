@@ -64,13 +64,14 @@ def setup(
     html: bool = True,  # added in pycaret==2.0.0
     session_id: int = None,
     log_experiment: bool = False,  # added in pycaret==2.0.0
-    experiment_name: str =None,  # added in pycaret==2.0.0
+    experiment_name: str = None,  # added in pycaret==2.0.0
     log_plots: bool = False,  # added in pycaret==2.0.0
     log_profile: bool = False,  # added in pycaret==2.0.0
     log_data: bool = False,  # added in pycaret==2.0.0
     silent: bool = False,
     verbose: bool = True,  # added in pycaret==2.0.0
     profile: bool = False,
+    display: Display = None,
 ):
 
     """
@@ -1016,8 +1017,6 @@ def setup(
 
     # pre-load libraries
     import pandas as pd
-    import ipywidgets as ipw
-    from IPython.display import display, HTML, clear_output, update_display
     import os
 
     # pandas option
@@ -1036,32 +1035,25 @@ def setup(
 
     logger.info("Preparing display monitor")
 
-    # progress bar
-    if sampling:
-        max_steps = 10 + 3
-    else:
+    if not display:
+        # progress bar
         max_steps = 3
+        if sampling:
+            max_steps += 10
 
-    progress = ipw.IntProgress(
-        value=0, min=0, max=max_steps, step=1, description="Processing: "
-    )
-    if verbose:
-        if html_param:
-            display(progress)
-
-    timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
-    monitor = pd.DataFrame(
-        [
+        progress_args = {"max": max_steps}
+        timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
+        monitor_rows = [
             ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
             ["Status", ". . . . . . . . . . . . . . . . . .", "Loading Dependencies"],
             ["ETC", ". . . . . . . . . . . . . . . . . .", "Calculating ETC"],
-        ],
-        columns=["", " ", "   "],
-    ).set_index("")
+        ]
+        display = Display(
+            verbose, html_param, progress_args, monitor_rows, logger=logger,
+        )
 
-    if verbose:
-        if html_param:
-            display(monitor, display_id="monitor")
+        display.display_progress()
+        display.display_monitor()
 
     logger.info("Importing libraries")
 
@@ -1110,10 +1102,8 @@ def setup(
     preprocessing starts here
     """
 
-    monitor.iloc[1, 1:] = "Preparing Data for Modeling"
-    if verbose:
-        if html_param:
-            update_display(monitor, display_id="monitor")
+    display.update_monitor(1, "Preparing Data for Modeling")
+    display.display_monitor()
 
     # define parameters for preprocessor
 
@@ -1343,7 +1333,7 @@ def setup(
         random_state=seed,
     )
 
-    progress.value += 1
+    display.move_progress()
     logger.info("Preprocessing pipeline created successfully")
 
     if hasattr(preprocess.dtypes, "replacement"):
@@ -1560,253 +1550,18 @@ def setup(
     else:
         target_type = "Binary"
 
-    progress.value += 1
+    display.move_progress()
 
     if sampling is True and data.shape[0] > 25000:  # change this back to 25000
 
-        logger.info("Sampling dataset")
-
-        split_perc = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.99]
-        split_perc_text = [
-            "10%",
-            "20%",
-            "30%",
-            "40%",
-            "50%",
-            "60%",
-            "70%",
-            "80%",
-            "90%",
-            "100%",
-        ]
-        split_perc_tt = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.99]
-        split_perc_tt_total = []
-        split_percent = []
-
-        metric_results = []
-        metric_name = []
-
-        counter = 0
-
-        for i in split_perc:
-
-            progress.value += 1
-
-            t0 = time.time()
-
-            """
-            MONITOR UPDATE STARTS
-            """
-
-            perc_text = split_perc_text[counter]
-            monitor.iloc[1, 1:] = "Fitting Model on " + perc_text + " sample"
-            if verbose:
-                if html_param:
-                    update_display(monitor, display_id="monitor")
-
-            """
-            MONITOR UPDATE ENDS
-            """
-
-            X_, X__, y_, y__ = train_test_split(
-                X,
-                y,
-                test_size=1 - i,
-                stratify=y,
-                random_state=seed,
-                shuffle=data_split_shuffle,
-            )
-            X_train, X_test, y_train, y_test = train_test_split(
-                X_,
-                y_,
-                test_size=1 - train_size,
-                stratify=y_,
-                random_state=seed,
-                shuffle=data_split_shuffle,
-            )
-            model.fit(X_train, y_train)
-            pred_ = model.predict(X_test)
-            try:
-                pred_prob = model.predict_proba(X_test)[:, 1]
-            except:
-                logger.warning("model has no predict_proba attribute.")
-                pred_prob = 0
-
-            # accuracy
-            acc = metrics.accuracy_score(y_test, pred_)
-            metric_results.append(acc)
-            metric_name.append("Accuracy")
-            split_percent.append(i)
-
-            # auc
-            if y.value_counts().count() > 2:
-                pass
-            else:
-                try:
-                    auc = metrics.roc_auc_score(y_test, pred_prob)
-                    metric_results.append(auc)
-                    metric_name.append("AUC")
-                    split_percent.append(i)
-                except:
-                    pass
-
-            # recall
-            if y.value_counts().count() > 2:
-                recall = metrics.recall_score(y_test, pred_, average="macro")
-                metric_results.append(recall)
-                metric_name.append("Recall")
-                split_percent.append(i)
-            else:
-                recall = metrics.recall_score(y_test, pred_)
-                metric_results.append(recall)
-                metric_name.append("Recall")
-                split_percent.append(i)
-
-            # precision
-            if y.value_counts().count() > 2:
-                precision = metrics.precision_score(y_test, pred_, average="weighted")
-                metric_results.append(precision)
-                metric_name.append("Precision")
-                split_percent.append(i)
-            else:
-                precision = metrics.precision_score(y_test, pred_)
-                metric_results.append(precision)
-                metric_name.append("Precision")
-                split_percent.append(i)
-
-            # F1
-            if y.value_counts().count() > 2:
-                f1 = metrics.f1_score(y_test, pred_, average="weighted")
-                metric_results.append(f1)
-                metric_name.append("F1")
-                split_percent.append(i)
-            else:
-                f1 = metrics.precision_score(y_test, pred_)
-                metric_results.append(f1)
-                metric_name.append("F1")
-                split_percent.append(i)
-
-            # Kappa
-            kappa = metrics.cohen_kappa_score(y_test, pred_)
-            metric_results.append(kappa)
-            metric_name.append("Kappa")
-            split_percent.append(i)
-
-            t1 = time.time()
-
-            """
-            Time calculation begins
-            """
-
-            tt = t1 - t0
-            total_tt = tt / i
-            split_perc_tt.pop(0)
-
-            for remain in split_perc_tt:
-                ss = total_tt * remain
-                split_perc_tt_total.append(ss)
-
-            ttt = sum(split_perc_tt_total) / 60
-            ttt = np.around(ttt, 2)
-
-            if ttt < 1:
-                ttt = str(np.around((ttt * 60), 2))
-                ETC = ttt + " Seconds Remaining"
-
-            else:
-                ttt = str(ttt)
-                ETC = ttt + " Minutes Remaining"
-
-            monitor.iloc[2, 1:] = ETC
-            if verbose:
-                if html_param:
-                    update_display(monitor, display_id="monitor")
-
-            """
-            Time calculation Ends
-            """
-
-            split_perc_tt_total = []
-            counter += 1
-
-        model_results = pd.DataFrame(
-            {
-                "Sample": split_percent,
-                "Metric": metric_results,
-                "Metric Name": metric_name,
-            }
+        X_train, X_test, y_train, y_test = _sample_data(
+            model, seed, train_size, data_split_shuffle, display
         )
-        fig = px.line(
-            model_results,
-            x="Sample",
-            y="Metric",
-            color="Metric Name",
-            line_shape="linear",
-            range_y=[0, 1],
-        )
-        fig.update_layout(plot_bgcolor="rgb(245,245,245)")
-        title = str(model_name) + " Metrics and Sample %"
-        fig.update_layout(
-            title={
-                "text": title,
-                "y": 0.95,
-                "x": 0.45,
-                "xanchor": "center",
-                "yanchor": "top",
-            }
-        )
-        fig.show()
-
-        monitor.iloc[1, 1:] = "Waiting for input"
-        if verbose:
-            if html_param:
-                update_display(monitor, display_id="monitor")
-
-        print(
-            "Please Enter the sample % of data you would like to use for modeling. Example: Enter 0.3 for 30%."
-        )
-        print("Press Enter if you would like to use 100% of the data.")
-
-        sample_size = input("Sample Size: ")
-
-        if sample_size == "" or sample_size == "1":
-
-            X_train, X_test, y_train, y_test = train_test_split(
-                X,
-                y,
-                test_size=1 - train_size,
-                stratify=y,
-                random_state=seed,
-                shuffle=data_split_shuffle,
-            )
-
-        else:
-
-            sample_n = float(sample_size)
-            X_selected, X_discard, y_selected, y_discard = train_test_split(
-                X,
-                y,
-                test_size=1 - sample_n,
-                stratify=y,
-                random_state=seed,
-                shuffle=data_split_shuffle,
-            )
-
-            X_train, X_test, y_train, y_test = train_test_split(
-                X_selected,
-                y_selected,
-                test_size=1 - train_size,
-                stratify=y_selected,
-                random_state=seed,
-                shuffle=data_split_shuffle,
-            )
 
     else:
+        display.update_monitor(1, "Splitting Data")
+        display.display_monitor()
 
-        monitor.iloc[1, 1:] = "Splitting Data"
-        if verbose:
-            if html_param:
-                update_display(monitor, display_id="monitor")
         X_train, X_test, y_train, y_test = train_test_split(
             X,
             y,
@@ -1815,12 +1570,11 @@ def setup(
             random_state=seed,
             shuffle=data_split_shuffle,
         )
-        progress.value += 1
+        display.move_progress()
 
     """
     Final display Starts
     """
-    clear_output()
     if profile:
         print("Setup Succesfully Completed! Loading Profile Now... Please Wait!")
     else:
@@ -1841,11 +1595,7 @@ def setup(
             ["High Cardinality Method ", high_cardinality_method_grid],
             [
                 "Sampled Data",
-                "("
-                + str(X_train.shape[0] + X_test.shape[0])
-                + ", "
-                + str(data_before_preprocess.shape[1])
-                + ")",
+                f"({X_train.shape[0] + X_test.shape[0]}, {data_before_preprocess.shape[1]})",
             ],
             ["Transformed Train Set", X_train.shape],
             ["Transformed Test Set", X_test.shape],
@@ -1885,19 +1635,15 @@ def setup(
     )
 
     functions_ = functions.style.apply(highlight_max)
-    if verbose:
-        if html_param:
-            display(functions_)
-        else:
-            print(functions_.data)
+
+    display.display(functions_, clear=True)
 
     if profile:
         try:
             import pandas_profiling
 
             pf = pandas_profiling.ProfileReport(data_before_preprocess)
-            clear_output()
-            display(pf)
+            display.display(pf, clear=True)
         except:
             print(
                 "Data Profiler Failed. No output to show, please continue with Modeling."
@@ -1992,8 +1738,7 @@ def setup(
                 pf.to_file("Data Profile.html")
                 mlflow.log_artifact("Data Profile.html")
                 os.remove("Data Profile.html")
-                clear_output()
-                display(functions_)
+                display.display(functions_, clear=True)
 
             # Log training and testing set
             if log_data:
@@ -9687,3 +9432,249 @@ def _download_blob_azure(
     if destination_file_name is not None:
         with open(destination_file_name, "wb") as download_file:
             download_file.write(blob_client.download_blob().readall())
+
+
+def _sample_data(
+    model, seed: int, train_size: float, data_split_shuffle: bool, display: Display
+):
+    import pandas as pd
+    import numpy as np
+    from sklearn.linear_model import LogisticRegression
+    from sklearn.model_selection import train_test_split
+    from sklearn import metrics
+    import random
+    import seaborn as sns
+    import matplotlib.pyplot as plt
+    import plotly.express as px
+    import datetime, time
+
+    logger = get_logger()
+
+    logger.info("Sampling dataset")
+
+    split_perc = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.99]
+    split_perc_text = [
+        "10%",
+        "20%",
+        "30%",
+        "40%",
+        "50%",
+        "60%",
+        "70%",
+        "80%",
+        "90%",
+        "100%",
+    ]
+    split_perc_tt = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.99]
+    split_perc_tt_total = []
+    split_percent = []
+
+    metric_results = []
+    metric_name = []
+
+    counter = 0
+
+    for i in split_perc:
+
+        display.move_progress()
+
+        t0 = time.time()
+
+        """
+        MONITOR UPDATE STARTS
+        """
+
+        perc_text = split_perc_text[counter]
+        display.update_monitor(1, f"Fitting Model on {perc_text} sample")
+        display.display_monitor()
+
+        """
+        MONITOR UPDATE ENDS
+        """
+
+        X_, X__, y_, y__ = train_test_split(
+            X,
+            y,
+            test_size=1 - i,
+            stratify=y,
+            random_state=seed,
+            shuffle=data_split_shuffle,
+        )
+        X_train, X_test, y_train, y_test = train_test_split(
+            X_,
+            y_,
+            test_size=1 - train_size,
+            stratify=y_,
+            random_state=seed,
+            shuffle=data_split_shuffle,
+        )
+        model.fit(X_train, y_train)
+        pred_ = model.predict(X_test)
+        try:
+            pred_prob = model.predict_proba(X_test)[:, 1]
+        except:
+            logger.warning("model has no predict_proba attribute.")
+            pred_prob = 0
+
+        # accuracy
+        acc = metrics.accuracy_score(y_test, pred_)
+        metric_results.append(acc)
+        metric_name.append("Accuracy")
+        split_percent.append(i)
+
+        # auc
+        if y.value_counts().count() > 2:
+            pass
+        else:
+            try:
+                auc = metrics.roc_auc_score(y_test, pred_prob)
+                metric_results.append(auc)
+                metric_name.append("AUC")
+                split_percent.append(i)
+            except:
+                pass
+
+        # recall
+        if y.value_counts().count() > 2:
+            recall = metrics.recall_score(y_test, pred_, average="macro")
+            metric_results.append(recall)
+            metric_name.append("Recall")
+            split_percent.append(i)
+        else:
+            recall = metrics.recall_score(y_test, pred_)
+            metric_results.append(recall)
+            metric_name.append("Recall")
+            split_percent.append(i)
+
+        # precision
+        if y.value_counts().count() > 2:
+            precision = metrics.precision_score(y_test, pred_, average="weighted")
+            metric_results.append(precision)
+            metric_name.append("Precision")
+            split_percent.append(i)
+        else:
+            precision = metrics.precision_score(y_test, pred_)
+            metric_results.append(precision)
+            metric_name.append("Precision")
+            split_percent.append(i)
+
+        # F1
+        if y.value_counts().count() > 2:
+            f1 = metrics.f1_score(y_test, pred_, average="weighted")
+            metric_results.append(f1)
+            metric_name.append("F1")
+            split_percent.append(i)
+        else:
+            f1 = metrics.precision_score(y_test, pred_)
+            metric_results.append(f1)
+            metric_name.append("F1")
+            split_percent.append(i)
+
+        # Kappa
+        kappa = metrics.cohen_kappa_score(y_test, pred_)
+        metric_results.append(kappa)
+        metric_name.append("Kappa")
+        split_percent.append(i)
+
+        t1 = time.time()
+
+        """
+        Time calculation begins
+        """
+
+        tt = t1 - t0
+        total_tt = tt / i
+        split_perc_tt.pop(0)
+
+        for remain in split_perc_tt:
+            ss = total_tt * remain
+            split_perc_tt_total.append(ss)
+
+        ttt = sum(split_perc_tt_total) / 60
+        ttt = np.around(ttt, 2)
+
+        if ttt < 1:
+            ttt = str(np.around((ttt * 60), 2))
+            ETC = ttt + " Seconds Remaining"
+
+        else:
+            ttt = str(ttt)
+            ETC = ttt + " Minutes Remaining"
+
+        display.update_monitor(2, ETC)
+        display.display_monitor()
+
+        """
+        Time calculation Ends
+        """
+
+        split_perc_tt_total = []
+        counter += 1
+
+    model_results = pd.DataFrame(
+        {"Sample": split_percent, "Metric": metric_results, "Metric Name": metric_name,}
+    )
+    fig = px.line(
+        model_results,
+        x="Sample",
+        y="Metric",
+        color="Metric Name",
+        line_shape="linear",
+        range_y=[0, 1],
+    )
+    fig.update_layout(plot_bgcolor="rgb(245,245,245)")
+    title = f"{_get_model_name(model)} Metrics and Sample %"
+    fig.update_layout(
+        title={
+            "text": title,
+            "y": 0.95,
+            "x": 0.45,
+            "xanchor": "center",
+            "yanchor": "top",
+        }
+    )
+    fig.show()
+
+    display.update_monitor(1, "Waiting for input")
+    display.display_monitor()
+
+    print(
+        "Please Enter the sample % of data you would like to use for modeling. Example: Enter 0.3 for 30%."
+    )
+    print("Press Enter if you would like to use 100% of the data.")
+
+    sample_size = input("Sample Size: ")
+
+    if sample_size == "" or sample_size == "1":
+
+        X_train, X_test, y_train, y_test = train_test_split(
+            X,
+            y,
+            test_size=1 - train_size,
+            stratify=y,
+            random_state=seed,
+            shuffle=data_split_shuffle,
+        )
+
+    else:
+
+        sample_n = float(sample_size)
+        X_selected, X_discard, y_selected, y_discard = train_test_split(
+            X,
+            y,
+            test_size=1 - sample_n,
+            stratify=y,
+            random_state=seed,
+            shuffle=data_split_shuffle,
+        )
+
+        X_train, X_test, y_train, y_test = train_test_split(
+            X_selected,
+            y_selected,
+            test_size=1 - train_size,
+            stratify=y_selected,
+            random_state=seed,
+            shuffle=data_split_shuffle,
+        )
+
+    return X_train, X_test, y_train, y_test
