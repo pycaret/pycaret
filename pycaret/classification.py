@@ -7673,145 +7673,8 @@ def deploy_model(model, model_name: str, authentication: dict, platform: str = "
       the platform. 
     
     """
-
-    import sys
-
-    logger = get_logger()
-
-    logger.info("Initializing deploy_model()")
-    logger.info(
-        """deploy_model(model={}, model_name={}, authentication={}, platform={})""".format(
-            str(model), str(model_name), str(authentication), str(platform)
-        )
-    )
-
-    # ignore warnings
-    import warnings
-
-    warnings.filterwarnings("ignore")
-
-    # general dependencies
-    import ipywidgets as ipw
-    import pandas as pd
-    from IPython.display import clear_output, update_display
-    import os
-
-    if platform == "aws":
-
-        logger.info("Platform : AWS S3")
-
-        # checking if awscli available
-        try:
-            import awscli
-        except:
-            logger.error(
-                "awscli library not found. pip install awscli to use deploy_model function."
-            )
-            sys.exit(
-                "awscli library not found. pip install awscli to use deploy_model function."
-            )
-
-        import boto3
-
-        logger.info("Saving model in active working directory")
-        logger.info("SubProcess save_model() called ==================================")
-        save_model(model, model_name=model_name, verbose=False)
-        logger.info("SubProcess save_model() end ==================================")
-
-        # initiaze s3
-        logger.info("Initializing S3 client")
-        s3 = boto3.client("s3")
-        filename = str(model_name) + ".pkl"
-        key = str(model_name) + ".pkl"
-        bucket_name = authentication.get("bucket")
-        s3.upload_file(filename, bucket_name, key)
-        clear_output()
-        os.remove(filename)
-        print("Model Succesfully Deployed on AWS S3")
-        logger.info("Model Succesfully Deployed on AWS S3")
-        logger.info(str(model))
-
-    elif platform == "gcp":
-
-        logger.info("Platform : GCP")
-
-        try:
-            import google.cloud
-        except:
-            logger.error(
-                "google-cloud-storage library not found. pip install google-cloud-storage to use deploy_model function with GCP."
-            )
-            sys.exit(
-                "google-cloud-storage library not found. pip install google-cloud-storage to use deploy_model function with GCP."
-            )
-
-        logger.info("Saving model in active working directory")
-        logger.info("SubProcess save_model() called ==================================")
-        save_model(model, model_name=model_name, verbose=False)
-        logger.info("SubProcess save_model() end ==================================")
-
-        # initialize deployment
-        filename = str(model_name) + ".pkl"
-        key = str(model_name) + ".pkl"
-        bucket_name = authentication.get("bucket")
-        project_name = authentication.get("project")
-        try:
-            _create_bucket_gcp(project_name, bucket_name)
-            _upload_blob_gcp(project_name, bucket_name, filename, key)
-        except:
-            _upload_blob_gcp(project_name, bucket_name, filename, key)
-        os.remove(filename)
-        print("Model Succesfully Deployed on GCP")
-        logger.info("Model Succesfully Deployed on GCP")
-        logger.info(str(model))
-
-    elif platform == "azure":
-
-        try:
-            import azure.storage.blob
-        except:
-            logger.error(
-                "azure-storage-blob library not found. pip install azure-storage-blob to use deploy_model function with Azure."
-            )
-            sys.exit(
-                "azure-storage-blob library not found. pip install azure-storage-blob to use deploy_model function with Azure."
-            )
-
-        logger.info("Platform : Azure Blob Storage")
-
-        logger.info("Saving model in active working directory")
-        logger.info("SubProcess save_model() called ==================================")
-        save_model(model, model_name=model_name, verbose=False)
-        logger.info("SubProcess save_model() end ==================================")
-
-        # initialize deployment
-        filename = str(model_name) + ".pkl"
-        key = str(model_name) + ".pkl"
-        container_name = authentication.get("container")
-        try:
-            container_client = _create_container_azure(container_name)
-            _upload_blob_azure(container_name, filename, key)
-            del container_client
-        except:
-            _upload_blob_azure(container_name, filename, key)
-
-        os.remove(filename)
-
-        print("Model Succesfully Deployed on Azure Storage Blob")
-        logger.info("Model Succesfully Deployed on Azure Storage Blob")
-        logger.info(str(model))
-
-    else:
-        logger.error(
-            "Platform {} is not supported by pycaret or illegal option".format(platform)
-        )
-        sys.exit(
-            "Platform {} is not supported by pycaret or illegal option".format(platform)
-        )
-
-    logger.info(
-        "deploy_model() succesfully completed......................................"
-    )
+    import pycaret.utils_persistence
+    return pycaret.utils_persistence.deploy_model(model, model_name, authentication, platform, prep_pipe)
 
 
 def save_model(model, model_name: str, model_only: bool = False, verbose: bool = True):
@@ -7853,43 +7716,8 @@ def save_model(model, model_name: str, model_only: bool = False, verbose: bool =
          
     """
 
-    from copy import deepcopy
-
-    logger = get_logger()
-
-    logger.info("Initializing save_model()")
-    logger.info(
-        """save_model(model={}, model_name={}, model_only={}, verbose={})""".format(
-            str(model), str(model_name), str(model_only), str(verbose)
-        )
-    )
-
-    # ignore warnings
-    import warnings
-
-    warnings.filterwarnings("ignore")
-
-    logger.info("Adding model into prep_pipe")
-
-    if model_only:
-        model_ = deepcopy(model)
-        logger.warning("Only Model saved. Transformations in prep_pipe are ignored.")
-    else:
-        model_ = deepcopy(prep_pipe)
-        model_.steps.append(["trained model", model])
-
-    import joblib
-
-    model_name = model_name + ".pkl"
-    joblib.dump(model_, model_name)
-    if verbose:
-        print("Transformation Pipeline and Model Succesfully Saved")
-
-    logger.info(str(model_name) + " saved in current working directory")
-    logger.info(str(model_))
-    logger.info(
-        "save_model() succesfully completed......................................"
-    )
+    import pycaret.utils_persistence
+    return pycaret.utils_persistence.save_model(model, model_name, prep_pipe if model_only else None, verbose)
 
 
 def load_model(
@@ -7938,79 +7766,8 @@ def load_model(
 
     """
 
-    # ignore warnings
-    import warnings
-
-    warnings.filterwarnings("ignore")
-
-    # exception checking
-    import sys
-
-    if platform is not None:
-        if authentication is None:
-            sys.exit("(Value Error): Authentication is missing.")
-
-    if platform is None:
-
-        import joblib
-
-        model_name = model_name + ".pkl"
-        if verbose:
-            print("Transformation Pipeline and Model Successfully Loaded")
-        return joblib.load(model_name)
-
-    # cloud providers
-    elif platform == "aws":
-
-        import boto3
-
-        bucketname = authentication.get("bucket")
-        filename = str(model_name) + ".pkl"
-        s3 = boto3.resource("s3")
-        s3.Bucket(bucketname).download_file(filename, filename)
-        filename = str(model_name)
-        model = load_model(filename, verbose=False)
-        model = load_model(filename, verbose=False)
-
-        if verbose:
-            print("Transformation Pipeline and Model Successfully Loaded")
-
-        return model
-
-    elif platform == "gcp":
-
-        bucket_name = authentication.get("bucket")
-        project_name = authentication.get("project")
-        filename = str(model_name) + ".pkl"
-
-        model_downloaded = _download_blob_gcp(
-            project_name, bucket_name, filename, filename
-        )
-
-        model = load_model(model_name, verbose=False)
-
-        if verbose:
-            print("Transformation Pipeline and Model Successfully Loaded")
-        return model
-
-    elif platform == "azure":
-
-        container_name = authentication.get("container")
-        filename = str(model_name) + ".pkl"
-
-        model_downloaded = _download_blob_azure(container_name, filename, filename)
-
-        model = load_model(model_name, verbose=False)
-
-        if verbose:
-            print("Transformation Pipeline and Model Successfully Loaded")
-        return model
-    else:
-        print(
-            "Platform { } is not supported by pycaret or illegal option".format(
-                platform
-            )
-        )
+    import pycaret.utils_persistence
+    return pycaret.utils_persistence.load_model(model_name, platform, authentication, verbose)
 
 
 def automl(optimize: str = "Accuracy", use_holdout: bool = False):
@@ -8925,83 +8682,83 @@ def set_config(variable: str, value):
         global X
         X = value
 
-    if variable == "y":
+    elif variable == "y":
         global y
         y = value
 
-    if variable == "X_train":
+    elif variable == "X_train":
         global X_train
         X_train = value
 
-    if variable == "X_test":
+    elif variable == "X_test":
         global X_test
         X_test = value
 
-    if variable == "y_train":
+    elif variable == "y_train":
         global y_train
         y_train = value
 
-    if variable == "y_test":
+    elif variable == "y_test":
         global y_test
         y_test = value
 
-    if variable == "seed":
+    elif variable == "seed":
         global seed
         seed = value
 
-    if variable == "prep_pipe":
+    elif variable == "prep_pipe":
         global prep_pipe
         prep_pipe = value
 
-    if variable == "folds_shuffle_param":
+    elif variable == "folds_shuffle_param":
         global folds_shuffle_param
         folds_shuffle_param = value
 
-    if variable == "n_jobs_param":
+    elif variable == "n_jobs_param":
         global n_jobs_param
         n_jobs_param = value
 
-    if variable == "html_param":
+    elif variable == "html_param":
         global html_param
         html_param = value
 
-    if variable == "create_model_container":
+    elif variable == "create_model_container":
         global create_model_container
         create_model_container = value
 
-    if variable == "master_model_container":
+    elif variable == "master_model_container":
         global master_model_container
         master_model_container = value
 
-    if variable == "display_container":
+    elif variable == "display_container":
         global display_container
         display_container = value
 
-    if variable == "exp_name_log":
+    elif variable == "exp_name_log":
         global exp_name_log
         exp_name_log = value
 
-    if variable == "logging_param":
+    elif variable == "logging_param":
         global logging_param
         logging_param = value
 
-    if variable == "log_plots_param":
+    elif variable == "log_plots_param":
         global log_plots_param
         log_plots_param = value
 
-    if variable == "USI":
+    elif variable == "USI":
         global USI
         USI = value
 
-    if variable == "fix_imbalance_param":
+    elif variable == "fix_imbalance_param":
         global fix_imbalance_param
         fix_imbalance_param = value
 
-    if variable == "fix_imbalance_method_param":
+    elif variable == "fix_imbalance_method_param":
         global fix_imbalance_method_param
         fix_imbalance_method_param = value
 
-    if variable == "data_before_preprocess":
+    elif variable == "data_before_preprocess":
         global data_before_preprocess
         data_before_preprocess = value
 
@@ -9017,16 +8774,8 @@ def get_system_logs():
     Read and print 'logs.log' file from current active directory
     """
 
-    file = open("logs.log", "r")
-    lines = file.read().splitlines()
-    file.close()
-
-    for line in lines:
-        if not line:
-            continue
-
-        columns = [col.strip() for col in line.split(":") if col]
-        print(columns)
+    import pycaret.utils
+    return pycaret.utils.get_system_logs()
 
 
 def _get_model_id(e) -> str:
@@ -9036,7 +8785,7 @@ def _get_model_id(e) -> str:
         if type(e) is row.Class:
             return row[0]
 
-    return None
+    return ""
 
 
 def _is_special_model(e) -> bool:
@@ -9182,257 +8931,6 @@ def _choose_better_list(
 
     logger.info("choose_better completed")
     return model
-
-
-def _create_bucket_gcp(project_name: str, bucket_name: str):
-    """
-    Creates a bucket on Google Cloud Platform if it does not exists already
-
-    Example
-    -------
-    >>> _create_bucket_gcp(project_name='GCP-Essentials', bucket_name='test-pycaret-gcp')
-
-    Parameters
-    ----------
-    project_name : string
-        A Project name on GCP Platform (Must have been created from console).
-
-    bucket_name : string
-        Name of the storage bucket to be created if does not exists already.
-
-    Returns
-    -------
-    None
-    """
-
-    # bucket_name = "your-new-bucket-name"
-    from google.cloud import storage
-
-    storage_client = storage.Client(project_name)
-
-    buckets = storage_client.list_buckets()
-
-    if bucket_name not in buckets:
-        bucket = storage_client.create_bucket(bucket_name)
-        logger.info("Bucket {} created".format(bucket.name))
-    else:
-        raise FileExistsError("{} already exists".format(bucket_name))
-
-
-def _upload_blob_gcp(
-    project_name: str,
-    bucket_name: str,
-    source_file_name: str,
-    destination_blob_name: str,
-):
-
-    """
-    Upload blob to GCP storage bucket
-
-    Example
-    -------
-    >>> _upload_blob_gcp(project_name='GCP-Essentials', bucket_name='test-pycaret-gcp', \
-                        source_file_name='model-101.pkl', destination_blob_name='model-101.pkl')
-
-    Parameters
-    ----------
-    project_name : string
-        A Project name on GCP Platform (Must have been created from console).
-
-    bucket_name : string
-        Name of the storage bucket to be created if does not exists already.
-
-    source_file_name : string
-        A blob/file name to copy to GCP
-
-    destination_blob_name : string
-        Name of the destination file to be stored on GCP
-
-    Returns
-    -------
-    None
-    """
-
-    # bucket_name = "your-bucket-name"
-    # source_file_name = "local/path/to/file"
-    # destination_blob_name = "storage-object-name"
-    from google.cloud import storage
-
-    storage_client = storage.Client(project_name)
-    bucket = storage_client.bucket(bucket_name)
-    blob = bucket.blob(destination_blob_name)
-
-    blob.upload_from_filename(source_file_name)
-
-    logger.info(
-        "File {} uploaded to {}.".format(source_file_name, destination_blob_name)
-    )
-
-
-def _download_blob_gcp(
-    project_name: str,
-    bucket_name: str,
-    source_blob_name: str,
-    destination_file_name: str,
-):
-    """
-    Download a blob from GCP storage bucket
-
-    Example
-    -------
-    >>> _download_blob_gcp(project_name='GCP-Essentials', bucket_name='test-pycaret-gcp', \
-                          source_blob_name='model-101.pkl', destination_file_name='model-101.pkl')
-
-    Parameters
-    ----------
-    project_name : string
-        A Project name on GCP Platform (Must have been created from console).
-
-    bucket_name : string
-        Name of the storage bucket to be created if does not exists already.
-
-    source_blob_name : string
-        A blob/file name to download from GCP bucket
-
-    destination_file_name : string
-        Name of the destination file to be stored locally
-
-    Returns
-    -------
-    Model Object
-    """
-
-    # bucket_name = "your-bucket-name"
-    # source_blob_name = "storage-object-name"
-    # destination_file_name = "local/path/to/file"
-    from google.cloud import storage
-
-    storage_client = storage.Client(project_name)
-
-    bucket = storage_client.bucket(bucket_name)
-    blob = bucket.blob(source_blob_name)
-
-    if destination_file_name is not None:
-        blob.download_to_filename(destination_file_name)
-
-        logger.info(
-            "Blob {} downloaded to {}.".format(source_blob_name, destination_file_name)
-        )
-
-    return blob
-
-
-def _create_container_azure(container_name: str):
-    """
-    Creates a storage container on Azure Platform. gets the connection string from the environment variables.
-
-    Example
-    -------
-    >>>  container_client = _create_container_azure(container_name='test-pycaret-azure')
-
-    Parameters
-    ----------
-    container_name : string
-        Name of the storage container to be created if does not exists already.
-
-    Returns
-    -------
-    cotainer_client
-    """
-
-    # Create the container
-    import os, uuid
-    from azure.storage.blob import BlobServiceClient, BlobClient, ContainerClient
-
-    connect_str = os.getenv("AZURE_STORAGE_CONNECTION_STRING")
-    blob_service_client = BlobServiceClient.from_connection_string(connect_str)
-    container_client = blob_service_client.create_container(container_name)
-    return container_client
-
-
-def _upload_blob_azure(
-    container_name: str, source_file_name: str, destination_blob_name: str
-):
-    """
-    Upload blob to Azure storage  container
-
-    Example
-    -------
-    >>>  _upload_blob_azure(container_name='test-pycaret-azure', source_file_name='model-101.pkl', \
-                           destination_blob_name='model-101.pkl')
-
-    Parameters
-    ----------
-    container_name : string
-        Name of the storage bucket to be created if does not exists already.
-
-    source_file_name : string
-        A blob/file name to copy to Azure
-
-    destination_blob_name : string
-        Name of the destination file to be stored on Azure
-
-    Returns
-    -------
-    None
-    """
-
-    import os, uuid
-    from azure.storage.blob import BlobServiceClient, BlobClient, ContainerClient
-
-    connect_str = os.getenv("AZURE_STORAGE_CONNECTION_STRING")
-
-    blob_service_client = BlobServiceClient.from_connection_string(connect_str)
-    # Create a blob client using the local file name as the name for the blob
-    blob_client = blob_service_client.get_blob_client(
-        container=container_name, blob=destination_blob_name
-    )
-
-    # Upload the created file
-    with open(source_file_name, "rb") as data:
-        blob_client.upload_blob(data, overwrite=True)
-
-
-def _download_blob_azure(
-    container_name: str, source_blob_name: str, destination_file_name: str
-):
-    """
-    Download blob from Azure storage  container
-
-    Example
-    -------
-    >>>  _download_blob_azure(container_name='test-pycaret-azure', source_blob_name='model-101.pkl', \
-                             destination_file_name='model-101.pkl')
-
-    Parameters
-    ----------
-    container_name : string
-        Name of the storage bucket to be created if does not exists already.
-
-    source_blob_name : string
-        A blob/file name to download from Azure storage container
-
-    destination_file_name : string
-        Name of the destination file to be stored locally
-
-    Returns
-    -------
-    None
-    """
-
-    import os, uuid
-    from azure.storage.blob import BlobServiceClient, BlobClient, ContainerClient
-
-    connect_str = os.getenv("AZURE_STORAGE_CONNECTION_STRING")
-    blob_service_client = BlobServiceClient.from_connection_string(connect_str)
-    # Create a blob client using the local file name as the name for the blob
-    blob_client = blob_service_client.get_blob_client(
-        container=container_name, blob=source_blob_name
-    )
-
-    if destination_file_name is not None:
-        with open(destination_file_name, "wb") as download_file:
-            download_file.write(blob_client.download_blob().readall())
 
 
 def _sample_data(

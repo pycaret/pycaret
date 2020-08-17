@@ -191,6 +191,23 @@ def get_logger():
     return logger
 
 
+def get_system_logs():
+
+    """
+    Read and print 'logs.log' file from current active directory
+    """
+
+    with open("logs.log", "r") as file:
+        lines = file.read().splitlines()
+
+    for line in lines:
+        if not line:
+            continue
+
+        columns = [col.strip() for col in line.split(":") if col]
+        print(columns)
+
+
 def color_df(df: pd.DataFrame, color: str, names: list, axis: int = 1) -> pd.DataFrame:
     return df.style.apply(
         lambda x: [f"background: {color}" if (x.name in names) else "" for i in x],
