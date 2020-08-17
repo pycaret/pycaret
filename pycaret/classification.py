@@ -2049,21 +2049,36 @@ def compare_models(blacklist = None,
     
     logger.info("Importing libraries")
 
-    #import sklearn dependencies
-    from sklearn.linear_model import LogisticRegression
+    # Import dependencies
+    if gpu_param:
+        from cuml.svm import SVC
+        from h2o4gpu import RandomForestClassifier
+        from h2o4gpu import GradientBoostingClassifier
+        # Uncomment when RAPIDS 0.15 is released
+        # https://github.com/rapidsai/cuml/issues/2491
+        # from cuml.neighbors import KNeighborsClassifier
+    else:
+        from sklearn.svm import SVC
+        from sklearn.ensemble import RandomForestClassifier
+        from sklearn.ensemble import GradientBoostingClassifier
+        # Uncomment when RAPIDS 0.15 is released
+        # https://github.com/rapidsai/cuml/issues/2491
+        # from sklearn.neighbors import KNeighborsClassifier
+
+    # Delete knn import when RAPIDS 0.15 is released
+    # https://github.com/rapidsai/cuml/issues/2491
     from sklearn.neighbors import KNeighborsClassifier
+
+    from sklearn.linear_model import LogisticRegression
+    from sklearn.linear_model import SGDClassifier
     from sklearn.naive_bayes import GaussianNB
     from sklearn.tree import DecisionTreeClassifier
-    from sklearn.linear_model import SGDClassifier
-    from sklearn.svm import SVC
     from sklearn.gaussian_process import GaussianProcessClassifier
     from sklearn.neural_network import MLPClassifier
     from sklearn.linear_model import RidgeClassifier
-    from sklearn.ensemble import RandomForestClassifier
     from sklearn.discriminant_analysis import QuadraticDiscriminantAnalysis
     from sklearn.ensemble import AdaBoostClassifier
-    from sklearn.ensemble import GradientBoostingClassifier
-    from sklearn.discriminant_analysis import LinearDiscriminantAnalysis 
+    from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
     from sklearn.ensemble import ExtraTreesClassifier
     from sklearn.multiclass import OneVsRestClassifier
     from xgboost import XGBClassifier
@@ -2098,26 +2113,41 @@ def compare_models(blacklist = None,
     '''
     
     logger.info("Importing untrained models")
+    # Create model objects
+    if gpu_param:  # GPU models
+        rbfsvm = SVC(gamma='auto', C=1, kernel='rbf')
+        rf = RandomForestClassifier(n_estimators=10, random_state=seed, n_jobs=n_jobs_param)
+        gbc = GradientBoostingClassifier(random_state=seed)
+        xgboost = XGBClassifier(random_state=seed, verbosity=0, n_jobs=n_jobs_param, tree_method='gpu_hist')
+        # Uncomment when RAPIDS 0.15 is released
+        # https://github.com/rapidsai/cuml/issues/2491
+        # knn = KNeighborsClassifier()
+    else:  # CPU models
+        rbfsvm = SVC(gamma='auto', C=1, kernel='rbf', probability=True, random_state=seed)
+        rf = RandomForestClassifier(n_estimators=10, random_state=seed, n_jobs=n_jobs_param)
+        gbc = GradientBoostingClassifier(random_state=seed)
+        xgboost = XGBClassifier(random_state=seed, verbosity=0, n_jobs=n_jobs_param)
+        # Uncomment when RAPIDS 0.15 is released
+        # https://github.com/rapidsai/cuml/issues/2491
+        # knn = KNeighborsClassifier(n_jobs=n_jobs_param)
 
-    #creating model object 
-    lr = LogisticRegression(random_state=seed) #dont add n_jobs_param here. It slows doesn Logistic Regression somehow.
+    # Delete knn when RAPIDS 0.15 is released
+    # https://github.com/rapidsai/cuml/issues/2491
     knn = KNeighborsClassifier(n_jobs=n_jobs_param)
+
+    lr = LogisticRegression(random_state=seed)  # dont add n_jobs_param here. It slows doesn Logistic Regression somehow.
+    svm = SGDClassifier(max_iter=1000, tol=0.001, random_state=seed, n_jobs=n_jobs_param)
     nb = GaussianNB()
     dt = DecisionTreeClassifier(random_state=seed)
-    svm = SGDClassifier(max_iter=1000, tol=0.001, random_state=seed, n_jobs=n_jobs_param)
-    rbfsvm = SVC(gamma='auto', C=1, probability=True, kernel='rbf', random_state=seed)
     gpc = GaussianProcessClassifier(random_state=seed, n_jobs=n_jobs_param)
     mlp = MLPClassifier(max_iter=500, random_state=seed)
     ridge = RidgeClassifier(random_state=seed)
-    rf = RandomForestClassifier(n_estimators=10, random_state=seed, n_jobs=n_jobs_param)
     qda = QuadraticDiscriminantAnalysis()
     ada = AdaBoostClassifier(random_state=seed)
-    gbc = GradientBoostingClassifier(random_state=seed)
     lda = LinearDiscriminantAnalysis()
     et = ExtraTreesClassifier(random_state=seed, n_jobs=n_jobs_param)
-    xgboost = XGBClassifier(random_state=seed, verbosity=0, n_jobs=n_jobs_param)
     lightgbm = lgb.LGBMClassifier(random_state=seed, n_jobs=n_jobs_param)
-    catboost = CatBoostClassifier(random_state=seed, silent = True, thread_count=n_jobs_param) 
+    catboost = CatBoostClassifier(random_state=seed, silent=True, thread_count=n_jobs_param) 
     
     logger.info("Import successful")
 
