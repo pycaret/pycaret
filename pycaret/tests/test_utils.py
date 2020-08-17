@@ -42,24 +42,31 @@ def test():
 
     # check metric(classification)
     accuracy = pycaret.utils.check_metric(actual, prediction, "Accuracy")
+    assert isinstance(accuracy, float)
     assert accuracy >= 0
     assert accuracy <= 1
     recall = pycaret.utils.check_metric(actual, prediction, "Recall")
+    assert isinstance(recall, float)
     assert recall >= 0
     assert recall <= 1
     precision = pycaret.utils.check_metric(actual, prediction, "Precision")
+    assert isinstance(precision, float)
     assert precision >= 0
     assert precision <= 1
     f1 = pycaret.utils.check_metric(actual, prediction, "F1")
+    assert isinstance(f1, float)
     assert f1 >= 0
     assert f1 <= 1
     kappa = pycaret.utils.check_metric(actual, prediction, "Kappa")
+    assert isinstance(kappa, float)
     assert kappa >= -1
     assert kappa <= 1
     auc = pycaret.utils.check_metric(actual, prediction, "AUC")
+    assert isinstance(auc, float)
     assert auc >= 0
     assert auc <= 1
     mcc = pycaret.utils.check_metric(actual, prediction, "MCC")
+    assert isinstance(mcc, float)
     assert mcc >= -1
     assert mcc <= 1
 
@@ -85,17 +92,23 @@ def test():
 
     # check metric(regression)
     mae = pycaret.utils.check_metric(actual, prediction, "MAE")
+    assert isinstance(mae, float)
     assert mae >= 0
     mse = pycaret.utils.check_metric(actual, prediction, "MSE")
+    assert isinstance(mse, float)
     assert mse >= 0
     rmse = pycaret.utils.check_metric(actual, prediction, "RMSE")
+    assert isinstance(rmse, float)
     assert rmse >= 0
     r2 = pycaret.utils.check_metric(actual, prediction, "R2")
+    assert isinstance(r2, float)
     assert r2 <= 1
     rmsle = pycaret.utils.check_metric(actual, prediction, "RMSLE")
+    assert isinstance(rmsle, float)
     assert rmsle >= 0
     mape = pycaret.utils.check_metric(actual, prediction, "MAPE")
     # provisional support
+    # assert isinstance(mape, float)
     # assert mape >= 0
 
     assert 1 == 1
