@@ -1749,6 +1749,138 @@ class Advanced_Feature_Selection_Classic(BaseEstimator,TransformerMixin):
     return(dataset[self.selected_columns])
 #_
 
+#______________________________________________________________________________________________________________________________________________________
+#Boruta Feature Selection algorithm
+# Base on: https://github.com/scikit-learn-contrib/boruta_py/blob/master/boruta/boruta_py.py
+class Boruta_Feature_Selection(BaseEstimator, TransformerMixin):
+  '''
+    - Selects important features and reduces the feature space. Feature selection is based on Random Forest , Light GBM and
+    Boruta Selection Feautres algorithm.
+  '''
+
+  def __init__(self,target,ml_usecase='classification',top_features_to_pick=.10,
+               max_iteration = 25, alpha=0.05, random_state=42, subclass='ignore'):
+    self.target= target
+    self.ml_usecase = ml_usecase
+    self.top_features_to_pick =1-top_features_to_pick
+    self.random_state = random_state
+    self.subclass = subclass
+    self.max_iteration = max_iteration
+    self.alpha = alpha
+
+    return(None)
+
+
+  def fit(self,dataset,y=None):
+    return(None)
+
+
+  def transform(self,dataset,y=None):
+    # return the data with columns which match the threshold
+    data = dataset.copy()
+    # self.selected_columns.remove(self.target)
+    return(data[self.selected_columns_test])
+
+
+  def fit_transform(self, dataset, y=None):
+    dummy_data = dataset.copy()
+    X, y = dummy_data.drop(self.target, axis=1), dummy_data[self.target]
+    n_sample, n_feat = X.shape
+    _iter = 1
+    # holds the decision about each feature:
+    # 0  - default state = tentative in original code
+    # 1  - accepted in original code
+    # -1 - rejected in original code
+    dec_reg = np.zeros(n_feat, dtype=np.int)
+    # counts how many times a given feature was more important than
+    # the best of the shadow features
+    shadow_max = list()
+    hits = np.zeros(n_feat, dtype=np.int)
+    tent_hits = np.zeros(n_feat)
+    while np.any(dec_reg == 0) and _iter < self.max_iteration:
+      # get tentative features
+      x_ind = np.where(dec_reg >= 0)[0]
+      X_tent = X.iloc[:, x_ind].copy()
+      X_boruta = X_tent.copy()
+      # create boruta features
+      for col in X_tent.columns:
+        X_boruta["shadow_{}".format(col)] = np.random.permutation(X_tent[col])
+      # train imputator
+      feat_imp_X, feat_imp_shadow = self._inputator(X_boruta, X_tent, y, dec_reg)
+      # add shadow max to history
+      shadow_max.append(feat_imp_shadow.max())
+      # confirm hits
+      cur_imp_no_nan = feat_imp_X
+      cur_imp_no_nan[np.isnan(cur_imp_no_nan)] = 0
+      h_ = np.where(cur_imp_no_nan > feat_imp_shadow.max())[0]
+      hits[h_] += 1
+      # add importance to tentative hits
+      tent_hits[x_ind] += feat_imp_X
+      # do statistical testsa
+      dec_reg = self._do_tests(dec_reg, hits, _iter)
+      if _iter < self.max_iteration:
+        _iter += 1
+        
+    # fix tentative onse if exist
+    print(dec_reg)
+    confirmed = np.where(dec_reg == 1)[0]
+    
+    tentative = np.where(dec_reg == 0)[0]
+    if len(tentative) == 0:
+      confirmed_cols = X.columns[confirmed]
+    else:
+      median_tent = np.median(tent_hits[tentative])
+      tentative_confirmed = np.where(median_tent > np.median(shadow_max))[0]
+      tentative = tentative[tentative_confirmed]
+      confirmed_cols = X.columns[confirmed+tentative]
+    
+    confirmed_cols = confirmed_cols.tolist()
+    confirmed_cols.append(self.target)
+
+    return dataset[confirmed_cols]
+
+
+  def _inputator(self, X_boruta, X, y, dec_reg):
+    feat_imp_X = feat_imp_shadow = np.zeros(X.shape[1])
+    # Random Forest
+    max_fe = min(70, int(np.sqrt(len(X.columns))))
+    max_sa = min(1000, int(np.sqrt(len(X))))
+    if self.ml_usecase == 'classification':
+      m = lgbmc(n_estimators=100,max_depth=5,n_jobs=-1,subsample=max_sa,
+                bagging_fraction=0.9, random_state=self.random_state)
+    else:
+      m = lgbmr(n_estimators=100,max_depth=5,n_jobs=-1,subsample=max_sa,
+                bagging_fraction=0.9, random_state=self.random_state)
+    
+    m.fit(X_boruta, y)
+    ### store feature importance
+    feat_imp_X = m.feature_importances_[:len(X.columns)]
+    feat_imp_shadow = m.feature_importances_[len(X.columns):]
+      
+    return feat_imp_X, feat_imp_shadow
+    
+  def _do_tests(self, dec_reg, hit_reg, _iter):
+    active_features = np.where(dec_reg >= 0)[0]
+    hits = hit_reg[active_features]
+    # get uncorrected p values based on hit_reg
+    to_accept_ps = stats.binom.sf(hits - 1, _iter, .5).flatten()
+    to_reject_ps = stats.binom.cdf(hits, _iter, .5).flatten()
+
+    # as in th original Boruta, we simply do bonferroni correction
+    # with the total n_feat in each iteration
+    to_accept = to_accept_ps <= self.alpha / float(len(dec_reg))
+    to_reject = to_reject_ps <= self.alpha / float(len(dec_reg))
+  
+    # find features which are 0 and have been rejected or accepted
+    to_accept = np.where((dec_reg[active_features] == 0) * to_accept)[0]
+    to_reject = np.where((dec_reg[active_features] == 0) * to_reject)[0]
+  
+    # updating dec_reg
+    dec_reg[active_features[to_accept]] = 1
+    dec_reg[active_features[to_reject]] = -1
+    return dec_reg
+
+
 #_________________________________________________________________________________________________________________________________________
 class Fix_multicollinearity(BaseEstimator,TransformerMixin):
   """
@@ -2305,10 +2437,11 @@ def Preprocess_Path_One(train_data,target_variable,ml_usecase=None,test_data =No
                                 target_transformation= False,target_transformation_method ='bc',
                                 remove_outliers = False, outlier_contamination_percentage= 0.01,outlier_methods=['pca','iso','knn'],
                                 apply_feature_selection = False, feature_selection_top_features_percentage=.80,
+                                feature_selection_algorithm = 'boruta',
                                 remove_multicollinearity = False, maximum_correlation_between_features= 0.90,
                                 remove_perfect_collinearity= False,
                                 apply_feature_interactions= False, feature_interactions_to_apply=['multiply','divide','add','subtract'],feature_interactions_top_features_to_select_percentage=.01,
-                                cluster_entire_data= False, range_of_clusters_to_try=20, 
+                                cluster_entire_data= False, range_of_clusters_to_try=20,
                                 apply_pca = False , pca_method = 'pca_liner',pca_variance_retained_or_number_of_components =.99 ,
                                 random_state=42
                                 
@@ -2333,7 +2466,7 @@ def Preprocess_Path_One(train_data,target_variable,ml_usecase=None,test_data =No
       -14) Apply clusters to segment entire data
       -15) One Hot / Dummy encoding
       -16) Remove special characters from column names such as commas, square brackets etc to make it competible with jason dependednt models
-      -17) Feature Selection throuh Random Forest , LightGBM and Pearson Correlation
+      -17) Feature Selection throuh Random Forest , LightGBM and Pearson Correlation / Boruta algorithm
       -18) Fix multicollinearity
       -19) Feature Interaction (DFS) , multiply , divided , add and substract features
       -20) Apply diamension reduction techniques such as pca_liner, pca_kernal, incremental, tsne 
@@ -2495,7 +2628,11 @@ def Preprocess_Path_One(train_data,target_variable,ml_usecase=None,test_data =No
   # feature selection 
   if apply_feature_selection == True:
     global feature_select
-    feature_select = Advanced_Feature_Selection_Classic(target=target_variable,ml_usecase=ml_usecase,top_features_to_pick=feature_selection_top_features_percentage,random_state=random_state,subclass=subcase)
+    # TODO: add autoselect
+    if feature_selection_algorithm == 'classic':
+      feature_select = Advanced_Feature_Selection_Classic(target=target_variable,ml_usecase=ml_usecase,top_features_to_pick=feature_selection_top_features_percentage,random_state=random_state,subclass=subcase)
+    elif feature_selection_algorithm == 'boruta':
+      feature_select = Boruta_Feature_Selection(target=target_variable,ml_usecase=ml_usecase,top_features_to_pick=feature_selection_top_features_percentage,random_state=random_state,subclass=subcase)
   else:
     feature_select= Empty()
   
