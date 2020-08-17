@@ -2,7 +2,7 @@
 # Author: Moez Ali <moez.ali@queensu.ca>
 # License: MIT
 # Release: PyCaret 2.1
-# Last modified : 16/08/2020
+# Last modified : 17/08/2020
 
 def setup(data,  
           target,   
@@ -3630,6 +3630,7 @@ def tune_model(estimator = None,
                n_iter = 10,
                custom_grid = None, #added in pycaret==2.0.0 
                optimize = 'Accuracy',
+               custom_scorer = None, #added in pycaret==2.1
                choose_better = False, #added in pycaret==2.0.0 
                verbose = True):
     
@@ -3674,6 +3675,10 @@ def tune_model(estimator = None,
         Measure used to select the best model through hyperparameter tuning.
         The default scoring measure is 'Accuracy'. Other measures include 'AUC',
         'Recall', 'Precision', 'F1'. 
+
+    custom_scorer: object, default = None
+        custom_scorer can be passed to tune hyperparameters of the model. It must be
+        created using sklearn.make_scorer. 
 
     choose_better: Boolean, default = False
         When set to set to True, base estimator is returned when the performance doesn't 
@@ -3887,7 +3892,11 @@ def tune_model(estimator = None,
         optimize = 'roc_auc' # roc_auc instead because you cannot use MCC in gridsearchcv
         compare_dimension = 'MCC'
     
-        
+    # change optimize parameter if custom_score is not None
+    if custom_scorer is not None:
+        optimize = custom_scorer
+        logger.info("custom_scorer set to user defined function")
+
     #convert trained estimator into string name for grids
     
     logger.info("Checking base model")

@@ -2,7 +2,7 @@
 # Author: Moez Ali <moez.ali@queensu.ca>
 # License: MIT
 # Release: PyCaret 2.1
-# Last modified : 16/08/2020
+# Last modified : 17/08/2020
 
 def setup(data, 
           target, 
@@ -3508,6 +3508,7 @@ def tune_model(estimator,
                n_iter = 10,
                custom_grid = None, #added in pycaret==2.0.0 
                optimize = 'R2',
+               custom_scorer = None, #added in pycaret==2.1
                choose_better = False, #added in pycaret==2.0.0
                verbose = True):
     
@@ -3555,6 +3556,10 @@ def tune_model(estimator,
         'RMSLE', 'MAPE'. When using 'RMSE' or 'RMSLE' the base scorer is 'MSE' and when using
         'MAPE' the base scorer is 'MAE'.
 
+    custom_scorer: object, default = None
+        custom_scorer can be passed to tune hyperparameters of the model. It must be
+        created using sklearn.make_scorer. 
+        
     choose_better: Boolean, default = False
         When set to set to True, base estimator is returned when the metric doesn't improve 
         by tune_model. This gurantees the returned object would perform atleast equivalent 
@@ -3746,6 +3751,11 @@ def tune_model(estimator,
         compare_dimension = 'RMSLE' 
     
     progress.value += 1
+
+    # change optimize parameter if custom_score is not None
+    if custom_scorer is not None:
+        optimize = custom_scorer
+        logger.info("custom_scorer set to user defined function")
 
     #convert trained estimator into string name for grids
     
