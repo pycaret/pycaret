@@ -8785,7 +8785,7 @@ def _get_model_id(e) -> str:
         if type(e) is row.Class:
             return row[0]
 
-    return ""
+    return None
 
 
 def _is_special_model(e) -> bool:
