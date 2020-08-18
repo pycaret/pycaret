@@ -1,6 +1,12 @@
+# Written by Antoni Baum (Yard1)
+# Make sure to set pypi_password secret
+# Requires .github/CI/check_latest_commit_for_nightly.py to be present
+
 name: Build and publish pycaret-nightly
 
-on: [push]
+on:
+  schedule:
+  - cron: "0 0 * * *" # every 24 hours on midnight
 
 jobs:
   build_and_publish:
