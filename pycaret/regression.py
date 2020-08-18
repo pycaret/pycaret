@@ -7566,7 +7566,8 @@ def evaluate_model(estimator):
 def interpret_model(estimator,
                    plot = 'summary',
                    feature = None, 
-                   observation = None):
+                   observation = None,
+                   **kwargs): #added in pycaret==2.1
     
     
     """
@@ -7608,6 +7609,9 @@ def interpret_model(estimator,
         to select the feature on x and y axes through drop down interactivity. For analysis at
         the sample level, an observation parameter must be passed with the index value of the
         observation in test / hold-out set. 
+
+    **kwargs: 
+        Additional keyword arguments to pass to the plot.
 
     Returns
     -------
@@ -7707,7 +7711,7 @@ def interpret_model(estimator,
         explainer = shap.TreeExplainer(model)
         logger.info("Compiling shap values")
         shap_values = explainer.shap_values(X_test)
-        shap.summary_plot(shap_values, X_test)
+        shap.summary_plot(shap_values, X_test, **kwargs)
         logger.info("Visual Rendered Successfully")
                               
     elif plot == 'correlation':
@@ -7726,7 +7730,7 @@ def interpret_model(estimator,
         explainer = shap.TreeExplainer(model)
         logger.info("Compiling shap values")
         shap_values = explainer.shap_values(X_test) 
-        shap.dependence_plot(dependence, shap_values, X_test)
+        shap.dependence_plot(dependence, shap_values, X_test, **kwargs)
         logger.info("Visual Rendered Successfully")
         
     elif plot == 'reason':
@@ -7741,7 +7745,7 @@ def interpret_model(estimator,
             shap.initjs()
             logger.info("Visual Rendered Successfully")
             logger.info("interpret_model() succesfully completed......................................")
-            return shap.force_plot(explainer.expected_value, shap_values, X_test)
+            return shap.force_plot(explainer.expected_value, shap_values, X_test, **kwargs)
 
         else:
 
@@ -7754,7 +7758,7 @@ def interpret_model(estimator,
             shap.initjs()
             logger.info("Visual Rendered Successfully")
             logger.info("interpret_model() succesfully completed......................................")
-            return shap.force_plot(explainer.expected_value, shap_values[row_to_show,:], X_test.iloc[row_to_show,:])
+            return shap.force_plot(explainer.expected_value, shap_values[row_to_show,:], X_test.iloc[row_to_show,:], **kwargs)
 
     logger.info("interpret_model() succesfully completed......................................")
 
