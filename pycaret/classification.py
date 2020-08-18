@@ -2385,7 +2385,7 @@ def create_model(
         Must remain False all times. Only to be changed by internal functions.
 
     **kwargs: 
-    Additional keyword arguments to pass to the estimator.
+        Additional keyword arguments to pass to the estimator.
 
     Returns
     -------
@@ -2619,7 +2619,7 @@ def create_model(
 
         model = estimator
 
-        if not hasattr(estimator, "estimators") and y.value_counts().count() > 2:
+        if _is_one_vs_rest(estimator):
             full_name = _get_model_name(estimator.estimator)
         else:
             full_name = _get_model_name(estimator)
@@ -3086,7 +3086,7 @@ def tune_model(
         To use custom hyperparameters for tuning pass a dictionary with parameter name
         and values to be iterated. When set to None it uses pre-defined tuning grid.  
 
-    optimize: string, default = 'accuracy'
+    optimize: string, default = 'Accuracy'
         Measure used to select the best model through hyperparameter tuning.
         The default scoring measure is 'Accuracy'. Other measures include 'AUC',
         'Recall', 'Precision', 'F1'. 
@@ -3183,19 +3183,20 @@ def tune_model(
     if type(n_iter) is not int:
         sys.exit("(Type Error): n_iter parameter only accepts integer value.")
 
-    # checking optimize parameter
-    allowed_optimize = get_metrics()["Name"]
-    if optimize not in allowed_optimize.to_list():
-        sys.exit(
-            f"(Value Error): Optimize method {optimize} not supported. See docstring for list of available parameters."
-        )
-
-    # checking optimize parameter for multiclass
-    if y.value_counts().count() > 2:
-        if not all_metrics[all_metrics["Name"] == optimize].iloc[0]["Multiclass"]:
+    if isinstance(optimize, str):
+        # checking optimize parameter
+        allowed_optimize = get_metrics()["Name"]
+        if optimize not in allowed_optimize.to_list():
             sys.exit(
-                f"(Type Error): Optimization metric {optimize} not supported for multiclass problems. See docstring for list of other optimization parameters."
+                f"(Value Error): Optimize method {optimize} not supported. See docstring for list of available parameters."
             )
+
+        # checking optimize parameter for multiclass
+        if y.value_counts().count() > 2:
+            if not all_metrics[all_metrics["Name"] == optimize].iloc[0]["Multiclass"]:
+                sys.exit(
+                    f"(Type Error): Optimization metric {optimize} not supported for multiclass problems. See docstring for list of other optimization parameters."
+                )
 
     if type(n_iter) is not int:
         sys.exit("(Type Error): n_iter parameter only accepts integer value.")
@@ -3249,8 +3250,9 @@ def tune_model(
     import random
     import numpy as np
     from sklearn import metrics
-    from sklearn.model_selection import StratifiedKFold
     from sklearn.model_selection import RandomizedSearchCV
+    from sklearn.base import clone
+    from sklearn.multiclass import OneVsRestClassifier
 
     logger.info("Copying training dataset")
     # Storing X_train and y_train in data_X and data_y parameter
@@ -3268,22 +3270,31 @@ def tune_model(
 
     # setting optimize parameter
 
-    optimize = all_metrics[all_metrics["Name"] == optimize].iloc[0]
-    compare_dimension = optimize["Display Name"]
-    optimize = optimize["SearchCV Param"]
+    if isinstance(optimize, str):
+        optimize = all_metrics[all_metrics["Name"] == optimize].iloc[0]
+        compare_dimension = optimize["Display Name"]
+        optimize = optimize["SearchCV Param"]
+    else:
+        logger.info(f"optimize set to user defined function {optimize}")
 
     # convert trained estimator into string name for grids
 
     logger.info("Checking base model")
 
-    _estimator_ = estimator
+    _estimator_ = clone(estimator)
+    is_stacked_model = False
 
-    if y.value_counts().count() > 2:
-        estimator = _get_model_id(estimator.estimator)
+    if hasattr(estimator, "final_estimator"):
+        logger.info("Model is stacked, using the definition of the meta-model")
+        is_stacked_model = True
+        estimator_id = _get_model_id(_estimator_.final_estimator)
+    elif _is_one_vs_rest(estimator):
+        estimator_id = _get_model_id(_estimator_.estimator)
+        _estimator_ = _estimator_.estimator
     else:
-        estimator = _get_model_id(estimator)
+        estimator_id = _get_model_id(_estimator_)
 
-    estimator_definition = _all_models_internal.loc[estimator]
+    estimator_definition = _all_models_internal.loc[estimator_id]
     estimator_name = estimator_definition["Name"]
     logger.info(f"Base model : {estimator_name}")
 
@@ -3315,17 +3326,18 @@ def tune_model(
     else:
         param_grid = estimator_definition["Tune Grid"]
 
-    search_kwargs = {**estimator_definition["Tune Args"], **kwargs}
-    estimator_args = estimator_definition["Args"]
-    if estimator == "Bagging":
-        estimator_args["base_estimator"] = (
-            _estimator_.base_estimator
-            if hasattr(_estimator_, "base_estimator")
-            else _estimator_.estimator.base_estimator
+    if not param_grid:
+        sys.exit(
+            "(Value Error): parameter grid for tuning is empty. If passing custom_grid, make sure that it is not empty. If not passing custom_grid, the passed estimator does not have a built-in tuning grid."
         )
 
+    if is_stacked_model:
+        param_grid = {f"final_estimator__{k}": v for k, v in param_grid.items()}
+
+    search_kwargs = {**estimator_definition["Tune Args"], **kwargs}
+
     model_grid = RandomizedSearchCV(
-        estimator=estimator_definition["Class"](**estimator_args),
+        estimator=_estimator_,
         param_distributions=param_grid,
         scoring=optimize,
         n_iter=n_iter,
@@ -3345,8 +3357,7 @@ def tune_model(
     logger.info("Random search completed")
 
     # multiclass checking
-    if y.value_counts().count() > 2:
-        from sklearn.multiclass import OneVsRestClassifier
+    if y.value_counts().count() > 2 and not is_stacked_model:
 
         model = OneVsRestClassifier(model)
         best_model = model
@@ -3366,7 +3377,7 @@ def tune_model(
 
     if choose_better:
         model = _choose_better(
-            estimator, _estimator_, best_model, compare_dimension, fold, display
+            estimator_id, _estimator_, best_model, compare_dimension, fold, display
         )
 
     # end runtime
@@ -3530,6 +3541,7 @@ def tune_model(
             del prep_pipe_temp
 
     model_results = color_df(model_results, "yellow", ["Mean"], axis=1)
+    model_results = model_results.set_precision(round)
     display.display(model_results, clear=True)
 
     logger.info("create_model_container: " + str(len(create_model_container)))
@@ -3684,7 +3696,7 @@ def ensemble_model(
         check_model = estimator
 
         try:
-            if y.value_counts().count() > 2:
+            if _is_one_vs_rest(check_model):
                 check_model = check_model.estimator
                 check_model = boosting_model_definition["Class"](
                     check_model,
@@ -3739,6 +3751,12 @@ def ensemble_model(
         if not all_metrics[all_metrics["Name"] == optimize].iloc[0]["Multiclass"]:
             sys.exit(
                 f"(Type Error): Optimization metric {optimize} not supported for multiclass problems. See docstring for list of other optimization parameters."
+            )
+        if hasattr(estimator, "estimators") and any(
+            _is_one_vs_rest(model) for name, model in estimator.estimators
+        ):
+            sys.exit(
+                f"(Type Error): Ensembling of VotingClassifier() and StackingClassifier() is not supported for multiclass problems."
             )
 
     """
@@ -3811,12 +3829,12 @@ def ensemble_model(
 
     _estimator_ = estimator
 
-    if y.value_counts().count() > 2:
-        estimator = _get_model_id(estimator.estimator)
+    if _is_one_vs_rest(estimator):
+        estimator_id = _get_model_id(estimator.estimator)
     else:
-        estimator = _get_model_id(estimator)
+        estimator_id = _get_model_id(estimator)
 
-    estimator_definition = _all_models_internal.loc[estimator]
+    estimator_definition = _all_models_internal.loc[estimator_id]
     estimator_name = estimator_definition["Name"]
     logger.info(f"Base model : {estimator_name}")
 
@@ -3832,7 +3850,7 @@ def ensemble_model(
     """
 
     model = _estimator_
-    if y.value_counts().count() > 2:
+    if _is_one_vs_rest(model):
         model = model.estimator
 
     logger.info("Importing untrained ensembler")
@@ -3857,10 +3875,7 @@ def ensemble_model(
 
     onevsrest_model_definition = _all_models_internal.loc["OneVsRest"]
     # multiclass checking
-    if (
-        y.value_counts().count() > 2
-        and not type(model) is onevsrest_model_definition["Class"]
-    ):
+    if y.value_counts().count() > 2 and not _is_special_model(model):
         logger.info("Target variable is Multiclass. OneVsRestClassifier activated")
 
         model = onevsrest_model_definition["Class"](
@@ -4037,6 +4052,7 @@ def ensemble_model(
             del prep_pipe_temp
 
     model_results = color_df(model_results, "yellow", ["Mean"], axis=1)
+    model_results = model_results.set_precision(round)
     display.display(model_results, clear=True)
 
     logger.info("create_model_container: " + str(len(create_model_container)))
@@ -4358,7 +4374,7 @@ def blend_models(
         model_names = []
         model_names_counter = {}
         for x in estimator_list:
-            if y.value_counts().count() > 2:
+            if _is_one_vs_rest(x):
                 name = _get_model_name(x.estimator)
             else:
                 name = _get_model_name(x)
@@ -4526,6 +4542,7 @@ def blend_models(
             del prep_pipe_temp
 
     model_results = color_df(model_results, "yellow", ["Mean"], axis=1)
+    model_results = model_results.set_precision(round)
     display.display(model_results, clear=True)
 
     logger.info("create_model_container: " + str(len(create_model_container)))
@@ -4811,7 +4828,7 @@ def stack_models(
     model_names = []
     model_names_counter = {}
     for x in estimator_list:
-        if y.value_counts().count() > 2:
+        if _is_one_vs_rest(x):
             name = _get_model_name(x.estimator)
         else:
             name = _get_model_name(x)
@@ -5006,6 +5023,7 @@ def stack_models(
             del prep_pipe_temp
 
     model_results = color_df(model_results, "yellow", ["Mean"], axis=1)
+    model_results = model_results.set_precision(round)
     display.display(model_results, clear=True)
 
     logger.info("create_model_container: " + str(len(create_model_container)))
@@ -5805,7 +5823,11 @@ def evaluate_model(estimator):
 
 
 def interpret_model(
-    estimator, plot: str = "summary", feature: str = None, observation: int = None
+    estimator,
+    plot: str = "summary",
+    feature: str = None,
+    observation: int = None,
+    **kwargs,  # added in pycaret==2.1
 ):
 
     """
@@ -5847,6 +5869,9 @@ def interpret_model(
         to select the feature on x and y axes through drop down interactivity. For analysis at
         the sample level, an observation parameter must be passed with the index value of the
         observation in test / hold-out set. 
+
+    **kwargs: 
+        Additional keyword arguments to pass to the plot.
 
     Returns
     -------
@@ -5952,7 +5977,7 @@ def interpret_model(
             explainer = shap.TreeExplainer(model)
             logger.info("Compiling shap values")
             shap_values = explainer.shap_values(X_test)
-            shap.summary_plot(shap_values, X_test)
+            shap.summary_plot(shap_values, X_test, **kwargs)
             logger.info("Visual Rendered Successfully")
 
         elif model_name in type2:
@@ -5962,7 +5987,7 @@ def interpret_model(
             explainer = shap.TreeExplainer(model)
             logger.info("Compiling shap values")
             shap_values = explainer.shap_values(X_test)
-            shap.summary_plot(shap_values, X_test)
+            shap.summary_plot(shap_values, X_test, **kwargs)
             logger.info("Visual Rendered Successfully")
 
     elif plot == "correlation":
@@ -5991,7 +6016,7 @@ def interpret_model(
             explainer = shap.TreeExplainer(model)
             logger.info("Compiling shap values")
             shap_values = explainer.shap_values(X_test)
-            shap.dependence_plot(dependence, shap_values[1], X_test)
+            shap.dependence_plot(dependence, shap_values[1], X_test, **kwargs)
             logger.info("Visual Rendered Successfully")
 
         elif model_name in type2:
@@ -6000,7 +6025,7 @@ def interpret_model(
             explainer = shap.TreeExplainer(model)
             logger.info("Compiling shap values")
             shap_values = explainer.shap_values(X_test)
-            shap.dependence_plot(dependence, shap_values, X_test)
+            shap.dependence_plot(dependence, shap_values, X_test, **kwargs)
             logger.info("Visual Rendered Successfully")
 
     elif plot == "reason":
@@ -6024,7 +6049,7 @@ def interpret_model(
                     "interpret_model() succesfully completed......................................"
                 )
                 return shap.force_plot(
-                    explainer.expected_value[1], shap_values[1], X_test
+                    explainer.expected_value[1], shap_values[1], X_test, **kwargs
                 )
 
             else:
@@ -6047,6 +6072,7 @@ def interpret_model(
                         explainer.expected_value[1],
                         shap_values[0][row_to_show],
                         data_for_prediction,
+                        **kwargs,
                     )
 
                 else:
@@ -6063,7 +6089,10 @@ def interpret_model(
                         "interpret_model() succesfully completed......................................"
                     )
                     return shap.force_plot(
-                        explainer.expected_value[1], shap_values[1], data_for_prediction
+                        explainer.expected_value[1],
+                        shap_values[1],
+                        data_for_prediction,
+                        **kwargs,
                     )
 
         elif model_name in type2:
@@ -6082,7 +6111,9 @@ def interpret_model(
                 logger.info(
                     "interpret_model() succesfully completed......................................"
                 )
-                return shap.force_plot(explainer.expected_value, shap_values, X_test)
+                return shap.force_plot(
+                    explainer.expected_value, shap_values, X_test, **kwargs
+                )
 
             else:
 
@@ -6101,6 +6132,7 @@ def interpret_model(
                     explainer.expected_value,
                     shap_values[row_to_show, :],
                     X_test.iloc[row_to_show, :],
+                    **kwargs,
                 )
 
     logger.info(
@@ -7405,7 +7437,7 @@ def finalize_model(estimator):
 
     _estimator_ = estimator
 
-    if y.value_counts().count() > 2:
+    if _is_one_vs_rest(estimator):
         if not hasattr(estimator, "voting"):
             estimator = estimator.estimator
 
@@ -7674,7 +7706,10 @@ def deploy_model(model, model_name: str, authentication: dict, platform: str = "
     
     """
     import pycaret.utils_persistence
-    return pycaret.utils_persistence.deploy_model(model, model_name, authentication, platform, prep_pipe)
+
+    return pycaret.utils_persistence.deploy_model(
+        model, model_name, authentication, platform, prep_pipe
+    )
 
 
 def save_model(model, model_name: str, model_only: bool = False, verbose: bool = True):
@@ -7717,7 +7752,10 @@ def save_model(model, model_name: str, model_only: bool = False, verbose: bool =
     """
 
     import pycaret.utils_persistence
-    return pycaret.utils_persistence.save_model(model, model_name, prep_pipe if model_only else None, verbose)
+
+    return pycaret.utils_persistence.save_model(
+        model, model_name, prep_pipe if model_only else None, verbose
+    )
 
 
 def load_model(
@@ -7767,7 +7805,10 @@ def load_model(
     """
 
     import pycaret.utils_persistence
-    return pycaret.utils_persistence.load_model(model_name, platform, authentication, verbose)
+
+    return pycaret.utils_persistence.load_model(
+        model_name, platform, authentication, verbose
+    )
 
 
 def automl(optimize: str = "Accuracy", use_holdout: bool = False):
@@ -8775,6 +8816,7 @@ def get_system_logs():
     """
 
     import pycaret.utils
+
     return pycaret.utils.get_system_logs()
 
 
@@ -8796,6 +8838,10 @@ def _is_special_model(e) -> bool:
             return row.Special
 
     return False
+
+
+def _is_one_vs_rest(e) -> bool:
+    return type(e) == _all_models_internal.loc["OneVsRest"]["Class"]
 
 
 def _get_model_name(e) -> str:
