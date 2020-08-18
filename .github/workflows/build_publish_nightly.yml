@@ -19,7 +19,7 @@ jobs:
         python -m pip install --user --upgrade setuptools wheel requests
     - name: Check if it's necessary to continiue
       run: |
-        if python ".github/CI/check_latest_commit_for_nightly.py"; then
+        if python ".github/CI/check_latest_commit_for_nightly.py" "$GITHUB_REPOSITORY" "${GITHUB_REF##*/}"; then
             echo "Proceeding with build and publish"
             echo "::set-env name=CONTINIUE::1"
         else

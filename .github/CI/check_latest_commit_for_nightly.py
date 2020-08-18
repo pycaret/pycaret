@@ -7,70 +7,79 @@ import requests
 # Helper script to see if it's worth pushing to nightly, to be used in a GitHub Workflow
 # exit code 0 = push to nightly
 # exit code 1 = don't push to nightly
+# arguments: repo (eg. pycaret/pycaret), branch
 
 BASE_URL = "https://api.github.com"
-OWNER = "pycaret"
-REPO = "pycaret"
+REPO = sys.argv[1]
+BRANCH = sys.argv[2]
 DATE_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
 
 
-def get_commits_from_repo(owner: str, repo: str):
-    r = requests.get(f"{BASE_URL}/repos/{owner}/{repo}/commits")
+def get_workflows_from_repo(repo: str):
+    r = requests.get(f"{BASE_URL}/repos/{repo}/actions/workflows")
     if r.status_code == 200 and r.text:
         return r.json()
     else:
         r.raise_for_status()
-        return
 
 
-def get_commit_from_repo_sha(owner: str, repo: str, sha: str):
-    commit = {}
-    commit_status = {}
-    r = requests.get(f"{BASE_URL}/repos/{owner}/{repo}/commits/{sha}")
+def get_workflow_runs_from_repo(repo: str):
+    r = requests.get(f"{BASE_URL}/repos/{repo}/actions/runs")
     if r.status_code == 200 and r.text:
-        commit = r.json()
+        return r.json()
     else:
         r.raise_for_status()
-    # get status too
-    r = requests.get(f"{BASE_URL}/repos/{owner}/{repo}/commits/{sha}/status")
-    if r.status_code == 200 and r.text:
-        commit_status = r.json()
-    else:
-        r.raise_for_status()
-    return (commit, commit_status)
 
 
-def are_there_commits_in_last_day(commit) -> bool:
+def get_workflow_runs_for_id_branch(runs, workflow_id, branch):
+    return [
+        x
+        for x in runs
+        if x["head_branch"] == branch and x["workflow_id"] == workflow_id
+    ]
+
+
+def was_workflow_completed_in_last_day(run) -> bool:
     now = datetime.now()
     last_day = now - timedelta(days=1)
-    last_commit_date = commit["commit"]["committer"]["date"]
-    last_commit_date = datetime.strptime(last_commit_date, DATE_FORMAT)
-    return last_commit_date >= last_day
+    last_workflow_date = run["updated_at"]
+    last_workflow_date = datetime.strptime(last_workflow_date, DATE_FORMAT)
+    print(f"Date of run {run['id']}: {last_workflow_date} - date 24h ago: {last_day}")
+    return last_workflow_date >= last_day
 
 
-def has_commit_passed_ci(commit_status) -> bool:
-    return commit_status["state"] == "success"
+def has_commit_passed_workflow(run) -> bool:
+    return run["conclusion"] == "success"
 
 
 def main():
     try:
-        commits = get_commits_from_repo(OWNER, REPO)
-        latest_commit, latest_commit_status = get_commit_from_repo_sha(
-            OWNER, REPO, commits[0]["sha"]
-        )
-        if are_there_commits_in_last_day(latest_commit) and has_commit_passed_ci(latest_commit_status):
+        workflows = get_workflows_from_repo(REPO)["workflows"]
+        runs = get_workflow_runs_from_repo(REPO)["workflow_runs"]
+        test_workflows = [x for x in workflows if "test" in x["name"].lower()]
+
+        for test_workflow in test_workflows:
+            print(f"\"{test_workflow['name']}\" determined as test workflow")
+            test_workflow_id = test_workflow["id"]
+            latest_run = get_workflow_runs_for_id_branch(
+                runs, test_workflow_id, BRANCH
+            )[0]
             print(
-                f"Latest commit {latest_commit['sha']} was made after 24h ago and passed CI, can push to nightly"
+                f"Latest \"{test_workflow['name']}\" run for branch \"{BRANCH}\" is {latest_run['id']} with conclusion \"{latest_run['conclusion']}\""
             )
-            return 0
+            if not (
+                was_workflow_completed_in_last_day(latest_run)
+                and has_commit_passed_workflow(latest_run)
+            ):
+                print("Returning 1")
+                return 1
+        print("Returning 0")
+        return 0
     except:
         print(f"There was an exception, push to nightly anyway")
         traceback.print_exc()
-        return 0
-    print(
-        f"Latest commit {latest_commit['sha']} was either made before 24 ago or didn't pass CI, can't push to nightly"
-    )
-    return 1
+    print("Returning 0")
+    return 0
 
 
 if __name__ == "__main__":
