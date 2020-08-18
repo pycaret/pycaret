@@ -3840,14 +3840,15 @@ def tune_model(estimator = None,
     #Storing X_train and y_train in data_X and data_y parameter
     data_X = X_train.copy()
     data_y = y_train.copy()
-    
-    #create estimator clone from sklearn.base
-    from sklearn.base import clone
-    estimator_clone = clone(estimator)
 
     #reset index
     data_X.reset_index(drop=True, inplace=True)
     data_y.reset_index(drop=True, inplace=True)
+    
+    logger.info("Creating estimator clone to inherit model parameters")
+    #create estimator clone from sklearn.base
+    from sklearn.base import clone
+    estimator_clone = clone(estimator)
     
     progress.value += 1
 
