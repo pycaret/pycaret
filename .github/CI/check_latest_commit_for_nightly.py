@@ -82,12 +82,12 @@ def main():
                 print(latest_passing_run["head_sha"])
                 print("Returning 0", file=sys.stderr)
                 return 0
-        print("Returning 0", file=sys.stderr)
+        print("Returning 1", file=sys.stderr)
         return 1
     except:
         print(f"There was an exception", file=sys.stderr)
         traceback.print_exc(file=sys.stderr)
-    print("Returning 0", file=sys.stderr)
+    print("Returning 1", file=sys.stderr)
     return 1
 
 
