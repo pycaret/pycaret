@@ -91,11 +91,11 @@ def check_metric(actual, prediction, metric, round=4):
 
     elif metric == 'MAPE':
 
-        mask = actual != 0
-        result = (np.fabs(actual - prediction)/actual)[mask].mean()
+        mask = actual.iloc[:,0] != 0
+        result = (np.fabs(actual.iloc[:,0] - prediction.iloc[:,0])/actual.iloc[:,0])[mask].mean()
         result = result.round(round)
        
-    return result
+    return float(result)
 
 
 def enable_colab():
