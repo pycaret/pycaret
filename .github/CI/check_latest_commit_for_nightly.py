@@ -61,15 +61,14 @@ def main():
         for test_workflow in test_workflows:
             print(f"\"{test_workflow['name']}\" determined as test workflow")
             test_workflow_id = test_workflow["id"]
-            latest_run = get_workflow_runs_for_id_branch(
+            latest_passing_run = next(run for run in get_workflow_runs_for_id_branch(
                 runs, test_workflow_id, BRANCH
-            )[0]
+            ) if has_commit_passed_workflow(run))
             print(
-                f"Latest \"{test_workflow['name']}\" run for branch \"{BRANCH}\" is {latest_run['id']} with conclusion \"{latest_run['conclusion']}\""
+                f"Latest \"{test_workflow['name']}\" passing run for branch \"{BRANCH}\" is {latest_passing_run['id']} with conclusion \"{latest_passing_run['conclusion']}\""
             )
             if not (
-                was_workflow_completed_in_last_day(latest_run)
-                and has_commit_passed_workflow(latest_run)
+                was_workflow_completed_in_last_day(latest_passing_run)
             ):
                 print("Returning 1")
                 return 1
