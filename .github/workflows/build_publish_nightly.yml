@@ -4,9 +4,9 @@
 
 name: Build and publish pycaret-nightly
 
-on:
-  schedule:
-  - cron: "0 0 * * *" # every 24 hours on midnight
+on: [push]
+  #schedule:
+  #- cron: "0 0 * * *" # every 24 hours on midnight
 
 jobs:
   build_and_publish:
@@ -14,7 +14,6 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v2
     - name: Set up Python 3.8
       uses: actions/setup-python@v2
       with:
@@ -25,21 +24,27 @@ jobs:
         python -m pip install --user --upgrade setuptools wheel requests
     - name: Check if it's necessary to continiue
       run: |
-        if python ".github/CI/check_latest_commit_for_nightly.py" "$GITHUB_REPOSITORY" "${GITHUB_REF##*/}"; then
-            echo "Proceeding with build and publish"
-            echo "::set-env name=CONTINIUE::1"
+        REF_TO_CHECKOUT=$(python ".github/CI/check_latest_commit_for_nightly.py" "$GITHUB_REPOSITORY" "nightly_publish_workflow")
+        if [[ $? -eq 0 ]] ; then
+            echo "Proceeding with build and publish of commit $REF_TO_CHECKOUT"
+            echo "::set-env name=REF_TO_CHECKOUT::$REF_TO_CHECKOUT"
         else
             echo "No need for build and publish, exiting..."
-            echo "::set-env name=CONTINIUE::0"
+            echo "::set-env name=REF_TO_CHECKOUT::0"
             exit 0
         fi
+    - name: Checkout last passing commit
+      if: env.REF_TO_CHECKOUT != '0'
+      uses: actions/checkout@v2
+      with:
+        ref: ${{ env.REF_TO_CHECKOUT }}
     - name: Build nightly distribution
-      if: env.CONTINIUE == '1'
+      if: env.REF_TO_CHECKOUT != '0'
       run: |
         rm -rf dist/*
         python setup_nightly.py sdist bdist_wheel
     - name: Publish nightly distribution to PyPI
-      if: env.CONTINIUE == '1'
+      if: env.REF_TO_CHECKOUT != '0'
       uses: pypa/gh-action-pypi-publish@master
       with:
         password: ${{ secrets.pypi_password }}

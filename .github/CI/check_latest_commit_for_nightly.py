@@ -44,7 +44,10 @@ def was_workflow_completed_in_last_day(run) -> bool:
     last_day = now - timedelta(days=1)
     last_workflow_date = run["updated_at"]
     last_workflow_date = datetime.strptime(last_workflow_date, DATE_FORMAT)
-    print(f"Date of run {run['id']}: {last_workflow_date} - date 24h ago: {last_day}")
+    print(
+        f"Date of run {run['id']}: {last_workflow_date} - date 24h ago: {last_day}",
+        file=sys.stderr,
+    )
     return last_workflow_date >= last_day
 
 
@@ -59,26 +62,33 @@ def main():
         test_workflows = [x for x in workflows if "test" in x["name"].lower()]
 
         for test_workflow in test_workflows:
-            print(f"\"{test_workflow['name']}\" determined as test workflow")
-            test_workflow_id = test_workflow["id"]
-            latest_passing_run = next(run for run in get_workflow_runs_for_id_branch(
-                runs, test_workflow_id, BRANCH
-            ) if has_commit_passed_workflow(run))
             print(
-                f"Latest \"{test_workflow['name']}\" passing run for branch \"{BRANCH}\" is {latest_passing_run['id']} with conclusion \"{latest_passing_run['conclusion']}\""
+                f"\"{test_workflow['name']}\" determined as test workflow",
+                file=sys.stderr,
             )
-            if not (
-                was_workflow_completed_in_last_day(latest_passing_run)
-            ):
-                print("Returning 1")
-                return 1
-        print("Returning 0")
-        return 0
+            test_workflow_id = test_workflow["id"]
+            latest_passing_run = next(
+                run
+                for run in get_workflow_runs_for_id_branch(
+                    runs, test_workflow_id, BRANCH
+                )
+                if has_commit_passed_workflow(run)
+            )
+            print(
+                f"Latest \"{test_workflow['name']}\" passing run for branch \"{BRANCH}\" is {latest_passing_run['id']} with conclusion \"{latest_passing_run['conclusion']}\"",
+                file=sys.stderr,
+            )
+            if was_workflow_completed_in_last_day(latest_passing_run):
+                print(latest_passing_run["head_sha"])
+                print("Returning 0", file=sys.stderr)
+                return 0
+        print("Returning 0", file=sys.stderr)
+        return 1
     except:
-        print(f"There was an exception, push to nightly anyway")
-        traceback.print_exc()
-    print("Returning 0")
-    return 0
+        print(f"There was an exception", file=sys.stderr)
+        traceback.print_exc(file=sys.stderr)
+    print("Returning 0", file=sys.stderr)
+    return 1
 
 
 if __name__ == "__main__":
