@@ -2778,7 +2778,7 @@ def create_model(estimator = None,
         Must remain True all times. Only to be changed by internal functions.
 
     **kwargs: 
-    Additional keyword arguments to pass to the estimator.
+        Additional keyword arguments to pass to the estimator.
 
     Returns
     -------
@@ -7997,7 +7997,8 @@ def evaluate_model(estimator):
 def interpret_model(estimator,
                    plot = 'summary',
                    feature = None, 
-                   observation = None):
+                   observation = None,
+                   **kwargs): #added in pycaret==2.1
     
     
     """
@@ -8039,6 +8040,9 @@ def interpret_model(estimator,
         to select the feature on x and y axes through drop down interactivity. For analysis at
         the sample level, an observation parameter must be passed with the index value of the
         observation in test / hold-out set. 
+
+    **kwargs: 
+        Additional keyword arguments to pass to the plot.
 
     Returns
     -------
@@ -8151,7 +8155,7 @@ def interpret_model(estimator,
             explainer = shap.TreeExplainer(model)
             logger.info("Compiling shap values")
             shap_values = explainer.shap_values(X_test)
-            shap.summary_plot(shap_values, X_test)
+            shap.summary_plot(shap_values, X_test, **kwargs)
             logger.info("Visual Rendered Successfully")
             
         elif model_name in type2:
@@ -8161,7 +8165,7 @@ def interpret_model(estimator,
             explainer = shap.TreeExplainer(model)
             logger.info("Compiling shap values")
             shap_values = explainer.shap_values(X_test)
-            shap.summary_plot(shap_values, X_test)
+            shap.summary_plot(shap_values, X_test, **kwargs)
             logger.info("Visual Rendered Successfully")
                               
     elif plot == 'correlation':
@@ -8184,7 +8188,7 @@ def interpret_model(estimator,
             explainer = shap.TreeExplainer(model)
             logger.info("Compiling shap values")
             shap_values = explainer.shap_values(X_test)
-            shap.dependence_plot(dependence, shap_values[1], X_test)
+            shap.dependence_plot(dependence, shap_values[1], X_test, **kwargs)
             logger.info("Visual Rendered Successfully")
         
         elif model_name in type2:
@@ -8193,7 +8197,7 @@ def interpret_model(estimator,
             explainer = shap.TreeExplainer(model)
             logger.info("Compiling shap values")
             shap_values = explainer.shap_values(X_test) 
-            shap.dependence_plot(dependence, shap_values, X_test)
+            shap.dependence_plot(dependence, shap_values, X_test, **kwargs)
             logger.info("Visual Rendered Successfully")
         
     elif plot == 'reason':
@@ -8212,7 +8216,7 @@ def interpret_model(estimator,
                 shap.initjs()
                 logger.info("Visual Rendered Successfully")
                 logger.info("interpret_model() succesfully completed......................................")
-                return shap.force_plot(explainer.expected_value[1], shap_values[1], X_test)
+                return shap.force_plot(explainer.expected_value[1], shap_values[1], X_test, **kwargs)
             
             else: 
                 
@@ -8228,7 +8232,7 @@ def interpret_model(estimator,
                     shap.initjs()
                     logger.info("Visual Rendered Successfully")
                     logger.info("interpret_model() succesfully completed......................................")
-                    return shap.force_plot(explainer.expected_value[1], shap_values[0][row_to_show], data_for_prediction)    
+                    return shap.force_plot(explainer.expected_value[1], shap_values[0][row_to_show], data_for_prediction, **kwargs)    
                 
                 else:
                     logger.info("model type detected: Unknown")
@@ -8241,7 +8245,7 @@ def interpret_model(estimator,
                     shap.initjs()
                     logger.info("Visual Rendered Successfully")
                     logger.info("interpret_model() succesfully completed......................................")
-                    return shap.force_plot(explainer.expected_value[1], shap_values[1], data_for_prediction)        
+                    return shap.force_plot(explainer.expected_value[1], shap_values[1], data_for_prediction, **kwargs)        
 
             
         elif model_name in type2:
@@ -8256,7 +8260,7 @@ def interpret_model(estimator,
                 shap.initjs()
                 logger.info("Visual Rendered Successfully")
                 logger.info("interpret_model() succesfully completed......................................")
-                return shap.force_plot(explainer.expected_value, shap_values, X_test)  
+                return shap.force_plot(explainer.expected_value, shap_values, X_test, **kwargs)  
                 
             else:
                 
@@ -8269,7 +8273,7 @@ def interpret_model(estimator,
                 shap.initjs()
                 logger.info("Visual Rendered Successfully")
                 logger.info("interpret_model() succesfully completed......................................")
-                return shap.force_plot(explainer.expected_value, shap_values[row_to_show,:], X_test.iloc[row_to_show,:])
+                return shap.force_plot(explainer.expected_value, shap_values[row_to_show,:], X_test.iloc[row_to_show,:], **kwargs)
 
     logger.info("interpret_model() succesfully completed......................................")
 
