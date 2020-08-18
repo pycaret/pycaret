@@ -1799,6 +1799,7 @@ def assign_model(model,
 def plot_model(model,
                plot = 'tsne',
                feature = None,
+               scale = 1, #added in pycaret 2.1.0
                save = False, #added in pycaret 2.0.0
                system = True): #added in pycaret 2.0.0
                
@@ -1818,19 +1819,22 @@ def plot_model(model,
 
     Parameters
     ----------
-    model : object
+    model: object
         A trained model object can be passed. Model must be created using create_model().
 
-    plot : string, default = 'tsne'
+    plot: string, default = 'tsne'
         Enter abbreviation of type of plot. The current list of plots supported are (Plot - Name):
 
         * 'tsne' - t-SNE (3d) Dimension Plot
         * 'umap' - UMAP Dimensionality Plot
 
-    feature : string, default = None
+    feature: string, default = None
         Feature column is used as a hoverover tooltip. By default, first of column of the
         dataset is chosen as hoverover tooltip, when no feature is passed.
     
+    scale: float, default = 1
+        The resolution scale of the figure.
+
     save: Boolean, default = False
         Plot is saved as png file in local directory when save parameter set to True.
 
@@ -1938,7 +1942,7 @@ def plot_model(model,
         logger.info("Rendering Visual")
 
         fig = px.scatter_3d(df, x=0, y=1, z=2, hover_data=['Feature'], color='Label', title='3d TSNE Plot for Outliers', 
-                                opacity=0.7, width=900, height=800)
+                                opacity=0.7, width=900*scale, height=800*scale)
             
             
         if system:
@@ -1982,7 +1986,7 @@ def plot_model(model,
 
         fig = px.scatter(df, x=0, y=1,
                       color='Label', title='uMAP Plot for Outliers', hover_data=['Feature'], opacity=0.7, 
-                         width=900, height=800)
+                         width=900*scale, height=800*scale)
         if system:
             fig.show() 
 

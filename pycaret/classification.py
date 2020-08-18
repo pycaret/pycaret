@@ -7283,6 +7283,7 @@ def stack_models(estimator_list,
 
 def plot_model(estimator, 
                plot = 'auc',
+               scale = 1, #added in pycaret 2.1.0
                save = False, #added in pycaret 2.0.0
                verbose = True, #added in pycaret 2.0.0
                system = True): #added in pycaret 2.0.0
@@ -7328,6 +7329,9 @@ def plot_model(estimator,
         * 'dimension' - Dimension Learning           
         * 'feature' - Feature Importance              
         * 'parameter' - Model Hyperparameter          
+
+    scale: float, default = 1
+        The resolution scale of the figure.
 
     save: Boolean, default = False
         When set to True, Plot is saved as a 'png' file in current working directory.
@@ -7480,6 +7484,7 @@ def plot_model(estimator,
         from yellowbrick.classifier import ROCAUC
         progress.value += 1
         visualizer = ROCAUC(model)
+        visualizer.fig.set_dpi(visualizer.fig.dpi * scale)
         logger.info("Fitting Model")
         visualizer.fit(X_train, y_train)
         progress.value += 1
@@ -7503,6 +7508,7 @@ def plot_model(estimator,
         from yellowbrick.classifier import DiscriminationThreshold
         progress.value += 1
         visualizer = DiscriminationThreshold(model, random_state=seed)
+        visualizer.fig.set_dpi(visualizer.fig.dpi * scale)
         logger.info("Fitting Model")
         visualizer.fit(X_train, y_train)
         progress.value += 1
@@ -7526,6 +7532,7 @@ def plot_model(estimator,
         from yellowbrick.classifier import PrecisionRecallCurve
         progress.value += 1
         visualizer = PrecisionRecallCurve(model, random_state=seed)
+        visualizer.fig.set_dpi(visualizer.fig.dpi * scale)
         logger.info("Fitting Model")
         visualizer.fit(X_train, y_train)
         progress.value += 1
@@ -7549,6 +7556,7 @@ def plot_model(estimator,
         from yellowbrick.classifier import ConfusionMatrix
         progress.value += 1
         visualizer = ConfusionMatrix(model, random_state=seed, fontsize = 15, cmap="Greens")
+        visualizer.fig.set_dpi(visualizer.fig.dpi * scale)
         logger.info("Fitting Model")
         visualizer.fit(X_train, y_train)
         progress.value += 1
@@ -7572,6 +7580,7 @@ def plot_model(estimator,
         from yellowbrick.classifier import ClassPredictionError
         progress.value += 1
         visualizer = ClassPredictionError(model, random_state=seed)
+        visualizer.fig.set_dpi(visualizer.fig.dpi * scale)
         logger.info("Fitting Model")
         visualizer.fit(X_train, y_train)
         progress.value += 1
@@ -7595,6 +7604,7 @@ def plot_model(estimator,
         from yellowbrick.classifier import ClassificationReport
         progress.value += 1
         visualizer = ClassificationReport(model, random_state=seed, support=True)
+        visualizer.fig.set_dpi(visualizer.fig.dpi * scale)
         logger.info("Fitting Model")
         visualizer.fit(X_train, y_train)
         progress.value += 1
@@ -7643,6 +7653,7 @@ def plot_model(estimator,
         y_test_transformed = np.array(y_test_transformed)
         
         viz_ = DecisionViz(model2)
+        viz_.fig.set_dpi(viz_.fig.dpi * scale)
         logger.info("Fitting Model")
         viz_.fit(X_train_transformed, y_train_transformed, features=['Feature One', 'Feature Two'], classes=['A', 'B'])
         viz_.draw(X_test_transformed, y_test_transformed)
@@ -7664,6 +7675,7 @@ def plot_model(estimator,
         from yellowbrick.model_selection import RFECV 
         progress.value += 1
         visualizer = RFECV(model, cv=10)
+        visualizer.fig.set_dpi(visualizer.fig.dpi * scale)
         progress.value += 1
         logger.info("Fitting Model")
         visualizer.fit(X_train, y_train)
@@ -7686,6 +7698,7 @@ def plot_model(estimator,
         progress.value += 1
         sizes = np.linspace(0.3, 1.0, 10)  
         visualizer = LearningCurve(model, cv=10, train_sizes=sizes, n_jobs=n_jobs_param, random_state=seed)
+        visualizer.fig.set_dpi(visualizer.fig.dpi * scale)
         progress.value += 1
         logger.info("Fitting Model")
         visualizer.fit(X_train, y_train)
@@ -7709,6 +7722,7 @@ def plot_model(estimator,
         progress.value += 1
         X_train_transformed = X_train.select_dtypes(include='float64') 
         visualizer = Manifold(manifold='tsne', random_state = seed)
+        visualizer.fig.set_dpi(visualizer.fig.dpi * scale)
         progress.value += 1
         logger.info("Fitting Model")
         visualizer.fit_transform(X_train_transformed, y_train)
@@ -7731,7 +7745,7 @@ def plot_model(estimator,
         
         model_name = str(model).split("(")[0]
         
-        plt.figure(figsize=(7, 6))
+        plt.figure(figsize=(7, 6), dpi=100*scale)
         ax1 = plt.subplot2grid((3, 1), (0, 0), rowspan=2)
 
         ax1.plot([0, 1], [0, 1], "k:", label="Perfectly calibrated")
@@ -7834,6 +7848,7 @@ def plot_model(estimator,
         from yellowbrick.model_selection import ValidationCurve
         viz = ValidationCurve(model, param_name=param_name, param_range=param_range,cv=10, 
                               random_state=seed)
+        viz.fig.set_dpi(viz.fig.dpi * scale)
         logger.info("Fitting Model")
         viz.fit(X_train, y_train)
         progress.value += 1
@@ -7869,6 +7884,7 @@ def plot_model(estimator,
         progress.value += 1
         classes = y_train.unique().tolist()
         visualizer = RadViz(classes=classes, alpha=0.25)
+        visualizer.fig.set_dpi(visualizer.fig.dpi * scale)
         logger.info("Fitting Model")
         visualizer.fit(X_train_transformed, y_train_transformed)     
         visualizer.transform(X_train_transformed)
@@ -7900,7 +7916,7 @@ def plot_model(estimator,
         sorted_df = sorted_df.sort_values(by='Value')
         my_range=range(1,len(sorted_df.index)+1)
         progress.value += 1
-        plt.figure(figsize=(8,5))
+        plt.figure(figsize=(8,5), dpi=100*scale)
         plt.hlines(y=my_range, xmin=0, xmax=sorted_df['Value'], color='skyblue')
         plt.plot(sorted_df['Value'], my_range, "o")
         progress.value += 1
