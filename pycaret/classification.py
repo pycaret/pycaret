@@ -1664,8 +1664,8 @@ def setup(
     experiment__.append(("y_test Set", y_test))
     experiment__.append(("Transformation Pipeline", prep_pipe))
 
-    all_models = models()
-    _all_models_internal = models(internal=True)
+    all_models = models(force_regenerate=True)
+    _all_models_internal = models(internal=True,force_regenerate=True)
     all_metrics = get_metrics()
 
     # end runtime
@@ -7900,7 +7900,7 @@ def pull() -> pandas.DataFrame:
     return display_container[-1]
 
 
-def models(type: str = None, internal: bool = False) -> pandas.DataFrame:
+def models(type: str = None, internal: bool = False, force_regenerate: bool = False) -> pandas.DataFrame:
 
     """
     Returns table of models available in model library.
@@ -7922,6 +7922,10 @@ def models(type: str = None, internal: bool = False) -> pandas.DataFrame:
     internal: Boolean, default = False
         If True, will return extra columns and rows used internally.
 
+    force_regenerate: Boolean, default = False
+        If True, will force the DataFrame to be regenerated,
+        instead of using a cached version.
+
     Returns
     -------
     pandas.DataFrame
@@ -7940,13 +7944,14 @@ def models(type: str = None, internal: bool = False) -> pandas.DataFrame:
             df = df[df.index.isin(ensemble_models)]
         return df
 
-    try:
-        if internal:
-            return filter_model_df_by_type(_all_models_internal)
-        else:
-            return filter_model_df_by_type(all_models)
-    except:
-        pass
+    if not force_regenerate:
+        try:
+            if internal:
+                return filter_model_df_by_type(_all_models_internal)
+            else:
+                return filter_model_df_by_type(all_models)
+        except:
+            pass
 
     import pandas as pd
     import numpy as np
