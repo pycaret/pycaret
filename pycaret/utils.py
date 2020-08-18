@@ -4,6 +4,7 @@
 
 import datetime
 import pandas as pd
+import pandas.io.formats.style
 import ipywidgets as ipw
 from IPython.display import display, HTML, clear_output, update_display
 
@@ -208,7 +209,7 @@ def get_system_logs():
         print(columns)
 
 
-def color_df(df: pd.DataFrame, color: str, names: list, axis: int = 1) -> pd.DataFrame:
+def color_df(df: pd.DataFrame, color: str, names: list, axis: int = 1) -> pandas.io.formats.style.Styler:
     return df.style.apply(
         lambda x: [f"background: {color}" if (x.name in names) else "" for i in x],
         axis=axis,
@@ -302,11 +303,13 @@ class Display:
         progress_args: dict = None,
         master_display_columns: list = None,
         monitor_rows: list = None,
+        round: int = 4,
         logger=None,
     ):
         self.verbose = verbose
         self.html_param = html_param
         self.logger = logger
+        self.round = round
 
         if not (self.verbose and self.html_param):
             return
