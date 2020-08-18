@@ -4,10 +4,10 @@
 # Release: PyCaret 2.1
 # Last modified : 19/08/2020
 
-def setup(data,  
-          target,   
-          train_size = 0.7, 
-          sampling = True, 
+def setup(data,
+          target,
+          train_size = 0.7,
+          sampling = True,
           sample_estimator = None,
           categorical_features = None,
           categorical_imputation = 'constant',
@@ -35,7 +35,7 @@ def setup(data,
           outliers_threshold = 0.05,
           remove_multicollinearity = False,
           multicollinearity_threshold = 0.9,
-          remove_perfect_collinearity = False, #added in pycaret==2.0.0
+          remove_perfect_collinearity = False,  #added in pycaret==2.0.0
           create_clusters = False,
           cluster_iter = 20,
           polynomial_features = False,                 
@@ -48,23 +48,27 @@ def setup(data,
           feature_selection_threshold = 0.8,             
           feature_selection_method = 'classic',
           feature_interaction = False,                   
-          feature_ratio = False,                         
+          feature_ratio = False,
           interaction_threshold = 0.01,
-          fix_imbalance = False, #added in pycaret==2.0.0
-          fix_imbalance_method = None, #added in pycaret==2.0.0
-          data_split_shuffle = True, #added in pycaret==2.0.0
-          folds_shuffle = False, #added in pycaret==2.0.0
-          n_jobs = -1, #added in pycaret==2.0.0
-          use_gpu = False, #added in pycaret==2.1
-          html = True, #added in pycaret==2.0.0
+          fix_imbalance = False,  #added in pycaret==2.0.0
+          fix_imbalance_method = None,  #added in pycaret==2.0.0
+          folds_shuffle=False,  # added in pycaret==2.0.0
+          data_split_shuffle=True,  # added in pycaret==2.0.0
+          split_type='random',
+          split_groups=None,
+          split_test_fold=None,
+          split_stratify_feature=None,
+          n_jobs = -1,  #added in pycaret==2.0.0
+          use_gpu = False,  #added in pycaret==2.1
+          html = True,  #added in pycaret==2.0.0
           session_id = None,
-          log_experiment = False, #added in pycaret==2.0.0
-          experiment_name = None, #added in pycaret==2.0.0
-          log_plots = False, #added in pycaret==2.0.0
-          log_profile = False, #added in pycaret==2.0.0
-          log_data = False, #added in pycaret==2.0.0
+          log_experiment = False,  #added in pycaret==2.0.0
+          experiment_name = None,  #added in pycaret==2.0.0
+          log_plots = False,  #added in pycaret==2.0.0
+          log_profile = False,  #added in pycaret==2.0.0
+          log_data = False,  #added in pycaret==2.0.0
           silent=False,
-          verbose=True, #added in pycaret==2.0.0
+          verbose=True,  #added in pycaret==2.0.0
           profile = False):
     
     """
@@ -379,11 +383,34 @@ def setup(data,
         by default to oversample minority class during cross validation. This parameter
         accepts any module from 'imblearn' that supports 'fit_resample' method.
 
-    data_split_shuffle: bool, default = True
-        If set to False, prevents shuffling of rows when splitting data.
-
     folds_shuffle: bool, default = False
         If set to False, prevents shuffling of rows when using cross validation.
+
+    data_split_shuffle: bool, default = True
+        If set to False, prevents shuffling of rows when splitting data into train/test. Only used if split_type='random'.
+
+    split_type: string, default = 'random'
+        Defines the method to be used for the train/test split. By default, sklearn.model_selection.train_test_split
+        is used, which splits the data into random train and test subsets. The other available options are:
+
+        'group'         : Splits the data according to group labels using sklearn.model_selection.GroupShuffleSplit.
+
+        'predefined'    : Splits the data according to predefined labels specified by the user.
+                          Uses sklearn.model_selection.PredefinedSplit.
+
+    split_groups: string, default = None
+        Name of the column in data containing the group labels to use in splitting the dataset
+        into train/test set. Only used if split_type='group'.
+
+    split_test_fold: string, default = None
+            Name of the column in data containing the predefined labels specified by the user to use in splitting the dataset
+            into train/test set. Only used if split_type='predfined'. If test_fold[i] = -1, observation i will be
+            included in the train set; if test_fold[i] = 0, observation i will be included in the test set. No other
+            values for test_fold[i] are allowed.
+
+    split_stratify_feature: str, default = None
+        If None, stratifies using the target variable. If string, it is the name of the column in data to be used in
+        stratification. Only used if split_type='random'.
 
     n_jobs: int, default = -1
         The number of jobs to run in parallel (for functions that supports parallel 
@@ -496,7 +523,8 @@ def setup(data,
                     remove_multicollinearity={}, multicollinearity_threshold={}, remove_perfect_collinearity={}, create_clusters={}, cluster_iter={},
                     polynomial_features={}, polynomial_degree={}, trigonometry_features={}, polynomial_threshold={}, group_features={},
                     group_names={}, feature_selection={}, feature_selection_threshold={}, feature_interaction={}, feature_ratio={}, interaction_threshold={},
-                    fix_imbalance={}, fix_imbalance_method={}, data_split_shuffle={}, folds_shuffle={}, n_jobs={}, html={}, session_id={}, log_experiment={},
+                    fix_imbalance={}, fix_imbalance_method={}, data_split_shuffle={}, folds_shuffle={}, split_type={}, split_groups={},
+                    split_test_fold={}, split_stratify_feature={}, n_jobs={}, html={}, session_id={}, log_experiment={},
                     experiment_name={}, log_plots={}, log_profile={}, log_data={}, silent={}, verbose={}, profile={})""".format(\
             str(data.shape), str(target), str(train_size), str(sampling), str(sample_estimator), str(categorical_features), str(categorical_imputation), str(ordinal_features),\
             str(high_cardinality_features), str(high_cardinality_method), str(numeric_features), str(numeric_imputation), str(date_features), str(ignore_features),\
@@ -505,7 +533,8 @@ def setup(data,
             str(outliers_threshold), str(remove_multicollinearity), str(multicollinearity_threshold), str(remove_perfect_collinearity), str(create_clusters), str(cluster_iter),\
             str(polynomial_features), str(polynomial_degree), str(trigonometry_features), str(polynomial_threshold), str(group_features), str(group_names),\
             str(feature_selection), str(feature_selection_threshold), str(feature_interaction), str(feature_ratio), str(interaction_threshold), str(fix_imbalance),\
-            str(fix_imbalance_method), str(data_split_shuffle), str(folds_shuffle), str(n_jobs), str(html), str(session_id), str(log_experiment), str(experiment_name),\
+            str(fix_imbalance_method), str(data_split_shuffle), str(folds_shuffle), str(split_type), str(split_groups), str(split_test_fold), str(split_stratify_feature), \
+            str(n_jobs), str(html), str(session_id), str(log_experiment), str(experiment_name),\
             str(log_plots), str(log_profile), str(log_data), str(silent), str(verbose), str(profile)))
 
     #logging environment and libraries
@@ -582,6 +611,10 @@ def setup(data,
     if hasattr(data,'shape') is False:
         sys.exit('(Type Error): data passed must be of type pandas.DataFrame')
 
+    #checking existence of target column in data
+    if target not in data.columns:
+        sys.exit('(Value Error): Target parameter doesnt exist in the data provided.')
+
     #checking train size parameter
     if type(train_size) is not float:
         sys.exit('(Type Error): train_size parameter only accepts float value.')
@@ -589,10 +622,6 @@ def setup(data,
     #checking sampling parameter
     if type(sampling) is not bool:
         sys.exit('(Type Error): sampling parameter only accepts True or False.')
-        
-    #checking sampling parameter
-    if target not in data.columns:
-        sys.exit('(Value Error): Target parameter doesnt exist in the data provided.')   
 
     #checking session_id
     if session_id is not None:
@@ -880,6 +909,34 @@ def setup(data,
     if type(data_split_shuffle) is not bool:
         sys.exit('(Type Error): data_split_shuffle parameter only accepts True or False.')
 
+    #split_type
+    if split_type not in ['random','group','predefined']:
+        sys.exit("split_type must be one of 'random','group','predefined'.")
+
+    #split_groups
+    if split_type=='group':
+        if split_groups is None:
+            sys.exit("If split_type='group', then split_groups must be specified.")
+        elif type(split_groups) is not str:
+            sys.exit("split_groups must be a string.")
+        elif split_groups not in data.columns:
+            sys.exit("split_groups doesnt exist in the data provided.")
+
+    #split_test_fold
+    if split_type=='predefined':
+        if split_test_fold is None:
+            sys.exit("If split_type='group', then split_test_fold must be specified.")
+        elif type(split_test_fold) is not str:
+            sys.exit("split_test_fold must be a string.")
+        elif split_test_fold not in data.columns:
+            sys.exit("split_test_fold doesnt exist in the data provided.")
+
+    #split_stratify_feature
+    if split_type=='random':
+        if split_stratify_feature is not None:
+            if split_stratify_feature not in data.columns:
+                sys.exit("split_stratify_feature was specified but doesnt exist in the data provided.")
+
     #log_plots
     if type(log_plots) is not bool:
         sys.exit('(Type Error): log_plots parameter only accepts True or False.')
@@ -954,7 +1011,7 @@ def setup(data,
     #general dependencies
     import numpy as np
     from sklearn.linear_model import LogisticRegression
-    from sklearn.model_selection import train_test_split
+    from pycaret.utils import _train_test_split
     from sklearn import metrics
     import random
     import seaborn as sns
@@ -1432,10 +1489,6 @@ def setup(data,
     model_name = str(model).split("(")[0]
     if 'CatBoostClassifier' in model_name:
         model_name = 'CatBoostClassifier'
-        
-    #creating variables to be used later in the function
-    X = data.drop(target,axis=1)
-    y = data[target]
     
     #determining target type
     if y.value_counts().count() > 2:
@@ -1479,9 +1532,18 @@ def setup(data,
             '''
             MONITOR UPDATE ENDS
             '''
-    
-            X_, X__, y_, y__ = train_test_split(X, y, test_size=1-i, stratify=y, random_state=seed, shuffle=data_split_shuffle)
-            X_train, X_test, y_train, y_test = train_test_split(X_, y_, test_size=1-train_size, stratify=y_, random_state=seed, shuffle=data_split_shuffle)
+
+            X_train, X_test, y_train, y_test = _train_test_split(data,
+                                                 target,
+                                                 train_size,
+                                                 random_sample_size = i,
+                                                 split_type=split_type,
+                                                 data_split_shuffle=data_split_shuffle,
+                                                 split_stratify_feature=split_stratify_feature,
+                                                 split_groups=split_groups,
+                                                 split_test_fold=split_test_fold,
+                                                 random_state=seed)
+
             model.fit(X_train,y_train)
             pred_ = model.predict(X_test)
             try:
@@ -1608,16 +1670,28 @@ def setup(data,
         
         if sample_size == '' or sample_size == '1':
             
-            X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=1-train_size, stratify=y, random_state=seed, shuffle=data_split_shuffle)
-        
+            X_train, X_test, y_train, y_test = _train_test_split(data,
+                                                 target,
+                                                 train_size,
+                                                 split_type=split_type,
+                                                 data_split_shuffle=data_split_shuffle,
+                                                 split_stratify_feature=split_stratify_feature,
+                                                 split_groups=split_groups,
+                                                 split_test_fold=split_test_fold,
+                                                 random_state=seed)
         else:
             
             sample_n = float(sample_size)
-            X_selected, X_discard, y_selected, y_discard = train_test_split(X, y, test_size=1-sample_n, stratify=y, 
-                                                                random_state=seed, shuffle=data_split_shuffle)
-            
-            X_train, X_test, y_train, y_test = train_test_split(X_selected, y_selected, test_size=1-train_size, stratify=y_selected, 
-                                                                random_state=seed, shuffle=data_split_shuffle)
+            X_train, X_test, y_train, y_test = _train_test_split(data,
+                                                 target,
+                                                 train_size,
+                                                 random_sample_size = sample_n,
+                                                 split_type=split_type,
+                                                 data_split_shuffle=data_split_shuffle,
+                                                 split_stratify_feature=split_stratify_feature,
+                                                 split_groups=split_groups,
+                                                 split_test_fold=split_test_fold,
+                                                 random_state=seed)
 
     else:
         
@@ -1625,7 +1699,16 @@ def setup(data,
         if verbose:
             if html_param:
                 update_display(monitor, display_id = 'monitor')
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=1-train_size, stratify=y, random_state=seed, shuffle=data_split_shuffle)
+
+        X_train, X_test, y_train, y_test = _train_test_split(data,
+                                                             target,
+                                                             train_size,
+                                                             split_type=split_type,
+                                                             data_split_shuffle=data_split_shuffle,
+                                                             split_stratify_feature=split_stratify_feature,
+                                                             split_groups=split_groups,
+                                                             split_test_fold=split_test_fold,
+                                                             random_state=seed)
         progress.value += 1
 
     '''
