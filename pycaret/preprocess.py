@@ -1753,13 +1753,22 @@ class Advanced_Feature_Selection_Classic(BaseEstimator,TransformerMixin):
 #Boruta Feature Selection algorithm
 # Base on: https://github.com/scikit-learn-contrib/boruta_py/blob/master/boruta/boruta_py.py
 class Boruta_Feature_Selection(BaseEstimator, TransformerMixin):
-  '''
-    - Selects important features and reduces the feature space. Feature selection is based on Random Forest , Light GBM and
-    Boruta Selection Feautres algorithm.
-  '''
-
+  """
+          Boruta selection algorithm base on s borutaPy klearn-contrib and
+          Miron B Kursa, https://m2.icm.edu.pl/boruta/
+          Takes features and select the most important
+            Args:
+              target (str): target column name
+              ml_usecase (str): case: classification or regression
+              top_features_to_pick: to make...
+              max_iteration {int): overall iterations of shuffle and train forests 
+              alpha {float): p-value on which 
+              the option to favour one measur to another. e.g. if value is .6 , during feature selection tug of war, correlation target measure will have a higher say.
+              A value of .5 means both measure have equal say 
+  """
   def __init__(self,target,ml_usecase='classification',top_features_to_pick=.10,
-               max_iteration = 25, alpha=0.05, random_state=42, subclass='ignore'):
+               max_iteration = 25, alpha=0.05, percentile=65,
+               random_state=42, subclass='ignore'):
     self.target= target
     self.ml_usecase = ml_usecase
     self.top_features_to_pick =1-top_features_to_pick
@@ -1767,6 +1776,7 @@ class Boruta_Feature_Selection(BaseEstimator, TransformerMixin):
     self.subclass = subclass
     self.max_iteration = max_iteration
     self.alpha = alpha
+    self.percentile = percentile
 
     return(None)
 
@@ -1799,7 +1809,7 @@ class Boruta_Feature_Selection(BaseEstimator, TransformerMixin):
     tent_hits = np.zeros(n_feat)
     while np.any(dec_reg == 0) and _iter < self.max_iteration:
       # get tentative features
-      x_ind = np.where(dec_reg >= 0)[0]
+      x_ind = self._get_idx(X, dec_reg)
       X_tent = X.iloc[:, x_ind].copy()
       X_boruta = X_tent.copy()
       # create boruta features
@@ -1807,12 +1817,13 @@ class Boruta_Feature_Selection(BaseEstimator, TransformerMixin):
         X_boruta["shadow_{}".format(col)] = np.random.permutation(X_tent[col])
       # train imputator
       feat_imp_X, feat_imp_shadow = self._inputator(X_boruta, X_tent, y, dec_reg)
-      # add shadow max to history
-      shadow_max.append(feat_imp_shadow.max())
+      # add shadow percentile to history
+      thresh = np.percentile(feat_imp_shadow, self.percentile)
+      shadow_max.append(thresh)
       # confirm hits
       cur_imp_no_nan = feat_imp_X
       cur_imp_no_nan[np.isnan(cur_imp_no_nan)] = 0
-      h_ = np.where(cur_imp_no_nan > feat_imp_shadow.max())[0]
+      h_ = np.where(cur_imp_no_nan > thresh)[0]
       hits[h_] += 1
       # add importance to tentative hits
       tent_hits[x_ind] += feat_imp_X
@@ -1832,12 +1843,25 @@ class Boruta_Feature_Selection(BaseEstimator, TransformerMixin):
       median_tent = np.median(tent_hits[tentative])
       tentative_confirmed = np.where(median_tent > np.median(shadow_max))[0]
       tentative = tentative[tentative_confirmed]
-      confirmed_cols = X.columns[confirmed+tentative]
+      confirmed_cols = X.columns[np.concatenate((confirmed, tentative), axis=0)]
     
     confirmed_cols = confirmed_cols.tolist()
     confirmed_cols.append(self.target)
 
     return dataset[confirmed_cols]
+
+  def _get_idx(self, X, dec_reg):
+    x_ind = np.where(dec_reg >= 0)[0]
+    # be sure that dataset have more than 5 columns
+    if len(x_ind) < 5 and X.shape[1] > 5:
+      additional = [i for i in range(X.shape[1]) if i not in x_ind]
+      length = 6 - len(x_ind)
+      x_ind = np.concatenate((x_ind, np.random.choice(additional, length, replace=False)))
+      return x_ind
+    elif len(x_ind) < 5 and X.shape[1] < 5:
+      return x_ind
+    else:
+      return x_ind
 
 
   def _inputator(self, X_boruta, X, y, dec_reg):
@@ -1847,10 +1871,10 @@ class Boruta_Feature_Selection(BaseEstimator, TransformerMixin):
     max_sa = min(1000, int(np.sqrt(len(X))))
     if self.ml_usecase == 'classification':
       m = lgbmc(n_estimators=100,max_depth=5,n_jobs=-1,subsample=max_sa,
-                bagging_fraction=0.9, random_state=self.random_state)
+                bagging_fraction=0.99, random_state=self.random_state)
     else:
       m = lgbmr(n_estimators=100,max_depth=5,n_jobs=-1,subsample=max_sa,
-                bagging_fraction=0.9, random_state=self.random_state)
+                bagging_fraction=0.99, random_state=self.random_state)
     
     m.fit(X_boruta, y)
     ### store feature importance
@@ -2628,11 +2652,12 @@ def Preprocess_Path_One(train_data,target_variable,ml_usecase=None,test_data =No
   # feature selection 
   if apply_feature_selection == True:
     global feature_select
-    # TODO: add autoselect
+    # TODO: add autoselect 
     if feature_selection_algorithm == 'classic':
       feature_select = Advanced_Feature_Selection_Classic(target=target_variable,ml_usecase=ml_usecase,top_features_to_pick=feature_selection_top_features_percentage,random_state=random_state,subclass=subcase)
     elif feature_selection_algorithm == 'boruta':
-      feature_select = Boruta_Feature_Selection(target=target_variable,ml_usecase=ml_usecase,top_features_to_pick=feature_selection_top_features_percentage,random_state=random_state,subclass=subcase)
+      feature_select = Boruta_Feature_Selection(target=target_variable,ml_usecase=ml_usecase,top_features_to_pick=feature_selection_top_features_percentage,
+                                                random_state=random_state,subclass=subcase)
   else:
     feature_select= Empty()
   
