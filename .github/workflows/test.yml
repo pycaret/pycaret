@@ -1,9 +1,9 @@
-name: Python package
+name: pytest on push
 
 on: [push]
 
 jobs:
-  build:
+  test:
 
     runs-on: ubuntu-latest
     strategy:

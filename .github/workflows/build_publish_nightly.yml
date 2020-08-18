@@ -1,0 +1,42 @@
+name: Build and publish pycaret-nightly
+
+on:
+  schedule:
+  - cron: "0 0 * * *" # every 24 hours on midnight
+
+jobs:
+  build_and_publish:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python 3.8
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.8
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        python -m pip install --user --upgrade setuptools wheel requests
+        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+    - name: Check if it's necessary to continiue
+      run: |
+        if python ".github/CI/check_latest_commit_for_nightly.py"; then
+            echo "Proceeding with build and publish"
+            echo "::set-env name=CONTINIUE::1"
+        else
+            echo "No need for build and publish, exiting..."
+            echo "::set-env name=CONTINIUE::0"
+            exit 0
+        fi
+    - name: Build nightly distribution
+      if: env.CONTINIUE == '1'
+      run: |
+        rm -rf dist/*
+        python setup_nightly.py sdist bdist_wheel
+    - name: Publish nightly distribution to PyPI
+      if: env.CONTINIUE == '1'
+      uses: pypa/gh-action-pypi-publish@master
+      with:
+        password: ${{ secrets.pypi_password }}
