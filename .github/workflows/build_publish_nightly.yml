@@ -1,8 +1,6 @@
 name: Build and publish pycaret-nightly
 
-on:
-  schedule:
-  - cron: "0 0 * * *" # every 24 hours on midnight
+on: [push]
 
 jobs:
   build_and_publish:
