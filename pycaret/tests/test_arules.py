@@ -14,6 +14,11 @@ def test():
     # init setup
     arul101 = pycaret.arules.setup(data = data, transaction_id = "InvoiceNo", item_id = "Description", session_id = 123)
     assert isinstance(arul101, tuple)
+    assert isinstance(arul101[0], pd.core.frame.DataFrame)
+    assert isinstance(arul101[1], str)
+    assert isinstance(arul101[2], str)
+    assert isinstance(arul101[4], int)
+    assert isinstance(arul101[5], list)
 
     # create model
     model = pycaret.arules.create_model()
@@ -27,3 +32,4 @@ def test():
 
 if __name__ == "__main__":
     test()
+    
