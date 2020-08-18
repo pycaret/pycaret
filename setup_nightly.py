@@ -31,7 +31,7 @@ setup(
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
     ],
-    packages=["pycaret-nightly"],
+    packages=["pycaret"],
     include_package_data=True,
     install_requires=required
 )
