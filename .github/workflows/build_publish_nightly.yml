@@ -23,10 +23,10 @@ jobs:
         python -m pip install --user --upgrade setuptools wheel requests
     - name: Get check_latest_commit_for_nightly.py
       run: |
-        curl https://raw.githubusercontent.com/Yard1/pycaret/nightly_publish_workflow/.github/CI/check_latest_commit_for_nightly.py --output check_latest_commit_for_nightly.py --silent
+        curl "https://raw.githubusercontent.com/$GITHUB_REPOSITORY/${GITHUB_REF##*/}/.github/CI/check_latest_commit_for_nightly.py" --output check_latest_commit_for_nightly.py --silent
     - name: Check if it's necessary to continiue
       run: |
-        REF_TO_CHECKOUT=$(python check_latest_commit_for_nightly.py "$GITHUB_REPOSITORY" "nightly_publish_workflow")
+        REF_TO_CHECKOUT=$(python check_latest_commit_for_nightly.py "$GITHUB_REPOSITORY" "${GITHUB_REF##*/}")
         if [[ $? -eq 0 ]] ; then
             echo "Proceeding with build and publish of commit $REF_TO_CHECKOUT"
             echo "::set-env name=REF_TO_CHECKOUT::$REF_TO_CHECKOUT"
