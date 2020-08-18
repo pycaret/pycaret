@@ -1870,6 +1870,7 @@ def plot_model(model,
             plot='cluster', 
             feature = None, 
             label = False,
+            scale = 1, #added in pycaret 2.1.0
             save = False, #added in pycaret 2.0.0
             system = True): #added in pycaret 2.0.0
     
@@ -1912,7 +1913,10 @@ def plot_model(model,
     
     label : bool, default = False
         When set to True, data labels are shown in 'cluster' and 'tsne' plot.
-    
+
+    scale: float, default = 1
+        The resolution scale of the figure.
+
     save: Boolean, default = False
         Plot is saved as png file in local directory when save parameter set to True.
 
@@ -2057,7 +2061,7 @@ def plot_model(model,
         fig.update_layout(plot_bgcolor='rgb(240,240,240)')
 
         fig.update_layout(
-            height=600,
+            height=600*scale,
             title_text='2D Cluster PCA Plot'
         )
 
@@ -2118,11 +2122,11 @@ def plot_model(model,
         if label:
             
             fig = px.scatter_3d(df, x=0, y=1, z=2, color='Cluster', title='3d TSNE Plot for Clusters', 
-                    text = 'Label', opacity=0.7, width=900, height=800)
+                    text = 'Label', opacity=0.7, width=900*scale, height=800*scale)
             
         else:
             fig = px.scatter_3d(df, x=0, y=1, z=2, color='Cluster', title='3d TSNE Plot for Clusters', 
-                                hover_data = ['Feature'], opacity=0.7, width=900, height=800)
+                                hover_data = ['Feature'], opacity=0.7, width=900*scale, height=800*scale)
         
         if system:
             fig.show()
@@ -2178,6 +2182,10 @@ def plot_model(model,
                    marginal="box", opacity = 0.7,
                    hover_data=d.columns)
         
+        fig.update_layout(
+            height=600*scale,
+        )
+
         if system:
             fig.show()
 
@@ -2195,6 +2203,7 @@ def plot_model(model,
         try: 
             from yellowbrick.cluster import KElbowVisualizer
             visualizer = KElbowVisualizer(model_,timings=False)
+            visualizer.fig.set_dpi(visualizer.fig.dpi * scale)
             logger.info("Fitting KElbowVisualizer()")
             visualizer.fit(X)
             logger.info("Rendering Visual")
@@ -2218,6 +2227,7 @@ def plot_model(model,
         try:
             from yellowbrick.cluster import SilhouetteVisualizer
             visualizer = SilhouetteVisualizer(model, colors='yellowbrick')
+            visualizer.fig.set_dpi(visualizer.fig.dpi * scale)
             logger.info("Fitting SilhouetteVisualizer()")
             visualizer.fit(X)
             logger.info("Rendering Visual")
@@ -2241,6 +2251,7 @@ def plot_model(model,
         try:    
             from yellowbrick.cluster import InterclusterDistance
             visualizer = InterclusterDistance(model)
+            visualizer.fig.set_dpi(visualizer.fig.dpi * scale)
             logger.info("Fitting InterclusterDistance()")
             visualizer.fit(X)
             logger.info("Rendering Visual")
