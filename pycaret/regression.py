@@ -46,6 +46,7 @@ def setup(data,
           group_names = None,
           feature_selection = False,
           feature_selection_threshold = 0.8,
+          feature_selection_method = 'classic',
           feature_interaction = False,
           feature_ratio = False,
           interaction_threshold = 0.01,              
@@ -330,7 +331,10 @@ def setup(data,
         feature_selection_param. Generally, this is used to constrain the feature space 
         in order to improve efficiency in modeling. When polynomial_features and 
         feature_interaction  are used, it is highly recommended to define the 
-        feature_selection_threshold param with a lower value.
+        feature_selection_threshold param with a lower value. Feature selection algorithm
+        by default is 'classic'but could be 'boruta' which lead pycaret to create boruta selection
+        algorithm instance, more in:
+        https://pdfs.semanticscholar.org/85a8/b1d9c52f9f795fda7e12376e751526953f38.pdf%3E
 
     feature_selection_threshold: float, default = 0.8
         Threshold used for feature selection (including newly created polynomial features).
@@ -338,6 +342,13 @@ def setup(data,
         trials with different values of feature_selection_threshold specially in cases where 
         polynomial_features and feature_interaction are used. Setting a very low value may be 
         efficient but could result in under-fitting.
+    
+    feature_selection_method: str, default = classic
+        User can use 'classic' or 'boruta' algorithm selection which is responsible for
+        choosing a subset of features. For 'classic' selection method pycaret using a varius
+        permutation importance techiques. If 'boruta' algorithm is selected pycaret will create 
+        an instance of boosted trees model, which iterate with permutation over all
+        features and choose the best one base on distributions of feature importance.
     
     feature_interaction: bool, default = False 
         When set to True, it will create new features by interacting (a * b) for all numeric 
@@ -801,7 +812,11 @@ def setup(data,
     #feature_selection_threshold
     if type(feature_selection_threshold) is not float:
         sys.exit('(Type Error): feature_selection_threshold must be a float between 0 and 1. ')  
-        
+
+    #feature_selection_method
+    if feature_selection_method not in ['boruta', 'classic']:
+        sys.exit("(Type Error): feature_selection_method must be string 'boruta', 'classic'")  
+
     #feature_interaction
     if type(feature_interaction) is not bool:
         sys.exit('(Type Error): feature_interaction only accepts True or False. ')  
@@ -1213,6 +1228,7 @@ def setup(data,
                                           group_name = group_names_pass, 
                                           apply_feature_selection = feature_selection, 
                                           feature_selection_top_features_percentage = feature_selection_threshold, 
+                                          feature_selection_method = feature_selection_method,
                                           apply_feature_interactions = apply_feature_interactions_pass, 
                                           feature_interactions_to_apply = interactions_to_apply_pass, 
                                           feature_interactions_top_features_to_select_percentage=interaction_threshold, 
