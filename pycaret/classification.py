@@ -1792,6 +1792,7 @@ def compare_models(blacklist = None,
                    round = 4, 
                    sort = 'Accuracy',
                    n_select = 1, #added in pycaret==2.0.0
+                   budget_time = 0, #added in pycaret==2.1.0
                    turbo = True,
                    verbose = True): #added in pycaret==2.0.0
     
@@ -1855,6 +1856,10 @@ def compare_models(blacklist = None,
     n_select: int, default = 1
         Number of top_n models to return. use negative argument for bottom selection.
         for example, n_select = -3 means bottom 3 models.
+
+    budget_time: int or float, default = 0
+        If set above 0, will terminate execution of the function after budget_time minutes have
+        passed and return results up to that point.
 
     turbo: Boolean, default = True
         When turbo is set to True, it blacklists estimators that have longer
@@ -1951,6 +1956,10 @@ def compare_models(blacklist = None,
     if type(round) is not int:
         sys.exit('(Type Error): Round parameter only accepts integer value.')
  
+    #checking budget_time parameter
+    if type(budget_time) is not int and type(budget_time) is not float:
+        sys.exit('(Type Error): budget_time parameter only accepts integer or float values.')
+
     #checking sort parameter
     allowed_sort = ['Accuracy', 'Recall', 'Precision', 'F1', 'AUC', 'Kappa', 'MCC', 'TT (Sec)']
     if sort not in allowed_sort:
@@ -2340,6 +2349,12 @@ def compare_models(blacklist = None,
 
     name_counter = 0
       
+    total_runtime_start = time.time()
+    total_runtime = 0
+    over_time_budget = False
+    if budget_time and budget_time > 0:
+        logger.info(f"Time budget is {budget_time} minutes")
+
     for model in model_library:
 
         logger.info("Initializing " + str(model_names[name_counter]))
@@ -2371,7 +2386,14 @@ def compare_models(blacklist = None,
             progress.value += 1
             
             t0 = time.time()
-            
+            total_runtime += (t0 - total_runtime_start)/60
+            logger.info(f"Total runtime is {total_runtime} minutes")
+            over_time_budget = budget_time and budget_time > 0 and total_runtime > budget_time
+            if over_time_budget:
+                logger.info(f"Total runtime {total_runtime} is over time budget by {total_runtime - budget_time}, breaking loop")
+                break
+            total_runtime_start = t0
+
             '''
             MONITOR UPDATE STARTS
             '''
@@ -2500,6 +2522,10 @@ def compare_models(blacklist = None,
             '''
             MONITOR UPDATE ENDS
             '''
+        
+        if over_time_budget:
+            break
+
         logger.info("Calculating mean and std")
         avg_acc = np.append(avg_acc,np.mean(score_acc))
         avg_auc = np.append(avg_auc,np.mean(score_auc))
@@ -2649,6 +2675,7 @@ def compare_models(blacklist = None,
             update_display(monitor, display_id = 'monitor')
 
     sorted_model_names = list(compare_models_.data['Model'])
+    n_select = n_select if n_select <= len(sorted_model_names) else len(sorted_model_names)
     if n_select < 0:
         sorted_model_names = sorted_model_names[n_select:]
     else:
