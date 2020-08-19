@@ -12,7 +12,8 @@ def test():
 
     # init setup
     clf1 = pycaret.classification.setup(data, target='Purchase',silent=True, html=False, session_id=123)
-
+    clf1 = pycaret.classification.setup(data, target='Purchase',silent=True, feature_selection_method='boruta',
+                                        html=False, session_id=123)
     # compare models
     top3 = pycaret.classification.compare_models(n_select = 3, blacklist=['catboost'])
 
