@@ -1896,7 +1896,11 @@ def compare_models(blacklist = None,
     #checking round parameter
     if type(round) is not int:
         sys.exit('(Type Error): Round parameter only accepts integer value.')
- 
+
+    #checking n_select parameter
+    if type(n_select) is not int:
+        sys.exit('(Type Error): n_select parameter only accepts integer value.')
+
     #checking budget_time parameter
     if type(budget_time) is not int and type(budget_time) is not float:
         sys.exit('(Type Error): budget_time parameter only accepts integer or float values.')
