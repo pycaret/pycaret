@@ -5,7 +5,6 @@ import pandas as pd
 import pytest
 import pycaret.classification
 import pycaret.datasets
-import sklearn
 
 
 def test():
@@ -31,16 +30,13 @@ def test():
 
     # blend models
     blender = pycaret.classification.blend_models(top3)
-    assert isinstance(blender, sklearn.ensemble._voting.VotingClassifier)
 
     # stack models
     stacker = pycaret.classification.stack_models(estimator_list = top3)
     predict_holdout = pycaret.classification.predict_model(stacker)
-    assert isinstance(stacker, list)
 
     # select best model
     best = pycaret.classification.automl(optimize = 'MCC')
-    assert isinstance(best, sklearn.linear_model._logistic.LogisticRegression)
     
     # hold out predictions
     predict_holdout = pycaret.classification.predict_model(best)
@@ -52,18 +48,15 @@ def test():
 
     # calibrate model
     calibrated_best = pycaret.classification.calibrate_model(best)
-    assert isinstance(calibrated_best, sklearn.calibration.CalibratedClassifierCV)
 
     # finalize model
     final_best = pycaret.classification.finalize_model(best)
-    assert isinstance(final_best, sklearn.linear_model._logistic.LogisticRegression)
 
     # save model
     pycaret.classification.save_model(best, 'best_model_23122019')
  
     # load model
     saved_best = pycaret.classification.load_model('best_model_23122019')
-    assert isinstance(saved_best, list)
     
     # returns table of models
     all_models = pycaret.classification.models()
