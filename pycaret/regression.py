@@ -7243,6 +7243,7 @@ def plot_model(estimator,
         from yellowbrick.regressor import ResidualsPlot
         progress.value += 1
         visualizer = ResidualsPlot(model)
+        visualizer.fig.set_dpi(visualizer.fig.dpi * scale)
         logger.info("Fitting Model")
         visualizer.fit(X_train, y_train)
         progress.value += 1
