@@ -12,6 +12,8 @@ def test():
 
     # init setup
     reg1 = pycaret.regression.setup(data, target='medv',silent=True, html=False, session_id=123)
+    reg1 = pycaret.regression.setup(data, target='medv',silent=True, feature_selection_method = 'boruta',
+                                    html=False, session_id=123)
 
     # compare models
     top3 = pycaret.regression.compare_models(n_select = 3, blacklist = ['catboost'])

@@ -1845,10 +1845,12 @@ class Boruta_Feature_Selection(BaseEstimator, TransformerMixin):
       tentative = tentative[tentative_confirmed]
       confirmed_cols = X.columns[np.concatenate((confirmed, tentative), axis=0)]
     
-    confirmed_cols = confirmed_cols.tolist()
-    confirmed_cols.append(self.target)
+    self.confirmed_cols = confirmed_cols.tolist()
+    self.confirmed_cols.append(self.target)
+    
+    self.selected_columns_test = dataset[self.confirmed_cols].drop(self.target,axis=1).columns
 
-    return dataset[confirmed_cols]
+    return dataset[self.confirmed_cols]
 
   def _get_idx(self, X, dec_reg):
     x_ind = np.where(dec_reg >= 0)[0]
@@ -2461,7 +2463,7 @@ def Preprocess_Path_One(train_data,target_variable,ml_usecase=None,test_data =No
                                 target_transformation= False,target_transformation_method ='bc',
                                 remove_outliers = False, outlier_contamination_percentage= 0.01,outlier_methods=['pca','iso','knn'],
                                 apply_feature_selection = False, feature_selection_top_features_percentage=.80,
-                                feature_selection_algorithm = 'boruta',
+                                feature_selection_method = 'classic',
                                 remove_multicollinearity = False, maximum_correlation_between_features= 0.90,
                                 remove_perfect_collinearity= False,
                                 apply_feature_interactions= False, feature_interactions_to_apply=['multiply','divide','add','subtract'],feature_interactions_top_features_to_select_percentage=.01,
@@ -2650,12 +2652,12 @@ def Preprocess_Path_One(train_data,target_variable,ml_usecase=None,test_data =No
   clean_names =Clean_Colum_Names()
 
   # feature selection 
-  if apply_feature_selection == True:
+  if apply_feature_selection != None:
     global feature_select
     # TODO: add autoselect 
-    if feature_selection_algorithm == 'classic':
+    if feature_selection_method == 'classic':
       feature_select = Advanced_Feature_Selection_Classic(target=target_variable,ml_usecase=ml_usecase,top_features_to_pick=feature_selection_top_features_percentage,random_state=random_state,subclass=subcase)
-    elif feature_selection_algorithm == 'boruta':
+    elif feature_selection_method == 'boruta':
       feature_select = Boruta_Feature_Selection(target=target_variable,ml_usecase=ml_usecase,top_features_to_pick=feature_selection_top_features_percentage,
                                                 random_state=random_state,subclass=subcase)
   else:
