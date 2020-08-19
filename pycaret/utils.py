@@ -101,7 +101,7 @@ def _train_test_split(data,
                       train_size,
                       random_sample_size = None,
                       split_type='random',
-                      data_split_shuffle=True,
+                      split_data_shuffle=True,
                       split_stratify_feature=None,
                       split_groups=None,
                       split_test_fold=None,
@@ -174,7 +174,7 @@ def _train_test_split(data,
 
         train_idx, test_idx = next(gss.split(data_, data_[split_groups]))
 
-        X_train, y_train = data_.iloc[train_idx].drop(target, axis=1), data_.iloc[train_idx].loc[:,target]
+        X_train, X_test = data_.iloc[train_idx].drop(target, axis=1), data_.iloc[test_idx].drop(target, axis=1)
         y_train, y_test = data_.iloc[train_idx].loc[:,target], data_.iloc[test_idx].loc[:,target]
 
     elif split_type=='random':
@@ -183,26 +183,24 @@ def _train_test_split(data,
         y = data[target]
 
         if (random_sample_size is not None) and (split_stratify_feature is not None):
-            X_, X__, y_, y__ = train_test_split(X, y, train_size=random_sample_size, stratify=X[split_stratify_feature], random_state=random_state, shuffle=data_split_shuffle)
-            X_train, X_test, y_train, y_test = train_test_split(X_, y_, train_size=train_size, stratify=X_[split_stratify_feature], random_state=random_state, shuffle=data_split_shuffle)
+            X_, X__, y_, y__ = train_test_split(X, y, train_size=random_sample_size, stratify=X[split_stratify_feature], random_state=random_state, shuffle=split_data_shuffle)
+            X_train, X_test, y_train, y_test = train_test_split(X_, y_, train_size=train_size, stratify=X_[split_stratify_feature], random_state=random_state, shuffle=split_data_shuffle)
 
         elif (random_sample_size is None) and (split_stratify_feature is not None):
-            X_train, X_test, y_train, y_test = train_test_split(X, y, train_size=train_size, stratify=X[split_stratify_feature], random_state=random_state, shuffle=data_split_shuffle)
+            X_train, X_test, y_train, y_test = train_test_split(X, y, train_size=train_size, stratify=X[split_stratify_feature], random_state=random_state, shuffle=split_data_shuffle)
 
         elif (random_sample_size is not None) and (split_stratify_feature is None):
-            X_, X__, y_, y__ = train_test_split(X, y, train_size=random_sample_size, stratify=y, random_state=random_state, shuffle=data_split_shuffle)
-            X_train, X_test, y_train, y_test = train_test_split(X_, y_, train_size=train_size,stratify=y_, random_state=random_state, shuffle=data_split_shuffle)
+            X_, X__, y_, y__ = train_test_split(X, y, train_size=random_sample_size, stratify=y, random_state=random_state, shuffle=split_data_shuffle)
+            X_train, X_test, y_train, y_test = train_test_split(X_, y_, train_size=train_size,stratify=y_, random_state=random_state, shuffle=split_data_shuffle)
 
         else:
-            X_train, X_test, y_train, y_test = train_test_split(X, y, train_size=train_size, stratify=y, random_state=random_state, shuffle=data_split_shuffle)
+            X_train, X_test, y_train, y_test = train_test_split(X, y, train_size=train_size, stratify=y, random_state=random_state, shuffle=split_data_shuffle)
 
     elif split_type=='predefined':
         ps = PredefinedSplit(data[split_test_fold])
         train_idx, test_idx = next(ps.split())
 
-        data = data.copy().drop(split_test_fold, axis=1)
-
-        X_train, X_test = data.iloc[train_idx].drop(target, axis=1), data.iloc[test_idx].drop(target, axis=1)
+        X_train, X_test = data.iloc[train_idx].drop([target,split_test_fold], axis=1), data.iloc[test_idx].drop([target,split_test_fold], axis=1)
         y_train, y_test = data.iloc[train_idx].loc[:,target], data.iloc[test_idx].loc[:,target]
 
     return (X_train, X_test, y_train, y_test)

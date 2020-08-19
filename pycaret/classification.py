@@ -52,12 +52,14 @@ def setup(data,
           interaction_threshold = 0.01,
           fix_imbalance = False,  #added in pycaret==2.0.0
           fix_imbalance_method = None,  #added in pycaret==2.0.0
-          folds_shuffle=False,  # added in pycaret==2.0.0
-          data_split_shuffle=True,  # added in pycaret==2.0.0
           split_type='random',
-          split_groups=None,
-          split_test_fold=None,
-          split_stratify_feature=None,
+          split_data_shuffle=True,
+          split_stratify_feature_name=None,
+          split_groups_name=None,
+          split_test_fold_name=None,
+          cv_type = 'random',
+          cv_folds_shuffle=False,
+          cv_groups_name=None,
           n_jobs = -1,  #added in pycaret==2.0.0
           use_gpu = False,  #added in pycaret==2.1
           html = True,  #added in pycaret==2.0.0
@@ -70,7 +72,7 @@ def setup(data,
           silent=False,
           verbose=True,  #added in pycaret==2.0.0
           profile = False):
-    
+
     """
     This function initializes the environment in pycaret and creates the transformation
     pipeline to prepare the data for modeling and deployment. setup() must called before
@@ -383,12 +385,6 @@ def setup(data,
         by default to oversample minority class during cross validation. This parameter
         accepts any module from 'imblearn' that supports 'fit_resample' method.
 
-    folds_shuffle: bool, default = False
-        If set to False, prevents shuffling of rows when using cross validation.
-
-    data_split_shuffle: bool, default = True
-        If set to False, prevents shuffling of rows when splitting data into train/test. Only used if split_type='random'.
-
     split_type: string, default = 'random'
         Defines the method to be used for the train/test split. By default, sklearn.model_selection.train_test_split
         is used, which splits the data into random train and test subsets. The other available options are:
@@ -398,19 +394,35 @@ def setup(data,
         'predefined'    : Splits the data according to predefined labels specified by the user.
                           Uses sklearn.model_selection.PredefinedSplit.
 
-    split_groups: string, default = None
-        Name of the column in data containing the group labels to use in splitting the dataset
-        into train/test set. Only used if split_type='group'.
+    split_data_shuffle: bool, default = True
+        If set to False, prevents shuffling of rows when splitting data into the train/test sets. Only used if split_type='random'.
 
-    split_test_fold: string, default = None
+    split_stratify_feature_name: str, default = None
+        If None, stratifies using the target variable. If string, it is the name of the column in data to be used in
+        stratification. Only used if split_type='random'.
+
+    split_groups_name: string, default = None
+        Name of the column in data containing the group labels to use in splitting the dataset
+        into the train/test sest. Only used if split_type='group'.
+
+    split_test_fold_name: string, default = None
             Name of the column in data containing the predefined labels specified by the user to use in splitting the dataset
-            into train/test set. Only used if split_type='predfined'. If test_fold[i] = -1, observation i will be
+            into the train/test sets. Only used if split_type='predfined'. If test_fold[i] = -1, observation i will be
             included in the train set; if test_fold[i] = 0, observation i will be included in the test set. No other
             values for test_fold[i] are allowed.
 
-    split_stratify_feature: str, default = None
-        If None, stratifies using the target variable. If string, it is the name of the column in data to be used in
-        stratification. Only used if split_type='random'.
+    cv_type: string, default = 'random'
+        Defines the method to be used for Kfold CV. By default, sklearn.model_selection.StratifiedKFold
+        is used, which splits the data into random stratified folds. The other available options are:
+
+        'group'         : Splits the data according to group labels using sklearn.model_selection.GroupKFold.
+
+    cv_folds_shuffle: bool, default = False
+        If set to False, prevents shuffling of rows when using cross validation. Only used if split_type='random'.
+
+    cv_groups_name: string, default = None
+        Name of the column in data containing the group labels to use in splitting the dataset for Kfold CV. Only used
+         if cv_type='group'.
 
     n_jobs: int, default = -1
         The number of jobs to run in parallel (for functions that supports parallel 
@@ -523,8 +535,8 @@ def setup(data,
                     remove_multicollinearity={}, multicollinearity_threshold={}, remove_perfect_collinearity={}, create_clusters={}, cluster_iter={},
                     polynomial_features={}, polynomial_degree={}, trigonometry_features={}, polynomial_threshold={}, group_features={},
                     group_names={}, feature_selection={}, feature_selection_threshold={}, feature_interaction={}, feature_ratio={}, interaction_threshold={},
-                    fix_imbalance={}, fix_imbalance_method={}, data_split_shuffle={}, folds_shuffle={}, split_type={}, split_groups={},
-                    split_test_fold={}, split_stratify_feature={}, n_jobs={}, html={}, session_id={}, log_experiment={},
+                    fix_imbalance={}, fix_imbalance_method={}, split_type={}, split_data_shuffle={}, split_stratify_feature_name={}, split_groups_name={},
+                    split_test_fold_name={}, cv_type={}, cv_folds_shuffle={}, cv_groups_name={}, n_jobs={}, html={}, session_id={}, log_experiment={},
                     experiment_name={}, log_plots={}, log_profile={}, log_data={}, silent={}, verbose={}, profile={})""".format(\
             str(data.shape), str(target), str(train_size), str(sampling), str(sample_estimator), str(categorical_features), str(categorical_imputation), str(ordinal_features),\
             str(high_cardinality_features), str(high_cardinality_method), str(numeric_features), str(numeric_imputation), str(date_features), str(ignore_features),\
@@ -533,8 +545,8 @@ def setup(data,
             str(outliers_threshold), str(remove_multicollinearity), str(multicollinearity_threshold), str(remove_perfect_collinearity), str(create_clusters), str(cluster_iter),\
             str(polynomial_features), str(polynomial_degree), str(trigonometry_features), str(polynomial_threshold), str(group_features), str(group_names),\
             str(feature_selection), str(feature_selection_threshold), str(feature_interaction), str(feature_ratio), str(interaction_threshold), str(fix_imbalance),\
-            str(fix_imbalance_method), str(data_split_shuffle), str(folds_shuffle), str(split_type), str(split_groups), str(split_test_fold), str(split_stratify_feature), \
-            str(n_jobs), str(html), str(session_id), str(log_experiment), str(experiment_name),\
+            str(fix_imbalance_method), str(split_type), str(split_data_shuffle), str(split_stratify_feature_name), str(split_groups_name), str(split_test_fold_name), str(cv_type), \
+            str(cv_folds_shuffle), str(cv_groups_name), str(n_jobs), str(html), str(session_id), str(log_experiment), str(experiment_name),\
             str(log_plots), str(log_profile), str(log_data), str(silent), str(verbose), str(profile)))
 
     #logging environment and libraries
@@ -901,41 +913,48 @@ def setup(data,
     if type(use_gpu) is not bool:
         sys.exit('(Type Error): use_gpu parameter only accepts True or False.')
 
-    #folds_shuffle
-    if type(folds_shuffle) is not bool:
-        sys.exit('(Type Error): folds_shuffle parameter only accepts True or False.')
-
-    #data_split_shuffle
-    if type(data_split_shuffle) is not bool:
-        sys.exit('(Type Error): data_split_shuffle parameter only accepts True or False.')
-
-    #split_type
+    #split paramaters
     if split_type not in ['random','group','predefined']:
         sys.exit("split_type must be one of 'random','group','predefined'.")
 
-    #split_groups
+    if type(split_data_shuffle) is not bool:
+        sys.exit('(Type Error): data_split_shuffle parameter only accepts True or False.')
+
+    if split_type=='random':
+        if split_stratify_feature_name is not None:
+            if split_stratify_feature_name not in data.columns:
+                sys.exit("split_stratify_feature was specified but doesnt exist in the data provided.")
+
     if split_type=='group':
-        if split_groups is None:
+        if split_groups_name is None:
             sys.exit("If split_type='group', then split_groups must be specified.")
-        elif type(split_groups) is not str:
+        elif type(split_groups_name) is not str:
             sys.exit("split_groups must be a string.")
-        elif split_groups not in data.columns:
+        elif split_groups_name not in data.columns:
             sys.exit("split_groups doesnt exist in the data provided.")
 
-    #split_test_fold
     if split_type=='predefined':
-        if split_test_fold is None:
+        if split_test_fold_name is None:
             sys.exit("If split_type='group', then split_test_fold must be specified.")
-        elif type(split_test_fold) is not str:
+        elif type(split_test_fold_name) is not str:
             sys.exit("split_test_fold must be a string.")
-        elif split_test_fold not in data.columns:
+        elif split_test_fold_name not in data.columns:
             sys.exit("split_test_fold doesnt exist in the data provided.")
 
-    #split_stratify_feature
-    if split_type=='random':
-        if split_stratify_feature is not None:
-            if split_stratify_feature not in data.columns:
-                sys.exit("split_stratify_feature was specified but doesnt exist in the data provided.")
+    #cv parameters
+    if cv_type not in ['random','group']:
+        sys.exit("split_type must be one of 'random','group'.")
+
+    if type(cv_folds_shuffle) is not bool:
+        sys.exit('(Type Error): cv_folds_shuffle parameter only accepts True or False.')
+
+    if cv_type=='group':
+        if cv_groups_name is None:
+            sys.exit("If cv_type='group', then cv_groups_name must be specified.")
+        elif type(cv_groups_name) is not str:
+            sys.exit("cv_groups_name must be a string.")
+        elif cv_groups_name not in data.columns:
+            sys.exit("cv_groups_name doesnt exist in the data provided.")
 
     #log_plots
     if type(log_plots) is not bool:
@@ -1035,10 +1054,10 @@ def setup(data,
     #declaring global variables to be accessed by other functions
     logger.info("Declaring global variables")
     global X, y, X_train, X_test, y_train, y_test, seed, prep_pipe, experiment__,\
-        folds_shuffle_param, n_jobs_param, create_model_container, master_model_container,\
+        n_jobs_param, create_model_container, master_model_container,\
         display_container, exp_name_log, logging_param, log_plots_param,\
         fix_imbalance_param, fix_imbalance_method_param, data_before_preprocess,\
-        target_param, gpu_param
+        target_param, gpu_param, cv_type_param, cv_folds_shuffle_param, cv_groups_name_param, cv_groups
 
     logger.info("Copying data for preprocessing")
     
@@ -1438,8 +1457,10 @@ def setup(data,
     #create an empty list for pickling later.
     experiment__ = []
 
-    #create folds_shuffle_param
-    folds_shuffle_param = folds_shuffle
+    #create cv params
+    cv_type_param = cv_type
+    cv_folds_shuffle_param = cv_folds_shuffle
+    cv_groups_name_param =  cv_groups_name
 
     #create n_jobs_param
     n_jobs_param = n_jobs
@@ -1534,15 +1555,18 @@ def setup(data,
             '''
 
             X_train, X_test, y_train, y_test = _train_test_split(data,
-                                                 target,
-                                                 train_size,
-                                                 random_sample_size = i,
-                                                 split_type=split_type,
-                                                 data_split_shuffle=data_split_shuffle,
-                                                 split_stratify_feature=split_stratify_feature,
-                                                 split_groups=split_groups,
-                                                 split_test_fold=split_test_fold,
-                                                 random_state=seed)
+                                                                 target,
+                                                                 train_size,
+                                                                 random_sample_size = i,
+                                                                 split_type=split_type,
+                                                                 split_data_shuffle=split_data_shuffle,
+                                                                 split_stratify_feature=split_stratify_feature_name,
+                                                                 split_groups=split_groups_name,
+                                                                 split_test_fold=split_test_fold_name,
+                                                                 random_state=seed)
+
+            if split_type=='group':
+                X_train = X_train.drop(split_groups_name, axis=1)
 
             model.fit(X_train,y_train)
             pred_ = model.predict(X_test)
@@ -1671,27 +1695,27 @@ def setup(data,
         if sample_size == '' or sample_size == '1':
             
             X_train, X_test, y_train, y_test = _train_test_split(data,
-                                                 target,
-                                                 train_size,
-                                                 split_type=split_type,
-                                                 data_split_shuffle=data_split_shuffle,
-                                                 split_stratify_feature=split_stratify_feature,
-                                                 split_groups=split_groups,
-                                                 split_test_fold=split_test_fold,
-                                                 random_state=seed)
+                                                                 target,
+                                                                 train_size,
+                                                                 split_type=split_type,
+                                                                 split_data_shuffle=split_data_shuffle,
+                                                                 split_stratify_feature=split_stratify_feature_name,
+                                                                 split_groups=split_groups_name,
+                                                                 split_test_fold=split_test_fold_name,
+                                                                 random_state=seed)
         else:
             
             sample_n = float(sample_size)
             X_train, X_test, y_train, y_test = _train_test_split(data,
-                                                 target,
-                                                 train_size,
-                                                 random_sample_size = sample_n,
-                                                 split_type=split_type,
-                                                 data_split_shuffle=data_split_shuffle,
-                                                 split_stratify_feature=split_stratify_feature,
-                                                 split_groups=split_groups,
-                                                 split_test_fold=split_test_fold,
-                                                 random_state=seed)
+                                                                 target,
+                                                                 train_size,
+                                                                 random_sample_size = sample_n,
+                                                                 split_type=split_type,
+                                                                 split_data_shuffle=split_data_shuffle,
+                                                                 split_stratify_feature=split_stratify_feature_name,
+                                                                 split_groups=split_groups_name,
+                                                                 split_test_fold=split_test_fold_name,
+                                                                 random_state=seed)
 
     else:
         
@@ -1704,12 +1728,23 @@ def setup(data,
                                                              target,
                                                              train_size,
                                                              split_type=split_type,
-                                                             data_split_shuffle=data_split_shuffle,
-                                                             split_stratify_feature=split_stratify_feature,
-                                                             split_groups=split_groups,
-                                                             split_test_fold=split_test_fold,
+                                                             split_data_shuffle=split_data_shuffle,
+                                                             split_stratify_feature=split_stratify_feature_name,
+                                                             split_groups=split_groups_name,
+                                                             split_test_fold=split_test_fold_name,
                                                              random_state=seed)
         progress.value += 1
+
+    cv_groups = None
+    if cv_type=='group':
+        if cv_groups_name in X_train:
+            cv_groups = X_train[cv_groups_name]
+            X_train = X_train.drop(cv_groups_name, axis=1)
+            X_test = X_test.drop(cv_groups_name, axis=1)
+    if split_type=='group':
+        if split_groups_name in X_train:
+            X_train = X_train.drop(split_groups_name,axis=1)
+            X_test = X_test.drop(split_groups_name,axis=1)
 
     '''
     Final display Starts
@@ -1879,11 +1914,11 @@ def setup(data,
     logger.info(str(prep_pipe))
     logger.info("setup() succesfully completed......................................")
 
-    return X, y, X_train, X_test, y_train, y_test, seed, prep_pipe, experiment__,\
-        folds_shuffle_param, n_jobs_param, html_param, create_model_container, master_model_container,\
-        display_container, exp_name_log, logging_param, log_plots_param, USI,\
-        fix_imbalance_param, fix_imbalance_method_param, logger, data_before_preprocess, target_param,\
-        gpu_param
+    return X, y, X_train, X_test, y_train, y_test, seed, prep_pipe, experiment__, \
+           cv_folds_shuffle_param, n_jobs_param, html_param, create_model_container, master_model_container, \
+           display_container, exp_name_log, logging_param, log_plots_param, USI, \
+           fix_imbalance_param, fix_imbalance_method_param, logger, data_before_preprocess, target_param, \
+           gpu_param
 
 def compare_models(exclude = None,
                    include = None, #added in pycaret==2.0.0
@@ -2149,7 +2184,7 @@ def compare_models(exclude = None,
     import numpy as np
     import random
     from sklearn import metrics
-    from sklearn.model_selection import StratifiedKFold
+    from sklearn.model_selection import StratifiedKFold, GroupKFold
     import pandas.io.formats.style
     
     logger.info("Copying training dataset")
@@ -2425,7 +2460,11 @@ def compare_models(exclude = None,
     
     #cross validation setup starts here
     logger.info("Defining folds")
-    kf = StratifiedKFold(fold, random_state=seed, shuffle=folds_shuffle_param)
+
+    if cv_type_param=='random':
+        kf = StratifiedKFold(fold, random_state=seed, shuffle=cv_folds_shuffle_param)
+    elif cv_type_param=='group':
+        kf = GroupKFold(fold)
 
     logger.info("Declaring metric variables")
     score_acc =np.empty((0,0))
@@ -2482,7 +2521,7 @@ def compare_models(exclude = None,
         
         fold_num = 1
         
-        for train_i , test_i in kf.split(data_X,data_y):
+        for train_i , test_i in kf.split(data_X,data_y, cv_groups):
             
             logger.info("Initializing Fold " + str(fold_num))
         
@@ -3090,14 +3129,17 @@ def create_model(estimator = None,
     #general dependencies
     import numpy as np
     from sklearn import metrics
-    from sklearn.model_selection import StratifiedKFold
+    from sklearn.model_selection import StratifiedKFold, GroupKFold
     
     progress.value += 1
     
     logger.info("Defining folds")
 
     #cross validation setup starts here
-    kf = StratifiedKFold(fold, random_state=seed, shuffle=folds_shuffle_param)
+    if cv_type=='random':
+        kf = StratifiedKFold(fold, random_state=seed, shuffle=cv_folds_shuffle_param)
+    elif cv_type=='group':
+        kf = GroupKFold(fold)
 
     logger.info("Declaring metric variables")
 
@@ -3372,7 +3414,7 @@ def create_model(estimator = None,
     
     fold_num = 1
     
-    for train_i , test_i in kf.split(data_X,data_y):
+    for train_i , test_i in kf.split(data_X,data_y, cv_groups):
 
         logger.info("Initializing Fold " + str(fold_num))
         
@@ -4096,7 +4138,7 @@ def tune_model(estimator = None,
     progress.value += 1
     
     logger.info("Defining folds")
-    kf = StratifiedKFold(fold, random_state=seed, shuffle=folds_shuffle_param)
+    kf = StratifiedKFold(fold, random_state=seed, shuffle=cv_folds_shuffle_param)
 
     logger.info("Declaring metric variables")
     score_auc =np.empty((0,0))
@@ -5386,7 +5428,7 @@ def ensemble_model(estimator,
     MONITOR UPDATE ENDS
     '''
     logger.info("Defining folds")
-    kf = StratifiedKFold(fold, random_state=seed, shuffle=folds_shuffle_param)
+    kf = StratifiedKFold(fold, random_state=seed, shuffle=cv_folds_shuffle_param)
     
     logger.info("Declaring metric variables")
     score_auc =np.empty((0,0))
@@ -6129,7 +6171,7 @@ def blend_models(estimator_list = 'All',
     avg_training_time = np.empty((0,0))
     
     logger.info("Defining folds")
-    kf = StratifiedKFold(fold, random_state=seed, shuffle=folds_shuffle_param)
+    kf = StratifiedKFold(fold, random_state=seed, shuffle=cv_folds_shuffle_param)
     
     '''
     MONITOR UPDATE STARTS
@@ -6923,7 +6965,7 @@ def stack_models(estimator_list,
     
     logger.info("Defining folds")
     #cross validation setup starts here
-    kf = StratifiedKFold(fold, random_state=seed, shuffle=folds_shuffle_param)
+    kf = StratifiedKFold(fold, random_state=seed, shuffle=cv_folds_shuffle_param)
 
     logger.info("Declaring metric variables")
     score_auc =np.empty((0,0))
@@ -8663,7 +8705,7 @@ def calibrate_model(estimator,
 
     #cross validation setup starts here
     logger.info("Defining folds")
-    kf = StratifiedKFold(fold, random_state=seed, shuffle=folds_shuffle_param)
+    kf = StratifiedKFold(fold, random_state=seed, shuffle=cv_folds_shuffle_param)
 
     logger.info("Declaring metric variables")
     score_auc =np.empty((0,0))
@@ -10540,7 +10582,7 @@ def get_config(variable):
     - y_test: Transformed test/holdout dataset (y)
     - seed: random state set through session_id
     - prep_pipe: Transformation pipeline configured through setup
-    - folds_shuffle_param: shuffle parameter used in Kfolds
+    - cv_folds_shuffle_param: shuffle parameter used in Kfolds
     - n_jobs_param: n_jobs parameter used in model training
     - html_param: html_param configured through setup
     - create_model_container: results grid storage container
@@ -10620,8 +10662,8 @@ def get_config(variable):
     if variable == 'prep_pipe':
         global_var = prep_pipe
 
-    if variable == 'folds_shuffle_param':
-        global_var = folds_shuffle_param
+    if variable == 'cv_folds_shuffle_param':
+        global_var = cv_folds_shuffle_param
         
     if variable == 'n_jobs_param':
         global_var = n_jobs_param
@@ -10684,7 +10726,7 @@ def set_config(variable,value):
     - y_test: Transformed test/holdout dataset (y)
     - seed: random state set through session_id
     - prep_pipe: Transformation pipeline configured through setup
-    - folds_shuffle_param: shuffle parameter used in Kfolds
+    - cv_folds_shuffle_param: shuffle parameter used in Kfolds
     - n_jobs_param: n_jobs parameter used in model training
     - html_param: html_param configured through setup
     - create_model_container: results grid storage container
@@ -10768,9 +10810,9 @@ def set_config(variable,value):
         global prep_pipe
         prep_pipe = value
 
-    if variable == 'folds_shuffle_param':
-        global folds_shuffle_param
-        folds_shuffle_param = value
+    if variable == 'cv_folds_shuffle_param':
+        global cv_folds_shuffle_param
+        cv_folds_shuffle_param = value
 
     if variable == 'n_jobs_param':
         global n_jobs_param
