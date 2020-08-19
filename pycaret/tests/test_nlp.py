@@ -1,6 +1,7 @@
 import os, sys
 sys.path.insert(0, os.path.abspath(".."))
 
+import pandas as pd
 import pytest
 import pycaret.nlp
 import pycaret.datasets
@@ -9,15 +10,18 @@ def test():
     # loading dataset
     data = pycaret.datasets.get_data('kiva')
     data = data.head(1000)
+    assert isinstance(data, pd.core.frame.DataFrame)
 
     # init setup
-    nlp1 = pycaret.nlp.setup(data = data, target = 'en', session_id = 123)
+    nlp1 = pycaret.nlp.setup(data = data, target = 'en', html=False, session_id = 123)
+    assert isinstance(nlp1, tuple)
     
     # create model
     lda = pycaret.nlp.create_model('lda')
 
     # assign model
     lda_results = pycaret.nlp.assign_model(lda)
+    assert isinstance(lda_results, pd.core.frame.DataFrame)
 
     # evaluate model
     pycaret.nlp.evaluate_model(lda)
@@ -30,12 +34,16 @@ def test():
     
     # returns table of models
     all_models = pycaret.nlp.models()
-    
+    assert isinstance(all_models, pd.core.frame.DataFrame)
+
     # get config
     text = pycaret.nlp.get_config('text') 
-    
+    assert isinstance(text, list)
+
     # set config
-    pycaret.nlp.set_config('seed', 123) 
+    pycaret.nlp.set_config('seed', 124)
+    seed = pycaret.nlp.get_config('seed')
+    assert seed == 124
 
     assert 1 == 1
     

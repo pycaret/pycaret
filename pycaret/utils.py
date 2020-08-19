@@ -9,10 +9,16 @@ import ipywidgets as ipw
 from IPython.display import display, HTML, clear_output, update_display
 
 version_ = "2.0"
+nightly_version_ = "2.1"
 
 
 def version():
     print(version_)
+    return version_
+
+def nightly_version():
+    print(nightly_version_)
+    return nightly_version_
 
 
 def __version__():
@@ -102,11 +108,11 @@ def check_metric(actual, prediction, metric, round=4):
 
     elif metric == "MAPE":
 
-        mask = actual != 0
-        result = (np.fabs(actual - prediction) / actual)[mask].mean()
+        mask = actual.iloc[:,0] != 0
+        result = (np.fabs(actual.iloc[:,0] - prediction.iloc[:,0])/actual.iloc[:,0])[mask].mean()
         result = result.round(round)
-
-    return result
+       
+    return float(result)
 
 
 def enable_colab():

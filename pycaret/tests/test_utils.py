@@ -107,9 +107,8 @@ def test():
     assert isinstance(rmsle, float)
     assert rmsle >= 0
     mape = pycaret.utils.check_metric(actual, prediction, "MAPE")
-    # provisional support
-    # assert isinstance(mape, float)
-    # assert mape >= 0
+    assert isinstance(mape, float)
+    assert mape >= 0
 
     assert 1 == 1
 

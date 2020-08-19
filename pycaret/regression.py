@@ -7082,6 +7082,7 @@ def stack_models(estimator_list,
 
 def plot_model(estimator, 
                plot = 'residuals',
+               scale = 1, #added in pycaret 2.1.0
                save = False, #added in pycaret 1.0.1
                verbose = True, #added in pycaret 1.0.1
                system = True): #added in pycaret 1.0.1): 
@@ -7121,6 +7122,9 @@ def plot_model(estimator,
         * 'manifold' - Manifold Learning                        
         * 'feature' - Feature Importance                        
         * 'parameter' - Model Hyperparameter                    
+
+    scale: float, default = 1
+        The resolution scale of the figure.
 
     save: Boolean, default = False
         When set to True, Plot is saved as a 'png' file in current working directory.
@@ -7239,6 +7243,7 @@ def plot_model(estimator,
         from yellowbrick.regressor import ResidualsPlot
         progress.value += 1
         visualizer = ResidualsPlot(model)
+        visualizer.fig.set_dpi(visualizer.fig.dpi * scale)
         logger.info("Fitting Model")
         visualizer.fit(X_train, y_train)
         progress.value += 1
@@ -7261,6 +7266,7 @@ def plot_model(estimator,
         from yellowbrick.regressor import PredictionError
         progress.value += 1
         visualizer = PredictionError(model)
+        visualizer.fig.set_dpi(visualizer.fig.dpi * scale)
         logger.info("Fitting Model")
         visualizer.fit(X_train, y_train)
         progress.value += 1
@@ -7283,6 +7289,7 @@ def plot_model(estimator,
         from yellowbrick.regressor import CooksDistance
         progress.value += 1
         visualizer = CooksDistance()
+        visualizer.fig.set_dpi(visualizer.fig.dpi * scale)
         progress.value += 1
         logger.info("Fitting Model")
         visualizer.fit(X, y)
@@ -7304,6 +7311,7 @@ def plot_model(estimator,
         from yellowbrick.model_selection import RFECV 
         progress.value += 1
         visualizer = RFECV(model, cv=10)
+        visualizer.fig.set_dpi(visualizer.fig.dpi * scale)
         progress.value += 1
         logger.info("Fitting Model")
         visualizer.fit(X_train, y_train)
@@ -7326,6 +7334,7 @@ def plot_model(estimator,
         progress.value += 1
         sizes = np.linspace(0.3, 1.0, 10)  
         visualizer = LearningCurve(model, cv=10, train_sizes=sizes, n_jobs=1, random_state=seed)
+        visualizer.fig.set_dpi(visualizer.fig.dpi * scale)
         progress.value += 1
         logger.info("Fitting Model")
         visualizer.fit(X_train, y_train)
@@ -7349,6 +7358,7 @@ def plot_model(estimator,
         progress.value += 1
         X_train_transformed = X_train.select_dtypes(include='float64') 
         visualizer = Manifold(manifold='tsne', random_state = seed)
+        visualizer.fig.set_dpi(visualizer.fig.dpi * scale)
         progress.value += 1
         logger.info("Fitting Model")
         visualizer.fit_transform(X_train_transformed, y_train)
@@ -7442,6 +7452,7 @@ def plot_model(estimator,
         from yellowbrick.model_selection import ValidationCurve
         viz = ValidationCurve(model, param_name=param_name, param_range=param_range,cv=10, 
                               random_state=seed)
+        viz.fig.set_dpi(viz.fig.dpi * scale)
         logger.info("Fitting Model")
         viz.fit(X_train, y_train)
         progress.value += 1
@@ -7473,7 +7484,7 @@ def plot_model(estimator,
         sorted_df = sorted_df.head(10)
         sorted_df = sorted_df.sort_values(by='Value')
         my_range=range(1,len(sorted_df.index)+1)
-        plt.figure(figsize=(8,5))
+        plt.figure(figsize=(8,5), dpi=100*scale)
         plt.hlines(y=my_range, xmin=0, xmax=sorted_df['Value'], color='skyblue')
         plt.plot(sorted_df['Value'], my_range, "o")
         plt.yticks(my_range, sorted_df['Variable'])
