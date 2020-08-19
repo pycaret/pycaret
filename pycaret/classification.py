@@ -2,7 +2,7 @@
 # Author: Moez Ali <moez.ali@queensu.ca>
 # License: MIT
 # Release: PyCaret 2.1
-# Last modified : 17/08/2020
+# Last modified : 19/08/2020
 
 def setup(data,  
           target,   
@@ -1786,8 +1786,8 @@ def setup(data,
         fix_imbalance_param, fix_imbalance_method_param, logger, data_before_preprocess, target_param,\
         gpu_param
 
-def compare_models(blacklist = None,
-                   whitelist = None, #added in pycaret==2.0.0
+def compare_models(exclude = None,
+                   include = None, #added in pycaret==2.0.0
                    fold = 10, 
                    round = 4, 
                    sort = 'Accuracy',
@@ -1821,12 +1821,12 @@ def compare_models(blacklist = None,
     and 'mlp'. When turbo param is set to False, all models including 'rbfsvm', 'gpc' 
     and 'mlp' are used but this may result in longer training time.
     
-    >>> best_model = compare_models( blacklist = [ 'knn', 'gbc' ] , turbo = False) 
+    >>> best_model = compare_models( exclude = [ 'knn', 'gbc' ] , turbo = False) 
 
     This will return a comparison of all models except K Nearest Neighbour and
     Gradient Boosting Classifier.
     
-    >>> best_model = compare_models( blacklist = [ 'knn', 'gbc' ] , turbo = True) 
+    >>> best_model = compare_models( exclude = [ 'knn', 'gbc' ] , turbo = True) 
 
     This will return comparison of all models except K Nearest Neighbour, 
     Gradient Boosting Classifier, SVM (RBF), Gaussian Process Classifier and
@@ -1835,13 +1835,13 @@ def compare_models(blacklist = None,
 
     Parameters
     ----------
-    blacklist: list of strings, default = None
+    exclude: list of strings, default = None
         In order to omit certain models from the comparison model ID's can be passed as 
-        a list of strings in blacklist param. 
+        a list of strings in exclude param. 
 
-    whitelist: list of strings, default = None
+    include: list of strings, default = None
         In order to run only certain models for the comparison, the model ID's can be 
-        passed as a list of strings in whitelist param. 
+        passed as a list of strings in include param. 
 
     fold: integer, default = 10
         Number of folds to be used in Kfold CV. Must be at least 2. 
@@ -1862,7 +1862,7 @@ def compare_models(blacklist = None,
         passed and return results up to that point.
 
     turbo: Boolean, default = True
-        When turbo is set to True, it blacklists estimators that have longer
+        When turbo is set to True, it excludes estimators that have longer
         training time.
 
     verbose: Boolean, default = True
@@ -1879,7 +1879,7 @@ def compare_models(blacklist = None,
     Warnings
     --------
     - compare_models() though attractive, might be time consuming with large 
-      datasets. By default turbo is set to True, which blacklists models that
+      datasets. By default turbo is set to True, which excludes models that
       have longer training times. Changing turbo parameter to False may result 
       in very high training times with datasets where number of samples exceed 
       10,000.
@@ -1921,32 +1921,32 @@ def compare_models(blacklist = None,
         logger.addHandler(ch)
 
     logger.info("Initializing compare_models()")
-    logger.info("""compare_models(blacklist={}, whitelist={}, fold={}, round={}, sort={}, n_select={}, turbo={}, verbose={})""".\
-        format(str(blacklist), str(whitelist), str(fold), str(round), str(sort), str(n_select), str(turbo), str(verbose)))
+    logger.info("""compare_models(exclude={}, include={}, fold={}, round={}, sort={}, n_select={}, turbo={}, verbose={})""".\
+        format(str(exclude), str(include), str(fold), str(round), str(sort), str(n_select), str(turbo), str(verbose)))
 
     logger.info("Checking exceptions")
 
     #exception checking   
     import sys
     
-    #checking error for blacklist (string)
+    #checking error for exclude (string)
     available_estimators = ['lr', 'knn', 'nb', 'dt', 'svm', 'rbfsvm', 'gpc', 'mlp', 'ridge', 'rf', 'qda', 'ada', 
                             'gbc', 'lda', 'et', 'xgboost', 'lightgbm', 'catboost']
     
-    if blacklist != None:
-        for i in blacklist:
+    if exclude != None:
+        for i in exclude:
             if i not in available_estimators:
                 sys.exit('(Value Error): Estimator Not Available. Please see docstring for list of available estimators.')
         
-    if whitelist != None:   
-        for i in whitelist:
+    if include != None:   
+        for i in include:
             if i not in available_estimators:
                 sys.exit('(Value Error): Estimator Not Available. Please see docstring for list of available estimators.')
 
-    #whitelist and blacklist together check
-    if whitelist is not None:
-        if blacklist is not None:
-            sys.exit('(Type Error): Cannot use blacklist parameter when whitelist is used to compare models.')
+    #include and exclude together check
+    if include is not None:
+        if exclude is not None:
+            sys.exit('(Type Error): Cannot use exclude parameter when include is used to compare models.')
 
     #checking fold parameter
     if type(fold) is not int:
@@ -1993,15 +1993,15 @@ def compare_models(blacklist = None,
     logger.info("Preparing display monitor")
 
     #progress bar
-    if blacklist is None:
-        len_of_blacklist = 0
+    if exclude is None:
+        len_of_exclude = 0
     else:
-        len_of_blacklist = len(blacklist)
+        len_of_exclude = len(exclude)
         
     if turbo:
-        len_mod = 15 - len_of_blacklist
+        len_mod = 15 - len_of_exclude
     else:
-        len_mod = 18 - len_of_blacklist
+        len_mod = 18 - len_of_exclude
     
     #n_select param
     if type(n_select) is list:
@@ -2012,12 +2012,12 @@ def compare_models(blacklist = None,
     if n_select_num > len_mod:
         n_select_num = len_mod
 
-    if whitelist is not None:
-        wl = len(whitelist)
-        bl = len_of_blacklist
+    if include is not None:
+        wl = len(include)
+        bl = len_of_exclude
         len_mod = wl - bl
 
-    if whitelist is not None:
+    if include is not None:
         opt = 10
     else:
         opt = 25
@@ -2176,7 +2176,7 @@ def compare_models(blacklist = None,
                    'Light Gradient Boosting Machine',
                    'CatBoost Classifier']          
     
-    #checking for blacklist models
+    #checking for exclude models
     
     model_library_str = ['lr', 'knn', 'nb', 'dt', 'svm', 
                          'rbfsvm', 'gpc', 'mlp', 'ridge', 
@@ -2188,17 +2188,17 @@ def compare_models(blacklist = None,
                           'rf', 'qda', 'ada', 'gbc', 'lda', 
                           'et', 'xgboost', 'lightgbm', 'catboost']
     
-    if blacklist is not None:
+    if exclude is not None:
         
         if turbo:
-            internal_blacklist = ['rbfsvm', 'gpc', 'mlp']
-            compiled_blacklist = blacklist + internal_blacklist
-            blacklist = list(set(compiled_blacklist))
+            internal_exclude = ['rbfsvm', 'gpc', 'mlp']
+            compiled_exclude = exclude + internal_exclude
+            exclude = list(set(compiled_exclude))
             
         else:
-            blacklist = blacklist
+            exclude = exclude
         
-        for i in blacklist:
+        for i in exclude:
             model_library_str_.remove(i)
         
         si = []
@@ -2217,7 +2217,7 @@ def compare_models(blacklist = None,
         model_names = model_names_
         
         
-    if blacklist is None and turbo is True:
+    if exclude is None and turbo is True:
         
         model_library = [lr, knn, nb, dt, svm, ridge, rf, qda, ada, gbc, lda, et, xgboost, lightgbm, catboost]
 
@@ -2237,13 +2237,13 @@ def compare_models(blacklist = None,
                        'Light Gradient Boosting Machine',
                        'CatBoost Classifier']
         
-    #checking for whitelist models
-    if whitelist is not None:
+    #checking for include models
+    if include is not None:
 
         model_library = []
         model_names = []
 
-        for i in whitelist:
+        for i in include:
             if i == 'lr':
                 model_library.append(lr)
                 model_names.append('Logistic Regression')
@@ -5789,7 +5789,7 @@ def blend_models(estimator_list = 'All',
         which is recommended for an ensemble of well-calibrated classifiers. 
 
     turbo: Boolean, default = True
-        When turbo is set to True, it blacklists estimator that uses Radial Kernel.
+        When turbo is set to True, it excludes estimator that uses Radial Kernel.
 
     verbose: Boolean, default = True
         Score grid is not printed when verbose is set to False.
