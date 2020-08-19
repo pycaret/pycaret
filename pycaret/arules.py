@@ -1,8 +1,8 @@
 # Module: Association Rules Mining
 # Author: Moez Ali <moez.ali@queensu.ca>
 # License: MIT
-# Release: PyCaret 2.0x
-# Last modified : 30/07/2020
+# Release: PyCaret 2.1
+# Last modified : 14/08/2020
 
 def setup(data, 
           transaction_id, 
@@ -57,6 +57,10 @@ def setup(data,
    
     #exception checking   
     import sys
+
+    #checking data type
+    if hasattr(data,'shape') is False:
+        sys.exit('(Type Error): data passed must be of type pandas.DataFrame')
     
     #ignore warnings
     import warnings
@@ -206,7 +210,9 @@ def create_model(metric='confidence',
     return(rules)
 
 def plot_model(model,
-               plot = '2d'):
+               plot = '2d',
+               scale = 1, #added in pycaret 2.1.0
+               ):
     
     """
     This function takes a model dataframe returned by create_model() function. 
@@ -228,8 +234,10 @@ def plot_model(model,
 
         * Support, Confidence and Lift (2d) - '2d'
         * Support, Confidence and Lift (3d) - '3d'
-  
-    
+
+    scale: float, default = 1
+        The resolution scale of the figure.
+
     Returns
     -------
     Visual_Plot
@@ -286,7 +294,7 @@ def plot_model(model,
         fig.update_layout(plot_bgcolor='rgb(240,240,240)')
 
         fig.update_layout(
-            height=800,
+            height=800*scale,
             title_text='2D Plot of Support, Confidence and Lift'
         )
 
@@ -296,7 +304,7 @@ def plot_model(model,
     if plot == '3d':
         
         fig = px.scatter_3d(data_, x='support', y='confidence', z='lift',
-                      color='antecedent support', title='3d Plot for Rule Mining', opacity=0.7, width=900, height=800,
+                      color='antecedent support', title='3d Plot for Rule Mining', opacity=0.7, width=900*scale, height=800*scale,
                            hover_data = ['antecedents', 'consequents' ])
         fig.show()   
 

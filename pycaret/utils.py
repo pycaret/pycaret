@@ -3,9 +3,13 @@
 # License: MIT
 
 version_ = "2.0"
+nightly_version_ = "2.1"
 
 def version():
-    print(version_)
+    return version_
+
+def nightly_version():
+    return nightly_version_
 
 def __version__():
     return version_
@@ -18,73 +22,63 @@ def check_metric(actual, prediction, metric, round=4):
     
     #general dependencies
     import numpy as np
+    from sklearn import metrics
 
     #metric calculation starts here
     
     if metric == 'Accuracy':
         
-        from sklearn import metrics
         result = metrics.accuracy_score(actual,prediction)
         result = result.round(round)
         
     elif metric == 'Recall':
         
-        from sklearn import metrics
         result = metrics.recall_score(actual,prediction)
         result = result.round(round)
         
     elif metric == 'Precision':
         
-        from sklearn import metrics
         result = metrics.precision_score(actual,prediction)
         result = result.round(round)
         
     elif metric == 'F1':
         
-        from sklearn import metrics
         result = metrics.f1_score(actual,prediction)
         result = result.round(round)
         
     elif metric == 'Kappa':
         
-        from sklearn import metrics
         result = metrics.cohen_kappa_score(actual,prediction)
         result = result.round(round)
        
     elif metric == 'AUC':
         
-        from sklearn import metrics
         result = metrics.roc_auc_score(actual,prediction)
         result = result.round(round)
         
     elif metric == 'MCC':
         
-        from sklearn import metrics
         result = metrics.matthews_corrcoef(actual,prediction)
         result = result.round(round)
 
     elif metric == 'MAE':
 
-        from sklearn import metrics
         result = metrics.mean_absolute_error(actual,prediction)
         result = result.round(round)
         
     elif metric == 'MSE':
 
-        from sklearn import metrics
         result = metrics.mean_squared_error(actual,prediction)
         result = result.round(round)        
         
     elif metric == 'RMSE':
 
-        from sklearn import metrics
         result = metrics.mean_squared_error(actual,prediction)
         result = np.sqrt(result)
         result = result.round(round)     
         
     elif metric == 'R2':
 
-        from sklearn import metrics
         result = metrics.r2_score(actual,prediction)
         result = result.round(round)    
         
@@ -95,11 +89,11 @@ def check_metric(actual, prediction, metric, round=4):
 
     elif metric == 'MAPE':
 
-        mask = actual != 0
-        result = (np.fabs(actual - prediction)/actual)[mask].mean()
+        mask = actual.iloc[:,0] != 0
+        result = (np.fabs(actual.iloc[:,0] - prediction.iloc[:,0])/actual.iloc[:,0])[mask].mean()
         result = result.round(round)
        
-    return result
+    return float(result)
 
 
 def enable_colab():

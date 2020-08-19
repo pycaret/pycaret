@@ -26,7 +26,7 @@ pip install pycaret==2.0
 ## Optional dependencies
 Following libraries are not hard dependencies and are not automatically installed when you install PyCaret. To use all functionalities of PyCaret, these optional dependencies must be installed.
 
-```
+```shell
 pip install psutil
 pip install awscli 
 pip install azure-storage-blob

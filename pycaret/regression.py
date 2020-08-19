@@ -1,8 +1,8 @@
 # Module: Regression
 # Author: Moez Ali <moez.ali@queensu.ca>
 # License: MIT
-# Release: PyCaret 2.1x
-# Last modified : 13/08/2020
+# Release: PyCaret 2.1
+# Last modified : 17/08/2020
 
 def setup(data, 
           target, 
@@ -587,6 +587,10 @@ def setup(data,
     runtime_start = time.time()
 
     logger.info("Checking Exceptions")
+
+    #checking data type
+    if hasattr(data,'shape') is False:
+        sys.exit('(Type Error): data passed must be of type pandas.DataFrame')
 
     #checking train size parameter
     if type(train_size) is not float:
@@ -1481,7 +1485,7 @@ def setup(data,
             '''
     
             X_, X__, y_, y__ = train_test_split(X, y, test_size=1-i, random_state=seed, shuffle=data_split_shuffle)
-            X_train, X_test, y_train, y_test = train_test_split(X_, y_, test_size=0.3, random_state=seed, shuffle=data_split_shuffle)
+            X_train, X_test, y_train, y_test = train_test_split(X_, y_, test_size=1-train_size, random_state=seed, shuffle=data_split_shuffle)
             model.fit(X_train,y_train)
             pred_ = model.predict(X_test)
             
@@ -1742,6 +1746,939 @@ def setup(data,
         experiment__, folds_shuffle_param, n_jobs_param, html_param, create_model_container,\
         master_model_container, display_container, exp_name_log, logging_param, log_plots_param, USI,\
         data_before_preprocess, target_param
+
+def compare_models(exclude = None,
+                   include = None, #added in pycaret==2.0.0
+                   fold = 10, 
+                   round = 4, 
+                   sort = 'R2',
+                   n_select = 1, #added in pycaret==2.0.0
+                   budget_time = 0, #added in pycaret==2.1.0
+                   turbo = True,
+                   verbose = True): #added in pycaret==2.0.0
+    
+    """
+    This function train all the models available in the model library and scores them 
+    using Kfold Cross Validation. The output prints a score grid with MAE, MSE 
+    RMSE, R2, RMSLE and MAPE (averaged accross folds), determined by fold parameter.
+    
+    This function returns the best model based on metric defined in sort parameter. 
+    
+    To select top N models, use n_select parameter that is set to 1 by default.
+    Where n_select parameter > 1, it will return a list of trained model objects.
+
+    When turbo is set to True ('kr', 'ard' and 'mlp') are excluded due to longer
+    training times. By default turbo param is set to True.
+
+    Example
+    --------
+    >>> from pycaret.datasets import get_data
+    >>> boston = get_data('boston')
+    >>> experiment_name = setup(data = boston,  target = 'medv')
+    >>> best_model = compare_models() 
+
+    This will return the averaged score grid of all models except 'kr', 'ard' 
+    and 'mlp'. When turbo param is set to False, all models including 'kr',
+    'ard' and 'mlp' are used, but this may result in longer training times.
+    
+    >>> best_model = compare_models(exclude = ['knn','gbr'], turbo = False) 
+
+    This will return a comparison of all models except K Nearest Neighbour and
+    Gradient Boosting Regressor.
+    
+    >>> best_model = compare_models(exclude = ['knn','gbr'] , turbo = True) 
+
+    This will return a comparison of all models except K Nearest Neighbour, 
+    Gradient Boosting Regressor, Kernel Ridge Regressor, Automatic Relevance
+    Determinant and Multi Level Perceptron.
+        
+    Parameters
+    ----------
+    exclude: list of strings, default = None
+        In order to omit certain models from the comparison model ID's can be passed as 
+        a list of strings in exclude param. 
+
+    include: list of strings, default = None
+        In order to run only certain models for the comparison, the model ID's can be 
+        passed as a list of strings in include param. 
+
+    fold: integer, default = 10
+        Number of folds to be used in Kfold CV. Must be at least 2. 
+
+    round: integer, default = 4
+        Number of decimal places the metrics in the score grid will be rounded to.
+  
+    sort: string, default = 'MAE'
+        The scoring measure specified is used for sorting the average score grid
+        Other options are 'MAE', 'MSE', 'RMSE', 'R2', 'RMSLE' and 'MAPE'.
+
+    n_select: int, default = 1
+        Number of top_n models to return. use negative argument for bottom selection.
+        for example, n_select = -3 means bottom 3 models.
+
+    budget_time: int or float, default = 0
+        If set above 0, will terminate execution of the function after budget_time minutes have
+        passed and return results up to that point.
+
+    turbo: Boolean, default = True
+        When turbo is set to True, it excludes estimators that have longer
+        training times.
+
+    verbose: Boolean, default = True
+        Score grid is not printed when verbose is set to False.
+    
+    Returns
+    -------
+    score_grid
+        A table containing the scores of the model across the kfolds. 
+        Scoring metrics used are MAE, MSE, RMSE, R2, RMSLE and MAPE
+        Mean and standard deviation of the scores across the folds is
+        also returned.
+
+    Warnings
+    --------
+    - compare_models() though attractive, might be time consuming with large 
+      datasets. By default turbo is set to True, which excludes models that
+      have longer training times. Changing turbo parameter to False may result 
+      in very high training times with datasets where number of samples exceed 
+      10,000.
+             
+    
+    """
+    
+    '''
+    
+    ERROR HANDLING STARTS HERE
+    
+    '''
+    
+    import logging
+
+    try:
+        hasattr(logger, 'name')
+    except:
+        logger = logging.getLogger('logs')
+        logger.setLevel(logging.DEBUG)
+        
+        # create console handler and set level to debug
+        if logger.hasHandlers():
+            logger.handlers.clear()
+        
+        ch = logging.FileHandler('logs.log')
+        ch.setLevel(logging.DEBUG)
+
+        # create formatter
+        formatter = logging.Formatter('%(asctime)s:%(levelname)s:%(message)s')
+
+        # add formatter to ch
+        ch.setFormatter(formatter)
+
+        # add ch to logger
+        logger.addHandler(ch)
+
+    logger.info("Initializing compare_models()")
+    logger.info("""compare_models(exclude={}, include={}, fold={}, round={}, sort={}, n_select={}, turbo={}, verbose={})""".\
+        format(str(exclude), str(include), str(fold), str(round), str(sort), str(n_select), str(turbo), str(verbose)))
+
+    logger.info("Checking exceptions")
+
+    #exception checking   
+    import sys
+    
+    #checking error for exclude (string)
+    available_estimators = ['lr', 'lasso', 'ridge', 'en', 'lar', 'llar', 'omp', 'br', 'ard', 'par', 
+                            'ransac', 'tr', 'huber', 'kr', 'svm', 'knn', 'dt', 'rf', 'et', 'ada', 'gbr', 
+                            'mlp', 'xgboost', 'lightgbm', 'catboost']
+
+    if exclude != None:
+        for i in exclude:
+            if i not in available_estimators:
+                sys.exit('(Value Error): Estimator Not Available. Please see docstring for list of available estimators.')
+
+    if include != None:   
+        for i in include:
+            if i not in available_estimators:
+                sys.exit('(Value Error): Estimator Not Available. Please see docstring for list of available estimators.')
+
+    #include and exclude together check
+    if include is not None:
+        if exclude is not None:
+            sys.exit('(Type Error): Cannot use exclude parameter when include is used to compare models.')
+
+    #checking fold parameter
+    if type(fold) is not int:
+        sys.exit('(Type Error): Fold parameter only accepts integer value.')
+    
+    #checking round parameter
+    if type(round) is not int:
+        sys.exit('(Type Error): Round parameter only accepts integer value.')
+
+    #checking n_select parameter
+    if type(n_select) is not int:
+        sys.exit('(Type Error): n_select parameter only accepts integer value.')
+
+    #checking budget_time parameter
+    if type(budget_time) is not int and type(budget_time) is not float:
+        sys.exit('(Type Error): budget_time parameter only accepts integer or float values.')
+
+    #checking sort parameter
+    allowed_sort = ['MAE', 'MSE', 'RMSE', 'R2', 'RMSLE', 'MAPE']
+    if sort not in allowed_sort:
+        sys.exit('(Value Error): Sort method not supported. See docstring for list of available parameters.')
+    
+    
+    '''
+
+    ERROR HANDLING ENDS HERE
+    
+    '''
+    
+    logger.info("Preloading libraries")
+
+    #pre-load libraries
+    import pandas as pd
+    import time, datetime
+    import ipywidgets as ipw
+    from IPython.display import display, HTML, clear_output, update_display
+    
+    pd.set_option('display.max_columns', 500)
+
+    logger.info("Preparing display monitor")
+
+    #progress bar
+    if exclude is None:
+        len_of_exclude = 0
+    else:
+        len_of_exclude = len(exclude)
+        
+    if turbo:
+        len_mod = 22 - len_of_exclude
+    else:
+        len_mod = 25 - len_of_exclude
+
+    #n_select param
+    if type(n_select) is list:
+        n_select_num = len(n_select)
+    else:
+        n_select_num = abs(n_select)
+
+    if n_select_num > len_mod:
+        n_select_num = len_mod
+
+    if include is not None:
+        wl = len(include)
+        bl = len_of_exclude
+        len_mod = wl - bl
+
+    if include is not None:
+        opt = 10
+    else:
+        opt = 30
+        
+    #display
+    progress = ipw.IntProgress(value=0, min=0, max=(fold*len_mod)+opt+n_select_num, step=1 , description='Processing: ')
+    master_display = pd.DataFrame(columns=['Model', 'MAE','MSE','RMSE', 'R2', 'RMSLE', 'MAPE', 'TT (Sec)'])
+    
+    #display monitor only when html_param is set to True
+    if verbose:
+        if html_param:
+            display(progress)
+    
+    timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
+    monitor = pd.DataFrame( [ ['Initiated' , '. . . . . . . . . . . . . . . . . .', timestampStr ], 
+                             ['Status' , '. . . . . . . . . . . . . . . . . .' , 'Loading Dependencies' ],
+                             ['Estimator' , '. . . . . . . . . . . . . . . . . .' , 'Compiling Library' ],
+                             ['ETC' , '. . . . . . . . . . . . . . . . . .',  'Calculating ETC'] ],
+                              columns=['', ' ', '   ']).set_index('')
+    
+    #display only when html_param is set to True
+    if verbose:
+        if html_param:
+            display(monitor, display_id = 'monitor')
+            display_ = display(master_display, display_id=True)
+            display_id = display_.display_id
+    
+    
+    #ignore warnings
+    import warnings
+    warnings.filterwarnings('ignore') 
+    
+    #general dependencies
+    import numpy as np
+    import random
+    from sklearn import metrics
+    from sklearn.model_selection import KFold
+    import pandas.io.formats.style
+    
+    logger.info("Copying training dataset")
+    #Storing X_train and y_train in data_X and data_y parameter
+    data_X = X_train.copy()
+    data_y = y_train.copy()
+    
+    #reset index
+    data_X.reset_index(drop=True, inplace=True)
+    data_y.reset_index(drop=True, inplace=True)
+    
+    progress.value += 1
+    
+    logger.info("Importing libraries")
+    #import sklearn dependencies
+    from sklearn.linear_model import LinearRegression
+    from sklearn.linear_model import Ridge
+    from sklearn.linear_model import Lasso
+    from sklearn.linear_model import ElasticNet
+    from sklearn.linear_model import Lars
+    from sklearn.linear_model import LassoLars
+    from sklearn.linear_model import OrthogonalMatchingPursuit
+    from sklearn.linear_model import BayesianRidge
+    from sklearn.linear_model import ARDRegression
+    from sklearn.linear_model import PassiveAggressiveRegressor
+    from sklearn.linear_model import RANSACRegressor
+    from sklearn.linear_model import TheilSenRegressor
+    from sklearn.linear_model import HuberRegressor
+    from sklearn.kernel_ridge import KernelRidge
+    from sklearn.svm import SVR
+    from sklearn.neighbors import KNeighborsRegressor
+    from sklearn.tree import DecisionTreeRegressor
+    from sklearn.ensemble import RandomForestRegressor
+    from sklearn.ensemble import ExtraTreesRegressor
+    from sklearn.ensemble import AdaBoostRegressor
+    from sklearn.ensemble import GradientBoostingRegressor
+    from sklearn.neural_network import MLPRegressor
+    from xgboost import XGBRegressor
+    from catboost import CatBoostRegressor
+    try:
+        import lightgbm as lgb
+    except:
+        pass
+        logger.info("LightGBM import failed")
+   
+    progress.value += 1
+
+    
+    '''
+    MONITOR UPDATE STARTS
+    '''
+    
+    monitor.iloc[1,1:] = 'Loading Estimator'
+    if verbose:
+        if html_param:
+            update_display(monitor, display_id = 'monitor')
+    
+    '''
+    MONITOR UPDATE ENDS
+    '''
+    
+    logger.info("Importing untrained models")
+
+    #creating model object
+    lr = LinearRegression(n_jobs=n_jobs_param)
+    lasso = Lasso(random_state=seed)
+    ridge = Ridge(random_state=seed)
+    en = ElasticNet(random_state=seed)
+    lar = Lars()
+    llar = LassoLars()
+    omp = OrthogonalMatchingPursuit()
+    br = BayesianRidge()
+    ard = ARDRegression()
+    par = PassiveAggressiveRegressor(random_state=seed)
+    ransac = RANSACRegressor(min_samples=0.5, random_state=seed)
+    tr = TheilSenRegressor(random_state=seed, n_jobs=n_jobs_param)
+    huber = HuberRegressor()
+    kr = KernelRidge()
+    svm = SVR()
+    knn = KNeighborsRegressor(n_jobs=n_jobs_param)
+    dt = DecisionTreeRegressor(random_state=seed)
+    rf = RandomForestRegressor(random_state=seed, n_jobs=n_jobs_param)
+    et = ExtraTreesRegressor(random_state=seed, n_jobs=n_jobs_param)
+    ada = AdaBoostRegressor(random_state=seed)
+    gbr = GradientBoostingRegressor(random_state=seed)
+    mlp = MLPRegressor(random_state=seed)
+    xgboost = XGBRegressor(random_state=seed, n_jobs=n_jobs_param, verbosity=0)
+    lightgbm = lgb.LGBMRegressor(random_state=seed, n_jobs=n_jobs_param)
+    catboost = CatBoostRegressor(random_state=seed, silent = True, thread_count=n_jobs_param)
+    
+    logger.info("Import successful")
+
+    progress.value += 1
+    
+    model_dict = {'Linear Regression' : 'lr',
+                   'Lasso Regression' : 'lasso', 
+                   'Ridge Regression' : 'ridge', 
+                   'Elastic Net' : 'en',
+                   'Least Angle Regression' : 'lar', 
+                   'Lasso Least Angle Regression' : 'llar', 
+                   'Orthogonal Matching Pursuit' : 'omp', 
+                   'Bayesian Ridge' : 'br', 
+                   'Automatic Relevance Determination' : 'ard',
+                   'Passive Aggressive Regressor' : 'par', 
+                   'Random Sample Consensus' : 'ransac',
+                   'TheilSen Regressor' : 'tr', 
+                   'Huber Regressor' : 'huber', 
+                   'Kernel Ridge' : 'kr',
+                   'Support Vector Machine' : 'svm', 
+                   'K Neighbors Regressor' : 'knn', 
+                   'Decision Tree' : 'dt', 
+                   'Random Forest' : 'rf', 
+                   'Extra Trees Regressor' : 'et',
+                   'AdaBoost Regressor' : 'ada',
+                   'Gradient Boosting Regressor' : 'gbr', 
+                   'Multi Level Perceptron' : 'mlp',
+                   'Extreme Gradient Boosting' : 'xgboost',
+                   'Light Gradient Boosting Machine' :  'lightgbm',
+                   'CatBoost Regressor' : 'catboost'}
+    
+    model_library = [lr, lasso, ridge, en, lar, llar, omp, br, ard, par, ransac, tr, huber, kr, 
+                     svm, knn, dt, rf, et, ada, gbr, mlp, xgboost, lightgbm, catboost]
+    
+    model_names = ['Linear Regression',
+                   'Lasso Regression',
+                   'Ridge Regression',
+                   'Elastic Net',
+                   'Least Angle Regression',
+                   'Lasso Least Angle Regression',
+                   'Orthogonal Matching Pursuit',
+                   'Bayesian Ridge',
+                   'Automatic Relevance Determination',
+                   'Passive Aggressive Regressor',
+                   'Random Sample Consensus',
+                   'TheilSen Regressor',
+                   'Huber Regressor',
+                   'Kernel Ridge',
+                   'Support Vector Machine',
+                   'K Neighbors Regressor',
+                   'Decision Tree',
+                   'Random Forest',
+                   'Extra Trees Regressor',
+                   'AdaBoost Regressor',
+                   'Gradient Boosting Regressor',
+                   'Multi Level Perceptron',
+                   'Extreme Gradient Boosting',
+                   'Light Gradient Boosting Machine',
+                   'CatBoost Regressor']
+    
+    
+    #checking for exclude models
+    
+    model_library_str = ['lr', 'lasso', 'ridge', 'en', 'lar', 'llar', 'omp', 'br', 'ard',
+                         'par', 'ransac', 'tr', 'huber', 'kr', 'svm', 'knn', 'dt', 'rf', 
+                         'et', 'ada', 'gbr', 'mlp', 'xgboost', 'lightgbm', 'catboost']
+    
+    model_library_str_ = ['lr', 'lasso', 'ridge', 'en', 'lar', 'llar', 'omp', 'br', 'ard',
+                         'par', 'ransac', 'tr', 'huber', 'kr', 'svm', 'knn', 'dt', 'rf', 
+                         'et', 'ada', 'gbr', 'mlp', 'xgboost', 'lightgbm', 'catboost']
+    
+    if exclude is not None:
+        
+        if turbo:
+            internal_exclude = ['kr', 'ard', 'mlp']
+            compiled_exclude = exclude + internal_exclude
+            exclude = list(set(compiled_exclude))
+            
+        else:
+            exclude = exclude
+        
+        for i in exclude:
+            model_library_str_.remove(i)
+        
+        si = []
+        
+        for i in model_library_str_:
+            s = model_library_str.index(i)
+            si.append(s)
+        
+        model_library_ = []
+        model_names_= []
+        for i in si:
+            model_library_.append(model_library[i])
+            model_names_.append(model_names[i])
+            
+        model_library = model_library_
+        model_names = model_names_
+        
+        
+    if exclude is None and turbo is True:
+        
+        model_library = [lr, lasso, ridge, en, lar, llar, omp, br, par, ransac, tr, huber, 
+                         svm, knn, dt, rf, et, ada, gbr, xgboost, lightgbm, catboost]
+    
+        model_names = ['Linear Regression',
+                       'Lasso Regression',
+                       'Ridge Regression',
+                       'Elastic Net',
+                       'Least Angle Regression',
+                       'Lasso Least Angle Regression',
+                       'Orthogonal Matching Pursuit',
+                       'Bayesian Ridge',
+                       'Passive Aggressive Regressor',
+                       'Random Sample Consensus',
+                       'TheilSen Regressor',
+                       'Huber Regressor',
+                       'Support Vector Machine',
+                       'K Neighbors Regressor',
+                       'Decision Tree',
+                       'Random Forest',
+                       'Extra Trees Regressor',
+                       'AdaBoost Regressor',
+                       'Gradient Boosting Regressor',
+                       'Extreme Gradient Boosting',
+                       'Light Gradient Boosting Machine',
+                       'CatBoost Regressor']
+    
+    #checking for include models
+    if include is not None:
+
+        model_library = []
+        model_names = []
+
+        for i in include:
+            if i == 'lr':
+                model_library.append(lr)
+                model_names.append('Linear Regression')
+            elif i == 'lasso':
+                model_library.append(lasso)
+                model_names.append('Lasso Regression')                
+            elif i == 'ridge':
+                model_library.append(ridge)
+                model_names.append('Ridge Regression')   
+            elif i == 'en':
+                model_library.append(en)
+                model_names.append('Elastic Net')   
+            elif i == 'lar':
+                model_library.append(lar)
+                model_names.append('Least Angle Regression')   
+            elif i == 'llar':
+                model_library.append(llar)
+                model_names.append('Lasso Least Angle Regression')
+            elif i == 'omp':
+                model_library.append(omp)
+                model_names.append('Orthogonal Matching Pursuit')   
+            elif i == 'br':
+                model_library.append(br)
+                model_names.append('Bayesian Ridge')
+            elif i == 'ard':
+                model_library.append(ard)
+                model_names.append('Automatic Relevance Determination')  
+            elif i == 'par':
+                model_library.append(par)
+                model_names.append('Passive Aggressive Regressor')
+            elif i == 'ransac':
+                model_library.append(ransac)
+                model_names.append('Random Sample Consensus')   
+            elif i == 'tr':
+                model_library.append(tr)
+                model_names.append('TheilSen Regressor')   
+            elif i == 'huber':
+                model_library.append(huber)
+                model_names.append('Huber Regressor')
+            elif i == 'kr':
+                model_library.append(kr)
+                model_names.append('Kernel Ridge')     
+            elif i == 'svm':
+                model_library.append(svm)
+                model_names.append('Support Vector Machine')   
+            elif i == 'knn':
+                model_library.append(knn)
+                model_names.append('K Neighbors Regressor')   
+            elif i == 'dt':
+                model_library.append(dt)
+                model_names.append('Decision Tree')   
+            elif i == 'rf':
+                model_library.append(rf)
+                model_names.append('Random Forest') 
+            elif i == 'et':
+                model_library.append(et)
+                model_names.append('Extra Trees Regressor') 
+            elif i == 'ada':
+                model_library.append(ada)
+                model_names.append('AdaBoost Regressor')  
+            elif i == 'gbr':
+                model_library.append(gbr)
+                model_names.append('Gradient Boosting Regressor')
+            elif i == 'mlp':
+                model_library.append(mlp)
+                model_names.append('Multi Level Perceptron')     
+            elif i == 'xgboost':
+                model_library.append(xgboost)
+                model_names.append('Extreme Gradient Boosting')   
+            elif i == 'lightgbm':
+                model_library.append(lightgbm)
+                model_names.append('Light Gradient Boosting Machine')   
+            elif i == 'catboost':
+                model_library.append(catboost)
+                model_names.append('CatBoost Regressor')   
+            
+    progress.value += 1
+
+    
+    '''
+    MONITOR UPDATE STARTS
+    '''
+    
+    monitor.iloc[1,1:] = 'Initializing CV'
+    if verbose:
+        if html_param:
+            update_display(monitor, display_id = 'monitor')
+    
+    '''
+    MONITOR UPDATE ENDS
+    '''
+    
+    #cross validation setup starts here
+    logger.info("Defining folds")
+    kf = KFold(fold, random_state=seed, shuffle=folds_shuffle_param)
+
+    logger.info("Declaring metric variables")
+    score_mae =np.empty((0,0))
+    score_mse =np.empty((0,0))
+    score_rmse =np.empty((0,0))
+    score_rmsle =np.empty((0,0))
+    score_r2 =np.empty((0,0))
+    score_mape =np.empty((0,0))
+    score_training_time=np.empty((0,0))
+    avgs_mae =np.empty((0,0))
+    avgs_mse =np.empty((0,0))
+    avgs_rmse =np.empty((0,0))
+    avgs_rmsle =np.empty((0,0))
+    avgs_r2 =np.empty((0,0))
+    avgs_mape =np.empty((0,0))  
+    avgs_training_time=np.empty((0,0))
+    
+    def calculate_mape(actual, prediction):
+        mask = actual != 0
+        return (np.fabs(actual - prediction)/actual)[mask].mean()
+    
+    #create URI (before loop)
+    import secrets
+    URI = secrets.token_hex(nbytes=4)
+
+    name_counter = 0
+
+    model_store = []
+
+    total_runtime_start = time.time()
+    total_runtime = 0
+    over_time_budget = False
+    if budget_time and budget_time > 0:
+        logger.info(f"Time budget is {budget_time} minutes")
+
+    for model in model_library:
+
+        logger.info("Initializing " + str(model_names[name_counter]))
+
+        #run_time
+        runtime_start = time.time()
+
+        progress.value += 1
+        
+        '''
+        MONITOR UPDATE STARTS
+        '''
+        monitor.iloc[2,1:] = model_names[name_counter]
+        monitor.iloc[3,1:] = 'Calculating ETC'
+        if verbose:
+            if html_param:
+                update_display(monitor, display_id = 'monitor')
+
+        '''
+        MONITOR UPDATE ENDS
+        '''
+        
+        fold_num = 1
+
+        model_store_by_fold = []
+        
+        for train_i , test_i in kf.split(data_X,data_y):
+
+            logger.info("Initializing Fold " + str(fold_num))
+        
+            progress.value += 1
+            
+            t0 = time.time()
+            total_runtime += (t0 - total_runtime_start)/60
+            logger.info(f"Total runtime is {total_runtime} minutes")
+            over_time_budget = budget_time and budget_time > 0 and total_runtime > budget_time
+            if over_time_budget:
+                logger.info(f"Total runtime {total_runtime} is over time budget by {total_runtime - budget_time}, breaking loop")
+                break
+            total_runtime_start = t0
+
+            '''
+            MONITOR UPDATE STARTS
+            '''
+                
+            monitor.iloc[1,1:] = 'Fitting Fold ' + str(fold_num) + ' of ' + str(fold)
+            if verbose:
+                if html_param:
+                    update_display(monitor, display_id = 'monitor')
+            
+            '''
+            MONITOR UPDATE ENDS
+            '''            
+     
+            Xtrain,Xtest = data_X.iloc[train_i], data_X.iloc[test_i]
+            ytrain,ytest = data_y.iloc[train_i], data_y.iloc[test_i]
+            time_start=time.time()
+            logger.info("Fitting Model")
+            model_store_by_fold.append(model.fit(Xtrain,ytrain))
+            logger.info("Evaluating Metrics")
+            time_end=time.time()
+            pred_ = model.predict(Xtest)
+            
+            try:
+                pred_ = target_inverse_transformer.inverse_transform(np.array(pred_).reshape(-1,1))
+                ytest = target_inverse_transformer.inverse_transform(np.array(ytest).reshape(-1,1))
+                pred_ = np.nan_to_num(pred_)
+                ytest = np.nan_to_num(ytest)
+
+            except:
+                pass
+                logger.info("No inverse transformer found")
+
+            logger.info("Compiling Metrics")
+            mae = metrics.mean_absolute_error(ytest,pred_)
+            mse = metrics.mean_squared_error(ytest,pred_)
+            rmse = np.sqrt(mse)
+            r2 = metrics.r2_score(ytest,pred_)
+            rmsle = np.sqrt(np.mean(np.power(np.log(np.array(abs(pred_))+1) - np.log(np.array(abs(ytest))+1), 2)))
+            mape = calculate_mape(ytest,pred_)
+            training_time=time_end-time_start
+            score_mae = np.append(score_mae,mae)
+            score_mse = np.append(score_mse,mse)
+            score_rmse = np.append(score_rmse,rmse)
+            score_rmsle = np.append(score_rmsle,rmsle)
+            score_r2 =np.append(score_r2,r2)
+            score_mape = np.append(score_mape,mape)            
+            score_training_time=np.append(score_training_time,training_time)
+                
+                
+            '''
+            TIME CALCULATION SUB-SECTION STARTS HERE
+            '''
+            t1 = time.time()
+        
+            tt = (t1 - t0) * (fold-fold_num) / 60
+            tt = np.around(tt, 2)
+        
+            if tt < 1:
+                tt = str(np.around((tt * 60), 2))
+                ETC = tt + ' Seconds Remaining'
+                
+            else:
+                tt = str (tt)
+                ETC = tt + ' Minutes Remaining'
+            
+            fold_num += 1
+            
+            '''
+            MONITOR UPDATE STARTS
+            '''
+
+            monitor.iloc[3,1:] = ETC
+            if verbose:
+                if html_param:
+                    update_display(monitor, display_id = 'monitor')
+
+            '''
+            MONITOR UPDATE ENDS
+            '''
+
+        if over_time_budget:
+            break
+
+        model_store.append(model_store_by_fold[0])
+        
+        logger.info("Calculating mean and std")
+        avgs_mae = np.append(avgs_mae,np.mean(score_mae))
+        avgs_mse = np.append(avgs_mse,np.mean(score_mse))
+        avgs_rmse = np.append(avgs_rmse,np.mean(score_rmse))
+        avgs_rmsle = np.append(avgs_rmsle,np.mean(score_rmsle))
+        avgs_r2 = np.append(avgs_r2,np.mean(score_r2))
+        avgs_mape = np.append(avgs_mape,np.mean(score_mape))
+        avgs_training_time = np.append(avgs_training_time,np.mean(score_training_time))
+        
+        logger.info("Creating metrics dataframe")
+        compare_models_ = pd.DataFrame({'Model':model_names[name_counter], 'MAE':avgs_mae, 'MSE':avgs_mse, 
+                           'RMSE':avgs_rmse, 'R2':avgs_r2, 'RMSLE':avgs_rmsle, 'MAPE':avgs_mape, 'TT (Sec)':avgs_training_time})
+        master_display = pd.concat([master_display, compare_models_],ignore_index=True)
+        master_display = master_display.round(round)
+        
+        if sort == 'R2':
+            master_display = master_display.sort_values(by=sort,ascending=False)
+        else:
+            master_display = master_display.sort_values(by=sort,ascending=True)
+
+        master_display.reset_index(drop=True, inplace=True)
+        
+        if verbose:
+            if html_param:
+                update_display(master_display, display_id = display_id)
+        
+
+        #end runtime
+        runtime_end = time.time()
+        runtime = np.array(runtime_end - runtime_start).round(2)
+
+        """
+        MLflow logging starts here
+        """
+
+        if logging_param:
+
+            logger.info("Creating MLFlow logs")
+
+            import mlflow
+            from pathlib import Path
+            import os
+
+            run_name = model_names[name_counter]
+
+            with mlflow.start_run(run_name=run_name) as run:  
+
+                # Get active run to log as tag
+                RunID = mlflow.active_run().info.run_id
+
+                params = model.get_params()
+
+                for i in list(params):
+                    v = params.get(i)
+                    if len(str(v)) > 250:
+                        params.pop(i)
+                        
+                mlflow.log_params(params)
+
+                #set tag of compare_models
+                mlflow.set_tag("Source", "compare_models")
+                mlflow.set_tag("URI", URI)
+                mlflow.set_tag("USI", USI)
+                mlflow.set_tag("Run Time", runtime)
+                mlflow.set_tag("Run ID", RunID)
+
+                #Log top model metrics
+                mlflow.log_metric("MAE", avgs_mae[0])
+                mlflow.log_metric("MSE", avgs_mse[0])
+                mlflow.log_metric("RMSE", avgs_rmse[0])
+                mlflow.log_metric("R2", avgs_r2[0])
+                mlflow.log_metric("RMSLE", avgs_rmsle[0])
+                mlflow.log_metric("MAPE", avgs_mape[0])
+                mlflow.log_metric("TT", avgs_training_time[0])
+
+                # Log model and transformation pipeline
+                from copy import deepcopy
+
+                # get default conda env
+                from mlflow.sklearn import get_default_conda_env
+                default_conda_env = get_default_conda_env()
+                default_conda_env['name'] = str(exp_name_log) + '-env'
+                default_conda_env.get('dependencies').pop(-3)
+                dependencies = default_conda_env.get('dependencies')[-1]
+                from pycaret.utils import __version__
+                dep = 'pycaret==' + str(__version__())
+                dependencies['pip'] = [dep]
+                
+                # define model signature
+                from mlflow.models.signature import infer_signature
+                signature = infer_signature(data_before_preprocess.drop([target_param], axis=1))
+                input_example = data_before_preprocess.drop([target_param], axis=1).iloc[0].to_dict()
+
+                # log model as sklearn flavor
+                prep_pipe_temp = deepcopy(prep_pipe)
+                prep_pipe_temp.steps.append(['trained model', model])
+                mlflow.sklearn.log_model(prep_pipe_temp, "model", conda_env = default_conda_env, signature = signature, input_example = input_example)
+                del(prep_pipe_temp)
+
+        score_mae =np.empty((0,0))
+        score_mse =np.empty((0,0))
+        score_rmse =np.empty((0,0))
+        score_rmsle =np.empty((0,0))
+        score_r2 =np.empty((0,0))
+        score_mape =np.empty((0,0))
+        score_training_time=np.empty((0,0))
+        avgs_mae = np.empty((0,0))
+        avgs_mse = np.empty((0,0))
+        avgs_rmse = np.empty((0,0))
+        avgs_rmsle = np.empty((0,0))
+        avgs_r2 = np.empty((0,0))
+        avgs_mape = np.empty((0,0))
+        avgs_training_time=np.empty((0,0))
+        name_counter += 1
+  
+    progress.value += 1
+    
+    def highlight_min(s):
+        if s.name=='R2':# min
+            to_highlight = s == s.max()
+        else:
+            to_highlight = s == s.min()
+
+        return ['background-color: yellow' if v else '' for v in to_highlight]
+
+    def highlight_cols(s):
+        color = 'lightgrey'
+        return 'background-color: %s' % color
+
+    compare_models_ = master_display.style.apply(highlight_min,subset=['MAE','MSE','RMSE','R2','RMSLE','MAPE'])\
+                                            .applymap(highlight_cols, subset = ['TT (Sec)'])
+    compare_models_ = compare_models_.set_precision(round)
+    compare_models_ = compare_models_.set_properties(**{'text-align': 'left'})
+    compare_models_ = compare_models_.set_table_styles([dict(selector='th', props=[('text-align', 'left')])])
+
+    progress.value += 1
+
+    monitor.iloc[1,1:] = 'Compiling Final Model'
+    monitor.iloc[3,1:] = 'Almost Finished'
+    
+    if verbose:
+        if html_param:
+            update_display(monitor, display_id = 'monitor')
+
+    sorted_model_names = list(compare_models_.data['Model'])
+    n_select = n_select if n_select <= len(sorted_model_names) else len(sorted_model_names)
+    if n_select < 0:
+        sorted_model_names = sorted_model_names[n_select:]
+    else:
+        sorted_model_names = sorted_model_names[:n_select]
+    
+    model_store_final = []
+
+    logger.info("Finalizing top_n models")
+
+    logger.info("SubProcess create_model() called ==================================")
+    for i in sorted_model_names:
+        monitor.iloc[2,1:] = i
+        if verbose:
+            if html_param:
+                update_display(monitor, display_id = 'monitor')
+        progress.value += 1
+        k = model_dict.get(i)
+        m = create_model(estimator=k, verbose = False, system=False, cross_validation=True)
+        model_store_final.append(m)
+    logger.info("SubProcess create_model() end ==================================")
+
+    if len(model_store_final) == 1:
+        model_store_final = model_store_final[0]
+
+    clear_output()
+
+    if verbose:
+        if html_param:
+            display(compare_models_)
+        else:
+            print(compare_models_.data)
+    
+    pd.reset_option("display.max_columns")
+    
+    #store in display container
+    display_container.append(compare_models_.data)
+
+    logger.info("create_model_container: " + str(len(create_model_container)))
+    logger.info("master_model_container: " + str(len(master_model_container)))
+    logger.info("display_container: " + str(len(display_container)))
+
+    logger.info(str(model_store_final))
+    logger.info("compare_models() succesfully completed......................................")
+
+    return model_store_final
 
 def create_model(estimator = None, 
                  ensemble = False, 
@@ -2611,6 +3548,1396 @@ def create_model(estimator = None,
     logger.info("create_model() succesfully completed......................................")
     return model
 
+def tune_model(estimator, 
+               fold = 10, 
+               round = 4, 
+               n_iter = 10,
+               custom_grid = None, #added in pycaret==2.0.0 
+               optimize = 'R2',
+               custom_scorer = None, #added in pycaret==2.1
+               choose_better = False, #added in pycaret==2.0.0
+               verbose = True):
+    
+      
+    """
+    This function tunes the hyperparameters of a model and scores it using Kfold 
+    Cross Validation. The output prints the score grid that shows MAE, MSE, RMSE, 
+    R2, RMSLE and MAPE by fold (by default = 10 Folds).
+
+    This function returns a trained model object.  
+
+    tune_model() only accepts a string parameter for estimator.
+
+    Example
+    -------
+    >>> from pycaret.datasets import get_data
+    >>> boston = get_data('boston')
+    >>> experiment_name = setup(data = boston,  target = 'medv')
+    >>> xgboost = create_model('xgboost')
+    >>> tuned_xgboost = tune_model(xgboost) 
+
+    This will tune the hyperparameters of Extreme Gradient Boosting Regressor.
+
+    Parameters
+    ----------
+    estimator : object, default = None
+
+    fold: integer, default = 10
+        Number of folds to be used in Kfold CV. Must be at least 2. 
+
+    round: integer, default = 4
+        Number of decimal places the metrics in the score grid will be rounded to. 
+
+    n_iter: integer, default = 10
+        Number of iterations within the Random Grid Search. For every iteration, 
+        the model randomly selects one value from the pre-defined grid of hyperparameters.
+
+    custom_grid: dictionary, default = None
+        To use custom hyperparameters for tuning pass a dictionary with parameter name
+        and values to be iterated. When set to None it uses pre-defined tuning grid.  
+
+    optimize: string, default = 'R2'
+        Measure used to select the best model through hyperparameter tuning.
+        The default scoring measure is 'R2'. Other measures include 'MAE', 'MSE', 'RMSE',
+        'RMSLE', 'MAPE'. When using 'RMSE' or 'RMSLE' the base scorer is 'MSE' and when using
+        'MAPE' the base scorer is 'MAE'.
+
+    custom_scorer: object, default = None
+        custom_scorer can be passed to tune hyperparameters of the model. It must be
+        created using sklearn.make_scorer. 
+        
+    choose_better: Boolean, default = False
+        When set to set to True, base estimator is returned when the metric doesn't improve 
+        by tune_model. This gurantees the returned object would perform atleast equivalent 
+        to base estimator created using create_model or model returned by compare_models.
+
+    verbose: Boolean, default = True
+        Score grid is not printed when verbose is set to False.
+
+    Returns
+    -------
+    score_grid
+        A table containing the scores of the model across the kfolds. 
+        Scoring metrics used are MAE, MSE, RMSE, R2, RMSLE and MAPE.
+        Mean and standard deviation of the scores across the folds are 
+        also returned.
+
+    model
+        trained model object
+
+    Warnings
+    --------
+    - estimator parameter takes an abbreviated string. Passing a trained model object
+      returns an error. The tune_model() function internally calls create_model() 
+      before tuning the hyperparameters.
+        
+         
+  """
+ 
+
+
+    '''
+    
+    ERROR HANDLING STARTS HERE
+    
+    '''
+    
+    import logging
+
+    try:
+        hasattr(logger, 'name')
+    except:
+        logger = logging.getLogger('logs')
+        logger.setLevel(logging.DEBUG)
+        
+        # create console handler and set level to debug
+        if logger.hasHandlers():
+            logger.handlers.clear()
+        
+        ch = logging.FileHandler('logs.log')
+        ch.setLevel(logging.DEBUG)
+
+        # create formatter
+        formatter = logging.Formatter('%(asctime)s:%(levelname)s:%(message)s')
+
+        # add formatter to ch
+        ch.setFormatter(formatter)
+
+        # add ch to logger
+        logger.addHandler(ch)
+
+    logger.info("Initializing tune_model()")
+    logger.info("""tune_model(estimator={}, fold={}, round={}, n_iter={}, custom_grid={}, optimize={}, choose_better={}, verbose={})""".\
+        format(str(estimator), str(fold), str(round), str(n_iter), str(custom_grid), str(optimize), str(choose_better), str(verbose)))
+
+    logger.info("Checking exceptions")
+
+    #exception checking   
+    import sys
+    
+    #run_time
+    import datetime, time
+    runtime_start = time.time()
+
+    #checking estimator if string
+    if type(estimator) is str:
+        sys.exit('(Type Error): The behavior of tune_model in version 1.0.1 is changed. Please pass trained model object.') 
+        
+    #checking fold parameter
+    if type(fold) is not int:
+        sys.exit('(Type Error): Fold parameter only accepts integer value.')
+    
+    #checking round parameter
+    if type(round) is not int:
+        sys.exit('(Type Error): Round parameter only accepts integer value.')
+ 
+    #checking n_iter parameter
+    if type(n_iter) is not int:
+        sys.exit('(Type Error): n_iter parameter only accepts integer value.')
+
+    #checking optimize parameter
+    allowed_optimize = ['MAE', 'MSE', 'R2', 'RMSE', 'RMSLE', 'MAPE']
+    if optimize not in allowed_optimize:
+        sys.exit('(Value Error): Optimization method not supported. See docstring for list of available parameters.')
+    
+    if type(n_iter) is not int:
+        sys.exit('(Type Error): n_iter parameter only accepts integer value.')
+        
+    #checking verbose parameter
+    if type(verbose) is not bool:
+        sys.exit('(Type Error): Verbose parameter can only take argument as True or False.') 
+    
+    
+    '''
+    
+    ERROR HANDLING ENDS HERE
+    
+    '''
+    
+    logger.info("Preloading libraries")
+
+    #pre-load libraries
+    import pandas as pd
+    import time, datetime
+    import ipywidgets as ipw
+    from IPython.display import display, HTML, clear_output, update_display
+    
+    logger.info("Preparing display monitor")
+
+    #progress bar
+    progress = ipw.IntProgress(value=0, min=0, max=fold+6, step=1 , description='Processing: ')
+    master_display = pd.DataFrame(columns=['MAE','MSE','RMSE', 'R2', 'RMSLE', 'MAPE'])
+    if verbose:
+        if html_param:
+            display(progress)    
+    
+    #display monitor
+    timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
+    monitor = pd.DataFrame( [ ['Initiated' , '. . . . . . . . . . . . . . . . . .', timestampStr ], 
+                             ['Status' , '. . . . . . . . . . . . . . . . . .' , 'Loading Dependencies' ],
+                             ['ETC' , '. . . . . . . . . . . . . . . . . .',  'Calculating ETC'] ],
+                              columns=['', ' ', '   ']).set_index('')
+    
+    if verbose:
+        if html_param:
+            display(monitor, display_id = 'monitor')
+    
+    if verbose:
+        if html_param:
+            display_ = display(master_display, display_id=True)
+            display_id = display_.display_id
+    
+    #ignore warnings
+    import warnings
+    warnings.filterwarnings('ignore') 
+    
+    #ignore warnings
+    import warnings
+    warnings.filterwarnings('ignore')    
+
+    logger.info("Copying training dataset")
+
+    #Storing X_train and y_train in data_X and data_y parameter
+    data_X = X_train.copy()
+    data_y = y_train.copy()
+    
+    #reset index
+    data_X.reset_index(drop=True, inplace=True)
+    data_y.reset_index(drop=True, inplace=True)
+
+    logger.info("Creating estimator clone to inherit model parameters")
+    #create estimator clone from sklearn.base
+    from sklearn.base import clone
+    estimator_clone = clone(estimator)
+
+    logger.info("Importing libraries")    
+    #general dependencies
+    import random
+    import numpy as np
+    from sklearn import metrics
+    from sklearn.model_selection import KFold
+    from sklearn.model_selection import RandomizedSearchCV
+
+    #setting numpy seed
+    np.random.seed(seed)
+
+    #define optimizer
+    if optimize == 'MAE':
+        optimize = 'neg_mean_absolute_error'
+        compare_dimension = 'MAE' 
+    elif optimize == 'MSE':
+        optimize = 'neg_mean_squared_error'
+        compare_dimension = 'MSE' 
+    elif optimize == 'R2':
+        optimize = 'r2'
+        compare_dimension = 'R2'
+    elif optimize == 'MAPE':
+        optimize = 'neg_mean_absolute_error' #because mape not present in sklearn
+        compare_dimension = 'MAPE'
+    elif optimize == 'RMSE':
+        optimize = 'neg_mean_squared_error' #because rmse not present in sklearn
+        compare_dimension = 'RMSE' 
+    elif optimize == 'RMSLE':
+        optimize = 'neg_mean_squared_error' #because rmsle not present in sklearn
+        compare_dimension = 'RMSLE' 
+    
+    progress.value += 1
+
+    # change optimize parameter if custom_score is not None
+    if custom_scorer is not None:
+        optimize = custom_scorer
+        logger.info("custom_scorer set to user defined function")
+
+    #convert trained estimator into string name for grids
+    
+    logger.info("Checking base model")
+
+    def get_model_name(e):
+        return str(e).split("(")[0]
+
+    mn = get_model_name(estimator)
+
+    if 'catboost' in mn:
+        mn = 'CatBoostRegressor'
+    
+    model_dict = {'ExtraTreesRegressor' : 'et',
+                'GradientBoostingRegressor' : 'gbr', 
+                'RandomForestRegressor' : 'rf',
+                'LGBMRegressor' : 'lightgbm',
+                'XGBRegressor' : 'xgboost',
+                'AdaBoostRegressor' : 'ada', 
+                'DecisionTreeRegressor' : 'dt', 
+                'Ridge' : 'ridge',
+                'TheilSenRegressor' : 'tr', 
+                'BayesianRidge' : 'br',
+                'LinearRegression' : 'lr',
+                'ARDRegression' : 'ard', 
+                'KernelRidge' : 'kr', 
+                'RANSACRegressor' : 'ransac', 
+                'HuberRegressor' : 'huber', 
+                'Lasso' : 'lasso', 
+                'ElasticNet' : 'en', 
+                'Lars' : 'lar', 
+                'OrthogonalMatchingPursuit' : 'omp', 
+                'MLPRegressor' : 'mlp',
+                'KNeighborsRegressor' : 'knn',
+                'SVR' : 'svm',
+                'LassoLars' : 'llar',
+                'PassiveAggressiveRegressor' : 'par',
+                'CatBoostRegressor' : 'catboost',
+                'BaggingRegressor' : 'Bagging'}
+
+    model_dict_logging = {'ExtraTreesRegressor' : 'Extra Trees Regressor',
+                        'GradientBoostingRegressor' : 'Gradient Boosting Regressor', 
+                        'RandomForestRegressor' : 'Random Forest',
+                        'LGBMRegressor' : 'Light Gradient Boosting Machine',
+                        'XGBRegressor' : 'Extreme Gradient Boosting',
+                        'AdaBoostRegressor' : 'AdaBoost Regressor', 
+                        'DecisionTreeRegressor' : 'Decision Tree', 
+                        'Ridge' : 'Ridge Regression',
+                        'TheilSenRegressor' : 'TheilSen Regressor', 
+                        'BayesianRidge' : 'Bayesian Ridge',
+                        'LinearRegression' : 'Linear Regression',
+                        'ARDRegression' : 'Automatic Relevance Determination', 
+                        'KernelRidge' : 'Kernel Ridge', 
+                        'RANSACRegressor' : 'Random Sample Consensus', 
+                        'HuberRegressor' : 'Huber Regressor', 
+                        'Lasso' : 'Lasso Regression', 
+                        'ElasticNet' : 'Elastic Net', 
+                        'Lars' : 'Least Angle Regression', 
+                        'OrthogonalMatchingPursuit' : 'Orthogonal Matching Pursuit', 
+                        'MLPRegressor' : 'Multi Level Perceptron',
+                        'KNeighborsRegressor' : 'K Neighbors Regressor',
+                        'SVR' : 'Support Vector Machine',
+                        'LassoLars' : 'Lasso Least Angle Regression',
+                        'PassiveAggressiveRegressor' : 'Passive Aggressive Regressor',
+                        'CatBoostRegressor' : 'CatBoost Regressor',
+                        'BaggingRegressor' : 'Bagging Regressor'}
+
+    _estimator_ = estimator
+
+    estimator = model_dict.get(mn)
+
+    logger.info('Base model : ' + str(model_dict_logging.get(mn)))
+
+    progress.value += 1
+    
+    logger.info("Defining folds")
+    kf = KFold(fold, random_state=seed, shuffle=folds_shuffle_param)
+
+    logger.info("Declaring metric variables")
+    score_mae =np.empty((0,0))
+    score_mse =np.empty((0,0))
+    score_rmse =np.empty((0,0))
+    score_rmsle =np.empty((0,0))
+    score_r2 =np.empty((0,0))
+    score_mape =np.empty((0,0))
+    score_training_time=np.empty((0,0))
+    avgs_mae =np.empty((0,0))
+    avgs_mse =np.empty((0,0))
+    avgs_rmse =np.empty((0,0))
+    avgs_rmsle =np.empty((0,0))
+    avgs_r2 =np.empty((0,0))
+    avgs_mape =np.empty((0,0))
+    avgs_training_time=np.empty((0,0))
+    
+    def calculate_mape(actual, prediction):
+        mask = actual != 0
+        return (np.fabs(actual - prediction)/actual)[mask].mean()
+    
+    '''
+    MONITOR UPDATE STARTS
+    '''
+    
+    monitor.iloc[1,1:] = 'Searching Hyperparameters'
+    if verbose:
+        if html_param:
+            update_display(monitor, display_id = 'monitor')
+    
+    '''
+    MONITOR UPDATE ENDS
+    '''
+    
+    logger.info("Defining Hyperparameters")
+    logger.info("Initializing RandomizedSearchCV")
+
+    #setting turbo parameters
+    cv = 3
+    
+    if estimator == 'lr':
+        
+        from sklearn.linear_model import LinearRegression
+
+        if custom_grid is not None:
+            param_grid = custom_grid
+        else:
+            param_grid = {'fit_intercept': [True, False],
+                        'normalize' : [True, False]
+                        }        
+        model_grid = RandomizedSearchCV(estimator=estimator_clone, param_distributions=param_grid, 
+                                        scoring=optimize, n_iter=n_iter, cv=cv, random_state=seed,
+                                        n_jobs=n_jobs_param, iid=False)
+
+        model_grid.fit(X_train,y_train)
+        model = model_grid.best_estimator_
+        best_model = model_grid.best_estimator_
+        best_model_param = model_grid.best_params_
+
+    elif estimator == 'lasso':
+
+        from sklearn.linear_model import Lasso
+
+        if custom_grid is not None:
+            param_grid = custom_grid
+        else:
+            param_grid = {'alpha': np.arange(0,1,0.001),
+                        'fit_intercept': [True, False],
+                        'normalize' : [True, False],
+                        }
+        model_grid = RandomizedSearchCV(estimator=estimator_clone, 
+                                        param_distributions=param_grid, scoring=optimize, n_iter=n_iter, cv=cv, 
+                                        random_state=seed, iid=False,n_jobs=n_jobs_param)
+        
+        model_grid.fit(X_train,y_train)
+        model = model_grid.best_estimator_
+        best_model = model_grid.best_estimator_
+        best_model_param = model_grid.best_params_
+
+    elif estimator == 'ridge':
+
+        from sklearn.linear_model import Ridge
+
+        if custom_grid is not None:
+            param_grid = custom_grid
+        else:
+            param_grid = {"alpha": np.arange(0,1,0.001),
+                        "fit_intercept": [True, False],
+                        "normalize": [True, False],
+                        }
+
+        model_grid = RandomizedSearchCV(estimator=estimator_clone, param_distributions=param_grid,
+                                       scoring=optimize, n_iter=n_iter, cv=cv, random_state=seed,
+                                       iid=False, n_jobs=n_jobs_param)
+
+        model_grid.fit(X_train,y_train)
+        model = model_grid.best_estimator_
+        best_model = model_grid.best_estimator_
+        best_model_param = model_grid.best_params_
+
+    elif estimator == 'en':
+
+        from sklearn.linear_model import ElasticNet
+
+        if custom_grid is not None:
+            param_grid = custom_grid
+        else:
+            param_grid = {'alpha': np.arange(0,1,0.01), 
+                        'l1_ratio' : np.arange(0,1,0.01),
+                        'fit_intercept': [True, False],
+                        'normalize': [True, False]
+                        } 
+
+        model_grid = RandomizedSearchCV(estimator=estimator_clone, 
+                                        param_distributions=param_grid, scoring=optimize, n_iter=n_iter, cv=cv, 
+                                        random_state=seed, iid=False, n_jobs=n_jobs_param)
+
+        model_grid.fit(X_train,y_train)
+        model = model_grid.best_estimator_
+        best_model = model_grid.best_estimator_
+        best_model_param = model_grid.best_params_
+
+    elif estimator == 'lar':
+
+        from sklearn.linear_model import Lars
+
+        if custom_grid is not None:
+            param_grid = custom_grid
+        else:
+            param_grid = {'fit_intercept':[True, False],
+                        'normalize' : [True, False],
+                        'eps': [0.00001, 0.0001, 0.001, 0.01, 0.05, 0.0005, 0.005, 0.00005, 0.02, 0.007]}
+
+        model_grid = RandomizedSearchCV(estimator=estimator_clone, param_distributions=param_grid,
+                                       scoring=optimize, n_iter=n_iter, cv=cv, random_state=seed,
+                                       n_jobs=n_jobs_param)
+
+        model_grid.fit(X_train,y_train)
+        model = model_grid.best_estimator_
+        best_model = model_grid.best_estimator_
+        best_model_param = model_grid.best_params_  
+
+    elif estimator == 'llar':
+
+        from sklearn.linear_model import LassoLars
+
+        if custom_grid is not None:
+            param_grid = custom_grid
+        else:
+            param_grid = {'alpha': [0.0001,0.001,0.1,0.15,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],
+                        'fit_intercept':[True, False],
+                        'normalize' : [True, False],
+                        'eps': [0.00001, 0.0001, 0.001, 0.01, 0.05, 0.0005, 0.005, 0.00005, 0.02, 0.007]}
+
+        model_grid = RandomizedSearchCV(estimator=estimator_clone, param_distributions=param_grid,
+                                       scoring=optimize, n_iter=n_iter, cv=cv, random_state=seed,
+                                       n_jobs=n_jobs_param)
+
+        model_grid.fit(X_train,y_train)
+        model = model_grid.best_estimator_
+        best_model = model_grid.best_estimator_
+        best_model_param = model_grid.best_params_    
+
+    elif estimator == 'omp':
+
+        from sklearn.linear_model import OrthogonalMatchingPursuit
+        import random
+
+        if custom_grid is not None:
+            param_grid = custom_grid
+
+        else:
+            param_grid = {'n_nonzero_coefs': range(1, len(X_train.columns)+1),
+                        'fit_intercept' : [True, False],
+                        'normalize': [True, False]}
+
+        model_grid = RandomizedSearchCV(estimator=estimator_clone, 
+                                        param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
+                                        cv=cv, random_state=seed, n_jobs=n_jobs_param)
+
+        model_grid.fit(X_train,y_train)
+        model = model_grid.best_estimator_
+        best_model = model_grid.best_estimator_
+        best_model_param = model_grid.best_params_        
+
+    elif estimator == 'br':
+
+        from sklearn.linear_model import BayesianRidge
+
+        if custom_grid is not None:
+            param_grid = custom_grid
+
+        else:
+
+            param_grid = {'alpha_1': [0.0000001, 0.000001, 0.0001, 0.001, 0.01, 0.0005, 0.005, 0.05, 0.1, 0.15, 0.2, 0.3],
+                        'alpha_2': [0.0000001, 0.000001, 0.0001, 0.001, 0.01, 0.0005, 0.005, 0.05, 0.1, 0.15, 0.2, 0.3],
+                        'lambda_1': [0.0000001, 0.000001, 0.0001, 0.001, 0.01, 0.0005, 0.005, 0.05, 0.1, 0.15, 0.2, 0.3],
+                        'lambda_2': [0.0000001, 0.000001, 0.0001, 0.001, 0.01, 0.0005, 0.005, 0.05, 0.1, 0.15, 0.2, 0.3],
+                        'compute_score': [True, False],
+                        'fit_intercept': [True, False],
+                        'normalize': [True, False]
+                        }    
+
+        model_grid = RandomizedSearchCV(estimator=estimator_clone, 
+                                        param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
+                                        cv=cv, random_state=seed, n_jobs=n_jobs_param)
+
+        model_grid.fit(X_train,y_train)
+        model = model_grid.best_estimator_
+        best_model = model_grid.best_estimator_
+        best_model_param = model_grid.best_params_    
+
+    elif estimator == 'ard':
+
+        from sklearn.linear_model import ARDRegression
+
+        if custom_grid is not None:
+            param_grid = custom_grid
+
+        else:
+            param_grid = {'alpha_1': [0.0000001, 0.000001, 0.0001, 0.001, 0.01, 0.0005, 0.005, 0.05, 0.1, 0.15, 0.2, 0.3],
+                        'alpha_2': [0.0000001, 0.000001, 0.0001, 0.001, 0.01, 0.0005, 0.005, 0.05, 0.1, 0.15, 0.2, 0.3],
+                        'lambda_1': [0.0000001, 0.000001, 0.0001, 0.001, 0.01, 0.0005, 0.005, 0.05, 0.1, 0.15, 0.2, 0.3],
+                        'lambda_2': [0.0000001, 0.000001, 0.0001, 0.001, 0.01, 0.0005, 0.005, 0.05, 0.1, 0.15, 0.2, 0.3],
+                        'threshold_lambda' : [5000,10000,15000,20000,25000,30000,35000,40000,45000,50000,55000,60000],
+                        'compute_score': [True, False],
+                        'fit_intercept': [True, False],
+                        'normalize': [True, False]
+                        }    
+
+        model_grid = RandomizedSearchCV(estimator=estimator_clone, 
+                                        param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
+                                        cv=cv, random_state=seed, n_jobs=n_jobs_param)
+
+        model_grid.fit(X_train,y_train)
+        model = model_grid.best_estimator_
+        best_model = model_grid.best_estimator_
+        best_model_param = model_grid.best_params_       
+
+    elif estimator == 'par':
+
+        from sklearn.linear_model import PassiveAggressiveRegressor
+
+        if custom_grid is not None:
+            param_grid = custom_grid
+
+        else:
+            param_grid = {'C': np.arange(0,1,0.01), #[0.01, 0.005, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1],
+                        'fit_intercept': [True, False],
+                        'early_stopping' : [True, False],
+                        #'validation_fraction': [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1],
+                        'loss' : ['epsilon_insensitive', 'squared_epsilon_insensitive'],
+                        'epsilon' : [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9],
+                        'shuffle' : [True, False]
+                        }    
+
+        model_grid = RandomizedSearchCV(estimator=estimator_clone, 
+                                        param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
+                                        cv=cv, random_state=seed, n_jobs=n_jobs_param)
+
+        model_grid.fit(X_train,y_train)
+        model = model_grid.best_estimator_
+        best_model = model_grid.best_estimator_
+        best_model_param = model_grid.best_params_         
+
+    elif estimator == 'ransac':
+
+        from sklearn.linear_model import RANSACRegressor
+
+        if custom_grid is not None:
+            param_grid = custom_grid
+
+        else:
+
+            param_grid = {'min_samples': np.arange(0,1,0.05), #[0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1],
+                        'max_trials': np.arange(1,20,1), #[1,2,3,4,5,6,7,8,9,10,11,12,13,14],
+                        'max_skips': np.arange(1,20,1), #[1,2,3,4,5,6,7,8,9,10],
+                        'stop_n_inliers': np.arange(1,25,1), #[1,2,3,4,5,6,7,8,9,10],
+                        'stop_probability': np.arange(0,1,0.01), #[0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1],
+                        'loss' : ['absolute_loss', 'squared_loss'],
+                        }    
+
+        model_grid = RandomizedSearchCV(estimator=estimator_clone, 
+                                        param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
+                                        cv=cv, random_state=seed, n_jobs=n_jobs_param)
+
+        model_grid.fit(X_train,y_train)
+        model = model_grid.best_estimator_
+        best_model = model_grid.best_estimator_
+        best_model_param = model_grid.best_params_         
+
+    elif estimator == 'tr':
+
+        from sklearn.linear_model import TheilSenRegressor
+
+        if custom_grid is not None:
+            param_grid = custom_grid
+
+        else:
+
+            param_grid = {'fit_intercept': [True, False],
+                        'max_subpopulation': [5000, 10000, 15000, 20000, 25000, 30000, 40000, 50000]
+                        }    
+
+        model_grid = RandomizedSearchCV(estimator=estimator_clone, 
+                                        param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
+                                        cv=cv, random_state=seed, n_jobs=n_jobs_param)
+
+        model_grid.fit(X_train,y_train)
+        model = model_grid.best_estimator_
+        best_model = model_grid.best_estimator_
+        best_model_param = model_grid.best_params_    
+
+    elif estimator == 'huber':
+
+        from sklearn.linear_model import HuberRegressor
+
+        if custom_grid is not None:
+            param_grid = custom_grid
+
+        else:
+            param_grid = {'epsilon': [1.1, 1.2, 1.3, 1.35, 1.4, 1.5, 1.55, 1.6, 1.7, 1.8, 1.9],
+                        'alpha': np.arange(0,1,0.0001), #[0.00001, 0.0001, 0.0003, 0.005, 0.05, 0.1, 0.0005, 0.15],
+                        'fit_intercept' : [True, False]
+                        }    
+
+        model_grid = RandomizedSearchCV(estimator=estimator_clone, 
+                                        param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
+                                        cv=cv, random_state=seed, n_jobs=n_jobs_param)
+
+        model_grid.fit(X_train,y_train)
+        model = model_grid.best_estimator_
+        best_model = model_grid.best_estimator_
+        best_model_param = model_grid.best_params_        
+
+    elif estimator == 'kr':
+
+        from sklearn.kernel_ridge import KernelRidge
+
+        if custom_grid is not None:
+            param_grid = custom_grid
+
+        else:
+            param_grid = {'alpha': np.arange(0,1,0.01) }    
+
+        model_grid = RandomizedSearchCV(estimator=estimator_clone, 
+                                        param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
+                                        cv=cv, random_state=seed, n_jobs=n_jobs_param)
+
+        model_grid.fit(X_train,y_train)
+        model = model_grid.best_estimator_
+        best_model = model_grid.best_estimator_
+        best_model_param = model_grid.best_params_       
+
+    elif estimator == 'svm':
+
+        from sklearn.svm import SVR
+        
+        if custom_grid is not None:
+            param_grid = custom_grid
+
+        else:
+
+            param_grid = {'C' : np.arange(0, 10, 0.001), 
+                        'epsilon' : [1.1, 1.2, 1.3, 1.35, 1.4, 1.5, 1.55, 1.6, 1.7, 1.8, 1.9],
+                        'shrinking': [True, False]
+                        }    
+
+        model_grid = RandomizedSearchCV(estimator=estimator_clone, 
+                                        param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
+                                        cv=cv, random_state=seed, n_jobs=n_jobs_param)
+
+        model_grid.fit(X_train,y_train)
+        model = model_grid.best_estimator_
+        best_model = model_grid.best_estimator_
+        best_model_param = model_grid.best_params_     
+
+    elif estimator == 'knn':
+
+        from sklearn.neighbors import KNeighborsRegressor
+
+        if custom_grid is not None:
+            param_grid = custom_grid
+
+        else:
+            param_grid = {'n_neighbors': range(1,51),
+                        'weights' :  ['uniform', 'distance'],
+                        'algorithm': ['ball_tree', 'kd_tree', 'brute'],
+                        'leaf_size': [10,20,30,40,50,60,70,80,90]
+                        } 
+
+        model_grid = RandomizedSearchCV(estimator=estimator_clone, 
+                                        param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
+                                        cv=cv, random_state=seed, n_jobs=n_jobs_param)
+
+        model_grid.fit(X_train,y_train)
+        model = model_grid.best_estimator_
+        best_model = model_grid.best_estimator_
+        best_model_param = model_grid.best_params_         
+
+    elif estimator == 'dt':
+
+        from sklearn.tree import DecisionTreeRegressor
+
+        if custom_grid is not None:
+            param_grid = custom_grid
+
+        else:
+
+            param_grid = {"max_depth": np.random.randint(1, (len(X_train.columns)*.85),20),
+                        "max_features": np.random.randint(1, len(X_train.columns),20),
+                        "min_samples_leaf": [2,3,4,5,6],
+                        "criterion": ["mse", "mae", "friedman_mse"],
+                        } 
+
+        model_grid = RandomizedSearchCV(estimator=estimator_clone, 
+                                        param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
+                                        cv=cv, random_state=seed, n_jobs=n_jobs_param)
+
+        model_grid.fit(X_train,y_train)
+        model = model_grid.best_estimator_
+        best_model = model_grid.best_estimator_
+        best_model_param = model_grid.best_params_         
+
+    elif estimator == 'rf':
+
+        from sklearn.ensemble import RandomForestRegressor
+
+        if custom_grid is not None:
+            param_grid = custom_grid
+
+        else:
+            param_grid = {'n_estimators': np.arange(10,300,10),
+                        'criterion': ['mse', 'mae'],
+                        'max_depth': [int(x) for x in np.linspace(10, 110, num = 11)],
+                        'min_samples_split': [2, 5, 7, 9, 10],
+                        'min_samples_leaf' : [1, 2, 4, 7, 9],
+                        'max_features' : ['auto', 'sqrt', 'log2'],
+                        'bootstrap': [True, False]
+                        }
+
+        model_grid = RandomizedSearchCV(estimator=estimator_clone, 
+                                        param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
+                                        cv=cv, random_state=seed, n_jobs=n_jobs_param)
+
+        model_grid.fit(X_train,y_train)
+        model = model_grid.best_estimator_
+        best_model = model_grid.best_estimator_
+        best_model_param = model_grid.best_params_       
+
+
+    elif estimator == 'et':
+
+        from sklearn.ensemble import ExtraTreesRegressor
+
+        if custom_grid is not None:
+            param_grid = custom_grid
+
+        else:
+            param_grid = {'n_estimators': np.arange(10,300,10),
+                        'criterion': ['mse', 'mae'],
+                        'max_depth': [int(x) for x in np.linspace(10, 110, num = 11)],
+                        'min_samples_split': [2, 5, 7, 9, 10],
+                        'min_samples_leaf' : [1, 2, 4, 5, 7, 9],
+                        'max_features' : ['auto', 'sqrt', 'log2'],
+                        'bootstrap': [True, False]
+                        }  
+
+        model_grid = RandomizedSearchCV(estimator=estimator_clone, 
+                                        param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
+                                        cv=cv, random_state=seed, n_jobs=n_jobs_param)
+
+        model_grid.fit(X_train,y_train)
+        model = model_grid.best_estimator_
+        best_model = model_grid.best_estimator_
+        best_model_param = model_grid.best_params_       
+
+    elif estimator == 'ada':
+
+        from sklearn.ensemble import AdaBoostRegressor
+
+        if custom_grid is not None:
+            param_grid = custom_grid
+
+        else:
+            param_grid = {'n_estimators': np.arange(10,200,5),
+                        'learning_rate': np.arange(0.1,1,0.01),
+                        'loss' : ["linear", "square", "exponential"]
+                        }    
+
+        model_grid = RandomizedSearchCV(estimator=estimator_clone, 
+                                        param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
+                                        cv=cv, random_state=seed, n_jobs=n_jobs_param)
+
+        model_grid.fit(X_train,y_train)
+        model = model_grid.best_estimator_
+        best_model = model_grid.best_estimator_
+        best_model_param = model_grid.best_params_ 
+
+    elif estimator == 'gbr':
+
+        from sklearn.ensemble import GradientBoostingRegressor
+
+        if custom_grid is not None:
+            param_grid = custom_grid
+
+        else:
+            param_grid = {'loss': ['ls', 'lad', 'huber', 'quantile'],
+                        'n_estimators': np.arange(10,200,5),
+                        'learning_rate': np.arange(0,1,0.01),
+                        'subsample' : [0.1,0.3,0.5,0.7,0.9,1],
+                        'criterion' : ['friedman_mse', 'mse', 'mae'],
+                        'min_samples_split' : [2,4,5,7,9,10],
+                        'min_samples_leaf' : [1,2,3,4,5,7],
+                        'max_depth': [int(x) for x in np.linspace(10, 110, num = 11)],
+                        'max_features' : ['auto', 'sqrt', 'log2']
+                        }     
+
+        model_grid = RandomizedSearchCV(estimator=estimator_clone, 
+                                        param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
+                                        cv=cv, random_state=seed, n_jobs=n_jobs_param)
+
+        model_grid.fit(X_train,y_train)
+        model = model_grid.best_estimator_
+        best_model = model_grid.best_estimator_
+        best_model_param = model_grid.best_params_         
+
+    elif estimator == 'mlp':
+
+        from sklearn.neural_network import MLPRegressor
+        
+        if custom_grid is not None:
+            param_grid = custom_grid
+
+        else:
+            param_grid = {'learning_rate': ['constant', 'invscaling', 'adaptive'],
+                        'solver' : ['lbfgs', 'adam'],
+                        'alpha': np.arange(0, 1, 0.0001), 
+                        'hidden_layer_sizes': [(50,50,50), (50,100,50), (100,), (100,50,100), (100,100,100)],
+                        'activation': ["tanh", "identity", "logistic","relu"]
+                        }    
+
+        model_grid = RandomizedSearchCV(estimator=estimator_clone, 
+                                        param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
+                                        cv=cv, random_state=seed, n_jobs=n_jobs_param)    
+
+        model_grid.fit(X_train,y_train)
+        model = model_grid.best_estimator_
+        best_model = model_grid.best_estimator_
+        best_model_param = model_grid.best_params_   
+        
+        
+    elif estimator == 'xgboost':
+        
+        from xgboost import XGBRegressor
+
+        if custom_grid is not None:
+            param_grid = custom_grid
+
+        else:
+            param_grid = {'learning_rate': [0.01, 0.02, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1], 
+                        'n_estimators':[10, 30, 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000], 
+                        'subsample': [0.1, 0.2, 0.3, 0.5, 0.7, 0.9, 1],
+                        'max_depth': [int(x) for x in np.linspace(10, 110, num = 11)], 
+                        'colsample_bytree': [0.5, 0.7, 0.9, 1],
+                        'min_child_weight': [1, 2, 3, 4]
+                        }
+
+        model_grid = RandomizedSearchCV(estimator=estimator_clone, 
+                                        param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
+                                        cv=cv, random_state=seed, n_jobs=n_jobs_param)
+
+        model_grid.fit(X_train,y_train)
+        model = model_grid.best_estimator_
+        best_model = model_grid.best_estimator_
+        best_model_param = model_grid.best_params_   
+        
+        
+    elif estimator == 'lightgbm':
+        
+        import lightgbm as lgb
+
+        if custom_grid is not None:
+            param_grid = custom_grid
+
+        else:
+            param_grid = {'num_leaves': [10,20,30,40,50,60,70,80,90,100,150,200],
+                        'max_depth': [int(x) for x in np.linspace(10, 110, num = 11)],
+                        'learning_rate': [0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1],
+                        'n_estimators': [10, 30, 50, 70, 90, 100, 120, 150, 170, 200], 
+                        'min_split_gain' : [0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],
+                        'reg_alpha': [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9],
+                        'reg_lambda': [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
+                        }
+            
+        model_grid = RandomizedSearchCV(estimator=estimator_clone, 
+                                        param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
+                                        cv=cv, random_state=seed, n_jobs=n_jobs_param)
+
+        model_grid.fit(X_train,y_train)
+        model = model_grid.best_estimator_
+        best_model = model_grid.best_estimator_
+        best_model_param = model_grid.best_params_   
+
+    elif estimator == 'catboost':
+        
+        from catboost import CatBoostRegressor
+
+        if custom_grid is not None:
+            param_grid = custom_grid
+
+        else:
+            param_grid = {'depth':[3,1,2,6,4,5,7,8,9,10],
+                        'iterations':[250,100,500,1000], 
+                        'learning_rate':[0.03,0.001,0.01,0.1,0.2,0.3], 
+                        'l2_leaf_reg':[3,1,5,10,100], 
+                        'border_count':[32,5,10,20,50,100,200], 
+                        }
+            
+        model_grid = RandomizedSearchCV(estimator=estimator_clone, 
+                                        param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
+                                        cv=cv, random_state=seed, n_jobs=n_jobs_param)
+
+        model_grid.fit(X_train,y_train)
+        model = model_grid.best_estimator_
+        best_model = model_grid.best_estimator_
+        best_model_param = model_grid.best_params_ 
+    
+    elif estimator == 'Bagging':
+        
+        from sklearn.ensemble import BaggingRegressor
+
+        if custom_grid is not None:
+            param_grid = custom_grid
+
+        else:
+            param_grid = {'n_estimators': np.arange(10,300,10),
+                        'bootstrap': [True, False],
+                        'bootstrap_features': [True, False],
+                        }
+            
+        model_grid = RandomizedSearchCV(estimator=estimator_clone, 
+                                        param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
+                                        cv=cv, random_state=seed, n_jobs=n_jobs_param)
+
+        model_grid.fit(X_train,y_train)
+        model = model_grid.best_estimator_
+        best_model = model_grid.best_estimator_
+        best_model_param = model_grid.best_params_ 
+
+
+    progress.value += 1
+    progress.value += 1
+
+    logger.info("Random search completed") 
+    
+    '''
+    MONITOR UPDATE STARTS
+    '''
+    
+    monitor.iloc[1,1:] = 'Initializing CV'
+    if verbose:
+        if html_param:
+            update_display(monitor, display_id = 'monitor')
+    
+    '''
+    MONITOR UPDATE ENDS
+    '''
+    
+    fold_num = 1
+    
+    for train_i , test_i in kf.split(data_X,data_y):
+        
+        logger.info("Initializing Fold " + str(fold_num))
+
+        t0 = time.time()
+        
+        
+        '''
+        MONITOR UPDATE STARTS
+        '''
+    
+        monitor.iloc[1,1:] = 'Fitting Fold ' + str(fold_num) + ' of ' + str(fold)
+        if verbose:
+            if html_param:
+                update_display(monitor, display_id = 'monitor')
+
+        '''
+        MONITOR UPDATE ENDS
+        '''
+        
+        Xtrain,Xtest = data_X.iloc[train_i], data_X.iloc[test_i]
+        ytrain,ytest = data_y.iloc[train_i], data_y.iloc[test_i]  
+        time_start=time.time()
+        logger.info("Fitting Model")
+        model.fit(Xtrain,ytrain)
+        logger.info("Evaluating Metrics")
+        pred_ = model.predict(Xtest)
+        
+        try:
+            pred_ = target_inverse_transformer.inverse_transform(np.array(pred_).reshape(-1,1))
+            ytest = target_inverse_transformer.inverse_transform(np.array(ytest).reshape(-1,1))
+            pred_ = np.nan_to_num(pred_)
+            ytest = np.nan_to_num(ytest)
+            
+        except:
+            pass
+
+        logger.info("Compiling Metrics")
+        time_end=time.time()
+        mae = metrics.mean_absolute_error(ytest,pred_)
+        mse = metrics.mean_squared_error(ytest,pred_)
+        rmse = np.sqrt(mse)
+        r2 = metrics.r2_score(ytest,pred_)
+        rmsle = np.sqrt(np.mean(np.power(np.log(np.array(abs(pred_))+1) - np.log(np.array(abs(ytest))+1), 2)))
+        mape = calculate_mape(ytest,pred_)
+        training_time=time_end-time_start
+        score_mae = np.append(score_mae,mae)
+        score_mse = np.append(score_mse,mse)
+        score_rmse = np.append(score_rmse,rmse)
+        score_rmsle = np.append(score_rmsle,rmsle)
+        score_r2 =np.append(score_r2,r2)
+        score_mape = np.append(score_mape,mape)
+        score_training_time=np.append(score_training_time,training_time)
+        progress.value += 1
+            
+            
+        '''
+        
+        This section is created to update_display() as code loops through the fold defined.
+        
+        '''
+        
+        fold_results = pd.DataFrame({'MAE':[mae], 'MSE': [mse], 'RMSE': [rmse], 
+                                     'R2': [r2], 'RMSLE': [rmsle], 'MAPE': [mape]}).round(round)
+        master_display = pd.concat([master_display, fold_results],ignore_index=True)
+        fold_results = []
+        
+        '''
+        
+        TIME CALCULATION SUB-SECTION STARTS HERE
+        
+        '''
+        
+        t1 = time.time()
+        
+        tt = (t1 - t0) * (fold-fold_num) / 60
+        tt = np.around(tt, 2)
+        
+        if tt < 1:
+            tt = str(np.around((tt * 60), 2))
+            ETC = tt + ' Seconds Remaining'
+                
+        else:
+            tt = str (tt)
+            ETC = tt + ' Minutes Remaining'
+            
+        if verbose:
+            if html_param:
+                update_display(ETC, display_id = 'ETC')
+            
+        fold_num += 1
+        
+        '''
+        MONITOR UPDATE STARTS
+        '''
+
+        monitor.iloc[2,1:] = ETC
+        if verbose:
+            if html_param:
+                update_display(monitor, display_id = 'monitor')
+
+        '''
+        MONITOR UPDATE ENDS
+        '''
+       
+        '''
+        
+        TIME CALCULATION ENDS HERE
+        
+        '''
+        
+        if verbose:
+            if html_param:
+                update_display(master_display, display_id = display_id)
+        
+        '''
+        
+        Update_display() ends here
+        
+        '''
+        
+    progress.value += 1
+    
+    logger.info("Calculating mean and std")
+    mean_mae=np.mean(score_mae)
+    mean_mse=np.mean(score_mse)
+    mean_rmse=np.mean(score_rmse)
+    mean_rmsle=np.mean(score_rmsle)
+    mean_r2=np.mean(score_r2)
+    mean_mape=np.mean(score_mape)
+    mean_training_time=np.mean(score_training_time)
+    std_mae=np.std(score_mae)
+    std_mse=np.std(score_mse)
+    std_rmse=np.std(score_rmse)
+    std_rmsle=np.std(score_rmsle)
+    std_r2=np.std(score_r2)
+    std_mape=np.std(score_mape)
+    std_training_time=np.std(score_training_time)
+    
+    avgs_mae = np.append(avgs_mae, mean_mae)
+    avgs_mae = np.append(avgs_mae, std_mae) 
+    avgs_mse = np.append(avgs_mse, mean_mse)
+    avgs_mse = np.append(avgs_mse, std_mse)
+    avgs_rmse = np.append(avgs_rmse, mean_rmse)
+    avgs_rmse = np.append(avgs_rmse, std_rmse)
+    avgs_rmsle = np.append(avgs_rmsle, mean_rmsle)
+    avgs_rmsle = np.append(avgs_rmsle, std_rmsle)
+    avgs_r2 = np.append(avgs_r2, mean_r2)
+    avgs_r2 = np.append(avgs_r2, std_r2)
+    avgs_mape = np.append(avgs_mape, mean_mape)
+    avgs_mape = np.append(avgs_mape, std_mape)
+    avgs_training_time=np.append(avgs_training_time, mean_training_time)
+    avgs_training_time=np.append(avgs_training_time, std_training_time)
+    
+
+    progress.value += 1
+    
+    logger.info("Creating metrics dataframe")
+    model_results = pd.DataFrame({'MAE': score_mae, 'MSE': score_mse, 'RMSE' : score_rmse, 'R2' : score_r2,
+                                  'RMSLE' : score_rmsle, 'MAPE' : score_mape})
+    model_avgs = pd.DataFrame({'MAE': avgs_mae, 'MSE': avgs_mse, 'RMSE' : avgs_rmse, 'R2' : avgs_r2,
+                                'RMSLE' : avgs_rmsle, 'MAPE' : avgs_mape},index=['Mean', 'SD'])
+
+    model_results = model_results.append(model_avgs)
+    model_results = model_results.round(round)
+    
+    # yellow the mean
+    model_results=model_results.style.apply(lambda x: ['background: yellow' if (x.name == 'Mean') else '' for i in x], axis=1)
+    model_results = model_results.set_precision(round)
+
+    progress.value += 1
+    
+    #refitting the model on complete X_train, y_train
+    monitor.iloc[1,1:] = 'Finalizing Model'
+    if verbose:
+        if html_param:
+            update_display(monitor, display_id = 'monitor')
+    
+    model_fit_start = time.time()
+    logger.info("Finalizing model")
+    best_model.fit(data_X, data_y)
+    model_fit_end = time.time()
+
+    model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
+    
+    progress.value += 1
+    
+    #storing results in create_model_container
+    logger.info("Uploading results into container")
+    create_model_container.append(model_results.data)
+    display_container.append(model_results.data)
+
+    #storing results in master_model_container
+    logger.info("Uploading model into container")
+    master_model_container.append(best_model)
+
+    '''
+    When choose_better sets to True. optimize metric in scoregrid is
+    compared with base model created using create_model so that tune_model
+    functions return the model with better score only. This will ensure 
+    model performance is atleast equivalent to what is seen is compare_models 
+    '''
+    if choose_better:
+        logger.info("choose_better activated")
+        if verbose:
+            if html_param:
+                monitor.iloc[1,1:] = 'Compiling Final Results'
+                monitor.iloc[2,1:] = 'Almost Finished'
+                update_display(monitor, display_id = 'monitor')
+
+        #creating base model for comparison
+        logger.info("SubProcess create_model() called ==================================")
+        if estimator in ['Bagging', 'ada']:
+            base_model = create_model(estimator=_estimator_, verbose = False, system=False)
+        else:
+            base_model = create_model(estimator=estimator, verbose = False)
+        base_model_results = create_model_container[-1][compare_dimension][-2:][0]
+        tuned_model_results = create_model_container[-2][compare_dimension][-2:][0]
+        logger.info("SubProcess create_model() end ==================================")
+
+        if compare_dimension == 'R2':
+            if tuned_model_results > base_model_results:
+                best_model = best_model
+            else:
+                best_model = base_model
+        else:
+            if tuned_model_results < base_model_results:
+                best_model = best_model
+            else:
+                best_model = base_model
+
+        #re-instate display_constainer state 
+        display_container.pop(-1)
+        logger.info("choose_better completed")
+
+    #end runtime
+    runtime_end = time.time()
+    runtime = np.array(runtime_end - runtime_start).round(2)
+    
+    #mlflow logging
+    if logging_param:
+        
+        logger.info("Creating MLFlow logs")
+
+        #Creating Logs message monitor
+        monitor.iloc[1,1:] = 'Creating Logs'
+        monitor.iloc[2,1:] = 'Almost Finished'    
+        if verbose:
+            if html_param:
+                update_display(monitor, display_id = 'monitor')
+
+        import mlflow
+        from pathlib import Path
+        import os
+        
+        mlflow.set_experiment(exp_name_log)
+        full_name = model_dict_logging.get(mn)
+
+        with mlflow.start_run(run_name=full_name) as run:    
+
+            # Get active run to log as tag
+            RunID = mlflow.active_run().info.run_id
+
+            params = best_model.get_params()
+
+            # Log model parameters
+            params = model.get_params()
+
+            for i in list(params):
+                v = params.get(i)
+                if len(str(v)) > 250:
+                    params.pop(i)
+
+            mlflow.log_params(params)
+
+            mlflow.log_metrics({"MAE": avgs_mae[0], "MSE": avgs_mse[0], "RMSE": avgs_rmse[0], "R2" : avgs_r2[0],
+                                "RMSLE": avgs_rmsle[0], "MAPE": avgs_mape[0]})
+
+            #set tag of compare_models
+            mlflow.set_tag("Source", "tune_model")
+            
+            import secrets
+            URI = secrets.token_hex(nbytes=4)
+            mlflow.set_tag("URI", URI)
+            mlflow.set_tag("USI", USI)
+            mlflow.set_tag("Run Time", runtime)
+            mlflow.set_tag("Run ID", RunID)
+
+            # Log training time in seconds
+            mlflow.log_metric("TT", model_fit_time)
+
+            # Log the CV results as model_results.html artifact
+            model_results.data.to_html('Results.html', col_space=65, justify='left')
+            mlflow.log_artifact('Results.html')
+            os.remove('Results.html')
+
+            # Generate hold-out predictions and save as html
+            holdout = predict_model(best_model, verbose=False)
+            holdout_score = pull()
+            del(holdout)
+            display_container.pop(-1)
+            holdout_score.to_html('Holdout.html', col_space=65, justify='left')
+            mlflow.log_artifact('Holdout.html')
+            os.remove('Holdout.html')
+
+            # Log AUC and Confusion Matrix plot
+            if log_plots_param:
+
+                logger.info("SubProcess plot_model() called ==================================")
+
+                try:
+                    plot_model(model, plot = 'residuals', verbose=False, save=True, system=False)
+                    mlflow.log_artifact('Residuals.png')
+                    os.remove("Residuals.png")
+                except:
+                    pass
+
+                try:
+                    plot_model(model, plot = 'error', verbose=False, save=True, system=False)
+                    mlflow.log_artifact('Prediction Error.png')
+                    os.remove("Prediction Error.png")
+                except:
+                    pass
+
+                try:
+                    plot_model(model, plot = 'feature', verbose=False, save=True, system=False)
+                    mlflow.log_artifact('Feature Importance.png')
+                    os.remove("Feature Importance.png")
+                except:
+                    pass
+
+                logger.info("SubProcess plot_model() end ==================================")
+
+            # Log hyperparameter tuning grid
+            d1 = model_grid.cv_results_.get('params')
+            dd = pd.DataFrame.from_dict(d1)
+            dd['Score'] = model_grid.cv_results_.get('mean_test_score')
+            dd.to_html('Iterations.html', col_space=75, justify='left')
+            mlflow.log_artifact('Iterations.html')
+            os.remove('Iterations.html')
+    
+            # Log model and transformation pipeline
+            from copy import deepcopy
+
+            # get default conda env
+            from mlflow.sklearn import get_default_conda_env
+            default_conda_env = get_default_conda_env()
+            default_conda_env['name'] = str(exp_name_log) + '-env'
+            default_conda_env.get('dependencies').pop(-3)
+            dependencies = default_conda_env.get('dependencies')[-1]
+            from pycaret.utils import __version__
+            dep = 'pycaret==' + str(__version__())
+            dependencies['pip'] = [dep]
+            
+            # define model signature
+            from mlflow.models.signature import infer_signature
+            signature = infer_signature(data_before_preprocess.drop([target_param], axis=1))
+            input_example = data_before_preprocess.drop([target_param], axis=1).iloc[0].to_dict()
+
+            # log model as sklearn flavor
+            prep_pipe_temp = deepcopy(prep_pipe)
+            prep_pipe_temp.steps.append(['trained model', model])
+            mlflow.sklearn.log_model(prep_pipe_temp, "model", conda_env = default_conda_env, signature = signature, input_example = input_example)
+            del(prep_pipe_temp)
+
+    if verbose:
+        clear_output()
+        if html_param:
+            display(model_results)
+        else:
+            print(model_results.data)
+    else:
+        clear_output()
+    
+    logger.info("create_model_container: " + str(len(create_model_container)))
+    logger.info("master_model_container: " + str(len(master_model_container)))
+    logger.info("display_container: " + str(len(display_container)))
+
+    logger.info(str(best_model))
+    logger.info("tune_model() succesfully completed......................................")
+
+    return best_model
+
 def ensemble_model(estimator,
                    method = 'Bagging', 
                    fold = 10,
@@ -3329,909 +5656,6 @@ def ensemble_model(estimator,
 
     return model
 
-def compare_models(blacklist = None,
-                   whitelist = None, #added in pycaret==2.0.0
-                   fold = 10, 
-                   round = 4, 
-                   sort = 'R2',
-                   n_select = 1, #added in pycaret==2.0.0
-                   turbo = True,
-                   verbose = True): #added in pycaret==2.0.0
-    
-    """
-    This function train all the models available in the model library and scores them 
-    using Kfold Cross Validation. The output prints a score grid with MAE, MSE 
-    RMSE, R2, RMSLE and MAPE (averaged accross folds), determined by fold parameter.
-    
-    This function returns the best model based on metric defined in sort parameter. 
-    
-    To select top N models, use n_select parameter that is set to 1 by default.
-    Where n_select parameter > 1, it will return a list of trained model objects.
-
-    When turbo is set to True ('kr', 'ard' and 'mlp') are excluded due to longer
-    training times. By default turbo param is set to True.
-
-    Example
-    --------
-    >>> from pycaret.datasets import get_data
-    >>> boston = get_data('boston')
-    >>> experiment_name = setup(data = boston,  target = 'medv')
-    >>> best_model = compare_models() 
-
-    This will return the averaged score grid of all models except 'kr', 'ard' 
-    and 'mlp'. When turbo param is set to False, all models including 'kr',
-    'ard' and 'mlp' are used, but this may result in longer training times.
-    
-    >>> best_model = compare_models(blacklist = ['knn','gbr'], turbo = False) 
-
-    This will return a comparison of all models except K Nearest Neighbour and
-    Gradient Boosting Regressor.
-    
-    >>> best_model = compare_models(blacklist = ['knn','gbr'] , turbo = True) 
-
-    This will return a comparison of all models except K Nearest Neighbour, 
-    Gradient Boosting Regressor, Kernel Ridge Regressor, Automatic Relevance
-    Determinant and Multi Level Perceptron.
-        
-    Parameters
-    ----------
-    blacklist: list of strings, default = None
-        In order to omit certain models from the comparison model ID's can be passed as 
-        a list of strings in blacklist param. 
-
-    whitelist: list of strings, default = None
-        In order to run only certain models for the comparison, the model ID's can be 
-        passed as a list of strings in whitelist param. 
-
-    fold: integer, default = 10
-        Number of folds to be used in Kfold CV. Must be at least 2. 
-
-    round: integer, default = 4
-        Number of decimal places the metrics in the score grid will be rounded to.
-  
-    sort: string, default = 'MAE'
-        The scoring measure specified is used for sorting the average score grid
-        Other options are 'MAE', 'MSE', 'RMSE', 'R2', 'RMSLE' and 'MAPE'.
-
-    n_select: int, default = 1
-        Number of top_n models to return. use negative argument for bottom selection.
-        for example, n_select = -3 means bottom 3 models.
-
-    turbo: Boolean, default = True
-        When turbo is set to True, it blacklists estimators that have longer
-        training times.
-
-    verbose: Boolean, default = True
-        Score grid is not printed when verbose is set to False.
-    
-    Returns
-    -------
-    score_grid
-        A table containing the scores of the model across the kfolds. 
-        Scoring metrics used are MAE, MSE, RMSE, R2, RMSLE and MAPE
-        Mean and standard deviation of the scores across the folds is
-        also returned.
-
-    Warnings
-    --------
-    - compare_models() though attractive, might be time consuming with large 
-      datasets. By default turbo is set to True, which blacklists models that
-      have longer training times. Changing turbo parameter to False may result 
-      in very high training times with datasets where number of samples exceed 
-      10,000.
-             
-    
-    """
-    
-    '''
-    
-    ERROR HANDLING STARTS HERE
-    
-    '''
-    
-    import logging
-
-    try:
-        hasattr(logger, 'name')
-    except:
-        logger = logging.getLogger('logs')
-        logger.setLevel(logging.DEBUG)
-        
-        # create console handler and set level to debug
-        if logger.hasHandlers():
-            logger.handlers.clear()
-        
-        ch = logging.FileHandler('logs.log')
-        ch.setLevel(logging.DEBUG)
-
-        # create formatter
-        formatter = logging.Formatter('%(asctime)s:%(levelname)s:%(message)s')
-
-        # add formatter to ch
-        ch.setFormatter(formatter)
-
-        # add ch to logger
-        logger.addHandler(ch)
-
-    logger.info("Initializing compare_models()")
-    logger.info("""compare_models(blacklist={}, whitelist={}, fold={}, round={}, sort={}, n_select={}, turbo={}, verbose={})""".\
-        format(str(blacklist), str(whitelist), str(fold), str(round), str(sort), str(n_select), str(turbo), str(verbose)))
-
-    logger.info("Checking exceptions")
-
-    #exception checking   
-    import sys
-    
-    #checking error for blacklist (string)
-    available_estimators = ['lr', 'lasso', 'ridge', 'en', 'lar', 'llar', 'omp', 'br', 'ard', 'par', 
-                            'ransac', 'tr', 'huber', 'kr', 'svm', 'knn', 'dt', 'rf', 'et', 'ada', 'gbr', 
-                            'mlp', 'xgboost', 'lightgbm', 'catboost']
-
-    if blacklist != None:
-        for i in blacklist:
-            if i not in available_estimators:
-                sys.exit('(Value Error): Estimator Not Available. Please see docstring for list of available estimators.')
-
-    if whitelist != None:   
-        for i in whitelist:
-            if i not in available_estimators:
-                sys.exit('(Value Error): Estimator Not Available. Please see docstring for list of available estimators.')
-
-    #whitelist and blacklist together check
-    if whitelist is not None:
-        if blacklist is not None:
-            sys.exit('(Type Error): Cannot use blacklist parameter when whitelist is used to compare models.')
-
-    #checking fold parameter
-    if type(fold) is not int:
-        sys.exit('(Type Error): Fold parameter only accepts integer value.')
-    
-    #checking round parameter
-    if type(round) is not int:
-        sys.exit('(Type Error): Round parameter only accepts integer value.')
- 
-    #checking sort parameter
-    allowed_sort = ['MAE', 'MSE', 'RMSE', 'R2', 'RMSLE', 'MAPE']
-    if sort not in allowed_sort:
-        sys.exit('(Value Error): Sort method not supported. See docstring for list of available parameters.')
-    
-    
-    '''
-
-    ERROR HANDLING ENDS HERE
-    
-    '''
-    
-    logger.info("Preloading libraries")
-
-    #pre-load libraries
-    import pandas as pd
-    import time, datetime
-    import ipywidgets as ipw
-    from IPython.display import display, HTML, clear_output, update_display
-    
-    pd.set_option('display.max_columns', 500)
-
-    logger.info("Preparing display monitor")
-
-    #progress bar
-    if blacklist is None:
-        len_of_blacklist = 0
-    else:
-        len_of_blacklist = len(blacklist)
-        
-    if turbo:
-        len_mod = 22 - len_of_blacklist
-    else:
-        len_mod = 25 - len_of_blacklist
-
-    #n_select param
-    if type(n_select) is list:
-        n_select_num = len(n_select)
-    else:
-        n_select_num = abs(n_select)
-
-    if n_select_num > len_mod:
-        n_select_num = len_mod
-
-    if whitelist is not None:
-        wl = len(whitelist)
-        bl = len_of_blacklist
-        len_mod = wl - bl
-
-    if whitelist is not None:
-        opt = 10
-    else:
-        opt = 30
-        
-    #display
-    progress = ipw.IntProgress(value=0, min=0, max=(fold*len_mod)+opt+n_select_num, step=1 , description='Processing: ')
-    master_display = pd.DataFrame(columns=['Model', 'MAE','MSE','RMSE', 'R2', 'RMSLE', 'MAPE', 'TT (Sec)'])
-    
-    #display monitor only when html_param is set to True
-    if verbose:
-        if html_param:
-            display(progress)
-    
-    timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
-    monitor = pd.DataFrame( [ ['Initiated' , '. . . . . . . . . . . . . . . . . .', timestampStr ], 
-                             ['Status' , '. . . . . . . . . . . . . . . . . .' , 'Loading Dependencies' ],
-                             ['Estimator' , '. . . . . . . . . . . . . . . . . .' , 'Compiling Library' ],
-                             ['ETC' , '. . . . . . . . . . . . . . . . . .',  'Calculating ETC'] ],
-                              columns=['', ' ', '   ']).set_index('')
-    
-    #display only when html_param is set to True
-    if verbose:
-        if html_param:
-            display(monitor, display_id = 'monitor')
-            display_ = display(master_display, display_id=True)
-            display_id = display_.display_id
-    
-    
-    #ignore warnings
-    import warnings
-    warnings.filterwarnings('ignore') 
-    
-    #general dependencies
-    import numpy as np
-    import random
-    from sklearn import metrics
-    from sklearn.model_selection import KFold
-    import pandas.io.formats.style
-    
-    logger.info("Copying training dataset")
-    #Storing X_train and y_train in data_X and data_y parameter
-    data_X = X_train.copy()
-    data_y = y_train.copy()
-    
-    #reset index
-    data_X.reset_index(drop=True, inplace=True)
-    data_y.reset_index(drop=True, inplace=True)
-    
-    progress.value += 1
-    
-    logger.info("Importing libraries")
-    #import sklearn dependencies
-    from sklearn.linear_model import LinearRegression
-    from sklearn.linear_model import Ridge
-    from sklearn.linear_model import Lasso
-    from sklearn.linear_model import ElasticNet
-    from sklearn.linear_model import Lars
-    from sklearn.linear_model import LassoLars
-    from sklearn.linear_model import OrthogonalMatchingPursuit
-    from sklearn.linear_model import BayesianRidge
-    from sklearn.linear_model import ARDRegression
-    from sklearn.linear_model import PassiveAggressiveRegressor
-    from sklearn.linear_model import RANSACRegressor
-    from sklearn.linear_model import TheilSenRegressor
-    from sklearn.linear_model import HuberRegressor
-    from sklearn.kernel_ridge import KernelRidge
-    from sklearn.svm import SVR
-    from sklearn.neighbors import KNeighborsRegressor
-    from sklearn.tree import DecisionTreeRegressor
-    from sklearn.ensemble import RandomForestRegressor
-    from sklearn.ensemble import ExtraTreesRegressor
-    from sklearn.ensemble import AdaBoostRegressor
-    from sklearn.ensemble import GradientBoostingRegressor
-    from sklearn.neural_network import MLPRegressor
-    from xgboost import XGBRegressor
-    from catboost import CatBoostRegressor
-    try:
-        import lightgbm as lgb
-    except:
-        pass
-        logger.info("LightGBM import failed")
-   
-    progress.value += 1
-
-    
-    '''
-    MONITOR UPDATE STARTS
-    '''
-    
-    monitor.iloc[1,1:] = 'Loading Estimator'
-    if verbose:
-        if html_param:
-            update_display(monitor, display_id = 'monitor')
-    
-    '''
-    MONITOR UPDATE ENDS
-    '''
-    
-    logger.info("Importing untrained models")
-
-    #creating model object
-    lr = LinearRegression(n_jobs=n_jobs_param)
-    lasso = Lasso(random_state=seed)
-    ridge = Ridge(random_state=seed)
-    en = ElasticNet(random_state=seed)
-    lar = Lars()
-    llar = LassoLars()
-    omp = OrthogonalMatchingPursuit()
-    br = BayesianRidge()
-    ard = ARDRegression()
-    par = PassiveAggressiveRegressor(random_state=seed)
-    ransac = RANSACRegressor(min_samples=0.5, random_state=seed)
-    tr = TheilSenRegressor(random_state=seed, n_jobs=n_jobs_param)
-    huber = HuberRegressor()
-    kr = KernelRidge()
-    svm = SVR()
-    knn = KNeighborsRegressor(n_jobs=n_jobs_param)
-    dt = DecisionTreeRegressor(random_state=seed)
-    rf = RandomForestRegressor(random_state=seed, n_jobs=n_jobs_param)
-    et = ExtraTreesRegressor(random_state=seed, n_jobs=n_jobs_param)
-    ada = AdaBoostRegressor(random_state=seed)
-    gbr = GradientBoostingRegressor(random_state=seed)
-    mlp = MLPRegressor(random_state=seed)
-    xgboost = XGBRegressor(random_state=seed, n_jobs=n_jobs_param, verbosity=0)
-    lightgbm = lgb.LGBMRegressor(random_state=seed, n_jobs=n_jobs_param)
-    catboost = CatBoostRegressor(random_state=seed, silent = True, thread_count=n_jobs_param)
-    
-    logger.info("Import successful")
-
-    progress.value += 1
-    
-    model_dict = {'Linear Regression' : 'lr',
-                   'Lasso Regression' : 'lasso', 
-                   'Ridge Regression' : 'ridge', 
-                   'Elastic Net' : 'en',
-                   'Least Angle Regression' : 'lar', 
-                   'Lasso Least Angle Regression' : 'llar', 
-                   'Orthogonal Matching Pursuit' : 'omp', 
-                   'Bayesian Ridge' : 'br', 
-                   'Automatic Relevance Determination' : 'ard',
-                   'Passive Aggressive Regressor' : 'par', 
-                   'Random Sample Consensus' : 'ransac',
-                   'TheilSen Regressor' : 'tr', 
-                   'Huber Regressor' : 'huber', 
-                   'Kernel Ridge' : 'kr',
-                   'Support Vector Machine' : 'svm', 
-                   'K Neighbors Regressor' : 'knn', 
-                   'Decision Tree' : 'dt', 
-                   'Random Forest' : 'rf', 
-                   'Extra Trees Regressor' : 'et',
-                   'AdaBoost Regressor' : 'ada',
-                   'Gradient Boosting Regressor' : 'gbr', 
-                   'Multi Level Perceptron' : 'mlp',
-                   'Extreme Gradient Boosting' : 'xgboost',
-                   'Light Gradient Boosting Machine' :  'lightgbm',
-                   'CatBoost Regressor' : 'catboost'}
-    
-    model_library = [lr, lasso, ridge, en, lar, llar, omp, br, ard, par, ransac, tr, huber, kr, 
-                     svm, knn, dt, rf, et, ada, gbr, mlp, xgboost, lightgbm, catboost]
-    
-    model_names = ['Linear Regression',
-                   'Lasso Regression',
-                   'Ridge Regression',
-                   'Elastic Net',
-                   'Least Angle Regression',
-                   'Lasso Least Angle Regression',
-                   'Orthogonal Matching Pursuit',
-                   'Bayesian Ridge',
-                   'Automatic Relevance Determination',
-                   'Passive Aggressive Regressor',
-                   'Random Sample Consensus',
-                   'TheilSen Regressor',
-                   'Huber Regressor',
-                   'Kernel Ridge',
-                   'Support Vector Machine',
-                   'K Neighbors Regressor',
-                   'Decision Tree',
-                   'Random Forest',
-                   'Extra Trees Regressor',
-                   'AdaBoost Regressor',
-                   'Gradient Boosting Regressor',
-                   'Multi Level Perceptron',
-                   'Extreme Gradient Boosting',
-                   'Light Gradient Boosting Machine',
-                   'CatBoost Regressor']
-    
-    
-    #checking for blacklist models
-    
-    model_library_str = ['lr', 'lasso', 'ridge', 'en', 'lar', 'llar', 'omp', 'br', 'ard',
-                         'par', 'ransac', 'tr', 'huber', 'kr', 'svm', 'knn', 'dt', 'rf', 
-                         'et', 'ada', 'gbr', 'mlp', 'xgboost', 'lightgbm', 'catboost']
-    
-    model_library_str_ = ['lr', 'lasso', 'ridge', 'en', 'lar', 'llar', 'omp', 'br', 'ard',
-                         'par', 'ransac', 'tr', 'huber', 'kr', 'svm', 'knn', 'dt', 'rf', 
-                         'et', 'ada', 'gbr', 'mlp', 'xgboost', 'lightgbm', 'catboost']
-    
-    if blacklist is not None:
-        
-        if turbo:
-            internal_blacklist = ['kr', 'ard', 'mlp']
-            compiled_blacklist = blacklist + internal_blacklist
-            blacklist = list(set(compiled_blacklist))
-            
-        else:
-            blacklist = blacklist
-        
-        for i in blacklist:
-            model_library_str_.remove(i)
-        
-        si = []
-        
-        for i in model_library_str_:
-            s = model_library_str.index(i)
-            si.append(s)
-        
-        model_library_ = []
-        model_names_= []
-        for i in si:
-            model_library_.append(model_library[i])
-            model_names_.append(model_names[i])
-            
-        model_library = model_library_
-        model_names = model_names_
-        
-        
-    if blacklist is None and turbo is True:
-        
-        model_library = [lr, lasso, ridge, en, lar, llar, omp, br, par, ransac, tr, huber, 
-                         svm, knn, dt, rf, et, ada, gbr, xgboost, lightgbm, catboost]
-    
-        model_names = ['Linear Regression',
-                       'Lasso Regression',
-                       'Ridge Regression',
-                       'Elastic Net',
-                       'Least Angle Regression',
-                       'Lasso Least Angle Regression',
-                       'Orthogonal Matching Pursuit',
-                       'Bayesian Ridge',
-                       'Passive Aggressive Regressor',
-                       'Random Sample Consensus',
-                       'TheilSen Regressor',
-                       'Huber Regressor',
-                       'Support Vector Machine',
-                       'K Neighbors Regressor',
-                       'Decision Tree',
-                       'Random Forest',
-                       'Extra Trees Regressor',
-                       'AdaBoost Regressor',
-                       'Gradient Boosting Regressor',
-                       'Extreme Gradient Boosting',
-                       'Light Gradient Boosting Machine',
-                       'CatBoost Regressor']
-    
-    #checking for whitelist models
-    if whitelist is not None:
-
-        model_library = []
-        model_names = []
-
-        for i in whitelist:
-            if i == 'lr':
-                model_library.append(lr)
-                model_names.append('Linear Regression')
-            elif i == 'lasso':
-                model_library.append(lasso)
-                model_names.append('Lasso Regression')                
-            elif i == 'ridge':
-                model_library.append(ridge)
-                model_names.append('Ridge Regression')   
-            elif i == 'en':
-                model_library.append(en)
-                model_names.append('Elastic Net')   
-            elif i == 'lar':
-                model_library.append(lar)
-                model_names.append('Least Angle Regression')   
-            elif i == 'llar':
-                model_library.append(llar)
-                model_names.append('Lasso Least Angle Regression')
-            elif i == 'omp':
-                model_library.append(omp)
-                model_names.append('Orthogonal Matching Pursuit')   
-            elif i == 'br':
-                model_library.append(br)
-                model_names.append('Bayesian Ridge')
-            elif i == 'ard':
-                model_library.append(ard)
-                model_names.append('Automatic Relevance Determination')  
-            elif i == 'par':
-                model_library.append(par)
-                model_names.append('Passive Aggressive Regressor')
-            elif i == 'ransac':
-                model_library.append(ransac)
-                model_names.append('Random Sample Consensus')   
-            elif i == 'tr':
-                model_library.append(tr)
-                model_names.append('TheilSen Regressor')   
-            elif i == 'huber':
-                model_library.append(huber)
-                model_names.append('Huber Regressor')
-            elif i == 'kr':
-                model_library.append(kr)
-                model_names.append('Kernel Ridge')     
-            elif i == 'svm':
-                model_library.append(svm)
-                model_names.append('Support Vector Machine')   
-            elif i == 'knn':
-                model_library.append(knn)
-                model_names.append('K Neighbors Regressor')   
-            elif i == 'dt':
-                model_library.append(dt)
-                model_names.append('Decision Tree')   
-            elif i == 'rf':
-                model_library.append(rf)
-                model_names.append('Random Forest') 
-            elif i == 'et':
-                model_library.append(et)
-                model_names.append('Extra Trees Regressor') 
-            elif i == 'ada':
-                model_library.append(ada)
-                model_names.append('AdaBoost Regressor')  
-            elif i == 'gbr':
-                model_library.append(gbr)
-                model_names.append('Gradient Boosting Regressor')
-            elif i == 'mlp':
-                model_library.append(mlp)
-                model_names.append('Multi Level Perceptron')     
-            elif i == 'xgboost':
-                model_library.append(xgboost)
-                model_names.append('Extreme Gradient Boosting')   
-            elif i == 'lightgbm':
-                model_library.append(lightgbm)
-                model_names.append('Light Gradient Boosting Machine')   
-            elif i == 'catboost':
-                model_library.append(catboost)
-                model_names.append('CatBoost Regressor')   
-            
-    progress.value += 1
-
-    
-    '''
-    MONITOR UPDATE STARTS
-    '''
-    
-    monitor.iloc[1,1:] = 'Initializing CV'
-    if verbose:
-        if html_param:
-            update_display(monitor, display_id = 'monitor')
-    
-    '''
-    MONITOR UPDATE ENDS
-    '''
-    
-    #cross validation setup starts here
-    logger.info("Defining folds")
-    kf = KFold(fold, random_state=seed, shuffle=folds_shuffle_param)
-
-    logger.info("Declaring metric variables")
-    score_mae =np.empty((0,0))
-    score_mse =np.empty((0,0))
-    score_rmse =np.empty((0,0))
-    score_rmsle =np.empty((0,0))
-    score_r2 =np.empty((0,0))
-    score_mape =np.empty((0,0))
-    score_training_time=np.empty((0,0))
-    avgs_mae =np.empty((0,0))
-    avgs_mse =np.empty((0,0))
-    avgs_rmse =np.empty((0,0))
-    avgs_rmsle =np.empty((0,0))
-    avgs_r2 =np.empty((0,0))
-    avgs_mape =np.empty((0,0))  
-    avgs_training_time=np.empty((0,0))
-    
-    def calculate_mape(actual, prediction):
-        mask = actual != 0
-        return (np.fabs(actual - prediction)/actual)[mask].mean()
-    
-    #create URI (before loop)
-    import secrets
-    URI = secrets.token_hex(nbytes=4)
-
-    name_counter = 0
-
-    model_store = []
-
-    for model in model_library:
-
-        logger.info("Initializing " + str(model_names[name_counter]))
-
-        #run_time
-        runtime_start = time.time()
-
-        progress.value += 1
-        
-        '''
-        MONITOR UPDATE STARTS
-        '''
-        monitor.iloc[2,1:] = model_names[name_counter]
-        monitor.iloc[3,1:] = 'Calculating ETC'
-        if verbose:
-            if html_param:
-                update_display(monitor, display_id = 'monitor')
-
-        '''
-        MONITOR UPDATE ENDS
-        '''
-        
-        fold_num = 1
-
-        model_store_by_fold = []
-        
-        for train_i , test_i in kf.split(data_X,data_y):
-
-            logger.info("Initializing Fold " + str(fold_num))
-        
-            progress.value += 1
-            
-            t0 = time.time()
-            
-            '''
-            MONITOR UPDATE STARTS
-            '''
-                
-            monitor.iloc[1,1:] = 'Fitting Fold ' + str(fold_num) + ' of ' + str(fold)
-            if verbose:
-                if html_param:
-                    update_display(monitor, display_id = 'monitor')
-            
-            '''
-            MONITOR UPDATE ENDS
-            '''            
-     
-            Xtrain,Xtest = data_X.iloc[train_i], data_X.iloc[test_i]
-            ytrain,ytest = data_y.iloc[train_i], data_y.iloc[test_i]
-            time_start=time.time()
-            logger.info("Fitting Model")
-            model_store_by_fold.append(model.fit(Xtrain,ytrain))
-            logger.info("Evaluating Metrics")
-            time_end=time.time()
-            pred_ = model.predict(Xtest)
-            
-            try:
-                pred_ = target_inverse_transformer.inverse_transform(np.array(pred_).reshape(-1,1))
-                ytest = target_inverse_transformer.inverse_transform(np.array(ytest).reshape(-1,1))
-                pred_ = np.nan_to_num(pred_)
-                ytest = np.nan_to_num(ytest)
-
-            except:
-                pass
-                logger.info("No inverse transformer found")
-
-            logger.info("Compiling Metrics")
-            mae = metrics.mean_absolute_error(ytest,pred_)
-            mse = metrics.mean_squared_error(ytest,pred_)
-            rmse = np.sqrt(mse)
-            r2 = metrics.r2_score(ytest,pred_)
-            rmsle = np.sqrt(np.mean(np.power(np.log(np.array(abs(pred_))+1) - np.log(np.array(abs(ytest))+1), 2)))
-            mape = calculate_mape(ytest,pred_)
-            training_time=time_end-time_start
-            score_mae = np.append(score_mae,mae)
-            score_mse = np.append(score_mse,mse)
-            score_rmse = np.append(score_rmse,rmse)
-            score_rmsle = np.append(score_rmsle,rmsle)
-            score_r2 =np.append(score_r2,r2)
-            score_mape = np.append(score_mape,mape)            
-            score_training_time=np.append(score_training_time,training_time)
-                
-                
-            '''
-            TIME CALCULATION SUB-SECTION STARTS HERE
-            '''
-            t1 = time.time()
-        
-            tt = (t1 - t0) * (fold-fold_num) / 60
-            tt = np.around(tt, 2)
-        
-            if tt < 1:
-                tt = str(np.around((tt * 60), 2))
-                ETC = tt + ' Seconds Remaining'
-                
-            else:
-                tt = str (tt)
-                ETC = tt + ' Minutes Remaining'
-            
-            fold_num += 1
-            
-            '''
-            MONITOR UPDATE STARTS
-            '''
-
-            monitor.iloc[3,1:] = ETC
-            if verbose:
-                if html_param:
-                    update_display(monitor, display_id = 'monitor')
-
-            '''
-            MONITOR UPDATE ENDS
-            '''
-
-        model_store.append(model_store_by_fold[0])
-        
-        logger.info("Calculating mean and std")
-        avgs_mae = np.append(avgs_mae,np.mean(score_mae))
-        avgs_mse = np.append(avgs_mse,np.mean(score_mse))
-        avgs_rmse = np.append(avgs_rmse,np.mean(score_rmse))
-        avgs_rmsle = np.append(avgs_rmsle,np.mean(score_rmsle))
-        avgs_r2 = np.append(avgs_r2,np.mean(score_r2))
-        avgs_mape = np.append(avgs_mape,np.mean(score_mape))
-        avgs_training_time = np.append(avgs_training_time,np.mean(score_training_time))
-        
-        logger.info("Creating metrics dataframe")
-        compare_models_ = pd.DataFrame({'Model':model_names[name_counter], 'MAE':avgs_mae, 'MSE':avgs_mse, 
-                           'RMSE':avgs_rmse, 'R2':avgs_r2, 'RMSLE':avgs_rmsle, 'MAPE':avgs_mape, 'TT (Sec)':avgs_training_time})
-        master_display = pd.concat([master_display, compare_models_],ignore_index=True)
-        master_display = master_display.round(round)
-        
-        if sort == 'R2':
-            master_display = master_display.sort_values(by=sort,ascending=False)
-        else:
-            master_display = master_display.sort_values(by=sort,ascending=True)
-
-        master_display.reset_index(drop=True, inplace=True)
-        
-        if verbose:
-            if html_param:
-                update_display(master_display, display_id = display_id)
-        
-
-        #end runtime
-        runtime_end = time.time()
-        runtime = np.array(runtime_end - runtime_start).round(2)
-
-        """
-        MLflow logging starts here
-        """
-
-        if logging_param:
-
-            logger.info("Creating MLFlow logs")
-
-            import mlflow
-            from pathlib import Path
-            import os
-
-            run_name = model_names[name_counter]
-
-            with mlflow.start_run(run_name=run_name) as run:  
-
-                # Get active run to log as tag
-                RunID = mlflow.active_run().info.run_id
-
-                params = model.get_params()
-
-                for i in list(params):
-                    v = params.get(i)
-                    if len(str(v)) > 250:
-                        params.pop(i)
-                        
-                mlflow.log_params(params)
-
-                #set tag of compare_models
-                mlflow.set_tag("Source", "compare_models")
-                mlflow.set_tag("URI", URI)
-                mlflow.set_tag("USI", USI)
-                mlflow.set_tag("Run Time", runtime)
-                mlflow.set_tag("Run ID", RunID)
-
-                #Log top model metrics
-                mlflow.log_metric("MAE", avgs_mae[0])
-                mlflow.log_metric("MSE", avgs_mse[0])
-                mlflow.log_metric("RMSE", avgs_rmse[0])
-                mlflow.log_metric("R2", avgs_r2[0])
-                mlflow.log_metric("RMSLE", avgs_rmsle[0])
-                mlflow.log_metric("MAPE", avgs_mape[0])
-                mlflow.log_metric("TT", avgs_training_time[0])
-
-                # Log model and transformation pipeline
-                from copy import deepcopy
-
-                # get default conda env
-                from mlflow.sklearn import get_default_conda_env
-                default_conda_env = get_default_conda_env()
-                default_conda_env['name'] = str(exp_name_log) + '-env'
-                default_conda_env.get('dependencies').pop(-3)
-                dependencies = default_conda_env.get('dependencies')[-1]
-                from pycaret.utils import __version__
-                dep = 'pycaret==' + str(__version__())
-                dependencies['pip'] = [dep]
-                
-                # define model signature
-                from mlflow.models.signature import infer_signature
-                signature = infer_signature(data_before_preprocess.drop([target_param], axis=1))
-                input_example = data_before_preprocess.drop([target_param], axis=1).iloc[0].to_dict()
-
-                # log model as sklearn flavor
-                prep_pipe_temp = deepcopy(prep_pipe)
-                prep_pipe_temp.steps.append(['trained model', model])
-                mlflow.sklearn.log_model(prep_pipe_temp, "model", conda_env = default_conda_env, signature = signature, input_example = input_example)
-                del(prep_pipe_temp)
-
-        score_mae =np.empty((0,0))
-        score_mse =np.empty((0,0))
-        score_rmse =np.empty((0,0))
-        score_rmsle =np.empty((0,0))
-        score_r2 =np.empty((0,0))
-        score_mape =np.empty((0,0))
-        score_training_time=np.empty((0,0))
-        avgs_mae = np.empty((0,0))
-        avgs_mse = np.empty((0,0))
-        avgs_rmse = np.empty((0,0))
-        avgs_rmsle = np.empty((0,0))
-        avgs_r2 = np.empty((0,0))
-        avgs_mape = np.empty((0,0))
-        avgs_training_time=np.empty((0,0))
-        name_counter += 1
-  
-    progress.value += 1
-    
-    def highlight_min(s):
-        if s.name=='R2':# min
-            to_highlight = s == s.max()
-        else:
-            to_highlight = s == s.min()
-
-        return ['background-color: yellow' if v else '' for v in to_highlight]
-
-    def highlight_cols(s):
-        color = 'lightgrey'
-        return 'background-color: %s' % color
-
-    compare_models_ = master_display.style.apply(highlight_min,subset=['MAE','MSE','RMSE','R2','RMSLE','MAPE'])\
-                                            .applymap(highlight_cols, subset = ['TT (Sec)'])
-    compare_models_ = compare_models_.set_precision(round)
-    compare_models_ = compare_models_.set_properties(**{'text-align': 'left'})
-    compare_models_ = compare_models_.set_table_styles([dict(selector='th', props=[('text-align', 'left')])])
-
-    progress.value += 1
-
-    monitor.iloc[1,1:] = 'Compiling Final Model'
-    monitor.iloc[3,1:] = 'Almost Finished'
-    
-    if verbose:
-        if html_param:
-            update_display(monitor, display_id = 'monitor')
-
-    sorted_model_names = list(compare_models_.data['Model'])
-    if n_select < 0:
-        sorted_model_names = sorted_model_names[n_select:]
-    else:
-        sorted_model_names = sorted_model_names[:n_select]
-    
-    model_store_final = []
-
-    logger.info("Finalizing top_n models")
-
-    logger.info("SubProcess create_model() called ==================================")
-    for i in sorted_model_names:
-        monitor.iloc[2,1:] = i
-        if verbose:
-            if html_param:
-                update_display(monitor, display_id = 'monitor')
-        progress.value += 1
-        k = model_dict.get(i)
-        m = create_model(estimator=k, verbose = False, system=False, cross_validation=True)
-        model_store_final.append(m)
-    logger.info("SubProcess create_model() end ==================================")
-
-    if len(model_store_final) == 1:
-        model_store_final = model_store_final[0]
-
-    clear_output()
-
-    if verbose:
-        if html_param:
-            display(compare_models_)
-        else:
-            print(compare_models_.data)
-    
-    pd.reset_option("display.max_columns")
-    
-    #store in display container
-    display_container.append(compare_models_.data)
-
-    logger.info("create_model_container: " + str(len(create_model_container)))
-    logger.info("master_model_container: " + str(len(master_model_container)))
-    logger.info("display_container: " + str(len(display_container)))
-
-    logger.info(str(model_store_final))
-    logger.info("compare_models() succesfully completed......................................")
-
-    return model_store_final
-
 def blend_models(estimator_list = 'All', 
                  fold = 10, 
                  round = 4, 
@@ -4292,7 +5716,7 @@ def blend_models(estimator_list = 'All',
         optimize parameter are 'MAE', 'MSE', 'RMSE', 'R2', 'RMSLE', 'MAPE'.
 
     turbo: Boolean, default = True
-        When turbo is set to True, it blacklists estimator that uses Radial Kernel.
+        When turbo is set to True, it excludes estimator that uses Radial Kernel.
 
     verbose: Boolean, default = True
         Score grid is not printed when verbose is set to False.
@@ -5022,1381 +6446,6 @@ def blend_models(estimator_list = 'All',
 
     return model
 
-def tune_model(estimator, 
-               fold = 10, 
-               round = 4, 
-               n_iter = 10,
-               custom_grid = None, #added in pycaret==2.0.0 
-               optimize = 'R2',
-               choose_better = False, #added in pycaret==2.0.0
-               verbose = True):
-    
-      
-    """
-    This function tunes the hyperparameters of a model and scores it using Kfold 
-    Cross Validation. The output prints the score grid that shows MAE, MSE, RMSE, 
-    R2, RMSLE and MAPE by fold (by default = 10 Folds).
-
-    This function returns a trained model object.  
-
-    tune_model() only accepts a string parameter for estimator.
-
-    Example
-    -------
-    >>> from pycaret.datasets import get_data
-    >>> boston = get_data('boston')
-    >>> experiment_name = setup(data = boston,  target = 'medv')
-    >>> xgboost = create_model('xgboost')
-    >>> tuned_xgboost = tune_model(xgboost) 
-
-    This will tune the hyperparameters of Extreme Gradient Boosting Regressor.
-
-    Parameters
-    ----------
-    estimator : object, default = None
-
-    fold: integer, default = 10
-        Number of folds to be used in Kfold CV. Must be at least 2. 
-
-    round: integer, default = 4
-        Number of decimal places the metrics in the score grid will be rounded to. 
-
-    n_iter: integer, default = 10
-        Number of iterations within the Random Grid Search. For every iteration, 
-        the model randomly selects one value from the pre-defined grid of hyperparameters.
-
-    custom_grid: dictionary, default = None
-        To use custom hyperparameters for tuning pass a dictionary with parameter name
-        and values to be iterated. When set to None it uses pre-defined tuning grid.  
-
-    optimize: string, default = 'R2'
-        Measure used to select the best model through hyperparameter tuning.
-        The default scoring measure is 'R2'. Other measures include 'MAE', 'MSE', 'RMSE',
-        'RMSLE', 'MAPE'. When using 'RMSE' or 'RMSLE' the base scorer is 'MSE' and when using
-        'MAPE' the base scorer is 'MAE'.
-
-    choose_better: Boolean, default = False
-        When set to set to True, base estimator is returned when the metric doesn't improve 
-        by tune_model. This gurantees the returned object would perform atleast equivalent 
-        to base estimator created using create_model or model returned by compare_models.
-
-    verbose: Boolean, default = True
-        Score grid is not printed when verbose is set to False.
-
-    Returns
-    -------
-    score_grid
-        A table containing the scores of the model across the kfolds. 
-        Scoring metrics used are MAE, MSE, RMSE, R2, RMSLE and MAPE.
-        Mean and standard deviation of the scores across the folds are 
-        also returned.
-
-    model
-        trained model object
-
-    Warnings
-    --------
-    - estimator parameter takes an abbreviated string. Passing a trained model object
-      returns an error. The tune_model() function internally calls create_model() 
-      before tuning the hyperparameters.
-        
-         
-  """
- 
-
-
-    '''
-    
-    ERROR HANDLING STARTS HERE
-    
-    '''
-    
-    import logging
-
-    try:
-        hasattr(logger, 'name')
-    except:
-        logger = logging.getLogger('logs')
-        logger.setLevel(logging.DEBUG)
-        
-        # create console handler and set level to debug
-        if logger.hasHandlers():
-            logger.handlers.clear()
-        
-        ch = logging.FileHandler('logs.log')
-        ch.setLevel(logging.DEBUG)
-
-        # create formatter
-        formatter = logging.Formatter('%(asctime)s:%(levelname)s:%(message)s')
-
-        # add formatter to ch
-        ch.setFormatter(formatter)
-
-        # add ch to logger
-        logger.addHandler(ch)
-
-    logger.info("Initializing tune_model()")
-    logger.info("""tune_model(estimator={}, fold={}, round={}, n_iter={}, custom_grid={}, optimize={}, choose_better={}, verbose={})""".\
-        format(str(estimator), str(fold), str(round), str(n_iter), str(custom_grid), str(optimize), str(choose_better), str(verbose)))
-
-    logger.info("Checking exceptions")
-
-    #exception checking   
-    import sys
-    
-    #run_time
-    import datetime, time
-    runtime_start = time.time()
-
-    #checking estimator if string
-    if type(estimator) is str:
-        sys.exit('(Type Error): The behavior of tune_model in version 1.0.1 is changed. Please pass trained model object.') 
-        
-    #checking fold parameter
-    if type(fold) is not int:
-        sys.exit('(Type Error): Fold parameter only accepts integer value.')
-    
-    #checking round parameter
-    if type(round) is not int:
-        sys.exit('(Type Error): Round parameter only accepts integer value.')
- 
-    #checking n_iter parameter
-    if type(n_iter) is not int:
-        sys.exit('(Type Error): n_iter parameter only accepts integer value.')
-
-    #checking optimize parameter
-    allowed_optimize = ['MAE', 'MSE', 'R2', 'RMSE', 'RMSLE', 'MAPE']
-    if optimize not in allowed_optimize:
-        sys.exit('(Value Error): Optimization method not supported. See docstring for list of available parameters.')
-    
-    if type(n_iter) is not int:
-        sys.exit('(Type Error): n_iter parameter only accepts integer value.')
-        
-    #checking verbose parameter
-    if type(verbose) is not bool:
-        sys.exit('(Type Error): Verbose parameter can only take argument as True or False.') 
-    
-    
-    '''
-    
-    ERROR HANDLING ENDS HERE
-    
-    '''
-    
-    logger.info("Preloading libraries")
-
-    #pre-load libraries
-    import pandas as pd
-    import time, datetime
-    import ipywidgets as ipw
-    from IPython.display import display, HTML, clear_output, update_display
-    
-    logger.info("Preparing display monitor")
-
-    #progress bar
-    progress = ipw.IntProgress(value=0, min=0, max=fold+6, step=1 , description='Processing: ')
-    master_display = pd.DataFrame(columns=['MAE','MSE','RMSE', 'R2', 'RMSLE', 'MAPE'])
-    if verbose:
-        if html_param:
-            display(progress)    
-    
-    #display monitor
-    timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
-    monitor = pd.DataFrame( [ ['Initiated' , '. . . . . . . . . . . . . . . . . .', timestampStr ], 
-                             ['Status' , '. . . . . . . . . . . . . . . . . .' , 'Loading Dependencies' ],
-                             ['ETC' , '. . . . . . . . . . . . . . . . . .',  'Calculating ETC'] ],
-                              columns=['', ' ', '   ']).set_index('')
-    
-    if verbose:
-        if html_param:
-            display(monitor, display_id = 'monitor')
-    
-    if verbose:
-        if html_param:
-            display_ = display(master_display, display_id=True)
-            display_id = display_.display_id
-    
-    #ignore warnings
-    import warnings
-    warnings.filterwarnings('ignore') 
-    
-    #ignore warnings
-    import warnings
-    warnings.filterwarnings('ignore')    
-
-    logger.info("Copying training dataset")
-
-    #Storing X_train and y_train in data_X and data_y parameter
-    data_X = X_train.copy()
-    data_y = y_train.copy()
-    
-    #reset index
-    data_X.reset_index(drop=True, inplace=True)
-    data_y.reset_index(drop=True, inplace=True)
-
-    logger.info("Importing libraries")    
-    #general dependencies
-    import random
-    import numpy as np
-    from sklearn import metrics
-    from sklearn.model_selection import KFold
-    from sklearn.model_selection import RandomizedSearchCV
-
-    #setting numpy seed
-    np.random.seed(seed)
-
-    #define optimizer
-    if optimize == 'MAE':
-        optimize = 'neg_mean_absolute_error'
-        compare_dimension = 'MAE' 
-    elif optimize == 'MSE':
-        optimize = 'neg_mean_squared_error'
-        compare_dimension = 'MSE' 
-    elif optimize == 'R2':
-        optimize = 'r2'
-        compare_dimension = 'R2'
-    elif optimize == 'MAPE':
-        optimize = 'neg_mean_absolute_error' #because mape not present in sklearn
-        compare_dimension = 'MAPE'
-    elif optimize == 'RMSE':
-        optimize = 'neg_mean_squared_error' #because rmse not present in sklearn
-        compare_dimension = 'RMSE' 
-    elif optimize == 'RMSLE':
-        optimize = 'neg_mean_squared_error' #because rmsle not present in sklearn
-        compare_dimension = 'RMSLE' 
-    
-    progress.value += 1
-
-    #convert trained estimator into string name for grids
-    
-    logger.info("Checking base model")
-
-    def get_model_name(e):
-        return str(e).split("(")[0]
-
-    mn = get_model_name(estimator)
-
-    if 'catboost' in mn:
-        mn = 'CatBoostRegressor'
-    
-    model_dict = {'ExtraTreesRegressor' : 'et',
-                'GradientBoostingRegressor' : 'gbr', 
-                'RandomForestRegressor' : 'rf',
-                'LGBMRegressor' : 'lightgbm',
-                'XGBRegressor' : 'xgboost',
-                'AdaBoostRegressor' : 'ada', 
-                'DecisionTreeRegressor' : 'dt', 
-                'Ridge' : 'ridge',
-                'TheilSenRegressor' : 'tr', 
-                'BayesianRidge' : 'br',
-                'LinearRegression' : 'lr',
-                'ARDRegression' : 'ard', 
-                'KernelRidge' : 'kr', 
-                'RANSACRegressor' : 'ransac', 
-                'HuberRegressor' : 'huber', 
-                'Lasso' : 'lasso', 
-                'ElasticNet' : 'en', 
-                'Lars' : 'lar', 
-                'OrthogonalMatchingPursuit' : 'omp', 
-                'MLPRegressor' : 'mlp',
-                'KNeighborsRegressor' : 'knn',
-                'SVR' : 'svm',
-                'LassoLars' : 'llar',
-                'PassiveAggressiveRegressor' : 'par',
-                'CatBoostRegressor' : 'catboost',
-                'BaggingRegressor' : 'Bagging'}
-
-    model_dict_logging = {'ExtraTreesRegressor' : 'Extra Trees Regressor',
-                        'GradientBoostingRegressor' : 'Gradient Boosting Regressor', 
-                        'RandomForestRegressor' : 'Random Forest',
-                        'LGBMRegressor' : 'Light Gradient Boosting Machine',
-                        'XGBRegressor' : 'Extreme Gradient Boosting',
-                        'AdaBoostRegressor' : 'AdaBoost Regressor', 
-                        'DecisionTreeRegressor' : 'Decision Tree', 
-                        'Ridge' : 'Ridge Regression',
-                        'TheilSenRegressor' : 'TheilSen Regressor', 
-                        'BayesianRidge' : 'Bayesian Ridge',
-                        'LinearRegression' : 'Linear Regression',
-                        'ARDRegression' : 'Automatic Relevance Determination', 
-                        'KernelRidge' : 'Kernel Ridge', 
-                        'RANSACRegressor' : 'Random Sample Consensus', 
-                        'HuberRegressor' : 'Huber Regressor', 
-                        'Lasso' : 'Lasso Regression', 
-                        'ElasticNet' : 'Elastic Net', 
-                        'Lars' : 'Least Angle Regression', 
-                        'OrthogonalMatchingPursuit' : 'Orthogonal Matching Pursuit', 
-                        'MLPRegressor' : 'Multi Level Perceptron',
-                        'KNeighborsRegressor' : 'K Neighbors Regressor',
-                        'SVR' : 'Support Vector Machine',
-                        'LassoLars' : 'Lasso Least Angle Regression',
-                        'PassiveAggressiveRegressor' : 'Passive Aggressive Regressor',
-                        'CatBoostRegressor' : 'CatBoost Regressor',
-                        'BaggingRegressor' : 'Bagging Regressor'}
-
-    _estimator_ = estimator
-
-    estimator = model_dict.get(mn)
-
-    logger.info('Base model : ' + str(model_dict_logging.get(mn)))
-
-    progress.value += 1
-    
-    logger.info("Defining folds")
-    kf = KFold(fold, random_state=seed, shuffle=folds_shuffle_param)
-
-    logger.info("Declaring metric variables")
-    score_mae =np.empty((0,0))
-    score_mse =np.empty((0,0))
-    score_rmse =np.empty((0,0))
-    score_rmsle =np.empty((0,0))
-    score_r2 =np.empty((0,0))
-    score_mape =np.empty((0,0))
-    score_training_time=np.empty((0,0))
-    avgs_mae =np.empty((0,0))
-    avgs_mse =np.empty((0,0))
-    avgs_rmse =np.empty((0,0))
-    avgs_rmsle =np.empty((0,0))
-    avgs_r2 =np.empty((0,0))
-    avgs_mape =np.empty((0,0))
-    avgs_training_time=np.empty((0,0))
-    
-    def calculate_mape(actual, prediction):
-        mask = actual != 0
-        return (np.fabs(actual - prediction)/actual)[mask].mean()
-    
-    '''
-    MONITOR UPDATE STARTS
-    '''
-    
-    monitor.iloc[1,1:] = 'Searching Hyperparameters'
-    if verbose:
-        if html_param:
-            update_display(monitor, display_id = 'monitor')
-    
-    '''
-    MONITOR UPDATE ENDS
-    '''
-    
-    logger.info("Defining Hyperparameters")
-    logger.info("Initializing RandomizedSearchCV")
-
-    #setting turbo parameters
-    cv = 3
-    
-    if estimator == 'lr':
-        
-        from sklearn.linear_model import LinearRegression
-
-        if custom_grid is not None:
-            param_grid = custom_grid
-        else:
-            param_grid = {'fit_intercept': [True, False],
-                        'normalize' : [True, False]
-                        }        
-        model_grid = RandomizedSearchCV(estimator=LinearRegression(n_jobs=n_jobs_param), param_distributions=param_grid, 
-                                        scoring=optimize, n_iter=n_iter, cv=cv, random_state=seed,
-                                        n_jobs=n_jobs_param, iid=False)
-
-        model_grid.fit(X_train,y_train)
-        model = model_grid.best_estimator_
-        best_model = model_grid.best_estimator_
-        best_model_param = model_grid.best_params_
-
-    elif estimator == 'lasso':
-
-        from sklearn.linear_model import Lasso
-
-        if custom_grid is not None:
-            param_grid = custom_grid
-        else:
-            param_grid = {'alpha': np.arange(0,1,0.001),
-                        'fit_intercept': [True, False],
-                        'normalize' : [True, False],
-                        }
-        model_grid = RandomizedSearchCV(estimator=Lasso(random_state=seed), 
-                                        param_distributions=param_grid, scoring=optimize, n_iter=n_iter, cv=cv, 
-                                        random_state=seed, iid=False,n_jobs=n_jobs_param)
-        
-        model_grid.fit(X_train,y_train)
-        model = model_grid.best_estimator_
-        best_model = model_grid.best_estimator_
-        best_model_param = model_grid.best_params_
-
-    elif estimator == 'ridge':
-
-        from sklearn.linear_model import Ridge
-
-        if custom_grid is not None:
-            param_grid = custom_grid
-        else:
-            param_grid = {"alpha": np.arange(0,1,0.001),
-                        "fit_intercept": [True, False],
-                        "normalize": [True, False],
-                        }
-
-        model_grid = RandomizedSearchCV(estimator=Ridge(random_state=seed), param_distributions=param_grid,
-                                       scoring=optimize, n_iter=n_iter, cv=cv, random_state=seed,
-                                       iid=False, n_jobs=n_jobs_param)
-
-        model_grid.fit(X_train,y_train)
-        model = model_grid.best_estimator_
-        best_model = model_grid.best_estimator_
-        best_model_param = model_grid.best_params_
-
-    elif estimator == 'en':
-
-        from sklearn.linear_model import ElasticNet
-
-        if custom_grid is not None:
-            param_grid = custom_grid
-        else:
-            param_grid = {'alpha': np.arange(0,1,0.01), 
-                        'l1_ratio' : np.arange(0,1,0.01),
-                        'fit_intercept': [True, False],
-                        'normalize': [True, False]
-                        } 
-
-        model_grid = RandomizedSearchCV(estimator=ElasticNet(random_state=seed), 
-                                        param_distributions=param_grid, scoring=optimize, n_iter=n_iter, cv=cv, 
-                                        random_state=seed, iid=False, n_jobs=n_jobs_param)
-
-        model_grid.fit(X_train,y_train)
-        model = model_grid.best_estimator_
-        best_model = model_grid.best_estimator_
-        best_model_param = model_grid.best_params_
-
-    elif estimator == 'lar':
-
-        from sklearn.linear_model import Lars
-
-        if custom_grid is not None:
-            param_grid = custom_grid
-        else:
-            param_grid = {'fit_intercept':[True, False],
-                        'normalize' : [True, False],
-                        'eps': [0.00001, 0.0001, 0.001, 0.01, 0.05, 0.0005, 0.005, 0.00005, 0.02, 0.007]}
-
-        model_grid = RandomizedSearchCV(estimator=Lars(), param_distributions=param_grid,
-                                       scoring=optimize, n_iter=n_iter, cv=cv, random_state=seed,
-                                       n_jobs=n_jobs_param)
-
-        model_grid.fit(X_train,y_train)
-        model = model_grid.best_estimator_
-        best_model = model_grid.best_estimator_
-        best_model_param = model_grid.best_params_  
-
-    elif estimator == 'llar':
-
-        from sklearn.linear_model import LassoLars
-
-        if custom_grid is not None:
-            param_grid = custom_grid
-        else:
-            param_grid = {'alpha': [0.0001,0.001,0.1,0.15,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],
-                        'fit_intercept':[True, False],
-                        'normalize' : [True, False],
-                        'eps': [0.00001, 0.0001, 0.001, 0.01, 0.05, 0.0005, 0.005, 0.00005, 0.02, 0.007]}
-
-        model_grid = RandomizedSearchCV(estimator=LassoLars(), param_distributions=param_grid,
-                                       scoring=optimize, n_iter=n_iter, cv=cv, random_state=seed,
-                                       n_jobs=n_jobs_param)
-
-        model_grid.fit(X_train,y_train)
-        model = model_grid.best_estimator_
-        best_model = model_grid.best_estimator_
-        best_model_param = model_grid.best_params_    
-
-    elif estimator == 'omp':
-
-        from sklearn.linear_model import OrthogonalMatchingPursuit
-        import random
-
-        if custom_grid is not None:
-            param_grid = custom_grid
-
-        else:
-            param_grid = {'n_nonzero_coefs': range(1, len(X_train.columns)+1),
-                        'fit_intercept' : [True, False],
-                        'normalize': [True, False]}
-
-        model_grid = RandomizedSearchCV(estimator=OrthogonalMatchingPursuit(), 
-                                        param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
-                                        cv=cv, random_state=seed, n_jobs=n_jobs_param)
-
-        model_grid.fit(X_train,y_train)
-        model = model_grid.best_estimator_
-        best_model = model_grid.best_estimator_
-        best_model_param = model_grid.best_params_        
-
-    elif estimator == 'br':
-
-        from sklearn.linear_model import BayesianRidge
-
-        if custom_grid is not None:
-            param_grid = custom_grid
-
-        else:
-
-            param_grid = {'alpha_1': [0.0000001, 0.000001, 0.0001, 0.001, 0.01, 0.0005, 0.005, 0.05, 0.1, 0.15, 0.2, 0.3],
-                        'alpha_2': [0.0000001, 0.000001, 0.0001, 0.001, 0.01, 0.0005, 0.005, 0.05, 0.1, 0.15, 0.2, 0.3],
-                        'lambda_1': [0.0000001, 0.000001, 0.0001, 0.001, 0.01, 0.0005, 0.005, 0.05, 0.1, 0.15, 0.2, 0.3],
-                        'lambda_2': [0.0000001, 0.000001, 0.0001, 0.001, 0.01, 0.0005, 0.005, 0.05, 0.1, 0.15, 0.2, 0.3],
-                        'compute_score': [True, False],
-                        'fit_intercept': [True, False],
-                        'normalize': [True, False]
-                        }    
-
-        model_grid = RandomizedSearchCV(estimator=BayesianRidge(), 
-                                        param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
-                                        cv=cv, random_state=seed, n_jobs=n_jobs_param)
-
-        model_grid.fit(X_train,y_train)
-        model = model_grid.best_estimator_
-        best_model = model_grid.best_estimator_
-        best_model_param = model_grid.best_params_    
-
-    elif estimator == 'ard':
-
-        from sklearn.linear_model import ARDRegression
-
-        if custom_grid is not None:
-            param_grid = custom_grid
-
-        else:
-            param_grid = {'alpha_1': [0.0000001, 0.000001, 0.0001, 0.001, 0.01, 0.0005, 0.005, 0.05, 0.1, 0.15, 0.2, 0.3],
-                        'alpha_2': [0.0000001, 0.000001, 0.0001, 0.001, 0.01, 0.0005, 0.005, 0.05, 0.1, 0.15, 0.2, 0.3],
-                        'lambda_1': [0.0000001, 0.000001, 0.0001, 0.001, 0.01, 0.0005, 0.005, 0.05, 0.1, 0.15, 0.2, 0.3],
-                        'lambda_2': [0.0000001, 0.000001, 0.0001, 0.001, 0.01, 0.0005, 0.005, 0.05, 0.1, 0.15, 0.2, 0.3],
-                        'threshold_lambda' : [5000,10000,15000,20000,25000,30000,35000,40000,45000,50000,55000,60000],
-                        'compute_score': [True, False],
-                        'fit_intercept': [True, False],
-                        'normalize': [True, False]
-                        }    
-
-        model_grid = RandomizedSearchCV(estimator=ARDRegression(), 
-                                        param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
-                                        cv=cv, random_state=seed, n_jobs=n_jobs_param)
-
-        model_grid.fit(X_train,y_train)
-        model = model_grid.best_estimator_
-        best_model = model_grid.best_estimator_
-        best_model_param = model_grid.best_params_       
-
-    elif estimator == 'par':
-
-        from sklearn.linear_model import PassiveAggressiveRegressor
-
-        if custom_grid is not None:
-            param_grid = custom_grid
-
-        else:
-            param_grid = {'C': np.arange(0,1,0.01), #[0.01, 0.005, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1],
-                        'fit_intercept': [True, False],
-                        'early_stopping' : [True, False],
-                        #'validation_fraction': [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1],
-                        'loss' : ['epsilon_insensitive', 'squared_epsilon_insensitive'],
-                        'epsilon' : [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9],
-                        'shuffle' : [True, False]
-                        }    
-
-        model_grid = RandomizedSearchCV(estimator=PassiveAggressiveRegressor(random_state=seed), 
-                                        param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
-                                        cv=cv, random_state=seed, n_jobs=n_jobs_param)
-
-        model_grid.fit(X_train,y_train)
-        model = model_grid.best_estimator_
-        best_model = model_grid.best_estimator_
-        best_model_param = model_grid.best_params_         
-
-    elif estimator == 'ransac':
-
-        from sklearn.linear_model import RANSACRegressor
-
-        if custom_grid is not None:
-            param_grid = custom_grid
-
-        else:
-
-            param_grid = {'min_samples': np.arange(0,1,0.05), #[0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1],
-                        'max_trials': np.arange(1,20,1), #[1,2,3,4,5,6,7,8,9,10,11,12,13,14],
-                        'max_skips': np.arange(1,20,1), #[1,2,3,4,5,6,7,8,9,10],
-                        'stop_n_inliers': np.arange(1,25,1), #[1,2,3,4,5,6,7,8,9,10],
-                        'stop_probability': np.arange(0,1,0.01), #[0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1],
-                        'loss' : ['absolute_loss', 'squared_loss'],
-                        }    
-
-        model_grid = RandomizedSearchCV(estimator=RANSACRegressor(random_state=seed), 
-                                        param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
-                                        cv=cv, random_state=seed, n_jobs=n_jobs_param)
-
-        model_grid.fit(X_train,y_train)
-        model = model_grid.best_estimator_
-        best_model = model_grid.best_estimator_
-        best_model_param = model_grid.best_params_         
-
-    elif estimator == 'tr':
-
-        from sklearn.linear_model import TheilSenRegressor
-
-        if custom_grid is not None:
-            param_grid = custom_grid
-
-        else:
-
-            param_grid = {'fit_intercept': [True, False],
-                        'max_subpopulation': [5000, 10000, 15000, 20000, 25000, 30000, 40000, 50000]
-                        }    
-
-        model_grid = RandomizedSearchCV(estimator=TheilSenRegressor(random_state=seed, n_jobs=n_jobs_param), 
-                                        param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
-                                        cv=cv, random_state=seed, n_jobs=n_jobs_param)
-
-        model_grid.fit(X_train,y_train)
-        model = model_grid.best_estimator_
-        best_model = model_grid.best_estimator_
-        best_model_param = model_grid.best_params_    
-
-    elif estimator == 'huber':
-
-        from sklearn.linear_model import HuberRegressor
-
-        if custom_grid is not None:
-            param_grid = custom_grid
-
-        else:
-            param_grid = {'epsilon': [1.1, 1.2, 1.3, 1.35, 1.4, 1.5, 1.55, 1.6, 1.7, 1.8, 1.9],
-                        'alpha': np.arange(0,1,0.0001), #[0.00001, 0.0001, 0.0003, 0.005, 0.05, 0.1, 0.0005, 0.15],
-                        'fit_intercept' : [True, False]
-                        }    
-
-        model_grid = RandomizedSearchCV(estimator=HuberRegressor(), 
-                                        param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
-                                        cv=cv, random_state=seed, n_jobs=n_jobs_param)
-
-        model_grid.fit(X_train,y_train)
-        model = model_grid.best_estimator_
-        best_model = model_grid.best_estimator_
-        best_model_param = model_grid.best_params_        
-
-    elif estimator == 'kr':
-
-        from sklearn.kernel_ridge import KernelRidge
-
-        if custom_grid is not None:
-            param_grid = custom_grid
-
-        else:
-            param_grid = {'alpha': np.arange(0,1,0.01) }    
-
-        model_grid = RandomizedSearchCV(estimator=KernelRidge(), 
-                                        param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
-                                        cv=cv, random_state=seed, n_jobs=n_jobs_param)
-
-        model_grid.fit(X_train,y_train)
-        model = model_grid.best_estimator_
-        best_model = model_grid.best_estimator_
-        best_model_param = model_grid.best_params_       
-
-    elif estimator == 'svm':
-
-        from sklearn.svm import SVR
-        
-        if custom_grid is not None:
-            param_grid = custom_grid
-
-        else:
-
-            param_grid = {'C' : np.arange(0, 10, 0.001), 
-                        'epsilon' : [1.1, 1.2, 1.3, 1.35, 1.4, 1.5, 1.55, 1.6, 1.7, 1.8, 1.9],
-                        'shrinking': [True, False]
-                        }    
-
-        model_grid = RandomizedSearchCV(estimator=SVR(), 
-                                        param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
-                                        cv=cv, random_state=seed, n_jobs=n_jobs_param)
-
-        model_grid.fit(X_train,y_train)
-        model = model_grid.best_estimator_
-        best_model = model_grid.best_estimator_
-        best_model_param = model_grid.best_params_     
-
-    elif estimator == 'knn':
-
-        from sklearn.neighbors import KNeighborsRegressor
-
-        if custom_grid is not None:
-            param_grid = custom_grid
-
-        else:
-            param_grid = {'n_neighbors': range(1,51),
-                        'weights' :  ['uniform', 'distance'],
-                        'algorithm': ['ball_tree', 'kd_tree', 'brute'],
-                        'leaf_size': [10,20,30,40,50,60,70,80,90]
-                        } 
-
-        model_grid = RandomizedSearchCV(estimator=KNeighborsRegressor(n_jobs=n_jobs_param), 
-                                        param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
-                                        cv=cv, random_state=seed, n_jobs=n_jobs_param)
-
-        model_grid.fit(X_train,y_train)
-        model = model_grid.best_estimator_
-        best_model = model_grid.best_estimator_
-        best_model_param = model_grid.best_params_         
-
-    elif estimator == 'dt':
-
-        from sklearn.tree import DecisionTreeRegressor
-
-        if custom_grid is not None:
-            param_grid = custom_grid
-
-        else:
-
-            param_grid = {"max_depth": np.random.randint(1, (len(X_train.columns)*.85),20),
-                        "max_features": np.random.randint(1, len(X_train.columns),20),
-                        "min_samples_leaf": [2,3,4,5,6],
-                        "criterion": ["mse", "mae", "friedman_mse"],
-                        } 
-
-        model_grid = RandomizedSearchCV(estimator=DecisionTreeRegressor(random_state=seed), 
-                                        param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
-                                        cv=cv, random_state=seed, n_jobs=n_jobs_param)
-
-        model_grid.fit(X_train,y_train)
-        model = model_grid.best_estimator_
-        best_model = model_grid.best_estimator_
-        best_model_param = model_grid.best_params_         
-
-    elif estimator == 'rf':
-
-        from sklearn.ensemble import RandomForestRegressor
-
-        if custom_grid is not None:
-            param_grid = custom_grid
-
-        else:
-            param_grid = {'n_estimators': np.arange(10,300,10),
-                        'criterion': ['mse', 'mae'],
-                        'max_depth': [int(x) for x in np.linspace(10, 110, num = 11)],
-                        'min_samples_split': [2, 5, 7, 9, 10],
-                        'min_samples_leaf' : [1, 2, 4, 7, 9],
-                        'max_features' : ['auto', 'sqrt', 'log2'],
-                        'bootstrap': [True, False]
-                        }
-
-        model_grid = RandomizedSearchCV(estimator=RandomForestRegressor(random_state=seed, n_jobs=n_jobs_param), 
-                                        param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
-                                        cv=cv, random_state=seed, n_jobs=n_jobs_param)
-
-        model_grid.fit(X_train,y_train)
-        model = model_grid.best_estimator_
-        best_model = model_grid.best_estimator_
-        best_model_param = model_grid.best_params_       
-
-
-    elif estimator == 'et':
-
-        from sklearn.ensemble import ExtraTreesRegressor
-
-        if custom_grid is not None:
-            param_grid = custom_grid
-
-        else:
-            param_grid = {'n_estimators': np.arange(10,300,10),
-                        'criterion': ['mse', 'mae'],
-                        'max_depth': [int(x) for x in np.linspace(10, 110, num = 11)],
-                        'min_samples_split': [2, 5, 7, 9, 10],
-                        'min_samples_leaf' : [1, 2, 4, 5, 7, 9],
-                        'max_features' : ['auto', 'sqrt', 'log2'],
-                        'bootstrap': [True, False]
-                        }  
-
-        model_grid = RandomizedSearchCV(estimator=ExtraTreesRegressor(random_state=seed, n_jobs=n_jobs_param), 
-                                        param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
-                                        cv=cv, random_state=seed, n_jobs=n_jobs_param)
-
-        model_grid.fit(X_train,y_train)
-        model = model_grid.best_estimator_
-        best_model = model_grid.best_estimator_
-        best_model_param = model_grid.best_params_       
-
-    elif estimator == 'ada':
-
-        from sklearn.ensemble import AdaBoostRegressor
-
-        if custom_grid is not None:
-            param_grid = custom_grid
-
-        else:
-            param_grid = {'n_estimators': np.arange(10,200,5),
-                        'learning_rate': np.arange(0.1,1,0.01),
-                        'loss' : ["linear", "square", "exponential"]
-                        }    
-
-        model_grid = RandomizedSearchCV(estimator=AdaBoostRegressor(base_estimator = _estimator_.base_estimator, random_state=seed, ), 
-                                        param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
-                                        cv=cv, random_state=seed, n_jobs=n_jobs_param)
-
-        model_grid.fit(X_train,y_train)
-        model = model_grid.best_estimator_
-        best_model = model_grid.best_estimator_
-        best_model_param = model_grid.best_params_ 
-
-    elif estimator == 'gbr':
-
-        from sklearn.ensemble import GradientBoostingRegressor
-
-        if custom_grid is not None:
-            param_grid = custom_grid
-
-        else:
-            param_grid = {'loss': ['ls', 'lad', 'huber', 'quantile'],
-                        'n_estimators': np.arange(10,200,5),
-                        'learning_rate': np.arange(0,1,0.01),
-                        'subsample' : [0.1,0.3,0.5,0.7,0.9,1],
-                        'criterion' : ['friedman_mse', 'mse', 'mae'],
-                        'min_samples_split' : [2,4,5,7,9,10],
-                        'min_samples_leaf' : [1,2,3,4,5,7],
-                        'max_depth': [int(x) for x in np.linspace(10, 110, num = 11)],
-                        'max_features' : ['auto', 'sqrt', 'log2']
-                        }     
-
-        model_grid = RandomizedSearchCV(estimator=GradientBoostingRegressor(random_state=seed), 
-                                        param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
-                                        cv=cv, random_state=seed, n_jobs=n_jobs_param)
-
-        model_grid.fit(X_train,y_train)
-        model = model_grid.best_estimator_
-        best_model = model_grid.best_estimator_
-        best_model_param = model_grid.best_params_         
-
-    elif estimator == 'mlp':
-
-        from sklearn.neural_network import MLPRegressor
-        
-        if custom_grid is not None:
-            param_grid = custom_grid
-
-        else:
-            param_grid = {'learning_rate': ['constant', 'invscaling', 'adaptive'],
-                        'solver' : ['lbfgs', 'adam'],
-                        'alpha': np.arange(0, 1, 0.0001), 
-                        'hidden_layer_sizes': [(50,50,50), (50,100,50), (100,), (100,50,100), (100,100,100)],
-                        'activation': ["tanh", "identity", "logistic","relu"]
-                        }    
-
-        model_grid = RandomizedSearchCV(estimator=MLPRegressor(random_state=seed), 
-                                        param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
-                                        cv=cv, random_state=seed, n_jobs=n_jobs_param)    
-
-        model_grid.fit(X_train,y_train)
-        model = model_grid.best_estimator_
-        best_model = model_grid.best_estimator_
-        best_model_param = model_grid.best_params_   
-        
-        
-    elif estimator == 'xgboost':
-        
-        from xgboost import XGBRegressor
-
-        if custom_grid is not None:
-            param_grid = custom_grid
-
-        else:
-            param_grid = {'learning_rate': [0.01, 0.02, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1], 
-                        'n_estimators':[10, 30, 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000], 
-                        'subsample': [0.1, 0.2, 0.3, 0.5, 0.7, 0.9, 1],
-                        'max_depth': [int(x) for x in np.linspace(10, 110, num = 11)], 
-                        'colsample_bytree': [0.5, 0.7, 0.9, 1],
-                        'min_child_weight': [1, 2, 3, 4]
-                        }
-
-        model_grid = RandomizedSearchCV(estimator=XGBRegressor(random_state=seed, n_jobs=n_jobs_param, verbosity=0, ), 
-                                        param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
-                                        cv=cv, random_state=seed, n_jobs=n_jobs_param)
-
-        model_grid.fit(X_train,y_train)
-        model = model_grid.best_estimator_
-        best_model = model_grid.best_estimator_
-        best_model_param = model_grid.best_params_   
-        
-        
-    elif estimator == 'lightgbm':
-        
-        import lightgbm as lgb
-
-        if custom_grid is not None:
-            param_grid = custom_grid
-
-        else:
-            param_grid = {'num_leaves': [10,20,30,40,50,60,70,80,90,100,150,200],
-                        'max_depth': [int(x) for x in np.linspace(10, 110, num = 11)],
-                        'learning_rate': [0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1],
-                        'n_estimators': [10, 30, 50, 70, 90, 100, 120, 150, 170, 200], 
-                        'min_split_gain' : [0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],
-                        'reg_alpha': [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9],
-                        'reg_lambda': [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
-                        }
-            
-        model_grid = RandomizedSearchCV(estimator=lgb.LGBMRegressor(random_state=seed, n_jobs=n_jobs_param), 
-                                        param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
-                                        cv=cv, random_state=seed, n_jobs=n_jobs_param)
-
-        model_grid.fit(X_train,y_train)
-        model = model_grid.best_estimator_
-        best_model = model_grid.best_estimator_
-        best_model_param = model_grid.best_params_   
-
-    elif estimator == 'catboost':
-        
-        from catboost import CatBoostRegressor
-
-        if custom_grid is not None:
-            param_grid = custom_grid
-
-        else:
-            param_grid = {'depth':[3,1,2,6,4,5,7,8,9,10],
-                        'iterations':[250,100,500,1000], 
-                        'learning_rate':[0.03,0.001,0.01,0.1,0.2,0.3], 
-                        'l2_leaf_reg':[3,1,5,10,100], 
-                        'border_count':[32,5,10,20,50,100,200], 
-                        }
-            
-        model_grid = RandomizedSearchCV(estimator=CatBoostRegressor(random_state=seed, silent=True, thread_count=n_jobs_param), 
-                                        param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
-                                        cv=cv, random_state=seed, n_jobs=n_jobs_param)
-
-        model_grid.fit(X_train,y_train)
-        model = model_grid.best_estimator_
-        best_model = model_grid.best_estimator_
-        best_model_param = model_grid.best_params_ 
-    
-    elif estimator == 'Bagging':
-        
-        from sklearn.ensemble import BaggingRegressor
-
-        if custom_grid is not None:
-            param_grid = custom_grid
-
-        else:
-            param_grid = {'n_estimators': np.arange(10,300,10),
-                        'bootstrap': [True, False],
-                        'bootstrap_features': [True, False],
-                        }
-            
-        model_grid = RandomizedSearchCV(estimator=BaggingRegressor(base_estimator=_estimator_.base_estimator, random_state=seed, n_jobs=n_jobs_param), 
-                                        param_distributions=param_grid, scoring=optimize, n_iter=n_iter, 
-                                        cv=cv, random_state=seed, n_jobs=n_jobs_param)
-
-        model_grid.fit(X_train,y_train)
-        model = model_grid.best_estimator_
-        best_model = model_grid.best_estimator_
-        best_model_param = model_grid.best_params_ 
-
-
-    progress.value += 1
-    progress.value += 1
-
-    logger.info("Random search completed") 
-    
-    '''
-    MONITOR UPDATE STARTS
-    '''
-    
-    monitor.iloc[1,1:] = 'Initializing CV'
-    if verbose:
-        if html_param:
-            update_display(monitor, display_id = 'monitor')
-    
-    '''
-    MONITOR UPDATE ENDS
-    '''
-    
-    fold_num = 1
-    
-    for train_i , test_i in kf.split(data_X,data_y):
-        
-        logger.info("Initializing Fold " + str(fold_num))
-
-        t0 = time.time()
-        
-        
-        '''
-        MONITOR UPDATE STARTS
-        '''
-    
-        monitor.iloc[1,1:] = 'Fitting Fold ' + str(fold_num) + ' of ' + str(fold)
-        if verbose:
-            if html_param:
-                update_display(monitor, display_id = 'monitor')
-
-        '''
-        MONITOR UPDATE ENDS
-        '''
-        
-        Xtrain,Xtest = data_X.iloc[train_i], data_X.iloc[test_i]
-        ytrain,ytest = data_y.iloc[train_i], data_y.iloc[test_i]  
-        time_start=time.time()
-        logger.info("Fitting Model")
-        model.fit(Xtrain,ytrain)
-        logger.info("Evaluating Metrics")
-        pred_ = model.predict(Xtest)
-        
-        try:
-            pred_ = target_inverse_transformer.inverse_transform(np.array(pred_).reshape(-1,1))
-            ytest = target_inverse_transformer.inverse_transform(np.array(ytest).reshape(-1,1))
-            pred_ = np.nan_to_num(pred_)
-            ytest = np.nan_to_num(ytest)
-            
-        except:
-            pass
-
-        logger.info("Compiling Metrics")
-        time_end=time.time()
-        mae = metrics.mean_absolute_error(ytest,pred_)
-        mse = metrics.mean_squared_error(ytest,pred_)
-        rmse = np.sqrt(mse)
-        r2 = metrics.r2_score(ytest,pred_)
-        rmsle = np.sqrt(np.mean(np.power(np.log(np.array(abs(pred_))+1) - np.log(np.array(abs(ytest))+1), 2)))
-        mape = calculate_mape(ytest,pred_)
-        training_time=time_end-time_start
-        score_mae = np.append(score_mae,mae)
-        score_mse = np.append(score_mse,mse)
-        score_rmse = np.append(score_rmse,rmse)
-        score_rmsle = np.append(score_rmsle,rmsle)
-        score_r2 =np.append(score_r2,r2)
-        score_mape = np.append(score_mape,mape)
-        score_training_time=np.append(score_training_time,training_time)
-        progress.value += 1
-            
-            
-        '''
-        
-        This section is created to update_display() as code loops through the fold defined.
-        
-        '''
-        
-        fold_results = pd.DataFrame({'MAE':[mae], 'MSE': [mse], 'RMSE': [rmse], 
-                                     'R2': [r2], 'RMSLE': [rmsle], 'MAPE': [mape]}).round(round)
-        master_display = pd.concat([master_display, fold_results],ignore_index=True)
-        fold_results = []
-        
-        '''
-        
-        TIME CALCULATION SUB-SECTION STARTS HERE
-        
-        '''
-        
-        t1 = time.time()
-        
-        tt = (t1 - t0) * (fold-fold_num) / 60
-        tt = np.around(tt, 2)
-        
-        if tt < 1:
-            tt = str(np.around((tt * 60), 2))
-            ETC = tt + ' Seconds Remaining'
-                
-        else:
-            tt = str (tt)
-            ETC = tt + ' Minutes Remaining'
-            
-        if verbose:
-            if html_param:
-                update_display(ETC, display_id = 'ETC')
-            
-        fold_num += 1
-        
-        '''
-        MONITOR UPDATE STARTS
-        '''
-
-        monitor.iloc[2,1:] = ETC
-        if verbose:
-            if html_param:
-                update_display(monitor, display_id = 'monitor')
-
-        '''
-        MONITOR UPDATE ENDS
-        '''
-       
-        '''
-        
-        TIME CALCULATION ENDS HERE
-        
-        '''
-        
-        if verbose:
-            if html_param:
-                update_display(master_display, display_id = display_id)
-        
-        '''
-        
-        Update_display() ends here
-        
-        '''
-        
-    progress.value += 1
-    
-    logger.info("Calculating mean and std")
-    mean_mae=np.mean(score_mae)
-    mean_mse=np.mean(score_mse)
-    mean_rmse=np.mean(score_rmse)
-    mean_rmsle=np.mean(score_rmsle)
-    mean_r2=np.mean(score_r2)
-    mean_mape=np.mean(score_mape)
-    mean_training_time=np.mean(score_training_time)
-    std_mae=np.std(score_mae)
-    std_mse=np.std(score_mse)
-    std_rmse=np.std(score_rmse)
-    std_rmsle=np.std(score_rmsle)
-    std_r2=np.std(score_r2)
-    std_mape=np.std(score_mape)
-    std_training_time=np.std(score_training_time)
-    
-    avgs_mae = np.append(avgs_mae, mean_mae)
-    avgs_mae = np.append(avgs_mae, std_mae) 
-    avgs_mse = np.append(avgs_mse, mean_mse)
-    avgs_mse = np.append(avgs_mse, std_mse)
-    avgs_rmse = np.append(avgs_rmse, mean_rmse)
-    avgs_rmse = np.append(avgs_rmse, std_rmse)
-    avgs_rmsle = np.append(avgs_rmsle, mean_rmsle)
-    avgs_rmsle = np.append(avgs_rmsle, std_rmsle)
-    avgs_r2 = np.append(avgs_r2, mean_r2)
-    avgs_r2 = np.append(avgs_r2, std_r2)
-    avgs_mape = np.append(avgs_mape, mean_mape)
-    avgs_mape = np.append(avgs_mape, std_mape)
-    avgs_training_time=np.append(avgs_training_time, mean_training_time)
-    avgs_training_time=np.append(avgs_training_time, std_training_time)
-    
-
-    progress.value += 1
-    
-    logger.info("Creating metrics dataframe")
-    model_results = pd.DataFrame({'MAE': score_mae, 'MSE': score_mse, 'RMSE' : score_rmse, 'R2' : score_r2,
-                                  'RMSLE' : score_rmsle, 'MAPE' : score_mape})
-    model_avgs = pd.DataFrame({'MAE': avgs_mae, 'MSE': avgs_mse, 'RMSE' : avgs_rmse, 'R2' : avgs_r2,
-                                'RMSLE' : avgs_rmsle, 'MAPE' : avgs_mape},index=['Mean', 'SD'])
-
-    model_results = model_results.append(model_avgs)
-    model_results = model_results.round(round)
-    
-    # yellow the mean
-    model_results=model_results.style.apply(lambda x: ['background: yellow' if (x.name == 'Mean') else '' for i in x], axis=1)
-    model_results = model_results.set_precision(round)
-
-    progress.value += 1
-    
-    #refitting the model on complete X_train, y_train
-    monitor.iloc[1,1:] = 'Finalizing Model'
-    if verbose:
-        if html_param:
-            update_display(monitor, display_id = 'monitor')
-    
-    model_fit_start = time.time()
-    logger.info("Finalizing model")
-    best_model.fit(data_X, data_y)
-    model_fit_end = time.time()
-
-    model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
-    
-    progress.value += 1
-    
-    #storing results in create_model_container
-    logger.info("Uploading results into container")
-    create_model_container.append(model_results.data)
-    display_container.append(model_results.data)
-
-    #storing results in master_model_container
-    logger.info("Uploading model into container")
-    master_model_container.append(best_model)
-
-    '''
-    When choose_better sets to True. optimize metric in scoregrid is
-    compared with base model created using create_model so that tune_model
-    functions return the model with better score only. This will ensure 
-    model performance is atleast equivalent to what is seen is compare_models 
-    '''
-    if choose_better:
-        logger.info("choose_better activated")
-        if verbose:
-            if html_param:
-                monitor.iloc[1,1:] = 'Compiling Final Results'
-                monitor.iloc[2,1:] = 'Almost Finished'
-                update_display(monitor, display_id = 'monitor')
-
-        #creating base model for comparison
-        logger.info("SubProcess create_model() called ==================================")
-        if estimator in ['Bagging', 'ada']:
-            base_model = create_model(estimator=_estimator_, verbose = False, system=False)
-        else:
-            base_model = create_model(estimator=estimator, verbose = False)
-        base_model_results = create_model_container[-1][compare_dimension][-2:][0]
-        tuned_model_results = create_model_container[-2][compare_dimension][-2:][0]
-        logger.info("SubProcess create_model() end ==================================")
-
-        if compare_dimension == 'R2':
-            if tuned_model_results > base_model_results:
-                best_model = best_model
-            else:
-                best_model = base_model
-        else:
-            if tuned_model_results < base_model_results:
-                best_model = best_model
-            else:
-                best_model = base_model
-
-        #re-instate display_constainer state 
-        display_container.pop(-1)
-        logger.info("choose_better completed")
-
-    #end runtime
-    runtime_end = time.time()
-    runtime = np.array(runtime_end - runtime_start).round(2)
-    
-    #mlflow logging
-    if logging_param:
-        
-        logger.info("Creating MLFlow logs")
-
-        #Creating Logs message monitor
-        monitor.iloc[1,1:] = 'Creating Logs'
-        monitor.iloc[2,1:] = 'Almost Finished'    
-        if verbose:
-            if html_param:
-                update_display(monitor, display_id = 'monitor')
-
-        import mlflow
-        from pathlib import Path
-        import os
-        
-        mlflow.set_experiment(exp_name_log)
-        full_name = model_dict_logging.get(mn)
-
-        with mlflow.start_run(run_name=full_name) as run:    
-
-            # Get active run to log as tag
-            RunID = mlflow.active_run().info.run_id
-
-            params = best_model.get_params()
-
-            # Log model parameters
-            params = model.get_params()
-
-            for i in list(params):
-                v = params.get(i)
-                if len(str(v)) > 250:
-                    params.pop(i)
-
-            mlflow.log_params(params)
-
-            mlflow.log_metrics({"MAE": avgs_mae[0], "MSE": avgs_mse[0], "RMSE": avgs_rmse[0], "R2" : avgs_r2[0],
-                                "RMSLE": avgs_rmsle[0], "MAPE": avgs_mape[0]})
-
-            #set tag of compare_models
-            mlflow.set_tag("Source", "tune_model")
-            
-            import secrets
-            URI = secrets.token_hex(nbytes=4)
-            mlflow.set_tag("URI", URI)
-            mlflow.set_tag("USI", USI)
-            mlflow.set_tag("Run Time", runtime)
-            mlflow.set_tag("Run ID", RunID)
-
-            # Log training time in seconds
-            mlflow.log_metric("TT", model_fit_time)
-
-            # Log the CV results as model_results.html artifact
-            model_results.data.to_html('Results.html', col_space=65, justify='left')
-            mlflow.log_artifact('Results.html')
-            os.remove('Results.html')
-
-            # Generate hold-out predictions and save as html
-            holdout = predict_model(best_model, verbose=False)
-            holdout_score = pull()
-            del(holdout)
-            display_container.pop(-1)
-            holdout_score.to_html('Holdout.html', col_space=65, justify='left')
-            mlflow.log_artifact('Holdout.html')
-            os.remove('Holdout.html')
-
-            # Log AUC and Confusion Matrix plot
-            if log_plots_param:
-
-                logger.info("SubProcess plot_model() called ==================================")
-
-                try:
-                    plot_model(model, plot = 'residuals', verbose=False, save=True, system=False)
-                    mlflow.log_artifact('Residuals.png')
-                    os.remove("Residuals.png")
-                except:
-                    pass
-
-                try:
-                    plot_model(model, plot = 'error', verbose=False, save=True, system=False)
-                    mlflow.log_artifact('Prediction Error.png')
-                    os.remove("Prediction Error.png")
-                except:
-                    pass
-
-                try:
-                    plot_model(model, plot = 'feature', verbose=False, save=True, system=False)
-                    mlflow.log_artifact('Feature Importance.png')
-                    os.remove("Feature Importance.png")
-                except:
-                    pass
-
-                logger.info("SubProcess plot_model() end ==================================")
-
-            # Log hyperparameter tuning grid
-            d1 = model_grid.cv_results_.get('params')
-            dd = pd.DataFrame.from_dict(d1)
-            dd['Score'] = model_grid.cv_results_.get('mean_test_score')
-            dd.to_html('Iterations.html', col_space=75, justify='left')
-            mlflow.log_artifact('Iterations.html')
-            os.remove('Iterations.html')
-    
-            # Log model and transformation pipeline
-            from copy import deepcopy
-
-            # get default conda env
-            from mlflow.sklearn import get_default_conda_env
-            default_conda_env = get_default_conda_env()
-            default_conda_env['name'] = str(exp_name_log) + '-env'
-            default_conda_env.get('dependencies').pop(-3)
-            dependencies = default_conda_env.get('dependencies')[-1]
-            from pycaret.utils import __version__
-            dep = 'pycaret==' + str(__version__())
-            dependencies['pip'] = [dep]
-            
-            # define model signature
-            from mlflow.models.signature import infer_signature
-            signature = infer_signature(data_before_preprocess.drop([target_param], axis=1))
-            input_example = data_before_preprocess.drop([target_param], axis=1).iloc[0].to_dict()
-
-            # log model as sklearn flavor
-            prep_pipe_temp = deepcopy(prep_pipe)
-            prep_pipe_temp.steps.append(['trained model', model])
-            mlflow.sklearn.log_model(prep_pipe_temp, "model", conda_env = default_conda_env, signature = signature, input_example = input_example)
-            del(prep_pipe_temp)
-
-    if verbose:
-        clear_output()
-        if html_param:
-            display(model_results)
-        else:
-            print(model_results.data)
-    else:
-        clear_output()
-    
-    logger.info("create_model_container: " + str(len(create_model_container)))
-    logger.info("master_model_container: " + str(len(master_model_container)))
-    logger.info("display_container: " + str(len(display_container)))
-
-    logger.info(str(best_model))
-    logger.info("tune_model() succesfully completed......................................")
-
-    return best_model
-
 def stack_models(estimator_list, 
                  meta_model = None, 
                  fold = 10,
@@ -7079,6 +7128,7 @@ def stack_models(estimator_list,
 
 def plot_model(estimator, 
                plot = 'residuals',
+               scale = 1, #added in pycaret 2.1.0
                save = False, #added in pycaret 1.0.1
                verbose = True, #added in pycaret 1.0.1
                system = True): #added in pycaret 1.0.1): 
@@ -7118,6 +7168,9 @@ def plot_model(estimator,
         * 'manifold' - Manifold Learning                        
         * 'feature' - Feature Importance                        
         * 'parameter' - Model Hyperparameter                    
+
+    scale: float, default = 1
+        The resolution scale of the figure.
 
     save: Boolean, default = False
         When set to True, Plot is saved as a 'png' file in current working directory.
@@ -7236,6 +7289,7 @@ def plot_model(estimator,
         from yellowbrick.regressor import ResidualsPlot
         progress.value += 1
         visualizer = ResidualsPlot(model)
+        visualizer.fig.set_dpi(visualizer.fig.dpi * scale)
         logger.info("Fitting Model")
         visualizer.fit(X_train, y_train)
         progress.value += 1
@@ -7258,6 +7312,7 @@ def plot_model(estimator,
         from yellowbrick.regressor import PredictionError
         progress.value += 1
         visualizer = PredictionError(model)
+        visualizer.fig.set_dpi(visualizer.fig.dpi * scale)
         logger.info("Fitting Model")
         visualizer.fit(X_train, y_train)
         progress.value += 1
@@ -7280,6 +7335,7 @@ def plot_model(estimator,
         from yellowbrick.regressor import CooksDistance
         progress.value += 1
         visualizer = CooksDistance()
+        visualizer.fig.set_dpi(visualizer.fig.dpi * scale)
         progress.value += 1
         logger.info("Fitting Model")
         visualizer.fit(X, y)
@@ -7301,6 +7357,7 @@ def plot_model(estimator,
         from yellowbrick.model_selection import RFECV 
         progress.value += 1
         visualizer = RFECV(model, cv=10)
+        visualizer.fig.set_dpi(visualizer.fig.dpi * scale)
         progress.value += 1
         logger.info("Fitting Model")
         visualizer.fit(X_train, y_train)
@@ -7323,6 +7380,7 @@ def plot_model(estimator,
         progress.value += 1
         sizes = np.linspace(0.3, 1.0, 10)  
         visualizer = LearningCurve(model, cv=10, train_sizes=sizes, n_jobs=1, random_state=seed)
+        visualizer.fig.set_dpi(visualizer.fig.dpi * scale)
         progress.value += 1
         logger.info("Fitting Model")
         visualizer.fit(X_train, y_train)
@@ -7346,6 +7404,7 @@ def plot_model(estimator,
         progress.value += 1
         X_train_transformed = X_train.select_dtypes(include='float64') 
         visualizer = Manifold(manifold='tsne', random_state = seed)
+        visualizer.fig.set_dpi(visualizer.fig.dpi * scale)
         progress.value += 1
         logger.info("Fitting Model")
         visualizer.fit_transform(X_train_transformed, y_train)
@@ -7439,6 +7498,7 @@ def plot_model(estimator,
         from yellowbrick.model_selection import ValidationCurve
         viz = ValidationCurve(model, param_name=param_name, param_range=param_range,cv=10, 
                               random_state=seed)
+        viz.fig.set_dpi(viz.fig.dpi * scale)
         logger.info("Fitting Model")
         viz.fit(X_train, y_train)
         progress.value += 1
@@ -7470,7 +7530,7 @@ def plot_model(estimator,
         sorted_df = sorted_df.head(10)
         sorted_df = sorted_df.sort_values(by='Value')
         my_range=range(1,len(sorted_df.index)+1)
-        plt.figure(figsize=(8,5))
+        plt.figure(figsize=(8,5), dpi=100*scale)
         plt.hlines(y=my_range, xmin=0, xmax=sorted_df['Value'], color='skyblue')
         plt.plot(sorted_df['Value'], my_range, "o")
         plt.yticks(my_range, sorted_df['Variable'])
@@ -7502,10 +7562,69 @@ def plot_model(estimator,
     
     logger.info("plot_model() succesfully completed......................................")
 
+def evaluate_model(estimator):
+    
+    
+    """
+    This function displays a user interface for all of the available plots for 
+    a given estimator. It internally uses the plot_model() function. 
+    
+    Example
+    --------
+    >>> from pycaret.datasets import get_data
+    >>> boston = get_data('boston')
+    >>> experiment_name = setup(data = boston,  target = 'medv')
+    >>> lr = create_model('lr')
+    >>> evaluate_model(lr)
+    
+    This will display the User Interface for all of the plots for a given
+    estimator.
+
+    Parameters
+    ----------
+    estimator : object, default = none
+        A trained model object should be passed as an estimator. 
+
+    Returns
+    -------
+    User_Interface
+        Displays the user interface for plotting.    
+
+    """
+        
+        
+    from ipywidgets import widgets
+    from ipywidgets.widgets import interact, fixed, interact_manual
+
+    a = widgets.ToggleButtons(
+                            options=[('Hyperparameters', 'parameter'),
+                                     ('Residuals Plot', 'residuals'), 
+                                     ('Prediction Error Plot', 'error'), 
+                                     ('Cooks Distance Plot', 'cooks'),
+                                     ('Recursive Feature Selection', 'rfe'),
+                                     ('Learning Curve', 'learning'),
+                                     ('Validation Curve', 'vc'),
+                                     ('Manifold Learning', 'manifold'),
+                                     ('Feature Importance', 'feature')
+                                    ],
+
+                            description='Plot Type:',
+
+                            disabled=False,
+
+                            button_style='', # 'success', 'info', 'warning', 'danger' or ''
+
+                            icons=['']
+    )
+    
+  
+    d = interact(plot_model, estimator = fixed(estimator), plot = a, save = fixed(False), verbose = fixed(True), system = fixed(True))
+
 def interpret_model(estimator,
                    plot = 'summary',
                    feature = None, 
-                   observation = None):
+                   observation = None,
+                   **kwargs): #added in pycaret==2.1
     
     
     """
@@ -7547,6 +7666,9 @@ def interpret_model(estimator,
         to select the feature on x and y axes through drop down interactivity. For analysis at
         the sample level, an observation parameter must be passed with the index value of the
         observation in test / hold-out set. 
+
+    **kwargs: 
+        Additional keyword arguments to pass to the plot.
 
     Returns
     -------
@@ -7646,7 +7768,7 @@ def interpret_model(estimator,
         explainer = shap.TreeExplainer(model)
         logger.info("Compiling shap values")
         shap_values = explainer.shap_values(X_test)
-        shap.summary_plot(shap_values, X_test)
+        shap.summary_plot(shap_values, X_test, **kwargs)
         logger.info("Visual Rendered Successfully")
                               
     elif plot == 'correlation':
@@ -7665,7 +7787,7 @@ def interpret_model(estimator,
         explainer = shap.TreeExplainer(model)
         logger.info("Compiling shap values")
         shap_values = explainer.shap_values(X_test) 
-        shap.dependence_plot(dependence, shap_values, X_test)
+        shap.dependence_plot(dependence, shap_values, X_test, **kwargs)
         logger.info("Visual Rendered Successfully")
         
     elif plot == 'reason':
@@ -7680,7 +7802,7 @@ def interpret_model(estimator,
             shap.initjs()
             logger.info("Visual Rendered Successfully")
             logger.info("interpret_model() succesfully completed......................................")
-            return shap.force_plot(explainer.expected_value, shap_values, X_test)
+            return shap.force_plot(explainer.expected_value, shap_values, X_test, **kwargs)
 
         else:
 
@@ -7693,67 +7815,212 @@ def interpret_model(estimator,
             shap.initjs()
             logger.info("Visual Rendered Successfully")
             logger.info("interpret_model() succesfully completed......................................")
-            return shap.force_plot(explainer.expected_value, shap_values[row_to_show,:], X_test.iloc[row_to_show,:])
+            return shap.force_plot(explainer.expected_value, shap_values[row_to_show,:], X_test.iloc[row_to_show,:], **kwargs)
 
     logger.info("interpret_model() succesfully completed......................................")
 
-def evaluate_model(estimator):
-    
+def predict_model(estimator, 
+                  data=None,
+                  round=4,
+                  verbose=True): #added in pycaret==2.0.0
     
     """
-    This function displays a user interface for all of the available plots for 
-    a given estimator. It internally uses the plot_model() function. 
+       
+    Description:
+    ------------
+    This function is used to predict target value on the new dataset using a trained 
+    estimator. New unseen data can be passed to data param as pandas.DataFrame.
+    If data is not passed, the test / hold-out set separated at the time of 
+    setup() is used to generate predictions. 
     
-    Example
-    --------
-    >>> from pycaret.datasets import get_data
-    >>> boston = get_data('boston')
-    >>> experiment_name = setup(data = boston,  target = 'medv')
-    >>> lr = create_model('lr')
-    >>> evaluate_model(lr)
-    
-    This will display the User Interface for all of the plots for a given
-    estimator.
-
+        Example:
+        --------
+        from pycaret.datasets import get_data
+        boston = get_data('boston')
+        experiment_name = setup(data = boston,  target = 'medv')
+        lr = create_model('lr')
+        
+        lr_predictions_holdout = predict_model(lr)
+        
     Parameters
     ----------
     estimator : object, default = none
-        A trained model object should be passed as an estimator. 
+        A trained model object / pipeline should be passed as an estimator. 
+    
+    data : pandas.DataFrame
+        shape (n_samples, n_features) where n_samples is the number of samples and n_features is the number of features.
+        All features used during training must be present in the new dataset.
+    
+    round: integer, default = 4
+        Number of decimal places the predicted labels will be rounded to.
+    
+    verbose: Boolean, default = True
+        Holdout score grid is not printed when verbose is set to False.
 
     Returns
     -------
-    User_Interface
-        Displays the user interface for plotting.    
-
-    """
-        
-        
-    from ipywidgets import widgets
-    from ipywidgets.widgets import interact, fixed, interact_manual
-
-    a = widgets.ToggleButtons(
-                            options=[('Hyperparameters', 'parameter'),
-                                     ('Residuals Plot', 'residuals'), 
-                                     ('Prediction Error Plot', 'error'), 
-                                     ('Cooks Distance Plot', 'cooks'),
-                                     ('Recursive Feature Selection', 'rfe'),
-                                     ('Learning Curve', 'learning'),
-                                     ('Validation Curve', 'vc'),
-                                     ('Manifold Learning', 'manifold'),
-                                     ('Feature Importance', 'feature')
-                                    ],
-
-                            description='Plot Type:',
-
-                            disabled=False,
-
-                            button_style='', # 'success', 'info', 'warning', 'danger' or ''
-
-                            icons=['']
-    )
     
-  
-    d = interact(plot_model, estimator = fixed(estimator), plot = a, save = fixed(False), verbose = fixed(True), system = fixed(True))
+    Predictions:  Predictions (Label and Score) column attached to the original dataset
+    -----------   and returned as pandas.DataFrame.
+
+    score grid:   A table containing the scoring metrics on hold-out / test set.
+    -----------              
+    
+    """
+    
+    # ignore warnings
+    import warnings
+    warnings.filterwarnings('ignore') 
+
+    # general dependencies
+    import sys
+    import numpy as np
+    import pandas as pd
+    import re
+    from sklearn import metrics
+    from copy import deepcopy
+    from IPython.display import clear_output, update_display, display
+    
+    def calculate_mape(actual, prediction):
+        mask = actual != 0
+        return (np.fabs(actual - prediction)/actual)[mask].mean()
+        
+    # retrieve target transformation
+    try:
+        target_transformer = target_inverse_transformer
+    except:
+        target_transformer = estimator.steps[13][1].p_transform_target # make it dynamic instead of hardcoding no 13
+            
+    # dataset
+    if data is None:
+        
+        if 'Pipeline' in str(type(estimator)):
+            estimator = estimator[-1]
+
+        Xtest = X_test.copy()
+        ytest = y_test.copy()
+        X_test_ = X_test.copy()
+        y_test_ = y_test.copy()
+        
+        index = None
+        Xtest.reset_index(drop=True, inplace=True)
+        ytest.reset_index(drop=True, inplace=True)
+        X_test_.reset_index(drop=True, inplace=True)
+        y_test_.reset_index(drop=True, inplace=True)
+
+    else:
+        
+        if 'Pipeline' in str(type(estimator)):
+            pass
+        else:
+            try:
+                estimator_ = deepcopy(prep_pipe)
+                estimator_.steps.append(['trained model',estimator])
+                estimator = estimator_
+                del(estimator_)
+
+            except:
+                sys.exit("Pipeline not found")
+            
+        Xtest = data.copy()
+        X_test_ = data.copy()
+        Xtest.reset_index(drop=True, inplace=True)
+        X_test_.reset_index(inplace=True)
+
+        index = X_test_['index']
+        X_test_.drop('index', axis=1, inplace=True)
+
+    # model name
+    full_name = str(estimator).split("(")[0]
+    def putSpace(input):
+        words = re.findall('[A-Z][a-z]*', input)
+        words = ' '.join(words)
+        return words  
+    full_name = putSpace(full_name)
+
+    if full_name == 'A R D Regression':
+        full_name = 'Automatic Relevance Determination'
+
+    elif full_name == 'M L P Regressor':
+        full_name = 'MLP Regressor'
+
+    elif full_name == 'R A N S A C Regressor':
+        full_name = 'RANSAC Regressor'
+
+    elif full_name == 'S V R':
+        full_name = 'Support Vector Regressor'
+        
+    elif full_name == 'Lars':
+        full_name = 'Least Angle Regression'
+        
+    elif full_name == 'X G B Regressor':
+        full_name = 'Extreme Gradient Boosting Regressor'
+
+    elif full_name == 'L G B M Regressor':
+        full_name = 'Light Gradient Boosting Machine'
+
+    elif 'Cat Boost Regressor' in full_name:
+        full_name = 'CatBoost Regressor'
+
+    # prediction starts here
+    pred_ = estimator.predict(Xtest)
+
+    try:
+        pred_ = target_transformer.inverse_transform(np.array(pred_).reshape(-1,1))
+        pred_ = np.nan_to_num(pred_)
+
+    except:
+        pred_ = np.nan_to_num(pred_)
+        
+    if data is None:
+        
+        try:
+            ytest = target_transformer.inverse_transform(np.array(ytest).reshape(-1,1))
+            ytest = pd.DataFrame(np.nan_to_num(ytest))
+
+        except:
+            pass
+
+        mae = metrics.mean_absolute_error(ytest,pred_)
+        mse = metrics.mean_squared_error(ytest,pred_)
+        rmse = np.sqrt(mse)
+        rmsle = np.sqrt(np.mean(np.power(np.log(np.array(abs(pred_))+1) - np.log(np.array(abs(ytest))+1), 2)))
+        r2 = metrics.r2_score(ytest,pred_)
+        mape = calculate_mape(ytest,pred_)
+                    
+        df_score = pd.DataFrame( {'Model' : [full_name], 'MAE' : [mae], 'MSE' : [mse], 'RMSE' : [rmse], 
+                                    'R2' : [r2], 'RMSLE' : [rmsle], 'MAPE' : mape })
+        df_score = df_score.round(4)
+
+        if verbose:
+            display(df_score)
+    
+        label = pd.DataFrame(pred_)
+        label = label.round(round)
+        label.columns = ['Label']
+        label['Label']=label['Label']
+
+    label = pd.DataFrame(pred_)
+    label = label.round(round)
+    label.columns = ['Label']
+    label['Label']=label['Label']
+    
+    if data is None:
+        X_test_ = pd.concat([Xtest,ytest,label], axis=1)
+    else:
+        X_test_ = pd.concat([X_test_,label], axis=1)
+
+    # store predictions on hold-out in display_container
+    try:
+        display_container.append(df_score)
+    except:
+        pass
+
+    if index is not None:
+        X_test_['index'] = index
+        X_test_.set_index('index', drop=True, inplace=True)
+
+    return X_test_
 
 def finalize_model(estimator):
     
@@ -7995,6 +8262,245 @@ def finalize_model(estimator):
 
     return model_final
 
+def deploy_model(model, 
+                 model_name, 
+                 platform,
+                 authentication):
+    
+    """
+    This function deploys the transformation pipeline and trained model object for
+    production use. The platform of deployment can be defined under the platform
+    param along with the applicable authentication tokens which are passed as a
+    dictionary to the authentication param.
+        
+    Platform: AWS
+    -------------
+    Before deploying a model to an AWS S3 ('aws'), environment variables must be 
+    configured using the command line interface. To configure AWS env. variables, 
+    type aws configure in your python command line. The following information is
+    required which can be generated using the Identity and Access Management (IAM) 
+    portal of your AWS console account:
+
+    - AWS Access Key ID
+    - AWS Secret Key Access
+    - Default Region Name (can be seen under Global settings on your AWS console)
+    - Default output format (must be left blank)
+
+    >>> from pycaret.datasets import get_data
+    >>> boston = get_data('boston')
+    >>> experiment_name = setup(data = boston,  target = 'medv')
+    >>> lr = create_model('lr')
+    >>> deploy_model(model = lr, model_name = 'deploy_lr', platform = 'aws', authentication = {'bucket' : 'bucket-name'})
+
+    Platform: GCP
+    --------------
+    Before deploying a model to Google Cloud Platform (GCP), project must be created either
+    using command line or GCP console. Once project is created, you must create a service 
+    account and download the service account key as a JSON file, which is then used to 
+    set environment variable. 
+
+    Learn more : https://cloud.google.com/docs/authentication/production
+
+    >>> from pycaret.datasets import get_data
+    >>> juice = get_data('juice')
+    >>> experiment_name = setup(data = juice,  target = 'Purchase')
+    >>> lr = create_model('lr')
+    >>> os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = 'c:/path-to-json-file.json' 
+    >>> deploy_model(model = lr, model_name = 'deploy_lr', platform = 'gcp', authentication = {'project' : 'project-name', 'bucket' : 'bucket-name'})
+
+    Platform: Azure
+    ---------------
+    Before deploying a model to Microsoft Azure, environment variables for connection 
+    string must be set. Connection string can be obtained from 'Access Keys' of your 
+    storage account in Azure.
+
+    >>> from pycaret.datasets import get_data
+    >>> juice = get_data('juice')
+    >>> experiment_name = setup(data = juice,  target = 'Purchase')
+    >>> lr = create_model('lr')
+    >>> os.environ['AZURE_STORAGE_CONNECTION_STRING'] = 'connection-string-here' 
+    >>> deploy_model(model = lr, model_name = 'deploy_lr', platform = 'azure', authentication = {'container' : 'container-name'})
+
+    Parameters
+    ----------
+    model : object
+        A trained model object should be passed as an estimator. 
+    
+    model_name : string
+        Name of model to be passed as a string.
+    
+    platform: string
+        Name of platform for deployment. 
+        Currently accepts: 'aws', 'gcp', 'azure'
+
+    authentication : dict
+        Dictionary of applicable authentication tokens.
+
+        When platform = 'aws':
+        {'bucket' : 'name of bucket'}
+
+        When platform = 'gcp':
+        {'project': 'name of project', 'bucket' : 'name of bucket'}
+
+        When platform = 'azure':
+        {'container': 'name of container'}
+
+    Returns
+    -------
+    Success_Message
+    
+    Warnings
+    --------
+    - This function uses file storage services to deploy the model on cloud platform. 
+      As such, this is efficient for batch-use. Where the production objective is to 
+      obtain prediction at an instance level, this may not be the efficient choice as 
+      it transmits the binary pickle file between your local python environment and
+      the platform. 
+    
+    """
+    
+    import sys
+    import logging
+
+    try:
+        hasattr(logger, 'name')
+    except:
+        logger = logging.getLogger('logs')
+        logger.setLevel(logging.DEBUG)
+        
+        # create console handler and set level to debug
+        if logger.hasHandlers():
+            logger.handlers.clear()
+        
+        ch = logging.FileHandler('logs.log')
+        ch.setLevel(logging.DEBUG)
+
+        # create formatter
+        formatter = logging.Formatter('%(asctime)s:%(levelname)s:%(message)s')
+
+        # add formatter to ch
+        ch.setFormatter(formatter)
+
+        # add ch to logger
+        logger.addHandler(ch)
+
+    logger.info("Initializing deploy_model()")
+    logger.info("""deploy_model(model={}, model_name={}, authentication={}, platform={})""".\
+        format(str(model), str(model_name), str(authentication), str(platform)))
+
+    #ignore warnings
+    import warnings
+    warnings.filterwarnings('ignore') 
+    
+    #general dependencies
+    import ipywidgets as ipw
+    import pandas as pd
+    from IPython.display import clear_output, update_display
+    import os
+
+    if platform == 'aws':
+        
+        logger.info("Platform : AWS S3")
+
+        #checking if awscli available
+        try:
+            import awscli
+        except:
+            logger.error("awscli library not found. pip install awscli to use deploy_model function.")
+            sys.exit("awscli library not found. pip install awscli to use deploy_model function.")  
+        
+        import boto3
+        
+        logger.info("Saving model in active working directory")
+        logger.info("SubProcess save_model() called ==================================")
+        save_model(model, model_name = model_name, verbose=False)
+        logger.info("SubProcess save_model() end ==================================")
+        
+        #initiaze s3
+        logger.info("Initializing S3 client")
+        s3 = boto3.client('s3')
+        filename = str(model_name)+'.pkl'
+        key = str(model_name)+'.pkl'
+        bucket_name = authentication.get('bucket')
+        s3.upload_file(filename,bucket_name,key)
+        clear_output()
+        
+        os.remove(filename)
+        
+        print("Model Succesfully Deployed on AWS S3")
+        logger.info("Model Succesfully Deployed on AWS S3")
+        logger.info(str(model))
+
+    elif platform == 'gcp':
+
+        logger.info("Platform : GCP")
+
+        try:
+            import google.cloud
+        except:
+            logger.error("google-cloud-storage library not found. pip install google-cloud-storage to use deploy_model function with GCP.")
+            sys.exit("google-cloud-storage library not found. pip install google-cloud-storage to use deploy_model function with GCP.")
+
+        logger.info("Saving model in active working directory")
+        logger.info("SubProcess save_model() called ==================================")
+        save_model(model, model_name=model_name, verbose=False)
+        logger.info("SubProcess save_model() end ==================================")
+
+        # initialize deployment
+        filename = str(model_name) + '.pkl'
+        key = str(model_name) + '.pkl'
+        bucket_name = authentication.get('bucket')
+        project_name = authentication.get('project')
+        try:
+            _create_bucket_gcp(project_name, bucket_name)
+            _upload_blob_gcp(project_name, bucket_name, filename, key)
+        except:
+            _upload_blob_gcp(project_name, bucket_name, filename, key)
+        
+        os.remove(filename)
+        
+        print("Model Succesfully Deployed on GCP")
+        logger.info("Model Succesfully Deployed on GCP")
+        logger.info(str(model))
+
+    elif platform == 'azure':
+
+        try:
+            import azure.storage.blob
+        except:
+            logger.error("azure-storage-blob library not found. pip install azure-storage-blob to use deploy_model function with Azure.")
+            sys.exit("azure-storage-blob library not found. pip install azure-storage-blob to use deploy_model function with Azure.")
+
+        logger.info("Platform : Azure Blob Storage")
+
+        logger.info("Saving model in active working directory")
+        logger.info("SubProcess save_model() called ==================================")
+        save_model(model, model_name=model_name, verbose=False)
+        logger.info("SubProcess save_model() end ==================================")
+
+        # initialize deployment
+        filename = str(model_name) + '.pkl'
+        key = str(model_name) + '.pkl'
+        container_name = authentication.get('container')
+        try:
+            container_client = _create_container_azure(container_name)
+            _upload_blob_azure(container_name, filename, key)
+            del(container_client)
+        except:
+            _upload_blob_azure(container_name, filename, key)
+
+        os.remove(filename)
+
+        print("Model Succesfully Deployed on Azure Storage Blob")
+        logger.info("Model Succesfully Deployed on Azure Storage Blob")
+        logger.info(str(model))
+
+    else:
+        logger.error('Platform {} is not supported by pycaret or illegal option'.format(platform))
+        sys.exit('Platform {} is not supported by pycaret or illegal option'.format(platform))
+        
+    logger.info("deploy_model() succesfully completed......................................")
+
 def save_model(model, model_name, model_only=False, verbose=True):
     
     """
@@ -8086,43 +8592,44 @@ def save_model(model, model_name, model_only=False, verbose=True):
     logger.info(str(model_))
     logger.info("save_model() succesfully completed......................................")
 
-def load_model(model_name,
-               platform=None,
-               authentication=None,
+def load_model(model_name, 
+               platform = None, 
+               authentication = None,
                verbose=True):
+    
     """
-    This function loads a previously saved transformation pipeline and model
-    from the current active directory into the current python environment.
+    This function loads a previously saved transformation pipeline and model 
+    from the current active directory into the current python environment. 
     Load object must be a pickle file.
-
+    
     Example
     -------
     >>> saved_lr = load_model('lr_model_23122019')
-
-    This will load the previously saved model in saved_lr variable. The file
+    
+    This will load the previously saved model in saved_lr variable. The file 
     must be in the current directory.
 
     Parameters
     ----------
     model_name : string, default = none
         Name of pickle file to be passed as a string.
-
+      
     platform: string, default = None
-        Name of platform, if loading model from cloud. Current available options are:
-        'aws', 'gcp' and 'azure'.
-
+        Name of platform, if loading model from cloud. 
+        Currently available options are: 'aws', 'gcp', 'azure'.
+    
     authentication : dict
         dictionary of applicable authentication tokens.
 
         When platform = 'aws':
-        {'bucket' : 'Name of Bucket on S3'}
+        {'bucket' : 'name of bucket'}
 
         When platform = 'gcp':
-        {'project': 'gcp_pycaret', 'bucket' : 'pycaret-test'}
+        {'project': 'name of project', 'bucket' : 'name of bucket'}
 
         When platform = 'azure':
-        {'container': 'pycaret-test'}
-
+        {'container': 'name of container'}
+    
     verbose: Boolean, default = True
         Success message is not printed when verbose is set to False.
 
@@ -8131,14 +8638,14 @@ def load_model(model_name,
     Model Object
 
     """
-
-    # ignore warnings
+    
+    #ignore warnings
     import warnings
-    warnings.filterwarnings('ignore')
-
-    # exception checking
+    warnings.filterwarnings('ignore') 
+    
+    #exception checking
     import sys
-
+    
     if platform is not None:
         if authentication is None:
             sys.exit("(Value Error): Authentication is missing.")
@@ -8150,9 +8657,9 @@ def load_model(model_name,
         if verbose:
             print('Transformation Pipeline and Model Successfully Loaded')
         return joblib.load(model_name)
+    
     # cloud providers
     elif platform == 'aws':
-        print('loading model from AWS')
 
         import boto3
         bucketname = authentication.get('bucket')
@@ -8169,8 +8676,7 @@ def load_model(model_name,
         return model
 
     elif platform == 'gcp':
-        if verbose:
-            print('loading model from GCP')
+
         bucket_name = authentication.get('bucket')
         project_name = authentication.get('project')
         filename = str(model_name) + '.pkl'
@@ -8185,8 +8691,6 @@ def load_model(model_name,
         return model
 
     elif platform == 'azure':
-        if verbose:
-            print('Loading model from Microsoft Azure')
 
         container_name = authentication.get('container')
         filename = str(model_name) + '.pkl'
@@ -8200,428 +8704,6 @@ def load_model(model_name,
         return model
     else:
         print('Platform { } is not supported by pycaret or illegal option'.format(platform))
-        # return model
-
-    # import joblib
-    # model_name = model_name + '.pkl'
-    # if verbose:
-    #     print('Transformation Pipeline and Model Sucessfully Loaded')
-    #
-    # return joblib.load(model_name)
-
-def predict_model(estimator, 
-                  data=None,
-                  round=4,
-                  verbose=True): #added in pycaret==2.0.0
-    
-    """
-       
-    Description:
-    ------------
-    This function is used to predict target value on the new dataset using a trained 
-    estimator. New unseen data can be passed to data param as pandas.DataFrame.
-    If data is not passed, the test / hold-out set separated at the time of 
-    setup() is used to generate predictions. 
-    
-        Example:
-        --------
-        from pycaret.datasets import get_data
-        boston = get_data('boston')
-        experiment_name = setup(data = boston,  target = 'medv')
-        lr = create_model('lr')
-        
-        lr_predictions_holdout = predict_model(lr)
-        
-    Parameters
-    ----------
-    estimator : object, default = none
-        A trained model object / pipeline should be passed as an estimator. 
-    
-    data : pandas.DataFrame
-        shape (n_samples, n_features) where n_samples is the number of samples and n_features is the number of features.
-        All features used during training must be present in the new dataset.
-    
-    round: integer, default = 4
-        Number of decimal places the predicted labels will be rounded to.
-    
-    verbose: Boolean, default = True
-        Holdout score grid is not printed when verbose is set to False.
-
-    Returns
-    -------
-    
-    Predictions:  Predictions (Label and Score) column attached to the original dataset
-    -----------   and returned as pandas.DataFrame.
-
-    score grid:   A table containing the scoring metrics on hold-out / test set.
-    -----------              
-    
-    """
-    
-    # ignore warnings
-    import warnings
-    warnings.filterwarnings('ignore') 
-
-    # general dependencies
-    import sys
-    import numpy as np
-    import pandas as pd
-    import re
-    from sklearn import metrics
-    from copy import deepcopy
-    from IPython.display import clear_output, update_display, display
-    
-    def calculate_mape(actual, prediction):
-        mask = actual != 0
-        return (np.fabs(actual - prediction)/actual)[mask].mean()
-        
-    # retrieve target transformation
-    try:
-        target_transformer = target_inverse_transformer
-    except:
-        target_transformer = estimator.steps[13][1].p_transform_target # make it dynamic instead of hardcoding no 13
-            
-    # dataset
-    if data is None:
-        
-        if 'Pipeline' in str(type(estimator)):
-            estimator = estimator[-1]
-
-        Xtest = X_test.copy()
-        ytest = y_test.copy()
-        X_test_ = X_test.copy()
-        y_test_ = y_test.copy()
-        
-        index = None
-        Xtest.reset_index(drop=True, inplace=True)
-        ytest.reset_index(drop=True, inplace=True)
-        X_test_.reset_index(drop=True, inplace=True)
-        y_test_.reset_index(drop=True, inplace=True)
-
-    else:
-        
-        if 'Pipeline' in str(type(estimator)):
-            pass
-        else:
-            try:
-                estimator_ = deepcopy(prep_pipe)
-                estimator_.steps.append(['trained model',estimator])
-                estimator = estimator_
-                del(estimator_)
-
-            except:
-                sys.exit("Pipeline not found")
-            
-        Xtest = data.copy()
-        X_test_ = data.copy()
-        Xtest.reset_index(drop=True, inplace=True)
-        X_test_.reset_index(inplace=True)
-
-        index = X_test_['index']
-        X_test_.drop('index', axis=1, inplace=True)
-
-    # model name
-    full_name = str(estimator).split("(")[0]
-    def putSpace(input):
-        words = re.findall('[A-Z][a-z]*', input)
-        words = ' '.join(words)
-        return words  
-    full_name = putSpace(full_name)
-
-    if full_name == 'A R D Regression':
-        full_name = 'Automatic Relevance Determination'
-
-    elif full_name == 'M L P Regressor':
-        full_name = 'MLP Regressor'
-
-    elif full_name == 'R A N S A C Regressor':
-        full_name = 'RANSAC Regressor'
-
-    elif full_name == 'S V R':
-        full_name = 'Support Vector Regressor'
-        
-    elif full_name == 'Lars':
-        full_name = 'Least Angle Regression'
-        
-    elif full_name == 'X G B Regressor':
-        full_name = 'Extreme Gradient Boosting Regressor'
-
-    elif full_name == 'L G B M Regressor':
-        full_name = 'Light Gradient Boosting Machine'
-
-    elif 'Cat Boost Regressor' in full_name:
-        full_name = 'CatBoost Regressor'
-
-    # prediction starts here
-    pred_ = estimator.predict(Xtest)
-
-    try:
-        pred_ = target_transformer.inverse_transform(np.array(pred_).reshape(-1,1))
-        pred_ = np.nan_to_num(pred_)
-
-    except:
-        pred_ = np.nan_to_num(pred_)
-        
-    if data is None:
-        
-        try:
-            ytest = target_transformer.inverse_transform(np.array(ytest).reshape(-1,1))
-            ytest = pd.DataFrame(np.nan_to_num(ytest))
-
-        except:
-            pass
-
-        mae = metrics.mean_absolute_error(ytest,pred_)
-        mse = metrics.mean_squared_error(ytest,pred_)
-        rmse = np.sqrt(mse)
-        rmsle = np.sqrt(np.mean(np.power(np.log(np.array(abs(pred_))+1) - np.log(np.array(abs(ytest))+1), 2)))
-        r2 = metrics.r2_score(ytest,pred_)
-        mape = calculate_mape(ytest,pred_)
-                    
-        df_score = pd.DataFrame( {'Model' : [full_name], 'MAE' : [mae], 'MSE' : [mse], 'RMSE' : [rmse], 
-                                    'R2' : [r2], 'RMSLE' : [rmsle], 'MAPE' : mape })
-        df_score = df_score.round(4)
-
-        if verbose:
-            display(df_score)
-    
-        label = pd.DataFrame(pred_)
-        label = label.round(round)
-        label.columns = ['Label']
-        label['Label']=label['Label']
-
-    label = pd.DataFrame(pred_)
-    label = label.round(round)
-    label.columns = ['Label']
-    label['Label']=label['Label']
-    
-    if data is None:
-        X_test_ = pd.concat([Xtest,ytest,label], axis=1)
-    else:
-        X_test_ = pd.concat([X_test_,label], axis=1)
-
-    # store predictions on hold-out in display_container
-    try:
-        display_container.append(df_score)
-    except:
-        pass
-
-    if index is not None:
-        X_test_['index'] = index
-        X_test_.set_index('index', drop=True, inplace=True)
-
-    return X_test_
-
-def deploy_model(model,
-                 model_name,
-                 authentication,
-                 platform='aws'):
-    """
-    (In Preview)
-
-    This function deploys the transformation pipeline and trained model object for
-    production use. The platform of deployment can be defined under the platform
-    param along with the applicable authentication tokens which are passed as a
-    dictionary to the authentication param.
-
-    Example
-    -------
-    >>> from pycaret.datasets import get_data
-    >>> juice = get_data('juice')
-    >>> experiment_name = setup(data = juice,  target = 'Purchase')
-    >>> lr = create_model('lr')
-    >>> deploy_model(model = lr, model_name = 'deploy_lr', platform = 'aws', authentication = {'bucket' : 'pycaret-test'})
-
-    This will deploy the model on an AWS S3 account under bucket 'pycaret-test'
-
-    Notes
-    -----
-    For AWS users:
-    Before deploying a model to an AWS S3 ('aws'), environment variables must be
-    configured using the command line interface. To configure AWS env. variables,
-    type aws configure in your python command line. The following information is
-    required which can be generated using the Identity and Access Management (IAM)
-    portal of your amazon console account:
-
-    - AWS Access Key ID
-    - AWS Secret Key Access
-    - Default Region Name (can be seen under Global settings on your AWS console)
-    - Default output format (must be left blank)
-
-    For GCP users:
-    --------------
-    Before deploying a model to Google Cloud Platform (GCP), user has to create Project
-    on the platform from consol. To do that, user must have google cloud account or
-    create new one. After creating a service account, down the JSON authetication file
-    and configure  GOOGLE_APPLICATION_CREDENTIALS= <path-to-json> from command line. If
-    using google-colab then authetication can be done using `google.colab` auth method.
-    Read below link for more details.
-
-    https://cloud.google.com/docs/authentication/production
-
-    - Google Cloud Project
-    - Service Account Authetication
-
-    For AZURE users:
-    --------------
-    Before deploying a model to Microsoft's Azure (Azure), environment variables
-    for connection string must be set. In order to get connection string, user has
-    to create account of Azure. Once it is done, create a Storage account. In the settings
-    section of storage account, user can get the connection string.
-
-    Read below link for more details.
-    https://docs.microsoft.com/en-us/azure/storage/blobs/storage-quickstart-blobs-python?toc=%2Fpython%2Fazure%2FTOC.json
-
-    - Azure Storage Account
-
-    Parameters
-    ----------
-    model : object
-        A trained model object should be passed as an estimator.
-
-    model_name : string
-        Name of model to be passed as a string.
-
-    authentication : dict
-        Dictionary of applicable authentication tokens.
-
-        When platform = 'aws':
-        {'bucket' : 'Name of Bucket on S3'}
-
-        When platform = 'gcp':
-        {'project': 'gcp_pycaret', 'bucket' : 'pycaret-test'}
-
-        When platform = 'azure':
-        {'container': 'pycaret-test'}
-
-    platform: string, default = 'aws'
-        Name of platform for deployment. Current available options are: 'aws', 'gcp' and 'azure'
-
-    Returns
-    -------
-    Success_Message
-
-    Warnings
-    --------
-    - This function uses file storage services to deploy the model on cloud platform.
-      As such, this is efficient for batch-use. Where the production objective is to
-      obtain prediction at an instance level, this may not be the efficient choice as
-      it transmits the binary pickle file between your local python environment and
-      the platform.
-
-    """
-
-    import sys
-    import logging
-
-    try:
-        hasattr(logger, 'name')
-    except:
-        logger = logging.getLogger('logs')
-        logger.setLevel(logging.DEBUG)
-
-        # create console handler and set level to debug
-        if logger.hasHandlers():
-            logger.handlers.clear()
-
-        ch = logging.FileHandler('logs.log')
-        ch.setLevel(logging.DEBUG)
-
-        # create formatter
-        formatter = logging.Formatter('%(asctime)s:%(levelname)s:%(message)s')
-
-        # add formatter to ch
-        ch.setFormatter(formatter)
-
-        # add ch to logger
-        logger.addHandler(ch)
-
-    logger.info("Initializing deploy_model()")
-    logger.info("""deploy_model(model={}, model_name={}, authentication={}, platform={})""". \
-                format(str(model), str(model_name), str(authentication), str(platform)))
-
-    # checking if awscli available
-    try:
-        import awscli
-    except:
-        logger.error("awscli library not found. pip install awscli to use deploy_model function.")
-        sys.exit("awscli library not found. pip install awscli to use deploy_model function.")
-
-        # ignore warnings
-    import warnings
-    warnings.filterwarnings('ignore')
-
-    # general dependencies
-    import ipywidgets as ipw
-    import pandas as pd
-    from IPython.display import clear_output, update_display
-    import os
-
-    if platform == 'aws':
-
-        logger.info("Platform : AWS S3")
-
-        import boto3
-
-        logger.info("Saving model in active working directory")
-        logger.info("SubProcess save_model() called ==================================")
-        save_model(model, model_name=model_name, verbose=False)
-        logger.info("SubProcess save_model() end ==================================")
-
-        # initiaze s3
-        logger.info("Initializing S3 client")
-        s3 = boto3.client('s3')
-        filename = str(model_name) + '.pkl'
-        key = str(model_name) + '.pkl'
-        bucket_name = authentication.get('bucket')
-        s3.upload_file(filename, bucket_name, key)
-        clear_output()
-        os.remove(filename)
-        print("Model Succesfully Deployed on AWS S3")
-        logger.info(str(model))
-        logger.info("deploy_model() succesfully completed......................................")
-
-    elif platform == 'gcp':
-
-        try:
-            import google.cloud
-        except:
-            logger.error(
-                "google.cloud library not found. pip install google.cloud to use deploy_model function with GCP.")
-            sys.exit("google.cloud library not found. pip install google.cloud to use deploy_model function with GCP.")
-
-        save_model(model, model_name=model_name, verbose=False)
-        filename = str(model_name) + '.pkl'
-        key = str(model_name) + '.pkl'
-        bucket_name = authentication.get('bucket')
-        project_name = authentication.get('project')
-        logger.info('Deploying model to Google Cloud Platform')
-        # Create Bucket
-        _create_bucket_gcp(project_name, bucket_name)
-        _upload_blob_gcp(project_name, bucket_name, filename, key)
-        logger.info('Deployed model Successfully on Google Cloud Platform')
-
-    elif platform == 'azure':
-
-        try:
-            import azure.storage.blob
-        except:
-            logger.error(
-                "azure.storage.blob library not found. pip install azure-storage-blob to use deploy_model function with Azure.")
-            sys.exit(
-                "azure.storage.blob library not found. pip install azure-storage-blob to use deploy_model function with Azure.")
-
-        logger.info('Deploying model to Microsoft Azure')
-        save_model(model, model_name=model_name, verbose=False)
-        filename = str(model_name) + '.pkl'
-        key = str(model_name) + '.pkl'
-        container_name = authentication.get('container')
-        container_client = _create_container_azure(container_name)
-        _upload_blob_azure(container_name, filename, key)
-
-    else:
-        logger.error('Platform {} is not supported by pycaret or illegal option'.format(platform))
-        sys.exit('Platform {} is not supported by pycaret or illegal option'.format(platform))
 
 def automl(optimize='R2', use_holdout=False):
 
@@ -9346,7 +9428,6 @@ def _create_container_azure(container_name):
     connect_str = os.getenv('AZURE_STORAGE_CONNECTION_STRING')
     blob_service_client = BlobServiceClient.from_connection_string(connect_str)
     container_client = blob_service_client.create_container(container_name)
-    logger.info('{} has been created successfully on Azure platform')
     return container_client
 
 def _upload_blob_azure(container_name, source_file_name, destination_blob_name):
@@ -9382,11 +9463,9 @@ def _upload_blob_azure(container_name, source_file_name, destination_blob_name):
     # Create a blob client using the local file name as the name for the blob
     blob_client = blob_service_client.get_blob_client(container=container_name, blob=destination_blob_name)
 
-    logger.info("\nUploading to Azure Storage as blob:\n\t" + source_file_name)
-
     # Upload the created file
     with open(source_file_name, "rb") as data:
-      blob_client.upload_blob(data)
+      blob_client.upload_blob(data, overwrite=True)
 
 def _download_blob_azure(container_name, source_blob_name, destination_file_name):
     """
@@ -9415,7 +9494,6 @@ def _download_blob_azure(container_name, source_blob_name, destination_file_name
 
     import os, uuid
     from azure.storage.blob import BlobServiceClient, BlobClient, ContainerClient
-    print("\nDownloading blob to \n\t" + destination_file_name)
 
     connect_str = os.getenv('AZURE_STORAGE_CONNECTION_STRING')
     blob_service_client = BlobServiceClient.from_connection_string(connect_str)
@@ -9425,9 +9503,3 @@ def _download_blob_azure(container_name, source_blob_name, destination_file_name
     if destination_file_name is not None:
         with open(destination_file_name, "wb") as download_file:
           download_file.write(blob_client.download_blob().readall())
-
-        logger.info(
-            "Blob {} downloaded to {}.".format(
-                source_blob_name, destination_file_name
-            )
-        )

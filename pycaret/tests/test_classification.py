@@ -1,42 +1,50 @@
 import os, sys
 sys.path.insert(0, os.path.abspath(".."))
 
-#compare_models_test
+import pandas as pd
 import pytest
 import pycaret.classification
 import pycaret.datasets
 
+
 def test():
     # loading dataset
     data = pycaret.datasets.get_data('juice')
+    assert isinstance(data, pd.core.frame.DataFrame)
 
     # init setup
-    clf1 = pycaret.classification.setup(data, target='Purchase',silent=True, html=False, session_id=123)
-    clf1 = pycaret.classification.setup(data, target='Purchase',silent=True, feature_selection_method='boruta',
-                                        html=False, session_id=123)
+    clf1 = pycaret.classification.setup(data, target='Purchase', silent=True, html=False, session_id=123)
+    assert isinstance(clf1, tuple)
+
     # compare models
-    top3 = pycaret.classification.compare_models(n_select = 3, blacklist=['catboost'])
+    top3 = pycaret.classification.compare_models(n_select = 3, exclude=['catboost'])
+    assert isinstance(top3, list)
 
     # tune model
     tuned_top3 = [pycaret.classification.tune_model(i) for i in top3]
+    assert isinstance(tuned_top3, list)
 
     # ensemble model
     bagged_top3 = [pycaret.classification.ensemble_model(i) for i in tuned_top3]
+    assert isinstance(bagged_top3, list)
 
     # blend models
     blender = pycaret.classification.blend_models(top3)
 
     # stack models
     stacker = pycaret.classification.stack_models(estimator_list = top3)
+    predict_holdout = pycaret.classification.predict_model(stacker)
 
     # select best model
     best = pycaret.classification.automl(optimize = 'MCC')
     
     # hold out predictions
     predict_holdout = pycaret.classification.predict_model(best)
+    assert isinstance(predict_holdout, pd.core.frame.DataFrame)
 
     # predictions on new dataset
     predict_holdout = pycaret.classification.predict_model(best, data=data)
+    assert isinstance(predict_holdout, pd.core.frame.DataFrame)
 
     # calibrate model
     calibrated_best = pycaret.classification.calibrate_model(best)
@@ -52,15 +60,22 @@ def test():
     
     # returns table of models
     all_models = pycaret.classification.models()
+    assert isinstance(all_models, pd.core.frame.DataFrame)
     
     # get config
     X_train = pycaret.classification.get_config('X_train')
     X_test = pycaret.classification.get_config('X_test')
     y_train = pycaret.classification.get_config('y_train')
     y_test = pycaret.classification.get_config('y_test')
+    assert isinstance(X_train, pd.core.frame.DataFrame)
+    assert isinstance(X_test, pd.core.frame.DataFrame)
+    assert isinstance(y_train, pd.core.series.Series)
+    assert isinstance(y_test, pd.core.series.Series)
 
     # set config
-    pycaret.classification.set_config('seed', 123) 
+    pycaret.classification.set_config('seed', 124)
+    seed = pycaret.classification.get_config('seed')
+    assert seed == 124
     
     assert 1 == 1
     
