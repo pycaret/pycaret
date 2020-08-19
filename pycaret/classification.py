@@ -1665,7 +1665,7 @@ def setup(
     experiment__.append(("Transformation Pipeline", prep_pipe))
 
     all_models = models(force_regenerate=True)
-    _all_models_internal = models(internal=True,force_regenerate=True)
+    _all_models_internal = models(internal=True, force_regenerate=True)
     all_metrics = get_metrics()
 
     # end runtime
@@ -5041,6 +5041,7 @@ def stack_models(
 def plot_model(
     estimator,
     plot: str = "auc",
+    scale=1,  # added in pycaret 2.1.0
     save: bool = False,  # added in pycaret 2.0.0
     verbose: bool = True,  # added in pycaret 2.0.0
     system: bool = True,
@@ -5087,6 +5088,9 @@ def plot_model(
         * 'dimension' - Dimension Learning           
         * 'feature' - Feature Importance              
         * 'parameter' - Model Hyperparameter          
+
+    scale: float, default = 1
+        The resolution scale of the figure.
 
     save: Boolean, default = False
         When set to True, Plot is saved as a 'png' file in current working directory.
@@ -5257,6 +5261,7 @@ def plot_model(
 
         display.move_progress()
         visualizer = ROCAUC(model)
+        visualizer.fig.set_dpi(visualizer.fig.dpi * scale)
         logger.info("Fitting Model")
         visualizer.fit(X_train, y_train)
         display.move_progress()
@@ -5281,6 +5286,7 @@ def plot_model(
 
         display.move_progress()
         visualizer = DiscriminationThreshold(model, random_state=seed)
+        visualizer.fig.set_dpi(visualizer.fig.dpi * scale)
         logger.info("Fitting Model")
         visualizer.fit(X_train, y_train)
         display.move_progress()
@@ -5305,6 +5311,7 @@ def plot_model(
 
         display.move_progress()
         visualizer = PrecisionRecallCurve(model, random_state=seed)
+        visualizer.fig.set_dpi(visualizer.fig.dpi * scale)
         logger.info("Fitting Model")
         visualizer.fit(X_train, y_train)
         display.move_progress()
@@ -5331,6 +5338,7 @@ def plot_model(
         visualizer = ConfusionMatrix(
             model, random_state=seed, fontsize=15, cmap="Greens"
         )
+        visualizer.fig.set_dpi(visualizer.fig.dpi * scale)
         logger.info("Fitting Model")
         visualizer.fit(X_train, y_train)
         display.move_progress()
@@ -5355,6 +5363,7 @@ def plot_model(
 
         display.move_progress()
         visualizer = ClassPredictionError(model, random_state=seed)
+        visualizer.fig.set_dpi(visualizer.fig.dpi * scale)
         logger.info("Fitting Model")
         visualizer.fit(X_train, y_train)
         display.move_progress()
@@ -5381,6 +5390,7 @@ def plot_model(
 
         display.move_progress()
         visualizer = ClassificationReport(model, random_state=seed, support=True)
+        visualizer.fig.set_dpi(visualizer.fig.dpi * scale)
         logger.info("Fitting Model")
         visualizer.fit(X_train, y_train)
         display.move_progress()
@@ -5432,6 +5442,7 @@ def plot_model(
         y_test_transformed = np.array(y_test_transformed)
 
         viz_ = DecisionViz(model2)
+        viz_.fig.set_dpi(viz_.fig.dpi * scale)
         logger.info("Fitting Model")
         viz_.fit(
             X_train_transformed,
@@ -5459,6 +5470,7 @@ def plot_model(
 
         display.move_progress()
         visualizer = RFECV(model, cv=10)
+        visualizer.fig.set_dpi(visualizer.fig.dpi * scale)
         display.move_progress()
         logger.info("Fitting Model")
         visualizer.fit(X_train, y_train)
@@ -5488,6 +5500,7 @@ def plot_model(
         visualizer = LearningCurve(
             model, cv=10, train_sizes=sizes, n_jobs=n_jobs_param, random_state=seed
         )
+        visualizer.fig.set_dpi(visualizer.fig.dpi * scale)
         display.move_progress()
         logger.info("Fitting Model")
         visualizer.fit(X_train, y_train)
@@ -5511,6 +5524,7 @@ def plot_model(
         display.move_progress()
         X_train_transformed = X_train.select_dtypes(include="float64")
         visualizer = Manifold(manifold="tsne", random_state=seed)
+        visualizer.fig.set_dpi(visualizer.fig.dpi * scale)
         display.move_progress()
         logger.info("Fitting Model")
         visualizer.fit_transform(X_train_transformed, y_train)
@@ -5533,7 +5547,7 @@ def plot_model(
 
         model_name = str(model).split("(")[0]
 
-        plt.figure(figsize=(7, 6))
+        plt.figure(figsize=(7, 6), dpi=100 * scale)
         ax1 = plt.subplot2grid((3, 1), (0, 0), rowspan=2)
 
         ax1.plot([0, 1], [0, 1], "k:", label="Perfectly calibrated")
@@ -5653,6 +5667,7 @@ def plot_model(
             cv=10,
             random_state=seed,
         )
+        viz.fig.set_dpi(viz.fig.dpi * scale)
         logger.info("Fitting Model")
         viz.fit(X_train, y_train)
         display.move_progress()
@@ -5689,6 +5704,7 @@ def plot_model(
         display.move_progress()
         classes = y_train.unique().tolist()
         visualizer = RadViz(classes=classes, alpha=0.25)
+        visualizer.fig.set_dpi(visualizer.fig.dpi * scale)
         logger.info("Fitting Model")
         visualizer.fit(X_train_transformed, y_train_transformed)
         visualizer.transform(X_train_transformed)
@@ -5720,7 +5736,7 @@ def plot_model(
         sorted_df = sorted_df.sort_values(by="Value")
         my_range = range(1, len(sorted_df.index) + 1)
         display.move_progress()
-        plt.figure(figsize=(8, 5))
+        plt.figure(figsize=(8, 5), dpi=100 * scale)
         plt.hlines(y=my_range, xmin=0, xmax=sorted_df["Value"], color="skyblue")
         plt.plot(sorted_df["Value"], my_range, "o")
         display.move_progress()
@@ -7900,7 +7916,9 @@ def pull() -> pandas.DataFrame:
     return display_container[-1]
 
 
-def models(type: str = None, internal: bool = False, force_regenerate: bool = False) -> pandas.DataFrame:
+def models(
+    type: str = None, internal: bool = False, force_regenerate: bool = False
+) -> pandas.DataFrame:
 
     """
     Returns table of models available in model library.
