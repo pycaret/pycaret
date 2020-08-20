@@ -1,0 +1,498 @@
+cycle,state,dem_poll_avg,dem_poll_avg_margin,incumbent_party,incumbent_running,party_winner
+1976,California,42.797994,-3.270221999999997,republican,1,republican
+1976,Colorado,42.180101,-1.3731909999999985,republican,1,republican
+1976,Connecticut,41.698014,-1.4696539999999985,republican,1,republican
+1976,Delaware,33.370748,2.4453219999999973,republican,1,democrat
+1976,Georgia,59.796546,29.37976,republican,1,democrat
+1976,Idaho,28.532182000000002,-18.699278999999994,republican,1,republican
+1976,Illinois,46.568121999999995,-1.5707750000000047,republican,1,republican
+1976,Indiana,44.115426,0.9120979999999932,republican,1,republican
+1976,Iowa,44.396444,-1.6251549999999995,republican,1,republican
+1976,Kansas,41.301737,-4.802531999999999,republican,1,republican
+1976,Maine,39.287709,-2.4188720000000004,republican,1,republican
+1976,Maryland,37.996590000000005,7.9798820000000035,republican,1,democrat
+1976,Massachusetts,50.399871000000005,14.428559000000007,republican,1,democrat
+1976,Michigan,41.721918,-3.3599999999999994,republican,1,republican
+1976,Minnesota,50.399871000000005,14.114422000000005,republican,1,democrat
+1976,Missouri,46.088928,2.2427350000000033,republican,1,democrat
+1976,Nebraska,33.370748,-19.654472,republican,1,republican
+1976,New Jersey,37.091361,-7.554365000000004,republican,1,republican
+1976,New York,49.313474,4.9621369999999985,republican,1,democrat
+1976,North Carolina,41.196529,0.6783209999999968,republican,1,democrat
+1976,Ohio,53.398832999999996,11.390884999999997,republican,1,democrat
+1976,Oregon,43.190446,2.6719230000000067,republican,1,republican
+1976,South Carolina,48.704338,10.675170999999999,republican,1,democrat
+1976,South Dakota,43.200283,1.2656049999999937,republican,1,republican
+1976,Utah,34.506819,-20.900797000000004,republican,1,republican
+1976,Washington,33.270395,1.5366590000000038,republican,1,republican
+1980,Alabama,40.321613,-4.5473089999999985,democrat,1,republican
+1980,Arizona,21.787392,-23.387207,democrat,1,republican
+1980,Arkansas,43.983228000000004,3.6583240000000075,democrat,1,republican
+1980,California,28.010388,-14.065117999999998,democrat,1,republican
+1980,Colorado,24.913525,-25.041932000000003,democrat,1,republican
+1980,Connecticut,32.831153,-3.5359300000000005,democrat,1,republican
+1980,Delaware,36.74326,-6.423568000000003,democrat,1,republican
+1980,Florida,36.81831,-7.679393000000005,democrat,1,republican
+1980,Georgia,48.568402,12.246155000000002,democrat,1,democrat
+1980,Hawaii,36.287027,5.260771000000002,democrat,1,democrat
+1980,Idaho,23.957977,-27.003688999999994,democrat,1,republican
+1980,Illinois,40.353598,-3.4145090000000025,democrat,1,republican
+1980,Iowa,33.458937,-10.894622999999996,democrat,1,republican
+1980,Kansas,26.411143,-22.420884000000004,democrat,1,republican
+1980,Louisiana,36.86978,-12.143667,democrat,1,republican
+1980,Maine,35.645348999999996,5.8944089999999925,democrat,1,republican
+1980,Maryland,41.137857000000004,10.157388000000005,democrat,1,democrat
+1980,Massachusetts,31.140320000000003,0.5268750000000004,democrat,1,republican
+1980,Michigan,28.741635,-9.439073000000004,democrat,1,republican
+1980,Minnesota,31.597255,-0.11069199999999668,democrat,1,democrat
+1980,Mississippi,35.870002,-15.243476000000001,democrat,1,republican
+1980,Missouri,37.222867,-2.957156999999995,democrat,1,republican
+1980,Nebraska,22.783342,-32.393744999999996,democrat,1,republican
+1980,Nevada,22.783342,-20.383486,democrat,1,republican
+1980,New Hampshire,28.762486,-14.404342000000003,democrat,1,republican
+1980,New Jersey,33.844507,-5.078495000000004,democrat,1,republican
+1980,New York,35.753233,4.0570699999999995,democrat,1,democrat
+1980,North Carolina,46.157558,7.012925000000003,democrat,1,republican
+1980,North Dakota,23.779460999999998,-25.403376,democrat,1,republican
+1980,Ohio,34.906983000000004,-7.481986999999997,democrat,1,republican
+1980,Oklahoma,38.739903999999996,-14.441508000000006,democrat,1,republican
+1980,Oregon,35.199058,-6.589210999999999,democrat,1,republican
+1980,Pennsylvania,33.33068,-5.2913600000000045,democrat,1,republican
+1980,Rhode Island,35.264207,10.578623,democrat,1,democrat
+1980,South Carolina,43.700094,3.080945,democrat,1,republican
+1980,South Dakota,17.450183,-17.594745000000007,democrat,1,republican
+1980,Tennessee,51.268399,9.351949000000005,democrat,1,republican
+1980,Texas,38.029731,-3.775623000000003,democrat,1,republican
+1980,Virginia,29.742939,-12.601536000000003,democrat,1,republican
+1980,Washington,32.373094,-8.194969,democrat,1,republican
+1980,West Virginia,40.200027,11.312523000000002,democrat,1,democrat
+1980,Wisconsin,31.524793,-2.9198739999999965,democrat,1,republican
+1984,Alabama,35.034674,-22.023984999999996,republican,1,republican
+1984,California,38.947686,-16.310839,republican,1,republican
+1984,Colorado,31.0,-23.0,republican,1,republican
+1984,Connecticut,30.695356,-26.59231,republican,1,republican
+1984,Florida,31.783757,-30.071395000000003,republican,1,republican
+1984,Illinois,39.675961,-12.543531999999999,republican,1,republican
+1984,Indiana,36.119087,-15.599016999999996,republican,1,republican
+1984,Iowa,39.460832,-12.419655999999996,republican,1,republican
+1984,Kansas,28.888068,-26.34248,republican,1,republican
+1984,Kentucky,33.065294,-25.297862000000002,republican,1,republican
+1984,Maryland,36.0,-13.0,republican,1,republican
+1984,Massachusetts,44.119005,-4.7585029999999975,republican,1,republican
+1984,Minnesota,46.088834000000006,1.3974600000000095,republican,1,democrat
+1984,Missouri,37.749237,-16.765569999999997,republican,1,republican
+1984,Nebraska,26.931731,-31.348517,republican,1,republican
+1984,New Hampshire,42.543725,-8.033088,republican,1,republican
+1984,New Jersey,32.496976000000004,-24.040259999999996,republican,1,republican
+1984,New Mexico,36.962649,-22.251212000000002,republican,1,republican
+1984,New York,38.551885,-11.372017000000007,republican,1,republican
+1984,North Carolina,33.807644,-28.442693999999996,republican,1,republican
+1984,Ohio,39.468841999999995,-18.648283000000006,republican,1,republican
+1984,Oregon,38.4373,-10.724055999999997,republican,1,republican
+1984,Pennsylvania,40.310944,-14.835010000000004,republican,1,republican
+1984,Rhode Island,38.622482,-9.869456,republican,1,republican
+1984,Texas,33.363964,-26.369003,republican,1,republican
+1984,Utah,23.614176,-46.972194,republican,1,republican
+1984,Virginia,31.0,-28.0,republican,1,republican
+1984,Washington,34.142811,-14.165517999999999,republican,1,republican
+1984,West Virginia,44.393791,-10.110380999999997,republican,1,republican
+1984,Wisconsin,35.545034,-16.880119999999998,republican,1,republican
+1988,Alabama,36.941321,-18.538551,republican,0,republican
+1988,Alaska,41.120967,-10.390892999999998,republican,0,republican
+1988,Arizona,33.011637,-20.216916000000005,republican,0,republican
+1988,Arkansas,40.347879,-7.589976,republican,0,republican
+1988,California,42.883798,-8.033823999999996,republican,0,republican
+1988,Colorado,41.952605,-3.4963049999999996,republican,0,republican
+1988,Connecticut,40.7113,-0.417037999999998,republican,0,republican
+1988,Delaware,34.832296,-14.190244999999997,republican,0,republican
+1988,Florida,35.808301,-21.742401,republican,0,republican
+1988,Georgia,38.949382,-11.920596000000003,republican,0,republican
+1988,Hawaii,41.675536,7.651668000000001,republican,0,democrat
+1988,Illinois,45.433824,-1.2084199999999967,republican,0,republican
+1988,Indiana,37.372362,-13.803168999999997,republican,0,republican
+1988,Iowa,51.348628999999995,13.579386999999997,republican,0,democrat
+1988,Kansas,34.883109000000005,-7.725975999999996,republican,0,republican
+1988,Kentucky,41.791197,-5.525950999999999,republican,0,republican
+1988,Louisiana,39.623911,-8.723192000000004,republican,0,republican
+1988,Maine,42.126039,-3.8567570000000018,republican,0,republican
+1988,Maryland,45.944472,-0.6433719999999994,republican,0,republican
+1988,Massachusetts,48.431455,6.746832000000005,republican,0,democrat
+1988,Michigan,43.626056,-2.237392,republican,0,republican
+1988,Minnesota,49.89779,7.643155,republican,0,democrat
+1988,Mississippi,37.076414,-19.050599,republican,0,republican
+1988,Missouri,41.913959999999996,-5.5348320000000015,republican,0,republican
+1988,Montana,36.983819,-9.011197000000003,republican,0,republican
+1988,Nebraska,39.5896,-5.980428000000003,republican,0,republican
+1988,Nevada,33.449524,-17.700569,republican,0,republican
+1988,New Hampshire,32.119257,-28.271749999999997,republican,0,republican
+1988,New Jersey,40.924593,-10.379368,republican,0,republican
+1988,New Mexico,39.668694,-9.515822999999997,republican,0,republican
+1988,New York,45.885133,0.1984650000000059,republican,0,democrat
+1988,North Carolina,41.989746000000004,-8.300449,republican,0,republican
+1988,North Dakota,37.267996999999994,-14.247344000000005,republican,0,republican
+1988,Ohio,41.268361,-8.170046,republican,0,republican
+1988,Oklahoma,38.603252000000005,-16.809592999999992,republican,0,republican
+1988,Oregon,48.474515999999994,1.0739459999999923,republican,0,democrat
+1988,Pennsylvania,44.803587,-3.565793999999997,republican,0,republican
+1988,Rhode Island,46.607574,9.851874000000002,republican,0,democrat
+1988,South Carolina,39.120127000000004,-14.885082999999995,republican,0,republican
+1988,South Dakota,40.672295,-4.494734999999999,republican,0,republican
+1988,Tennessee,39.917801000000004,-11.038620999999992,republican,0,republican
+1988,Texas,42.587829,-9.513224000000001,republican,0,republican
+1988,Utah,31.227521999999997,-33.60928200000001,republican,0,republican
+1988,Vermont,41.675536,-0.4664769999999976,republican,0,republican
+1988,Virginia,39.417478,-12.722485999999996,republican,0,republican
+1988,Washington,42.971394000000004,-4.295337999999994,republican,0,democrat
+1988,West Virginia,43.680941,8.638100000000001,republican,0,democrat
+1988,Wisconsin,44.869765,-1.7431889999999939,republican,0,democrat
+1988,Wyoming,27.823913,-28.620669999999993,republican,0,republican
+1992,Alabama,40.180882000000004,-1.4558649999999957,republican,1,republican
+1992,Alaska,33.656677,0.5418000000000021,republican,1,republican
+1992,Arizona,33.570066,-0.15598500000000115,republican,1,republican
+1992,Arkansas,52.054279,17.844488000000005,republican,1,democrat
+1992,California,48.764565999999995,17.150516999999997,republican,1,democrat
+1992,Colorado,39.511654,7.596598,republican,1,democrat
+1992,Connecticut,44.051756,10.368108,republican,1,democrat
+1992,Delaware,40.233436,7.456685999999998,republican,1,democrat
+1992,District of Columbia,71.275369,54.402688,republican,1,democrat
+1992,Florida,38.39614,-1.9200069999999911,republican,1,republican
+1992,Georgia,38.814284,1.6269670000000005,republican,1,democrat
+1992,Hawaii,43.686664,17.324465,republican,1,democrat
+1992,Idaho,28.721845000000002,-8.361484999999995,republican,1,republican
+1992,Illinois,46.80532,14.038367999999998,republican,1,democrat
+1992,Indiana,36.793521000000005,-4.803822999999994,republican,1,republican
+1992,Iowa,38.889839,4.459282999999999,republican,1,democrat
+1992,Kansas,36.712598,-0.4253050000000016,republican,1,republican
+1992,Kentucky,43.25922,6.3741330000000005,republican,1,democrat
+1992,Louisiana,38.129305,1.7708060000000003,republican,1,democrat
+1992,Maine,34.291351,6.448637999999999,republican,1,democrat
+1992,Maryland,42.98602,8.457335999999998,republican,1,democrat
+1992,Massachusetts,37.029205,11.694029999999998,republican,1,democrat
+1992,Michigan,39.087293,6.828844000000004,republican,1,democrat
+1992,Minnesota,41.663969,5.512895,republican,1,democrat
+1992,Mississippi,37.229225,-4.443715999999995,republican,1,republican
+1992,Missouri,42.510403000000004,12.260505000000006,republican,1,democrat
+1992,Montana,33.717977000000005,1.7028239999999997,republican,1,democrat
+1992,Nebraska,30.607145000000003,-9.516055999999999,republican,1,republican
+1992,Nevada,35.293839,5.455144999999998,republican,1,democrat
+1992,New Hampshire,38.195925,3.784798000000002,republican,1,democrat
+1992,New Jersey,39.305388,7.5584479999999985,republican,1,democrat
+1992,New Mexico,41.953365000000005,8.148655000000005,republican,1,democrat
+1992,New York,48.076968,19.450239999999997,republican,1,democrat
+1992,North Carolina,40.319437,2.8519989999999993,republican,1,republican
+1992,North Dakota,31.136322999999997,-7.671223000000005,republican,1,republican
+1992,Ohio,40.257081,1.95993,republican,1,democrat
+1992,Oklahoma,37.494133000000005,-5.705705999999999,republican,1,republican
+1992,Oregon,39.925771999999995,10.250847999999994,republican,1,democrat
+1992,Pennsylvania,41.349889000000005,9.153842000000004,republican,1,democrat
+1992,Rhode Island,50.311493,23.466614,republican,1,democrat
+1992,South Carolina,33.74447,-8.717132,republican,1,republican
+1992,South Dakota,36.333397999999995,1.4509199999999893,republican,1,republican
+1992,Tennessee,44.505269,7.955710999999994,republican,1,democrat
+1992,Texas,36.858955,-0.2946179999999998,republican,1,republican
+1992,Utah,24.661514999999998,-14.538946,republican,1,republican
+1992,Vermont,40.803584,11.422218000000004,republican,1,democrat
+1992,Virginia,35.497365,-7.435288999999997,republican,1,republican
+1992,Washington,44.466954,15.004826999999999,republican,1,democrat
+1992,West Virginia,44.298712,14.439230000000002,republican,1,democrat
+1992,Wisconsin,39.933187,6.404734999999995,republican,1,democrat
+1992,Wyoming,30.408792,-3.9545610000000053,republican,1,republican
+1996,Alabama,40.952816999999996,-5.939902000000004,democrat,1,republican
+1996,Alaska,34.288314,-9.471848000000001,democrat,1,republican
+1996,Arizona,45.013949,6.886496999999991,democrat,1,democrat
+1996,Arkansas,52.939159,18.084562999999996,democrat,1,democrat
+1996,California,48.713991,13.814598000000004,democrat,1,democrat
+1996,Colorado,43.749865,3.4405399999999986,democrat,1,republican
+1996,Connecticut,49.016396,19.931291,democrat,1,democrat
+1996,Delaware,46.301404,9.684802999999995,democrat,1,democrat
+1996,District of Columbia,81.327814,76.5736383,democrat,1,democrat
+1996,Florida,46.23713,4.8610200000000034,democrat,1,democrat
+1996,Georgia,44.767056,2.8368909999999943,democrat,1,republican
+1996,Hawaii,53.388279000000004,22.326151000000003,democrat,1,democrat
+1996,Idaho,30.727659000000003,-17.664632999999995,democrat,1,republican
+1996,Illinois,50.610869,16.276728000000006,democrat,1,democrat
+1996,Indiana,38.665799,-2.010550000000002,democrat,1,republican
+1996,Iowa,47.453958,12.370793999999997,democrat,1,democrat
+1996,Kansas,37.789317,-11.73507,democrat,1,republican
+1996,Kentucky,45.657298,3.9228749999999977,democrat,1,democrat
+1996,Louisiana,46.771096,11.000163,democrat,1,democrat
+1996,Maine,47.893072,11.713541,democrat,1,democrat
+1996,Maryland,51.392215,14.465116000000002,democrat,1,democrat
+1996,Massachusetts,57.458991000000005,30.272681000000006,democrat,1,democrat
+1996,Michigan,47.323879,12.6723,democrat,1,democrat
+1996,Minnesota,52.188213,20.539987999999997,democrat,1,democrat
+1996,Mississippi,39.189574,-7.601223999999995,democrat,1,republican
+1996,Missouri,47.004037,9.819830999999994,democrat,1,democrat
+1996,Montana,40.633789,0.31398300000000035,democrat,1,republican
+1996,Nebraska,36.553416999999996,-10.694604000000005,democrat,1,republican
+1996,Nevada,42.691043,0.15142600000000073,democrat,1,democrat
+1996,New Hampshire,50.101426000000004,14.965530000000001,democrat,1,democrat
+1996,New Jersey,48.820304,17.202364,democrat,1,democrat
+1996,New Mexico,47.593024,13.893636,democrat,1,democrat
+1996,New York,54.758489000000004,25.89391700000001,democrat,1,democrat
+1996,North Carolina,43.845678,-1.9015029999999982,democrat,1,republican
+1996,North Dakota,36.061334,-5.144150999999994,democrat,1,republican
+1996,Ohio,47.250076,6.075179999999996,democrat,1,democrat
+1996,Oklahoma,39.532809,-6.945787000000003,democrat,1,republican
+1996,Oregon,48.096447,12.653893999999994,democrat,1,democrat
+1996,Pennsylvania,49.045393,13.030557000000002,democrat,1,democrat
+1996,Rhode Island,54.644628000000004,29.895285000000005,democrat,1,democrat
+1996,South Carolina,40.93399,-8.340697999999996,democrat,1,republican
+1996,South Dakota,41.031583000000005,-4.165252999999993,democrat,1,republican
+1996,Tennessee,44.996317,2.957951999999999,democrat,1,democrat
+1996,Texas,40.749962,-5.467395000000003,democrat,1,republican
+1996,Utah,33.763816999999996,-13.382453000000005,democrat,1,republican
+1996,Vermont,52.366977,16.847162999999995,democrat,1,democrat
+1996,Virginia,42.826149,1.072695000000003,democrat,1,republican
+1996,Washington,47.449865,12.424927000000004,democrat,1,democrat
+1996,West Virginia,50.536458,16.240345000000005,democrat,1,democrat
+1996,Wisconsin,49.536553999999995,14.595872999999997,democrat,1,democrat
+1996,Wyoming,37.603149,-7.238638999999999,democrat,1,republican
+2000,Alabama,35.201229,-17.564598000000004,democrat,0,republican
+2000,Alaska,28.018256,-22.979053999999998,democrat,0,republican
+2000,Arizona,38.92711,-12.535011999999995,democrat,0,republican
+2000,Arkansas,44.305234000000006,-2.2236449999999905,democrat,0,republican
+2000,California,46.403632,3.659728000000001,democrat,0,democrat
+2000,Colorado,39.381768,-8.595186999999996,democrat,0,republican
+2000,Connecticut,49.740238,12.227488999999998,democrat,0,democrat
+2000,Delaware,45.229964,1.0026910000000058,democrat,0,democrat
+2000,District of Columbia,72.672953,58.53184,democrat,0,democrat
+2000,Florida,47.174946000000006,1.41781000000001,democrat,0,republican
+2000,Georgia,40.539803000000006,-10.130298999999994,democrat,0,republican
+2000,Hawaii,52.079752,17.437287999999995,democrat,0,democrat
+2000,Idaho,26.858225,-33.979927,democrat,0,republican
+2000,Illinois,47.253009000000006,4.704612000000012,democrat,0,democrat
+2000,Indiana,34.544446,-19.742062999999995,democrat,0,republican
+2000,Iowa,44.900912,0.3492510000000024,democrat,0,democrat
+2000,Kansas,35.187645,-20.13307499999999,democrat,0,republican
+2000,Kentucky,40.641904,-13.023075000000006,democrat,0,republican
+2000,Louisiana,39.244476,-7.539564999999996,democrat,0,republican
+2000,Maine,45.534507,4.387054999999997,democrat,0,democrat
+2000,Maryland,52.162341,12.589847999999996,democrat,0,democrat
+2000,Massachusetts,55.10759,24.715432,democrat,0,democrat
+2000,Michigan,46.399564,2.1662279999999967,democrat,0,democrat
+2000,Minnesota,44.708419,3.716396000000003,democrat,0,democrat
+2000,Mississippi,38.42805,-13.55162,democrat,0,republican
+2000,Missouri,45.054595,-2.8030019999999993,democrat,0,republican
+2000,Montana,32.346911,-20.640563,democrat,0,republican
+2000,Nebraska,34.333161,-22.712821999999996,democrat,0,republican
+2000,Nevada,43.036997,-5.054579000000004,democrat,0,republican
+2000,New Hampshire,41.003838,-4.454308999999995,democrat,0,republican
+2000,New Jersey,48.682663,9.409332999999997,democrat,0,democrat
+2000,New Mexico,44.723852,0.813876999999998,democrat,0,democrat
+2000,New York,52.79625,16.803188,democrat,0,democrat
+2000,North Carolina,41.733596999999996,-9.775023000000004,democrat,0,republican
+2000,North Dakota,34.51015,-15.266384000000002,democrat,0,republican
+2000,Ohio,42.433913000000004,-7.532077000000001,democrat,0,republican
+2000,Oklahoma,37.20398,-18.875150000000005,democrat,0,republican
+2000,Oregon,44.507462,0.040631999999995116,democrat,0,democrat
+2000,Pennsylvania,46.367906,1.700616999999994,democrat,0,democrat
+2000,Rhode Island,52.319718,21.943951000000002,democrat,0,democrat
+2000,South Carolina,38.884246000000005,-14.297985999999987,democrat,0,republican
+2000,South Dakota,33.539587,-20.723337,democrat,0,republican
+2000,Tennessee,46.032948,-1.966265,democrat,0,republican
+2000,Texas,32.296191,-27.418452000000002,democrat,0,republican
+2000,Utah,24.619823999999998,-37.810292000000004,democrat,0,republican
+2000,Vermont,46.85579,9.721018999999998,democrat,0,democrat
+2000,Virginia,42.210553000000004,-8.331846999999996,democrat,0,republican
+2000,Washington,45.177246999999994,0.16635199999999628,democrat,0,democrat
+2000,West Virginia,42.258471,-4.7216999999999985,democrat,0,republican
+2000,Wisconsin,43.910057,-2.2867379999999997,democrat,0,democrat
+2000,Wyoming,29.687844000000002,-29.012407999999997,democrat,0,republican
+2004,Alabama,35.153022,-21.625471000000005,republican,1,republican
+2004,Alaska,31.118299,-26.193216,republican,1,republican
+2004,Arizona,42.353901,-9.294016,republican,1,republican
+2004,Arkansas,46.05477,-3.820442,republican,1,republican
+2004,California,52.385393,10.734135000000002,republican,1,democrat
+2004,Colorado,45.309328,-4.2787349999999975,republican,1,republican
+2004,Connecticut,50.968638,11.380723999999994,republican,1,democrat
+2004,Delaware,47.686023,7.267530000000001,republican,1,democrat
+2004,Florida,47.364931,-0.5771170000000012,republican,1,republican
+2004,Georgia,41.540177,-12.646300000000004,republican,1,republican
+2004,Hawaii,45.794949,2.455362000000001,republican,1,democrat
+2004,Idaho,27.835825,-29.752062000000002,republican,1,republican
+2004,Illinois,51.746565999999994,8.84516399999999,republican,1,democrat
+2004,Indiana,36.95455,-20.308033000000002,republican,1,republican
+2004,Iowa,46.264534999999995,-1.1527270000000058,republican,1,republican
+2004,Kansas,34.482296999999996,-24.072205000000004,republican,1,republican
+2004,Kentucky,38.181241,-18.920992,republican,1,republican
+2004,Louisiana,35.99788,-16.13722,republican,1,republican
+2004,Maine,50.048318,7.342480999999999,republican,1,democrat
+2004,Maryland,53.865381000000006,12.593114000000007,republican,1,democrat
+2004,Massachusetts,57.661592000000006,26.167804000000004,republican,1,democrat
+2004,Michigan,48.691046,3.661200000000001,republican,1,democrat
+2004,Minnesota,48.248413,3.0862669999999994,republican,1,democrat
+2004,Mississippi,37.824067,-16.426849000000004,republican,1,republican
+2004,Missouri,45.337555,-5.898392999999999,republican,1,republican
+2004,Montana,33.714633,-23.039746000000008,republican,1,republican
+2004,Nebraska,31.525627000000004,-29.489499999999996,republican,1,republican
+2004,Nevada,45.188758,-5.137164999999996,republican,1,republican
+2004,New Hampshire,48.624871999999996,2.172914999999996,republican,1,democrat
+2004,New Jersey,48.995247,7.192073999999998,republican,1,democrat
+2004,New Mexico,44.911481,-3.5184909999999974,republican,1,republican
+2004,New York,54.340683999999996,16.186413999999992,republican,1,democrat
+2004,North Carolina,43.381614,-8.255886000000004,republican,1,republican
+2004,North Dakota,33.772825,-24.769924000000003,republican,1,republican
+2004,Ohio,47.973979,0.038130999999999915,republican,1,republican
+2004,Oklahoma,32.688553000000006,-29.48949199999999,republican,1,republican
+2004,Oregon,50.530961,5.249132000000003,republican,1,democrat
+2004,Pennsylvania,48.729059,1.3633819999999943,republican,1,democrat
+2004,Rhode Island,54.849934,18.491643999999994,republican,1,democrat
+2004,South Carolina,39.155158,-15.744028,republican,1,republican
+2004,South Dakota,37.609466,-16.754250000000006,republican,1,republican
+2004,Tennessee,42.342746999999996,-12.051133000000007,republican,1,republican
+2004,Texas,35.652891,-22.840407,republican,1,republican
+2004,Utah,24.109276,-44.190671,republican,1,republican
+2004,Vermont,49.357665000000004,9.208290000000005,republican,1,democrat
+2004,Virginia,43.916727,-5.850401999999995,republican,1,republican
+2004,Washington,51.681792,6.324989000000002,republican,1,democrat
+2004,West Virginia,44.495975,-6.323636999999998,republican,1,republican
+2004,Wisconsin,46.387916,-1.7171220000000034,republican,1,democrat
+2008,Alabama,35.858475,-22.424064,republican,0,republican
+2008,Alaska,41.419908,-14.184433000000006,republican,0,republican
+2008,Arizona,45.233846,-4.139692000000004,republican,0,republican
+2008,Arkansas,42.823934,-9.101824999999998,republican,0,republican
+2008,California,57.522385,22.32009,republican,0,democrat
+2008,Colorado,51.302013,6.846433000000005,republican,0,democrat
+2008,Connecticut,56.510289,20.222026,republican,0,democrat
+2008,Delaware,59.585339000000005,24.241347000000005,republican,0,democrat
+2008,Florida,48.108337,1.4875830000000008,republican,0,democrat
+2008,Georgia,45.796409000000004,-4.263896999999993,republican,0,republican
+2008,Hawaii,59.752297,26.697252,republican,0,democrat
+2008,Idaho,32.100732,-28.161555,republican,0,republican
+2008,Illinois,59.354164000000004,22.561789000000005,republican,0,democrat
+2008,Indiana,47.005796999999994,-1.0016350000000074,republican,0,democrat
+2008,Iowa,52.852666000000006,12.831879000000008,republican,0,democrat
+2008,Kansas,38.483246,-16.714812999999992,republican,0,republican
+2008,Kentucky,41.070429,-12.442097000000004,republican,0,republican
+2008,Louisiana,41.531393,-10.611547999999999,republican,0,republican
+2008,Maine,55.215782,16.10917299999999,republican,0,democrat
+2008,Maryland,58.011276,20.563285000000008,republican,0,democrat
+2008,Massachusetts,56.361476,18.349676000000002,republican,0,democrat
+2008,Michigan,53.703219999999995,13.228950999999995,republican,0,democrat
+2008,Minnesota,52.376346999999996,10.606981999999995,republican,0,democrat
+2008,Mississippi,41.028078,-11.106308999999996,republican,0,republican
+2008,Missouri,47.35975,-1.0068320000000028,republican,0,republican
+2008,Montana,44.86544,-5.089860000000002,republican,0,republican
+2008,Nebraska,37.480707,-19.037500999999992,republican,0,republican
+2008,Nevada,50.390004,5.449928,republican,0,democrat
+2008,New Hampshire,52.275228999999996,10.795266999999996,republican,0,democrat
+2008,New Jersey,54.871929,16.801347,republican,0,democrat
+2008,New Mexico,53.42745,9.788864000000004,republican,0,democrat
+2008,New York,61.370024,28.224894,republican,0,democrat
+2008,North Carolina,48.35763,0.8204289999999972,republican,0,democrat
+2008,North Dakota,44.243590000000005,-1.2386059999999972,republican,0,republican
+2008,Ohio,49.617053000000006,4.5546230000000065,republican,0,democrat
+2008,Oklahoma,35.542093,-24.802938999999995,republican,0,republican
+2008,Oregon,54.806549,15.293245999999996,republican,0,democrat
+2008,Pennsylvania,51.486452,7.917107999999999,republican,0,democrat
+2008,Rhode Island,55.351108999999994,19.377548999999995,republican,0,democrat
+2008,South Carolina,42.876453999999995,-9.282267000000004,republican,0,republican
+2008,South Dakota,42.894873,-8.927742000000002,republican,0,republican
+2008,Tennessee,41.722512,-12.162144999999995,republican,0,republican
+2008,Texas,42.507628000000004,-12.213815999999987,republican,0,republican
+2008,Utah,32.651839,-26.45614299999999,republican,0,republican
+2008,Vermont,60.060210999999995,27.049163999999998,republican,0,democrat
+2008,Virginia,50.345379,5.213853999999998,republican,0,democrat
+2008,Washington,53.835668000000005,13.54928300000001,republican,0,democrat
+2008,West Virginia,40.809777000000004,-12.984065000000001,republican,0,republican
+2008,Wisconsin,52.66490699999999,11.976871999999993,republican,0,democrat
+2008,Wyoming,33.176088,-26.872840000000004,republican,0,republican
+2012,Alabama,35.623535,-18.066786999999998,democrat,1,republican
+2012,Arizona,44.002949,-8.522165999999999,democrat,1,republican
+2012,Arkansas,32.926966,-24.807177000000003,democrat,1,republican
+2012,California,54.853727,15.577812999999999,democrat,1,democrat
+2012,Colorado,48.290802,0.5829039999999992,democrat,1,democrat
+2012,Connecticut,53.670551,12.405382000000003,democrat,1,democrat
+2012,District of Columbia,87.344071,78.8946037,democrat,1,democrat
+2012,Florida,47.634723,-1.5462849999999975,democrat,1,democrat
+2012,Georgia,43.65606,-9.741931000000008,democrat,1,republican
+2012,Hawaii,61.423519999999996,28.228405999999993,democrat,1,democrat
+2012,Idaho,27.09037,-35.708928,democrat,1,republican
+2012,Illinois,55.665689,16.813627000000004,democrat,1,democrat
+2012,Indiana,42.112778000000006,-10.958091999999986,democrat,1,republican
+2012,Iowa,48.072818,1.4926609999999982,democrat,1,democrat
+2012,Kansas,33.987826,-21.575878000000003,democrat,1,republican
+2012,Kentucky,38.72088,-15.667569999999998,democrat,1,republican
+2012,Louisiana,36.768243,-17.784088999999994,democrat,1,republican
+2012,Maine,52.556736,10.439442,democrat,1,democrat
+2012,Maryland,57.525837,20.041193,democrat,1,democrat
+2012,Massachusetts,56.852047999999996,17.556882,democrat,1,democrat
+2012,Michigan,49.748667,4.240695999999993,democrat,1,democrat
+2012,Minnesota,50.850344,6.147922999999999,democrat,1,democrat
+2012,Missouri,42.372821,-11.804824999999994,democrat,1,republican
+2012,Montana,43.484367999999996,-8.859262000000001,democrat,1,republican
+2012,Nebraska,38.929303999999995,-17.378053,democrat,1,republican
+2012,Nevada,49.93103,3.175348999999997,democrat,1,democrat
+2012,New Hampshire,48.49889,0.9322560000000024,democrat,1,democrat
+2012,New Jersey,52.229467,10.753379000000002,democrat,1,democrat
+2012,New Mexico,49.905268,6.4494299999999996,democrat,1,democrat
+2012,New York,59.796929000000006,23.670302000000007,democrat,1,democrat
+2012,North Carolina,46.504795,-3.0766459999999967,democrat,1,republican
+2012,North Dakota,38.780471999999996,-15.818188,democrat,1,republican
+2012,Ohio,49.171259,2.0134079999999983,democrat,1,democrat
+2012,Oklahoma,30.318942,-29.933628999999996,democrat,1,republican
+2012,Oregon,48.07413,5.376813999999996,democrat,1,democrat
+2012,Pennsylvania,49.881312,3.9350409999999982,democrat,1,democrat
+2012,Rhode Island,55.353336,21.619787000000002,democrat,1,democrat
+2012,South Carolina,42.771209000000006,-3.447905999999996,democrat,1,republican
+2012,South Dakota,40.736824,-12.150841000000007,democrat,1,republican
+2012,Tennessee,38.939167,-14.933208,democrat,1,republican
+2012,Texas,38.706371999999995,-18.710110999999998,democrat,1,republican
+2012,Utah,24.505126999999998,-46.162102000000004,democrat,1,republican
+2012,Vermont,59.85286,30.899870999999997,democrat,1,democrat
+2012,Virginia,48.265883,0.9789280000000034,democrat,1,democrat
+2012,Washington,53.39461,11.179690999999998,democrat,1,democrat
+2012,West Virginia,37.407189,-16.754681999999995,democrat,1,republican
+2012,Wisconsin,49.892815999999996,3.7525029999999973,democrat,1,democrat
+2016,Alabama,35.14891,-21.18848,democrat,0,republican
+2016,Alaska,39.10066,-6.079999999999998,democrat,0,republican
+2016,Arizona,42.92815,-2.699859999999994,democrat,0,republican
+2016,Arkansas,33.52097,-19.4925,democrat,0,republican
+2016,California,54.91905,22.08415,democrat,0,democrat
+2016,Colorado,43.64732,2.8801500000000004,democrat,0,democrat
+2016,Connecticut,51.05077,14.50678,democrat,0,democrat
+2016,Delaware,50.08618,13.95917,democrat,0,democrat
+2016,District of Columbia,85.58946,79.09177100000001,democrat,0,democrat
+2016,Florida,46.39832,0.9193599999999975,democrat,0,republican
+2016,Georgia,44.38727,-3.9287300000000016,democrat,0,republican
+2016,Hawaii,51.887809999999995,23.943569999999994,democrat,0,democrat
+2016,Idaho,29.687509999999996,-16.333560000000006,democrat,0,republican
+2016,Illinois,50.97485,14.387230000000002,democrat,0,democrat
+2016,Indiana,37.3296,-12.931809999999999,democrat,0,republican
+2016,Iowa,40.87534,-4.2520899999999955,democrat,0,republican
+2016,Kansas,36.81242,-13.638709999999996,democrat,0,republican
+2016,Kentucky,33.53967,-21.327299999999994,democrat,0,republican
+2016,Louisiana,37.1587,-13.113149999999997,democrat,0,republican
+2016,Maine,46.01504,6.674010000000003,democrat,0,democrat
+2016,Maryland,59.92575,32.56131,democrat,0,democrat
+2016,Massachusetts,55.71963,27.676270000000006,democrat,0,democrat
+2016,Michigan,45.66772,3.1636200000000017,democrat,0,republican
+2016,Minnesota,46.96928,8.912939999999992,democrat,0,democrat
+2016,Mississippi,41.43731,-7.807280000000006,democrat,0,republican
+2016,Missouri,38.22606,-12.11157,democrat,0,republican
+2016,Montana,32.673390000000005,-18.036669999999994,democrat,0,republican
+2016,Nebraska,33.61203,-17.786450000000002,democrat,0,republican
+2016,Nevada,44.89117,0.6799999999999997,democrat,0,democrat
+2016,New Hampshire,44.56515,2.263620000000003,democrat,0,democrat
+2016,New Jersey,51.68812,13.978319999999997,democrat,0,democrat
+2016,New Mexico,43.84036,4.945059999999998,democrat,0,democrat
+2016,New York,54.164730000000006,19.373690000000003,democrat,0,democrat
+2016,North Carolina,46.44271,1.1001699999999985,democrat,0,republican
+2016,North Dakota,29.20324,-26.210029999999996,democrat,0,republican
+2016,Ohio,42.63316,-2.9719499999999996,democrat,0,republican
+2016,Oklahoma,30.795340000000003,-26.450140000000005,democrat,0,republican
+2016,Oregon,45.89365,8.421640000000004,democrat,0,democrat
+2016,Pennsylvania,46.50476,3.050139999999999,democrat,0,republican
+2016,Rhode Island,47.45552,11.31946,democrat,0,democrat
+2016,South Carolina,41.16662,-5.853520000000003,democrat,0,republican
+2016,South Dakota,32.46563,-18.935390000000005,democrat,0,republican
+2016,Tennessee,39.00087,-9.180100000000003,democrat,0,republican
+2016,Texas,38.6247,-9.70185,democrat,0,republican
+2016,Utah,26.918459999999996,-10.509300000000003,democrat,0,republican
+2016,Vermont,55.186659999999996,29.402519999999996,democrat,0,democrat
+2016,Virginia,47.26719,5.412199999999999,democrat,0,democrat
+2016,Washington,50.27108,15.181009999999993,democrat,0,democrat
+2016,West Virginia,28.617829999999998,-27.23420000000001,democrat,0,republican
+2016,Wisconsin,46.56556,4.916080000000001,democrat,0,republican
+2016,Wyoming,22.07957,-37.87742,democrat,0,republican
