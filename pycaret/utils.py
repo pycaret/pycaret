@@ -13,11 +13,9 @@ nightly_version_ = "2.1"
 
 
 def version():
-    print(version_)
     return version_
 
 def nightly_version():
-    print(nightly_version_)
     return nightly_version_
 
 

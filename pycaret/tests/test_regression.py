@@ -16,7 +16,7 @@ def test():
     assert isinstance(reg1, tuple)
 
     # compare models
-    top3 = pycaret.regression.compare_models(n_select = 3, blacklist = ['catboost'])
+    top3 = pycaret.regression.compare_models(n_select = 3, exclude = ['catboost'])
     assert isinstance(top3, list)
 
     # tune model

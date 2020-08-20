@@ -52,12 +52,12 @@ def setup(
     group_names: List[str] = None,
     feature_selection: bool = False,
     feature_selection_threshold: float = 0.8,
-    feature_selection_method: str = 'classic',
+    feature_selection_method: str = "classic",
     feature_interaction: bool = False,
     feature_ratio: bool = False,
     interaction_threshold: float = 0.01,
     fix_imbalance: bool = False,  # added in pycaret==2.0.0
-    fix_imbalance_method: str = None,  # added in pycaret==2.0.0
+    fix_imbalance_method: Any = None,  # added in pycaret==2.0.0
     data_split_shuffle: bool = True,  # added in pycaret==2.0.0
     folds_shuffle: bool = False,  # added in pycaret==2.0.0
     n_jobs: int = -1,  # added in pycaret==2.0.0
@@ -905,10 +905,12 @@ def setup(
             "(Type Error): feature_selection_threshold must be a float between 0 and 1. "
         )
 
-    #feature_selection_method
-    feature_selection_methods = ['boruta', 'classic']
+    # feature_selection_method
+    feature_selection_methods = ["boruta", "classic"]
     if feature_selection_method not in feature_selection_methods:
-        sys.exit(f"(Type Error): feature_selection_method must be one of {', '.join(feature_selection_methods)}")
+        sys.exit(
+            f"(Type Error): feature_selection_method must be one of {', '.join(feature_selection_methods)}"
+        )
 
     # feature_interaction
     if type(feature_interaction) is not bool:
@@ -1341,7 +1343,7 @@ def setup(
         group_name=group_names_pass,
         apply_feature_selection=feature_selection,
         feature_selection_top_features_percentage=feature_selection_threshold,
-        feature_selection_method = feature_selection_method,
+        feature_selection_method=feature_selection_method,
         apply_feature_interactions=apply_feature_interactions_pass,
         feature_interactions_to_apply=interactions_to_apply_pass,
         feature_interactions_top_features_to_select_percentage=interaction_threshold,
@@ -1809,6 +1811,7 @@ def compare_models(
     round: int = 4,
     sort: str = "Accuracy",
     n_select: int = 1,  # added in pycaret==2.0.0
+    budget_time: float = 0,  # added in pycaret==2.1.0
     turbo: bool = True,
     verbose: bool = True,
     display: Display = None,
@@ -1874,6 +1877,10 @@ def compare_models(
     n_select: int, default = 1
         Number of top_n models to return. use negative argument for bottom selection.
         for example, n_select = -3 means bottom 3 models.
+
+    budget_time: int or float, default = 0
+        If set above 0, will terminate execution of the function after budget_time minutes have
+        passed and return results up to that point.
 
     turbo: Boolean, default = True
         When turbo is set to True, it excludes estimators that have longer
@@ -1966,6 +1973,16 @@ def compare_models(
     # checking round parameter
     if type(round) is not int:
         sys.exit("(Type Error): Round parameter only accepts integer value.")
+
+    # checking n_select parameter
+    if type(n_select) is not int:
+        sys.exit("(Type Error): n_select parameter only accepts integer value.")
+
+    # checking budget_time parameter
+    if type(budget_time) is not int and type(budget_time) is not float:
+        sys.exit(
+            "(Type Error): budget_time parameter only accepts integer or float values."
+        )
 
     # checking sort parameter
     allowed_sort = get_metrics()["Name"]
@@ -2080,6 +2097,12 @@ def compare_models(
 
     master_display = None
 
+    total_runtime_start = time.time()
+    total_runtime = 0
+    over_time_budget = False
+    if budget_time and budget_time > 0:
+        logger.info(f"Time budget is {budget_time} minutes")
+
     for i, model in enumerate(model_library):
 
         if (
@@ -2098,6 +2121,17 @@ def compare_models(
 
         # run_time
         runtime_start = time.time()
+        total_runtime += (runtime_start - total_runtime_start) / 60
+        logger.info(f"Total runtime is {total_runtime} minutes")
+        over_time_budget = (
+            budget_time and budget_time > 0 and total_runtime > budget_time
+        )
+        if over_time_budget:
+            logger.info(
+                f"Total runtime {total_runtime} is over time budget by {total_runtime - budget_time}, breaking loop"
+            )
+            break
+        total_runtime_start = runtime_start
 
         display.move_progress()
 
@@ -2124,11 +2158,19 @@ def compare_models(
             display=display,
             fold=fold,
             round=round,
+            budget_time=budget_time - total_runtime
+            if budget_time and budget_time > 0
+            else 0,
         )
         model_results = pull()
         logger.info(
             "SubProcess create_model() called =================================="
         )
+
+        if not model:
+            over_time_budget = True
+            logger.info(f"Time budged exceeded in create_model(), breaking loop")
+            break
 
         logger.info("Creating metrics dataframe")
         compare_models_ = pd.DataFrame(model_results.loc["Mean"]).T
@@ -2291,6 +2333,7 @@ def compare_models(
     display.display_monitor()
 
     sorted_models = master_display["Object"].to_list()
+    n_select = n_select if n_select <= len(sorted_models) else len(sorted_models)
     if n_select < 0:
         sorted_models = sorted_models[n_select:]
     else:
@@ -2325,6 +2368,7 @@ def create_model(
     fold: int = 10,
     round: int = 4,
     cross_validation: bool = True,  # added in pycaret==2.0.0
+    budget_time: float = 0,
     verbose: bool = True,
     system: bool = True,  # added in pycaret==2.0.0
     return_fit_time: bool = False,
@@ -2387,6 +2431,10 @@ def create_model(
 
     round: integer, default = 4
         Number of decimal places the metrics in the score grid will be rounded to. 
+
+    budget_time: int or float, default = 0
+        If set above 0, will terminate execution of the function after budget_time minutes have
+        passed.
 
     cross_validation: bool, default = True
         When cross_validation set to False fold parameter is ignored and model is trained
@@ -2508,6 +2556,12 @@ def create_model(
     # checking round parameter
     if type(round) is not int:
         sys.exit("(Type Error): Round parameter only accepts integer value.")
+
+    # checking budget_time parameter
+    if type(budget_time) is not int and type(budget_time) is not float:
+        sys.exit(
+            "(Type Error): budget_time parameter only accepts integer or float values."
+        )
 
     # checking verbose parameter
     if type(verbose) is not bool:
@@ -2686,6 +2740,12 @@ def create_model(
     MONITOR UPDATE ENDS
     """
 
+    total_runtime_start = time.time()
+    total_runtime = 0
+    over_time_budget = False
+    if budget_time and budget_time > 0:
+        logger.info(f"Time budget is {budget_time} minutes")
+
     if not cross_validation:
 
         logger.info("Cross validation set to False")
@@ -2713,6 +2773,17 @@ def create_model(
         logger.info("Initializing Fold " + str(fold_num))
 
         t0 = time.time()
+        total_runtime += (t0 - total_runtime_start) / 60
+        logger.info(f"Total runtime is {total_runtime} minutes")
+        over_time_budget = (
+            budget_time and budget_time > 0 and total_runtime > budget_time
+        )
+        if over_time_budget:
+            logger.info(
+                f"Total runtime {total_runtime} is over time budget by {total_runtime - budget_time}, terminating function"
+            )
+            return None
+        total_runtime_start = t0
 
         """
         MONITOR UPDATE STARTS
@@ -2725,6 +2796,7 @@ def create_model(
 
         Xtrain, Xtest = data_X.iloc[train_i], data_X.iloc[test_i]
         ytrain, ytest = data_y.iloc[train_i], data_y.iloc[test_i]
+        # time just for fitting
         time_start = time.time()
 
         if fix_imbalance_param:
@@ -8904,7 +8976,7 @@ def _get_model_name(e) -> str:
 def _fix_imbalance(
     Xtrain: pandas.DataFrame,
     ytrain: pandas.DataFrame,
-    fix_imbalance_method_param: bool = None,
+    fix_imbalance_method_param: Any = None,
 ) -> Tuple[pandas.DataFrame, pandas.DataFrame]:
     logger = get_logger()
     logger.info("Initializing SMOTE")
