@@ -1807,6 +1807,8 @@ class Boruta_Feature_Selection(BaseEstimator, TransformerMixin):
     shadow_max = list()
     hits = np.zeros(n_feat, dtype=np.int)
     tent_hits = np.zeros(n_feat)
+    # make seed to get same results
+    np.random.seed(self.random_state)
     while np.any(dec_reg == 0) and _iter < self.max_iteration:
       # get tentative features
       x_ind = self._get_idx(X, dec_reg)
