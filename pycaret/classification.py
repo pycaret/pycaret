@@ -52,6 +52,7 @@ def setup(
     group_names: List[str] = None,
     feature_selection: bool = False,
     feature_selection_threshold: float = 0.8,
+    feature_selection_method: str = 'classic',
     feature_interaction: bool = False,
     feature_ratio: bool = False,
     interaction_threshold: float = 0.01,
@@ -339,7 +340,9 @@ def setup(
         feature_selection_param. Generally, this is used to constrain the feature space 
         in order to improve efficiency in modeling. When polynomial_features and 
         feature_interaction  are used, it is highly recommended to define the 
-        feature_selection_threshold param with a lower value.
+        feature_selection_threshold param with a lower value. Feature selection algorithm
+        by default is 'classic' but could be 'boruta', which will lead PyCaret to create
+        use the Boruta selection algorithm.
 
     feature_selection_threshold: float, default = 0.8
         Threshold used for feature selection (including newly created polynomial features).
@@ -348,6 +351,14 @@ def setup(
         polynomial_features and feature_interaction are used. Setting a very low value may be 
         efficient but could result in under-fitting.
     
+    feature_selection_method: str, default = 'classic'
+        Can be either 'classic' or 'boruta'. Selects the algorithm responsible for
+        choosing a subset of features. For the 'classic' selection method, PyCaret will use various
+        permutation importance techniques. For the 'boruta' algorithm, PyCaret will create 
+        an instance of boosted trees model, which will iterate with permutation over all
+        features and choose the best ones based on the distributions of feature importance.
+        More in: https://pdfs.semanticscholar.org/85a8/b1d9c52f9f795fda7e12376e751526953f38.pdf%3E
+
     feature_interaction: bool, default = False 
         When set to True, it will create new features by interacting (a * b) for all numeric 
         variables in the dataset including polynomial and trigonometric features (if created). 
@@ -894,6 +905,11 @@ def setup(
             "(Type Error): feature_selection_threshold must be a float between 0 and 1. "
         )
 
+    #feature_selection_method
+    feature_selection_methods = ['boruta', 'classic']
+    if feature_selection_method not in feature_selection_methods:
+        sys.exit(f"(Type Error): feature_selection_method must be one of {', '.join(feature_selection_methods)}")
+
     # feature_interaction
     if type(feature_interaction) is not bool:
         sys.exit("(Type Error): feature_interaction only accepts True or False. ")
@@ -1325,6 +1341,7 @@ def setup(
         group_name=group_names_pass,
         apply_feature_selection=feature_selection,
         feature_selection_top_features_percentage=feature_selection_threshold,
+        feature_selection_method = feature_selection_method,
         apply_feature_interactions=apply_feature_interactions_pass,
         feature_interactions_to_apply=interactions_to_apply_pass,
         feature_interactions_top_features_to_select_percentage=interaction_threshold,
@@ -1786,8 +1803,8 @@ def setup(
 
 
 def compare_models(
-    blacklist: List[str] = None,
-    whitelist: list = None,  # added in pycaret==2.0.0
+    exclude: List[str] = None,
+    include: list = None,  # added in pycaret==2.0.0
     fold: int = 10,
     round: int = 4,
     sort: str = "Accuracy",
@@ -1822,12 +1839,12 @@ def compare_models(
     and 'mlp'. When turbo param is set to False, all models including 'rbfsvm', 'gpc' 
     and 'mlp' are used but this may result in longer training time.
     
-    >>> best_model = compare_models( blacklist = [ 'knn', 'gbc' ] , turbo = False) 
+    >>> best_model = compare_models( exclude = [ 'knn', 'gbc' ] , turbo = False) 
 
     This will return a comparison of all models except K Nearest Neighbour and
     Gradient Boosting Classifier.
     
-    >>> best_model = compare_models( blacklist = [ 'knn', 'gbc' ] , turbo = True) 
+    >>> best_model = compare_models( exclude = [ 'knn', 'gbc' ] , turbo = True) 
 
     This will return comparison of all models except K Nearest Neighbour, 
     Gradient Boosting Classifier, SVM (RBF), Gaussian Process Classifier and
@@ -1836,13 +1853,13 @@ def compare_models(
 
     Parameters
     ----------
-    blacklist: list of strings, default = None
+    exclude: list of strings, default = None
         In order to omit certain models from the comparison model ID's can be passed as 
-        a list of strings in blacklist param. 
+        a list of strings in exclude param. 
 
-    whitelist: list of strings, default = None
+    include: list of strings, default = None
         In order to run only certain models for the comparison, the model ID's can be 
-        passed as a list of strings in whitelist param. 
+        passed as a list of strings in include param. 
 
     fold: integer, default = 10
         Number of folds to be used in Kfold CV. Must be at least 2. 
@@ -1859,7 +1876,7 @@ def compare_models(
         for example, n_select = -3 means bottom 3 models.
 
     turbo: Boolean, default = True
-        When turbo is set to True, it blacklists estimators that have longer
+        When turbo is set to True, it excludes estimators that have longer
         training time.
 
     verbose: Boolean, default = True
@@ -1876,7 +1893,7 @@ def compare_models(
     Warnings
     --------
     - compare_models() though attractive, might be time consuming with large 
-      datasets. By default turbo is set to True, which blacklists models that
+      datasets. By default turbo is set to True, which excludes models that
       have longer training times. Changing turbo parameter to False may result 
       in very high training times with datasets where number of samples exceed 
       10,000.
@@ -1897,9 +1914,9 @@ def compare_models(
 
     logger.info("Initializing compare_models()")
     logger.info(
-        """compare_models(blacklist={}, whitelist={}, fold={}, round={}, sort={}, n_select={}, turbo={}, verbose={})""".format(
-            str(blacklist),
-            str(whitelist),
+        """compare_models(exclude={}, include={}, fold={}, round={}, sort={}, n_select={}, turbo={}, verbose={})""".format(
+            str(exclude),
+            str(include),
             str(fold),
             str(round),
             str(sort),
@@ -1914,18 +1931,18 @@ def compare_models(
     # exception checking
     import sys
 
-    # checking error for blacklist (string)
+    # checking error for exclude (string)
     available_estimators = all_models.index
 
-    if blacklist != None:
-        for i in blacklist:
+    if exclude != None:
+        for i in exclude:
             if i not in available_estimators:
                 sys.exit(
                     f"(Value Error): Estimator Not Available {i}. Please see docstring for list of available estimators."
                 )
 
-    if whitelist != None:
-        for i in whitelist:
+    if include != None:
+        for i in include:
             if isinstance(i, str):
                 if i not in available_estimators:
                     sys.exit(
@@ -1936,10 +1953,10 @@ def compare_models(
                     f"(Value Error): Estimator {i} does not have the required fit() method."
                 )
 
-    # whitelist and blacklist together check
-    if whitelist is not None and blacklist is not None:
+    # include and exclude together check
+    if include is not None and exclude is not None:
         sys.exit(
-            "(Type Error): Cannot use blacklist parameter when whitelist is used to compare models."
+            "(Type Error): Cannot use exclude parameter when include is used to compare models."
         )
 
     # checking fold parameter
@@ -1982,10 +1999,10 @@ def compare_models(
 
     len_mod = len(all_models[all_models["Turbo"] == True]) if turbo else len(all_models)
 
-    if whitelist:
-        len_mod = len(whitelist)
-    elif blacklist:
-        len_mod -= len(blacklist)
+    if include:
+        len_mod = len(include)
+    elif exclude:
+        len_mod -= len(exclude)
 
     if not display:
         progress_args = {"max": ((fold + 4) * len_mod) + 4 + len_mod}
@@ -2043,16 +2060,16 @@ def compare_models(
     MONITOR UPDATE ENDS
     """
 
-    if whitelist:
-        model_library = whitelist
+    if include:
+        model_library = include
     else:
         if turbo:
             model_library = models()
             model_library = list(model_library[model_library["Turbo"] == True].index)
         else:
             model_library = list(models().index)
-        if blacklist:
-            model_library = [x for x in model_library if x not in blacklist]
+        if exclude:
+            model_library = [x for x in model_library if x not in exclude]
 
     display.move_progress()
 
@@ -4136,7 +4153,7 @@ def blend_models(
         which is recommended for an ensemble of well-calibrated classifiers. 
 
     turbo: Boolean, default = True
-        When turbo is set to True, it blacklists estimator that uses Radial Kernel.
+        When turbo is set to True, it excludes estimator that uses Radial Kernel.
 
     verbose: Boolean, default = True
         Score grid is not printed when verbose is set to False.
