@@ -2652,14 +2652,14 @@ def Preprocess_Path_One(train_data,target_variable,ml_usecase=None,test_data =No
   clean_names =Clean_Colum_Names()
 
   # feature selection 
-  if apply_feature_selection != None:
+  if apply_feature_selection:
     global feature_select
     # TODO: add autoselect 
-    if feature_selection_method == 'classic':
-      feature_select = Advanced_Feature_Selection_Classic(target=target_variable,ml_usecase=ml_usecase,top_features_to_pick=feature_selection_top_features_percentage,random_state=random_state,subclass=subcase)
-    elif feature_selection_method == 'boruta':
+    if feature_selection_method == 'boruta':
       feature_select = Boruta_Feature_Selection(target=target_variable,ml_usecase=ml_usecase,top_features_to_pick=feature_selection_top_features_percentage,
                                                 random_state=random_state,subclass=subcase)
+    else:
+      feature_select = Advanced_Feature_Selection_Classic(target=target_variable,ml_usecase=ml_usecase,top_features_to_pick=feature_selection_top_features_percentage,random_state=random_state,subclass=subcase)
   else:
     feature_select= Empty()
   
