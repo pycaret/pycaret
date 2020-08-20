@@ -2163,9 +2163,8 @@ def compare_models(
             else 0,
         )
         model_results = pull()
-        logger.info(
-            "SubProcess create_model() called =================================="
-        )
+        display_container.pop(-1)
+        logger.info("SubProcess create_model() end ==================================")
 
         if not model:
             over_time_budget = True
@@ -3462,11 +3461,11 @@ def tune_model(
     )
     best_model = model
     model_results = pull()
-    logger.info("SubProcess create_model() called ==================================")
+    logger.info("SubProcess create_model() end ==================================")
 
     if choose_better:
         model = _choose_better(
-            estimator_id, _estimator_, best_model, compare_dimension, fold, display
+            _estimator_, [best_model], compare_dimension, fold, display
         )
 
     # end runtime
@@ -3984,11 +3983,11 @@ def ensemble_model(
     )
     best_model = model
     model_results = pull()
-    logger.info("SubProcess create_model() called ==================================")
+    logger.info("SubProcess create_model() end ==================================")
 
     if choose_better:
         model = _choose_better(
-            estimator, _estimator_, best_model, compare_dimension, fold, display
+            _estimator_, [best_model], compare_dimension, fold, display
         )
 
     # end runtime
@@ -4455,7 +4454,7 @@ def blend_models(
             # re-instate display_constainer state
             display_container.pop(-1)
             logger.info(
-                "SubProcess create_model() called =================================="
+                "SubProcess create_model() end =================================="
             )
             estimator_list.append((model_name, model))
             display.move_progress()
@@ -4503,12 +4502,10 @@ def blend_models(
         round=round,
     )
     model_results = pull()
-    logger.info("SubProcess create_model() called ==================================")
+    logger.info("SubProcess create_model() end ==================================")
 
     if choose_better and not all_flag:
-        model = _choose_better_list(
-            model, estimator_list, compare_dimension, fold, display
-        )
+        model = _choose_better(model, estimator_list, compare_dimension, fold, display)
 
     # end runtime
     runtime_end = time.time()
@@ -4954,12 +4951,10 @@ def stack_models(
         round=round,
     )
     model_results = pull()
-    logger.info("SubProcess create_model() called ==================================")
+    logger.info("SubProcess create_model() end ==================================")
 
     if choose_better:
-        model = _choose_better_list(
-            model, estimator_list, compare_dimension, fold, display
-        )
+        model = _choose_better(model, estimator_list, compare_dimension, fold, display)
 
     # end runtime
     runtime_end = time.time()
@@ -8998,61 +8993,17 @@ def _fix_imbalance(
 
 
 def _choose_better(
-    estimator,
-    _estimator_,
-    best_model,
+    model,
+    estimator_list: list,
     compare_dimension: str,
     fold: int,
     display: Display = None,
 ):
     """
-    When choose_better sets to True. optimize metric in scoregrid is
-    compared with base model created using create_model so that tune_model
+    When choose_better is set to True, optimize metric in scoregrid is
+    compared with base model created using create_model so that the
     functions return the model with better score only. This will ensure 
-    model performance is atleast equivalent to what is seen is compare_models 
-    """
-    logger = get_logger()
-    logger.info("choose_better activated")
-    if display:
-        display.update_monitor(1, "Compiling Final Results")
-        display.update_monitor(2, "Almost Finished")
-        display.display_monitor()
-
-    # creating base model for comparison
-    logger.info("SubProcess create_model() called ==================================")
-    if isinstance(estimator, str) and estimator in ["Bagging", "ada"]:
-        base_model = create_model(
-            estimator=_estimator_, verbose=False, system=False, fold=fold
-        )
-    else:
-        base_model = create_model(
-            estimator=estimator, verbose=False, system=False, fold=fold
-        )
-    logger.info("SubProcess create_model() called ==================================")
-    base_model_results = create_model_container[-1][compare_dimension][-2:][0]
-    tuned_model_results = create_model_container[-2][compare_dimension][-2:][0]
-
-    if tuned_model_results > base_model_results:
-        best_model = best_model
-    else:
-        best_model = base_model
-
-    # re-instate display_constainer state
-    display_container.pop(-1)
-    logger.info("choose_better completed")
-    return best_model
-
-
-def _choose_better_list(
-    model, estimator_list, compare_dimension: str, fold: int, display: Display = None
-):
-    """
-    When choose_better sets to True. optimize metric in scoregrid is
-    compared with base model created using create_model so that stack_models
-    functions return the model with better score only. This will ensure 
-    model performance is atleast equivalent to what is seen in compare_models 
-    
-    This method is intended for blend_models and stack_models.
+    model performance is at least equivalent to what is seen in compare_models 
     """
 
     logger = get_logger()
@@ -9068,17 +9019,20 @@ def _choose_better_list(
     scorer.append(blend_model_results)
 
     base_models_ = []
-    logger.info("SubProcess create_model() called ==================================")
-    for n, i in estimator_list:
-        m = create_model(i, verbose=False, system=False, fold=fold)
+    for estimator in estimator_list:
+        if isinstance(estimator, tuple):
+            estimator = estimator[1]
+        logger.info(
+            "SubProcess create_model() called =================================="
+        )
+        m = create_model(estimator, verbose=False, system=False, fold=fold)
+        logger.info("SubProcess create_model() end ==================================")
         s = create_model_container[-1][compare_dimension][-2:][0]
         scorer.append(s)
         base_models_.append(m)
 
         # re-instate display_constainer state
         display_container.pop(-1)
-
-    logger.info("SubProcess create_model() called ==================================")
 
     index_scorer = scorer.index(max(scorer))
 
