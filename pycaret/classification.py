@@ -1510,7 +1510,11 @@ def setup(data,
     model_name = str(model).split("(")[0]
     if 'CatBoostClassifier' in model_name:
         model_name = 'CatBoostClassifier'
-    
+
+    #creating variables to be used later in the function
+    X = data.drop(target,axis=1)
+    y = data[target]
+
     #determining target type
     if y.value_counts().count() > 2:
         target_type = 'Multiclass'
@@ -1575,17 +1579,32 @@ def setup(data,
             except:
                 logger.warning("model has no predict_proba attribute.")
                 pred_prob = 0
-            
-            #accuracy
-            acc = metrics.accuracy_score(y_test,pred_)
-            metric_results.append(acc)
-            metric_name.append('Accuracy')
-            split_percent.append(i)
-            
-            #auc
-            if y.value_counts().count() > 2:
-                pass
+
+            # Multiclass/Binary metrics
+
+            if target_type=='Multiclass':
+
+                # Accuracy
+                acc = metrics.accuracy_score(y_test, pred_)
+
+                # Recall
+                recall = metrics.recall_score(y_test,pred_, average='macro')
+
+                # Precision
+                precision = metrics.precision_score(y_test, pred_, average='weighted')
+
+                # F1
+                f1 = metrics.f1_score(y_test, pred_, average='weighted')
+
+                # Kappa
+                kappa = metrics.cohen_kappa_score(y_test, pred_)
+
             else:
+
+                # Accuracy
+                acc = metrics.accuracy_score(y_test, pred_)
+
+                # AUC
                 try:
                     auc = metrics.roc_auc_score(y_test,pred_prob)
                     metric_results.append(auc)
@@ -1593,45 +1612,42 @@ def setup(data,
                     split_percent.append(i)
                 except:
                     pass
-                
-            #recall
-            if y.value_counts().count() > 2:
-                recall = metrics.recall_score(y_test,pred_, average='macro')
-                metric_results.append(recall)
-                metric_name.append('Recall')
-                split_percent.append(i)
-            else:    
-                recall = metrics.recall_score(y_test,pred_)
-                metric_results.append(recall)
-                metric_name.append('Recall')
-                split_percent.append(i)
-                
-            #precision
-            if y.value_counts().count() > 2:
-                precision = metrics.precision_score(y_test,pred_, average='weighted')
-                metric_results.append(precision)
-                metric_name.append('Precision')
-                split_percent.append(i)
-            else:    
-                precision = metrics.precision_score(y_test,pred_)
-                metric_results.append(precision)
-                metric_name.append('Precision')
-                split_percent.append(i)                
 
-            #F1
-            if y.value_counts().count() > 2:
-                f1 = metrics.f1_score(y_test,pred_, average='weighted')
-                metric_results.append(f1)
-                metric_name.append('F1')
-                split_percent.append(i)
-            else:    
-                f1 = metrics.precision_score(y_test,pred_)
-                metric_results.append(f1)
-                metric_name.append('F1')
-                split_percent.append(i)
-                
-            #Kappa
-            kappa = metrics.cohen_kappa_score(y_test,pred_)
+                # Recall
+                recall = metrics.recall_score(y_test, pred_)
+
+                #Precision
+                precision = metrics.precision_score(y_test, pred_)
+
+                # F1
+                f1 = metrics.precision_score(y_test, pred_)
+
+                # Kappa
+                kappa = metrics.cohen_kappa_score(y_test,pred_)
+
+            # Store metrics
+
+            # Accuracy
+            metric_results.append(acc)
+            metric_name.append('Accuracy')
+            split_percent.append(i)
+
+            # Recall
+            metric_results.append(recall)
+            metric_name.append('Recall')
+            split_percent.append(i)
+
+            # Precision
+            metric_results.append(precision)
+            metric_name.append('Precision')
+            split_percent.append(i)
+
+            # F1
+            metric_results.append(f1)
+            metric_name.append('F1')
+            split_percent.append(i)
+
+            # Kappa
             metric_results.append(kappa)
             metric_name.append('Kappa')
             split_percent.append(i)
@@ -3136,9 +3152,9 @@ def create_model(estimator = None,
     logger.info("Defining folds")
 
     #cross validation setup starts here
-    if cv_type=='random':
+    if cv_type_param=='random':
         kf = StratifiedKFold(fold, random_state=seed, shuffle=cv_folds_shuffle_param)
-    elif cv_type=='group':
+    elif cv_type_param=='group':
         kf = GroupKFold(fold)
 
     logger.info("Declaring metric variables")
