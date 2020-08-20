@@ -1754,9 +1754,9 @@ class Advanced_Feature_Selection_Classic(BaseEstimator,TransformerMixin):
 # Base on: https://github.com/scikit-learn-contrib/boruta_py/blob/master/boruta/boruta_py.py
 class Boruta_Feature_Selection(BaseEstimator, TransformerMixin):
   """
-          Boruta selection algorithm base on s borutaPy klearn-contrib and
+          Boruta selection algorithm based on borutaPy sklearn-contrib and
           Miron B Kursa, https://m2.icm.edu.pl/boruta/
-          Takes features and select the most important
+          Selects the most important features.
             Args:
               target (str): target column name
               ml_usecase (str): case: classification or regression
@@ -2654,14 +2654,14 @@ def Preprocess_Path_One(train_data,target_variable,ml_usecase=None,test_data =No
   clean_names =Clean_Colum_Names()
 
   # feature selection 
-  if apply_feature_selection != None:
+  if apply_feature_selection:
     global feature_select
     # TODO: add autoselect 
-    if feature_selection_method == 'classic':
-      feature_select = Advanced_Feature_Selection_Classic(target=target_variable,ml_usecase=ml_usecase,top_features_to_pick=feature_selection_top_features_percentage,random_state=random_state,subclass=subcase)
-    elif feature_selection_method == 'boruta':
+    if feature_selection_method == 'boruta':
       feature_select = Boruta_Feature_Selection(target=target_variable,ml_usecase=ml_usecase,top_features_to_pick=feature_selection_top_features_percentage,
                                                 random_state=random_state,subclass=subcase)
+    else:
+      feature_select = Advanced_Feature_Selection_Classic(target=target_variable,ml_usecase=ml_usecase,top_features_to_pick=feature_selection_top_features_percentage,random_state=random_state,subclass=subcase)
   else:
     feature_select= Empty()
   
