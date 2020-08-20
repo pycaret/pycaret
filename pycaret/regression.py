@@ -332,9 +332,8 @@ def setup(data,
         in order to improve efficiency in modeling. When polynomial_features and 
         feature_interaction  are used, it is highly recommended to define the 
         feature_selection_threshold param with a lower value. Feature selection algorithm
-        by default is 'classic'but could be 'boruta' which lead pycaret to create boruta selection
-        algorithm instance, more in:
-        https://pdfs.semanticscholar.org/85a8/b1d9c52f9f795fda7e12376e751526953f38.pdf%3E
+        by default is 'classic' but could be 'boruta', which will lead PyCaret to create
+        use the Boruta selection algorithm.
 
     feature_selection_threshold: float, default = 0.8
         Threshold used for feature selection (including newly created polynomial features).
@@ -343,12 +342,13 @@ def setup(data,
         polynomial_features and feature_interaction are used. Setting a very low value may be 
         efficient but could result in under-fitting.
     
-    feature_selection_method: str, default = classic
-        User can use 'classic' or 'boruta' algorithm selection which is responsible for
-        choosing a subset of features. For 'classic' selection method pycaret using a varius
-        permutation importance techiques. If 'boruta' algorithm is selected pycaret will create 
-        an instance of boosted trees model, which iterate with permutation over all
-        features and choose the best one base on distributions of feature importance.
+    feature_selection_method: str, default = 'classic'
+        Can be either 'classic' or 'boruta'. Selects the algorithm responsible for
+        choosing a subset of features. For the 'classic' selection method, PyCaret will use various
+        permutation importance techniques. For the 'boruta' algorithm, PyCaret will create 
+        an instance of boosted trees model, which will iterate with permutation over all
+        features and choose the best ones based on the distributions of feature importance.
+        More in: https://pdfs.semanticscholar.org/85a8/b1d9c52f9f795fda7e12376e751526953f38.pdf%3E
     
     feature_interaction: bool, default = False 
         When set to True, it will create new features by interacting (a * b) for all numeric 
