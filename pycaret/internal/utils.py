@@ -140,3 +140,32 @@ def is_special_model(e, all_models: pd.DataFrame) -> bool:
             return row.Special
 
     return False
+
+
+def calculate_metrics(
+    metrics: pd.DataFrame,
+    ytest,
+    pred_,
+    pred_prob: float = None,
+    score_dict: dict = None,
+):
+    import numpy as np
+
+    if not score_dict:
+        score_dict = {
+            metric._2: np.empty((0, 0))
+            for metric in metrics.itertuples()
+            if metric.Class
+        }
+    for row in metrics.itertuples():
+        if not row.Class:
+            continue
+        target = pred_prob if row.Target == "pred_prob" else pred_
+        try:
+            calculated_metric = row.Class(ytest, target, **row.Args)
+        except:
+            calculated_metric = 0
+
+        # row._2 is 'Display Name' column
+        score_dict[row._2] = np.append(score_dict[row._2], calculated_metric)
+    return score_dict
