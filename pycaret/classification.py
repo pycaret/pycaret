@@ -8360,10 +8360,8 @@ def _sample_data(
     ]
     split_perc_tt = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.99]
     split_perc_tt_total = []
-    split_percent = []
 
-    metric_results = []
-    metric_name = []
+    score_dict = {metric: np.empty((0, 0)) for metric in all_metrics["Display Name"]}
 
     counter = 0
 
@@ -8409,65 +8407,7 @@ def _sample_data(
             logger.warning("model has no predict_proba attribute.")
             pred_prob = 0
 
-        # accuracy
-        acc = metrics.accuracy_score(y_test, pred_)
-        metric_results.append(acc)
-        metric_name.append("Accuracy")
-        split_percent.append(i)
-
-        # auc
-        if _is_multiclass():
-            pass
-        else:
-            try:
-                auc = metrics.roc_auc_score(y_test, pred_prob)
-                metric_results.append(auc)
-                metric_name.append("AUC")
-                split_percent.append(i)
-            except:
-                pass
-
-        # recall
-        if _is_multiclass():
-            recall = metrics.recall_score(y_test, pred_, average="macro")
-            metric_results.append(recall)
-            metric_name.append("Recall")
-            split_percent.append(i)
-        else:
-            recall = metrics.recall_score(y_test, pred_)
-            metric_results.append(recall)
-            metric_name.append("Recall")
-            split_percent.append(i)
-
-        # precision
-        if _is_multiclass():
-            precision = metrics.precision_score(y_test, pred_, average="weighted")
-            metric_results.append(precision)
-            metric_name.append("Precision")
-            split_percent.append(i)
-        else:
-            precision = metrics.precision_score(y_test, pred_)
-            metric_results.append(precision)
-            metric_name.append("Precision")
-            split_percent.append(i)
-
-        # F1
-        if _is_multiclass():
-            f1 = metrics.f1_score(y_test, pred_, average="weighted")
-            metric_results.append(f1)
-            metric_name.append("F1")
-            split_percent.append(i)
-        else:
-            f1 = metrics.precision_score(y_test, pred_)
-            metric_results.append(f1)
-            metric_name.append("F1")
-            split_percent.append(i)
-
-        # Kappa
-        kappa = metrics.cohen_kappa_score(y_test, pred_)
-        metric_results.append(kappa)
-        metric_name.append("Kappa")
-        split_percent.append(i)
+        _calculate_metrics(y_test, pred_, pred_prob, score_dict)
 
         t1 = time.time()
 
@@ -8504,9 +8444,13 @@ def _sample_data(
         split_perc_tt_total = []
         counter += 1
 
-    model_results = pd.DataFrame(
-        {"Sample": split_percent, "Metric": metric_results, "Metric Name": metric_name,}
-    )
+    model_results = []
+    for i in split_perc:
+        for metric_name, metric in score_dict.items():
+            row = (i, metric[i], metric_name)
+            model_results.append(row)
+
+    model_results = pd.DataFrame(model_results, columns=["Sample", "Metric", "Metric Name"])
     fig = px.line(
         model_results,
         x="Sample",
