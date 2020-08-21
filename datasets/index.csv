@@ -1,56 +1,56 @@
-﻿Dataset,Data Types,Default Task,Target Variable,# Instances,# Attributes,Missing Values
-anomaly,Multivariate,Anomaly Detection,None,1000,10,N
-france,Multivariate,Association Rule Mining,"InvoiceNo, Description",8557,8,N
-germany,Multivariate,Association Rule Mining,"InvoiceNo, Description",9495,8,N
-bank,Multivariate,Classification (Binary),deposit,45211,17,N
-blood,Multivariate,Classification (Binary),Class,748,5,N
-cancer,Multivariate,Classification (Binary),Class,683,10,N
-credit,Multivariate,Classification (Binary),default,24000,24,N
-diabetes,Multivariate,Classification (Binary),Class variable,768,9,N
-electrical_grid,Multivariate,Classification (Binary),stabf,10000,14,N
-employee,Multivariate,Classification (Binary),left,14999,10,N
-heart,Multivariate,Classification (Binary),DEATH,200,16,N
-heart_disease,Multivariate,Classification (Binary),Disease,270,14,N
-hepatitis,Multivariate,Classification (Binary),Class,154,32,Y
-income,Multivariate,Classification (Binary),income >50K,32561,14,Y
-juice,Multivariate,Classification (Binary),Purchase,1070,15,N
-nba,Multivariate,Classification (Binary),TARGET_5Yrs,1340,21,N
-wine,Multivariate,Classification (Binary),type,6498,13,N
-telescope,Multivariate,Classification (Binary),Class,19020,11,N
-us_presidential_election_results,Multivariate,Classification (Binary),party_winner,497,7,N
-glass,Multivariate,Classification (Multiclass),Type,214,10,N
-iris,Multivariate,Classification (Multiclass),species,150,5,N
-poker,Multivariate,Classification (Multiclass),CLASS,100000,11,N
-questions,Multivariate,Classification (Multiclass),Next_Question,499,4,N
-satellite,Multivariate,Classification (Multiclass),Class,6435,37,N
-asia_gdp,Multivariate,Clustering,None,40,11,N
-elections,Multivariate,Clustering,None,3195,54,Y
-facebook,Multivariate,Clustering,None,7050,12,N
-ipl,Multivariate,Clustering,None,153,25,N
-jewellery,Multivariate,Clustering,None,505,4,N
-mice,Multivariate,Clustering,None,1080,82,Y
-migration,Multivariate,Clustering,None,233,12,N
-perfume,Multivariate,Clustering,None,20,29,N
-pokemon,Multivariate,Clustering,None,800,13,Y
-population,Multivariate,Clustering,None,255,56,Y
-public_health,Multivariate,Clustering,None,224,21,N
-seeds,Multivariate,Clustering,None,210,7,N
-wholesale,Multivariate,Clustering,None,440,8,N
-tweets,Text,NLP,tweet,8594,2,N
-amazon,Text,NLP / Classification,reviewText,20000,2,N
-kiva,Text,NLP / Classification,en,6818,7,N
-spx,Text,NLP / Regression,text,874,4,N
-wikipedia,Text,NLP / Classification,Text,500,3,N
-automobile,Multivariate,Regression,price,202,26,Y
-bike,Multivariate,Regression,cnt,17379,15,N
-boston,Multivariate,Regression,medv,506,14,N
-concrete,Multivariate,Regression,strength,1030,9,N
-diamond,Multivariate,Regression,Price,6000,8,N
-energy,Multivariate,Regression,Heating Load / Cooling Load,768,10,N
-forest,Multivariate,Regression,area,517,13,N
-gold,Multivariate,Regression,Gold_T+22,2558,121,N
-house,Multivariate,Regression,SalePrice,1461,81,Y
-insurance,Multivariate,Regression,charges,1338,7,N
-parkinsons,Multivariate,Regression,PPE,5875,22,N
-traffic,Multivariate,Regression,traffic_volume,48204,8,N
-CTG, Multivariate, Classification (Multiclass), NSP,2129,40,Y
+﻿Dataset,Data Types,Default Task,Target Variable 1,Target Variable 2,# Instances,# Attributes,Missing Values
+anomaly,Multivariate,Anomaly Detection,None,,1000,10,N
+france,Multivariate,Association Rule Mining,InvoiceNo,Description,8557,8,N
+germany,Multivariate,Association Rule Mining,InvoiceNo,Description,9495,8,N
+bank,Multivariate,Classification (Binary),deposit,,45211,17,N
+blood,Multivariate,Classification (Binary),Class,,748,5,N
+cancer,Multivariate,Classification (Binary),Class,,683,10,N
+credit,Multivariate,Classification (Binary),default,,24000,24,N
+diabetes,Multivariate,Classification (Binary),Class variable,,768,9,N
+electrical_grid,Multivariate,Classification (Binary),stabf,,10000,14,N
+employee,Multivariate,Classification (Binary),left,,14999,10,N
+heart,Multivariate,Classification (Binary),DEATH,,200,16,N
+heart_disease,Multivariate,Classification (Binary),Disease,,270,14,N
+hepatitis,Multivariate,Classification (Binary),Class,,154,32,Y
+income,Multivariate,Classification (Binary),income >50K,,32561,14,Y
+juice,Multivariate,Classification (Binary),Purchase,,1070,15,N
+nba,Multivariate,Classification (Binary),TARGET_5Yrs,,1340,21,N
+wine,Multivariate,Classification (Binary),type,,6498,13,N
+telescope,Multivariate,Classification (Binary),Class,,19020,11,N
+us_presidential_election_results,Multivariate,Classification (Binary),party_winner,,497,7,N
+glass,Multivariate,Classification (Multiclass),Type,,214,10,N
+iris,Multivariate,Classification (Multiclass),species,,150,5,N
+poker,Multivariate,Classification (Multiclass),CLASS,,100000,11,N
+questions,Multivariate,Classification (Multiclass),Next_Question,,499,4,N
+satellite,Multivariate,Classification (Multiclass),Class,,6435,37,N
+asia_gdp,Multivariate,Clustering,None,,40,11,N
+elections,Multivariate,Clustering,None,,3195,54,Y
+facebook,Multivariate,Clustering,None,,7050,12,N
+ipl,Multivariate,Clustering,None,,153,25,N
+jewellery,Multivariate,Clustering,None,,505,4,N
+mice,Multivariate,Clustering,None,,1080,82,Y
+migration,Multivariate,Clustering,None,,233,12,N
+perfume,Multivariate,Clustering,None,,20,29,N
+pokemon,Multivariate,Clustering,None,,800,13,Y
+population,Multivariate,Clustering,None,,255,56,Y
+public_health,Multivariate,Clustering,None,,224,21,N
+seeds,Multivariate,Clustering,None,,210,7,N
+wholesale,Multivariate,Clustering,None,,440,8,N
+tweets,Text,NLP,tweet,,8594,2,N
+amazon,Text,NLP / Classification,reviewText,,20000,2,N
+kiva,Text,NLP / Classification,en,,6818,7,N
+spx,Text,NLP / Regression,text,,874,4,N
+wikipedia,Text,NLP / Classification,Text,,500,3,N
+automobile,Multivariate,Regression,price,,202,26,Y
+bike,Multivariate,Regression,cnt,,17379,15,N
+boston,Multivariate,Regression,medv,,506,14,N
+concrete,Multivariate,Regression,strength,,1030,9,N
+diamond,Multivariate,Regression,Price,,6000,8,N
+energy,Multivariate,Regression,Heating Load,Cooling Load,768,10,N
+forest,Multivariate,Regression,area,,517,13,N
+gold,Multivariate,Regression,Gold_T+22,,2558,121,N
+house,Multivariate,Regression,SalePrice,,1461,81,Y
+insurance,Multivariate,Regression,charges,,1338,7,N
+parkinsons,Multivariate,Regression,PPE,,5875,22,N
+traffic,Multivariate,Regression,traffic_volume,,48204,8,N
+CTG, Multivariate, Classification (Multiclass), NSP,,2129,40,Y
