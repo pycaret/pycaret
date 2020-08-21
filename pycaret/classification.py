@@ -5531,12 +5531,12 @@ def plot_model(
         else:
             logger.warning("No coef_ found. Trying feature_importances_")
             variables = abs(model.feature_importances_)
-        col_names = np.array(X_train.columns)
         coef_df = pd.DataFrame({"Variable": X_train.columns, "Value": variables})
-        sorted_df = coef_df.sort_values(by="Value")
-        sorted_df = sorted_df.sort_values(by="Value", ascending=False)
-        sorted_df = sorted_df.head(10)
-        sorted_df = sorted_df.sort_values(by="Value")
+        sorted_df = (
+            coef_df.sort_values(by="Value", ascending=False)
+            .head(10)
+            .sort_values(by="Value")
+        )
         my_range = range(1, len(sorted_df.index) + 1)
         display.move_progress()
         plt.figure(figsize=(8, 5), dpi=100 * scale)
