@@ -88,7 +88,7 @@ def get_logger(globals_d: dict = None):
     import logging
 
     try:
-        return globals_d['logger']
+        return globals_d["logger"]
     except:
         logger = logging.getLogger("logs")
         logger.setLevel(logging.DEBUG)
@@ -111,3 +111,32 @@ def get_logger(globals_d: dict = None):
 
     return logger
 
+
+def get_model_id(e, all_models: pd.DataFrame) -> str:
+    for row in all_models.itertuples():
+        if type(e) is row.Class:
+            return row[0]
+
+    return None
+
+
+def get_model_name(e, all_models: pd.DataFrame) -> str:
+    if isinstance(e, str) and e in all_models.index:
+        model_id = e
+    else:
+        model_id = get_model_id(e, all_models)
+
+    if model_id is not None:
+        name = all_models.loc[model_id]["Name"]
+    else:
+        name = str(e).split("(")[0]
+
+    return name
+
+
+def is_special_model(e, all_models: pd.DataFrame) -> bool:
+    for row in all_models.itertuples():
+        if type(e) is row.Class:
+            return row.Special
+
+    return False

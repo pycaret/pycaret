@@ -8203,45 +8203,9 @@ def set_config(variable: str, value):
     return pycaret.internal.utils.set_config(variable, value, globals())
 
 
-def _get_model_id(e) -> str:
-    all_models = models(internal=True)
-    model_definition = None
-    for row in all_models.itertuples():
-        if type(e) is row.Class:
-            return row[0]
-
-    return None
-
-
-def _is_special_model(e) -> bool:
-    all_models = models(internal=True)
-    model_definition = None
-    for row in all_models.itertuples():
-        if type(e) is row.Class:
-            return row.Special
-
-    return False
-
 
 def _is_one_vs_rest(e) -> bool:
     return type(e) == _all_models_internal.loc["OneVsRest"]["Class"]
-
-
-def _get_model_name(e) -> str:
-    all_models = models(internal=True)
-    if isinstance(e, str) and e in all_models.index:
-        model_id = e
-    else:
-        model_id = _get_model_id(e)
-
-    if model_id is not None:
-        name = all_models.loc[model_id]["Name"]
-    else:
-        name = str(e).split("(")[0]
-        if "catboost" in name:
-            name = "CatBoostClassifier"
-
-    return name
 
 
 def _calculate_metrics(ytest, pred_, pred_prob, score_dict: dict = None):
@@ -8614,3 +8578,15 @@ def _is_multiclass() -> bool:
         return y.value_counts().count() > 2
     except:
         return False
+
+def _get_model_id(e) -> str:
+    import pycaret.internal.utils
+    return pycaret.internal.utils.get_model_id(e, models(internal=True))
+
+def _get_model_name(e) -> str:
+    import pycaret.internal.utils
+    return pycaret.internal.utils.get_model_name(e, models(internal=True))
+
+def _is_special_model(e) -> bool:
+    import pycaret.internal.utils
+    return pycaret.internal.utils.is_special_model(e, models(internal=True))
