@@ -7,7 +7,6 @@ import pytest
 import pycaret.datasets
 import pycaret.preprocess
 
-
 def test():
     index = pd.read_csv("datasets/index.csv")
 
