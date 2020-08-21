@@ -1,3 +1,7 @@
+# Module: internal.utils
+# Author: Moez Ali <moez.ali@queensu.ca> and Antoni Baum (Yard1) <antoni.baum@protonmail.com>
+# License: MIT
+
 import datetime
 import pandas as pd
 import pandas.io.formats.style

@@ -1,3 +1,7 @@
+# Module: internal.persistence
+# Author: Moez Ali <moez.ali@queensu.ca> and Antoni Baum (Yard1) <antoni.baum@protonmail.com>
+# License: MIT
+
 from pycaret.classification import prep_pipe
 from pycaret.internal.utils import get_logger
 from pycaret.internal.Display import Display

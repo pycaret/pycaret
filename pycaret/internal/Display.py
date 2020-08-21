@@ -1,4 +1,4 @@
-# Module: Display class
+# Module: internal.Display class
 # Author: Antoni Baum (Yard1) <antoni.baum@protonmail.com>
 # License: MIT
 
