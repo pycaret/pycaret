@@ -5,6 +5,7 @@
 # Last modified : 12/08/2020
 
 from pycaret.internal.utils import get_logger, color_df
+from pycaret.internal.plotting import show_yellowbrick_plot
 from pycaret.internal.Display import Display
 import pandas
 from typing import List, Set, Dict, Tuple, Optional, Any
@@ -5010,22 +5011,24 @@ def plot_model(
 
     # checking plots (string)
     available_plots = [
-        "auc",
-        "threshold",
-        "pr",
-        "confusion_matrix",
-        "error",
-        "class_report",
-        "boundary",
-        "rfe",
-        "learning",
-        "manifold",
-        "calibration",
-        "vc",
-        "dimension",
-        "feature",
-        "parameter",
+        ("Hyperparameters", "parameter"),
+        ("AUC", "auc"),
+        ("Confusion Matrix", "confusion_matrix"),
+        ("Threshold", "threshold"),
+        ("Precision Recall", "pr"),
+        ("Error", "error"),
+        ("Class Report", "class_report"),
+        ("Feature Selection", "rfe"),
+        ("Learning Curve", "learning"),
+        ("Manifold Learning", "manifold"),
+        ("Calibration Curve", "calibration"),
+        ("Validation Curve", "vc"),
+        ("Dimensions", "dimension"),
+        ("Feature Importance", "feature"),
+        ("Decision Boundary", "boundary"),
     ]
+    available_plots = {k: v for v, k in available_plots}
+    print(available_plots)
 
     if plot not in available_plots:
         raise ValueError(
@@ -5089,10 +5092,6 @@ def plot_model(
     
     """
 
-    logger.info("Preloading libraries")
-    # pre-load libraries
-    import pandas as pd
-
     if not display:
         progress_args = {"max": 5}
         display = Display(
@@ -5100,18 +5099,18 @@ def plot_model(
         )
         display.display_progress()
 
-    # ignore warnings
-    import warnings
-
-    warnings.filterwarnings("ignore")
-
-    logger.info("Importing libraries")
-    # general dependencies
+    logger.info("Preloading libraries")
+    # pre-load libraries
     import matplotlib.pyplot as plt
     import numpy as np
     import pandas as pd
 
     display.move_progress()
+
+    # ignore warnings
+    import warnings
+
+    warnings.filterwarnings("ignore")
 
     # defining estimator as model locally
     model = estimator
@@ -5122,162 +5121,123 @@ def plot_model(
     # AUC, #Confusion Matrix and #Feature Importance
 
     logger.info(f"Plot type: {plot}")
+    display.move_progress()
 
     if plot == "auc":
 
         from yellowbrick.classifier import ROCAUC
 
-        display.move_progress()
         visualizer = ROCAUC(model)
-        visualizer.fig.set_dpi(visualizer.fig.dpi * scale)
-        logger.info("Fitting Model")
-        visualizer.fit(X_train, y_train)
-        display.move_progress()
-        logger.info("Scoring test/hold-out set")
-        visualizer.score(X_test, y_test)
-        display.move_progress()
-        display.clear_output()
-        if save:
-            logger.info("Saving 'AUC.png' in current active directory")
-            if system:
-                visualizer.show(outpath="AUC.png")
-            else:
-                visualizer.show(outpath="AUC.png", clear_figure=True)
-        else:
-            visualizer.show()
-
-        logger.info("Visual Rendered Successfully")
+        show_yellowbrick_plot(
+            visualizer=visualizer,
+            X_train=X_train,
+            y_train=y_train,
+            X_test=X_test,
+            y_test=y_test,
+            name=available_plots[plot],
+            scale=scale,
+            save=save,
+            system=system,
+            logger=logger,
+            display=display,
+        )
 
     elif plot == "threshold":
 
         from yellowbrick.classifier import DiscriminationThreshold
 
-        display.move_progress()
         visualizer = DiscriminationThreshold(model, random_state=seed)
-        visualizer.fig.set_dpi(visualizer.fig.dpi * scale)
-        logger.info("Fitting Model")
-        visualizer.fit(X_train, y_train)
-        display.move_progress()
-        logger.info("Scoring test/hold-out set")
-        visualizer.score(X_test, y_test)
-        display.move_progress()
-        display.clear_output()
-        if save:
-            logger.info("Saving 'Threshold Curve.png' in current active directory")
-            if system:
-                visualizer.show(outpath="Threshold Curve.png")
-            else:
-                visualizer.show(outpath="Threshold Curve.png", clear_figure=True)
-        else:
-            visualizer.show()
-
-        logger.info("Visual Rendered Successfully")
+        show_yellowbrick_plot(
+            visualizer=visualizer,
+            X_train=X_train,
+            y_train=y_train,
+            X_test=X_test,
+            y_test=y_test,
+            name=available_plots[plot],
+            scale=scale,
+            save=save,
+            system=system,
+            logger=logger,
+            display=display,
+        )
 
     elif plot == "pr":
 
         from yellowbrick.classifier import PrecisionRecallCurve
 
-        display.move_progress()
         visualizer = PrecisionRecallCurve(model, random_state=seed)
-        visualizer.fig.set_dpi(visualizer.fig.dpi * scale)
-        logger.info("Fitting Model")
-        visualizer.fit(X_train, y_train)
-        display.move_progress()
-        logger.info("Scoring test/hold-out set")
-        visualizer.score(X_test, y_test)
-        display.move_progress()
-        display.clear_output()
-        if save:
-            logger.info("Saving 'Precision Recall.png' in current active directory")
-            if system:
-                visualizer.show(outpath="Precision Recall.png")
-            else:
-                visualizer.show(outpath="Precision Recall.png", clear_figure=True)
-        else:
-            visualizer.show()
-
-        logger.info("Visual Rendered Successfully")
+        show_yellowbrick_plot(
+            visualizer=visualizer,
+            X_train=X_train,
+            y_train=y_train,
+            X_test=X_test,
+            y_test=y_test,
+            name=available_plots[plot],
+            scale=scale,
+            save=save,
+            system=system,
+            logger=logger,
+            display=display,
+        )
 
     elif plot == "confusion_matrix":
 
         from yellowbrick.classifier import ConfusionMatrix
 
-        display.move_progress()
         visualizer = ConfusionMatrix(
             model, random_state=seed, fontsize=15, cmap="Greens"
         )
-        visualizer.fig.set_dpi(visualizer.fig.dpi * scale)
-        logger.info("Fitting Model")
-        visualizer.fit(X_train, y_train)
-        display.move_progress()
-        logger.info("Scoring test/hold-out set")
-        visualizer.score(X_test, y_test)
-        display.move_progress()
-        display.clear_output()
-        if save:
-            logger.info("Saving 'Confusion Matrix.png' in current active directory")
-            if system:
-                visualizer.show(outpath="Confusion Matrix.png")
-            else:
-                visualizer.show(outpath="Confusion Matrix.png", clear_figure=True)
-        else:
-            visualizer.show()
-
-        logger.info("Visual Rendered Successfully")
+        show_yellowbrick_plot(
+            visualizer=visualizer,
+            X_train=X_train,
+            y_train=y_train,
+            X_test=X_test,
+            y_test=y_test,
+            name=available_plots[plot],
+            scale=scale,
+            save=save,
+            system=system,
+            logger=logger,
+            display=display,
+        )
 
     elif plot == "error":
 
         from yellowbrick.classifier import ClassPredictionError
 
-        display.move_progress()
         visualizer = ClassPredictionError(model, random_state=seed)
-        visualizer.fig.set_dpi(visualizer.fig.dpi * scale)
-        logger.info("Fitting Model")
-        visualizer.fit(X_train, y_train)
-        display.move_progress()
-        logger.info("Scoring test/hold-out set")
-        visualizer.score(X_test, y_test)
-        display.move_progress()
-        display.clear_output()
-        if save:
-            logger.info(
-                "Saving 'Class Prediction Error.png' in current active directory"
-            )
-            if system:
-                visualizer.show(outpath="Class Prediction Error.png")
-            else:
-                visualizer.show(outpath="Class Prediction Error.png", clear_figure=True)
-        else:
-            visualizer.show()
-
-        logger.info("Visual Rendered Successfully")
+        show_yellowbrick_plot(
+            visualizer=visualizer,
+            X_train=X_train,
+            y_train=y_train,
+            X_test=X_test,
+            y_test=y_test,
+            name=available_plots[plot],
+            scale=scale,
+            save=save,
+            system=system,
+            logger=logger,
+            display=display,
+        )
 
     elif plot == "class_report":
 
         from yellowbrick.classifier import ClassificationReport
 
-        display.move_progress()
         visualizer = ClassificationReport(model, random_state=seed, support=True)
-        visualizer.fig.set_dpi(visualizer.fig.dpi * scale)
-        logger.info("Fitting Model")
-        visualizer.fit(X_train, y_train)
-        display.move_progress()
-        logger.info("Scoring test/hold-out set")
-        visualizer.score(X_test, y_test)
-        display.move_progress()
-        display.clear_output()
-        if save:
-            logger.info(
-                "Saving 'Classification Report.png' in current active directory"
-            )
-            if system:
-                visualizer.show(outpath="Classification Report.png")
-            else:
-                visualizer.show(outpath="Classification Report.png", clear_figure=True)
-        else:
-            visualizer.show()
-
-        logger.info("Visual Rendered Successfully")
+        show_yellowbrick_plot(
+            visualizer=visualizer,
+            X_train=X_train,
+            y_train=y_train,
+            X_test=X_test,
+            y_test=y_test,
+            name=available_plots[plot],
+            scale=scale,
+            save=save,
+            system=system,
+            logger=logger,
+            display=display,
+        )
 
     elif plot == "boundary":
 
@@ -5287,8 +5247,6 @@ def plot_model(
         from copy import deepcopy
 
         model2 = deepcopy(estimator)
-
-        display.move_progress()
 
         X_train_transformed = X_train.copy()
         X_test_transformed = X_test.copy()
@@ -5310,104 +5268,87 @@ def plot_model(
         y_test_transformed = np.array(y_test_transformed)
 
         viz_ = DecisionViz(model2)
-        viz_.fig.set_dpi(viz_.fig.dpi * scale)
-        logger.info("Fitting Model")
-        viz_.fit(
-            X_train_transformed,
-            y_train_transformed,
+        show_yellowbrick_plot(
+            visualizer=viz_,
+            X_train=X_train_transformed,
+            y_train=y_train_transformed,
+            X_test=X_test_transformed,
+            y_test=y_test_transformed,
+            name=available_plots[plot],
+            scale=scale,
+            handle_train="draw",
+            save=save,
+            system=system,
+            logger=logger,
+            display=display,
             features=["Feature One", "Feature Two"],
             classes=["A", "B"],
         )
-        viz_.draw(X_test_transformed, y_test_transformed)
-        display.move_progress()
-        display.clear_output()
-        if save:
-            logger.info("Saving 'Decision Boundary.png' in current active directory")
-            if system:
-                viz_.show(outpath="Decision Boundary.png")
-            else:
-                viz_.show(outpath="Decision Boundary.png", clear_figure=True)
-        else:
-            viz_.show()
-
-        logger.info("Visual Rendered Successfully")
 
     elif plot == "rfe":
 
         from yellowbrick.model_selection import RFECV
 
-        display.move_progress()
         visualizer = RFECV(model, cv=10)
-        visualizer.fig.set_dpi(visualizer.fig.dpi * scale)
-        display.move_progress()
-        logger.info("Fitting Model")
-        visualizer.fit(X_train, y_train)
-        display.move_progress()
-        display.clear_output()
-        if save:
-            logger.info(
-                "Saving 'Recursive Feature Selection.png' in current active directory"
-            )
-            if system:
-                visualizer.show(outpath="Recursive Feature Selection.png")
-            else:
-                visualizer.show(
-                    outpath="Recursive Feature Selection.png", clear_figure=True
-                )
-        else:
-            visualizer.show()
-
-        logger.info("Visual Rendered Successfully")
+        show_yellowbrick_plot(
+            visualizer=visualizer,
+            X_train=X_train,
+            y_train=y_train,
+            X_test=X_test,
+            y_test=y_test,
+            handle_test="",
+            name=available_plots[plot],
+            scale=scale,
+            save=save,
+            system=system,
+            logger=logger,
+            display=display,
+        )
 
     elif plot == "learning":
 
         from yellowbrick.model_selection import LearningCurve
 
-        display.move_progress()
         sizes = np.linspace(0.3, 1.0, 10)
         visualizer = LearningCurve(
             model, cv=10, train_sizes=sizes, n_jobs=n_jobs_param, random_state=seed
         )
-        visualizer.fig.set_dpi(visualizer.fig.dpi * scale)
-        display.move_progress()
-        logger.info("Fitting Model")
-        visualizer.fit(X_train, y_train)
-        display.move_progress()
-        display.clear_output()
-        if save:
-            logger.info("Saving 'Learning Curve.png' in current active directory")
-            if system:
-                visualizer.show(outpath="Learning Curve.png")
-            else:
-                visualizer.show(outpath="Learning Curve.png", clear_figure=True)
-        else:
-            visualizer.show()
-
-        logger.info("Visual Rendered Successfully")
+        show_yellowbrick_plot(
+            visualizer=visualizer,
+            X_train=X_train,
+            y_train=y_train,
+            X_test=X_test,
+            y_test=y_test,
+            handle_test="",
+            name=available_plots[plot],
+            scale=scale,
+            save=save,
+            system=system,
+            logger=logger,
+            display=display,
+        )
 
     elif plot == "manifold":
 
         from yellowbrick.features import Manifold
 
-        display.move_progress()
         X_train_transformed = X_train.select_dtypes(include="float64")
         visualizer = Manifold(manifold="tsne", random_state=seed)
-        visualizer.fig.set_dpi(visualizer.fig.dpi * scale)
-        display.move_progress()
-        logger.info("Fitting Model")
-        visualizer.fit_transform(X_train_transformed, y_train)
-        display.move_progress()
-        display.clear_output()
-        if save:
-            logger.info("Saving 'Manifold Plot.png' in current active directory")
-            if system:
-                visualizer.show(outpath="Manifold Plot.png")
-            else:
-                visualizer.show(outpath="Manifold Plot.png", clear_figure=True)
-        else:
-            visualizer.show()
-
-        logger.info("Visual Rendered Successfully")
+        show_yellowbrick_plot(
+            visualizer=visualizer,
+            X_train=X_train_transformed,
+            y_train=y_train,
+            X_test=X_test,
+            y_test=y_test,
+            handle_train="fit_transform",
+            handle_test="",
+            name=available_plots[plot],
+            scale=scale,
+            save=save,
+            system=system,
+            logger=logger,
+            display=display,
+        )
 
     elif plot == "calibration":
 
@@ -5569,22 +5510,22 @@ def plot_model(
         display.move_progress()
         classes = y_train.unique().tolist()
         visualizer = RadViz(classes=classes, alpha=0.25)
-        visualizer.fig.set_dpi(visualizer.fig.dpi * scale)
-        logger.info("Fitting Model")
-        visualizer.fit(X_train_transformed, y_train_transformed)
-        visualizer.transform(X_train_transformed)
-        display.move_progress()
-        display.clear_output()
-        if save:
-            logger.info("Saving 'Dimension Plot.png' in current active directory")
-            if system:
-                visualizer.show(outpath="Dimension Plot.png")
-            else:
-                visualizer.show(outpath="Dimension Plot.png", clear_figure=True)
-        else:
-            visualizer.show()
 
-        logger.info("Visual Rendered Successfully")
+        show_yellowbrick_plot(
+            visualizer=visualizer,
+            X_train=X_train_transformed,
+            y_train=y_train_transformed,
+            X_test=X_test,
+            y_test=y_test,
+            handle_train="fit_transform",
+            handle_test="",
+            name=available_plots[plot],
+            scale=scale,
+            save=save,
+            system=system,
+            logger=logger,
+            display=display,
+        )
 
     elif plot == "feature":
 
