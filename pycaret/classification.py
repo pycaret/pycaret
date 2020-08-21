@@ -997,8 +997,6 @@ def setup(
     import matplotlib.pyplot as plt
     import plotly.express as px
 
-    np.random.seed(seed)
-
     # setting sklearn config to print all parameters including default
     import sklearn
 
@@ -1029,6 +1027,8 @@ def setup(
         seed = random.randint(150, 9000)
     else:
         seed = session_id
+
+    np.random.seed(seed)
 
     """
     preprocessing starts here
@@ -1893,10 +1893,10 @@ def compare_models(
         raise TypeError("budget_time parameter only accepts integer or float values.")
 
     # checking sort parameter
-    allowed_sort = get_metrics()["Name"]
-    if sort not in allowed_sort.to_list():
+    sort = _get_metric(sort)
+    if sort is None:
         raise ValueError(
-            f"Sort method {sort} not supported. See docstring for list of available parameters."
+            f"Sort method not supported. See docstring for list of available parameters."
         )
 
     # checking optimize parameter for multiclass
@@ -1974,7 +1974,7 @@ def compare_models(
 
     # defining sort parameter (making Precision equivalent to Prec. )
 
-    sort = all_metrics[all_metrics["Name"] == sort].iloc[0]["Display Name"]
+    sort = sort["Display Name"]
 
     """
     MONITOR UPDATE STARTS
@@ -2211,20 +2211,14 @@ def compare_models(
 
         compare_models_ = (
             master_display.drop("Object", axis=1)
-            .style.apply(
-                highlight_max,
-                subset=["Accuracy", "Recall", "Prec.", "F1", "Kappa", "MCC"],
-            )
+            .style.apply(highlight_max, subset=master_display.columns[2:],)
             .applymap(highlight_cols, subset=["TT (Sec)"])
         )
     else:
 
         compare_models_ = (
             master_display.drop("Object", axis=1)
-            .style.apply(
-                highlight_max,
-                subset=["Accuracy", "AUC", "Recall", "Prec.", "F1", "Kappa", "MCC"],
-            )
+            .style.apply(highlight_max, subset=master_display.columns[2:],)
             .applymap(highlight_cols, subset=["TT (Sec)"])
         )
 
@@ -3116,26 +3110,29 @@ def tune_model(
         raise TypeError("n_iter parameter only accepts integer value.")
 
     if custom_scorer is not None:
+        optimize = custom_scorer
         warnings.warn(
             f"custom_scorer parameter will be depreciated, use optimize instead",
             DeprecationWarning,
             stacklevel=2,
         )
 
-    elif isinstance(optimize, str):
+    if isinstance(optimize, str):
         # checking optimize parameter
-        allowed_optimize = get_metrics()["Name"]
-        if optimize not in allowed_optimize.to_list():
+        optimize = _get_metric(optimize)
+        if optimize is None:
             raise ValueError(
-                f"Optimize method {optimize} not supported. See docstring for list of available parameters."
+                f"Optimize method not supported. See docstring for list of available parameters."
             )
 
         # checking optimize parameter for multiclass
         if _is_multiclass():
             if not all_metrics[all_metrics["Name"] == optimize].iloc[0]["Multiclass"]:
                 raise TypeError(
-                    f"Optimization metric {optimize} not supported for multiclass problems. See docstring for list of other optimization parameters."
+                    f"Optimization metric not supported for multiclass problems. See docstring for list of other optimization parameters."
                 )
+    else:
+        logger.info(f"optimize set to user defined function {optimize}")
 
     if type(n_iter) is not int:
         raise TypeError("n_iter parameter only accepts integer value.")
@@ -3204,15 +3201,8 @@ def tune_model(
 
     # setting optimize parameter
 
-    if custom_scorer is not None:
-        optimize = custom_scorer
-
-    if isinstance(optimize, str):
-        optimize = all_metrics[all_metrics["Name"] == optimize].iloc[0]
-        compare_dimension = optimize["Display Name"]
-        optimize = optimize["SearchCV Param"]
-    else:
-        logger.info(f"optimize set to user defined function {optimize}")
+    compare_dimension = optimize["Display Name"]
+    optimize = optimize["Scorer"]
 
     # convert trained estimator into string name for grids
 
@@ -3660,17 +3650,17 @@ def ensemble_model(
         raise TypeError("Verbose parameter can only take argument as True or False.")
 
     # checking optimize parameter
-    allowed_optimize = get_metrics()["Name"]
-    if optimize not in allowed_optimize.to_list():
+    optimize = _get_metric(optimize)
+    if optimize is None:
         raise ValueError(
-            f"Optimize method {optimize} not supported. See docstring for list of available parameters."
+            f"Optimize method not supported. See docstring for list of available parameters."
         )
 
     # checking optimize parameter for multiclass
     if _is_multiclass():
         if not all_metrics[all_metrics["Name"] == optimize].iloc[0]["Multiclass"]:
             raise TypeError(
-                f"Optimization metric {optimize} not supported for multiclass problems. See docstring for list of other optimization parameters."
+                f"Optimization metric not supported for multiclass problems. See docstring for list of other optimization parameters."
             )
         if hasattr(estimator, "estimators") and any(
             _is_one_vs_rest(model) for name, model in estimator.estimators
@@ -3740,9 +3730,8 @@ def ensemble_model(
 
     # setting optimize parameter
 
-    optimize = all_metrics[all_metrics["Name"] == optimize].iloc[0]
     compare_dimension = optimize["Display Name"]
-    optimize = optimize["SearchCV Param"]
+    optimize = optimize["Scorer"]
 
     logger.info("Checking base model")
 
@@ -4182,17 +4171,17 @@ def blend_models(
         raise TypeError("Verbose parameter can only take argument as True or False.")
 
     # checking optimize parameter
-    allowed_optimize = get_metrics()["Name"]
-    if optimize not in allowed_optimize.to_list():
+    optimize = _get_metric(optimize)
+    if optimize is None:
         raise ValueError(
-            f"Optimize method {optimize} not supported. See docstring for list of available parameters."
+            f"Optimize method not supported. See docstring for list of available parameters."
         )
 
     # checking optimize parameter for multiclass
     if _is_multiclass():
         if not all_metrics[all_metrics["Name"] == optimize].iloc[0]["Multiclass"]:
             raise TypeError(
-                f"Optimization metric {optimize} not supported for multiclass problems. See docstring for list of other optimization parameters."
+                f"Optimization metric not supported for multiclass problems. See docstring for list of other optimization parameters."
             )
 
     """
@@ -4254,9 +4243,8 @@ def blend_models(
     data_y.reset_index(drop=True, inplace=True)
 
     # setting optimize parameter
-    optimize = all_metrics[all_metrics["Name"] == optimize].iloc[0]
     compare_dimension = optimize["Display Name"]
-    optimize = optimize["SearchCV Param"]
+    optimize = optimize["Scorer"]
 
     display.move_progress()
 
@@ -4632,17 +4620,17 @@ def stack_models(
         raise TypeError("Verbose parameter can only take argument as True or False.")
 
     # checking optimize parameter
-    allowed_optimize = get_metrics()["Name"]
-    if optimize not in allowed_optimize.to_list():
+    optimize = _get_metric(optimize)
+    if optimize is None:
         raise ValueError(
-            f"Optimize method {optimize} not supported. See docstring for list of available parameters."
+            f"Optimize method not supported. See docstring for list of available parameters."
         )
 
     # checking optimize parameter for multiclass
     if _is_multiclass():
         if not all_metrics[all_metrics["Name"] == optimize].iloc[0]["Multiclass"]:
             raise TypeError(
-                f"Optimization metric {optimize} not supported for multiclass problems. See docstring for list of other optimization parameters."
+                f"Optimization metric not supported for multiclass problems. See docstring for list of other optimization parameters."
             )
 
     """
@@ -4711,9 +4699,8 @@ def stack_models(
     data_y.reset_index(drop=True, inplace=True)
 
     # setting optimize parameter
-    optimize = all_metrics[all_metrics["Name"] == optimize].iloc[0]
     compare_dimension = optimize["Display Name"]
-    optimize = optimize["SearchCV Param"]
+    optimize = optimize["Scorer"]
 
     display.move_progress()
 
@@ -7246,22 +7233,21 @@ def automl(optimize: str = "Accuracy", use_holdout: bool = False):
     logger.info(f"automl({function_params_str})")
 
     # checking optimize parameter
-    allowed_optimize = get_metrics()["Name"]
-    if optimize not in allowed_optimize.to_list():
+    optimize = _get_metric(optimize)
+    if optimize is None:
         raise ValueError(
-            f"Optimize method {optimize} not supported. See docstring for list of available parameters."
+            f"Optimize method not supported. See docstring for list of available parameters."
         )
 
     # checking optimize parameter for multiclass
     if _is_multiclass():
         if not all_metrics[all_metrics["Name"] == optimize].iloc[0]["Multiclass"]:
             raise TypeError(
-                f"Optimization metric {optimize} not supported for multiclass problems. See docstring for list of other optimization parameters."
+                f"Optimization metric not supported for multiclass problems. See docstring for list of other optimization parameters."
             )
 
-    optimize = all_metrics[all_metrics["Name"] == optimize].iloc[0]
     compare_dimension = optimize["Display Name"]
-    optimize = optimize["SearchCV Param"]
+    optimize = optimize["Scorer"]
 
     scorer = []
 
@@ -7926,8 +7912,8 @@ def get_metrics(force_regenerate: bool = False) -> pandas.DataFrame:
         "ID",
         "Name",
         "Display Name",
-        "SearchCV Param",
-        "Class",
+        "Scorer",
+        "Score Function",
         "Target",
         "Args",
         "Multiclass",
@@ -8009,6 +7995,113 @@ def get_metrics(force_regenerate: bool = False) -> pandas.DataFrame:
 
     df.set_index("ID", inplace=True)
     return df
+
+
+def _get_metric(name_or_id: str):
+    """
+    Gets a metric from get_metrics() by name or index.
+    """
+    metrics = get_metrics()
+    metric = None
+    try:
+        metric = metrics.loc[name_or_id]
+        return metric
+    except:
+        pass
+
+    try:
+        metric = metrics[metrics["Name"] == name_or_id].iloc[0]
+        return metric
+    except:
+        pass
+
+    return metric
+
+
+def add_metric(
+    id: str,
+    name: str,
+    score_func,
+    scorer=None,
+    target: str = "pred",
+    args: dict = {},
+    multiclass: bool = True,
+) -> pandas.Series:
+    """
+    Adds a custom metric to be used in all functions.
+
+    Example
+    -------
+    >>> metrics = get_metrics()
+
+    This will return pandas dataframe with all available 
+    metrics and their metadata.
+
+    Parameters
+    ----------
+    id: str
+        Unique id for the metric.
+
+    name: str
+        Display name of the metric.
+
+    score_func: callable
+        Score function (or loss function) with signature score_func(y, y_pred, **kwargs).
+
+    scorer: sklearn.metrics.Scorer, default = None
+        The Scorer to be used in tuning and cross validation. If None, one will be created
+        from score_func.
+
+    target: str, default = 'pred'
+        The target of the score function.
+        - 'pred' for the prediction table
+        - 'pred_proba' for pred_proba
+
+    args: dict, default = {}
+        Arguments to be passed to score function.
+
+    multiclass: Boolean, default = True
+        Whether the metric supports multiclass problems.
+
+    Notes
+    -----
+    The row will be inserted into the second to last position. The last position is reserved
+    for the Training Time (tt) metric.
+
+    Returns
+    -------
+    pandas.Series
+        The created row as Series.
+
+    """
+
+    if not "all_metrics" in globals():
+        raise ValueError("setup() needs to be ran first.")
+
+    import pandas as pd
+    import numpy as np
+    from sklearn import metrics
+
+    np.random.seed(seed)
+
+    new_metric = {
+        "Name": name,
+        "Display Name": name,
+        "Scorer": scorer if scorer else metrics.make_scorer(score_func),
+        "Score Function": score_func,
+        "Target": target,
+        "Args": args,
+        "Multiclass": multiclass,
+    }
+
+    new_metric = pd.Series(new_metric, name=id.replace(" ", "_"))
+
+    global all_metrics
+    last_row = all_metrics.iloc[-1]
+    all_metrics.drop(all_metrics.index[-1], inplace=True)
+    all_metrics = all_metrics.append(new_metric)
+    all_metrics = all_metrics.append(last_row)
+    return all_metrics.iloc[-2]
 
 
 def get_logs(experiment_name: str = None, save: bool = False) -> pandas.DataFrame:

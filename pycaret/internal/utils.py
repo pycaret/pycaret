@@ -124,21 +124,25 @@ def calculate_metrics(
 ):
     import numpy as np
 
+    columns = list(metrics.columns)
+    score_function_idx = columns.index('Score Function')+1
+    display_name_idx = columns.index('Display Name')+1
+
     if not score_dict:
         score_dict = {
             metric._2: np.empty((0, 0))
             for metric in metrics.itertuples()
-            if metric.Class
+            if metric[score_function_idx]
         }
+
     for row in metrics.itertuples():
-        if not row.Class:
+        if not row[score_function_idx]:
             continue
         target = pred_prob if row.Target == "pred_prob" else pred_
         try:
-            calculated_metric = row.Class(ytest, target, **row.Args)
+            calculated_metric = row[score_function_idx](ytest, target, **row.Args)
         except:
             calculated_metric = 0
 
-        # row._2 is 'Display Name' column
-        score_dict[row._2] = np.append(score_dict[row._2], calculated_metric)
+        score_dict[row[display_name_idx]] = np.append(score_dict[row[display_name_idx]], calculated_metric)
     return score_dict

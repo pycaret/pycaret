@@ -4,9 +4,6 @@
 
 import logging
 
-LOGGER = create_logger()
-
-
 def get_logger() -> logging.Logger:
     try:
         return LOGGER
@@ -35,3 +32,6 @@ def create_logger() -> logging.Logger:
     logger.addHandler(ch)
 
     return logger
+
+
+LOGGER = create_logger()
