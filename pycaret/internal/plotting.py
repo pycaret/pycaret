@@ -30,22 +30,25 @@ def show_yellowbrick_plot(
     elif handle_train == "fit_transform":
         logger.info("Fitting & Transforming Model")
         visualizer.fit_transform(X_train, y_train, **kwargs)
-    elif handle_train == 'score':
+    elif handle_train == "score":
         logger.info("Scoring train set")
         visualizer.score(X_train, y_train, **kwargs)
 
     display.move_progress()
+
     if handle_test == "draw":
         visualizer.draw(X_test, y_test)
     elif handle_test == "fit":
         visualizer.fit(X_test, y_test)
     elif handle_test == "fit_transform":
         visualizer.fit_transform(X_test, y_test)
-    elif handle_test == 'score':
+    elif handle_test == "score":
         logger.info("Scoring test/hold-out set")
         visualizer.score(X_test, y_test)
+
     display.move_progress()
     display.clear_output()
+
     if save:
         logger.info(f"Saving '{name}.png' in current active directory")
         visualizer.show(outpath=f"{name}.png", clear_figure=(not system))

@@ -5121,6 +5121,7 @@ def plot_model(
     # AUC, #Confusion Matrix and #Feature Importance
 
     logger.info(f"Plot type: {plot}")
+    plot_name = available_plots[plot]
     display.move_progress()
 
     if plot == "auc":
@@ -5134,7 +5135,7 @@ def plot_model(
             y_train=y_train,
             X_test=X_test,
             y_test=y_test,
-            name=available_plots[plot],
+            name=plot_name,
             scale=scale,
             save=save,
             system=system,
@@ -5153,7 +5154,7 @@ def plot_model(
             y_train=y_train,
             X_test=X_test,
             y_test=y_test,
-            name=available_plots[plot],
+            name=plot_name,
             scale=scale,
             save=save,
             system=system,
@@ -5172,7 +5173,7 @@ def plot_model(
             y_train=y_train,
             X_test=X_test,
             y_test=y_test,
-            name=available_plots[plot],
+            name=plot_name,
             scale=scale,
             save=save,
             system=system,
@@ -5193,7 +5194,7 @@ def plot_model(
             y_train=y_train,
             X_test=X_test,
             y_test=y_test,
-            name=available_plots[plot],
+            name=plot_name,
             scale=scale,
             save=save,
             system=system,
@@ -5212,7 +5213,7 @@ def plot_model(
             y_train=y_train,
             X_test=X_test,
             y_test=y_test,
-            name=available_plots[plot],
+            name=plot_name,
             scale=scale,
             save=save,
             system=system,
@@ -5231,7 +5232,7 @@ def plot_model(
             y_train=y_train,
             X_test=X_test,
             y_test=y_test,
-            name=available_plots[plot],
+            name=plot_name,
             scale=scale,
             save=save,
             system=system,
@@ -5272,7 +5273,7 @@ def plot_model(
             y_train=y_train_transformed,
             X_test=X_test_transformed,
             y_test=y_test_transformed,
-            name=available_plots[plot],
+            name=plot_name,
             scale=scale,
             handle_train="draw",
             save=save,
@@ -5295,7 +5296,7 @@ def plot_model(
             X_test=X_test,
             y_test=y_test,
             handle_test="",
-            name=available_plots[plot],
+            name=plot_name,
             scale=scale,
             save=save,
             system=system,
@@ -5318,7 +5319,7 @@ def plot_model(
             X_test=X_test,
             y_test=y_test,
             handle_test="",
-            name=available_plots[plot],
+            name=plot_name,
             scale=scale,
             save=save,
             system=system,
@@ -5340,7 +5341,7 @@ def plot_model(
             y_test=y_test,
             handle_train="fit_transform",
             handle_test="",
-            name=available_plots[plot],
+            name=plot_name,
             scale=scale,
             save=save,
             system=system,
@@ -5381,11 +5382,10 @@ def plot_model(
         display.move_progress()
         display.clear_output()
         if save:
-            logger.info("Saving 'Calibration Plot.png' in current active directory")
-            if system:
-                plt.savefig("Calibration Plot.png")
-            else:
-                plt.show()
+            logger.info(f"Saving '{plot_name}.png' in current active directory")
+            plt.savefig(f"{plot_name}.png")
+            if not system:
+                plt.close()
         else:
             plt.show()
 
@@ -5471,21 +5471,21 @@ def plot_model(
             cv=10,
             random_state=seed,
         )
-        viz.fig.set_dpi(viz.fig.dpi * scale)
-        logger.info("Fitting Model")
-        viz.fit(X_train, y_train)
-        display.move_progress()
-        display.clear_output()
-        if save:
-            logger.info("Saving 'Validation Curve.png' in current active directory")
-            if system:
-                viz.show(outpath="Validation Curve.png")
-            else:
-                viz.show(outpath="Validation Curve.png", clear_figure=True)
-        else:
-            viz.show()
-
-        logger.info("Visual Rendered Successfully")
+        show_yellowbrick_plot(
+            visualizer=viz,
+            X_train=X_train,
+            y_train=y_train,
+            X_test=X_test,
+            y_test=y_test,
+            handle_train="fit",
+            handle_test="",
+            name=plot_name,
+            scale=scale,
+            save=save,
+            system=system,
+            logger=logger,
+            display=display,
+        )
 
     elif plot == "dimension":
 
@@ -5516,7 +5516,7 @@ def plot_model(
             y_test=y_test,
             handle_train="fit_transform",
             handle_test="",
-            name=available_plots[plot],
+            name=plot_name,
             scale=scale,
             save=save,
             system=system,
@@ -5550,11 +5550,9 @@ def plot_model(
         display.move_progress()
         display.clear_output()
         if save:
-            logger.info("Saving 'Feature Importance.png' in current active directory")
-            if system:
-                plt.savefig("Feature Importance.png")
-            else:
-                plt.savefig("Feature Importance.png")
+            logger.info(f"Saving '{plot_name}.png' in current active directory")
+            plt.savefig(f"{plot_name}.png")
+            if not system:
                 plt.close()
         else:
             plt.show()
