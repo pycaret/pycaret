@@ -109,13 +109,15 @@ def deploy_model(
 
     if platform not in allowed_platforms:
         logger.error(
+            f"(Value Error): Platform {platform} is not supported by pycaret or illegal option"
+        )
+        raise ValueError(
             f"Platform {platform} is not supported by pycaret or illegal option"
         )
-        sys.exit(f"Platform {platform} is not supported by pycaret or illegal option")
 
     if platform:
         if not authentication:
-            sys.exit("(Value Error): Authentication is missing.")
+            raise ValueError("Authentication is missing.")
 
     # general dependencies
     import ipywidgets as ipw
@@ -139,7 +141,7 @@ def deploy_model(
             logger.error(
                 "awscli library not found. pip install awscli to use deploy_model function."
             )
-            sys.exit(
+            raise ImportError(
                 "awscli library not found. pip install awscli to use deploy_model function."
             )
 
@@ -168,7 +170,7 @@ def deploy_model(
             logger.error(
                 "google-cloud-storage library not found. pip install google-cloud-storage to use deploy_model function with GCP."
             )
-            sys.exit(
+            raise ImportError(
                 "google-cloud-storage library not found. pip install google-cloud-storage to use deploy_model function with GCP."
             )
 
@@ -195,7 +197,7 @@ def deploy_model(
             logger.error(
                 "azure-storage-blob library not found. pip install azure-storage-blob to use deploy_model function with Azure."
             )
-            sys.exit(
+            raise ImportError(
                 "azure-storage-blob library not found. pip install azure-storage-blob to use deploy_model function with Azure."
             )
 
@@ -343,7 +345,7 @@ def load_model(
 
     if platform:
         if not authentication:
-            sys.exit("(Value Error): Authentication is missing.")
+            raise ValueError("Authentication is missing.")
 
     if not platform:
 

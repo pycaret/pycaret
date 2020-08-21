@@ -566,49 +566,49 @@ def setup(
 
     # checking data type
     if hasattr(data, "shape") is False:
-        sys.exit("(Type Error): data passed must be of type pandas.DataFrame")
+        raise TypeError("data passed must be of type pandas.DataFrame")
 
     # checking train size parameter
     if type(train_size) is not float:
-        sys.exit("(Type Error): train_size parameter only accepts float value.")
+        raise TypeError("train_size parameter only accepts float value.")
 
     # checking sampling parameter
     if type(sampling) is not bool:
-        sys.exit("(Type Error): sampling parameter only accepts True or False.")
+        raise TypeError("sampling parameter only accepts True or False.")
 
     # checking sampling parameter
     if target not in data.columns:
-        sys.exit("(Value Error): Target parameter doesnt exist in the data provided.")
+        raise ValueError("Target parameter doesnt exist in the data provided.")
 
     # checking session_id
     if session_id is not None:
         if type(session_id) is not int:
-            sys.exit("(Type Error): session_id parameter must be an integer.")
+            raise TypeError("session_id parameter must be an integer.")
 
     # checking sampling parameter
     if type(profile) is not bool:
-        sys.exit("(Type Error): profile parameter only accepts True or False.")
+        raise TypeError("profile parameter only accepts True or False.")
 
     # checking normalize parameter
     if type(normalize) is not bool:
-        sys.exit("(Type Error): normalize parameter only accepts True or False.")
+        raise TypeError("normalize parameter only accepts True or False.")
 
     # checking transformation parameter
     if type(transformation) is not bool:
-        sys.exit("(Type Error): transformation parameter only accepts True or False.")
+        raise TypeError("transformation parameter only accepts True or False.")
 
     # checking categorical imputation
     allowed_categorical_imputation = ["constant", "mode"]
     if categorical_imputation not in allowed_categorical_imputation:
-        sys.exit(
-            "(Value Error): categorical_imputation param only accepts 'constant' or 'mode' "
+        raise ValueError(
+            "categorical_imputation param only accepts 'constant' or 'mode' "
         )
 
     # ordinal_features
     if ordinal_features is not None:
         if type(ordinal_features) is not dict:
-            sys.exit(
-                "(Type Error): ordinal_features must be of type dictionary with column name as key and ordered values as list. "
+            raise TypeError(
+                "ordinal_features must be of type dictionary with column name as key and ordered values as list. "
             )
 
     # ordinal features check
@@ -619,14 +619,14 @@ def setup(
 
         for i in ord_keys:
             if i not in data_cols:
-                sys.exit(
-                    "(Value Error) Column name passed as a key in ordinal_features param doesnt exist. "
+                raise ValueError(
+                    "Column name passed as a key in ordinal_features param doesnt exist. "
                 )
 
         for k in ord_keys:
             if data[k].nunique() != len(ordinal_features.get(k)):
-                sys.exit(
-                    "(Value Error) Levels passed in ordinal_features param doesnt match with levels in data. "
+                raise ValueError(
+                    "Levels passed in ordinal_features param doesnt match with levels in data. "
                 )
 
         for i in ord_keys:
@@ -641,13 +641,13 @@ def setup(
                         + str(j)
                         + "'."
                     )
-                    sys.exit(text)
+                    raise ValueError(text)
 
     # high_cardinality_features
     if high_cardinality_features is not None:
         if type(high_cardinality_features) is not list:
-            sys.exit(
-                "(Type Error): high_cardinality_features param only accepts name of columns as a list. "
+            raise TypeError(
+                "high_cardinality_features param only accepts name of columns as a list. "
             )
 
     if high_cardinality_features is not None:
@@ -655,61 +655,59 @@ def setup(
         data_cols = data_cols.drop(target)
         for i in high_cardinality_features:
             if i not in data_cols:
-                sys.exit(
-                    "(Value Error): Column type forced is either target column or doesn't exist in the dataset."
+                raise ValueError(
+                    "Column type forced is either target column or doesn't exist in the dataset."
                 )
 
     # high_cardinality_methods
     high_cardinality_allowed_methods = ["frequency", "clustering"]
     if high_cardinality_method not in high_cardinality_allowed_methods:
-        sys.exit(
-            "(Value Error): high_cardinality_method param only accepts 'frequency' or 'clustering' "
+        raise ValueError(
+            "high_cardinality_method param only accepts 'frequency' or 'clustering' "
         )
 
     # checking numeric imputation
     allowed_numeric_imputation = ["mean", "median"]
     if numeric_imputation not in allowed_numeric_imputation:
-        sys.exit(
-            "(Value Error): numeric_imputation param only accepts 'mean' or 'median' "
-        )
+        raise ValueError("numeric_imputation param only accepts 'mean' or 'median' ")
 
     # checking normalize method
     allowed_normalize_method = ["zscore", "minmax", "maxabs", "robust"]
     if normalize_method not in allowed_normalize_method:
-        sys.exit(
-            "(Value Error): normalize_method param only accepts 'zscore', 'minxmax', 'maxabs' or 'robust'. "
+        raise ValueError(
+            "normalize_method param only accepts 'zscore', 'minxmax', 'maxabs' or 'robust'. "
         )
 
     # checking transformation method
     allowed_transformation_method = ["yeo-johnson", "quantile"]
     if transformation_method not in allowed_transformation_method:
-        sys.exit(
-            "(Value Error): transformation_method param only accepts 'yeo-johnson' or 'quantile'. "
+        raise ValueError(
+            "transformation_method param only accepts 'yeo-johnson' or 'quantile'. "
         )
 
     # handle unknown categorical
     if type(handle_unknown_categorical) is not bool:
-        sys.exit(
-            "(Type Error): handle_unknown_categorical parameter only accepts True or False."
+        raise TypeError(
+            "handle_unknown_categorical parameter only accepts True or False."
         )
 
     # unknown categorical method
     unknown_categorical_method_available = ["least_frequent", "most_frequent"]
 
     if unknown_categorical_method not in unknown_categorical_method_available:
-        sys.exit(
-            "(Type Error): unknown_categorical_method only accepts 'least_frequent' or 'most_frequent'."
+        raise TypeError(
+            "unknown_categorical_method only accepts 'least_frequent' or 'most_frequent'."
         )
 
     # check pca
     if type(pca) is not bool:
-        sys.exit("(Type Error): PCA parameter only accepts True or False.")
+        raise TypeError("PCA parameter only accepts True or False.")
 
     # pca method check
     allowed_pca_methods = ["linear", "kernel", "incremental"]
     if pca_method not in allowed_pca_methods:
-        sys.exit(
-            "(Value Error): pca method param only accepts 'linear', 'kernel', or 'incremental'. "
+        raise ValueError(
+            "pca method param only accepts 'linear', 'kernel', or 'incremental'. "
         )
 
     # pca components check
@@ -717,8 +715,8 @@ def setup(
         if pca_method != "linear":
             if pca_components is not None:
                 if (type(pca_components)) is not int:
-                    sys.exit(
-                        "(Type Error): pca_components parameter must be integer when pca_method is not 'linear'. "
+                    raise TypeError(
+                        "pca_components parameter must be integer when pca_method is not 'linear'. "
                     )
 
     # pca components check 2
@@ -726,8 +724,8 @@ def setup(
         if pca_method != "linear":
             if pca_components is not None:
                 if pca_components > len(data.columns) - 1:
-                    sys.exit(
-                        "(Type Error): pca_components parameter cannot be greater than original features space."
+                    raise TypeError(
+                        "pca_components parameter cannot be greater than original features space."
                     )
 
     # pca components check 3
@@ -736,25 +734,21 @@ def setup(
             if pca_components is not None:
                 if type(pca_components) is not float:
                     if pca_components > len(data.columns) - 1:
-                        sys.exit(
-                            "(Type Error): pca_components parameter cannot be greater than original features space or float between 0 - 1."
+                        raise TypeError(
+                            "pca_components parameter cannot be greater than original features space or float between 0 - 1."
                         )
 
     # check ignore_low_variance
     if type(ignore_low_variance) is not bool:
-        sys.exit(
-            "(Type Error): ignore_low_variance parameter only accepts True or False."
-        )
+        raise TypeError("ignore_low_variance parameter only accepts True or False.")
 
     # check ignore_low_variance
     if type(combine_rare_levels) is not bool:
-        sys.exit(
-            "(Type Error): combine_rare_levels parameter only accepts True or False."
-        )
+        raise TypeError("combine_rare_levels parameter only accepts True or False.")
 
     # check rare_level_threshold
     if type(rare_level_threshold) is not float:
-        sys.exit("(Type Error): rare_level_threshold must be a float between 0 and 1. ")
+        raise TypeError("rare_level_threshold must be a float between 0 and 1. ")
 
     # bin numeric features
     if bin_numeric_features is not None:
@@ -763,98 +757,92 @@ def setup(
 
         for i in bin_numeric_features:
             if i not in all_cols:
-                sys.exit(
-                    "(Value Error): Column type forced is either target column or doesn't exist in the dataset."
+                raise ValueError(
+                    "Column type forced is either target column or doesn't exist in the dataset."
                 )
 
     # remove_outliers
     if type(remove_outliers) is not bool:
-        sys.exit("(Type Error): remove_outliers parameter only accepts True or False.")
+        raise TypeError("remove_outliers parameter only accepts True or False.")
 
     # outliers_threshold
     if type(outliers_threshold) is not float:
-        sys.exit("(Type Error): outliers_threshold must be a float between 0 and 1. ")
+        raise TypeError("outliers_threshold must be a float between 0 and 1. ")
 
     # remove_multicollinearity
     if type(remove_multicollinearity) is not bool:
-        sys.exit(
-            "(Type Error): remove_multicollinearity parameter only accepts True or False."
+        raise TypeError(
+            "remove_multicollinearity parameter only accepts True or False."
         )
 
     # multicollinearity_threshold
     if type(multicollinearity_threshold) is not float:
-        sys.exit(
-            "(Type Error): multicollinearity_threshold must be a float between 0 and 1. "
-        )
+        raise TypeError("multicollinearity_threshold must be a float between 0 and 1. ")
 
     # create_clusters
     if type(create_clusters) is not bool:
-        sys.exit("(Type Error): create_clusters parameter only accepts True or False.")
+        raise TypeError("create_clusters parameter only accepts True or False.")
 
     # cluster_iter
     if type(cluster_iter) is not int:
-        sys.exit("(Type Error): cluster_iter must be a integer greater than 1. ")
+        raise TypeError("cluster_iter must be a integer greater than 1. ")
 
     # polynomial_features
     if type(polynomial_features) is not bool:
-        sys.exit("(Type Error): polynomial_features only accepts True or False. ")
+        raise TypeError("polynomial_features only accepts True or False. ")
 
     # polynomial_degree
     if type(polynomial_degree) is not int:
-        sys.exit("(Type Error): polynomial_degree must be an integer. ")
+        raise TypeError("polynomial_degree must be an integer. ")
 
     # polynomial_features
     if type(trigonometry_features) is not bool:
-        sys.exit("(Type Error): trigonometry_features only accepts True or False. ")
+        raise TypeError("trigonometry_features only accepts True or False. ")
 
     # polynomial threshold
     if type(polynomial_threshold) is not float:
-        sys.exit("(Type Error): polynomial_threshold must be a float between 0 and 1. ")
+        raise TypeError("polynomial_threshold must be a float between 0 and 1. ")
 
     # group features
     if group_features is not None:
         if type(group_features) is not list:
-            sys.exit("(Type Error): group_features must be of type list. ")
+            raise TypeError("group_features must be of type list. ")
 
     if group_names is not None:
         if type(group_names) is not list:
-            sys.exit("(Type Error): group_names must be of type list. ")
+            raise TypeError("group_names must be of type list. ")
 
     # cannot drop target
     if ignore_features is not None:
         if target in ignore_features:
-            sys.exit("(Value Error): cannot drop target column. ")
+            raise ValueError("cannot drop target column. ")
 
     # feature_selection
     if type(feature_selection) is not bool:
-        sys.exit("(Type Error): feature_selection only accepts True or False. ")
+        raise TypeError("feature_selection only accepts True or False. ")
 
     # feature_selection_threshold
     if type(feature_selection_threshold) is not float:
-        sys.exit(
-            "(Type Error): feature_selection_threshold must be a float between 0 and 1. "
-        )
+        raise TypeError("feature_selection_threshold must be a float between 0 and 1. ")
 
     # feature_selection_method
     feature_selection_methods = ["boruta", "classic"]
     if feature_selection_method not in feature_selection_methods:
-        sys.exit(
-            f"(Type Error): feature_selection_method must be one of {', '.join(feature_selection_methods)}"
+        raise TypeError(
+            f"feature_selection_method must be one of {', '.join(feature_selection_methods)}"
         )
 
     # feature_interaction
     if type(feature_interaction) is not bool:
-        sys.exit("(Type Error): feature_interaction only accepts True or False. ")
+        raise TypeError("feature_interaction only accepts True or False. ")
 
     # feature_ratio
     if type(feature_ratio) is not bool:
-        sys.exit("(Type Error): feature_ratio only accepts True or False. ")
+        raise TypeError("feature_ratio only accepts True or False. ")
 
     # interaction_threshold
     if type(interaction_threshold) is not float:
-        sys.exit(
-            "(Type Error): interaction_threshold must be a float between 0 and 1. "
-        )
+        raise TypeError("interaction_threshold must be a float between 0 and 1. ")
 
     # forced type check
     all_cols = list(data.columns)
@@ -864,92 +852,88 @@ def setup(
     if categorical_features is not None:
         for i in categorical_features:
             if i not in all_cols:
-                sys.exit(
-                    "(Value Error): Column type forced is either target column or doesn't exist in the dataset."
+                raise ValueError(
+                    "Column type forced is either target column or doesn't exist in the dataset."
                 )
 
     # numeric
     if numeric_features is not None:
         for i in numeric_features:
             if i not in all_cols:
-                sys.exit(
-                    "(Value Error): Column type forced is either target column or doesn't exist in the dataset."
+                raise ValueError(
+                    "Column type forced is either target column or doesn't exist in the dataset."
                 )
 
     # date features
     if date_features is not None:
         for i in date_features:
             if i not in all_cols:
-                sys.exit(
-                    "(Value Error): Column type forced is either target column or doesn't exist in the dataset."
+                raise ValueError(
+                    "Column type forced is either target column or doesn't exist in the dataset."
                 )
 
     # drop features
     if ignore_features is not None:
         for i in ignore_features:
             if i not in all_cols:
-                sys.exit(
-                    "(Value Error): Feature ignored is either target column or doesn't exist in the dataset."
+                raise ValueError(
+                    "Feature ignored is either target column or doesn't exist in the dataset."
                 )
 
     # log_experiment
     if type(log_experiment) is not bool:
-        sys.exit("(Type Error): log_experiment parameter only accepts True or False. ")
+        raise TypeError("log_experiment parameter only accepts True or False. ")
 
     # log_profile
     if type(log_profile) is not bool:
-        sys.exit("(Type Error): log_profile parameter only accepts True or False. ")
+        raise TypeError("log_profile parameter only accepts True or False. ")
 
     # experiment_name
     if experiment_name is not None:
         if type(experiment_name) is not str:
-            sys.exit(
-                "(Type Error): experiment_name parameter must be string if not None. "
-            )
+            raise TypeError("experiment_name parameter must be string if not None. ")
 
     # silent
     if type(silent) is not bool:
-        sys.exit("(Type Error): silent parameter only accepts True or False. ")
+        raise TypeError("silent parameter only accepts True or False. ")
 
     # remove_perfect_collinearity
     if type(remove_perfect_collinearity) is not bool:
-        sys.exit(
-            "(Type Error): remove_perfect_collinearity parameter only accepts True or False."
+        raise TypeError(
+            "remove_perfect_collinearity parameter only accepts True or False."
         )
 
     # html
     if type(html) is not bool:
-        sys.exit("(Type Error): html parameter only accepts True or False.")
+        raise TypeError("html parameter only accepts True or False.")
 
     # use_gpu
     if type(use_gpu) is not bool:
-        sys.exit("(Type Error): use_gpu parameter only accepts True or False.")
+        raise TypeError("use_gpu parameter only accepts True or False.")
 
     # folds_shuffle
     if type(folds_shuffle) is not bool:
-        sys.exit("(Type Error): folds_shuffle parameter only accepts True or False.")
+        raise TypeError("folds_shuffle parameter only accepts True or False.")
 
     # data_split_shuffle
     if type(data_split_shuffle) is not bool:
-        sys.exit(
-            "(Type Error): data_split_shuffle parameter only accepts True or False."
-        )
+        raise TypeError("data_split_shuffle parameter only accepts True or False.")
 
     # log_plots
     if type(log_plots) is not bool:
-        sys.exit("(Type Error): log_plots parameter only accepts True or False.")
+        raise TypeError("log_plots parameter only accepts True or False.")
 
     # log_data
     if type(log_data) is not bool:
-        sys.exit("(Type Error): log_data parameter only accepts True or False.")
+        raise TypeError("log_data parameter only accepts True or False.")
 
     # log_profile
     if type(log_profile) is not bool:
-        sys.exit("(Type Error): log_profile parameter only accepts True or False.")
+        raise TypeError("log_profile parameter only accepts True or False.")
 
     # fix_imbalance
     if type(fix_imbalance) is not bool:
-        sys.exit("(Type Error): fix_imbalance parameter only accepts True or False.")
+        raise TypeError("fix_imbalance parameter only accepts True or False.")
 
     # fix_imbalance_method
     if fix_imbalance:
@@ -957,8 +941,8 @@ def setup(
             if hasattr(fix_imbalance_method, "fit_sample"):
                 pass
             else:
-                sys.exit(
-                    "(Type Error): fix_imbalance_method must contain resampler with fit_sample method."
+                raise TypeError(
+                    "fix_imbalance_method must contain resampler with fit_sample method."
                 )
 
     logger.info("Preloading libraries")
@@ -1864,58 +1848,56 @@ def compare_models(
     if exclude != None:
         for i in exclude:
             if i not in available_estimators:
-                sys.exit(
-                    f"(Value Error): Estimator Not Available {i}. Please see docstring for list of available estimators."
+                raise ValueError(
+                    f"Estimator Not Available {i}. Please see docstring for list of available estimators."
                 )
 
     if include != None:
         for i in include:
             if isinstance(i, str):
                 if i not in available_estimators:
-                    sys.exit(
-                        f"(Value Error): Estimator {i} Not Available. Please see docstring for list of available estimators."
+                    raise ValueError(
+                        f"Estimator {i} Not Available. Please see docstring for list of available estimators."
                     )
             elif not hasattr(i, "fit"):
-                sys.exit(
-                    f"(Value Error): Estimator {i} does not have the required fit() method."
+                raise ValueError(
+                    f"Estimator {i} does not have the required fit() method."
                 )
 
     # include and exclude together check
     if include is not None and exclude is not None:
-        sys.exit(
-            "(Type Error): Cannot use exclude parameter when include is used to compare models."
+        raise TypeError(
+            "Cannot use exclude parameter when include is used to compare models."
         )
 
     # checking fold parameter
     if type(fold) is not int:
-        sys.exit("(Type Error): Fold parameter only accepts integer value.")
+        raise TypeError("Fold parameter only accepts integer value.")
 
     # checking round parameter
     if type(round) is not int:
-        sys.exit("(Type Error): Round parameter only accepts integer value.")
+        raise TypeError("Round parameter only accepts integer value.")
 
     # checking n_select parameter
     if type(n_select) is not int:
-        sys.exit("(Type Error): n_select parameter only accepts integer value.")
+        raise TypeError("n_select parameter only accepts integer value.")
 
     # checking budget_time parameter
     if type(budget_time) is not int and type(budget_time) is not float:
-        sys.exit(
-            "(Type Error): budget_time parameter only accepts integer or float values."
-        )
+        raise TypeError("budget_time parameter only accepts integer or float values.")
 
     # checking sort parameter
     allowed_sort = get_metrics()["Name"]
     if sort not in allowed_sort.to_list():
-        sys.exit(
-            f"(Value Error): Sort method {sort} not supported. See docstring for list of available parameters."
+        raise ValueError(
+            f"Sort method {sort} not supported. See docstring for list of available parameters."
         )
 
     # checking optimize parameter for multiclass
     if y.value_counts().count() > 2:
         if not all_metrics[all_metrics["Name"] == sort].iloc[0]["Multiclass"]:
-            sys.exit(
-                f"(Type Error): {sort} metric not supported for multiclass problems. See docstring for list of other optimization parameters."
+            raise TypeError(
+                f"{sort} metric not supported for multiclass problems. See docstring for list of other optimization parameters."
             )
 
     """
@@ -2417,71 +2399,63 @@ def create_model(
     # only raise exception of estimator is of type string.
     if isinstance(estimator, str):
         if estimator not in available_estimators:
-            sys.exit(
-                f"(Value Error): Estimator {estimator} not available. Please see docstring for list of available estimators."
+            raise ValueError(
+                f"Estimator {estimator} not available. Please see docstring for list of available estimators."
             )
     elif not hasattr(estimator, "fit"):
-        sys.exit(
-            f"(Value Error): Estimator {estimator} does not have the required fit() method."
+        raise ValueError(
+            f"Estimator {estimator} does not have the required fit() method."
         )
 
     # checking error for ensemble:
     if type(ensemble) is not bool:
-        sys.exit(
-            "(Type Error): Ensemble parameter can only take argument as True or False."
-        )
+        raise TypeError("Ensemble parameter can only take argument as True or False.")
 
     # checking error for method:
 
     # 1 Check When method given and ensemble is not set to True.
     if ensemble is False and method is not None:
-        sys.exit(
-            "(Type Error): Method parameter only accepts value when ensemble is set to True."
+        raise TypeError(
+            "Method parameter only accepts value when ensemble is set to True."
         )
 
     # 2 Check when ensemble is set to True and method is not passed.
     if ensemble is True and method is None:
-        sys.exit(
-            "(Type Error): Method parameter missing. Pass method = 'Bagging' or 'Boosting'."
+        raise TypeError(
+            "Method parameter missing. Pass method = 'Bagging' or 'Boosting'."
         )
 
     # 3 Check when ensemble is set to True and method is passed but not allowed.
     available_method = ["Bagging", "Boosting"]
     if ensemble is True and method not in available_method:
-        sys.exit(
-            "(Value Error): Method parameter only accepts two values 'Bagging' or 'Boosting'."
+        raise ValueError(
+            "Method parameter only accepts two values 'Bagging' or 'Boosting'."
         )
 
     # checking fold parameter
     if type(fold) is not int:
-        sys.exit("(Type Error): Fold parameter only accepts integer value.")
+        raise TypeError("Fold parameter only accepts integer value.")
 
     # checking round parameter
     if type(round) is not int:
-        sys.exit("(Type Error): Round parameter only accepts integer value.")
+        raise TypeError("Round parameter only accepts integer value.")
 
     # checking budget_time parameter
     if type(budget_time) is not int and type(budget_time) is not float:
-        sys.exit(
-            "(Type Error): budget_time parameter only accepts integer or float values."
-        )
+        raise TypeError("budget_time parameter only accepts integer or float values.")
 
     # checking verbose parameter
     if type(verbose) is not bool:
-        sys.exit(
-            "(Type Error): Verbose parameter can only take argument as True or False."
-        )
+        raise TypeError("Verbose parameter can only take argument as True or False.")
 
     # checking system parameter
     if type(system) is not bool:
-        sys.exit(
-            "(Type Error): System parameter can only take argument as True or False."
-        )
+        raise TypeError("System parameter can only take argument as True or False.")
 
     # checking cross_validation parameter
     if type(cross_validation) is not bool:
-        sys.exit(
-            "(Type Error): cross_validation parameter can only take argument as True or False."
+        raise TypeError(
+            "cross_validation parameter can only take argument as True or False."
         )
 
     # checking boosting conflict with estimators
@@ -2499,8 +2473,8 @@ def create_model(
             )
         )
     ):
-        sys.exit(
-            "(Type Error): Estimator does not provide class_weights or predict_proba function and hence not supported for the Boosting method. Change the estimator or method to 'Bagging'."
+        raise TypeError(
+            "Estimator does not provide class_weights or predict_proba function and hence not supported for the Boosting method. Change the estimator or method to 'Bagging'."
         )
 
     """
@@ -3090,55 +3064,53 @@ def tune_model(
 
     # checking estimator if string
     if type(estimator) is str:
-        sys.exit(
-            "(Type Error): The behavior of tune_model in version 1.0.1 is changed. Please pass trained model object."
+        raise TypeError(
+            "The behavior of tune_model in version 1.0.1 is changed. Please pass trained model object."
         )
 
     # Check for estimator
     if not hasattr(estimator, "fit"):
-        sys.exit(
-            f"(Value Error): Estimator {estimator} does not have the required fit() method."
+        raise ValueError(
+            f"Estimator {estimator} does not have the required fit() method."
         )
 
     # restrict VotingClassifier
     if hasattr(estimator, "voting"):
-        sys.exit("(Type Error): VotingClassifier not allowed under tune_model().")
+        raise TypeError("VotingClassifier not allowed under tune_model().")
 
     # checking fold parameter
     if type(fold) is not int:
-        sys.exit("(Type Error): Fold parameter only accepts integer value.")
+        raise TypeError("Fold parameter only accepts integer value.")
 
     # checking round parameter
     if type(round) is not int:
-        sys.exit("(Type Error): Round parameter only accepts integer value.")
+        raise TypeError("Round parameter only accepts integer value.")
 
     # checking n_iter parameter
     if type(n_iter) is not int:
-        sys.exit("(Type Error): n_iter parameter only accepts integer value.")
+        raise TypeError("n_iter parameter only accepts integer value.")
 
     if isinstance(optimize, str):
         # checking optimize parameter
         allowed_optimize = get_metrics()["Name"]
         if optimize not in allowed_optimize.to_list():
-            sys.exit(
-                f"(Value Error): Optimize method {optimize} not supported. See docstring for list of available parameters."
+            raise ValueError(
+                f"Optimize method {optimize} not supported. See docstring for list of available parameters."
             )
 
         # checking optimize parameter for multiclass
         if y.value_counts().count() > 2:
             if not all_metrics[all_metrics["Name"] == optimize].iloc[0]["Multiclass"]:
-                sys.exit(
-                    f"(Type Error): Optimization metric {optimize} not supported for multiclass problems. See docstring for list of other optimization parameters."
+                raise TypeError(
+                    f"Optimization metric {optimize} not supported for multiclass problems. See docstring for list of other optimization parameters."
                 )
 
     if type(n_iter) is not int:
-        sys.exit("(Type Error): n_iter parameter only accepts integer value.")
+        raise TypeError("n_iter parameter only accepts integer value.")
 
     # checking verbose parameter
     if type(verbose) is not bool:
-        sys.exit(
-            "(Type Error): Verbose parameter can only take argument as True or False."
-        )
+        raise TypeError("Verbose parameter can only take argument as True or False.")
 
     """
     
@@ -3254,8 +3226,8 @@ def tune_model(
         param_grid = estimator_definition["Tune Grid"]
 
     if not param_grid:
-        sys.exit(
-            "(Value Error): parameter grid for tuning is empty. If passing custom_grid, make sure that it is not empty. If not passing custom_grid, the passed estimator does not have a built-in tuning grid."
+        raise ValueError(
+            "parameter grid for tuning is empty. If passing custom_grid, make sure that it is not empty. If not passing custom_grid, the passed estimator does not have a built-in tuning grid."
         )
 
     if is_stacked_model:
@@ -3594,15 +3566,15 @@ def ensemble_model(
 
     # Check for estimator
     if not hasattr(estimator, "fit"):
-        sys.exit(
-            f"(Value Error): Estimator {estimator} does not have the required fit() method."
+        raise ValueError(
+            f"Estimator {estimator} does not have the required fit() method."
         )
 
     # Check for allowed method
     available_method = ["Bagging", "Boosting"]
     if method not in available_method:
-        sys.exit(
-            "(Value Error): Method parameter only accepts two values 'Bagging' or 'Boosting'."
+        raise ValueError(
+            "Method parameter only accepts two values 'Bagging' or 'Boosting'."
         )
 
     # check boosting conflict
@@ -3634,46 +3606,44 @@ def ensemble_model(
 
             check_model.fit(X_train, y_train)
         except:
-            sys.exit(
-                "(Type Error): Estimator does not provide class_weights or predict_proba function and hence not supported for the Boosting method. Change the estimator or method to 'Bagging'."
+            raise TypeError(
+                "Estimator does not provide class_weights or predict_proba function and hence not supported for the Boosting method. Change the estimator or method to 'Bagging'."
             )
 
     # checking fold parameter
     if type(fold) is not int:
-        sys.exit("(Type Error): Fold parameter only accepts integer value.")
+        raise TypeError("Fold parameter only accepts integer value.")
 
     # checking n_estimators parameter
     if type(n_estimators) is not int:
-        sys.exit("(Type Error): n_estimators parameter only accepts integer value.")
+        raise TypeError("n_estimators parameter only accepts integer value.")
 
     # checking round parameter
     if type(round) is not int:
-        sys.exit("(Type Error): Round parameter only accepts integer value.")
+        raise TypeError("Round parameter only accepts integer value.")
 
     # checking verbose parameter
     if type(verbose) is not bool:
-        sys.exit(
-            "(Type Error): Verbose parameter can only take argument as True or False."
-        )
+        raise TypeError("Verbose parameter can only take argument as True or False.")
 
     # checking optimize parameter
     allowed_optimize = get_metrics()["Name"]
     if optimize not in allowed_optimize.to_list():
-        sys.exit(
-            f"(Value Error): Optimize method {optimize} not supported. See docstring for list of available parameters."
+        raise ValueError(
+            f"Optimize method {optimize} not supported. See docstring for list of available parameters."
         )
 
     # checking optimize parameter for multiclass
     if y.value_counts().count() > 2:
         if not all_metrics[all_metrics["Name"] == optimize].iloc[0]["Multiclass"]:
-            sys.exit(
-                f"(Type Error): Optimization metric {optimize} not supported for multiclass problems. See docstring for list of other optimization parameters."
+            raise TypeError(
+                f"Optimization metric {optimize} not supported for multiclass problems. See docstring for list of other optimization parameters."
             )
         if hasattr(estimator, "estimators") and any(
             _is_one_vs_rest(model) for name, model in estimator.estimators
         ):
-            sys.exit(
-                f"(Type Error): Ensembling of VotingClassifier() and StackingClassifier() is not supported for multiclass problems."
+            raise TypeError(
+                f"Ensembling of VotingClassifier() and StackingClassifier() is not supported for multiclass problems."
             )
 
     """
@@ -4118,14 +4088,14 @@ def blend_models(
 
     if estimator_list != "All":
         if type(estimator_list) is not list:
-            sys.exit(
-                "(Value Error): estimator_list parameter only accepts 'All' as string or list of trained models."
+            raise ValueError(
+                "estimator_list parameter only accepts 'All' as string or list of trained models."
             )
 
         for i in estimator_list:
             if not hasattr(i, "fit"):
-                sys.exit(
-                    f"(Value Error): Estimator {i} does not have the required fit() method."
+                raise ValueError(
+                    f"Estimator {i} does not have the required fit() method."
                 )
 
         # checking method param with estimator list
@@ -4135,30 +4105,28 @@ def blend_models(
 
             for i in estimator_list:
                 if not hasattr(i, "predict_proba"):
-                    sys.exit(
-                        "(Type Error): Estimator list contains estimator that doesnt support probabilities and method is forced to soft. Either change the method or drop the estimator."
+                    raise TypeError(
+                        "Estimator list contains estimator that doesnt support probabilities and method is forced to soft. Either change the method or drop the estimator."
                     )
 
     # checking fold parameter
     if type(fold) is not int:
-        sys.exit("(Type Error): Fold parameter only accepts integer value.")
+        raise TypeError("Fold parameter only accepts integer value.")
 
     # checking round parameter
     if type(round) is not int:
-        sys.exit("(Type Error): Round parameter only accepts integer value.")
+        raise TypeError("Round parameter only accepts integer value.")
 
     # checking method parameter
     available_method = ["soft", "hard"]
     if method not in available_method:
-        sys.exit(
-            "(Value Error): Method parameter only accepts 'soft' or 'hard' as a parameter. See Docstring for details."
+        raise ValueError(
+            "Method parameter only accepts 'soft' or 'hard' as a parameter. See Docstring for details."
         )
 
     # checking verbose parameter
     if type(turbo) is not bool:
-        sys.exit(
-            "(Type Error): Turbo parameter can only take argument as True or False."
-        )
+        raise TypeError("Turbo parameter can only take argument as True or False.")
 
     if weights is not None:
         if isinstance(estimator_list, list):
@@ -4171,30 +4139,28 @@ def blend_models(
             num_estimators = len(num_estimators)
         # checking weights parameter
         if len(weights) != num_estimators:
-            sys.exit(
-                "(Value Error): weights parameter must have the same length as the estimator_list."
+            raise ValueError(
+                "weights parameter must have the same length as the estimator_list."
             )
         if not all((isinstance(x, int) or isinstance(x, float)) for x in weights):
-            sys.exit("(Type Error): weights must contain only ints or floats.")
+            raise TypeError("weights must contain only ints or floats.")
 
     # checking verbose parameter
     if type(verbose) is not bool:
-        sys.exit(
-            "(Type Error): Verbose parameter can only take argument as True or False."
-        )
+        raise TypeError("Verbose parameter can only take argument as True or False.")
 
     # checking optimize parameter
     allowed_optimize = get_metrics()["Name"]
     if optimize not in allowed_optimize.to_list():
-        sys.exit(
-            f"(Value Error): Optimize method {optimize} not supported. See docstring for list of available parameters."
+        raise ValueError(
+            f"Optimize method {optimize} not supported. See docstring for list of available parameters."
         )
 
     # checking optimize parameter for multiclass
     if y.value_counts().count() > 2:
         if not all_metrics[all_metrics["Name"] == optimize].iloc[0]["Multiclass"]:
-            sys.exit(
-                f"(Type Error): Optimization metric {optimize} not supported for multiclass problems. See docstring for list of other optimization parameters."
+            raise TypeError(
+                f"Optimization metric {optimize} not supported for multiclass problems. See docstring for list of other optimization parameters."
             )
 
     """
@@ -4604,56 +4570,48 @@ def stack_models(
     # checking error for estimator_list
     for i in estimator_list:
         if not hasattr(i, "fit"):
-            sys.exit(
-                f"(Value Error): Estimator {i} does not have the required fit() method."
-            )
+            raise ValueError(f"Estimator {i} does not have the required fit() method.")
 
     # checking meta model
     if meta_model is not None:
         if not hasattr(meta_model, "fit"):
-            sys.exit(
-                f"(Value Error): Meta Model {i} does not have the required fit() method."
-            )
+            raise ValueError(f"Meta Model {i} does not have the required fit() method.")
 
     # checking fold parameter
     if type(fold) is not int:
-        sys.exit("(Type Error): Fold parameter only accepts integer value.")
+        raise TypeError("Fold parameter only accepts integer value.")
 
     # checking round parameter
     if type(round) is not int:
-        sys.exit("(Type Error): Round parameter only accepts integer value.")
+        raise TypeError("Round parameter only accepts integer value.")
 
     # checking method parameter
     available_method = ["auto", "predict_proba", "decision_function", "predict"]
     if method not in available_method:
-        sys.exit(
-            "(Value Error): Method parameter not acceptable. It only accepts 'auto', 'predict_proba', 'decision_function', 'predict'."
+        raise ValueError(
+            "Method parameter not acceptable. It only accepts 'auto', 'predict_proba', 'decision_function', 'predict'."
         )
 
     # checking restack parameter
     if type(restack) is not bool:
-        sys.exit(
-            "(Type Error): Restack parameter can only take argument as True or False."
-        )
+        raise TypeError("Restack parameter can only take argument as True or False.")
 
     # checking verbose parameter
     if type(verbose) is not bool:
-        sys.exit(
-            "(Type Error): Verbose parameter can only take argument as True or False."
-        )
+        raise TypeError("Verbose parameter can only take argument as True or False.")
 
     # checking optimize parameter
     allowed_optimize = get_metrics()["Name"]
     if optimize not in allowed_optimize.to_list():
-        sys.exit(
-            f"(Value Error): Optimize method {optimize} not supported. See docstring for list of available parameters."
+        raise ValueError(
+            f"Optimize method {optimize} not supported. See docstring for list of available parameters."
         )
 
     # checking optimize parameter for multiclass
     if y.value_counts().count() > 2:
         if not all_metrics[all_metrics["Name"] == optimize].iloc[0]["Multiclass"]:
-            sys.exit(
-                f"(Type Error): Optimization metric {optimize} not supported for multiclass problems. See docstring for list of other optimization parameters."
+            raise TypeError(
+                f"Optimization metric {optimize} not supported for multiclass problems. See docstring for list of other optimization parameters."
             )
 
     """
@@ -5072,40 +5030,40 @@ def plot_model(
     ]
 
     if plot not in available_plots:
-        sys.exit(
-            "(Value Error): Plot Not Available. Please see docstring for list of available Plots."
+        raise ValueError(
+            "Plot Not Available. Please see docstring for list of available Plots."
         )
 
     # multiclass plot exceptions:
     multiclass_not_available = ["calibration", "threshold", "manifold", "rfe"]
     if y.value_counts().count() > 2:
         if plot in multiclass_not_available:
-            sys.exit(
-                "(Value Error): Plot Not Available for multiclass problems. Please see docstring for list of available Plots."
+            raise ValueError(
+                "Plot Not Available for multiclass problems. Please see docstring for list of available Plots."
             )
 
     # exception for CatBoost
     if "CatBoostClassifier" in str(type(estimator)):
-        sys.exit(
-            "(Estimator Error): CatBoost estimator is not compatible with plot_model function, try using Catboost with interpret_model instead."
+        raise ValueError(
+            "CatBoost estimator is not compatible with plot_model function, try using Catboost with interpret_model instead."
         )
 
     # checking for auc plot
     if not hasattr(estimator, "predict_proba") and plot == "auc":
-        sys.exit(
-            "(Type Error): AUC plot not available for estimators with no predict_proba attribute."
+        raise TypeError(
+            "AUC plot not available for estimators with no predict_proba attribute."
         )
 
     # checking for auc plot
     if not hasattr(estimator, "predict_proba") and plot == "auc":
-        sys.exit(
-            "(Type Error): AUC plot not available for estimators with no predict_proba attribute."
+        raise TypeError(
+            "AUC plot not available for estimators with no predict_proba attribute."
         )
 
     # checking for calibration plot
     if not hasattr(estimator, "predict_proba") and plot == "calibration":
-        sys.exit(
-            "(Type Error): Calibration plot not available for estimators with no predict_proba attribute."
+        raise TypeError(
+            "Calibration plot not available for estimators with no predict_proba attribute."
         )
 
     # checking for rfe
@@ -5114,8 +5072,8 @@ def plot_model(
         and plot == "rfe"
         and estimator.max_features_ != X_train.shape[1]
     ):
-        sys.exit(
-            "(Type Error): RFE plot not available when max_features parameter is not set to None."
+        raise TypeError(
+            "RFE plot not available when max_features parameter is not set to None."
         )
 
     # checking for feature plot
@@ -5123,8 +5081,8 @@ def plot_model(
         not (hasattr(estimator, "coef_") or hasattr(estimator, "feature_importances_"))
         and plot == "feature"
     ):
-        sys.exit(
-            "(Type Error): Feature Importance plot not available for estimators that doesnt support coef_ or feature_importances_ attribute."
+        raise TypeError(
+            "Feature Importance plot not available for estimators that doesnt support coef_ or feature_importances_ attribute."
         )
 
     """
@@ -5511,8 +5469,8 @@ def plot_model(
             param_range = np.arange(0, 1, 0.01)
 
         elif model_name == "LinearDiscriminantAnalysis":
-            sys.exit(
-                "(Value Error): Shrinkage Parameter not supported in Validation Curve Plot."
+            raise ValueError(
+                "Shrinkage Parameter not supported in Validation Curve Plot."
             )
 
         # tree based models
@@ -5562,8 +5520,8 @@ def plot_model(
 
         else:
             display.clear_output()
-            sys.exit(
-                "(Type Error): Plot not supported for this estimator. Try different estimator."
+            raise TypeError(
+                "Plot not supported for this estimator. Try different estimator."
             )
 
         logger.info("param_name: " + str(param_name))
@@ -5831,7 +5789,7 @@ def interpret_model(
         logger.error(
             "shap library not found. pip install shap to use interpret_model function."
         )
-        sys.exit(
+        raise ImportError(
             "shap library not found. pip install shap to use interpret_model function."
         )
 
@@ -5853,15 +5811,15 @@ def interpret_model(
         model_name = "CatBoostClassifier"
 
     if model_name not in allowed_models:
-        sys.exit(
-            "(Type Error): This function only supports tree based models for binary classification."
+        raise TypeError(
+            "This function only supports tree based models for binary classification."
         )
 
     # plot type
     allowed_types = ["summary", "correlation", "reason"]
     if plot not in allowed_types:
-        sys.exit(
-            "(Value Error): type parameter only accepts 'summary', 'correlation' or 'reason'."
+        raise ValueError(
+            "type parameter only accepts 'summary', 'correlation' or 'reason'."
         )
 
     """
@@ -6149,17 +6107,15 @@ def calibrate_model(
 
     # checking fold parameter
     if type(fold) is not int:
-        sys.exit("(Type Error): Fold parameter only accepts integer value.")
+        raise TypeError("Fold parameter only accepts integer value.")
 
     # checking round parameter
     if type(round) is not int:
-        sys.exit("(Type Error): Round parameter only accepts integer value.")
+        raise TypeError("Round parameter only accepts integer value.")
 
     # checking verbose parameter
     if type(verbose) is not bool:
-        sys.exit(
-            "(Type Error): Verbose parameter can only take argument as True or False."
-        )
+        raise TypeError("Verbose parameter can only take argument as True or False.")
 
     """
     
@@ -6544,43 +6500,39 @@ def optimize_threshold(
 
     # exception 1 for multi-class
     if y.value_counts().count() > 2:
-        sys.exit(
-            "(Type Error) optimize_threshold() cannot be used when target is multi-class. "
+        raise TypeError(
+            "optimize_threshold() cannot be used when target is multi-class. "
         )
 
     if _is_one_vs_rest(estimator):
-        sys.exit(
-            "(Type Error) optimize_threshold() cannot be used when target is multi-class. "
+        raise TypeError(
+            "optimize_threshold() cannot be used when target is multi-class. "
         )
 
     # check predict_proba value
     if type(estimator) is not list:
         if not hasattr(estimator, "predict_proba"):
-            sys.exit(
-                "(Type Error) Estimator doesn't support predict_proba function and cannot be used in optimize_threshold().  "
+            raise TypeError(
+                "Estimator doesn't support predict_proba function and cannot be used in optimize_threshold().  "
             )
 
     # check cost function type
     allowed_types = [int, float]
 
     if type(true_positive) not in allowed_types:
-        sys.exit(
-            "(Type Error) true_positive parameter only accepts float or integer value. "
-        )
+        raise TypeError("true_positive parameter only accepts float or integer value. ")
 
     if type(true_negative) not in allowed_types:
-        sys.exit(
-            "(Type Error) true_negative parameter only accepts float or integer value. "
-        )
+        raise TypeError("true_negative parameter only accepts float or integer value. ")
 
     if type(false_positive) not in allowed_types:
-        sys.exit(
-            "(Type Error) false_positive parameter only accepts float or integer value. "
+        raise TypeError(
+            "false_positive parameter only accepts float or integer value. "
         )
 
     if type(false_negative) not in allowed_types:
-        sys.exit(
-            "(Type Error) false_negative parameter only accepts float or integer value. "
+        raise TypeError(
+            "false_negative parameter only accepts float or integer value. "
         )
 
     """
@@ -6606,8 +6558,8 @@ def optimize_threshold(
             predicted = np.array(predicted["Score"])
         except:
             logger.info("Meta model doesn't support predict_proba function.")
-            sys.exit(
-                "(Type Error) Meta model doesn't support predict_proba function. Cannot be used in optimize_threshold(). "
+            raise TypeError(
+                "Meta model doesn't support predict_proba function. Cannot be used in optimize_threshold(). "
             )
 
     else:
@@ -6791,25 +6743,25 @@ def predict_model(
 
     if probability_threshold is not None:
         if _is_one_vs_rest(estimator):
-            sys.exit(
-                "(Type Error) probability_threshold parameter cannot be used when target is multi-class. "
+            raise TypeError(
+                "probability_threshold parameter cannot be used when target is multi-class. "
             )
 
         # probability_threshold allowed types
         allowed_types = [int, float]
         if type(probability_threshold) not in allowed_types:
-            sys.exit(
-                "(Type Error) probability_threshold parameter only accepts value between 0 to 1. "
+            raise TypeError(
+                "probability_threshold parameter only accepts value between 0 to 1. "
             )
 
         if probability_threshold > 1:
-            sys.exit(
-                "(Type Error) probability_threshold parameter only accepts value between 0 to 1. "
+            raise TypeError(
+                "probability_threshold parameter only accepts value between 0 to 1. "
             )
 
         if probability_threshold < 0:
-            sys.exit(
-                "(Type Error) probability_threshold parameter only accepts value between 0 to 1. "
+            raise TypeError(
+                "probability_threshold parameter only accepts value between 0 to 1. "
             )
 
     """
@@ -6862,7 +6814,7 @@ def predict_model(
                 del estimator_
 
             except:
-                sys.exit("Pipeline not found")
+                raise ValueError("Pipeline not found")
 
         Xtest = data.copy()
         X_test_ = data.copy()
@@ -7412,15 +7364,15 @@ def automl(optimize: str = "Accuracy", use_holdout: bool = False):
     # checking optimize parameter
     allowed_optimize = get_metrics()["Name"]
     if optimize not in allowed_optimize.to_list():
-        sys.exit(
-            f"(Value Error): Optimize method {optimize} not supported. See docstring for list of available parameters."
+        raise ValueError(
+            f"Optimize method {optimize} not supported. See docstring for list of available parameters."
         )
 
     # checking optimize parameter for multiclass
     if y.value_counts().count() > 2:
         if not all_metrics[all_metrics["Name"] == optimize].iloc[0]["Multiclass"]:
-            sys.exit(
-                f"(Type Error): Optimization metric {optimize} not supported for multiclass problems. See docstring for list of other optimization parameters."
+            raise TypeError(
+                f"Optimization metric {optimize} not supported for multiclass problems. See docstring for list of other optimization parameters."
             )
 
     optimize = all_metrics[all_metrics["Name"] == optimize].iloc[0]
@@ -8158,7 +8110,7 @@ def get_logs(experiment_name: str = None, save: bool = False) -> pandas.DataFram
     client = MlflowClient()
 
     if client.get_experiment_by_name(exp_name_log_) is None:
-        sys.exit(
+        raise ValueError(
             "No active run found. Check logging parameter in setup or to get logs for inactive run pass experiment_name."
         )
 
