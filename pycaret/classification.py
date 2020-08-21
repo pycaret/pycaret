@@ -18,7 +18,7 @@ def setup(
     sample_estimator=None,
     categorical_features: List[str] = None,
     categorical_imputation: str = "constant",
-    ordinal_features: List[str] = None,
+    ordinal_features: dict = None,
     high_cardinality_features: List[str] = None,
     high_cardinality_method: str = "frequency",
     numeric_features: List[str] = None,
@@ -118,7 +118,7 @@ def setup(
     sample_estimator: object, default = None
         If None, Logistic Regression is used by default.
     
-    categorical_features: string, default = None
+    categorical_features: list, default = None
         If the inferred data types are not correct, categorical_features can be used to
         overwrite the inferred type. If when running setup the type of 'column1' is
         inferred as numeric instead of categorical, then this parameter can be used 
@@ -136,7 +136,7 @@ def setup(
         be passed as ordinal_features = { 'column_name' : ['low', 'medium', 'high'] }. 
         The list sequence must be in increasing order from lowest to highest.
     
-    high_cardinality_features: string, default = None
+    high_cardinality_features: list, default = None
         When the data containts features with high cardinality, they can be compressed
         into fewer levels by passing them as a list of column names with high cardinality.
         Features are compressed using method defined in high_cardinality_method param.
@@ -149,7 +149,7 @@ def setup(
         The number of clusters is determined using a combination of Calinski-Harabasz and 
         Silhouette criterion. 
           
-    numeric_features: string, default = None
+    numeric_features: list, default = None
         If the inferred data types are not correct, numeric_features can be used to
         overwrite the inferred type. If when running setup the type of 'column1' is 
         inferred as a categorical instead of numeric, then this parameter can be used 
@@ -625,7 +625,7 @@ def setup(
                 )
 
         for k in ord_keys:
-            if data[k].nunique() != len(ordinal_features.get(k)):
+            if data[k].nunique() != len(ordinal_features[k]):
                 raise ValueError(
                     "Levels passed in ordinal_features param doesnt match with levels in data. "
                 )
@@ -8203,32 +8203,8 @@ def set_config(variable: str, value):
     return pycaret.internal.utils.set_config(variable, value, globals())
 
 
-
 def _is_one_vs_rest(e) -> bool:
     return type(e) == _all_models_internal.loc["OneVsRest"]["Class"]
-
-
-def _calculate_metrics(ytest, pred_, pred_prob, score_dict: dict = None):
-    import numpy as np
-
-    if not score_dict:
-        score_dict = {
-            metric._2: np.empty((0, 0))
-            for metric in get_metrics().itertuples()
-            if metric.Class
-        }
-    for row in get_metrics().itertuples():
-        if not row.Class:
-            continue
-        target = pred_prob if row.Target == "pred_prob" else pred_
-        try:
-            calculated_metric = row.Class(ytest, target, **row.Args)
-        except:
-            calculated_metric = 0
-
-        # row._2 is 'Display Name' column
-        score_dict[row._2] = np.append(score_dict[row._2], calculated_metric)
-    return score_dict
 
 
 def _fix_imbalance(
@@ -8358,7 +8334,7 @@ def _sample_data(
         "90%",
         "100%",
     ]
-    split_perc_tt = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.99]
+    split_perc_tt = split_perc.copy()
     split_perc_tt_total = []
 
     score_dict = {metric: np.empty((0, 0)) for metric in all_metrics["Display Name"]}
@@ -8450,7 +8426,9 @@ def _sample_data(
             row = (i, metric[i], metric_name)
             model_results.append(row)
 
-    model_results = pd.DataFrame(model_results, columns=["Sample", "Metric", "Metric Name"])
+    model_results = pd.DataFrame(
+        model_results, columns=["Sample", "Metric", "Metric Name"]
+    )
     fig = px.line(
         model_results,
         x="Sample",
@@ -8523,14 +8501,26 @@ def _is_multiclass() -> bool:
     except:
         return False
 
+
 def _get_model_id(e) -> str:
     import pycaret.internal.utils
+
     return pycaret.internal.utils.get_model_id(e, models(internal=True))
+
 
 def _get_model_name(e) -> str:
     import pycaret.internal.utils
+
     return pycaret.internal.utils.get_model_name(e, models(internal=True))
+
 
 def _is_special_model(e) -> bool:
     import pycaret.internal.utils
+
     return pycaret.internal.utils.is_special_model(e, models(internal=True))
+
+
+def _calculate_metrics(ytest, pred_, pred_prob: float, score_dict: dict = None):
+    from pycaret.internal.utils import calculate_metrics
+
+    return calculate_metrics(get_metrics(), ytest, pred_, pred_prob, score_dict)
