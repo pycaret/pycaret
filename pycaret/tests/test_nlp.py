@@ -13,7 +13,7 @@ def test():
     assert isinstance(data, pd.core.frame.DataFrame)
 
     # init setup
-    nlp1 = pycaret.nlp.setup(data = data, target = 'en', html=False, session_id = 123)
+    nlp1 = pycaret.nlp.setup(data = data, target = 'en', log_experiment=True, html=False, session_id = 123)
     assert isinstance(nlp1, tuple)
     
     # create model
