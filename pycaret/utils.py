@@ -15,6 +15,7 @@ nightly_version_ = "2.1"
 def version():
     return version_
 
+
 def nightly_version():
     return nightly_version_
 
@@ -106,10 +107,12 @@ def check_metric(actual, prediction, metric, round=4):
 
     elif metric == "MAPE":
 
-        mask = actual.iloc[:,0] != 0
-        result = (np.fabs(actual.iloc[:,0] - prediction.iloc[:,0])/actual.iloc[:,0])[mask].mean()
+        mask = actual.iloc[:, 0] != 0
+        result = (
+            np.fabs(actual.iloc[:, 0] - prediction.iloc[:, 0]) / actual.iloc[:, 0]
+        )[mask].mean()
         result = result.round(round)
-       
+
     return float(result)
 
 
@@ -192,7 +195,9 @@ def get_system_logs():
         print(columns)
 
 
-def color_df(df: pd.DataFrame, color: str, names: list, axis: int = 1) -> pandas.io.formats.style.Styler:
+def color_df(
+    df: pd.DataFrame, color: str, names: list, axis: int = 1
+) -> pandas.io.formats.style.Styler:
     return df.style.apply(
         lambda x: [f"background: {color}" if (x.name in names) else "" for i in x],
         axis=axis,

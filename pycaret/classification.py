@@ -472,7 +472,7 @@ def setup(
     logger = get_logger()
 
     logger.info("PyCaret Classification Module")
-    logger.info("version " + str(ver))
+    logger.info(f"version {ver}")
     logger.info("Initializing setup()")
     logger.info(f"setup({function_params_str})")
 
@@ -481,24 +481,24 @@ def setup(
 
     global USI
     USI = secrets.token_hex(nbytes=2)
-    logger.info("USI: " + str(USI))
+    logger.info(f"USI: {USI}")
 
     # logging environment and libraries
     logger.info("Checking environment")
 
     from platform import python_version, platform, python_build, machine
 
-    logger.info("python_version: " + str(python_version()))
-    logger.info("python_build: " + str(python_build()))
-    logger.info("machine: " + str(machine()))
-    logger.info("platform: " + str(platform()))
+    logger.info(f"python_version: {python_version()}")
+    logger.info(f"python_build: {python_build()}")
+    logger.info(f"machine: {machine()}")
+    logger.info(f"platform: {platform()}")
 
     try:
         import psutil
 
-        logger.info("Memory: " + str(psutil.virtual_memory()))
-        logger.info("Physical Core: " + str(psutil.cpu_count(logical=False)))
-        logger.info("Logical Core: " + str(psutil.cpu_count(logical=True)))
+        logger.info(f"Memory: {psutil.virtual_memory()}")
+        logger.info(f"Physical Core: {psutil.cpu_count(logical=False)}")
+        logger.info(f"Logical Core: {psutil.cpu_count(logical=True)}")
     except:
         logger.warning(
             "cannot find psutil installation. memory not traceable. Install psutil using pip to enable memory logging. "
@@ -509,42 +509,42 @@ def setup(
     try:
         from pandas import __version__
 
-        logger.info("pd==" + str(__version__))
+        logger.info(f"pd=={__version__}")
     except:
         logger.warning("pandas not found")
 
     try:
         from numpy import __version__
 
-        logger.info("numpy==" + str(__version__))
+        logger.info(f"numpy=={__version__}")
     except:
         logger.warning("numpy not found")
 
     try:
         from sklearn import __version__
 
-        logger.info("sklearn==" + str(__version__))
+        logger.info(f"sklearn=={__version__}")
     except:
         logger.warning("sklearn not found")
 
     try:
         from xgboost import __version__
 
-        logger.info("xgboost==" + str(__version__))
+        logger.info(f"xgboost=={__version__}")
     except:
         logger.warning("xgboost not found")
 
     try:
         from lightgbm import __version__
 
-        logger.info("lightgbm==" + str(__version__))
+        logger.info(f"lightgbm=={__version__}")
     except:
         logger.warning("lightgbm not found")
 
     try:
         from catboost import __version__
 
-        logger.info("catboost==" + str(__version__))
+        logger.info(f"catboost=={__version__}")
     except:
         logger.warning("catboost not found")
 
@@ -553,7 +553,7 @@ def setup(
         import warnings
 
         warnings.filterwarnings("ignore")
-        logger.info("mlflow==" + str(VERSION))
+        logger.info(f"mlflow=={VERSION}")
     except:
         logger.warning("mlflow not found")
 
@@ -634,14 +634,9 @@ def setup(
             value_in_data = list(data[i].unique().astype(str))
             for j in value_in_keys:
                 if j not in value_in_data:
-                    text = (
-                        "Column name '"
-                        + str(i)
-                        + "' doesnt contain any level named '"
-                        + str(j)
-                        + "'."
+                    raise ValueError(
+                        f"Column name '{i}' doesn't contain any level named '{j}'."
                     )
-                    raise ValueError(text)
 
     # high_cardinality_features
     if high_cardinality_features is not None:
@@ -1145,7 +1140,7 @@ def setup(
 
         if (group_names is None) or (len(group_names) != len(group_features_pass)):
             group_names_pass = list(np.arange(len(group_features_pass)))
-            group_names_pass = ["group_" + str(i) for i in group_names_pass]
+            group_names_pass = [f"group_{i}" for i in group_names_pass]
 
         else:
             group_names_pass = group_names
@@ -1628,7 +1623,7 @@ def setup(
         # mlflow logging
         mlflow.set_experiment(exp_name_log)
 
-        run_name_ = "Session Initialized " + str(USI)
+        run_name_ = f"Session Initialized {USI}"
 
         with mlflow.start_run(run_name=run_name_) as run:
 
@@ -1660,7 +1655,7 @@ def setup(
             logger.info(
                 "SubProcess save_model() end =================================="
             )
-            mlflow.log_artifact("Transformation Pipeline" + ".pkl")
+            mlflow.log_artifact("Transformation Pipeline.pkl")
             os.remove("Transformation Pipeline.pkl")
 
             # Log pandas profile
@@ -1682,9 +1677,9 @@ def setup(
                 os.remove("Train.csv")
                 os.remove("Test.csv")
 
-    logger.info("create_model_container " + str(len(create_model_container)))
-    logger.info("master_model_container " + str(len(master_model_container)))
-    logger.info("display_container " + str(len(display_container)))
+    logger.info(f"create_model_container: {len(create_model_container)}")
+    logger.info(f"master_model_container: {len(master_model_container)}")
+    logger.info(f"display_container: {len(display_container)}")
 
     logger.info(str(prep_pipe))
     logger.info("setup() succesfully completed......................................")
@@ -2017,9 +2012,9 @@ def compare_models(
             model_name = _get_model_name(model)
 
         if isinstance(model, str):
-            logger.info("Initializing " + model_name)
+            logger.info(f"Initializing {model_name}")
         else:
-            logger.info("Initializing custom model " + model_name)
+            logger.info(f"Initializing custom model {model_name}")
 
         # run_time
         runtime_start = time.time()
@@ -2157,12 +2152,12 @@ def compare_models(
                 from mlflow.sklearn import get_default_conda_env
 
                 default_conda_env = get_default_conda_env()
-                default_conda_env["name"] = str(exp_name_log) + "-env"
+                default_conda_env["name"] = f"{exp_name_log}-env"
                 default_conda_env.get("dependencies").pop(-3)
                 dependencies = default_conda_env.get("dependencies")[-1]
                 from pycaret.utils import __version__
 
-                dep = "pycaret==" + str(__version__())
+                dep = f"pycaret=={__version__()}"
                 dependencies["pip"] = [dep]
 
                 # define model signature
@@ -2197,7 +2192,7 @@ def compare_models(
 
     def highlight_cols(s):
         color = "lightgrey"
-        return "background-color: %s" % color
+        return f"background-color: {color}"
 
     if y.value_counts().count() > 2:
 
@@ -2249,9 +2244,9 @@ def compare_models(
     # store in display container
     display_container.append(compare_models_.data)
 
-    logger.info("create_model_container: " + str(len(create_model_container)))
-    logger.info("master_model_container: " + str(len(master_model_container)))
-    logger.info("display_container: " + str(len(display_container)))
+    logger.info(f"create_model_container: {len(create_model_container)}")
+    logger.info(f"master_model_container: {len(master_model_container)}")
+    logger.info(f"display_container: {len(display_container)}")
 
     logger.info(str(sorted_models))
     logger.info(
@@ -2573,7 +2568,7 @@ def create_model(
         else:
             full_name = _get_model_name(model)
 
-    logger.info(str(full_name) + " Imported succesfully")
+    logger.info(f"{full_name} Imported succesfully")
 
     display.move_progress()
 
@@ -2633,9 +2628,9 @@ def create_model(
 
         display.display("", clear=True)
 
-        logger.info("create_model_container " + str(len(create_model_container)))
-        logger.info("master_model_container " + str(len(master_model_container)))
-        logger.info("display_container " + str(len(display_container)))
+        logger.info(f"create_model_container: {len(create_model_container)}")
+        logger.info(f"master_model_container: {len(master_model_container)}")
+        logger.info(f"display_container: {len(display_container)}")
 
         logger.info(str(model))
         logger.info(
@@ -2648,7 +2643,7 @@ def create_model(
 
     for train_i, test_i in kf.split(data_X, data_y):
 
-        logger.info("Initializing Fold " + str(fold_num))
+        logger.info(f"Initializing Fold {fold_num}")
 
         t0 = time.time()
         total_runtime += (t0 - total_runtime_start) / 60
@@ -2729,11 +2724,11 @@ def create_model(
 
         if tt < 1:
             tt = str(np.around((tt * 60), 2))
-            ETC = tt + " Seconds Remaining"
+            ETC = f"{tt} Seconds Remaining"
 
         else:
             tt = str(tt)
-            ETC = tt + " Minutes Remaining"
+            ETC = f"{tt} Minutes Remaining"
 
         """
         MONITOR UPDATE STARTS
@@ -2900,12 +2895,12 @@ def create_model(
             from mlflow.sklearn import get_default_conda_env
 
             default_conda_env = get_default_conda_env()
-            default_conda_env["name"] = str(exp_name_log) + "-env"
+            default_conda_env["name"] = f"{exp_name_log}-env"
             default_conda_env.get("dependencies").pop(-3)
             dependencies = default_conda_env.get("dependencies")[-1]
             from pycaret.utils import __version__
 
-            dep = "pycaret==" + str(__version__())
+            dep = f"pycaret=={__version__()}"
             dependencies["pip"] = [dep]
 
             # define model signature
@@ -2944,9 +2939,9 @@ def create_model(
 
     display.display(model_results, clear=system, override=False if not system else None)
 
-    logger.info("create_model_container: " + str(len(create_model_container)))
-    logger.info("master_model_container: " + str(len(master_model_container)))
-    logger.info("display_container: " + str(len(display_container)))
+    logger.info(f"create_model_container: {len(create_model_container)}")
+    logger.info(f"master_model_container: {len(master_model_container)}")
+    logger.info(f"display_container: {len(display_container)}")
 
     logger.info(str(model))
     logger.info(
@@ -3414,12 +3409,12 @@ def tune_model(
             from mlflow.sklearn import get_default_conda_env
 
             default_conda_env = get_default_conda_env()
-            default_conda_env["name"] = str(exp_name_log) + "-env"
+            default_conda_env["name"] = f"{exp_name_log}-env"
             default_conda_env.get("dependencies").pop(-3)
             dependencies = default_conda_env.get("dependencies")[-1]
             from pycaret.utils import __version__
 
-            dep = "pycaret==" + str(__version__())
+            dep = f"pycaret=={__version__()}"
             dependencies["pip"] = [dep]
 
             # define model signature
@@ -3448,9 +3443,9 @@ def tune_model(
     model_results = model_results.set_precision(round)
     display.display(model_results, clear=True)
 
-    logger.info("create_model_container: " + str(len(create_model_container)))
-    logger.info("master_model_container: " + str(len(master_model_container)))
-    logger.info("display_container: " + str(len(display_container)))
+    logger.info(f"create_model_container: {len(create_model_container)}")
+    logger.info(f"master_model_container: {len(master_model_container)}")
+    logger.info(f"display_container: {len(display_container)}")
 
     logger.info(str(best_model))
     logger.info(
@@ -3912,12 +3907,12 @@ def ensemble_model(
             from mlflow.sklearn import get_default_conda_env
 
             default_conda_env = get_default_conda_env()
-            default_conda_env["name"] = str(exp_name_log) + "-env"
+            default_conda_env["name"] = f"{exp_name_log}-env"
             default_conda_env.get("dependencies").pop(-3)
             dependencies = default_conda_env.get("dependencies")[-1]
             from pycaret.utils import __version__
 
-            dep = "pycaret==" + str(__version__())
+            dep = f"pycaret=={__version__()}"
             dependencies["pip"] = [dep]
 
             # define model signature
@@ -3946,9 +3941,9 @@ def ensemble_model(
     model_results = model_results.set_precision(round)
     display.display(model_results, clear=True)
 
-    logger.info("create_model_container: " + str(len(create_model_container)))
-    logger.info("master_model_container: " + str(len(master_model_container)))
-    logger.info("display_container: " + str(len(display_container)))
+    logger.info(f"create_model_container: {len(create_model_container)}")
+    logger.info(f"master_model_container: {len(master_model_container)}")
+    logger.info(f"display_container: {len(display_container)}")
 
     logger.info(str(model))
     logger.info(
@@ -4409,12 +4404,12 @@ def blend_models(
             from mlflow.sklearn import get_default_conda_env
 
             default_conda_env = get_default_conda_env()
-            default_conda_env["name"] = str(exp_name_log) + "-env"
+            default_conda_env["name"] = f"{exp_name_log}-env"
             default_conda_env.get("dependencies").pop(-3)
             dependencies = default_conda_env.get("dependencies")[-1]
             from pycaret.utils import __version__
 
-            dep = "pycaret==" + str(__version__())
+            dep = f"pycaret=={__version__()}"
             dependencies["pip"] = [dep]
 
             # define model signature
@@ -4443,9 +4438,9 @@ def blend_models(
     model_results = model_results.set_precision(round)
     display.display(model_results, clear=True)
 
-    logger.info("create_model_container: " + str(len(create_model_container)))
-    logger.info("master_model_container: " + str(len(master_model_container)))
-    logger.info("display_container: " + str(len(display_container)))
+    logger.info(f"create_model_container: {len(create_model_container)}")
+    logger.info(f"master_model_container: {len(master_model_container)}")
+    logger.info(f"display_container: {len(display_container)}")
 
     logger.info(str(model))
     logger.info(
@@ -4870,12 +4865,12 @@ def stack_models(
             from mlflow.sklearn import get_default_conda_env
 
             default_conda_env = get_default_conda_env()
-            default_conda_env["name"] = str(exp_name_log) + "-env"
+            default_conda_env["name"] = f"{exp_name_log}-env"
             default_conda_env.get("dependencies").pop(-3)
             dependencies = default_conda_env.get("dependencies")[-1]
             from pycaret.utils import __version__
 
-            dep = "pycaret==" + str(__version__())
+            dep = f"pycaret=={__version__()}"
             dependencies["pip"] = [dep]
 
             # define model signature
@@ -4904,9 +4899,9 @@ def stack_models(
     model_results = model_results.set_precision(round)
     display.display(model_results, clear=True)
 
-    logger.info("create_model_container: " + str(len(create_model_container)))
-    logger.info("master_model_container: " + str(len(master_model_container)))
-    logger.info("display_container: " + str(len(display_container)))
+    logger.info(f"create_model_container: {len(create_model_container)}")
+    logger.info(f"master_model_container: {len(master_model_container)}")
+    logger.info(f"display_container: {len(display_container)}")
 
     logger.info(str(model))
     logger.info(
@@ -5123,7 +5118,7 @@ def plot_model(
     # plots used for logging (controlled through plots_log_param)
     # AUC, #Confusion Matrix and #Feature Importance
 
-    logger.info("plot type: " + str(plot))
+    logger.info(f"Plot type: {plot}")
 
     if plot == "auc":
 
@@ -5430,10 +5425,7 @@ def plot_model(
         )
         display.move_progress()
         ax1.plot(
-            mean_predicted_value,
-            fraction_of_positives,
-            "s-",
-            label="%s" % (model_name,),
+            mean_predicted_value, fraction_of_positives, "s-", label=f"{model_name}",
         )
 
         ax1.set_ylabel("Fraction of positives")
@@ -5524,7 +5516,7 @@ def plot_model(
                 "Plot not supported for this estimator. Try different estimator."
             )
 
-        logger.info("param_name: " + str(param_name))
+        logger.info(f"param_name: {param_name}")
 
         display.move_progress()
 
@@ -5876,16 +5868,14 @@ def interpret_model(
         if feature == None:
 
             logger.warning(
-                "No feature passed. Default value of feature used for correlation plot: "
-                + str(X_test.columns[0])
+                f"No feature passed. Default value of feature used for correlation plot: {X_test.columns[0]}"
             )
             dependence = X_test.columns[0]
 
         else:
 
             logger.warning(
-                "feature value passed. Feature used for correlation plot: "
-                + str(X_test.columns[0])
+                f"feature value passed. Feature used for correlation plot: {X_test.columns[0]}"
             )
             dependence = feature
 
@@ -6182,7 +6172,7 @@ def calibrate_model(
 
     full_name = _get_model_name(estimator)
 
-    logger.info("Base model : " + str(full_name))
+    logger.info(f"Base model : {full_name}")
 
     """
     MONITOR UPDATE STARTS
@@ -6368,12 +6358,12 @@ def calibrate_model(
             from mlflow.sklearn import get_default_conda_env
 
             default_conda_env = get_default_conda_env()
-            default_conda_env["name"] = str(exp_name_log) + "-env"
+            default_conda_env["name"] = f"{exp_name_log}-env"
             default_conda_env.get("dependencies").pop(-3)
             dependencies = default_conda_env.get("dependencies")[-1]
             from pycaret.utils import __version__
 
-            dep = "pycaret==" + str(__version__())
+            dep = f"pycaret=={__version__()}"
             dependencies["pip"] = [dep]
 
             # define model signature
@@ -6402,9 +6392,9 @@ def calibrate_model(
     model_results = model_results.set_precision(round)
     display.display(model_results, clear=True)
 
-    logger.info("create_model_container: " + str(len(create_model_container)))
-    logger.info("master_model_container: " + str(len(master_model_container)))
-    logger.info("display_container: " + str(len(display_container)))
+    logger.info(f"create_model_container: {len(create_model_container)}")
+    logger.info(f"master_model_container: {len(master_model_container)}")
+    logger.info(f"display_container: {len(display_container)}")
 
     logger.info(str(model))
     logger.info(
@@ -6633,7 +6623,7 @@ def optimize_threshold(
         line_shape="linear",
     )
     fig.update_layout(plot_bgcolor="rgb(245,245,245)")
-    title = str(model_name) + " Probability Threshold Optimization"
+    title = f"{model_name} Probability Threshold Optimization"
 
     # calculate vertical line
     y0 = optimize_results["Cost Function"].min()
@@ -6657,13 +6647,7 @@ def optimize_threshold(
     )
     logger.info("Figure ready for render")
     fig.show()
-    print(
-        "Optimized Probability Threshold: "
-        + str(t)
-        + " | "
-        + "Optimized Cost Function: "
-        + str(y1)
-    )
+    print(f"Optimized Probability Threshold: {t} | Optimized Cost Function: {y1}")
     logger.info(
         "optimize_threshold() succesfully completed......................................"
     )
@@ -6969,7 +6953,7 @@ def finalize_model(estimator, display=None):
 
     estimator = _estimator_
 
-    logger.info("Finalizing " + str(full_name))
+    logger.info(f"Finalizing {full_name}")
     model_final = clone(estimator)
     display.clear_output()
     model_final = create_model(
@@ -7095,12 +7079,12 @@ def finalize_model(estimator, display=None):
             from mlflow.sklearn import get_default_conda_env
 
             default_conda_env = get_default_conda_env()
-            default_conda_env["name"] = str(exp_name_log) + "-env"
+            default_conda_env["name"] = f"{exp_name_log}-env"
             default_conda_env.get("dependencies").pop(-3)
             dependencies = default_conda_env.get("dependencies")[-1]
             from pycaret.utils import __version__
 
-            dep = "pycaret==" + str(__version__())
+            dep = f"pycaret=={__version__()}"
             dependencies["pip"] = [dep]
 
             # define model signature
@@ -7123,9 +7107,9 @@ def finalize_model(estimator, display=None):
     model_results = model_results.set_precision(round)
     display.display(model_results, clear=True)
 
-    logger.info("create_model_container: " + str(len(create_model_container)))
-    logger.info("master_model_container: " + str(len(master_model_container)))
-    logger.info("display_container: " + str(len(display_container)))
+    logger.info(f"create_model_container: {len(create_model_container)}")
+    logger.info(f"master_model_container: {len(master_model_container)}")
+    logger.info(f"display_container: {len(display_container)}")
 
     logger.info(str(model_final))
     logger.info(
@@ -8118,7 +8102,7 @@ def get_logs(experiment_name: str = None, save: bool = False) -> pandas.DataFram
     runs = mlflow.search_runs(exp_id)
 
     if save:
-        file_name = str(exp_name_log_) + "_logs.csv"
+        file_name = f"{exp_name_log_}_logs.csv"
         runs.to_csv(file_name, index=False)
 
     return runs
@@ -8166,10 +8150,12 @@ def get_config(variable: str):
 
     """
 
+    function_params_str = ", ".join([f"{k}={v}" for k, v in locals().items()])
+
     logger = get_logger()
 
     logger.info("Initializing get_config()")
-    logger.info("""get_config(variable={})""".format(str(variable)))
+    logger.info(f"get_config({function_params_str})")
 
     if variable == "X":
         global_var = X
@@ -8240,7 +8226,7 @@ def get_config(variable: str):
     elif variable == "gpu_param":
         global_var = gpu_param
 
-    logger.info("Global variable: " + str(variable) + " returned")
+    logger.info(f"Global variable: {variable} returned")
     logger.info(
         "get_config() succesfully completed......................................"
     )
@@ -8284,12 +8270,12 @@ def set_config(variable: str, value):
 
     """
 
+    function_params_str = ", ".join([f"{k}={v}" for k, v in locals().items()])
+
     logger = get_logger()
 
     logger.info("Initializing set_config()")
-    logger.info(
-        """set_config(variable={}, value={})""".format(str(variable), str(value))
-    )
+    logger.info(f"set_config({function_params_str})")
 
     if variable == "X":
         global X
@@ -8375,7 +8361,7 @@ def set_config(variable: str, value):
         global data_before_preprocess
         data_before_preprocess = value
 
-    logger.info("Global variable:  " + str(variable) + " updated")
+    logger.info(f"Global variable: {variable} updated")
     logger.info(
         "set_config() succesfully completed......................................"
     )
@@ -8713,11 +8699,11 @@ def _sample_data(
 
         if ttt < 1:
             ttt = str(np.around((ttt * 60), 2))
-            ETC = ttt + " Seconds Remaining"
+            ETC = f"{ttt} Seconds Remaining"
 
         else:
             ttt = str(ttt)
-            ETC = ttt + " Minutes Remaining"
+            ETC = f"{ttt} Minutes Remaining"
 
         display.update_monitor(2, ETC)
         display.display_monitor()

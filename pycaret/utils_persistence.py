@@ -150,8 +150,8 @@ def deploy_model(
         # initiaze s3
         logger.info("Initializing S3 client")
         s3 = boto3.client("s3")
-        filename = str(model_name) + ".pkl"
-        key = str(model_name) + ".pkl"
+        filename = f"{model_name}.pkl"
+        key = f"{model_name}.pkl"
         bucket_name = authentication.get("bucket")
         s3.upload_file(filename, bucket_name, key)
         clear_output()
@@ -175,8 +175,8 @@ def deploy_model(
             )
 
         # initialize deployment
-        filename = str(model_name) + ".pkl"
-        key = str(model_name) + ".pkl"
+        filename = f"{model_name}.pkl"
+        key = f"{model_name}.pkl"
         bucket_name = authentication.get("bucket")
         project_name = authentication.get("project")
         try:
@@ -204,8 +204,8 @@ def deploy_model(
         logger.info("Platform : Azure Blob Storage")
 
         # initialize deployment
-        filename = str(model_name) + ".pkl"
-        key = str(model_name) + ".pkl"
+        filename = f"{model_name}.pkl"
+        key = f"{model_name}.pkl"
         container_name = authentication.get("container")
         try:
             container_client = _create_container_azure(container_name)
@@ -277,12 +277,12 @@ def save_model(model, model_name: str, prep_pipe_=None, verbose: bool = True):
 
     import joblib
 
-    model_name = model_name + ".pkl"
+    model_name = f"{model_name}.pkl"
     joblib.dump(model_, model_name)
     if verbose:
         print("Transformation Pipeline and Model Succesfully Saved")
 
-    logger.info(str(model_name) + " saved in current working directory")
+    logger.info(f"{model_name} saved in current working directory")
     logger.info(str(model_))
     logger.info(
         "save_model() succesfully completed......................................"
@@ -351,7 +351,7 @@ def load_model(
 
         import joblib
 
-        model_name = model_name + ".pkl"
+        model_name = f"{model_name}.pkl"
         if verbose:
             print("Transformation Pipeline and Model Successfully Loaded")
         return joblib.load(model_name)
@@ -362,7 +362,7 @@ def load_model(
         import boto3
 
         bucketname = authentication.get("bucket")
-        filename = str(model_name) + ".pkl"
+        filename = f"{model_name}.pkl"
         s3 = boto3.resource("s3")
         s3.Bucket(bucketname).download_file(filename, filename)
         filename = str(model_name)
@@ -378,7 +378,7 @@ def load_model(
 
         bucket_name = authentication.get("bucket")
         project_name = authentication.get("project")
-        filename = str(model_name) + ".pkl"
+        filename = f"{model_name}.pkl"
 
         model_downloaded = _download_blob_gcp(
             project_name, bucket_name, filename, filename
@@ -393,7 +393,7 @@ def load_model(
     elif platform == "azure":
 
         container_name = authentication.get("container")
-        filename = str(model_name) + ".pkl"
+        filename = f"{model_name}.pkl"
 
         model_downloaded = _download_blob_azure(container_name, filename, filename)
 
