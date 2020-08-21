@@ -17,6 +17,7 @@ juice,Multivariate,Classification (Binary),Purchase,1070,15,N
 nba,Multivariate,Classification (Binary),TARGET_5Yrs,1340,21,N
 wine,Multivariate,Classification (Binary),type,6498,13,N
 telescope,Multivariate,Classification (Binary),Class,19020,11,N
+us_presidential_election_results,Multivariate,Classification (Binary),party_winner,497,7,N
 glass,Multivariate,Classification (Multiclass),Type,214,10,N
 iris,Multivariate,Classification (Multiclass),species,150,5,N
 poker,Multivariate,Classification (Multiclass),CLASS,100000,11,N
@@ -52,4 +53,4 @@ house,Multivariate,Regression,SalePrice,1461,81,Y
 insurance,Multivariate,Regression,charges,1338,7,N
 parkinsons,Multivariate,Regression,PPE,5875,22,N
 traffic,Multivariate,Regression,traffic_volume,48204,8,N
-CTG, Multivariate, Classification (Multiclass), NSP, 2129,40,Y
+CTG, Multivariate, Classification (Multiclass), NSP,2129,40,Y

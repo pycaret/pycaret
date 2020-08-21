@@ -134,9 +134,14 @@ def setup(data,
     USI = secrets.token_hex(nbytes=2)
     logger.info('USI: ' + str(USI))
 
+    try:
+        data_shape = data.shape
+    except:
+        data_shape = len(data)
+
     logger.info("""setup(data={}, target={}, custom_stopwords={}, html={}, session_id={}, log_experiment={},
                     experiment_name={}, log_plots={}, log_data={}, verbose={})""".format(\
-            str(data.shape), str(target), str(custom_stopwords), str(html),\
+            str(data_shape), str(target), str(custom_stopwords), str(html),\
             str(session_id),str(log_experiment), str(experiment_name), str(log_plots), str(log_data), str(verbose)))
 
     #logging environment and libraries

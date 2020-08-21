@@ -10,7 +10,7 @@ def test():
     data = pycaret.datasets.get_data('index')
     assert isinstance(data, pd.core.frame.DataFrame)
     row, col = data.shape
-    assert row <= 54
+    assert row > 1
     assert col == 7
 
     # loading dataset
