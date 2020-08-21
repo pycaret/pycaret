@@ -1,4 +1,5 @@
-from pycaret.internal.utils import get_logger
+from pycaret.internal.logging import get_logger
+from pycaret.internal.Display import Display
 
 
 def show_yellowbrick_plot(
@@ -13,12 +14,13 @@ def show_yellowbrick_plot(
     scale: float = 1,
     save: bool = False,
     system: bool = True,
-    logger=None,
-    display=None,
+    display: Display = None,
     **kwargs,
 ):
-    if not logger:
-        logger = get_logger()
+    """
+    Generic method to handle yellowbrick plots.
+    """
+    logger = get_logger()
     visualizer.fig.set_dpi(visualizer.fig.dpi * scale)
 
     if handle_train == "draw":

@@ -4,7 +4,8 @@
 # Release: PyCaret 2.1x
 # Last modified : 12/08/2020
 
-from pycaret.internal.utils import get_logger, color_df
+from pycaret.internal.utils import color_df
+from pycaret.internal.logging import get_logger
 from pycaret.internal.plotting import show_yellowbrick_plot
 from pycaret.internal.Display import Display
 import pandas
@@ -471,7 +472,7 @@ def setup(
     # create logger
     global logger
 
-    logger = get_logger(globals())
+    logger = get_logger()
 
     logger.info("PyCaret Classification Module")
     logger.info(f"version {ver}")
@@ -995,6 +996,8 @@ def setup(
     import seaborn as sns
     import matplotlib.pyplot as plt
     import plotly.express as px
+
+    np.random.seed(seed)
 
     # setting sklearn config to print all parameters including default
     import sklearn
@@ -1765,15 +1768,21 @@ def compare_models(
     Multi Level Perceptron.
         
 
+    >>> tuned_model = tune_model(create_model('lr'))
+    >>> best_model = compare_models( include = [ 'lr', tuned_model ]) 
+
+    This will compare a tuned Linear Regression model with an untuned one.
+
     Parameters
     ----------
     exclude: list of strings, default = None
         In order to omit certain models from the comparison model ID's can be passed as 
         a list of strings in exclude param. 
 
-    include: list of strings, default = None
+    include: list of strings or objects, default = None
         In order to run only certain models for the comparison, the model ID's can be 
-        passed as a list of strings in include param. 
+        passed as a list of strings in include param. The list can also include estimator
+        objects to be compared.
 
     fold: integer, default = 10
         Number of folds to be used in Kfold CV. Must be at least 2. 
@@ -1829,7 +1838,7 @@ def compare_models(
     """
     function_params_str = ", ".join([f"{k}={v}" for k, v in locals().items()])
 
-    logger = get_logger(globals())
+    logger = get_logger()
 
     logger.info("Initializing compare_models()")
     logger.info(f"compare_models({function_params_str})")
@@ -1953,6 +1962,8 @@ def compare_models(
     import random
     from sklearn import metrics
     import pandas.io.formats.style
+
+    np.random.seed(seed)
 
     logger.info("Copying training dataset")
     # defining X_train and y_train as data_X and data_y
@@ -2268,10 +2279,10 @@ def create_model(
     budget_time: float = 0,
     verbose: bool = True,
     system: bool = True,  # added in pycaret==2.0.0
-    return_fit_time: bool = False,
-    X_train_data: pandas.DataFrame = None,
-    Y_train_data: pandas.DataFrame = None,
-    display: Display = None,
+    return_fit_time: bool = False,  # added in pycaret==2.2.0
+    X_train_data: pandas.DataFrame = None,  # added in pycaret==2.2.0
+    Y_train_data: pandas.DataFrame = None,  # added in pycaret==2.2.0
+    display: Display = None,  # added in pycaret==2.2.0
     **kwargs,
 ):  # added in pycaret==2.0.0
 
@@ -2346,7 +2357,16 @@ def create_model(
         Must remain True all times. Only to be changed by internal functions.
     
     return_fit_time: Boolean, default = False
-        Must remain False all times. Only to be changed by internal functions.
+        If True, will return a tuple of the model and its fit time.
+        Only to be changed by internal functions.
+
+    X_train_data: pandas.DataFrame, default = None
+        If not None, will use this dataframe as training features.
+        Intended to be only changed by internal functions.
+
+    Y_train_data: pandas.DataFrame, default = None
+        If not None, will use this dataframe as training target.
+        Intended to be only changed by internal functions.
 
     **kwargs: 
         Additional keyword arguments to pass to the estimator.
@@ -2378,7 +2398,7 @@ def create_model(
 
     function_params_str = ", ".join([f"{k}={v}" for k, v in locals().items()])
 
-    logger = get_logger(globals())
+    logger = get_logger()
 
     logger.info("Initializing create_model()")
     logger.info(f"create_model({function_params_str})")
@@ -2521,6 +2541,8 @@ def create_model(
     from sklearn.model_selection import StratifiedKFold
     from sklearn.base import clone
 
+    np.random.seed(seed)
+
     logger.info("Copying training dataset")
 
     # Storing X_train and y_train in data_X and data_y parameter
@@ -2530,9 +2552,6 @@ def create_model(
     # reset index
     data_X.reset_index(drop=True, inplace=True)
     data_y.reset_index(drop=True, inplace=True)
-
-    # setting numpy seed
-    np.random.seed(seed)
 
     display.move_progress()
 
@@ -2965,6 +2984,7 @@ def tune_model(
     n_iter: int = 10,
     custom_grid: dict = None,  # added in pycaret==2.0.0
     optimize: str = "Accuracy",
+    custom_scorer=None,  # added in pycaret==2.1 - depreciated
     choose_better: bool = False,  # added in pycaret==2.0.0
     verbose: bool = True,
     display: Display = None,
@@ -3009,8 +3029,13 @@ def tune_model(
 
     optimize: string, default = 'Accuracy'
         Measure used to select the best model through hyperparameter tuning.
-        The default scoring measure is 'Accuracy'. Other measures include 'AUC',
-        'Recall', 'Precision', 'F1'. 
+        Can be either a string representing a metric or a custom scorer object
+        created using sklearn.make_scorer. 
+
+    custom_scorer: object, default = None
+        Will be eventually depreciated.
+        custom_scorer can be passed to tune hyperparameters of the model. It must be
+        created using sklearn.make_scorer. 
 
     choose_better: Boolean, default = False
         When set to set to True, base estimator is returned when the performance doesn't 
@@ -3046,7 +3071,7 @@ def tune_model(
     """
     function_params_str = ", ".join([f"{k}={v}" for k, v in locals().items()])
 
-    logger = get_logger(globals())
+    logger = get_logger()
 
     logger.info("Initializing tune_model()")
     logger.info(f"tune_model({function_params_str})")
@@ -3055,6 +3080,7 @@ def tune_model(
 
     # exception checking
     import sys
+    import warnings
 
     # run_time
     import datetime, time
@@ -3089,7 +3115,14 @@ def tune_model(
     if type(n_iter) is not int:
         raise TypeError("n_iter parameter only accepts integer value.")
 
-    if isinstance(optimize, str):
+    if custom_scorer is not None:
+        warnings.warn(
+            f"custom_scorer parameter will be depreciated, use optimize instead",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+
+    elif isinstance(optimize, str):
         # checking optimize parameter
         allowed_optimize = get_metrics()["Name"]
         if optimize not in allowed_optimize.to_list():
@@ -3145,7 +3178,6 @@ def tune_model(
         display.display_master_display()
 
     # ignore warnings
-    import warnings
 
     warnings.filterwarnings("ignore")
 
@@ -3156,6 +3188,8 @@ def tune_model(
     from sklearn import metrics
     from sklearn.model_selection import RandomizedSearchCV
     from sklearn.base import clone
+
+    np.random.seed(seed)
 
     logger.info("Copying training dataset")
     # Storing X_train and y_train in data_X and data_y parameter
@@ -3168,10 +3202,10 @@ def tune_model(
 
     display.move_progress()
 
-    # setting numpy seed
-    np.random.seed(seed)
-
     # setting optimize parameter
+
+    if custom_scorer is not None:
+        optimize = custom_scorer
 
     if isinstance(optimize, str):
         optimize = all_metrics[all_metrics["Name"] == optimize].iloc[0]
@@ -3468,7 +3502,7 @@ def ensemble_model(
     choose_better: bool = False,  # added in pycaret==2.0.0
     optimize: str = "Accuracy",  # added in pycaret==2.0.0
     verbose: bool = True,
-    display: Display = None,
+    display: Display = None,  # added in pycaret==2.2.0
 ):
     """
     This function ensembles the trained base estimator using the method defined in 
@@ -3548,7 +3582,7 @@ def ensemble_model(
 
     function_params_str = ", ".join([f"{k}={v}" for k, v in locals().items()])
 
-    logger = get_logger(globals())
+    logger = get_logger()
 
     logger.info("Initializing ensemble_model()")
     logger.info(f"ensemble_model({function_params_str})")
@@ -3685,6 +3719,8 @@ def ensemble_model(
     from sklearn import metrics
     from sklearn.model_selection import StratifiedKFold
 
+    np.random.seed(seed)
+
     # ignore warnings
     import warnings
 
@@ -3701,9 +3737,6 @@ def ensemble_model(
     data_y.reset_index(drop=True, inplace=True)
 
     display.move_progress()
-
-    # setting numpy seed
-    np.random.seed(seed)
 
     # setting optimize parameter
 
@@ -3964,10 +3997,10 @@ def blend_models(
     choose_better: bool = False,  # added in pycaret==2.0.0
     optimize: str = "Accuracy",  # added in pycaret==2.0.0
     method: str = "hard",
-    weights: list = None,
+    weights: list = None,  # added in pycaret==2.2.0
     turbo: bool = True,
     verbose: bool = True,
-    display: Display = None,
+    display: Display = None,  # added in pycaret==2.2.0
 ):
 
     """
@@ -4068,7 +4101,7 @@ def blend_models(
 
     function_params_str = ", ".join([f"{k}={v}" for k, v in locals().items()])
 
-    logger = get_logger(globals())
+    logger = get_logger()
 
     logger.info("Initializing blend_models()")
     logger.info(f"blend_models({function_params_str})")
@@ -4209,6 +4242,8 @@ def blend_models(
     from sklearn.ensemble import VotingClassifier
     import re
 
+    np.random.seed(seed)
+
     logger.info("Copying training dataset")
     # Storing X_train and y_train in data_X and data_y parameter
     data_X = X_train.copy()
@@ -4217,9 +4252,6 @@ def blend_models(
     # reset index
     data_X.reset_index(drop=True, inplace=True)
     data_y.reset_index(drop=True, inplace=True)
-
-    # setting numpy seed
-    np.random.seed(seed)
 
     # setting optimize parameter
     optimize = all_metrics[all_metrics["Name"] == optimize].iloc[0]
@@ -4551,7 +4583,7 @@ def stack_models(
 
     function_params_str = ", ".join([f"{k}={v}" for k, v in locals().items()])
 
-    logger = get_logger(globals())
+    logger = get_logger()
 
     logger.info("Initializing stack_models()")
     logger.info(f"stack_models({function_params_str})")
@@ -4667,6 +4699,8 @@ def stack_models(
     import numpy as np
     from sklearn import metrics
 
+    np.random.seed(seed)
+
     logger.info("Copying training dataset")
     # Storing X_train and y_train in data_X and data_y parameter
     data_X = X_train.copy()
@@ -4675,9 +4709,6 @@ def stack_models(
     # reset index
     data_X.reset_index(drop=True, inplace=True)
     data_y.reset_index(drop=True, inplace=True)
-
-    # setting numpy seed
-    np.random.seed(seed)
 
     # setting optimize parameter
     optimize = all_metrics[all_metrics["Name"] == optimize].iloc[0]
@@ -4922,7 +4953,7 @@ def plot_model(
     save: bool = False,  # added in pycaret 2.0.0
     verbose: bool = True,  # added in pycaret 2.0.0
     system: bool = True,
-    display: Display = None,
+    display: Display = None,  # added in pycaret==2.2.0
 ):  # added in pycaret 2.0.0
 
     """
@@ -4999,7 +5030,7 @@ def plot_model(
 
     function_params_str = ", ".join([f"{k}={v}" for k, v in locals().items()])
 
-    logger = get_logger(globals())
+    logger = get_logger()
 
     logger.info("Initializing plot_model()")
     logger.info(f"plot_model({function_params_str})")
@@ -5104,6 +5135,8 @@ def plot_model(
     import matplotlib.pyplot as plt
     import numpy as np
     import pandas as pd
+
+    np.random.seed(seed)
 
     display.move_progress()
 
@@ -5703,7 +5736,7 @@ def interpret_model(
 
     function_params_str = ", ".join([f"{k}={v}" for k, v in locals().items()])
 
-    logger = get_logger(globals())
+    logger = get_logger()
 
     logger.info("Initializing interpret_model()")
     logger.info(f"interpret_model({function_params_str})")
@@ -5750,6 +5783,8 @@ def interpret_model(
     # general dependencies
     import numpy as np
     import pandas as pd
+
+    np.random.seed(seed)
 
     # storing estimator in model variable
     model = estimator
@@ -5889,7 +5924,7 @@ def calibrate_model(
     fold: int = 10,
     round: int = 4,
     verbose: bool = True,
-    display: Display = None,
+    display: Display = None,  # added in pycaret==2.2.0
 ):
 
     """
@@ -5954,7 +5989,7 @@ def calibrate_model(
 
     function_params_str = ", ".join([f"{k}={v}" for k, v in locals().items()])
 
-    logger = get_logger(globals())
+    logger = get_logger()
 
     logger.info("Initializing calibrate_model()")
     logger.info(f"calibrate_model({function_params_str})")
@@ -6025,8 +6060,8 @@ def calibrate_model(
     # general dependencies
     import numpy as np
     from sklearn import metrics
-    from sklearn.model_selection import StratifiedKFold
-    from sklearn.calibration import CalibratedClassifierCV
+
+    np.random.seed(seed)
 
     logger.info("Copying training dataset")
     # Storing X_train and y_train in data_X and data_y parameter
@@ -6036,9 +6071,6 @@ def calibrate_model(
     # reset index
     data_X.reset_index(drop=True, inplace=True)
     data_y.reset_index(drop=True, inplace=True)
-
-    # setting numpy seed
-    np.random.seed(seed)
 
     display.move_progress()
 
@@ -6336,7 +6368,7 @@ def optimize_threshold(
 
     function_params_str = ", ".join([f"{k}={v}" for k, v in locals().items()])
 
-    logger = get_logger(globals())
+    logger = get_logger()
 
     logger.info("Initializing optimize_threshold()")
     logger.info(f"optimize_threshold({function_params_str})")
@@ -6349,6 +6381,8 @@ def optimize_threshold(
     import numpy as np
     import plotly.express as px
     from IPython.display import clear_output
+
+    np.random.seed(seed)
 
     # cufflinks
     import cufflinks as cf
@@ -6406,29 +6440,13 @@ def optimize_threshold(
     # define model as estimator
     model = estimator
 
-    model_name = str(model).split("(")[0]
-    if "CatBoostClassifier" in model_name:
-        model_name = "CatBoostClassifier"
+    model_name = _get_model_name(model)
 
     # generate predictions and store actual on y_test in numpy array
     actual = np.array(y_test)
 
-    if type(model) is list:
-        logger.info("Model Type : Stacking")
-        predicted = predict_model(model)
-        model_name = "Stacking"
-        clear_output()
-        try:
-            predicted = np.array(predicted["Score"])
-        except:
-            logger.info("Meta model doesn't support predict_proba function.")
-            raise TypeError(
-                "Meta model doesn't support predict_proba function. Cannot be used in optimize_threshold(). "
-            )
-
-    else:
-        predicted = model.predict_proba(X_test)
-        predicted = predicted[:, 1]
+    predicted = model.predict_proba(X_test)
+    predicted = predicted[:, 1]
 
     """
     internal function to calculate loss starts here
@@ -6531,9 +6549,9 @@ def predict_model(
     estimator,
     data: pandas.DataFrame = None,
     probability_threshold: float = None,
-    round: int = 4,
+    round: int = 4,  # added in pycaret==2.2.0
     verbose: bool = True,
-    display: Display = None,
+    display: Display = None,  # added in pycaret==2.2.0
 ):  # added in pycaret==2.0.0
 
     """
@@ -6583,7 +6601,7 @@ def predict_model(
 
     function_params_str = ", ".join([f"{k}={v}" for k, v in locals().items()])
 
-    logger = get_logger(globals())
+    logger = get_logger()
 
     logger.info("Initializing predict_model()")
     logger.info(f"predict_model({function_params_str})")
@@ -6635,6 +6653,8 @@ def predict_model(
     import re
     from sklearn import metrics
     from copy import deepcopy
+
+    np.random.seed(seed)
 
     if not display:
         display = Display(verbose, html_param, logger=logger,)
@@ -6751,7 +6771,7 @@ def predict_model(
     return X_test_
 
 
-def finalize_model(estimator, display=None):
+def finalize_model(estimator, display=None):  # added in pycaret==2.2.0
 
     """
     This function fits the estimator onto the complete dataset passed during the
@@ -6791,7 +6811,7 @@ def finalize_model(estimator, display=None):
 
     function_params_str = ", ".join([f"{k}={v}" for k, v in locals().items()])
 
-    logger = get_logger(globals())
+    logger = get_logger()
 
     logger.info("Initializing finalize_model()")
     logger.info(f"finalize_model({function_params_str})")
@@ -6814,6 +6834,8 @@ def finalize_model(estimator, display=None):
     from sklearn.base import clone
     from copy import deepcopy
     import numpy as np
+
+    np.random.seed(seed)
 
     logger.info("Getting model name")
 
@@ -7218,7 +7240,7 @@ def automl(optimize: str = "Accuracy", use_holdout: bool = False):
 
     function_params_str = ", ".join([f"{k}={v}" for k, v in locals().items()])
 
-    logger = get_logger(globals())
+    logger = get_logger()
 
     logger.info("Initializing automl()")
     logger.info(f"automl({function_params_str})")
@@ -7272,9 +7294,15 @@ def automl(optimize: str = "Accuracy", use_holdout: bool = False):
     return automl_finalized
 
 
-def pull(pop=False) -> pandas.DataFrame:
+def pull(pop=False) -> pandas.DataFrame:  # added in pycaret==2.2.0
     """
     Returns latest displayed table.
+
+    Parameters
+    ----------
+    pop : Boolean, default = False
+        If true, will pop (remove) the returned dataframe from the
+        display container.
 
     Returns
     -------
@@ -7860,6 +7888,28 @@ def models(
 
 
 def get_metrics(force_regenerate: bool = False) -> pandas.DataFrame:
+    """
+    Returns table of metrics available.
+
+    Example
+    -------
+    >>> metrics = get_metrics()
+
+    This will return pandas dataframe with all available 
+    metrics and their metadata.
+
+    Parameters
+    ----------
+    force_regenerate: Boolean, default = False
+        If True, will force the DataFrame to be regenerated,
+        instead of using a cached version.
+
+    Returns
+    -------
+    pandas.DataFrame
+
+    """
+
     if not force_regenerate:
         try:
             return all_metrics
@@ -7869,6 +7919,8 @@ def get_metrics(force_regenerate: bool = False) -> pandas.DataFrame:
     import pandas as pd
     import numpy as np
     from sklearn import metrics
+
+    np.random.seed(seed)
 
     columns = [
         "ID",
@@ -8101,6 +8153,9 @@ def set_config(variable: str, value):
 
 
 def _is_one_vs_rest(e) -> bool:
+    """
+    Checks if the estimator is OneVsRestClassifier.
+    """
     return type(e) == _all_models_internal.loc["OneVsRest"]["Class"]
 
 
@@ -8109,7 +8164,12 @@ def _fix_imbalance(
     ytrain: pandas.DataFrame,
     fix_imbalance_method_param: Any = None,
 ) -> Tuple[pandas.DataFrame, pandas.DataFrame]:
-    logger = get_logger(globals())
+
+    """
+    Method to fix imbalance using fix_imbalance_method_param.
+    """
+
+    logger = get_logger()
     logger.info("Initializing SMOTE")
 
     if fix_imbalance_method_param is None:
@@ -8149,7 +8209,7 @@ def _choose_better(
             "new_results_list and new_estimator_list must have the same length"
         )
 
-    logger = get_logger(globals())
+    logger = get_logger()
     logger.info("choose_better activated")
     display.update_monitor(1, "Compiling Final Results")
     display.update_monitor(2, "Almost Finished")
@@ -8203,6 +8263,9 @@ def _choose_better(
 def _sample_data(
     model, seed: int, train_size: float, data_split_shuffle: bool, display: Display
 ):
+    """
+    Method to sample data.
+    """
     import pandas as pd
     import numpy as np
     from sklearn.linear_model import LogisticRegression
@@ -8214,7 +8277,9 @@ def _sample_data(
     import plotly.express as px
     import datetime, time
 
-    logger = get_logger(globals())
+    np.random.seed(seed)
+
+    logger = get_logger()
 
     logger.info("Sampling dataset")
 
@@ -8393,6 +8458,9 @@ def _sample_data(
 
 
 def _is_multiclass() -> bool:
+    """
+    Method to check if the problem is multiclass.
+    """
     try:
         return y.value_counts().count() > 2
     except:
@@ -8400,24 +8468,36 @@ def _is_multiclass() -> bool:
 
 
 def _get_model_id(e) -> str:
+    """
+    Get model id.
+    """
     import pycaret.internal.utils
 
     return pycaret.internal.utils.get_model_id(e, models(internal=True))
 
 
 def _get_model_name(e) -> str:
+    """
+    Get model name.
+    """
     import pycaret.internal.utils
 
     return pycaret.internal.utils.get_model_name(e, models(internal=True))
 
 
 def _is_special_model(e) -> bool:
+    """
+    Is the model special (eg. VotingClassifier).
+    """
     import pycaret.internal.utils
 
     return pycaret.internal.utils.is_special_model(e, models(internal=True))
 
 
-def _calculate_metrics(ytest, pred_, pred_prob: float, score_dict: dict = None):
+def _calculate_metrics(ytest, pred_, pred_prob: float, score_dict: dict = None) -> dict:
+    """
+    Calculate all metrics in get_metrics().
+    """
     from pycaret.internal.utils import calculate_metrics
 
     return calculate_metrics(get_metrics(), ytest, pred_, pred_prob, score_dict)

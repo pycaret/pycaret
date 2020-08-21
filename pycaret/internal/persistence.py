@@ -5,6 +5,7 @@
 from pycaret.classification import prep_pipe
 from pycaret.internal.utils import get_logger
 from pycaret.internal.Display import Display
+import logging
 
 
 def deploy_model(
@@ -571,6 +572,7 @@ def _create_container_azure(container_name: str):
     Returns
     -------
     cotainer_client
+
     """
 
     logger = get_logger()
@@ -607,9 +609,6 @@ def _upload_blob_azure(
     destination_blob_name : string
         Name of the destination file to be stored on Azure
 
-    Returns
-    -------
-    None
     """
 
     logger = get_logger()
@@ -652,9 +651,6 @@ def _download_blob_azure(
     destination_file_name : string
         Name of the destination file to be stored locally
 
-    Returns
-    -------
-    None
     """
 
     logger = get_logger()

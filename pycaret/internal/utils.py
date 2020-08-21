@@ -7,6 +7,7 @@ import pandas as pd
 import pandas.io.formats.style
 import ipywidgets as ipw
 from IPython.display import display, HTML, clear_output, update_display
+from pycaret.internal.logging import get_logger
 
 
 def get_config(variable: str, globals_d: dict):
@@ -30,7 +31,7 @@ def get_config(variable: str, globals_d: dict):
         [f"{k}={v}" for k, v in locals().items() if not k == "globals_d"]
     )
 
-    logger = get_logger(globals_d)
+    logger = get_logger()
 
     logger.info("Initializing get_config()")
     logger.info(f"get_config({function_params_str})")
@@ -62,7 +63,7 @@ def set_config(variable: str, value, globals_d: dict):
         [f"{k}={v}" for k, v in locals().items() if not k == "globals_d"]
     )
 
-    logger = get_logger(globals_d)
+    logger = get_logger()
 
     logger.info("Initializing set_config()")
     logger.info(f"set_config({function_params_str})")
@@ -82,34 +83,6 @@ def color_df(
         lambda x: [f"background: {color}" if (x.name in names) else "" for i in x],
         axis=axis,
     )
-
-
-def get_logger(globals_d: dict = None):
-    import logging
-
-    try:
-        return globals_d["logger"]
-    except:
-        logger = logging.getLogger("logs")
-        logger.setLevel(logging.DEBUG)
-
-        # create console handler and set level to debug
-        if logger.hasHandlers():
-            logger.handlers.clear()
-
-        ch = logging.FileHandler("logs.log")
-        ch.setLevel(logging.DEBUG)
-
-        # create formatter
-        formatter = logging.Formatter("%(asctime)s:%(levelname)s:%(message)s")
-
-        # add formatter to ch
-        ch.setFormatter(formatter)
-
-        # add ch to logger
-        logger.addHandler(ch)
-
-    return logger
 
 
 def get_model_id(e, all_models: pd.DataFrame) -> str:
