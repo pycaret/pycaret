@@ -447,7 +447,7 @@ def setup(data,
     import sys
     
     from pycaret.utils import __version__
-    ver = __version__()
+    ver = __version__
 
     import logging
 
@@ -2573,7 +2573,7 @@ def compare_models(exclude = None,
                 default_conda_env.get('dependencies').pop(-3)
                 dependencies = default_conda_env.get('dependencies')[-1]
                 from pycaret.utils import __version__
-                dep = 'pycaret==' + str(__version__())
+                dep = 'pycaret==' + str(__version__)
                 dependencies['pip'] = [dep]
                 
                 # define model signature
@@ -3507,7 +3507,7 @@ def create_model(estimator = None,
             default_conda_env.get('dependencies').pop(-3)
             dependencies = default_conda_env.get('dependencies')[-1]
             from pycaret.utils import __version__
-            dep = 'pycaret==' + str(__version__())
+            dep = 'pycaret==' + str(__version__)
             dependencies['pip'] = [dep]
             
             # define model signature
@@ -4906,7 +4906,7 @@ def tune_model(estimator,
             default_conda_env.get('dependencies').pop(-3)
             dependencies = default_conda_env.get('dependencies')[-1]
             from pycaret.utils import __version__
-            dep = 'pycaret==' + str(__version__())
+            dep = 'pycaret==' + str(__version__)
             dependencies['pip'] = [dep]
             
             # define model signature
@@ -5624,7 +5624,7 @@ def ensemble_model(estimator,
             default_conda_env.get('dependencies').pop(-3)
             dependencies = default_conda_env.get('dependencies')[-1]
             from pycaret.utils import __version__
-            dep = 'pycaret==' + str(__version__())
+            dep = 'pycaret==' + str(__version__)
             dependencies['pip'] = [dep]
             
             # define model signature
@@ -6416,7 +6416,7 @@ def blend_models(estimator_list = 'All',
             default_conda_env.get('dependencies').pop(-3)
             dependencies = default_conda_env.get('dependencies')[-1]
             from pycaret.utils import __version__
-            dep = 'pycaret==' + str(__version__())
+            dep = 'pycaret==' + str(__version__)
             dependencies['pip'] = [dep]
             
             # define model signature
@@ -7094,7 +7094,7 @@ def stack_models(estimator_list,
             default_conda_env.get('dependencies').pop(-3)
             dependencies = default_conda_env.get('dependencies')[-1]
             from pycaret.utils import __version__
-            dep = 'pycaret==' + str(__version__())
+            dep = 'pycaret==' + str(__version__)
             dependencies['pip'] = [dep]
             
             # define model signature
@@ -8239,7 +8239,7 @@ def finalize_model(estimator):
             default_conda_env.get('dependencies').pop(-3)
             dependencies = default_conda_env.get('dependencies')[-1]
             from pycaret.utils import __version__
-            dep = 'pycaret==' + str(__version__())
+            dep = 'pycaret==' + str(__version__)
             dependencies['pip'] = [dep]
             
             # define model signature

@@ -4,7 +4,8 @@
 # Release: PyCaret 2.1x
 # Last modified : 12/08/2020
 
-from pycaret.utils import get_logger, Display, color_df
+from pycaret.internal.utils import get_logger, color_df
+from pycaret.internal.Display import Display
 import pandas
 from typing import List, Set, Dict, Tuple, Optional, Any
 
@@ -464,12 +465,12 @@ def setup(
 
     from pycaret.utils import __version__
 
-    ver = __version__()
+    ver = __version__
 
     # create logger
     global logger
 
-    logger = get_logger()
+    logger = get_logger(globals())
 
     logger.info("PyCaret Classification Module")
     logger.info(f"version {ver}")
@@ -1473,7 +1474,7 @@ def setup(
     y = data[target]
 
     # determining target type
-    if y.value_counts().count() > 2:
+    if _is_multiclass():
         target_type = "Multiclass"
     else:
         target_type = "Binary"
@@ -1827,7 +1828,7 @@ def compare_models(
     """
     function_params_str = ", ".join([f"{k}={v}" for k, v in locals().items()])
 
-    logger = get_logger()
+    logger = get_logger(globals())
 
     logger.info("Initializing compare_models()")
     logger.info(f"compare_models({function_params_str})")
@@ -1889,7 +1890,7 @@ def compare_models(
         )
 
     # checking optimize parameter for multiclass
-    if y.value_counts().count() > 2:
+    if _is_multiclass():
         if not all_metrics[all_metrics["Name"] == sort].iloc[0]["Multiclass"]:
             raise TypeError(
                 f"{sort} metric not supported for multiclass problems. See docstring for list of other optimization parameters."
@@ -2005,7 +2006,7 @@ def compare_models(
         if (
             not hasattr(model, "estimators")
             and not isinstance(model, str)
-            and y.value_counts().count() > 2
+            and _is_multiclass()
         ):
             model_name = _get_model_name(model.estimator)
         else:
@@ -2157,7 +2158,7 @@ def compare_models(
                 dependencies = default_conda_env.get("dependencies")[-1]
                 from pycaret.utils import __version__
 
-                dep = f"pycaret=={__version__()}"
+                dep = f"pycaret=={__version__}"
                 dependencies["pip"] = [dep]
 
                 # define model signature
@@ -2194,7 +2195,7 @@ def compare_models(
         color = "lightgrey"
         return f"background-color: {color}"
 
-    if y.value_counts().count() > 2:
+    if _is_multiclass():
 
         compare_models_ = (
             master_display.drop("Object", axis=1)
@@ -2267,6 +2268,8 @@ def create_model(
     verbose: bool = True,
     system: bool = True,  # added in pycaret==2.0.0
     return_fit_time: bool = False,
+    X_train_data: pandas.DataFrame = None,
+    Y_train_data: pandas.DataFrame = None,
     display: Display = None,
     **kwargs,
 ):  # added in pycaret==2.0.0
@@ -2374,7 +2377,7 @@ def create_model(
 
     function_params_str = ", ".join([f"{k}={v}" for k, v in locals().items()])
 
-    logger = get_logger()
+    logger = get_logger(globals())
 
     logger.info("Initializing create_model()")
     logger.info(f"create_model({function_params_str})")
@@ -2520,8 +2523,8 @@ def create_model(
     logger.info("Copying training dataset")
 
     # Storing X_train and y_train in data_X and data_y parameter
-    data_X = X_train.copy()
-    data_y = y_train.copy()
+    data_X = X_train.copy() if X_train_data is None else X_train_data
+    data_y = y_train.copy() if Y_train_data is None else Y_train_data
 
     # reset index
     data_X.reset_index(drop=True, inplace=True)
@@ -2593,7 +2596,7 @@ def create_model(
 
     onevsrest_model_definition = _all_models_internal.loc["OneVsRest"]
     # multiclass checking
-    if y.value_counts().count() > 2 and not _is_special_model(model):
+    if _is_multiclass() and not _is_special_model(model):
         logger.info("Target variable is Multiclass. OneVsRestClassifier activated")
 
         model = onevsrest_model_definition["Class"](
@@ -2900,7 +2903,7 @@ def create_model(
             dependencies = default_conda_env.get("dependencies")[-1]
             from pycaret.utils import __version__
 
-            dep = f"pycaret=={__version__()}"
+            dep = f"pycaret=={__version__}"
             dependencies["pip"] = [dep]
 
             # define model signature
@@ -3042,7 +3045,7 @@ def tune_model(
     """
     function_params_str = ", ".join([f"{k}={v}" for k, v in locals().items()])
 
-    logger = get_logger()
+    logger = get_logger(globals())
 
     logger.info("Initializing tune_model()")
     logger.info(f"tune_model({function_params_str})")
@@ -3094,7 +3097,7 @@ def tune_model(
             )
 
         # checking optimize parameter for multiclass
-        if y.value_counts().count() > 2:
+        if _is_multiclass():
             if not all_metrics[all_metrics["Name"] == optimize].iloc[0]["Multiclass"]:
                 raise TypeError(
                     f"Optimization metric {optimize} not supported for multiclass problems. See docstring for list of other optimization parameters."
@@ -3250,7 +3253,7 @@ def tune_model(
     logger.info("Random search completed")
 
     # multiclass checking
-    if y.value_counts().count() > 2 and not is_stacked_model:
+    if _is_multiclass() and not is_stacked_model:
         onevsrest_model_definition = _all_models_internal.loc["OneVsRest"]
         model = onevsrest_model_definition["Class"](
             model, **onevsrest_model_definition["Args"]
@@ -3319,7 +3322,7 @@ def tune_model(
             mlflow.log_metrics(
                 {
                     k: v
-                    for k, v in model_results.drop("TT (Sec)", axis=1)
+                    for k, v in model_results.drop("TT (Sec)", axis=1, errors="ignore")
                     .loc["Mean"]
                     .items()
                 }
@@ -3414,7 +3417,7 @@ def tune_model(
             dependencies = default_conda_env.get("dependencies")[-1]
             from pycaret.utils import __version__
 
-            dep = f"pycaret=={__version__()}"
+            dep = f"pycaret=={__version__}"
             dependencies["pip"] = [dep]
 
             # define model signature
@@ -3544,7 +3547,7 @@ def ensemble_model(
 
     function_params_str = ", ".join([f"{k}={v}" for k, v in locals().items()])
 
-    logger = get_logger()
+    logger = get_logger(globals())
 
     logger.info("Initializing ensemble_model()")
     logger.info(f"ensemble_model({function_params_str})")
@@ -3629,7 +3632,7 @@ def ensemble_model(
         )
 
     # checking optimize parameter for multiclass
-    if y.value_counts().count() > 2:
+    if _is_multiclass():
         if not all_metrics[all_metrics["Name"] == optimize].iloc[0]["Multiclass"]:
             raise TypeError(
                 f"Optimization metric {optimize} not supported for multiclass problems. See docstring for list of other optimization parameters."
@@ -3757,7 +3760,7 @@ def ensemble_model(
 
     onevsrest_model_definition = _all_models_internal.loc["OneVsRest"]
     # multiclass checking
-    if y.value_counts().count() > 2 and not _is_special_model(model):
+    if _is_multiclass() and not _is_special_model(model):
         logger.info("Target variable is Multiclass. OneVsRestClassifier activated")
 
         model = onevsrest_model_definition["Class"](
@@ -3825,7 +3828,7 @@ def ensemble_model(
             mlflow.log_metrics(
                 {
                     k: v
-                    for k, v in model_results.drop("TT (Sec)", axis=1)
+                    for k, v in model_results.drop("TT (Sec)", axis=1, errors="ignore")
                     .loc["Mean"]
                     .items()
                 }
@@ -3912,7 +3915,7 @@ def ensemble_model(
             dependencies = default_conda_env.get("dependencies")[-1]
             from pycaret.utils import __version__
 
-            dep = f"pycaret=={__version__()}"
+            dep = f"pycaret=={__version__}"
             dependencies["pip"] = [dep]
 
             # define model signature
@@ -4064,7 +4067,7 @@ def blend_models(
 
     function_params_str = ", ".join([f"{k}={v}" for k, v in locals().items()])
 
-    logger = get_logger()
+    logger = get_logger(globals())
 
     logger.info("Initializing blend_models()")
     logger.info(f"blend_models({function_params_str})")
@@ -4152,7 +4155,7 @@ def blend_models(
         )
 
     # checking optimize parameter for multiclass
-    if y.value_counts().count() > 2:
+    if _is_multiclass():
         if not all_metrics[all_metrics["Name"] == optimize].iloc[0]["Multiclass"]:
             raise TypeError(
                 f"Optimization metric {optimize} not supported for multiclass problems. See docstring for list of other optimization parameters."
@@ -4276,7 +4279,7 @@ def blend_models(
 
         estimator_list = list(zip(model_names, estimator_list))
 
-    # if y.value_counts().count() > 2:
+    # if _is_multiclass():
     #    estimator_list = [x.estimator for x in estimator_list]
 
     votingclassifier_model_definition = _all_models_internal.loc["Voting"]
@@ -4340,7 +4343,7 @@ def blend_models(
             mlflow.log_metrics(
                 {
                     k: v
-                    for k, v in model_results.drop("TT (Sec)", axis=1)
+                    for k, v in model_results.drop("TT (Sec)", axis=1, errors="ignore")
                     .loc["Mean"]
                     .items()
                 }
@@ -4409,7 +4412,7 @@ def blend_models(
             dependencies = default_conda_env.get("dependencies")[-1]
             from pycaret.utils import __version__
 
-            dep = f"pycaret=={__version__()}"
+            dep = f"pycaret=={__version__}"
             dependencies["pip"] = [dep]
 
             # define model signature
@@ -4547,7 +4550,7 @@ def stack_models(
 
     function_params_str = ", ".join([f"{k}={v}" for k, v in locals().items()])
 
-    logger = get_logger()
+    logger = get_logger(globals())
 
     logger.info("Initializing stack_models()")
     logger.info(f"stack_models({function_params_str})")
@@ -4603,7 +4606,7 @@ def stack_models(
         )
 
     # checking optimize parameter for multiclass
-    if y.value_counts().count() > 2:
+    if _is_multiclass():
         if not all_metrics[all_metrics["Name"] == optimize].iloc[0]["Multiclass"]:
             raise TypeError(
                 f"Optimization metric {optimize} not supported for multiclass problems. See docstring for list of other optimization parameters."
@@ -4783,7 +4786,7 @@ def stack_models(
             mlflow.log_metrics(
                 {
                     k: v
-                    for k, v in model_results.drop("TT (Sec)", axis=1)
+                    for k, v in model_results.drop("TT (Sec)", axis=1, errors="ignore")
                     .loc["Mean"]
                     .items()
                 }
@@ -4870,7 +4873,7 @@ def stack_models(
             dependencies = default_conda_env.get("dependencies")[-1]
             from pycaret.utils import __version__
 
-            dep = f"pycaret=={__version__()}"
+            dep = f"pycaret=={__version__}"
             dependencies["pip"] = [dep]
 
             # define model signature
@@ -4995,7 +4998,7 @@ def plot_model(
 
     function_params_str = ", ".join([f"{k}={v}" for k, v in locals().items()])
 
-    logger = get_logger()
+    logger = get_logger(globals())
 
     logger.info("Initializing plot_model()")
     logger.info(f"plot_model({function_params_str})")
@@ -5031,7 +5034,7 @@ def plot_model(
 
     # multiclass plot exceptions:
     multiclass_not_available = ["calibration", "threshold", "manifold", "rfe"]
-    if y.value_counts().count() > 2:
+    if _is_multiclass():
         if plot in multiclass_not_available:
             raise ValueError(
                 "Plot Not Available for multiclass problems. Please see docstring for list of available Plots."
@@ -5765,7 +5768,7 @@ def interpret_model(
 
     function_params_str = ", ".join([f"{k}={v}" for k, v in locals().items()])
 
-    logger = get_logger()
+    logger = get_logger(globals())
 
     logger.info("Initializing interpret_model()")
     logger.info(f"interpret_model({function_params_str})")
@@ -6080,7 +6083,7 @@ def calibrate_model(
 
     function_params_str = ", ".join([f"{k}={v}" for k, v in locals().items()])
 
-    logger = get_logger()
+    logger = get_logger(globals())
 
     logger.info("Initializing calibrate_model()")
     logger.info(f"calibrate_model({function_params_str})")
@@ -6276,7 +6279,7 @@ def calibrate_model(
             mlflow.log_metrics(
                 {
                     k: v
-                    for k, v in model_results.drop("TT (Sec)", axis=1)
+                    for k, v in model_results.drop("TT (Sec)", axis=1, errors="ignore")
                     .loc["Mean"]
                     .items()
                 }
@@ -6363,7 +6366,7 @@ def calibrate_model(
             dependencies = default_conda_env.get("dependencies")[-1]
             from pycaret.utils import __version__
 
-            dep = f"pycaret=={__version__()}"
+            dep = f"pycaret=={__version__}"
             dependencies["pip"] = [dep]
 
             # define model signature
@@ -6462,7 +6465,7 @@ def optimize_threshold(
 
     function_params_str = ", ".join([f"{k}={v}" for k, v in locals().items()])
 
-    logger = get_logger()
+    logger = get_logger(globals())
 
     logger.info("Initializing optimize_threshold()")
     logger.info(f"optimize_threshold({function_params_str})")
@@ -6489,7 +6492,7 @@ def optimize_threshold(
     logger.info("Checking exceptions")
 
     # exception 1 for multi-class
-    if y.value_counts().count() > 2:
+    if _is_multiclass():
         raise TypeError(
             "optimize_threshold() cannot be used when target is multi-class. "
         )
@@ -6709,7 +6712,7 @@ def predict_model(
 
     function_params_str = ", ".join([f"{k}={v}" for k, v in locals().items()])
 
-    logger = get_logger()
+    logger = get_logger(globals())
 
     logger.info("Initializing predict_model()")
     logger.info(f"predict_model({function_params_str})")
@@ -6833,7 +6836,7 @@ def predict_model(
             pred_prob = pred_prob[:, 1]
 
     except:
-        pass
+        pred_prob = 0.0
 
     if probability_threshold is not None:
         try:
@@ -6917,7 +6920,7 @@ def finalize_model(estimator, display=None):
 
     function_params_str = ", ".join([f"{k}={v}" for k, v in locals().items()])
 
-    logger = get_logger()
+    logger = get_logger(globals())
 
     logger.info("Initializing finalize_model()")
     logger.info(f"finalize_model({function_params_str})")
@@ -6957,7 +6960,11 @@ def finalize_model(estimator, display=None):
     model_final = clone(estimator)
     display.clear_output()
     model_final = create_model(
-        estimator=model_final, cross_validation=False, verbose=False, system=False
+        estimator=model_final,
+        verbose=False,
+        system=False,
+        X_train_data=X,
+        Y_train_data=y,
     )
     model_results = pull(pop=True)
 
@@ -7003,7 +7010,7 @@ def finalize_model(estimator, display=None):
             mlflow.log_metrics(
                 {
                     k: v
-                    for k, v in model_results.drop("TT (Sec)", axis=1)
+                    for k, v in model_results.drop("TT (Sec)", axis=1, errors="ignore")
                     .loc["Mean"]
                     .items()
                 }
@@ -7084,7 +7091,7 @@ def finalize_model(estimator, display=None):
             dependencies = default_conda_env.get("dependencies")[-1]
             from pycaret.utils import __version__
 
-            dep = f"pycaret=={__version__()}"
+            dep = f"pycaret=={__version__}"
             dependencies["pip"] = [dep]
 
             # define model signature
@@ -7215,9 +7222,9 @@ def deploy_model(model, model_name: str, authentication: dict, platform: str = "
       the platform. 
     
     """
-    import pycaret.utils_persistence
+    import pycaret.internal.persistence
 
-    return pycaret.utils_persistence.deploy_model(
+    return pycaret.internal.persistence.deploy_model(
         model, model_name, authentication, platform, prep_pipe
     )
 
@@ -7261,9 +7268,9 @@ def save_model(model, model_name: str, model_only: bool = False, verbose: bool =
          
     """
 
-    import pycaret.utils_persistence
+    import pycaret.internal.persistence
 
-    return pycaret.utils_persistence.save_model(
+    return pycaret.internal.persistence.save_model(
         model, model_name, prep_pipe if model_only else None, verbose
     )
 
@@ -7314,9 +7321,9 @@ def load_model(
 
     """
 
-    import pycaret.utils_persistence
+    import pycaret.internal.persistence
 
-    return pycaret.utils_persistence.load_model(
+    return pycaret.internal.persistence.load_model(
         model_name, platform, authentication, verbose
     )
 
@@ -7340,7 +7347,7 @@ def automl(optimize: str = "Accuracy", use_holdout: bool = False):
 
     function_params_str = ", ".join([f"{k}={v}" for k, v in locals().items()])
 
-    logger = get_logger()
+    logger = get_logger(globals())
 
     logger.info("Initializing automl()")
     logger.info(f"automl({function_params_str})")
@@ -7353,7 +7360,7 @@ def automl(optimize: str = "Accuracy", use_holdout: bool = False):
         )
 
     # checking optimize parameter for multiclass
-    if y.value_counts().count() > 2:
+    if _is_multiclass():
         if not all_metrics[all_metrics["Name"] == optimize].iloc[0]["Multiclass"]:
             raise TypeError(
                 f"Optimization metric {optimize} not supported for multiclass problems. See docstring for list of other optimization parameters."
@@ -7993,11 +8000,11 @@ def get_metrics(force_regenerate: bool = False) -> pandas.DataFrame:
             "Recall",
             "Recall",
             metrics.make_scorer(metrics.recall_score, average="macro")
-            if y.value_counts().count() > 2
+            if _is_multiclass()
             else "recall",
             metrics.recall_score,
             "pred",
-            {"average": "macro"} if y.value_counts().count() > 2 else {},
+            {"average": "macro"} if _is_multiclass() else {},
             True,
         ),
         (
@@ -8005,11 +8012,11 @@ def get_metrics(force_regenerate: bool = False) -> pandas.DataFrame:
             "Precision",
             "Prec.",
             metrics.make_scorer(metrics.precision_score, average="weighted")
-            if y.value_counts().count() > 2
+            if _is_multiclass()
             else "precision",
             metrics.precision_score,
             "pred",
-            {"average": "weighted"} if y.value_counts().count() > 2 else {},
+            {"average": "weighted"} if _is_multiclass() else {},
             True,
         ),
         (
@@ -8017,11 +8024,11 @@ def get_metrics(force_regenerate: bool = False) -> pandas.DataFrame:
             "F1",
             "F1",
             metrics.make_scorer(metrics.f1_score, average="weighted")
-            if y.value_counts().count() > 2
+            if _is_multiclass()
             else "f1",
             metrics.f1_score,
             "pred",
-            {"average": "weighted"} if y.value_counts().count() > 2 else {},
+            {"average": "weighted"} if _is_multiclass() else {},
             True,
         ),
         (
@@ -8039,7 +8046,7 @@ def get_metrics(force_regenerate: bool = False) -> pandas.DataFrame:
             "MCC",
             "MCC",
             "roc_auc"
-            if y.value_counts().count() > 2
+            if _is_multiclass()
             else metrics.make_scorer(metrics.matthews_corrcoef),
             metrics.matthews_corrcoef,
             "pred",
@@ -8150,88 +8157,9 @@ def get_config(variable: str):
 
     """
 
-    function_params_str = ", ".join([f"{k}={v}" for k, v in locals().items()])
+    import pycaret.internal.utils
 
-    logger = get_logger()
-
-    logger.info("Initializing get_config()")
-    logger.info(f"get_config({function_params_str})")
-
-    if variable == "X":
-        global_var = X
-
-    elif variable == "y":
-        global_var = y
-
-    elif variable == "X_train":
-        global_var = X_train
-
-    elif variable == "X_test":
-        global_var = X_test
-
-    elif variable == "y_train":
-        global_var = y_train
-
-    elif variable == "y_test":
-        global_var = y_test
-
-    elif variable == "seed":
-        global_var = seed
-
-    elif variable == "prep_pipe":
-        global_var = prep_pipe
-
-    elif variable == "folds_shuffle_param":
-        global_var = folds_shuffle_param
-
-    elif variable == "n_jobs_param":
-        global_var = n_jobs_param
-
-    elif variable == "html_param":
-        global_var = html_param
-
-    elif variable == "create_model_container":
-        global_var = create_model_container
-
-    elif variable == "master_model_container":
-        global_var = master_model_container
-
-    elif variable == "display_container":
-        global_var = display_container
-
-    elif variable == "exp_name_log":
-        global_var = exp_name_log
-
-    elif variable == "logging_param":
-        global_var = logging_param
-
-    elif variable == "log_plots_param":
-        global_var = log_plots_param
-
-    elif variable == "USI":
-        global_var = USI
-
-    elif variable == "fix_imbalance_param":
-        global_var = fix_imbalance_param
-
-    elif variable == "fix_imbalance_method_param":
-        global_var = fix_imbalance_method_param
-
-    elif variable == "data_before_preprocess":
-        global_var = data_before_preprocess
-
-    elif variable == "target_param":
-        global_var = target_param
-
-    elif variable == "gpu_param":
-        global_var = gpu_param
-
-    logger.info(f"Global variable: {variable} returned")
-    logger.info(
-        "get_config() succesfully completed......................................"
-    )
-
-    return global_var
+    return pycaret.internal.utils.get_config(variable, globals())
 
 
 def set_config(variable: str, value):
@@ -8270,112 +8198,9 @@ def set_config(variable: str, value):
 
     """
 
-    function_params_str = ", ".join([f"{k}={v}" for k, v in locals().items()])
+    import pycaret.internal.utils
 
-    logger = get_logger()
-
-    logger.info("Initializing set_config()")
-    logger.info(f"set_config({function_params_str})")
-
-    if variable == "X":
-        global X
-        X = value
-
-    elif variable == "y":
-        global y
-        y = value
-
-    elif variable == "X_train":
-        global X_train
-        X_train = value
-
-    elif variable == "X_test":
-        global X_test
-        X_test = value
-
-    elif variable == "y_train":
-        global y_train
-        y_train = value
-
-    elif variable == "y_test":
-        global y_test
-        y_test = value
-
-    elif variable == "seed":
-        global seed
-        seed = value
-
-    elif variable == "prep_pipe":
-        global prep_pipe
-        prep_pipe = value
-
-    elif variable == "folds_shuffle_param":
-        global folds_shuffle_param
-        folds_shuffle_param = value
-
-    elif variable == "n_jobs_param":
-        global n_jobs_param
-        n_jobs_param = value
-
-    elif variable == "html_param":
-        global html_param
-        html_param = value
-
-    elif variable == "create_model_container":
-        global create_model_container
-        create_model_container = value
-
-    elif variable == "master_model_container":
-        global master_model_container
-        master_model_container = value
-
-    elif variable == "display_container":
-        global display_container
-        display_container = value
-
-    elif variable == "exp_name_log":
-        global exp_name_log
-        exp_name_log = value
-
-    elif variable == "logging_param":
-        global logging_param
-        logging_param = value
-
-    elif variable == "log_plots_param":
-        global log_plots_param
-        log_plots_param = value
-
-    elif variable == "USI":
-        global USI
-        USI = value
-
-    elif variable == "fix_imbalance_param":
-        global fix_imbalance_param
-        fix_imbalance_param = value
-
-    elif variable == "fix_imbalance_method_param":
-        global fix_imbalance_method_param
-        fix_imbalance_method_param = value
-
-    elif variable == "data_before_preprocess":
-        global data_before_preprocess
-        data_before_preprocess = value
-
-    logger.info(f"Global variable: {variable} updated")
-    logger.info(
-        "set_config() succesfully completed......................................"
-    )
-
-
-def get_system_logs():
-
-    """
-    Read and print 'logs.log' file from current active directory
-    """
-
-    import pycaret.utils
-
-    return pycaret.utils.get_system_logs()
+    return pycaret.internal.utils.set_config(variable, value, globals())
 
 
 def _get_model_id(e) -> str:
@@ -8447,7 +8272,7 @@ def _fix_imbalance(
     ytrain: pandas.DataFrame,
     fix_imbalance_method_param: Any = None,
 ) -> Tuple[pandas.DataFrame, pandas.DataFrame]:
-    logger = get_logger()
+    logger = get_logger(globals())
     logger.info("Initializing SMOTE")
 
     if fix_imbalance_method_param is None:
@@ -8487,7 +8312,7 @@ def _choose_better(
             "new_results_list and new_estimator_list must have the same length"
         )
 
-    logger = get_logger()
+    logger = get_logger(globals())
     logger.info("choose_better activated")
     display.update_monitor(1, "Compiling Final Results")
     display.update_monitor(2, "Almost Finished")
@@ -8552,7 +8377,7 @@ def _sample_data(
     import plotly.express as px
     import datetime, time
 
-    logger = get_logger()
+    logger = get_logger(globals())
 
     logger.info("Sampling dataset")
 
@@ -8627,7 +8452,7 @@ def _sample_data(
         split_percent.append(i)
 
         # auc
-        if y.value_counts().count() > 2:
+        if _is_multiclass():
             pass
         else:
             try:
@@ -8639,7 +8464,7 @@ def _sample_data(
                 pass
 
         # recall
-        if y.value_counts().count() > 2:
+        if _is_multiclass():
             recall = metrics.recall_score(y_test, pred_, average="macro")
             metric_results.append(recall)
             metric_name.append("Recall")
@@ -8651,7 +8476,7 @@ def _sample_data(
             split_percent.append(i)
 
         # precision
-        if y.value_counts().count() > 2:
+        if _is_multiclass():
             precision = metrics.precision_score(y_test, pred_, average="weighted")
             metric_results.append(precision)
             metric_name.append("Precision")
@@ -8663,7 +8488,7 @@ def _sample_data(
             split_percent.append(i)
 
         # F1
-        if y.value_counts().count() > 2:
+        if _is_multiclass():
             f1 = metrics.f1_score(y_test, pred_, average="weighted")
             metric_results.append(f1)
             metric_name.append("F1")
@@ -8782,3 +8607,10 @@ def _sample_data(
         )
 
     return X_train, X_test, y_train, y_test
+
+
+def _is_multiclass() -> bool:
+    try:
+        return y.value_counts().count() > 2
+    except:
+        return False

@@ -1,5 +1,6 @@
 from pycaret.classification import prep_pipe
-from pycaret.utils import get_logger, Display
+from pycaret.internal.utils import get_logger
+from pycaret.internal.Display import Display
 
 
 def deploy_model(
