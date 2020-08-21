@@ -12,7 +12,7 @@ def test():
     assert isinstance(data, pd.core.frame.DataFrame)
 
     # init setup
-    reg1 = pycaret.regression.setup(data, target='medv',silent=True, html=False, session_id=123)
+    reg1 = pycaret.regression.setup(data, target='medv',silent=True, log_experiment=True, html=False, session_id=123)
     assert isinstance(reg1, tuple)
 
     # compare models
