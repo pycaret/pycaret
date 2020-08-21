@@ -91,31 +91,27 @@ def deploy_model(
     
     """
 
-    import sys
+    function_params_str = ", ".join([f"{k}={v}" for k, v in locals().items()])
 
     logger = get_logger()
 
     logger.info("Initializing deploy_model()")
-    logger.info(
-        """deploy_model(model={}, model_name={}, authentication={}, platform={})""".format(
-            str(model), str(model_name), str(authentication), str(platform)
-        )
-    )
+    logger.info(f"deploy_model({function_params_str})")
+
+    import sys
 
     # ignore warnings
     import warnings
 
     warnings.filterwarnings("ignore")
 
-    allowed_platforms = ['aws', 'gcp', 'azure']
+    allowed_platforms = ["aws", "gcp", "azure"]
 
     if platform not in allowed_platforms:
         logger.error(
             f"Platform {platform} is not supported by pycaret or illegal option"
         )
-        sys.exit(
-            f"Platform {platform} is not supported by pycaret or illegal option"
-        )
+        sys.exit(f"Platform {platform} is not supported by pycaret or illegal option")
 
     if platform:
         if not authentication:
@@ -254,16 +250,14 @@ def save_model(model, model_name: str, prep_pipe_=None, verbose: bool = True):
          
     """
 
-    from copy import deepcopy
+    function_params_str = ", ".join([f"{k}={v}" for k, v in locals().items()])
 
     logger = get_logger()
 
     logger.info("Initializing save_model()")
-    logger.info(
-        """save_model(model={}, model_name={}, verbose={})""".format(
-            str(model), str(model_name), str(verbose)
-        )
-    )
+    logger.info(f"save_model({function_params_str})")
+
+    from copy import deepcopy
 
     # ignore warnings
     import warnings
@@ -331,6 +325,13 @@ def load_model(
     Model Object
 
     """
+
+    function_params_str = ", ".join([f"{k}={v}" for k, v in locals().items()])
+
+    logger = get_logger()
+
+    logger.info("Initializing load_model()")
+    logger.info(f"load_model({function_params_str})")
 
     # ignore warnings
     import warnings
@@ -400,11 +401,7 @@ def load_model(
             print("Transformation Pipeline and Model Successfully Loaded")
         return model
     else:
-        print(
-            "Platform { } is not supported by pycaret or illegal option".format(
-                platform
-            )
-        )
+        print(f"Platform {platform} is not supported by pycaret or illegal option")
 
 
 def _create_bucket_gcp(project_name: str, bucket_name: str):
