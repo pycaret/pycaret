@@ -12,7 +12,7 @@ def test():
     assert isinstance(data, pd.core.frame.DataFrame)
 
     # init setup
-    clu1 = pycaret.clustering.setup(data, normalize = True, silent=True, html=False, session_id=123)
+    clu1 = pycaret.clustering.setup(data, normalize = True, log_experiment=True, silent=True, html=False, session_id=123)
     assert isinstance(clu1, tuple)
     
     # create model

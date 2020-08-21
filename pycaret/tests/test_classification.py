@@ -13,8 +13,27 @@ def test():
     assert isinstance(data, pd.core.frame.DataFrame)
 
     # init setup
-    clf1 = pycaret.classification.setup(data, target='Purchase', silent=True, html=False, session_id=123)
+    clf1 = pycaret.classification.setup(data, target='Purchase', log_experiment=True, silent=True, html=False, session_id=123)
     assert isinstance(clf1, tuple)
+    assert isinstance(clf1[0], pd.core.frame.DataFrame)
+    assert isinstance(clf1[1], pd.core.series.Series)
+    assert isinstance(clf1[2], pd.core.frame.DataFrame)
+    assert isinstance(clf1[3], pd.core.frame.DataFrame)
+    assert isinstance(clf1[4], pd.core.series.Series)
+    assert isinstance(clf1[5], pd.core.series.Series)
+    assert isinstance(clf1[6], int)
+    assert isinstance(clf1[8], list)
+    assert isinstance(clf1[9], bool)
+    assert isinstance(clf1[10], int)
+    assert isinstance(clf1[11], bool)
+    assert isinstance(clf1[12], list)
+    assert isinstance(clf1[13], list)
+    assert isinstance(clf1[14], list)
+    assert isinstance(clf1[15], str)
+    assert isinstance(clf1[16], bool)
+    assert isinstance(clf1[17], bool)
+    assert isinstance(clf1[18], str)
+    assert isinstance(clf1[19], bool)
 
     # compare models
     top3 = pycaret.classification.compare_models(n_select = 3, exclude=['catboost'])
