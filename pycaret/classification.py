@@ -6836,9 +6836,9 @@ def predict_model(
             pred_prob = pred_prob[:, 1]
 
     except:
-        pred_prob = 0.0
+        pred_prob = None
 
-    if probability_threshold is not None:
+    if probability_threshold is not None and pred_prob is not None:
         try:
             pred_ = (pred_prob >= probability_threshold).astype(int)
         except:
@@ -6862,7 +6862,7 @@ def predict_model(
     else:
         X_test_.insert(len(X_test_.columns), "Label", label["Label"].to_list())
 
-    if hasattr(estimator, "predict_proba"):
+    if pred_prob is not None:
         try:
             score = pd.DataFrame(pred_prob)
             score.columns = ["Score"]
