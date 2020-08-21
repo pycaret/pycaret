@@ -5260,8 +5260,6 @@ def plot_model(
         X_train_transformed = pca.fit_transform(X_train_transformed)
         X_test_transformed = pca.fit_transform(X_test_transformed)
 
-        display.move_progress()
-
         y_train_transformed = y_train.copy()
         y_test_transformed = y_test.copy()
         y_train_transformed = np.array(y_train_transformed)
@@ -5495,7 +5493,6 @@ def plot_model(
         from sklearn.preprocessing import StandardScaler
         from sklearn.decomposition import PCA
 
-        display.move_progress()
         X_train_transformed = X_train.select_dtypes(include="float64")
         logger.info("Fitting StandardScaler()")
         X_train_transformed = StandardScaler().fit_transform(X_train_transformed)
@@ -5566,11 +5563,10 @@ def plot_model(
 
     elif plot == "parameter":
 
-        display.clear_output()
         param_df = pd.DataFrame.from_dict(
             estimator.get_params(estimator), orient="index", columns=["Parameters"]
         )
-        display(param_df)
+        display.display(param_df, clear=True)
         logger.info("Visual Rendered Successfully")
 
     logger.info(
