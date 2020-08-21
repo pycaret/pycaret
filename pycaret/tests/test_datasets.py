@@ -11,7 +11,7 @@ def test():
     assert isinstance(data, pd.core.frame.DataFrame)
     row, col = data.shape
     assert row > 1
-    assert col == 7
+    assert col == 8
 
     # loading dataset
     credit = pycaret.datasets.get_data('credit')
