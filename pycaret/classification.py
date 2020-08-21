@@ -5724,25 +5724,14 @@ def interpret_model(
         )
 
     # allowed models
-    allowed_models = [
-        "RandomForestClassifier",
-        "DecisionTreeClassifier",
-        "ExtraTreesClassifier",
-        "GradientBoostingClassifier",
-        "XGBClassifier",
-        "LGBMClassifier",
-        "CatBoostClassifier",
-    ]
+    model_id = _get_model_id(estimator)
 
-    model_name = str(estimator).split("(")[0]
+    shap_models = _all_models_internal[_all_models_internal["SHAP"] != False]
+    shap_models_ids = set(shap_models.index)
 
-    # Statement to find CatBoost and change name :
-    if model_name.find("catboost.core.CatBoostClassifier") != -1:
-        model_name = "CatBoostClassifier"
-
-    if model_name not in allowed_models:
+    if model_id not in shap_models_ids:
         raise TypeError(
-            "This function only supports tree based models for binary classification."
+            f"This function only supports tree based models for binary classification: {', '.join(shap_models['Name'].to_list())}."
         )
 
     # plot type
@@ -5761,47 +5750,25 @@ def interpret_model(
     # general dependencies
     import numpy as np
     import pandas as pd
-    import shap
 
     # storing estimator in model variable
     model = estimator
 
     # defining type of classifier
-    type1 = [
-        "RandomForestClassifier",
-        "DecisionTreeClassifier",
-        "ExtraTreesClassifier",
-        "LGBMClassifier",
-    ]
-    type2 = ["GradientBoostingClassifier", "XGBClassifier", "CatBoostClassifier"]
+    shap_models_type1 = set(shap_models[shap_models["SHAP"] == "type1"].index)
+    shap_models_type2 = set(shap_models[shap_models["SHAP"] == "type2"].index)
+
+    logger.info(f"plot type: {plot}")
 
     if plot == "summary":
 
-        logger.info("plot type: summary")
-
-        if model_name in type1:
-
-            logger.info("model type detected: type 1")
-            logger.info("Creating TreeExplainer")
-            explainer = shap.TreeExplainer(model)
-            logger.info("Compiling shap values")
-            shap_values = explainer.shap_values(X_test)
-            shap.summary_plot(shap_values, X_test, **kwargs)
-            logger.info("Visual Rendered Successfully")
-
-        elif model_name in type2:
-
-            logger.info("model type detected: type 2")
-            logger.info("Creating TreeExplainer")
-            explainer = shap.TreeExplainer(model)
-            logger.info("Compiling shap values")
-            shap_values = explainer.shap_values(X_test)
-            shap.summary_plot(shap_values, X_test, **kwargs)
-            logger.info("Visual Rendered Successfully")
+        logger.info("Creating TreeExplainer")
+        explainer = shap.TreeExplainer(model)
+        logger.info("Compiling shap values")
+        shap_values = explainer.shap_values(X_test)
+        shap_plot = shap.summary_plot(shap_values, X_test, **kwargs)
 
     elif plot == "correlation":
-
-        logger.info("plot type: correlation")
 
         if feature == None:
 
@@ -5817,65 +5784,48 @@ def interpret_model(
             )
             dependence = feature
 
-        if model_name in type1:
-            logger.info("model type detected: type 1")
-            logger.info("Creating TreeExplainer")
-            explainer = shap.TreeExplainer(model)
-            logger.info("Compiling shap values")
-            shap_values = explainer.shap_values(X_test)
-            shap.dependence_plot(dependence, shap_values[1], X_test, **kwargs)
-            logger.info("Visual Rendered Successfully")
+        logger.info("Creating TreeExplainer")
+        explainer = shap.TreeExplainer(model)
+        logger.info("Compiling shap values")
+        shap_values = explainer.shap_values(X_test)
 
-        elif model_name in type2:
+        if model_id in shap_models_type1:
+            logger.info("model type detected: type 1")
+            shap_plot = shap.dependence_plot(
+                dependence, shap_values[1], X_test, **kwargs
+            )
+        elif model_id in shap_models_type2:
             logger.info("model type detected: type 2")
-            logger.info("Creating TreeExplainer")
-            explainer = shap.TreeExplainer(model)
-            logger.info("Compiling shap values")
-            shap_values = explainer.shap_values(X_test)
-            shap.dependence_plot(dependence, shap_values, X_test, **kwargs)
-            logger.info("Visual Rendered Successfully")
+            shap_plot = shap.dependence_plot(dependence, shap_values, X_test, **kwargs)
 
     elif plot == "reason":
 
-        logger.info("plot type: reason")
-
-        if model_name in type1:
+        if model_id in shap_models_type1:
             logger.info("model type detected: type 1")
+
+            logger.info("Creating TreeExplainer")
+            explainer = shap.TreeExplainer(model)
+            logger.info("Compiling shap values")
 
             if observation is None:
                 logger.warning(
                     "Observation set to None. Model agnostic plot will be rendered."
                 )
-                logger.info("Creating TreeExplainer")
-                explainer = shap.TreeExplainer(model)
-                logger.info("Compiling shap values")
                 shap_values = explainer.shap_values(X_test)
                 shap.initjs()
-                logger.info("Visual Rendered Successfully")
-                logger.info(
-                    "interpret_model() succesfully completed......................................"
-                )
-                return shap.force_plot(
+                shap_plot = shap.force_plot(
                     explainer.expected_value[1], shap_values[1], X_test, **kwargs
                 )
 
             else:
+                row_to_show = observation
+                data_for_prediction = X_test.iloc[row_to_show]
 
-                if model_name == "LGBMClassifier":
+                if model_id == "lightgbm":
                     logger.info("model type detected: LGBMClassifier")
-
-                    row_to_show = observation
-                    data_for_prediction = X_test.iloc[row_to_show]
-                    logger.info("Creating TreeExplainer")
-                    explainer = shap.TreeExplainer(model)
-                    logger.info("Compiling shap values")
                     shap_values = explainer.shap_values(X_test)
                     shap.initjs()
-                    logger.info("Visual Rendered Successfully")
-                    logger.info(
-                        "interpret_model() succesfully completed......................................"
-                    )
-                    return shap.force_plot(
+                    shap_plot = shap.force_plot(
                         explainer.expected_value[1],
                         shap_values[0][row_to_show],
                         data_for_prediction,
@@ -5884,41 +5834,31 @@ def interpret_model(
 
                 else:
                     logger.info("model type detected: Unknown")
-                    row_to_show = observation
-                    data_for_prediction = X_test.iloc[row_to_show]
-                    logger.info("Creating TreeExplainer")
-                    explainer = shap.TreeExplainer(model)
-                    logger.info("Compiling shap values")
+
                     shap_values = explainer.shap_values(data_for_prediction)
                     shap.initjs()
-                    logger.info("Visual Rendered Successfully")
-                    logger.info(
-                        "interpret_model() succesfully completed......................................"
-                    )
-                    return shap.force_plot(
+                    shap_plot = shap.force_plot(
                         explainer.expected_value[1],
                         shap_values[1],
                         data_for_prediction,
                         **kwargs,
                     )
 
-        elif model_name in type2:
+        elif model_id in shap_models_type2:
             logger.info("model type detected: type 2")
+
+            logger.info("Creating TreeExplainer")
+            explainer = shap.TreeExplainer(model)
+            logger.info("Compiling shap values")
+            shap_values = explainer.shap_values(X_test)
+            shap.initjs()
 
             if observation is None:
                 logger.warning(
                     "Observation set to None. Model agnostic plot will be rendered."
                 )
-                logger.info("Creating TreeExplainer")
-                explainer = shap.TreeExplainer(model)
-                logger.info("Compiling shap values")
-                shap_values = explainer.shap_values(X_test)
-                shap.initjs()
-                logger.info("Visual Rendered Successfully")
-                logger.info(
-                    "interpret_model() succesfully completed......................................"
-                )
-                return shap.force_plot(
+
+                shap_plot = shap.force_plot(
                     explainer.expected_value, shap_values, X_test, **kwargs
                 )
 
@@ -5926,25 +5866,21 @@ def interpret_model(
 
                 row_to_show = observation
                 data_for_prediction = X_test.iloc[row_to_show]
-                logger.info("Creating TreeExplainer")
-                explainer = shap.TreeExplainer(model)
-                logger.info("Compiling shap values")
-                shap_values = explainer.shap_values(X_test)
-                shap.initjs()
-                logger.info("Visual Rendered Successfully")
-                logger.info(
-                    "interpret_model() succesfully completed......................................"
-                )
-                return shap.force_plot(
+
+                shap_plot = shap.force_plot(
                     explainer.expected_value,
                     shap_values[row_to_show, :],
                     X_test.iloc[row_to_show, :],
                     **kwargs,
                 )
 
+    logger.info("Visual Rendered Successfully")
+
     logger.info(
         "interpret_model() succesfully completed......................................"
     )
+
+    return shap_plot
 
 
 def calibrate_model(
@@ -7522,7 +7458,14 @@ def models(
             ),
         ]
 
-        internal_columns = ["Special", "Class", "Args", "Tune Grid", "Tune Args"]
+        internal_columns = [
+            "Special",
+            "Class",
+            "Args",
+            "Tune Grid",
+            "Tune Args",
+            "SHAP",
+        ]
         internal_rows = [
             (
                 False,
@@ -7534,6 +7477,7 @@ def models(
                     "class_weight": ["balanced", None],
                 },
                 {"iid": False},
+                False,
             ),
             (
                 False,
@@ -7545,6 +7489,7 @@ def models(
                     "metric": ["euclidean", "manhattan"],
                 },
                 {"iid": False},
+                False,
             ),
             (
                 False,
@@ -7583,6 +7528,7 @@ def models(
                     ]
                 },
                 {},
+                False,
             ),
             (
                 False,
@@ -7595,6 +7541,7 @@ def models(
                     "criterion": ["gini", "entropy"],
                 },
                 {"iid": False},
+                "type1",
             ),
             (
                 False,
@@ -7624,6 +7571,7 @@ def models(
                     "eta0": [0.001, 0.01, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5],
                 },
                 {},
+                False,
             ),
             (
                 False,
@@ -7637,6 +7585,7 @@ def models(
                 },
                 {"C": np.arange(0, 50, 0.01), "class_weight": ["balanced", None],},
                 {},
+                False,
             ),
             (
                 False,
@@ -7657,6 +7606,7 @@ def models(
                     ]
                 },
                 {},
+                False,
             ),
             (
                 False,
@@ -7676,6 +7626,7 @@ def models(
                     "activation": ["tanh", "identity", "logistic", "relu"],
                 },
                 {"iid": False},
+                False,
             ),
             (
                 False,
@@ -7687,6 +7638,7 @@ def models(
                     "normalize": [True, False],
                 },
                 {},
+                False,
             ),
             (
                 False,
@@ -7702,6 +7654,7 @@ def models(
                     "bootstrap": [True, False],
                 },
                 {},
+                "type1",
             ),
             (
                 False,
@@ -7709,6 +7662,7 @@ def models(
                 {},
                 {"reg_param": np.arange(0, 1, 0.01)},
                 {},
+                False,
             ),
             (
                 False,
@@ -7720,6 +7674,7 @@ def models(
                     "algorithm": ["SAMME", "SAMME.R"],
                 },
                 {},
+                False,
             ),
             (
                 False,
@@ -7735,6 +7690,7 @@ def models(
                     "max_features": ["auto", "sqrt", "log2"],
                 },
                 {},
+                "type2",
             ),
             (
                 False,
@@ -7763,6 +7719,7 @@ def models(
                     ],
                 },
                 {},
+                False,
             ),
             (
                 False,
@@ -7778,6 +7735,7 @@ def models(
                     "bootstrap": [True, False],
                 },
                 {},
+                "type1",
             ),
             (
                 False,
@@ -7816,6 +7774,7 @@ def models(
                     "min_child_weight": [1, 2, 3, 4],
                 },
                 {},
+                "type2",
             ),
             (
                 False,
@@ -7831,6 +7790,7 @@ def models(
                     "reg_lambda": [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9],
                 },
                 {},
+                "type1",
             ),
             (
                 False,
@@ -7844,6 +7804,7 @@ def models(
                     "border_count": [32, 5, 10, 20, 50, 100, 200],
                 },
                 {},
+                "type2",
             ),
             (
                 True,
@@ -7855,11 +7816,12 @@ def models(
                     "bootstrap_features": [True, False],
                 },
                 {},
+                False,
             ),
-            (True, StackingClassifier, {}, {}, {},),
-            (True, VotingClassifier, {}, {}, {},),
-            (True, OneVsRestClassifier, {"n_jobs": n_jobs_param}, {}, {},),
-            (True, CalibratedClassifierCV, {}, {}, {},),
+            (True, StackingClassifier, {}, {}, {}, False),
+            (True, VotingClassifier, {}, {}, {}, False),
+            (True, OneVsRestClassifier, {"n_jobs": n_jobs_param}, {}, {}, False),
+            (True, CalibratedClassifierCV, {}, {}, {}, False),
         ]
 
         df_internal = pd.DataFrame(internal_rows)
