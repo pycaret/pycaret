@@ -98,7 +98,7 @@ def setup(data,
     import sys
     
     from pycaret.utils import __version__
-    ver = __version__()
+    ver = __version__
 
     import logging
 

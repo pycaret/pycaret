@@ -293,7 +293,7 @@ def setup(data,
     import sys
     
     from pycaret.utils import __version__
-    ver = __version__()
+    ver = __version__
 
     import logging
 
@@ -1643,7 +1643,7 @@ def create_model(model = None,
             default_conda_env.get('dependencies').pop(-3)
             dependencies = default_conda_env.get('dependencies')[-1]
             from pycaret.utils import __version__
-            dep = 'pycaret==' + str(__version__())
+            dep = 'pycaret==' + str(__version__)
             dependencies['pip'] = [dep]
             
             # define model signature
@@ -3614,7 +3614,7 @@ def tune_model(model=None,
             default_conda_env.get('dependencies').pop(-3)
             dependencies = default_conda_env.get('dependencies')[-1]
             from pycaret.utils import __version__
-            dep = 'pycaret==' + str(__version__())
+            dep = 'pycaret==' + str(__version__)
             dependencies['pip'] = [dep]
             
             # define model signature
