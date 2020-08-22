@@ -1,0 +1,25 @@
+name: apply-black
+# Support only when "pull request" is executed
+on: pull_request
+jobs:
+  auto-format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v1
+        with:
+          ref: ${{ github.head_ref }}
+      - name: black
+        uses: lgeiger/black-action@v1.0.1
+        with:
+          args: .
+      - name: check
+        id: git-check
+        run: echo ::set-output name=modified::$(if git diff-index --quiet HEAD --; then echo "false"; else echo "true"; fi)
+      - name: push
+        if: steps.git-check.outputs.modified == 'true'
+        run: |
+          git config --global user.email "action@github.com"
+          git config --global user.name "GitHub Action"
+          git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}
+          git commit -am "Apply black"
+          git push
