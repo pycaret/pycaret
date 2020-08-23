@@ -2498,8 +2498,8 @@ def create_model(
     logger.info("Copying training dataset")
 
     # Storing X_train and y_train in data_X and data_y parameter
-    data_X = X_train.copy() if X_train_data is None else X_train_data
-    data_y = y_train.copy() if Y_train_data is None else Y_train_data
+    data_X = X_train.copy() if X_train_data is None else X_train_data.copy()
+    data_y = y_train.copy() if Y_train_data is None else Y_train_data.copy()
 
     # reset index
     data_X.reset_index(drop=True, inplace=True)
@@ -2743,6 +2743,9 @@ def create_model(
     display.update_monitor(1, "Finalizing Model")
     display.update_monitor(2, "Almost Finished")
     display.display_monitor()
+
+    if fix_imbalance_param:
+        data_X, data_y = _fix_imbalance(data_X, data_y, fix_imbalance_method_param)
 
     model_fit_start = time.time()
     logger.info("Finalizing model")
