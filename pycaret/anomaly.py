@@ -532,21 +532,21 @@ def setup(data,
     
     #pca components check
     if pca is True:
-        if pca_method is not 'linear':
+        if pca_method != 'linear':
             if pca_components is not None:
                 if(type(pca_components)) is not int:
                     sys.exit("(Type Error): pca_components parameter must be integer when pca_method is not 'linear'. ")
 
     #pca components check 2
     if pca is True:
-        if pca_method is not 'linear':
+        if pca_method != 'linear':
             if pca_components is not None:
                 if pca_components > len(data.columns):
                     sys.exit("(Type Error): pca_components parameter cannot be greater than original features space.")                
  
     #pca components check 3
     if pca is True:
-        if pca_method is 'linear':
+        if pca_method == 'linear':
             if pca_components is not None:
                 if type(pca_components) is not float:
                     if pca_components > len(data.columns): 
