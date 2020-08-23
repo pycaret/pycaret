@@ -5024,6 +5024,9 @@ def plot_model(
     plot_name = available_plots[plot]
     display.move_progress()
 
+    if fix_imbalance_param:
+        X_train, y_train = _fix_imbalance(X_train, y_train, fix_imbalance_method_param)
+
     if plot == "auc":
 
         from yellowbrick.classifier import ROCAUC
