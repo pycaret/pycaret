@@ -3513,6 +3513,22 @@ def create_model(estimator = None,
         if html_param:
             update_display(monitor, display_id = 'monitor')
     
+    if fix_imbalance_param:
+        
+        logger.info("Initializing SMOTE")
+
+        if fix_imbalance_method_param is None:
+            import six
+            import sys
+            sys.modules['sklearn.externals.six'] = six
+            from imblearn.over_sampling import SMOTE
+            resampler = SMOTE(random_state=seed)
+        else:
+            resampler = fix_imbalance_method_param
+
+        data_X,data_y = resampler.fit_sample(data_X, data_y)
+        logger.info("Resampling completed")
+
     model_fit_start = time.time()
     logger.info("Finalizing model")
     model.fit(data_X, data_y)
@@ -4752,6 +4768,22 @@ def tune_model(estimator = None,
         if html_param:
             update_display(monitor, display_id = 'monitor')
     
+    if fix_imbalance_param:
+        
+        logger.info("Initializing SMOTE")
+
+        if fix_imbalance_method_param is None:
+            import six
+            import sys
+            sys.modules['sklearn.externals.six'] = six
+            from imblearn.over_sampling import SMOTE
+            resampler = SMOTE(random_state=seed)
+        else:
+            resampler = fix_imbalance_method_param
+
+        data_X,data_y = resampler.fit_sample(data_X, data_y)
+        logger.info("Resampling completed")
+
     model_fit_start = time.time()
     logger.info("Finalizing model")
     best_model.fit(data_X, data_y)
@@ -5553,6 +5585,22 @@ def ensemble_model(estimator,
         if html_param:
             update_display(monitor, display_id = 'monitor')
     
+    if fix_imbalance_param:
+        
+        logger.info("Initializing SMOTE")
+
+        if fix_imbalance_method_param is None:
+            import six
+            import sys
+            sys.modules['sklearn.externals.six'] = six
+            from imblearn.over_sampling import SMOTE
+            resampler = SMOTE(random_state=seed)
+        else:
+            resampler = fix_imbalance_method_param
+
+        data_X,data_y = resampler.fit_sample(data_X, data_y)
+        logger.info("Resampling completed")
+
     model_fit_start = time.time()
     logger.info("Finalizing model")
     model.fit(data_X, data_y)
@@ -6428,6 +6476,22 @@ def blend_models(estimator_list = 'All',
         if html_param:
             update_display(monitor, display_id = 'monitor')
     
+    if fix_imbalance_param:
+        
+        logger.info("Initializing SMOTE")
+
+        if fix_imbalance_method_param is None:
+            import six
+            import sys
+            sys.modules['sklearn.externals.six'] = six
+            from imblearn.over_sampling import SMOTE
+            resampler = SMOTE(random_state=seed)
+        else:
+            resampler = fix_imbalance_method_param
+
+        data_X,data_y = resampler.fit_sample(data_X, data_y)
+        logger.info("Resampling completed")
+
     model_fit_start = time.time()
     logger.info("Finalizing model")
     model.fit(data_X, data_y)
@@ -7118,6 +7182,22 @@ def stack_models(estimator_list,
         if html_param:
             update_display(monitor, display_id = 'monitor')
     
+    if fix_imbalance_param:
+        
+        logger.info("Initializing SMOTE")
+
+        if fix_imbalance_method_param is None:
+            import six
+            import sys
+            sys.modules['sklearn.externals.six'] = six
+            from imblearn.over_sampling import SMOTE
+            resampler = SMOTE(random_state=seed)
+        else:
+            resampler = fix_imbalance_method_param
+
+        data_X,data_y = resampler.fit_sample(data_X, data_y)
+        logger.info("Resampling completed")
+
     model_fit_start = time.time()
     logger.info("Finalizing model")
     model.fit(data_X, data_y)
@@ -7525,6 +7605,22 @@ def plot_model(estimator,
     #AUC, #Confusion Matrix and #Feature Importance
 
     logger.info("plot type: " + str(plot)) 
+
+    if fix_imbalance_param:
+        
+        logger.info("Initializing SMOTE")
+
+        if fix_imbalance_method_param is None:
+            import six
+            import sys
+            sys.modules['sklearn.externals.six'] = six
+            from imblearn.over_sampling import SMOTE
+            resampler = SMOTE(random_state=seed)
+        else:
+            resampler = fix_imbalance_method_param
+
+        X_train,y_train = resampler.fit_sample(X_train, y_train)
+        logger.info("Resampling completed")
 
     if plot == 'auc':
 
@@ -8857,6 +8953,22 @@ def calibrate_model(estimator,
         if html_param:
             update_display(monitor, display_id = 'monitor')
     
+    if fix_imbalance_param:
+        
+        logger.info("Initializing SMOTE")
+
+        if fix_imbalance_method_param is None:
+            import six
+            import sys
+            sys.modules['sklearn.externals.six'] = six
+            from imblearn.over_sampling import SMOTE
+            resampler = SMOTE(random_state=seed)
+        else:
+            resampler = fix_imbalance_method_param
+
+        data_X,data_y = resampler.fit_sample(data_X, data_y)
+        logger.info("Resampling completed")
+
     model_fit_start = time.time()
     logger.info("Finalizing model")
     model.fit(data_X, data_y)
