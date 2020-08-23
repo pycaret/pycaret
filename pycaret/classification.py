@@ -8,6 +8,7 @@ from pycaret.internal.utils import color_df
 from pycaret.internal.logging import get_logger
 from pycaret.internal.plotting import show_yellowbrick_plot
 from pycaret.internal.Display import Display
+from pycaret.internal.distributions import *
 import pandas as pd
 import numpy as np
 import os
@@ -1714,8 +1715,8 @@ def setup(
 
 
 def compare_models(
-    exclude: List[str] = None,
     include: list = None,  # added in pycaret==2.0.0
+    exclude: List[str] = None,
     fold: int = 10,
     round: int = 4,
     sort: str = "Accuracy",
@@ -1895,7 +1896,7 @@ def compare_models(
 
     # checking optimize parameter for multiclass
     if _is_multiclass():
-        if not all_metrics[all_metrics["Name"] == sort].iloc[0]["Multiclass"]:
+        if not sort["Multiclass"]:
             raise TypeError(
                 f"{sort} metric not supported for multiclass problems. See docstring for list of other optimization parameters."
             )
@@ -2498,8 +2499,8 @@ def create_model(
     logger.info("Copying training dataset")
 
     # Storing X_train and y_train in data_X and data_y parameter
-    data_X = X_train.copy() if X_train_data is None else X_train_data
-    data_y = y_train.copy() if Y_train_data is None else Y_train_data
+    data_X = X_train.copy() if X_train_data is None else X_train_data.copy()
+    data_y = y_train.copy() if Y_train_data is None else Y_train_data.copy()
 
     # reset index
     data_X.reset_index(drop=True, inplace=True)
@@ -2744,6 +2745,9 @@ def create_model(
     display.update_monitor(2, "Almost Finished")
     display.display_monitor()
 
+    if fix_imbalance_param:
+        data_X, data_y = _fix_imbalance(data_X, data_y, fix_imbalance_method_param)
+
     model_fit_start = time.time()
     logger.info("Finalizing model")
     model.fit(data_X, data_y)
@@ -2933,6 +2937,10 @@ def tune_model(
     custom_grid: dict = None,  # added in pycaret==2.0.0
     optimize: str = "Accuracy",
     custom_scorer=None,  # added in pycaret==2.1 - depreciated
+    search_library: str = "scikit-learn",
+    search_algorithm: str = "Random",
+    early_stopping: Any = "ASHA",
+    early_stopping_max_iters: int = 10,
     choose_better: bool = False,  # added in pycaret==2.0.0
     verbose: bool = True,
     display: Display = None,
@@ -2973,7 +2981,8 @@ def tune_model(
 
     custom_grid: dictionary, default = None
         To use custom hyperparameters for tuning pass a dictionary with parameter name
-        and values to be iterated. When set to None it uses pre-defined tuning grid.  
+        and values to be iterated. When set to None it uses pre-defined tuning grid.
+        Custom grids must be in a format supported by the chosen search library.
 
     optimize: string, default = 'Accuracy'
         Measure used to select the best model through hyperparameter tuning.
@@ -2985,6 +2994,57 @@ def tune_model(
         custom_scorer can be passed to tune hyperparameters of the model. It must be
         created using sklearn.make_scorer. 
 
+    search_library: string, default = 'scikit-learn'
+        The search library used to tune hyperparameters.
+        Possible values:
+
+        - 'scikit-learn' - default, requires no further installation
+        - 'tune-sklearn' - Ray Tune scikit API. `pip install tune-sklearn ray[tune]` https://github.com/ray-project/tune-sklearn
+        - 'optuna' - Optuna. `pip install optuna` https://optuna.org/
+
+    search_algorithm: string, default = 'Random'
+        The search algorithm to be used for finding the best hyperparameters.
+        Selection of search algorithms depends on the search_library parameter.
+        Some search algorithms require additional libraries to be installed.
+        'scikit-learn' possible values:
+
+        - 'Random' - randomized search
+        - 'Grid' - grid search
+
+        'tune-sklearn' possible values:
+
+        - 'Random' - randomized search
+        - 'Grid' - grid search
+        - 'Hyperopt' - Tree-structured Parzen Estimator search using Hyperopt 
+          `pip install tune-sklearn ray[tune] hyperopt`
+        - 'BOHB' - Bayesian search using HpBandSter 
+          `pip install hpbandster ConfigSpace`
+
+        'optuna' possible values:
+
+        - 'Random' - randomized search
+        - 'TPE' - Tree-structured Parzen Estimator search
+
+    early_stopping: bool or string or object, default = 'ASHA'
+        Use early stopping to stop fitting to a hyperparameter configuration 
+        if it performs poorly. Ignored if search_library is `scikit-learn`, or
+        if the estimator doesn't have partial_fit attribute.
+        If False or None, early stopping will not be used.
+        Can be either an object accepted by the search library or one of the
+        following:
+
+        - 'ASHA' for Asynchronous Successive Halving Algorithm
+        - 'Hyperband' for Hyperband
+        - 'Median' for median stopping rule
+        - If False or None, early stopping will not be used.
+
+        More info for Optuna - https://optuna.readthedocs.io/en/stable/reference/pruners.html
+        More info for Ray Tune (tune-sklearn) - https://docs.ray.io/en/master/tune/api_docs/schedulers.html
+
+    early_stopping_max_iters: int, default = 10
+        Maximum number of epochs to run for each sampled configuration.
+        Ignored if early_stopping is False or None.
+
     choose_better: Boolean, default = False
         When set to set to True, base estimator is returned when the performance doesn't 
         improve by tune_model. This gurantees the returned object would perform atleast 
@@ -2993,6 +3053,9 @@ def tune_model(
 
     verbose: Boolean, default = True
         Score grid is not printed when verbose is set to False.
+
+    **kwargs: 
+        Additional keyword arguments to pass to the optimizer.
 
     Returns
     -------
@@ -3013,6 +3076,9 @@ def tune_model(
       
     - If target variable is multiclass (more than 2 classes), AUC will be returned as
       zero (0.0)
+
+    - Using 'Grid' search algorithm with default parameter grids may result in very
+      long computation.
         
           
     
@@ -3057,10 +3123,87 @@ def tune_model(
     if type(n_iter) is not int:
         raise TypeError("n_iter parameter only accepts integer value.")
 
+    # checking early_stopping parameter
+    possible_early_stopping = ["ASHA", "Hyperband", "Median"]
+    if (
+        isinstance(early_stopping, str)
+        and early_stopping not in possible_early_stopping
+    ):
+        raise TypeError(
+            f"early_stopping parameter must be one of {', '.join(possible_early_stopping)}"
+        )
+
+    # checking early_stopping_max_iters parameter
+    if type(early_stopping_max_iters) is not int:
+        raise TypeError(
+            "early_stopping_max_iters parameter only accepts integer value."
+        )
+
+    # checking search_library parameter
+    possible_search_libraries = ["scikit-learn", "tune-sklearn", "optuna"]
+    search_library = search_library.lower()
+    if search_library not in possible_search_libraries:
+        raise ValueError(
+            f"search_library parameter must be one of {', '.join(possible_search_libraries)}"
+        )
+
+    if search_library == "tune-sklearn":
+        try:
+            import tune_sklearn
+        except ImportError:
+            raise ImportError(
+                "'tune-sklearn' requires tune_sklearn package to be installed. Do: pip install tune-sklearn ray[tune]"
+            )
+
+        possible_search_algorithms = ["Random", "Grid", "Hyperopt", "BOHB"]
+        if search_algorithm not in possible_search_algorithms:
+            raise ValueError(
+                f"For 'tune-sklearn' search_algorithm parameter must be one of {', '.join(possible_search_algorithms)}"
+            )
+
+        if search_algorithm == "BOHB":
+            try:
+                from ray.tune.suggest.bohb import TuneBOHB
+                from ray.tune.schedulers import HyperBandForBOHB
+                import ConfigSpace as CS
+                import hpbandster
+            except ImportError:
+                raise ImportError(
+                    "It appears that either HpBandSter or ConfigSpace is not installed. Do: pip install hpbandster ConfigSpace"
+                )
+        elif search_algorithm == "Hyperopt":
+            try:
+                from ray.tune.suggest.hyperopt import HyperOptSearch
+                from hyperopt import hp
+            except ImportError:
+                raise ImportError(
+                    "It appears that hyperopt is not installed. Do: pip install hyperopt"
+                )
+
+    elif search_library == "optuna":
+        try:
+            import optuna
+        except ImportError:
+            raise ImportError(
+                "'optuna' requires optuna package to be installed. Do: pip install optuna"
+            )
+
+        possible_search_algorithms = ["Random", "TPE"]
+        if search_algorithm not in possible_search_algorithms:
+            raise ValueError(
+                f"For 'optuna' search_algorithm parameter must be one of {', '.join(possible_search_algorithms)}"
+            )
+    else:
+        possible_search_algorithms = ["Random", "Grid"]
+        if search_algorithm not in possible_search_algorithms:
+            raise ValueError(
+                f"For 'scikit-learn' search_algorithm parameter must be one of {', '.join(possible_search_algorithms)}"
+            )
+
     if custom_scorer is not None:
         optimize = custom_scorer
         warnings.warn(
-            f"custom_scorer parameter will be depreciated, use optimize instead",
+            "custom_scorer parameter will be depreciated, use optimize instead",
             DeprecationWarning,
             stacklevel=2,
         )
@@ -3070,20 +3213,17 @@ def tune_model(
         optimize = _get_metric(optimize)
         if optimize is None:
             raise ValueError(
-                f"Optimize method not supported. See docstring for list of available parameters."
+                "Optimize method not supported. See docstring for list of available parameters."
             )
 
         # checking optimize parameter for multiclass
         if _is_multiclass():
-            if not all_metrics[all_metrics["Name"] == optimize].iloc[0]["Multiclass"]:
+            if not optimize["Multiclass"]:
                 raise TypeError(
-                    f"Optimization metric not supported for multiclass problems. See docstring for list of other optimization parameters."
+                    "Optimization metric not supported for multiclass problems. See docstring for list of other optimization parameters."
                 )
     else:
         logger.info(f"optimize set to user defined function {optimize}")
-
-    if type(n_iter) is not int:
-        raise TypeError("n_iter parameter only accepts integer value.")
 
     # checking verbose parameter
     if type(verbose) is not bool:
@@ -3125,7 +3265,6 @@ def tune_model(
     # general dependencies
 
     from sklearn import metrics
-    from sklearn.model_selection import RandomizedSearchCV
     from sklearn.base import clone
 
     np.random.seed(seed)
@@ -3187,8 +3326,13 @@ def tune_model(
 
     if custom_grid is not None:
         param_grid = custom_grid
-    else:
+    elif search_library == "scikit-learn" or (
+        search_library == "tune-sklearn"
+        and (search_algorithm == "Grid" or search_algorithm == "Random")
+    ):
         param_grid = estimator_definition["Tune Grid"]
+    else:
+        param_grid = estimator_definition["Tune Distributions"]
 
     if not param_grid:
         raise ValueError(
@@ -3200,16 +3344,159 @@ def tune_model(
 
     search_kwargs = {**estimator_definition["Tune Args"], **kwargs}
 
-    model_grid = RandomizedSearchCV(
-        estimator=_estimator_,
-        param_distributions=param_grid,
-        scoring=optimize,
-        n_iter=n_iter,
-        cv=fold,
-        random_state=seed,
-        n_jobs=n_jobs_param,
-        **search_kwargs,
-    )
+    n_jobs = n_jobs_param
+
+    if search_library == "optuna":
+        pruner_translator = {
+            "ASHA": optuna.pruners.SuccessiveHalvingPruner(),
+            "Hyperband": optuna.pruners.HyperbandPruner(),
+            "Median": optuna.pruners.MedianPruner(),
+            False: optuna.pruners.NopPruner(),
+            None: optuna.pruners.NopPruner(),
+        }
+        pruner = early_stopping
+        if pruner in pruner_translator:
+            pruner = pruner_translator[early_stopping]
+
+        sampler_translator = {
+            "TPE": optuna.samplers.TPESampler(seed=seed),
+            "Random": optuna.samplers.RandomSampler(seed=seed),
+        }
+        sampler = sampler_translator[search_algorithm]
+
+        if custom_grid is None:
+            param_grid = get_optuna_distributions(param_grid)
+
+        study = optuna.create_study(
+            direction="maximize", sampler=sampler, pruner=pruner
+        )
+        model_grid = optuna.integration.OptunaSearchCV(
+            estimator=_estimator_,
+            param_distributions=param_grid,
+            cv=fold,
+            enable_pruning=early_stopping and hasattr(_estimator_, "partial_fit"),
+            max_iter=early_stopping_max_iters,
+            n_jobs=n_jobs,
+            n_trials=n_iter,
+            random_state=seed,
+            scoring=optimize,
+            study=study,
+            verbose=0,
+            **search_kwargs,
+        )
+
+    elif search_library == "tune-sklearn":
+        early_stopping_translator = {
+            "ASHA": "ASHAScheduler",
+            "Hyperband": "HyperBandScheduler",
+            "Median": "MedianStoppingRule",
+        }
+        if early_stopping in early_stopping_translator:
+            early_stopping = early_stopping_translator[early_stopping]
+
+        # if n_jobs is None:
+        # enable Ray local mode - otherwise the performance is terrible
+        n_jobs = 1
+
+        if search_algorithm == "Grid":
+            from tune_sklearn import TuneGridSearchCV
+
+            model_grid = TuneGridSearchCV(
+                estimator=_estimator_,
+                param_grid=param_grid,
+                early_stopping=early_stopping and hasattr(_estimator_, "partial_fit"),
+                scoring=optimize,
+                cv=fold,
+                max_iters=early_stopping_max_iters,
+                n_jobs=n_jobs,
+                use_gpu=gpu_param,
+                verbose=0,
+                **search_kwargs,
+            )
+        elif search_algorithm == "Hyperopt":
+            from tune_sklearn import TuneSearchCV
+
+            if custom_grid is None:
+                param_grid = get_hyperopt_distributions(param_grid)
+
+            model_grid = TuneSearchCV(
+                estimator=_estimator_,
+                search_optimization="hyperopt",
+                param_distributions=param_grid,
+                n_iter=n_iter,
+                early_stopping=early_stopping and hasattr(_estimator_, "partial_fit"),
+                scoring=optimize,
+                cv=fold,
+                random_state=seed,
+                max_iters=early_stopping_max_iters,
+                n_jobs=n_jobs,
+                use_gpu=gpu_param,
+                verbose=0,
+                **search_kwargs,
+            )
+        elif search_algorithm == "BOHB":
+            from tune_sklearn import TuneSearchCV
+
+            if custom_grid is None:
+                param_grid = get_CS_distributions(param_grid)
+
+            model_grid = TuneSearchCV(
+                estimator=_estimator_,
+                search_optimization="bohb",
+                param_distributions=param_grid,
+                n_iter=n_iter,
+                early_stopping=early_stopping and hasattr(_estimator_, "partial_fit"),
+                scoring=optimize,
+                cv=fold,
+                random_state=seed,
+                max_iters=early_stopping_max_iters,
+                n_jobs=n_jobs,
+                use_gpu=gpu_param,
+                verbose=0,
+                **search_kwargs,
+            )
+        else:
+            from tune_sklearn import TuneSearchCV
+
+            model_grid = TuneSearchCV(
+                estimator=_estimator_,
+                param_distributions=param_grid,
+                early_stopping=early_stopping and hasattr(_estimator_, "partial_fit"),
+                n_iter=n_iter,
+                scoring=optimize,
+                cv=fold,
+                random_state=seed,
+                max_iters=early_stopping_max_iters,
+                n_jobs=n_jobs,
+                use_gpu=gpu_param,
+                verbose=0,
+                **search_kwargs,
+            )
+    else:
+        if search_algorithm == "Grid":
+            from sklearn.model_selection import GridSearchCV
+
+            model_grid = GridSearchCV(
+                estimator=_estimator_,
+                param_grid=param_grid,
+                scoring=optimize,
+                cv=fold,
+                n_jobs=n_jobs,
+                **search_kwargs,
+            )
+        else:
+            from sklearn.model_selection import RandomizedSearchCV
+
+            model_grid = RandomizedSearchCV(
+                estimator=_estimator_,
+                param_distributions=param_grid,
+                scoring=optimize,
+                n_iter=n_iter,
+                cv=fold,
+                random_state=seed,
+                n_jobs=n_jobs,
+                **search_kwargs,
+            )
 
     model_grid.fit(X_train, y_train)
     model = model_grid.best_estimator_
@@ -3363,13 +3650,14 @@ def tune_model(
                     "SubProcess plot_model() end =================================="
                 )
 
-            # Log hyperparameter tuning grid
-            d1 = model_grid.cv_results_.get("params")
-            dd = pd.DataFrame.from_dict(d1)
-            dd["Score"] = model_grid.cv_results_.get("mean_test_score")
-            dd.to_html("Iterations.html", col_space=75, justify="left")
-            mlflow.log_artifact("Iterations.html")
-            os.remove("Iterations.html")
+            # Broken with OptunaSearchCV as it has no cv_results_
+            # # Log hyperparameter tuning grid
+            # d1 = model_grid.cv_results_.get("params")
+            # dd = pd.DataFrame.from_dict(d1)
+            # dd["Score"] = model_grid.cv_results_.get("mean_test_score")
+            # dd.to_html("Iterations.html", col_space=75, justify="left")
+            # mlflow.log_artifact("Iterations.html")
+            # os.remove("Iterations.html")
 
             # get default conda env
             from mlflow.sklearn import get_default_conda_env
@@ -3591,7 +3879,7 @@ def ensemble_model(
 
     # checking optimize parameter for multiclass
     if _is_multiclass():
-        if not all_metrics[all_metrics["Name"] == optimize].iloc[0]["Multiclass"]:
+        if not optimize["Multiclass"]:
             raise TypeError(
                 f"Optimization metric not supported for multiclass problems. See docstring for list of other optimization parameters."
             )
@@ -4093,7 +4381,7 @@ def blend_models(
 
     # checking optimize parameter for multiclass
     if _is_multiclass():
-        if not all_metrics[all_metrics["Name"] == optimize].iloc[0]["Multiclass"]:
+        if not optimize["Multiclass"]:
             raise TypeError(
                 f"Optimization metric not supported for multiclass problems. See docstring for list of other optimization parameters."
             )
@@ -4489,7 +4777,9 @@ def stack_models(
     # checking meta model
     if meta_model is not None:
         if not hasattr(meta_model, "fit"):
-            raise ValueError(f"Meta Model {meta_model} does not have the required fit() method.")
+            raise ValueError(
+                f"Meta Model {meta_model} does not have the required fit() method."
+            )
 
     # checking fold parameter
     if type(fold) is not int:
@@ -4523,7 +4813,7 @@ def stack_models(
 
     # checking optimize parameter for multiclass
     if _is_multiclass():
-        if not all_metrics[all_metrics["Name"] == optimize].iloc[0]["Multiclass"]:
+        if not optimize["Multiclass"]:
             raise TypeError(
                 f"Optimization metric not supported for multiclass problems. See docstring for list of other optimization parameters."
             )
@@ -5020,6 +5310,9 @@ def plot_model(
     logger.info(f"Plot type: {plot}")
     plot_name = available_plots[plot]
     display.move_progress()
+
+    if fix_imbalance_param:
+        X_train, y_train = _fix_imbalance(X_train, y_train, fix_imbalance_method_param)
 
     if plot == "auc":
 
@@ -6265,14 +6558,10 @@ def optimize_threshold(
         raise TypeError("true_negative parameter only accepts float or integer value. ")
 
     if type(false_positive) not in allowed_types:
-        raise TypeError(
-            "false_positive parameter only accepts float or integer value."
-        )
+        raise TypeError("false_positive parameter only accepts float or integer value.")
 
     if type(false_negative) not in allowed_types:
-        raise TypeError(
-            "false_negative parameter only accepts float or integer value."
-        )
+        raise TypeError("false_negative parameter only accepts float or integer value.")
 
     """
     ERROR HANDLING ENDS HERE
@@ -7072,7 +7361,7 @@ def automl(optimize: str = "Accuracy", use_holdout: bool = False) -> Any:
 
     # checking optimize parameter for multiclass
     if _is_multiclass():
-        if not all_metrics[all_metrics["Name"] == optimize].iloc[0]["Multiclass"]:
+        if not optimize["Multiclass"]:
             raise TypeError(
                 f"Optimization metric not supported for multiclass problems. See docstring for list of other optimization parameters."
             )
@@ -7305,6 +7594,7 @@ def models(
             "Class",
             "Args",
             "Tune Grid",
+            "Tune Distributions",
             "Tune Args",
             "SHAP",
         ]
@@ -7313,12 +7603,12 @@ def models(
                 False,
                 LogisticRegression,
                 {"random_state": seed},
+                {"C": np.arange(0, 10, 0.001), "class_weight": ["balanced", {}],},
                 {
-                    "C": np.arange(0, 10, 0.001),
-                    "penalty": ["l1", "l2"],
-                    "class_weight": ["balanced", None],
+                    "C": UniformDistribution(0, 10),
+                    "class_weight": CategoricalDistribution(["balanced", {}]),
                 },
-                {"iid": False},
+                {},
                 False,
             ),
             (
@@ -7330,7 +7620,12 @@ def models(
                     "weights": ["uniform", "distance"],
                     "metric": ["euclidean", "manhattan"],
                 },
-                {"iid": False},
+                {
+                    "n_neighbors": IntUniformDistribution(1, 51),
+                    "weights": CategoricalDistribution(["uniform", "distance"]),
+                    "metric": CategoricalDistribution(["euclidean", "manhattan"]),
+                },
+                {},
                 False,
             ),
             (
@@ -7369,6 +7664,7 @@ def models(
                         1,
                     ]
                 },
+                {"var_smoothing": UniformDistribution(0.000000001, 1, log=True)},
                 {},
                 False,
             ),
@@ -7382,7 +7678,15 @@ def models(
                     "min_samples_leaf": [2, 3, 4, 5, 6],
                     "criterion": ["gini", "entropy"],
                 },
-                {"iid": False},
+                {
+                    "max_depth": IntUniformDistribution(
+                        1, int(len(X_train.columns) * 0.85)
+                    ),
+                    "max_features": IntUniformDistribution(1, len(X_train.columns)),
+                    "min_samples_leaf": IntUniformDistribution(2, 6),
+                    "criterion": CategoricalDistribution(["gini", "entropy"]),
+                },
+                {},
                 "type1",
             ),
             (
@@ -7412,6 +7716,16 @@ def models(
                     "learning_rate": ["constant", "optimal", "invscaling", "adaptive"],
                     "eta0": [0.001, 0.01, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5],
                 },
+                {
+                    "penalty": CategoricalDistribution(["l2", "l1", "elasticnet"]),
+                    "l1_ratio": UniformDistribution(0, 1),
+                    "alpha": UniformDistribution(0.0001, 0.05),
+                    "fit_intercept": CategoricalDistribution([True, False]),
+                    "learning_rate": CategoricalDistribution(
+                        ["constant", "optimal", "invscaling", "adaptive"]
+                    ),
+                    "eta0": UniformDistribution(0.001, 0.5),
+                },
                 {},
                 False,
             ),
@@ -7425,7 +7739,11 @@ def models(
                     "kernel": "rbf",
                     "random_state": seed,
                 },
-                {"C": np.arange(0, 50, 0.01), "class_weight": ["balanced", None],},
+                {"C": np.arange(0, 50, 0.01), "class_weight": ["balanced", {}],},
+                {
+                    "C": UniformDistribution(0, 50),
+                    "class_weight": CategoricalDistribution(["balanced", {}]),
+                },
                 {},
                 False,
             ),
@@ -7447,6 +7765,7 @@ def models(
                         1000,
                     ]
                 },
+                {"max_iter_predict": IntUniformDistribution(100, 1000)},
                 {},
                 False,
             ),
@@ -7467,7 +7786,26 @@ def models(
                     ],
                     "activation": ["tanh", "identity", "logistic", "relu"],
                 },
-                {"iid": False},
+                {
+                    "learning_rate": CategoricalDistribution(
+                        ["constant", "invscaling", "adaptive"]
+                    ),
+                    "solver": CategoricalDistribution(["lbfgs", "sgd", "adam"]),
+                    "alpha": UniformDistribution(0, 1),
+                    "hidden_layer_sizes": CategoricalDistribution(
+                        [
+                            (50, 50, 50),
+                            (50, 100, 50),
+                            (100,),
+                            (100, 50, 100),
+                            (100, 100, 100),
+                        ]
+                    ),
+                    "activation": CategoricalDistribution(
+                        ["tanh", "identity", "logistic", "relu"]
+                    ),
+                },
+                {},
                 False,
             ),
             (
@@ -7478,6 +7816,11 @@ def models(
                     "alpha": np.arange(0, 1, 0.001),
                     "fit_intercept": [True, False],
                     "normalize": [True, False],
+                },
+                {
+                    "alpha": UniformDistribution(0, 1),
+                    "fit_intercept": CategoricalDistribution([True, False]),
+                    "normalize": CategoricalDistribution([True, False]),
                 },
                 {},
                 False,
@@ -7495,6 +7838,15 @@ def models(
                     "max_features": ["auto", "sqrt", "log2"],
                     "bootstrap": [True, False],
                 },
+                {
+                    "n_estimators": IntUniformDistribution(10, 100),
+                    "criterion": CategoricalDistribution(["gini", "entropy"]),
+                    "max_depth": IntUniformDistribution(10, 110),
+                    "min_samples_split": IntUniformDistribution(2, 10),
+                    "min_samples_leaf": IntUniformDistribution(1, 5),
+                    "max_features": CategoricalDistribution(["auto", "sqrt", "log2"]),
+                    "bootstrap": CategoricalDistribution([True, False]),
+                },
                 {},
                 "type1",
             ),
@@ -7503,6 +7855,7 @@ def models(
                 QuadraticDiscriminantAnalysis,
                 {},
                 {"reg_param": np.arange(0, 1, 0.01)},
+                {"reg_param": UniformDistribution(0, 1)},
                 {},
                 False,
             ),
@@ -7514,6 +7867,11 @@ def models(
                     "n_estimators": np.arange(10, 200, 5),
                     "learning_rate": np.arange(0, 1, 0.01),
                     "algorithm": ["SAMME", "SAMME.R"],
+                },
+                {
+                    "n_estimators": IntUniformDistribution(10, 200),
+                    "learning_rate": UniformDistribution(0, 1),
+                    "algorithm": CategoricalDistribution(["SAMME", "SAMME.R"]),
                 },
                 {},
                 False,
@@ -7531,6 +7889,15 @@ def models(
                     "max_depth": [int(x) for x in np.linspace(10, 110, num=11)],
                     "max_features": ["auto", "sqrt", "log2"],
                 },
+                {
+                    "n_estimators": IntUniformDistribution(10, 200),
+                    "learning_rate": UniformDistribution(0, 1),
+                    "subsample": UniformDistribution(0.1, 1),
+                    "min_samples_split": IntUniformDistribution(2, 10),
+                    "min_samples_leaf": IntUniformDistribution(1, 5),
+                    "max_depth": IntUniformDistribution(10, 110),
+                    "max_features": CategoricalDistribution(["auto", "sqrt", "log2"]),
+                },
                 {},
                 "type2",
             ),
@@ -7541,7 +7908,8 @@ def models(
                 {
                     "solver": ["lsqr", "eigen"],
                     "shrinkage": [
-                        None,
+                        "empirical",
+                        "auto",
                         0.0001,
                         0.001,
                         0.01,
@@ -7560,6 +7928,10 @@ def models(
                         1,
                     ],
                 },
+                {
+                    "solver": CategoricalDistribution(["lsqr", "eigen"]),
+                    "shrinkage": UniformDistribution(0.000000001, 1, log=True),
+                },
                 {},
                 False,
             ),
@@ -7576,6 +7948,15 @@ def models(
                     "max_features": ["auto", "sqrt", "log2"],
                     "bootstrap": [True, False],
                 },
+                {
+                    "n_estimators": IntUniformDistribution(10, 200),
+                    "criterion": CategoricalDistribution(["gini", "entropy"]),
+                    "max_depth": IntUniformDistribution(10, 110),
+                    "min_samples_split": IntUniformDistribution(2, 10),
+                    "min_samples_leaf": IntUniformDistribution(1, 5),
+                    "max_features": CategoricalDistribution(["auto", "sqrt", "log2"]),
+                    "bootstrap": CategoricalDistribution([True, False]),
+                },
                 {},
                 "type1",
             ),
@@ -7590,7 +7971,7 @@ def models(
                     "max_depth": [int(x) for x in np.linspace(10, 110, num=11)],
                     "colsample_bytree": [0.5, 0.7, 0.9, 1],
                     "min_child_weight": [1, 2, 3, 4],
-                    "num_class": [num_class, num_class],
+                    "num_class": [num_class],
                 }
                 if num_class > 2
                 else {
@@ -7615,6 +7996,24 @@ def models(
                     "colsample_bytree": [0.5, 0.7, 0.9, 1],
                     "min_child_weight": [1, 2, 3, 4],
                 },
+                {
+                    "learning_rate": UniformDistribution(0, 1),
+                    "n_estimators": IntUniformDistribution(10, 500),
+                    "subsample": UniformDistribution(0.1, 1),
+                    "max_depth": IntUniformDistribution(10, 110),
+                    "colsample_bytree": UniformDistribution(0.5, 1),
+                    "min_child_weight": IntUniformDistribution(1, 4),
+                    "num_class": CategoricalDistribution([num_class]),
+                }
+                if num_class > 2
+                else {
+                    "learning_rate": UniformDistribution(0, 1),
+                    "n_estimators": IntUniformDistribution(10, 1000, log=True),
+                    "subsample": UniformDistribution(0.1, 1),
+                    "max_depth": IntUniformDistribution(10, 110),
+                    "colsample_bytree": UniformDistribution(0.5, 1),
+                    "min_child_weight": IntUniformDistribution(1, 4),
+                },
                 {},
                 "type2",
             ),
@@ -7631,6 +8030,15 @@ def models(
                     "reg_alpha": [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9],
                     "reg_lambda": [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9],
                 },
+                {
+                    "num_leaves": IntUniformDistribution(10, 200),
+                    "max_depth": IntUniformDistribution(10, 110),
+                    "learning_rate": UniformDistribution(0.1, 1),
+                    "n_estimators": IntUniformDistribution(10, 200),
+                    "min_split_gain": UniformDistribution(0, 1),
+                    "reg_alpha": UniformDistribution(0.1, 1),
+                    "reg_lambda": UniformDistribution(0.1, 1),
+                },
                 {},
                 "type1",
             ),
@@ -7645,6 +8053,13 @@ def models(
                     "l2_leaf_reg": [3, 1, 5, 10, 100],
                     "border_count": [32, 5, 10, 20, 50, 100, 200],
                 },
+                {
+                    "depth": IntUniformDistribution(1, 10),
+                    "iterations": IntUniformDistribution(250, 1000, log=True),
+                    "learning_rate": UniformDistribution(0.0001, 0.3, log=True),
+                    "l2_leaf_reg": IntUniformDistribution(1, 100, log=True),
+                    "border_count": IntUniformDistribution(5, 200, log=True),
+                },
                 {},
                 "type2",
             ),
@@ -7657,13 +8072,18 @@ def models(
                     "bootstrap": [True, False],
                     "bootstrap_features": [True, False],
                 },
+                {
+                    "n_estimators": IntUniformDistribution(10, 300),
+                    "bootstrap": CategoricalDistribution([True, False]),
+                    "bootstrap_features": CategoricalDistribution([True, False]),
+                },
                 {},
                 False,
             ),
-            (True, StackingClassifier, {}, {}, {}, False),
-            (True, VotingClassifier, {}, {}, {}, False),
-            (True, OneVsRestClassifier, {"n_jobs": n_jobs_param}, {}, {}, False),
-            (True, CalibratedClassifierCV, {}, {}, {}, False),
+            (True, StackingClassifier, {}, {}, {}, {}, False),
+            (True, VotingClassifier, {}, {}, {}, {}, False),
+            (True, OneVsRestClassifier, {"n_jobs": n_jobs_param}, {}, {}, {}, False),
+            (True, CalibratedClassifierCV, {}, {}, {}, {}, False),
         ]
 
         df_internal = pd.DataFrame(internal_rows)
@@ -7716,7 +8136,8 @@ def get_metrics(force_regenerate: bool = False) -> pd.DataFrame:
     ----------
     force_regenerate: Boolean, default = False
         If True, will force the DataFrame to be regenerated,
-        instead of using a cached version.
+        instead of using a cached version. This will also reset
+        all changes made using add_metric() and get_metric().
 
     Returns
     -------
@@ -7856,13 +8277,6 @@ def add_metric(
     """
     Adds a custom metric to be used in all functions.
 
-    Example
-    -------
-    >>> metrics = get_metrics()
-
-    This will return pandas dataframe with all available 
-    metrics and their metadata.
-
     Parameters
     ----------
     id: str
@@ -7926,6 +8340,38 @@ def add_metric(
     all_metrics = all_metrics.append(new_metric)
     all_metrics = all_metrics.append(last_row)
     return all_metrics.iloc[-2]
+
+
+def remove_metric(name_or_id: str):
+    """
+    Removes a metric used in all functions.
+
+    Parameters
+    ----------
+    name_or_id: str
+        Display name or ID of the metric.
+
+    """
+    if not "all_metrics" in globals():
+        raise ValueError("setup() needs to be ran first.")
+
+    try:
+        all_metrics.drop(name_or_id, axis=0, inplace=True)
+        return
+    except:
+        pass
+
+    try:
+        all_metrics.drop(
+            all_metrics[all_metrics["Name"] == name_or_id].index, axis=0, inplace=True
+        )
+        return
+    except:
+        pass
+
+    raise ValueError(
+        f"No row with 'Display Name' or 'ID' (index) {name_or_id} present in the metrics dataframe."
+    )
 
 
 def get_logs(experiment_name: str = None, save: bool = False) -> pd.DataFrame:
