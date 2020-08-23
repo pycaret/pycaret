@@ -8,12 +8,23 @@ from pycaret.internal.utils import color_df
 from pycaret.internal.logging import get_logger
 from pycaret.internal.plotting import show_yellowbrick_plot
 from pycaret.internal.Display import Display
-import pandas
+import pandas as pd
+import numpy as np
+import os
+import sys
+import datetime
+import time
+import random
+import re
+from copy import deepcopy
 from typing import List, Set, Dict, Tuple, Optional, Any
+import warnings
+
+warnings.filterwarnings("ignore")
 
 
 def setup(
-    data: pandas.DataFrame,
+    data: pd.DataFrame,
     target: str,
     train_size: float = 0.7,
     sampling: bool = True,
@@ -457,13 +468,7 @@ def setup(
 
     function_params_str = ", ".join([f"{k}={v}" for k, v in locals().items()])
 
-    # ignore warnings
-    import warnings
-
     warnings.filterwarnings("ignore")
-
-    # exception checking
-    import sys
 
     from pycaret.utils import __version__
 
@@ -504,7 +509,7 @@ def setup(
         logger.info(f"Logical Core: {psutil.cpu_count(logical=True)}")
     except:
         logger.warning(
-            "cannot find psutil installation. memory not traceable. Install psutil using pip to enable memory logging. "
+            "cannot find psutil installation. memory not traceable. Install psutil using pip to enable memory logging."
         )
 
     logger.info("Checking libraries")
@@ -553,7 +558,6 @@ def setup(
 
     try:
         from mlflow.version import VERSION
-        import warnings
 
         warnings.filterwarnings("ignore")
         logger.info(f"mlflow=={VERSION}")
@@ -561,8 +565,6 @@ def setup(
         logger.warning("mlflow not found")
 
     # run_time
-    import datetime, time
-
     runtime_start = time.time()
 
     logger.info("Checking Exceptions")
@@ -604,14 +606,14 @@ def setup(
     allowed_categorical_imputation = ["constant", "mode"]
     if categorical_imputation not in allowed_categorical_imputation:
         raise ValueError(
-            "categorical_imputation param only accepts 'constant' or 'mode' "
+            "categorical_imputation param only accepts 'constant' or 'mode'"
         )
 
     # ordinal_features
     if ordinal_features is not None:
         if type(ordinal_features) is not dict:
             raise TypeError(
-                "ordinal_features must be of type dictionary with column name as key and ordered values as list. "
+                "ordinal_features must be of type dictionary with column name as key and ordered values as list."
             )
 
     # ordinal features check
@@ -623,13 +625,13 @@ def setup(
         for i in ord_keys:
             if i not in data_cols:
                 raise ValueError(
-                    "Column name passed as a key in ordinal_features param doesnt exist. "
+                    "Column name passed as a key in ordinal_features param doesnt exist."
                 )
 
         for k in ord_keys:
             if data[k].nunique() != len(ordinal_features[k]):
                 raise ValueError(
-                    "Levels passed in ordinal_features param doesnt match with levels in data. "
+                    "Levels passed in ordinal_features param doesnt match with levels in data."
                 )
 
         for i in ord_keys:
@@ -645,7 +647,7 @@ def setup(
     if high_cardinality_features is not None:
         if type(high_cardinality_features) is not list:
             raise TypeError(
-                "high_cardinality_features param only accepts name of columns as a list. "
+                "high_cardinality_features param only accepts name of columns as a list."
             )
 
     if high_cardinality_features is not None:
@@ -661,7 +663,7 @@ def setup(
     high_cardinality_allowed_methods = ["frequency", "clustering"]
     if high_cardinality_method not in high_cardinality_allowed_methods:
         raise ValueError(
-            "high_cardinality_method param only accepts 'frequency' or 'clustering' "
+            "high_cardinality_method param only accepts 'frequency' or 'clustering'"
         )
 
     # checking numeric imputation
@@ -673,14 +675,14 @@ def setup(
     allowed_normalize_method = ["zscore", "minmax", "maxabs", "robust"]
     if normalize_method not in allowed_normalize_method:
         raise ValueError(
-            "normalize_method param only accepts 'zscore', 'minxmax', 'maxabs' or 'robust'. "
+            "normalize_method param only accepts 'zscore', 'minxmax', 'maxabs' or 'robust'."
         )
 
     # checking transformation method
     allowed_transformation_method = ["yeo-johnson", "quantile"]
     if transformation_method not in allowed_transformation_method:
         raise ValueError(
-            "transformation_method param only accepts 'yeo-johnson' or 'quantile'. "
+            "transformation_method param only accepts 'yeo-johnson' or 'quantile'."
         )
 
     # handle unknown categorical
@@ -705,7 +707,7 @@ def setup(
     allowed_pca_methods = ["linear", "kernel", "incremental"]
     if pca_method not in allowed_pca_methods:
         raise ValueError(
-            "pca method param only accepts 'linear', 'kernel', or 'incremental'. "
+            "pca method param only accepts 'linear', 'kernel', or 'incremental'."
         )
 
     # pca components check
@@ -714,7 +716,7 @@ def setup(
             if pca_components is not None:
                 if (type(pca_components)) is not int:
                     raise TypeError(
-                        "pca_components parameter must be integer when pca_method is not 'linear'. "
+                        "pca_components parameter must be integer when pca_method is not 'linear'."
                     )
 
     # pca components check 2
@@ -943,12 +945,6 @@ def setup(
                     "fix_imbalance_method must contain resampler with fit_sample method."
                 )
 
-    logger.info("Preloading libraries")
-
-    # pre-load libraries
-    import pandas as pd
-    import os
-
     # pandas option
     pd.set_option("display.max_columns", 500)
     pd.set_option("display.max_rows", 500)
@@ -988,11 +984,10 @@ def setup(
     logger.info("Importing libraries")
 
     # general dependencies
-    import numpy as np
+
     from sklearn.linear_model import LogisticRegression
     from sklearn.model_selection import train_test_split
     from sklearn import metrics
-    import random
     import seaborn as sns
     import matplotlib.pyplot as plt
     import plotly.express as px
@@ -1729,7 +1724,7 @@ def compare_models(
     turbo: bool = True,
     verbose: bool = True,
     display: Display = None,
-):  # added in pycaret==2.0.0
+) -> Any:  # added in pycaret==2.0.0
 
     """
     This function train all the models available in the model library and scores them 
@@ -1846,7 +1841,6 @@ def compare_models(
     logger.info("Checking exceptions")
 
     # exception checking
-    import sys
 
     # checking error for exclude (string)
     available_estimators = all_models.index
@@ -1912,12 +1906,6 @@ def compare_models(
     
     """
 
-    logger.info("Preloading libraries")
-
-    # pre-load libraries
-    import pandas as pd
-    import datetime, time
-
     pd.set_option("display.max_columns", 500)
 
     logger.info("Preparing display monitor")
@@ -1952,23 +1940,12 @@ def compare_models(
         display.display_monitor()
         display.display_master_display()
 
-    # ignore warnings
-    import warnings
-
-    warnings.filterwarnings("ignore")
-
     # general dependencies
-    import numpy as np
-    import random
+
     from sklearn import metrics
     import pandas.io.formats.style
 
     np.random.seed(seed)
-
-    logger.info("Copying training dataset")
-    # defining X_train and y_train as data_X and data_y
-    data_X = X_train
-    data_y = y_train
 
     display.move_progress()
 
@@ -2121,7 +2098,6 @@ def compare_models(
 
             import mlflow
             from pathlib import Path
-            import os
 
             run_name = model_name
 
@@ -2157,9 +2133,6 @@ def compare_models(
                         .items()
                     }
                 )
-
-                # Log model and transformation pipeline
-                from copy import deepcopy
 
                 # get default conda env
                 from mlflow.sklearn import get_default_conda_env
@@ -2274,11 +2247,11 @@ def create_model(
     verbose: bool = True,
     system: bool = True,  # added in pycaret==2.0.0
     return_fit_time: bool = False,  # added in pycaret==2.2.0
-    X_train_data: pandas.DataFrame = None,  # added in pycaret==2.2.0
-    Y_train_data: pandas.DataFrame = None,  # added in pycaret==2.2.0
+    X_train_data: pd.DataFrame = None,  # added in pycaret==2.2.0
+    Y_train_data: pd.DataFrame = None,  # added in pycaret==2.2.0
     display: Display = None,  # added in pycaret==2.2.0
     **kwargs,
-):  # added in pycaret==2.0.0
+) -> Any:  # added in pycaret==2.0.0
 
     """  
     This function creates a model and scores it using Stratified Cross Validation. 
@@ -2399,12 +2372,7 @@ def create_model(
 
     logger.info("Checking exceptions")
 
-    # exception checking
-    import sys
-
     # run_time
-    import datetime, time
-
     runtime_start = time.time()
 
     available_estimators = set(_all_models_internal.index)
@@ -2496,11 +2464,6 @@ def create_model(
     
     """
 
-    logger.info("Preloading libraries")
-
-    # pre-load libraries
-    import pandas as pd
-
     if not display:
         progress_args = {"max": fold + 4}
         master_display_columns = all_metrics["Display Name"].to_list()
@@ -2522,15 +2485,10 @@ def create_model(
         display.display_monitor()
         display.display_master_display()
 
-    # ignore warnings
-    import warnings
-
-    warnings.filterwarnings("ignore")
-
     logger.info("Importing libraries")
 
     # general dependencies
-    import numpy as np
+
     from sklearn import metrics
     from sklearn.model_selection import StratifiedKFold
     from sklearn.base import clone
@@ -2811,7 +2769,6 @@ def create_model(
         import mlflow
         import mlflow.sklearn
         from pathlib import Path
-        import os
 
         mlflow.set_experiment(exp_name_log)
 
@@ -2905,9 +2862,6 @@ def create_model(
                     "SubProcess plot_model() end =================================="
                 )
 
-            # Log model and transformation pipeline
-            from copy import deepcopy
-
             # get default conda env
             from mlflow.sklearn import get_default_conda_env
 
@@ -2983,7 +2937,7 @@ def tune_model(
     verbose: bool = True,
     display: Display = None,
     **kwargs,
-):
+) -> Any:
 
     """
     This function tunes the hyperparameters of a model and scores it using Stratified 
@@ -3072,13 +3026,7 @@ def tune_model(
 
     logger.info("Checking exceptions")
 
-    # exception checking
-    import sys
-    import warnings
-
     # run_time
-    import datetime, time
-
     runtime_start = time.time()
 
     # checking estimator if string
@@ -3147,11 +3095,6 @@ def tune_model(
     
     """
 
-    logger.info("Preloading libraries")
-
-    # pre-load libraries
-    import pandas as pd
-
     if not display:
         progress_args = {"max": fold + 3 + 4}
         master_display_columns = all_metrics["Display Name"].to_list()
@@ -3180,8 +3123,7 @@ def tune_model(
 
     logger.info("Importing libraries")
     # general dependencies
-    import random
-    import numpy as np
+
     from sklearn import metrics
     from sklearn.model_selection import RandomizedSearchCV
     from sklearn.base import clone
@@ -3324,7 +3266,6 @@ def tune_model(
 
         import mlflow
         from pathlib import Path
-        import os
 
         mlflow.set_experiment(exp_name_log)
         full_name = estimator_name
@@ -3430,9 +3371,6 @@ def tune_model(
             mlflow.log_artifact("Iterations.html")
             os.remove("Iterations.html")
 
-            # Log model and transformation pipeline
-            from copy import deepcopy
-
             # get default conda env
             from mlflow.sklearn import get_default_conda_env
 
@@ -3493,7 +3431,7 @@ def ensemble_model(
     optimize: str = "Accuracy",  # added in pycaret==2.0.0
     verbose: bool = True,
     display: Display = None,  # added in pycaret==2.2.0
-):
+) -> Any:
     """
     This function ensembles the trained base estimator using the method defined in 
     'method' param (default = 'Bagging'). The output prints a score grid that shows 
@@ -3579,12 +3517,7 @@ def ensemble_model(
 
     logger.info("Checking exceptions")
 
-    # exception checking
-    import sys
-
     # run_time
-    import datetime, time
-
     runtime_start = time.time()
 
     # Check for estimator
@@ -3675,11 +3608,6 @@ def ensemble_model(
     
     """
 
-    logger.info("Preloading libraries")
-
-    # pre-load libraries
-    import pandas as pd
-
     if not display:
         progress_args = {"max": fold + 2 + 4}
         master_display_columns = all_metrics["Display Name"].to_list()
@@ -3705,16 +3633,11 @@ def ensemble_model(
     logger.info("Importing libraries")
 
     # dependencies
-    import numpy as np
+
     from sklearn import metrics
     from sklearn.model_selection import StratifiedKFold
 
     np.random.seed(seed)
-
-    # ignore warnings
-    import warnings
-
-    warnings.filterwarnings("ignore")
 
     logger.info("Copying training dataset")
 
@@ -3830,7 +3753,6 @@ def ensemble_model(
 
         import mlflow
         from pathlib import Path
-        import os
 
         mlflow.set_experiment(exp_name_log)
         full_name = estimator_name
@@ -3926,9 +3848,6 @@ def ensemble_model(
             mlflow.log_artifact("Results.html")
             os.remove("Results.html")
 
-            # Log model and transformation pipeline
-            from copy import deepcopy
-
             # get default conda env
             from mlflow.sklearn import get_default_conda_env
 
@@ -3990,7 +3909,7 @@ def blend_models(
     turbo: bool = True,
     verbose: bool = True,
     display: Display = None,  # added in pycaret==2.2.0
-):
+) -> Any:
 
     """
     This function creates a Soft Voting / Majority Rule classifier for all the 
@@ -4097,12 +4016,7 @@ def blend_models(
 
     logger.info("Checking exceptions")
 
-    # exception checking
-    import sys
-
     # run_time
-    import datetime, time
-
     runtime_start = time.time()
 
     # checking error for estimator_list (string)
@@ -4190,10 +4104,6 @@ def blend_models(
     
     """
 
-    logger.info("Preloading libraries")
-    # pre-load libraries
-    import pandas as pd
-
     # estimator_list_flag
     all_flag = estimator_list == "All"
 
@@ -4219,17 +4129,11 @@ def blend_models(
         display.display_monitor()
         display.display_master_display()
 
-    # ignore warnings
-    import warnings
-
-    warnings.filterwarnings("ignore")
-
     logger.info("Importing libraries")
     # general dependencies
-    import numpy as np
+
     from sklearn import metrics
     from sklearn.ensemble import VotingClassifier
-    import re
 
     np.random.seed(seed)
 
@@ -4354,7 +4258,6 @@ def blend_models(
 
         import mlflow
         from pathlib import Path
-        import os
 
         with mlflow.start_run(run_name="Voting Classifier") as run:
 
@@ -4421,9 +4324,6 @@ def blend_models(
             mlflow.log_artifact("Results.html")
             os.remove("Results.html")
 
-            # Log model and transformation pipeline
-            from copy import deepcopy
-
             # get default conda env
             from mlflow.sklearn import get_default_conda_env
 
@@ -4485,7 +4385,7 @@ def stack_models(
     optimize: str = "Accuracy",  # added in pycaret==2.0.0
     verbose: bool = True,
     display: Display = None,
-):
+) -> Any:
 
     """
     This function trains a meta model and scores it using Stratified Cross Validation.
@@ -4578,12 +4478,7 @@ def stack_models(
 
     logger.info("Checking exceptions")
 
-    # exception checking
-    import sys
-
     # run_time
-    import datetime, time
-
     runtime_start = time.time()
 
     # checking error for estimator_list
@@ -4594,7 +4489,7 @@ def stack_models(
     # checking meta model
     if meta_model is not None:
         if not hasattr(meta_model, "fit"):
-            raise ValueError(f"Meta Model {i} does not have the required fit() method.")
+            raise ValueError(f"Meta Model {meta_model} does not have the required fit() method.")
 
     # checking fold parameter
     if type(fold) is not int:
@@ -4641,15 +4536,9 @@ def stack_models(
 
     logger.info("Preloading libraries")
     # pre-load libraries
-    import pandas as pd
-    from copy import deepcopy
+
     from sklearn.base import clone
     from sklearn.ensemble import StackingClassifier
-
-    # ignore warnings
-    import warnings
-
-    warnings.filterwarnings("ignore")
 
     logger.info("Defining meta model")
     # Defining meta model.
@@ -4684,7 +4573,7 @@ def stack_models(
 
     logger.info("Importing libraries")
     # dependencies
-    import numpy as np
+
     from sklearn import metrics
 
     np.random.seed(seed)
@@ -4778,7 +4667,6 @@ def stack_models(
 
         import mlflow
         from pathlib import Path
-        import os
 
         # Creating Logs message monitor
         display.update_monitor(1, "Creating Logs")
@@ -4879,9 +4767,6 @@ def stack_models(
                 logger.info(
                     "SubProcess plot_model() end =================================="
                 )
-
-            # Log model and transformation pipeline
-            from copy import deepcopy
 
             # get default conda env
             from mlflow.sklearn import get_default_conda_env
@@ -5025,7 +4910,6 @@ def plot_model(
     logger.info("Checking exceptions")
 
     # exception checking
-    import sys
 
     # checking plots (string)
     available_plots = [
@@ -5120,17 +5004,10 @@ def plot_model(
     logger.info("Preloading libraries")
     # pre-load libraries
     import matplotlib.pyplot as plt
-    import numpy as np
-    import pandas as pd
 
     np.random.seed(seed)
 
     display.move_progress()
-
-    # ignore warnings
-    import warnings
-
-    warnings.filterwarnings("ignore")
 
     # defining estimator as model locally
     model = estimator
@@ -5265,7 +5142,6 @@ def plot_model(
         from sklearn.preprocessing import StandardScaler
         from sklearn.decomposition import PCA
         from yellowbrick.contrib.classifier import DecisionViz
-        from copy import deepcopy
 
         model2 = deepcopy(estimator)
 
@@ -5730,8 +5606,6 @@ def interpret_model(
 
     logger.info("Checking exceptions")
 
-    import sys
-
     # checking if shap available
     try:
         import shap
@@ -5768,8 +5642,6 @@ def interpret_model(
 
     logger.info("Importing libraries")
     # general dependencies
-    import numpy as np
-    import pandas as pd
 
     np.random.seed(seed)
 
@@ -5781,6 +5653,8 @@ def interpret_model(
     shap_models_type2 = set(shap_models[shap_models["SHAP"] == "type2"].index)
 
     logger.info(f"plot type: {plot}")
+
+    shap_plot = None
 
     if plot == "summary":
 
@@ -5813,12 +5687,10 @@ def interpret_model(
 
         if model_id in shap_models_type1:
             logger.info("model type detected: type 1")
-            shap_plot = shap.dependence_plot(
-                dependence, shap_values[1], X_test, **kwargs
-            )
+            shap.dependence_plot(dependence, shap_values[1], X_test, **kwargs)
         elif model_id in shap_models_type2:
             logger.info("model type detected: type 2")
-            shap_plot = shap.dependence_plot(dependence, shap_values, X_test, **kwargs)
+            shap.dependence_plot(dependence, shap_values, X_test, **kwargs)
 
     elif plot == "reason":
 
@@ -5912,7 +5784,7 @@ def calibrate_model(
     round: int = 4,
     verbose: bool = True,
     display: Display = None,  # added in pycaret==2.2.0
-):
+) -> Any:
 
     """
     This function takes the input of trained estimator and performs probability 
@@ -5983,12 +5855,7 @@ def calibrate_model(
 
     logger.info("Checking exceptions")
 
-    # exception checking
-    import sys
-
     # run_time
-    import datetime, time
-
     runtime_start = time.time()
 
     # checking fold parameter
@@ -6012,7 +5879,6 @@ def calibrate_model(
     logger.info("Preloading libraries")
 
     # pre-load libraries
-    import pandas as pd
 
     logger.info("Preparing display monitor")
 
@@ -6038,14 +5904,8 @@ def calibrate_model(
         display.display_monitor()
         display.display_master_display()
 
-    # ignore warnings
-    import warnings
-
-    warnings.filterwarnings("ignore")
-
     logger.info("Importing libraries")
     # general dependencies
-    import numpy as np
     from sklearn import metrics
 
     np.random.seed(seed)
@@ -6146,7 +6006,6 @@ def calibrate_model(
         import mlflow
         import mlflow.sklearn
         from pathlib import Path
-        import os
 
         mlflow.set_experiment(exp_name_log)
 
@@ -6243,9 +6102,6 @@ def calibrate_model(
                 logger.info(
                     "SubProcess plot_model() end =================================="
                 )
-
-            # Log model and transformation pipeline
-            from copy import deepcopy
 
             # get default conda env
             from mlflow.sklearn import get_default_conda_env
@@ -6363,9 +6219,7 @@ def optimize_threshold(
     logger.info("Importing libraries")
 
     # import libraries
-    import sys
-    import pandas as pd
-    import numpy as np
+
     import plotly.express as px
     from IPython.display import clear_output
 
@@ -6386,19 +6240,19 @@ def optimize_threshold(
     # exception 1 for multi-class
     if _is_multiclass():
         raise TypeError(
-            "optimize_threshold() cannot be used when target is multi-class. "
+            "optimize_threshold() cannot be used when target is multi-class."
         )
 
     if _is_one_vs_rest(estimator):
         raise TypeError(
-            "optimize_threshold() cannot be used when target is multi-class. "
+            "optimize_threshold() cannot be used when target is multi-class."
         )
 
     # check predict_proba value
     if type(estimator) is not list:
         if not hasattr(estimator, "predict_proba"):
             raise TypeError(
-                "Estimator doesn't support predict_proba function and cannot be used in optimize_threshold().  "
+                "Estimator doesn't support predict_proba function and cannot be used in optimize_threshold()."
             )
 
     # check cost function type
@@ -6412,12 +6266,12 @@ def optimize_threshold(
 
     if type(false_positive) not in allowed_types:
         raise TypeError(
-            "false_positive parameter only accepts float or integer value. "
+            "false_positive parameter only accepts float or integer value."
         )
 
     if type(false_negative) not in allowed_types:
         raise TypeError(
-            "false_negative parameter only accepts float or integer value. "
+            "false_negative parameter only accepts float or integer value."
         )
 
     """
@@ -6534,12 +6388,12 @@ def optimize_threshold(
 
 def predict_model(
     estimator,
-    data: pandas.DataFrame = None,
+    data: pd.DataFrame = None,
     probability_threshold: float = None,
     round: int = 4,  # added in pycaret==2.2.0
     verbose: bool = True,
     display: Display = None,  # added in pycaret==2.2.0
-):  # added in pycaret==2.0.0
+) -> pd.DataFrame:  # added in pycaret==2.0.0
 
     """
     This function is used to predict label and probability score on the new dataset
@@ -6595,11 +6449,6 @@ def predict_model(
 
     logger.info("Checking exceptions")
 
-    # ignore warnings
-    import warnings
-
-    warnings.filterwarnings("ignore")
-
     """
     exception checking starts here
     """
@@ -6607,24 +6456,24 @@ def predict_model(
     if probability_threshold is not None:
         if _is_one_vs_rest(estimator):
             raise TypeError(
-                "probability_threshold parameter cannot be used when target is multi-class. "
+                "probability_threshold parameter cannot be used when target is multi-class."
             )
 
         # probability_threshold allowed types
         allowed_types = [int, float]
         if type(probability_threshold) not in allowed_types:
             raise TypeError(
-                "probability_threshold parameter only accepts value between 0 to 1. "
+                "probability_threshold parameter only accepts value between 0 to 1."
             )
 
         if probability_threshold > 1:
             raise TypeError(
-                "probability_threshold parameter only accepts value between 0 to 1. "
+                "probability_threshold parameter only accepts value between 0 to 1."
             )
 
         if probability_threshold < 0:
             raise TypeError(
-                "probability_threshold parameter only accepts value between 0 to 1. "
+                "probability_threshold parameter only accepts value between 0 to 1."
             )
 
     """
@@ -6634,12 +6483,7 @@ def predict_model(
     logger.info("Preloading libraries")
 
     # general dependencies
-    import sys
-    import numpy as np
-    import pandas as pd
-    import re
     from sklearn import metrics
-    from copy import deepcopy
 
     np.random.seed(seed)
 
@@ -6722,6 +6566,8 @@ def predict_model(
         except:
             pass
 
+    df_score = None
+
     if data is None:
         metrics = _calculate_metrics(ytest, pred_, pred_prob)
         df_score = pd.DataFrame(metrics)
@@ -6750,15 +6596,13 @@ def predict_model(
             pass
 
     # store predictions on hold-out in display_container
-    try:
+    if df_score is not None:
         display_container.append(df_score)
-    except:
-        pass
 
     return X_test_
 
 
-def finalize_model(estimator, display=None):  # added in pycaret==2.2.0
+def finalize_model(estimator, display=None) -> Any:  # added in pycaret==2.2.0
 
     """
     This function fits the estimator onto the complete dataset passed during the
@@ -6806,21 +6650,12 @@ def finalize_model(estimator, display=None):  # added in pycaret==2.2.0
     if not display:
         display = Display(False, html_param, logger=logger,)
 
-    # ignore warnings
-    import warnings
-
-    warnings.filterwarnings("ignore")
-
     # run_time
-    import datetime, time
-
     runtime_start = time.time()
 
     logger.info("Importing libraries")
     # import depedencies
     from sklearn.base import clone
-    from copy import deepcopy
-    import numpy as np
 
     np.random.seed(seed)
 
@@ -6861,7 +6696,6 @@ def finalize_model(estimator, display=None):  # added in pycaret==2.2.0
         import mlflow
         from pathlib import Path
         import mlflow.sklearn
-        import os
 
         mlflow.set_experiment(exp_name_log)
 
@@ -6958,9 +6792,6 @@ def finalize_model(estimator, display=None):  # added in pycaret==2.2.0
                 logger.info(
                     "SubProcess plot_model() end =================================="
                 )
-
-            # Log model and transformation pipeline
-            from copy import deepcopy
 
             # get default conda env
             from mlflow.sklearn import get_default_conda_env
@@ -7208,7 +7039,7 @@ def load_model(
     )
 
 
-def automl(optimize: str = "Accuracy", use_holdout: bool = False):
+def automl(optimize: str = "Accuracy", use_holdout: bool = False) -> Any:
 
     """
     This function returns the best model out of all models created in 
@@ -7280,7 +7111,7 @@ def automl(optimize: str = "Accuracy", use_holdout: bool = False):
     return automl_finalized
 
 
-def pull(pop=False) -> pandas.DataFrame:  # added in pycaret==2.2.0
+def pull(pop=False) -> pd.DataFrame:  # added in pycaret==2.2.0
     """
     Returns latest displayed table.
 
@@ -7301,7 +7132,7 @@ def pull(pop=False) -> pandas.DataFrame:  # added in pycaret==2.2.0
 
 def models(
     type: str = None, internal: bool = False, force_regenerate: bool = False
-) -> pandas.DataFrame:
+) -> pd.DataFrame:
 
     """
     Returns table of models available in model library.
@@ -7353,9 +7184,6 @@ def models(
                 return filter_model_df_by_type(all_models)
         except:
             pass
-
-    import pandas as pd
-    import numpy as np
 
     np.random.seed(seed)
 
@@ -7873,7 +7701,7 @@ def models(
     return filter_model_df_by_type(df)
 
 
-def get_metrics(force_regenerate: bool = False) -> pandas.DataFrame:
+def get_metrics(force_regenerate: bool = False) -> pd.DataFrame:
     """
     Returns table of metrics available.
 
@@ -7902,8 +7730,6 @@ def get_metrics(force_regenerate: bool = False) -> pandas.DataFrame:
         except:
             pass
 
-    import pandas as pd
-    import numpy as np
     from sklearn import metrics
 
     np.random.seed(seed)
@@ -8026,7 +7852,7 @@ def add_metric(
     target: str = "pred",
     args: dict = {},
     multiclass: bool = True,
-) -> pandas.Series:
+) -> pd.Series:
     """
     Adds a custom metric to be used in all functions.
 
@@ -8078,8 +7904,6 @@ def add_metric(
     if not "all_metrics" in globals():
         raise ValueError("setup() needs to be ran first.")
 
-    import pandas as pd
-    import numpy as np
     from sklearn import metrics
 
     np.random.seed(seed)
@@ -8104,7 +7928,7 @@ def add_metric(
     return all_metrics.iloc[-2]
 
 
-def get_logs(experiment_name: str = None, save: bool = False) -> pandas.DataFrame:
+def get_logs(experiment_name: str = None, save: bool = False) -> pd.DataFrame:
 
     """
     Returns a table with experiment logs consisting
@@ -8129,8 +7953,6 @@ def get_logs(experiment_name: str = None, save: bool = False) -> pandas.DataFram
     pandas.DataFrame
 
     """
-
-    import sys
 
     if experiment_name is None:
         exp_name_log_ = exp_name_log
@@ -8253,10 +8075,8 @@ def _is_one_vs_rest(e) -> bool:
 
 
 def _fix_imbalance(
-    Xtrain: pandas.DataFrame,
-    ytrain: pandas.DataFrame,
-    fix_imbalance_method_param: Any = None,
-) -> Tuple[pandas.DataFrame, pandas.DataFrame]:
+    Xtrain: pd.DataFrame, ytrain: pd.DataFrame, fix_imbalance_method_param: Any = None,
+) -> Tuple[pd.DataFrame, pd.DataFrame]:
 
     """
     Method to fix imbalance using fix_imbalance_method_param.
@@ -8267,7 +8087,6 @@ def _fix_imbalance(
 
     if fix_imbalance_method_param is None:
         import six
-        import sys
 
         sys.modules["sklearn.externals.six"] = six
         from imblearn.over_sampling import SMOTE
@@ -8359,16 +8178,13 @@ def _sample_data(
     """
     Method to sample data.
     """
-    import pandas as pd
-    import numpy as np
+
     from sklearn.linear_model import LogisticRegression
     from sklearn.model_selection import train_test_split
     from sklearn import metrics
-    import random
     import seaborn as sns
     import matplotlib.pyplot as plt
     import plotly.express as px
-    import datetime, time
 
     np.random.seed(seed)
 
