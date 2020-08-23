@@ -2642,8 +2642,8 @@ def create_model(
         MONITOR UPDATE ENDS
         """
 
-        Xtrain, Xtest = data_X.iloc[train_i].to_numpy(), data_X.iloc[test_i].to_numpy()
-        ytrain, ytest = data_y.iloc[train_i].to_numpy(), data_y.iloc[test_i].to_numpy()
+        Xtrain, Xtest = data_X.iloc[train_i], data_X.iloc[test_i]
+        ytrain, ytest = data_y.iloc[train_i], data_y.iloc[test_i]
         # time just for fitting
         time_start = time.time()
 
