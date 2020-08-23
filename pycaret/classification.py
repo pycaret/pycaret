@@ -7719,7 +7719,8 @@ def get_metrics(force_regenerate: bool = False) -> pd.DataFrame:
     ----------
     force_regenerate: Boolean, default = False
         If True, will force the DataFrame to be regenerated,
-        instead of using a cached version.
+        instead of using a cached version. This will also reset
+        all changes made using add_metric() and get_metric().
 
     Returns
     -------
@@ -7859,13 +7860,6 @@ def add_metric(
     """
     Adds a custom metric to be used in all functions.
 
-    Example
-    -------
-    >>> metrics = get_metrics()
-
-    This will return pandas dataframe with all available 
-    metrics and their metadata.
-
     Parameters
     ----------
     id: str
@@ -7930,6 +7924,32 @@ def add_metric(
     all_metrics = all_metrics.append(last_row)
     return all_metrics.iloc[-2]
 
+def remove_metric(name_or_id: str):
+    """
+    Removes a metric used in all functions.
+
+    Parameters
+    ----------
+    name_or_id: str
+        Display name or ID of the metric.
+
+    """
+    if not "all_metrics" in globals():
+        raise ValueError("setup() needs to be ran first.")
+
+    try:
+        all_metrics.drop(name_or_id, axis=0, inplace=True)
+        return
+    except:
+        pass
+
+    try:
+        all_metrics.drop(all_metrics[all_metrics["Name"] == name_or_id].index, axis=0, inplace=True)
+        return
+    except:
+        pass
+
+    raise ValueError(f"No row with 'Display Name' or 'ID' (index) {name_or_id} present in the metrics dataframe.")
 
 def get_logs(experiment_name: str = None, save: bool = False) -> pd.DataFrame:
 
