@@ -509,7 +509,7 @@ def setup(
         logger.info(f"Logical Core: {psutil.cpu_count(logical=True)}")
     except:
         logger.warning(
-            "cannot find psutil installation. memory not traceable. Install psutil using pip to enable memory logging. "
+            "cannot find psutil installation. memory not traceable. Install psutil using pip to enable memory logging."
         )
 
     logger.info("Checking libraries")
@@ -606,14 +606,14 @@ def setup(
     allowed_categorical_imputation = ["constant", "mode"]
     if categorical_imputation not in allowed_categorical_imputation:
         raise ValueError(
-            "categorical_imputation param only accepts 'constant' or 'mode' "
+            "categorical_imputation param only accepts 'constant' or 'mode'"
         )
 
     # ordinal_features
     if ordinal_features is not None:
         if type(ordinal_features) is not dict:
             raise TypeError(
-                "ordinal_features must be of type dictionary with column name as key and ordered values as list. "
+                "ordinal_features must be of type dictionary with column name as key and ordered values as list."
             )
 
     # ordinal features check
@@ -625,13 +625,13 @@ def setup(
         for i in ord_keys:
             if i not in data_cols:
                 raise ValueError(
-                    "Column name passed as a key in ordinal_features param doesnt exist. "
+                    "Column name passed as a key in ordinal_features param doesnt exist."
                 )
 
         for k in ord_keys:
             if data[k].nunique() != len(ordinal_features[k]):
                 raise ValueError(
-                    "Levels passed in ordinal_features param doesnt match with levels in data. "
+                    "Levels passed in ordinal_features param doesnt match with levels in data."
                 )
 
         for i in ord_keys:
@@ -647,7 +647,7 @@ def setup(
     if high_cardinality_features is not None:
         if type(high_cardinality_features) is not list:
             raise TypeError(
-                "high_cardinality_features param only accepts name of columns as a list. "
+                "high_cardinality_features param only accepts name of columns as a list."
             )
 
     if high_cardinality_features is not None:
@@ -663,7 +663,7 @@ def setup(
     high_cardinality_allowed_methods = ["frequency", "clustering"]
     if high_cardinality_method not in high_cardinality_allowed_methods:
         raise ValueError(
-            "high_cardinality_method param only accepts 'frequency' or 'clustering' "
+            "high_cardinality_method param only accepts 'frequency' or 'clustering'"
         )
 
     # checking numeric imputation
@@ -675,14 +675,14 @@ def setup(
     allowed_normalize_method = ["zscore", "minmax", "maxabs", "robust"]
     if normalize_method not in allowed_normalize_method:
         raise ValueError(
-            "normalize_method param only accepts 'zscore', 'minxmax', 'maxabs' or 'robust'. "
+            "normalize_method param only accepts 'zscore', 'minxmax', 'maxabs' or 'robust'."
         )
 
     # checking transformation method
     allowed_transformation_method = ["yeo-johnson", "quantile"]
     if transformation_method not in allowed_transformation_method:
         raise ValueError(
-            "transformation_method param only accepts 'yeo-johnson' or 'quantile'. "
+            "transformation_method param only accepts 'yeo-johnson' or 'quantile'."
         )
 
     # handle unknown categorical
@@ -707,7 +707,7 @@ def setup(
     allowed_pca_methods = ["linear", "kernel", "incremental"]
     if pca_method not in allowed_pca_methods:
         raise ValueError(
-            "pca method param only accepts 'linear', 'kernel', or 'incremental'. "
+            "pca method param only accepts 'linear', 'kernel', or 'incremental'."
         )
 
     # pca components check
@@ -716,7 +716,7 @@ def setup(
             if pca_components is not None:
                 if (type(pca_components)) is not int:
                     raise TypeError(
-                        "pca_components parameter must be integer when pca_method is not 'linear'. "
+                        "pca_components parameter must be integer when pca_method is not 'linear'."
                     )
 
     # pca components check 2
@@ -4489,7 +4489,7 @@ def stack_models(
     # checking meta model
     if meta_model is not None:
         if not hasattr(meta_model, "fit"):
-            raise ValueError(f"Meta Model {i} does not have the required fit() method.")
+            raise ValueError(f"Meta Model {meta_model} does not have the required fit() method.")
 
     # checking fold parameter
     if type(fold) is not int:
@@ -6240,19 +6240,19 @@ def optimize_threshold(
     # exception 1 for multi-class
     if _is_multiclass():
         raise TypeError(
-            "optimize_threshold() cannot be used when target is multi-class. "
+            "optimize_threshold() cannot be used when target is multi-class."
         )
 
     if _is_one_vs_rest(estimator):
         raise TypeError(
-            "optimize_threshold() cannot be used when target is multi-class. "
+            "optimize_threshold() cannot be used when target is multi-class."
         )
 
     # check predict_proba value
     if type(estimator) is not list:
         if not hasattr(estimator, "predict_proba"):
             raise TypeError(
-                "Estimator doesn't support predict_proba function and cannot be used in optimize_threshold().  "
+                "Estimator doesn't support predict_proba function and cannot be used in optimize_threshold()."
             )
 
     # check cost function type
@@ -6266,12 +6266,12 @@ def optimize_threshold(
 
     if type(false_positive) not in allowed_types:
         raise TypeError(
-            "false_positive parameter only accepts float or integer value. "
+            "false_positive parameter only accepts float or integer value."
         )
 
     if type(false_negative) not in allowed_types:
         raise TypeError(
-            "false_negative parameter only accepts float or integer value. "
+            "false_negative parameter only accepts float or integer value."
         )
 
     """
@@ -6456,24 +6456,24 @@ def predict_model(
     if probability_threshold is not None:
         if _is_one_vs_rest(estimator):
             raise TypeError(
-                "probability_threshold parameter cannot be used when target is multi-class. "
+                "probability_threshold parameter cannot be used when target is multi-class."
             )
 
         # probability_threshold allowed types
         allowed_types = [int, float]
         if type(probability_threshold) not in allowed_types:
             raise TypeError(
-                "probability_threshold parameter only accepts value between 0 to 1. "
+                "probability_threshold parameter only accepts value between 0 to 1."
             )
 
         if probability_threshold > 1:
             raise TypeError(
-                "probability_threshold parameter only accepts value between 0 to 1. "
+                "probability_threshold parameter only accepts value between 0 to 1."
             )
 
         if probability_threshold < 0:
             raise TypeError(
-                "probability_threshold parameter only accepts value between 0 to 1. "
+                "probability_threshold parameter only accepts value between 0 to 1."
             )
 
     """
@@ -6566,6 +6566,8 @@ def predict_model(
         except:
             pass
 
+    df_score = None
+
     if data is None:
         metrics = _calculate_metrics(ytest, pred_, pred_prob)
         df_score = pd.DataFrame(metrics)
@@ -6594,10 +6596,8 @@ def predict_model(
             pass
 
     # store predictions on hold-out in display_container
-    try:
+    if df_score is not None:
         display_container.append(df_score)
-    except:
-        pass
 
     return X_test_
 
