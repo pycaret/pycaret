@@ -26,7 +26,7 @@ kmodes>=0.10.1
 datefinder>=0.7.0
 DateTime>=4.3
 mlflow
-imbalanced-learn
+imbalanced-learn>=0.6.2
 #psutil - removing it as causing problem in Dockerfile
 #awscli - only required in deploy_model for AWS
 #azure-storage-blob - only required in deploy_model for Azure
