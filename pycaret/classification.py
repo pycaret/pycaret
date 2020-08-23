@@ -3617,7 +3617,7 @@ def ensemble_model(
                 )
                 onevsrest_model_definition = _all_models_internal.loc["OneVsRest"]
                 check_model = onevsrest_model_definition["Class"](
-                    model, **onevsrest_model_definition["Args"]
+                    check_model, **onevsrest_model_definition["Args"]
                 )
 
             else:
