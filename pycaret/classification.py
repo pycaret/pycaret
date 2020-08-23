@@ -7078,7 +7078,7 @@ def automl(optimize: str = "Accuracy", use_holdout: bool = False) -> Any:
 
     # checking optimize parameter for multiclass
     if _is_multiclass():
-        if not all_metrics[all_metrics["Name"] == optimize].iloc[0]["Multiclass"]:
+        if not optimize["Multiclass"]:
             raise TypeError(
                 f"Optimization metric not supported for multiclass problems. See docstring for list of other optimization parameters."
             )
