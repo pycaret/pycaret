@@ -3446,7 +3446,7 @@ def tune_model(
                 **search_kwargs,
             )
 
-    #with io.capture_output():
+    # with io.capture_output():
     model_grid.fit(X_train, y_train)
     best_model = model_grid.best_estimator_
 
@@ -3585,7 +3585,11 @@ def tune_model(
 
                 try:
                     plot_model(
-                        best_model, plot="feature", verbose=False, save=True, system=False
+                        best_model,
+                        plot="feature",
+                        verbose=False,
+                        save=True,
+                        system=False,
                     )
                     mlflow.log_artifact("Feature Importance.png")
                     os.remove("Feature Importance.png")
@@ -7614,13 +7618,13 @@ def models(
                 LogisticRegression,
                 {"random_state": seed} if not cuml_lr_imported else {},
                 {
-                    "penalty": ["l2", "none"] + ["l1"] if cuml_lr_imported else [],
+                    "penalty": ["l2", "none"] + (["l1"] if cuml_lr_imported else []),
                     "C": np.arange(0, 10, 0.001),
                     # "class_weight": ["balanced", {}],
                 },
                 {
                     "penalty": CategoricalDistribution(
-                        ["l2", "none"] + ["l1"] if cuml_lr_imported else []
+                        ["l2", "none"] + (["l1"] if cuml_lr_imported else [])
                     ),
                     "C": UniformDistribution(0, 10),
                     # "class_weight": CategoricalDistribution(["balanced", {}]),
@@ -7734,7 +7738,8 @@ def models(
                         0.05,
                     ],
                     "fit_intercept": [True, False],
-                    "learning_rate": ["constant", "invscaling", "adaptive"] + ["optimal"] if not cuml_sdg_imported else [],
+                    "learning_rate": ["constant", "invscaling", "adaptive"]
+                    + (["optimal"] if not cuml_sdg_imported else []),
                     "eta0": [0.001, 0.01, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5],
                 },
                 {
@@ -7743,7 +7748,8 @@ def models(
                     "alpha": UniformDistribution(0.0000000001, 0.9999999999),
                     "fit_intercept": CategoricalDistribution([True, False]),
                     "learning_rate": CategoricalDistribution(
-                        ["constant", "invscaling", "adaptive"] + ["optimal"] if not cuml_sdg_imported else []
+                        ["constant", "invscaling", "adaptive"]
+                        + (["optimal"] if not cuml_sdg_imported else [])
                     ),
                     "eta0": UniformDistribution(0.001, 0.5),
                 },
