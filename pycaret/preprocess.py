@@ -395,6 +395,9 @@ class Simple_Imputer(BaseEstimator,TransformerMixin):
     self.categorical_strategy = categorical_strategy
   
   def fit(self,dataset,y=None): #
+    def zeros(x):
+      return 0
+
     data = dataset.copy()
     # make a table for numerical variable with strategy stats
     if self.numeric_strategy == 'mean':
@@ -402,7 +405,7 @@ class Simple_Imputer(BaseEstimator,TransformerMixin):
     elif self.numeric_strategy == 'median':
       self.numeric_stats = data.drop(self.target,axis=1).select_dtypes(include=['float64','int64']).apply(np.nanmedian)
     else:
-      self.numeric_stats = data.drop(self.target,axis=1).select_dtypes(include=['float64','int64']).fillna(0)
+      self.numeric_stats = data.drop(self.target,axis=1).select_dtypes(include=['float64','int64']).apply(zeros)
 
     self.numeric_columns = data.drop(self.target,axis=1).select_dtypes(include=['float64','int64']).columns
 
@@ -477,6 +480,9 @@ class Surrogate_Imputer(BaseEstimator,TransformerMixin):
     self.categorical_strategy = categorical_strategy
   
   def fit(self,dataset,y=None): #
+    def zeros(x):
+      return 0
+
     data = dataset.copy()
     # make a table for numerical variable with strategy stats
     if self.numeric_strategy == 'mean':
@@ -484,7 +490,7 @@ class Surrogate_Imputer(BaseEstimator,TransformerMixin):
     elif self.numeric_strategy == 'median':
       self.numeric_stats = data.drop(self.target,axis=1).select_dtypes(include=['float64','int64']).apply(np.nanmedian)
     else:
-      self.numeric_stats = data.drop(self.target,axis=1).select_dtypes(include=['float64','int64']).fillna(0)
+      self.numeric_stats = data.drop(self.target,axis=1).select_dtypes(include=['float64','int64']).apply(zeros)
 
     self.numeric_columns = data.drop(self.target,axis=1).select_dtypes(include=['float64','int64']).columns
     # also need to learn if any columns had NA in training
