@@ -2,7 +2,7 @@
 # Author: Moez Ali <moez.ali@queensu.ca>
 # License: MIT
 # Release: PyCaret 2.1
-# Last modified : 17/08/2020
+# Last modified : 24/08/2020
 
 def setup(data, 
           target, 
@@ -15,7 +15,7 @@ def setup(data,
           high_cardinality_features = None, 
           high_cardinality_method = 'frequency', 
           numeric_features = None,
-          numeric_imputation = 'mean',
+          numeric_imputation = 'mean', #method 'zero' added in pycaret==2.1
           date_features = None,
           ignore_features = None,
           normalize = False,
@@ -35,7 +35,7 @@ def setup(data,
           outliers_threshold = 0.05,
           remove_multicollinearity = False,
           multicollinearity_threshold = 0.9,
-          remove_perfect_collinearity = False, #added in pycaret==2.0.0
+          remove_perfect_collinearity = False,
           create_clusters = False,
           cluster_iter = 20,
           polynomial_features = False,           
@@ -46,25 +46,25 @@ def setup(data,
           group_names = None,
           feature_selection = False,
           feature_selection_threshold = 0.8,
-          feature_selection_method = 'classic',
+          feature_selection_method = 'classic', #boruta algorithm added in pycaret==2.1
           feature_interaction = False,
           feature_ratio = False,
           interaction_threshold = 0.01,              
           transform_target = False,
           transform_target_method = 'box-cox',
-          data_split_shuffle = True, #added in pycaret==2.0.0
-          folds_shuffle = False, #added in pycaret==2.0.0
-          n_jobs = -1, #added in pycaret==2.0.0
+          data_split_shuffle = True, 
+          folds_shuffle = False,
+          n_jobs = -1, 
           use_gpu = False, #added in pycaret==2.1
-          html = True, #added in pycaret==2.0.0
+          html = True, 
           session_id = None,
-          log_experiment = False, #added in pycaret==2.0.0
-          experiment_name = None, #added in pycaret==2.0.0
-          log_plots = False, #added in pycaret==2.0.0
-          log_profile = False, #added in pycaret==2.0.0
-          log_data = False, #added in pycaret==2.0.0
+          log_experiment = False, 
+          experiment_name = None,
+          log_plots = False,
+          log_profile = False, 
+          log_data = False, 
           silent = False,
-          verbose = True, #added in pycaret==2.0.0
+          verbose = True,
           profile = False):
     
     """
@@ -1748,15 +1748,15 @@ def setup(data,
         master_model_container, display_container, exp_name_log, logging_param, log_plots_param, USI,\
         data_before_preprocess, target_param
 
-def compare_models(exclude = None,
-                   include = None, #added in pycaret==2.0.0
+def compare_models(exclude = None, #changed blacklist to exclude in pycaret==2.1
+                   include = None, #changed whitelist to exclude in pycaret==2.1
                    fold = 10, 
                    round = 4, 
                    sort = 'R2',
-                   n_select = 1, #added in pycaret==2.0.0
-                   budget_time = 0, #added in pycaret==2.1.0
+                   n_select = 1,
+                   budget_time = 0, #added in pycaret==2.1
                    turbo = True,
-                   verbose = True): #added in pycaret==2.0.0
+                   verbose = True):
     
     """
     This function train all the models available in the model library and scores them 
@@ -2686,10 +2686,10 @@ def create_model(estimator = None,
                  method = None, 
                  fold = 10, 
                  round = 4,
-                 cross_validation = True, #added in pycaret==2.0.0
+                 cross_validation = True,
                  verbose = True,
-                 system = True, #added in pycaret==2.0.0
-                 **kwargs): #added in pycaret==2.0.0
+                 system = True,
+                 **kwargs):
     
      
     """
@@ -3553,10 +3553,10 @@ def tune_model(estimator,
                fold = 10, 
                round = 4, 
                n_iter = 10,
-               custom_grid = None, #added in pycaret==2.0.0 
+               custom_grid = None,
                optimize = 'R2',
                custom_scorer = None, #added in pycaret==2.1
-               choose_better = False, #added in pycaret==2.0.0
+               choose_better = False,
                verbose = True):
     
       
@@ -4944,8 +4944,8 @@ def ensemble_model(estimator,
                    fold = 10,
                    n_estimators = 10,
                    round = 4,
-                   choose_better = False, #added in pycaret==2.0.0
-                   optimize = 'R2', #added in pycaret==2.0.0
+                   choose_better = False,
+                   optimize = 'R2',
                    verbose = True):
     """
     This function ensembles the trained base estimator using the method defined 
@@ -5660,8 +5660,8 @@ def ensemble_model(estimator,
 def blend_models(estimator_list = 'All', 
                  fold = 10, 
                  round = 4, 
-                 choose_better = False, #added in pycaret==2.0.0 
-                 optimize = 'R2', #added in pycaret==2.0.0 
+                 choose_better = False,
+                 optimize = 'R2',
                  turbo = True,
                  verbose = True):
     
@@ -6452,8 +6452,8 @@ def stack_models(estimator_list,
                  fold = 10,
                  round = 4, 
                  restack = True, 
-                 choose_better = False, #added in pycaret==2.0.0
-                 optimize = 'R2', #added in pycaret==2.0.0
+                 choose_better = False,
+                 optimize = 'R2',
                  verbose = True):
     
     """
@@ -7129,10 +7129,10 @@ def stack_models(estimator_list,
 
 def plot_model(estimator, 
                plot = 'residuals',
-               scale = 1, #added in pycaret 2.1.0
-               save = False, #added in pycaret 1.0.1
-               verbose = True, #added in pycaret 1.0.1
-               system = True): #added in pycaret 1.0.1): 
+               scale = 1, #added in pycaret==2.1
+               save = False,
+               verbose = True,
+               system = True):
     
     
     """
@@ -7823,7 +7823,7 @@ def interpret_model(estimator,
 def predict_model(estimator, 
                   data=None,
                   round=4,
-                  verbose=True): #added in pycaret==2.0.0
+                  verbose=True):
     
     """
        
@@ -8265,7 +8265,7 @@ def finalize_model(estimator):
 
 def deploy_model(model, 
                  model_name, 
-                 platform,
+                 platform, #added gcp and azure support in pycaret==2.1
                  authentication):
     
     """
