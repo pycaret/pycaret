@@ -112,10 +112,9 @@ class DataTypes_Auto_infer(BaseEstimator,TransformerMixin):
       except:
         None
     
-    # if data type is bool , convert to categorical
-    for i in data.columns:
-      if data[i].dtype=='bool':
-        data[i] = data[i].astype('object')
+    # if data type is bool or pandas Categorical , convert to categorical
+    for i in data.select_dtypes(include=['bool', 'category']).columns:
+      data[i] = data[i].astype('object')
     
 
     # some times we have id column in the data set, we will try to find it and then  will drop it if found
