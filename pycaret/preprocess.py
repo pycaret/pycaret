@@ -378,12 +378,12 @@ class Simple_Imputer(BaseEstimator,TransformerMixin):
   '''
     Imputes all type of data (numerical,categorical & Time).
       Highly recommended to run Define_dataTypes class first
-      Numerical values can be imputed with mean or median 
+      Numerical values can be imputed with mean or median or filled with zeros
       categorical missing values will be replaced with "Other"
       Time values are imputed with the most frequesnt value
       Ignores target (y) variable    
       Args: 
-        Numeric_strategy: string , all possible values {'mean','median'}
+        Numeric_strategy: string , all possible values {'mean','median','zero'}
         categorical_strategy: string , all possible values {'not_available','most frequent'}
         target: string , name of the target variable
 
@@ -395,12 +395,17 @@ class Simple_Imputer(BaseEstimator,TransformerMixin):
     self.categorical_strategy = categorical_strategy
   
   def fit(self,dataset,y=None): #
+    def zeros(x):
+      return 0
+
     data = dataset.copy()
     # make a table for numerical variable with strategy stats
     if self.numeric_strategy == 'mean':
       self.numeric_stats = data.drop(self.target,axis=1).select_dtypes(include=['float64','int64']).apply(np.nanmean)
-    else:
+    elif self.numeric_strategy == 'median':
       self.numeric_stats = data.drop(self.target,axis=1).select_dtypes(include=['float64','int64']).apply(np.nanmedian)
+    else:
+      self.numeric_stats = data.drop(self.target,axis=1).select_dtypes(include=['float64','int64']).apply(zeros)
 
     self.numeric_columns = data.drop(self.target,axis=1).select_dtypes(include=['float64','int64']).columns
 
@@ -458,14 +463,14 @@ class Surrogate_Imputer(BaseEstimator,TransformerMixin):
       - it is also recommended to only apply this to features where it makes business sense to creat surrogate column
       - feature name has to be provided
       - only able to handle one feature at a time
-      - Numerical values can be imputed with mean or median 
+      - Numerical values can be imputed with mean or median or filled with zeros
       - categorical missing values will be replaced with "Other"
       - Time values are imputed with the most frequesnt value
       - Ignores target (y) variable    
       Args: 
         feature_name: string, provide features name
         feature_type: string , all possible values {'numeric','categorical','date'}
-        strategy: string ,all possible values {'mean','median','not_available','most frequent'}
+        strategy: string ,all possible values {'mean','median','zero','not_available','most frequent'}
         target: string , name of the target variable
 
   '''
@@ -475,12 +480,17 @@ class Surrogate_Imputer(BaseEstimator,TransformerMixin):
     self.categorical_strategy = categorical_strategy
   
   def fit(self,dataset,y=None): #
+    def zeros(x):
+      return 0
+
     data = dataset.copy()
     # make a table for numerical variable with strategy stats
     if self.numeric_strategy == 'mean':
       self.numeric_stats = data.drop(self.target,axis=1).select_dtypes(include=['float64','int64']).apply(np.nanmean)
-    else:
+    elif self.numeric_strategy == 'median':
       self.numeric_stats = data.drop(self.target,axis=1).select_dtypes(include=['float64','int64']).apply(np.nanmedian)
+    else:
+      self.numeric_stats = data.drop(self.target,axis=1).select_dtypes(include=['float64','int64']).apply(zeros)
 
     self.numeric_columns = data.drop(self.target,axis=1).select_dtypes(include=['float64','int64']).columns
     # also need to learn if any columns had NA in training
