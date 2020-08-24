@@ -7,7 +7,7 @@ joblib
 scikit-learn>=0.23 
 ipywidgets
 yellowbrick>=1.0.1
-xgboost>=0.90
+xgboost>=1.1.0
 lightgbm>=2.3.1
 plotly>=4.4.1
 wordcloud
