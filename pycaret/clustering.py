@@ -94,8 +94,9 @@ def setup(data,
 
     numeric_imputation: string, default = 'mean'
         If missing values are found in numeric features, they will be imputed with the 
-        mean value of the feature. The other available option is 'median' which imputes 
-        the value using the median value in the training dataset. 
+        mean value of the feature. The other available options are 'median' which imputes 
+        the value using the median value in the training dataset and 'zero' which
+        replaces missing values with zeroes.
     
     date_features: string, default = None
         If the data has a DateTime column that is not automatically detected when running
@@ -483,9 +484,9 @@ def setup(data,
                 sys.exit("(Value Error): Column type forced is either target column or doesn't exist in the dataset.")
         
     #checking numeric imputation
-    allowed_numeric_imputation = ['mean', 'median']
+    allowed_numeric_imputation = ['mean', 'median', 'zero']
     if numeric_imputation not in allowed_numeric_imputation:
-        sys.exit("(Value Error): numeric_imputation param only accepts 'mean' or 'median' ")
+        sys.exit("(Value Error): numeric_imputation param only accepts 'mean', 'median' or 'zero'.")
         
     #checking normalize method
     allowed_normalize_method = ['zscore', 'minmax', 'maxabs', 'robust']
