@@ -2,7 +2,7 @@
 # Author: Moez Ali <moez.ali@queensu.ca>
 # License: MIT
 # Release: PyCaret 2.1
-# Last modified : 16/08/2020
+# Last modified : 24/08/2020
 
 def setup(data, 
         categorical_features = None,
@@ -32,15 +32,15 @@ def setup(data,
         group_names = None, 
         supervised = False,
         supervised_target = None,
-        n_jobs = -1, #added in pycaret==2.0.0
-        html = True, #added in pycaret==2.0.0
+        n_jobs = -1, 
+        html = True,
         session_id = None,
-        log_experiment = False, #added in pycaret==2.0.0
-        experiment_name = None, #added in pycaret==2.0.0
-        log_plots = False, #added in pycaret==2.0.0
-        log_profile = False, #added in pycaret==2.0.0
-        log_data = False, #added in pycaret==2.0.0
-        silent = False, #added in pycaret==2.0.0
+        log_experiment = False, 
+        experiment_name = None, 
+        log_plots = False,
+        log_profile = False, 
+        log_data = False,
+        silent = False,
         verbose = True,
         profile = False,):
     
@@ -1203,10 +1203,10 @@ def setup(data,
 
 def create_model(model = None, 
                  num_clusters = None,
-                 ground_truth=None, #added in pycaret==2.0.0
+                 ground_truth=None,
                  verbose=True,
-                 system=True, #added in pycaret==2.0.0
-                 **kwargs): #added in pycaret==2.0.0
+                 system=True,
+                 **kwargs):
     
     """
     This function creates a model on the dataset passed as a data param during 
@@ -1871,9 +1871,9 @@ def plot_model(model,
             plot='cluster', 
             feature = None, 
             label = False,
-            scale = 1, #added in pycaret 2.1.0
-            save = False, #added in pycaret 2.0.0
-            system = True): #added in pycaret 2.0.0
+            scale = 1, #added in pycaret==2.1
+            save = False, 
+            system = True):
     
     
     """
@@ -2277,9 +2277,9 @@ def tune_model(model=None,
                supervised_target=None,
                estimator=None,
                optimize=None,
-               custom_grid = None, #added in pycaret 2.0.0
+               custom_grid = None,
                fold=10,
-               verbose=True): #added in pycaret 2.0.0
+               verbose=True):
     
     
     """
