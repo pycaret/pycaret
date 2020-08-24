@@ -4,20 +4,20 @@ All notable changes to this project will be documented in this file.
 #### Release: PyCaret 2.1 | Release Date: August 28, 2020
 ### Summary of Changes
 
-- **CatBoost Compatibility** `CatBoostClassifier` is now compatible with `blend_models` in `pycaret.classification`. As such `blend_models` without any `estimator_list` will not result in blending total of `15` estimators including `CatBoostClassifier`.
-- **Predict Model Labels** The `Label` column returned by `predict_model` function in `pycaret.classification` now returns the original value instead of encoded value. This change is made to make output from `predict_model` more human-readable.
-- **Pandas Categorical Type** All modules are now compatible with `pandas.Categorical` object. Internally they are converted into object and are treated as the same way as `object` or `bool` is treated. 
 - **Model Deployment** Model deployment support for `gcp` and `azure` has been added in `deploy_model` function for all modules. See `documentation` for details.
-- **User Defined Loss Function** You can now pass `custom_scorer` for optimizing user defined loss function in `tune_model` for `pycaret.classification` and `pycaret.regression`. You must use `make_scorer` from `sklearn` to create custom loss function that can be passed into `custom_scorer` for the `tune_model` function.
-- **Plot Model** New parameter `scale` has been added in `plot_model` for all modules to enable high quality images for research publications.
-- **Interpret Model** `**kwargs` argument now added in `interpret_model`. 
 - **Compare Models** parameter `blacklist` and `whitelist` has now been replaced with `exclude` and `include` with no change in functionality.
+- **Plot Model** New parameter `scale` has been added in `plot_model` for all modules to enable high quality images for research publications.
+- **Predict Model Labels** The `Label` column returned by `predict_model` function in `pycaret.classification` now returns the original value instead of encoded value. This change is made to make output from `predict_model` more human-readable.
+- **User Defined Loss Function** You can now pass `custom_scorer` for optimizing user defined loss function in `tune_model` for `pycaret.classification` and `pycaret.regression`. You must use `make_scorer` from `sklearn` to create custom loss function that can be passed into `custom_scorer` for the `tune_model` function.
+- **Change in Pipeline Behavior** When using `save_model` the `model` object is appended into `Pipeline`, as such the behavior of `Pipeline` and `predict_model` is now changed. Instead of saving a `list`, `save_model` now saves `Pipeline` object where trained model is on last position. The user functionality on front-end for `predict_model` remains same.
+- **Model Logging** Model persistence in the backend when `log_experiment` is set to `True` is now changed. Instead of using internal `save_model` functionality, it now adopts to `mlflow.sklearn.save_model` to allow the use of Model Registry and `MLFlow` native deployment functionalities.
+- **CatBoost Compatibility** `CatBoostClassifier` is now compatible with `blend_models` in `pycaret.classification`. As such `blend_models` without any `estimator_list` will now result in blending total of `15` estimators including `CatBoostClassifier`.
 - **Stack Models** `stack_models` in `pycaret.classification` and `pycaret.regression` now adopts to `StackingClassifier()` and `StackingRegressor` from `sklearn`. As such the `stack_models` function now returns `sklearn` object instead of custom `list` in previous versions.
 - **Create Stacknet** `create_stacknet` in `pycaret.classification` and `pycaret.regression` is now removed.
 - **Tune Model** `tune_model` in `pycaret.classification` and `pycaret.regression` now inherits params from the input `estimator`. As such if you have trained `xgboost`, `lightgbm` or `catboost` on gpu will not inherits training method from `estimator`.
+- **Interpret Model** `**kwargs` argument now added in `interpret_model`. 
+- **Pandas Categorical Type** All modules are now compatible with `pandas.Categorical` object. Internally they are converted into object and are treated as the same way as `object` or `bool` is treated. 
 - **use_gpu** A new parameter added in the `setup` function for `pycaret.classification` and `pycaret.regression`. In `2.1` it was added to prepare for the backend work required to make this change in future releases. As such using `use_gpu` param in `2.1` has no impact.  
-- **Change in Pipeline Behavior** When using `save_model` the `model` object is appended into `Pipeline`, as such the behavior of `Pipeline` and `predict_model` is now changed. Instead of saving a `list`, `save_model` now saves `Pipeline` object where trained model is on last position. The user functionality on front-end for `predict_model` remains same.
-- **Model Logging** Model persistence in the backend when `log_experiment` is set to `True` is now changed. Instead of using internal `save_model` functionality, it now adopts to `mlflow.sklearn.save_model` to allow the use of Model Registry and `MLFlow` native deployment functionalities.
 - **Unit Tests** Unit testing enhanced. Continious improvement in progress https://github.com/pycaret/pycaret/tree/master/pycaret/tests
 - **Automated Documentation Added** Automated documentation now added. Documentation on Website will only update for `major` releases 0.X. For all minor monthly releases, documentation will be available on: https://pycaret.readthedocs.io/en/latest/
 - **Introduction of GitHub Actions** CI/CD build testing is now moved from `travis-ci` to `github-actions`. `pycaret-nightly` is now being published every 24 hours automatically. 
