@@ -21,7 +21,9 @@ All notable changes to this project will be documented in this file.
 - **Unit Tests** Unit testing enhanced. Continious improvement in progress https://github.com/pycaret/pycaret/tree/master/pycaret/tests
 - **Automated Documentation Added** Automated documentation now added. Documentation on Website will only update for `major` releases 0.X. For all minor monthly releases, documentation will be available on: https://pycaret.readthedocs.io/en/latest/
 - **Introduction of GitHub Actions** CI/CD build testing is now moved from `travis-ci` to `github-actions`. `pycaret-nightly` is now being published every 24 hours automatically. 
-
+- **Tutorials** All tutorials are now updated using `pycaret==2.0`. https://github.com/pycaret/pycaret/tree/master/tutorials
+- **Resources** New resources added under `/pycaret/resources/` https://github.com/pycaret/pycaret/tree/master/resources
+- **Example Notebook** Many example notebooks added under `/pycaret/examples/` https://github.com/pycaret/pycaret/tree/master/examples
 ___
 
 
