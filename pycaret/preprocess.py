@@ -112,9 +112,9 @@ class DataTypes_Auto_infer(BaseEstimator,TransformerMixin):
       except:
         None
     
-    # if data type is bool , convert to categorical
+    # if data type is bool or pandas Categorical , convert to categorical
     for i in data.columns:
-      if data[i].dtype=='bool':
+      if data[i].dtype=='bool' or data[i].dtype=='category':
         data[i] = data[i].astype('object')
     
 
