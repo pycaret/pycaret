@@ -5960,11 +5960,12 @@ def blend_models(estimator_list = 'All',
                 sys.exit('(Type Error): Estimator list contains estimator that doesnt support probabilities and method is forced to soft. Either change the method or drop the estimator.')
     
     #checking catboost:
-    if estimator_list != 'All':
-        for i in estimator_list:
-            if 'CatBoostClassifier' in str(i):
-                sys.exit('(Type Error): CatBoost Classifier not supported in this function.')
-    
+    #if estimator_list != 'All':
+    #    for i in estimator_list:
+    #        if 'CatBoostClassifier' in str(i):
+    #            sys.exit('(Type Error): CatBoost Classifier not supported in this function.')
+    # catboost now works with blend_models
+
     #checking fold parameter
     if type(fold) is not int:
         sys.exit('(Type Error): Fold parameter only accepts integer value.')
@@ -6131,6 +6132,7 @@ def blend_models(estimator_list = 'All',
         from sklearn.ensemble import BaggingClassifier 
         from xgboost import XGBClassifier
         import lightgbm as lgb
+        from catboost import CatBoostClassifier
         
         lr = LogisticRegression(random_state=seed) #don't add n_jobs parameter as it slows down the LR
         knn = KNeighborsClassifier(n_jobs=n_jobs_param)
@@ -6149,6 +6151,7 @@ def blend_models(estimator_list = 'All',
         et = ExtraTreesClassifier(random_state=seed, n_jobs=n_jobs_param)
         xgboost = XGBClassifier(random_state=seed, verbosity=0, n_jobs=n_jobs_param)
         lightgbm = lgb.LGBMClassifier(random_state=seed, n_jobs=n_jobs_param)
+        catboost = CatBoostClassifier(random_state=seed, silent=True, thread_count=n_jobs_param)
 
         logger.info("Import successful")
 
@@ -6157,17 +6160,17 @@ def blend_models(estimator_list = 'All',
         logger.info("Defining estimator list")
         if turbo:
             if method == 'hard':
-                estimator_list = [lr,knn,nb,dt,svm,ridge,rf,qda,ada,gbc,lda,et,xgboost,lightgbm]
+                estimator_list = [lr,knn,nb,dt,svm,ridge,rf,qda,ada,gbc,lda,et,xgboost,lightgbm,catboost]
                 voting = 'hard'
             elif method == 'soft':
-                estimator_list = [lr,knn,nb,dt,rf,qda,ada,gbc,lda,et,xgboost,lightgbm]
+                estimator_list = [lr,knn,nb,dt,rf,qda,ada,gbc,lda,et,xgboost,lightgbm,catboost]
                 voting = 'soft'
         else:
             if method == 'hard':
-                estimator_list = [lr,knn,nb,dt,svm,rbfsvm,gpc,mlp,ridge,rf,qda,ada,gbc,lda,et,xgboost,lightgbm]
+                estimator_list = [lr,knn,nb,dt,svm,rbfsvm,gpc,mlp,ridge,rf,qda,ada,gbc,lda,et,xgboost,lightgbm,catboost]
                 voting = 'hard'
             elif method == 'soft':
-                estimator_list = [lr,knn,nb,dt,rbfsvm,gpc,mlp,rf,qda,ada,gbc,lda,et,xgboost,lightgbm]
+                estimator_list = [lr,knn,nb,dt,rbfsvm,gpc,mlp,rf,qda,ada,gbc,lda,et,xgboost,lightgbm,catboost]
                 voting = 'soft'
                 
     else:
@@ -6236,7 +6239,7 @@ def blend_models(estimator_list = 'All',
     estimator_list = estimator_list
 
     estimator_list_ = zip(model_names, estimator_list)
-    estimator_list_ = set(estimator_list_)
+    #estimator_list_ = set(estimator_list_)
     estimator_list_ = list(estimator_list_)
     
     try:
