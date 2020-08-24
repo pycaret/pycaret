@@ -75,6 +75,7 @@ class Display:
             return
         if (self.verbose and self.html_param and override != False) or override == True:
             self.monitor.iloc[row_idx, 1:] = str(message)
+            self.display_monitor()
 
     def display(self, df, clear=False, override=None):
         if (self.verbose and self.html_param and override != False) or override == True:
