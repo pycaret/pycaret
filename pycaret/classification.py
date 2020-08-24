@@ -3322,7 +3322,6 @@ def tune_model(
     """
 
     logger.info("Defining Hyperparameters")
-    logger.info("Initializing RandomizedSearchCV")
 
     if custom_grid is not None:
         param_grid = custom_grid
@@ -3370,6 +3369,7 @@ def tune_model(
         study = optuna.create_study(
             direction="maximize", sampler=sampler, pruner=pruner
         )
+        logger.info("Initializing optuna.integration.OptunaSearchCV")
         model_grid = optuna.integration.OptunaSearchCV(
             estimator=_estimator_,
             param_distributions=param_grid,
@@ -3401,6 +3401,7 @@ def tune_model(
         if search_algorithm == "Grid":
             from tune_sklearn import TuneGridSearchCV
 
+            logger.info("Initializing tune_sklearn.TuneGridSearchCV")
             model_grid = TuneGridSearchCV(
                 estimator=_estimator_,
                 param_grid=param_grid,
@@ -3418,7 +3419,7 @@ def tune_model(
 
             if custom_grid is None:
                 param_grid = get_hyperopt_distributions(param_grid)
-
+            logger.info("Initializing tune_sklearn.TuneSearchCV, hyperopt")
             model_grid = TuneSearchCV(
                 estimator=_estimator_,
                 search_optimization="hyperopt",
@@ -3439,7 +3440,7 @@ def tune_model(
 
             if custom_grid is None:
                 param_grid = get_CS_distributions(param_grid)
-
+            logger.info("Initializing tune_sklearn.TuneSearchCV, bohb")
             model_grid = TuneSearchCV(
                 estimator=_estimator_,
                 search_optimization="bohb",
@@ -3458,6 +3459,7 @@ def tune_model(
         else:
             from tune_sklearn import TuneSearchCV
 
+            logger.info("Initializing tune_sklearn.TuneSearchCV, random")
             model_grid = TuneSearchCV(
                 estimator=_estimator_,
                 param_distributions=param_grid,
@@ -3476,6 +3478,7 @@ def tune_model(
         if search_algorithm == "Grid":
             from sklearn.model_selection import GridSearchCV
 
+            logger.info("Initializing GridSearchCV")
             model_grid = GridSearchCV(
                 estimator=_estimator_,
                 param_grid=param_grid,
@@ -3487,6 +3490,7 @@ def tune_model(
         else:
             from sklearn.model_selection import RandomizedSearchCV
 
+            logger.info("Initializing RandomizedSearchCV")
             model_grid = RandomizedSearchCV(
                 estimator=_estimator_,
                 param_distributions=param_grid,
