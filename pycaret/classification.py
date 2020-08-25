@@ -3267,8 +3267,6 @@ def tune_model(
 
     if custom_grid is not None:
         param_grid = custom_grid
-        for k, v in param_grid.items():
-            param_grid[k] = list(v)
     elif search_library == "scikit-learn" or (
         search_library == "tune-sklearn"
         and (search_algorithm == "Grid" or search_algorithm == "Random")
@@ -7466,15 +7464,26 @@ def models(
     cuml_sdg_imported = False
     cuml_lr_imported = False
 
+    logger.info(f"gpu_param set to {gpu_param}")
+
     if gpu_param == "force":
+        from cuml import __version__
+
+        logger.info(f"cuml=={__version__}")
         # known limitation - cuML SVC only supports binary problems
         if num_class <= 2:
             from cuml.svm import SVC
 
+            logger.info("Imported cuml.svm.SVC")
+
         from cuml.linear_model import LogisticRegression
+
+        logger.info("Imported cuml.linear_model.LogisticRegression")
 
         cuml_lr_imported = True
         from cuml import MBSGDClassifier as SGDClassifier
+
+        logger.info("Imported cuml.MBSGDClassifier")
 
         cuml_sdg_imported = True
         # Uncomment when RAPIDS 0.15 is released
@@ -7482,20 +7491,30 @@ def models(
         # from cuml.neighbors import KNeighborsClassifier
     elif gpu_param:
         # known limitation - cuML SVC only supports binary problems
+        try:
+            from cuml import __version__
+
+            logger.info(f"cuml=={__version__}")
+        except ImportError:
+            pass
         if num_class <= 2:
             try:
                 from cuml.svm import SVC
+
+                logger.info("Imported cuml.svm.SVC")
             except ImportError:
                 logger.warning("Couldn't import cuml.svm.SVC")
         try:
             from cuml.linear_model import LogisticRegression
 
+            logger.info("Imported cuml.linear_model.LogisticRegression")
             cuml_lr_imported = True
         except ImportError:
             logger.warning("Couldn't import cuml.linear_model.LogisticRegression")
         try:
             from cuml import MBSGDClassifier as SGDClassifier
 
+            logger.info("Imported cuml.MBSGDClassifier")
             cuml_sdg_imported = True
         except ImportError:
             logger.warning("Couldn't import cuml.MBSGDClassifier")
@@ -8035,16 +8054,9 @@ def models(
                 },
                 {
                     "learning_rate": np.arange(0, 1, 0.01),
-                    "n_estimators": np.arange(10, 500, 20),
-                    "subsample": [0.1, 0.2, 0.3, 0.5, 0.7, 0.9, 1],
-                    "max_depth": [int(x) for x in np.linspace(10, 110, num=11)],
-                    "colsample_bytree": [0.5, 0.7, 0.9, 1],
-                    "min_child_weight": [1, 2, 3, 4],
-                }
-                if num_class > 2
-                else {
-                    "learning_rate": np.arange(0, 1, 0.01),
-                    "n_estimators": [
+                    "n_estimators": np.arange(10, 100, 20)
+                    if num_class > 2
+                    else [
                         10,
                         30,
                         50,
@@ -8060,24 +8072,17 @@ def models(
                         1000,
                     ],
                     "subsample": [0.1, 0.2, 0.3, 0.5, 0.7, 0.9, 1],
-                    "max_depth": [int(x) for x in np.linspace(10, 110, num=11)],
+                    "max_depth": [int(x) for x in np.linspace(1, 11, num=11)],
                     "colsample_bytree": [0.5, 0.7, 0.9, 1],
                     "min_child_weight": [1, 2, 3, 4],
                 },
                 {
                     "learning_rate": UniformDistribution(0, 1),
-                    "n_estimators": IntUniformDistribution(10, 500),
+                    "n_estimators": IntUniformDistribution(10, 100)
+                    if num_class > 2
+                    else IntUniformDistribution(10, 1000, log=True),
                     "subsample": UniformDistribution(0.1, 1),
-                    "max_depth": IntUniformDistribution(10, 110),
-                    "colsample_bytree": UniformDistribution(0.5, 1),
-                    "min_child_weight": IntUniformDistribution(1, 4),
-                }
-                if num_class > 2
-                else {
-                    "learning_rate": UniformDistribution(0, 1),
-                    "n_estimators": IntUniformDistribution(10, 1000, log=True),
-                    "subsample": UniformDistribution(0.1, 1),
-                    "max_depth": IntUniformDistribution(10, 110),
+                    "max_depth": IntUniformDistribution(1, 11),
                     "colsample_bytree": UniformDistribution(0.5, 1),
                     "min_child_weight": IntUniformDistribution(1, 4),
                 },
