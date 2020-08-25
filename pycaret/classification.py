@@ -1725,6 +1725,7 @@ def setup(
         data_before_preprocess,
         target_param,
         gpu_param,
+        gpu_n_jobs_param,
     )
 
 
