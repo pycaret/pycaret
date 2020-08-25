@@ -2,7 +2,7 @@
 # License: MIT, moez.ali@queensu.ca
 
 from pycaret.utils import version
-from setuptools import setup
+from setuptools import setup, find_packages
 
 def readme():
     with open('README.md') as f:
@@ -28,7 +28,7 @@ setup(
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
     ],
-    packages=["pycaret", "pycaret.internal"],
+    packages=find_packages(exclude=["*.tests", "*.tests.*", "tests.*", "tests"]),
     include_package_data=True,
     install_requires=required
 )

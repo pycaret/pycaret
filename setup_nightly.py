@@ -2,7 +2,7 @@
 # License: MIT, moez.ali@queensu.ca
 
 from pycaret.utils import nightly_version
-from setuptools import setup
+from setuptools import setup, find_packages
 import time
 
 nightly_readme = f'This is a nightly version of the [PyCaret](https://pypi.org/project/pycaret/) library, intended as a preview of the upcoming {nightly_version()} version. It may contain unstable and untested code.\n'
@@ -31,7 +31,7 @@ setup(
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
     ],
-    packages=["pycaret", "pycaret.internal"],
+    packages=find_packages(exclude=["*.tests", "*.tests.*", "tests.*", "tests"]),
     include_package_data=True,
     install_requires=required
 )
