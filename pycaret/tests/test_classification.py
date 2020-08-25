@@ -6,7 +6,6 @@ import pytest
 import pycaret.classification
 import pycaret.datasets
 
-
 def test():
     # loading dataset
     data = pycaret.datasets.get_data('juice')
