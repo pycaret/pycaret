@@ -7534,6 +7534,7 @@ def get_metrics(force_regenerate: bool = False) -> pd.DataFrame:
         "Target",
         "Args",
         "Multiclass",
+        "Custom",
     ]
     rows = [
         (
@@ -7545,6 +7546,7 @@ def get_metrics(force_regenerate: bool = False) -> pd.DataFrame:
             "pred",
             {},
             True,
+            False,
         ),
         ("auc", "AUC", "AUC", "roc_auc", metrics.roc_auc_score, "pred_prob", {}, False),
         (
@@ -7558,6 +7560,7 @@ def get_metrics(force_regenerate: bool = False) -> pd.DataFrame:
             "pred",
             {"average": "macro"} if _is_multiclass() else {},
             True,
+            False,
         ),
         (
             "precision",
@@ -7570,6 +7573,7 @@ def get_metrics(force_regenerate: bool = False) -> pd.DataFrame:
             "pred",
             {"average": "weighted"} if _is_multiclass() else {},
             True,
+            False,
         ),
         (
             "f1",
@@ -7582,6 +7586,7 @@ def get_metrics(force_regenerate: bool = False) -> pd.DataFrame:
             "pred",
             {"average": "weighted"} if _is_multiclass() else {},
             True,
+            False,
         ),
         (
             "kappa",
@@ -7592,6 +7597,7 @@ def get_metrics(force_regenerate: bool = False) -> pd.DataFrame:
             "pred",
             {},
             True,
+            False,
         ),
         (
             "mcc",
@@ -7604,8 +7610,9 @@ def get_metrics(force_regenerate: bool = False) -> pd.DataFrame:
             "pred",
             {},
             True,
+            False,
         ),
-        ("tt", "TT", "TT (Sec)", None, None, None, None, True),
+        ("tt", "TT", "TT (Sec)", None, None, None, None, True, False,),
     ]
     df = pd.DataFrame(rows)
     df.columns = columns
@@ -7700,6 +7707,7 @@ def add_metric(
         "Target": target,
         "Args": args,
         "Multiclass": multiclass,
+        "Custom": True,
     }
 
     new_metric = pd.Series(new_metric, name=id.replace(" ", "_"))
