@@ -7491,7 +7491,7 @@ def models(
     return filter_model_df_by_type(df)
 
 
-def get_metrics(force_regenerate: bool = False) -> pd.DataFrame:
+def get_metrics(force_regenerate: bool = False, include_custom:bool=True) -> pd.DataFrame:
     """
     Returns table of metrics available.
 
@@ -7517,6 +7517,8 @@ def get_metrics(force_regenerate: bool = False) -> pd.DataFrame:
 
     if not force_regenerate:
         try:
+            if not include_custom:
+                return all_metrics[all_metrics["Custom"] == False]
             return all_metrics
         except:
             pass
@@ -7618,6 +7620,8 @@ def get_metrics(force_regenerate: bool = False) -> pd.DataFrame:
     df.columns = columns
 
     df.set_index("ID", inplace=True)
+    if not include_custom:
+        df = df[df["Custom"] == False]
     return df
 
 
