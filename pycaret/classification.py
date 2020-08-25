@@ -4382,7 +4382,7 @@ def tune_model(estimator = None,
         else:
             param_grid = {'n_estimators': np.arange(10,200,5),
                         'criterion': ['gini', 'entropy'],
-                        'max_depth': [int(x) for x in np.linspace(10, 110, num = 11)],
+                        'max_depth': [int(x) for x in np.linspace(1, 11, num = 1)],
                         'min_samples_split': [2, 5, 7, 9, 10],
                         'min_samples_leaf' : [1, 2, 4],
                         'max_features' : ['auto', 'sqrt', 'log2'],
