@@ -123,10 +123,6 @@ class DataTypes_Auto_infer(BaseEstimator,TransformerMixin):
     for i in data.select_dtypes(include=['int64','float64']).columns:
       if i not in self.numerical_features:
         if sum(data[i].isna()) == 0: 
-          if sum(data[i].isna()) == 0: 
-        if sum(data[i].isna()) == 0: 
-          if sum(data[i].isna()) == 0: 
-        if sum(data[i].isna()) == 0: 
           if len(data[i].unique()) == len_samples:
             # we extract column and sort it
             features = data[i].sort_values()
