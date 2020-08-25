@@ -1257,13 +1257,11 @@ class Clean_Colum_Names(BaseEstimator,TransformerMixin):
 
   def transform(self,dataset,y=None):
     data= dataset.copy()
-    data.columns= data.columns.str.replace('[,}{\]\[\:\"\']','')
+    data.columns= data.columns.str.replace(r'[\,\}\{\]\[\:\"\']','')
     return(data)
 
   def fit_transform(self,dataset,y=None):
-    data= dataset.copy()
-    data.columns= data.columns.str.replace('[,}{\]\[\:\"\']','')
-    return(data)
+    return(self.transform(dataset, y=y))
 #__________________________________________________________________________________________________________________________________________________________________________
 # Clustering entire data
 class Cluster_Entire_Data(BaseEstimator,TransformerMixin):
