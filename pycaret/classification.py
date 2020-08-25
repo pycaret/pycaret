@@ -922,8 +922,7 @@ def setup(
         raise TypeError("html parameter only accepts True or False.")
 
     # use_gpu
-    use_gpu.lower() if isinstance(use_gpu, str) else use_gpu
-    if use_gpu != "force" and type(use_gpu) is not bool:
+    if use_gpu != "Force" and type(use_gpu) is not bool:
         raise TypeError("use_gpu parameter only accepts 'Force', True or False.")
 
     # folds_shuffle
@@ -7491,7 +7490,7 @@ def models(
     cuml_version = None
     logger.info(f"gpu_param set to {gpu_param}")
 
-    if gpu_param == "force":
+    if gpu_param == "Force":
         from cuml import __version__
 
         cuml_version = __version__
@@ -8169,7 +8168,7 @@ def models(
                     "verbose": False,
                     "thread_count": n_jobs_param,
                     "task_type": "GPU"
-                    if gpu_param == "force" or (gpu_param and len(X) >= 50000)
+                    if gpu_param == "Force" or (gpu_param and len(X) >= 50000)
                     else "CPU",
                 },
                 {
@@ -8188,7 +8187,7 @@ def models(
                 },
                 {},
                 "type2",
-                bool(gpu_param == "force" or (gpu_param and len(X) >= 50000)),
+                bool(gpu_param == "Force" or (gpu_param and len(X) >= 50000)),
             ),
             (
                 True,
