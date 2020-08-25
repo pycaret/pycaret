@@ -28,7 +28,7 @@ setup(
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
     ],
-    packages=["pycaret"],
+    packages=["pycaret", "pycaret.internal"],
     include_package_data=True,
     install_requires=required
 )

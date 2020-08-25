@@ -2,12 +2,6 @@
 # Author: Moez Ali <moez.ali@queensu.ca>
 # License: MIT
 
-import datetime
-import pandas as pd
-import pandas.io.formats.style
-import ipywidgets as ipw
-from IPython.display import display, HTML, clear_output, update_display
-
 version_ = "2.0"
 nightly_version_ = "2.1"
 
@@ -115,6 +109,7 @@ def check_metric(actual, prediction, metric, round=4):
 
 
 def enable_colab():
+    from IPython.display import display, HTML, clear_output, update_display
 
     """
     Function to render plotly visuals in colab.

@@ -7,7 +7,7 @@ joblib
 scikit-learn>=0.23 
 ipywidgets
 yellowbrick>=1.0.1
-xgboost>=0.90
+xgboost>=1.1.0
 lightgbm>=2.3.1
 plotly>=4.4.1
 wordcloud
@@ -20,11 +20,10 @@ spacy
 nltk
 mlxtend
 pyod
-catboost
+catboost>=0.23.2
 pandas-profiling>=2.8.0
 kmodes>=0.10.1
 datefinder>=0.7.0
-DateTime>=4.3
 mlflow
 imbalanced-learn>=0.6.2
 #psutil - removing it as causing problem in Dockerfile

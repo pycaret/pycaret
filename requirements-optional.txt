@@ -1,0 +1,6 @@
+tune-sklearn
+ray[tune]
+hyperopt
+hpbandster
+ConfigSpace
+optuna

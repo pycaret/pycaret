@@ -14,9 +14,27 @@ def test():
     # init setup
     reg1 = pycaret.regression.setup(data, target='medv',silent=True, log_experiment=True, html=False, session_id=123)
     assert isinstance(reg1, tuple)
+    assert isinstance(reg1[0], pd.core.frame.DataFrame)
+    assert isinstance(reg1[1], pd.core.series.Series)
+    assert isinstance(reg1[2], pd.core.frame.DataFrame)
+    assert isinstance(reg1[3], pd.core.frame.DataFrame)
+    assert isinstance(reg1[4], pd.core.series.Series)
+    assert isinstance(reg1[5], pd.core.series.Series)
+    assert isinstance(reg1[6], int)
+    assert isinstance(reg1[9], list)
+    assert isinstance(reg1[10], bool)
+    assert isinstance(reg1[11], int)
+    assert isinstance(reg1[12], bool)
+    assert isinstance(reg1[13], list)
+    assert isinstance(reg1[14], list)
+    assert isinstance(reg1[15], list)
+    assert isinstance(reg1[16], str)
+    assert isinstance(reg1[17], bool)
+    assert isinstance(reg1[18], bool)
+    assert isinstance(reg1[19], str)
 
     # compare models
-    top3 = pycaret.regression.compare_models(n_select = 3, exclude = ['catboost'])
+    top3 = pycaret.regression.compare_models(n_select = 3)
     assert isinstance(top3, list)
 
     # tune model
@@ -68,8 +86,8 @@ def test():
     assert isinstance(y_test, pd.core.series.Series)
 
     # set config
-    pycaret.classification.set_config('seed', 124)
-    seed = pycaret.classification.get_config('seed')
+    pycaret.regression.set_config('seed', 124)
+    seed = pycaret.regression.get_config('seed')
     assert seed == 124
 
     assert 1 == 1

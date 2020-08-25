@@ -17,9 +17,11 @@ import datetime
 import time
 import random
 import re
+import gc
 from copy import deepcopy
 from typing import List, Set, Dict, Tuple, Optional, Any
 import warnings
+from IPython.utils import io
 
 warnings.filterwarnings("ignore")
 
@@ -171,9 +173,10 @@ def setup(
 
     numeric_imputation: string, default = 'mean'
         If missing values are found in numeric features, they will be imputed with the 
-        mean value of the feature. The other available option is 'median' which imputes 
-        the value using the median value in the training dataset. 
-    
+        mean value of the feature. The other available options are 'median' which imputes 
+        the value using the median value in the training dataset and 'zero' which
+        replaces missing values with zeroes.
+
     date_features: string, default = None
         If the data has a DateTime column that is not automatically detected when running
         setup, this parameter can be used by passing date_features = 'date_column_name'. 
@@ -181,23 +184,23 @@ def setup(
         Instead, feature extraction is performed and date columns are dropped from the 
         dataset. If the date column includes a time stamp, features related to time will 
         also be extracted.
-    
+
     ignore_features: string, default = None
         If any feature should be ignored for modeling, it can be passed to the param
         ignore_features. The ID and DateTime columns when inferred, are automatically 
         set to ignore for modeling. 
-    
+
     normalize: bool, default = False
         When set to True, the feature space is transformed using the normalized_method
         param. Generally, linear algorithms perform better with normalized data however, 
         the results may vary and it is advised to run multiple experiments to evaluate
         the benefit of normalization.
-    
+
     normalize_method: string, default = 'zscore'
         Defines the method to be used for normalization. By default, normalize method
         is set to 'zscore'. The standard zscore is calculated as z = (x - u) / s. The
         other available options are:
-    
+
         'minmax'    : scales and translates each feature individually such that it is in 
                     the range of 0 - 1.
         
@@ -208,29 +211,29 @@ def setup(
         'robust'    : scales and translates each feature according to the Interquartile range.
                     When the dataset contains outliers, robust scaler often gives better
                     results.
-    
+
     transformation: bool, default = False
         When set to True, a power transformation is applied to make the data more normal /
         Gaussian-like. This is useful for modeling issues related to heteroscedasticity or 
         other situations where normality is desired. The optimal parameter for stabilizing 
         variance and minimizing skewness is estimated through maximum likelihood.
-    
+
     transformation_method: string, default = 'yeo-johnson'
         Defines the method for transformation. By default, the transformation method is set
         to 'yeo-johnson'. The other available option is 'quantile' transformation. Both 
         the transformation transforms the feature set to follow a Gaussian-like or normal
         distribution. Note that the quantile transformer is non-linear and may distort linear 
         correlations between variables measured at the same scale.
-    
+
     handle_unknown_categorical: bool, default = True
         When set to True, unknown categorical levels in new / unseen data are replaced by
         the most or least frequent level as learned in the training data. The method is 
         defined under the unknown_categorical_method param.
-    
+
     unknown_categorical_method: string, default = 'least_frequent'
         Method used to replace unknown categorical levels in unseen data. Method can be
         set to 'least_frequent' or 'most_frequent'.
-    
+
     pca: bool, default = False
         When set to True, dimensionality reduction is applied to project the data into 
         a lower dimensional space using the method defined in pca_method param. In 
@@ -254,7 +257,7 @@ def setup(
         target percentage for information retention. When pca_components is an integer
         it is treated as the number of features to be kept. pca_components must be strictly
         less than the original number of features in the dataset.
-    
+
     ignore_low_variance: bool, default = False
         When set to True, all categorical features with statistically insignificant variances 
         are removed from the dataset. The variance is calculated using the ratio of unique 
@@ -268,7 +271,7 @@ def setup(
         represents the percentile distribution of level frequency. Generally, this technique 
         is applied to limit a sparse matrix caused by high numbers of levels in categorical 
         features. 
-    
+
     rare_level_threshold: float, default = 0.1
         Percentile distribution below which rare categories are combined. Only comes into
         effect when combine_rare_levels is set to True.
@@ -279,16 +282,16 @@ def setup(
         1D k-means cluster. The number of clusters are determined based on the 'sturges' 
         method. It is only optimal for gaussian data and underestimates the number of bins 
         for large non-gaussian datasets.
-    
+
     remove_outliers: bool, default = False
         When set to True, outliers from the training data are removed using PCA linear
         dimensionality reduction using the Singular Value Decomposition technique.
-    
+
     outliers_threshold: float, default = 0.05
         The percentage / proportion of outliers in the dataset can be defined using
         the outliers_threshold param. By default, 0.05 is used which means 0.025 of the 
         values on each side of the distribution's tail are dropped from training data.
-    
+
     remove_multicollinearity: bool, default = False
         When set to True, the variables with inter-correlations higher than the threshold
         defined under the multicollinearity_threshold param are dropped. When two features
@@ -303,51 +306,51 @@ def setup(
         When set to True, perfect collinearity (features with correlation = 1) is removed
         from the dataset, When two features are 100% correlated, one of it is randomly 
         dropped from the dataset.
-    
+
     create_clusters: bool, default = False
         When set to True, an additional feature is created where each instance is assigned
         to a cluster. The number of clusters is determined using a combination of 
         Calinski-Harabasz and Silhouette criterion. 
-    
+
     cluster_iter: int, default = 20
         Number of iterations used to create a cluster. Each iteration represents cluster 
         size. Only comes into effect when create_clusters param is set to True.
-    
+
     polynomial_features: bool, default = False
         When set to True, new features are created based on all polynomial combinations 
         that exist within the numeric features in a dataset to the degree defined in 
         polynomial_degree param. 
-    
+
     polynomial_degree: int, default = 2pca_method_pass
         Degree of polynomial features. For example, if an input sample is two dimensional 
         and of the form [a, b], the polynomial features with degree = 2 are: 
         [1, a, b, a^2, ab, b^2].
-    
+
     trigonometry_features: bool, default = False
         When set to True, new features are created based on all trigonometric combinations 
         that exist within the numeric features in a dataset to the degree defined in the
         polynomial_degree param.
-    
+
     polynomial_threshold: float, default = 0.1
         This is used to compress a sparse matrix of polynomial and trigonometric features.
         Polynomial and trigonometric features whose feature importance based on the 
         combination of Random Forest, AdaBoost and Linear correlation falls within the 
         percentile of the defined threshold are kept in the dataset. Remaining features 
         are dropped before further processing.
-    
+
     group_features: list or list of list, default = None
         When a dataset contains features that have related characteristics, the group_features
         param can be used for statistical feature extraction. For example, if a dataset has 
         numeric features that are related with each other (i.e 'Col1', 'Col2', 'Col3'), a list 
         containing the column names can be passed under group_features to extract statistical 
         information such as the mean, median, mode and standard deviation.
-    
+
     group_names: list, default = None
         When group_features is passed, a name of the group can be passed into the group_names 
         param as a list containing strings. The length of a group_names list must equal to the 
         length  of group_features. When the length doesn't match or the name is not passed, new 
         features are sequentially named such as group_1, group_2 etc.
-    
+
     feature_selection: bool, default = False
         When set to True, a subset of features are selected using a combination of various
         permutation importance techniques including Random Forest, Adaboost and Linear 
@@ -365,7 +368,7 @@ def setup(
         trials with different values of feature_selection_threshold specially in cases where 
         polynomial_features and feature_interaction are used. Setting a very low value may be 
         efficient but could result in under-fitting.
-    
+
     feature_selection_method: str, default = 'classic'
         Can be either 'classic' or 'boruta'. Selects the algorithm responsible for
         choosing a subset of features. For the 'classic' selection method, PyCaret will use various
@@ -413,8 +416,19 @@ def setup(
         processing) -1 means using all processors. To run all functions on single processor 
         set n_jobs to None.
 
-    use_gpu: bool, default = False
-        If set to True, algorithms that supports gpu are trained using gpu.
+    use_gpu: str or bool, default = False
+        If set to 'Force', will try to use GPU with all algorithms that support it,
+        and raise exceptions if they are unavailable.
+        If set to True, will use GPU with algorithms that support it, and fall
+        back to CPU if they are unavailable.
+        If set to False, will only use CPU.
+
+        GPU enabled algorithms:
+        
+        - CatBoost
+        - XGBoost
+        - Logistic Regression, Ridge, SVM, SVC - requires cuML >= 0.15 to be installed.
+          https://github.com/rapidsai/cuml
 
     html: bool, default = True
         If set to False, prevents runtime display of monitor. This must be set to False
@@ -668,22 +682,24 @@ def setup(
         )
 
     # checking numeric imputation
-    allowed_numeric_imputation = ["mean", "median"]
+    allowed_numeric_imputation = ["mean", "median", "zero"]
     if numeric_imputation not in allowed_numeric_imputation:
-        raise ValueError("numeric_imputation param only accepts 'mean' or 'median' ")
+        raise ValueError(
+            f"numeric_imputation param only accepts {', '.join(allowed_numeric_imputation)}."
+        )
 
     # checking normalize method
     allowed_normalize_method = ["zscore", "minmax", "maxabs", "robust"]
     if normalize_method not in allowed_normalize_method:
         raise ValueError(
-            "normalize_method param only accepts 'zscore', 'minxmax', 'maxabs' or 'robust'."
+            f"normalize_method param only accepts {', '.join(allowed_normalize_method)}."
         )
 
     # checking transformation method
     allowed_transformation_method = ["yeo-johnson", "quantile"]
     if transformation_method not in allowed_transformation_method:
         raise ValueError(
-            "transformation_method param only accepts 'yeo-johnson' or 'quantile'."
+            f"transformation_method param only accepts {', '.join(allowed_transformation_method)}."
         )
 
     # handle unknown categorical
@@ -697,7 +713,7 @@ def setup(
 
     if unknown_categorical_method not in unknown_categorical_method_available:
         raise TypeError(
-            "unknown_categorical_method only accepts 'least_frequent' or 'most_frequent'."
+            f"unknown_categorical_method only accepts {', '.join(unknown_categorical_method_available)}."
         )
 
     # check pca
@@ -708,7 +724,7 @@ def setup(
     allowed_pca_methods = ["linear", "kernel", "incremental"]
     if pca_method not in allowed_pca_methods:
         raise ValueError(
-            "pca method param only accepts 'linear', 'kernel', or 'incremental'."
+            f"pca method param only accepts {', '.join(allowed_pca_methods)}."
         )
 
     # pca components check
@@ -749,7 +765,7 @@ def setup(
 
     # check rare_level_threshold
     if type(rare_level_threshold) is not float:
-        raise TypeError("rare_level_threshold must be a float between 0 and 1. ")
+        raise TypeError("rare_level_threshold must be a float between 0 and 1.")
 
     # bin numeric features
     if bin_numeric_features is not None:
@@ -768,7 +784,7 @@ def setup(
 
     # outliers_threshold
     if type(outliers_threshold) is not float:
-        raise TypeError("outliers_threshold must be a float between 0 and 1. ")
+        raise TypeError("outliers_threshold must be a float between 0 and 1.")
 
     # remove_multicollinearity
     if type(remove_multicollinearity) is not bool:
@@ -778,7 +794,7 @@ def setup(
 
     # multicollinearity_threshold
     if type(multicollinearity_threshold) is not float:
-        raise TypeError("multicollinearity_threshold must be a float between 0 and 1. ")
+        raise TypeError("multicollinearity_threshold must be a float between 0 and 1.")
 
     # create_clusters
     if type(create_clusters) is not bool:
@@ -786,45 +802,45 @@ def setup(
 
     # cluster_iter
     if type(cluster_iter) is not int:
-        raise TypeError("cluster_iter must be a integer greater than 1. ")
+        raise TypeError("cluster_iter must be a integer greater than 1.")
 
     # polynomial_features
     if type(polynomial_features) is not bool:
-        raise TypeError("polynomial_features only accepts True or False. ")
+        raise TypeError("polynomial_features only accepts True or False.")
 
     # polynomial_degree
     if type(polynomial_degree) is not int:
-        raise TypeError("polynomial_degree must be an integer. ")
+        raise TypeError("polynomial_degree must be an integer.")
 
     # polynomial_features
     if type(trigonometry_features) is not bool:
-        raise TypeError("trigonometry_features only accepts True or False. ")
+        raise TypeError("trigonometry_features only accepts True or False.")
 
     # polynomial threshold
     if type(polynomial_threshold) is not float:
-        raise TypeError("polynomial_threshold must be a float between 0 and 1. ")
+        raise TypeError("polynomial_threshold must be a float between 0 and 1.")
 
     # group features
     if group_features is not None:
         if type(group_features) is not list:
-            raise TypeError("group_features must be of type list. ")
+            raise TypeError("group_features must be of type list.")
 
     if group_names is not None:
         if type(group_names) is not list:
-            raise TypeError("group_names must be of type list. ")
+            raise TypeError("group_names must be of type list.")
 
     # cannot drop target
     if ignore_features is not None:
         if target in ignore_features:
-            raise ValueError("cannot drop target column. ")
+            raise ValueError("cannot drop target column.")
 
     # feature_selection
     if type(feature_selection) is not bool:
-        raise TypeError("feature_selection only accepts True or False. ")
+        raise TypeError("feature_selection only accepts True or False.")
 
     # feature_selection_threshold
     if type(feature_selection_threshold) is not float:
-        raise TypeError("feature_selection_threshold must be a float between 0 and 1. ")
+        raise TypeError("feature_selection_threshold must be a float between 0 and 1.")
 
     # feature_selection_method
     feature_selection_methods = ["boruta", "classic"]
@@ -835,15 +851,15 @@ def setup(
 
     # feature_interaction
     if type(feature_interaction) is not bool:
-        raise TypeError("feature_interaction only accepts True or False. ")
+        raise TypeError("feature_interaction only accepts True or False.")
 
     # feature_ratio
     if type(feature_ratio) is not bool:
-        raise TypeError("feature_ratio only accepts True or False. ")
+        raise TypeError("feature_ratio only accepts True or False.")
 
     # interaction_threshold
     if type(interaction_threshold) is not float:
-        raise TypeError("interaction_threshold must be a float between 0 and 1. ")
+        raise TypeError("interaction_threshold must be a float between 0 and 1.")
 
     # forced type check
     all_cols = list(data.columns)
@@ -883,20 +899,20 @@ def setup(
 
     # log_experiment
     if type(log_experiment) is not bool:
-        raise TypeError("log_experiment parameter only accepts True or False. ")
+        raise TypeError("log_experiment parameter only accepts True or False.")
 
     # log_profile
     if type(log_profile) is not bool:
-        raise TypeError("log_profile parameter only accepts True or False. ")
+        raise TypeError("log_profile parameter only accepts True or False.")
 
     # experiment_name
     if experiment_name is not None:
         if type(experiment_name) is not str:
-            raise TypeError("experiment_name parameter must be string if not None. ")
+            raise TypeError("experiment_name parameter must be string if not None.")
 
     # silent
     if type(silent) is not bool:
-        raise TypeError("silent parameter only accepts True or False. ")
+        raise TypeError("silent parameter only accepts True or False.")
 
     # remove_perfect_collinearity
     if type(remove_perfect_collinearity) is not bool:
@@ -909,8 +925,8 @@ def setup(
         raise TypeError("html parameter only accepts True or False.")
 
     # use_gpu
-    if type(use_gpu) is not bool:
-        raise TypeError("use_gpu parameter only accepts True or False.")
+    if use_gpu != "Force" and type(use_gpu) is not bool:
+        raise TypeError("use_gpu parameter only accepts 'Force', True or False.")
 
     # folds_shuffle
     if type(folds_shuffle) is not bool:
@@ -986,7 +1002,6 @@ def setup(
 
     # general dependencies
 
-    from sklearn.linear_model import LogisticRegression
     from sklearn.model_selection import train_test_split
     from sklearn import metrics
     import seaborn as sns
@@ -1011,7 +1026,7 @@ def setup(
 
     # declaring global variables to be accessed by other functions
     logger.info("Declaring global variables")
-    global X, y, X_train, X_test, y_train, y_test, seed, prep_pipe, experiment__, folds_shuffle_param, n_jobs_param, create_model_container, master_model_container, display_container, exp_name_log, logging_param, log_plots_param, fix_imbalance_param, fix_imbalance_method_param, data_before_preprocess, target_param, gpu_param, all_models, _all_models_internal, all_metrics
+    global X, y, X_train, X_test, y_train, y_test, seed, prep_pipe, experiment__, folds_shuffle_param, n_jobs_param, gpu_n_jobs_param, create_model_container, master_model_container, display_container, exp_name_log, logging_param, log_plots_param, fix_imbalance_param, fix_imbalance_method_param, data_before_preprocess, target_param, gpu_param, all_models, _all_models_internal, all_metrics
 
     logger.info("Copying data for preprocessing")
 
@@ -1423,6 +1438,9 @@ def setup(
     # create n_jobs_param
     n_jobs_param = n_jobs
 
+    # create gpu_n_jobs_param
+    gpu_n_jobs_param = n_jobs if not use_gpu else 1
+
     # create create_model_container
     create_model_container = []
 
@@ -1459,16 +1477,6 @@ def setup(
     # create gpu_param var
     gpu_param = use_gpu
 
-    # sample estimator
-    if sample_estimator is None:
-        model = LogisticRegression()
-    else:
-        model = sample_estimator
-
-    model_name = str(model).split("(")[0]
-    if "CatBoostClassifier" in model_name:
-        model_name = "CatBoostClassifier"
-
     # creating variables to be used later in the function
     X = data.drop(target, axis=1)
     y = data[target]
@@ -1478,6 +1486,16 @@ def setup(
         target_type = "Multiclass"
     else:
         target_type = "Binary"
+
+    all_models = models(force_regenerate=True)
+    _all_models_internal = models(internal=True, force_regenerate=True)
+    all_metrics = get_metrics()
+
+    # sample estimator
+    if sample_estimator is None:
+        model = _all_models_internal.loc["lr"]["Class"]()
+    else:
+        model = sample_estimator
 
     display.move_progress()
 
@@ -1593,10 +1611,6 @@ def setup(
     experiment__.append(("y_test Set", y_test))
     experiment__.append(("Transformation Pipeline", prep_pipe))
 
-    all_models = models(force_regenerate=True)
-    _all_models_internal = models(internal=True, force_regenerate=True)
-    all_metrics = get_metrics()
-
     # end runtime
     runtime_end = time.time()
     runtime = np.array(runtime_end - runtime_start).round(2)
@@ -1685,6 +1699,8 @@ def setup(
     logger.info(str(prep_pipe))
     logger.info("setup() succesfully completed......................................")
 
+    gc.collect()
+
     return (
         X,
         y,
@@ -1711,6 +1727,7 @@ def setup(
         data_before_preprocess,
         target_param,
         gpu_param,
+        gpu_n_jobs_param,
     )
 
 
@@ -2239,8 +2256,6 @@ def compare_models(
 
 def create_model(
     estimator=None,
-    ensemble: bool = False,
-    method: str = None,
     fold: int = 10,
     round: int = 4,
     cross_validation: bool = True,  # added in pycaret==2.0.0
@@ -2297,12 +2312,6 @@ def create_model(
         * 'xgboost' - Extreme Gradient Boosting              
         * 'lightgbm' - Light Gradient Boosting              
         * 'catboost' - CatBoost Classifier             
-
-    ensemble: Boolean, default = False
-        True would result in an ensemble of estimator using the method parameter defined. 
-
-    method: String, 'Bagging' or 'Boosting', default = None.
-        method must be defined when ensemble is set to True. Default method is set to None. 
 
     fold: integer, default = 10
         Number of folds to be used in Kfold CV. Must be at least 2. 
@@ -2389,31 +2398,6 @@ def create_model(
             f"Estimator {estimator} does not have the required fit() method."
         )
 
-    # checking error for ensemble:
-    if type(ensemble) is not bool:
-        raise TypeError("Ensemble parameter can only take argument as True or False.")
-
-    # checking error for method:
-
-    # 1 Check When method given and ensemble is not set to True.
-    if ensemble is False and method is not None:
-        raise TypeError(
-            "Method parameter only accepts value when ensemble is set to True."
-        )
-
-    # 2 Check when ensemble is set to True and method is not passed.
-    if ensemble is True and method is None:
-        raise TypeError(
-            "Method parameter missing. Pass method = 'Bagging' or 'Boosting'."
-        )
-
-    # 3 Check when ensemble is set to True and method is passed but not allowed.
-    available_method = ["Bagging", "Boosting"]
-    if ensemble is True and method not in available_method:
-        raise ValueError(
-            "Method parameter only accepts two values 'Bagging' or 'Boosting'."
-        )
-
     # checking fold parameter
     if type(fold) is not int:
         raise TypeError("Fold parameter only accepts integer value.")
@@ -2438,25 +2422,6 @@ def create_model(
     if type(cross_validation) is not bool:
         raise TypeError(
             "cross_validation parameter can only take argument as True or False."
-        )
-
-    # checking boosting conflict with estimators
-    if (
-        ensemble is True
-        and method == "Boosting"
-        and (
-            (
-                isinstance(estimator, str)
-                and not _all_models_internal.loc[estimator]["Boosting Supported"]
-            )
-            or not (
-                hasattr(estimator, "class_weights")
-                or hasattr(estimator, "predict_proba")
-            )
-        )
-    ):
-        raise TypeError(
-            "Estimator does not provide class_weights or predict_proba function and hence not supported for the Boosting method. Change the estimator or method to 'Bagging'."
         )
 
     """
@@ -2548,25 +2513,6 @@ def create_model(
 
     display.move_progress()
 
-    # checking method when ensemble is set to True.
-
-    logger.info("Checking ensemble method")
-
-    if method == "Bagging":
-        logger.info("Ensemble method set to Bagging")
-        bagging_model_definition = _all_models_internal.loc["Bagging"]
-
-        model = bagging_model_definition["Class"](
-            model, bootstrap=True, n_estimators=10, **bagging_model_definition["Args"]
-        )
-
-    elif method == "Boosting":
-        logger.info("Ensemble method set to Boosting")
-        boosting_model_definition = _all_models_internal.loc["ada"]
-        model = boosting_model_definition["Class"](
-            model, n_estimators=10, **boosting_model_definition["Args"]
-        )
-
     onevsrest_model_definition = _all_models_internal.loc["OneVsRest"]
     # multiclass checking
     if _is_multiclass() and not _is_special_model(model):
@@ -2600,7 +2546,8 @@ def create_model(
         logger.info("Cross validation set to False")
 
         logger.info("Fitting Model")
-        model.fit(data_X, data_y)
+        with io.capture_output():
+            model.fit(data_X, data_y)
 
         display.display("", clear=True)
 
@@ -2613,6 +2560,7 @@ def create_model(
             "create_models() succesfully completed......................................"
         )
 
+        gc.collect()
         return model
 
     fold_num = 1
@@ -2652,7 +2600,8 @@ def create_model(
             Xtrain, ytrain = _fix_imbalance(Xtrain, ytrain, fix_imbalance_method_param)
 
         logger.info("Fitting Model")
-        model.fit(Xtrain, ytrain)
+        with io.capture_output():
+            model.fit(Xtrain, ytrain)
         logger.info("Evaluating Metrics")
 
         if hasattr(model, "predict_proba"):
@@ -2742,7 +2691,7 @@ def create_model(
 
     # refitting the model on complete X_train, y_train
     display.update_monitor(1, "Finalizing Model")
-    display.update_monitor(2, "Almost Finished")
+    display.update_monitor(-1, "Almost Finished")
     display.display_monitor()
 
     if fix_imbalance_param:
@@ -2750,7 +2699,8 @@ def create_model(
 
     model_fit_start = time.time()
     logger.info("Finalizing model")
-    model.fit(data_X, data_y)
+    with io.capture_output():
+        model.fit(data_X, data_y)
     model_fit_end = time.time()
 
     model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
@@ -2923,6 +2873,8 @@ def create_model(
         "create_model() succesfully completed......................................"
     )
 
+    gc.collect()
+
     if return_fit_time:
         return (model, model_fit_time)
 
@@ -2999,7 +2951,8 @@ def tune_model(
         Possible values:
 
         - 'scikit-learn' - default, requires no further installation
-        - 'tune-sklearn' - Ray Tune scikit API. `pip install tune-sklearn ray[tune]` https://github.com/ray-project/tune-sklearn
+        - 'tune-sklearn' - Ray Tune scikit API. Does not support GPU models.
+          `pip install tune-sklearn ray[tune]` https://github.com/ray-project/tune-sklearn
         - 'optuna' - Optuna. `pip install optuna` https://optuna.org/
 
     search_algorithm: string, default = 'Random'
@@ -3266,6 +3219,7 @@ def tune_model(
 
     from sklearn import metrics
     from sklearn.base import clone
+    import logging
 
     np.random.seed(seed)
 
@@ -3306,6 +3260,9 @@ def tune_model(
     estimator_name = estimator_definition["Name"]
     logger.info(f"Base model : {estimator_name}")
 
+    if search_library == "tune-sklearn" and estimator_definition["GPU Enabled"]:
+        raise ValueError("tune-sklearn not supported for GPU enabled models.")
+
     display.move_progress()
 
     logger.info("Declaring metric variables")
@@ -3322,7 +3279,6 @@ def tune_model(
     """
 
     logger.info("Defining Hyperparameters")
-    logger.info("Initializing RandomizedSearchCV")
 
     if custom_grid is not None:
         param_grid = custom_grid
@@ -3344,9 +3300,12 @@ def tune_model(
 
     search_kwargs = {**estimator_definition["Tune Args"], **kwargs}
 
-    n_jobs = n_jobs_param
+    n_jobs = gpu_n_jobs_param
 
     if search_library == "optuna":
+        # suppress output
+        logging.getLogger("optuna").setLevel(logging.ERROR)
+
         pruner_translator = {
             "ASHA": optuna.pruners.SuccessiveHalvingPruner(),
             "Hyperband": optuna.pruners.HyperbandPruner(),
@@ -3370,6 +3329,8 @@ def tune_model(
         study = optuna.create_study(
             direction="maximize", sampler=sampler, pruner=pruner
         )
+
+        logger.info("Initializing optuna.integration.OptunaSearchCV")
         model_grid = optuna.integration.OptunaSearchCV(
             estimator=_estimator_,
             param_distributions=param_grid,
@@ -3401,6 +3362,7 @@ def tune_model(
         if search_algorithm == "Grid":
             from tune_sklearn import TuneGridSearchCV
 
+            logger.info("Initializing tune_sklearn.TuneGridSearchCV")
             model_grid = TuneGridSearchCV(
                 estimator=_estimator_,
                 param_grid=param_grid,
@@ -3418,7 +3380,7 @@ def tune_model(
 
             if custom_grid is None:
                 param_grid = get_hyperopt_distributions(param_grid)
-
+            logger.info("Initializing tune_sklearn.TuneSearchCV, hyperopt")
             model_grid = TuneSearchCV(
                 estimator=_estimator_,
                 search_optimization="hyperopt",
@@ -3439,7 +3401,7 @@ def tune_model(
 
             if custom_grid is None:
                 param_grid = get_CS_distributions(param_grid)
-
+            logger.info("Initializing tune_sklearn.TuneSearchCV, bohb")
             model_grid = TuneSearchCV(
                 estimator=_estimator_,
                 search_optimization="bohb",
@@ -3458,6 +3420,7 @@ def tune_model(
         else:
             from tune_sklearn import TuneSearchCV
 
+            logger.info("Initializing tune_sklearn.TuneSearchCV, random")
             model_grid = TuneSearchCV(
                 estimator=_estimator_,
                 param_distributions=param_grid,
@@ -3476,6 +3439,7 @@ def tune_model(
         if search_algorithm == "Grid":
             from sklearn.model_selection import GridSearchCV
 
+            logger.info("Initializing GridSearchCV")
             model_grid = GridSearchCV(
                 estimator=_estimator_,
                 param_grid=param_grid,
@@ -3487,6 +3451,7 @@ def tune_model(
         else:
             from sklearn.model_selection import RandomizedSearchCV
 
+            logger.info("Initializing RandomizedSearchCV")
             model_grid = RandomizedSearchCV(
                 estimator=_estimator_,
                 param_distributions=param_grid,
@@ -3498,8 +3463,8 @@ def tune_model(
                 **search_kwargs,
             )
 
+    # with io.capture_output():
     model_grid.fit(X_train, y_train)
-    model = model_grid.best_estimator_
     best_model = model_grid.best_estimator_
 
     display.move_progress()
@@ -3509,26 +3474,24 @@ def tune_model(
     # multiclass checking
     if _is_multiclass() and not is_stacked_model:
         onevsrest_model_definition = _all_models_internal.loc["OneVsRest"]
-        model = onevsrest_model_definition["Class"](
-            model, **onevsrest_model_definition["Args"]
+        best_model = onevsrest_model_definition["Class"](
+            best_model, **onevsrest_model_definition["Args"]
         )
-        best_model = model
 
     logger.info("SubProcess create_model() called ==================================")
-    model, model_fit_time = create_model(
-        estimator=model,
+    best_model, model_fit_time = create_model(
+        estimator=best_model,
         system=False,
         return_fit_time=True,
         display=display,
         fold=fold,
         round=round,
     )
-    best_model = model
     model_results = pull()
     logger.info("SubProcess create_model() end ==================================")
 
     if choose_better:
-        model = _choose_better(
+        best_model = _choose_better(
             _estimator_,
             [best_model],
             compare_dimension,
@@ -3563,7 +3526,7 @@ def tune_model(
             RunID = mlflow.active_run().info.run_id
 
             # Log model parameters
-            params = model.get_params()
+            params = best_model.get_params()
 
             for i in list(params):
                 v = params.get(i)
@@ -3617,7 +3580,7 @@ def tune_model(
 
                 try:
                     plot_model(
-                        model, plot="auc", verbose=False, save=True, system=False
+                        best_model, plot="auc", verbose=False, save=True, system=False
                     )
                     mlflow.log_artifact("AUC.png")
                     os.remove("AUC.png")
@@ -3626,7 +3589,7 @@ def tune_model(
 
                 try:
                     plot_model(
-                        model,
+                        best_model,
                         plot="confusion_matrix",
                         verbose=False,
                         save=True,
@@ -3639,7 +3602,11 @@ def tune_model(
 
                 try:
                     plot_model(
-                        model, plot="feature", verbose=False, save=True, system=False
+                        best_model,
+                        plot="feature",
+                        verbose=False,
+                        save=True,
+                        system=False,
                     )
                     mlflow.log_artifact("Feature Importance.png")
                     os.remove("Feature Importance.png")
@@ -3683,7 +3650,7 @@ def tune_model(
 
             # log model as sklearn flavor
             prep_pipe_temp = deepcopy(prep_pipe)
-            prep_pipe_temp.steps.append(["trained model", model])
+            prep_pipe_temp.steps.append(["trained model", best_model])
             mlflow.sklearn.log_model(
                 prep_pipe_temp,
                 "model",
@@ -3706,6 +3673,7 @@ def tune_model(
         "tune_model() succesfully completed......................................"
     )
 
+    gc.collect()
     return best_model
 
 
@@ -3847,11 +3815,11 @@ def ensemble_model(
                     n_estimators=n_estimators,
                     **boosting_model_definition["Args"],
                 )
-
-            check_model.fit(X_train, y_train)
+            with io.capture_output():
+                check_model.fit(X_train, y_train)
         except:
             raise TypeError(
-                "Estimator does not provide class_weights or predict_proba function and hence not supported for the Boosting method. Change the estimator or method to 'Bagging'."
+                "Estimator not supported for the Boosting method. Change the estimator or method to 'Bagging'."
             )
 
     # checking fold parameter
@@ -4183,6 +4151,7 @@ def ensemble_model(
         "ensemble_model() succesfully completed......................................"
     )
 
+    gc.collect()
     return model
 
 
@@ -4498,7 +4467,7 @@ def blend_models(
     votingclassifier_model_definition = _all_models_internal.loc["Voting"]
     try:
         model = votingclassifier_model_definition["Class"](
-            estimators=estimator_list, voting=method, n_jobs=n_jobs_param
+            estimators=estimator_list, voting=method, n_jobs=gpu_n_jobs_param
         )
         logger.info("n_jobs multiple passed")
     except:
@@ -4659,6 +4628,7 @@ def blend_models(
         "blend_models() succesfully completed......................................"
     )
 
+    gc.collect()
     return model
 
 
@@ -4919,7 +4889,7 @@ def stack_models(
         final_estimator=meta_model,
         cv=fold,
         stack_method=method,
-        n_jobs=n_jobs_param,
+        n_jobs=gpu_n_jobs_param,
         passthrough=restack,
     )
 
@@ -5105,6 +5075,7 @@ def stack_models(
         "stack_models() succesfully completed......................................"
     )
 
+    gc.collect()
     return model
 
 
@@ -5499,7 +5470,7 @@ def plot_model(
 
         sizes = np.linspace(0.3, 1.0, 10)
         visualizer = LearningCurve(
-            model, cv=10, train_sizes=sizes, n_jobs=n_jobs_param, random_state=seed
+            model, cv=10, train_sizes=sizes, n_jobs=gpu_n_jobs_param, random_state=seed
         )
         show_yellowbrick_plot(
             visualizer=visualizer,
@@ -6067,6 +6038,7 @@ def interpret_model(
         "interpret_model() succesfully completed......................................"
     )
 
+    gc.collect()
     return shap_plot
 
 
@@ -6265,7 +6237,8 @@ def calibrate_model(
 
     model_fit_start = time.time()
     logger.info("Finalizing model")
-    model.fit(data_X, data_y)
+    with io.capture_output():
+        model.fit(data_X, data_y)
     model_fit_end = time.time()
 
     model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
@@ -6443,6 +6416,7 @@ def calibrate_model(
         "calibrate_model() succesfully completed......................................"
     )
 
+    gc.collect()
     return model
 
 
@@ -6552,10 +6526,10 @@ def optimize_threshold(
     allowed_types = [int, float]
 
     if type(true_positive) not in allowed_types:
-        raise TypeError("true_positive parameter only accepts float or integer value. ")
+        raise TypeError("true_positive parameter only accepts float or integer value.")
 
     if type(true_negative) not in allowed_types:
-        raise TypeError("true_negative parameter only accepts float or integer value. ")
+        raise TypeError("true_negative parameter only accepts float or integer value.")
 
     if type(false_positive) not in allowed_types:
         raise TypeError("false_positive parameter only accepts float or integer value.")
@@ -6888,6 +6862,7 @@ def predict_model(
     if df_score is not None:
         display_container.append(df_score)
 
+    gc.collect()
     return X_test_
 
 
@@ -7123,6 +7098,7 @@ def finalize_model(estimator, display=None) -> Any:  # added in pycaret==2.2.0
         "finalize_model() succesfully completed......................................"
     )
 
+    gc.collect()
     return model_final
 
 
@@ -7475,92 +7451,205 @@ def models(
             pass
 
     np.random.seed(seed)
+    num_class = y.value_counts().count()
+
+    from sklearn.linear_model import LogisticRegression
+    from sklearn.svm import SVC
+    from sklearn.ensemble import RandomForestClassifier
+    from sklearn.ensemble import GradientBoostingClassifier
+    from sklearn.neighbors import KNeighborsClassifier
+    from sklearn.naive_bayes import GaussianNB
+    from sklearn.tree import DecisionTreeClassifier
+    from sklearn.linear_model import SGDClassifier
+    from sklearn.gaussian_process import GaussianProcessClassifier
+    from sklearn.neural_network import MLPClassifier
+    from sklearn.linear_model import RidgeClassifier
+    from sklearn.discriminant_analysis import QuadraticDiscriminantAnalysis
+    from sklearn.ensemble import AdaBoostClassifier
+    from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
+    from sklearn.ensemble import ExtraTreesClassifier
+    from sklearn.multiclass import OneVsRestClassifier
+    from xgboost import XGBClassifier
+    from lightgbm import LGBMClassifier
+    from catboost import CatBoostClassifier
+
+    # suppress output
+    import logging
+
+    logging.getLogger("catboost").setLevel(logging.ERROR)
+
+    # special estimators
+    from sklearn.ensemble import BaggingClassifier
+    from sklearn.ensemble import StackingClassifier
+    from sklearn.ensemble import VotingClassifier
+    from sklearn.multiclass import OneVsRestClassifier
+    from sklearn.calibration import CalibratedClassifierCV
+
+    cuml_sdg_imported = False
+    cuml_lr_imported = False
+    cuml_kn_imported = False
+    cuml_version = None
+    logger.info(f"gpu_param set to {gpu_param}")
+
+    if gpu_param == "Force":
+        from cuml import __version__
+
+        cuml_version = __version__
+        logger.info(f"cuml=={cuml_version}")
+
+        cuml_version = cuml_version.split(".")
+        cuml_version = (int(cuml_version[0]), int(cuml_version[1]))
+        if not cuml_version >= (0, 15):
+            raise ImportError(
+                f"cuML is outdated. Required version is >=0.15, got {__version__}"
+            )
+
+        # known limitation - cuML SVC only supports binary problems
+        if num_class <= 2:
+            from cuml.svm import SVC
+
+            logger.info("Imported cuml.svm.SVC")
+
+        from cuml.linear_model import LogisticRegression
+
+        logger.info("Imported cuml.linear_model.LogisticRegression")
+
+        cuml_lr_imported = True
+
+        from cuml import MBSGDClassifier as SGDClassifier
+
+        logger.info("Imported cuml.MBSGDClassifier")
+        cuml_sdg_imported = True
+
+        from cuml.neighbors import KNeighborsClassifier
+
+        logger.info("Imported cuml.neighbors.KNeighborsClassifier")
+        cuml_kn_imported = True
+    elif gpu_param:
+        try:
+            from cuml import __version__
+
+            cuml_version = __version__
+        except ImportError:
+            logger.warning(f"Couldn't import cuml.")
+
+        if cuml_version:
+            logger.info(f"cuml=={cuml_version}")
+
+            cuml_version = cuml_version.split(".")
+            cuml_version = (int(cuml_version[0]), int(cuml_version[1]))
+            if not cuml_version >= (0, 15):
+                logger.warning(
+                    f"cuML is outdated. Required version is >=0.15, got {__version__}"
+                )
+
+            # known limitation - cuML SVC only supports binary problems
+            if num_class <= 2:
+                try:
+                    from cuml.svm import SVC
+
+                    logger.info("Imported cuml.svm.SVC")
+                except ImportError:
+                    logger.warning("Couldn't import cuml.svm.SVC")
+
+            try:
+                from cuml.linear_model import LogisticRegression
+
+                logger.info("Imported cuml.linear_model.LogisticRegression")
+                cuml_lr_imported = True
+            except ImportError:
+                logger.warning("Couldn't import cuml.linear_model.LogisticRegression")
+
+            try:
+                from cuml import MBSGDClassifier as SGDClassifier
+
+                logger.info("Imported cuml.MBSGDClassifier")
+                cuml_sdg_imported = True
+            except ImportError:
+                logger.warning("Couldn't import cuml.MBSGDClassifier")
+
+            try:
+                from cuml.neighbors import KNeighborsClassifier
+
+                logger.info("Imported cuml.neighbors.KNeighborsClassifier")
+                cuml_kn_imported = True
+            except ImportError:
+                logger.warning("Couldn't import cuml.neighbors.KNeighborsClassifier")
 
     columns = ["ID", "Name", "Reference", "Turbo"]
 
+    def get_class_name(class_var) -> str:
+        return str(class_var)[8:-2]
+
+    def get_package(class_name: str) -> str:
+        return class_name.split(".")[0]
+
     rows = [
-        ("lr", "Logistic Regression", "sklearn.linear_model.LogisticRegression", True),
+        ("lr", "Logistic Regression", get_class_name(LogisticRegression), True),
+        ("knn", "K Neighbors Classifier", get_class_name(KNeighborsClassifier), True,),
+        ("nb", "Naive Bayes", get_class_name(GaussianNB), True),
         (
-            "knn",
-            "K Neighbors Classifier",
-            "sklearn.neighbors.KNeighborsClassifier",
+            "dt",
+            "Decision Tree Classifier",
+            get_class_name(DecisionTreeClassifier),
             True,
         ),
-        ("nb", "Naive Bayes", "sklearn.naive_bayes.GaussianNB", True),
-        ("dt", "Decision Tree Classifier", "sklearn.tree.DecisionTreeClassifier", True),
-        ("svm", "SVM - Linear Kernel", "sklearn.linear_model.SGDClassifier", True),
-        ("rbfsvm", "SVM - Radial Kernel", "sklearn.svm.SVC", False),
-        ("gpc", "Gaussian Process Classifier", "sklearn.gaussian_process.GPC", False),
-        ("mlp", "MLP Classifier", "sklearn.neural_network.MLPClassifier", False),
-        ("ridge", "Ridge Classifier", "sklearn.linear_model.RidgeClassifier", True),
+        ("svm", "SVM - Linear Kernel", get_class_name(SGDClassifier), True),
+        ("rbfsvm", "SVM - Radial Kernel", get_class_name(SVC), False),
+        (
+            "gpc",
+            "Gaussian Process Classifier",
+            get_class_name(GaussianProcessClassifier),
+            False,
+        ),
+        ("mlp", "MLP Classifier", get_class_name(MLPClassifier), False),
+        (
+            "ridge",
+            "Ridge Classifier",
+            get_class_name(RidgeClassifier)
+            if not cuml_sdg_imported
+            else get_class_name(SGDClassifier),
+            True,
+        ),
         (
             "rf",
             "Random Forest Classifier",
-            "sklearn.ensemble.RandomForestClassifier",
+            get_class_name(RandomForestClassifier),
             True,
         ),
         (
             "qda",
             "Quadratic Discriminant Analysis",
-            "sklearn.discriminant_analysis.QDA",
+            get_class_name(QuadraticDiscriminantAnalysis),
             True,
         ),
         ("ada", "Ada Boost Classifier", "sklearn.ensemble.AdaBoostClassifier", True),
         (
             "gbc",
             "Gradient Boosting Classifier",
-            "sklearn.ensemble.GradientBoostingClassifier",
+            get_class_name(GradientBoostingClassifier),
             True,
         ),
         (
             "lda",
             "Linear Discriminant Analysis",
-            "sklearn.discriminant_analysis.LDA",
+            get_class_name(LinearDiscriminantAnalysis),
             True,
         ),
-        ("et", "Extra Trees Classifier", "sklearn.ensemble.ExtraTreesClassifier", True),
-        ("xgboost", "Extreme Gradient Boosting", "xgboost.readthedocs.io", True),
+        ("et", "Extra Trees Classifier", get_class_name(ExtraTreesClassifier), True),
+        ("xgboost", "Extreme Gradient Boosting", get_class_name(XGBClassifier), True),
         (
             "lightgbm",
             "Light Gradient Boosting Machine",
-            "github.com/microsoft/LightGBM",
+            get_class_name(LGBMClassifier),
             True,
         ),
-        ("catboost", "CatBoost Classifier", "catboost.ai", True),
+        ("catboost", "CatBoost Classifier", get_class_name(CatBoostClassifier), True),
     ]
 
     df_internal = None
 
     if internal:
-        from sklearn.linear_model import LogisticRegression
-        from sklearn.neighbors import KNeighborsClassifier
-        from sklearn.naive_bayes import GaussianNB
-        from sklearn.tree import DecisionTreeClassifier
-        from sklearn.linear_model import SGDClassifier
-        from sklearn.svm import SVC
-        from sklearn.gaussian_process import GaussianProcessClassifier
-        from sklearn.neural_network import MLPClassifier
-        from sklearn.linear_model import RidgeClassifier
-        from sklearn.ensemble import RandomForestClassifier
-        from sklearn.discriminant_analysis import QuadraticDiscriminantAnalysis
-        from sklearn.ensemble import AdaBoostClassifier
-        from sklearn.ensemble import GradientBoostingClassifier
-        from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
-        from sklearn.ensemble import ExtraTreesClassifier
-        from sklearn.multiclass import OneVsRestClassifier
-        from xgboost import XGBClassifier
-        from lightgbm import LGBMClassifier
-        from catboost import CatBoostClassifier
-
-        # special estimators
-        from sklearn.ensemble import BaggingClassifier
-        from sklearn.ensemble import StackingClassifier
-        from sklearn.ensemble import VotingClassifier
-        from sklearn.multiclass import OneVsRestClassifier
-        from sklearn.calibration import CalibratedClassifierCV
-
-        num_class = y.value_counts().count()
-
         rows += [
             (
                 "Bagging",
@@ -7597,36 +7686,51 @@ def models(
             "Tune Distributions",
             "Tune Args",
             "SHAP",
+            "GPU Enabled",
         ]
         internal_rows = [
             (
                 False,
                 LogisticRegression,
-                {"random_state": seed},
-                {"C": np.arange(0, 10, 0.001), "class_weight": ["balanced", {}],},
+                {"random_state": seed} if not cuml_lr_imported else {},
                 {
+                    "penalty": ["l2", "none"] + (["l1"] if cuml_lr_imported else []),
+                    "C": np.arange(0, 10, 0.001),
+                    # "class_weight": ["balanced", {}],
+                },
+                {
+                    "penalty": CategoricalDistribution(
+                        ["l2", "none"] + (["l1"] if cuml_lr_imported else [])
+                    ),
                     "C": UniformDistribution(0, 10),
-                    "class_weight": CategoricalDistribution(["balanced", {}]),
+                    # "class_weight": CategoricalDistribution(["balanced", {}]),
                 },
                 {},
                 False,
+                None,
             ),
             (
                 False,
                 KNeighborsClassifier,
-                {"n_jobs": n_jobs_param},
+                {"n_jobs": n_jobs_param} if not cuml_kn_imported else {},
                 {
                     "n_neighbors": range(1, 51),
-                    "weights": ["uniform", "distance"],
-                    "metric": ["euclidean", "manhattan"],
+                    "weights": ["uniform"]
+                    + (["distance"] if not cuml_kn_imported else []),
+                    "metric": ["minkowski", "euclidean", "manhattan"],
                 },
                 {
                     "n_neighbors": IntUniformDistribution(1, 51),
-                    "weights": CategoricalDistribution(["uniform", "distance"]),
-                    "metric": CategoricalDistribution(["euclidean", "manhattan"]),
+                    "weights": CategoricalDistribution(
+                        ["uniform"] + (["distance"] if not cuml_kn_imported else [])
+                    ),
+                    "metric": CategoricalDistribution(
+                        ["minkowski", "euclidean", "manhattan"]
+                    ),
                 },
                 {},
                 False,
+                None,
             ),
             (
                 False,
@@ -7667,40 +7771,42 @@ def models(
                 {"var_smoothing": UniformDistribution(0.000000001, 1, log=True)},
                 {},
                 False,
+                None,
             ),
             (
                 False,
                 DecisionTreeClassifier,
                 {"random_state": seed},
                 {
-                    "max_depth": list(range(1, int(len(X_train.columns) + 1 * 0.85))),
-                    "max_features": list(range(1, len(X_train.columns) + 1)),
+                    "max_depth": list(range(1, int(len(X.columns) + 1 * 0.85))),
+                    "max_features": list(range(1, len(X.columns) + 1)),
                     "min_samples_leaf": [2, 3, 4, 5, 6],
                     "criterion": ["gini", "entropy"],
                 },
                 {
-                    "max_depth": IntUniformDistribution(
-                        1, int(len(X_train.columns) * 0.85)
-                    ),
-                    "max_features": IntUniformDistribution(1, len(X_train.columns)),
+                    "max_depth": IntUniformDistribution(1, int(len(X.columns) * 0.85)),
+                    "max_features": IntUniformDistribution(1, len(X.columns)),
                     "min_samples_leaf": IntUniformDistribution(2, 6),
                     "criterion": CategoricalDistribution(["gini", "entropy"]),
                 },
                 {},
                 "type1",
+                None,
             ),
             (
                 False,
                 SGDClassifier,
                 {
-                    "max_iter": 1000,
                     "tol": 0.001,
+                    "loss": "hinge",
                     "random_state": seed,
                     "n_jobs": n_jobs_param,
-                },
+                }
+                if not cuml_sdg_imported
+                else {"tol": 0.001, "loss": "hinge",},
                 {
-                    "penalty": ["l2", "l1", "elasticnet"],
-                    "l1_ratio": np.arange(0, 1, 0.01),
+                    "penalty": ["elasticnet", "l2", "l1"],
+                    "l1_ratio": np.arange(0.0000000001, 0.9999999999, 0.01),
                     "alpha": [
                         0.0001,
                         0.001,
@@ -7713,21 +7819,24 @@ def models(
                         0.05,
                     ],
                     "fit_intercept": [True, False],
-                    "learning_rate": ["constant", "optimal", "invscaling", "adaptive"],
+                    "learning_rate": ["constant", "invscaling", "adaptive"]
+                    + (["optimal"] if not cuml_sdg_imported else []),
                     "eta0": [0.001, 0.01, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5],
                 },
                 {
-                    "penalty": CategoricalDistribution(["l2", "l1", "elasticnet"]),
+                    "penalty": CategoricalDistribution(["elasticnet", "l2", "l1"]),
                     "l1_ratio": UniformDistribution(0, 1),
-                    "alpha": UniformDistribution(0.0001, 0.05),
+                    "alpha": UniformDistribution(0.0000000001, 0.9999999999),
                     "fit_intercept": CategoricalDistribution([True, False]),
                     "learning_rate": CategoricalDistribution(
-                        ["constant", "optimal", "invscaling", "adaptive"]
+                        ["constant", "invscaling", "adaptive"]
+                        + (["optimal"] if not cuml_sdg_imported else [])
                     ),
                     "eta0": UniformDistribution(0.001, 0.5),
                 },
                 {},
                 False,
+                None,
             ),
             (
                 False,
@@ -7746,6 +7855,7 @@ def models(
                 },
                 {},
                 False,
+                None,
             ),
             (
                 False,
@@ -7768,6 +7878,7 @@ def models(
                 {"max_iter_predict": IntUniformDistribution(100, 1000)},
                 {},
                 False,
+                None,
             ),
             (
                 False,
@@ -7807,48 +7918,76 @@ def models(
                 },
                 {},
                 False,
+                None,
             ),
             (
                 False,
                 RidgeClassifier,
                 {"random_state": seed},
                 {
-                    "alpha": np.arange(0, 1, 0.001),
+                    "alpha": np.arange(0.001, 0.999, 0.001),
                     "fit_intercept": [True, False],
                     "normalize": [True, False],
                 },
                 {
-                    "alpha": UniformDistribution(0, 1),
+                    "alpha": UniformDistribution(0.0000000001, 0.9999999999),
                     "fit_intercept": CategoricalDistribution([True, False]),
                     "normalize": CategoricalDistribution([True, False]),
                 },
                 {},
                 False,
+                None,
+            )
+            if not cuml_sdg_imported
+            else (
+                False,
+                SGDClassifier,
+                {"tol": 0.001, "loss": "squared_loss", "penalty": "l2",},
+                {
+                    "alpha": np.arange(0.001, 0.999, 0.001),
+                    "fit_intercept": [True, False],
+                    "learning_rate": ["constant", "invscaling", "adaptive"],
+                    "eta0": [0.001, 0.01, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5],
+                },
+                {
+                    "alpha": UniformDistribution(0.0000000001, 0.9999999999),
+                    "fit_intercept": CategoricalDistribution([True, False]),
+                    "learning_rate": CategoricalDistribution(
+                        ["constant", "invscaling", "adaptive"]
+                    ),
+                    "eta0": UniformDistribution(0.001, 0.5),
+                },
+                {},
+                False,
+                None,
             ),
             (
                 False,
                 RandomForestClassifier,
-                {"n_estimators": 10, "random_state": seed, "n_jobs": n_jobs_param},
+                {"n_estimators": 100, "random_state": seed, "n_jobs": n_jobs_param},
                 {
-                    "n_estimators": [10, 20, 30, 40, 50, 60, 70, 80, 90, 100],
+                    "n_estimators": [int(x) for x in np.linspace(10, 1000, num=100)],
                     "criterion": ["gini", "entropy"],
                     "max_depth": [int(x) for x in np.linspace(10, 110, num=11)],
                     "min_samples_split": [2, 5, 7, 9, 10],
                     "min_samples_leaf": [1, 2, 4],
-                    "max_features": ["auto", "sqrt", "log2"],
+                    "max_features": [1.0, "auto", "log2"],
                     "bootstrap": [True, False],
+                    "ccp_alpha": np.arange(0.0, 0.01, 0.001),
                 },
                 {
-                    "n_estimators": IntUniformDistribution(10, 100),
+                    "n_estimators": IntUniformDistribution(10, 1000),
                     "criterion": CategoricalDistribution(["gini", "entropy"]),
                     "max_depth": IntUniformDistribution(10, 110),
                     "min_samples_split": IntUniformDistribution(2, 10),
                     "min_samples_leaf": IntUniformDistribution(1, 5),
-                    "max_features": CategoricalDistribution(["auto", "sqrt", "log2"]),
+                    "max_features": CategoricalDistribution([1.0, "auto", "log2"]),
                     "bootstrap": CategoricalDistribution([True, False]),
+                    "ccp_alpha": UniformDistribution(0, 0.01),
                 },
                 {},
                 "type1",
+                None,
             ),
             (
                 False,
@@ -7858,6 +7997,7 @@ def models(
                 {"reg_param": UniformDistribution(0, 1)},
                 {},
                 False,
+                None,
             ),
             (
                 False,
@@ -7875,6 +8015,7 @@ def models(
                 },
                 {},
                 False,
+                None,
             ),
             (
                 False,
@@ -7900,6 +8041,7 @@ def models(
                 },
                 {},
                 "type2",
+                None,
             ),
             (
                 False,
@@ -7934,6 +8076,7 @@ def models(
                 },
                 {},
                 False,
+                None,
             ),
             (
                 False,
@@ -7959,24 +8102,23 @@ def models(
                 },
                 {},
                 "type1",
+                None,
             ),
             (
                 False,
                 XGBClassifier,
-                {"verbosity": 0, "random_state": seed, "n_jobs": n_jobs_param},
+                {
+                    "verbosity": 0,
+                    "booster": "gbtree",
+                    "random_state": seed,
+                    "n_jobs": n_jobs_param,
+                    "tree_method": "gpu_hist" if gpu_param else "auto",
+                },
                 {
                     "learning_rate": np.arange(0, 1, 0.01),
-                    "n_estimators": np.arange(10, 500, 20),
-                    "subsample": [0.1, 0.2, 0.3, 0.5, 0.7, 0.9, 1],
-                    "max_depth": [int(x) for x in np.linspace(10, 110, num=11)],
-                    "colsample_bytree": [0.5, 0.7, 0.9, 1],
-                    "min_child_weight": [1, 2, 3, 4],
-                    "num_class": [num_class],
-                }
-                if num_class > 2
-                else {
-                    "learning_rate": np.arange(0, 1, 0.01),
-                    "n_estimators": [
+                    "n_estimators": np.arange(10, 100, 20)
+                    if num_class > 2
+                    else [
                         10,
                         30,
                         50,
@@ -7992,30 +8134,23 @@ def models(
                         1000,
                     ],
                     "subsample": [0.1, 0.2, 0.3, 0.5, 0.7, 0.9, 1],
-                    "max_depth": [int(x) for x in np.linspace(10, 110, num=11)],
+                    "max_depth": [int(x) for x in np.linspace(1, 11, num=11)],
                     "colsample_bytree": [0.5, 0.7, 0.9, 1],
                     "min_child_weight": [1, 2, 3, 4],
                 },
                 {
                     "learning_rate": UniformDistribution(0, 1),
-                    "n_estimators": IntUniformDistribution(10, 500),
+                    "n_estimators": IntUniformDistribution(10, 100)
+                    if num_class > 2
+                    else IntUniformDistribution(10, 1000, log=True),
                     "subsample": UniformDistribution(0.1, 1),
-                    "max_depth": IntUniformDistribution(10, 110),
-                    "colsample_bytree": UniformDistribution(0.5, 1),
-                    "min_child_weight": IntUniformDistribution(1, 4),
-                    "num_class": CategoricalDistribution([num_class]),
-                }
-                if num_class > 2
-                else {
-                    "learning_rate": UniformDistribution(0, 1),
-                    "n_estimators": IntUniformDistribution(10, 1000, log=True),
-                    "subsample": UniformDistribution(0.1, 1),
-                    "max_depth": IntUniformDistribution(10, 110),
+                    "max_depth": IntUniformDistribution(1, 11),
                     "colsample_bytree": UniformDistribution(0.5, 1),
                     "min_child_weight": IntUniformDistribution(1, 4),
                 },
                 {},
                 "type2",
+                bool(gpu_param),
             ),
             (
                 False,
@@ -8041,11 +8176,19 @@ def models(
                 },
                 {},
                 "type1",
+                False,
             ),
             (
                 False,
                 CatBoostClassifier,
-                {"random_state": seed, "silent": True, "thread_count": n_jobs_param},
+                {
+                    "random_state": seed,
+                    "verbose": False,
+                    "thread_count": n_jobs_param,
+                    "task_type": "GPU"
+                    if gpu_param == "Force" or (gpu_param and len(X) >= 50000)
+                    else "CPU",
+                },
                 {
                     "depth": [3, 1, 2, 6, 4, 5, 7, 8, 9, 10],
                     "iterations": [250, 100, 500, 1000],
@@ -8062,11 +8205,12 @@ def models(
                 },
                 {},
                 "type2",
+                bool(gpu_param == "Force" or (gpu_param and len(X) >= 50000)),
             ),
             (
                 True,
                 BaggingClassifier,
-                {"random_state": seed, "n_jobs": n_jobs_param,},
+                {"random_state": seed, "n_jobs": gpu_n_jobs_param,},
                 {
                     "n_estimators": np.arange(10, 300, 10),
                     "bootstrap": [True, False],
@@ -8079,15 +8223,35 @@ def models(
                 },
                 {},
                 False,
+                False,
             ),
-            (True, StackingClassifier, {}, {}, {}, {}, False),
-            (True, VotingClassifier, {}, {}, {}, {}, False),
-            (True, OneVsRestClassifier, {"n_jobs": n_jobs_param}, {}, {}, {}, False),
-            (True, CalibratedClassifierCV, {}, {}, {}, {}, False),
+            (True, StackingClassifier, {}, {}, {}, {}, False, False),
+            (True, VotingClassifier, {}, {}, {}, {}, False, False),
+            (
+                True,
+                OneVsRestClassifier,
+                {"n_jobs": gpu_n_jobs_param},
+                {},
+                {},
+                {},
+                False,
+                False,
+            ),
+            (True, CalibratedClassifierCV, {}, {}, {}, {}, False, False),
         ]
 
         df_internal = pd.DataFrame(internal_rows)
         df_internal.columns = internal_columns
+
+        def param_grid_to_lists(param_grid: dict):
+            if param_grid:
+                for k, v in param_grid.items():
+                    param_grid[k] = list(v)
+            return param_grid
+
+        df_internal["Tune Grid"] = [
+            param_grid_to_lists(x) for x in df_internal["Tune Grid"]
+        ]
 
         def is_boosting_supported(e):
             try:
@@ -8115,6 +8279,9 @@ def models(
     df.columns = columns
     if df_internal is not None:
         df = pd.concat([df, df_internal], axis=1)
+        df["Temp"] = [get_package(x) for x in df["Reference"]]
+        df["GPU Enabled"].fillna(df["Temp"] != "sklearn", inplace=True)
+        df.drop("Temp", axis=1, inplace=True)
 
     df.set_index("ID", inplace=True)
 
@@ -8541,7 +8708,8 @@ def _fix_imbalance(
     else:
         resampler = fix_imbalance_method_param
 
-    Xtrain, ytrain = resampler.fit_sample(Xtrain, ytrain)
+    with io.capture_output():
+        Xtrain, ytrain = resampler.fit_sample(Xtrain, ytrain)
     logger.info("Resampling completed")
     return Xtrain, ytrain
 
@@ -8692,7 +8860,8 @@ def _sample_data(
             random_state=seed,
             shuffle=data_split_shuffle,
         )
-        model.fit(X_train, y_train)
+        with io.capture_output():
+            model.fit(X_train, y_train)
         pred_ = model.predict(X_test)
         try:
             pred_prob = model.predict_proba(X_test)[:, 1]

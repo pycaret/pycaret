@@ -21,3 +21,4 @@ catboost_info
 /logs.log
 pycaret/__pycache__/
 pycaret/tests/__pycache__/
+tutorials/logs.log

@@ -2,18 +2,18 @@
 # Author: Moez Ali <moez.ali@queensu.ca>
 # License: MIT
 # Release: PyCaret 2.1
-# Last modified : 14/08/2020
+# Last modified : 24/08/2020
 
 def setup(data, 
           target=None,
           custom_stopwords=None,
-          html = True, #added in pycaret==2.0.0
+          html = True,
           session_id = None,
-          log_experiment = False, #added in pycaret==2.0.0
-          experiment_name = None, #added in pycaret==2.0.0
-          log_plots = False, #added in pycaret==2.0.0
-          log_data = False, #added in pycaret==2.0.0)
-          verbose = True): #added in pycaret==2.0.0)
+          log_experiment = False, 
+          experiment_name = None, 
+          log_plots = False, 
+          log_data = False, 
+          verbose = True): 
     
     """
     This function initializes the environment in pycaret. setup() must called before
@@ -853,8 +853,8 @@ def create_model(model=None,
                  multi_core=False,
                  num_topics = None,
                  verbose=True,
-                 system=True, #added in pycaret==2.0.0
-                 **kwargs): #added in pycaret==2.0.0
+                 system=True,
+                 **kwargs):
     
     """
     This function creates a model on the dataset passed as a data param during 
@@ -1626,8 +1626,8 @@ def assign_model(model,
 def plot_model(model = None,
                plot = 'frequency',
                topic_num = None,
-               save = False, #added in pycaret 2.0.0
-               system = True): #added in pycaret 2.0.0):
+               save = False,
+               system = True):
     
     
     """
@@ -2342,10 +2342,10 @@ def tune_model(model=None,
                supervised_target=None,
                estimator=None,
                optimize=None,
-               custom_grid = None, #added in pycaret 2.0.0
+               custom_grid = None, 
                auto_fe = True,
                fold=10,
-               verbose=True): #added in pycaret==2.0.0
+               verbose=True):
 
 
     """
@@ -3442,7 +3442,7 @@ def evaluate_model(model):
     d = interact_manual(plot_model, model = fixed(model), plot = a, topic_num=b, save=fixed(False), system=fixed(True))
 
 def save_model(model, model_name, 
-               verbose=True): #added in pycaret==2.0.0
+               verbose=True):
     
     """
     This function saves the trained model object into the current active 
@@ -3514,7 +3514,7 @@ def save_model(model, model_name,
     logger.info("save_model() succesfully completed......................................")
 
 def load_model(model_name, 
-               verbose=True): #added in pycaret==2.0.0
+               verbose=True):
     
     """
     This function loads a previously saved model from the current active directory 
