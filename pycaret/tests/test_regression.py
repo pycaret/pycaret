@@ -86,8 +86,8 @@ def test():
     assert isinstance(y_test, pd.core.series.Series)
 
     # set config
-    pycaret.classification.set_config('seed', 124)
-    seed = pycaret.classification.get_config('seed')
+    pycaret.regression.set_config('seed', 124)
+    seed = pycaret.regression.get_config('seed')
     assert seed == 124
 
     assert 1 == 1
