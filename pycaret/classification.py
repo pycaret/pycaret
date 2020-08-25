@@ -3205,6 +3205,7 @@ def tune_model(
 
     from sklearn import metrics
     from sklearn.base import clone
+    import logging
 
     np.random.seed(seed)
 
@@ -3288,6 +3289,9 @@ def tune_model(
     n_jobs = gpu_n_jobs_param
 
     if search_library == "optuna":
+        # suppress output
+        logging.getLogger("optuna").setLevel(logging.ERROR)
+
         pruner_translator = {
             "ASHA": optuna.pruners.SuccessiveHalvingPruner(),
             "Hyperband": optuna.pruners.HyperbandPruner(),
@@ -3311,6 +3315,7 @@ def tune_model(
         study = optuna.create_study(
             direction="maximize", sampler=sampler, pruner=pruner
         )
+
         logger.info("Initializing optuna.integration.OptunaSearchCV")
         model_grid = optuna.integration.OptunaSearchCV(
             estimator=_estimator_,
@@ -3328,6 +3333,9 @@ def tune_model(
         )
 
     elif search_library == "tune-sklearn":
+        # suppress output
+        logging.getLogger("tune_sklearn").setLevel(logging.ERROR)
+
         early_stopping_translator = {
             "ASHA": "ASHAScheduler",
             "Hyperband": "HyperBandScheduler",
@@ -7453,6 +7461,10 @@ def models(
     from xgboost import XGBClassifier
     from lightgbm import LGBMClassifier
     from catboost import CatBoostClassifier
+
+    # suppress output
+    import logging
+    logging.getLogger("catboost").setLevel(logging.ERROR)
 
     # special estimators
     from sklearn.ensemble import BaggingClassifier
