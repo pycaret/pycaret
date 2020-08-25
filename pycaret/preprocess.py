@@ -217,10 +217,10 @@ class DataTypes_Auto_infer(BaseEstimator,TransformerMixin):
     # table of learent types
     self.learent_dtypes = data.dtypes
     #self.training_columns = data.drop(self.target,axis=1).columns
-    
+
     # if there are inf or -inf then replace them with NaN
-    data.replace([np.inf,-np.inf],np.NaN,inplace=True)
-    
+    data = data.replace([np.inf,-np.inf],np.NaN).astype(self.learent_dtypes)
+
     # lets remove duplicates
     # remove duplicate columns (columns with same values)
     #(too expensive on bigger data sets)
