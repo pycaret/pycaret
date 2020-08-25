@@ -7491,7 +7491,9 @@ def models(
     return filter_model_df_by_type(df)
 
 
-def get_metrics(force_regenerate: bool = False, include_custom:bool=True) -> pd.DataFrame:
+def get_metrics(
+    force_regenerate: bool = False, include_custom: bool = True
+) -> pd.DataFrame:
     """
     Returns table of metrics available.
 
