@@ -415,8 +415,19 @@ def setup(
         processing) -1 means using all processors. To run all functions on single processor 
         set n_jobs to None.
 
-    use_gpu: bool, default = False
-        If set to True, algorithms that supports gpu are trained using gpu.
+    use_gpu: str or bool, default = False
+        If set to 'Force', will try to use GPU with all algorithms that support it,
+        and raise exceptions if they are unavailable.
+        If set to True, will use GPU with algorithms that support it, and fall
+        back to CPU if they are unavailable.
+        If set to False, will only use CPU.
+
+        GPU enabled algorithms:
+        
+        - CatBoost
+        - XGBoost
+        - Logistic Regression, Ridge, SVM, SVC - requires cuML >= 0.15 to be installed.
+          https://github.com/rapidsai/cuml
 
     html: bool, default = True
         If set to False, prevents runtime display of monitor. This must be set to False
