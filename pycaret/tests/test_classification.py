@@ -36,7 +36,7 @@ def test():
     assert isinstance(clf1[19], bool)
 
     # compare models
-    top3 = pycaret.classification.compare_models(n_select = 3, exclude=['catboost'])
+    top3 = pycaret.classification.compare_models(n_select = 3)
     assert isinstance(top3, list)
 
     # tune model
