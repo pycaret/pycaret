@@ -2501,7 +2501,7 @@ def Preprocess_Path_One(train_data,target_variable,ml_usecase=None,test_data =No
   # WE NEED TO AUTO INFER the ml use case
   c1 = train_data[target_variable].dtype == 'int64'
   c2 = len(train_data[target_variable].unique()) <= 20
-  c3 = train_data[target_variable].dtype in ['object', 'bool', 'category']
+  c3 = train_data[target_variable].dtype.name in ['object', 'bool', 'category']
   
   if ml_usecase is None:
     if ( ( (c1) & (c2) ) | (c3)   ):
@@ -2779,7 +2779,7 @@ def Preprocess_Path_Two(train_data,ml_usecase=None,test_data =None,categorical_f
   # WE NEED TO AUTO INFER the ml use case
   #c1 = train_data[target_variable].dtype == 'int64'
   #c2 = len(train_data[target_variable].unique()) <= 20
-  #c3 = train_data[target_variable].dtype in ['object', 'bool', 'category']
+  #c3 = train_data[target_variable].dtype.name in ['object', 'bool', 'category']
   
   # dummy usecase
   ml_usecase ='regression'
