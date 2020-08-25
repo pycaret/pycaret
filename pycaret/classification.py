@@ -9369,6 +9369,7 @@ def optimize_threshold(estimator,
 def predict_model(estimator, 
                   data=None,
                   probability_threshold=None,
+                  encoded_labels=False,
                   verbose=True):
     
     """
@@ -9398,6 +9399,9 @@ def predict_model(estimator,
         Threshold used to convert probability values into binary outcome. By default the
         probability threshold for all binary classifiers is 0.5 (50%). This can be changed
         using probability_threshold param.
+
+    encoded_labels: Boolean, default = False
+        If True, will return labels encoded as an integer.
 
     verbose: Boolean, default = True
         Holdout score grid is not printed when verbose is set to False.
@@ -9587,10 +9591,12 @@ def predict_model(estimator,
     label = pd.DataFrame(pred_)
     label.columns = ['Label']
     label['Label']=label['Label'].astype(int)
-    replace_lables_in_column(label['Label'])
+    if not encoded_labels:
+        replace_lables_in_column(label['Label'])
     
     if data is None:
-        replace_lables_in_column(ytest)
+        if not encoded_labels:
+            replace_lables_in_column(ytest)
         X_test_ = pd.concat([Xtest,ytest,label], axis=1)
     else:
         X_test_.insert(len(X_test_.columns), "Label", label["Label"].to_list())
