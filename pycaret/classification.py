@@ -9,6 +9,7 @@ from pycaret.internal.logging import get_logger
 from pycaret.internal.plotting import show_yellowbrick_plot
 from pycaret.internal.Display import Display
 from pycaret.internal.distributions import *
+from pycaret.models.classification import get_all_model_containers
 import pandas as pd
 import numpy as np
 import os
@@ -3296,6 +3297,7 @@ def tune_model(
         )
 
     if is_stacked_model:
+        logger.info("Stacked model passed, will tune meta model hyperparameters")
         param_grid = {f"final_estimator__{k}": v for k, v in param_grid.items()}
 
     search_kwargs = {**estimator_definition["Tune Args"], **kwargs}
@@ -6214,7 +6216,7 @@ def calibrate_model(
 
     logger.info("Importing untrained CalibratedClassifierCV")
 
-    calibrated_model_definition = _all_models_internal.loc["Calibrated"]
+    calibrated_model_definition = _all_models_internal.loc["CalibratedCV"]
     model = calibrated_model_definition["Class"](
         base_estimator=estimator,
         method=method,
@@ -7678,7 +7680,7 @@ def models(
                 False,
             ),
             (
-                "Calibrated",
+                "CalibratedCV",
                 "Calibrated Classifier",
                 "sklearn.calibration.CalibratedClassifierCV",
                 False,
@@ -8249,16 +8251,6 @@ def models(
 
         df_internal = pd.DataFrame(internal_rows)
         df_internal.columns = internal_columns
-
-        def param_grid_to_lists(param_grid: dict):
-            if param_grid:
-                for k, v in param_grid.items():
-                    param_grid[k] = list(v)
-            return param_grid
-
-        df_internal["Tune Grid"] = [
-            param_grid_to_lists(x) for x in df_internal["Tune Grid"]
-        ]
 
         def is_boosting_supported(e):
             try:
