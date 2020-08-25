@@ -342,7 +342,7 @@ class DataTypes_Auto_infer(BaseEstimator,TransformerMixin):
     # for ml use ase
     if ((self.ml_usecase == 'classification') &  (data[self.target].dtype=='object')):
       le = LabelEncoder()
-      data[self.target] = le.fit_transform(np.array(data[self.target]))
+      data[self.target] = le.fit_transform(np.array(data[self.target])).astype('float64')
 
       # now get the replacement dict
       rev= le.inverse_transform(range(0,len(le.classes_)))
