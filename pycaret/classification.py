@@ -7464,6 +7464,7 @@ def models(
 
     # suppress output
     import logging
+
     logging.getLogger("catboost").setLevel(logging.ERROR)
 
     # special estimators
@@ -7475,13 +7476,22 @@ def models(
 
     cuml_sdg_imported = False
     cuml_lr_imported = False
-
+    cuml_version = None
     logger.info(f"gpu_param set to {gpu_param}")
 
     if gpu_param == "force":
         from cuml import __version__
 
-        logger.info(f"cuml=={__version__}")
+        cuml_version = __version__
+        logger.info(f"cuml=={cuml_version}")
+
+        cuml_version = cuml_version.split(".")
+        cuml_version = (int(cuml_version[0]), int(cuml_version[1]))
+        if not cuml_version >= (0, 15):
+            raise ImportError(
+                f"cuML is outdated. Required version is >=0.15, got {__version__}"
+            )
+
         # known limitation - cuML SVC only supports binary problems
         if num_class <= 2:
             from cuml.svm import SVC
@@ -7506,30 +7516,41 @@ def models(
         try:
             from cuml import __version__
 
-            logger.info(f"cuml=={__version__}")
+            cuml_version = __version__
         except ImportError:
-            pass
-        if num_class <= 2:
+            logger.warning(f"Couldn't import cuml.")
+
+        if cuml_version:
+            logger.info(f"cuml=={cuml_version}")
+
+            cuml_version = cuml_version.split(".")
+            cuml_version = (int(cuml_version[0]), int(cuml_version[1]))
+            if not cuml_version >= (0, 15):
+                logger.warning(
+                    f"cuML is outdated. Required version is >=0.15, got {__version__}"
+                )
+
+            if num_class <= 2:
+                try:
+                    from cuml.svm import SVC
+
+                    logger.info("Imported cuml.svm.SVC")
+                except ImportError:
+                    logger.warning("Couldn't import cuml.svm.SVC")
             try:
-                from cuml.svm import SVC
+                from cuml.linear_model import LogisticRegression
 
-                logger.info("Imported cuml.svm.SVC")
+                logger.info("Imported cuml.linear_model.LogisticRegression")
+                cuml_lr_imported = True
             except ImportError:
-                logger.warning("Couldn't import cuml.svm.SVC")
-        try:
-            from cuml.linear_model import LogisticRegression
+                logger.warning("Couldn't import cuml.linear_model.LogisticRegression")
+            try:
+                from cuml import MBSGDClassifier as SGDClassifier
 
-            logger.info("Imported cuml.linear_model.LogisticRegression")
-            cuml_lr_imported = True
-        except ImportError:
-            logger.warning("Couldn't import cuml.linear_model.LogisticRegression")
-        try:
-            from cuml import MBSGDClassifier as SGDClassifier
-
-            logger.info("Imported cuml.MBSGDClassifier")
-            cuml_sdg_imported = True
-        except ImportError:
-            logger.warning("Couldn't import cuml.MBSGDClassifier")
+                logger.info("Imported cuml.MBSGDClassifier")
+                cuml_sdg_imported = True
+            except ImportError:
+                logger.warning("Couldn't import cuml.MBSGDClassifier")
 
     columns = ["ID", "Name", "Reference", "Turbo"]
 
