@@ -1,3 +1,7 @@
+# Module: internal.plotting
+# Author: Moez Ali <moez.ali@queensu.ca> and Antoni Baum (Yard1) <antoni.baum@protonmail.com>
+# License: MIT
+
 from pycaret.internal.logging import get_logger
 from pycaret.internal.Display import Display
 

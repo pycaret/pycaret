@@ -1,4 +1,7 @@
-from typing import Any
+# Module: models.base_model
+# Author: Antoni Baum (Yard1) <antoni.baum@protonmail.com>
+# License: MIT
+
 import pycaret.internal.utils
 
 
@@ -30,6 +33,10 @@ class ModelContainer:
         return pycaret.internal.utils.get_package_name(self.class_def)
 
     def get_dict(self, internal: bool = True) -> dict:
+        """
+        Returns a dictionary of the model properties, to
+        be turned into a pandas DataFrame row.
+        """
         d = [("ID", self.id), ("Name", self.name), ("Reference", self.reference)]
 
         if internal:

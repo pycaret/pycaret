@@ -1,7 +1,10 @@
+# Module: models.base_model
+# Author: Moez Ali <moez.ali@queensu.ca> and Antoni Baum (Yard1) <antoni.baum@protonmail.com>
+# License: MIT
+
 import inspect
 import logging
-from pycaret import internal
-from typing import Any, Union, Dict
+from typing import Union, Dict
 from pycaret.models.base_model import ModelContainer
 from pycaret.internal.utils import param_grid_to_lists, get_logger
 from pycaret.internal.distributions import *
@@ -77,6 +80,10 @@ class ClassifierContainer(ModelContainer):
             self.is_gpu_enabled = bool(self.get_package_name() != "sklearn")
 
     def get_dict(self, internal: bool = True) -> dict:
+        """
+        Returns a dictionary of the model properties, to
+        be turned into a pandas DataFrame row.
+        """
         d = [
             ("ID", self.id),
             ("Name", self.name),
@@ -99,9 +106,6 @@ class ClassifierContainer(ModelContainer):
             ]
 
         return dict(d)
-
-    def get_keys(self, internal: bool = True) -> list:
-        return list(self.get_dict(internal).keys())
 
 
 class LogisticRegressionClassifierContainer(ClassifierContainer):
