@@ -3344,9 +3344,6 @@ def tune_model(
         )
 
     elif search_library == "tune-sklearn":
-        # suppress output
-        logging.getLogger("tune_sklearn").setLevel(logging.ERROR)
-
         early_stopping_translator = {
             "ASHA": "ASHAScheduler",
             "Hyperband": "HyperBandScheduler",
@@ -7487,6 +7484,7 @@ def models(
 
     cuml_sdg_imported = False
     cuml_lr_imported = False
+    cuml_kn_imported = False
     cuml_version = None
     logger.info(f"gpu_param set to {gpu_param}")
 
@@ -7514,16 +7512,17 @@ def models(
         logger.info("Imported cuml.linear_model.LogisticRegression")
 
         cuml_lr_imported = True
+
         from cuml import MBSGDClassifier as SGDClassifier
 
         logger.info("Imported cuml.MBSGDClassifier")
-
         cuml_sdg_imported = True
-        # Uncomment when RAPIDS 0.15 is released
-        # https://github.com/rapidsai/cuml/issues/2491
-        # from cuml.neighbors import KNeighborsClassifier
+
+        from cuml.neighbors import KNeighborsClassifier
+
+        logger.info("Imported cuml.neighbors.KNeighborsClassifier")
+        cuml_kn_imported = True
     elif gpu_param:
-        # known limitation - cuML SVC only supports binary problems
         try:
             from cuml import __version__
 
@@ -7541,6 +7540,7 @@ def models(
                     f"cuML is outdated. Required version is >=0.15, got {__version__}"
                 )
 
+            # known limitation - cuML SVC only supports binary problems
             if num_class <= 2:
                 try:
                     from cuml.svm import SVC
@@ -7548,6 +7548,7 @@ def models(
                     logger.info("Imported cuml.svm.SVC")
                 except ImportError:
                     logger.warning("Couldn't import cuml.svm.SVC")
+
             try:
                 from cuml.linear_model import LogisticRegression
 
@@ -7555,6 +7556,7 @@ def models(
                 cuml_lr_imported = True
             except ImportError:
                 logger.warning("Couldn't import cuml.linear_model.LogisticRegression")
+
             try:
                 from cuml import MBSGDClassifier as SGDClassifier
 
@@ -7562,6 +7564,14 @@ def models(
                 cuml_sdg_imported = True
             except ImportError:
                 logger.warning("Couldn't import cuml.MBSGDClassifier")
+
+            try:
+                from cuml.neighbors import KNeighborsClassifier
+
+                logger.info("Imported cuml.neighbors.KNeighborsClassifier")
+                cuml_kn_imported = True
+            except ImportError:
+                logger.warning("Couldn't import cuml.neighbors.KNeighborsClassifier")
 
     columns = ["ID", "Name", "Reference", "Turbo"]
 
@@ -7699,16 +7709,21 @@ def models(
             (
                 False,
                 KNeighborsClassifier,
-                {"n_jobs": n_jobs_param},
+                {"n_jobs": n_jobs_param} if not cuml_kn_imported else {},
                 {
                     "n_neighbors": range(1, 51),
-                    "weights": ["uniform", "distance"],
-                    "metric": ["euclidean", "manhattan"],
+                    "weights": ["uniform"]
+                    + (["distance"] if not cuml_kn_imported else []),
+                    "metric": ["minkowski", "euclidean", "manhattan"],
                 },
                 {
                     "n_neighbors": IntUniformDistribution(1, 51),
-                    "weights": CategoricalDistribution(["uniform", "distance"]),
-                    "metric": CategoricalDistribution(["euclidean", "manhattan"]),
+                    "weights": CategoricalDistribution(
+                        ["uniform"] + (["distance"] if not cuml_kn_imported else [])
+                    ),
+                    "metric": CategoricalDistribution(
+                        ["minkowski", "euclidean", "manhattan"]
+                    ),
                 },
                 {},
                 False,
