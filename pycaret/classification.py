@@ -173,9 +173,10 @@ def setup(
 
     numeric_imputation: string, default = 'mean'
         If missing values are found in numeric features, they will be imputed with the 
-        mean value of the feature. The other available option is 'median' which imputes 
-        the value using the median value in the training dataset. 
-    
+        mean value of the feature. The other available options are 'median' which imputes 
+        the value using the median value in the training dataset and 'zero' which
+        replaces missing values with zeroes.
+
     date_features: string, default = None
         If the data has a DateTime column that is not automatically detected when running
         setup, this parameter can be used by passing date_features = 'date_column_name'. 
@@ -183,23 +184,23 @@ def setup(
         Instead, feature extraction is performed and date columns are dropped from the 
         dataset. If the date column includes a time stamp, features related to time will 
         also be extracted.
-    
+
     ignore_features: string, default = None
         If any feature should be ignored for modeling, it can be passed to the param
         ignore_features. The ID and DateTime columns when inferred, are automatically 
         set to ignore for modeling. 
-    
+
     normalize: bool, default = False
         When set to True, the feature space is transformed using the normalized_method
         param. Generally, linear algorithms perform better with normalized data however, 
         the results may vary and it is advised to run multiple experiments to evaluate
         the benefit of normalization.
-    
+
     normalize_method: string, default = 'zscore'
         Defines the method to be used for normalization. By default, normalize method
         is set to 'zscore'. The standard zscore is calculated as z = (x - u) / s. The
         other available options are:
-    
+
         'minmax'    : scales and translates each feature individually such that it is in 
                     the range of 0 - 1.
         
@@ -210,29 +211,29 @@ def setup(
         'robust'    : scales and translates each feature according to the Interquartile range.
                     When the dataset contains outliers, robust scaler often gives better
                     results.
-    
+
     transformation: bool, default = False
         When set to True, a power transformation is applied to make the data more normal /
         Gaussian-like. This is useful for modeling issues related to heteroscedasticity or 
         other situations where normality is desired. The optimal parameter for stabilizing 
         variance and minimizing skewness is estimated through maximum likelihood.
-    
+
     transformation_method: string, default = 'yeo-johnson'
         Defines the method for transformation. By default, the transformation method is set
         to 'yeo-johnson'. The other available option is 'quantile' transformation. Both 
         the transformation transforms the feature set to follow a Gaussian-like or normal
         distribution. Note that the quantile transformer is non-linear and may distort linear 
         correlations between variables measured at the same scale.
-    
+
     handle_unknown_categorical: bool, default = True
         When set to True, unknown categorical levels in new / unseen data are replaced by
         the most or least frequent level as learned in the training data. The method is 
         defined under the unknown_categorical_method param.
-    
+
     unknown_categorical_method: string, default = 'least_frequent'
         Method used to replace unknown categorical levels in unseen data. Method can be
         set to 'least_frequent' or 'most_frequent'.
-    
+
     pca: bool, default = False
         When set to True, dimensionality reduction is applied to project the data into 
         a lower dimensional space using the method defined in pca_method param. In 
@@ -256,7 +257,7 @@ def setup(
         target percentage for information retention. When pca_components is an integer
         it is treated as the number of features to be kept. pca_components must be strictly
         less than the original number of features in the dataset.
-    
+
     ignore_low_variance: bool, default = False
         When set to True, all categorical features with statistically insignificant variances 
         are removed from the dataset. The variance is calculated using the ratio of unique 
@@ -270,7 +271,7 @@ def setup(
         represents the percentile distribution of level frequency. Generally, this technique 
         is applied to limit a sparse matrix caused by high numbers of levels in categorical 
         features. 
-    
+
     rare_level_threshold: float, default = 0.1
         Percentile distribution below which rare categories are combined. Only comes into
         effect when combine_rare_levels is set to True.
@@ -281,16 +282,16 @@ def setup(
         1D k-means cluster. The number of clusters are determined based on the 'sturges' 
         method. It is only optimal for gaussian data and underestimates the number of bins 
         for large non-gaussian datasets.
-    
+
     remove_outliers: bool, default = False
         When set to True, outliers from the training data are removed using PCA linear
         dimensionality reduction using the Singular Value Decomposition technique.
-    
+
     outliers_threshold: float, default = 0.05
         The percentage / proportion of outliers in the dataset can be defined using
         the outliers_threshold param. By default, 0.05 is used which means 0.025 of the 
         values on each side of the distribution's tail are dropped from training data.
-    
+
     remove_multicollinearity: bool, default = False
         When set to True, the variables with inter-correlations higher than the threshold
         defined under the multicollinearity_threshold param are dropped. When two features
@@ -305,51 +306,51 @@ def setup(
         When set to True, perfect collinearity (features with correlation = 1) is removed
         from the dataset, When two features are 100% correlated, one of it is randomly 
         dropped from the dataset.
-    
+
     create_clusters: bool, default = False
         When set to True, an additional feature is created where each instance is assigned
         to a cluster. The number of clusters is determined using a combination of 
         Calinski-Harabasz and Silhouette criterion. 
-    
+
     cluster_iter: int, default = 20
         Number of iterations used to create a cluster. Each iteration represents cluster 
         size. Only comes into effect when create_clusters param is set to True.
-    
+
     polynomial_features: bool, default = False
         When set to True, new features are created based on all polynomial combinations 
         that exist within the numeric features in a dataset to the degree defined in 
         polynomial_degree param. 
-    
+
     polynomial_degree: int, default = 2pca_method_pass
         Degree of polynomial features. For example, if an input sample is two dimensional 
         and of the form [a, b], the polynomial features with degree = 2 are: 
         [1, a, b, a^2, ab, b^2].
-    
+
     trigonometry_features: bool, default = False
         When set to True, new features are created based on all trigonometric combinations 
         that exist within the numeric features in a dataset to the degree defined in the
         polynomial_degree param.
-    
+
     polynomial_threshold: float, default = 0.1
         This is used to compress a sparse matrix of polynomial and trigonometric features.
         Polynomial and trigonometric features whose feature importance based on the 
         combination of Random Forest, AdaBoost and Linear correlation falls within the 
         percentile of the defined threshold are kept in the dataset. Remaining features 
         are dropped before further processing.
-    
+
     group_features: list or list of list, default = None
         When a dataset contains features that have related characteristics, the group_features
         param can be used for statistical feature extraction. For example, if a dataset has 
         numeric features that are related with each other (i.e 'Col1', 'Col2', 'Col3'), a list 
         containing the column names can be passed under group_features to extract statistical 
         information such as the mean, median, mode and standard deviation.
-    
+
     group_names: list, default = None
         When group_features is passed, a name of the group can be passed into the group_names 
         param as a list containing strings. The length of a group_names list must equal to the 
         length  of group_features. When the length doesn't match or the name is not passed, new 
         features are sequentially named such as group_1, group_2 etc.
-    
+
     feature_selection: bool, default = False
         When set to True, a subset of features are selected using a combination of various
         permutation importance techniques including Random Forest, Adaboost and Linear 
@@ -367,7 +368,7 @@ def setup(
         trials with different values of feature_selection_threshold specially in cases where 
         polynomial_features and feature_interaction are used. Setting a very low value may be 
         efficient but could result in under-fitting.
-    
+
     feature_selection_method: str, default = 'classic'
         Can be either 'classic' or 'boruta'. Selects the algorithm responsible for
         choosing a subset of features. For the 'classic' selection method, PyCaret will use various
@@ -681,22 +682,24 @@ def setup(
         )
 
     # checking numeric imputation
-    allowed_numeric_imputation = ["mean", "median"]
+    allowed_numeric_imputation = ["mean", "median", "zero"]
     if numeric_imputation not in allowed_numeric_imputation:
-        raise ValueError("numeric_imputation param only accepts 'mean' or 'median' ")
+        raise ValueError(
+            f"numeric_imputation param only accepts {', '.join(allowed_numeric_imputation)}."
+        )
 
     # checking normalize method
     allowed_normalize_method = ["zscore", "minmax", "maxabs", "robust"]
     if normalize_method not in allowed_normalize_method:
         raise ValueError(
-            "normalize_method param only accepts 'zscore', 'minxmax', 'maxabs' or 'robust'."
+            f"normalize_method param only accepts {', '.join(allowed_normalize_method)}."
         )
 
     # checking transformation method
     allowed_transformation_method = ["yeo-johnson", "quantile"]
     if transformation_method not in allowed_transformation_method:
         raise ValueError(
-            "transformation_method param only accepts 'yeo-johnson' or 'quantile'."
+            f"transformation_method param only accepts {', '.join(allowed_transformation_method)}."
         )
 
     # handle unknown categorical
@@ -710,7 +713,7 @@ def setup(
 
     if unknown_categorical_method not in unknown_categorical_method_available:
         raise TypeError(
-            "unknown_categorical_method only accepts 'least_frequent' or 'most_frequent'."
+            f"unknown_categorical_method only accepts {', '.join(unknown_categorical_method_available)}."
         )
 
     # check pca
@@ -721,7 +724,7 @@ def setup(
     allowed_pca_methods = ["linear", "kernel", "incremental"]
     if pca_method not in allowed_pca_methods:
         raise ValueError(
-            "pca method param only accepts 'linear', 'kernel', or 'incremental'."
+            f"pca method param only accepts {', '.join(allowed_pca_methods)}."
         )
 
     # pca components check
@@ -762,7 +765,7 @@ def setup(
 
     # check rare_level_threshold
     if type(rare_level_threshold) is not float:
-        raise TypeError("rare_level_threshold must be a float between 0 and 1. ")
+        raise TypeError("rare_level_threshold must be a float between 0 and 1.")
 
     # bin numeric features
     if bin_numeric_features is not None:
@@ -781,7 +784,7 @@ def setup(
 
     # outliers_threshold
     if type(outliers_threshold) is not float:
-        raise TypeError("outliers_threshold must be a float between 0 and 1. ")
+        raise TypeError("outliers_threshold must be a float between 0 and 1.")
 
     # remove_multicollinearity
     if type(remove_multicollinearity) is not bool:
@@ -791,7 +794,7 @@ def setup(
 
     # multicollinearity_threshold
     if type(multicollinearity_threshold) is not float:
-        raise TypeError("multicollinearity_threshold must be a float between 0 and 1. ")
+        raise TypeError("multicollinearity_threshold must be a float between 0 and 1.")
 
     # create_clusters
     if type(create_clusters) is not bool:
@@ -799,45 +802,45 @@ def setup(
 
     # cluster_iter
     if type(cluster_iter) is not int:
-        raise TypeError("cluster_iter must be a integer greater than 1. ")
+        raise TypeError("cluster_iter must be a integer greater than 1.")
 
     # polynomial_features
     if type(polynomial_features) is not bool:
-        raise TypeError("polynomial_features only accepts True or False. ")
+        raise TypeError("polynomial_features only accepts True or False.")
 
     # polynomial_degree
     if type(polynomial_degree) is not int:
-        raise TypeError("polynomial_degree must be an integer. ")
+        raise TypeError("polynomial_degree must be an integer.")
 
     # polynomial_features
     if type(trigonometry_features) is not bool:
-        raise TypeError("trigonometry_features only accepts True or False. ")
+        raise TypeError("trigonometry_features only accepts True or False.")
 
     # polynomial threshold
     if type(polynomial_threshold) is not float:
-        raise TypeError("polynomial_threshold must be a float between 0 and 1. ")
+        raise TypeError("polynomial_threshold must be a float between 0 and 1.")
 
     # group features
     if group_features is not None:
         if type(group_features) is not list:
-            raise TypeError("group_features must be of type list. ")
+            raise TypeError("group_features must be of type list.")
 
     if group_names is not None:
         if type(group_names) is not list:
-            raise TypeError("group_names must be of type list. ")
+            raise TypeError("group_names must be of type list.")
 
     # cannot drop target
     if ignore_features is not None:
         if target in ignore_features:
-            raise ValueError("cannot drop target column. ")
+            raise ValueError("cannot drop target column.")
 
     # feature_selection
     if type(feature_selection) is not bool:
-        raise TypeError("feature_selection only accepts True or False. ")
+        raise TypeError("feature_selection only accepts True or False.")
 
     # feature_selection_threshold
     if type(feature_selection_threshold) is not float:
-        raise TypeError("feature_selection_threshold must be a float between 0 and 1. ")
+        raise TypeError("feature_selection_threshold must be a float between 0 and 1.")
 
     # feature_selection_method
     feature_selection_methods = ["boruta", "classic"]
@@ -848,15 +851,15 @@ def setup(
 
     # feature_interaction
     if type(feature_interaction) is not bool:
-        raise TypeError("feature_interaction only accepts True or False. ")
+        raise TypeError("feature_interaction only accepts True or False.")
 
     # feature_ratio
     if type(feature_ratio) is not bool:
-        raise TypeError("feature_ratio only accepts True or False. ")
+        raise TypeError("feature_ratio only accepts True or False.")
 
     # interaction_threshold
     if type(interaction_threshold) is not float:
-        raise TypeError("interaction_threshold must be a float between 0 and 1. ")
+        raise TypeError("interaction_threshold must be a float between 0 and 1.")
 
     # forced type check
     all_cols = list(data.columns)
@@ -896,20 +899,20 @@ def setup(
 
     # log_experiment
     if type(log_experiment) is not bool:
-        raise TypeError("log_experiment parameter only accepts True or False. ")
+        raise TypeError("log_experiment parameter only accepts True or False.")
 
     # log_profile
     if type(log_profile) is not bool:
-        raise TypeError("log_profile parameter only accepts True or False. ")
+        raise TypeError("log_profile parameter only accepts True or False.")
 
     # experiment_name
     if experiment_name is not None:
         if type(experiment_name) is not str:
-            raise TypeError("experiment_name parameter must be string if not None. ")
+            raise TypeError("experiment_name parameter must be string if not None.")
 
     # silent
     if type(silent) is not bool:
-        raise TypeError("silent parameter only accepts True or False. ")
+        raise TypeError("silent parameter only accepts True or False.")
 
     # remove_perfect_collinearity
     if type(remove_perfect_collinearity) is not bool:
@@ -6523,10 +6526,10 @@ def optimize_threshold(
     allowed_types = [int, float]
 
     if type(true_positive) not in allowed_types:
-        raise TypeError("true_positive parameter only accepts float or integer value. ")
+        raise TypeError("true_positive parameter only accepts float or integer value.")
 
     if type(true_negative) not in allowed_types:
-        raise TypeError("true_negative parameter only accepts float or integer value. ")
+        raise TypeError("true_negative parameter only accepts float or integer value.")
 
     if type(false_positive) not in allowed_types:
         raise TypeError("false_positive parameter only accepts float or integer value.")
