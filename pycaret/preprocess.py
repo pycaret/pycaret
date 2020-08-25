@@ -120,34 +120,34 @@ class DataTypes_Auto_infer(BaseEstimator,TransformerMixin):
     # some times we have id column in the data set, we will try to find it and then  will drop it if found
     len_samples = len(data)
     self.id_columns = []
-    for i in data.drop(self.target,axis=1).columns:
-      if data[i].dtype in ['int64','float64']:
-        if i not in self.numerical_features:
+    for i in data.select_dtypes(include=['int64','float64']).columns:
+      if i not in self.numerical_features:
+        if sum(data[i].isna()) == 0: 
           if sum(data[i].isna()) == 0: 
-            if len(data[i].unique()) == len_samples:
-              # we extract column and sort it
-              features = data[i].sort_values()
-              # no we subtract i+1-th value from i-th (calculating increments)
-              increments = features.diff()[1:]
-              # if all increments are 1 (with float tolerance), then the column is ID column
-              if sum(np.abs(increments-1) < 1e-7) == len_samples-1:
-                self.id_columns.append(i)
-      
-    data_len = len(data)                        
-        
+        if sum(data[i].isna()) == 0: 
+          if sum(data[i].isna()) == 0: 
+        if sum(data[i].isna()) == 0: 
+          if len(data[i].unique()) == len_samples:
+            # we extract column and sort it
+            features = data[i].sort_values()
+            # no we subtract i+1-th value from i-th (calculating increments)
+            increments = features.diff()[1:]
+            # if all increments are 1 (with float tolerance), then the column is ID column
+            if sum(np.abs(increments-1) < 1e-7) == len_samples-1:
+              self.id_columns.append(i)
+              
     # wiith csv , if we have any null in  a colum that was int , panda will read it as float.
     # so first we need to convert any such floats that have NaN and unique values are lower than 20
-    for i in data.drop(self.target,axis=1).columns:
-      if data[i].dtypes == 'float64':
-        # count how many Nas are there
-        na_count = sum(data[i].isna())
-        # count how many digits are there that have decimiles
-        count_float = np.nansum([ False if r.is_integer() else True for r in data[i]])
-        # total decimiels digits
-        count_float = count_float - na_count # reducing it because we know NaN is counted as a float digit
-        # now if there isnt any float digit , & unique levales are less than 20 and there are Na's then convert it to object
-        if ( (count_float == 0) & (len(data[i].unique()) <=20) & (na_count>0) ):
-          data[i] = data[i].astype('object')
+    for i in data.select_dtypes(include=['float64']).columns:
+      # count how many Nas are there
+      na_count = sum(data[i].isna())
+      # count how many digits are there that have decimiles
+      count_float = np.nansum([ False if r.is_integer() else True for r in data[i]])
+      # total decimiels digits
+      count_float = count_float - na_count # reducing it because we know NaN is counted as a float digit
+      # now if there isnt any float digit , & unique levales are less than 20 and there are Na's then convert it to object
+      if ( (count_float == 0) & (len(data[i].unique()) <=20) & (na_count>0) ):
+        data[i] = data[i].astype('object')
         
 
     # should really be an absolute number say 20
@@ -164,18 +164,17 @@ class DataTypes_Auto_infer(BaseEstimator,TransformerMixin):
     #   th=.02
 
     # if column is int and unique counts are more than two, then: (exclude target)
-    for i in data.drop(self.target,axis=1).columns:
-      if data[i].dtypes == 'int64': #((data[i].dtypes == 'int64') & (len(data[i].unique())>2))
-        if len(data[i].unique()) <=20: #hard coded
-          data[i]= data[i].apply(str)
-        else:
-          data[i]= data[i].astype('float64')
+    for i in data.select_dtypes(include=['int64']).columns:
+      if len(data[i].unique()) <=20: #hard coded
+        data[i]= data[i].apply(str)
+      else:
+        data[i]= data[i].astype('float64')
 
 
     # # if colum is objfloat  and only have two unique counts , this is probabaly one hot encoded
     # # make it object
-    for i in data.columns:
-      if ((data[i].dtypes == 'float64') & (len(data[i].unique())==2)):
+    for i in data.select_dtypes(include=['float64']).columns:
+      if (len(data[i].unique())==2):
         data[i]= data[i].apply(str)
     
     
@@ -193,26 +192,23 @@ class DataTypes_Auto_infer(BaseEstimator,TransformerMixin):
         continue
 
     # now in case we were given any specific columns dtypes in advance , we will over ride theos 
-    if len(self.categorical_features) > 0:
-      for i in self.categorical_features:
-        try:
-          data[i]=data[i].apply(str)
-        except:
-          data[i]=dataset[i].apply(str)
+    for i in self.categorical_features:
+      try:
+        data[i]=data[i].apply(str)
+      except:
+        data[i]=dataset[i].apply(str)
 
-    if len(self.numerical_features) > 0:
-      for i in self.numerical_features:
-        try:
-          data[i]=data[i].astype('float64')
-        except:
-          data[i]=dataset[i].astype('float64')
-    
-    if len(self.time_features) > 0:
-      for i in self.time_features:
-        try:
-          data[i]=pd.to_datetime(data[i])
-        except:
-          data[i]=pd.to_datetime(dataset[i])
+    for i in self.numerical_features:
+      try:
+        data[i]=data[i].astype('float64')
+      except:
+        data[i]=dataset[i].astype('float64')
+  
+    for i in self.time_features:
+      try:
+        data[i]=pd.to_datetime(data[i])
+      except:
+        data[i]=pd.to_datetime(dataset[i])
 
     # table of learent types
     self.learent_dtypes = data.dtypes
@@ -318,7 +314,7 @@ class DataTypes_Auto_infer(BaseEstimator,TransformerMixin):
     
     # just keep picking the data and keep applying to the test data set (be mindful of target variable)
     for i in data.columns: # we are taking all the columns in test , so we dot have to worry about droping target column
-      data[i] = data[i].astype(self.learent_dtypes[self.learent_dtypes.index==i])
+      data[i] = data[i].astype(self.learent_dtypes[i])
     
     # drop time columns
     #data.drop(self.drop_time,axis=1,errors='ignore',inplace=True)
