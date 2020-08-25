@@ -5278,12 +5278,21 @@ def plot_model(
     # plots used for logging (controlled through plots_log_param)
     # AUC, #Confusion Matrix and #Feature Importance
 
+    logger.info("Copying training dataset")
+    # Storing X_train and y_train in data_X and data_y parameter
+    data_X = X_train.copy()
+    data_y = y_train.copy()
+
+    # Storing X_train and y_train in data_X and data_y parameter
+    test_X = X_test.copy()
+    test_y = y_test.copy()
+
     logger.info(f"Plot type: {plot}")
     plot_name = available_plots[plot]
     display.move_progress()
 
     if fix_imbalance_param:
-        X_train, y_train = _fix_imbalance(X_train, y_train, fix_imbalance_method_param)
+        data_X, data_y = _fix_imbalance(data_X, data_y, fix_imbalance_method_param)
 
     if plot == "auc":
 
@@ -5292,10 +5301,10 @@ def plot_model(
         visualizer = ROCAUC(model)
         show_yellowbrick_plot(
             visualizer=visualizer,
-            X_train=X_train,
-            y_train=y_train,
-            X_test=X_test,
-            y_test=y_test,
+            X_train=data_X,
+            y_train=data_y,
+            X_test=test_X,
+            y_test=test_y,
             name=plot_name,
             scale=scale,
             save=save,
@@ -5311,10 +5320,10 @@ def plot_model(
         visualizer = DiscriminationThreshold(model, random_state=seed)
         show_yellowbrick_plot(
             visualizer=visualizer,
-            X_train=X_train,
-            y_train=y_train,
-            X_test=X_test,
-            y_test=y_test,
+            X_train=data_X,
+            y_train=data_y,
+            X_test=test_X,
+            y_test=test_y,
             name=plot_name,
             scale=scale,
             save=save,
@@ -5330,10 +5339,10 @@ def plot_model(
         visualizer = PrecisionRecallCurve(model, random_state=seed)
         show_yellowbrick_plot(
             visualizer=visualizer,
-            X_train=X_train,
-            y_train=y_train,
-            X_test=X_test,
-            y_test=y_test,
+            X_train=data_X,
+            y_train=data_y,
+            X_test=test_X,
+            y_test=test_y,
             name=plot_name,
             scale=scale,
             save=save,
@@ -5351,10 +5360,10 @@ def plot_model(
         )
         show_yellowbrick_plot(
             visualizer=visualizer,
-            X_train=X_train,
-            y_train=y_train,
-            X_test=X_test,
-            y_test=y_test,
+            X_train=data_X,
+            y_train=data_y,
+            X_test=test_X,
+            y_test=test_y,
             name=plot_name,
             scale=scale,
             save=save,
@@ -5370,10 +5379,10 @@ def plot_model(
         visualizer = ClassPredictionError(model, random_state=seed)
         show_yellowbrick_plot(
             visualizer=visualizer,
-            X_train=X_train,
-            y_train=y_train,
-            X_test=X_test,
-            y_test=y_test,
+            X_train=data_X,
+            y_train=data_y,
+            X_test=test_X,
+            y_test=test_y,
             name=plot_name,
             scale=scale,
             save=save,
@@ -5389,10 +5398,10 @@ def plot_model(
         visualizer = ClassificationReport(model, random_state=seed, support=True)
         show_yellowbrick_plot(
             visualizer=visualizer,
-            X_train=X_train,
-            y_train=y_train,
-            X_test=X_test,
-            y_test=y_test,
+            X_train=data_X,
+            y_train=data_y,
+            X_test=test_X,
+            y_test=test_y,
             name=plot_name,
             scale=scale,
             save=save,
@@ -5409,30 +5418,26 @@ def plot_model(
 
         model2 = deepcopy(estimator)
 
-        X_train_transformed = X_train.copy()
-        X_test_transformed = X_test.copy()
-        X_train_transformed = X_train_transformed.select_dtypes(include="float64")
-        X_test_transformed = X_test_transformed.select_dtypes(include="float64")
+        data_X_transformed = data_X.select_dtypes(include="float64")
+        test_X_transformed = test_X.select_dtypes(include="float64")
         logger.info("Fitting StandardScaler()")
-        X_train_transformed = StandardScaler().fit_transform(X_train_transformed)
-        X_test_transformed = StandardScaler().fit_transform(X_test_transformed)
+        data_X_transformed = StandardScaler().fit_transform(data_X_transformed)
+        test_X_transformed = StandardScaler().fit_transform(test_X_transformed)
         pca = PCA(n_components=2, random_state=seed)
         logger.info("Fitting PCA()")
-        X_train_transformed = pca.fit_transform(X_train_transformed)
-        X_test_transformed = pca.fit_transform(X_test_transformed)
+        data_X_transformed = pca.fit_transform(data_X_transformed)
+        test_X_transformed = pca.fit_transform(test_X_transformed)
 
-        y_train_transformed = y_train.copy()
-        y_test_transformed = y_test.copy()
-        y_train_transformed = np.array(y_train_transformed)
-        y_test_transformed = np.array(y_test_transformed)
+        data_y_transformed = np.array(data_y)
+        test_y_transformed = np.array(test_y)
 
         viz_ = DecisionViz(model2)
         show_yellowbrick_plot(
             visualizer=viz_,
-            X_train=X_train_transformed,
-            y_train=y_train_transformed,
-            X_test=X_test_transformed,
-            y_test=y_test_transformed,
+            X_train=data_X_transformed,
+            y_train=data_y_transformed,
+            X_test=test_X_transformed,
+            y_test=test_y_transformed,
             name=plot_name,
             scale=scale,
             handle_train="draw",
@@ -5451,10 +5456,10 @@ def plot_model(
         visualizer = RFECV(model, cv=10)
         show_yellowbrick_plot(
             visualizer=visualizer,
-            X_train=X_train,
-            y_train=y_train,
-            X_test=X_test,
-            y_test=y_test,
+            X_train=data_X,
+            y_train=data_y,
+            X_test=test_X,
+            y_test=test_y,
             handle_test="",
             name=plot_name,
             scale=scale,
@@ -5474,10 +5479,10 @@ def plot_model(
         )
         show_yellowbrick_plot(
             visualizer=visualizer,
-            X_train=X_train,
-            y_train=y_train,
-            X_test=X_test,
-            y_test=y_test,
+            X_train=data_X,
+            y_train=data_y,
+            X_test=test_X,
+            y_test=test_y,
             handle_test="",
             name=plot_name,
             scale=scale,
@@ -5491,14 +5496,14 @@ def plot_model(
 
         from yellowbrick.features import Manifold
 
-        X_train_transformed = X_train.select_dtypes(include="float64")
+        data_X_transformed = data_X.select_dtypes(include="float64")
         visualizer = Manifold(manifold="tsne", random_state=seed)
         show_yellowbrick_plot(
             visualizer=visualizer,
-            X_train=X_train_transformed,
-            y_train=y_train,
-            X_test=X_test,
-            y_test=y_test,
+            X_train=data_X_transformed,
+            y_train=data_y,
+            X_test=test_X,
+            y_test=test_y,
             handle_train="fit_transform",
             handle_test="",
             name=plot_name,
@@ -5521,10 +5526,10 @@ def plot_model(
         ax1.plot([0, 1], [0, 1], "k:", label="Perfectly calibrated")
         display.move_progress()
         logger.info("Scoring test/hold-out set")
-        prob_pos = model.predict_proba(X_test)[:, 1]
+        prob_pos = model.predict_proba(test_X)[:, 1]
         prob_pos = (prob_pos - prob_pos.min()) / (prob_pos.max() - prob_pos.min())
         fraction_of_positives, mean_predicted_value = calibration_curve(
-            y_test, prob_pos, n_bins=10
+            test_y, prob_pos, n_bins=10
         )
         display.move_progress()
         ax1.plot(
@@ -5633,10 +5638,10 @@ def plot_model(
         )
         show_yellowbrick_plot(
             visualizer=viz,
-            X_train=X_train,
-            y_train=y_train,
-            X_test=X_test,
-            y_test=y_test,
+            X_train=data_X,
+            y_train=data_y,
+            X_test=test_X,
+            y_test=test_y,
             handle_train="fit",
             handle_test="",
             name=plot_name,
@@ -5653,27 +5658,27 @@ def plot_model(
         from sklearn.preprocessing import StandardScaler
         from sklearn.decomposition import PCA
 
-        X_train_transformed = X_train.select_dtypes(include="float64")
+        data_X_transformed = data_X.select_dtypes(include="float64")
         logger.info("Fitting StandardScaler()")
-        X_train_transformed = StandardScaler().fit_transform(X_train_transformed)
-        y_train_transformed = np.array(y_train)
+        data_X_transformed = StandardScaler().fit_transform(data_X_transformed)
+        data_y_transformed = np.array(data_y)
 
-        features = min(round(len(X_train.columns) * 0.3, 0), 5)
+        features = min(round(len(data_X.columns) * 0.3, 0), 5)
         features = int(features)
 
         pca = PCA(n_components=features, random_state=seed)
         logger.info("Fitting PCA()")
-        X_train_transformed = pca.fit_transform(X_train_transformed)
+        data_X_transformed = pca.fit_transform(data_X_transformed)
         display.move_progress()
-        classes = y_train.unique().tolist()
+        classes = data_y.unique().tolist()
         visualizer = RadViz(classes=classes, alpha=0.25)
 
         show_yellowbrick_plot(
             visualizer=visualizer,
-            X_train=X_train_transformed,
-            y_train=y_train_transformed,
-            X_test=X_test,
-            y_test=y_test,
+            X_train=data_X_transformed,
+            y_train=data_y_transformed,
+            X_test=test_X,
+            y_test=test_y,
             handle_train="fit_transform",
             handle_test="",
             name=plot_name,
@@ -5691,7 +5696,7 @@ def plot_model(
         else:
             logger.warning("No coef_ found. Trying feature_importances_")
             variables = abs(model.feature_importances_)
-        coef_df = pd.DataFrame({"Variable": X_train.columns, "Value": variables})
+        coef_df = pd.DataFrame({"Variable": data_X.columns, "Value": variables})
         sorted_df = (
             coef_df.sort_values(by="Value", ascending=False)
             .head(10)
@@ -5726,6 +5731,8 @@ def plot_model(
         )
         display.display(param_df, clear=True)
         logger.info("Visual Rendered Successfully")
+
+    gc.collect()
 
     logger.info(
         "plot_model() succesfully completed......................................"
@@ -7578,7 +7585,7 @@ def models(
 
     columns = ["ID", "Name", "Reference", "Turbo"]
 
-    def get_class_name(class_var) -> str:
+    def get_class_name(class_var: Any) -> str:
         return str(class_var)[8:-2]
 
     def get_package(class_name: str) -> str:
