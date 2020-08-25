@@ -137,7 +137,7 @@ class LogisticRegressionClassifierContainer(ClassifierContainer):
 
         # common
         tune_grid["penalty"] = ["l2", "none"]
-        tune_grid["C"] = (np.arange(0, 10, 0.001),)
+        tune_grid["C"] = np.arange(0, 10, 0.001)
 
         if gpu_imported:
             tune_grid["penalty"] += ["l1"]
@@ -189,7 +189,7 @@ class KNeighborsClassifierContainer(ClassifierContainer):
         tune_distributions = {}
 
         # common
-        tune_grid["n_neighbors"] = (range(1, 51),)
+        tune_grid["n_neighbors"] = range(1, 51)
         tune_grid["weights"] = ["uniform"]
         tune_grid["metric"] = ["minkowski", "euclidean", "manhattan"]
 
@@ -346,7 +346,7 @@ class SGDClassifierContainer(ClassifierContainer):
         }
 
         # common
-        tune_grid["n_neighbors"] = (range(1, 51),)
+        tune_grid["n_neighbors"] = range(1, 51)
         tune_grid["weights"] = ["uniform"]
         tune_grid["metric"] = ["minkowski", "euclidean", "manhattan"]
 
@@ -542,7 +542,7 @@ class RidgeClassifierContainer(ClassifierContainer):
 
         tune_grid["alpha"] = np.arange(0.001, 0.999, 0.001)
         tune_grid["fit_intercept"] = [True, False]
-        tune_distributions["alpha"] = (UniformDistribution(0.0000000001, 0.9999999999),)
+        tune_distributions["alpha"] = UniformDistribution(0.0000000001, 0.9999999999)
 
         _leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 
