@@ -1156,22 +1156,18 @@ def setup(
         interactions_to_apply_pass.append("divide")
 
     # unknown categorical
-    if unknown_categorical_method == "least_frequent":
-        unknown_categorical_method_pass = "least frequent"
-    elif unknown_categorical_method == "most_frequent":
-        unknown_categorical_method_pass = "most frequent"
-
+    unkn_dict = {"least_frequent": "least frequent", "most_frequent": "most frequent"}
+    unknown_categorical_method_pass = unkn_dict[unknown_categorical_method]
+    
     # ordinal_features
     apply_ordinal_encoding_pass = True if ordinal_features is not None else False
 
-    ordinal_columns_and_categories_pass = ordinal_features if apply_ordinal_encoding_pass is True else {}
+    ordinal_columns_and_categories_pass = ordinal_features if apply_ordinal_encoding_pass else {}
 
     apply_cardinality_reduction_pass = True if high_cardinality_features is not None else False
 
-    if high_cardinality_method == "frequency":
-        cardinal_method_pass = "count"
-    elif high_cardinality_method == "clustering":
-        cardinal_method_pass = "cluster"
+    hi_card_dict = {"frequency": "count", "clustering": "cluster"}
+    cardinal_method_pass = hi_card_dict[high_cardinality_method]
 
     cardinal_features_pass = high_cardinality_features if apply_cardinality_reduction_pass else []
 
