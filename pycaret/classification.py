@@ -1866,11 +1866,6 @@ def compare_models(
     
     """
 
-    """
-    
-    ERROR HANDLING STARTS HERE
-    
-    """
     function_params_str = ", ".join([f"{k}={v}" for k, v in locals().items()])
 
     logger = get_logger()

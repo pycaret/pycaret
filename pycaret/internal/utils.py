@@ -136,7 +136,7 @@ def calculate_metrics(
     metrics: pd.DataFrame,
     ytest,
     pred_,
-    pred_prob: float = None,
+    pred_proba: float = None,
     score_dict: dict = None,
 ):
     import numpy as np
@@ -155,7 +155,7 @@ def calculate_metrics(
     for row in metrics.itertuples():
         if not row[score_function_idx]:
             continue
-        target = pred_prob if row.Target == "pred_prob" else pred_
+        target = pred_proba if row.Target == "pred_proba" else pred_
         try:
             calculated_metric = row[score_function_idx](ytest, target, **row.Args)
         except:
