@@ -7527,6 +7527,8 @@ def get_metrics(
     if reset and not "all_metrics" in globals():
         raise ValueError("setup() needs to be ran first.")
 
+    global all_metrics
+
     if not force_regenerate and not reset:
         try:
             if not include_custom:
@@ -7553,7 +7555,6 @@ def get_metrics(
         df = df[df["Custom"] == False]
 
     if reset:
-        global all_metrics
         all_metrics = df
     return df
 
