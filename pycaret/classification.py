@@ -1,14 +1,19 @@
 # Module: Classification
 # Author: Moez Ali <moez.ali@queensu.ca>
 # License: MIT
-# Release: PyCaret 2.1x
-# Last modified : 12/08/2020
+# Release: PyCaret 2.2
+# Last modified : 26/08/2020
 
 from pycaret.internal.utils import color_df
 from pycaret.internal.logging import get_logger
 from pycaret.internal.plotting import show_yellowbrick_plot
 from pycaret.internal.Display import Display
 from pycaret.internal.distributions import *
+from pycaret.containers.models.classification import get_all_model_containers
+from pycaret.containers.metrics.classification import (
+    get_all_metric_containers,
+    ClassificationMetricContainer,
+)
 import pandas as pd
 import numpy as np
 import os
@@ -38,7 +43,7 @@ def setup(
     high_cardinality_features: List[str] = None,
     high_cardinality_method: str = "frequency",
     numeric_features: List[str] = None,
-    numeric_imputation: str = "mean",
+    numeric_imputation: str = "mean",  # method 'zero' added in pycaret==2.1
     date_features: List[str] = None,
     ignore_features: List[str] = None,
     normalize: bool = False,
@@ -58,7 +63,7 @@ def setup(
     outliers_threshold: float = 0.05,
     remove_multicollinearity: bool = False,
     multicollinearity_threshold: float = 0.9,
-    remove_perfect_collinearity: bool = False,  # added in pycaret==2.0.0
+    remove_perfect_collinearity: bool = False,
     create_clusters: bool = False,
     cluster_iter: int = 20,
     polynomial_features: bool = False,
@@ -69,25 +74,25 @@ def setup(
     group_names: List[str] = None,
     feature_selection: bool = False,
     feature_selection_threshold: float = 0.8,
-    feature_selection_method: str = "classic",
+    feature_selection_method: str = "classic",  # boruta algorithm added in pycaret==2.1
     feature_interaction: bool = False,
     feature_ratio: bool = False,
     interaction_threshold: float = 0.01,
-    fix_imbalance: bool = False,  # added in pycaret==2.0.0
-    fix_imbalance_method: Any = None,  # added in pycaret==2.0.0
-    data_split_shuffle: bool = True,  # added in pycaret==2.0.0
-    folds_shuffle: bool = False,  # added in pycaret==2.0.0
-    n_jobs: int = -1,  # added in pycaret==2.0.0
+    fix_imbalance: bool = False,
+    fix_imbalance_method: Any = None,
+    data_split_shuffle: bool = True,
+    folds_shuffle: bool = False,
+    n_jobs: int = -1,
     use_gpu: bool = False,  # added in pycaret==2.1
-    html: bool = True,  # added in pycaret==2.0.0
+    html: bool = True,
     session_id: int = None,
-    log_experiment: bool = False,  # added in pycaret==2.0.0
-    experiment_name: str = None,  # added in pycaret==2.0.0
-    log_plots: bool = False,  # added in pycaret==2.0.0
-    log_profile: bool = False,  # added in pycaret==2.0.0
-    log_data: bool = False,  # added in pycaret==2.0.0
+    log_experiment: bool = False,
+    experiment_name: str = None,
+    log_plots: bool = False,
+    log_profile: bool = False,
+    log_data: bool = False,
     silent: bool = False,
-    verbose: bool = True,  # added in pycaret==2.0.0
+    verbose: bool = True,
     profile: bool = False,
     display: Display = None,
 ):
@@ -111,9 +116,10 @@ def setup(
     Parameters
     ----------
     data : pandas.DataFrame
-        Shape (n_samples, n_features) where n_samples is the number of samples and n_features is the number of features.
+        Shape (n_samples, n_features) where n_samples is the number of samples and 
+        n_features is the number of features.
 
-    target: string
+    target: str
         Name of the target column to be passed in as a string. The target variable could 
         be binary or multiclass. In case of a multiclass target, all estimators are wrapped
         with a OneVsRest classifier.
@@ -140,7 +146,7 @@ def setup(
         inferred as numeric instead of categorical, then this parameter can be used 
         to overwrite the type by passing categorical_features = ['column1'].
     
-    categorical_imputation: string, default = 'constant'
+    categorical_imputation: str, default = 'constant'
         If missing values are found in categorical features, they will be imputed with
         a constant 'not_available' value. The other available option is 'mode' which 
         imputes the missing value using most frequent value in the training dataset. 
@@ -157,7 +163,7 @@ def setup(
         into fewer levels by passing them as a list of column names with high cardinality.
         Features are compressed using method defined in high_cardinality_method param.
     
-    high_cardinality_method: string, default = 'frequency'
+    high_cardinality_method: str, default = 'frequency'
         When method set to 'frequency' it will replace the original value of feature
         with the frequency distribution and convert the feature into numeric. Other
         available method is 'clustering' which performs the clustering on statistical
@@ -171,13 +177,13 @@ def setup(
         inferred as a categorical instead of numeric, then this parameter can be used 
         to overwrite by passing numeric_features = ['column1'].    
 
-    numeric_imputation: string, default = 'mean'
+    numeric_imputation: str, default = 'mean'
         If missing values are found in numeric features, they will be imputed with the 
         mean value of the feature. The other available options are 'median' which imputes 
         the value using the median value in the training dataset and 'zero' which
         replaces missing values with zeroes.
 
-    date_features: string, default = None
+    date_features: str, default = None
         If the data has a DateTime column that is not automatically detected when running
         setup, this parameter can be used by passing date_features = 'date_column_name'. 
         It can work with multiple date columns. Date columns are not used in modeling. 
@@ -185,7 +191,7 @@ def setup(
         dataset. If the date column includes a time stamp, features related to time will 
         also be extracted.
 
-    ignore_features: string, default = None
+    ignore_features: str, default = None
         If any feature should be ignored for modeling, it can be passed to the param
         ignore_features. The ID and DateTime columns when inferred, are automatically 
         set to ignore for modeling. 
@@ -196,7 +202,7 @@ def setup(
         the results may vary and it is advised to run multiple experiments to evaluate
         the benefit of normalization.
 
-    normalize_method: string, default = 'zscore'
+    normalize_method: str, default = 'zscore'
         Defines the method to be used for normalization. By default, normalize method
         is set to 'zscore'. The standard zscore is calculated as z = (x - u) / s. The
         other available options are:
@@ -208,29 +214,29 @@ def setup(
                     absolute value of each feature will be 1.0. It does not shift/center 
                     the data, and thus does not destroy any sparsity.
         
-        'robust'    : scales and translates each feature according to the Interquartile range.
-                    When the dataset contains outliers, robust scaler often gives better
-                    results.
-
+        'robust'    : scales and translates each feature according to the Interquartile 
+                    range. When the dataset contains outliers, robust scaler often gives 
+                    better results.
+    
     transformation: bool, default = False
         When set to True, a power transformation is applied to make the data more normal /
         Gaussian-like. This is useful for modeling issues related to heteroscedasticity or 
         other situations where normality is desired. The optimal parameter for stabilizing 
         variance and minimizing skewness is estimated through maximum likelihood.
 
-    transformation_method: string, default = 'yeo-johnson'
+    transformation_method: str, default = 'yeo-johnson'
         Defines the method for transformation. By default, the transformation method is set
         to 'yeo-johnson'. The other available option is 'quantile' transformation. Both 
         the transformation transforms the feature set to follow a Gaussian-like or normal
-        distribution. Note that the quantile transformer is non-linear and may distort linear 
-        correlations between variables measured at the same scale.
-
+        distribution. Note that the quantile transformer is non-linear and may distort 
+        linear correlations between variables measured at the same scale.
+    
     handle_unknown_categorical: bool, default = True
         When set to True, unknown categorical levels in new / unseen data are replaced by
         the most or least frequent level as learned in the training data. The method is 
         defined under the unknown_categorical_method param.
 
-    unknown_categorical_method: string, default = 'least_frequent'
+    unknown_categorical_method: str, default = 'least_frequent'
         Method used to replace unknown categorical levels in unseen data. Method can be
         set to 'least_frequent' or 'most_frequent'.
 
@@ -243,7 +249,7 @@ def setup(
         of information. As such, it is advised to run multiple experiments with different 
         pca_methods to evaluate the impact. 
 
-    pca_method: string, default = 'linear'
+    pca_method: str, default = 'linear'
         The 'linear' method performs Linear dimensionality reduction using Singular Value 
         Decomposition. The other available options are:
         
@@ -259,19 +265,19 @@ def setup(
         less than the original number of features in the dataset.
 
     ignore_low_variance: bool, default = False
-        When set to True, all categorical features with statistically insignificant variances 
-        are removed from the dataset. The variance is calculated using the ratio of unique 
+        When set to True, all categorical features with insignificant variances are 
+        removed from the dataset. The variance is calculated using the ratio of unique 
         values to the number of samples, and the ratio of the most common value to the 
         frequency of the second most common value.
     
     combine_rare_levels: bool, default = False
         When set to True, all levels in categorical features below the threshold defined 
-        in rare_level_threshold param are combined together as a single level. There must be 
-        atleast two levels under the threshold for this to take effect. rare_level_threshold
-        represents the percentile distribution of level frequency. Generally, this technique 
-        is applied to limit a sparse matrix caused by high numbers of levels in categorical 
-        features. 
-
+        in rare_level_threshold param are combined together as a single level. There must 
+        be atleast two levels under the threshold for this to take effect. 
+        rare_level_threshold represents the percentile distribution of level frequency. 
+        Generally, this technique is applied to limit a sparse matrix caused by high 
+        numbers of levels in categorical features. 
+    
     rare_level_threshold: float, default = 0.1
         Percentile distribution below which rare categories are combined. Only comes into
         effect when combine_rare_levels is set to True.
@@ -339,18 +345,19 @@ def setup(
         are dropped before further processing.
 
     group_features: list or list of list, default = None
-        When a dataset contains features that have related characteristics, the group_features
+        When a dataset contains features that have related characteristics, group_features
         param can be used for statistical feature extraction. For example, if a dataset has 
-        numeric features that are related with each other (i.e 'Col1', 'Col2', 'Col3'), a list 
-        containing the column names can be passed under group_features to extract statistical 
-        information such as the mean, median, mode and standard deviation.
-
+        numeric features that are related with each other (i.e 'Col1', 'Col2', 'Col3'), a 
+        list containing the column names can be passed under group_features to extract 
+        statistical information such as the mean, median, mode and standard deviation.
+    
     group_names: list, default = None
-        When group_features is passed, a name of the group can be passed into the group_names 
-        param as a list containing strings. The length of a group_names list must equal to the 
-        length  of group_features. When the length doesn't match or the name is not passed, new 
-        features are sequentially named such as group_1, group_2 etc.
-
+        When group_features is passed, a name of the group can be passed into the 
+        group_names param as a list containing strings. The length of a group_names 
+        list must equal to the length  of group_features. When the length doesn't 
+        match or the name is not passed, new features are sequentially named such as 
+        group_1, group_2 etc.
+    
     feature_selection: bool, default = False
         When set to True, a subset of features are selected using a combination of various
         permutation importance techniques including Random Forest, Adaboost and Linear 
@@ -364,29 +371,29 @@ def setup(
 
     feature_selection_threshold: float, default = 0.8
         Threshold used for feature selection (including newly created polynomial features).
-        A higher value will result in a higher feature space. It is recommended to do multiple
-        trials with different values of feature_selection_threshold specially in cases where 
-        polynomial_features and feature_interaction are used. Setting a very low value may be 
-        efficient but could result in under-fitting.
-
+        A higher value will result in a higher feature space. It is recommended to do 
+        multiple trials with different values of feature_selection_threshold specially in 
+        cases where polynomial_features and feature_interaction are used. Setting a very 
+        low value may be efficient but could result in under-fitting.
+    
     feature_selection_method: str, default = 'classic'
         Can be either 'classic' or 'boruta'. Selects the algorithm responsible for
-        choosing a subset of features. For the 'classic' selection method, PyCaret will use various
-        permutation importance techniques. For the 'boruta' algorithm, PyCaret will create 
-        an instance of boosted trees model, which will iterate with permutation over all
-        features and choose the best ones based on the distributions of feature importance.
-        More in: https://pdfs.semanticscholar.org/85a8/b1d9c52f9f795fda7e12376e751526953f38.pdf%3E
-
+        choosing a subset of features. For the 'classic' selection method, PyCaret will 
+        use various permutation importance techniques. For the 'boruta' algorithm, PyCaret
+        will create an instance of boosted trees model, which will iterate with permutation 
+        over all features and choose the best ones based on the distributions of feature 
+        importance.
+    
     feature_interaction: bool, default = False 
-        When set to True, it will create new features by interacting (a * b) for all numeric 
-        variables in the dataset including polynomial and trigonometric features (if created). 
-        This feature is not scalable and may not work as expected on datasets with large 
-        feature space.
+        When set to True, it will create new features by interacting (a * b) for all 
+        numeric variables in the dataset including polynomial and trigonometric features 
+        (if created). This feature is not scalable and may not work as expected on datasets
+        with large feature space.
     
     feature_ratio: bool, default = False
-        When set to True, it will create new features by calculating the ratios (a / b) of all 
-        numeric variables in the dataset. This feature is not scalable and may not work as 
-        expected on datasets with large feature space.
+        When set to True, it will create new features by calculating the ratios (a / b) 
+        of all numeric variables in the dataset. This feature is not scalable and may not 
+        work as expected on datasets with large feature space.
     
     interaction_threshold: bool, default = 0.01
         Similar to polynomial_threshold, It is used to compress a sparse matrix of newly 
@@ -401,9 +408,9 @@ def setup(
         Technique) is applied by default to create synthetic datapoints for minority class.
 
     fix_imbalance_method: obj, default = None
-        When fix_imbalance is set to True and fix_imbalance_method is None, 'smote' is applied 
-        by default to oversample minority class during cross validation. This parameter
-        accepts any module from 'imblearn' that supports 'fit_resample' method.
+        When fix_imbalance is set to True and fix_imbalance_method is None, 'smote' is 
+        applied by default to oversample minority class during cross validation. This 
+        parameter accepts any module from 'imblearn' that supports 'fit_resample' method.
 
     data_split_shuffle: bool, default = True
         If set to False, prevents shuffling of rows when splitting data.
@@ -413,8 +420,8 @@ def setup(
 
     n_jobs: int, default = -1
         The number of jobs to run in parallel (for functions that supports parallel 
-        processing) -1 means using all processors. To run all functions on single processor 
-        set n_jobs to None.
+        processing) -1 means using all processors. To run all functions on single 
+        processor set n_jobs to None.
 
     use_gpu: str or bool, default = False
         If set to 'Force', will try to use GPU with all algorithms that support it,
@@ -451,24 +458,32 @@ def setup(
         it is set to False. 
 
     log_profile: bool, default = False
-        When set to True, data profile is also logged on MLflow as a html file. By default,
-        it is set to False. 
+        When set to True, data profile is also logged on MLflow as a html file. 
+        By default, it is set to False. 
 
     log_data: bool, default = False
         When set to True, train and test dataset are logged as csv. 
 
     silent: bool, default = False
-        When set to True, confirmation of data types is not required. All preprocessing will 
-        be performed assuming automatically inferred data types. Not recommended for direct use 
-        except for established pipelines.
+        When set to True, confirmation of data types is not required. All preprocessing 
+        will be performed assuming automatically inferred data types. Not recommended 
+        for direct use except for established pipelines.
     
-    verbose: Boolean, default = True
+    verbose: bool, default = True
         Information grid is not printed when verbose is set to False.
 
     profile: bool, default = False
         If set to true, a data profile for Exploratory Data Analysis will be displayed 
         in an interactive HTML report. 
     
+    Warnings
+    --------
+    - Some GPU models require conversion from float64 to float32,
+      which may result in loss of precision. It should not be an issue in majority of cases.
+      Models impacted:
+
+        * cuml.ensemble.RandomForestClassifier
+
     Returns
     -------
     info_grid
@@ -906,7 +921,7 @@ def setup(
     # experiment_name
     if experiment_name is not None:
         if type(experiment_name) is not str:
-            raise TypeError("experiment_name parameter must be string if not None.")
+            raise TypeError("experiment_name parameter must be str if not None.")
 
     # silent
     if type(silent) is not bool:
@@ -1384,6 +1399,23 @@ def setup(
     # create n_jobs_param
     n_jobs_param = n_jobs
 
+    cuml_version = None
+    if use_gpu:
+        from cuml import __version__
+
+        cuml_version = __version__
+        logger.info(f"cuml=={cuml_version}")
+
+        cuml_version = cuml_version.split(".")
+        cuml_version = (int(cuml_version[0]), int(cuml_version[1]))
+        if not cuml_version >= (0, 15):
+            message = f"cuML is outdated. Required version is >=0.15, got {__version__}"
+            if use_gpu == "Force":
+                raise ImportError(message)
+            else:
+                logger.warning(message)
+                use_gpu = False
+
     # create gpu_n_jobs_param
     gpu_n_jobs_param = n_jobs if not use_gpu else 1
 
@@ -1678,17 +1710,17 @@ def setup(
 
 
 def compare_models(
-    include: list = None,  # added in pycaret==2.0.0
-    exclude: List[str] = None,
+    include: list = None,  # changed whitelist to include in pycaret==2.1
+    exclude: List[str] = None,  # changed blacklist to exclude in pycaret==2.1
     fold: int = 10,
     round: int = 4,
     sort: str = "Accuracy",
-    n_select: int = 1,  # added in pycaret==2.0.0
+    n_select: int = 1,
     budget_time: float = 0,  # added in pycaret==2.1.0
     turbo: bool = True,
     verbose: bool = True,
     display: Display = None,
-) -> Any:  # added in pycaret==2.0.0
+) -> Any:
 
     """
     This function train all the models available in the model library and scores them 
@@ -1749,7 +1781,7 @@ def compare_models(
     round: integer, default = 4
         Number of decimal places the metrics in the score grid will be rounded to.
   
-    sort: string, default = 'Accuracy'
+    sort: str, default = 'Accuracy'
         The scoring measure specified is used for sorting the average score grid
         Other options are 'AUC', 'Recall', 'Precision', 'F1', 'Kappa' and 'MCC'.
 
@@ -1758,14 +1790,14 @@ def compare_models(
         for example, n_select = -3 means bottom 3 models.
 
     budget_time: int or float, default = 0
-        If set above 0, will terminate execution of the function after budget_time minutes have
-        passed and return results up to that point.
+        If set above 0, will terminate execution of the function after budget_time 
+        minutes have passed and return results up to that point.
 
-    turbo: Boolean, default = True
+    turbo: bool, default = True
         When turbo is set to True, it excludes estimators that have longer
         training time.
 
-    verbose: Boolean, default = True
+    verbose: bool, default = True
         Score grid is not printed when verbose is set to False.
     
     Returns
@@ -1790,11 +1822,6 @@ def compare_models(
     
     """
 
-    """
-    
-    ERROR HANDLING STARTS HERE
-    
-    """
     function_params_str = ", ".join([f"{k}={v}" for k, v in locals().items()])
 
     logger = get_logger()
@@ -2204,16 +2231,16 @@ def create_model(
     estimator=None,
     fold: int = 10,
     round: int = 4,
-    cross_validation: bool = True,  # added in pycaret==2.0.0
+    cross_validation: bool = True,
     budget_time: float = 0,
     verbose: bool = True,
-    system: bool = True,  # added in pycaret==2.0.0
+    system: bool = True,
     return_fit_time: bool = False,  # added in pycaret==2.2.0
     X_train_data: pd.DataFrame = None,  # added in pycaret==2.2.0
     Y_train_data: pd.DataFrame = None,  # added in pycaret==2.2.0
     display: Display = None,  # added in pycaret==2.2.0
     **kwargs,
-) -> Any:  # added in pycaret==2.0.0
+) -> Any:
 
     """  
     This function creates a model and scores it using Stratified Cross Validation. 
@@ -2235,10 +2262,11 @@ def create_model(
 
     Parameters
     ----------
-    estimator : string / object, default = None
+    estimator : str / object, default = None
         Enter ID of the estimators available in model library or pass an untrained model 
-        object consistent with fit / predict API to train and evaluate model. All estimators 
-        support binary or multiclass problem. List of estimators in model library (ID - Name):
+        object consistent with fit / predict API to train and evaluate model. All 
+        estimators support binary or multiclass problem. List of estimators in model 
+        library (ID - Name):
 
         * 'lr' - Logistic Regression             
         * 'knn' - K Nearest Neighbour            
@@ -2273,13 +2301,13 @@ def create_model(
         When cross_validation set to False fold parameter is ignored and model is trained
         on entire training dataset. No metric evaluation is returned. 
 
-    verbose: Boolean, default = True
+    verbose: bool, default = True
         Score grid is not printed when verbose is set to False.
 
-    system: Boolean, default = True
+    system: bool, default = True
         Must remain True all times. Only to be changed by internal functions.
     
-    return_fit_time: Boolean, default = False
+    return_fit_time: bool, default = False
         If True, will return a tuple of the model and its fit time.
         Only to be changed by internal functions.
 
@@ -2832,14 +2860,14 @@ def tune_model(
     fold: int = 10,
     round: int = 4,
     n_iter: int = 10,
-    custom_grid: dict = None,  # added in pycaret==2.0.0
+    custom_grid: dict = None,
     optimize: str = "Accuracy",
     custom_scorer=None,  # added in pycaret==2.1 - depreciated
     search_library: str = "scikit-learn",
     search_algorithm: str = "Random",
     early_stopping: Any = "ASHA",
     early_stopping_max_iters: int = 10,
-    choose_better: bool = False,  # added in pycaret==2.0.0
+    choose_better: bool = False,
     verbose: bool = True,
     display: Display = None,
     **kwargs,
@@ -2875,14 +2903,15 @@ def tune_model(
 
     n_iter: integer, default = 10
         Number of iterations within the Random Grid Search. For every iteration, 
-        the model randomly selects one value from the pre-defined grid of hyperparameters.
+        the model randomly selects one value from the pre-defined grid of 
+        hyperparameters.
 
     custom_grid: dictionary, default = None
         To use custom hyperparameters for tuning pass a dictionary with parameter name
         and values to be iterated. When set to None it uses pre-defined tuning grid.
         Custom grids must be in a format supported by the chosen search library.
 
-    optimize: string, default = 'Accuracy'
+    optimize: str, default = 'Accuracy'
         Measure used to select the best model through hyperparameter tuning.
         Can be either a string representing a metric or a custom scorer object
         created using sklearn.make_scorer. 
@@ -2892,7 +2921,7 @@ def tune_model(
         custom_scorer can be passed to tune hyperparameters of the model. It must be
         created using sklearn.make_scorer. 
 
-    search_library: string, default = 'scikit-learn'
+    search_library: str, default = 'scikit-learn'
         The search library used to tune hyperparameters.
         Possible values:
 
@@ -2901,7 +2930,7 @@ def tune_model(
           `pip install tune-sklearn ray[tune]` https://github.com/ray-project/tune-sklearn
         - 'optuna' - Optuna. `pip install optuna` https://optuna.org/
 
-    search_algorithm: string, default = 'Random'
+    search_algorithm: str, default = 'Random'
         The search algorithm to be used for finding the best hyperparameters.
         Selection of search algorithms depends on the search_library parameter.
         Some search algorithms require additional libraries to be installed.
@@ -2924,7 +2953,7 @@ def tune_model(
         - 'Random' - randomized search
         - 'TPE' - Tree-structured Parzen Estimator search
 
-    early_stopping: bool or string or object, default = 'ASHA'
+    early_stopping: bool or str or object, default = 'ASHA'
         Use early stopping to stop fitting to a hyperparameter configuration 
         if it performs poorly. Ignored if search_library is `scikit-learn`, or
         if the estimator doesn't have partial_fit attribute.
@@ -2944,13 +2973,13 @@ def tune_model(
         Maximum number of epochs to run for each sampled configuration.
         Ignored if early_stopping is False or None.
 
-    choose_better: Boolean, default = False
+    choose_better: bool, default = False
         When set to set to True, base estimator is returned when the performance doesn't 
         improve by tune_model. This gurantees the returned object would perform atleast 
         equivalent to base estimator created using create_model or model returned by 
         compare_models.
 
-    verbose: Boolean, default = True
+    verbose: bool, default = True
         Score grid is not printed when verbose is set to False.
 
     **kwargs: 
@@ -3242,11 +3271,13 @@ def tune_model(
         )
 
     if is_stacked_model:
+        logger.info("Stacked model passed, will tune meta model hyperparameters")
         param_grid = {f"final_estimator__{k}": v for k, v in param_grid.items()}
 
     search_kwargs = {**estimator_definition["Tune Args"], **kwargs}
 
     n_jobs = gpu_n_jobs_param
+    logger.info(f"Tuning with n_jobs={n_jobs}")
 
     if search_library == "optuna":
         # suppress output
@@ -3629,8 +3660,8 @@ def ensemble_model(
     fold: int = 10,
     n_estimators: int = 10,
     round: int = 4,
-    choose_better: bool = False,  # added in pycaret==2.0.0
-    optimize: str = "Accuracy",  # added in pycaret==2.0.0
+    choose_better: bool = False,
+    optimize: str = "Accuracy",
     verbose: bool = True,
     display: Display = None,  # added in pycaret==2.2.0
 ) -> Any:
@@ -3657,7 +3688,7 @@ def ensemble_model(
     ----------
     estimator : object, default = None
 
-    method: String, default = 'Bagging'
+    method: str, default = 'Bagging'
         Bagging method will create an ensemble meta-estimator that fits base 
         classifiers each on random subsets of the original dataset. The other
         available method is 'Boosting' which will create a meta-estimators by
@@ -3676,19 +3707,19 @@ def ensemble_model(
     round: integer, default = 4
         Number of decimal places the metrics in the score grid will be rounded to.
 
-    choose_better: Boolean, default = False
+    choose_better: bool, default = False
         When set to set to True, base estimator is returned when the metric doesn't 
         improve by ensemble_model. This gurantees the returned object would perform 
         atleast equivalent to base estimator created using create_model or model 
         returned by compare_models.
 
-    optimize: string, default = 'Accuracy'
+    optimize: str, default = 'Accuracy'
         Only used when choose_better is set to True. optimize parameter is used
         to compare emsembled model with base estimator. Values accepted in 
         optimize parameter are 'Accuracy', 'AUC', 'Recall', 'Precision', 'F1', 
         'Kappa', 'MCC'.
 
-    verbose: Boolean, default = True
+    verbose: bool, default = True
         Score grid is not printed when verbose is set to False.
 
     Returns
@@ -4105,8 +4136,8 @@ def blend_models(
     estimator_list="All",
     fold: int = 10,
     round: int = 4,
-    choose_better: bool = False,  # added in pycaret==2.0.0
-    optimize: str = "Accuracy",  # added in pycaret==2.0.0
+    choose_better: bool = False,
+    optimize: str = "Accuracy",
     method: str = "hard",
     weights: list = None,  # added in pycaret==2.2.0
     turbo: bool = True,
@@ -4145,7 +4176,7 @@ def blend_models(
 
     Parameters
     ----------
-    estimator_list : string ('All') or list of object, default = 'All'
+    estimator_list : str ('All') or list of object, default = 'All'
 
     fold: integer, default = 10
         Number of folds to be used in Kfold CV. Must be at least 2. 
@@ -4153,19 +4184,19 @@ def blend_models(
     round: integer, default = 4
         Number of decimal places the metrics in the score grid will be rounded to.
 
-    choose_better: Boolean, default = False
+    choose_better: bool, default = False
         When set to set to True, base estimator is returned when the metric doesn't 
         improve by ensemble_model. This gurantees the returned object would perform 
         atleast equivalent to base estimator created using create_model or model 
         returned by compare_models.
 
-    optimize: string, default = 'Accuracy'
+    optimize: str, default = 'Accuracy'
         Only used when choose_better is set to True. optimize parameter is used
         to compare emsembled model with base estimator. Values accepted in 
         optimize parameter are 'Accuracy', 'AUC', 'Recall', 'Precision', 'F1', 
         'Kappa', 'MCC'.
 
-    method: string, default = 'hard'
+    method: str, default = 'hard'
         'hard' uses predicted class labels for majority rule voting.'soft', predicts 
         the class label based on the argmax of the sums of the predicted probabilities, 
         which is recommended for an ensemble of well-calibrated classifiers. 
@@ -4174,10 +4205,10 @@ def blend_models(
         Sequence of weights (float or int) to weight the occurrences of predicted class labels (hard voting)
         or class probabilities before averaging (soft voting). Uses uniform weights if None.
 
-    turbo: Boolean, default = True
+    turbo: bool, default = True
         When turbo is set to True, it excludes estimator that uses Radial Kernel.
 
-    verbose: Boolean, default = True
+    verbose: bool, default = True
         Score grid is not printed when verbose is set to False.
 
     Returns
@@ -4200,9 +4231,7 @@ def blend_models(
     - When estimator_list is set to 'All' and method is forced to 'soft', estimators
       that doesnt support the predict_proba function will be dropped from the estimator
       list.
-      
-    - CatBoost Classifier not supported in blend_models().
-    
+          
     - If target variable is multiclass (more than 2 classes), AUC will be returned as
       zero (0.0).
         
@@ -4227,7 +4256,7 @@ def blend_models(
     if estimator_list != "All":
         if type(estimator_list) is not list:
             raise ValueError(
-                "estimator_list parameter only accepts 'All' as string or list of trained models."
+                "estimator_list parameter only accepts 'All' as str or list of trained models."
             )
 
         for i in estimator_list:
@@ -4585,8 +4614,8 @@ def stack_models(
     round: int = 4,
     method: str = "auto",
     restack: bool = True,
-    choose_better: bool = False,  # added in pycaret==2.0.0
-    optimize: str = "Accuracy",  # added in pycaret==2.0.0
+    choose_better: bool = False,
+    optimize: str = "Accuracy",
     verbose: bool = True,
     display: Display = None,
 ) -> Any:
@@ -4633,27 +4662,29 @@ def stack_models(
         Number of decimal places the metrics in the score grid will be rounded to.
 
     method: string, default = 'auto'
-        - if ‘auto’, it will try to invoke, for each estimator, 'predict_proba', 'decision_function' or 'predict' in that order.
-        - otherwise, one of 'predict_proba', 'decision_function' or 'predict'. If the method is not implemented by the estimator, it will raise an error.
+        - if ‘auto’, it will try to invoke, for each estimator, 'predict_proba', 
+        'decision_function' or 'predict' in that order.
+        - otherwise, one of 'predict_proba', 'decision_function' or 'predict'. 
+        If the method is not implemented by the estimator, it will raise an error.
 
-    restack: Boolean, default = True
+    restack: bool, default = True
         When restack is set to True, raw data will be exposed to meta model when
         making predictions, otherwise when False, only the predicted label or
         probabilities is passed to meta model when making final predictions.
 
-    choose_better: Boolean, default = False
+    choose_better: bool, default = False
         When set to set to True, base estimator is returned when the metric doesn't 
         improve by ensemble_model. This gurantees the returned object would perform 
         atleast equivalent to base estimator created using create_model or model 
         returned by compare_models.
 
-    optimize: string, default = 'Accuracy'
+    optimize: str, default = 'Accuracy'
         Only used when choose_better is set to True. optimize parameter is used
         to compare emsembled model with base estimator. Values accepted in 
         optimize parameter are 'Accuracy', 'AUC', 'Recall', 'Precision', 'F1', 
         'Kappa', 'MCC'.
     
-    verbose: Boolean, default = True
+    verbose: bool, default = True
         Score grid is not printed when verbose is set to False.
 
     Returns
@@ -4669,7 +4700,8 @@ def stack_models(
 
     Warnings
     --------
-    -  If target variable is multiclass (more than 2 classes), AUC will be returned as zero (0.0).
+    -  If target variable is multiclass (more than 2 classes), AUC will be returned 
+       as zero (0.0).
 
     """
 
@@ -5028,12 +5060,12 @@ def stack_models(
 def plot_model(
     estimator,
     plot: str = "auc",
-    scale=1,  # added in pycaret 2.1.0
-    save: bool = False,  # added in pycaret 2.0.0
-    verbose: bool = True,  # added in pycaret 2.0.0
+    scale=1,  # added in pycaret==2.1.0
+    save: bool = False,
+    verbose: bool = True,
     system: bool = True,
     display: Display = None,  # added in pycaret==2.2.0
-):  # added in pycaret 2.0.0
+):
 
     """
     This function takes a trained model object and returns a plot based on the
@@ -5057,7 +5089,7 @@ def plot_model(
     estimator : object, default = none
         A trained model object should be passed as an estimator. 
 
-    plot : string, default = auc
+    plot : str, default = auc
         Enter abbreviation of type of plot. The current list of plots supported are (Plot - Name):
 
         * 'auc' - Area Under the Curve                 
@@ -5079,13 +5111,13 @@ def plot_model(
     scale: float, default = 1
         The resolution scale of the figure.
 
-    save: Boolean, default = False
+    save: bool, default = False
         When set to True, Plot is saved as a 'png' file in current working directory.
 
-    verbose: Boolean, default = True
+    verbose: bool, default = True
         Progress bar not shown when verbose set to False. 
 
-    system: Boolean, default = True
+    system: bool, default = True
         Must remain True all times. Only to be changed by internal functions.
 
     Returns
@@ -5224,12 +5256,21 @@ def plot_model(
     # plots used for logging (controlled through plots_log_param)
     # AUC, #Confusion Matrix and #Feature Importance
 
+    logger.info("Copying training dataset")
+    # Storing X_train and y_train in data_X and data_y parameter
+    data_X = X_train.copy()
+    data_y = y_train.copy()
+
+    # Storing X_train and y_train in data_X and data_y parameter
+    test_X = X_test.copy()
+    test_y = y_test.copy()
+
     logger.info(f"Plot type: {plot}")
     plot_name = available_plots[plot]
     display.move_progress()
 
     if fix_imbalance_param:
-        X_train, y_train = _fix_imbalance(X_train, y_train, fix_imbalance_method_param)
+        data_X, data_y = _fix_imbalance(data_X, data_y, fix_imbalance_method_param)
 
     if plot == "auc":
 
@@ -5238,10 +5279,10 @@ def plot_model(
         visualizer = ROCAUC(model)
         show_yellowbrick_plot(
             visualizer=visualizer,
-            X_train=X_train,
-            y_train=y_train,
-            X_test=X_test,
-            y_test=y_test,
+            X_train=data_X,
+            y_train=data_y,
+            X_test=test_X,
+            y_test=test_y,
             name=plot_name,
             scale=scale,
             save=save,
@@ -5257,10 +5298,10 @@ def plot_model(
         visualizer = DiscriminationThreshold(model, random_state=seed)
         show_yellowbrick_plot(
             visualizer=visualizer,
-            X_train=X_train,
-            y_train=y_train,
-            X_test=X_test,
-            y_test=y_test,
+            X_train=data_X,
+            y_train=data_y,
+            X_test=test_X,
+            y_test=test_y,
             name=plot_name,
             scale=scale,
             save=save,
@@ -5276,10 +5317,10 @@ def plot_model(
         visualizer = PrecisionRecallCurve(model, random_state=seed)
         show_yellowbrick_plot(
             visualizer=visualizer,
-            X_train=X_train,
-            y_train=y_train,
-            X_test=X_test,
-            y_test=y_test,
+            X_train=data_X,
+            y_train=data_y,
+            X_test=test_X,
+            y_test=test_y,
             name=plot_name,
             scale=scale,
             save=save,
@@ -5297,10 +5338,10 @@ def plot_model(
         )
         show_yellowbrick_plot(
             visualizer=visualizer,
-            X_train=X_train,
-            y_train=y_train,
-            X_test=X_test,
-            y_test=y_test,
+            X_train=data_X,
+            y_train=data_y,
+            X_test=test_X,
+            y_test=test_y,
             name=plot_name,
             scale=scale,
             save=save,
@@ -5316,10 +5357,10 @@ def plot_model(
         visualizer = ClassPredictionError(model, random_state=seed)
         show_yellowbrick_plot(
             visualizer=visualizer,
-            X_train=X_train,
-            y_train=y_train,
-            X_test=X_test,
-            y_test=y_test,
+            X_train=data_X,
+            y_train=data_y,
+            X_test=test_X,
+            y_test=test_y,
             name=plot_name,
             scale=scale,
             save=save,
@@ -5335,10 +5376,10 @@ def plot_model(
         visualizer = ClassificationReport(model, random_state=seed, support=True)
         show_yellowbrick_plot(
             visualizer=visualizer,
-            X_train=X_train,
-            y_train=y_train,
-            X_test=X_test,
-            y_test=y_test,
+            X_train=data_X,
+            y_train=data_y,
+            X_test=test_X,
+            y_test=test_y,
             name=plot_name,
             scale=scale,
             save=save,
@@ -5355,30 +5396,26 @@ def plot_model(
 
         model2 = deepcopy(estimator)
 
-        X_train_transformed = X_train.copy()
-        X_test_transformed = X_test.copy()
-        X_train_transformed = X_train_transformed.select_dtypes(include="float64")
-        X_test_transformed = X_test_transformed.select_dtypes(include="float64")
+        data_X_transformed = data_X.select_dtypes(include="float64")
+        test_X_transformed = test_X.select_dtypes(include="float64")
         logger.info("Fitting StandardScaler()")
-        X_train_transformed = StandardScaler().fit_transform(X_train_transformed)
-        X_test_transformed = StandardScaler().fit_transform(X_test_transformed)
+        data_X_transformed = StandardScaler().fit_transform(data_X_transformed)
+        test_X_transformed = StandardScaler().fit_transform(test_X_transformed)
         pca = PCA(n_components=2, random_state=seed)
         logger.info("Fitting PCA()")
-        X_train_transformed = pca.fit_transform(X_train_transformed)
-        X_test_transformed = pca.fit_transform(X_test_transformed)
+        data_X_transformed = pca.fit_transform(data_X_transformed)
+        test_X_transformed = pca.fit_transform(test_X_transformed)
 
-        y_train_transformed = y_train.copy()
-        y_test_transformed = y_test.copy()
-        y_train_transformed = np.array(y_train_transformed)
-        y_test_transformed = np.array(y_test_transformed)
+        data_y_transformed = np.array(data_y)
+        test_y_transformed = np.array(test_y)
 
         viz_ = DecisionViz(model2)
         show_yellowbrick_plot(
             visualizer=viz_,
-            X_train=X_train_transformed,
-            y_train=y_train_transformed,
-            X_test=X_test_transformed,
-            y_test=y_test_transformed,
+            X_train=data_X_transformed,
+            y_train=data_y_transformed,
+            X_test=test_X_transformed,
+            y_test=test_y_transformed,
             name=plot_name,
             scale=scale,
             handle_train="draw",
@@ -5397,10 +5434,10 @@ def plot_model(
         visualizer = RFECV(model, cv=10)
         show_yellowbrick_plot(
             visualizer=visualizer,
-            X_train=X_train,
-            y_train=y_train,
-            X_test=X_test,
-            y_test=y_test,
+            X_train=data_X,
+            y_train=data_y,
+            X_test=test_X,
+            y_test=test_y,
             handle_test="",
             name=plot_name,
             scale=scale,
@@ -5420,10 +5457,10 @@ def plot_model(
         )
         show_yellowbrick_plot(
             visualizer=visualizer,
-            X_train=X_train,
-            y_train=y_train,
-            X_test=X_test,
-            y_test=y_test,
+            X_train=data_X,
+            y_train=data_y,
+            X_test=test_X,
+            y_test=test_y,
             handle_test="",
             name=plot_name,
             scale=scale,
@@ -5437,14 +5474,14 @@ def plot_model(
 
         from yellowbrick.features import Manifold
 
-        X_train_transformed = X_train.select_dtypes(include="float64")
+        data_X_transformed = data_X.select_dtypes(include="float64")
         visualizer = Manifold(manifold="tsne", random_state=seed)
         show_yellowbrick_plot(
             visualizer=visualizer,
-            X_train=X_train_transformed,
-            y_train=y_train,
-            X_test=X_test,
-            y_test=y_test,
+            X_train=data_X_transformed,
+            y_train=data_y,
+            X_test=test_X,
+            y_test=test_y,
             handle_train="fit_transform",
             handle_test="",
             name=plot_name,
@@ -5467,10 +5504,10 @@ def plot_model(
         ax1.plot([0, 1], [0, 1], "k:", label="Perfectly calibrated")
         display.move_progress()
         logger.info("Scoring test/hold-out set")
-        prob_pos = model.predict_proba(X_test)[:, 1]
+        prob_pos = model.predict_proba(test_X)[:, 1]
         prob_pos = (prob_pos - prob_pos.min()) / (prob_pos.max() - prob_pos.min())
         fraction_of_positives, mean_predicted_value = calibration_curve(
-            y_test, prob_pos, n_bins=10
+            test_y, prob_pos, n_bins=10
         )
         display.move_progress()
         ax1.plot(
@@ -5579,10 +5616,10 @@ def plot_model(
         )
         show_yellowbrick_plot(
             visualizer=viz,
-            X_train=X_train,
-            y_train=y_train,
-            X_test=X_test,
-            y_test=y_test,
+            X_train=data_X,
+            y_train=data_y,
+            X_test=test_X,
+            y_test=test_y,
             handle_train="fit",
             handle_test="",
             name=plot_name,
@@ -5599,27 +5636,27 @@ def plot_model(
         from sklearn.preprocessing import StandardScaler
         from sklearn.decomposition import PCA
 
-        X_train_transformed = X_train.select_dtypes(include="float64")
+        data_X_transformed = data_X.select_dtypes(include="float64")
         logger.info("Fitting StandardScaler()")
-        X_train_transformed = StandardScaler().fit_transform(X_train_transformed)
-        y_train_transformed = np.array(y_train)
+        data_X_transformed = StandardScaler().fit_transform(data_X_transformed)
+        data_y_transformed = np.array(data_y)
 
-        features = min(round(len(X_train.columns) * 0.3, 0), 5)
+        features = min(round(len(data_X.columns) * 0.3, 0), 5)
         features = int(features)
 
         pca = PCA(n_components=features, random_state=seed)
         logger.info("Fitting PCA()")
-        X_train_transformed = pca.fit_transform(X_train_transformed)
+        data_X_transformed = pca.fit_transform(data_X_transformed)
         display.move_progress()
-        classes = y_train.unique().tolist()
+        classes = data_y.unique().tolist()
         visualizer = RadViz(classes=classes, alpha=0.25)
 
         show_yellowbrick_plot(
             visualizer=visualizer,
-            X_train=X_train_transformed,
-            y_train=y_train_transformed,
-            X_test=X_test,
-            y_test=y_test,
+            X_train=data_X_transformed,
+            y_train=data_y_transformed,
+            X_test=test_X,
+            y_test=test_y,
             handle_train="fit_transform",
             handle_test="",
             name=plot_name,
@@ -5637,7 +5674,7 @@ def plot_model(
         else:
             logger.warning("No coef_ found. Trying feature_importances_")
             variables = abs(model.feature_importances_)
-        coef_df = pd.DataFrame({"Variable": X_train.columns, "Value": variables})
+        coef_df = pd.DataFrame({"Variable": data_X.columns, "Value": variables})
         sorted_df = (
             coef_df.sort_values(by="Value", ascending=False)
             .head(10)
@@ -5672,6 +5709,8 @@ def plot_model(
         )
         display.display(param_df, clear=True)
         logger.info("Visual Rendered Successfully")
+
+    gc.collect()
 
     logger.info(
         "plot_model() succesfully completed......................................"
@@ -5777,20 +5816,20 @@ def interpret_model(
     estimator : object, default = none
         A trained tree based model object should be passed as an estimator. 
 
-    plot : string, default = 'summary'
+    plot : str, default = 'summary'
         Other available options are 'correlation' and 'reason'.
 
-    feature: string, default = None
+    feature: str, default = None
         This parameter is only needed when plot = 'correlation'. By default feature is 
-        set to None which means the first column of the dataset will be used as a variable. 
-        A feature parameter must be passed to change this.
+        set to None which means the first column of the dataset will be used as a 
+        variable. A feature parameter must be passed to change this.
 
     observation: integer, default = None
-        This parameter only comes into effect when plot is set to 'reason'. If no observation
-        number is provided, it will return an analysis of all observations with the option
-        to select the feature on x and y axes through drop down interactivity. For analysis at
-        the sample level, an observation parameter must be passed with the index value of the
-        observation in test / hold-out set. 
+        This parameter only comes into effect when plot is set to 'reason'. If no 
+        observation number is provided, it will return an analysis of all observations 
+        with the option to select the feature on x and y axes through drop down 
+        interactivity. For analysis at the sample level, an observation parameter must
+        be passed with the index value of the observation in test / hold-out set. 
 
     **kwargs: 
         Additional keyword arguments to pass to the plot.
@@ -6022,7 +6061,7 @@ def calibrate_model(
     ----------
     estimator : object
     
-    method : string, default = 'sigmoid'
+    method : str, default = 'sigmoid'
         The method to use for calibration. Can be 'sigmoid' which corresponds to Platt's 
         method or 'isotonic' which is a non-parametric approach. It is not advised to use
         isotonic calibration with too few calibration samples
@@ -6033,7 +6072,7 @@ def calibrate_model(
     round: integer, default = 4
         Number of decimal places the metrics in the score grid will be rounded to. 
 
-    verbose: Boolean, default = True
+    verbose: bool, default = True
         Score grid is not printed when verbose is set to False.
 
     Returns
@@ -6153,7 +6192,7 @@ def calibrate_model(
 
     logger.info("Importing untrained CalibratedClassifierCV")
 
-    calibrated_model_definition = _all_models_internal.loc["Calibrated"]
+    calibrated_model_definition = _all_models_internal.loc["CalibratedCV"]
     model = calibrated_model_definition["Class"](
         base_estimator=estimator,
         method=method,
@@ -6599,10 +6638,11 @@ def predict_model(
     estimator,
     data: pd.DataFrame = None,
     probability_threshold: float = None,
+    encoded_labels: bool = False,  # added in pycaret==2.1.0
     round: int = 4,  # added in pycaret==2.2.0
     verbose: bool = True,
     display: Display = None,  # added in pycaret==2.2.0
-) -> pd.DataFrame:  # added in pycaret==2.0.0
+) -> pd.DataFrame:
 
     """
     This function is used to predict label and probability score on the new dataset
@@ -6624,18 +6664,22 @@ def predict_model(
         A trained model object / pipeline should be passed as an estimator. 
      
     data : pandas.DataFrame
-        Shape (n_samples, n_features) where n_samples is the number of samples and n_features is the number of features.
-        All features used during training must be present in the new dataset.
+        Shape (n_samples, n_features) where n_samples is the number of samples 
+        and n_features is the number of features. All features used during training 
+        must be present in the new dataset.
     
     probability_threshold : float, default = None
-        Threshold used to convert probability values into binary outcome. By default the
-        probability threshold for all binary classifiers is 0.5 (50%). This can be changed
-        using probability_threshold param.
+        Threshold used to convert probability values into binary outcome. By default 
+        the probability threshold for all binary classifiers is 0.5 (50%). This can be 
+        changed using probability_threshold param.
+
+    encoded_labels: Boolean, default = False
+        If True, will return labels encoded as an integer.
 
     round: integer, default = 4
         Number of decimal places the metrics in the score grid will be rounded to. 
 
-    verbose: Boolean, default = True
+    verbose: bool, default = True
         Holdout score grid is not printed when verbose is set to False.
 
     Returns
@@ -6787,10 +6831,12 @@ def predict_model(
     label = pd.DataFrame(pred_)
     label.columns = ["Label"]
     label["Label"] = label["Label"].astype(int)
-    replace_lables_in_column(label["Label"])
+    if not encoded_labels:
+        replace_lables_in_column(label["Label"])
 
     if data is None:
-        replace_lables_in_column(ytest)
+        if not encoded_labels:
+            replace_lables_in_column(ytest)
         X_test_ = pd.concat([Xtest, ytest, label], axis=1)
     else:
         X_test_.insert(len(X_test_.columns), "Label", label["Label"].to_list())
@@ -7048,7 +7094,12 @@ def finalize_model(estimator, display=None) -> Any:  # added in pycaret==2.2.0
     return model_final
 
 
-def deploy_model(model, model_name: str, authentication: dict, platform: str = "aws"):
+def deploy_model(
+    model,
+    model_name: str,
+    authentication: dict,
+    platform: str = "aws",  # added gcp and azure support in pycaret==2.1
+):
 
     """
     (In Preview)
@@ -7084,12 +7135,10 @@ def deploy_model(model, model_name: str, authentication: dict, platform: str = "
 
     For GCP users:
     --------------
-    Before deploying a model to Google Cloud Platform (GCP), user has to create Project
-    on the platform from consol. To do that, user must have google cloud account or
-    create new one. After creating a service account, down the JSON authetication file
-    and configure  GOOGLE_APPLICATION_CREDENTIALS= <path-to-json> from command line. If
-    using google-colab then authetication can be done using `google.colab` auth method.
-    Read below link for more details.
+    Before deploying a model to Google Cloud Platform (GCP), project must be created 
+    either using command line or GCP console. Once project is created, you must create 
+    a service account and download the service account key as a JSON file, which is 
+    then used to set environment variable. 
 
     https://cloud.google.com/docs/authentication/production
 
@@ -7113,8 +7162,8 @@ def deploy_model(model, model_name: str, authentication: dict, platform: str = "
     model : object
         A trained model object should be passed as an estimator. 
     
-    model_name : string
-        Name of model to be passed as a string.
+    model_name : str
+        Name of model to be passed as a str.
     
     authentication : dict
         Dictionary of applicable authentication tokens.
@@ -7128,7 +7177,7 @@ def deploy_model(model, model_name: str, authentication: dict, platform: str = "
         When platform = 'azure':
         {'container': 'pycaret-test'}
     
-    platform: string, default = 'aws'
+    platform: str, default = 'aws'
         Name of platform for deployment. Current available options are: 'aws', 'gcp' and 'azure'
 
     Returns
@@ -7173,14 +7222,14 @@ def save_model(model, model_name: str, model_only: bool = False, verbose: bool =
     model : object, default = none
         A trained model object should be passed as an estimator. 
     
-    model_name : string, default = none
+    model_name : str, default = none
         Name of pickle file to be passed as a string.
     
     model_only : bool, default = False
         When set to True, only trained model object is saved and all the 
         transformations are ignored.
 
-    verbose: Boolean, default = True
+    verbose: bool, default = True
         Success message is not printed when verbose is set to False.
 
     Returns
@@ -7215,10 +7264,10 @@ def load_model(
 
     Parameters
     ----------
-    model_name : string, default = none
+    model_name : str, default = none
         Name of pickle file to be passed as a string.
       
-    platform: string, default = None
+    platform: str, default = None
         Name of platform, if loading model from cloud. Current available options are:
         'aws', 'gcp' and 'azure'.
     
@@ -7234,7 +7283,7 @@ def load_model(
         When platform = 'azure':
         {'container': 'pycaret-test'}
     
-    verbose: Boolean, default = True
+    verbose: bool, default = True
         Success message is not printed when verbose is set to False.
 
     Returns
@@ -7258,7 +7307,7 @@ def automl(optimize: str = "Accuracy", use_holdout: bool = False) -> Any:
 
     Parameters
     ----------
-    optimize : string, default = 'Accuracy'
+    optimize : str, default = 'Accuracy'
         Other values you can pass in optimize param are 'AUC', 'Recall', 'Precision',
         'F1', 'Kappa', and 'MCC'.
 
@@ -7328,7 +7377,7 @@ def pull(pop=False) -> pd.DataFrame:  # added in pycaret==2.2.0
 
     Parameters
     ----------
-    pop : Boolean, default = False
+    pop : bool, default = False
         If true, will pop (remove) the returned dataframe from the
         display container.
 
@@ -7357,15 +7406,15 @@ def models(
 
     Parameters
     ----------
-    type : string, default = None
+    type : str, default = None
         - linear : filters and only return linear models
         - tree : filters and only return tree based models
         - ensemble : filters and only return ensemble models
     
-    internal: Boolean, default = False
+    internal: bool, default = False
         If True, will return extra columns and rows used internally.
 
-    force_regenerate: Boolean, default = False
+    force_regenerate: bool, default = False
         If True, will force the DataFrame to be regenerated,
         instead of using a cached version.
 
@@ -7396,845 +7445,24 @@ def models(
         except:
             pass
 
-    np.random.seed(seed)
-    num_class = y.value_counts().count()
-
-    from sklearn.linear_model import LogisticRegression
-    from sklearn.svm import SVC
-    from sklearn.ensemble import RandomForestClassifier
-    from sklearn.ensemble import GradientBoostingClassifier
-    from sklearn.neighbors import KNeighborsClassifier
-    from sklearn.naive_bayes import GaussianNB
-    from sklearn.tree import DecisionTreeClassifier
-    from sklearn.linear_model import SGDClassifier
-    from sklearn.gaussian_process import GaussianProcessClassifier
-    from sklearn.neural_network import MLPClassifier
-    from sklearn.linear_model import RidgeClassifier
-    from sklearn.discriminant_analysis import QuadraticDiscriminantAnalysis
-    from sklearn.ensemble import AdaBoostClassifier
-    from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
-    from sklearn.ensemble import ExtraTreesClassifier
-    from sklearn.multiclass import OneVsRestClassifier
-    from xgboost import XGBClassifier
-    from lightgbm import LGBMClassifier
-    from catboost import CatBoostClassifier
-
-    # suppress output
-    import logging
-
-    logging.getLogger("catboost").setLevel(logging.ERROR)
-
-    # special estimators
-    from sklearn.ensemble import BaggingClassifier
-    from sklearn.ensemble import StackingClassifier
-    from sklearn.ensemble import VotingClassifier
-    from sklearn.multiclass import OneVsRestClassifier
-    from sklearn.calibration import CalibratedClassifierCV
-
-    cuml_sdg_imported = False
-    cuml_lr_imported = False
-    cuml_kn_imported = False
-    cuml_version = None
     logger.info(f"gpu_param set to {gpu_param}")
 
-    if gpu_param == "Force":
-        from cuml import __version__
-
-        cuml_version = __version__
-        logger.info(f"cuml=={cuml_version}")
-
-        cuml_version = cuml_version.split(".")
-        cuml_version = (int(cuml_version[0]), int(cuml_version[1]))
-        if not cuml_version >= (0, 15):
-            raise ImportError(
-                f"cuML is outdated. Required version is >=0.15, got {__version__}"
-            )
-
-        # known limitation - cuML SVC only supports binary problems
-        if num_class <= 2:
-            from cuml.svm import SVC
-
-            logger.info("Imported cuml.svm.SVC")
-
-        from cuml.linear_model import LogisticRegression
-
-        logger.info("Imported cuml.linear_model.LogisticRegression")
-
-        cuml_lr_imported = True
-
-        from cuml import MBSGDClassifier as SGDClassifier
-
-        logger.info("Imported cuml.MBSGDClassifier")
-        cuml_sdg_imported = True
-
-        from cuml.neighbors import KNeighborsClassifier
-
-        logger.info("Imported cuml.neighbors.KNeighborsClassifier")
-        cuml_kn_imported = True
-    elif gpu_param:
-        try:
-            from cuml import __version__
-
-            cuml_version = __version__
-        except ImportError:
-            logger.warning(f"Couldn't import cuml.")
-
-        if cuml_version:
-            logger.info(f"cuml=={cuml_version}")
-
-            cuml_version = cuml_version.split(".")
-            cuml_version = (int(cuml_version[0]), int(cuml_version[1]))
-            if not cuml_version >= (0, 15):
-                logger.warning(
-                    f"cuML is outdated. Required version is >=0.15, got {__version__}"
-                )
-
-            # known limitation - cuML SVC only supports binary problems
-            if num_class <= 2:
-                try:
-                    from cuml.svm import SVC
-
-                    logger.info("Imported cuml.svm.SVC")
-                except ImportError:
-                    logger.warning("Couldn't import cuml.svm.SVC")
-
-            try:
-                from cuml.linear_model import LogisticRegression
-
-                logger.info("Imported cuml.linear_model.LogisticRegression")
-                cuml_lr_imported = True
-            except ImportError:
-                logger.warning("Couldn't import cuml.linear_model.LogisticRegression")
-
-            try:
-                from cuml import MBSGDClassifier as SGDClassifier
-
-                logger.info("Imported cuml.MBSGDClassifier")
-                cuml_sdg_imported = True
-            except ImportError:
-                logger.warning("Couldn't import cuml.MBSGDClassifier")
-
-            try:
-                from cuml.neighbors import KNeighborsClassifier
-
-                logger.info("Imported cuml.neighbors.KNeighborsClassifier")
-                cuml_kn_imported = True
-            except ImportError:
-                logger.warning("Couldn't import cuml.neighbors.KNeighborsClassifier")
-
-    columns = ["ID", "Name", "Reference", "Turbo"]
-
-    def get_class_name(class_var) -> str:
-        return str(class_var)[8:-2]
-
-    def get_package(class_name: str) -> str:
-        return class_name.split(".")[0]
-
+    model_containers = get_all_model_containers(globals())
     rows = [
-        ("lr", "Logistic Regression", get_class_name(LogisticRegression), True),
-        ("knn", "K Neighbors Classifier", get_class_name(KNeighborsClassifier), True,),
-        ("nb", "Naive Bayes", get_class_name(GaussianNB), True),
-        (
-            "dt",
-            "Decision Tree Classifier",
-            get_class_name(DecisionTreeClassifier),
-            True,
-        ),
-        ("svm", "SVM - Linear Kernel", get_class_name(SGDClassifier), True),
-        ("rbfsvm", "SVM - Radial Kernel", get_class_name(SVC), False),
-        (
-            "gpc",
-            "Gaussian Process Classifier",
-            get_class_name(GaussianProcessClassifier),
-            False,
-        ),
-        ("mlp", "MLP Classifier", get_class_name(MLPClassifier), False),
-        (
-            "ridge",
-            "Ridge Classifier",
-            get_class_name(RidgeClassifier)
-            if not cuml_sdg_imported
-            else get_class_name(SGDClassifier),
-            True,
-        ),
-        (
-            "rf",
-            "Random Forest Classifier",
-            get_class_name(RandomForestClassifier),
-            True,
-        ),
-        (
-            "qda",
-            "Quadratic Discriminant Analysis",
-            get_class_name(QuadraticDiscriminantAnalysis),
-            True,
-        ),
-        ("ada", "Ada Boost Classifier", "sklearn.ensemble.AdaBoostClassifier", True),
-        (
-            "gbc",
-            "Gradient Boosting Classifier",
-            get_class_name(GradientBoostingClassifier),
-            True,
-        ),
-        (
-            "lda",
-            "Linear Discriminant Analysis",
-            get_class_name(LinearDiscriminantAnalysis),
-            True,
-        ),
-        ("et", "Extra Trees Classifier", get_class_name(ExtraTreesClassifier), True),
-        ("xgboost", "Extreme Gradient Boosting", get_class_name(XGBClassifier), True),
-        (
-            "lightgbm",
-            "Light Gradient Boosting Machine",
-            get_class_name(LGBMClassifier),
-            True,
-        ),
-        ("catboost", "CatBoost Classifier", get_class_name(CatBoostClassifier), True),
+        v.get_dict(internal)
+        for k, v in model_containers.items()
+        if (internal or not v.is_special)
     ]
 
-    df_internal = None
-
-    if internal:
-        rows += [
-            (
-                "Bagging",
-                "Bagging Classifier",
-                "sklearn.ensemble.BaggingClassifier",
-                False,
-            ),
-            (
-                "Stacking",
-                "Stacking Classifier",
-                "sklearn.ensemble.StackingClassifier",
-                False,
-            ),
-            ("Voting", "Voting Classifier", "sklearn.ensemble.VotingClassifier", False),
-            (
-                "OneVsRest",
-                "One Vs Rest Classifier",
-                "sklearn.multiclass.OneVsRestClassifier",
-                False,
-            ),
-            (
-                "Calibrated",
-                "Calibrated Classifier",
-                "sklearn.calibration.CalibratedClassifierCV",
-                False,
-            ),
-        ]
-
-        internal_columns = [
-            "Special",
-            "Class",
-            "Args",
-            "Tune Grid",
-            "Tune Distributions",
-            "Tune Args",
-            "SHAP",
-            "GPU Enabled",
-        ]
-        internal_rows = [
-            (
-                False,
-                LogisticRegression,
-                {"random_state": seed} if not cuml_lr_imported else {},
-                {
-                    "penalty": ["l2", "none"] + (["l1"] if cuml_lr_imported else []),
-                    "C": np.arange(0, 10, 0.001),
-                    # "class_weight": ["balanced", {}],
-                },
-                {
-                    "penalty": CategoricalDistribution(
-                        ["l2", "none"] + (["l1"] if cuml_lr_imported else [])
-                    ),
-                    "C": UniformDistribution(0, 10),
-                    # "class_weight": CategoricalDistribution(["balanced", {}]),
-                },
-                {},
-                False,
-                None,
-            ),
-            (
-                False,
-                KNeighborsClassifier,
-                {"n_jobs": n_jobs_param} if not cuml_kn_imported else {},
-                {
-                    "n_neighbors": range(1, 51),
-                    "weights": ["uniform"]
-                    + (["distance"] if not cuml_kn_imported else []),
-                    "metric": ["minkowski", "euclidean", "manhattan"],
-                },
-                {
-                    "n_neighbors": IntUniformDistribution(1, 51),
-                    "weights": CategoricalDistribution(
-                        ["uniform"] + (["distance"] if not cuml_kn_imported else [])
-                    ),
-                    "metric": CategoricalDistribution(
-                        ["minkowski", "euclidean", "manhattan"]
-                    ),
-                },
-                {},
-                False,
-                None,
-            ),
-            (
-                False,
-                GaussianNB,
-                {},
-                {
-                    "var_smoothing": [
-                        0.000000001,
-                        0.000000002,
-                        0.000000005,
-                        0.000000008,
-                        0.000000009,
-                        0.0000001,
-                        0.0000002,
-                        0.0000003,
-                        0.0000005,
-                        0.0000007,
-                        0.0000009,
-                        0.00001,
-                        0.001,
-                        0.002,
-                        0.003,
-                        0.004,
-                        0.005,
-                        0.007,
-                        0.009,
-                        0.004,
-                        0.005,
-                        0.006,
-                        0.007,
-                        0.008,
-                        0.009,
-                        0.01,
-                        0.1,
-                        1,
-                    ]
-                },
-                {"var_smoothing": UniformDistribution(0.000000001, 1, log=True)},
-                {},
-                False,
-                None,
-            ),
-            (
-                False,
-                DecisionTreeClassifier,
-                {"random_state": seed},
-                {
-                    "max_depth": list(range(1, int(len(X.columns) + 1 * 0.85))),
-                    "max_features": list(range(1, len(X.columns) + 1)),
-                    "min_samples_leaf": [2, 3, 4, 5, 6],
-                    "criterion": ["gini", "entropy"],
-                },
-                {
-                    "max_depth": IntUniformDistribution(1, int(len(X.columns) * 0.85)),
-                    "max_features": IntUniformDistribution(1, len(X.columns)),
-                    "min_samples_leaf": IntUniformDistribution(2, 6),
-                    "criterion": CategoricalDistribution(["gini", "entropy"]),
-                },
-                {},
-                "type1",
-                None,
-            ),
-            (
-                False,
-                SGDClassifier,
-                {
-                    "tol": 0.001,
-                    "loss": "hinge",
-                    "random_state": seed,
-                    "n_jobs": n_jobs_param,
-                }
-                if not cuml_sdg_imported
-                else {"tol": 0.001, "loss": "hinge",},
-                {
-                    "penalty": ["elasticnet", "l2", "l1"],
-                    "l1_ratio": np.arange(0.0000000001, 0.9999999999, 0.01),
-                    "alpha": [
-                        0.0001,
-                        0.001,
-                        0.01,
-                        0.0002,
-                        0.002,
-                        0.02,
-                        0.0005,
-                        0.005,
-                        0.05,
-                    ],
-                    "fit_intercept": [True, False],
-                    "learning_rate": ["constant", "invscaling", "adaptive"]
-                    + (["optimal"] if not cuml_sdg_imported else []),
-                    "eta0": [0.001, 0.01, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5],
-                },
-                {
-                    "penalty": CategoricalDistribution(["elasticnet", "l2", "l1"]),
-                    "l1_ratio": UniformDistribution(0, 1),
-                    "alpha": UniformDistribution(0.0000000001, 0.9999999999),
-                    "fit_intercept": CategoricalDistribution([True, False]),
-                    "learning_rate": CategoricalDistribution(
-                        ["constant", "invscaling", "adaptive"]
-                        + (["optimal"] if not cuml_sdg_imported else [])
-                    ),
-                    "eta0": UniformDistribution(0.001, 0.5),
-                },
-                {},
-                False,
-                None,
-            ),
-            (
-                False,
-                SVC,
-                {
-                    "gamma": "auto",
-                    "C": 1,
-                    "probability": True,
-                    "kernel": "rbf",
-                    "random_state": seed,
-                },
-                {"C": np.arange(0, 50, 0.01), "class_weight": ["balanced", {}],},
-                {
-                    "C": UniformDistribution(0, 50),
-                    "class_weight": CategoricalDistribution(["balanced", {}]),
-                },
-                {},
-                False,
-                None,
-            ),
-            (
-                False,
-                GaussianProcessClassifier,
-                {"random_state": seed, "n_jobs": n_jobs_param},
-                {
-                    "max_iter_predict": [
-                        100,
-                        200,
-                        300,
-                        400,
-                        500,
-                        600,
-                        700,
-                        800,
-                        900,
-                        1000,
-                    ]
-                },
-                {"max_iter_predict": IntUniformDistribution(100, 1000)},
-                {},
-                False,
-                None,
-            ),
-            (
-                False,
-                MLPClassifier,
-                {"random_state": seed, "max_iter": 500},
-                {
-                    "learning_rate": ["constant", "invscaling", "adaptive"],
-                    "solver": ["lbfgs", "sgd", "adam"],
-                    "alpha": np.arange(0, 1, 0.0001),
-                    "hidden_layer_sizes": [
-                        (50, 50, 50),
-                        (50, 100, 50),
-                        (100,),
-                        (100, 50, 100),
-                        (100, 100, 100),
-                    ],
-                    "activation": ["tanh", "identity", "logistic", "relu"],
-                },
-                {
-                    "learning_rate": CategoricalDistribution(
-                        ["constant", "invscaling", "adaptive"]
-                    ),
-                    "solver": CategoricalDistribution(["lbfgs", "sgd", "adam"]),
-                    "alpha": UniformDistribution(0, 1),
-                    "hidden_layer_sizes": CategoricalDistribution(
-                        [
-                            (50, 50, 50),
-                            (50, 100, 50),
-                            (100,),
-                            (100, 50, 100),
-                            (100, 100, 100),
-                        ]
-                    ),
-                    "activation": CategoricalDistribution(
-                        ["tanh", "identity", "logistic", "relu"]
-                    ),
-                },
-                {},
-                False,
-                None,
-            ),
-            (
-                False,
-                RidgeClassifier,
-                {"random_state": seed},
-                {
-                    "alpha": np.arange(0.001, 0.999, 0.001),
-                    "fit_intercept": [True, False],
-                    "normalize": [True, False],
-                },
-                {
-                    "alpha": UniformDistribution(0.0000000001, 0.9999999999),
-                    "fit_intercept": CategoricalDistribution([True, False]),
-                    "normalize": CategoricalDistribution([True, False]),
-                },
-                {},
-                False,
-                None,
-            )
-            if not cuml_sdg_imported
-            else (
-                False,
-                SGDClassifier,
-                {"tol": 0.001, "loss": "squared_loss", "penalty": "l2",},
-                {
-                    "alpha": np.arange(0.001, 0.999, 0.001),
-                    "fit_intercept": [True, False],
-                    "learning_rate": ["constant", "invscaling", "adaptive"],
-                    "eta0": [0.001, 0.01, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5],
-                },
-                {
-                    "alpha": UniformDistribution(0.0000000001, 0.9999999999),
-                    "fit_intercept": CategoricalDistribution([True, False]),
-                    "learning_rate": CategoricalDistribution(
-                        ["constant", "invscaling", "adaptive"]
-                    ),
-                    "eta0": UniformDistribution(0.001, 0.5),
-                },
-                {},
-                False,
-                None,
-            ),
-            (
-                False,
-                RandomForestClassifier,
-                {"n_estimators": 100, "random_state": seed, "n_jobs": n_jobs_param},
-                {
-                    "n_estimators": [int(x) for x in np.linspace(10, 1000, num=100)],
-                    "criterion": ["gini", "entropy"],
-                    "max_depth": [int(x) for x in np.linspace(10, 110, num=11)],
-                    "min_samples_split": [2, 5, 7, 9, 10],
-                    "min_samples_leaf": [1, 2, 4],
-                    "max_features": [1.0, "auto", "log2"],
-                    "bootstrap": [True, False],
-                    "ccp_alpha": np.arange(0.0, 0.01, 0.001),
-                },
-                {
-                    "n_estimators": IntUniformDistribution(10, 1000),
-                    "criterion": CategoricalDistribution(["gini", "entropy"]),
-                    "max_depth": IntUniformDistribution(10, 110),
-                    "min_samples_split": IntUniformDistribution(2, 10),
-                    "min_samples_leaf": IntUniformDistribution(1, 5),
-                    "max_features": CategoricalDistribution([1.0, "auto", "log2"]),
-                    "bootstrap": CategoricalDistribution([True, False]),
-                    "ccp_alpha": UniformDistribution(0, 0.01),
-                },
-                {},
-                "type1",
-                None,
-            ),
-            (
-                False,
-                QuadraticDiscriminantAnalysis,
-                {},
-                {"reg_param": np.arange(0, 1, 0.01)},
-                {"reg_param": UniformDistribution(0, 1)},
-                {},
-                False,
-                None,
-            ),
-            (
-                False,
-                AdaBoostClassifier,
-                {"random_state": seed},
-                {
-                    "n_estimators": np.arange(10, 200, 5),
-                    "learning_rate": np.arange(0, 1, 0.01),
-                    "algorithm": ["SAMME", "SAMME.R"],
-                },
-                {
-                    "n_estimators": IntUniformDistribution(10, 200),
-                    "learning_rate": UniformDistribution(0, 1),
-                    "algorithm": CategoricalDistribution(["SAMME", "SAMME.R"]),
-                },
-                {},
-                False,
-                None,
-            ),
-            (
-                False,
-                GradientBoostingClassifier,
-                {"random_state": seed},
-                {
-                    "n_estimators": np.arange(10, 200, 5),
-                    "learning_rate": np.arange(0, 1, 0.01),
-                    "subsample": np.arange(0.1, 1, 0.05),
-                    "min_samples_split": [2, 4, 5, 7, 9, 10],
-                    "min_samples_leaf": [1, 2, 3, 4, 5],
-                    "max_depth": [int(x) for x in np.linspace(10, 110, num=11)],
-                    "max_features": ["auto", "sqrt", "log2"],
-                },
-                {
-                    "n_estimators": IntUniformDistribution(10, 200),
-                    "learning_rate": UniformDistribution(0, 1),
-                    "subsample": UniformDistribution(0.1, 1),
-                    "min_samples_split": IntUniformDistribution(2, 10),
-                    "min_samples_leaf": IntUniformDistribution(1, 5),
-                    "max_depth": IntUniformDistribution(10, 110),
-                    "max_features": CategoricalDistribution(["auto", "sqrt", "log2"]),
-                },
-                {},
-                "type2",
-                None,
-            ),
-            (
-                False,
-                LinearDiscriminantAnalysis,
-                {},
-                {
-                    "solver": ["lsqr", "eigen"],
-                    "shrinkage": [
-                        "empirical",
-                        "auto",
-                        0.0001,
-                        0.001,
-                        0.01,
-                        0.0005,
-                        0.005,
-                        0.05,
-                        0.1,
-                        0.2,
-                        0.3,
-                        0.4,
-                        0.5,
-                        0.6,
-                        0.7,
-                        0.8,
-                        0.9,
-                        1,
-                    ],
-                },
-                {
-                    "solver": CategoricalDistribution(["lsqr", "eigen"]),
-                    "shrinkage": UniformDistribution(0.000000001, 1, log=True),
-                },
-                {},
-                False,
-                None,
-            ),
-            (
-                False,
-                ExtraTreesClassifier,
-                {"random_state": seed, "n_jobs": n_jobs_param},
-                {
-                    "n_estimators": np.arange(10, 200, 5),
-                    "criterion": ["gini", "entropy"],
-                    "max_depth": [int(x) for x in np.linspace(10, 110, num=11)],
-                    "min_samples_split": [2, 5, 7, 9, 10],
-                    "min_samples_leaf": [1, 2, 4],
-                    "max_features": ["auto", "sqrt", "log2"],
-                    "bootstrap": [True, False],
-                },
-                {
-                    "n_estimators": IntUniformDistribution(10, 200),
-                    "criterion": CategoricalDistribution(["gini", "entropy"]),
-                    "max_depth": IntUniformDistribution(10, 110),
-                    "min_samples_split": IntUniformDistribution(2, 10),
-                    "min_samples_leaf": IntUniformDistribution(1, 5),
-                    "max_features": CategoricalDistribution(["auto", "sqrt", "log2"]),
-                    "bootstrap": CategoricalDistribution([True, False]),
-                },
-                {},
-                "type1",
-                None,
-            ),
-            (
-                False,
-                XGBClassifier,
-                {
-                    "verbosity": 0,
-                    "booster": "gbtree",
-                    "random_state": seed,
-                    "n_jobs": n_jobs_param,
-                    "tree_method": "gpu_hist" if gpu_param else "auto",
-                },
-                {
-                    "learning_rate": np.arange(0, 1, 0.01),
-                    "n_estimators": np.arange(10, 100, 20)
-                    if num_class > 2
-                    else [
-                        10,
-                        30,
-                        50,
-                        100,
-                        200,
-                        300,
-                        400,
-                        500,
-                        600,
-                        700,
-                        800,
-                        900,
-                        1000,
-                    ],
-                    "subsample": [0.1, 0.2, 0.3, 0.5, 0.7, 0.9, 1],
-                    "max_depth": [int(x) for x in np.linspace(1, 11, num=11)],
-                    "colsample_bytree": [0.5, 0.7, 0.9, 1],
-                    "min_child_weight": [1, 2, 3, 4],
-                },
-                {
-                    "learning_rate": UniformDistribution(0, 1),
-                    "n_estimators": IntUniformDistribution(10, 100)
-                    if num_class > 2
-                    else IntUniformDistribution(10, 1000, log=True),
-                    "subsample": UniformDistribution(0.1, 1),
-                    "max_depth": IntUniformDistribution(1, 11),
-                    "colsample_bytree": UniformDistribution(0.5, 1),
-                    "min_child_weight": IntUniformDistribution(1, 4),
-                },
-                {},
-                "type2",
-                bool(gpu_param),
-            ),
-            (
-                False,
-                LGBMClassifier,
-                {"random_state": seed, "n_jobs": n_jobs_param},
-                {
-                    "num_leaves": [10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 150, 200],
-                    "max_depth": [int(x) for x in np.linspace(10, 110, num=11)],
-                    "learning_rate": [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1],
-                    "n_estimators": [10, 30, 50, 70, 90, 100, 120, 150, 170, 200],
-                    "min_split_gain": [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9],
-                    "reg_alpha": [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9],
-                    "reg_lambda": [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9],
-                },
-                {
-                    "num_leaves": IntUniformDistribution(10, 200),
-                    "max_depth": IntUniformDistribution(10, 110),
-                    "learning_rate": UniformDistribution(0.1, 1),
-                    "n_estimators": IntUniformDistribution(10, 200),
-                    "min_split_gain": UniformDistribution(0, 1),
-                    "reg_alpha": UniformDistribution(0.1, 1),
-                    "reg_lambda": UniformDistribution(0.1, 1),
-                },
-                {},
-                "type1",
-                False,
-            ),
-            (
-                False,
-                CatBoostClassifier,
-                {
-                    "random_state": seed,
-                    "verbose": False,
-                    "thread_count": n_jobs_param,
-                    "task_type": "GPU"
-                    if gpu_param == "Force" or (gpu_param and len(X) >= 50000)
-                    else "CPU",
-                },
-                {
-                    "depth": [3, 1, 2, 6, 4, 5, 7, 8, 9, 10],
-                    "iterations": [250, 100, 500, 1000],
-                    "learning_rate": [0.03, 0.001, 0.01, 0.1, 0.2, 0.3],
-                    "l2_leaf_reg": [3, 1, 5, 10, 100],
-                    "border_count": [32, 5, 10, 20, 50, 100, 200],
-                },
-                {
-                    "depth": IntUniformDistribution(1, 10),
-                    "iterations": IntUniformDistribution(250, 1000, log=True),
-                    "learning_rate": UniformDistribution(0.0001, 0.3, log=True),
-                    "l2_leaf_reg": IntUniformDistribution(1, 100, log=True),
-                    "border_count": IntUniformDistribution(5, 200, log=True),
-                },
-                {},
-                "type2",
-                bool(gpu_param == "Force" or (gpu_param and len(X) >= 50000)),
-            ),
-            (
-                True,
-                BaggingClassifier,
-                {"random_state": seed, "n_jobs": gpu_n_jobs_param,},
-                {
-                    "n_estimators": np.arange(10, 300, 10),
-                    "bootstrap": [True, False],
-                    "bootstrap_features": [True, False],
-                },
-                {
-                    "n_estimators": IntUniformDistribution(10, 300),
-                    "bootstrap": CategoricalDistribution([True, False]),
-                    "bootstrap_features": CategoricalDistribution([True, False]),
-                },
-                {},
-                False,
-                False,
-            ),
-            (True, StackingClassifier, {}, {}, {}, {}, False, False),
-            (True, VotingClassifier, {}, {}, {}, {}, False, False),
-            (
-                True,
-                OneVsRestClassifier,
-                {"n_jobs": gpu_n_jobs_param},
-                {},
-                {},
-                {},
-                False,
-                False,
-            ),
-            (True, CalibratedClassifierCV, {}, {}, {}, {}, False, False),
-        ]
-
-        df_internal = pd.DataFrame(internal_rows)
-        df_internal.columns = internal_columns
-
-        def param_grid_to_lists(param_grid: dict):
-            if param_grid:
-                for k, v in param_grid.items():
-                    param_grid[k] = list(v)
-            return param_grid
-
-        df_internal["Tune Grid"] = [
-            param_grid_to_lists(x) for x in df_internal["Tune Grid"]
-        ]
-
-        def is_boosting_supported(e):
-            try:
-                x = e()
-                return bool(hasattr(x, "class_weights") or hasattr(x, "predict_proba"))
-            except:
-                return False
-
-        def is_soft_voting_supported(e):
-            try:
-                x = e()
-                return bool(hasattr(x, "predict_proba"))
-            except:
-                return False
-
-        df_internal["Boosting Supported"] = [
-            is_boosting_supported(x) for x in df_internal["Class"]
-        ]
-
-        df_internal["Soft Voting"] = [
-            is_soft_voting_supported(x) for x in df_internal["Class"]
-        ]
-
     df = pd.DataFrame(rows)
-    df.columns = columns
-    if df_internal is not None:
-        df = pd.concat([df, df_internal], axis=1)
-        df["Temp"] = [get_package(x) for x in df["Reference"]]
-        df["GPU Enabled"].fillna(df["Temp"] != "sklearn", inplace=True)
-        df.drop("Temp", axis=1, inplace=True)
-
-    df.set_index("ID", inplace=True)
+    df.set_index("ID", inplace=True, drop=True)
 
     return filter_model_df_by_type(df)
 
 
-def get_metrics(force_regenerate: bool = False) -> pd.DataFrame:
+def get_metrics(
+    force_regenerate: bool = False, reset: bool = False, include_custom: bool = True
+) -> pd.DataFrame:
     """
     Returns table of metrics available.
 
@@ -8247,10 +7475,13 @@ def get_metrics(force_regenerate: bool = False) -> pd.DataFrame:
 
     Parameters
     ----------
-    force_regenerate: Boolean, default = False
-        If True, will force the DataFrame to be regenerated,
-        instead of using a cached version. This will also reset
-        all changes made using add_metric() and get_metric().
+    force_regenerate: bool, default = False
+        If True, will return a regenerated DataFrame,
+        instead of using a cached version.
+    reset: bool, default = False
+        If True, will reset all changes made using add_metric() and get_metric().
+    include_custom: bool, default = True
+        Whether to include user added (custom) metrics or not.
 
     Returns
     -------
@@ -8258,102 +7489,38 @@ def get_metrics(force_regenerate: bool = False) -> pd.DataFrame:
 
     """
 
-    if not force_regenerate:
+    if reset and not "all_metrics" in globals():
+        raise ValueError("setup() needs to be ran first.")
+
+    global all_metrics
+
+    if not force_regenerate and not reset:
         try:
+            if not include_custom:
+                return all_metrics[all_metrics["Custom"] == False]
             return all_metrics
         except:
             pass
 
-    from sklearn import metrics
-
     np.random.seed(seed)
 
-    columns = [
-        "ID",
-        "Name",
-        "Display Name",
-        "Scorer",
-        "Score Function",
-        "Target",
-        "Args",
-        "Multiclass",
-    ]
-    rows = [
-        (
-            "acc",
-            "Accuracy",
-            "Accuracy",
-            "accuracy",
-            metrics.accuracy_score,
-            "pred",
-            {},
-            True,
-        ),
-        ("auc", "AUC", "AUC", "roc_auc", metrics.roc_auc_score, "pred_prob", {}, False),
-        (
-            "recall",
-            "Recall",
-            "Recall",
-            metrics.make_scorer(metrics.recall_score, average="macro")
-            if _is_multiclass()
-            else "recall",
-            metrics.recall_score,
-            "pred",
-            {"average": "macro"} if _is_multiclass() else {},
-            True,
-        ),
-        (
-            "precision",
-            "Precision",
-            "Prec.",
-            metrics.make_scorer(metrics.precision_score, average="weighted")
-            if _is_multiclass()
-            else "precision",
-            metrics.precision_score,
-            "pred",
-            {"average": "weighted"} if _is_multiclass() else {},
-            True,
-        ),
-        (
-            "f1",
-            "F1",
-            "F1",
-            metrics.make_scorer(metrics.f1_score, average="weighted")
-            if _is_multiclass()
-            else "f1",
-            metrics.f1_score,
-            "pred",
-            {"average": "weighted"} if _is_multiclass() else {},
-            True,
-        ),
-        (
-            "kappa",
-            "Kappa",
-            "Kappa",
-            metrics.make_scorer(metrics.cohen_kappa_score),
-            metrics.cohen_kappa_score,
-            "pred",
-            {},
-            True,
-        ),
-        (
-            "mcc",
-            "MCC",
-            "MCC",
-            "roc_auc"
-            if _is_multiclass()
-            else metrics.make_scorer(metrics.matthews_corrcoef),
-            metrics.matthews_corrcoef,
-            "pred",
-            {},
-            True,
-        ),
-        ("tt", "TT", "TT (Sec)", None, None, None, None, True),
-    ]
-    df = pd.DataFrame(rows)
-    df.columns = columns
+    metric_containers = get_all_metric_containers(globals())
+    rows = [v.get_dict() for k, v in metric_containers.items()]
 
-    df.set_index("ID", inplace=True)
+    # Training time needs to be at the end
+    if not rows[-1]["ID"] == "tt":
+        tt_row = next(x for x in rows if x["ID"] == "tt")
+        rows = [x for x in rows if not x["ID"] == "tt"]
+        rows.append(tt_row)
+
+    df = pd.DataFrame(rows)
+    df.set_index("ID", inplace=True, drop=True)
+
+    if not include_custom:
+        df = df[df["Custom"] == False]
+
+    if reset:
+        all_metrics = df
     return df
 
 
@@ -8381,7 +7548,7 @@ def _get_metric(name_or_id: str):
 def add_metric(
     id: str,
     name: str,
-    score_func,
+    score_func_type: type,
     scorer=None,
     target: str = "pred",
     args: dict = {},
@@ -8398,22 +7565,23 @@ def add_metric(
     name: str
         Display name of the metric.
 
-    score_func: callable
-        Score function (or loss function) with signature score_func(y, y_pred, **kwargs).
+    score_func_type: type
+        Type of score function (or loss function) with signature score_func(y, y_pred, **kwargs).
 
     scorer: sklearn.metrics.Scorer, default = None
         The Scorer to be used in tuning and cross validation. If None, one will be created
-        from score_func.
+        from score_func_type and args.
 
     target: str, default = 'pred'
         The target of the score function.
         - 'pred' for the prediction table
         - 'pred_proba' for pred_proba
+        - 'threshold' for decision_function or predict_proba
 
     args: dict, default = {}
         Arguments to be passed to score function.
 
-    multiclass: Boolean, default = True
+    multiclass: bool, default = True
         Whether the metric supports multiclass problems.
 
     Notes
@@ -8431,23 +7599,19 @@ def add_metric(
     if not "all_metrics" in globals():
         raise ValueError("setup() needs to be ran first.")
 
-    from sklearn import metrics
+    global all_metrics
 
-    np.random.seed(seed)
+    if id in all_metrics.index:
+        raise ValueError("id already present in metrics dataframe.")
 
-    new_metric = {
-        "Name": name,
-        "Display Name": name,
-        "Scorer": scorer if scorer else metrics.make_scorer(score_func),
-        "Score Function": score_func,
-        "Target": target,
-        "Args": args,
-        "Multiclass": multiclass,
-    }
+    new_metric = ClassificationMetricContainer(
+        id, name, score_func_type, scorer, target, args, name, bool(multiclass), True
+    )
+
+    new_metric = new_metric.get_dict()
 
     new_metric = pd.Series(new_metric, name=id.replace(" ", "_"))
 
-    global all_metrics
     last_row = all_metrics.iloc[-1]
     all_metrics.drop(all_metrics.index[-1], inplace=True)
     all_metrics = all_metrics.append(new_metric)
@@ -8501,7 +7665,7 @@ def get_logs(experiment_name: str = None, save: bool = False) -> pd.DataFrame:
 
     Parameters
     ----------
-    experiment_name : string, default = None
+    experiment_name : str, default = None
         When set to None current active run is used.
 
     save : bool, default = False

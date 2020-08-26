@@ -8,7 +8,7 @@ import pandas.io.formats.style
 import ipywidgets as ipw
 from IPython.display import display, HTML, clear_output, update_display
 from pycaret.internal.logging import get_logger
-
+from typing import Any, Union
 
 def get_config(variable: str, globals_d: dict):
 
@@ -115,18 +115,35 @@ def is_special_model(e, all_models: pd.DataFrame) -> bool:
     return False
 
 
+def get_class_name(class_var: Any) -> str:
+    return str(class_var)[8:-2]
+
+
+def get_package_name(class_var: Any) -> str:
+    if not isinstance(str, class_var):
+        class_var = get_class_name(class_var)
+    return class_var.split(".")[0]
+
+
+def param_grid_to_lists(param_grid: dict) -> dict:
+    if param_grid:
+        for k, v in param_grid.items():
+            param_grid[k] = list(v)
+    return param_grid
+
+
 def calculate_metrics(
     metrics: pd.DataFrame,
     ytest,
     pred_,
-    pred_prob: float = None,
+    pred_proba: float = None,
     score_dict: dict = None,
 ):
     import numpy as np
 
     columns = list(metrics.columns)
-    score_function_idx = columns.index('Score Function')+1
-    display_name_idx = columns.index('Display Name')+1
+    score_function_idx = columns.index("Score Function") + 1
+    display_name_idx = columns.index("Display Name") + 1
 
     if not score_dict:
         score_dict = {
@@ -138,11 +155,13 @@ def calculate_metrics(
     for row in metrics.itertuples():
         if not row[score_function_idx]:
             continue
-        target = pred_prob if row.Target == "pred_prob" else pred_
+        target = pred_proba if row.Target == "pred_proba" else pred_
         try:
             calculated_metric = row[score_function_idx](ytest, target, **row.Args)
         except:
             calculated_metric = 0
 
-        score_dict[row[display_name_idx]] = np.append(score_dict[row[display_name_idx]], calculated_metric)
+        score_dict[row[display_name_idx]] = np.append(
+            score_dict[row[display_name_idx]], calculated_metric
+        )
     return score_dict
