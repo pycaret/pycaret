@@ -6678,6 +6678,7 @@ def predict_model(
     estimator,
     data: pd.DataFrame = None,
     probability_threshold: float = None,
+    encoded_labels: bool = False,  # added in pycaret==2.1.0
     round: int = 4,  # added in pycaret==2.2.0
     verbose: bool = True,
     display: Display = None,  # added in pycaret==2.2.0
@@ -6710,6 +6711,9 @@ def predict_model(
         Threshold used to convert probability values into binary outcome. By default the
         probability threshold for all binary classifiers is 0.5 (50%). This can be changed
         using probability_threshold param.
+
+    encoded_labels: Boolean, default = False
+        If True, will return labels encoded as an integer.
 
     round: integer, default = 4
         Number of decimal places the metrics in the score grid will be rounded to. 
@@ -6866,10 +6870,12 @@ def predict_model(
     label = pd.DataFrame(pred_)
     label.columns = ["Label"]
     label["Label"] = label["Label"].astype(int)
-    replace_lables_in_column(label["Label"])
+    if not encoded_labels:
+        replace_lables_in_column(label["Label"])
 
     if data is None:
-        replace_lables_in_column(ytest)
+        if not encoded_labels:
+            replace_lables_in_column(ytest)
         X_test_ = pd.concat([Xtest, ytest, label], axis=1)
     else:
         X_test_.insert(len(X_test_.columns), "Label", label["Label"].to_list())
