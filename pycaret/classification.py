@@ -1107,19 +1107,13 @@ def setup(
         features_to_bin_pass = bin_numeric_features
 
     # trignometry
-    if trigonometry_features is False:
-        trigonometry_features_pass = []
-    else:
-        trigonometry_features_pass = ["sin", "cos", "tan"]
+    trigonometry_features_pass = ["sin", "cos", "tan"] if trigonometry_features else []
 
     # group features
     # =============#
 
     # apply grouping
-    if group_features is not None:
-        apply_grouping_pass = True
-    else:
-        apply_grouping_pass = False
+    apply_grouping_pass = True if group_features is not None else False
 
     # group features listing
     if apply_grouping_pass is True:
@@ -1149,10 +1143,7 @@ def setup(
 
     # feature interactions
 
-    if feature_interaction or feature_ratio:
-        apply_feature_interactions_pass = True
-    else:
-        apply_feature_interactions_pass = False
+    apply_feature_interactions_pass = True if feature_interaction or feature_ratio else False
 
     interactions_to_apply_pass = []
 
@@ -1169,35 +1160,20 @@ def setup(
         unknown_categorical_method_pass = "most frequent"
 
     # ordinal_features
-    if ordinal_features is not None:
-        apply_ordinal_encoding_pass = True
-    else:
-        apply_ordinal_encoding_pass = False
+    apply_ordinal_encoding_pass = True if ordinal_features is not None else False
 
-    if apply_ordinal_encoding_pass is True:
-        ordinal_columns_and_categories_pass = ordinal_features
-    else:
-        ordinal_columns_and_categories_pass = {}
+    ordinal_columns_and_categories_pass = ordinal_features if apply_ordinal_encoding_pass is True else {}
 
-    if high_cardinality_features is not None:
-        apply_cardinality_reduction_pass = True
-    else:
-        apply_cardinality_reduction_pass = False
+    apply_cardinality_reduction_pass = True if high_cardinality_features is not None else False
 
     if high_cardinality_method == "frequency":
         cardinal_method_pass = "count"
     elif high_cardinality_method == "clustering":
         cardinal_method_pass = "cluster"
 
-    if apply_cardinality_reduction_pass:
-        cardinal_features_pass = high_cardinality_features
-    else:
-        cardinal_features_pass = []
+    cardinal_features_pass = high_cardinality_features if apply_cardinality_reduction_pass else []
 
-    if silent:
-        display_dtypes_pass = False
-    else:
-        display_dtypes_pass = True
+    display_dtypes_pass = False if silent else True
 
     logger.info("Importing preprocessing module")
 
