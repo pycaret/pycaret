@@ -9,7 +9,11 @@ from pycaret.internal.logging import get_logger
 from pycaret.internal.plotting import show_yellowbrick_plot
 from pycaret.internal.Display import Display
 from pycaret.internal.distributions import *
-from pycaret.models.classification import get_all_model_containers
+from pycaret.containers.models.classification import get_all_model_containers
+from pycaret.containers.metrics.classification import (
+    get_all_metric_containers,
+    ClassificationMetricContainer,
+)
 import pandas as pd
 import numpy as np
 import os
@@ -114,7 +118,7 @@ def setup(
     data : pandas.DataFrame
         Shape (n_samples, n_features) where n_samples is the number of samples and n_features is the number of features.
 
-    target: string
+    target: str
         Name of the target column to be passed in as a string. The target variable could 
         be binary or multiclass. In case of a multiclass target, all estimators are wrapped
         with a OneVsRest classifier.
@@ -141,7 +145,7 @@ def setup(
         inferred as numeric instead of categorical, then this parameter can be used 
         to overwrite the type by passing categorical_features = ['column1'].
     
-    categorical_imputation: string, default = 'constant'
+    categorical_imputation: str, default = 'constant'
         If missing values are found in categorical features, they will be imputed with
         a constant 'not_available' value. The other available option is 'mode' which 
         imputes the missing value using most frequent value in the training dataset. 
@@ -158,7 +162,7 @@ def setup(
         into fewer levels by passing them as a list of column names with high cardinality.
         Features are compressed using method defined in high_cardinality_method param.
     
-    high_cardinality_method: string, default = 'frequency'
+    high_cardinality_method: str, default = 'frequency'
         When method set to 'frequency' it will replace the original value of feature
         with the frequency distribution and convert the feature into numeric. Other
         available method is 'clustering' which performs the clustering on statistical
@@ -172,13 +176,13 @@ def setup(
         inferred as a categorical instead of numeric, then this parameter can be used 
         to overwrite by passing numeric_features = ['column1'].    
 
-    numeric_imputation: string, default = 'mean'
+    numeric_imputation: str, default = 'mean'
         If missing values are found in numeric features, they will be imputed with the 
         mean value of the feature. The other available options are 'median' which imputes 
         the value using the median value in the training dataset and 'zero' which
         replaces missing values with zeroes.
 
-    date_features: string, default = None
+    date_features: str, default = None
         If the data has a DateTime column that is not automatically detected when running
         setup, this parameter can be used by passing date_features = 'date_column_name'. 
         It can work with multiple date columns. Date columns are not used in modeling. 
@@ -186,7 +190,7 @@ def setup(
         dataset. If the date column includes a time stamp, features related to time will 
         also be extracted.
 
-    ignore_features: string, default = None
+    ignore_features: str, default = None
         If any feature should be ignored for modeling, it can be passed to the param
         ignore_features. The ID and DateTime columns when inferred, are automatically 
         set to ignore for modeling. 
@@ -197,7 +201,7 @@ def setup(
         the results may vary and it is advised to run multiple experiments to evaluate
         the benefit of normalization.
 
-    normalize_method: string, default = 'zscore'
+    normalize_method: str, default = 'zscore'
         Defines the method to be used for normalization. By default, normalize method
         is set to 'zscore'. The standard zscore is calculated as z = (x - u) / s. The
         other available options are:
@@ -219,7 +223,7 @@ def setup(
         other situations where normality is desired. The optimal parameter for stabilizing 
         variance and minimizing skewness is estimated through maximum likelihood.
 
-    transformation_method: string, default = 'yeo-johnson'
+    transformation_method: str, default = 'yeo-johnson'
         Defines the method for transformation. By default, the transformation method is set
         to 'yeo-johnson'. The other available option is 'quantile' transformation. Both 
         the transformation transforms the feature set to follow a Gaussian-like or normal
@@ -231,7 +235,7 @@ def setup(
         the most or least frequent level as learned in the training data. The method is 
         defined under the unknown_categorical_method param.
 
-    unknown_categorical_method: string, default = 'least_frequent'
+    unknown_categorical_method: str, default = 'least_frequent'
         Method used to replace unknown categorical levels in unseen data. Method can be
         set to 'least_frequent' or 'most_frequent'.
 
@@ -244,7 +248,7 @@ def setup(
         of information. As such, it is advised to run multiple experiments with different 
         pca_methods to evaluate the impact. 
 
-    pca_method: string, default = 'linear'
+    pca_method: str, default = 'linear'
         The 'linear' method performs Linear dimensionality reduction using Singular Value 
         Decomposition. The other available options are:
         
@@ -463,7 +467,7 @@ def setup(
         be performed assuming automatically inferred data types. Not recommended for direct use 
         except for established pipelines.
     
-    verbose: Boolean, default = True
+    verbose: bool, default = True
         Information grid is not printed when verbose is set to False.
 
     profile: bool, default = False
@@ -909,7 +913,7 @@ def setup(
     # experiment_name
     if experiment_name is not None:
         if type(experiment_name) is not str:
-            raise TypeError("experiment_name parameter must be string if not None.")
+            raise TypeError("experiment_name parameter must be str if not None.")
 
     # silent
     if type(silent) is not bool:
@@ -1821,7 +1825,7 @@ def compare_models(
     round: integer, default = 4
         Number of decimal places the metrics in the score grid will be rounded to.
   
-    sort: string, default = 'Accuracy'
+    sort: str, default = 'Accuracy'
         The scoring measure specified is used for sorting the average score grid
         Other options are 'AUC', 'Recall', 'Precision', 'F1', 'Kappa' and 'MCC'.
 
@@ -1833,11 +1837,11 @@ def compare_models(
         If set above 0, will terminate execution of the function after budget_time minutes have
         passed and return results up to that point.
 
-    turbo: Boolean, default = True
+    turbo: bool, default = True
         When turbo is set to True, it excludes estimators that have longer
         training time.
 
-    verbose: Boolean, default = True
+    verbose: bool, default = True
         Score grid is not printed when verbose is set to False.
     
     Returns
@@ -2307,7 +2311,7 @@ def create_model(
 
     Parameters
     ----------
-    estimator : string / object, default = None
+    estimator : str / object, default = None
         Enter ID of the estimators available in model library or pass an untrained model 
         object consistent with fit / predict API to train and evaluate model. All estimators 
         support binary or multiclass problem. List of estimators in model library (ID - Name):
@@ -2345,13 +2349,13 @@ def create_model(
         When cross_validation set to False fold parameter is ignored and model is trained
         on entire training dataset. No metric evaluation is returned. 
 
-    verbose: Boolean, default = True
+    verbose: bool, default = True
         Score grid is not printed when verbose is set to False.
 
-    system: Boolean, default = True
+    system: bool, default = True
         Must remain True all times. Only to be changed by internal functions.
     
-    return_fit_time: Boolean, default = False
+    return_fit_time: bool, default = False
         If True, will return a tuple of the model and its fit time.
         Only to be changed by internal functions.
 
@@ -2954,7 +2958,7 @@ def tune_model(
         and values to be iterated. When set to None it uses pre-defined tuning grid.
         Custom grids must be in a format supported by the chosen search library.
 
-    optimize: string, default = 'Accuracy'
+    optimize: str, default = 'Accuracy'
         Measure used to select the best model through hyperparameter tuning.
         Can be either a string representing a metric or a custom scorer object
         created using sklearn.make_scorer. 
@@ -2964,7 +2968,7 @@ def tune_model(
         custom_scorer can be passed to tune hyperparameters of the model. It must be
         created using sklearn.make_scorer. 
 
-    search_library: string, default = 'scikit-learn'
+    search_library: str, default = 'scikit-learn'
         The search library used to tune hyperparameters.
         Possible values:
 
@@ -2973,7 +2977,7 @@ def tune_model(
           `pip install tune-sklearn ray[tune]` https://github.com/ray-project/tune-sklearn
         - 'optuna' - Optuna. `pip install optuna` https://optuna.org/
 
-    search_algorithm: string, default = 'Random'
+    search_algorithm: str, default = 'Random'
         The search algorithm to be used for finding the best hyperparameters.
         Selection of search algorithms depends on the search_library parameter.
         Some search algorithms require additional libraries to be installed.
@@ -2996,7 +3000,7 @@ def tune_model(
         - 'Random' - randomized search
         - 'TPE' - Tree-structured Parzen Estimator search
 
-    early_stopping: bool or string or object, default = 'ASHA'
+    early_stopping: bool or str or object, default = 'ASHA'
         Use early stopping to stop fitting to a hyperparameter configuration 
         if it performs poorly. Ignored if search_library is `scikit-learn`, or
         if the estimator doesn't have partial_fit attribute.
@@ -3016,13 +3020,13 @@ def tune_model(
         Maximum number of epochs to run for each sampled configuration.
         Ignored if early_stopping is False or None.
 
-    choose_better: Boolean, default = False
+    choose_better: bool, default = False
         When set to set to True, base estimator is returned when the performance doesn't 
         improve by tune_model. This gurantees the returned object would perform atleast 
         equivalent to base estimator created using create_model or model returned by 
         compare_models.
 
-    verbose: Boolean, default = True
+    verbose: bool, default = True
         Score grid is not printed when verbose is set to False.
 
     **kwargs: 
@@ -3730,7 +3734,7 @@ def ensemble_model(
     ----------
     estimator : object, default = None
 
-    method: String, default = 'Bagging'
+    method: str, default = 'Bagging'
         Bagging method will create an ensemble meta-estimator that fits base 
         classifiers each on random subsets of the original dataset. The other
         available method is 'Boosting' which will create a meta-estimators by
@@ -3749,19 +3753,19 @@ def ensemble_model(
     round: integer, default = 4
         Number of decimal places the metrics in the score grid will be rounded to.
 
-    choose_better: Boolean, default = False
+    choose_better: bool, default = False
         When set to set to True, base estimator is returned when the metric doesn't 
         improve by ensemble_model. This gurantees the returned object would perform 
         atleast equivalent to base estimator created using create_model or model 
         returned by compare_models.
 
-    optimize: string, default = 'Accuracy'
+    optimize: str, default = 'Accuracy'
         Only used when choose_better is set to True. optimize parameter is used
         to compare emsembled model with base estimator. Values accepted in 
         optimize parameter are 'Accuracy', 'AUC', 'Recall', 'Precision', 'F1', 
         'Kappa', 'MCC'.
 
-    verbose: Boolean, default = True
+    verbose: bool, default = True
         Score grid is not printed when verbose is set to False.
 
     Returns
@@ -4218,7 +4222,7 @@ def blend_models(
 
     Parameters
     ----------
-    estimator_list : string ('All') or list of object, default = 'All'
+    estimator_list : str ('All') or list of object, default = 'All'
 
     fold: integer, default = 10
         Number of folds to be used in Kfold CV. Must be at least 2. 
@@ -4226,19 +4230,19 @@ def blend_models(
     round: integer, default = 4
         Number of decimal places the metrics in the score grid will be rounded to.
 
-    choose_better: Boolean, default = False
+    choose_better: bool, default = False
         When set to set to True, base estimator is returned when the metric doesn't 
         improve by ensemble_model. This gurantees the returned object would perform 
         atleast equivalent to base estimator created using create_model or model 
         returned by compare_models.
 
-    optimize: string, default = 'Accuracy'
+    optimize: str, default = 'Accuracy'
         Only used when choose_better is set to True. optimize parameter is used
         to compare emsembled model with base estimator. Values accepted in 
         optimize parameter are 'Accuracy', 'AUC', 'Recall', 'Precision', 'F1', 
         'Kappa', 'MCC'.
 
-    method: string, default = 'hard'
+    method: str, default = 'hard'
         'hard' uses predicted class labels for majority rule voting.'soft', predicts 
         the class label based on the argmax of the sums of the predicted probabilities, 
         which is recommended for an ensemble of well-calibrated classifiers. 
@@ -4247,10 +4251,10 @@ def blend_models(
         Sequence of weights (float or int) to weight the occurrences of predicted class labels (hard voting)
         or class probabilities before averaging (soft voting). Uses uniform weights if None.
 
-    turbo: Boolean, default = True
+    turbo: bool, default = True
         When turbo is set to True, it excludes estimator that uses Radial Kernel.
 
-    verbose: Boolean, default = True
+    verbose: bool, default = True
         Score grid is not printed when verbose is set to False.
 
     Returns
@@ -4300,7 +4304,7 @@ def blend_models(
     if estimator_list != "All":
         if type(estimator_list) is not list:
             raise ValueError(
-                "estimator_list parameter only accepts 'All' as string or list of trained models."
+                "estimator_list parameter only accepts 'All' as str or list of trained models."
             )
 
         for i in estimator_list:
@@ -4705,28 +4709,28 @@ def stack_models(
     round: integer, default = 4
         Number of decimal places the metrics in the score grid will be rounded to.
 
-    method: string, default = 'auto'
+    method: str, default = 'auto'
         - if ‘auto’, it will try to invoke, for each estimator, 'predict_proba', 'decision_function' or 'predict' in that order.
         - otherwise, one of 'predict_proba', 'decision_function' or 'predict'. If the method is not implemented by the estimator, it will raise an error.
 
-    restack: Boolean, default = True
+    restack: bool, default = True
         When restack is set to True, raw data will be exposed to meta model when
         making predictions, otherwise when False, only the predicted label or
         probabilities is passed to meta model when making final predictions.
 
-    choose_better: Boolean, default = False
+    choose_better: bool, default = False
         When set to set to True, base estimator is returned when the metric doesn't 
         improve by ensemble_model. This gurantees the returned object would perform 
         atleast equivalent to base estimator created using create_model or model 
         returned by compare_models.
 
-    optimize: string, default = 'Accuracy'
+    optimize: str, default = 'Accuracy'
         Only used when choose_better is set to True. optimize parameter is used
         to compare emsembled model with base estimator. Values accepted in 
         optimize parameter are 'Accuracy', 'AUC', 'Recall', 'Precision', 'F1', 
         'Kappa', 'MCC'.
     
-    verbose: Boolean, default = True
+    verbose: bool, default = True
         Score grid is not printed when verbose is set to False.
 
     Returns
@@ -5130,7 +5134,7 @@ def plot_model(
     estimator : object, default = none
         A trained model object should be passed as an estimator. 
 
-    plot : string, default = auc
+    plot : str, default = auc
         Enter abbreviation of type of plot. The current list of plots supported are (Plot - Name):
 
         * 'auc' - Area Under the Curve                 
@@ -5152,13 +5156,13 @@ def plot_model(
     scale: float, default = 1
         The resolution scale of the figure.
 
-    save: Boolean, default = False
+    save: bool, default = False
         When set to True, Plot is saved as a 'png' file in current working directory.
 
-    verbose: Boolean, default = True
+    verbose: bool, default = True
         Progress bar not shown when verbose set to False. 
 
-    system: Boolean, default = True
+    system: bool, default = True
         Must remain True all times. Only to be changed by internal functions.
 
     Returns
@@ -5857,10 +5861,10 @@ def interpret_model(
     estimator : object, default = none
         A trained tree based model object should be passed as an estimator. 
 
-    plot : string, default = 'summary'
+    plot : str, default = 'summary'
         Other available options are 'correlation' and 'reason'.
 
-    feature: string, default = None
+    feature: str, default = None
         This parameter is only needed when plot = 'correlation'. By default feature is 
         set to None which means the first column of the dataset will be used as a variable. 
         A feature parameter must be passed to change this.
@@ -6102,7 +6106,7 @@ def calibrate_model(
     ----------
     estimator : object
     
-    method : string, default = 'sigmoid'
+    method : str, default = 'sigmoid'
         The method to use for calibration. Can be 'sigmoid' which corresponds to Platt's 
         method or 'isotonic' which is a non-parametric approach. It is not advised to use
         isotonic calibration with too few calibration samples
@@ -6113,7 +6117,7 @@ def calibrate_model(
     round: integer, default = 4
         Number of decimal places the metrics in the score grid will be rounded to. 
 
-    verbose: Boolean, default = True
+    verbose: bool, default = True
         Score grid is not printed when verbose is set to False.
 
     Returns
@@ -6715,7 +6719,7 @@ def predict_model(
     round: integer, default = 4
         Number of decimal places the metrics in the score grid will be rounded to. 
 
-    verbose: Boolean, default = True
+    verbose: bool, default = True
         Holdout score grid is not printed when verbose is set to False.
 
     Returns
@@ -7193,8 +7197,8 @@ def deploy_model(model, model_name: str, authentication: dict, platform: str = "
     model : object
         A trained model object should be passed as an estimator. 
     
-    model_name : string
-        Name of model to be passed as a string.
+    model_name : str
+        Name of model to be passed as a str.
     
     authentication : dict
         Dictionary of applicable authentication tokens.
@@ -7208,7 +7212,7 @@ def deploy_model(model, model_name: str, authentication: dict, platform: str = "
         When platform = 'azure':
         {'container': 'pycaret-test'}
     
-    platform: string, default = 'aws'
+    platform: str, default = 'aws'
         Name of platform for deployment. Current available options are: 'aws', 'gcp' and 'azure'
 
     Returns
@@ -7253,14 +7257,14 @@ def save_model(model, model_name: str, model_only: bool = False, verbose: bool =
     model : object, default = none
         A trained model object should be passed as an estimator. 
     
-    model_name : string, default = none
+    model_name : str, default = none
         Name of pickle file to be passed as a string.
     
     model_only : bool, default = False
         When set to True, only trained model object is saved and all the 
         transformations are ignored.
 
-    verbose: Boolean, default = True
+    verbose: bool, default = True
         Success message is not printed when verbose is set to False.
 
     Returns
@@ -7295,10 +7299,10 @@ def load_model(
 
     Parameters
     ----------
-    model_name : string, default = none
+    model_name : str, default = none
         Name of pickle file to be passed as a string.
       
-    platform: string, default = None
+    platform: str, default = None
         Name of platform, if loading model from cloud. Current available options are:
         'aws', 'gcp' and 'azure'.
     
@@ -7314,7 +7318,7 @@ def load_model(
         When platform = 'azure':
         {'container': 'pycaret-test'}
     
-    verbose: Boolean, default = True
+    verbose: bool, default = True
         Success message is not printed when verbose is set to False.
 
     Returns
@@ -7338,7 +7342,7 @@ def automl(optimize: str = "Accuracy", use_holdout: bool = False) -> Any:
 
     Parameters
     ----------
-    optimize : string, default = 'Accuracy'
+    optimize : str, default = 'Accuracy'
         Other values you can pass in optimize param are 'AUC', 'Recall', 'Precision',
         'F1', 'Kappa', and 'MCC'.
 
@@ -7408,7 +7412,7 @@ def pull(pop=False) -> pd.DataFrame:  # added in pycaret==2.2.0
 
     Parameters
     ----------
-    pop : Boolean, default = False
+    pop : bool, default = False
         If true, will pop (remove) the returned dataframe from the
         display container.
 
@@ -7437,15 +7441,15 @@ def models(
 
     Parameters
     ----------
-    type : string, default = None
+    type : str, default = None
         - linear : filters and only return linear models
         - tree : filters and only return tree based models
         - ensemble : filters and only return ensemble models
     
-    internal: Boolean, default = False
+    internal: bool, default = False
         If True, will return extra columns and rows used internally.
 
-    force_regenerate: Boolean, default = False
+    force_regenerate: bool, default = False
         If True, will force the DataFrame to be regenerated,
         instead of using a cached version.
 
@@ -7492,7 +7496,7 @@ def models(
 
 
 def get_metrics(
-    force_regenerate: bool = False, include_custom: bool = True
+    force_regenerate: bool = False, reset: bool = False, include_custom: bool = True
 ) -> pd.DataFrame:
     """
     Returns table of metrics available.
@@ -7506,10 +7510,13 @@ def get_metrics(
 
     Parameters
     ----------
-    force_regenerate: Boolean, default = False
-        If True, will force the DataFrame to be regenerated,
-        instead of using a cached version. This will also reset
-        all changes made using add_metric() and get_metric().
+    force_regenerate: bool, default = False
+        If True, will return a regenerated DataFrame,
+        instead of using a cached version.
+    reset: bool, default = False
+        If True, will reset all changes made using add_metric() and get_metric().
+    include_custom: bool, default = True
+        Whether to include user added (custom) metrics or not.
 
     Returns
     -------
@@ -7517,7 +7524,7 @@ def get_metrics(
 
     """
 
-    if not force_regenerate:
+    if not force_regenerate and not reset:
         try:
             if not include_custom:
                 return all_metrics[all_metrics["Custom"] == False]
@@ -7525,105 +7532,26 @@ def get_metrics(
         except:
             pass
 
-    from sklearn import metrics
-
     np.random.seed(seed)
 
-    columns = [
-        "ID",
-        "Name",
-        "Display Name",
-        "Scorer",
-        "Score Function",
-        "Target",
-        "Args",
-        "Multiclass",
-        "Custom",
-    ]
-    rows = [
-        (
-            "acc",
-            "Accuracy",
-            "Accuracy",
-            "accuracy",
-            metrics.accuracy_score,
-            "pred",
-            {},
-            True,
-            False,
-        ),
-        ("auc", "AUC", "AUC", "roc_auc", metrics.roc_auc_score, "pred_prob", {}, False),
-        (
-            "recall",
-            "Recall",
-            "Recall",
-            metrics.make_scorer(metrics.recall_score, average="macro")
-            if _is_multiclass()
-            else "recall",
-            metrics.recall_score,
-            "pred",
-            {"average": "macro"} if _is_multiclass() else {},
-            True,
-            False,
-        ),
-        (
-            "precision",
-            "Precision",
-            "Prec.",
-            metrics.make_scorer(metrics.precision_score, average="weighted")
-            if _is_multiclass()
-            else "precision",
-            metrics.precision_score,
-            "pred",
-            {"average": "weighted"} if _is_multiclass() else {},
-            True,
-            False,
-        ),
-        (
-            "f1",
-            "F1",
-            "F1",
-            metrics.make_scorer(metrics.f1_score, average="weighted")
-            if _is_multiclass()
-            else "f1",
-            metrics.f1_score,
-            "pred",
-            {"average": "weighted"} if _is_multiclass() else {},
-            True,
-            False,
-        ),
-        (
-            "kappa",
-            "Kappa",
-            "Kappa",
-            metrics.make_scorer(metrics.cohen_kappa_score),
-            metrics.cohen_kappa_score,
-            "pred",
-            {},
-            True,
-            False,
-        ),
-        (
-            "mcc",
-            "MCC",
-            "MCC",
-            "roc_auc"
-            if _is_multiclass()
-            else metrics.make_scorer(metrics.matthews_corrcoef),
-            metrics.matthews_corrcoef,
-            "pred",
-            {},
-            True,
-            False,
-        ),
-        ("tt", "TT", "TT (Sec)", None, None, None, None, True, False,),
-    ]
-    df = pd.DataFrame(rows)
-    df.columns = columns
+    metric_containers = get_all_metric_containers(globals())
+    rows = [v.get_dict() for k, v in metric_containers.items()]
 
-    df.set_index("ID", inplace=True)
+    # Training time needs to be at the end
+    if not rows[-1]["ID"] == "tt":
+        tt_row = next(x for x in rows if x["ID"] == "tt")
+        rows = [x for x in rows if not x["ID"] == "tt"]
+        rows.append(tt_row)
+
+    df = pd.DataFrame(rows)
+    df.set_index("ID", inplace=True, drop=True)
+
     if not include_custom:
         df = df[df["Custom"] == False]
+
+    if reset:
+        global all_metrics
+        all_metrics = df
     return df
 
 
@@ -7651,7 +7579,7 @@ def _get_metric(name_or_id: str):
 def add_metric(
     id: str,
     name: str,
-    score_func,
+    score_func_type: type,
     scorer=None,
     target: str = "pred",
     args: dict = {},
@@ -7668,22 +7596,23 @@ def add_metric(
     name: str
         Display name of the metric.
 
-    score_func: callable
-        Score function (or loss function) with signature score_func(y, y_pred, **kwargs).
+    score_func_type: type
+        Type of score function (or loss function) with signature score_func(y, y_pred, **kwargs).
 
     scorer: sklearn.metrics.Scorer, default = None
         The Scorer to be used in tuning and cross validation. If None, one will be created
-        from score_func.
+        from score_func_type and args.
 
     target: str, default = 'pred'
         The target of the score function.
         - 'pred' for the prediction table
         - 'pred_proba' for pred_proba
+        - 'threshold' for decision_function or predict_proba
 
     args: dict, default = {}
         Arguments to be passed to score function.
 
-    multiclass: Boolean, default = True
+    multiclass: bool, default = True
         Whether the metric supports multiclass problems.
 
     Notes
@@ -7701,24 +7630,19 @@ def add_metric(
     if not "all_metrics" in globals():
         raise ValueError("setup() needs to be ran first.")
 
-    from sklearn import metrics
+    global all_metrics
 
-    np.random.seed(seed)
+    if id in all_metrics.index:
+        raise ValueError("id already present in metrics dataframe.")
 
-    new_metric = {
-        "Name": name,
-        "Display Name": name,
-        "Scorer": scorer if scorer else metrics.make_scorer(score_func),
-        "Score Function": score_func,
-        "Target": target,
-        "Args": args,
-        "Multiclass": multiclass,
-        "Custom": True,
-    }
+    new_metric = ClassificationMetricContainer(
+        id, name, score_func_type, scorer, target, args, name, bool(multiclass), True
+    )
+
+    new_metric = new_metric.get_dict()
 
     new_metric = pd.Series(new_metric, name=id.replace(" ", "_"))
 
-    global all_metrics
     last_row = all_metrics.iloc[-1]
     all_metrics.drop(all_metrics.index[-1], inplace=True)
     all_metrics = all_metrics.append(new_metric)
@@ -7772,7 +7696,7 @@ def get_logs(experiment_name: str = None, save: bool = False) -> pd.DataFrame:
 
     Parameters
     ----------
-    experiment_name : string, default = None
+    experiment_name : str, default = None
         When set to None current active run is used.
 
     save : bool, default = False

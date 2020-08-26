@@ -1,4 +1,4 @@
-# Module: models.base_model
+# Module: containers.models.base_model
 # Author: Moez Ali <moez.ali@queensu.ca> and Antoni Baum (Yard1) <antoni.baum@protonmail.com>
 # License: MIT
 
@@ -8,12 +8,12 @@
 # `ClassifierContainer` as a base, set all of the required parameters in the `__init__` and then call `super().__init__`
 # to complete the process. Refer to the existing classes for examples.
 
-import inspect
 import logging
 from typing import Union, Dict, Any
 from pycaret.containers.models.base_model import ModelContainer
 from pycaret.internal.utils import param_grid_to_lists, get_logger
 from pycaret.internal.distributions import *
+import pycaret.containers.base_container
 import numpy as np
 
 
@@ -67,25 +67,25 @@ class ClassifierContainer(ModelContainer):
         Full display name.
     class_def : type
         The class used for the model, eg. LogisticRegression.
-    is_turbo : bool, default = True
+    is_turbo : bool
         Should the model be used with 'turbo = True' in compare_models().
-    args : dict, default = {}
+    args : dict
         The arguments to always pass to constructor when initializing object of class_def class.
-    is_special : bool, default = False
+    is_special : bool
         Is the model special (not intended to be used on its own, eg. VotingClassifier).
-    tune_grid : dict of str : list, default = {}
+    tune_grid : dict of str : list
         The hyperparameters tuning grid for random and grid search.
-    tune_distribution : dict of str : Distribution, default = {}
+    tune_distribution : dict of str : Distribution
         The hyperparameters tuning grid for other types of searches.
-    tune_args : dict, default = {}
+    tune_args : dict
         The arguments to always pass to the tuner.
-    shap : bool or str, default = False
+    shap : bool or str
         If False, SHAP is not supported. Otherwise, one of 'type1', 'type2' to determine SHAP type.
-    is_gpu_enabled : bool, default = None
+    is_gpu_enabled : bool
         If None, will try to automatically determine.
-    is_boosting_supported : bool, default = None
+    is_boosting_supported : bool
         If None, will try to automatically determine.
-    is_soft_voting_supported : bool, default = None
+    is_soft_voting_supported : bool
         If None, will try to automatically determine.
 
     """
@@ -1153,13 +1153,7 @@ class CalibratedClassifierCVContainer(ClassifierContainer):
 
 
 def get_all_model_containers(globals_dict: dict) -> Dict[str, ClassifierContainer]:
-    model_container_classes = [
-        obj
-        for name, obj in globals().items()
-        if inspect.isclass(obj) and ClassifierContainer in obj.__bases__
-    ]
-
-    model_containers = [obj(globals_dict) for obj in model_container_classes]
-
-    return {container.id: container for container in model_containers}
+    return pycaret.containers.base_container.get_all_containers(
+        globals(), globals_dict, ClassifierContainer
+    )
 
