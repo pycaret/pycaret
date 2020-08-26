@@ -4448,7 +4448,7 @@ def tune_model(estimator,
             param_grid = {'learning_rate': [0.01, 0.02, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1], 
                         'n_estimators':[10, 30, 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000], 
                         'subsample': [0.1, 0.2, 0.3, 0.5, 0.7, 0.9, 1],
-                        'max_depth': [int(x) for x in np.linspace(10, 110, num = 11)], 
+                        'max_depth': [int(x) for x in np.linspace(1, 11, num = 1)], 
                         'colsample_bytree': [0.5, 0.7, 0.9, 1],
                         'min_child_weight': [1, 2, 3, 4]
                         }

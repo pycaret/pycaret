@@ -43,7 +43,7 @@ def setup(
     high_cardinality_features: List[str] = None,
     high_cardinality_method: str = "frequency",
     numeric_features: List[str] = None,
-    numeric_imputation: str = "mean",
+    numeric_imputation: str = "mean",  # method 'zero' added in pycaret==2.1
     date_features: List[str] = None,
     ignore_features: List[str] = None,
     normalize: bool = False,
@@ -63,7 +63,7 @@ def setup(
     outliers_threshold: float = 0.05,
     remove_multicollinearity: bool = False,
     multicollinearity_threshold: float = 0.9,
-    remove_perfect_collinearity: bool = False,  # added in pycaret==2.0.0
+    remove_perfect_collinearity: bool = False,
     create_clusters: bool = False,
     cluster_iter: int = 20,
     polynomial_features: bool = False,
@@ -74,25 +74,25 @@ def setup(
     group_names: List[str] = None,
     feature_selection: bool = False,
     feature_selection_threshold: float = 0.8,
-    feature_selection_method: str = "classic",
+    feature_selection_method: str = "classic",  # boruta algorithm added in pycaret==2.1
     feature_interaction: bool = False,
     feature_ratio: bool = False,
     interaction_threshold: float = 0.01,
-    fix_imbalance: bool = False,  # added in pycaret==2.0.0
-    fix_imbalance_method: Any = None,  # added in pycaret==2.0.0
-    data_split_shuffle: bool = True,  # added in pycaret==2.0.0
-    folds_shuffle: bool = False,  # added in pycaret==2.0.0
-    n_jobs: int = -1,  # added in pycaret==2.0.0
+    fix_imbalance: bool = False,
+    fix_imbalance_method: Any = None,
+    data_split_shuffle: bool = True,
+    folds_shuffle: bool = False,
+    n_jobs: int = -1,
     use_gpu: bool = False,  # added in pycaret==2.1
-    html: bool = True,  # added in pycaret==2.0.0
+    html: bool = True,
     session_id: int = None,
-    log_experiment: bool = False,  # added in pycaret==2.0.0
-    experiment_name: str = None,  # added in pycaret==2.0.0
-    log_plots: bool = False,  # added in pycaret==2.0.0
-    log_profile: bool = False,  # added in pycaret==2.0.0
-    log_data: bool = False,  # added in pycaret==2.0.0
+    log_experiment: bool = False,
+    experiment_name: str = None,
+    log_plots: bool = False,
+    log_profile: bool = False,
+    log_data: bool = False,
     silent: bool = False,
-    verbose: bool = True,  # added in pycaret==2.0.0
+    verbose: bool = True,
     profile: bool = False,
     display: Display = None,
 ):
@@ -1754,17 +1754,17 @@ def setup(
 
 
 def compare_models(
-    include: list = None,  # added in pycaret==2.0.0
-    exclude: List[str] = None,
+    include: list = None,  # changed whitelist to include in pycaret==2.1
+    exclude: List[str] = None,  # changed blacklist to exclude in pycaret==2.1
     fold: int = 10,
     round: int = 4,
     sort: str = "Accuracy",
-    n_select: int = 1,  # added in pycaret==2.0.0
+    n_select: int = 1,
     budget_time: float = 0,  # added in pycaret==2.1.0
     turbo: bool = True,
     verbose: bool = True,
     display: Display = None,
-) -> Any:  # added in pycaret==2.0.0
+) -> Any:
 
     """
     This function train all the models available in the model library and scores them 
@@ -2275,16 +2275,16 @@ def create_model(
     estimator=None,
     fold: int = 10,
     round: int = 4,
-    cross_validation: bool = True,  # added in pycaret==2.0.0
+    cross_validation: bool = True,
     budget_time: float = 0,
     verbose: bool = True,
-    system: bool = True,  # added in pycaret==2.0.0
+    system: bool = True,
     return_fit_time: bool = False,  # added in pycaret==2.2.0
     X_train_data: pd.DataFrame = None,  # added in pycaret==2.2.0
     Y_train_data: pd.DataFrame = None,  # added in pycaret==2.2.0
     display: Display = None,  # added in pycaret==2.2.0
     **kwargs,
-) -> Any:  # added in pycaret==2.0.0
+) -> Any:
 
     """  
     This function creates a model and scores it using Stratified Cross Validation. 
@@ -2903,14 +2903,14 @@ def tune_model(
     fold: int = 10,
     round: int = 4,
     n_iter: int = 10,
-    custom_grid: dict = None,  # added in pycaret==2.0.0
+    custom_grid: dict = None,
     optimize: str = "Accuracy",
     custom_scorer=None,  # added in pycaret==2.1 - depreciated
     search_library: str = "scikit-learn",
     search_algorithm: str = "Random",
     early_stopping: Any = "ASHA",
     early_stopping_max_iters: int = 10,
-    choose_better: bool = False,  # added in pycaret==2.0.0
+    choose_better: bool = False,
     verbose: bool = True,
     display: Display = None,
     **kwargs,
@@ -3701,8 +3701,8 @@ def ensemble_model(
     fold: int = 10,
     n_estimators: int = 10,
     round: int = 4,
-    choose_better: bool = False,  # added in pycaret==2.0.0
-    optimize: str = "Accuracy",  # added in pycaret==2.0.0
+    choose_better: bool = False,
+    optimize: str = "Accuracy",
     verbose: bool = True,
     display: Display = None,  # added in pycaret==2.2.0
 ) -> Any:
@@ -4177,8 +4177,8 @@ def blend_models(
     estimator_list="All",
     fold: int = 10,
     round: int = 4,
-    choose_better: bool = False,  # added in pycaret==2.0.0
-    optimize: str = "Accuracy",  # added in pycaret==2.0.0
+    choose_better: bool = False,
+    optimize: str = "Accuracy",
     method: str = "hard",
     weights: list = None,  # added in pycaret==2.2.0
     turbo: bool = True,
@@ -4657,8 +4657,8 @@ def stack_models(
     round: int = 4,
     method: str = "auto",
     restack: bool = True,
-    choose_better: bool = False,  # added in pycaret==2.0.0
-    optimize: str = "Accuracy",  # added in pycaret==2.0.0
+    choose_better: bool = False,
+    optimize: str = "Accuracy",
     verbose: bool = True,
     display: Display = None,
 ) -> Any:
@@ -5100,12 +5100,12 @@ def stack_models(
 def plot_model(
     estimator,
     plot: str = "auc",
-    scale=1,  # added in pycaret 2.1.0
-    save: bool = False,  # added in pycaret 2.0.0
-    verbose: bool = True,  # added in pycaret 2.0.0
+    scale=1,  # added in pycaret==2.1.0
+    save: bool = False,
+    verbose: bool = True,
     system: bool = True,
     display: Display = None,  # added in pycaret==2.2.0
-):  # added in pycaret 2.0.0
+):
 
     """
     This function takes a trained model object and returns a plot based on the
@@ -6682,7 +6682,7 @@ def predict_model(
     round: int = 4,  # added in pycaret==2.2.0
     verbose: bool = True,
     display: Display = None,  # added in pycaret==2.2.0
-) -> pd.DataFrame:  # added in pycaret==2.0.0
+) -> pd.DataFrame:
 
     """
     This function is used to predict label and probability score on the new dataset
@@ -7133,7 +7133,12 @@ def finalize_model(estimator, display=None) -> Any:  # added in pycaret==2.2.0
     return model_final
 
 
-def deploy_model(model, model_name: str, authentication: dict, platform: str = "aws"):
+def deploy_model(
+    model,
+    model_name: str,
+    authentication: dict,
+    platform: str = "aws",  # added gcp and azure support in pycaret==2.1
+):
 
     """
     (In Preview)
