@@ -638,8 +638,7 @@ def setup(
 
     # ordinal features check
     if ordinal_features is not None:
-        data_cols = data.columns
-        data_cols = data_cols.drop(target)
+        data_cols = data.columns.drop(target)
         ord_keys = ordinal_features.keys()
 
         for i in ord_keys:
@@ -671,8 +670,7 @@ def setup(
             )
 
     if high_cardinality_features is not None:
-        data_cols = data.columns
-        data_cols = data_cols.drop(target)
+        data_cols = data.columns.drop(target)
         for i in high_cardinality_features:
             if i not in data_cols:
                 raise ValueError(
@@ -1039,10 +1037,7 @@ def setup(
     data_before_preprocess = data.copy()
 
     # generate seed to be used globally
-    if session_id is None:
-        seed = random.randint(150, 9000)
-    else:
-        seed = session_id
+    seed = random.randint(150, 9000) if session_id is None else session_id
 
     np.random.seed(seed)
 
@@ -1058,28 +1053,16 @@ def setup(
     logger.info("Declaring preprocessing parameters")
 
     # categorical features
-    if categorical_features is None:
-        cat_features_pass = []
-    else:
-        cat_features_pass = categorical_features
+    cat_features_pass = categorical_features or []
 
     # numeric features
-    if numeric_features is None:
-        numeric_features_pass = []
-    else:
-        numeric_features_pass = numeric_features
+    numeric_features_pass = numeric_features or []
 
     # drop features
-    if ignore_features is None:
-        ignore_features_pass = []
-    else:
-        ignore_features_pass = ignore_features
+    ignore_features_pass = ignore_features or []
 
     # date features
-    if date_features is None:
-        date_features_pass = []
-    else:
-        date_features_pass = date_features
+    date_features_pass = date_features or []
 
     # categorical imputation strategy
     if categorical_imputation == "constant":
