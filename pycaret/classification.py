@@ -2,7 +2,7 @@
 # Author: Moez Ali <moez.ali@queensu.ca>
 # License: MIT
 # Release: PyCaret 2.1
-# Last modified : 24/08/2020
+# Last modified : 26/08/2020
 
 def setup(data,  
           target,   
@@ -86,7 +86,8 @@ def setup(data,
     Parameters
     ----------
     data : pandas.DataFrame
-        Shape (n_samples, n_features) where n_samples is the number of samples and n_features is the number of features.
+        Shape (n_samples, n_features) where n_samples is the number of samples and 
+        n_features is the number of features.
 
     target: string
         Name of the target column to be passed in as a string. The target variable could 
@@ -183,9 +184,9 @@ def setup(data,
                     absolute value of each feature will be 1.0. It does not shift/center 
                     the data, and thus does not destroy any sparsity.
         
-        'robust'    : scales and translates each feature according to the Interquartile range.
-                    When the dataset contains outliers, robust scaler often gives better
-                    results.
+        'robust'    : scales and translates each feature according to the Interquartile 
+                    range. When the dataset contains outliers, robust scaler often gives 
+                    better results.
     
     transformation: bool, default = False
         When set to True, a power transformation is applied to make the data more normal /
@@ -197,8 +198,8 @@ def setup(data,
         Defines the method for transformation. By default, the transformation method is set
         to 'yeo-johnson'. The other available option is 'quantile' transformation. Both 
         the transformation transforms the feature set to follow a Gaussian-like or normal
-        distribution. Note that the quantile transformer is non-linear and may distort linear 
-        correlations between variables measured at the same scale.
+        distribution. Note that the quantile transformer is non-linear and may distort 
+        linear correlations between variables measured at the same scale.
     
     handle_unknown_categorical: bool, default = True
         When set to True, unknown categorical levels in new / unseen data are replaced by
@@ -234,18 +235,18 @@ def setup(data,
         less than the original number of features in the dataset.
     
     ignore_low_variance: bool, default = False
-        When set to True, all categorical features with statistically insignificant variances 
-        are removed from the dataset. The variance is calculated using the ratio of unique 
+        When set to True, all categorical features with insignificant variances are 
+        removed from the dataset. The variance is calculated using the ratio of unique 
         values to the number of samples, and the ratio of the most common value to the 
         frequency of the second most common value.
     
     combine_rare_levels: bool, default = False
         When set to True, all levels in categorical features below the threshold defined 
-        in rare_level_threshold param are combined together as a single level. There must be 
-        atleast two levels under the threshold for this to take effect. rare_level_threshold
-        represents the percentile distribution of level frequency. Generally, this technique 
-        is applied to limit a sparse matrix caused by high numbers of levels in categorical 
-        features. 
+        in rare_level_threshold param are combined together as a single level. There must 
+        be atleast two levels under the threshold for this to take effect. 
+        rare_level_threshold represents the percentile distribution of level frequency. 
+        Generally, this technique is applied to limit a sparse matrix caused by high 
+        numbers of levels in categorical features. 
     
     rare_level_threshold: float, default = 0.1
         Percentile distribution below which rare categories are combined. Only comes into
@@ -314,17 +315,18 @@ def setup(data,
         are dropped before further processing.
     
     group_features: list or list of list, default = None
-        When a dataset contains features that have related characteristics, the group_features
+        When a dataset contains features that have related characteristics, group_features
         param can be used for statistical feature extraction. For example, if a dataset has 
-        numeric features that are related with each other (i.e 'Col1', 'Col2', 'Col3'), a list 
-        containing the column names can be passed under group_features to extract statistical 
-        information such as the mean, median, mode and standard deviation.
+        numeric features that are related with each other (i.e 'Col1', 'Col2', 'Col3'), a 
+        list containing the column names can be passed under group_features to extract 
+        statistical information such as the mean, median, mode and standard deviation.
     
     group_names: list, default = None
-        When group_features is passed, a name of the group can be passed into the group_names 
-        param as a list containing strings. The length of a group_names list must equal to the 
-        length  of group_features. When the length doesn't match or the name is not passed, new 
-        features are sequentially named such as group_1, group_2 etc.
+        When group_features is passed, a name of the group can be passed into the 
+        group_names param as a list containing strings. The length of a group_names 
+        list must equal to the length  of group_features. When the length doesn't 
+        match or the name is not passed, new features are sequentially named such as 
+        group_1, group_2 etc.
     
     feature_selection: bool, default = False
         When set to True, a subset of features are selected using a combination of various
@@ -339,29 +341,29 @@ def setup(data,
 
     feature_selection_threshold: float, default = 0.8
         Threshold used for feature selection (including newly created polynomial features).
-        A higher value will result in a higher feature space. It is recommended to do multiple
-        trials with different values of feature_selection_threshold specially in cases where 
-        polynomial_features and feature_interaction are used. Setting a very low value may be 
-        efficient but could result in under-fitting.
+        A higher value will result in a higher feature space. It is recommended to do 
+        multiple trials with different values of feature_selection_threshold specially in 
+        cases where polynomial_features and feature_interaction are used. Setting a very 
+        low value may be efficient but could result in under-fitting.
     
     feature_selection_method: str, default = 'classic'
         Can be either 'classic' or 'boruta'. Selects the algorithm responsible for
-        choosing a subset of features. For the 'classic' selection method, PyCaret will use various
-        permutation importance techniques. For the 'boruta' algorithm, PyCaret will create 
-        an instance of boosted trees model, which will iterate with permutation over all
-        features and choose the best ones based on the distributions of feature importance.
-        More in: https://pdfs.semanticscholar.org/85a8/b1d9c52f9f795fda7e12376e751526953f38.pdf%3E
+        choosing a subset of features. For the 'classic' selection method, PyCaret will 
+        use various permutation importance techniques. For the 'boruta' algorithm, PyCaret
+        will create an instance of boosted trees model, which will iterate with permutation 
+        over all features and choose the best ones based on the distributions of feature 
+        importance.
     
     feature_interaction: bool, default = False 
-        When set to True, it will create new features by interacting (a * b) for all numeric 
-        variables in the dataset including polynomial and trigonometric features (if created). 
-        This feature is not scalable and may not work as expected on datasets with large 
-        feature space.
+        When set to True, it will create new features by interacting (a * b) for all 
+        numeric variables in the dataset including polynomial and trigonometric features 
+        (if created). This feature is not scalable and may not work as expected on datasets
+        with large feature space.
     
     feature_ratio: bool, default = False
-        When set to True, it will create new features by calculating the ratios (a / b) of all 
-        numeric variables in the dataset. This feature is not scalable and may not work as 
-        expected on datasets with large feature space.
+        When set to True, it will create new features by calculating the ratios (a / b) 
+        of all numeric variables in the dataset. This feature is not scalable and may not 
+        work as expected on datasets with large feature space.
     
     interaction_threshold: bool, default = 0.01
         Similar to polynomial_threshold, It is used to compress a sparse matrix of newly 
@@ -376,9 +378,9 @@ def setup(data,
         Technique) is applied by default to create synthetic datapoints for minority class.
 
     fix_imbalance_method: obj, default = None
-        When fix_imbalance is set to True and fix_imbalance_method is None, 'smote' is applied 
-        by default to oversample minority class during cross validation. This parameter
-        accepts any module from 'imblearn' that supports 'fit_resample' method.
+        When fix_imbalance is set to True and fix_imbalance_method is None, 'smote' is 
+        applied by default to oversample minority class during cross validation. This 
+        parameter accepts any module from 'imblearn' that supports 'fit_resample' method.
 
     data_split_shuffle: bool, default = True
         If set to False, prevents shuffling of rows when splitting data.
@@ -388,8 +390,8 @@ def setup(data,
 
     n_jobs: int, default = -1
         The number of jobs to run in parallel (for functions that supports parallel 
-        processing) -1 means using all processors. To run all functions on single processor 
-        set n_jobs to None.
+        processing) -1 means using all processors. To run all functions on single 
+        processor set n_jobs to None.
 
     use_gpu: bool, default = False
         If set to True, algorithms that supports gpu are trained using gpu.
@@ -415,16 +417,16 @@ def setup(data,
         it is set to False. 
 
     log_profile: bool, default = False
-        When set to True, data profile is also logged on MLflow as a html file. By default,
-        it is set to False. 
+        When set to True, data profile is also logged on MLflow as a html file. 
+        By default, it is set to False. 
 
     log_data: bool, default = False
         When set to True, train and test dataset are logged as csv. 
 
     silent: bool, default = False
-        When set to True, confirmation of data types is not required. All preprocessing will 
-        be performed assuming automatically inferred data types. Not recommended for direct use 
-        except for established pipelines.
+        When set to True, confirmation of data types is not required. All preprocessing 
+        will be performed assuming automatically inferred data types. Not recommended 
+        for direct use except for established pipelines.
     
     verbose: Boolean, default = True
         Information grid is not printed when verbose is set to False.
@@ -1875,8 +1877,8 @@ def compare_models(exclude = None, #changed blacklist to exclude in pycaret==2.1
         for example, n_select = -3 means bottom 3 models.
 
     budget_time: int or float, default = 0
-        If set above 0, will terminate execution of the function after budget_time minutes have
-        passed and return results up to that point.
+        If set above 0, will terminate execution of the function after budget_time 
+        minutes have passed and return results up to that point.
 
     turbo: Boolean, default = True
         When turbo is set to True, it excludes estimators that have longer
@@ -2781,8 +2783,9 @@ def create_model(estimator = None,
     ----------
     estimator : string / object, default = None
         Enter ID of the estimators available in model library or pass an untrained model 
-        object consistent with fit / predict API to train and evaluate model. All estimators 
-        support binary or multiclass problem. List of estimators in model library (ID - Name):
+        object consistent with fit / predict API to train and evaluate model. All 
+        estimators support binary or multiclass problem. List of estimators in model 
+        library (ID - Name):
 
         * 'lr' - Logistic Regression             
         * 'knn' - K Nearest Neighbour            
@@ -3729,7 +3732,8 @@ def tune_model(estimator = None,
 
     n_iter: integer, default = 10
         Number of iterations within the Random Grid Search. For every iteration, 
-        the model randomly selects one value from the pre-defined grid of hyperparameters.
+        the model randomly selects one value from the pre-defined grid of 
+        hyperparameters.
 
     custom_grid: dictionary, default = None
         To use custom hyperparameters for tuning pass a dictionary with parameter name
@@ -5879,9 +5883,7 @@ def blend_models(estimator_list = 'All',
     - When estimator_list is set to 'All' and method is forced to 'soft', estimators
       that doesnt support the predict_proba function will be dropped from the estimator
       list.
-      
-    - CatBoost Classifier not supported in blend_models().
-    
+          
     - If target variable is multiclass (more than 2 classes), AUC will be returned as
       zero (0.0).
         
@@ -6716,8 +6718,10 @@ def stack_models(estimator_list,
         Number of decimal places the metrics in the score grid will be rounded to.
 
     method: string, default = 'auto'
-        - if ‘auto’, it will try to invoke, for each estimator, 'predict_proba', 'decision_function' or 'predict' in that order.
-        - otherwise, one of 'predict_proba', 'decision_function' or 'predict'. If the method is not implemented by the estimator, it will raise an error.
+        - if ‘auto’, it will try to invoke, for each estimator, 'predict_proba', 
+        'decision_function' or 'predict' in that order.
+        - otherwise, one of 'predict_proba', 'decision_function' or 'predict'. 
+        If the method is not implemented by the estimator, it will raise an error.
 
     restack: Boolean, default = True
         When restack is set to True, raw data will be exposed to meta model when
@@ -6752,7 +6756,8 @@ def stack_models(estimator_list,
 
     Warnings
     --------
-    -  If target variable is multiclass (more than 2 classes), AUC will be returned as zero (0.0).
+    -  If target variable is multiclass (more than 2 classes), AUC will be returned 
+       as zero (0.0).
 
     """
     
@@ -8194,15 +8199,15 @@ def interpret_model(estimator,
 
     feature: string, default = None
         This parameter is only needed when plot = 'correlation'. By default feature is 
-        set to None which means the first column of the dataset will be used as a variable. 
-        A feature parameter must be passed to change this.
+        set to None which means the first column of the dataset will be used as a 
+        variable. A feature parameter must be passed to change this.
 
     observation: integer, default = None
-        This parameter only comes into effect when plot is set to 'reason'. If no observation
-        number is provided, it will return an analysis of all observations with the option
-        to select the feature on x and y axes through drop down interactivity. For analysis at
-        the sample level, an observation parameter must be passed with the index value of the
-        observation in test / hold-out set. 
+        This parameter only comes into effect when plot is set to 'reason'. If no 
+        observation number is provided, it will return an analysis of all observations 
+        with the option to select the feature on x and y axes through drop down 
+        interactivity. For analysis at the sample level, an observation parameter must
+        be passed with the index value of the observation in test / hold-out set. 
 
     **kwargs: 
         Additional keyword arguments to pass to the plot.
@@ -9392,13 +9397,14 @@ def predict_model(estimator,
         A trained model object / pipeline should be passed as an estimator. 
      
     data : pandas.DataFrame
-        Shape (n_samples, n_features) where n_samples is the number of samples and n_features is the number of features.
-        All features used during training must be present in the new dataset.
+        Shape (n_samples, n_features) where n_samples is the number of samples 
+        and n_features is the number of features. All features used during training 
+        must be present in the new dataset.
     
     probability_threshold : float, default = None
-        Threshold used to convert probability values into binary outcome. By default the
-        probability threshold for all binary classifiers is 0.5 (50%). This can be changed
-        using probability_threshold param.
+        Threshold used to convert probability values into binary outcome. By default 
+        the probability threshold for all binary classifiers is 0.5 (50%). This can be 
+        changed using probability_threshold param.
 
     encoded_labels: Boolean, default = False
         If True, will return labels encoded as an integer.
@@ -9911,10 +9917,10 @@ def deploy_model(model,
 
     Platform: GCP
     --------------
-    Before deploying a model to Google Cloud Platform (GCP), project must be created either
-    using command line or GCP console. Once project is created, you must create a service 
-    account and download the service account key as a JSON file, which is then used to 
-    set environment variable. 
+    Before deploying a model to Google Cloud Platform (GCP), project must be created 
+    either using command line or GCP console. Once project is created, you must create 
+    a service account and download the service account key as a JSON file, which is 
+    then used to set environment variable. 
 
     Learn more : https://cloud.google.com/docs/authentication/production
 
@@ -10889,6 +10895,8 @@ def get_system_logs():
 
 def _create_bucket_gcp(project_name, bucket_name):
     """
+    (INTERNAL)
+
     Creates a bucket on Google Cloud Platform if it does not exists already
 
     Example
@@ -10923,6 +10931,7 @@ def _create_bucket_gcp(project_name, bucket_name):
 def _upload_blob_gcp(project_name, bucket_name, source_file_name, destination_blob_name):
 
     """
+    (INTERNAL)
     Upload blob to GCP storage bucket
 
     Example
@@ -10967,6 +10976,7 @@ def _upload_blob_gcp(project_name, bucket_name, source_file_name, destination_bl
 
 def _download_blob_gcp(project_name, bucket_name, source_blob_name, destination_file_name):
     """
+    (INTERNAL)
     Download a blob from GCP storage bucket
 
     Example
@@ -11015,6 +11025,7 @@ def _download_blob_gcp(project_name, bucket_name, source_blob_name, destination_
 
 def _create_container_azure(container_name):
     """
+    (INTERNAL)
     Creates a storage container on Azure Platform. gets the connection string from the environment variables.
 
     Example
@@ -11041,6 +11052,7 @@ def _create_container_azure(container_name):
 
 def _upload_blob_azure(container_name, source_file_name, destination_blob_name):
     """
+    (INTERNAL)
     Upload blob to Azure storage  container
 
     Example
@@ -11078,6 +11090,7 @@ def _upload_blob_azure(container_name, source_file_name, destination_blob_name):
 
 def _download_blob_azure(container_name, source_blob_name, destination_file_name):
     """
+    (INTERNAL)
     Download blob from Azure storage  container
 
     Example
