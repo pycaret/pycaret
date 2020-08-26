@@ -7524,6 +7524,9 @@ def get_metrics(
 
     """
 
+    if reset and not "all_metrics" in globals():
+        raise ValueError("setup() needs to be ran first.")
+
     if not force_regenerate and not reset:
         try:
             if not include_custom:
