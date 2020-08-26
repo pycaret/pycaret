@@ -474,6 +474,14 @@ def setup(
         If set to true, a data profile for Exploratory Data Analysis will be displayed 
         in an interactive HTML report. 
     
+    Warnings
+    --------
+    - Some GPU models require conversion from float64 to float32,
+      which may result in loss of precision. It should not be an issue in majority of cases.
+      Models impacted:
+
+        * cuml.ensemble.RandomForestClassifier
+
     Returns
     -------
     info_grid
@@ -3302,6 +3310,7 @@ def tune_model(
     search_kwargs = {**estimator_definition["Tune Args"], **kwargs}
 
     n_jobs = gpu_n_jobs_param
+    logger.info(f"Tuning with n_jobs={n_jobs}")
 
     if search_library == "optuna":
         # suppress output

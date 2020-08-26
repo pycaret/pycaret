@@ -11,7 +11,7 @@
 import logging
 from typing import Union, Dict, Any
 from pycaret.containers.models.base_model import ModelContainer
-from pycaret.internal.utils import param_grid_to_lists, get_logger
+from pycaret.internal.utils import param_grid_to_lists, get_logger, get_class_name
 from pycaret.internal.distributions import *
 import pycaret.containers.base_container
 import numpy as np
@@ -638,30 +638,172 @@ class RandomForestClassifierContainer(ClassifierContainer):
     def __init__(self, globals_dict: dict) -> None:
         logger = get_logger()
         np.random.seed(globals_dict["seed"])
+        gpu_imported = False
+
         from sklearn.ensemble import RandomForestClassifier
 
-        args = {
-            "random_state": globals_dict["seed"],
-            "n_jobs": globals_dict["n_jobs_param"],
-        }
+        if globals_dict["gpu_param"] == "Force":
+            import cuml.ensemble
+
+            logger.info("Imported cuml.ensemble")
+            gpu_imported = True
+        elif globals_dict["gpu_param"]:
+            try:
+                import cuml.ensemble
+
+                logger.info("Imported cuml.ensemble")
+                gpu_imported = True
+            except ImportError:
+                logger.warning("Couldn't import cuml.ensemble")
+
+        if gpu_imported:
+
+            class RandomForestClassifier(cuml.ensemble.RandomForestClassifier):
+                """
+                This is a wrapper to convert data on the fly to float32.
+                When cuML updates to allow float64 for Random Forest, this
+                can be safely removed.
+
+                Warnings
+                --------
+                The conversion from float64 to float32 may result in loss
+                of precision. It should not be an issue in majority of cases.
+
+                See Also
+                --------
+                cuml.ensemble.RandomForestClassifier : description of the underlying class
+                """
+
+                def fit(self, X, y, convert_dtype=True):
+                    X = X.astype(np.float32)
+                    y = y.astype(np.int32)
+                    return super().fit(X, y, convert_dtype=convert_dtype)
+
+                def predict(
+                    self,
+                    X,
+                    predict_model="GPU",
+                    output_class=True,
+                    threshold=0.5,
+                    algo="auto",
+                    num_classes=None,
+                    convert_dtype=True,
+                    fil_sparse_format="auto",
+                ):
+                    X = X.astype(np.float32)
+                    return super().predict(
+                        X,
+                        predict_model=predict_model,
+                        output_class=output_class,
+                        threshold=threshold,
+                        algo=algo,
+                        num_classes=num_classes,
+                        convert_dtype=convert_dtype,
+                        fil_sparse_format=fil_sparse_format,
+                    )
+
+                def predict_proba(
+                    self,
+                    X,
+                    output_class=True,
+                    threshold=0.5,
+                    algo="auto",
+                    num_classes=None,
+                    convert_dtype=True,
+                    fil_sparse_format="auto",
+                ):
+                    X = X.astype(np.float32)
+                    return super().predict_proba(
+                        X,
+                        output_class=output_class,
+                        threshold=threshold,
+                        algo=algo,
+                        num_classes=num_classes,
+                        convert_dtype=convert_dtype,
+                        fil_sparse_format=fil_sparse_format,
+                    )
+
+                def score(
+                    self,
+                    X,
+                    y,
+                    threshold=0.5,
+                    algo="auto",
+                    num_classes=None,
+                    predict_model="GPU",
+                    convert_dtype=True,
+                    fil_sparse_format="auto",
+                ):
+                    X = X.astype(np.float32)
+                    y = y.astype(np.int32)
+                    return super().predict_proba(
+                        X,
+                        y,
+                        threshold=threshold,
+                        algo=algo,
+                        num_classes=num_classes,
+                        predict_model=predict_model,
+                        convert_dtype=convert_dtype,
+                        fil_sparse_format=fil_sparse_format,
+                    )
+
+                def __repr__(self):
+                    def quote_strs(x: str) -> str:
+                        return x if not isinstance(x, str) else f"'{x}'"
+
+                    args = ", ".join(
+                        [f"{k}={quote_strs(v)}" for k, v in self.get_params().items()]
+                        + [f"handle={self.handle}", f"output_type='{self.output_type}'"]
+                    )
+                    return f"RandomForestClassifier({args})"
+
+        args = (
+            {
+                "random_state": globals_dict["seed"],
+                "n_jobs": globals_dict["n_jobs_param"],
+            }
+            if not gpu_imported
+            else {"seed": globals_dict["seed"]}
+        )
         tune_args = {}
         tune_grid = {
             "n_estimators": [int(x) for x in np.linspace(10, 1000, num=100)],
-            "criterion": ["gini", "entropy"],
             "max_depth": [int(x) for x in np.linspace(10, 110, num=11)],
-            "min_samples_split": [2, 5, 7, 9, 10],
-            "min_samples_leaf": [1, 2, 4],
-            "max_features": [1.0, "auto", "log2"],
+            "min_impurity_decrease": [
+                0,
+                0.0001,
+                0.001,
+                0.01,
+                0.0002,
+                0.002,
+                0.02,
+                0.0005,
+                0.005,
+                0.05,
+                0.1,
+            ],
+            "max_features": [1.0, "auto", "sqrt", "log2"],
             "bootstrap": [True, False],
-            "ccp_alpha": np.arange(0.0, 0.01, 0.001),
         }
         tune_distributions = {
             "n_estimators": IntUniformDistribution(10, 1000),
             "max_depth": IntUniformDistribution(10, 110),
-            "min_samples_split": IntUniformDistribution(2, 10),
-            "min_samples_leaf": IntUniformDistribution(1, 5),
-            "ccp_alpha": UniformDistribution(0, 0.01),
+            "min_impurity_decrease": UniformDistribution(0, 0.1),
         }
+
+        if gpu_imported:
+            if globals_dict["y"].value_counts().count() > 2:
+                tune_grid.pop("max_features")
+                args["max_features"] = 1.0
+            tune_grid["split_criterion"] = [0, 1]
+        else:
+            tune_grid["criterion"] = ["gini", "entropy"]
+            tune_grid["min_samples_split"] = [2, 5, 7, 9, 10]
+            tune_grid["min_samples_leaf"] = [1, 2, 4]
+            tune_grid["ccp_alpha"] = np.arange(0.0, 0.01, 0.001)
+            tune_distributions["min_samples_split"] = IntUniformDistribution(2, 10)
+            tune_distributions["min_samples_leaf"] = IntUniformDistribution(1, 5)
+            tune_distributions["ccp_alpha"] = UniformDistribution(0, 0.01)
 
         _leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 
@@ -675,6 +817,8 @@ class RandomForestClassifierContainer(ClassifierContainer):
             tune_args=tune_args,
             shap="type1",
         )
+        if gpu_imported:
+            self.reference = get_class_name(cuml.ensemble.RandomForestClassifier)
 
 
 class QuadraticDiscriminantAnalysisContainer(ClassifierContainer):
