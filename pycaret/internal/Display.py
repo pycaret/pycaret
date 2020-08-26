@@ -10,6 +10,10 @@ from IPython.display import display, HTML, clear_output, update_display
 
 
 class Display:
+    """
+    Provides a common interface to handle IPython displays.
+    """
+
     default_progress_args = {
         "value": 0,
         "min": 0,

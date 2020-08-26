@@ -6,6 +6,7 @@ import logging
 
 def get_logger() -> logging.Logger:
     try:
+        assert bool(LOGGER)
         return LOGGER
     except:
         return create_logger()
