@@ -971,8 +971,7 @@ def setup(
     html_param = html
 
     # silent parameter to also set sampling to False
-    if silent:
-        sampling = False
+    if silent: sampling = False
 
     logger.info("Preparing display monitor")
 
@@ -1060,29 +1059,17 @@ def setup(
     date_features_pass = date_features or []
 
     # categorical imputation strategy
-    if categorical_imputation == "constant":
-        categorical_imputation_pass = "not_available"
-    elif categorical_imputation == "mode":
-        categorical_imputation_pass = "most frequent"
-
+    cat_dict = {"constant": "not_available", "mode": "most frequent"}
+    categorical_imputation_pass = cat_dict[categorical_imputation]
+    
     # transformation method strategy
-    if transformation_method == "yeo-johnson":
-        trans_method_pass = "yj"
-    elif transformation_method == "quantile":
-        trans_method_pass = "quantile"
+    trans_dict = {"yeo-johnson": "yj", "quantile": "quantile"}
+    trans_method_pass = trans_dict[transformation_method]
 
     # pass method
-    if pca_method == "linear":
-        pca_method_pass = "pca_liner"
-
-    elif pca_method == "kernel":
-        pca_method_pass = "pca_kernal"
-
-    elif pca_method == "incremental":
-        pca_method_pass = "incremental"
-
-    elif pca_method == "pls":
-        pca_method_pass = "pls"
+    pca_dict = {"linear": "pca_liner", "kernel": "pca_kernal",
+                "incremental": "incremental", "pls": "pls"}
+    pca_method_pass = pca_dict[pca_method]
 
     # pca components
     if pca is True:
