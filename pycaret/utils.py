@@ -46,7 +46,7 @@ def check_metric(actual: pd.Series, prediction: pd.Series, metric: str, round: i
     """
 
     # general dependencies
-    from sklearn import metrics
+    import sklearn.metrics
     from pycaret.containers.metrics.classification import get_all_metric_containers
 
     globals_dict = {"y": prediction}
@@ -67,20 +67,20 @@ def check_metric(actual: pd.Series, prediction: pd.Series, metric: str, round: i
 
     elif metric == "MAE":
 
-        result = metrics.mean_absolute_error(actual, prediction)
+        result = sklearn.metrics.mean_absolute_error(actual, prediction)
 
     elif metric == "MSE":
 
-        result = metrics.mean_squared_error(actual, prediction)
+        result = sklearn.metrics.mean_squared_error(actual, prediction)
 
     elif metric == "RMSE":
 
-        result = metrics.mean_squared_error(actual, prediction)
+        result = sklearn.metrics.mean_squared_error(actual, prediction)
         result = np.sqrt(result)
 
     elif metric == "R2":
 
-        result = metrics.r2_score(actual, prediction)
+        result = sklearn.metrics.r2_score(actual, prediction)
 
     elif metric == "RMSLE":
 
