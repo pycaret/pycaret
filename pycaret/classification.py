@@ -633,8 +633,7 @@ def setup(
 
     # ordinal features check
     if ordinal_features is not None:
-        data_cols = data.columns
-        data_cols = data_cols.drop(target)
+        data_cols = data.columns.drop(target)
         ord_keys = ordinal_features.keys()
 
         for i in ord_keys:
@@ -666,8 +665,7 @@ def setup(
             )
 
     if high_cardinality_features is not None:
-        data_cols = data.columns
-        data_cols = data_cols.drop(target)
+        data_cols = data.columns.drop(target)
         for i in high_cardinality_features:
             if i not in data_cols:
                 raise ValueError(
