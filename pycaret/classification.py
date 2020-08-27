@@ -7615,6 +7615,16 @@ def plot_model(estimator,
 
     logger.info("plot type: " + str(plot)) 
 
+    logger.info("Copying training dataset")
+
+    #Storing X_train and y_train in data_X and data_y parameter
+    data_X = X_train.copy()
+    data_y = y_train.copy()
+    
+    #reset index
+    data_X.reset_index(drop=True, inplace=True)
+    data_y.reset_index(drop=True, inplace=True)
+
     if fix_imbalance_param:
         
         logger.info("Initializing SMOTE")
@@ -7628,8 +7638,11 @@ def plot_model(estimator,
         else:
             resampler = fix_imbalance_method_param
 
-        X_train,y_train = resampler.fit_sample(X_train, y_train)
+        Xtrain,ytrain = resampler.fit_sample(data_X, data_y)
         logger.info("Resampling completed")
+    
+    else:
+        Xtrain,ytrain = data_X,data_y
 
     if plot == 'auc':
 
@@ -7638,7 +7651,7 @@ def plot_model(estimator,
         visualizer = ROCAUC(model)
         visualizer.fig.set_dpi(visualizer.fig.dpi * scale)
         logger.info("Fitting Model")
-        visualizer.fit(X_train, y_train)
+        visualizer.fit(Xtrain, ytrain)
         progress.value += 1
         logger.info("Scoring test/hold-out set")
         visualizer.score(X_test, y_test)
@@ -7662,7 +7675,7 @@ def plot_model(estimator,
         visualizer = DiscriminationThreshold(model, random_state=seed)
         visualizer.fig.set_dpi(visualizer.fig.dpi * scale)
         logger.info("Fitting Model")
-        visualizer.fit(X_train, y_train)
+        visualizer.fit(Xtrain, ytrain)
         progress.value += 1
         logger.info("Scoring test/hold-out set")
         visualizer.score(X_test, y_test)
@@ -7686,7 +7699,7 @@ def plot_model(estimator,
         visualizer = PrecisionRecallCurve(model, random_state=seed)
         visualizer.fig.set_dpi(visualizer.fig.dpi * scale)
         logger.info("Fitting Model")
-        visualizer.fit(X_train, y_train)
+        visualizer.fit(Xtrain, ytrain)
         progress.value += 1
         logger.info("Scoring test/hold-out set")
         visualizer.score(X_test, y_test)
@@ -7710,7 +7723,7 @@ def plot_model(estimator,
         visualizer = ConfusionMatrix(model, random_state=seed, fontsize = 15, cmap="Greens")
         visualizer.fig.set_dpi(visualizer.fig.dpi * scale)
         logger.info("Fitting Model")
-        visualizer.fit(X_train, y_train)
+        visualizer.fit(Xtrain, ytrain)
         progress.value += 1
         logger.info("Scoring test/hold-out set")
         visualizer.score(X_test, y_test)
@@ -7734,7 +7747,7 @@ def plot_model(estimator,
         visualizer = ClassPredictionError(model, random_state=seed)
         visualizer.fig.set_dpi(visualizer.fig.dpi * scale)
         logger.info("Fitting Model")
-        visualizer.fit(X_train, y_train)
+        visualizer.fit(Xtrain, ytrain)
         progress.value += 1
         logger.info("Scoring test/hold-out set")
         visualizer.score(X_test, y_test)
@@ -7758,7 +7771,7 @@ def plot_model(estimator,
         visualizer = ClassificationReport(model, random_state=seed, support=True)
         visualizer.fig.set_dpi(visualizer.fig.dpi * scale)
         logger.info("Fitting Model")
-        visualizer.fit(X_train, y_train)
+        visualizer.fit(Xtrain, ytrain)
         progress.value += 1
         logger.info("Scoring test/hold-out set")
         visualizer.score(X_test, y_test)
@@ -7830,7 +7843,7 @@ def plot_model(estimator,
         visualizer.fig.set_dpi(visualizer.fig.dpi * scale)
         progress.value += 1
         logger.info("Fitting Model")
-        visualizer.fit(X_train, y_train)
+        visualizer.fit(Xtrain, ytrain)
         progress.value += 1
         clear_output()
         if save:
@@ -7853,7 +7866,7 @@ def plot_model(estimator,
         visualizer.fig.set_dpi(visualizer.fig.dpi * scale)
         progress.value += 1
         logger.info("Fitting Model")
-        visualizer.fit(X_train, y_train)
+        visualizer.fit(Xtrain, ytrain)
         progress.value += 1
         clear_output()
         if save:
