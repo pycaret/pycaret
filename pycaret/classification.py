@@ -8173,7 +8173,7 @@ def evaluate_model(estimator):
     )
     
   
-    d = interact(plot_model, estimator = fixed(estimator), plot = a, save = fixed(False), verbose = fixed(True), system = fixed(True))
+    d = interact(plot_model, estimator = fixed(estimator), plot = a, save = fixed(False), verbose = fixed(True), scale = fixed(1), system = fixed(True))
 
 def interpret_model(estimator,
                    plot = 'summary',
