@@ -1259,12 +1259,12 @@ def auto_select(splits: int=5,
     Example
         -------
         from pycaret.datasets import get_data
-        from pycaret.forecast import *
+        from pycaret.timeseries import *
         
         data = get_data('air_passengers')
         s = setup(data, target='#Passengers')
         
-        model = auto_select(splits=10, metric='mae')
+        best_model = auto_select(splits=10, metric='mae')
         This will output the best model based on the MAE
     
 
@@ -1286,7 +1286,7 @@ def auto_select(splits: int=5,
     model: Name of fitted estimator 
     -------- 
     model_results: A table containing the scores of the model.
-                   Scoring metrics used are MAE, MSE, RMSE, MAPE, AIC and BIC.
+    Scoring metrics used are MAE, MSE, RMSE, MAPE, AIC and BIC.
 
     
     Warnings:
@@ -1302,7 +1302,37 @@ def auto_select(splits: int=5,
     ERROR HANDLING STARTS HERE
     
     '''
-    
+
+    import logging
+
+    try:
+        hasattr(logger, 'name')
+    except:
+        logger = logging.getLogger('logs')
+        logger.setLevel(logging.DEBUG)
+        
+        # create console handler and set level to debug
+        if logger.hasHandlers():
+            logger.handlers.clear()
+        
+        ch = logging.FileHandler('logs.log')
+        ch.setLevel(logging.DEBUG)
+
+        # create formatter
+        formatter = logging.Formatter('%(asctime)s:%(levelname)s:%(message)s')
+
+        # add formatter to ch
+        ch.setFormatter(formatter)
+
+        # add ch to logger
+        logger.addHandler(ch)
+
+    logger.info("Initializing auto_select()")
+    logger.info("""auto_select(splits={}, round={}, metric={}, verbose={})""".\
+        format(str(splits), str(round), str(metric), str(verbose)))
+
+    logger.info("Info -- Checking exceptions")
+   
     #exception checking   
     import sys
     
@@ -1328,16 +1358,22 @@ def auto_select(splits: int=5,
     
     '''
 
+    logger.info("Info -- Preloading libraries")
 
     #pre-load libraries
     import pandas as pd
     import ipywidgets as ipw
     from IPython.display import display, HTML, clear_output, update_display
     import datetime, time
+
+    pd.set_option('display.max_columns', 500)
+
+    logger.info("Info -- Preparing display monitor")
     
     #progress bar
     progress = ipw.IntProgress(value=0, min=0, max=splits+4, step=1, description='Processing: ')
-    display(progress)
+    if verbose:
+        display(progress)
     
     #display monitor
     timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
@@ -1348,7 +1384,8 @@ def auto_select(splits: int=5,
         ],
         columns=['', ' ', '   ']).set_index('')
 
-    display(monitor, display_id='monitor')
+    if verbose:
+        display(monitor, display_id='monitor')
     
     #ignore warnings
     import warnings
@@ -1361,8 +1398,9 @@ def auto_select(splits: int=5,
     MONITOR UPDATE STARTS
     '''
     
-    monitor.iloc[1, 1:] = 'Selecting Model'
-    update_display(monitor, display_id='monitor')
+    monitor.iloc[1, 1:] = 'Loading Estimators'
+    if verbose:
+        update_display(monitor, display_id='monitor')
     
     '''
     MONITOR UPDATE ENDS
@@ -1377,12 +1415,17 @@ def auto_select(splits: int=5,
     metric_results = {}
     results = {}
 
+    logger.info(f"Info -- Fitting avaible estimators: {available_estimators} started")
+
     for estimator in available_estimators:
+
+        logger.info(f"Info -- Initializing estimator {estimator}")
+
         model, model_results = create_model(
                                 estimator=estimator,
                                 splits=splits,
                                 round=round,
-                                verbose=True
+                                verbose=False
                                 )
 
         metric_results[estimator] = model_results.loc['Mean', metric.upper()]
@@ -1390,6 +1433,7 @@ def auto_select(splits: int=5,
 
     # Select the model with the lowest value of metric
     best_model = min(metric_results, key=metric_results.get)
+    all_results = results.copy()
     results = results[best_model]
 
     # Save name of the best model and results of it 
@@ -1400,17 +1444,22 @@ def auto_select(splits: int=5,
         MODEL SELECTION ENDS HERE
     '''
 
+    logger.info(f"Info -- Fitting avaible estimators ended")
+    
 
     '''
     MONITOR UPDATE STARTS
     '''
     
     monitor.iloc[1, 1:] = 'Calling Best Model'
-    update_display(monitor, display_id='monitor')
+    if verbose:
+        update_display(monitor, display_id='monitor')
     
     '''
     MONITOR UPDATE ENDS
     '''
+
+    logging.info("Info -- Storing results")
 
     #storing into experiment
     tup = (full_name, model)
@@ -1418,13 +1467,118 @@ def auto_select(splits: int=5,
     nam = str(full_name) + ' Score Grid'
     tup = (nam, model_results)
     experiment__.append(tup)
-    
+
+    """
+    MLflow logging starts here
+    """
+
+    if logging_param:
+
+        logger.info("Creating MLFlow logs")
+
+        import mlflow
+        from pathlib import Path
+        import os
+
+        run_name = full_name
+
+        with mlflow.start_run(run_name=run_name) as run:  
+
+            # Get active run to log as tag
+            RunID = mlflow.active_run().info.run_id
+
+            params = model.get_params()
+
+            for i in list(params):
+                v = params.get(i)
+                if len(str(v)) > 250:
+                    params.pop(i)
+                    
+            mlflow.log_params(params)
+
+            #set tag of compare_models
+            mlflow.set_tag("Source", "auto_select")
+            mlflow.set_tag("URI", URI)
+            mlflow.set_tag("USI", USI)
+            mlflow.set_tag("Run Time", runtime)
+            mlflow.set_tag("Run ID", RunID)
+
+            #Log top model metrics
+            mlflow.log_metric("MAE", model_results.loc['Mean', "MAE"])
+            mlflow.log_metric("MSE", model_results.loc['Mean', "MSE"])
+            mlflow.log_metric("RMSE", model_results.loc['Mean', "RMSE"])
+            mlflow.log_metric("MAPE", model_results.loc['Mean', "MAPE"])
+            mlflow.log_metric("AIC", model_results.loc['Mean', "AIC"])
+            mlflow.log_metric("BIC", model_results.loc['Mean', "BIC"])
+
+            # Log model and transformation pipeline
+            from copy import deepcopy
+
+            # get default conda env
+            from mlflow.sklearn import get_default_conda_env
+            default_conda_env = get_default_conda_env()
+            default_conda_env['name'] = str(exp_name_log) + '-env'
+            default_conda_env.get('dependencies').pop(-3)
+            dependencies = default_conda_env.get('dependencies')[-1]
+            from pycaret.utils import __version__
+            dep = 'pycaret==' + str(__version__())
+            dependencies['pip'] = [dep]
+            
+            # define model signature
+            from mlflow.models.signature import infer_signature
+            signature = infer_signature(data_before_preprocess.drop([target_param], axis=1))
+            input_example = data_before_preprocess.drop([target_param], axis=1).iloc[0].to_dict()
+
+            import pickle 
+            import os 
+
+            # Set path to save model 
+            ts_model_path = os.path.join(os.getcwd(), f"{run_name}.pkl")
+
+            # Pickle model 
+            with open(ts_model_path, "wb") as f: 
+                pickle.dump(model, f)
+
+            from mlflow.utils.environment import _mlflow_conda_env
+            from pmdarima import __version__
+            pmdarima_version = str(__version__)
+            from statstmodels import __version__
+            sm_version = str(__version__)
+
+            # Set a conda env with pmdarima and statsmodels
+            conda_env = _mlflow_conda_env(
+                additional_conda_deps=[
+                    "pmdarima={}".format(pmdarima_version),
+                    "statsmodels={}".format(sm_version)
+                ],
+                additional_pip_deps=None,
+                additional_conda_channels=None
+            )
+
+            mlflow.pyfunc.log_model(
+                artifact_path=f"{run_name}_model",
+                data_path=ts_model_path,
+                conda_env=conda_env,
+                signature=signature,
+                input_example=input_example
+            )
+
+    clear_output()
+
+    #store in display container
+    display_container.append(all_results)
+
+    logger.info("create_model_container: " + str(len(create_model_container)))
+    logger.info("master_model_container: " + str(len(master_model_container)))
+    logger.info("display_container: " + str(len(display_container)))
+
+    logger.info(str(model))
+    logger.info("auto_select() succesfully completed......................................")
+
     if verbose:
-        clear_output()
         display(model_results)
         return (model, model_results)
     else:
-        clear_output()
         return model
 
 
