@@ -3916,7 +3916,11 @@ def tune_model(estimator = None,
     logger.info("Creating estimator clone to inherit model parameters")
     #create estimator clone from sklearn.base
     from sklearn.base import clone
-    estimator_clone = clone(estimator)
+    
+    if y.value_counts().count() > 2:
+        estimator_clone = clone(estimator.estimator)
+    else:
+        estimator_clone = clone(estimator)
     
     progress.value += 1
 
