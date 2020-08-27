@@ -21,10 +21,9 @@ import sys
 import datetime
 import time
 import random
-import re
 import gc
 from copy import deepcopy
-from typing import List, Set, Dict, Tuple, Optional, Any
+from typing import List, Tuple, Any
 import warnings
 from IPython.utils import io
 
@@ -1015,10 +1014,6 @@ def setup(
     # general dependencies
 
     from sklearn.model_selection import train_test_split
-    from sklearn import metrics
-    import seaborn as sns
-    import matplotlib.pyplot as plt
-    import plotly.express as px
 
     # setting sklearn config to print all parameters including default
     import sklearn
@@ -1594,7 +1589,6 @@ def setup(
         logger.info("Logging experiment in MLFlow")
 
         import mlflow
-        from pathlib import Path
 
         if experiment_name is None:
             exp_name_ = "clf-default-name"
@@ -1927,11 +1921,6 @@ def compare_models(
         display.display_monitor()
         display.display_master_display()
 
-    # general dependencies
-
-    from sklearn import metrics
-    import pandas.io.formats.style
-
     np.random.seed(seed)
 
     display.move_progress()
@@ -2084,7 +2073,6 @@ def compare_models(
             logger.info("Creating MLFlow logs")
 
             import mlflow
-            from pathlib import Path
 
             run_name = model_name
 
@@ -2425,7 +2413,6 @@ def create_model(
 
     # general dependencies
 
-    from sklearn import metrics
     from sklearn.model_selection import StratifiedKFold
     from sklearn.base import clone
 
@@ -2692,7 +2679,6 @@ def create_model(
         # import mlflow
         import mlflow
         import mlflow.sklearn
-        from pathlib import Path
 
         mlflow.set_experiment(exp_name_log)
 
@@ -3186,9 +3172,9 @@ def tune_model(
     warnings.filterwarnings("ignore")
 
     logger.info("Importing libraries")
+
     # general dependencies
 
-    from sklearn import metrics
     from sklearn.base import clone
     import logging
 
@@ -3861,11 +3847,6 @@ def ensemble_model(
 
     logger.info("Importing libraries")
 
-    # dependencies
-
-    from sklearn import metrics
-    from sklearn.model_selection import StratifiedKFold
-
     np.random.seed(seed)
 
     logger.info("Copying training dataset")
@@ -3981,7 +3962,6 @@ def ensemble_model(
         display.display_monitor()
 
         import mlflow
-        from pathlib import Path
 
         mlflow.set_experiment(exp_name_log)
         full_name = estimator_name
@@ -4358,14 +4338,11 @@ def blend_models(
         display.display_master_display()
 
     logger.info("Importing libraries")
-    # general dependencies
-
-    from sklearn import metrics
-    from sklearn.ensemble import VotingClassifier
 
     np.random.seed(seed)
 
     logger.info("Copying training dataset")
+
     # Storing X_train and y_train in data_X and data_y parameter
     data_X = X_train.copy()
     data_y = y_train.copy()
@@ -4485,7 +4462,6 @@ def blend_models(
         display.display_monitor()
 
         import mlflow
-        from pathlib import Path
 
         with mlflow.start_run(run_name="Voting Classifier") as run:
 
@@ -4772,7 +4748,6 @@ def stack_models(
     # pre-load libraries
 
     from sklearn.base import clone
-    from sklearn.ensemble import StackingClassifier
 
     logger.info("Defining meta model")
     # Defining meta model.
@@ -4804,11 +4779,6 @@ def stack_models(
         display.display_progress()
         display.display_monitor()
         display.display_master_display()
-
-    logger.info("Importing libraries")
-    # dependencies
-
-    from sklearn import metrics
 
     np.random.seed(seed)
 
@@ -4900,7 +4870,6 @@ def stack_models(
         logger.info("Creating MLFlow logs")
 
         import mlflow
-        from pathlib import Path
 
         # Creating Logs message monitor
         display.update_monitor(1, "Creating Logs")
@@ -5743,7 +5712,7 @@ def evaluate_model(estimator):
     """
 
     from ipywidgets import widgets
-    from ipywidgets.widgets import interact, fixed, interact_manual
+    from ipywidgets.widgets import interact, fixed
 
     a = widgets.ToggleButtons(
         options=[
@@ -6150,10 +6119,6 @@ def calibrate_model(
         display.display_monitor()
         display.display_master_display()
 
-    logger.info("Importing libraries")
-    # general dependencies
-    from sklearn import metrics
-
     np.random.seed(seed)
 
     logger.info("Copying training dataset")
@@ -6252,7 +6217,6 @@ def calibrate_model(
         # import mlflow
         import mlflow
         import mlflow.sklearn
-        from pathlib import Path
 
         mlflow.set_experiment(exp_name_log)
 
@@ -6946,7 +6910,6 @@ def finalize_model(estimator, display=None) -> Any:  # added in pycaret==2.2.0
 
         # import mlflow
         import mlflow
-        from pathlib import Path
         import mlflow.sklearn
 
         mlflow.set_experiment(exp_name_log)
@@ -7899,11 +7862,7 @@ def _sample_data(
     Method to sample data.
     """
 
-    from sklearn.linear_model import LogisticRegression
     from sklearn.model_selection import train_test_split
-    from sklearn import metrics
-    import seaborn as sns
-    import matplotlib.pyplot as plt
     import plotly.express as px
 
     np.random.seed(seed)
@@ -7958,6 +7917,7 @@ def _sample_data(
             random_state=seed,
             shuffle=data_split_shuffle,
         )
+
         X_train, X_test, y_train, y_test = train_test_split(
             X_,
             y_,
@@ -7966,6 +7926,7 @@ def _sample_data(
             random_state=seed,
             shuffle=data_split_shuffle,
         )
+
         with io.capture_output():
             model.fit(X_train, y_train)
         pred_ = model.predict(X_test)
