@@ -1,4 +1,4 @@
-from typing import Optional
+ from typing import Optional
 
 
 def setup(data, 
@@ -7,16 +7,22 @@ def setup(data,
           numeric_features: Optional[list]=None,
           numeric_imputation='mean',
           date_features: Optional[list]=None,
+          experiment_name: Optional[str]=None, #mlflow tracking
           ignore_features: Optional[list]=None,
+          log_data: bool=False, #mlflow tracking
+          log_experiment: bool=False, #mlflow tracking
+          log_plots: bool=False, #mlflow tracking
+          log_profile: bool=False, #mlflow tracking
           normalize: bool=False,
           normalize_method: str='zscore',
           transformation: bool=False,
           transformation_method: str='yeo-johnson',
           remove_outliers: bool=False, #new
           outliers_threshold: float=0.05, #new
+          session_id: Optional[int]=None,
           transform_target: bool=False, #new
           transform_target_method: str='box-cox', #new
-          session_id: Optional[int]=None,
+          verbose: bool=True,
           silent: bool=False,
           profile: bool=False):
     
@@ -60,12 +66,30 @@ def setup(data,
     Instead, feature extraction is performed and date columns are dropped from the 
     dataset. If the date column includes a time stamp, features related to time will 
     also be extracted.
-    
+
+    * experiment_name: str, default = None
+    Name of experiment for logging. When set to None, 'ts' is by default used as 
+    alias for the experiment name.
+
     * ignore_features: list, default = None
     If any feature should be ignored for modeling, it can be passed to the param
     ignore_features. The ID and DateTime columns when inferred, are automatically 
     set to ignore for modeling. 
-    
+
+    * log_data: bool, default = False
+    When set to True, train and test dataset are logged as csv. 
+
+    * log_experiment: bool, default = False
+    When set to True, all metrics and parameters are logged on MLFlow server.
+
+    * log_plots: bool, default = False
+    When set to True, specific plots are logged in MLflow as a png file. By default,
+    it is set to False.
+
+    * log_profile: bool, default = False
+    When set to True, data profile is also logged on MLflow as a html file. By default,
+    it is set to False.  
+
     * normalize: bool, default = False
     When set to True, the feature space is transformed using the normalized_method
     param. Generally, linear algorithms perform better with normalized data however, 
@@ -100,6 +124,9 @@ def setup(data,
     the transformation transforms the feature set to follow a Gaussian-like or normal
     distribution. Note that the quantile transformer is non-linear and may distort linear 
     correlations between variables measured at the same scale.
+
+    * verbose: Boolean, default = True
+    Information grid is not printed when verbose is set to False.
     
     * remove_outliers: bool, default = False
     When set to True, outliers from the training data are removed using PCA linear
@@ -151,7 +178,131 @@ def setup(data,
 
     #----------------------------------  Exception checking    --------------------------  
     import sys
+
+    from pycaret.utils import __version__
+    ver = __version__()
+
+    import logging 
+
+    # Define logger as global  
+    global logger 
+
+    logger = logging.getLogger('logs')
+    logger.setLevel(logging.DEBUG)
+
+    # create console handler and set level to debug
+
+    if logger.hasHandlers():
+        logger.handlers.clear()
+        
+    ch = logging.FileHandler('logs.log')
+    ch.setLevel(logging.DEBUG)
+
+    # create formatter
+    formatter = logging.Formatter('%(asctime)s:%(levelname)s:%(message)s')
+
+    # add formatter to ch
+    ch.setFormatter(formatter)
+
+    # add ch to logger
+    logger.addHandler(ch)
+
+    logger.info("PyCaret Time Series Module")
+    logger.info('version ' + str(ver))
+    logger.info("Initializing setup()")
+
+    # generate USI for mlflow tracking
+    import secrets
+    global USI
+    USI = secrets.token_hex(nbytes=2)
+    logger.info('USI: ' + str(USI))
+
+    logger.info("""setup(data={}, target={}, train_size={}, numeric_features={}, numeric_imputation={}, date_features={}, ignore_features={}, normalize={},
+            normalize_method={}, transformation={}, transformation_method={}, remove_outliers={}, outliers_threshold={}, session_id={}, log_experiment={}, 
+            experiment_name={}, log_plots={}, log_profile={}, log_data={}, silent={}, verbose={}, profile={})""".format(str(data.shape), str(target), str(train_size),\
+            str(numeric_features), str(numeric_imputation), str(date_features), str(ignore_features), str(normalize), str(normalize_method), str(transformation),\
+            str(transformation_method), str(remove_outliers), str(outliers_threshold), str(session_id), str(log_experiment), str(experiment_name), str(log_plots),\
+            str(log_profile), str(log_data), str(silent), str(verbose), str(profile)))
+
+    # logging environment and libraries
+    logger.info("Checking environment")
     
+    from platform import python_version, platform, python_build, machine
+
+    try:
+        logger.info("python_version: " + str(python_version()))
+    except:
+        logger.warning("cannot find platform.python_version")
+
+    try:
+        logger.info("python_build: " + str(python_build()))
+    except:
+        logger.warning("cannot find platform.python_build")
+
+    try:
+        logger.info("machine: " + str(machine()))
+    except:
+        logger.warning("cannot find platform.machine")
+
+    try:
+        logger.info("platform: " + str(platform()))
+    except:
+        logger.warning("cannot find platform.platform")
+
+    try:
+        import psutil
+        logger.info("Memory: " + str(psutil.virtual_memory()))
+        logger.info("Physical Core: " + str(psutil.cpu_count(logical=False)))
+        logger.info("Logical Core: " + str(psutil.cpu_count(logical=True)))
+    except:
+        logger.warning("cannot find psutil installation. memory not traceable. Install psutil using pip to enable memory logging. ")
+    
+    logger.info("Checking libraries")
+
+    try:
+        from pandas import __version__
+        logger.info("pd==" + str(__version__))
+    except:
+        logger.warning("pandas not found")
+
+    try:
+        from numpy import __version__
+        logger.info("numpy==" + str(__version__))
+    except:
+        logger.warning("numpy not found")
+
+    try:
+        from sklearn import __version__
+        logger.info("sklearn==" + str(__version__))
+    except:
+        logger.warning("sklearn not found")
+
+    try: 
+        from statsmodels import __version__ 
+        logger.info("statsmodels==" + str(__version__))
+    except: 
+        logger.warning("statsmodels not found")
+
+    try:
+        from pmdarima import __version__
+        logger.info("pmdarima==" + str(__version__))
+    except: 
+        logger.warning("pmdarima not found")
+
+    try:
+        from mlflow.version import VERSION
+        import warnings
+        warnings.filterwarnings('ignore') 
+        logger.info("mlflow==" + str(VERSION))
+    except:
+        logger.warning("mlflow not found")
+
+    #run_time
+    import datetime, time
+    runtime_start = time.time()
+
+    logger.info("Checking Exceptions")
+
     #checking train size parameter
     if not isinstance(train_size, float):
         sys.exit('(Type Error): train_size parameter only accepts float value.') 
@@ -178,9 +329,9 @@ def setup(data,
         sys.exit('(Type Error): transformation parameter only accepts True or False.')
         
     #checking numeric imputation
-    allowed_numeric_imputation = ['mean', 'median']
+    allowed_numeric_imputation = ['mean', 'median', 'zero']
     if numeric_imputation not in allowed_numeric_imputation:
-        sys.exit("(Value Error): numeric_imputation param only accepts 'mean' or 'median' ")
+        sys.exit("(Value Error): numeric_imputation param only accepts 'mean', 'median' or 'zero'.")
         
     #checking normalize method
     allowed_normalize_method = ['zscore', 'minmax', 'maxabs', 'robust']
@@ -213,7 +364,28 @@ def setup(data,
     if ignore_features is not None:
         if target in ignore_features:
             sys.exit("(Value Error): cannot drop target column. ")  
-        
+    
+    #experiment_name
+    if experiment_name is not None:
+        if not isinstance(experiment_name, str):
+            sys.exit('(Type Error): experiment_name parameter only accepts string.')    
+
+    #log_data
+    if not isinstance(log_data,bool):
+        sys.exit('(Type Error): log_data parameter only accepts True or False.')    
+    
+    #log_experiment
+    if not isinstance(log_experiment,bool):
+        sys.exit('(Type Error): log_experiment parameter only accepts True or False.')    
+    
+    #log_plots
+    if not isinstance(log_plots,bool):
+        sys.exit('(Type Error): log_plots parameter only accepts True or False.')    
+    
+    #log_profile
+    if not isinstance(log_profile,bool):
+        sys.exit('(Type Error): log_profile parameter only accepts True or False.')
+
     #forced type check
     all_cols = list(data.columns)
     all_cols.remove(target)
@@ -243,6 +415,8 @@ def setup(data,
 
     #----------------------------------------------------   Initialize components   --------------------------------------
     
+    logger.info("Preloading libraries")
+
     #pre-load libraries
     import pandas as pd
     import ipywidgets as ipw
@@ -250,11 +424,14 @@ def setup(data,
     import datetime, time
 
     #pandas option
-    pd.set_option('display.max_columns', None)
+    pd.set_option('display.max_columns', 500)
     pd.set_option('display.max_rows', 500)
         
+    logger.info("Preparing display monitor")
+    
     progress = ipw.IntProgress(value=0, min=0, max=3, step=1 , description='Processing: ')
-    display(progress)
+    if verbose: 
+        display(progress)
     
     timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
     monitor = pd.DataFrame( [ ['Initiated' , '. . . . . . . . . . . . . . . . . .', timestampStr ], 
@@ -262,7 +439,10 @@ def setup(data,
                              ['ETC' , '. . . . . . . . . . . . . . . . . .',  'Calculating ETC'] ],
                               columns=['', ' ', '   ']).set_index('')
     
-    display(monitor, display_id='monitor')
+    if verbose:
+        display(monitor, display_id='monitor')
+
+    logger.info("Importing libraries")
     
     #general dependencies
     import numpy as np
@@ -273,6 +453,10 @@ def setup(data,
     import seaborn as sns
     import matplotlib.pyplot as plt
     import plotly.express as px
+
+    #setting sklearn config to print all parameters including default
+    import sklearn
+    sklearn.set_config(print_changed_only=False)
     
     #define highlight function for function grid to display
     def highlight_max(s):
@@ -288,12 +472,19 @@ def setup(data,
     import warnings
     warnings.filterwarnings('ignore') 
     
-    #copy original data for pandas profiler
-    data_before_preprocess = data.copy()
+    logger.info("Declaring global variables")
     
     #declaring global variables to be accessed by other functions
-    global X, y, X_train, X_test, y_train, y_test, seed, prep_pipe, target_inverse_transformer, experiment__, preprocess
-    
+    global X, y, X_train, X_test, y_train, y_test, seed, prep_pipe, target_inverse_transformer, experiment__,\
+        preprocess, create_model_container, master_model_container, display_container, exp_name_log, logging_param,\
+        log_plots_param, data_before_preprocess, target_param
+
+    logger.info("Copying data for preprocessing")
+
+    #copy original data for pandas profiler
+    data_before_preprocess = data.copy()
+
+
     #generate seed to be used globally
     if session_id is None:
         seed = random.randint(150, 9000)
@@ -305,9 +496,12 @@ def setup(data,
     '''
      
     monitor.iloc[1, 1:] = 'Preparing Data for Modeling'
-    update_display(monitor, display_id='monitor')
+    if verbose: 
+        update_display(monitor, display_id='monitor')
             
     #define parameters for preprocessor
+
+    logger.info("Declaring preprocessing parameters")
     
     #numeric features
     if numeric_features is None:
@@ -346,7 +540,9 @@ def setup(data,
         transform_target_method_pass = 'bc'
     elif transform_target_method == 'yeo-johnson':
         transform_target_method_pass = 'yj'
-        
+
+    logger.info("Importing preprocessing module")
+
     #import library
     from pycaret import preprocess
     
@@ -396,7 +592,10 @@ def setup(data,
         target_inverse_transformer = preprocess.pt_target.p_transform_target
     except:
         target_inverse_transformer = None
+        logger.info("No inverse transformer found")
     
+    logger.info("Creating grid variables")
+
     #generate values for grid show
     missing_values = data_before_preprocess.isna().sum().sum()
     if missing_values > 0:
@@ -441,16 +640,40 @@ def setup(data,
         transform_target_method_grid = preprocess.pt_target.function_to_apply
      
     '''
-    MONITOR UPDATES STARTS HERE
+    preprocessing ends here
     '''
 
     #reset pandas option
-    pd.reset_option("display.max_rows") #switch back on 
+    pd.reset_option("display.max_rows")
     pd.reset_option("display.max_columns")
     
     #create an empty list for pickling later.
     experiment__ = []
+
+    #create create_model_container
+    create_model_container = []
+
+    #create master_model_container
+    master_model_container = []
+
+    #create display container
+    display_container = []
+
+    #create logging parameter
+    logging_param = log_experiment
+
+    #create exp_name_log param incase logging is False
+    exp_name_log = 'no_logging'
         
+    #create an empty log_plots_param
+    if log_plots:
+        log_plots_param = True
+    else:
+        log_plots_param = False
+
+    # create target param
+    target_param = target
+
     #creating variables to be used later in the function
     X = data.drop(target, axis=1)
     y = data[target]
@@ -465,14 +688,17 @@ def setup(data,
     ### If there is no sampling 
 
     monitor.iloc[1, 1:] = 'Splitting Data'
-    update_display(monitor, display_id='monitor')
+    if verbose: 
+        update_display(monitor, display_id='monitor')
 
-
-    ### TO DO: Verify if necessary to split data 
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=1-train_size, random_state=seed)
 
     # Update progress bar 
     progress.value += 1
+
+    '''
+    Final display Starts
+    '''
     
     clear_output()
     
@@ -480,11 +706,15 @@ def setup(data,
     Final display Starts
     '''
     clear_output()
-    print(' ')
+
+    if verbose: 
+        print(' ')
     if profile:
         print('Setup Succesfully Completed! Loading Profile Now... Please Wait!')
     else:
-        print('Setup Succesfully Completed!')
+        if verbose: 
+            print('Setup Succesfully Completed!')
+
     functions = pd.DataFrame ([ 
         ['session_id', seed],
         ['Transform Target ', transform_target],
@@ -506,7 +736,8 @@ def setup(data,
     
     #functions_ = functions.style.hide_index()
     functions_ = functions.style.apply(highlight_max)
-    display(functions_)
+    if verbose: 
+        display(functions_)
         
     if profile:
         try:
@@ -532,8 +763,92 @@ def setup(data,
         experiment__.append(('Target Inverse Transformer', target_inverse_transformer))
     except:
         pass
+
+    #end runtime
+    runtime_end = time.time()
+    runtime = np.array(runtime_end - runtime_start).round(2)
     
-    return X, y, X_train, X_test, y_train, y_test, seed, prep_pipe, target_inverse_transformer, experiment__
+    if logging_param: 
+
+        logger.info("Logging experiment in MLFlow")
+        
+        import mlflow
+        from pathlib import Path
+
+        if experiment_name is None:
+            exp_name_ = 'ts-default-name'
+        else:
+            exp_name_ = experiment_name
+
+        URI = secrets.token_hex(nbytes=4)    
+        exp_name_log = exp_name_
+
+        try:
+            mlflow.create_experiment(exp_name_log)
+        except:
+            pass
+
+        #mlflow logging
+        mlflow.set_experiment(exp_name_log)
+
+        run_name_ = 'Session Initialized ' + str(USI)
+
+        with mlflow.start_run(run_name=run_name_) as run:
+
+            # Get active run to log as tag
+            RunID = mlflow.active_run().info.run_id
+            
+            k = functions.copy()
+            k.set_index('Description',drop=True,inplace=True)
+            kdict = k.to_dict()
+            params = kdict.get('Value')
+            mlflow.log_params(params)
+
+            #set tag of compare_models
+            mlflow.set_tag("Source", "setup")
+            
+            import secrets
+            URI = secrets.token_hex(nbytes=4)
+            mlflow.set_tag("URI", URI)
+            mlflow.set_tag("USI", USI) 
+            mlflow.set_tag("Run Time", runtime)
+            mlflow.set_tag("Run ID", RunID)
+
+            # Log the transformation pipeline
+            logger.info("SubProcess save_model() called ==================================")
+            save_model(prep_pipe, 'Transformation Pipeline', verbose=False)
+            logger.info("SubProcess save_model() end ==================================")
+            mlflow.log_artifact('Transformation Pipeline' + '.pkl')
+            os.remove('Transformation Pipeline.pkl')
+
+            # Log pandas profile
+            if log_profile:
+                import pandas_profiling
+                pf = pandas_profiling.ProfileReport(data_before_preprocess)
+                pf.to_file("Data Profile.html")
+                mlflow.log_artifact("Data Profile.html")
+                os.remove("Data Profile.html")
+                clear_output()
+                display(functions_)
+
+            # Log training and testing set
+            if log_data:
+                X_train.join(y_train).to_csv('Train.csv')
+                X_test.join(y_test).to_csv('Test.csv')
+                mlflow.log_artifact("Train.csv")
+                mlflow.log_artifact("Test.csv")
+                os.remove('Train.csv')
+                os.remove('Test.csv')
+
+    logger.info("create_model_container: " + str(len(create_model_container)))
+    logger.info("master_model_container: " + str(len(master_model_container)))
+    logger.info("display_container: " + str(len(display_container)))
+
+    logger.info("setup() succesfully completed......................................")
+
+    return X, y, X_train, X_test, y_train, y_test, seed, prep_pipe, target_inverse_transformer,\
+        experiment__, create_model_container, master_model_container, display_container, exp_name_log,\ 
+        logging_param, log_plots_param, USI, data_before_preprocess, target_param
     
 
 
