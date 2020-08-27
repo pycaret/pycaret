@@ -51,6 +51,10 @@ def test():
     # stack models
     stacker = pycaret.regression.stack_models(estimator_list = top3[1:], meta_model = top3[0])
 
+    # plot model
+    lr = pycaret.regression.create_model('lr')
+    pycaret.regression.plot_model(lr, save=True, scale=5)
+
     # select best model
     best = pycaret.regression.automl(optimize = 'MAPE')
 
