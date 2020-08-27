@@ -1095,13 +1095,8 @@ def setup(
     else:
         pca_components_pass = 0.99
 
-    if bin_numeric_features is None:
-        apply_binning_pass = False
-        features_to_bin_pass = []
-
-    else:
-        apply_binning_pass = True
-        features_to_bin_pass = bin_numeric_features
+    apply_binning_pass = False if bin_numeric_features is None else True
+    features_to_bin_pass = bin_numeric_features or []
 
     # trignometry
     trigonometry_features_pass = ["sin", "cos", "tan"] if trigonometry_features else []
