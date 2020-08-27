@@ -5217,14 +5217,25 @@ def plot_model(
     # AUC, #Confusion Matrix and #Feature Importance
 
     logger.info("Copying training dataset")
+
     # Storing X_train and y_train in data_X and data_y parameter
     data_X = X_train.copy()
     data_y = y_train.copy()
+    
+    #reset index
+    data_X.reset_index(drop=True, inplace=True)
+    data_y.reset_index(drop=True, inplace=True)
+    
+    logger.info("Copying test dataset")
 
     # Storing X_train and y_train in data_X and data_y parameter
     test_X = X_test.copy()
     test_y = y_test.copy()
 
+    #reset index
+    test_X.reset_index(drop=True, inplace=True)
+    test_y.reset_index(drop=True, inplace=True)
+    
     logger.info(f"Plot type: {plot}")
     plot_name = available_plots[plot]
     display.move_progress()
