@@ -1257,7 +1257,7 @@ def setup(
 
     # generate values for grid show
     missing_values = data_before_preprocess.isna().sum().sum()
-    missing_flag = True if missing_values else False
+    missing_flag = True if missing_values > 0 else False
 
     normalize_grid = normalize_method if normalize else "None"
 
