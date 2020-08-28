@@ -34,12 +34,13 @@ def setup(data,
     Parameters
     ----------
     data : pandas.Dataframe or list
-        pandas.Dataframe with shape (n_samples, n_features) where n_samples is the number of samples and n_features
-        is the number of features, or object of type list with n length.
+        pandas.Dataframe with shape (n_samples, n_features) where n_samples is 
+        the number of samples and n_features is the number of features, or object 
+        of type list with n length.
 
     target: string
-        If data is of type pandas.Dataframe, name of column containing text values must be passed as
-        string. 
+        If data is of type pandas.Dataframe, name of column containing text values 
+        must be passed as string. 
     
     custom_stopwords: list, default = None
         List containing custom stopwords.
@@ -1287,8 +1288,8 @@ def assign_model(model,
     stage to one of the topic using trained model object passed as model param.
     create_model() function must be called before using assign_model().
     
-    This function returns a pandas.Dataframe with topic weights, dominant topic and % of the
-    dominant topic (where applicable).
+    This function returns a pandas.Dataframe with topic weights, dominant topic and 
+    % of the dominant topic (where applicable).
 
     Example
     -------
@@ -1669,7 +1670,8 @@ def plot_model(model = None,
         A trained model object can be passed. Model must be created using create_model().
 
     plot : string, default = 'frequency'
-        Enter abbreviation for type of plot. The current list of plots supported are (Name - Abbreviated String):
+        Enter abbreviation for type of plot. The current list of plots supported are 
+        (Name - Abbreviated String):
         * Word Token Frequency - 'frequency'              
         * Word Distribution Plot - 'distribution'
         * Bigram Frequency Plot - 'bigram' 
@@ -2377,12 +2379,13 @@ def tune_model(model=None,
         * 'nmf' - Non-Negative Matrix Factorization
 
     multi_core: Boolean, default = False
-        True would utilize all CPU cores to parallelize and speed up model training. Only
-        available for 'lda'. For all other models, multi_core parameter is ignored.
+        True would utilize all CPU cores to parallelize and speed up model 
+        training. Only available for 'lda'. For all other models, multi_core 
+        parameter is ignored.
 
     supervised_target: string
-        Name of the target column for supervised learning. If None, the mdel coherence value
-        is used as the objective function.
+        Name of the target column for supervised learning. If None, the model 
+        coherence value is used as the objective function.
 
     estimator: string, default = None
         For Classification (ID - Name):

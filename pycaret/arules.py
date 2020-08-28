@@ -2,7 +2,7 @@
 # Author: Moez Ali <moez.ali@queensu.ca>
 # License: MIT
 # Release: PyCaret 2.1
-# Last modified : 14/08/2020
+# Last modified : 27/08/2020
 
 def setup(data, 
           transaction_id, 
@@ -13,10 +13,10 @@ def setup(data,
     """
     This function initializes the environment in pycaret. setup() must called before
     executing any other function in pycaret. It takes three mandatory parameters:
-    (i) data, (ii) transaction_id param identifying
-    basket and (iii) item_id param used to create rules. These three params are 
-    normally found in any transactional dataset. pycaret will internally convert the
-    pandas.DataFrame into a sparse matrix which is required for association rules mining.
+    (i) data, (ii) transaction_id param identifying basket and (iii) item_id param 
+    used to create rules. These three params are normally found in any transactional 
+    dataset. pycaret will internally convert the pandas.DataFrame into a sparse matrix 
+    which is required for association rules mining.
     
     Example
     -------
@@ -27,7 +27,8 @@ def setup(data,
     Parameters
     ----------
     data : pandas.DataFrame
-        Shape (n_samples, n_features) where n_samples is the number of samples and n_features is the number of features.
+        Shape (n_samples, n_features) where n_samples is the number of samples and 
+        n_features is the number of features.
 
     transaction_id: string
         Name of column representing transaction id. This will be used to pivot the matrix.
@@ -230,7 +231,8 @@ def plot_model(model,
         pandas.DataFrame returned by trained model using create_model().
 
     plot : string, default = '2d'
-        Enter abbreviation of type of plot. The current list of plots supported are (Name - Abbreviated String):
+        Enter abbreviation of type of plot. The current list of plots supported are 
+        (Name - Abbreviated String):
 
         * Support, Confidence and Lift (2d) - '2d'
         * Support, Confidence and Lift (3d) - '3d'

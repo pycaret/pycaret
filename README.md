@@ -1,6 +1,6 @@
 ![alt text](https://github.com/pycaret/pycaret/blob/master/pycaret2.png)
 
-# PyCaret 2.0
+# PyCaret 2.1
 [![Build Status](https://travis-ci.com/pycaret/pycaret.svg?branch=master)](https://travis-ci.com/pycaret/pycaret) [![Stability](https://img.shields.io/badge/stability-stable-green.svg)](https://img.shields.io/badge/stability-stable-green.svg) [![Documentation Status](https://readthedocs.org/projects/pip/badge/?version=stable)](http://pip.pypa.io/en/stable/?badge=stable) [![PyPI version](https://badge.fury.io/py/pycaret.svg)](https://badge.fury.io/py/pycaret) [![License](https://img.shields.io/pypi/l/ansicolortags.svg)](https://img.shields.io/pypi/l/ansicolortags.svg) [![Git count](http://hits.dwyl.com/pycaret/pycaret/pycaret.svg)](http://hits.dwyl.com/pycaret/pycaret/pycaret)
 
 ## What is PyCaret?
@@ -17,11 +17,12 @@ For more information on PyCaret, please visit our official website https://www.p
 ![alt text](https://github.com/pycaret/pycaret/blob/master/pycaret2-features.png)
 
 ## Current Release
-PyCaret `2.0` is now available. See `2.0` release notes. The easiest way to install pycaret is using pip. 
+PyCaret `2.1` is now available. See `2.1` release notes. The easiest way to install pycaret is using pip. 
 
 ```python
-pip install pycaret==2.0
+pip install pycaret==2.1
 ```
+Docs: https://pycaret.readthedocs.io/en/latest/
 
 ## Optional dependencies
 Following libraries are not hard dependencies and are not automatically installed when you install PyCaret. To use all functionalities of PyCaret, these optional dependencies must be installed.
@@ -38,9 +39,10 @@ pip install shap
 Installation is only supported on 64-bit version of Python.
 
 ## Important Links
-- Release notes : https://github.com/pycaret/pycaret/releases/tag/2.0
+- Release notes : https://github.com/pycaret/pycaret/releases/tag/2.1
+- Docs: https://pycaret.readthedocs.io/en/latest/
 - User Guide : https://www.pycaret.org/guide
-- Getting Started Tutorials : https://github.com/pycaret/pycaret/tree/master/tutorials `not updated for PyCaret 2.0`
+- Getting Started Tutorials : https://github.com/pycaret/pycaret/tree/master/tutorials
 - Example Notebooks : https://github.com/pycaret/pycaret/tree/master/examples
 - Other Resources : https://github.com/pycaret/pycaret/tree/master/resources 
 - Issue Logs: https://github.com/pycaret/pycaret/issues
