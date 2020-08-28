@@ -7393,7 +7393,13 @@ def models(
         model_type = {"linear": ["lr", "ridge", "svm"],
                       "tree": ["dt"],
                       "ensemble": ["rf", "et", "gbc", "xgboost", "lightgbm", "catboost", "ada"]}
-        return df[df.index.isin(model_type.get(type, df.index))]
+
+        # Check if type is valid
+        if type not in list(model_type):
+            raise ValueError(
+                f"type param only accepts {', '.join(list(model_type))}."
+            )
+    return df[df.index.isin(model_type.get(type, df.index))]
 
     if not force_regenerate:
         try:
