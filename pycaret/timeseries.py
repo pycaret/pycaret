@@ -28,153 +28,157 @@ def setup(
     profile: bool = False,
 ):
 
-    """
-        
-    Description:
-    ------------    
+    """ 
     This function initializes the environment in pycaret and creates the transformation
     pipeline to prepare the data for modeling and deployment. setup() must called before
     executing any other function in pycaret. It takes two mandatory parameters:
     dataframe {array-like, sparse matrix} and name of the target column. 
     
+    Example
+    -------
+    >>> from pycaret.datasets import get_data
+    >>> import pycaret.timeseries as ts
+    >>> bike = get_data('bike')
+
+    >>> experiment_name = ts.setup(data=bike, target='cnt')
+
+    'bike' is a pandasDataFrame and 'cnt' is the name of the target column.
 
     Parameters
     ----------
-    * data : {array-like, sparse matrix}, shape (n_samples, n_features) where n_samples 
-    is the number of samples and n_features is the number of features.
+    data : pandas.DataFrame
+        Shape (n_samples, n_features) where n_samples is the number of samples and n_features is the number of features.
 
-    * target: string
-    Name of target column to be passed in as string. 
+    target: string
+        Name of target column to be passed in as string. 
     
-    * train_size: float, default = 0.7
-    Size of the training set. By default, 70% of the data will be used for training 
-    and validation. The remaining data will be used for test / hold-out set.
+    train_size: float, default = 0.7
+        Size of the training set. By default, 70% of the data will be used for training 
+        and validation. The remaining data will be used for test / hold-out set.
     
-    * numeric_features: list, default = None
-    If the inferred data types are not correct, numeric_features can be used to
-    overwrite the inferred type. If when running setup the type of 'column1' is 
-    inferred as a categorical instead of numeric, then this parameter can be used 
-    to overwrite by passing numeric_features = ['column1'].    
+    numeric_features: string, default = None
+        If the inferred data types are not correct, numeric_features can be used to
+        overwrite the inferred type. If when running setup the type of 'column1' is 
+        inferred as a categorical instead of numeric, then this parameter can be used 
+        to overwrite by passing numeric_features = ['column1'].    
     
-    * numeric_imputation: string, default = 'mean'
-    If missing values are found in numeric features, they will be imputed with the 
-    mean value of the feature. The other available option is 'median' which imputes 
-    the value using the median value in the training dataset. 
-    
-    * date_features: list, default = None
-    If the data has a DateTime column that is not automatically detected when running
-    setup, this parameter can be used by passing date_features = 'date_column_name'. 
-    It can work with multiple date columns. Date columns are not used in modeling. 
-    Instead, feature extraction is performed and date columns are dropped from the 
-    dataset. If the date column includes a time stamp, features related to time will 
-    also be extracted.
+    numeric_imputation: string, default = 'mean'
+        If missing values are found in numeric features, they will be imputed with the 
+        mean value of the feature. The other available option is 'median' which imputes 
+        the value using the median value in the training dataset. 
+        
+    date_features: string, default = None
+        If the data has a DateTime column that is not automatically detected when running
+        setup, this parameter can be used by passing date_features = 'date_column_name'. 
+        It can work with multiple date columns. Date columns are not used in modeling. 
+        Instead, feature extraction is performed and date columns are dropped from the 
+        dataset. If the date column includes a time stamp, features related to time will 
+        also be extracted.
 
-    * experiment_name: str, default = None
-    Name of experiment for logging. When set to None, 'ts' is by default used as 
-    alias for the experiment name.
+    experiment_name: string, default = None
+        Name of experiment for logging. When set to None, 'ts' is by default used as 
+        alias for the experiment name.
 
-    * ignore_features: list, default = None
-    If any feature should be ignored for modeling, it can be passed to the param
-    ignore_features. The ID and DateTime columns when inferred, are automatically 
-    set to ignore for modeling. 
+    ignore_features: string, default = None
+        If any feature should be ignored for modeling, it can be passed to the param
+        ignore_features. The ID and DateTime columns when inferred, are automatically 
+        set to ignore for modeling. 
 
-    * log_data: bool, default = False
-    When set to True, train and test dataset are logged as csv. 
+    log_data: bool, default = False
+        When set to True, train and test dataset are logged as csv. 
 
-    * log_experiment: bool, default = False
-    When set to True, all metrics and parameters are logged on MLFlow server.
+    log_experiment: bool, default = False
+        When set to True, all metrics and parameters are logged on MLFlow server.
 
-    * log_plots: bool, default = False
-    When set to True, specific plots are logged in MLflow as a png file. By default,
-    it is set to False.
+    log_plots: bool, default = False
+        When set to True, specific plots are logged in MLflow as a png file. By default,
+        it is set to False.
 
-    * log_profile: bool, default = False
-    When set to True, data profile is also logged on MLflow as a html file. By default,
-    it is set to False.  
+    log_profile: bool, default = False
+        When set to True, data profile is also logged on MLflow as a html file. By default,
+        it is set to False.  
 
-    * normalize: bool, default = False
-    When set to True, the feature space is transformed using the normalized_method
-    param. Generally, linear algorithms perform better with normalized data however, 
-    the results may vary and it is advised to run multiple experiments to evaluate
-    the benefit of normalization.
+    normalize: bool, default = False
+        When set to True, the feature space is transformed using the normalized_method
+        param. Generally, linear algorithms perform better with normalized data however, 
+        the results may vary and it is advised to run multiple experiments to evaluate
+        the benefit of normalization.
     
-    * normalize_method: string, default = 'zscore'
-    Defines the method to be used for normalization. By default, normalize method
-    is set to 'zscore'. The standard zscore is calculated as z = (x - u) / s. The
-    other available options are:
+    normalize_method: string, default = 'zscore'
+        Defines the method to be used for normalization. By default, normalize method
+        is set to 'zscore'. The standard zscore is calculated as z = (x - u) / s. The
+        other available options are:
+        
+        'minmax'    : scales and translates each feature individually such that it is in 
+                    the range of 0 - 1.
+        
+        'maxabs'    : scales and translates each feature individually such that the maximal 
+                    absolute value of each feature will be 1.0. It does not shift/center 
+                    the data, and thus does not destroy any sparsity.
+        
+        'robust'    : scales and translates each feature according to the Interquartile range.
+                    When the dataset contains outliers, robust scaler often gives better
+                    results.
     
-    'minmax'    : scales and translates each feature individually such that it is in 
-                  the range of 0 - 1.
-    
-    'maxabs'    : scales and translates each feature individually such that the maximal 
-                  absolute value of each feature will be 1.0. It does not shift/center 
-                  the data, and thus does not destroy any sparsity.
-    
-    'robust'    : scales and translates each feature according to the Interquartile range.
-                  When the dataset contains outliers, robust scaler often gives better
-                  results.
-    
-    * transformation: bool, default = False
-    When set to True, a power transformation is applied to make the data more normal /
-    Gaussian-like. This is useful for modeling issues related to heteroscedasticity or 
-    other situations where normality is desired. The optimal parameter for stabilizing 
-    variance and minimizing skewness is estimated through maximum likelihood.
-    
-    * transformation_method: string, default = 'yeo-johnson'
-    Defines the method for transformation. By default, the transformation method is set
-    to 'yeo-johnson'. The other available option is 'quantile' transformation. Both 
-    the transformation transforms the feature set to follow a Gaussian-like or normal
-    distribution. Note that the quantile transformer is non-linear and may distort linear 
-    correlations between variables measured at the same scale.
+    transformation: bool, default = False
+        When set to True, a power transformation is applied to make the data more normal /
+        Gaussian-like. This is useful for modeling issues related to heteroscedasticity or 
+        other situations where normality is desired. The optimal parameter for stabilizing 
+        variance and minimizing skewness is estimated through maximum likelihood.
+        
+    transformation_method: string, default = 'yeo-johnson'
+        Defines the method for transformation. By default, the transformation method is set
+        to 'yeo-johnson'. The other available option is 'quantile' transformation. Both 
+        the transformation transforms the feature set to follow a Gaussian-like or normal
+        distribution. Note that the quantile transformer is non-linear and may distort linear 
+        correlations between variables measured at the same scale.
 
-    * verbose: Boolean, default = True
-    Information grid is not printed when verbose is set to False.
-    
-    * remove_outliers: bool, default = False
-    When set to True, outliers from the training data are removed using PCA linear
-    dimensionality reduction using the Singular Value Decomposition technique.
-    
-    * outliers_threshold: float, default = 0.05
-    The percentage / proportion of outliers in the dataset can be defined using
-    the outliers_threshold param. By default, 0.05 is used which means 0.025 of the 
-    values on each side of the distribution's tail are dropped from training data.
-    
-    * transform_target: bool, default = False
-    When set to True, target variable is transformed using the method defined in
-    transform_target_method param. Target transformation is applied separately from 
-    feature transformations. 
-    
-    * transform_target_method: string, default = 'box-cox'
-    'Box-cox' and 'yeo-johnson' methods are supported. Box-Cox requires input data to 
-    be strictly positive, while Yeo-Johnson supports both positive or negative data.
-    When transform_target_method is 'box-cox' and target variable contains negative
-    values, method is internally forced to 'yeo-johnson' to avoid exceptions.
-    
-    * session_id: int, default = None
-    If None, a random seed is generated and returned in the Information grid. The 
-    unique number is then distributed as a seed in all functions used during the 
-    experiment. This can be used for later reproducibility of the entire experiment.
-    
-    * silent: bool, default = False
-    When set to True, confirmation of data types is not required. All preprocessing will 
-    be performed assuming automatically inferred data types. Not recommended for direct use 
-    except for established pipelines.
-    
-    * profile: bool, default = False
-    If set to true, a data profile for Exploratory Data Analysis will be displayed 
-    in an interactive HTML report. 
-    
-    Returns:
+    verbose: Boolean, default = True
+        Information grid is not printed when verbose is set to False.
+        
+    remove_outliers: bool, default = False
+        When set to True, outliers from the training data are removed using PCA linear
+        dimensionality reduction using the Singular Value Decomposition technique.
+        
+    outliers_threshold: float, default = 0.05
+        The percentage / proportion of outliers in the dataset can be defined using
+        the outliers_threshold param. By default, 0.05 is used which means 0.025 of the 
+        values on each side of the distribution's tail are dropped from training data.
+        
+    transform_target: bool, default = False
+        When set to True, target variable is transformed using the method defined in
+        transform_target_method param. Target transformation is applied separately from 
+        feature transformations. 
+        
+    transform_target_method: string, default = 'box-cox'
+        'Box-cox' and 'yeo-johnson' methods are supported. Box-Cox requires input data to 
+        be strictly positive, while Yeo-Johnson supports both positive or negative data.
+        When transform_target_method is 'box-cox' and target variable contains negative
+        values, method is internally forced to 'yeo-johnson' to avoid exceptions.
+        
+    session_id: int, default = None
+        If None, a random seed is generated and returned in the Information grid. The 
+        unique number is then distributed as a seed in all functions used during the 
+        experiment. This can be used for later reproducibility of the entire experiment.
+        
+    silent: bool, default = False
+        When set to True, confirmation of data types is not required. All preprocessing will 
+        be performed assuming automatically inferred data types. Not recommended for direct use 
+        except for established pipelines.
+        
+    profile: bool, default = False
+        If set to true, a data profile for Exploratory Data Analysis will be displayed 
+        in an interactive HTML report. 
+        
+    Returns
     --------
-    info grid:    Information grid is printed.
-    -----------      
-    environment:  This function returns various outputs that are stored in variable
-    -----------   as tuple. They are used by other functions in pycaret.
-    Warnings:
-    ---------
-    None
-      
-      
+    info grid:    
+        Information grid is printed.
+  
+    environment:  
+        This function returns various outputs that are stored in variable
+        as tuple. They are used by other functions in pycaret.
+  
     """
 
     # ----------------------------------  Exception checking    --------------------------
@@ -950,53 +954,55 @@ def create_model(
      
     Description:
     ------------
-    This function creates an autoregressive model. 
-    The output prints a score grid that shows MAE, MSE, 
-    RMSE, MAPE, SSE, AIC and BIC.
-    This function returns a trained model object. 
-    setup() function must be called before using create_model()
+    This function trains a timeseries model. The output prints a score grid that shows MAE,
+    MSE, RMSE, MAPE, SSE, AIC and BIC.
+
+    This function returns a trained model object. setup() function must be called before using create_model()
 
     Example
-        -------
-        from pycaret.datasets import get_data
-        from pycaret.timeseries import *
-        
-        data = get_data('bike')
-        ts_setup = setup(data, target='cnt')
-        
-        model = create_model('auto_arima')
-        This will create an arima model.
+    -------
+    >>> from pycaret.datasets import get_data
+    >>> import pycaret.timeseries as ts
+    >>> data = get_data('bike')
+    >>> setup = ts.setup(data, target='cnt')
+    >>> model = ts.create_model('auto_arima', verbose=False)
     
+    This will return a fitted arima model.
 
+    >>> model, model_results = ts.create_model('sem', splits=5, verbose=True)
+
+    This will return a fitted Simpe Exponential Smoothing model with a pandas.DataFrame containing the evaluation
+    metrics MAE, MSE, RMSE, MAPE, SSE, AIC and BIC calculated at each split.
+    
     Parameters
     ----------
-    estimator : string, default = None
-    Enter abbreviated string of the estimator class. List of estimators supported:
-    Estimator                     Abbreviated String     Original Implementation 
-    ---------                     ------------------     -----------------------
-    Simple Exponential Smoothing  'sem'                  tsa.api.SimpleExpSmoothing
-    Holt                          'holt'                 tsa.api.Holt
-    Auto_Arima                    'auto_arima'           pmdarima.auto_arima
-    
+    estimator : string, default = "auto_arima"
+        Enter abbreviated string of the estimator class. List of estimators supported:
+        Estimator                     Abbreviated String     Original Implementation 
+        ---------                     ------------------     -----------------------
+        Simple Exponential Smoothing  'sem'                  tsa.api.SimpleExpSmoothing
+        Holt                          'holt'                 tsa.api.Holt
+        Auto_Arima                    'auto_arima'           pmdarima.auto_arima
+        
     splits: integer, default = 5
-    Number of splits to be used in TimeSeriesSplit. Must be at least 2. 
+        Number of splits to be used in TimeSeriesSplit. Must be at least 2. 
+    
     round: integer, default = 4
-    Number of decimal places the metrics in the score grid will be rounded to. 
+        Number of decimal places the metrics in the score grid will be rounded to. 
+    
     verbose: Boolean, default = True
-    Score grid is not printed when verbose is set to False. Model_results is 
-    returned when verbose is set to True
+        Score grid is not printed when verbose is set to False. Model_results is 
+        returned when verbose is set to True
 
-    Returns:
+    Returns
     --------
-    model_results:   A table containing the scores of the model.
-                     Scoring metrics used are MAE, MSE, RMSE, MAPE, AIC and BIC.
+    model_results:   
+        A table containing the scores of the model. Scoring metrics used are MAE, MSE, 
+        RMSE, MAPE, AIC and BIC.
     
-    model:        trained model object
-    -----------
-    
-    Warnings:
-    ---------
-    None
+    model:        
+        Trained model object
+
     """
 
     """
@@ -1407,58 +1413,6 @@ def create_model(
             mlflow.log_artifact('model.pkl')
             os.remove('model.pkl')
             
-            # # define model signature
-            # from mlflow.models.signature import infer_signature
-
-            # signature = infer_signature(
-            #     data_before_preprocess.drop([target_param], axis=1)
-            # )
-            # input_example = (
-            #     data_before_preprocess.drop([target_param], axis=1).iloc[0].to_dict()
-            # )
-
-            # import pickle
-            # import os
-
-            # # Set path to save model
-            # ts_model_path = os.path.join(os.getcwd(), f"{run_name}.pkl")
-
-            # # Pickle model
-            # with open(ts_model_path, "wb") as f:
-            #     pickle.dump(model, f)
-
-            # if estimator == "auto_arima":
-            #     from pmdarima import __version__
-
-            #     version = str(__version__)
-            #     conda_deps = "pmdarima"
-            # else:
-            #     from statsmodels import __version__
-
-            #     version = str(__version__)
-            #     conda_deps = "statsmodels"
-
-            # from mlflow.utils.environment import _mlflow_conda_env
-            # from pycaret.utils import __version__
-
-            # pip_deps = ["pycaret==" + str(__version__())]
-
-            # # Set a conda env with pmdarima and statsmodels
-            # conda_env = _mlflow_conda_env(
-            #     additional_conda_deps=[f"{conda_deps}={version}"],
-            #     additional_pip_deps=pip_deps,
-            #     additional_conda_channels=None,
-            # )
-
-            # import mlflow.pyfunc as mlflow_pyfunc
-
-            # mlflow_pyfunc.log_model(
-            #     artifact_path=f"{run_name}_model",
-            #     data_path=ts_model_path,
-            #     conda_env=conda_env,
-            #     signature=signature,
-            #     input_example=input_example,
-            # )
 
     # storing into experiment
     tup = (estimator, model)
@@ -1488,42 +1442,44 @@ def auto_select(
     of the input metric.
 
     Example
-        -------
-        from pycaret.datasets import get_data
-        from pycaret.timeseries import *
+    -------
+    >>> from pycaret.datasets import get_data
+    >>> import pycaret.timeseries as ts
         
-        data = get_data('bike')
-        ts_setup = setup(data, target='cnt')
+    >>> data = get_data('bike')
+    >>> setup = ts.setup(data, target='cnt')
         
-        best_model = auto_select(splits=10, metric='mae')
-        This will output the best model based on the MAE
+    >>> best_model = ts.auto_select(splits=10, metric='mae')
+        
+    This will output the best model based on the MAE. It evaluates 
+    the avaible estimators and outputs the one with the lowest 
+    average value of 'mae'.
     
 
     Parameters
     ----------
-    * splits: integer, default = 5
-    Number of splits to be used in TimeSeriesSplit. Must be at least 2. 
-    * round: integer, default = 4
-    Number of decimal places the metrics in the score grid will be rounded to. 
-    * metric: string, default = 'rmse'
-    Select the model based which has the lower value of this metric. 
-    * verbose: Boolean, default = True
-    Score grid is not printed when verbose is set to False. Model_results is 
-    returned when verbose is set to True
+    splits: integer, default = 5
+        Number of splits to be used in TimeSeriesSplit. Must be at least 2. 
+    
+    round: integer, default = 4
+        Number of decimal places the metrics in the score grid will be rounded to. 
+    
+    metric: string, default = 'rmse'
+        Select the model based which has the lower value of this metric. 
+    
+    verbose: Boolean, default = True
+        Score grid is not printed when verbose is set to False. Model_results is 
+        returned when verbose is set to True
 
     
-    Returns:
+    Returns
     --------
-    model: Name of fitted estimator 
-    -------- 
-    model_results: A table containing the scores of the model.
-    Scoring metrics used are MAE, MSE, RMSE, MAPE, AIC and BIC.
+    model: 
+        Name of best fitted estimator 
 
-    
-    Warnings:
-    ---------
-    None
-      
+    model_results: 
+        A table containing the scores of the model. Scoring metrics used are MAE,
+        MSE, RMSE, MAPE, AIC and BIC.
     
   
     """
@@ -1771,61 +1727,6 @@ def auto_select(
             mlflow.log_artifact('model.pkl')
             os.remove('model.pkl')
 
-            # define model signature
-            # from mlflow.models.signature import infer_signature
-
-            # signature = infer_signature(
-            #     data_before_preprocess.drop([target_param], axis=1)
-            # )
-            # input_example = (
-            #     data_before_preprocess.drop([target_param], axis=1).iloc[0].to_dict()
-            # )
-
-            # import pickle
-            # import os
-
-            # # Set path to save model
-            # ts_model_path = os.path.join(os.getcwd(), f"{run_name}.pkl")
-
-            # # Pickle model
-            # with open(ts_model_path, "wb") as f:
-            #     pickle.dump(model, f)
-
-            # if full_name == "auto_arima":
-
-            #     from pmdarima import __version__
-
-            #     version = str(__version__)
-            #     conda_deps = "pmdarima"
-
-            # else:
-
-            #     from statsmodels import __version__
-
-            #     version = str(__version__)
-            #     conda_deps = "statsmodels"
-
-            # from mlflow.utils.environment import _mlflow_conda_env
-            # from pycaret.utils import __version__
-
-            # pip_deps = ["pycaret==" + str(__version__())]
-
-            # # Set a conda env with pmdarima and statsmodels
-            # conda_env = _mlflow_conda_env(
-            #     additional_conda_deps=[f"{conda_deps}={version}"],
-            #     additional_pip_deps=pip_deps,
-            #     additional_conda_channels=None,
-            # )
-
-            # import mlflow.pyfunc as mlflow_pyfunc
-
-            # mlflow_pyfunc.log_model(
-            #     artifact_path=f"{run_name}_model",
-            #     data_path=ts_model_path,
-            #     conda_env=conda_env,
-            #     signature=signature,
-            #     input_example=input_example,
-            # )
 
     clear_output()
 
@@ -1853,42 +1754,42 @@ def forecast(
 ):
 
     """  
-    Description:
-    ------------
-    Forecast data given an estimator. 
+    Forecast n steps ahead data given a fitted estimator. 
 
     Example
-        -------
-        from pycaret.datasets import get_data
-        from pycaret.timeseries import *
-        
-        data = get_data('bike')
-        s = setup(data, target='cnt')
-        
-        auto_model = auto_select(splits=10, metric='mae')
-        forecast = forecast(auto_model)
-        This will output the best model based on the MAE
+    -------
+    >>> from pycaret.datasets import get_data
+    >>> import pycaret.timeseries as ts
     
+    >>> data = get_data('bike')
+    >>> setup = setup(data, target='cnt')
+    
+    >>> model = auto_select(splits=10, metric='mae')
+    >>> pred = forecast(model, steps=10)
+    
+    This will return prediction data values for 10 steps ahead.
+    
+    >>> model = create_model('sem')
+    >>> _ = forecast(model, steps=24, plot=True, style='fivethirtyeight')
+
+    This will return a plot with 24 steps ahead forecast made with 
+    the Simple Exponential Smoothing model.
     
     Parameters
     ----------
-    * steps: integer, default = 5
-    Number of steps ahead to be forecasted.  
-    * plot: Boolean, default = False 
-    Wheter or not to plot a graph with the original data and the 
-    point forecast.   
-    * style: Style sheet of pyplot graph. See the style sheets reference of 
-    matplotlib for avaible options. 
+    steps: integer, default = 5
+        Number of steps ahead to forecast.  
+    plot: Boolean, default = False 
+        Wheter or not to plot a graph with the original data and the 
+        point forecast.   
+    style: 
+        Style sheet of pyplot graph. See the style sheets reference of 
+        matplotlib for avaible options. 
 
-    Returns:
+    Returns
     --------
-    forecast:   Point estimate values (forecast values).
-    -----------   
-    
-    
-    Warnings:
-    ---------
-    None
+    forecast:   
+        Point estimate values (forecast values).
       
     """
 
@@ -2031,15 +1932,18 @@ def save_model(model, model_name, model_only=False, verbose=True):
     This function saves the transformation pipeline and trained model object 
     into the current active directory as a pickle file for later use. 
     
-        Example:
-        --------
-        from pycaret.datasets import get_data
-        bike = get_data('bike')
-        experiment_name = setup(data = bike,  target = 'cnt')
-        sem = create_model('sem')
-        save_model(sem, 'sem_model_23122019')
-        This will save the transformation pipeline and model as a binary pickle
-        file in the current directory. 
+    Example:
+    --------
+    >>> from pycaret.datasets import get_data
+    >>> import pycaret.timeseries as ts
+    >>> bike = get_data('bike')
+    >>> experiment_name = ts.setup(data = bike,  target = 'cnt')
+    >>> sem = ts.create_model('sem')
+    >>> ts.save_model(sem, 'sem_model_23122019')
+    
+    This will save the transformation pipeline and model as a binary pickle
+    file in the current directory. 
+
     Parameters
     ----------
     model : object, default = none
@@ -2054,9 +1958,11 @@ def save_model(model, model_name, model_only=False, verbose=True):
    
     verbose: Boolean, default = True
         Success message is not printed when verbose is set to False.
+    
     Returns
     --------    
     Success_Message
+
     """
     
     import logging
@@ -2121,10 +2027,11 @@ def load_model(model_name,
     
     Example
     -------
-    >>> saved_ts = load_model('ts_model_23122019')
+
+    >>> saved_model = ts.load_model('sem_model_23122019')
     
-    This will load the previously saved model in saved_ts variable. The file 
-    must be in the current directory.
+    This will load the previously saved model in saved_model variable. 
+    The file must be in the current directory.
 
     Parameters
     ----------
