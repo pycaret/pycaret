@@ -1,5 +1,10 @@
-from typing import Optional
+# Module: Timeseries
+# Author: Miguel Trejo Marrufo
+# License: MIT
+# Release: PyCaret 2.1
+# Last modified : 28/08/2020
 
+from typing import Optional
 
 def setup(
     data,
@@ -47,7 +52,8 @@ def setup(
     Parameters
     ----------
     data : pandas.DataFrame
-        Shape (n_samples, n_features) where n_samples is the number of samples and n_features is the number of features.
+        Shape (n_samples, n_features) where n_samples is the number of samples 
+        and n_features is the number of features.
 
     target: string
         Name of target column to be passed in as string. 
@@ -112,13 +118,13 @@ def setup(
         'minmax'    : scales and translates each feature individually such that it is in 
                     the range of 0 - 1.
         
-        'maxabs'    : scales and translates each feature individually such that the maximal 
-                    absolute value of each feature will be 1.0. It does not shift/center 
-                    the data, and thus does not destroy any sparsity.
+        'maxabs'    : scales and translates each feature individually such that the 
+                    maximal absolute value of each feature will be 1.0. It does not 
+                    shift/center the data, and thus does not destroy any sparsity.
         
-        'robust'    : scales and translates each feature according to the Interquartile range.
-                    When the dataset contains outliers, robust scaler often gives better
-                    results.
+        'robust'    : scales and translates each feature according to the Interquartile 
+                    range. When the dataset contains outliers, robust scaler often gives 
+                    better results.
     
     transformation: bool, default = False
         When set to True, a power transformation is applied to make the data more normal /
@@ -130,8 +136,8 @@ def setup(
         Defines the method for transformation. By default, the transformation method is set
         to 'yeo-johnson'. The other available option is 'quantile' transformation. Both 
         the transformation transforms the feature set to follow a Gaussian-like or normal
-        distribution. Note that the quantile transformer is non-linear and may distort linear 
-        correlations between variables measured at the same scale.
+        distribution. Note that the quantile transformer is non-linear and may distort 
+        linear correlations between variables measured at the same scale.
 
     verbose: Boolean, default = True
         Information grid is not printed when verbose is set to False.
@@ -162,9 +168,9 @@ def setup(
         experiment. This can be used for later reproducibility of the entire experiment.
         
     silent: bool, default = False
-        When set to True, confirmation of data types is not required. All preprocessing will 
-        be performed assuming automatically inferred data types. Not recommended for direct use 
-        except for established pipelines.
+        When set to True, confirmation of data types is not required. All preprocessing 
+        will be performed assuming automatically inferred data types. Not recommended for 
+        direct use except for established pipelines.
         
     profile: bool, default = False
         If set to true, a data profile for Exploratory Data Analysis will be displayed 
@@ -957,7 +963,8 @@ def create_model(
     This function trains a timeseries model. The output prints a score grid that shows MAE,
     MSE, RMSE, MAPE, SSE, AIC and BIC.
 
-    This function returns a trained model object. setup() function must be called before using create_model()
+    This function returns a trained model object. setup() function must be called before 
+    using create_model()
 
     Example
     -------
@@ -971,18 +978,19 @@ def create_model(
 
     >>> model, model_results = ts.create_model('sem', splits=5, verbose=True)
 
-    This will return a fitted Simpe Exponential Smoothing model with a pandas.DataFrame containing the evaluation
-    metrics MAE, MSE, RMSE, MAPE, SSE, AIC and BIC calculated at each split.
+    This will return a fitted Simpe Exponential Smoothing model with a pandas.DataFrame 
+    containing the evaluation metrics MAE, MSE, RMSE, MAPE, SSE, AIC and BIC calculated 
+    at each split.
     
     Parameters
     ----------
     estimator : string, default = "auto_arima"
-        Enter abbreviated string of the estimator class. List of estimators supported:
-        Estimator                     Abbreviated String     Original Implementation 
-        ---------                     ------------------     -----------------------
-        Simple Exponential Smoothing  'sem'                  tsa.api.SimpleExpSmoothing
-        Holt                          'holt'                 tsa.api.Holt
-        Auto_Arima                    'auto_arima'           pmdarima.auto_arima
+        Enter abbreviated string of the estimator class. List of estimators supported
+        (ID - Name):
+
+        * 'sem' - Simple Exponential Smoothing
+        * 'holt' - Holt
+        * 'auto_arima' - Auto ARIMA 
         
     splits: integer, default = 5
         Number of splits to be used in TimeSeriesSplit. Must be at least 2. 
