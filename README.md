@@ -22,6 +22,7 @@ PyCaret `2.1` is now available. See `2.1` release notes. The easiest way to inst
 ```python
 pip install pycaret==2.1
 ```
+Docs: https://pycaret.readthedocs.io/en/latest/
 
 ## Optional dependencies
 Following libraries are not hard dependencies and are not automatically installed when you install PyCaret. To use all functionalities of PyCaret, these optional dependencies must be installed.
