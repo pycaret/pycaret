@@ -1832,7 +1832,7 @@ class Boruta_Feature_Selection(BaseEstimator, TransformerMixin):
         _iter += 1
         
     # fix tentative onse if exist
-    print(dec_reg)
+    #print(dec_reg) #no print required
     confirmed = np.where(dec_reg == 1)[0]
     
     tentative = np.where(dec_reg == 0)[0]
