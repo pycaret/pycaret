@@ -26,6 +26,7 @@ from copy import deepcopy
 from typing import List, Tuple, Any
 import warnings
 from IPython.utils import io
+import traceback
 
 warnings.filterwarnings("ignore")
 
@@ -1952,18 +1953,23 @@ def compare_models(
         logger.info(
             "SubProcess create_model() called =================================="
         )
-        model = create_model(
-            estimator=model,
-            system=False,
-            verbose=False,
-            display=display,
-            fold=fold,
-            round=round,
-            budget_time=budget_time - total_runtime
-            if budget_time and budget_time > 0
-            else 0,
-        )
-        model_results = pull(pop=True)
+        try:
+            model = create_model(
+                estimator=model,
+                system=False,
+                verbose=False,
+                display=display,
+                fold=fold,
+                round=round,
+                budget_time=budget_time - total_runtime
+                if budget_time and budget_time > 0
+                else 0,
+            )
+            model_results = pull(pop=True)
+        except:
+            logger.error(f"create_model() for {model} raised an exception:")
+            logger.error(traceback.format_exc())
+            continue
         logger.info("SubProcess create_model() end ==================================")
 
         if not model:
