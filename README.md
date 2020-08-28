@@ -38,9 +38,9 @@ pip install shap
 Installation is only supported on 64-bit version of Python.
 
 ## Important Links
-- Release notes : https://github.com/pycaret/pycaret/releases/tag/2.0
+- Release notes : https://github.com/pycaret/pycaret/releases/tag/2.1
 - User Guide : https://www.pycaret.org/guide
-- Getting Started Tutorials : https://github.com/pycaret/pycaret/tree/master/tutorials `not updated for PyCaret 2.0`
+- Getting Started Tutorials : https://github.com/pycaret/pycaret/tree/master/tutorials
 - Example Notebooks : https://github.com/pycaret/pycaret/tree/master/examples
 - Other Resources : https://github.com/pycaret/pycaret/tree/master/resources 
 - Issue Logs: https://github.com/pycaret/pycaret/issues
