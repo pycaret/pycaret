@@ -1257,100 +1257,43 @@ def setup(
 
     # generate values for grid show
     missing_values = data_before_preprocess.isna().sum().sum()
-    if missing_values > 0:
-        missing_flag = True
-    else:
-        missing_flag = False
+    missing_flag = True if missing_values > 0 else False
 
-    if normalize is True:
-        normalize_grid = normalize_method
-    else:
-        normalize_grid = "None"
+    normalize_grid = normalize_method if normalize else "None"
 
-    if transformation is True:
-        transformation_grid = transformation_method
-    else:
-        transformation_grid = "None"
+    transformation_grid = transformation_method if transformation else "None"
 
-    if pca is True:
-        pca_method_grid = pca_method
-    else:
-        pca_method_grid = "None"
+    pca_method_grid = pca_method if pca else "None"
 
-    if pca is True:
-        pca_components_grid = pca_components_pass
-    else:
-        pca_components_grid = "None"
+    pca_components_grid = pca_components_pass if pca else "None"
 
-    if combine_rare_levels:
-        rare_level_threshold_grid = rare_level_threshold
-    else:
-        rare_level_threshold_grid = "None"
+    rare_level_threshold_grid = rare_level_threshold if combine_rare_levels else "None"
 
-    if bin_numeric_features is None:
-        numeric_bin_grid = False
-    else:
-        numeric_bin_grid = True
+    numeric_bin_grid = False if bin_numeric_features is None else True
 
-    if remove_outliers is False:
-        outliers_threshold_grid = None
-    else:
-        outliers_threshold_grid = outliers_threshold
+    outliers_threshold_grid = outliers_threshold if remove_outliers else None
 
-    if remove_multicollinearity is False:
-        multicollinearity_threshold_grid = None
-    else:
-        multicollinearity_threshold_grid = multicollinearity_threshold
+    multicollinearity_threshold_grid = multicollinearity_threshold if remove_multicollinearity else None
 
-    if create_clusters is False:
-        cluster_iter_grid = None
-    else:
-        cluster_iter_grid = cluster_iter
+    cluster_iter_grid = cluster_iter if create_clusters else None
 
-    if polynomial_features:
-        polynomial_degree_grid = polynomial_degree
-    else:
-        polynomial_degree_grid = None
+    polynomial_degree_grid = polynomial_degree if polynomial_features else None
 
-    if polynomial_features or trigonometry_features:
-        polynomial_threshold_grid = polynomial_threshold
-    else:
-        polynomial_threshold_grid = None
+    polynomial_threshold_grid = polynomial_threshold if polynomial_features or trigonometry_features else None
 
-    if feature_selection:
-        feature_selection_threshold_grid = feature_selection_threshold
-    else:
-        feature_selection_threshold_grid = None
+    feature_selection_threshold_grid = feature_selection_threshold if feature_selection else None
 
-    if feature_interaction or feature_ratio:
-        interaction_threshold_grid = interaction_threshold
-    else:
-        interaction_threshold_grid = None
+    interaction_threshold_grid = interaction_threshold if feature_interaction or feature_ratio else None
 
-    if ordinal_features is not None:
-        ordinal_features_grid = True
-    else:
-        ordinal_features_grid = False
+    ordinal_features_grid = False if ordinal_features is None else True
 
-    if handle_unknown_categorical:
-        unknown_categorical_method_grid = unknown_categorical_method
-    else:
-        unknown_categorical_method_grid = None
+    unknown_categorical_method_grid = unknown_categorical_method if handle_unknown_categorical else None
 
-    if group_features is not None:
-        group_features_grid = True
-    else:
-        group_features_grid = False
+    group_features_grid = False if group_features is None else True
 
-    if high_cardinality_features is not None:
-        high_cardinality_features_grid = True
-    else:
-        high_cardinality_features_grid = False
+    high_cardinality_features_grid = False if high_cardinality_features is None else True
 
-    if high_cardinality_features_grid:
-        high_cardinality_method_grid = high_cardinality_method
-    else:
-        high_cardinality_method_grid = None
+    high_cardinality_method_grid = high_cardinality_method if high_cardinality_features_grid else None
 
     learned_types = preprocess.dtypes.learent_dtypes
     learned_types.drop(target, inplace=True)
