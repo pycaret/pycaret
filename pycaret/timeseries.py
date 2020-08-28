@@ -1664,7 +1664,7 @@ def auto_select(
     MONITOR UPDATE ENDS
     """
 
-    logging.info("Info -- Storing results")
+    logger.info("Info -- Storing results")
 
     # storing into experiment
     tup = (full_name, model)

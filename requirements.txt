@@ -33,3 +33,5 @@ statsmodels==0.11.1
 #azure-storage-blob - only required in deploy_model for Azure
 #google-cloud-storage - only required in deploy_model for GCP
 #shap - removing shap as it's causing issues building Docker image.
+#statsmodels - adding as optional at this time
+#pmdarima - adding as optional at this time
