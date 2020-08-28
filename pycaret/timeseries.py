@@ -1,31 +1,33 @@
- from typing import Optional
+from typing import Optional
 
 
-def setup(data, 
-          target, 
-          train_size: float=0.7,
-          numeric_features: Optional[list]=None,
-          numeric_imputation='mean',
-          date_features: Optional[list]=None,
-          experiment_name: Optional[str]=None, #mlflow tracking
-          ignore_features: Optional[list]=None,
-          log_data: bool=False, #mlflow tracking
-          log_experiment: bool=False, #mlflow tracking
-          log_plots: bool=False, #mlflow tracking
-          log_profile: bool=False, #mlflow tracking
-          normalize: bool=False,
-          normalize_method: str='zscore',
-          transformation: bool=False,
-          transformation_method: str='yeo-johnson',
-          remove_outliers: bool=False, #new
-          outliers_threshold: float=0.05, #new
-          session_id: Optional[int]=None,
-          transform_target: bool=False, #new
-          transform_target_method: str='box-cox', #new
-          verbose: bool=True,
-          silent: bool=False,
-          profile: bool=False):
-    
+def setup(
+    data,
+    target,
+    train_size: float = 0.7,
+    numeric_features: Optional[list] = None,
+    numeric_imputation="mean",
+    date_features: Optional[list] = None,
+    experiment_name: Optional[str] = None,  # mlflow tracking
+    ignore_features: Optional[list] = None,
+    log_data: bool = False,  # mlflow tracking
+    log_experiment: bool = False,  # mlflow tracking
+    log_plots: bool = False,  # mlflow tracking
+    log_profile: bool = False,  # mlflow tracking
+    normalize: bool = False,
+    normalize_method: str = "zscore",
+    transformation: bool = False,
+    transformation_method: str = "yeo-johnson",
+    remove_outliers: bool = False,  # new
+    outliers_threshold: float = 0.05,  # new
+    session_id: Optional[int] = None,
+    transform_target: bool = False,  # new
+    transform_target_method: str = "box-cox",  # new
+    verbose: bool = True,
+    silent: bool = False,
+    profile: bool = False,
+):
+
     """
         
     Description:
@@ -175,31 +177,31 @@ def setup(data,
       
     """
 
-
-    #----------------------------------  Exception checking    --------------------------  
+    # ----------------------------------  Exception checking    --------------------------
     import sys
 
     from pycaret.utils import __version__
+
     ver = __version__()
 
-    import logging 
+    import logging
 
-    # Define logger as global  
-    global logger 
+    # Define logger as global
+    global logger
 
-    logger = logging.getLogger('logs')
+    logger = logging.getLogger("logs")
     logger.setLevel(logging.DEBUG)
 
     # create console handler and set level to debug
 
     if logger.hasHandlers():
         logger.handlers.clear()
-        
-    ch = logging.FileHandler('logs.log')
+
+    ch = logging.FileHandler("logs.log")
     ch.setLevel(logging.DEBUG)
 
     # create formatter
-    formatter = logging.Formatter('%(asctime)s:%(levelname)s:%(message)s')
+    formatter = logging.Formatter("%(asctime)s:%(levelname)s:%(message)s")
 
     # add formatter to ch
     ch.setFormatter(formatter)
@@ -208,25 +210,48 @@ def setup(data,
     logger.addHandler(ch)
 
     logger.info("PyCaret Time Series Module")
-    logger.info('version ' + str(ver))
+    logger.info("version " + str(ver))
     logger.info("Initializing setup()")
 
     # generate USI for mlflow tracking
     import secrets
+
     global USI
     USI = secrets.token_hex(nbytes=2)
-    logger.info('USI: ' + str(USI))
+    logger.info("USI: " + str(USI))
 
-    logger.info("""setup(data={}, target={}, train_size={}, numeric_features={}, numeric_imputation={}, date_features={}, ignore_features={}, normalize={},
+    logger.info(
+        """setup(data={}, target={}, train_size={}, numeric_features={}, numeric_imputation={}, date_features={}, ignore_features={}, normalize={},
             normalize_method={}, transformation={}, transformation_method={}, remove_outliers={}, outliers_threshold={}, session_id={}, log_experiment={}, 
-            experiment_name={}, log_plots={}, log_profile={}, log_data={}, silent={}, verbose={}, profile={})""".format(str(data.shape), str(target), str(train_size),\
-            str(numeric_features), str(numeric_imputation), str(date_features), str(ignore_features), str(normalize), str(normalize_method), str(transformation),\
-            str(transformation_method), str(remove_outliers), str(outliers_threshold), str(session_id), str(log_experiment), str(experiment_name), str(log_plots),\
-            str(log_profile), str(log_data), str(silent), str(verbose), str(profile)))
+            experiment_name={}, log_plots={}, log_profile={}, log_data={}, silent={}, verbose={}, profile={})""".format(
+            str(data.shape),
+            str(target),
+            str(train_size),
+            str(numeric_features),
+            str(numeric_imputation),
+            str(date_features),
+            str(ignore_features),
+            str(normalize),
+            str(normalize_method),
+            str(transformation),
+            str(transformation_method),
+            str(remove_outliers),
+            str(outliers_threshold),
+            str(session_id),
+            str(log_experiment),
+            str(experiment_name),
+            str(log_plots),
+            str(log_profile),
+            str(log_data),
+            str(silent),
+            str(verbose),
+            str(profile),
+        )
+    )
 
     # logging environment and libraries
     logger.info("Checking environment")
-    
+
     from platform import python_version, platform, python_build, machine
 
     try:
@@ -251,200 +276,229 @@ def setup(data,
 
     try:
         import psutil
+
         logger.info("Memory: " + str(psutil.virtual_memory()))
         logger.info("Physical Core: " + str(psutil.cpu_count(logical=False)))
         logger.info("Logical Core: " + str(psutil.cpu_count(logical=True)))
     except:
-        logger.warning("cannot find psutil installation. memory not traceable. Install psutil using pip to enable memory logging. ")
-    
+        logger.warning(
+            "cannot find psutil installation. memory not traceable. Install psutil using pip to enable memory logging. "
+        )
+
     logger.info("Checking libraries")
 
     try:
         from pandas import __version__
+
         logger.info("pd==" + str(__version__))
     except:
         logger.warning("pandas not found")
 
     try:
         from numpy import __version__
+
         logger.info("numpy==" + str(__version__))
     except:
         logger.warning("numpy not found")
 
     try:
         from sklearn import __version__
+
         logger.info("sklearn==" + str(__version__))
     except:
         logger.warning("sklearn not found")
 
-    try: 
-        from statsmodels import __version__ 
+    try:
+        from statsmodels import __version__
+
         logger.info("statsmodels==" + str(__version__))
-    except: 
+    except:
         logger.warning("statsmodels not found")
 
     try:
         from pmdarima import __version__
+
         logger.info("pmdarima==" + str(__version__))
-    except: 
+    except:
         logger.warning("pmdarima not found")
 
     try:
         from mlflow.version import VERSION
         import warnings
-        warnings.filterwarnings('ignore') 
+
+        warnings.filterwarnings("ignore")
         logger.info("mlflow==" + str(VERSION))
     except:
         logger.warning("mlflow not found")
 
-    #run_time
+    # run_time
     import datetime, time
+
     runtime_start = time.time()
 
     logger.info("Checking Exceptions")
 
-    #checking train size parameter
+    # checking train size parameter
     if not isinstance(train_size, float):
-        sys.exit('(Type Error): train_size parameter only accepts float value.') 
-        
-    #checking target parameter
-    if target not in data.columns:
-        sys.exit('(Value Error): Target parameter doesnt exist in the data provided.')   
+        sys.exit("(Type Error): train_size parameter only accepts float value.")
 
-    #checking session_id
+    # checking target parameter
+    if target not in data.columns:
+        sys.exit("(Value Error): Target parameter doesnt exist in the data provided.")
+
+    # checking session_id
     if session_id is not None:
         if not isinstance(session_id, int):
-            sys.exit('(Type Error): session_id parameter must be an integer.')   
-    
-    #checking profile parameter
-    if not isinstance(profile,bool):
-        sys.exit('(Type Error): profile parameter only accepts True or False.')
-      
-    #checking normalize parameter
-    if not isinstance(normalize,bool):
-        sys.exit('(Type Error): normalize parameter only accepts True or False.')
-        
-    #checking transformation parameter
-    if not isinstance(transformation,bool):
-        sys.exit('(Type Error): transformation parameter only accepts True or False.')
-        
-    #checking numeric imputation
-    allowed_numeric_imputation = ['mean', 'median', 'zero']
+            sys.exit("(Type Error): session_id parameter must be an integer.")
+
+    # checking profile parameter
+    if not isinstance(profile, bool):
+        sys.exit("(Type Error): profile parameter only accepts True or False.")
+
+    # checking normalize parameter
+    if not isinstance(normalize, bool):
+        sys.exit("(Type Error): normalize parameter only accepts True or False.")
+
+    # checking transformation parameter
+    if not isinstance(transformation, bool):
+        sys.exit("(Type Error): transformation parameter only accepts True or False.")
+
+    # checking numeric imputation
+    allowed_numeric_imputation = ["mean", "median", "zero"]
     if numeric_imputation not in allowed_numeric_imputation:
-        sys.exit("(Value Error): numeric_imputation param only accepts 'mean', 'median' or 'zero'.")
-        
-    #checking normalize method
-    allowed_normalize_method = ['zscore', 'minmax', 'maxabs', 'robust']
+        sys.exit(
+            "(Value Error): numeric_imputation param only accepts 'mean', 'median' or 'zero'."
+        )
+
+    # checking normalize method
+    allowed_normalize_method = ["zscore", "minmax", "maxabs", "robust"]
     if normalize_method not in allowed_normalize_method:
-        sys.exit("(Value Error): normalize_method param only accepts 'zscore', 'minxmax', 'maxabs' or 'robust'. ")      
-    
-    #checking transformation method
-    allowed_transformation_method = ['yeo-johnson', 'quantile']
+        sys.exit(
+            "(Value Error): normalize_method param only accepts 'zscore', 'minxmax', 'maxabs' or 'robust'. "
+        )
+
+    # checking transformation method
+    allowed_transformation_method = ["yeo-johnson", "quantile"]
     if transformation_method not in allowed_transformation_method:
-        sys.exit("(Value Error): transformation_method param only accepts 'yeo-johnson' or 'quantile' ")        
-    
-    #check transform_target
-    if not isinstance(transform_target,bool):
-        sys.exit('(Type Error): transform_target parameter only accepts True or False.')
-        
-    #transform_target_method
-    allowed_transform_target_method = ['box-cox', 'yeo-johnson']
+        sys.exit(
+            "(Value Error): transformation_method param only accepts 'yeo-johnson' or 'quantile' "
+        )
+
+    # check transform_target
+    if not isinstance(transform_target, bool):
+        sys.exit("(Type Error): transform_target parameter only accepts True or False.")
+
+    # transform_target_method
+    allowed_transform_target_method = ["box-cox", "yeo-johnson"]
     if transform_target_method not in allowed_transform_target_method:
-        sys.exit("(Value Error): transform_target_method param only accepts 'box-cox' or 'yeo-johnson'. ") 
-    
-    #remove_outliers
-    if not isinstance(remove_outliers,bool):
-        sys.exit('(Type Error): remove_outliers parameter only accepts True or False.')    
-    
-    #outliers_threshold
-    if not isinstance(outliers_threshold,float):
-        sys.exit('(Type Error): outliers_threshold must be a float between 0 and 1. ')   
-    
-    #cannot drop target
+        sys.exit(
+            "(Value Error): transform_target_method param only accepts 'box-cox' or 'yeo-johnson'. "
+        )
+
+    # remove_outliers
+    if not isinstance(remove_outliers, bool):
+        sys.exit("(Type Error): remove_outliers parameter only accepts True or False.")
+
+    # outliers_threshold
+    if not isinstance(outliers_threshold, float):
+        sys.exit("(Type Error): outliers_threshold must be a float between 0 and 1. ")
+
+    # cannot drop target
     if ignore_features is not None:
         if target in ignore_features:
-            sys.exit("(Value Error): cannot drop target column. ")  
-    
-    #experiment_name
+            sys.exit("(Value Error): cannot drop target column. ")
+
+    # experiment_name
     if experiment_name is not None:
         if not isinstance(experiment_name, str):
-            sys.exit('(Type Error): experiment_name parameter only accepts string.')    
+            sys.exit("(Type Error): experiment_name parameter only accepts string.")
 
-    #log_data
-    if not isinstance(log_data,bool):
-        sys.exit('(Type Error): log_data parameter only accepts True or False.')    
-    
-    #log_experiment
-    if not isinstance(log_experiment,bool):
-        sys.exit('(Type Error): log_experiment parameter only accepts True or False.')    
-    
-    #log_plots
-    if not isinstance(log_plots,bool):
-        sys.exit('(Type Error): log_plots parameter only accepts True or False.')    
-    
-    #log_profile
-    if not isinstance(log_profile,bool):
-        sys.exit('(Type Error): log_profile parameter only accepts True or False.')
+    # log_data
+    if not isinstance(log_data, bool):
+        sys.exit("(Type Error): log_data parameter only accepts True or False.")
 
-    #forced type check
+    # log_experiment
+    if not isinstance(log_experiment, bool):
+        sys.exit("(Type Error): log_experiment parameter only accepts True or False.")
+
+    # log_plots
+    if not isinstance(log_plots, bool):
+        sys.exit("(Type Error): log_plots parameter only accepts True or False.")
+
+    # log_profile
+    if not isinstance(log_profile, bool):
+        sys.exit("(Type Error): log_profile parameter only accepts True or False.")
+
+    # forced type check
     all_cols = list(data.columns)
     all_cols.remove(target)
-    
-    #numeric
+
+    # numeric
     if numeric_features is not None:
         for i in numeric_features:
             if i not in all_cols:
-                sys.exit("(Value Error): Column type forced is either target column or doesn't exist in the dataset.")    
-    
-    #date features
+                sys.exit(
+                    "(Value Error): Column type forced is either target column or doesn't exist in the dataset."
+                )
+
+    # date features
     if date_features is not None:
         for i in date_features:
             if i not in all_cols:
-                sys.exit("(Value Error): Column type forced is either target column or doesn't exist in the dataset.")      
-    
-    #drop features
+                sys.exit(
+                    "(Value Error): Column type forced is either target column or doesn't exist in the dataset."
+                )
+
+    # drop features
     if ignore_features is not None:
         for i in ignore_features:
             if i not in all_cols:
-                sys.exit("(Value Error): Feature ignored is either target column or doesn't exist in the dataset.") 
-     
-    #silent
-    if not isinstance(silent,bool):
-        sys.exit("(Type Error): silent parameter only accepts True or False. ")
-        
+                sys.exit(
+                    "(Value Error): Feature ignored is either target column or doesn't exist in the dataset."
+                )
 
-    #----------------------------------------------------   Initialize components   --------------------------------------
-    
+    # silent
+    if not isinstance(silent, bool):
+        sys.exit("(Type Error): silent parameter only accepts True or False. ")
+
+    # ----------------------------------------------------   Initialize components   --------------------------------------
+
     logger.info("Preloading libraries")
 
-    #pre-load libraries
+    # pre-load libraries
     import pandas as pd
     import ipywidgets as ipw
     from IPython.display import display, HTML, clear_output, update_display
     import datetime, time
 
-    #pandas option
-    pd.set_option('display.max_columns', 500)
-    pd.set_option('display.max_rows', 500)
-        
+    # pandas option
+    pd.set_option("display.max_columns", 500)
+    pd.set_option("display.max_rows", 500)
+
     logger.info("Preparing display monitor")
-    
-    progress = ipw.IntProgress(value=0, min=0, max=3, step=1 , description='Processing: ')
-    if verbose: 
-        display(progress)
-    
-    timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
-    monitor = pd.DataFrame( [ ['Initiated' , '. . . . . . . . . . . . . . . . . .', timestampStr ], 
-                             ['Status' , '. . . . . . . . . . . . . . . . . .' , 'Loading Dependencies' ],
-                             ['ETC' , '. . . . . . . . . . . . . . . . . .',  'Calculating ETC'] ],
-                              columns=['', ' ', '   ']).set_index('')
-    
+
+    progress = ipw.IntProgress(
+        value=0, min=0, max=3, step=1, description="Processing: "
+    )
     if verbose:
-        display(monitor, display_id='monitor')
+        display(progress)
+
+    timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
+    monitor = pd.DataFrame(
+        [
+            ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
+            ["Status", ". . . . . . . . . . . . . . . . . .", "Loading Dependencies"],
+            ["ETC", ". . . . . . . . . . . . . . . . . .", "Calculating ETC"],
+        ],
+        columns=["", " ", "   "],
+    ).set_index("")
+
+    if verbose:
+        display(monitor, display_id="monitor")
 
     logger.info("Importing libraries")
-    
-    #general dependencies
+
+    # general dependencies
     import numpy as np
     from sklearn.linear_model import LinearRegression
     from sklearn.model_selection import train_test_split
@@ -454,218 +508,221 @@ def setup(data,
     import matplotlib.pyplot as plt
     import plotly.express as px
 
-    #setting sklearn config to print all parameters including default
+    # setting sklearn config to print all parameters including default
     import sklearn
+
     sklearn.set_config(print_changed_only=False)
-    
-    #define highlight function for function grid to display
+
+    # define highlight function for function grid to display
     def highlight_max(s):
         is_max = s == True
-        return ['background-color: lightgreen' if v else '' for v in is_max]
-    
-    #cufflinks
+        return ["background-color: lightgreen" if v else "" for v in is_max]
+
+    # cufflinks
     import cufflinks as cf
+
     cf.go_offline()
     cf.set_config_file(offline=False, world_readable=True)
-    
-    #ignore warnings
+
+    # ignore warnings
     import warnings
-    warnings.filterwarnings('ignore') 
-    
+
+    warnings.filterwarnings("ignore")
+
     logger.info("Declaring global variables")
-    
-    #declaring global variables to be accessed by other functions
-    global X, y, X_train, X_test, y_train, y_test, seed, prep_pipe, target_inverse_transformer, experiment__,\
-        preprocess, create_model_container, master_model_container, display_container, exp_name_log, logging_param,\
-        log_plots_param, data_before_preprocess, target_param
+
+    # declaring global variables to be accessed by other functions
+    global X, y, X_train, X_test, y_train, y_test, seed, prep_pipe, target_inverse_transformer, experiment__, preprocess, create_model_container, master_model_container, display_container, exp_name_log, logging_param, log_plots_param, data_before_preprocess, target_param
 
     logger.info("Copying data for preprocessing")
 
-    #copy original data for pandas profiler
+    # copy original data for pandas profiler
     data_before_preprocess = data.copy()
 
-
-    #generate seed to be used globally
+    # generate seed to be used globally
     if session_id is None:
         seed = random.randint(150, 9000)
     else:
         seed = session_id
 
-    '''
+    """
     PREPROCESS BEGINS HERE
-    '''
-     
-    monitor.iloc[1, 1:] = 'Preparing Data for Modeling'
-    if verbose: 
-        update_display(monitor, display_id='monitor')
-            
-    #define parameters for preprocessor
+    """
+
+    monitor.iloc[1, 1:] = "Preparing Data for Modeling"
+    if verbose:
+        update_display(monitor, display_id="monitor")
+
+    # define parameters for preprocessor
 
     logger.info("Declaring preprocessing parameters")
-    
-    #numeric features
+
+    # numeric features
     if numeric_features is None:
         numeric_features_pass = []
     else:
         numeric_features_pass = numeric_features
-     
-    #drop features
+
+    # drop features
     if ignore_features is None:
         ignore_features_pass = []
     else:
         ignore_features_pass = ignore_features
-     
-    #date features
+
+    # date features
     if date_features is None:
         date_features_pass = []
     else:
         date_features_pass = date_features
-    
-    #transformation method strategy
-    if transformation_method == 'yeo-johnson':
-        trans_method_pass = 'yj'
-    elif transformation_method == 'quantile':
-        trans_method_pass = 'quantile'
-        
+
+    # transformation method strategy
+    if transformation_method == "yeo-johnson":
+        trans_method_pass = "yj"
+    elif transformation_method == "quantile":
+        trans_method_pass = "quantile"
+
     if silent:
         display_dtypes_pass = False
     else:
         display_dtypes_pass = True
-    
-    #transform target method 
+
+    # transform target method
 
     ### TO DO: Verify that data is positive to apply box-cox
 
-    if transform_target_method == 'box-cox':
-        transform_target_method_pass = 'bc'
-    elif transform_target_method == 'yeo-johnson':
-        transform_target_method_pass = 'yj'
+    if transform_target_method == "box-cox":
+        transform_target_method_pass = "bc"
+    elif transform_target_method == "yeo-johnson":
+        transform_target_method_pass = "yj"
 
     logger.info("Importing preprocessing module")
 
-    #import library
+    # import library
     from pycaret import preprocess
-    
-    data = preprocess.Preprocess_Path_One(train_data=data, 
-                                          target_variable=target,
-                                          numerical_features=numeric_features_pass,
-                                          time_features=date_features_pass,
-                                          features_todrop=ignore_features_pass,
-                                          numeric_imputation_strategy=numeric_imputation,
-                                          scale_data=normalize,
-                                          scaling_method=normalize_method,
-                                          Power_transform_data=transformation,
-                                          Power_transform_method=trans_method_pass,
-                                          remove_outliers=remove_outliers, #new
-                                          outlier_contamination_percentage=outliers_threshold, #new
-                                          outlier_methods=['pca'], #pca hardcoded
-                                          display_types=display_dtypes_pass, #new #to be parameterized in setup later.
-                                          target_transformation=transform_target, #new
-                                          target_transformation_method=transform_target_method_pass, #new
-                                          random_state=seed)
 
-    # Update progress bar 
+    data = preprocess.Preprocess_Path_One(
+        train_data=data,
+        target_variable=target,
+        numerical_features=numeric_features_pass,
+        time_features=date_features_pass,
+        features_todrop=ignore_features_pass,
+        numeric_imputation_strategy=numeric_imputation,
+        scale_data=normalize,
+        scaling_method=normalize_method,
+        Power_transform_data=transformation,
+        Power_transform_method=trans_method_pass,
+        remove_outliers=remove_outliers,  # new
+        outlier_contamination_percentage=outliers_threshold,  # new
+        outlier_methods=["pca"],  # pca hardcoded
+        display_types=display_dtypes_pass,  # new #to be parameterized in setup later.
+        target_transformation=transform_target,  # new
+        target_transformation_method=transform_target_method_pass,  # new
+        random_state=seed,
+    )
+
+    # Update progress bar
     progress.value += 1
 
-    if hasattr(preprocess.dtypes, 'replacement'):
+    if hasattr(preprocess.dtypes, "replacement"):
         label_encoded = preprocess.dtypes.replacement
-        label_encoded = str(label_encoded).replace("'", '')
-        label_encoded = str(label_encoded).replace("{", '')
-        label_encoded = str(label_encoded).replace("}", '')
+        label_encoded = str(label_encoded).replace("'", "")
+        label_encoded = str(label_encoded).replace("{", "")
+        label_encoded = str(label_encoded).replace("}", "")
 
     else:
-        label_encoded = 'None'
+        label_encoded = "None"
 
     try:
-        res_type = ['quit', 'Quit', 'exit', 'EXIT', 'q', 'Q', 'e', 'E', 'QUIT', 'Exit']
+        res_type = ["quit", "Quit", "exit", "EXIT", "q", "Q", "e", "E", "QUIT", "Exit"]
         res = preprocess.dtypes.response
         if res in res_type:
-            sys.exit("(Process Exit): setup has been interupted with user command 'quit'. setup must rerun.")
+            sys.exit(
+                "(Process Exit): setup has been interupted with user command 'quit'. setup must rerun."
+            )
     except:
         pass
-    
-    #save prep pipe
+
+    # save prep pipe
     prep_pipe = preprocess.pipe
-    
-    #save target inverse transformer
+
+    # save target inverse transformer
     try:
         target_inverse_transformer = preprocess.pt_target.p_transform_target
     except:
         target_inverse_transformer = None
         logger.info("No inverse transformer found")
-    
+
     logger.info("Creating grid variables")
 
-    #generate values for grid show
+    # generate values for grid show
     missing_values = data_before_preprocess.isna().sum().sum()
     if missing_values > 0:
         missing_flag = True
     else:
         missing_flag = False
-    
+
     if normalize is True:
         normalize_grid = normalize_method
     else:
-        normalize_grid = 'None'
-        
+        normalize_grid = "None"
+
     if transformation is True:
         transformation_grid = transformation_method
     else:
-        transformation_grid = 'None'
-    
+        transformation_grid = "None"
+
     if remove_outliers is False:
         outliers_threshold_grid = None
     else:
         outliers_threshold_grid = outliers_threshold
 
-        
     learned_types = preprocess.dtypes.learent_dtypes
     learned_types.drop(target, inplace=True)
 
-    float_type = 0 
+    float_type = 0
     cat_type = 0
 
     for i in preprocess.dtypes.learent_dtypes:
-        if 'float' in str(i):
+        if "float" in str(i):
             float_type += 1
-        elif 'object' in str(i):
+        elif "object" in str(i):
             cat_type += 1
-        elif 'int' in str(i):
+        elif "int" in str(i):
             float_type += 1
-    
-    #target transformation method
+
+    # target transformation method
     if transform_target is False:
         transform_target_method_grid = None
     else:
         transform_target_method_grid = preprocess.pt_target.function_to_apply
-     
-    '''
-    preprocessing ends here
-    '''
 
-    #reset pandas option
+    """
+    preprocessing ends here
+    """
+
+    # reset pandas option
     pd.reset_option("display.max_rows")
     pd.reset_option("display.max_columns")
-    
-    #create an empty list for pickling later.
+
+    # create an empty list for pickling later.
     experiment__ = []
 
-    #create create_model_container
+    # create create_model_container
     create_model_container = []
 
-    #create master_model_container
+    # create master_model_container
     master_model_container = []
 
-    #create display container
+    # create display container
     display_container = []
 
-    #create logging parameter
+    # create logging parameter
     logging_param = log_experiment
 
-    #create exp_name_log param incase logging is False
-    exp_name_log = 'no_logging'
-        
-    #create an empty log_plots_param
+    # create exp_name_log param incase logging is False
+    exp_name_log = "no_logging"
+
+    # create an empty log_plots_param
     if log_plots:
         log_plots_param = True
     else:
@@ -674,113 +731,123 @@ def setup(data,
     # create target param
     target_param = target
 
-    #creating variables to be used later in the function
+    # creating variables to be used later in the function
     X = data.drop(target, axis=1)
     y = data[target]
-    
-    # Update progress bar 
+
+    # Update progress bar
     progress.value += 1
 
-    '''
+    """
     SAMPLING STARTS HERE
-    '''
-    
-    ### If there is no sampling 
+    """
 
-    monitor.iloc[1, 1:] = 'Splitting Data'
-    if verbose: 
-        update_display(monitor, display_id='monitor')
+    ### If there is no sampling
 
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=1-train_size, random_state=seed)
+    monitor.iloc[1, 1:] = "Splitting Data"
+    if verbose:
+        update_display(monitor, display_id="monitor")
 
-    # Update progress bar 
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=1 - train_size, random_state=seed
+    )
+
+    # Update progress bar
     progress.value += 1
 
-    '''
+    """
     Final display Starts
-    '''
-    
-    clear_output()
-    
-    '''
-    Final display Starts
-    '''
+    """
+
     clear_output()
 
-    if verbose: 
-        print(' ')
+    """
+    Final display Starts
+    """
+    clear_output()
+
+    if verbose:
+        print(" ")
     if profile:
-        print('Setup Succesfully Completed! Loading Profile Now... Please Wait!')
+        print("Setup Succesfully Completed! Loading Profile Now... Please Wait!")
     else:
-        if verbose: 
-            print('Setup Succesfully Completed!')
+        if verbose:
+            print("Setup Succesfully Completed!")
 
-    functions = pd.DataFrame ([ 
-        ['session_id', seed],
-        ['Transform Target ', transform_target],
-        ['Transform Target Method', transform_target_method_grid],
-        ['Original Data', data_before_preprocess.shape ],
-        ['Missing Values ', missing_flag],
-        ['Numeric Features ', str(float_type)],
-        ['Transformed Train Set', X_train.shape], 
-        ['Transformed Test Set',X_test.shape],
-        ['Numeric Imputer ', numeric_imputation],
-        ['Normalize ', normalize],
-        ['Normalize Method ', normalize_grid],
-        ['Transformation ', transformation],
-        ['Transformation Method ', transformation_grid],
-        ['Remove Outliers ', remove_outliers],
-        ['Outliers Threshold ', outliers_threshold_grid],
-        ], columns=['Description', 'Value'] 
-        )
-    
-    #functions_ = functions.style.hide_index()
+    functions = pd.DataFrame(
+        [
+            ["session_id", seed],
+            ["Transform Target ", transform_target],
+            ["Transform Target Method", transform_target_method_grid],
+            ["Original Data", data_before_preprocess.shape],
+            ["Missing Values ", missing_flag],
+            ["Numeric Features ", str(float_type)],
+            ["Transformed Train Set", X_train.shape],
+            ["Transformed Test Set", X_test.shape],
+            ["Numeric Imputer ", numeric_imputation],
+            ["Normalize ", normalize],
+            ["Normalize Method ", normalize_grid],
+            ["Transformation ", transformation],
+            ["Transformation Method ", transformation_grid],
+            ["Remove Outliers ", remove_outliers],
+            ["Outliers Threshold ", outliers_threshold_grid],
+        ],
+        columns=["Description", "Value"],
+    )
+
+    # functions_ = functions.style.hide_index()
     functions_ = functions.style.apply(highlight_max)
-    if verbose: 
+    if verbose:
         display(functions_)
-        
+
     if profile:
         try:
             import pandas_profiling
+
             pf = pandas_profiling.ProfileReport(data_before_preprocess)
             clear_output()
             display(pf)
         except:
-            print('Data Profiler Failed. No output to show, please continue with Modeling.')
-        
-    '''
+            print(
+                "Data Profiler Failed. No output to show, please continue with Modeling."
+            )
+
+    """
     Final display Ends
-    '''   
-    
-    #log into experiment
-    experiment__.append(('Forecast Setup Config', functions))
-    experiment__.append(('X_training Set', X_train))
-    experiment__.append(('y_training Set', y_train))
-    experiment__.append(('X_test Set', X_test))
-    experiment__.append(('y_test Set', y_test))
-    experiment__.append(('Transformation Pipeline', prep_pipe))
+    """
+
+    # log into experiment
+    experiment__.append(("Timeseries Setup Config", functions))
+    experiment__.append(("X_training Set", X_train))
+    experiment__.append(("y_training Set", y_train))
+    experiment__.append(("X_test Set", X_test))
+    experiment__.append(("y_test Set", y_test))
+    experiment__.append(("Transformation Pipeline", prep_pipe))
     try:
-        experiment__.append(('Target Inverse Transformer', target_inverse_transformer))
+        experiment__.append(("Target Inverse Transformer", target_inverse_transformer))
     except:
         pass
 
-    #end runtime
+    # end runtime
+    import numpy as np 
+
     runtime_end = time.time()
     runtime = np.array(runtime_end - runtime_start).round(2)
-    
-    if logging_param: 
+
+    if logging_param:
 
         logger.info("Logging experiment in MLFlow")
-        
+
         import mlflow
+        import secrets
         from pathlib import Path
 
         if experiment_name is None:
-            exp_name_ = 'ts-default-name'
+            exp_name_ = "ts-default-name"
         else:
             exp_name_ = experiment_name
 
-        URI = secrets.token_hex(nbytes=4)    
+        URI = secrets.token_hex(nbytes=4)
         exp_name_log = exp_name_
 
         try:
@@ -788,42 +855,48 @@ def setup(data,
         except:
             pass
 
-        #mlflow logging
+        # mlflow logging
         mlflow.set_experiment(exp_name_log)
 
-        run_name_ = 'Session Initialized ' + str(USI)
+        run_name_ = "Session Initialized " + str(USI)
 
         with mlflow.start_run(run_name=run_name_) as run:
 
             # Get active run to log as tag
             RunID = mlflow.active_run().info.run_id
-            
+
             k = functions.copy()
-            k.set_index('Description',drop=True,inplace=True)
+            k.set_index("Description", drop=True, inplace=True)
             kdict = k.to_dict()
-            params = kdict.get('Value')
+            params = kdict.get("Value")
             mlflow.log_params(params)
 
-            #set tag of compare_models
+            # set tag of compare_models
             mlflow.set_tag("Source", "setup")
-            
-            import secrets
+
             URI = secrets.token_hex(nbytes=4)
             mlflow.set_tag("URI", URI)
-            mlflow.set_tag("USI", USI) 
+            mlflow.set_tag("USI", USI)
             mlflow.set_tag("Run Time", runtime)
             mlflow.set_tag("Run ID", RunID)
 
             # Log the transformation pipeline
-            logger.info("SubProcess save_model() called ==================================")
-            save_model(prep_pipe, 'Transformation Pipeline', verbose=False)
-            logger.info("SubProcess save_model() end ==================================")
-            mlflow.log_artifact('Transformation Pipeline' + '.pkl')
-            os.remove('Transformation Pipeline.pkl')
+            logger.info(
+                "SubProcess save_model() called =================================="
+            )
+            save_model(prep_pipe, "Transformation Pipeline", verbose=False)
+            logger.info(
+                "SubProcess save_model() end =================================="
+            )
+            mlflow.log_artifact("Transformation Pipeline" + ".pkl")
+
+            import os
+            os.remove("Transformation Pipeline.pkl")
 
             # Log pandas profile
             if log_profile:
                 import pandas_profiling
+
                 pf = pandas_profiling.ProfileReport(data_before_preprocess)
                 pf.to_file("Data Profile.html")
                 mlflow.log_artifact("Data Profile.html")
@@ -833,12 +906,12 @@ def setup(data,
 
             # Log training and testing set
             if log_data:
-                X_train.join(y_train).to_csv('Train.csv')
-                X_test.join(y_test).to_csv('Test.csv')
+                X_train.join(y_train).to_csv("Train.csv")
+                X_test.join(y_test).to_csv("Test.csv")
                 mlflow.log_artifact("Train.csv")
                 mlflow.log_artifact("Test.csv")
-                os.remove('Train.csv')
-                os.remove('Test.csv')
+                os.remove("Train.csv")
+                os.remove("Test.csv")
 
     logger.info("create_model_container: " + str(len(create_model_container)))
     logger.info("master_model_container: " + str(len(master_model_container)))
@@ -846,17 +919,33 @@ def setup(data,
 
     logger.info("setup() succesfully completed......................................")
 
-    return X, y, X_train, X_test, y_train, y_test, seed, prep_pipe, target_inverse_transformer,\
-        experiment__, create_model_container, master_model_container, display_container, exp_name_log,\ 
-        logging_param, log_plots_param, USI, data_before_preprocess, target_param
-    
+    return (
+        X,
+        y,
+        X_train,
+        X_test,
+        y_train,
+        y_test,
+        seed,
+        prep_pipe,
+        target_inverse_transformer,
+        experiment__,
+        create_model_container,
+        master_model_container,
+        display_container,
+        exp_name_log,
+        logging_param,
+        log_plots_param,
+        USI,
+        data_before_preprocess,
+        target_param,
+    )
 
 
-def create_model(estimator: str='Auto_arima', 
-                 splits: int=5,
-                 round: int=4,
-                 verbose: bool=True):
-     
+def create_model(
+    estimator: str = "auto_arima", splits: int = 5, round: int = 4, verbose: bool = True
+):
+
     """  
      
     Description:
@@ -870,10 +959,10 @@ def create_model(estimator: str='Auto_arima',
     Example
         -------
         from pycaret.datasets import get_data
-        from pycaret.forecast import *
+        from pycaret.timeseries import *
         
-        data = get_data('air_passengers')
-        s = setup(data, target='#Passengers')
+        data = get_data('bike')
+        ts_setup = setup(data, target='cnt')
         
         model = create_model('auto_arima')
         This will create an arima model.
@@ -910,91 +999,101 @@ def create_model(estimator: str='Auto_arima',
     None
     """
 
-
-    '''
+    """
     
     ERROR HANDLING STARTS HERE
     
-    '''
-    
-    #exception checking   
+    """
+
+    # exception checking
     import sys
-    
-    #checking error for estimator (string)
-    available_estimators = ['sem', 'holt', 'auto_arima']
-    
+
+    # checking error for estimator (string)
+    available_estimators = ["sem", "holt", "auto_arima"]
+
     if estimator not in available_estimators:
-        sys.exit('(Value Error): Estimator Not Available. Please see docstring for list of available estimators.')
+        sys.exit(
+            "(Value Error): Estimator Not Available. Please see docstring for list of available estimators."
+        )
 
-
-    #checking fold parameter
+    # checking fold parameter
     if type(splits) is not int:
-        sys.exit('(Type Error): Splits parameter only accepts integer value.')
-    
-    #checking round parameter
-    if type(round) is not int:
-        sys.exit('(Type Error): Round parameter only accepts integer value.')
- 
-    #checking verbose parameter
-    if type(verbose) is not bool:
-        sys.exit('(Type Error): Verbose parameter can only take argument as True or False.') 
+        sys.exit("(Type Error): Splits parameter only accepts integer value.")
 
-    '''
+    # checking round parameter
+    if type(round) is not int:
+        sys.exit("(Type Error): Round parameter only accepts integer value.")
+
+    # checking verbose parameter
+    if type(verbose) is not bool:
+        sys.exit(
+            "(Type Error): Verbose parameter can only take argument as True or False."
+        )
+
+    """
     
     ERROR HANDLING ENDS HERE
     
-    '''
+    """
 
+    # run_time
+    import datetime, time
 
-    #pre-load libraries
+    runtime_start = time.time()
+
+    # pre-load libraries
     import pandas as pd
     import ipywidgets as ipw
     from IPython.display import display, HTML, clear_output, update_display
     import datetime, time
-    
-    #progress bar
-    progress = ipw.IntProgress(value=0, min=0, max=splits+4, step=1, description='Processing: ')
-    master_display = pd.DataFrame(columns=['MAE', 'MSE', 'RMSE', 'MAPE', 'AIC', 'BIC'])
+
+    # progress bar
+    progress = ipw.IntProgress(
+        value=0, min=0, max=splits + 4, step=1, description="Processing: "
+    )
+    master_display = pd.DataFrame(columns=["MAE", "MSE", "RMSE", "MAPE", "AIC", "BIC"])
     display(progress)
-    
-    #display monitor
+
+    # display monitor
     timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
-    monitor = pd.DataFrame([ 
-        ['Initiated', '. . . . . . . . . . . . . . . . . .', timestampStr], 
-        ['Status', '. . . . . . . . . . . . . . . . . .' , 'Loading Dependencies'],
-        ['ETC', '. . . . . . . . . . . . . . . . . .', 'Calculating ETC'] 
+    monitor = pd.DataFrame(
+        [
+            ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
+            ["Status", ". . . . . . . . . . . . . . . . . .", "Loading Dependencies"],
+            ["ETC", ". . . . . . . . . . . . . . . . . .", "Calculating ETC"],
         ],
-        columns=['', ' ', '   ']).set_index('')
-    
-    display(monitor, display_id='monitor')
-    
+        columns=["", " ", "   "],
+    ).set_index("")
+
+    display(monitor, display_id="monitor")
+
     if verbose:
         display_ = display(master_display, display_id=True)
         display_id = display_.display_id
-    
-    #ignore warnings
-    import warnings
-    warnings.filterwarnings('ignore') 
 
-    #Storing y in data_y parameter
+    # ignore warnings
+    import warnings
+
+    warnings.filterwarnings("ignore")
+
+    # Storing y in data_y parameter
     data_y = y.copy()
 
-    #reset index
+    # reset index
     data_y.reset_index(drop=True, inplace=True)
 
-
-    #general dependencies 
-    import numpy as np 
-    from sklearn import metrics 
+    # general dependencies
+    import numpy as np
+    from sklearn import metrics
     from sklearn.model_selection import TimeSeriesSplit
     from statsmodels.tsa.api import SimpleExpSmoothing
     from statsmodels.tsa.api import Holt
     from pmdarima import auto_arima
 
-    # Update progress bar 
+    # Update progress bar
     progress.value += 1
 
-    #cross validation setup starts here
+    # cross validation setup starts here
     tscv = TimeSeriesSplit(n_splits=splits)
 
     score_mae = score_mse = np.empty((0, 0))
@@ -1004,25 +1103,23 @@ def create_model(estimator: str='Auto_arima',
     avgs_rmse = avgs_mape = np.empty((0, 0))
     avgs_aic = avgs_bic = np.empty((0, 0))
 
-
     def calculate_mape(actual, prediction):
         mask = actual != 0
-        return (np.fabs(actual - prediction)/actual)[mask].mean()
+        return (np.fabs(actual - prediction) / actual)[mask].mean()
 
-  
-    '''
+    """
     MONITOR UPDATE STARTS
-    '''
-    
-    monitor.iloc[1, 1:] = 'Selecting Estimator'
-    update_display(monitor, display_id='monitor')
-    
-    '''
+    """
+
+    monitor.iloc[1, 1:] = "Selecting Estimator"
+    update_display(monitor, display_id="monitor")
+
+    """
     MONITOR UPDATE ENDS
-    '''
+    """
 
     def initizalize_model(estimator, ts):
-        '''
+        """
             Description:
             ------------
             This function calls a time series model given 
@@ -1036,145 +1133,151 @@ def create_model(estimator: str='Auto_arima',
             Returns:
             ------------
             model: initialized class with the time series data
-        '''
+        """
 
-        if estimator == 'sem':
+        if estimator == "sem":
             model = SimpleExpSmoothing(endog=ts)
 
-        elif estimator == 'holt':
-            model = Holt(endog=ts) 
+        elif estimator == "holt":
+            model = Holt(endog=ts)
 
-        elif estimator == 'auto_arima':
+        elif estimator == "auto_arima":
             model = auto_arima(y=ts, stepwise=False)
 
-        return model 
+        return model
 
-
-    '''
+    """
     MONITOR UPDATE STARTS
-    '''
-    
-    monitor.iloc[1, 1:] = 'Initializing CV'
-    update_display(monitor, display_id = 'monitor')
-    
-    '''
-    MONITOR UPDATE ENDS
-    '''
+    """
 
+    monitor.iloc[1, 1:] = "Initializing CV"
+    update_display(monitor, display_id="monitor")
+
+    """
+    MONITOR UPDATE ENDS
+    """
 
     split_num = 1
-    
-    for train_i , test_i in tscv.split(data_y):
-        
-        t0 = time.time()
-        
-        '''
-        MONITOR UPDATE STARTS
-        '''
-    
-        monitor.iloc[1, 1:] = 'Fitting Split ' + str(split_num) + ' of ' + str(splits)
-        update_display(monitor, display_id='monitor')
 
-        '''
+    for train_i, test_i in tscv.split(data_y):
+
+        t0 = time.time()
+
+        """
+        MONITOR UPDATE STARTS
+        """
+
+        monitor.iloc[1, 1:] = "Fitting Split " + str(split_num) + " of " + str(splits)
+        update_display(monitor, display_id="monitor")
+
+        """
         MONITOR UPDATE ENDS
-        '''
-        
+        """
+
         # Split ts data in train-test
         ytrain, ytest = data_y.iloc[train_i], data_y.iloc[test_i]
-        
-        # Initialize model and forecast data        
-        if estimator == 'auto_arima':
+
+        # Initialize model and forecast data
+        if estimator == "auto_arima":
             mdl = initizalize_model(estimator, ytrain)
             pred_ = mdl.predict(len(ytest))
         else:
             mdl = initizalize_model(estimator, ytrain)
             mdl = mdl.fit()
             pred_ = mdl.forecast(len(ytest))
-        
+
         try:
-            # Apply inverse transform of a prior call from setup function 
-            pred_ = target_inverse_transformer.inverse_transform(np.array(pred_).reshape(-1, 1))
-            ytest = target_inverse_transformer.inverse_transform(np.array(ytest).reshape(-1, 1))
+            # Apply inverse transform of a prior call from setup function
+            pred_ = target_inverse_transformer.inverse_transform(
+                np.array(pred_).reshape(-1, 1)
+            )
+            ytest = target_inverse_transformer.inverse_transform(
+                np.array(ytest).reshape(-1, 1)
+            )
             pred_ = np.nan_to_num(pred_)
             ytest = np.nan_to_num(ytest)
-            
+
         except:
             pass
-        
 
-        # Evaluate model metrics 
+        # Evaluate model metrics
         mae = metrics.mean_absolute_error(ytest, pred_)
         mse = metrics.mean_squared_error(ytest, pred_)
         rmse = np.sqrt(mse)
         mape = calculate_mape(ytest, pred_)
-        aic = mdl.aic() if estimator == 'auto_arima' else mdl.aic
-        bic = mdl.bic() if estimator == 'auto_arima' else mdl.bic
+        aic = mdl.aic() if estimator == "auto_arima" else mdl.aic
+        bic = mdl.bic() if estimator == "auto_arima" else mdl.bic
         score_mae = np.append(score_mae, mae)
         score_mse = np.append(score_mse, mse)
         score_rmse = np.append(score_rmse, rmse)
         score_mape = np.append(score_mape, mape)
         score_aic = np.append(score_aic, aic)
-        score_bic =np.append(score_bic, bic)
-       
+        score_bic = np.append(score_bic, bic)
 
-        # Update progress bar 
+        # Update progress bar
         progress.value += 1
-        
-        
-        '''
+
+        """
         
         This section handles time calculation and is created to update_display() as code loops through 
         the fold defined.
         
-        '''
-        
-        split_results = pd.DataFrame({'MAE':[mae], 'MSE': [mse], 'RMSE': [rmse], 'MAPE': [mape],
-                                      'AIC' : [aic], 'BIC': [bic]}).round(round)
+        """
+
+        split_results = pd.DataFrame(
+            {
+                "MAE": [mae],
+                "MSE": [mse],
+                "RMSE": [rmse],
+                "MAPE": [mape],
+                "AIC": [aic],
+                "BIC": [bic],
+            }
+        ).round(round)
         master_display = pd.concat([master_display, split_results], ignore_index=True)
         split_results = []
-        
-        '''
+
+        """
         TIME CALCULATION SUB-SECTION STARTS HERE
-        '''
+        """
         t1 = time.time()
-        
-        tt = (t1 - t0) * (splits-split_num) / 60
+
+        tt = (t1 - t0) * (splits - split_num) / 60
         tt = np.around(tt, 2)
-        
+
         if tt < 1:
             tt = str(np.around((tt * 60), 2))
-            ETC = tt + ' Seconds Remaining'
-                
+            ETC = tt + " Seconds Remaining"
+
         else:
             tt = str(tt)
-            ETC = tt + ' Minutes Remaining'
-            
-        '''
+            ETC = tt + " Minutes Remaining"
+
+        """
         MONITOR UPDATE STARTS
-        '''
+        """
 
         monitor.iloc[2, 1:] = ETC
-        update_display(monitor, display_id='monitor')
+        update_display(monitor, display_id="monitor")
 
-        '''
+        """
         MONITOR UPDATE ENDS
-        '''
-            
+        """
+
         split_num += 1
-        
-        '''
+
+        """
         TIME CALCULATION ENDS HERE
-        '''
-        
+        """
+
         if verbose:
             update_display(master_display, display_id=display_id)
-            
-        
-        '''
+
+        """
         
         Update_display() ends here
         
-        '''    
+        """
 
     # Calculate average of the metrics across the different splits
     mean_mae = np.mean(score_mae)
@@ -1191,7 +1294,7 @@ def create_model(estimator: str='Auto_arima',
     std_bic = np.std(score_bic)
 
     avgs_mae = np.append(avgs_mae, mean_mae)
-    avgs_mae = np.append(avgs_mae, std_mae) 
+    avgs_mae = np.append(avgs_mae, std_mae)
     avgs_mse = np.append(avgs_mse, mean_mse)
     avgs_mse = np.append(avgs_mse, std_mse)
     avgs_rmse = np.append(avgs_rmse, mean_rmse)
@@ -1203,36 +1306,166 @@ def create_model(estimator: str='Auto_arima',
     avgs_bic = np.append(avgs_bic, mean_bic)
     avgs_bic = np.append(avgs_bic, std_bic)
 
-
-    # Update progress bar 
+    # Update progress bar
     progress.value += 1
-    
-    model_results = pd.DataFrame({'MAE': score_mae, 'MSE': score_mse, 'RMSE' : score_rmse, 'MAPE' : score_mape,
-                                  'AIC': score_aic, 'BIC': score_bic})
-    model_avgs = pd.DataFrame({'MAE': avgs_mae, 'MSE': avgs_mse, 'RMSE' : avgs_rmse, 'MAPE' : avgs_mape,
-                               'AIC' : avgs_aic, 'BIC' : avgs_bic}, index=['Mean', 'SD'])
+
+    model_results = pd.DataFrame(
+        {
+            "MAE": score_mae,
+            "MSE": score_mse,
+            "RMSE": score_rmse,
+            "MAPE": score_mape,
+            "AIC": score_aic,
+            "BIC": score_bic,
+        }
+    )
+    model_avgs = pd.DataFrame(
+        {
+            "MAE": avgs_mae,
+            "MSE": avgs_mse,
+            "RMSE": avgs_rmse,
+            "MAPE": avgs_mape,
+            "AIC": avgs_aic,
+            "BIC": avgs_bic,
+        },
+        index=["Mean", "SD"],
+    )
 
     model_results = model_results.append(model_avgs)
     model_results = model_results.round(round)
 
+    # Refit model on complete data
+    monitor.iloc[1, 1:] = "Compiling Final Model"
+    update_display(monitor, display_id="monitor")
 
-    # Refit model on complete data 
-    monitor.iloc[1, 1:] = 'Compiling Final Model'
-    update_display(monitor, display_id='monitor')
-    
     model = initizalize_model(estimator, data_y)
-    model = model if estimator == 'auto_arima' else model.fit()
+    model = model if estimator == "auto_arima" else model.fit()
 
-    # Update progress bar 
+    # Update progress bar
     progress.value += 1
 
-    #storing into experiment
+    """
+    MLflow logging starts here
+    """
+    import numpy as np
+
+    runtime_end = time.time()
+    runtime = np.array(runtime_end - runtime_start).round(2)
+
+    if logging_param:
+
+        logger.info("Creating MLFlow logs")
+
+        import mlflow
+        import secrets
+        from pathlib import Path
+        import os
+
+        run_name = estimator
+
+        with mlflow.start_run(run_name=run_name) as run:
+
+            # Get active run to log as tag
+            RunID = mlflow.active_run().info.run_id
+
+            from copy import deepcopy
+
+            model_copied = deepcopy(model)
+
+            try:
+                params = model_copied.get_params()
+            except: 
+                params = model_copied.params
+
+            for i in list(params):
+                v = params.get(i)
+                if len(str(v)) > 250:
+                    params.pop(i)
+
+            mlflow.log_params(params)
+
+            URI = secrets.token_hex(nbytes=4)
+            # set tag of compare_models
+            mlflow.set_tag("Source", "auto_select")
+            mlflow.set_tag("URI", URI)
+            mlflow.set_tag("USI", USI)
+            mlflow.set_tag("Run Time", runtime)
+            mlflow.set_tag("Run ID", RunID)
+
+            # Log top model metrics
+            mlflow.log_metric("MAE", model_results.loc["Mean", "MAE"])
+            mlflow.log_metric("MSE", model_results.loc["Mean", "MSE"])
+            mlflow.log_metric("RMSE", model_results.loc["Mean", "RMSE"])
+            mlflow.log_metric("MAPE", model_results.loc["Mean", "MAPE"])
+            mlflow.log_metric("AIC", model_results.loc["Mean", "AIC"])
+            mlflow.log_metric("BIC", model_results.loc["Mean", "BIC"])
+
+            # Save model 
+            save_model(model_copied, 'model')
+            logger.info("SubProcess save_model() end ==================================")
+            mlflow.log_artifact('model.pkl')
+            os.remove('model.pkl')
+            
+            # # define model signature
+            # from mlflow.models.signature import infer_signature
+
+            # signature = infer_signature(
+            #     data_before_preprocess.drop([target_param], axis=1)
+            # )
+            # input_example = (
+            #     data_before_preprocess.drop([target_param], axis=1).iloc[0].to_dict()
+            # )
+
+            # import pickle
+            # import os
+
+            # # Set path to save model
+            # ts_model_path = os.path.join(os.getcwd(), f"{run_name}.pkl")
+
+            # # Pickle model
+            # with open(ts_model_path, "wb") as f:
+            #     pickle.dump(model, f)
+
+            # if estimator == "auto_arima":
+            #     from pmdarima import __version__
+
+            #     version = str(__version__)
+            #     conda_deps = "pmdarima"
+            # else:
+            #     from statsmodels import __version__
+
+            #     version = str(__version__)
+            #     conda_deps = "statsmodels"
+
+            # from mlflow.utils.environment import _mlflow_conda_env
+            # from pycaret.utils import __version__
+
+            # pip_deps = ["pycaret==" + str(__version__())]
+
+            # # Set a conda env with pmdarima and statsmodels
+            # conda_env = _mlflow_conda_env(
+            #     additional_conda_deps=[f"{conda_deps}={version}"],
+            #     additional_pip_deps=pip_deps,
+            #     additional_conda_channels=None,
+            # )
+
+            # import mlflow.pyfunc as mlflow_pyfunc
+
+            # mlflow_pyfunc.log_model(
+            #     artifact_path=f"{run_name}_model",
+            #     data_path=ts_model_path,
+            #     conda_env=conda_env,
+            #     signature=signature,
+            #     input_example=input_example,
+            # )
+
+    # storing into experiment
     tup = (estimator, model)
     experiment__.append(tup)
-    nam = str(estimator) + ' Score Grid'
+    nam = str(estimator) + " Score Grid"
     tup = (nam, model_results)
     experiment__.append(tup)
-    
+
     if verbose:
         clear_output()
         display(model_results)
@@ -1242,12 +1475,9 @@ def create_model(estimator: str='Auto_arima',
         return model
 
 
-
-
-def auto_select(splits: int=5,
-                round: int=4,
-                metric: str='rmse',
-                verbose: bool=True):
+def auto_select(
+    splits: int = 5, round: int = 4, metric: str = "rmse", verbose: bool = True
+):
 
     """  
      
@@ -1261,8 +1491,8 @@ def auto_select(splits: int=5,
         from pycaret.datasets import get_data
         from pycaret.timeseries import *
         
-        data = get_data('air_passengers')
-        s = setup(data, target='#Passengers')
+        data = get_data('bike')
+        ts_setup = setup(data, target='cnt')
         
         best_model = auto_select(splits=10, metric='mae')
         This will output the best model based on the MAE
@@ -1297,29 +1527,29 @@ def auto_select(splits: int=5,
   
     """
 
-    '''
+    """
 
     ERROR HANDLING STARTS HERE
     
-    '''
+    """
 
     import logging
 
     try:
-        hasattr(logger, 'name')
+        hasattr(logger, "name")
     except:
-        logger = logging.getLogger('logs')
+        logger = logging.getLogger("logs")
         logger.setLevel(logging.DEBUG)
-        
+
         # create console handler and set level to debug
         if logger.hasHandlers():
             logger.handlers.clear()
-        
-        ch = logging.FileHandler('logs.log')
+
+        ch = logging.FileHandler("logs.log")
         ch.setLevel(logging.DEBUG)
 
         # create formatter
-        formatter = logging.Formatter('%(asctime)s:%(levelname)s:%(message)s')
+        formatter = logging.Formatter("%(asctime)s:%(levelname)s:%(message)s")
 
         # add formatter to ch
         ch.setFormatter(formatter)
@@ -1328,90 +1558,104 @@ def auto_select(splits: int=5,
         logger.addHandler(ch)
 
     logger.info("Initializing auto_select()")
-    logger.info("""auto_select(splits={}, round={}, metric={}, verbose={})""".\
-        format(str(splits), str(round), str(metric), str(verbose)))
+    logger.info(
+        """auto_select(splits={}, round={}, metric={}, verbose={})""".format(
+            str(splits), str(round), str(metric), str(verbose)
+        )
+    )
 
     logger.info("Info -- Checking exceptions")
-   
-    #exception checking   
+
+    # exception checking
     import sys
-    
-    #checking fold parameter
+
+    # checking fold parameter
     if not isinstance(splits, int):
-        sys.exit('(Type Error): Splits parameter only accepts integer value.')
-    
-    #checking round parameter
+        sys.exit("(Type Error): Splits parameter only accepts integer value.")
+
+    # checking round parameter
     if not isinstance(round, int):
-        sys.exit('(Type Error): Round parameter only accepts integer value.')
+        sys.exit("(Type Error): Round parameter only accepts integer value.")
 
-    #checking metric parameter
+    # checking metric parameter
     if not isinstance(metric, str):
-        sys.exit('(Type Error): Metric parameter only accepts string value.')
- 
-    #checking verbose parameter
-    if not isinstance(verbose, bool):
-        sys.exit('(Type Error): Verbose parameter can only take argument as True or False.') 
+        sys.exit("(Type Error): Metric parameter only accepts string value.")
 
-    '''
+    # checking verbose parameter
+    if not isinstance(verbose, bool):
+        sys.exit(
+            "(Type Error): Verbose parameter can only take argument as True or False."
+        )
+
+    """
     
     ERROR HANDLING ENDS HERE
     
-    '''
+    """
+
+    # run_time
+    import datetime, time
+
+    runtime_start = time.time()
 
     logger.info("Info -- Preloading libraries")
 
-    #pre-load libraries
+    # pre-load libraries
     import pandas as pd
     import ipywidgets as ipw
     from IPython.display import display, HTML, clear_output, update_display
     import datetime, time
 
-    pd.set_option('display.max_columns', 500)
+    pd.set_option("display.max_columns", 500)
 
     logger.info("Info -- Preparing display monitor")
-    
-    #progress bar
-    progress = ipw.IntProgress(value=0, min=0, max=splits+4, step=1, description='Processing: ')
+
+    # progress bar
+    progress = ipw.IntProgress(
+        value=0, min=0, max=splits + 4, step=1, description="Processing: "
+    )
     if verbose:
         display(progress)
-    
-    #display monitor
+
+    # display monitor
     timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
-    monitor = pd.DataFrame([
-        ['Initiated' , '. . . . . . . . . . . . . . . . . .', timestampStr], 
-        ['Status' , '. . . . . . . . . . . . . . . . . .' , 'Loading Dependencies'],
-        ['ETC' , '. . . . . . . . . . . . . . . . . .',  'Calculating ETC'] 
+    monitor = pd.DataFrame(
+        [
+            ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
+            ["Status", ". . . . . . . . . . . . . . . . . .", "Loading Dependencies"],
+            ["ETC", ". . . . . . . . . . . . . . . . . .", "Calculating ETC"],
         ],
-        columns=['', ' ', '   ']).set_index('')
+        columns=["", " ", "   "],
+    ).set_index("")
 
     if verbose:
-        display(monitor, display_id='monitor')
-    
-    #ignore warnings
+        display(monitor, display_id="monitor")
+
+    # ignore warnings
     import warnings
-    warnings.filterwarnings('ignore') 
+
+    warnings.filterwarnings("ignore")
 
     # Update progress bar
     progress.value += 1
-  
-    '''
+
+    """
     MONITOR UPDATE STARTS
-    '''
-    
-    monitor.iloc[1, 1:] = 'Loading Estimators'
+    """
+
+    monitor.iloc[1, 1:] = "Loading Estimators"
     if verbose:
-        update_display(monitor, display_id='monitor')
-    
-    '''
+        update_display(monitor, display_id="monitor")
+
+    """
     MONITOR UPDATE ENDS
-    '''
+    """
 
-
-    '''
+    """
     MODEL SELECTION STARTS HERE
-    '''
+    """
 
-    available_estimators = ['sem', 'holt', 'auto_arima']
+    available_estimators = ["sem", "holt", "auto_arima"]
     metric_results = {}
     results = {}
 
@@ -1422,13 +1666,10 @@ def auto_select(splits: int=5,
         logger.info(f"Info -- Initializing estimator {estimator}")
 
         model, model_results = create_model(
-                                estimator=estimator,
-                                splits=splits,
-                                round=round,
-                                verbose=False
-                                )
+            estimator=estimator, splits=splits, round=round, verbose=True # Verbose is set to true to return model_results
+        )
 
-        metric_results[estimator] = model_results.loc['Mean', metric.upper()]
+        metric_results[estimator] = model_results.loc["Mean", metric.upper()]
         results[estimator] = (model, model_results)
 
     # Select the model with the lowest value of metric
@@ -1436,136 +1677,158 @@ def auto_select(splits: int=5,
     all_results = results.copy()
     results = results[best_model]
 
-    # Save name of the best model and results of it 
+    # Save name of the best model and results of it
     full_name = best_model
     model, model_results = results[0], results[1]
 
-    '''
+    """
         MODEL SELECTION ENDS HERE
-    '''
+    """
 
     logger.info(f"Info -- Fitting avaible estimators ended")
-    
 
-    '''
+    """
     MONITOR UPDATE STARTS
-    '''
-    
-    monitor.iloc[1, 1:] = 'Calling Best Model'
+    """
+
+    monitor.iloc[1, 1:] = "Calling Best Model"
     if verbose:
-        update_display(monitor, display_id='monitor')
-    
-    '''
+        update_display(monitor, display_id="monitor")
+
+    """
     MONITOR UPDATE ENDS
-    '''
+    """
 
     logging.info("Info -- Storing results")
 
-    #storing into experiment
+    # storing into experiment
     tup = (full_name, model)
     experiment__.append(tup)
-    nam = str(full_name) + ' Score Grid'
+    nam = str(full_name) + " Score Grid"
     tup = (nam, model_results)
     experiment__.append(tup)
 
     """
     MLflow logging starts here
     """
+    import numpy as np
+
+    runtime_end = time.time()
+    runtime = np.array(runtime_end - runtime_start).round(2)
 
     if logging_param:
 
         logger.info("Creating MLFlow logs")
 
         import mlflow
+        import secrets
         from pathlib import Path
         import os
 
         run_name = full_name
 
-        with mlflow.start_run(run_name=run_name) as run:  
+        with mlflow.start_run(run_name=run_name) as run:
 
             # Get active run to log as tag
             RunID = mlflow.active_run().info.run_id
 
-            params = model.get_params()
+            from copy import deepcopy
+
+            model_copied = deepcopy(model)
+
+            try:
+                params = model_copied.get_params()
+            except: 
+                params = model_copied.params
 
             for i in list(params):
                 v = params.get(i)
                 if len(str(v)) > 250:
                     params.pop(i)
-                    
+
             mlflow.log_params(params)
 
-            #set tag of compare_models
+            URI = secrets.token_hex(nbytes=4)
+            # set tag of compare_models
             mlflow.set_tag("Source", "auto_select")
             mlflow.set_tag("URI", URI)
             mlflow.set_tag("USI", USI)
             mlflow.set_tag("Run Time", runtime)
             mlflow.set_tag("Run ID", RunID)
 
-            #Log top model metrics
-            mlflow.log_metric("MAE", model_results.loc['Mean', "MAE"])
-            mlflow.log_metric("MSE", model_results.loc['Mean', "MSE"])
-            mlflow.log_metric("RMSE", model_results.loc['Mean', "RMSE"])
-            mlflow.log_metric("MAPE", model_results.loc['Mean', "MAPE"])
-            mlflow.log_metric("AIC", model_results.loc['Mean', "AIC"])
-            mlflow.log_metric("BIC", model_results.loc['Mean', "BIC"])
+            # Log top model metrics
+            mlflow.log_metric("MAE", model_results.loc["Mean", "MAE"])
+            mlflow.log_metric("MSE", model_results.loc["Mean", "MSE"])
+            mlflow.log_metric("RMSE", model_results.loc["Mean", "RMSE"])
+            mlflow.log_metric("MAPE", model_results.loc["Mean", "MAPE"])
+            mlflow.log_metric("AIC", model_results.loc["Mean", "AIC"])
+            mlflow.log_metric("BIC", model_results.loc["Mean", "BIC"])
 
-            # Log model and transformation pipeline
-            from copy import deepcopy
+            # Save model 
+            save_model(model_copied, 'model')
+            logger.info("SubProcess save_model() end ==================================")
+            mlflow.log_artifact('model.pkl')
+            os.remove('model.pkl')
 
-            # get default conda env
-            from mlflow.sklearn import get_default_conda_env
-            default_conda_env = get_default_conda_env()
-            default_conda_env['name'] = str(exp_name_log) + '-env'
-            default_conda_env.get('dependencies').pop(-3)
-            dependencies = default_conda_env.get('dependencies')[-1]
-            from pycaret.utils import __version__
-            dep = 'pycaret==' + str(__version__())
-            dependencies['pip'] = [dep]
-            
             # define model signature
-            from mlflow.models.signature import infer_signature
-            signature = infer_signature(data_before_preprocess.drop([target_param], axis=1))
-            input_example = data_before_preprocess.drop([target_param], axis=1).iloc[0].to_dict()
+            # from mlflow.models.signature import infer_signature
 
-            import pickle 
-            import os 
+            # signature = infer_signature(
+            #     data_before_preprocess.drop([target_param], axis=1)
+            # )
+            # input_example = (
+            #     data_before_preprocess.drop([target_param], axis=1).iloc[0].to_dict()
+            # )
 
-            # Set path to save model 
-            ts_model_path = os.path.join(os.getcwd(), f"{run_name}.pkl")
+            # import pickle
+            # import os
 
-            # Pickle model 
-            with open(ts_model_path, "wb") as f: 
-                pickle.dump(model, f)
+            # # Set path to save model
+            # ts_model_path = os.path.join(os.getcwd(), f"{run_name}.pkl")
 
-            from mlflow.utils.environment import _mlflow_conda_env
-            from pmdarima import __version__
-            pmdarima_version = str(__version__)
-            from statstmodels import __version__
-            sm_version = str(__version__)
+            # # Pickle model
+            # with open(ts_model_path, "wb") as f:
+            #     pickle.dump(model, f)
 
-            # Set a conda env with pmdarima and statsmodels
-            conda_env = _mlflow_conda_env(
-                additional_conda_deps=[
-                    "pmdarima={}".format(pmdarima_version),
-                    "statsmodels={}".format(sm_version)
-                ],
-                additional_pip_deps=None,
-                additional_conda_channels=None
-            )
+            # if full_name == "auto_arima":
 
-            mlflow.pyfunc.log_model(
-                artifact_path=f"{run_name}_model",
-                data_path=ts_model_path,
-                conda_env=conda_env,
-                signature=signature,
-                input_example=input_example
-            )
+            #     from pmdarima import __version__
+
+            #     version = str(__version__)
+            #     conda_deps = "pmdarima"
+
+            # else:
+
+            #     from statsmodels import __version__
+
+            #     version = str(__version__)
+            #     conda_deps = "statsmodels"
+
+            # from mlflow.utils.environment import _mlflow_conda_env
+            # from pycaret.utils import __version__
+
+            # pip_deps = ["pycaret==" + str(__version__())]
+
+            # # Set a conda env with pmdarima and statsmodels
+            # conda_env = _mlflow_conda_env(
+            #     additional_conda_deps=[f"{conda_deps}={version}"],
+            #     additional_pip_deps=pip_deps,
+            #     additional_conda_channels=None,
+            # )
+
+            # import mlflow.pyfunc as mlflow_pyfunc
+
+            # mlflow_pyfunc.log_model(
+            #     artifact_path=f"{run_name}_model",
+            #     data_path=ts_model_path,
+            #     conda_env=conda_env,
+            #     signature=signature,
+            #     input_example=input_example,
+            # )
 
     clear_output()
 
-    #store in display container
+    # store in display container
     display_container.append(all_results)
 
     logger.info("create_model_container: " + str(len(create_model_container)))
@@ -1573,7 +1836,9 @@ def auto_select(splits: int=5,
     logger.info("display_container: " + str(len(display_container)))
 
     logger.info(str(model))
-    logger.info("auto_select() succesfully completed......................................")
+    logger.info(
+        "auto_select() succesfully completed......................................"
+    )
 
     if verbose:
         display(model_results)
@@ -1582,10 +1847,9 @@ def auto_select(splits: int=5,
         return model
 
 
-def forecast(estimator, 
-             steps: int=5,
-             plot: bool=False,
-             style: Optional[str]=None):
+def forecast(
+    estimator, steps: int = 5, plot: bool = False, style: Optional[str] = None
+):
 
     """  
     Description:
@@ -1595,13 +1859,13 @@ def forecast(estimator,
     Example
         -------
         from pycaret.datasets import get_data
-        from pycaret.forecast import *
+        from pycaret.timeseries import *
         
-        data = get_data('air_passengers')
-        s = setup(data, target='#Passengers')
+        data = get_data('bike')
+        s = setup(data, target='cnt')
         
-        model = auto_select(splits=10, metric='mae')
-        forecast = forecast(auto_select)
+        auto_model = auto_select(splits=10, metric='mae')
+        forecast = forecast(auto_model)
         This will output the best model based on the MAE
     
     
@@ -1627,122 +1891,332 @@ def forecast(estimator,
       
     """
 
-    '''
+    """
     ERROR HANDLING STARTS HERE
-    '''
-    
-    #exception checking   
+    """
+
+    # exception checking
     import sys
-    
-    #checking steps parameter
+
+    # checking steps parameter
     if not isinstance(steps, int):
-        sys.exit('(Type Error): Steps parameter only accepts integer value.')
-    
-    #checking verbose parameter
+        sys.exit("(Type Error): Steps parameter only accepts integer value.")
+
+    # checking verbose parameter
     if not isinstance(plot, bool):
-        sys.exit('(Type Error): Plot parameter can only take argument as True or False.') 
+        sys.exit(
+            "(Type Error): Plot parameter can only take argument as True or False."
+        )
 
-    #checking style parameter
-    if not isinstance(style, str):
-        sys.exit('(Type Error): Style parameter only accepts string value.') 
+    # checking style parameter
+    if style is not None: 
+        if not isinstance(style, str):
+            sys.exit("(Type Error): Style parameter only accepts string value.")
 
-    '''
+    """
     ERROR HANDLING ENDS HERE
-    '''
+    """
 
-    #pre-load libraries
+    # pre-load libraries
     import pandas as pd
-    import numpy as np 
+    import numpy as np
     import ipywidgets as ipw
-    import matplotlib.pyplot as plt 
+    import matplotlib.pyplot as plt
     from IPython.display import display, HTML, clear_output, update_display
     import datetime, time
-    
-    #progress bar
-    progress = ipw.IntProgress(value=0, min=0, max=3, step=1, description='Processing: ')
+
+    # progress bar
+    progress = ipw.IntProgress(
+        value=0, min=0, max=3, step=1, description="Processing: "
+    )
     display(progress)
-    
-    #display monitor
+
+    # display monitor
     timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
-    monitor = pd.DataFrame([
-        ['Initiated' , '. . . . . . . . . . . . . . . . . .', timestampStr], 
-        ['Status' , '. . . . . . . . . . . . . . . . . .' , 'Loading Dependencies'],
-        ['ETC' , '. . . . . . . . . . . . . . . . . .',  'Calculating ETC'] 
+    monitor = pd.DataFrame(
+        [
+            ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
+            ["Status", ". . . . . . . . . . . . . . . . . .", "Loading Dependencies"],
+            ["ETC", ". . . . . . . . . . . . . . . . . .", "Calculating ETC"],
         ],
-        columns=['', ' ', '   ']).set_index('')
-    
-    display(monitor, display_id='monitor')
-    
+        columns=["", " ", "   "],
+    ).set_index("")
+
+    display(monitor, display_id="monitor")
 
     # Update progress bar
     progress.value += 1
-  
-    '''
+
+    """
     MONITOR UPDATE STARTS
-    '''
-    
-    monitor.iloc[1, 1:] = 'Calling forecast method of estimator'
-    update_display(monitor, display_id='monitor')
-    
-    '''
+    """
+
+    monitor.iloc[1, 1:] = "Calling forecast method of estimator"
+    update_display(monitor, display_id="monitor")
+
+    """
     MONITOR UPDATE ENDS
-    '''
+    """
 
-
-    '''
+    """
     FORECAST STARTS HERE
-    '''
+    """
 
-    # Call predict/forecast method of estimator 
-    if 'forecast' in dir(estimator):
+    # Call predict/forecast method of estimator
+    if "forecast" in dir(estimator):
         forecast = estimator.forecast(steps)
     else:
         forecast = estimator.predict(steps)
 
-    '''
+    """
     FORECAST ENDS HERE
-    '''
-    
+    """
+
     # Update progress bar
     progress.value += 1
 
-    '''
+    """
     MONITOR UPDATE STARTS
-    '''
-    
-    monitor.iloc[1, 1:] = 'Plotting results'
-    update_display(monitor, display_id='monitor')
-    
-    '''
+    """
+
+    monitor.iloc[1, 1:] = "Plotting results"
+    update_display(monitor, display_id="monitor")
+
+    """
     MONITOR UPDATE ENDS
-    '''
+    """
 
-    '''
+    """
     PLOT STARTS HERE
-    '''
+    """
 
-    # Plot results 
-    if plot: 
+    # Plot results
+    if plot:
 
-        # Plot up to 100 observations of the data 
+        # Plot up to 100 observations of the data
         n_observations = 100 if len(y) > 100 else len(y)
 
         plt.style.use(style)
         plt.figure(figsize=(12, 6))
-        plt.xlabel('X values')
-        plt.ylabel('Y values')
-        plt.plot(np.arange(0, n_observations), y.tail(n_observations), linewidth=4, color='red')
-        plt.plot(np.arange(n_observations, n_observations+steps), forecast, linewidth=4, color='blue')
+        plt.xlabel("X values")
+        plt.ylabel("Y values")
+        plt.plot(
+            np.arange(0, n_observations),
+            y.tail(n_observations),
+            linewidth=4,
+            color="red",
+        )
+        plt.plot(
+            np.arange(n_observations, n_observations + steps),
+            forecast,
+            linewidth=4,
+            color="blue",
+        )
         plt.grid(False)
-        plt.title(f'Original data and {steps} steps ahead Forecast')
+        plt.title(f"Original data and {steps} steps ahead Forecast")
 
-    
-    # Update progress bar 
+    # Update progress bar
     progress.value += 1
 
-    '''
+    """
     PLOT ENDS HERE
-    '''
+    """
     clear_output()
 
-    return forecast 
+    return forecast
+
+def save_model(model, model_name, model_only=False, verbose=True):
+    """
+    This function saves the transformation pipeline and trained model object 
+    into the current active directory as a pickle file for later use. 
+    
+        Example:
+        --------
+        from pycaret.datasets import get_data
+        bike = get_data('bike')
+        experiment_name = setup(data = bike,  target = 'cnt')
+        sem = create_model('sem')
+        save_model(sem, 'sem_model_23122019')
+        This will save the transformation pipeline and model as a binary pickle
+        file in the current directory. 
+    Parameters
+    ----------
+    model : object, default = none
+        A trained model object should be passed as an estimator. 
+    
+    model_name : string, default = none
+        Name of pickle file to be passed as a string.
+    
+    model_only : bool, default = False
+        When set to True, only trained model object is saved and all the 
+        transformations are ignored.
+   
+    verbose: Boolean, default = True
+        Success message is not printed when verbose is set to False.
+    Returns
+    --------    
+    Success_Message
+    """
+    
+    import logging
+    from copy import deepcopy
+
+    try:
+        hasattr(logger, 'name')
+    except:
+        logger = logging.getLogger('logs')
+        logger.setLevel(logging.DEBUG)
+        
+        # create console handler and set level to debug
+        if logger.hasHandlers():
+            logger.handlers.clear()
+        
+        ch = logging.FileHandler('logs.log')
+        ch.setLevel(logging.DEBUG)
+
+        # create formatter
+        formatter = logging.Formatter('%(asctime)s:%(levelname)s:%(message)s')
+
+        # add formatter to ch
+        ch.setFormatter(formatter)
+
+        # add ch to logger
+        logger.addHandler(ch)
+
+    logger.info("Initializing save_model()")
+    logger.info("""save_model(model={}, model_name={}, model_only={}, verbose={})""".\
+        format(str(model), str(model_name), str(model_only), str(verbose)))
+
+    #ignore warnings
+    import warnings
+    warnings.filterwarnings('ignore') 
+    
+    if model_only:
+        model_ = deepcopy(model)
+        logger.warning("Only Model saved. Transformations in prep_pipe are ignored.")
+    else:
+        model_ = deepcopy(prep_pipe)
+        model_.steps.append(['trained model',model])
+    
+    import joblib
+    model_name = model_name + '.pkl'
+    joblib.dump(model_, model_name)
+    if verbose:
+        print('Transformation Pipeline and Model Succesfully Saved')
+
+    logger.info(str(model_name) + ' saved in current working directory')
+    logger.info(str(model_))
+    logger.info("save_model() succesfully completed......................................")
+
+def load_model(model_name, 
+               platform = None, 
+               authentication = None,
+               verbose=True):
+    
+    """
+    This function loads a previously saved transformation pipeline and model 
+    from the current active directory into the current python environment. 
+    Load object must be a pickle file.
+    
+    Example
+    -------
+    >>> saved_ts = load_model('ts_model_23122019')
+    
+    This will load the previously saved model in saved_ts variable. The file 
+    must be in the current directory.
+
+    Parameters
+    ----------
+    model_name : string, default = none
+        Name of pickle file to be passed as a string.
+      
+    platform: string, default = None
+        Name of platform, if loading model from cloud. 
+        Currently available options are: 'aws', 'gcp', 'azure'.
+    
+    authentication : dict
+        dictionary of applicable authentication tokens.
+
+        When platform = 'aws':
+        {'bucket' : 'name of bucket'}
+
+        When platform = 'gcp':
+        {'project': 'name of project', 'bucket' : 'name of bucket'}
+
+        When platform = 'azure':
+        {'container': 'name of container'}
+    
+    verbose: Boolean, default = True
+        Success message is not printed when verbose is set to False.
+
+    Returns
+    -------
+    Model Object
+
+    """
+    
+    #ignore warnings
+    import warnings
+    warnings.filterwarnings('ignore') 
+    
+    #exception checking
+    import sys
+    
+    if platform is not None:
+        if authentication is None:
+            sys.exit("(Value Error): Authentication is missing.")
+
+    if platform is None:
+
+        import joblib
+        model_name = model_name + '.pkl'
+        if verbose:
+            print('Transformation Pipeline and Model Successfully Loaded')
+        return joblib.load(model_name)
+    
+    # cloud providers
+    elif platform == 'aws':
+
+        import boto3
+        bucketname = authentication.get('bucket')
+        filename = str(model_name) + '.pkl'
+        s3 = boto3.resource('s3')
+        s3.Bucket(bucketname).download_file(filename, filename)
+        filename = str(model_name)
+        model = load_model(filename, verbose=False)
+
+        if verbose:
+            print('Transformation Pipeline and Model Successfully Loaded')
+
+        return model
+
+    elif platform == 'gcp':
+
+        bucket_name = authentication.get('bucket')
+        project_name = authentication.get('project')
+        filename = str(model_name) + '.pkl'
+
+        model_downloaded = _download_blob_gcp(project_name,
+                                              bucket_name, filename, filename)
+
+        model = load_model(model_name, verbose=False)
+
+        if verbose:
+            print('Transformation Pipeline and Model Successfully Loaded')
+        return model
+
+    elif platform == 'azure':
+
+        container_name = authentication.get('container')
+        filename = str(model_name) + '.pkl'
+
+        model_downloaded = _download_blob_azure(container_name, filename, filename)
+
+        model = load_model(model_name, verbose=False)
+
+        if verbose:
+            print('Transformation Pipeline and Model Successfully Loaded')
+        return model
+    else:
+        print('Platform { } is not supported by pycaret or illegal option'.format(platform))
+
