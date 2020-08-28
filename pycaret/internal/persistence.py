@@ -2,6 +2,7 @@
 # Author: Moez Ali <moez.ali@queensu.ca> and Antoni Baum (Yard1) <antoni.baum@protonmail.com>
 # License: MIT
 
+from typing import Dict, Optional
 from pycaret.classification import prep_pipe
 from pycaret.internal.utils import get_logger
 from pycaret.internal.Display import Display
@@ -239,10 +240,10 @@ def save_model(model, model_name: str, prep_pipe_=None, verbose: bool = True):
 
     Parameters
     ----------
-    model : object, default = none
+    model : object
         A trained model object should be passed as an estimator. 
     
-    model_name : string, default = none
+    model_name : string
         Name of pickle file to be passed as a string.
     
     prep_pipe_ : Pipeline, default = None
@@ -296,7 +297,10 @@ def save_model(model, model_name: str, prep_pipe_=None, verbose: bool = True):
 
 
 def load_model(
-    model_name, platform: str = None, authentication: dict = None, verbose: bool = True
+    model_name,
+    platform: Optional[str] = None,
+    authentication: Optional[Dict[str, str]] = None,
+    verbose: bool = True,
 ):
 
     """

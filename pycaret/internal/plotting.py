@@ -2,6 +2,7 @@
 # Author: Moez Ali <moez.ali@queensu.ca> and Antoni Baum (Yard1) <antoni.baum@protonmail.com>
 # License: MIT
 
+from typing import Optional
 from pycaret.internal.logging import get_logger
 from pycaret.internal.Display import Display
 
@@ -18,7 +19,7 @@ def show_yellowbrick_plot(
     scale: float = 1,
     save: bool = False,
     system: bool = True,
-    display: Display = None,
+    display: Optional[Display] = None,
     **kwargs,
 ):
     """

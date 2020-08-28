@@ -23,7 +23,7 @@ import time
 import random
 import gc
 from copy import deepcopy
-from typing import List, Tuple, Any
+from typing import List, Tuple, Any, Union
 import warnings
 from IPython.utils import io
 import traceback
@@ -37,15 +37,15 @@ def setup(
     train_size: float = 0.7,
     sampling: bool = True,
     sample_estimator=None,
-    categorical_features: List[str] = None,
+    categorical_features: Optional[List[str]] = None,
     categorical_imputation: str = "constant",
-    ordinal_features: dict = None,
-    high_cardinality_features: List[str] = None,
+    ordinal_features: Optional[Dict[str, list]] = None,
+    high_cardinality_features: Optional[List[str]] = None,
     high_cardinality_method: str = "frequency",
-    numeric_features: List[str] = None,
+    numeric_features: Optional[List[str]] = None,
     numeric_imputation: str = "mean",  # method 'zero' added in pycaret==2.1
-    date_features: List[str] = None,
-    ignore_features: List[str] = None,
+    date_features: Optional[List[str]] = None,
+    ignore_features: Optional[List[str]] = None,
     normalize: bool = False,
     normalize_method: str = "zscore",
     transformation: bool = False,
@@ -54,11 +54,11 @@ def setup(
     unknown_categorical_method: str = "least_frequent",
     pca: bool = False,
     pca_method: str = "linear",
-    pca_components: float = None,
+    pca_components: Optional[float] = None,
     ignore_low_variance: bool = False,
     combine_rare_levels: bool = False,
     rare_level_threshold: float = 0.10,
-    bin_numeric_features: list = None,
+    bin_numeric_features: Optional[List[str]] = None,
     remove_outliers: bool = False,
     outliers_threshold: float = 0.05,
     remove_multicollinearity: bool = False,
@@ -70,8 +70,8 @@ def setup(
     polynomial_degree: int = 2,
     trigonometry_features: bool = False,
     polynomial_threshold: float = 0.1,
-    group_features: List[str] = None,
-    group_names: List[str] = None,
+    group_features: Optional[List[str]] = None,
+    group_names: Optional[List[str]] = None,
     feature_selection: bool = False,
     feature_selection_threshold: float = 0.8,
     feature_selection_method: str = "classic",  # boruta algorithm added in pycaret==2.1
@@ -79,22 +79,22 @@ def setup(
     feature_ratio: bool = False,
     interaction_threshold: float = 0.01,
     fix_imbalance: bool = False,
-    fix_imbalance_method: Any = None,
+    fix_imbalance_method: Optional[Any] = None,
     data_split_shuffle: bool = True,
     folds_shuffle: bool = False,
     n_jobs: int = -1,
     use_gpu: bool = False,  # added in pycaret==2.1
     html: bool = True,
-    session_id: int = None,
+    session_id: Optional[int] = None,
     log_experiment: bool = False,
-    experiment_name: str = None,
+    experiment_name: Optional[str] = None,
     log_plots: bool = False,
     log_profile: bool = False,
     log_data: bool = False,
     silent: bool = False,
     verbose: bool = True,
     profile: bool = False,
-    display: Display = None,
+    display: Optional[Display] = None,
 ):
 
     """
@@ -986,7 +986,8 @@ def setup(
     html_param = html
 
     # silent parameter to also set sampling to False
-    if silent: sampling = False
+    if silent:
+        sampling = False
 
     logger.info("Preparing display monitor")
 
@@ -1072,14 +1073,18 @@ def setup(
     # categorical imputation strategy
     cat_dict = {"constant": "not_available", "mode": "most frequent"}
     categorical_imputation_pass = cat_dict[categorical_imputation]
-    
+
     # transformation method strategy
     trans_dict = {"yeo-johnson": "yj", "quantile": "quantile"}
     trans_method_pass = trans_dict[transformation_method]
 
     # pass method
-    pca_dict = {"linear": "pca_liner", "kernel": "pca_kernal",
-                "incremental": "incremental", "pls": "pls"}
+    pca_dict = {
+        "linear": "pca_liner",
+        "kernel": "pca_kernal",
+        "incremental": "incremental",
+        "pls": "pls",
+    }
     pca_method_pass = pca_dict[pca_method]
 
     # pca components
@@ -1136,7 +1141,9 @@ def setup(
 
     # feature interactions
 
-    apply_feature_interactions_pass = True if feature_interaction or feature_ratio else False
+    apply_feature_interactions_pass = (
+        True if feature_interaction or feature_ratio else False
+    )
 
     interactions_to_apply_pass = []
 
@@ -1149,18 +1156,24 @@ def setup(
     # unknown categorical
     unkn_dict = {"least_frequent": "least frequent", "most_frequent": "most frequent"}
     unknown_categorical_method_pass = unkn_dict[unknown_categorical_method]
-    
+
     # ordinal_features
     apply_ordinal_encoding_pass = True if ordinal_features is not None else False
 
-    ordinal_columns_and_categories_pass = ordinal_features if apply_ordinal_encoding_pass else {}
+    ordinal_columns_and_categories_pass = (
+        ordinal_features if apply_ordinal_encoding_pass else {}
+    )
 
-    apply_cardinality_reduction_pass = True if high_cardinality_features is not None else False
+    apply_cardinality_reduction_pass = (
+        True if high_cardinality_features is not None else False
+    )
 
     hi_card_dict = {"frequency": "count", "clustering": "cluster"}
     cardinal_method_pass = hi_card_dict[high_cardinality_method]
 
-    cardinal_features_pass = high_cardinality_features if apply_cardinality_reduction_pass else []
+    cardinal_features_pass = (
+        high_cardinality_features if apply_cardinality_reduction_pass else []
+    )
 
     display_dtypes_pass = False if silent else True
 
@@ -1274,27 +1287,41 @@ def setup(
 
     outliers_threshold_grid = outliers_threshold if remove_outliers else None
 
-    multicollinearity_threshold_grid = multicollinearity_threshold if remove_multicollinearity else None
+    multicollinearity_threshold_grid = (
+        multicollinearity_threshold if remove_multicollinearity else None
+    )
 
     cluster_iter_grid = cluster_iter if create_clusters else None
 
     polynomial_degree_grid = polynomial_degree if polynomial_features else None
 
-    polynomial_threshold_grid = polynomial_threshold if polynomial_features or trigonometry_features else None
+    polynomial_threshold_grid = (
+        polynomial_threshold if polynomial_features or trigonometry_features else None
+    )
 
-    feature_selection_threshold_grid = feature_selection_threshold if feature_selection else None
+    feature_selection_threshold_grid = (
+        feature_selection_threshold if feature_selection else None
+    )
 
-    interaction_threshold_grid = interaction_threshold if feature_interaction or feature_ratio else None
+    interaction_threshold_grid = (
+        interaction_threshold if feature_interaction or feature_ratio else None
+    )
 
     ordinal_features_grid = False if ordinal_features is None else True
 
-    unknown_categorical_method_grid = unknown_categorical_method if handle_unknown_categorical else None
+    unknown_categorical_method_grid = (
+        unknown_categorical_method if handle_unknown_categorical else None
+    )
 
     group_features_grid = False if group_features is None else True
 
-    high_cardinality_features_grid = False if high_cardinality_features is None else True
+    high_cardinality_features_grid = (
+        False if high_cardinality_features is None else True
+    )
 
-    high_cardinality_method_grid = high_cardinality_method if high_cardinality_features_grid else None
+    high_cardinality_method_grid = (
+        high_cardinality_method if high_cardinality_features_grid else None
+    )
 
     learned_types = preprocess.dtypes.learent_dtypes
     learned_types.drop(target, inplace=True)
@@ -1639,8 +1666,10 @@ def setup(
 
 
 def compare_models(
-    include: list = None,  # changed whitelist to include in pycaret==2.1
-    exclude: List[str] = None,  # changed blacklist to exclude in pycaret==2.1
+    include: Optional[
+        List[Union[str, Any]]
+    ] = None,  # changed whitelist to include in pycaret==2.1
+    exclude: Optional[List[str]] = None,  # changed blacklist to exclude in pycaret==2.1
     fold: int = 10,
     round: int = 4,
     sort: str = "Accuracy",
@@ -1648,7 +1677,7 @@ def compare_models(
     budget_time: float = 0,  # added in pycaret==2.1.0
     turbo: bool = True,
     verbose: bool = True,
-    display: Display = None,
+    display: Optional[Display] = None,
 ) -> Any:
 
     """
@@ -2164,9 +2193,9 @@ def create_model(
     verbose: bool = True,
     system: bool = True,
     return_fit_time: bool = False,  # added in pycaret==2.2.0
-    X_train_data: pd.DataFrame = None,  # added in pycaret==2.2.0
-    Y_train_data: pd.DataFrame = None,  # added in pycaret==2.2.0
-    display: Display = None,  # added in pycaret==2.2.0
+    X_train_data: Optional[pd.DataFrame] = None,  # added in pycaret==2.2.0
+    Y_train_data: Optional[pd.DataFrame] = None,  # added in pycaret==2.2.0
+    display: Optional[Display] = None,  # added in pycaret==2.2.0
     **kwargs,
 ) -> Any:
 
@@ -2786,7 +2815,7 @@ def tune_model(
     fold: int = 10,
     round: int = 4,
     n_iter: int = 10,
-    custom_grid: dict = None,
+    custom_grid: Optional[Union[Dict[str, list], Any]] = None,
     optimize: str = "Accuracy",
     custom_scorer=None,  # added in pycaret==2.1 - depreciated
     search_library: str = "scikit-learn",
@@ -2795,7 +2824,7 @@ def tune_model(
     early_stopping_max_iters: int = 10,
     choose_better: bool = False,
     verbose: bool = True,
-    display: Display = None,
+    display: Optional[Display] = None,
     **kwargs,
 ) -> Any:
 
@@ -3589,7 +3618,7 @@ def ensemble_model(
     choose_better: bool = False,
     optimize: str = "Accuracy",
     verbose: bool = True,
-    display: Display = None,  # added in pycaret==2.2.0
+    display: Optional[Display] = None,  # added in pycaret==2.2.0
 ) -> Any:
     """
     This function ensembles the trained base estimator using the method defined in 
@@ -4059,10 +4088,10 @@ def blend_models(
     choose_better: bool = False,
     optimize: str = "Accuracy",
     method: str = "hard",
-    weights: list = None,  # added in pycaret==2.2.0
+    weights: Optional[List[float]] = None,  # added in pycaret==2.2.0
     turbo: bool = True,
     verbose: bool = True,
-    display: Display = None,  # added in pycaret==2.2.0
+    display: Optional[Display] = None,  # added in pycaret==2.2.0
 ) -> Any:
 
     """
@@ -4533,7 +4562,7 @@ def stack_models(
     choose_better: bool = False,
     optimize: str = "Accuracy",
     verbose: bool = True,
-    display: Display = None,
+    display: Optional[Display] = None,
 ) -> Any:
 
     """
@@ -4969,11 +4998,11 @@ def stack_models(
 def plot_model(
     estimator,
     plot: str = "auc",
-    scale=1,  # added in pycaret==2.1.0
+    scale: float = 1,  # added in pycaret==2.1.0
     save: bool = False,
     verbose: bool = True,
     system: bool = True,
-    display: Display = None,  # added in pycaret==2.2.0
+    display: Optional[Display] = None,  # added in pycaret==2.2.0
 ):
 
     """
@@ -5170,21 +5199,21 @@ def plot_model(
     # Storing X_train and y_train in data_X and data_y parameter
     data_X = X_train.copy()
     data_y = y_train.copy()
-    
-    #reset index
+
+    # reset index
     data_X.reset_index(drop=True, inplace=True)
     data_y.reset_index(drop=True, inplace=True)
-    
+
     logger.info("Copying test dataset")
 
     # Storing X_train and y_train in data_X and data_y parameter
     test_X = X_test.copy()
     test_y = y_test.copy()
 
-    #reset index
+    # reset index
     test_X.reset_index(drop=True, inplace=True)
     test_y.reset_index(drop=True, inplace=True)
-    
+
     logger.info(f"Plot type: {plot}")
     plot_name = available_plots[plot]
     display.move_progress()
@@ -5706,8 +5735,8 @@ def evaluate_model(estimator):
 def interpret_model(
     estimator,
     plot: str = "summary",
-    feature: str = None,
-    observation: int = None,
+    feature: Optional[str] = None,
+    observation: Optional[int] = None,
     **kwargs,  # added in pycaret==2.1
 ):
 
@@ -5953,7 +5982,7 @@ def calibrate_model(
     fold: int = 10,
     round: int = 4,
     verbose: bool = True,
-    display: Display = None,  # added in pycaret==2.2.0
+    display: Optional[Display] = None,  # added in pycaret==2.2.0
 ) -> Any:
 
     """
@@ -6551,12 +6580,12 @@ def optimize_threshold(
 
 def predict_model(
     estimator,
-    data: pd.DataFrame = None,
-    probability_threshold: float = None,
+    data: Optional[pd.DataFrame] = None,
+    probability_threshold: Optional[float] = None,
     encoded_labels: bool = False,  # added in pycaret==2.1.0
     round: int = 4,  # added in pycaret==2.2.0
     verbose: bool = True,
-    display: Display = None,  # added in pycaret==2.2.0
+    display: Optional[Display] = None,  # added in pycaret==2.2.0
 ) -> pd.DataFrame:
 
     """
@@ -7161,7 +7190,10 @@ def save_model(model, model_name: str, model_only: bool = False, verbose: bool =
 
 
 def load_model(
-    model_name, platform: str = None, authentication: dict = None, verbose: bool = True
+    model_name,
+    platform: Optional[str] = None,
+    authentication: Optional[Dict[str, str]] = None,
+    verbose: bool = True,
 ):
 
     """
@@ -7305,7 +7337,7 @@ def pull(pop=False) -> pd.DataFrame:  # added in pycaret==2.2.0
 
 
 def models(
-    type: str = None, internal: bool = False, force_regenerate: bool = False
+    type: Optional[str] = None, internal: bool = False, force_regenerate: bool = False
 ) -> pd.DataFrame:
 
     """
@@ -7565,7 +7597,7 @@ def remove_metric(name_or_id: str):
     )
 
 
-def get_logs(experiment_name: str = None, save: bool = False) -> pd.DataFrame:
+def get_logs(experiment_name: Optional[str] = None, save: bool = False) -> pd.DataFrame:
 
     """
     Returns a table with experiment logs consisting
@@ -7712,7 +7744,9 @@ def _is_one_vs_rest(e) -> bool:
 
 
 def _fix_imbalance(
-    Xtrain: pd.DataFrame, ytrain: pd.DataFrame, fix_imbalance_method_param: Any = None,
+    Xtrain: pd.DataFrame,
+    ytrain: pd.DataFrame,
+    fix_imbalance_method_param: Optional[Any] = None,
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
 
     """
@@ -7744,8 +7778,8 @@ def _choose_better(
     compare_dimension: str,
     fold: int,
     model_results=None,
-    new_results_list: list = None,
-    display: Display = None,
+    new_results_list: Optional[list] = None,
+    display: Optional[Display] = None,
 ):
     """
     When choose_better is set to True, optimize metric in scoregrid is
@@ -8040,7 +8074,9 @@ def _is_special_model(e) -> bool:
     return pycaret.internal.utils.is_special_model(e, models(internal=True))
 
 
-def _calculate_metrics(ytest, pred_, pred_prob: float, score_dict: dict = None) -> dict:
+def _calculate_metrics(
+    ytest, pred_, pred_prob: float, score_dict: Optional[Dict[str, np.array]] = None
+) -> dict:
     """
     Calculate all metrics in get_metrics().
     """

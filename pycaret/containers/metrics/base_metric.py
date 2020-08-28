@@ -2,7 +2,7 @@
 # Author: Antoni Baum (Yard1) <antoni.baum@protonmail.com>
 # License: MIT
 
-from typing import Dict, Any, Union
+from typing import Dict, Any, Union, Optional
 from pycaret.containers.base_container import BaseContainer
 from sklearn.metrics._scorer import _BaseScorer
 from sklearn.metrics import make_scorer
@@ -58,9 +58,9 @@ class MetricContainer(BaseContainer):
         id: str,
         name: str,
         score_func_type: type,
-        scorer: Union[str, _BaseScorer] = None,
+        scorer: Optional[Union[str, _BaseScorer]] = None,
         args: Dict[str, Any] = {},
-        display_name: str = None,
+        display_name: Optional[str] = None,
         is_custom: bool = False,
     ) -> None:
         self.id = id
