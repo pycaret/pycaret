@@ -1052,7 +1052,9 @@ def create_model(
         value=0, min=0, max=splits + 4, step=1, description="Processing: "
     )
     master_display = pd.DataFrame(columns=["MAE", "MSE", "RMSE", "MAPE", "AIC", "BIC"])
-    display(progress)
+    
+    if verbose:
+        display(progress)
 
     # display monitor
     timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
@@ -1065,12 +1067,10 @@ def create_model(
         columns=["", " ", "   "],
     ).set_index("")
 
-    display(monitor, display_id="monitor")
 
     if verbose:
-        display_ = display(master_display, display_id=True)
-        display_id = display_.display_id
-
+        display(monitor, display_id="monitor")
+    
     # ignore warnings
     import warnings
 
@@ -1234,6 +1234,7 @@ def create_model(
                 "BIC": [bic],
             }
         ).round(round)
+        master_display = pd.DataFrame(columns=['MAE','MSE','RMSE', 'R2', 'RMSLE', 'MAPE'])
         master_display = pd.concat([master_display, split_results], ignore_index=True)
         split_results = []
 
@@ -1271,7 +1272,7 @@ def create_model(
         """
 
         if verbose:
-            update_display(master_display, display_id=display_id)
+            update_display(master_display, display_id="master_display")
 
         """
         
