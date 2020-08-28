@@ -39,6 +39,7 @@ Installation is only supported on 64-bit version of Python.
 
 ## Important Links
 - Release notes : https://github.com/pycaret/pycaret/releases/tag/2.1
+- Docs: https://pycaret.readthedocs.io/en/latest/
 - User Guide : https://www.pycaret.org/guide
 - Getting Started Tutorials : https://github.com/pycaret/pycaret/tree/master/tutorials
 - Example Notebooks : https://github.com/pycaret/pycaret/tree/master/examples
