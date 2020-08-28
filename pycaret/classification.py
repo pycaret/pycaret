@@ -7399,7 +7399,7 @@ def models(
             raise ValueError(
                 f"type param only accepts {', '.join(list(model_type))}."
             )
-    return df[df.index.isin(model_type.get(type, df.index))]
+        return df[df.index.isin(model_type.get(type, df.index))]
 
     if not force_regenerate:
         try:
