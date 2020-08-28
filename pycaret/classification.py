@@ -5728,6 +5728,7 @@ def evaluate_model(estimator):
         plot=a,
         save=fixed(False),
         verbose=fixed(True),
+        scale=fixed(1),
         system=fixed(True),
     )
 
