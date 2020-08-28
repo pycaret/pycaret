@@ -1,6 +1,6 @@
 ![alt text](https://github.com/pycaret/pycaret/blob/master/pycaret2.png)
 
-# PyCaret 2.0
+# PyCaret 2.1
 [![Build Status](https://travis-ci.com/pycaret/pycaret.svg?branch=master)](https://travis-ci.com/pycaret/pycaret) [![Stability](https://img.shields.io/badge/stability-stable-green.svg)](https://img.shields.io/badge/stability-stable-green.svg) [![Documentation Status](https://readthedocs.org/projects/pip/badge/?version=stable)](http://pip.pypa.io/en/stable/?badge=stable) [![PyPI version](https://badge.fury.io/py/pycaret.svg)](https://badge.fury.io/py/pycaret) [![License](https://img.shields.io/pypi/l/ansicolortags.svg)](https://img.shields.io/pypi/l/ansicolortags.svg) [![Git count](http://hits.dwyl.com/pycaret/pycaret/pycaret.svg)](http://hits.dwyl.com/pycaret/pycaret/pycaret)
 
 ## What is PyCaret?
@@ -17,10 +17,10 @@ For more information on PyCaret, please visit our official website https://www.p
 ![alt text](https://github.com/pycaret/pycaret/blob/master/pycaret2-features.png)
 
 ## Current Release
-PyCaret `2.0` is now available. See `2.0` release notes. The easiest way to install pycaret is using pip. 
+PyCaret `2.1` is now available. See `2.1` release notes. The easiest way to install pycaret is using pip. 
 
 ```python
-pip install pycaret==2.0
+pip install pycaret==2.1
 ```
 
 ## Optional dependencies
