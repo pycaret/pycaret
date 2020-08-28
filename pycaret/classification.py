@@ -7393,7 +7393,7 @@ def models(
         model_type = {"linear": ["lr", "ridge", "svm"],
                       "tree": ["dt"],
                       "ensemble": ["rf", "et", "gbc", "xgboost", "lightgbm", "catboost", "ada"]}
-        return df[df.index.isin(model_type.get(type, df.index)))]
+        return df[df.index.isin(model_type.get(type, df.index))]
 
     if not force_regenerate:
         try:
