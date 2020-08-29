@@ -8,7 +8,7 @@
 # `ClassificationMetricContainer` as a base, set all of the required parameters in the `__init__` and then call `super().__init__`
 # to complete the process. Refer to the existing classes for examples.
 
-from typing import Union, Dict, Any
+from typing import Optional, Union, Dict, Any
 from pycaret.containers.metrics.base_metric import MetricContainer
 from sklearn.metrics._scorer import _BaseScorer
 import pycaret.containers.base_container
@@ -78,10 +78,10 @@ class ClassificationMetricContainer(MetricContainer):
         id: str,
         name: str,
         score_func_type: type,
-        scorer: Union[str, _BaseScorer] = None,
+        scorer: Optional[Union[str, _BaseScorer]] = None,
         target: str = "pred",
         args: Dict[str, Any] = {},
-        display_name: str = None,
+        display_name: Optional[str] = None,
         is_multiclass: bool = True,
         is_custom: bool = False,
     ) -> None:

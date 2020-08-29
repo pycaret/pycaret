@@ -2,7 +2,7 @@
 # Author: Antoni Baum (Yard1) <antoni.baum@protonmail.com>
 # License: MIT
 
-from typing import Dict
+from typing import Dict, Optional
 
 
 class Distrubution:
@@ -89,7 +89,7 @@ class IntUniformDistribution(Distrubution):
 
 
 class DiscreteUniformDistribution(Distrubution):
-    def __init__(self, lower: int, upper: int, q: float = None):
+    def __init__(self, lower: int, upper: int, q: Optional[float] = None):
         self.lower = lower
         self.upper = upper
         self.q = q

@@ -2,7 +2,7 @@
 # Author: Moez Ali <moez.ali@queensu.ca>
 # License: MIT
 # Release: PyCaret 2.1
-# Last modified : 24/08/2020
+# Last modified : 26/08/2020
 
 def setup(data, 
           categorical_features = None,
@@ -60,7 +60,8 @@ def setup(data,
     Parameters
     ----------
     data : pandas.DataFrame
-        Shape (n_samples, n_features) where n_samples is the number of samples and n_features is the number of features.
+        Shape (n_samples, n_features) where n_samples is the number of samples
+        and n_features is the number of features.
     
     categorical_features: string, default = None
         If the inferred data types are not correct, categorical_features can be used to
@@ -125,13 +126,13 @@ def setup(data,
         'minmax'    : scales and translates each feature individually such that it is in 
                     the range of 0 - 1.
         
-        'maxabs'    : scales and translates each feature individually such that the maximal 
-                    absolute value of each feature will be 1.0. It does not shift/center 
-                    the data, and thus does not destroy any sparsity.
+        'maxabs'    : scales and translates each feature individually such that the 
+                    maximal absolute value of each feature will be 1.0. It does not 
+                    shift/center the data, and thus does not destroy any sparsity.
         
-        'robust'    : scales and translates each feature according to the Interquartile range.
-                    When the dataset contains outliers, robust scaler often gives better
-                    results.
+        'robust'    : scales and translates each feature according to the Interquartile 
+                    range. When the dataset contains outliers, robust scaler often gives 
+                    better results.
     
     transformation: bool, default = False
         When set to True, a power transformation is applied to make the data more normal /
@@ -140,11 +141,11 @@ def setup(data,
         variance and minimizing skewness is estimated through maximum likelihood.
     
     transformation_method: string, default = 'yeo-johnson'
-        Defines the method for transformation. By default, the transformation method is set
-        to 'yeo-johnson'. The other available option is 'quantile' transformation. Both 
-        the transformation transforms the feature set to follow a Gaussian-like or normal
-        distribution. Note that the quantile transformer is non-linear and may distort linear 
-        correlations between variables measured at the same scale.
+        Defines the method for transformation. By default, the transformation method is 
+        set to 'yeo-johnson'. The other available option is 'quantile' transformation. 
+        Both the transformation transforms the feature set to follow a Gaussian-like or 
+        normal distribution. Note that the quantile transformer is non-linear and may 
+        distort linear correlations between variables measured at the same scale.
     
     handle_unknown_categorical: bool, default = True
         When set to True, unknown categorical levels in new / unseen data are replaced by
@@ -176,22 +177,22 @@ def setup(data,
     pca_components: int/float, default = 0.99
         Number of components to keep. if pca_components is a float, it is treated as a 
         target percentage for information retention. When pca_components is an integer
-        it is treated as the number of features to be kept. pca_components must be strictly
-        less than the original number of features in the dataset.
+        it is treated as the number of features to be kept. pca_components must be 
+        strictly less than the original number of features in the dataset.
         
         ignore_low_variance: bool, default = False
-        When set to True, all categorical features with statistically insignificant variances 
-        are removed from the dataset. The variance is calculated using the ratio of unique 
-        values to the number of samples, and the ratio of the most common value to the 
-        frequency of the second most common value.
+        When set to True, all categorical features with statistically insignificant 
+        variances are removed from the dataset. The variance is calculated using the 
+        ratio of unique values to the number of samples, and the ratio of the most 
+        common value to the frequency of the second most common value.
     
     combine_rare_levels: bool, default = False
         When set to True, all levels in categorical features below the threshold defined 
-        in rare_level_threshold param are combined together as a single level. There must be 
-        atleast two levels under the threshold for this to take effect. rare_level_threshold
-        represents the percentile distribution of level frequency. Generally, this technique 
-        is applied to limit a sparse matrix caused by high numbers of levels in categorical 
-        features. 
+        in rare_level_threshold param are combined together as a single level. There must 
+        be atleast two levels under the threshold for this to take effect. 
+        rare_level_threshold represents the percentile distribution of level frequency. 
+        Generally, this technique is applied to limit a sparse matrix caused by high 
+        numbers of levels in categorical features. 
         
         rare_level_threshold: float, default = 0.1
         Percentile distribution below which rare categories are combined. Only comes into
@@ -215,30 +216,33 @@ def setup(data,
         remove_multicollinearity is set to True.
     
     group_features: list or list of list, default = None
-        When a dataset contains features that have related characteristics, the group_features
-        param can be used for statistical feature extraction. For example, if a dataset has 
-        numeric features that are related with each other (i.e 'Col1', 'Col2', 'Col3'), a list 
-        containing the column names can be passed under group_features to extract statistical 
-        information such as the mean, median, mode and standard deviation.
+        When a dataset contains features that have related characteristics, the 
+        group_features param can be used for statistical feature extraction. For example, 
+        if a dataset has numeric features that are related with each other 
+        (i.e 'Col1', 'Col2', 'Col3'), a list containing the column names can be passed 
+        under group_features to extract statistical information such as the mean, median, 
+        mode and standard deviation.
     
     group_names: list, default = None
-        When group_features is passed, a name of the group can be passed into the group_names 
-        param as a list containing strings. The length of a group_names list must equal to the 
-        length  of group_features. When the length doesn't match or the name is not passed, new 
-        features are sequentially named such as group_1, group_2 etc.
+        When group_features is passed, a name of the group can be passed into the 
+        group_names param as a list containing strings. The length of a group_names list 
+        must equal to the length of group_features. When the length doesn't match or the 
+        name is not passed, new features are sequentially named such as group_1, 
+        group_2 etc.
     
     supervised: bool, default = False
         When set to True, supervised_target column is ignored for transformation. This
         param is only for internal use. 
     
     supervised_target: string, default = None
-        Name of supervised_target column that will be ignored for transformation. Only
-        applicable when tune_model() function is used. This param is only for internal use.
+        Name of supervised_target column that will be ignored for transformation. 
+        Only applicable when tune_model() function is used. This param is only for 
+        internal use.
 
     n_jobs: int, default = -1
         The number of jobs to run in parallel (for functions that supports parallel 
-        processing) -1 means using all processors. To run all functions on single processor 
-        set n_jobs to None.
+        processing) -1 means using all processors. To run all functions on single 
+        processor set n_jobs to None.
 
     html: bool, default = True
         If set to False, prevents runtime display of monitor. This must be set to False
@@ -257,17 +261,17 @@ def setup(data,
         alias for the experiment name.    
 
     log_plots: bool, default = False
-        When set to True, specific plots are logged in MLflow as a png file. By default,
-        it is set to False. 
+        When set to True, specific plots are logged in MLflow as a png file. 
+        By default, it is set to False. 
 
     log_profile: bool, default = False
-        When set to True, data profile is also logged on MLflow as a html file. By default,
-        it is set to False. 
+        When set to True, data profile is also logged on MLflow as a html file. 
+        By default, it is set to False. 
 
     silent: bool, default = False
-        When set to True, confirmation of data types is not required. All preprocessing will 
-        be performed assuming automatically inferred data types. Not recommended for direct use 
-        except for established pipelines.
+        When set to True, confirmation of data types is not required. All preprocessing 
+        will be performed assuming automatically inferred data types. Not recommended for 
+        direct use except for established pipelines.
 
     verbose: Boolean, default = True
         Information grid is not printed when verbose is set to False.
@@ -1615,7 +1619,8 @@ def assign_model(model,
     score: Boolean, default = True
         The outlier scores of the training data. The higher, the more abnormal. 
         Outliers tend to have higher scores. This value is available once the model 
-        is fitted. If set to False, it will only return the flag (1 = outlier, 0 = inlier).
+        is fitted. If set to False, it will only return the flag 
+        (1 = outlier, 0 = inlier).
 
     verbose: Boolean, default = True
         Status update is not printed when verbose is set to False.
@@ -1824,7 +1829,8 @@ def plot_model(model,
         A trained model object can be passed. Model must be created using create_model().
 
     plot: string, default = 'tsne'
-        Enter abbreviation of type of plot. The current list of plots supported are (Plot - Name):
+        Enter abbreviation of type of plot. The current list of plots supported are 
+        (Plot - Name):
 
         * 'tsne' - t-SNE (3d) Dimension Plot
         * 'umap' - UMAP Dimensionality Plot
@@ -3608,8 +3614,9 @@ def predict_model(model,
         pickle file from active directory or cloud platform when platform param is passed.
     
     data : pandas.DataFrame
-        Shape (n_samples, n_features) where n_samples is the number of samples and n_features is the number of features.
-        All features used during training must be present in the new dataset.
+        Shape (n_samples, n_features) where n_samples is the number of samples and 
+        n_features is the number of features. All features used during training must be 
+        present in the new dataset.
      
     Returns
     -------
@@ -3689,10 +3696,10 @@ def deploy_model(model,
 
     Platform: GCP
     --------------
-    Before deploying a model to Google Cloud Platform (GCP), project must be created either
-    using command line or GCP console. Once project is created, you must create a service 
-    account and download the service account key as a JSON file, which is then used to 
-    set environment variable. 
+    Before deploying a model to Google Cloud Platform (GCP), project must be created 
+    either using command line or GCP console. Once project is created, you must 
+    create a service account and download the service account key as a JSON file, 
+    which is then used to set environment variable. 
 
     Learn more : https://cloud.google.com/docs/authentication/production
 
@@ -4303,6 +4310,7 @@ def get_outliers(data,
 
 def _create_bucket_gcp(project_name, bucket_name):
     """
+    (Internal)
     Creates a bucket on Google Cloud Platform if it does not exists already
 
     Example
@@ -4337,6 +4345,7 @@ def _create_bucket_gcp(project_name, bucket_name):
 def _upload_blob_gcp(project_name, bucket_name, source_file_name, destination_blob_name):
 
     """
+    (Internal)
     Upload blob to GCP storage bucket
 
     Example
@@ -4381,6 +4390,7 @@ def _upload_blob_gcp(project_name, bucket_name, source_file_name, destination_bl
 
 def _download_blob_gcp(project_name, bucket_name, source_blob_name, destination_file_name):
     """
+    (Internal)
     Download a blob from GCP storage bucket
 
     Example
@@ -4429,6 +4439,7 @@ def _download_blob_gcp(project_name, bucket_name, source_blob_name, destination_
 
 def _create_container_azure(container_name):
     """
+    (Internal)
     Creates a storage container on Azure Platform. gets the connection string from the environment variables.
 
     Example
@@ -4455,6 +4466,7 @@ def _create_container_azure(container_name):
 
 def _upload_blob_azure(container_name, source_file_name, destination_blob_name):
     """
+    (Internal)
     Upload blob to Azure storage  container
 
     Example
@@ -4492,6 +4504,7 @@ def _upload_blob_azure(container_name, source_file_name, destination_blob_name):
 
 def _download_blob_azure(container_name, source_blob_name, destination_file_name):
     """
+    (Internal)
     Download blob from Azure storage  container
 
     Example

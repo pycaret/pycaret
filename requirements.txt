@@ -31,3 +31,5 @@ imbalanced-learn>=0.6.2
 #azure-storage-blob - only required in deploy_model for Azure
 #google-cloud-storage - only required in deploy_model for GCP
 #shap - removing shap as it's causing issues building Docker image.
+#statsmodels - for future timeseries module
+#pmdarima - for future timeseries module
