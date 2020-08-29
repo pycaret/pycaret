@@ -6188,22 +6188,10 @@ def finalize_model(estimator, display=None) -> Any:  # added in pycaret==2.2.0
 
     np.random.seed(seed)
 
-    logger.info("Getting model name")
-
-    _estimator_ = estimator
-
-    if _is_one_vs_rest(estimator):
-        if not hasattr(estimator, "voting"):
-            estimator = estimator.estimator
-
-    full_name = _get_model_name(estimator)
-
-    estimator = _estimator_
-
-    logger.info(f"Finalizing {full_name}")
+    logger.info(f"Finalizing {estimator}")
     display.clear_output()
     model_final, model_fit_time = create_model(
-        estimator=model_final,
+        estimator=estimator,
         verbose=False,
         system=False,
         X_train_data=X,
