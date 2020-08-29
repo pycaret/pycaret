@@ -1,8 +1,8 @@
 # Module: Classification
 # Author: Moez Ali <moez.ali@queensu.ca>
 # License: MIT
-# Release: PyCaret 2.1
-# Last modified : 26/08/2020
+# Release: PyCaret 2.1.1
+# Last modified : 29/08/2020
 
 def setup(data,  
           target,   
@@ -2636,7 +2636,10 @@ def compare_models(exclude = None, #changed blacklist to exclude in pycaret==2.1
                 
                 # define model signature
                 from mlflow.models.signature import infer_signature
-                signature = infer_signature(data_before_preprocess.drop([target_param], axis=1))
+                try:
+                    signature = infer_signature(data_before_preprocess.drop([target_param], axis=1))
+                except:
+                    signature = None
                 input_example = data_before_preprocess.drop([target_param], axis=1).iloc[0].to_dict()
 
                 # log model as sklearn flavor
@@ -3654,7 +3657,10 @@ def create_model(estimator = None,
             
             # define model signature
             from mlflow.models.signature import infer_signature
-            signature = infer_signature(data_before_preprocess.drop([target_param], axis=1))
+            try:
+                signature = infer_signature(data_before_preprocess.drop([target_param], axis=1))
+            except:
+                signature = None
             input_example = data_before_preprocess.drop([target_param], axis=1).iloc[0].to_dict()
 
             # log model as sklearn flavor
@@ -4965,7 +4971,10 @@ def tune_model(estimator = None,
             
             # define model signature
             from mlflow.models.signature import infer_signature
-            signature = infer_signature(data_before_preprocess.drop([target_param], axis=1))
+            try:
+                signature = infer_signature(data_before_preprocess.drop([target_param], axis=1))
+            except:
+                signature = None
             input_example = data_before_preprocess.drop([target_param], axis=1).iloc[0].to_dict()
 
             # log model as sklearn flavor
@@ -5769,7 +5778,10 @@ def ensemble_model(estimator,
             
             # define model signature
             from mlflow.models.signature import infer_signature
-            signature = infer_signature(data_before_preprocess.drop([target_param], axis=1))
+            try:
+                signature = infer_signature(data_before_preprocess.drop([target_param], axis=1))
+            except:
+                signature = None
             input_example = data_before_preprocess.drop([target_param], axis=1).iloc[0].to_dict()
 
             # log model as sklearn flavor
@@ -6645,7 +6657,10 @@ def blend_models(estimator_list = 'All',
             
             # define model signature
             from mlflow.models.signature import infer_signature
-            signature = infer_signature(data_before_preprocess.drop([target_param], axis=1))
+            try:
+                signature = infer_signature(data_before_preprocess.drop([target_param], axis=1))
+            except:
+                signature = None
             input_example = data_before_preprocess.drop([target_param], axis=1).iloc[0].to_dict()
 
             # log model as sklearn flavor
@@ -7396,7 +7411,10 @@ def stack_models(estimator_list,
             
             # define model signature
             from mlflow.models.signature import infer_signature
-            signature = infer_signature(data_before_preprocess.drop([target_param], axis=1))
+            try:
+                signature = infer_signature(data_before_preprocess.drop([target_param], axis=1))
+            except:
+                signature = None
             input_example = data_before_preprocess.drop([target_param], axis=1).iloc[0].to_dict()
 
             # log model as sklearn flavor
@@ -9127,7 +9145,10 @@ def calibrate_model(estimator,
             
             # define model signature
             from mlflow.models.signature import infer_signature
-            signature = infer_signature(data_before_preprocess.drop([target_param], axis=1))
+            try:
+                signature = infer_signature(data_before_preprocess.drop([target_param], axis=1))
+            except:
+                signature = None            
             input_example = data_before_preprocess.drop([target_param], axis=1).iloc[0].to_dict()
 
             # log model as sklearn flavor
