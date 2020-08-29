@@ -1983,13 +1983,14 @@ def compare_models(
             "SubProcess create_model() called =================================="
         )
         try:
-            model = create_model(
+            model, model_fit_time = create_model(
                 estimator=model,
                 system=False,
                 verbose=False,
                 display=display,
                 fold=fold,
                 round=round,
+                return_fit_time=True,
                 budget_time=budget_time - total_runtime
                 if budget_time and budget_time > 0
                 else 0,
@@ -2043,80 +2044,29 @@ def compare_models(
 
         if logging_param:
 
-            logger.info("Creating MLFlow logs")
+            avgs_dict_log = {
+                k: v
+                for k, v in master_display.drop(["Object", "Model", "TT (Sec)"], axis=1)
+                .iloc[0]
+                .items()
+            }
 
-            import mlflow
-
-            run_name = model_name
-
-            with mlflow.start_run(run_name=run_name) as run:
-
-                # Get active run to log as tag
-                RunID = mlflow.active_run().info.run_id
-
-                params = model.get_params()
-
-                for i in list(params):
-                    v = params.get(i)
-                    if len(str(v)) > 250:
-                        params.pop(i)
-
-                mlflow.log_params(params)
-
-                # set tag of compare_models
-                mlflow.set_tag("Source", "compare_models")
-                mlflow.set_tag("URI", URI)
-                mlflow.set_tag("USI", USI)
-                mlflow.set_tag("Run Time", runtime)
-                mlflow.set_tag("Run ID", RunID)
-
-                # Log top model metrics
-                mlflow.log_metrics(
-                    {
-                        k: v
-                        for k, v in master_display.drop(
-                            ["Object", "Model", "TT (Sec)"], axis=1
-                        )
-                        .iloc[0]
-                        .items()
-                    }
+            try:
+                _mlflow_log_model(
+                    model=model,
+                    model_results=model_results,
+                    score_dict=avgs_dict_log,
+                    source="compare_models",
+                    runtime=runtime,
+                    model_fit_time=model_fit_time,
+                    _prep_pipe=prep_pipe,
+                    log_plots=False,
+                    URI=URI,
+                    display=display,
                 )
-
-                # get default conda env
-                from mlflow.sklearn import get_default_conda_env
-
-                default_conda_env = get_default_conda_env()
-                default_conda_env["name"] = f"{exp_name_log}-env"
-                default_conda_env.get("dependencies").pop(-3)
-                dependencies = default_conda_env.get("dependencies")[-1]
-                from pycaret.utils import __version__
-
-                dep = f"pycaret=={__version__}"
-                dependencies["pip"] = [dep]
-
-                # define model signature
-                from mlflow.models.signature import infer_signature
-
-                signature = infer_signature(
-                    data_before_preprocess.drop([target_param], axis=1)
-                )
-                input_example = (
-                    data_before_preprocess.drop([target_param], axis=1)
-                    .iloc[0]
-                    .to_dict()
-                )
-
-                # log model as sklearn flavor
-                prep_pipe_temp = deepcopy(prep_pipe)
-                prep_pipe_temp.steps.append(["trained model", model])
-                mlflow.sklearn.log_model(
-                    prep_pipe_temp,
-                    "model",
-                    conda_env=default_conda_env,
-                    signature=signature,
-                    input_example=input_example,
-                )
-                del prep_pipe_temp
+            except:
+                logger.error(f"_mlflow_log_model() for {model} raised an exception:")
+                logger.error(traceback.format_exc())
 
     display.move_progress()
 
@@ -2642,142 +2592,25 @@ def create_model(
     # mlflow logging
     if logging_param and system:
 
-        logger.info("Creating MLFlow logs")
+        avgs_dict_log = avgs_dict.copy()
+        avgs_dict_log.pop("TT (Sec)")
+        avgs_dict_log = {k: v[0] for k, v in avgs_dict_log.items()}
 
-        # Creating Logs message monitor
-        display.update_monitor(1, "Creating Logs")
-        display.update_monitor(2, "Almost Finished")
-        display.display_monitor()
-
-        # import mlflow
-        import mlflow
-        import mlflow.sklearn
-
-        mlflow.set_experiment(exp_name_log)
-
-        with mlflow.start_run(run_name=full_name) as run:
-
-            # Get active run to log as tag
-            RunID = mlflow.active_run().info.run_id
-
-            # Log model parameters
-            params = model.get_params()
-
-            for i in list(params):
-                v = params.get(i)
-                if len(str(v)) > 250:
-                    params.pop(i)
-
-            mlflow.log_params(params)
-
-            # Log metrics
-            avgs_dict_log = avgs_dict.copy()
-            avgs_dict_log.pop("TT (Sec)")
-            mlflow.log_metrics({k: v[0] for k, v in avgs_dict_log.items()})
-
-            # set tag of compare_models
-            mlflow.set_tag("Source", "create_model")
-
-            import secrets
-
-            URI = secrets.token_hex(nbytes=4)
-            mlflow.set_tag("URI", URI)
-            mlflow.set_tag("USI", USI)
-            mlflow.set_tag("Run Time", runtime)
-            mlflow.set_tag("Run ID", RunID)
-
-            # Log training time in seconds
-            mlflow.log_metric("TT", model_fit_time)
-
-            # Log the CV results as model_results.html artifact
-            model_results.data.to_html("Results.html", col_space=65, justify="left")
-            mlflow.log_artifact("Results.html")
-            os.remove("Results.html")
-
-            # Generate hold-out predictions and save as html
-            holdout = predict_model(model, verbose=False)
-            holdout_score = pull(pop=True)
-            del holdout
-            holdout_score.to_html("Holdout.html", col_space=65, justify="left")
-            mlflow.log_artifact("Holdout.html")
-            os.remove("Holdout.html")
-
-            # Log AUC and Confusion Matrix plot
-
-            if log_plots_param:
-
-                logger.info(
-                    "SubProcess plot_model() called =================================="
-                )
-
-                try:
-                    plot_model(
-                        model, plot="auc", verbose=False, save=True, system=False
-                    )
-                    mlflow.log_artifact("AUC.png")
-                    os.remove("AUC.png")
-                except:
-                    pass
-
-                try:
-                    plot_model(
-                        model,
-                        plot="confusion_matrix",
-                        verbose=False,
-                        save=True,
-                        system=False,
-                    )
-                    mlflow.log_artifact("Confusion Matrix.png")
-                    os.remove("Confusion Matrix.png")
-                except:
-                    pass
-
-                try:
-                    plot_model(
-                        model, plot="feature", verbose=False, save=True, system=False
-                    )
-                    mlflow.log_artifact("Feature Importance.png")
-                    os.remove("Feature Importance.png")
-                except:
-                    pass
-
-                logger.info(
-                    "SubProcess plot_model() end =================================="
-                )
-
-            # get default conda env
-            from mlflow.sklearn import get_default_conda_env
-
-            default_conda_env = get_default_conda_env()
-            default_conda_env["name"] = f"{exp_name_log}-env"
-            default_conda_env.get("dependencies").pop(-3)
-            dependencies = default_conda_env.get("dependencies")[-1]
-            from pycaret.utils import __version__
-
-            dep = f"pycaret=={__version__}"
-            dependencies["pip"] = [dep]
-
-            # define model signature
-            from mlflow.models.signature import infer_signature
-
-            signature = infer_signature(
-                data_before_preprocess.drop([target_param], axis=1)
+        try:
+            _mlflow_log_model(
+                model=model,
+                model_results=model_results,
+                score_dict=avgs_dict_log,
+                source="create_model",
+                runtime=runtime,
+                model_fit_time=model_fit_time,
+                _prep_pipe=prep_pipe,
+                log_plots=log_plots_param,
+                display=display,
             )
-            input_example = (
-                data_before_preprocess.drop([target_param], axis=1).iloc[0].to_dict()
-            )
-
-            # log model as sklearn flavor
-            prep_pipe_temp = deepcopy(prep_pipe)
-            prep_pipe_temp.steps.append(["trained model", model])
-            mlflow.sklearn.log_model(
-                prep_pipe_temp,
-                "model",
-                conda_env=default_conda_env,
-                signature=signature,
-                input_example=input_example,
-            )
-            del prep_pipe_temp
+        except:
+            logger.error(f"_mlflow_log_model() for {model} raised an exception:")
+            logger.error(traceback.format_exc())
 
     display.move_progress()
 
@@ -3398,6 +3231,11 @@ def tune_model(
     # with io.capture_output():
     model_grid.fit(X_train, y_train)
     best_model = model_grid.best_estimator_
+    cv_results = None
+    try:
+        cv_results = model_grid.cv_results_
+    except:
+        logger.warning("Couldn't get cv_results from model_grid.")
 
     display.move_progress()
 
@@ -3439,158 +3277,29 @@ def tune_model(
     # mlflow logging
     if logging_param:
 
-        logger.info("Creating MLFlow logs")
+        avgs_dict_log = {
+            k: v
+            for k, v in model_results.drop("TT (Sec)", axis=1, errors="ignore")
+            .loc["Mean"]
+            .items()
+        }
 
-        # Creating Logs message monitor
-        display.update_monitor(1, "Creating Logs")
-        display.update_monitor(2, "Almost Finished")
-        display.display_monitor()
-
-        import mlflow
-        from pathlib import Path
-
-        mlflow.set_experiment(exp_name_log)
-        full_name = estimator_name
-
-        with mlflow.start_run(run_name=full_name) as run:
-
-            # Get active run to log as tag
-            RunID = mlflow.active_run().info.run_id
-
-            # Log model parameters
-            params = best_model.get_params()
-
-            for i in list(params):
-                v = params.get(i)
-                if len(str(v)) > 250:
-                    params.pop(i)
-
-            mlflow.log_params(params)
-
-            mlflow.log_metrics(
-                {
-                    k: v
-                    for k, v in model_results.drop("TT (Sec)", axis=1, errors="ignore")
-                    .loc["Mean"]
-                    .items()
-                }
+        try:
+            _mlflow_log_model(
+                model=best_model,
+                model_results=model_results,
+                score_dict=avgs_dict_log,
+                source="tune_model",
+                runtime=runtime,
+                model_fit_time=model_fit_time,
+                _prep_pipe=prep_pipe,
+                log_plots=log_plots_param,
+                tune_cv_results=cv_results,
+                display=display,
             )
-
-            # set tag of compare_models
-            mlflow.set_tag("Source", "tune_model")
-
-            import secrets
-
-            URI = secrets.token_hex(nbytes=4)
-            mlflow.set_tag("URI", URI)
-            mlflow.set_tag("USI", USI)
-            mlflow.set_tag("Run Time", runtime)
-            mlflow.set_tag("Run ID", RunID)
-
-            # Log training time in seconds
-            mlflow.log_metric("TT", model_fit_time)
-
-            # Log the CV results as model_results.html artifact
-            model_results.to_html("Results.html", col_space=65, justify="left")
-            mlflow.log_artifact("Results.html")
-            os.remove("Results.html")
-
-            # Generate hold-out predictions and save as html
-            holdout = predict_model(best_model, verbose=False)
-            holdout_score = pull(pop=True)
-            del holdout
-            holdout_score.to_html("Holdout.html", col_space=65, justify="left")
-            mlflow.log_artifact("Holdout.html")
-            os.remove("Holdout.html")
-
-            # Log AUC and Confusion Matrix plot
-            if log_plots_param:
-
-                logger.info(
-                    "SubProcess plot_model() called =================================="
-                )
-
-                try:
-                    plot_model(
-                        best_model, plot="auc", verbose=False, save=True, system=False
-                    )
-                    mlflow.log_artifact("AUC.png")
-                    os.remove("AUC.png")
-                except:
-                    pass
-
-                try:
-                    plot_model(
-                        best_model,
-                        plot="confusion_matrix",
-                        verbose=False,
-                        save=True,
-                        system=False,
-                    )
-                    mlflow.log_artifact("Confusion Matrix.png")
-                    os.remove("Confusion Matrix.png")
-                except:
-                    pass
-
-                try:
-                    plot_model(
-                        best_model,
-                        plot="feature",
-                        verbose=False,
-                        save=True,
-                        system=False,
-                    )
-                    mlflow.log_artifact("Feature Importance.png")
-                    os.remove("Feature Importance.png")
-                except:
-                    pass
-
-                logger.info(
-                    "SubProcess plot_model() end =================================="
-                )
-
-            # Broken with OptunaSearchCV as it has no cv_results_
-            # # Log hyperparameter tuning grid
-            # d1 = model_grid.cv_results_.get("params")
-            # dd = pd.DataFrame.from_dict(d1)
-            # dd["Score"] = model_grid.cv_results_.get("mean_test_score")
-            # dd.to_html("Iterations.html", col_space=75, justify="left")
-            # mlflow.log_artifact("Iterations.html")
-            # os.remove("Iterations.html")
-
-            # get default conda env
-            from mlflow.sklearn import get_default_conda_env
-
-            default_conda_env = get_default_conda_env()
-            default_conda_env["name"] = f"{exp_name_log}-env"
-            default_conda_env.get("dependencies").pop(-3)
-            dependencies = default_conda_env.get("dependencies")[-1]
-            from pycaret.utils import __version__
-
-            dep = f"pycaret=={__version__}"
-            dependencies["pip"] = [dep]
-
-            # define model signature
-            from mlflow.models.signature import infer_signature
-
-            signature = infer_signature(
-                data_before_preprocess.drop([target_param], axis=1)
-            )
-            input_example = (
-                data_before_preprocess.drop([target_param], axis=1).iloc[0].to_dict()
-            )
-
-            # log model as sklearn flavor
-            prep_pipe_temp = deepcopy(prep_pipe)
-            prep_pipe_temp.steps.append(["trained model", best_model])
-            mlflow.sklearn.log_model(
-                prep_pipe_temp,
-                "model",
-                conda_env=default_conda_env,
-                signature=signature,
-                input_example=input_example,
-            )
-            del prep_pipe_temp
+        except:
+            logger.error(f"_mlflow_log_model() for {best_model} raised an exception:")
+            logger.error(traceback.format_exc())
 
     model_results = color_df(model_results, "yellow", ["Mean"], axis=1)
     model_results = model_results.set_precision(round)
@@ -3911,6 +3620,36 @@ def ensemble_model(
     model_results = pull()
     logger.info("SubProcess create_model() end ==================================")
 
+    # end runtime
+    runtime_end = time.time()
+    runtime = np.array(runtime_end - runtime_start).round(2)
+
+    # mlflow logging
+    if logging_param:
+
+        avgs_dict_log = {
+            k: v
+            for k, v in model_results.drop("TT (Sec)", axis=1, errors="ignore")
+            .loc["Mean"]
+            .items()
+        }
+
+        try:
+            _mlflow_log_model(
+                model=best_model,
+                model_results=model_results,
+                score_dict=avgs_dict_log,
+                source="ensemble_model",
+                runtime=runtime,
+                model_fit_time=model_fit_time,
+                _prep_pipe=prep_pipe,
+                log_plots=log_plots_param,
+                display=display,
+            )
+        except:
+            logger.error(f"_mlflow_log_model() for {best_model} raised an exception:")
+            logger.error(traceback.format_exc())
+
     if choose_better:
         model = _choose_better(
             _estimator_,
@@ -3920,149 +3659,6 @@ def ensemble_model(
             new_results_list=[model_results],
             display=display,
         )
-
-    # end runtime
-    runtime_end = time.time()
-    runtime = np.array(runtime_end - runtime_start).round(2)
-
-    if logging_param:
-
-        logger.info("Creating MLFlow logs")
-
-        # Creating Logs message monitor
-        display.update_monitor(1, "Creating Logs")
-        display.update_monitor(2, "Almost Finished")
-        display.display_monitor()
-
-        import mlflow
-
-        mlflow.set_experiment(exp_name_log)
-        full_name = estimator_name
-
-        with mlflow.start_run(run_name=full_name) as run:
-
-            # Get active run to log as tag
-            RunID = mlflow.active_run().info.run_id
-
-            params = model.get_params()
-
-            for i in list(params):
-                v = params.get(i)
-                if len(str(v)) > 250:
-                    params.pop(i)
-
-            mlflow.log_params(params)
-            mlflow.log_metrics(
-                {
-                    k: v
-                    for k, v in model_results.drop("TT (Sec)", axis=1, errors="ignore")
-                    .loc["Mean"]
-                    .items()
-                }
-            )
-
-            # set tag of compare_models
-            mlflow.set_tag("Source", "ensemble_model")
-
-            import secrets
-
-            URI = secrets.token_hex(nbytes=4)
-            mlflow.set_tag("URI", URI)
-            mlflow.set_tag("USI", USI)
-            mlflow.set_tag("Run Time", runtime)
-            mlflow.set_tag("Run ID", RunID)
-
-            # Log training time in seconds
-            mlflow.log_metric("TT", model_fit_time)
-
-            # Generate hold-out predictions and save as html
-            holdout = predict_model(model, verbose=False)
-            holdout_score = pull(pop=True)
-            del holdout
-            holdout_score.to_html("Holdout.html", col_space=65, justify="left")
-            mlflow.log_artifact("Holdout.html")
-            os.remove("Holdout.html")
-
-            # Log AUC and Confusion Matrix plot
-            if log_plots_param:
-
-                logger.info(
-                    "SubProcess plot_model() called =================================="
-                )
-
-                try:
-                    plot_model(
-                        model, plot="auc", verbose=False, save=True, system=False
-                    )
-                    mlflow.log_artifact("AUC.png")
-                    os.remove("AUC.png")
-                except:
-                    pass
-
-                try:
-                    plot_model(
-                        model,
-                        plot="confusion_matrix",
-                        verbose=False,
-                        save=True,
-                        system=False,
-                    )
-                    mlflow.log_artifact("Confusion Matrix.png")
-                    os.remove("Confusion Matrix.png")
-                except:
-                    pass
-
-                try:
-                    plot_model(
-                        model, plot="feature", verbose=False, save=True, system=False
-                    )
-                    mlflow.log_artifact("Feature Importance.png")
-                    os.remove("Feature Importance.png")
-                except:
-                    pass
-
-                logger.info(
-                    "SubProcess plot_model() end =================================="
-                )
-
-            # Log the CV results as model_results.html artifact
-            model_results.to_html("Results.html", col_space=65, justify="left")
-            mlflow.log_artifact("Results.html")
-            os.remove("Results.html")
-
-            # get default conda env
-            from mlflow.sklearn import get_default_conda_env
-
-            default_conda_env = get_default_conda_env()
-            default_conda_env["name"] = f"{exp_name_log}-env"
-            default_conda_env.get("dependencies").pop(-3)
-            dependencies = default_conda_env.get("dependencies")[-1]
-            from pycaret.utils import __version__
-
-            dep = f"pycaret=={__version__}"
-            dependencies["pip"] = [dep]
-
-            # define model signature
-            from mlflow.models.signature import infer_signature
-
-            signature = infer_signature(
-                data_before_preprocess.drop([target_param], axis=1)
-            )
-            input_example = (
-                data_before_preprocess.drop([target_param], axis=1).iloc[0].to_dict()
-            )
-
-            # log model as sklearn flavor
-            prep_pipe_temp = deepcopy(prep_pipe)
-            prep_pipe_temp.steps.append(["trained model", model])
-            mlflow.sklearn.log_model(
-                prep_pipe_temp,
-                "model",
-                conda_env=default_conda_env,
-                signature=signature,
-                input_example=input_example,
-            )
-            del prep_pipe_temp
 
     model_results = color_df(model_results, "yellow", ["Mean"], axis=1)
     model_results = model_results.set_precision(round)
@@ -4411,6 +4007,36 @@ def blend_models(
     model_results = pull()
     logger.info("SubProcess create_model() end ==================================")
 
+    # end runtime
+    runtime_end = time.time()
+    runtime = np.array(runtime_end - runtime_start).round(2)
+
+    # mlflow logging
+    if logging_param:
+
+        avgs_dict_log = {
+            k: v
+            for k, v in model_results.drop("TT (Sec)", axis=1, errors="ignore")
+            .loc["Mean"]
+            .items()
+        }
+
+        try:
+            _mlflow_log_model(
+                model=model,
+                model_results=model_results,
+                score_dict=avgs_dict_log,
+                source="blend_models",
+                runtime=runtime,
+                model_fit_time=model_fit_time,
+                _prep_pipe=prep_pipe,
+                log_plots=log_plots_param,
+                display=display,
+            )
+        except:
+            logger.error(f"_mlflow_log_model() for {model} raised an exception:")
+            logger.error(traceback.format_exc())
+
     if choose_better and not all_flag:
         model = _choose_better(
             model,
@@ -4420,120 +4046,6 @@ def blend_models(
             model_results=model_results,
             display=display,
         )
-
-    # end runtime
-    runtime_end = time.time()
-    runtime = np.array(runtime_end - runtime_start).round(2)
-
-    if logging_param:
-
-        logger.info("Creating MLFlow logs")
-
-        # Creating Logs message monitor
-        display.update_monitor(1, "Creating Logs")
-        display.update_monitor(2, "Almost Finished")
-        display.display_monitor()
-
-        import mlflow
-
-        with mlflow.start_run(run_name="Voting Classifier") as run:
-
-            # Get active run to log as tag
-            RunID = mlflow.active_run().info.run_id
-
-            mlflow.log_metrics(
-                {
-                    k: v
-                    for k, v in model_results.drop("TT (Sec)", axis=1, errors="ignore")
-                    .loc["Mean"]
-                    .items()
-                }
-            )
-
-            # Generate hold-out predictions and save as html
-            holdout = predict_model(model, verbose=False)
-            holdout_score = pull(pop=True)
-            del holdout
-            holdout_score.to_html("Holdout.html", col_space=65, justify="left")
-            mlflow.log_artifact("Holdout.html")
-            os.remove("Holdout.html")
-
-            # set tag of compare_models
-            mlflow.set_tag("Source", "blend_models")
-
-            import secrets
-
-            URI = secrets.token_hex(nbytes=4)
-            mlflow.set_tag("URI", URI)
-            mlflow.set_tag("USI", USI)
-            mlflow.set_tag("Run Time", runtime)
-            mlflow.set_tag("Run ID", RunID)
-
-            # Log training time of compare_models
-            mlflow.log_metric("TT", model_fit_time)
-
-            # Log AUC and Confusion Matrix plot
-            if log_plots_param:
-
-                logger.info(
-                    "SubProcess plot_model() called =================================="
-                )
-
-                try:
-                    plot_model(
-                        model,
-                        plot="confusion_matrix",
-                        verbose=False,
-                        save=True,
-                        system=False,
-                    )
-                    mlflow.log_artifact("Confusion Matrix.png")
-                    os.remove("Confusion Matrix.png")
-                except:
-                    pass
-
-                logger.info(
-                    "SubProcess plot_model() end =================================="
-                )
-
-            # Log the CV results as model_results.html artifact
-            model_results.to_html("Results.html", col_space=65, justify="left")
-            mlflow.log_artifact("Results.html")
-            os.remove("Results.html")
-
-            # get default conda env
-            from mlflow.sklearn import get_default_conda_env
-
-            default_conda_env = get_default_conda_env()
-            default_conda_env["name"] = f"{exp_name_log}-env"
-            default_conda_env.get("dependencies").pop(-3)
-            dependencies = default_conda_env.get("dependencies")[-1]
-            from pycaret.utils import __version__
-
-            dep = f"pycaret=={__version__}"
-            dependencies["pip"] = [dep]
-
-            # define model signature
-            from mlflow.models.signature import infer_signature
-
-            signature = infer_signature(
-                data_before_preprocess.drop([target_param], axis=1)
-            )
-            input_example = (
-                data_before_preprocess.drop([target_param], axis=1).iloc[0].to_dict()
-            )
-
-            # log model as sklearn flavor
-            prep_pipe_temp = deepcopy(prep_pipe)
-            prep_pipe_temp.steps.append(["trained model", model])
-            mlflow.sklearn.log_model(
-                prep_pipe_temp,
-                "model",
-                conda_env=default_conda_env,
-                signature=signature,
-                input_example=input_example,
-            )
-            del prep_pipe_temp
 
     model_results = color_df(model_results, "yellow", ["Mean"], axis=1)
     model_results = model_results.set_precision(round)
@@ -4824,6 +4336,36 @@ def stack_models(
     model_results = pull()
     logger.info("SubProcess create_model() end ==================================")
 
+    # end runtime
+    runtime_end = time.time()
+    runtime = np.array(runtime_end - runtime_start).round(2)
+
+    # mlflow logging
+    if logging_param:
+
+        avgs_dict_log = {
+            k: v
+            for k, v in model_results.drop("TT (Sec)", axis=1, errors="ignore")
+            .loc["Mean"]
+            .items()
+        }
+
+        try:
+            _mlflow_log_model(
+                model=model,
+                model_results=model_results,
+                score_dict=avgs_dict_log,
+                source="stack_models",
+                runtime=runtime,
+                model_fit_time=model_fit_time,
+                _prep_pipe=prep_pipe,
+                log_plots=log_plots_param,
+                display=display,
+            )
+        except:
+            logger.error(f"_mlflow_log_model() for {model} raised an exception:")
+            logger.error(traceback.format_exc())
+
     if choose_better:
         model = _choose_better(
             model,
@@ -4833,150 +4375,6 @@ def stack_models(
             model_results=model_results,
             display=display,
         )
-
-    # end runtime
-    runtime_end = time.time()
-    runtime = np.array(runtime_end - runtime_start).round(2)
-
-    if logging_param:
-
-        logger.info("Creating MLFlow logs")
-
-        import mlflow
-
-        # Creating Logs message monitor
-        display.update_monitor(1, "Creating Logs")
-        display.update_monitor(2, "Almost Finished")
-        display.display_monitor()
-
-        with mlflow.start_run(run_name="Stacking Classifier") as run:
-
-            # Get active run to log as tag
-            RunID = mlflow.active_run().info.run_id
-
-            params = model.get_params()
-
-            for i in list(params):
-                v = params.get(i)
-                if len(str(v)) > 250:
-                    params.pop(i)
-
-            try:
-                mlflow.log_params(params)
-            except:
-                pass
-
-            mlflow.log_metrics(
-                {
-                    k: v
-                    for k, v in model_results.drop("TT (Sec)", axis=1, errors="ignore")
-                    .loc["Mean"]
-                    .items()
-                }
-            )
-
-            # set tag of stack_models
-            mlflow.set_tag("Source", "stack_models")
-
-            import secrets
-
-            URI = secrets.token_hex(nbytes=4)
-            mlflow.set_tag("URI", URI)
-            mlflow.set_tag("USI", USI)
-            mlflow.set_tag("Run Time", runtime)
-            mlflow.set_tag("Run ID", RunID)
-
-            # Log training time of compare_models
-            mlflow.log_metric("TT", model_fit_time)
-
-            # Log the CV results as model_results.html artifact
-            model_results.to_html("Results.html", col_space=65, justify="left")
-            mlflow.log_artifact("Results.html")
-            os.remove("Results.html")
-
-            # Generate hold-out predictions and save as html
-            holdout = predict_model(model, verbose=False)
-            holdout_score = pull(pop=True)
-            del holdout
-            holdout_score.to_html("Holdout.html", col_space=65, justify="left")
-            mlflow.log_artifact("Holdout.html")
-            os.remove("Holdout.html")
-
-            # Log AUC and Confusion Matrix plot
-            if log_plots_param:
-
-                logger.info(
-                    "SubProcess plot_model() called =================================="
-                )
-
-                try:
-                    plot_model(
-                        model, plot="auc", verbose=False, save=True, system=False
-                    )
-                    mlflow.log_artifact("AUC.png")
-                    os.remove("AUC.png")
-                except:
-                    pass
-
-                try:
-                    plot_model(
-                        model,
-                        plot="confusion_matrix",
-                        verbose=False,
-                        save=True,
-                        system=False,
-                    )
-                    mlflow.log_artifact("Confusion Matrix.png")
-                    os.remove("Confusion Matrix.png")
-                except:
-                    pass
-
-                try:
-                    plot_model(
-                        model, plot="feature", verbose=False, save=True, system=False
-                    )
-                    mlflow.log_artifact("Feature Importance.png")
-                    os.remove("Feature Importance.png")
-                except:
-                    pass
-
-                logger.info(
-                    "SubProcess plot_model() end =================================="
-                )
-
-            # get default conda env
-            from mlflow.sklearn import get_default_conda_env
-
-            default_conda_env = get_default_conda_env()
-            default_conda_env["name"] = f"{exp_name_log}-env"
-            default_conda_env.get("dependencies").pop(-3)
-            dependencies = default_conda_env.get("dependencies")[-1]
-            from pycaret.utils import __version__
-
-            dep = f"pycaret=={__version__}"
-            dependencies["pip"] = [dep]
-
-            # define model signature
-            from mlflow.models.signature import infer_signature
-
-            signature = infer_signature(
-                data_before_preprocess.drop([target_param], axis=1)
-            )
-            input_example = (
-                data_before_preprocess.drop([target_param], axis=1).iloc[0].to_dict()
-            )
-
-            # log model as sklearn flavor
-            prep_pipe_temp = deepcopy(prep_pipe)
-            prep_pipe_temp.steps.append(["trained model", model])
-            mlflow.sklearn.log_model(
-                prep_pipe_temp,
-                "model",
-                conda_env=default_conda_env,
-                signature=signature,
-                input_example=input_example,
-            )
-            del prep_pipe_temp
 
     model_results = color_df(model_results, "yellow", ["Mean"], axis=1)
     model_results = model_results.set_precision(round)
@@ -6192,146 +5590,28 @@ def calibrate_model(
     # mlflow logging
     if logging_param:
 
-        logger.info("Creating MLFlow logs")
+        avgs_dict_log = {
+            k: v
+            for k, v in model_results.drop("TT (Sec)", axis=1, errors="ignore")
+            .loc["Mean"]
+            .items()
+        }
 
-        # Creating Logs message monitor
-        display.update_monitor(1, "Creating Logs")
-        display.update_monitor(2, "Almost Finished")
-        display.display_monitor()
-
-        # import mlflow
-        import mlflow
-        import mlflow.sklearn
-
-        mlflow.set_experiment(exp_name_log)
-
-        with mlflow.start_run(run_name=full_name) as run:
-
-            # Get active run to log as tag
-            RunID = mlflow.active_run().info.run_id
-
-            # Log model parameters
-            params = model.get_params()
-
-            for i in list(params):
-                v = params.get(i)
-                if len(str(v)) > 250:
-                    params.pop(i)
-
-            mlflow.log_params(params)
-
-            # Log metrics
-            mlflow.log_metrics(
-                {
-                    k: v
-                    for k, v in model_results.drop("TT (Sec)", axis=1, errors="ignore")
-                    .loc["Mean"]
-                    .items()
-                }
+        try:
+            _mlflow_log_model(
+                model=model,
+                model_results=model_results,
+                score_dict=avgs_dict_log,
+                source="calibrate_models",
+                runtime=runtime,
+                model_fit_time=model_fit_time,
+                _prep_pipe=prep_pipe,
+                log_plots=log_plots_param,
+                display=display,
             )
-
-            # set tag of compare_models
-            mlflow.set_tag("Source", "calibrate_model")
-
-            import secrets
-
-            URI = secrets.token_hex(nbytes=4)
-            mlflow.set_tag("URI", URI)
-            mlflow.set_tag("USI", USI)
-            mlflow.set_tag("Run Time", runtime)
-            mlflow.set_tag("Run ID", RunID)
-
-            # Log training time in seconds
-            mlflow.log_metric("TT", model_fit_time)
-
-            # Log the CV results as model_results.html artifact
-            model_results.to_html("Results.html", col_space=65, justify="left")
-            mlflow.log_artifact("Results.html")
-            os.remove("Results.html")
-
-            # Generate hold-out predictions and save as html
-            holdout = predict_model(model, verbose=False)
-            holdout_score = pull(pop=True)
-            del holdout
-            holdout_score.to_html("Holdout.html", col_space=65, justify="left")
-            mlflow.log_artifact("Holdout.html")
-            os.remove("Holdout.html")
-
-            # Log AUC and Confusion Matrix plot
-            if log_plots_param:
-
-                logger.info(
-                    "SubProcess plot_model() called =================================="
-                )
-
-                try:
-                    plot_model(
-                        model, plot="auc", verbose=False, save=True, system=False
-                    )
-                    mlflow.log_artifact("AUC.png")
-                    os.remove("AUC.png")
-                except:
-                    pass
-
-                try:
-                    plot_model(
-                        model,
-                        plot="confusion_matrix",
-                        verbose=False,
-                        save=True,
-                        system=False,
-                    )
-                    mlflow.log_artifact("Confusion Matrix.png")
-                    os.remove("Confusion Matrix.png")
-                except:
-                    pass
-
-                try:
-                    plot_model(
-                        model, plot="feature", verbose=False, save=True, system=False
-                    )
-                    mlflow.log_artifact("Feature Importance.png")
-                    os.remove("Feature Importance.png")
-                except:
-                    pass
-
-                logger.info(
-                    "SubProcess plot_model() end =================================="
-                )
-
-            # get default conda env
-            from mlflow.sklearn import get_default_conda_env
-
-            default_conda_env = get_default_conda_env()
-            default_conda_env["name"] = f"{exp_name_log}-env"
-            default_conda_env.get("dependencies").pop(-3)
-            dependencies = default_conda_env.get("dependencies")[-1]
-            from pycaret.utils import __version__
-
-            dep = f"pycaret=={__version__}"
-            dependencies["pip"] = [dep]
-
-            # define model signature
-            from mlflow.models.signature import infer_signature
-
-            signature = infer_signature(
-                data_before_preprocess.drop([target_param], axis=1)
-            )
-            input_example = (
-                data_before_preprocess.drop([target_param], axis=1).iloc[0].to_dict()
-            )
-
-            # log model as sklearn flavor
-            prep_pipe_temp = deepcopy(prep_pipe)
-            prep_pipe_temp.steps.append(["trained model", model])
-            mlflow.sklearn.log_model(
-                prep_pipe_temp,
-                "model",
-                conda_env=default_conda_env,
-                signature=signature,
-                input_example=input_example,
-            )
-            del prep_pipe_temp
+        except:
+            logger.error(f"_mlflow_log_model() for {model} raised an exception:")
+            logger.error(traceback.format_exc())
 
     model_results = color_df(model_results, "yellow", ["Mean"], axis=1)
     model_results = model_results.set_precision(round)
@@ -6873,14 +6153,14 @@ def finalize_model(estimator, display=None) -> Any:  # added in pycaret==2.2.0
     estimator = _estimator_
 
     logger.info(f"Finalizing {full_name}")
-    model_final = clone(estimator)
     display.clear_output()
-    model_final = create_model(
+    model_final, model_fit_time = create_model(
         estimator=model_final,
         verbose=False,
         system=False,
         X_train_data=X,
         Y_train_data=y,
+        return_fit_time=True,
     )
     model_results = pull(pop=True)
 
@@ -6891,135 +6171,28 @@ def finalize_model(estimator, display=None) -> Any:  # added in pycaret==2.2.0
     # mlflow logging
     if logging_param:
 
-        logger.info("Creating MLFlow logs")
+        avgs_dict_log = {
+            k: v
+            for k, v in model_results.drop("TT (Sec)", axis=1, errors="ignore")
+            .loc["Mean"]
+            .items()
+        }
 
-        # import mlflow
-        import mlflow
-        import mlflow.sklearn
-
-        mlflow.set_experiment(exp_name_log)
-
-        with mlflow.start_run(run_name=full_name) as run:
-
-            # Get active run to log as tag
-            RunID = mlflow.active_run().info.run_id
-
-            # Log model parameters
-            try:
-                params = model_final.get_params()
-
-                for i in list(params):
-                    v = params.get(i)
-                    if len(str(v)) > 250:
-                        params.pop(i)
-
-                mlflow.log_params(params)
-
-            except:
-                pass
-
-            # get metrics of non-finalized model and log it
-
-            # Log metrics
-            mlflow.log_metrics(
-                {
-                    k: v
-                    for k, v in model_results.drop("TT (Sec)", axis=1, errors="ignore")
-                    .loc["Mean"]
-                    .items()
-                }
+        try:
+            _mlflow_log_model(
+                model=model_final,
+                model_results=model_results,
+                score_dict=avgs_dict_log,
+                source="finalize_model",
+                runtime=runtime,
+                model_fit_time=model_fit_time,
+                _prep_pipe=prep_pipe,
+                log_plots=log_plots_param,
+                display=display,
             )
-
-            # set tag of compare_models
-            mlflow.set_tag("Source", "finalize_model")
-
-            # create MRI (model registration id)
-            mlflow.set_tag("Final", True)
-
-            import secrets
-
-            URI = secrets.token_hex(nbytes=4)
-            mlflow.set_tag("URI", URI)
-            mlflow.set_tag("USI", USI)
-            mlflow.set_tag("Run Time", runtime)
-            mlflow.set_tag("Run ID", RunID)
-
-            # Log training time in seconds
-            mlflow.log_metric("TT", runtime)
-
-            # Log AUC and Confusion Matrix plot
-            if log_plots_param:
-
-                logger.info(
-                    "SubProcess plot_model() called =================================="
-                )
-
-                try:
-                    plot_model(
-                        model_final, plot="auc", verbose=False, save=True, system=False
-                    )
-                    mlflow.log_artifact("AUC.png")
-                    os.remove("AUC.png")
-                except:
-                    pass
-
-                try:
-                    plot_model(
-                        model_final,
-                        plot="confusion_matrix",
-                        verbose=False,
-                        save=True,
-                        system=False,
-                    )
-                    mlflow.log_artifact("Confusion Matrix.png")
-                    os.remove("Confusion Matrix.png")
-                except:
-                    pass
-
-                try:
-                    plot_model(
-                        model_final,
-                        plot="feature",
-                        verbose=False,
-                        save=True,
-                        system=False,
-                    )
-                    mlflow.log_artifact("Feature Importance.png")
-                    os.remove("Feature Importance.png")
-                except:
-                    pass
-
-                logger.info(
-                    "SubProcess plot_model() end =================================="
-                )
-
-            # get default conda env
-            from mlflow.sklearn import get_default_conda_env
-
-            default_conda_env = get_default_conda_env()
-            default_conda_env["name"] = f"{exp_name_log}-env"
-            default_conda_env.get("dependencies").pop(-3)
-            dependencies = default_conda_env.get("dependencies")[-1]
-            from pycaret.utils import __version__
-
-            dep = f"pycaret=={__version__}"
-            dependencies["pip"] = [dep]
-
-            # define model signature
-            from mlflow.models.signature import infer_signature
-
-            signature = infer_signature(data_before_preprocess)
-
-            # log model as sklearn flavor
-            prep_pipe_temp = deepcopy(prep_pipe)
-            prep_pipe_temp.steps.append(["trained model", model_final])
-            mlflow.sklearn.log_model(
-                prep_pipe_temp,
-                "model",
-                conda_env=default_conda_env,
-                signature=signature,
-            )
-            del prep_pipe_temp
+        except:
+            logger.error(f"_mlflow_log_model() for {model_final} raised an exception:")
+            logger.error(traceback.format_exc())
 
     model_results = color_df(model_results, "yellow", ["Mean"], axis=1)
     model_results = model_results.set_precision(round)
@@ -8084,3 +7257,166 @@ def _calculate_metrics(
     from pycaret.internal.utils import calculate_metrics
 
     return calculate_metrics(get_metrics(), ytest, pred_, pred_prob, score_dict)
+
+
+def _mlflow_log_model(
+    model,
+    model_results,
+    score_dict: dict,
+    source: str,
+    runtime: float,
+    model_fit_time: float,
+    _prep_pipe,
+    log_plots: bool = False,
+    tune_cv_results=None,
+    URI=None,
+    display: Optional[Display] = None,
+):
+    logger = get_logger()
+
+    logger.info("Creating MLFlow logs")
+
+    # Creating Logs message monitor
+    if display:
+        display.update_monitor(1, "Creating Logs")
+        display.update_monitor(2, "Almost Finished")
+        display.display_monitor()
+
+    # import mlflow
+    import mlflow
+    import mlflow.sklearn
+
+    mlflow.set_experiment(exp_name_log)
+
+    full_name = _get_model_name(model)
+
+    with mlflow.start_run(run_name=full_name) as run:
+
+        # Get active run to log as tag
+        RunID = mlflow.active_run().info.run_id
+
+        # Log model parameters
+        params = model.get_params()
+
+        for i in list(params):
+            v = params.get(i)
+            if len(str(v)) > 250:
+                params.pop(i)
+
+        mlflow.log_params(params)
+
+        # Log metrics
+        mlflow.log_metrics(score_dict)
+
+        # set tag of compare_models
+        mlflow.set_tag("Source", source)
+
+        if not URI:
+            import secrets
+
+            URI = secrets.token_hex(nbytes=4)
+        mlflow.set_tag("URI", URI)
+        mlflow.set_tag("USI", USI)
+        mlflow.set_tag("Run Time", runtime)
+        mlflow.set_tag("Run ID", RunID)
+
+        # Log training time in seconds
+        mlflow.log_metric("TT", model_fit_time)
+
+        # Log the CV results as model_results.html artifact
+        try:
+            model_results.data.to_html("Results.html", col_space=65, justify="left")
+        except:
+            model_results.to_html("Results.html", col_space=65, justify="left")
+        mlflow.log_artifact("Results.html")
+        os.remove("Results.html")
+
+        # Generate hold-out predictions and save as html
+        holdout = predict_model(model, verbose=False)
+        holdout_score = pull(pop=True)
+        del holdout
+        holdout_score.to_html("Holdout.html", col_space=65, justify="left")
+        mlflow.log_artifact("Holdout.html")
+        os.remove("Holdout.html")
+
+        # Log AUC and Confusion Matrix plot
+
+        if log_plots:
+
+            logger.info(
+                "SubProcess plot_model() called =================================="
+            )
+
+            try:
+                plot_model(model, plot="auc", verbose=False, save=True, system=False)
+                mlflow.log_artifact("AUC.png")
+                os.remove("AUC.png")
+            except:
+                pass
+
+            try:
+                plot_model(
+                    model,
+                    plot="confusion_matrix",
+                    verbose=False,
+                    save=True,
+                    system=False,
+                )
+                mlflow.log_artifact("Confusion Matrix.png")
+                os.remove("Confusion Matrix.png")
+            except:
+                pass
+
+            try:
+                plot_model(
+                    model, plot="feature", verbose=False, save=True, system=False
+                )
+                mlflow.log_artifact("Feature Importance.png")
+                os.remove("Feature Importance.png")
+            except:
+                pass
+
+            logger.info(
+                "SubProcess plot_model() end =================================="
+            )
+
+        # Log hyperparameter tuning grid
+        if tune_cv_results:
+            d1 = tune_cv_results.cv_results_.get("params")
+            dd = pd.DataFrame.from_dict(d1)
+            dd["Score"] = tune_cv_results.cv_results_.get("mean_test_score")
+            dd.to_html("Iterations.html", col_space=75, justify="left")
+            mlflow.log_artifact("Iterations.html")
+            os.remove("Iterations.html")
+
+        # get default conda env
+        from mlflow.sklearn import get_default_conda_env
+
+        default_conda_env = get_default_conda_env()
+        default_conda_env["name"] = f"{exp_name_log}-env"
+        default_conda_env.get("dependencies").pop(-3)
+        dependencies = default_conda_env.get("dependencies")[-1]
+        from pycaret.utils import __version__
+
+        dep = f"pycaret=={__version__}"
+        dependencies["pip"] = [dep]
+
+        # define model signature
+        from mlflow.models.signature import infer_signature
+
+        signature = infer_signature(data_before_preprocess.drop([target_param], axis=1))
+        input_example = (
+            data_before_preprocess.drop([target_param], axis=1).iloc[0].to_dict()
+        )
+
+        # log model as sklearn flavor
+        prep_pipe_temp = deepcopy(_prep_pipe)
+        prep_pipe_temp.steps.append(["trained model", model])
+        mlflow.sklearn.log_model(
+            prep_pipe_temp,
+            "model",
+            conda_env=default_conda_env,
+            signature=signature,
+            input_example=input_example,
+        )
+        del prep_pipe_temp
