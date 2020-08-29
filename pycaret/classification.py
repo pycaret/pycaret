@@ -7397,7 +7397,7 @@ def models(
         # Check if type is valid
         if type not in list(model_type) + [None]:
             raise ValueError(
-                f"type param only accepts {', '.join(list(model_type) + "None")}."
+                f"type param only accepts {', '.join(list(model_type) + str(None))}."
             )
         return df[df.index.isin(model_type.get(type, df.index))]
 
