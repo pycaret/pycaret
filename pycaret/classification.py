@@ -23,7 +23,7 @@ import time
 import random
 import gc
 from copy import deepcopy
-from typing import List, Tuple, Any
+from typing import List, Tuple, Any, Optional, Union
 import warnings
 from IPython.utils import io
 
@@ -35,16 +35,16 @@ def setup(
     target: str,
     train_size: float = 0.7,
     sampling: bool = True,
-    sample_estimator=None,
-    categorical_features: List[str] = None,
+    sample_estimator: Optional[str] = None,
+    categorical_features: Optional[List[str]] = None,
     categorical_imputation: str = "constant",
-    ordinal_features: dict = None,
-    high_cardinality_features: List[str] = None,
+    ordinal_features: Optional[dict] = None,
+    high_cardinality_features: Optional[List[str]] = None,
     high_cardinality_method: str = "frequency",
-    numeric_features: List[str] = None,
+    numeric_features: Optional[List[str]] = None,
     numeric_imputation: str = "mean",  # method 'zero' added in pycaret==2.1
-    date_features: List[str] = None,
-    ignore_features: List[str] = None,
+    date_features: Optional[List[str]] = None,
+    ignore_features: Optional[List[str]] = None,
     normalize: bool = False,
     normalize_method: str = "zscore",
     transformation: bool = False,
@@ -53,7 +53,7 @@ def setup(
     unknown_categorical_method: str = "least_frequent",
     pca: bool = False,
     pca_method: str = "linear",
-    pca_components: float = None,
+    pca_components: Optional[float] = None,
     ignore_low_variance: bool = False,
     combine_rare_levels: bool = False,
     rare_level_threshold: float = 0.10,
@@ -69,8 +69,8 @@ def setup(
     polynomial_degree: int = 2,
     trigonometry_features: bool = False,
     polynomial_threshold: float = 0.1,
-    group_features: List[str] = None,
-    group_names: List[str] = None,
+    group_features: Optional[List[str]] = None,
+    group_names: Optional[List[str]] = None,
     feature_selection: bool = False,
     feature_selection_threshold: float = 0.8,
     feature_selection_method: str = "classic",  # boruta algorithm added in pycaret==2.1
@@ -78,22 +78,22 @@ def setup(
     feature_ratio: bool = False,
     interaction_threshold: float = 0.01,
     fix_imbalance: bool = False,
-    fix_imbalance_method: Any = None,
+    fix_imbalance_method: Optional[str] = None,
     data_split_shuffle: bool = True,
     folds_shuffle: bool = False,
     n_jobs: int = -1,
-    use_gpu: bool = False,  # added in pycaret==2.1
+    use_gpu: Union[bool, str] = False,  # added in pycaret==2.1
     html: bool = True,
-    session_id: int = None,
+    session_id: Optional[int] = None,
     log_experiment: bool = False,
-    experiment_name: str = None,
+    experiment_name: Optional[str] = None,
     log_plots: bool = False,
     log_profile: bool = False,
     log_data: bool = False,
     silent: bool = False,
     verbose: bool = True,
     profile: bool = False,
-    display: Display = None,
+    display: Optional[Display] = None,
 ):
 
     """
