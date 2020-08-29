@@ -36,7 +36,7 @@ def setup(
     target: str,
     train_size: float = 0.7,
     sampling: bool = True,
-    sample_estimator=None,
+    sample_estimator: Optional[Any] = None,
     categorical_features: Optional[List[str]] = None,
     categorical_imputation: str = "constant",
     ordinal_features: Optional[Dict[str, list]] = None,
