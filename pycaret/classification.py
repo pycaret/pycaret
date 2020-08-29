@@ -7333,16 +7333,16 @@ def models(
     """
 
     def filter_model_df_by_type(df):
-        linear_models = ["lr", "ridge", "svm"]
-        tree_models = ["dt"]
-        ensemble_models = ["rf", "et", "gbc", "xgboost", "lightgbm", "catboost", "ada"]
-        if type == "linear":
-            df = df[df.index.isin(linear_models)]
-        elif type == "tree":
-            df = df[df.index.isin(tree_models)]
-        elif type == "ensemble":
-            df = df[df.index.isin(ensemble_models)]
-        return df
+        model_type = {"linear": ["lr", "ridge", "svm"],
+                      "tree": ["dt"],
+                      "ensemble": ["rf", "et", "gbc", "xgboost", "lightgbm", "catboost", "ada"]}
+
+        # Check if type is valid
+        if type not in list(model_type) + [None]:
+            raise ValueError(
+                f"type param only accepts {', '.join(list(model_type) + str(None))}."
+            )
+        return df[df.index.isin(model_type.get(type, df.index))]
 
     if not force_regenerate:
         try:
