@@ -3058,11 +3058,45 @@ def tune_model(
             "parameter grid for tuning is empty. If passing custom_grid, make sure that it is not empty. If not passing custom_grid, the passed estimator does not have a built-in tuning grid."
         )
 
+    early_stopping_estimator = _estimator_
+
     if is_stacked_model:
         logger.info("Stacked model passed, will tune meta model hyperparameters")
         param_grid = {f"final_estimator__{k}": v for k, v in param_grid.items()}
+        early_stopping_estimator = early_stopping_estimator.final_estimator
 
     search_kwargs = {**estimator_definition["Tune Args"], **kwargs}
+
+    def _can_early_stop(estimator, consider_warm_start):
+        """
+        From https://github.com/ray-project/tune-sklearn/blob/master/tune_sklearn/tune_basesearch.py.
+        
+        Helper method to determine if it is possible to do early stopping.
+        Only sklearn estimators with `partial_fit` or `warm_start` can be early
+        stopped. warm_start works by picking up training from the previous
+        call to `fit`.
+        Returns:
+            bool: if the estimator can early stop
+        """
+
+        from sklearn.tree import BaseDecisionTree
+        from sklearn.ensemble import BaseEnsemble
+
+        can_partial_fit = callable(getattr(estimator, "partial_fit", None))
+
+        if consider_warm_start:
+            is_not_tree_subclass = not issubclass(type(estimator), BaseDecisionTree)
+            is_not_ensemble_subclass = not issubclass(type(estimator), BaseEnsemble)
+            can_warm_start = (
+                hasattr(estimator, "warm_start")
+                and hasattr(estimator, "max_iter")
+                and is_not_ensemble_subclass
+                and is_not_tree_subclass
+            )
+        else:
+            can_warm_start = False
+
+        return can_partial_fit or can_warm_start
 
     n_jobs = gpu_n_jobs_param
     logger.info(f"Tuning with n_jobs={n_jobs}")
@@ -3100,7 +3134,8 @@ def tune_model(
             estimator=_estimator_,
             param_distributions=param_grid,
             cv=fold,
-            enable_pruning=early_stopping and hasattr(_estimator_, "partial_fit"),
+            enable_pruning=early_stopping
+            and _can_early_stop(early_stopping_estimator, False),
             max_iter=early_stopping_max_iters,
             n_jobs=n_jobs,
             n_trials=n_iter,
@@ -3120,6 +3155,15 @@ def tune_model(
         if early_stopping in early_stopping_translator:
             early_stopping = early_stopping_translator[early_stopping]
 
+        can_early_stop = early_stopping and _can_early_stop(
+            early_stopping_estimator, False
+        )
+
+        if not can_early_stop and search_algorithm == "BOHB":
+            raise ValueError(
+                "'BOHB' requires early_stopping = True and the estimator to support partial_fit or have warm_start param set to True."
+            )
+
         # if n_jobs is None:
         # enable Ray local mode - otherwise the performance is terrible
         n_jobs = 1
@@ -3131,7 +3175,8 @@ def tune_model(
             model_grid = TuneGridSearchCV(
                 estimator=_estimator_,
                 param_grid=param_grid,
-                early_stopping=early_stopping and hasattr(_estimator_, "partial_fit"),
+                early_stopping=early_stopping
+                and _can_early_stop(early_stopping_estimator, True),
                 scoring=optimize,
                 cv=fold,
                 max_iters=early_stopping_max_iters,
@@ -3151,7 +3196,8 @@ def tune_model(
                 search_optimization="hyperopt",
                 param_distributions=param_grid,
                 n_iter=n_iter,
-                early_stopping=early_stopping and hasattr(_estimator_, "partial_fit"),
+                early_stopping=early_stopping
+                and _can_early_stop(early_stopping_estimator, True),
                 scoring=optimize,
                 cv=fold,
                 random_state=seed,
@@ -3172,7 +3218,8 @@ def tune_model(
                 search_optimization="bohb",
                 param_distributions=param_grid,
                 n_iter=n_iter,
-                early_stopping=early_stopping and hasattr(_estimator_, "partial_fit"),
+                early_stopping=early_stopping
+                and _can_early_stop(early_stopping_estimator, True),
                 scoring=optimize,
                 cv=fold,
                 random_state=seed,
@@ -3189,7 +3236,8 @@ def tune_model(
             model_grid = TuneSearchCV(
                 estimator=_estimator_,
                 param_distributions=param_grid,
-                early_stopping=early_stopping and hasattr(_estimator_, "partial_fit"),
+                early_stopping=early_stopping
+                and _can_early_stop(early_stopping_estimator, True),
                 n_iter=n_iter,
                 scoring=optimize,
                 cv=fold,
