@@ -8594,11 +8594,6 @@ def calibrate_model(estimator,
     model_name = str(estimator).split("(")[0]
     if model_name.find("catboost.core.CatBoostClassifier") != -1:
         model_name = 'CatBoostClassifier'
-
-    #catboost not allowed
-    not_allowed = ['CatBoostClassifier']
-    if model_name in not_allowed:
-        sys.exit('(Type Error): calibrate_model doesnt support CatBoost Classifier. Try different estimator.')
     
     #checking fold parameter
     if type(fold) is not int:
