@@ -7395,9 +7395,9 @@ def models(
                       "ensemble": ["rf", "et", "gbc", "xgboost", "lightgbm", "catboost", "ada"]}
 
         # Check if type is valid
-        if type not in list(model_type):
+        if type not in list(model_type) + [None]:
             raise ValueError(
-                f"type param only accepts {', '.join(list(model_type))}."
+                f"type param only accepts {', '.join(list(model_type) + "None")}."
             )
         return df[df.index.isin(model_type.get(type, df.index))]
 
