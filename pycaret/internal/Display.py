@@ -7,6 +7,7 @@ import pandas as pd
 import pandas.io.formats.style
 import ipywidgets as ipw
 from IPython.display import display, HTML, clear_output, update_display
+from typing import Optional, List, Dict, Any
 
 
 class Display:
@@ -98,9 +99,9 @@ class Display:
         self,
         verbose: bool = True,
         html_param: bool = True,
-        progress_args: dict = None,
-        master_display_columns: list = None,
-        monitor_rows: list = None,
+        progress_args: Optional[Dict[str, Any]] = None,
+        master_display_columns: Optional[List[str]] = None,
+        monitor_rows: Optional[List[List[str]]] = None,
         round: int = 4,
         logger=None,
     ):

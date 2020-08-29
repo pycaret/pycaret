@@ -9,7 +9,7 @@
 # to complete the process. Refer to the existing classes for examples.
 
 import logging
-from typing import Union, Dict, Any
+from typing import Union, Dict, Any, Optional
 from pycaret.containers.models.base_model import ModelContainer
 from pycaret.internal.utils import param_grid_to_lists, get_logger, get_class_name
 from pycaret.internal.distributions import *
@@ -102,9 +102,9 @@ class ClassifierContainer(ModelContainer):
         tune_distribution: Dict[str, Distrubution] = {},
         tune_args: Dict[str, Any] = {},
         shap: Union[bool, str] = False,
-        is_gpu_enabled: bool = None,
-        is_boosting_supported: bool = None,
-        is_soft_voting_supported: bool = None,
+        is_gpu_enabled: Optional[bool] = None,
+        is_boosting_supported: Optional[bool] = None,
+        is_soft_voting_supported: Optional[bool] = None,
     ) -> None:
 
         self.shap = shap

@@ -53,6 +53,10 @@ def test():
     stacker = pycaret.classification.stack_models(estimator_list = top3)
     predict_holdout = pycaret.classification.predict_model(stacker)
 
+    # plot model
+    lr = pycaret.classification.create_model('lr')
+    pycaret.classification.plot_model(lr, save=True, scale=5)
+
     # select best model
     best = pycaret.classification.automl(optimize = 'MCC')
     

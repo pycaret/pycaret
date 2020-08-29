@@ -8,7 +8,9 @@ import pandas.io.formats.style
 import ipywidgets as ipw
 from IPython.display import display, HTML, clear_output, update_display
 from pycaret.internal.logging import get_logger
-from typing import Any, Union
+from typing import Any, Optional, Dict, Union
+import numpy as np
+
 
 def get_config(variable: str, globals_d: dict):
 
@@ -136,11 +138,9 @@ def calculate_metrics(
     metrics: pd.DataFrame,
     ytest,
     pred_,
-    pred_proba: float = None,
-    score_dict: dict = None,
-):
-    import numpy as np
-
+    pred_proba: Optional[float] = None,
+    score_dict: Optional[Dict[str, np.array]] = None,
+) -> Dict[str, np.array]:
     columns = list(metrics.columns)
     score_function_idx = columns.index("Score Function") + 1
     display_name_idx = columns.index("Display Name") + 1
