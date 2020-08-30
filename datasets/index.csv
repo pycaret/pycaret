@@ -17,6 +17,7 @@ juice,Multivariate,Classification (Binary),Purchase,None,1070,15,N
 nba,Multivariate,Classification (Binary),TARGET_5Yrs,None,1340,21,N
 wine,Multivariate,Classification (Binary),type,None,6498,13,N
 telescope,Multivariate,Classification (Binary),Class,None,19020,11,N
+titanic,Multivariate,Classification (Binary),Survived,None,891,11,Y
 us_presidential_election_results,Multivariate,Classification (Binary),party_winner,None,497,7,N
 glass,Multivariate,Classification (Multiclass),Type,None,214,10,N
 iris,Multivariate,Classification (Multiclass),species,None,150,5,N

@@ -1,8 +1,8 @@
 # Module: Clustering
 # Author: Moez Ali <moez.ali@queensu.ca>
 # License: MIT
-# Release: PyCaret 2.1
-# Last modified : 26/08/2020
+# Release: PyCaret 2.1.1
+# Last modified : 29/08/2020
 
 def setup(data, 
         categorical_features = None,
@@ -1651,7 +1651,10 @@ def create_model(model = None,
             
             # define model signature
             from mlflow.models.signature import infer_signature
-            signature = infer_signature(data_)
+            try:
+                signature = infer_signature(data_)
+            except:
+                signature = None
             input_example = data_.iloc[0].to_dict()
 
             # log model as sklearn flavor
@@ -3623,7 +3626,10 @@ def tune_model(model=None,
             
             # define model signature
             from mlflow.models.signature import infer_signature
-            signature = infer_signature(data_)
+            try:
+                signature = infer_signature(data_)
+            except:
+                signature = None
             input_example = data_.iloc[0].to_dict()
 
             # log model as sklearn flavor

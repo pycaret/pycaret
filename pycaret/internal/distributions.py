@@ -48,7 +48,7 @@ class UniformDistribution(Distrubution):
             name=label, lower=self.lower, upper=self.upper, log=self.log
         )
 
-    def __str__(self):
+    def __repl__(self):
         return f"UniformDistribution(lower={self.lower}, upper={self.upper}, log={self.log})"
 
 
@@ -84,7 +84,7 @@ class IntUniformDistribution(Distrubution):
             name=label, lower=self.lower, upper=self.upper, log=self.log
         )
 
-    def __str__(self):
+    def __repl__(self):
         return f"IntUniformDistribution(lower={self.lower}, upper={self.upper}, log={self.log})"
 
 
@@ -113,7 +113,7 @@ class DiscreteUniformDistribution(Distrubution):
             name=label, lower=self.lower, upper=self.upper, q=self.q
         )
 
-    def __str__(self):
+    def __repl__(self):
         return f"DiscreteUniformDistribution(lower={self.lower}, upper={self.upper}, q={self.q})"
 
 
@@ -136,7 +136,7 @@ class CategoricalDistribution(Distrubution):
 
         return CSH.CategoricalHyperparameter(name=label, choices=self.values)
 
-    def __str__(self):
+    def __repl__(self):
         return f"CategoricalDistribution(values={self.values})"
 
 
