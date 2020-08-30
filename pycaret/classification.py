@@ -7411,7 +7411,13 @@ def _mlflow_log_model(
         # define model signature
         from mlflow.models.signature import infer_signature
 
-        signature = infer_signature(data_before_preprocess.drop([target_param], axis=1))
+        try:
+            signature = infer_signature(
+                data_before_preprocess.drop([target_param], axis=1)
+            )
+        except:
+            logger.warning("Couldn't infer MLFlow signature.")
+            signature = None
         input_example = (
             data_before_preprocess.drop([target_param], axis=1).iloc[0].to_dict()
         )
