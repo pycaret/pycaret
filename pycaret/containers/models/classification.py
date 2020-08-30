@@ -421,11 +421,6 @@ class SGDClassifierContainer(ClassifierContainer):
             "eta0": UniformDistribution(0.001, 0.5),
         }
 
-        # common
-        tune_grid["n_neighbors"] = range(1, 51)
-        tune_grid["weights"] = ["uniform"]
-        tune_grid["metric"] = ["minkowski", "euclidean", "manhattan"]
-
         if gpu_imported:
             tune_grid["learning_rate"] += ["optimal"]
         else:
