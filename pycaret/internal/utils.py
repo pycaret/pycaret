@@ -134,6 +134,12 @@ def param_grid_to_lists(param_grid: dict) -> dict:
     return param_grid
 
 
+def make_internal_pipeline(internal_pipeline_steps, model):
+    from imblearn.pipeline import Pipeline
+
+    return Pipeline(internal_pipeline_steps + [("actual_estimator", model)])
+
+
 def calculate_metrics(
     metrics: pd.DataFrame,
     ytest,

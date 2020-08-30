@@ -1035,7 +1035,7 @@ def setup(
 
     # declaring global variables to be accessed by other functions
     logger.info("Declaring global variables")
-    global X, y, X_train, X_test, y_train, y_test, seed, prep_pipe, experiment__, folds_shuffle_param, n_jobs_param, gpu_n_jobs_param, create_model_container, master_model_container, display_container, exp_name_log, logging_param, log_plots_param, fix_imbalance_param, fix_imbalance_method_param, data_before_preprocess, target_param, gpu_param, all_models, _all_models_internal, all_metrics
+    global X, y, X_train, X_test, y_train, y_test, seed, prep_pipe, experiment__, folds_shuffle_param, n_jobs_param, gpu_n_jobs_param, create_model_container, master_model_container, display_container, exp_name_log, logging_param, log_plots_param, fix_imbalance_param, fix_imbalance_method_param, data_before_preprocess, target_param, gpu_param, all_models, _all_models_internal, all_metrics, _internal_pipeline_steps
 
     logger.info("Copying data for preprocessing")
 
@@ -1046,6 +1046,8 @@ def setup(
     seed = random.randint(150, 9000) if session_id is None else session_id
 
     np.random.seed(seed)
+
+    _internal_pipeline_steps = []
 
     """
     preprocessing starts here
@@ -1403,8 +1405,18 @@ def setup(
 
     if fix_imbalance_method_param is None:
         fix_imbalance_model_name = "SMOTE"
+        import six
+
+        sys.modules["sklearn.externals.six"] = six
+        from imblearn.over_sampling import SMOTE
+
+        fix_imbalance_resampler = SMOTE(random_state=seed)
     else:
         fix_imbalance_model_name = str(fix_imbalance_method_param).split("(")[0]
+        fix_imbalance_resampler = fix_imbalance_method_param
+
+    if fix_imbalance_param:
+        _internal_pipeline_steps.append(("fix_imbalance", fix_imbalance_resampler))
 
     # create target_param var
     target_param = target
@@ -1465,10 +1477,10 @@ def setup(
 
     functions = pd.DataFrame(
         [
-            ["session_id", seed],
-            ["Target Type", target_type],
-            ["Label Encoded", label_encoded],
-            ["Original Data", data_before_preprocess.shape],
+            ["session_id ", seed],
+            ["Target Type ", target_type],
+            ["Label Encoded ", label_encoded],
+            ["Original Data ", data_before_preprocess.shape],
             ["Missing Values ", missing_flag],
             ["Numeric Features ", str(float_type)],
             ["Categorical Features ", str(cat_type)],
@@ -1476,13 +1488,14 @@ def setup(
             ["High Cardinality Features ", high_cardinality_features_grid],
             ["High Cardinality Method ", high_cardinality_method_grid],
             [
-                "Sampled Data",
+                "Sampled Data ",
                 f"({X_train.shape[0] + X_test.shape[0]}, {data_before_preprocess.shape[1]})",
             ],
-            ["Transformed Train Set", X_train.shape],
-            ["Transformed Test Set", X_test.shape],
+            ["Transformed Train Set ", X_train.shape],
+            ["Transformed Test Set ", X_test.shape],
             ["Numeric Imputer ", numeric_imputation],
             ["Categorical Imputer ", categorical_imputation],
+            ["Unknown Categoricals Handling ", unknown_categorical_method_grid],
             ["Normalize ", normalize],
             ["Normalize Method ", normalize_grid],
             ["Transformation ", transformation],
@@ -1510,8 +1523,8 @@ def setup(
             ["Feature Interaction ", feature_interaction],
             ["Feature Ratio ", feature_ratio],
             ["Interaction Threshold ", interaction_threshold_grid],
-            ["Fix Imbalance", fix_imbalance_param],
-            ["Fix Imbalance Method", fix_imbalance_model_name],
+            ["Fix Imbalance ", fix_imbalance_param],
+            ["Fix Imbalance Method ", fix_imbalance_model_name],
         ],
         columns=["Description", "Value"],
     )
@@ -2383,6 +2396,7 @@ def create_model(
         logger.info("Declaring custom model")
 
         model = clone(estimator)
+        model.set_params(**kwargs)
 
         if _is_one_vs_rest(model):
             full_name = _get_model_name(model.estimator)
@@ -2395,12 +2409,14 @@ def create_model(
 
     onevsrest_model_definition = _all_models_internal.loc["OneVsRest"]
     # multiclass checking
-    if _is_multiclass() and not _is_special_model(model):
+    if _is_multiclass() and not _is_one_vs_rest(model):
         logger.info("Target variable is Multiclass. OneVsRestClassifier activated")
 
         model = onevsrest_model_definition["Class"](
             model, **onevsrest_model_definition["Args"]
         )
+
+    model = _make_internal_pipeline(model)
 
     """
     MONITOR UPDATE STARTS
@@ -2441,7 +2457,7 @@ def create_model(
         )
 
         gc.collect()
-        return model
+        return model.named_steps["actual_estimator"]
 
     fold_num = 1
 
@@ -2475,9 +2491,6 @@ def create_model(
         ytrain, ytest = data_y.iloc[train_i], data_y.iloc[test_i]
         # time just for fitting
         time_start = time.time()
-
-        if fix_imbalance_param:
-            Xtrain, ytrain = _fix_imbalance(Xtrain, ytrain, fix_imbalance_method_param)
 
         logger.info("Fitting Model")
         with io.capture_output():
@@ -2574,9 +2587,6 @@ def create_model(
     display.update_monitor(-1, "Almost Finished")
     display.display_monitor()
 
-    if fix_imbalance_param:
-        data_X, data_y = _fix_imbalance(data_X, data_y, fix_imbalance_method_param)
-
     model_fit_start = time.time()
     logger.info("Finalizing model")
     with io.capture_output():
@@ -2634,6 +2644,8 @@ def create_model(
     logger.info(
         "create_model() succesfully completed......................................"
     )
+
+    model = model.named_steps["actual_estimator"]
 
     gc.collect()
 
@@ -3006,18 +3018,22 @@ def tune_model(
 
     logger.info("Checking base model")
 
-    _estimator_ = clone(estimator)
+    model = clone(estimator)
     is_stacked_model = False
+    is_one_vs_rest = False
 
-    if hasattr(estimator, "final_estimator"):
+    base_estimator = model
+
+    if _is_one_vs_rest(base_estimator):
+        logger.info("Model is OvR, using the definition of the base_estimator")
+        is_one_vs_rest = True
+        base_estimator = base_estimator.estimator
+    if hasattr(base_estimator, "final_estimator"):
         logger.info("Model is stacked, using the definition of the meta-model")
         is_stacked_model = True
-        estimator_id = _get_model_id(_estimator_.final_estimator)
-    elif _is_one_vs_rest(estimator):
-        estimator_id = _get_model_id(_estimator_.estimator)
-        _estimator_ = _estimator_.estimator
-    else:
-        estimator_id = _get_model_id(_estimator_)
+        base_estimator = base_estimator.final_estimator
+
+    estimator_id = _get_model_id(base_estimator)
 
     estimator_definition = _all_models_internal.loc[estimator_id]
     estimator_name = estimator_definition["Name"]
@@ -3058,14 +3074,27 @@ def tune_model(
             "parameter grid for tuning is empty. If passing custom_grid, make sure that it is not empty. If not passing custom_grid, the passed estimator does not have a built-in tuning grid."
         )
 
-    early_stopping_estimator = _estimator_
+    suffixes = []
 
     if is_stacked_model:
         logger.info("Stacked model passed, will tune meta model hyperparameters")
-        param_grid = {f"final_estimator__{k}": v for k, v in param_grid.items()}
-        early_stopping_estimator = early_stopping_estimator.final_estimator
+        suffixes.append("final_estimator")
+
+    if is_one_vs_rest:
+        logger.info("OneVsRest model passed, will tune estimator hyperparameters")
+        suffixes.append("estimator")
+
+    model = _make_internal_pipeline(model)
+
+    suffixes.append("actual_estimator")
+
+    suffixes = "__".join(reversed(suffixes))
+
+    param_grid = {f"{suffixes}__{k}": v for k, v in param_grid.items()}
 
     search_kwargs = {**estimator_definition["Tune Args"], **kwargs}
+
+    logger.info(f"param_grid: {param_grid}")
 
     def _can_early_stop(estimator, consider_warm_start):
         """
@@ -3131,17 +3160,17 @@ def tune_model(
 
         logger.info("Initializing optuna.integration.OptunaSearchCV")
         model_grid = optuna.integration.OptunaSearchCV(
-            estimator=_estimator_,
+            estimator=model,
             param_distributions=param_grid,
             cv=fold,
-            enable_pruning=early_stopping
-            and _can_early_stop(early_stopping_estimator, False),
+            enable_pruning=early_stopping and _can_early_stop(base_estimator, False),
             max_iter=early_stopping_max_iters,
             n_jobs=n_jobs,
             n_trials=n_iter,
             random_state=seed,
             scoring=optimize,
             study=study,
+            refit=False,
             verbose=0,
             **search_kwargs,
         )
@@ -3155,9 +3184,7 @@ def tune_model(
         if early_stopping in early_stopping_translator:
             early_stopping = early_stopping_translator[early_stopping]
 
-        can_early_stop = early_stopping and _can_early_stop(
-            early_stopping_estimator, False
-        )
+        can_early_stop = early_stopping and _can_early_stop(base_estimator, False)
 
         if not can_early_stop and search_algorithm == "BOHB":
             raise ValueError(
@@ -3173,15 +3200,15 @@ def tune_model(
 
             logger.info("Initializing tune_sklearn.TuneGridSearchCV")
             model_grid = TuneGridSearchCV(
-                estimator=_estimator_,
+                estimator=model,
                 param_grid=param_grid,
-                early_stopping=early_stopping
-                and _can_early_stop(early_stopping_estimator, True),
+                early_stopping=early_stopping and _can_early_stop(base_estimator, True),
                 scoring=optimize,
                 cv=fold,
                 max_iters=early_stopping_max_iters,
                 n_jobs=n_jobs,
                 use_gpu=gpu_param,
+                refit=True,
                 verbose=0,
                 **search_kwargs,
             )
@@ -3192,18 +3219,18 @@ def tune_model(
                 param_grid = get_hyperopt_distributions(param_grid)
             logger.info("Initializing tune_sklearn.TuneSearchCV, hyperopt")
             model_grid = TuneSearchCV(
-                estimator=_estimator_,
+                estimator=model,
                 search_optimization="hyperopt",
                 param_distributions=param_grid,
                 n_iter=n_iter,
-                early_stopping=early_stopping
-                and _can_early_stop(early_stopping_estimator, True),
+                early_stopping=early_stopping and _can_early_stop(base_estimator, True),
                 scoring=optimize,
                 cv=fold,
                 random_state=seed,
                 max_iters=early_stopping_max_iters,
                 n_jobs=n_jobs,
                 use_gpu=gpu_param,
+                refit=True,
                 verbose=0,
                 **search_kwargs,
             )
@@ -3214,18 +3241,18 @@ def tune_model(
                 param_grid = get_CS_distributions(param_grid)
             logger.info("Initializing tune_sklearn.TuneSearchCV, bohb")
             model_grid = TuneSearchCV(
-                estimator=_estimator_,
+                estimator=model,
                 search_optimization="bohb",
                 param_distributions=param_grid,
                 n_iter=n_iter,
-                early_stopping=early_stopping
-                and _can_early_stop(early_stopping_estimator, True),
+                early_stopping=early_stopping and _can_early_stop(base_estimator, True),
                 scoring=optimize,
                 cv=fold,
                 random_state=seed,
                 max_iters=early_stopping_max_iters,
                 n_jobs=n_jobs,
                 use_gpu=gpu_param,
+                refit=True,
                 verbose=0,
                 **search_kwargs,
             )
@@ -3234,10 +3261,9 @@ def tune_model(
 
             logger.info("Initializing tune_sklearn.TuneSearchCV, random")
             model_grid = TuneSearchCV(
-                estimator=_estimator_,
+                estimator=model,
                 param_distributions=param_grid,
-                early_stopping=early_stopping
-                and _can_early_stop(early_stopping_estimator, True),
+                early_stopping=early_stopping and _can_early_stop(base_estimator, True),
                 n_iter=n_iter,
                 scoring=optimize,
                 cv=fold,
@@ -3245,6 +3271,7 @@ def tune_model(
                 max_iters=early_stopping_max_iters,
                 n_jobs=n_jobs,
                 use_gpu=gpu_param,
+                refit=True,
                 verbose=0,
                 **search_kwargs,
             )
@@ -3254,10 +3281,11 @@ def tune_model(
 
             logger.info("Initializing GridSearchCV")
             model_grid = GridSearchCV(
-                estimator=_estimator_,
+                estimator=model,
                 param_grid=param_grid,
                 scoring=optimize,
                 cv=fold,
+                refit=False,
                 n_jobs=n_jobs,
                 **search_kwargs,
             )
@@ -3266,51 +3294,50 @@ def tune_model(
 
             logger.info("Initializing RandomizedSearchCV")
             model_grid = RandomizedSearchCV(
-                estimator=_estimator_,
+                estimator=model,
                 param_distributions=param_grid,
                 scoring=optimize,
                 n_iter=n_iter,
                 cv=fold,
                 random_state=seed,
+                refit=False,
                 n_jobs=n_jobs,
                 **search_kwargs,
             )
 
     # with io.capture_output():
     model_grid.fit(X_train, y_train)
-    best_model = model_grid.best_estimator_
+    best_params = model_grid.best_params_
+    logger.info(f"best_params: {best_params}")
+    best_params = {k[18:]: v for k, v in best_params.items()}
     cv_results = None
     try:
         cv_results = model_grid.cv_results_
     except:
         logger.warning("Couldn't get cv_results from model_grid.")
 
+    model = model.named_steps["actual_estimator"]
+
     display.move_progress()
 
     logger.info("Random search completed")
 
-    # multiclass checking
-    if _is_multiclass() and not is_stacked_model:
-        onevsrest_model_definition = _all_models_internal.loc["OneVsRest"]
-        best_model = onevsrest_model_definition["Class"](
-            best_model, **onevsrest_model_definition["Args"]
-        )
-
     logger.info("SubProcess create_model() called ==================================")
     best_model, model_fit_time = create_model(
-        estimator=best_model,
+        estimator=model,
         system=False,
         return_fit_time=True,
         display=display,
         fold=fold,
         round=round,
+        **best_params,
     )
     model_results = pull()
     logger.info("SubProcess create_model() end ==================================")
 
     if choose_better:
         best_model = _choose_better(
-            _estimator_,
+            model,
             [best_model],
             compare_dimension,
             fold,
@@ -4342,22 +4369,21 @@ def stack_models(
     """
 
     logger.info("Getting model names")
-    model_names = []
-    model_names_counter = {}
+    estimator_dict = {}
     for x in estimator_list:
         if _is_one_vs_rest(x):
-            name = _get_model_name(x.estimator)
-        else:
-            name = _get_model_name(x)
-        if name in model_names_counter:
-            model_names_counter[name] += 1
-            name += f"_{model_names_counter[name]-1}"
-        else:
-            model_names_counter[name] = 1
-        model_names.append(name)
+            x = x.estimator
+        name = _get_model_id(x)
+        suffix = 1
+        original_name = name
+        while name in estimator_dict:
+            name = f"{original_name}_{suffix}"
+            suffix += 1
+        estimator_dict[name] = x
 
-    estimator_list = list(zip(model_names, estimator_list))
+    estimator_list = list(estimator_dict.items())
 
+    logger.info(estimator_list)
     logger.info("Creating StackingClassifier()")
 
     stackingclassifier_model_definition = _all_models_internal.loc["Stacking"]
@@ -4664,8 +4690,7 @@ def plot_model(
     plot_name = available_plots[plot]
     display.move_progress()
 
-    if fix_imbalance_param:
-        data_X, data_y = _fix_imbalance(data_X, data_y, fix_imbalance_method_param)
+    model = _make_internal_pipeline(model)
 
     if plot == "auc":
 
@@ -6953,33 +6978,12 @@ def _is_one_vs_rest(e) -> bool:
     return type(e) == _all_models_internal.loc["OneVsRest"]["Class"]
 
 
-def _fix_imbalance(
-    Xtrain: pd.DataFrame,
-    ytrain: pd.DataFrame,
-    fix_imbalance_method_param: Optional[Any] = None,
-) -> Tuple[pd.DataFrame, pd.DataFrame]:
+def _make_internal_pipeline(model):
+    import pycaret.internal.utils
 
-    """
-    Method to fix imbalance using fix_imbalance_method_param.
-    """
-
-    logger = get_logger()
-    logger.info("Initializing SMOTE")
-
-    if fix_imbalance_method_param is None:
-        import six
-
-        sys.modules["sklearn.externals.six"] = six
-        from imblearn.over_sampling import SMOTE
-
-        resampler = SMOTE(random_state=seed)
-    else:
-        resampler = fix_imbalance_method_param
-
-    with io.capture_output():
-        Xtrain, ytrain = resampler.fit_sample(Xtrain, ytrain)
-    logger.info("Resampling completed")
-    return Xtrain, ytrain
+    return pycaret.internal.utils.make_internal_pipeline(
+        _internal_pipeline_steps, model
+    )
 
 
 def _choose_better(
@@ -7418,9 +7422,9 @@ def _mlflow_log_model(
 
         # Log hyperparameter tuning grid
         if tune_cv_results:
-            d1 = tune_cv_results.cv_results_.get("params")
+            d1 = tune_cv_results.get("params")
             dd = pd.DataFrame.from_dict(d1)
-            dd["Score"] = tune_cv_results.cv_results_.get("mean_test_score")
+            dd["Score"] = tune_cv_results.get("mean_test_score")
             dd.to_html("Iterations.html", col_space=75, justify="left")
             mlflow.log_artifact("Iterations.html")
             os.remove("Iterations.html")
