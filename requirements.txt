@@ -4,7 +4,7 @@ seaborn
 matplotlib
 IPython
 joblib
-scikit-learn>=0.23 
+scikit-learn>=0.23.2
 ipywidgets
 yellowbrick>=1.0.1
 xgboost>=1.1.0
@@ -25,7 +25,7 @@ pandas-profiling>=2.8.0
 kmodes>=0.10.1
 datefinder>=0.7.0
 mlflow
-imbalanced-learn>=0.6.2
+imbalanced-learn>=0.7.0
 #psutil - removing it as causing problem in Dockerfile
 #awscli - only required in deploy_model for AWS
 #azure-storage-blob - only required in deploy_model for Azure
