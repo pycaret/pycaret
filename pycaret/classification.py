@@ -2,7 +2,7 @@
 # Author: Moez Ali <moez.ali@queensu.ca>
 # License: MIT
 # Release: PyCaret 2.1.1
-# Last modified : 29/08/2020
+# Last modified : 30/08/2020
 
 def setup(data,  
           target,   
@@ -2319,6 +2319,8 @@ def compare_models(exclude = None, #changed blacklist to exclude in pycaret==2.1
                 model_names.append('CatBoost Classifier')   
 
     #multiclass check
+    # this section is no more needed as all classifiers in sklearn supports multiclass by default
+    """
     model_library_multiclass = []
     if y.value_counts().count() > 2:
         for i in model_library:
@@ -2326,7 +2328,7 @@ def compare_models(exclude = None, #changed blacklist to exclude in pycaret==2.1
             model_library_multiclass.append(model)
             
         model_library = model_library_multiclass
-        
+    """    
     progress.value += 1
 
     
@@ -3195,29 +3197,15 @@ def create_model(estimator = None,
                             'BaggingClassifier' : 'Bagging Classifier',
                             'VotingClassifier' : 'Voting Classifier'} 
 
-        if y.value_counts().count() > 2:
+        mn = get_model_name(estimator)
 
-            mn = get_model_name(estimator.estimator)
+        if 'catboost' in mn:
+            mn = 'CatBoostClassifier'
 
-            if 'catboost' in mn:
-                mn = 'CatBoostClassifier'
-
-            if mn in model_dict_logging.keys():
-                full_name = model_dict_logging.get(mn)
-            else:
-                full_name = mn
-        
+        if mn in model_dict_logging.keys():
+            full_name = model_dict_logging.get(mn)
         else:
-
-            mn = get_model_name(estimator)
-            
-            if 'catboost' in mn:
-                mn = 'CatBoostClassifier'
-
-            if mn in model_dict_logging.keys():
-                full_name = model_dict_logging.get(mn)
-            else:
-                full_name = mn
+            full_name = mn
     
     logger.info(str(full_name) + ' Imported succesfully')
 
@@ -3238,11 +3226,14 @@ def create_model(estimator = None,
         model = AdaBoostClassifier(model, n_estimators=10, random_state=seed)
     
     #multiclass checking
+    # this section is no more needed as all classifiers in sklearn supports multiclass by default
+
+    """
     if y.value_counts().count() > 2:
         logger.info("Target variable is Multiclass. OneVsRestClassifier activated")     
         from sklearn.multiclass import OneVsRestClassifier
         model = OneVsRestClassifier(model, n_jobs=n_jobs_param)
-    
+    """
     
     '''
     MONITOR UPDATE STARTS
@@ -3922,12 +3913,16 @@ def tune_model(estimator = None,
     logger.info("Creating estimator clone to inherit model parameters")
     #create estimator clone from sklearn.base
     from sklearn.base import clone
-    
+    estimator_clone = clone(estimator)
+
+    # this section is no more needed as all classifiers in sklearn supports multiclass by default
+    '''
     if y.value_counts().count() > 2:
         estimator_clone = clone(estimator.estimator)
     else:
         estimator_clone = clone(estimator)
-    
+    '''
+
     progress.value += 1
 
     logger.info("Importing libraries")    
@@ -3986,10 +3981,15 @@ def tune_model(estimator = None,
     def get_model_name(e):
         return str(e).split("(")[0]
 
+    # this section is no more needed as all classifiers in sklearn supports multiclass by default
+    """
     if len(estimator.classes_) > 2:
         mn = get_model_name(estimator.estimator)
     else:
         mn = get_model_name(estimator)
+    """
+
+    mn = get_model_name(estimator)
 
     if 'catboost' in mn:
         mn = 'CatBoostClassifier'
@@ -4529,11 +4529,15 @@ def tune_model(estimator = None,
     logger.info("Random search completed")
         
     #multiclass checking
+    # this section is no more needed as all classifiers in sklearn supports multiclass by default
+
+    """
     if y.value_counts().count() > 2:
         from sklearn.multiclass import OneVsRestClassifier
         model = OneVsRestClassifier(model)
         best_model = model
-        
+    """
+
     '''
     MONITOR UPDATE STARTS
     '''
@@ -5139,16 +5143,8 @@ def ensemble_model(estimator,
         from sklearn.ensemble import AdaBoostClassifier
         
         try:
-            if hasattr(estimator,'n_classes_'):
-                if estimator.n_classes_ > 2:
-                    check_model = estimator.estimator
-                    check_model = AdaBoostClassifier(check_model, n_estimators=10, random_state=seed)
-                    from sklearn.multiclass import OneVsRestClassifier
-                    check_model = OneVsRestClassifier(check_model)
-                    check_model.fit(X_train, y_train)
-            else:
-                check_model = AdaBoostClassifier(estimator, n_estimators=10, random_state=seed)
-                check_model.fit(X_train, y_train)
+            check_model = AdaBoostClassifier(estimator, n_estimators=10, random_state=seed)
+            check_model.fit(X_train, y_train)
         except:
             sys.exit("(Type Error): Estimator does not provide class_weights or predict_proba function and hence not supported for the Boosting method. Change the estimator or method to 'Bagging'.") 
         
@@ -5252,11 +5248,16 @@ def ensemble_model(estimator,
     def get_model_name(e):
         return str(e).split("(")[0]
 
+    # this section is no more needed as all classifiers in sklearn supports multiclass by default
+    '''
     if y.value_counts().count() > 2:
         mn = get_model_name(estimator.estimator)
     else:
         mn = get_model_name(estimator)
+    '''
 
+    mn = get_model_name(estimator)
+    
     if 'catboost' in str(estimator):
         mn = 'CatBoostClassifier'
     
@@ -5317,9 +5318,11 @@ def ensemble_model(estimator,
     MONITOR UPDATE ENDS
     '''
     
+    '''
     if hasattr(estimator,'n_classes_'):
         if estimator.n_classes_ > 2:
             model = estimator.estimator
+    '''
 
     logger.info("Importing untrained ensembler")
 
@@ -5333,11 +5336,14 @@ def ensemble_model(estimator,
         model = AdaBoostClassifier(model, n_estimators=n_estimators, random_state=seed)
         logger.info("AdaBoostClassifier() succesfully imported")
 
+    # this section is no more needed as all classifiers in sklearn supports multiclass by default
+    '''
     if y.value_counts().count() > 2:
         from sklearn.multiclass import OneVsRestClassifier
         model = OneVsRestClassifier(model)
         logger.info("OneVsRestClassifier() succesfully imported")
-        
+    '''
+
     progress.value += 1
     
     '''
@@ -8672,18 +8678,11 @@ def calibrate_model(estimator,
     def get_model_name(e):
         return str(e).split("(")[0]
 
-    if len(estimator.classes_) > 2:
 
-        if hasattr(estimator, 'voting'):
-            mn = get_model_name(estimator)
-        else:
-            mn = get_model_name(estimator.estimator)
-
+    if hasattr(estimator, 'voting'):
+        mn = 'VotingClassifier'
     else:
-        if hasattr(estimator, 'voting'):
-            mn = 'VotingClassifier'
-        else:
-            mn = get_model_name(estimator)
+        mn = get_model_name(estimator)
 
     if 'catboost' in mn:
         mn = 'CatBoostClassifier' 
@@ -9766,26 +9765,16 @@ def finalize_model(estimator):
                             'VotingClassifier' : 'Voting Classifier',
                             'StackingClassifier' : 'Stacking Classifier'}
                             
-
-    if len(estimator.classes_) > 2:
-
-        if hasattr(estimator, 'voting'):
-            mn = get_model_name(estimator)
-        else:
-            mn = get_model_name(estimator.estimator)
-
+    if hasattr(estimator, 'voting'):
+        mn = 'VotingClassifier'
     else:
+        mn = get_model_name(estimator)
 
-        if hasattr(estimator, 'voting'):
-            mn = 'VotingClassifier'
-        else:
-            mn = get_model_name(estimator)
+    if 'BaggingClassifier' in mn:
+        mn = get_model_name(estimator.base_estimator_)
 
-        if 'BaggingClassifier' in mn:
-            mn = get_model_name(estimator.base_estimator_)
-
-        if 'CalibratedClassifierCV' in mn:
-            mn = get_model_name(estimator.base_estimator)
+    if 'CalibratedClassifierCV' in mn:
+        mn = get_model_name(estimator.base_estimator)
 
     if 'catboost' in mn:
         mn = 'CatBoostClassifier'
