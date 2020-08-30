@@ -20,9 +20,12 @@ For more information on PyCaret, please visit our official website https://www.p
 PyCaret `2.1` is now available. See `2.1` release notes. The easiest way to install pycaret is using pip. 
 
 ```python
-pip install pycaret==2.1
+pip install --upgrade pycaret
 ```
+Subsequent to the release of PyCaret `2.1` we have been identified of a bug causing issues in model logging. A patch has been released under `2.1.1` to fix the issue. Please see release notes for more details.
+
 Docs: https://pycaret.readthedocs.io/en/latest/
+
 
 ## Optional dependencies
 Following libraries are not hard dependencies and are not automatically installed when you install PyCaret. To use all functionalities of PyCaret, these optional dependencies must be installed.
