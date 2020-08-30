@@ -2447,10 +2447,6 @@ def create_model(
 
         display.display("", clear=True)
 
-        logger.info(f"create_model_container: {len(create_model_container)}")
-        logger.info(f"master_model_container: {len(master_model_container)}")
-        logger.info(f"display_container: {len(display_container)}")
-
         logger.info(str(model))
         logger.info(
             "create_models() succesfully completed......................................"
@@ -2624,6 +2620,8 @@ def create_model(
 
     display.move_progress()
 
+    model = model.named_steps["actual_estimator"]
+
     logger.info("Uploading results into container")
 
     # storing results in create_model_container
@@ -2644,9 +2642,6 @@ def create_model(
     logger.info(
         "create_model() succesfully completed......................................"
     )
-
-    model = model.named_steps["actual_estimator"]
-
     gc.collect()
 
     if return_fit_time:
@@ -5554,7 +5549,7 @@ def calibrate_model(
     logger.info("Preparing display monitor")
 
     if not display:
-        progress_args = {"max": fold + 3 + 4}
+        progress_args = {"max": fold + 2 + 4}
         master_display_columns = all_metrics["Display Name"].to_list()
         timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
         monitor_rows = [
@@ -5577,17 +5572,6 @@ def calibrate_model(
 
     np.random.seed(seed)
 
-    logger.info("Copying training dataset")
-    # Storing X_train and y_train in data_X and data_y parameter
-    data_X = X_train.copy()
-    data_y = y_train.copy()
-
-    # reset index
-    data_X.reset_index(drop=True, inplace=True)
-    data_y.reset_index(drop=True, inplace=True)
-
-    display.move_progress()
-
     logger.info("Getting model name")
 
     full_name = _get_model_name(estimator)
@@ -5608,6 +5592,9 @@ def calibrate_model(
     # calibrating estimator
 
     logger.info("Importing untrained CalibratedClassifierCV")
+
+    if _is_one_vs_rest(estimator):
+        estimator = estimator.estimator
 
     calibrated_model_definition = _all_models_internal.loc["CalibratedCV"]
     model = calibrated_model_definition["Class"](
@@ -5633,32 +5620,11 @@ def calibrate_model(
 
     model_results = model_results.round(round)
 
-    # refitting the model on complete X_train, y_train
-    display.update_monitor(1, "Compiling Final Model")
-    display.display_monitor()
-
-    model_fit_start = time.time()
-    logger.info("Finalizing model")
-    with io.capture_output():
-        model.fit(data_X, data_y)
-    model_fit_end = time.time()
-
-    model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
-
     display.move_progress()
 
     # end runtime
     runtime_end = time.time()
     runtime = np.array(runtime_end - runtime_start).round(2)
-
-    # storing results in create_model_container
-    logger.info("Uploading results into container")
-    create_model_container.append(model_results)
-    display_container.append(model_results)
-
-    # storing results in master_model_container
-    logger.info("Uploading model into container")
-    master_model_container.append(model)
 
     # mlflow logging
     if logging_param:
@@ -6062,6 +6028,7 @@ def predict_model(
     else:
 
         if "Pipeline" in str(type(estimator)):
+            logger.info(estimator)
             _, dtypes = next(step for step in estimator.steps if step[0] == "dtypes")
         else:
             try:
