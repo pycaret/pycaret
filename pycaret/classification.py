@@ -9901,8 +9901,11 @@ def finalize_model(estimator):
             
             # define model signature
             from mlflow.models.signature import infer_signature
-            signature = infer_signature(data_before_preprocess)
-
+            try:
+                signature = infer_signature(data_before_preprocess)
+            except:
+                signature = None
+            
             # log model as sklearn flavor
             prep_pipe_temp = deepcopy(prep_pipe)
             prep_pipe_temp.steps.append(['trained model', model_final])
