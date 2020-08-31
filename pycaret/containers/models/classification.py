@@ -1236,34 +1236,6 @@ class VotingClassifierContainer(ClassifierContainer):
             is_gpu_enabled=False,
         )
 
-
-class OneVsRestClassifierContainer(ClassifierContainer):
-    def __init__(self, globals_dict: dict) -> None:
-        logger = get_logger()
-        np.random.seed(globals_dict["seed"])
-        from sklearn.multiclass import OneVsRestClassifier
-
-        args = {"n_jobs": globals_dict["gpu_n_jobs_param"]}
-        tune_args = {}
-        tune_grid = {}
-        tune_distributions = {}
-
-        _leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
-
-        super().__init__(
-            id="OneVsRest",
-            name="One Vs Rest Classifier",
-            class_def=OneVsRestClassifier,
-            args=args,
-            tune_grid=tune_grid,
-            tune_distribution=tune_distributions,
-            tune_args=tune_args,
-            shap=False,
-            is_special=True,
-            is_gpu_enabled=False,
-        )
-
-
 class CalibratedClassifierCVContainer(ClassifierContainer):
     def __init__(self, globals_dict: dict) -> None:
         logger = get_logger()

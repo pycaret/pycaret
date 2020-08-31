@@ -121,8 +121,7 @@ def setup(
 
     target: str
         Name of the target column to be passed in as a string. The target variable could 
-        be binary or multiclass. In case of a multiclass target, all estimators are wrapped
-        with a OneVsRest classifier.
+        be binary or multiclass.
 
     train_size: float, default = 0.7
         Size of the training set. By default, 70% of the data will be used for training 
@@ -1949,14 +1948,7 @@ def compare_models(
 
     for i, model in enumerate(model_library):
 
-        if (
-            not hasattr(model, "estimators")
-            and not isinstance(model, str)
-            and _is_multiclass()
-        ):
-            model_name = _get_model_name(model.estimator)
-        else:
-            model_name = _get_model_name(model)
+        model_name = _get_model_name(model)
 
         if isinstance(model, str):
             logger.info(f"Initializing {model_name}")
@@ -2398,23 +2390,11 @@ def create_model(
         model = clone(estimator)
         model.set_params(**kwargs)
 
-        if _is_one_vs_rest(model):
-            full_name = _get_model_name(model.estimator)
-        else:
-            full_name = _get_model_name(model)
+        full_name = _get_model_name(model)
 
     logger.info(f"{full_name} Imported succesfully")
 
     display.move_progress()
-
-    onevsrest_model_definition = _all_models_internal.loc["OneVsRest"]
-    # multiclass checking
-    if _is_multiclass() and not _is_one_vs_rest(model):
-        logger.info("Target variable is Multiclass. OneVsRestClassifier activated")
-
-        model = onevsrest_model_definition["Class"](
-            model, **onevsrest_model_definition["Args"]
-        )
 
     model = _make_internal_pipeline(model)
 
@@ -3015,14 +2995,9 @@ def tune_model(
 
     model = clone(estimator)
     is_stacked_model = False
-    is_one_vs_rest = False
 
     base_estimator = model
 
-    if _is_one_vs_rest(base_estimator):
-        logger.info("Model is OvR, using the definition of the base_estimator")
-        is_one_vs_rest = True
-        base_estimator = base_estimator.estimator
     if hasattr(base_estimator, "final_estimator"):
         logger.info("Model is stacked, using the definition of the meta-model")
         is_stacked_model = True
@@ -3075,10 +3050,6 @@ def tune_model(
         logger.info("Stacked model passed, will tune meta model hyperparameters")
         suffixes.append("final_estimator")
 
-    if is_one_vs_rest:
-        logger.info("OneVsRest model passed, will tune estimator hyperparameters")
-        suffixes.append("estimator")
-
     model = _make_internal_pipeline(model)
 
     suffixes.append("actual_estimator")
@@ -3106,7 +3077,7 @@ def tune_model(
         from sklearn.tree import BaseDecisionTree
         from sklearn.ensemble import BaseEnsemble
 
-        can_partial_fit = callable(getattr(estimator, "partial_fit", None))
+        can_partial_fit = hasattr(estimator, "partial_fit")
 
         if consider_warm_start:
             is_not_tree_subclass = not issubclass(type(estimator), BaseDecisionTree)
@@ -3158,7 +3129,7 @@ def tune_model(
             estimator=model,
             param_distributions=param_grid,
             cv=fold,
-            enable_pruning=early_stopping and _can_early_stop(base_estimator, False),
+            enable_pruning=early_stopping and _can_early_stop(model, False),
             max_iter=early_stopping_max_iters,
             n_jobs=n_jobs,
             n_trials=n_iter,
@@ -3179,7 +3150,7 @@ def tune_model(
         if early_stopping in early_stopping_translator:
             early_stopping = early_stopping_translator[early_stopping]
 
-        can_early_stop = early_stopping and _can_early_stop(base_estimator, False)
+        can_early_stop = early_stopping and _can_early_stop(model, True)
 
         if not can_early_stop and search_algorithm == "BOHB":
             raise ValueError(
@@ -3197,7 +3168,7 @@ def tune_model(
             model_grid = TuneGridSearchCV(
                 estimator=model,
                 param_grid=param_grid,
-                early_stopping=early_stopping and _can_early_stop(base_estimator, True),
+                early_stopping=can_early_stop,
                 scoring=optimize,
                 cv=fold,
                 max_iters=early_stopping_max_iters,
@@ -3218,7 +3189,7 @@ def tune_model(
                 search_optimization="hyperopt",
                 param_distributions=param_grid,
                 n_iter=n_iter,
-                early_stopping=early_stopping and _can_early_stop(base_estimator, True),
+                early_stopping=can_early_stop,
                 scoring=optimize,
                 cv=fold,
                 random_state=seed,
@@ -3240,7 +3211,7 @@ def tune_model(
                 search_optimization="bohb",
                 param_distributions=param_grid,
                 n_iter=n_iter,
-                early_stopping=early_stopping and _can_early_stop(base_estimator, True),
+                early_stopping=can_early_stop,
                 scoring=optimize,
                 cv=fold,
                 random_state=seed,
@@ -3258,7 +3229,7 @@ def tune_model(
             model_grid = TuneSearchCV(
                 estimator=model,
                 param_distributions=param_grid,
-                early_stopping=early_stopping and _can_early_stop(base_estimator, True),
+                early_stopping=can_early_stop,
                 n_iter=n_iter,
                 scoring=optimize,
                 cv=fold,
@@ -3508,24 +3479,11 @@ def ensemble_model(
         check_model = estimator
 
         try:
-            if _is_one_vs_rest(check_model):
-                check_model = check_model.estimator
-                check_model = boosting_model_definition["Class"](
-                    check_model,
-                    n_estimators=n_estimators,
-                    **boosting_model_definition["Args"],
-                )
-                onevsrest_model_definition = _all_models_internal.loc["OneVsRest"]
-                check_model = onevsrest_model_definition["Class"](
-                    check_model, **onevsrest_model_definition["Args"]
-                )
-
-            else:
-                check_model = boosting_model_definition["Class"](
-                    check_model,
-                    n_estimators=n_estimators,
-                    **boosting_model_definition["Args"],
-                )
+            check_model = boosting_model_definition["Class"](
+                check_model,
+                n_estimators=n_estimators,
+                **boosting_model_definition["Args"],
+            )
             with io.capture_output():
                 check_model.fit(X_train, y_train)
         except:
@@ -3561,12 +3519,6 @@ def ensemble_model(
         if not optimize["Multiclass"]:
             raise TypeError(
                 f"Optimization metric not supported for multiclass problems. See docstring for list of other optimization parameters."
-            )
-        if hasattr(estimator, "estimators") and any(
-            _is_one_vs_rest(model) for name, model in estimator.estimators
-        ):
-            raise TypeError(
-                f"Ensembling of VotingClassifier() and StackingClassifier() is not supported for multiclass problems."
             )
 
     """
@@ -3622,10 +3574,7 @@ def ensemble_model(
 
     _estimator_ = estimator
 
-    if _is_one_vs_rest(estimator):
-        estimator_id = _get_model_id(estimator.estimator)
-    else:
-        estimator_id = _get_model_id(estimator)
+    estimator_id = _get_model_id(estimator)
 
     estimator_definition = _all_models_internal.loc[estimator_id]
     estimator_name = estimator_definition["Name"]
@@ -3643,8 +3592,6 @@ def ensemble_model(
     """
 
     model = _estimator_
-    if _is_one_vs_rest(model):
-        model = model.estimator
 
     logger.info("Importing untrained ensembler")
 
@@ -3664,15 +3611,6 @@ def ensemble_model(
         boosting_model_definition = _all_models_internal.loc["ada"]
         model = boosting_model_definition["Class"](
             model, n_estimators=n_estimators, **boosting_model_definition["Args"]
-        )
-
-    onevsrest_model_definition = _all_models_internal.loc["OneVsRest"]
-    # multiclass checking
-    if _is_multiclass() and not _is_special_model(model):
-        logger.info("Target variable is Multiclass. OneVsRestClassifier activated")
-
-        model = onevsrest_model_definition["Class"](
-            model, **onevsrest_model_definition["Args"]
         )
 
     display.move_progress()
@@ -4032,24 +3970,17 @@ def blend_models(
             estimator_list.append((model_name, model))
             display.move_progress()
     else:
-        model_names = []
-        model_names_counter = {}
+        estimator_dict = {}
         for x in estimator_list:
-            if _is_one_vs_rest(x):
-                name = _get_model_name(x.estimator)
-            else:
-                name = _get_model_name(x)
-            if name in model_names_counter:
-                model_names_counter[name] += 1
-                name += f"_{model_names_counter[name]-1}"
-            else:
-                model_names_counter[name] = 1
-            model_names.append(name)
+            name = _get_model_id(x)
+            suffix = 1
+            original_name = name
+            while name in estimator_dict:
+                name = f"{original_name}_{suffix}"
+                suffix += 1
+            estimator_dict[name] = x
 
-        estimator_list = list(zip(model_names, estimator_list))
-
-    # if _is_multiclass():
-    #    estimator_list = [x.estimator for x in estimator_list]
+        estimator_list = list(estimator_dict.items())
 
     votingclassifier_model_definition = _all_models_internal.loc["Voting"]
     try:
@@ -4366,8 +4297,6 @@ def stack_models(
     logger.info("Getting model names")
     estimator_dict = {}
     for x in estimator_list:
-        if _is_one_vs_rest(x):
-            x = x.estimator
         name = _get_model_id(x)
         suffix = 1
         original_name = name
@@ -4511,7 +4440,9 @@ def plot_model(
         * 'vc' - Validation Curve                  
         * 'dimension' - Dimension Learning           
         * 'feature' - Feature Importance              
-        * 'parameter' - Model Hyperparameter          
+        * 'parameter' - Model Hyperparameter
+        * 'lift' - Lift Curve
+        * 'gain' - Gain Chart
 
     scale: float, default = 1
         The resolution scale of the figure.
@@ -4572,6 +4503,8 @@ def plot_model(
         ("Dimensions", "dimension"),
         ("Feature Importance", "feature"),
         ("Decision Boundary", "boundary"),
+        ("Lift Chart", "lift"),
+        ("Gain Chart", "gain"),
     ]
     available_plots = {k: v for v, k in available_plots}
     print(available_plots)
@@ -4686,6 +4619,19 @@ def plot_model(
     display.move_progress()
 
     model = _make_internal_pipeline(model)
+
+    _base_dpi = 100
+
+    class MatplotlibDefaultDPI(object):
+        def __init__(self, base_dpi: float = 100, scale_to_set: float = 1):
+            self.default_dpi = plt.rcParams["figure.dpi"]
+            plt.rcParams["figure.dpi"] = base_dpi * scale_to_set
+
+        def __enter__(self) -> None:
+            return None
+
+        def __exit__(self, type, value, traceback):
+            plt.rcParams["figure.dpi"] = self.default_dpi
 
     if plot == "auc":
 
@@ -4885,6 +4831,56 @@ def plot_model(
             display=display,
         )
 
+    elif plot == "lift":
+
+        import scikitplot as skplt
+
+        display.move_progress()
+        logger.info("Generating predictions / predict_proba on X_test")
+        y_test__ = model.predict(X_test)
+        predict_proba__ = model.predict_proba(X_test)
+        display.move_progress()
+        display.move_progress()
+        display.clear_output()
+        with MatplotlibDefaultDPI(base_dpi=_base_dpi, scale_to_set=scale):
+            fig = skplt.metrics.plot_lift_curve(
+                y_test__, predict_proba__, figsize=(10, 6)
+            )
+            if save:
+                logger.info(f"Saving '{plot_name}.png' in current active directory")
+                plt.savefig(f"{plot_name}.png")
+                if not system:
+                    plt.close()
+            else:
+                plt.show()
+
+        logger.info("Visual Rendered Successfully")
+
+    elif plot == "gain":
+
+        import scikitplot as skplt
+
+        display.move_progress()
+        logger.info("Generating predictions / predict_proba on X_test")
+        y_test__ = model.predict(X_test)
+        predict_proba__ = model.predict_proba(X_test)
+        display.move_progress()
+        display.move_progress()
+        display.clear_output()
+        with MatplotlibDefaultDPI(base_dpi=_base_dpi, scale_to_set=scale):
+            fig = skplt.metrics.plot_cumulative_gain(
+                y_test__, predict_proba__, figsize=(10, 6)
+            )
+            if save:
+                logger.info(f"Saving '{plot_name}.png' in current active directory")
+                plt.savefig(f"{plot_name}.png")
+                if not system:
+                    plt.close()
+            else:
+                plt.show()
+
+        logger.info("Visual Rendered Successfully")
+
     elif plot == "manifold":
 
         from yellowbrick.features import Manifold
@@ -4913,7 +4909,7 @@ def plot_model(
 
         model_name = str(model).split("(")[0]
 
-        plt.figure(figsize=(7, 6), dpi=100 * scale)
+        plt.figure(figsize=(7, 6), dpi=_base_dpi * scale)
         ax1 = plt.subplot2grid((3, 1), (0, 0), rowspan=2)
 
         ax1.plot([0, 1], [0, 1], "k:", label="Perfectly calibrated")
@@ -5097,7 +5093,7 @@ def plot_model(
         )
         my_range = range(1, len(sorted_df.index) + 1)
         display.move_progress()
-        plt.figure(figsize=(8, 5), dpi=100 * scale)
+        plt.figure(figsize=(8, 5), dpi=_base_dpi * scale)
         plt.hlines(y=my_range, xmin=0, xmax=sorted_df["Value"], color="skyblue")
         plt.plot(sorted_df["Value"], my_range, "o")
         display.move_progress()
@@ -5181,6 +5177,8 @@ def evaluate_model(estimator):
             ("Dimensions", "dimension"),
             ("Feature Importance", "feature"),
             ("Decision Boundary", "boundary"),
+            ("Lift Chart", "lift"),
+            ("Gain Chart", "gain"),
         ],
         description="Plot Type:",
         disabled=False,
@@ -5593,9 +5591,6 @@ def calibrate_model(
 
     logger.info("Importing untrained CalibratedClassifierCV")
 
-    if _is_one_vs_rest(estimator):
-        estimator = estimator.estimator
-
     calibrated_model_definition = _all_models_internal.loc["CalibratedCV"]
     model = calibrated_model_definition["Class"](
         base_estimator=estimator,
@@ -5755,11 +5750,6 @@ def optimize_threshold(
 
     # exception 1 for multi-class
     if _is_multiclass():
-        raise TypeError(
-            "optimize_threshold() cannot be used when target is multi-class."
-        )
-
-    if _is_one_vs_rest(estimator):
         raise TypeError(
             "optimize_threshold() cannot be used when target is multi-class."
         )
@@ -5971,11 +5961,6 @@ def predict_model(
     """
 
     if probability_threshold is not None:
-        if _is_one_vs_rest(estimator):
-            raise TypeError(
-                "probability_threshold parameter cannot be used when target is multi-class."
-            )
-
         # probability_threshold allowed types
         allowed_types = [int, float]
         if type(probability_threshold) not in allowed_types:
@@ -6573,9 +6558,11 @@ def models(
     """
 
     def filter_model_df_by_type(df):
-        model_type = {"linear": ["lr", "ridge", "svm"],
-                      "tree": ["dt"],
-                      "ensemble": ["rf", "et", "gbc", "xgboost", "lightgbm", "catboost", "ada"]}
+        model_type = {
+            "linear": ["lr", "ridge", "svm"],
+            "tree": ["dt"],
+            "ensemble": ["rf", "et", "gbc", "xgboost", "lightgbm", "catboost", "ada"],
+        }
 
         # Check if type is valid
         if type not in list(model_type) + [None]:
@@ -6938,13 +6925,6 @@ def set_config(variable: str, value):
     return pycaret.internal.utils.set_config(variable, value, globals())
 
 
-def _is_one_vs_rest(e) -> bool:
-    """
-    Checks if the estimator is OneVsRestClassifier.
-    """
-    return type(e) == _all_models_internal.loc["OneVsRest"]["Class"]
-
-
 def _make_internal_pipeline(model):
     import pycaret.internal.utils
 
@@ -7079,7 +7059,7 @@ def _sample_data(
         MONITOR UPDATE ENDS
         """
 
-        X_, X__, y_, y__ = train_test_split(
+        X_, _, y_, _ = train_test_split(
             X,
             y,
             test_size=1 - i,
@@ -7197,7 +7177,7 @@ def _sample_data(
     else:
 
         sample_n = float(sample_size)
-        X_selected, X_discard, y_selected, y_discard = train_test_split(
+        X_selected, _, y_selected, _ = train_test_split(
             X,
             y,
             test_size=1 - sample_n,
