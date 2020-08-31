@@ -8,7 +8,8 @@ import pandas.io.formats.style
 import ipywidgets as ipw
 from IPython.display import display, HTML, clear_output, update_display
 from pycaret.internal.logging import get_logger
-from typing import Any, Optional, Dict, Union
+from typing import Any, List, Optional, Dict, Tuple, Union
+from sklearn.pipeline import Pipeline
 import numpy as np
 
 
@@ -171,3 +172,42 @@ def calculate_metrics(
             score_dict[row[display_name_idx]], calculated_metric
         )
     return score_dict
+
+
+def normalize_custom_transformers(
+    transformers: Union[Any, Tuple[str, Any], List[Any], List[Tuple[str, Any]]]
+) -> list:
+    if isinstance(transformers, dict):
+        transformers = list(transformers.items())
+    if isinstance(transformers, list):
+        for i, x in enumerate(transformers):
+            _check_custom_transformer(x)
+            if not isinstance(x, tuple):
+                transformers[i] = (f"custom_step_{i}", x)
+    else:
+        _check_custom_transformer(transformers)
+        if not isinstance(transformers, tuple):
+            transformers = (f"custom_step", transformers)
+        if isinstance(transformers[0], Pipeline):
+            return transformers.steps
+        transformers = [transformers]
+    return transformers
+
+
+def _check_custom_transformer(transformer):
+    actual_transformer = transformer
+    if isinstance(transformer, tuple):
+        if len(transformer) != 2:
+            raise ValueError("Transformer tuple must have a size of 2.")
+        if not isinstance(transformer[0], str):
+            raise TypeError("First element of transformer tuple must be a str.")
+        actual_transformer = transformer[1]
+    if not (
+        hasattr(actual_transformer, "fit")
+        and hasattr(actual_transformer, "transform")
+        and hasattr(actual_transformer, "fit_transform")
+    ):
+        raise TypeError(
+            "Transformer must be an object implementing methods 'fit', 'transform' and 'fit_transform'."
+        )
+

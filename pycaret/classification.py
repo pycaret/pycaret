@@ -4,7 +4,7 @@
 # Release: PyCaret 2.2
 # Last modified : 26/08/2020
 
-from pycaret.internal.utils import color_df
+from pycaret.internal.utils import color_df, normalize_custom_transformers
 from pycaret.internal.logging import get_logger
 from pycaret.internal.plotting import show_yellowbrick_plot
 from pycaret.internal.Display import Display
@@ -84,6 +84,12 @@ def setup(
     folds_shuffle: bool = False,
     n_jobs: int = -1,
     use_gpu: bool = False,  # added in pycaret==2.1
+    custom_pipeline_steps_after_split_before_pycaret: Union[
+        Any, Tuple[str, Any], List[Any], List[Tuple[str, Any]]
+    ] = None,
+    custom_pipeline_steps_after_split_after_pycaret: Union[
+        Any, Tuple[str, Any], List[Any], List[Tuple[str, Any]]
+    ] = None,
     html: bool = True,
     session_id: Optional[int] = None,
     log_experiment: bool = False,
@@ -435,6 +441,20 @@ def setup(
         - XGBoost
         - Logistic Regression, Ridge, SVM, SVC - requires cuML >= 0.15 to be installed.
           https://github.com/rapidsai/cuml
+
+    custom_pipeline_steps_after_split_before_pycaret: transformer or list of transformers or tuple
+    (str, transformer) or list of tuples (str, transformer), default = None
+        If set, will append the passed transformers (including Pipelines) to the PyCaret
+        preprocessing Pipeline applied after train-test split during model fitting.
+        This Pipeline is applied on each CV fold separately and on the final fit.
+        The transformers will be applied before PyCaret transformers (eg. SMOTE).
+
+    custom_pipeline_steps_after_split_after_pycaret: transformer or list of transformers or tuple
+    (str, transformer) or list of tuples (str, transformer), default = None
+        If set, will append the passed transformers (including Pipelines) to the PyCaret
+        preprocessing Pipeline applied after train-test split during model fitting.
+        This Pipeline is applied on each CV fold separately and on the final fit.
+        The transformers will be applied after PyCaret transformers (eg. SMOTE).
 
     html: bool, default = True
         If set to False, prevents runtime display of monitor. This must be set to False
@@ -1414,8 +1434,24 @@ def setup(
         fix_imbalance_model_name = str(fix_imbalance_method_param).split("(")[0]
         fix_imbalance_resampler = fix_imbalance_method_param
 
+    # add custom transformers to prep pipe
+    if custom_pipeline_steps_after_split_before_pycaret:
+        custom_steps = normalize_custom_transformers(
+            custom_pipeline_steps_after_split_before_pycaret
+        )
+        _internal_pipeline_steps.extend(custom_steps)
+
     if fix_imbalance_param:
         _internal_pipeline_steps.append(("fix_imbalance", fix_imbalance_resampler))
+
+    # add custom transformers to prep pipe
+    if custom_pipeline_steps_after_split_after_pycaret:
+        custom_steps = normalize_custom_transformers(
+            custom_pipeline_steps_after_split_after_pycaret
+        )
+        _internal_pipeline_steps.extend(custom_steps)
+
+    logger.info(f"Internal pipeline: {_internal_pipeline_steps}")
 
     # create target_param var
     target_param = target
