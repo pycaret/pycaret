@@ -7918,7 +7918,10 @@ def predict_model(estimator,
     try:
         target_transformer = target_inverse_transformer
     except:
-        target_transformer = estimator.steps[13][1].p_transform_target # make it dynamic instead of hardcoding no 13
+        try:
+            target_transformer = estimator.steps[13][1].p_transform_target # make it dynamic instead of hardcoding no 13
+        except:
+            pass
             
     # dataset
     if data is None:
