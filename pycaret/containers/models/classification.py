@@ -206,7 +206,7 @@ class LogisticRegressionClassifierContainer(ClassifierContainer):
             except ImportError:
                 logger.warning("Couldn't import cuml.linear_model.LogisticRegression")
 
-        args = {}
+        args = {'max_iter': 1000}
         tune_args = {}
         tune_grid = {}
         tune_distributions = {}
