@@ -7492,7 +7492,9 @@ def plot_model(estimator,
         * 'vc' - Validation Curve                  
         * 'dimension' - Dimension Learning           
         * 'feature' - Feature Importance              
-        * 'parameter' - Model Hyperparameter          
+        * 'parameter' - Model Hyperparameter
+        * 'lift' - Lift Curve
+        * 'gain' - Gain Chart
 
     scale: float, default = 1
         The resolution scale of the figure.
@@ -7567,13 +7569,13 @@ def plot_model(estimator,
 
     #checking plots (string)
     available_plots = ['auc', 'threshold', 'pr', 'confusion_matrix', 'error', 'class_report', 'boundary', 'rfe', 'learning',
-                       'manifold', 'calibration', 'vc', 'dimension', 'feature', 'parameter']
+                       'manifold', 'calibration', 'vc', 'dimension', 'feature', 'parameter', 'lift', 'gain']
     
     if plot not in available_plots:
         sys.exit('(Value Error): Plot Not Available. Please see docstring for list of available Plots.')
     
     #multiclass plot exceptions:
-    multiclass_not_available = ['calibration', 'threshold', 'manifold', 'rfe']
+    multiclass_not_available = ['calibration', 'threshold', 'manifold', 'rfe', 'lift', 'gain']
     if y.value_counts().count() > 2:
         if plot in multiclass_not_available:
             sys.exit('(Value Error): Plot Not Available for multiclass problems. Please see docstring for list of available Plots.')
@@ -7908,6 +7910,34 @@ def plot_model(estimator,
 
         logger.info("Visual Rendered Successfully")
 
+    elif plot == 'lift':
+        
+        import scikitplot as skplt
+        progress.value += 1
+        logger.info("Generating predictions / predict_proba on X_test")
+        y_test__ = model.predict(X_test)
+        predict_proba__ = model.predict_proba(X_test)
+        progress.value += 1
+        progress.value += 1
+        clear_output()
+        fig = skplt.metrics.plot_lift_curve(y_test__, predict_proba__, figsize = (10,6))
+        
+        logger.info("Visual Rendered Successfully")
+
+    elif plot == 'gain':
+        
+        import scikitplot as skplt
+        progress.value += 1
+        logger.info("Generating predictions / predict_proba on X_test")
+        y_test__ = model.predict(X_test)
+        predict_proba__ = model.predict_proba(X_test)
+        progress.value += 1
+        progress.value += 1
+        clear_output()
+        fig = skplt.metrics.plot_cumulative_gain(y_test__, predict_proba__, figsize = (10,6))
+        
+        logger.info("Visual Rendered Successfully")
+
     elif plot == 'manifold':
         
         from yellowbrick.features import Manifold
@@ -8188,7 +8218,9 @@ def evaluate_model(estimator):
                                      ('Validation Curve', 'vc'),
                                      ('Dimensions', 'dimension'),
                                      ('Feature Importance', 'feature'),
-                                     ('Decision Boundary', 'boundary')
+                                     ('Decision Boundary', 'boundary'),
+                                     ('Lift Chart', 'lift'),
+                                     ('Gain Chart', 'gain')
                                     ],
 
                             description='Plot Type:',
