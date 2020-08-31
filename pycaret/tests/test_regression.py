@@ -53,7 +53,7 @@ def test():
 
     # plot model
     lr = pycaret.regression.create_model('lr')
-    pycaret.regression.plot_model(lr, save=True, scale=5)
+    pycaret.regression.plot_model(lr, save=True, scale=2) #reduced because at 5 build failed due to large image size
 
     # select best model
     best = pycaret.regression.automl(optimize = 'MAPE')
