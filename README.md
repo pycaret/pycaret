@@ -24,7 +24,7 @@ pip install pycaret
 ```
 ### Subsequent bug-fix releases
 - Issue caused in model logging when `log_experiment` is `True`. Bug fixed in `2.1.1` patch released on 8/30/2020.
-- Issue caused in `predict_model` functionality for `pycaret.regression`. Bug fixed in `2.1.2` patch released on 8/30/2020.
+- Issue caused in `predict_model` functionality for `pycaret.regression`. Bug fixed in `2.1.2` patch released on 8/31/2020.
 
 Docs: https://pycaret.readthedocs.io/en/latest/
 
