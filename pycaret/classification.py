@@ -6037,21 +6037,19 @@ def predict_model(
     if not display:
         display = Display(verbose, html_param, logger=logger,)
 
+    dtypes = None
+
     # dataset
     if data is None:
 
         if "Pipeline" in str(type(estimator)):
             estimator = estimator[-1]
 
-        Xtest = X_test.copy()
-        ytest = y_test.copy()
         X_test_ = X_test.copy()
         y_test_ = y_test.copy()
 
-        _, dtypes = next(step for step in prep_pipe.steps if step[0] == "dtypes")
+        dtypes = prep_pipe.named_steps["dtypes"]
 
-        Xtest.reset_index(drop=True, inplace=True)
-        ytest.reset_index(drop=True, inplace=True)
         X_test_.reset_index(drop=True, inplace=True)
         y_test_.reset_index(drop=True, inplace=True)
 
@@ -6059,12 +6057,10 @@ def predict_model(
 
         if hasattr(estimator, "steps") and hasattr(estimator, "predict"):
             logger.info(estimator)
-            _, dtypes = next(step for step in estimator.steps if step[0] == "dtypes")
+            dtypes = estimator.named_steps["dtypes"]
         else:
             try:
-                _, dtypes = next(
-                    step for step in prep_pipe.steps if step[0] == "dtypes"
-                )
+                dtypes = prep_pipe.named_steps["dtypes"]
                 estimator_ = deepcopy(prep_pipe)
                 estimator_.steps.append(["trained model", estimator])
                 estimator = estimator_
@@ -6073,7 +6069,6 @@ def predict_model(
             except:
                 raise ValueError("Pipeline not found")
 
-        Xtest = data.copy()
         X_test_ = data.copy()
 
     # function to replace encoded labels with their original values
@@ -6088,10 +6083,10 @@ def predict_model(
 
     # prediction starts here
 
-    pred_ = estimator.predict(Xtest)
+    pred_ = estimator.predict(X_test_)
 
     try:
-        pred_prob = estimator.predict_proba(Xtest)
+        pred_prob = estimator.predict_proba(X_test_)
 
         if len(pred_prob[0]) > 2:
             p_counter = 0
@@ -6117,7 +6112,7 @@ def predict_model(
     df_score = None
 
     if data is None:
-        metrics = _calculate_metrics(ytest, pred_, pred_prob)
+        metrics = _calculate_metrics(y_test_, pred_, pred_prob)
         df_score = pd.DataFrame(metrics)
         df_score.insert(0, "Model", full_name)
         df_score = df_score.round(round)
@@ -6131,8 +6126,8 @@ def predict_model(
 
     if data is None:
         if not encoded_labels:
-            replace_lables_in_column(ytest)
-        X_test_ = pd.concat([Xtest, ytest, label], axis=1)
+            replace_lables_in_column(y_test_)
+        X_test_ = pd.concat([X_test_, y_test_, label], axis=1)
     else:
         X_test_.insert(len(X_test_.columns), "Label", label["Label"].to_list())
 
