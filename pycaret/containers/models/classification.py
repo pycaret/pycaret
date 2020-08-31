@@ -1263,8 +1263,8 @@ class CalibratedClassifierCVContainer(ClassifierContainer):
         )
 
 
-def get_all_model_containers(globals_dict: dict) -> Dict[str, ClassifierContainer]:
+def get_all_model_containers(globals_dict: dict, raise_errors: bool = True) -> Dict[str, ClassifierContainer]:
     return pycaret.containers.base_container.get_all_containers(
-        globals(), globals_dict, ClassifierContainer
+        globals(), globals_dict, ClassifierContainer, raise_errors
     )
 

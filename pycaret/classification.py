@@ -9,7 +9,10 @@ from pycaret.internal.logging import get_logger
 from pycaret.internal.plotting import show_yellowbrick_plot
 from pycaret.internal.Display import Display
 from pycaret.internal.distributions import *
-from pycaret.containers.models.classification import get_all_model_containers
+from pycaret.containers.models.classification import (
+    get_all_model_containers,
+    LogisticRegressionClassifierContainer,
+)
 from pycaret.containers.metrics.classification import (
     get_all_metric_containers,
     ClassificationMetricContainer,
@@ -23,6 +26,7 @@ import time
 import random
 import gc
 from copy import deepcopy
+from sklearn.base import clone
 from typing import List, Tuple, Any, Union
 import warnings
 from IPython.utils import io
@@ -35,7 +39,7 @@ def setup(
     data: pd.DataFrame,
     target: str,
     train_size: float = 0.7,
-    sampling: bool = True,
+    sampling: bool = False,
     sample_estimator: Optional[Any] = None,
     categorical_features: Optional[List[str]] = None,
     categorical_imputation: str = "constant",
@@ -130,7 +134,7 @@ def setup(
         Size of the training set. By default, 70% of the data will be used for training 
         and validation. The remaining data will be used for a test / hold-out set.
 
-    sampling: bool, default = True
+    sampling: bool, default = False
         When the sample size exceeds 25,000 samples, pycaret will build a base estimator
         at various sample sizes from the original dataset. This will return a performance 
         plot of AUC, Accuracy, Recall, Precision, Kappa and F1 values at various sample 
@@ -1189,6 +1193,10 @@ def setup(
 
     display_dtypes_pass = False if silent else True
 
+    # creating variables to be used later in the function
+    X_before_preprocess = data.drop(target, axis=1)
+    y_before_preprocess = data[target]
+
     logger.info("Importing preprocessing module")
 
     # import library
@@ -1196,7 +1204,7 @@ def setup(
 
     logger.info("Creating preprocessing pipeline")
 
-    data = preprocess.Preprocess_Path_One(
+    prep_pipe = preprocess.Preprocess_Path_One(
         train_data=data,
         target_variable=target,
         categorical_features=cat_features_pass,
@@ -1250,21 +1258,14 @@ def setup(
         random_state=seed,
     )
 
+    dtypes = prep_pipe.named_steps["dtypes"]
+
     display.move_progress()
     logger.info("Preprocessing pipeline created successfully")
 
-    if hasattr(preprocess.dtypes, "replacement"):
-        label_encoded = preprocess.dtypes.replacement
-        label_encoded = str(label_encoded).replace("'", "")
-        label_encoded = str(label_encoded).replace("{", "")
-        label_encoded = str(label_encoded).replace("}", "")
-
-    else:
-        label_encoded = "None"
-
     try:
         res_type = ["quit", "Quit", "exit", "EXIT", "q", "Q", "e", "E", "QUIT", "Exit"]
-        res = preprocess.dtypes.response
+        res = dtypes.response
 
         if res in res_type:
             sys.exit(
@@ -1275,79 +1276,6 @@ def setup(
         logger.error(
             "(Process Exit): setup has been interupted with user command 'quit'. setup must rerun."
         )
-
-    # save prep pipe
-    prep_pipe = preprocess.pipe
-
-    logger.info("Creating grid variables")
-
-    # generate values for grid show
-    missing_values = data_before_preprocess.isna().sum().sum()
-    missing_flag = True if missing_values > 0 else False
-
-    normalize_grid = normalize_method if normalize else "None"
-
-    transformation_grid = transformation_method if transformation else "None"
-
-    pca_method_grid = pca_method if pca else "None"
-
-    pca_components_grid = pca_components_pass if pca else "None"
-
-    rare_level_threshold_grid = rare_level_threshold if combine_rare_levels else "None"
-
-    numeric_bin_grid = False if bin_numeric_features is None else True
-
-    outliers_threshold_grid = outliers_threshold if remove_outliers else None
-
-    multicollinearity_threshold_grid = (
-        multicollinearity_threshold if remove_multicollinearity else None
-    )
-
-    cluster_iter_grid = cluster_iter if create_clusters else None
-
-    polynomial_degree_grid = polynomial_degree if polynomial_features else None
-
-    polynomial_threshold_grid = (
-        polynomial_threshold if polynomial_features or trigonometry_features else None
-    )
-
-    feature_selection_threshold_grid = (
-        feature_selection_threshold if feature_selection else None
-    )
-
-    interaction_threshold_grid = (
-        interaction_threshold if feature_interaction or feature_ratio else None
-    )
-
-    ordinal_features_grid = False if ordinal_features is None else True
-
-    unknown_categorical_method_grid = (
-        unknown_categorical_method if handle_unknown_categorical else None
-    )
-
-    group_features_grid = False if group_features is None else True
-
-    high_cardinality_features_grid = (
-        False if high_cardinality_features is None else True
-    )
-
-    high_cardinality_method_grid = (
-        high_cardinality_method if high_cardinality_features_grid else None
-    )
-
-    learned_types = preprocess.dtypes.learent_dtypes
-    learned_types.drop(target, inplace=True)
-
-    float_type = 0
-    cat_type = 0
-
-    for i in preprocess.dtypes.learent_dtypes:
-        if "float" in str(i):
-            float_type += 1
-        elif "object" in str(i):
-            cat_type += 1
-        elif "int" in str(i):
-            float_type += 1
 
     """
     preprocessing ends here
@@ -1445,29 +1373,23 @@ def setup(
     # create gpu_param var
     gpu_param = use_gpu
 
-    # creating variables to be used later in the function
-    X = data.drop(target, axis=1)
-    y = data[target]
-
     # determining target type
     if _is_multiclass():
         target_type = "Multiclass"
     else:
         target_type = "Binary"
 
-    all_models = models(force_regenerate=True)
-    _all_models_internal = models(internal=True, force_regenerate=True)
-    all_metrics = get_metrics()
+    lr = LogisticRegressionClassifierContainer(globals())
 
     # sample estimator
     if sample_estimator is None:
-        model = _all_models_internal.loc["lr"]["Class"]()
+        model = lr
     else:
         model = sample_estimator
 
     display.move_progress()
 
-    if sampling is True and data.shape[0] > 25000:  # change this back to 25000
+    if sampling and data.shape[0] > 25000:  # change this back to 25000
 
         X_train, X_test, y_train, y_test = _sample_data(
             model, seed, train_size, data_split_shuffle, display
@@ -1478,18 +1400,126 @@ def setup(
         display.display_monitor()
 
         X_train, X_test, y_train, y_test = train_test_split(
-            X,
-            y,
+            X_before_preprocess,
+            y_before_preprocess,
             test_size=1 - train_size,
-            stratify=y,
+            stratify=y_before_preprocess,
             random_state=seed,
             shuffle=data_split_shuffle,
         )
+
+        train_data = pd.concat([X_train, y_train], axis=1)
+        test_data = pd.concat([X_test, y_test], axis=1)
+
+        train_data = prep_pipe.fit_transform(train_data)
+        # workaround to also transform target
+        dtypes.final_training_columns.append(target)
+        test_data = prep_pipe.transform(test_data)
+
+        X_train = train_data.drop(target, axis=1)
+        y_train = train_data[target]
+
+        X_test = test_data.drop(target, axis=1)
+        y_test = test_data[target]
+
         display.move_progress()
+
+    data = prep_pipe.transform(data)
+    X = data.drop(target, axis=1)
+    y = data[target]
+    try:
+        dtypes.final_training_columns.remove(target)
+    except:
+        pass
+
+    all_models = models(force_regenerate=True, raise_errors=True)
+    _all_models_internal = models(
+        internal=True, force_regenerate=True, raise_errors=True
+    )
+    all_metrics = get_metrics()
 
     """
     Final display Starts
     """
+    logger.info("Creating grid variables")
+
+    if hasattr(dtypes, "replacement"):
+        label_encoded = dtypes.replacement
+        label_encoded = str(label_encoded).replace("'", "")
+        label_encoded = str(label_encoded).replace("{", "")
+        label_encoded = str(label_encoded).replace("}", "")
+
+    else:
+        label_encoded = "None"
+
+    # generate values for grid show
+    missing_values = data_before_preprocess.isna().sum().sum()
+    missing_flag = True if missing_values > 0 else False
+
+    normalize_grid = normalize_method if normalize else "None"
+
+    transformation_grid = transformation_method if transformation else "None"
+
+    pca_method_grid = pca_method if pca else "None"
+
+    pca_components_grid = pca_components_pass if pca else "None"
+
+    rare_level_threshold_grid = rare_level_threshold if combine_rare_levels else "None"
+
+    numeric_bin_grid = False if bin_numeric_features is None else True
+
+    outliers_threshold_grid = outliers_threshold if remove_outliers else None
+
+    multicollinearity_threshold_grid = (
+        multicollinearity_threshold if remove_multicollinearity else None
+    )
+
+    cluster_iter_grid = cluster_iter if create_clusters else None
+
+    polynomial_degree_grid = polynomial_degree if polynomial_features else None
+
+    polynomial_threshold_grid = (
+        polynomial_threshold if polynomial_features or trigonometry_features else None
+    )
+
+    feature_selection_threshold_grid = (
+        feature_selection_threshold if feature_selection else None
+    )
+
+    interaction_threshold_grid = (
+        interaction_threshold if feature_interaction or feature_ratio else None
+    )
+
+    ordinal_features_grid = False if ordinal_features is None else True
+
+    unknown_categorical_method_grid = (
+        unknown_categorical_method if handle_unknown_categorical else None
+    )
+
+    group_features_grid = False if group_features is None else True
+
+    high_cardinality_features_grid = (
+        False if high_cardinality_features is None else True
+    )
+
+    high_cardinality_method_grid = (
+        high_cardinality_method if high_cardinality_features_grid else None
+    )
+
+    learned_types = dtypes.learent_dtypes
+    learned_types.drop(target, inplace=True)
+
+    float_type = 0
+    cat_type = 0
+
+    for i in dtypes.learent_dtypes:
+        if "float" in str(i):
+            float_type += 1
+        elif "object" in str(i):
+            cat_type += 1
+        elif "int" in str(i):
+            float_type += 1
+
     if profile:
         print("Setup Succesfully Completed! Loading Profile Now... Please Wait!")
     else:
@@ -2171,7 +2201,7 @@ def create_model(
     system: bool = True,
     return_fit_time: bool = False,  # added in pycaret==2.2.0
     X_train_data: Optional[pd.DataFrame] = None,  # added in pycaret==2.2.0
-    Y_train_data: Optional[pd.DataFrame] = None,  # added in pycaret==2.2.0
+    y_train_data: Optional[pd.DataFrame] = None,  # added in pycaret==2.2.0
     display: Optional[Display] = None,  # added in pycaret==2.2.0
     **kwargs,
 ) -> Any:
@@ -2249,7 +2279,7 @@ def create_model(
         If not None, will use this dataframe as training features.
         Intended to be only changed by internal functions.
 
-    Y_train_data: pandas.DataFrame, default = None
+    y_train_data: pandas.DataFrame, default = None
         If not None, will use this dataframe as training target.
         Intended to be only changed by internal functions.
 
@@ -2364,7 +2394,6 @@ def create_model(
     # general dependencies
 
     from sklearn.model_selection import StratifiedKFold
-    from sklearn.base import clone
 
     np.random.seed(seed)
 
@@ -2372,7 +2401,7 @@ def create_model(
 
     # Storing X_train and y_train in data_X and data_y parameter
     data_X = X_train.copy() if X_train_data is None else X_train_data.copy()
-    data_y = y_train.copy() if Y_train_data is None else Y_train_data.copy()
+    data_y = y_train.copy() if y_train_data is None else y_train_data.copy()
 
     # reset index
     data_X.reset_index(drop=True, inplace=True)
@@ -2990,7 +3019,6 @@ def tune_model(
 
     # general dependencies
 
-    from sklearn.base import clone
     import logging
 
     np.random.seed(seed)
@@ -4251,11 +4279,6 @@ def stack_models(
     ERROR HANDLING ENDS HERE
     
     """
-
-    logger.info("Preloading libraries")
-    # pre-load libraries
-
-    from sklearn.base import clone
 
     logger.info("Defining meta model")
     # Defining meta model.
@@ -6181,10 +6204,6 @@ def finalize_model(estimator, display=None) -> Any:  # added in pycaret==2.2.0
     # run_time
     runtime_start = time.time()
 
-    logger.info("Importing libraries")
-    # import depedencies
-    from sklearn.base import clone
-
     np.random.seed(seed)
 
     logger.info(f"Finalizing {estimator}")
@@ -6194,7 +6213,7 @@ def finalize_model(estimator, display=None) -> Any:  # added in pycaret==2.2.0
         verbose=False,
         system=False,
         X_train_data=X,
-        Y_train_data=y,
+        y_train_data=y,
         return_fit_time=True,
     )
     model_results = pull(pop=True)
@@ -6546,7 +6565,10 @@ def pull(pop=False) -> pd.DataFrame:  # added in pycaret==2.2.0
 
 
 def models(
-    type: Optional[str] = None, internal: bool = False, force_regenerate: bool = False
+    type: Optional[str] = None,
+    internal: bool = False,
+    force_regenerate: bool = False,
+    raise_errors: bool = True,
 ) -> pd.DataFrame:
 
     """
@@ -6572,6 +6594,10 @@ def models(
     force_regenerate: bool, default = False
         If True, will force the DataFrame to be regenerated,
         instead of using a cached version.
+
+    raise_errors: bool, default = True
+        If False, will suppress all exceptions, ignoring models
+        that couldn't be created.
 
     Returns
     -------
@@ -6604,7 +6630,7 @@ def models(
 
     logger.info(f"gpu_param set to {gpu_param}")
 
-    model_containers = get_all_model_containers(globals())
+    model_containers = get_all_model_containers(globals(), raise_errors)
     rows = [
         v.get_dict(internal)
         for k, v in model_containers.items()
@@ -6618,7 +6644,10 @@ def models(
 
 
 def get_metrics(
-    force_regenerate: bool = False, reset: bool = False, include_custom: bool = True
+    force_regenerate: bool = False,
+    reset: bool = False,
+    include_custom: bool = True,
+    raise_errors: bool = True,
 ) -> pd.DataFrame:
     """
     Returns table of metrics available.
@@ -6639,6 +6668,9 @@ def get_metrics(
         If True, will reset all changes made using add_metric() and get_metric().
     include_custom: bool, default = True
         Whether to include user added (custom) metrics or not.
+    raise_errors: bool, default = True
+        If False, will suppress all exceptions, ignoring models
+        that couldn't be created.
 
     Returns
     -------
@@ -6661,7 +6693,7 @@ def get_metrics(
 
     np.random.seed(seed)
 
-    metric_containers = get_all_metric_containers(globals())
+    metric_containers = get_all_metric_containers(globals(), raise_errors)
     rows = [v.get_dict() for k, v in metric_containers.items()]
 
     # Training time needs to be at the end

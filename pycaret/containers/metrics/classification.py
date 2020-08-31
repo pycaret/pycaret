@@ -246,9 +246,9 @@ class TTMetricContainer(ClassificationMetricContainer):
 
 
 def get_all_metric_containers(
-    globals_dict: dict,
+    globals_dict: dict, raise_errors: bool = True
 ) -> Dict[str, ClassificationMetricContainer]:
     return pycaret.containers.base_container.get_all_containers(
-        globals(), globals_dict, ClassificationMetricContainer
+        globals(), globals_dict, ClassificationMetricContainer, raise_errors
     )
 

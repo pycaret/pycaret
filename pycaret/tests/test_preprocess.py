@@ -12,7 +12,8 @@ def test():
     target = "Purchase"
 
     # preprocess all in one
-    X = pycaret.preprocess.Preprocess_Path_One(train_data=data, target_variable=target, display_types=False)
+    pipe = pycaret.preprocess.Preprocess_Path_One(train_data=data, target_variable=target, display_types=False)
+    X = pipe.fit_transform(data)
     assert isinstance(X, pd.core.frame.DataFrame)
 
     # preprocess all in one unsupervised

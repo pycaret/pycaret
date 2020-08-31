@@ -300,17 +300,20 @@ class DataTypes_Auto_infer(BaseEstimator,TransformerMixin):
     #exception checking   
     import sys
 
-    for i in self.final_training_columns:  
+    for i in self.final_training_columns:
       if i not in data.columns:
         sys.exit('(Type Error): test data does not have column ' + str(i) + " which was used for training")
 
     ## we only need to take test columns that we used in ttaining (test in production may have a lot more columns)
     data = data[self.final_training_columns]
 
-    
     # just keep picking the data and keep applying to the test data set (be mindful of target variable)
     for i in data.columns: # we are taking all the columns in test , so we dot have to worry about droping target column
-      data[i] = data[i].astype(self.learent_dtypes[i])
+      if i == self.target and ((self.ml_usecase == 'classification') and (self.learent_dtypes[self.target]=='object')):
+        data[i] = self.le.transform(data[i])
+        data[i] = data[i].astype('int64')
+      else:
+        data[i] = data[i].astype(self.learent_dtypes[i])
     
     # drop time columns
     #data.drop(self.drop_time,axis=1,errors='ignore',inplace=True)
@@ -333,12 +336,12 @@ class DataTypes_Auto_infer(BaseEstimator,TransformerMixin):
     # additionally we just need to treat the target variable
     # for ml use ase
     if ((self.ml_usecase == 'classification') &  (data[self.target].dtype=='object')):
-      le = LabelEncoder()
-      data[self.target] = le.fit_transform(np.array(data[self.target]))
+      self.le = LabelEncoder()
+      data[self.target] = self.le.fit_transform(data[self.target])
 
       # now get the replacement dict
-      rev= le.inverse_transform(range(0,len(le.classes_)))
-      rep = np.array(range(0,len(le.classes_)))
+      rev= self.le.inverse_transform(range(0,len(self.le.classes_)))
+      rep = np.array(range(0,len(self.le.classes_)))
       self.replacement={}
       for i,k in zip(rev,rep):
         self.replacement[i] = k
@@ -360,7 +363,8 @@ class DataTypes_Auto_infer(BaseEstimator,TransformerMixin):
     data.drop(self.features_todrop,axis=1,errors='ignore',inplace=True)
     
     # finally save a list of columns that we would need from test data set
-    self.final_training_columns = data.drop(self.target,axis=1).columns
+    self.final_training_columns = data.columns.to_list()
+    self.final_training_columns.remove(self.target)
 
     
     return(data)
@@ -955,6 +959,11 @@ class Target_Transformation(BaseEstimator,TransformerMixin):
 
   
   def transform(self,dataset,y=None):
+    if self.target in dataset.columns:
+      data = dataset.copy()
+      # apply transformation
+      data[self.target]=self.p_transform_target.transform(np.array(data[self.target]).reshape(-1,1))
+      return(data)
     return(dataset) 
 
   def fit_transform(self,dataset,y=None):
@@ -1159,8 +1168,12 @@ class Dummify(BaseEstimator,TransformerMixin):
       array = self.ohe.transform(data.drop(self.target,axis=1,errors='ignore').select_dtypes(include=('object'))).toarray()
       data_dummies = pd.DataFrame(array,columns= self.data_columns)
       data_dummies.index = self.data_nonc.index
+      if self.target in data.columns:
+        target_column =  data[[self.target]]
+      else:
+        target_column = None
       #now put target , numerical and categorical variables back togather
-      data = pd.concat((self.data_nonc,data_dummies),axis=1)
+      data = pd.concat((target_column,self.data_nonc,data_dummies),axis=1)
       del(self.data_nonc)
       return(data)
     else:
@@ -2722,10 +2735,7 @@ def Preprocess_Path_One(train_data,target_variable,ml_usecase=None,test_data =No
                  ('pca',pca)
                  ])
   
-  if test_data is not None:
-    return(pipe.fit_transform(train_data),pipe.transform(test_data))
-  else:
-    return(pipe.fit_transform(train_data))
+  return pipe
 
 
 
