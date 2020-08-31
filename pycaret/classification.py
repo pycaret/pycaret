@@ -84,10 +84,7 @@ def setup(
     folds_shuffle: bool = False,
     n_jobs: int = -1,
     use_gpu: bool = False,  # added in pycaret==2.1
-    custom_pipeline_steps_after_split_before_pycaret: Union[
-        Any, Tuple[str, Any], List[Any], List[Tuple[str, Any]]
-    ] = None,
-    custom_pipeline_steps_after_split_after_pycaret: Union[
+    custom_pipeline_steps_after_split: Union[
         Any, Tuple[str, Any], List[Any], List[Tuple[str, Any]]
     ] = None,
     html: bool = True,
@@ -442,19 +439,13 @@ def setup(
         - Logistic Regression, Ridge, SVM, SVC - requires cuML >= 0.15 to be installed.
           https://github.com/rapidsai/cuml
 
-    custom_pipeline_steps_after_split_before_pycaret: transformer or list of transformers or tuple
+    custom_pipeline_steps_after_split: transformer or list of transformers or tuple
     (str, transformer) or list of tuples (str, transformer), default = None
         If set, will append the passed transformers (including Pipelines) to the PyCaret
         preprocessing Pipeline applied after train-test split during model fitting.
         This Pipeline is applied on each CV fold separately and on the final fit.
         The transformers will be applied before PyCaret transformers (eg. SMOTE).
 
-    custom_pipeline_steps_after_split_after_pycaret: transformer or list of transformers or tuple
-    (str, transformer) or list of tuples (str, transformer), default = None
-        If set, will append the passed transformers (including Pipelines) to the PyCaret
-        preprocessing Pipeline applied after train-test split during model fitting.
-        This Pipeline is applied on each CV fold separately and on the final fit.
-        The transformers will be applied after PyCaret transformers (eg. SMOTE).
 
     html: bool, default = True
         If set to False, prevents runtime display of monitor. This must be set to False
@@ -1435,23 +1426,18 @@ def setup(
         fix_imbalance_resampler = fix_imbalance_method_param
 
     # add custom transformers to prep pipe
-    if custom_pipeline_steps_after_split_before_pycaret:
-        custom_steps = normalize_custom_transformers(
-            custom_pipeline_steps_after_split_before_pycaret
-        )
+    if custom_pipeline_steps_after_split:
+        custom_steps = normalize_custom_transformers(custom_pipeline_steps_after_split)
         _internal_pipeline_steps.extend(custom_steps)
 
     if fix_imbalance_param:
         _internal_pipeline_steps.append(("fix_imbalance", fix_imbalance_resampler))
 
-    # add custom transformers to prep pipe
-    if custom_pipeline_steps_after_split_after_pycaret:
-        custom_steps = normalize_custom_transformers(
-            custom_pipeline_steps_after_split_after_pycaret
-        )
-        _internal_pipeline_steps.extend(custom_steps)
-
     logger.info(f"Internal pipeline: {_internal_pipeline_steps}")
+
+    prep_pipe.steps.extend(
+        [step for step in _internal_pipeline_steps if hasattr(step, "transform")]
+    )
 
     # create target_param var
     target_param = target
@@ -6048,7 +6034,7 @@ def predict_model(
 
     else:
 
-        if "Pipeline" in str(type(estimator)):
+        if hasattr(estimator, "steps") and hasattr(estimator, "predict"):
             logger.info(estimator)
             _, dtypes = next(step for step in estimator.steps if step[0] == "dtypes")
         else:
