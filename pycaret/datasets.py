@@ -2,7 +2,7 @@
 # Author: Moez Ali <moez.ali@queensu.ca>
 # License: MIT
 
-def get_data(dataset, save_copy=False, profile=False, verbose=True):
+def get_data(dataset, save_copy=False, profile=False, verbose=False):
     
     """
     This function loads sample datasets that are available in the pycaret git 
@@ -13,7 +13,7 @@ def get_data(dataset, save_copy=False, profile=False, verbose=True):
     -------
     >>> data = get_data('index')
 
-    This will display the list of available datasets that can be loaded 
+    This will get the list of available datasets that can be loaded
     using the get_data() function. For example, to load the credit dataset:
     
     >>> credit = get_data('credit')
@@ -30,7 +30,7 @@ def get_data(dataset, save_copy=False, profile=False, verbose=True):
         If set to true, a data profile for Exploratory Data Analysis will be displayed 
         in an interactive HTML report. 
 
-    verbose: bool, default = True
+    verbose: bool, default = False
         When set to False, head of data is not displayed.
     
     Returns
@@ -53,31 +53,33 @@ def get_data(dataset, save_copy=False, profile=False, verbose=True):
     extension = '.csv'
     filename = str(dataset) + extension
     
-    complete_address = address + filename
-    
-    if os.path.isfile(filename):
-        data = pd.read_csv(filename)
+    local_file = os.path.join(os.path.dirname(__file__), 'local_datasets', filename)
+    url_address = address + filename
+
+    if os.path.exists(local_file):
+        print(f'fetch from {local_file}')
+        data = pd.read_csv(local_file)
     else:
-        data = pd.read_csv(complete_address)
+        print(f'fetch from {url_address}')
+        data = pd.read_csv(url_address)
     
-    #create a copy for pandas profiler
+    # create a copy for pandas profiler
     data_for_profiling = data.copy()
     
     if save_copy:
-        save_name = filename
-        data.to_csv(save_name, index=False)
-        
-    if dataset == 'index':
-        display(data)
-    
-    else:
-        if profile:
-            import pandas_profiling
-            pf = pandas_profiling.ProfileReport(data_for_profiling)
-            display(pf)
-            
+        save_name = str(dataset) + str(extension)
+        data.to_csv(save_name)
+
+    if profile:
+        import pandas_profiling
+        pf = pandas_profiling.ProfileReport(data_for_profiling)
+        display(pf)
+    elif verbose:
+        if dataset == 'index':
+            display(data)
         else:
-            if verbose:
-                display(data.head())
+            display(data.head())
         
     return data
+
+
