@@ -23,7 +23,7 @@ import time
 import random
 import gc
 from copy import deepcopy
-from typing import List, Tuple, Any, Union
+from typing import List, Tuple, Any, Union, Dict, Optional
 import warnings
 from IPython.utils import io
 import traceback
@@ -104,30 +104,24 @@ def setup(
     data and name of the target column.
     
     All other parameters are optional.
-
     Example
     -------
     >>> from pycaret.datasets import get_data
     >>> juice = get_data('juice')
     >>> experiment_name = setup(data = juice,  target = 'Purchase')
-
     'juice' is a pandas.DataFrame  and 'Purchase' is the name of target column.
-
     Parameters
     ----------
     data : pandas.DataFrame
         Shape (n_samples, n_features) where n_samples is the number of samples and 
         n_features is the number of features.
-
     target: str
         Name of the target column to be passed in as a string. The target variable could 
         be binary or multiclass. In case of a multiclass target, all estimators are wrapped
         with a OneVsRest classifier.
-
     train_size: float, default = 0.7
         Size of the training set. By default, 70% of the data will be used for training 
         and validation. The remaining data will be used for a test / hold-out set.
-
     sampling: bool, default = True
         When the sample size exceeds 25,000 samples, pycaret will build a base estimator
         at various sample sizes from the original dataset. This will return a performance 
@@ -176,13 +170,11 @@ def setup(
         overwrite the inferred type. If when running setup the type of 'column1' is 
         inferred as a categorical instead of numeric, then this parameter can be used 
         to overwrite by passing numeric_features = ['column1'].    
-
     numeric_imputation: str, default = 'mean'
         If missing values are found in numeric features, they will be imputed with the 
         mean value of the feature. The other available options are 'median' which imputes 
         the value using the median value in the training dataset and 'zero' which
         replaces missing values with zeroes.
-
     date_features: str, default = None
         If the data has a DateTime column that is not automatically detected when running
         setup, this parameter can be used by passing date_features = 'date_column_name'. 
@@ -190,23 +182,19 @@ def setup(
         Instead, feature extraction is performed and date columns are dropped from the 
         dataset. If the date column includes a time stamp, features related to time will 
         also be extracted.
-
     ignore_features: str, default = None
         If any feature should be ignored for modeling, it can be passed to the param
         ignore_features. The ID and DateTime columns when inferred, are automatically 
         set to ignore for modeling. 
-
     normalize: bool, default = False
         When set to True, the feature space is transformed using the normalized_method
         param. Generally, linear algorithms perform better with normalized data however, 
         the results may vary and it is advised to run multiple experiments to evaluate
         the benefit of normalization.
-
     normalize_method: str, default = 'zscore'
         Defines the method to be used for normalization. By default, normalize method
         is set to 'zscore'. The standard zscore is calculated as z = (x - u) / s. The
         other available options are:
-
         'minmax'    : scales and translates each feature individually such that it is in 
                     the range of 0 - 1.
         
@@ -223,7 +211,6 @@ def setup(
         Gaussian-like. This is useful for modeling issues related to heteroscedasticity or 
         other situations where normality is desired. The optimal parameter for stabilizing 
         variance and minimizing skewness is estimated through maximum likelihood.
-
     transformation_method: str, default = 'yeo-johnson'
         Defines the method for transformation. By default, the transformation method is set
         to 'yeo-johnson'. The other available option is 'quantile' transformation. Both 
@@ -235,11 +222,9 @@ def setup(
         When set to True, unknown categorical levels in new / unseen data are replaced by
         the most or least frequent level as learned in the training data. The method is 
         defined under the unknown_categorical_method param.
-
     unknown_categorical_method: str, default = 'least_frequent'
         Method used to replace unknown categorical levels in unseen data. Method can be
         set to 'least_frequent' or 'most_frequent'.
-
     pca: bool, default = False
         When set to True, dimensionality reduction is applied to project the data into 
         a lower dimensional space using the method defined in pca_method param. In 
@@ -248,7 +233,6 @@ def setup(
         efficiently using a linear PCA technique and that applying PCA may result in loss 
         of information. As such, it is advised to run multiple experiments with different 
         pca_methods to evaluate the impact. 
-
     pca_method: str, default = 'linear'
         The 'linear' method performs Linear dimensionality reduction using Singular Value 
         Decomposition. The other available options are:
@@ -257,13 +241,11 @@ def setup(
         
         incremental : replacement for 'linear' pca when the dataset to be decomposed is 
                     too large to fit in memory
-
     pca_components: int/float, default = 0.99
         Number of components to keep. if pca_components is a float, it is treated as a 
         target percentage for information retention. When pca_components is an integer
         it is treated as the number of features to be kept. pca_components must be strictly
         less than the original number of features in the dataset.
-
     ignore_low_variance: bool, default = False
         When set to True, all categorical features with insignificant variances are 
         removed from the dataset. The variance is calculated using the ratio of unique 
@@ -288,22 +270,18 @@ def setup(
         1D k-means cluster. The number of clusters are determined based on the 'sturges' 
         method. It is only optimal for gaussian data and underestimates the number of bins 
         for large non-gaussian datasets.
-
     remove_outliers: bool, default = False
         When set to True, outliers from the training data are removed using PCA linear
         dimensionality reduction using the Singular Value Decomposition technique.
-
     outliers_threshold: float, default = 0.05
         The percentage / proportion of outliers in the dataset can be defined using
         the outliers_threshold param. By default, 0.05 is used which means 0.025 of the 
         values on each side of the distribution's tail are dropped from training data.
-
     remove_multicollinearity: bool, default = False
         When set to True, the variables with inter-correlations higher than the threshold
         defined under the multicollinearity_threshold param are dropped. When two features
         are highly correlated with each other, the feature that is less correlated with 
         the target variable is dropped. 
-
     multicollinearity_threshold: float, default = 0.9
         Threshold used for dropping the correlated features. Only comes into effect when 
         remove_multicollinearity is set to True.
@@ -312,38 +290,31 @@ def setup(
         When set to True, perfect collinearity (features with correlation = 1) is removed
         from the dataset, When two features are 100% correlated, one of it is randomly 
         dropped from the dataset.
-
     create_clusters: bool, default = False
         When set to True, an additional feature is created where each instance is assigned
         to a cluster. The number of clusters is determined using a combination of 
         Calinski-Harabasz and Silhouette criterion. 
-
     cluster_iter: int, default = 20
         Number of iterations used to create a cluster. Each iteration represents cluster 
         size. Only comes into effect when create_clusters param is set to True.
-
     polynomial_features: bool, default = False
         When set to True, new features are created based on all polynomial combinations 
         that exist within the numeric features in a dataset to the degree defined in 
         polynomial_degree param. 
-
     polynomial_degree: int, default = 2pca_method_pass
         Degree of polynomial features. For example, if an input sample is two dimensional 
         and of the form [a, b], the polynomial features with degree = 2 are: 
         [1, a, b, a^2, ab, b^2].
-
     trigonometry_features: bool, default = False
         When set to True, new features are created based on all trigonometric combinations 
         that exist within the numeric features in a dataset to the degree defined in the
         polynomial_degree param.
-
     polynomial_threshold: float, default = 0.1
         This is used to compress a sparse matrix of polynomial and trigonometric features.
         Polynomial and trigonometric features whose feature importance based on the 
         combination of Random Forest, AdaBoost and Linear correlation falls within the 
         percentile of the defined threshold are kept in the dataset. Remaining features 
         are dropped before further processing.
-
     group_features: list or list of list, default = None
         When a dataset contains features that have related characteristics, group_features
         param can be used for statistical feature extraction. For example, if a dataset has 
@@ -368,7 +339,6 @@ def setup(
         feature_selection_threshold param with a lower value. Feature selection algorithm
         by default is 'classic' but could be 'boruta', which will lead PyCaret to create
         use the Boruta selection algorithm.
-
     feature_selection_threshold: float, default = 0.8
         Threshold used for feature selection (including newly created polynomial features).
         A higher value will result in a higher feature space. It is recommended to do 
@@ -406,41 +376,33 @@ def setup(
         When dataset has unequal distribution of target class it can be fixed using
         fix_imbalance parameter. When set to True, SMOTE (Synthetic Minority Over-sampling 
         Technique) is applied by default to create synthetic datapoints for minority class.
-
     fix_imbalance_method: obj, default = None
         When fix_imbalance is set to True and fix_imbalance_method is None, 'smote' is 
         applied by default to oversample minority class during cross validation. This 
         parameter accepts any module from 'imblearn' that supports 'fit_resample' method.
-
     data_split_shuffle: bool, default = True
         If set to False, prevents shuffling of rows when splitting data.
-
     folds_shuffle: bool, default = False
         If set to False, prevents shuffling of rows when using cross validation.
-
     n_jobs: int, default = -1
         The number of jobs to run in parallel (for functions that supports parallel 
         processing) -1 means using all processors. To run all functions on single 
         processor set n_jobs to None.
-
     use_gpu: str or bool, default = False
         If set to 'Force', will try to use GPU with all algorithms that support it,
         and raise exceptions if they are unavailable.
         If set to True, will use GPU with algorithms that support it, and fall
         back to CPU if they are unavailable.
         If set to False, will only use CPU.
-
         GPU enabled algorithms:
         
         - CatBoost
         - XGBoost
         - Logistic Regression, Ridge, SVM, SVC - requires cuML >= 0.15 to be installed.
           https://github.com/rapidsai/cuml
-
     html: bool, default = True
         If set to False, prevents runtime display of monitor. This must be set to False
         when using environment that doesnt support HTML.
-
     session_id: int, default = None
         If None, a random seed is generated and returned in the Information grid. The 
         unique number is then distributed as a seed in all functions used during the 
@@ -448,22 +410,17 @@ def setup(
     
     log_experiment: bool, default = False
         When set to True, all metrics and parameters are logged on MLFlow server.
-
     experiment_name: str, default = None
         Name of experiment for logging. When set to None, 'clf' is by default used as 
         alias for the experiment name.
-
     log_plots: bool, default = False
         When set to True, specific plots are logged in MLflow as a png file. By default,
         it is set to False. 
-
     log_profile: bool, default = False
         When set to True, data profile is also logged on MLflow as a html file. 
         By default, it is set to False. 
-
     log_data: bool, default = False
         When set to True, train and test dataset are logged as csv. 
-
     silent: bool, default = False
         When set to True, confirmation of data types is not required. All preprocessing 
         will be performed assuming automatically inferred data types. Not recommended 
@@ -471,7 +428,6 @@ def setup(
     
     verbose: bool, default = True
         Information grid is not printed when verbose is set to False.
-
     profile: bool, default = False
         If set to true, a data profile for Exploratory Data Analysis will be displayed 
         in an interactive HTML report. 
@@ -481,14 +437,11 @@ def setup(
     - Some GPU models require conversion from float64 to float32,
       which may result in loss of precision. It should not be an issue in majority of cases.
       Models impacted:
-
         * cuml.ensemble.RandomForestClassifier
-
     Returns
     -------
     info_grid
         Information grid is printed.
-
     environment
         This function returns various outputs that are stored in variables
         as tuples. They are used by other functions in pycaret.
@@ -607,9 +560,19 @@ def setup(
     if type(train_size) is not float:
         raise TypeError("train_size parameter only accepts float value.")
 
-    # checking sampling parameter
-    if type(sampling) is not bool:
-        raise TypeError("sampling parameter only accepts True or False.")
+    # Checking boolean parameters
+    booleans = ['sampling', 'profile', 'normalize', 'transformation',
+                'handle_unknown_categorical', 'pca', 'ignore_low_variance',
+                'combine_rare_levels', 'remove_outliers', 'remove_multicollinearity',
+                'create_clusters', 'polynomial_features', 'trigonometry_features',
+                'feature_selection', 'feature_interaction', 'feature_ratio',
+                'log_experiment', 'log_profile', 'silent', 'remove_perfect_collinearity',
+                'html', 'folds_shuffle', 'data_split_shuffle', 'log_plots', 'log_data',
+                'log_profile', 'fix_imbalance']
+    
+    for boolean in booleans:
+        if not isinstance(eval(boolean), bool):
+            raise TypeError(f"{boolean} parameter only accepts True or False.")
 
     # checking sampling parameter
     if target not in data.columns:
@@ -619,18 +582,6 @@ def setup(
     if session_id is not None:
         if type(session_id) is not int:
             raise TypeError("session_id parameter must be an integer.")
-
-    # checking sampling parameter
-    if type(profile) is not bool:
-        raise TypeError("profile parameter only accepts True or False.")
-
-    # checking normalize parameter
-    if type(normalize) is not bool:
-        raise TypeError("normalize parameter only accepts True or False.")
-
-    # checking transformation parameter
-    if type(transformation) is not bool:
-        raise TypeError("transformation parameter only accepts True or False.")
 
     # checking categorical imputation
     allowed_categorical_imputation = ["constant", "mode"]
@@ -715,12 +666,6 @@ def setup(
             f"transformation_method param only accepts {', '.join(allowed_transformation_method)}."
         )
 
-    # handle unknown categorical
-    if type(handle_unknown_categorical) is not bool:
-        raise TypeError(
-            "handle_unknown_categorical parameter only accepts True or False."
-        )
-
     # unknown categorical method
     unknown_categorical_method_available = ["least_frequent", "most_frequent"]
 
@@ -728,10 +673,6 @@ def setup(
         raise TypeError(
             f"unknown_categorical_method only accepts {', '.join(unknown_categorical_method_available)}."
         )
-
-    # check pca
-    if type(pca) is not bool:
-        raise TypeError("PCA parameter only accepts True or False.")
 
     # pca method check
     allowed_pca_methods = ["linear", "kernel", "incremental"]
@@ -768,14 +709,6 @@ def setup(
                             "pca_components parameter cannot be greater than original features space or float between 0 - 1."
                         )
 
-    # check ignore_low_variance
-    if type(ignore_low_variance) is not bool:
-        raise TypeError("ignore_low_variance parameter only accepts True or False.")
-
-    # check ignore_low_variance
-    if type(combine_rare_levels) is not bool:
-        raise TypeError("combine_rare_levels parameter only accepts True or False.")
-
     # check rare_level_threshold
     if type(rare_level_threshold) is not float:
         raise TypeError("rare_level_threshold must be a float between 0 and 1.")
@@ -791,43 +724,21 @@ def setup(
                     "Column type forced is either target column or doesn't exist in the dataset."
                 )
 
-    # remove_outliers
-    if type(remove_outliers) is not bool:
-        raise TypeError("remove_outliers parameter only accepts True or False.")
-
     # outliers_threshold
     if type(outliers_threshold) is not float:
         raise TypeError("outliers_threshold must be a float between 0 and 1.")
-
-    # remove_multicollinearity
-    if type(remove_multicollinearity) is not bool:
-        raise TypeError(
-            "remove_multicollinearity parameter only accepts True or False."
-        )
 
     # multicollinearity_threshold
     if type(multicollinearity_threshold) is not float:
         raise TypeError("multicollinearity_threshold must be a float between 0 and 1.")
 
-    # create_clusters
-    if type(create_clusters) is not bool:
-        raise TypeError("create_clusters parameter only accepts True or False.")
-
     # cluster_iter
     if type(cluster_iter) is not int:
         raise TypeError("cluster_iter must be a integer greater than 1.")
 
-    # polynomial_features
-    if type(polynomial_features) is not bool:
-        raise TypeError("polynomial_features only accepts True or False.")
-
     # polynomial_degree
     if type(polynomial_degree) is not int:
         raise TypeError("polynomial_degree must be an integer.")
-
-    # polynomial_features
-    if type(trigonometry_features) is not bool:
-        raise TypeError("trigonometry_features only accepts True or False.")
 
     # polynomial threshold
     if type(polynomial_threshold) is not float:
@@ -847,10 +758,6 @@ def setup(
         if target in ignore_features:
             raise ValueError("cannot drop target column.")
 
-    # feature_selection
-    if type(feature_selection) is not bool:
-        raise TypeError("feature_selection only accepts True or False.")
-
     # feature_selection_threshold
     if type(feature_selection_threshold) is not float:
         raise TypeError("feature_selection_threshold must be a float between 0 and 1.")
@@ -861,14 +768,6 @@ def setup(
         raise TypeError(
             f"feature_selection_method must be one of {', '.join(feature_selection_methods)}"
         )
-
-    # feature_interaction
-    if type(feature_interaction) is not bool:
-        raise TypeError("feature_interaction only accepts True or False.")
-
-    # feature_ratio
-    if type(feature_ratio) is not bool:
-        raise TypeError("feature_ratio only accepts True or False.")
 
     # interaction_threshold
     if type(interaction_threshold) is not float:
@@ -910,60 +809,14 @@ def setup(
                     "Feature ignored is either target column or doesn't exist in the dataset."
                 )
 
-    # log_experiment
-    if type(log_experiment) is not bool:
-        raise TypeError("log_experiment parameter only accepts True or False.")
-
-    # log_profile
-    if type(log_profile) is not bool:
-        raise TypeError("log_profile parameter only accepts True or False.")
-
     # experiment_name
     if experiment_name is not None:
         if type(experiment_name) is not str:
             raise TypeError("experiment_name parameter must be str if not None.")
 
-    # silent
-    if type(silent) is not bool:
-        raise TypeError("silent parameter only accepts True or False.")
-
-    # remove_perfect_collinearity
-    if type(remove_perfect_collinearity) is not bool:
-        raise TypeError(
-            "remove_perfect_collinearity parameter only accepts True or False."
-        )
-
-    # html
-    if type(html) is not bool:
-        raise TypeError("html parameter only accepts True or False.")
-
     # use_gpu
-    if use_gpu != "Force" and type(use_gpu) is not bool:
+    if use_gpu is not "Force" and not isinstance(use_gpu, bool):
         raise TypeError("use_gpu parameter only accepts 'Force', True or False.")
-
-    # folds_shuffle
-    if type(folds_shuffle) is not bool:
-        raise TypeError("folds_shuffle parameter only accepts True or False.")
-
-    # data_split_shuffle
-    if type(data_split_shuffle) is not bool:
-        raise TypeError("data_split_shuffle parameter only accepts True or False.")
-
-    # log_plots
-    if type(log_plots) is not bool:
-        raise TypeError("log_plots parameter only accepts True or False.")
-
-    # log_data
-    if type(log_data) is not bool:
-        raise TypeError("log_data parameter only accepts True or False.")
-
-    # log_profile
-    if type(log_profile) is not bool:
-        raise TypeError("log_profile parameter only accepts True or False.")
-
-    # fix_imbalance
-    if type(fix_imbalance) is not bool:
-        raise TypeError("fix_imbalance parameter only accepts True or False.")
 
     # fix_imbalance_method
     if fix_imbalance:
@@ -986,8 +839,7 @@ def setup(
     html_param = html
 
     # silent parameter to also set sampling to False
-    if silent:
-        sampling = False
+    if silent: sampling = False
 
     logger.info("Preparing display monitor")
 
