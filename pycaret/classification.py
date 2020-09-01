@@ -552,13 +552,18 @@ def setup(
 
     logger.info("Checking Exceptions")
 
-    # checking data type
-    if hasattr(data, "shape") is False:
+    # Checking data type
+    if not isinstance(data, pd.DataFrame):
         raise TypeError("data passed must be of type pandas.DataFrame")
 
-    # checking train size parameter
-    if type(train_size) is not float:
-        raise TypeError("train_size parameter only accepts float value.")
+    # Checking float parameters in range 0-1
+    floats_in_0_1 = ['train_size', 'rare_level_threshold', 'outliers_threshold',
+                     'multicollinearity_threshold', 'polynomial_threshold',
+                     'feature_selection_threshold', 'interaction_threshold']
+    
+    for param in floats_in_0_1:
+        if not isinstance(eval(param), float) or not 0 < eval(param) < 1:
+            raise TypeError(f"{param} parameter only accepts float values between 0 and 1.")
 
     # Checking boolean parameters
     booleans = ['sampling', 'profile', 'normalize', 'transformation',
@@ -709,10 +714,6 @@ def setup(
                             "pca_components parameter cannot be greater than original features space or float between 0 - 1."
                         )
 
-    # check rare_level_threshold
-    if type(rare_level_threshold) is not float:
-        raise TypeError("rare_level_threshold must be a float between 0 and 1.")
-
     # bin numeric features
     if bin_numeric_features is not None:
         all_cols = list(data.columns)
@@ -724,14 +725,6 @@ def setup(
                     "Column type forced is either target column or doesn't exist in the dataset."
                 )
 
-    # outliers_threshold
-    if type(outliers_threshold) is not float:
-        raise TypeError("outliers_threshold must be a float between 0 and 1.")
-
-    # multicollinearity_threshold
-    if type(multicollinearity_threshold) is not float:
-        raise TypeError("multicollinearity_threshold must be a float between 0 and 1.")
-
     # cluster_iter
     if type(cluster_iter) is not int:
         raise TypeError("cluster_iter must be a integer greater than 1.")
@@ -739,10 +732,6 @@ def setup(
     # polynomial_degree
     if type(polynomial_degree) is not int:
         raise TypeError("polynomial_degree must be an integer.")
-
-    # polynomial threshold
-    if type(polynomial_threshold) is not float:
-        raise TypeError("polynomial_threshold must be a float between 0 and 1.")
 
     # group features
     if group_features is not None:
@@ -758,20 +747,12 @@ def setup(
         if target in ignore_features:
             raise ValueError("cannot drop target column.")
 
-    # feature_selection_threshold
-    if type(feature_selection_threshold) is not float:
-        raise TypeError("feature_selection_threshold must be a float between 0 and 1.")
-
     # feature_selection_method
     feature_selection_methods = ["boruta", "classic"]
     if feature_selection_method not in feature_selection_methods:
         raise TypeError(
             f"feature_selection_method must be one of {', '.join(feature_selection_methods)}"
         )
-
-    # interaction_threshold
-    if type(interaction_threshold) is not float:
-        raise TypeError("interaction_threshold must be a float between 0 and 1.")
 
     # forced type check
     all_cols = list(data.columns)
