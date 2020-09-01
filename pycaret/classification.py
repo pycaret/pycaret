@@ -104,6 +104,7 @@ def setup(
     data and name of the target column.
     
     All other parameters are optional.
+    
     Example
     -------
     >>> from pycaret.datasets import get_data
