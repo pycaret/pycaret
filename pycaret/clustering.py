@@ -3811,7 +3811,7 @@ def deploy_model(model,
     >>> jewellery = get_data('jewellery')
     >>> experiment_name = setup(data = jewellery, silent=True)
     >>> kmeans = create_model('kmeans')
-    >>> deploy_model(model = kmeans, model_name = 'deploy_kmeans', platform = 'linode', authentication = {'bucket' : 'bucket-name', 'region': 'region of bucket'})
+    >>> deploy_model(model = kmeans, model_name = 'deploy_kmeans', platform = 'linode', authentication = {'bucket' : 'bucket-name', 'region': 'ap-south-1'})
 
     Parameters
     ----------
