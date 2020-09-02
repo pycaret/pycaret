@@ -1028,9 +1028,7 @@ def setup(
             ["Status", ". . . . . . . . . . . . . . . . . .", "Loading Dependencies"],
             ["ETC", ". . . . . . . . . . . . . . . . . .", "Calculating ETC"],
         ]
-        display = Display(
-            verbose, html_param, progress_args, monitor_rows, logger=logger,
-        )
+        display = Display(verbose, html_param, progress_args, monitor_rows,)
 
         display.display_progress()
         display.display_monitor()
@@ -1959,12 +1957,7 @@ def compare_models(
             ["ETC", ". . . . . . . . . . . . . . . . . .", "Calculating ETC"],
         ]
         display = Display(
-            verbose,
-            html_param,
-            progress_args,
-            master_display_columns,
-            monitor_rows,
-            logger=logger,
+            verbose, html_param, progress_args, master_display_columns, monitor_rows,
         )
 
         display.display_progress()
@@ -2121,9 +2114,9 @@ def compare_models(
 
             avgs_dict_log = {
                 k: v
-                for k, v in master_display.drop(["Object", "Model", "TT (Sec)"], axis=1)
-                .iloc[0]
-                .items()
+                for k, v in compare_models_.drop(
+                    ["Object", "Model", "TT (Sec)"], axis=1
+                ).items()
             }
 
             try:
@@ -2176,7 +2169,7 @@ def compare_models(
 
     display.move_progress()
 
-    display.update_monitor(1, "Compiling Final Model")
+    display.update_monitor(1, "Compiling Final Models")
     display.update_monitor(3, "Almost Finished")
     display.display_monitor()
 
@@ -2210,7 +2203,7 @@ def compare_models(
 
 
 def create_model(
-    estimator=None,
+    estimator,
     fold: int = 10,
     round: int = 4,
     cross_validation: bool = True,
@@ -2396,12 +2389,7 @@ def create_model(
             ["ETC", ". . . . . . . . . . . . . . . . . .", "Calculating ETC"],
         ]
         display = Display(
-            verbose,
-            html_param,
-            progress_args,
-            master_display_columns,
-            monitor_rows,
-            logger=logger,
+            verbose, html_param, progress_args, master_display_columns, monitor_rows,
         )
         display.display_progress()
         display.display_monitor()
@@ -2700,7 +2688,7 @@ def create_model(
 
 
 def tune_model(
-    estimator=None,
+    estimator,
     fold: int = 10,
     round: int = 4,
     n_iter: int = 10,
@@ -3017,12 +3005,7 @@ def tune_model(
             ["ETC", ". . . . . . . . . . . . . . . . . .", "Calculating ETC"],
         ]
         display = Display(
-            verbose,
-            html_param,
-            progress_args,
-            master_display_columns,
-            monitor_rows,
-            logger=logger,
+            verbose, html_param, progress_args, master_display_columns, monitor_rows,
         )
 
         display.display_progress()
@@ -3605,12 +3588,7 @@ def ensemble_model(
             ["ETC", ". . . . . . . . . . . . . . . . . .", "Calculating ETC"],
         ]
         display = Display(
-            verbose,
-            html_param,
-            progress_args,
-            master_display_columns,
-            monitor_rows,
-            logger=logger,
+            verbose, html_param, progress_args, master_display_columns, monitor_rows,
         )
 
         display.display_progress()
@@ -3971,12 +3949,7 @@ def blend_models(
             ["ETC", ". . . . . . . . . . . . . . . . . .", "Calculating ETC"],
         ]
         display = Display(
-            verbose,
-            html_param,
-            progress_args,
-            master_display_columns,
-            monitor_rows,
-            logger=logger,
+            verbose, html_param, progress_args, master_display_columns, monitor_rows,
         )
         display.display_progress()
         display.display_monitor()
@@ -4318,12 +4291,7 @@ def stack_models(
             ["ETC", ". . . . . . . . . . . . . . . . . .", "Calculating ETC"],
         ]
         display = Display(
-            verbose,
-            html_param,
-            progress_args,
-            master_display_columns,
-            monitor_rows,
-            logger=logger,
+            verbose, html_param, progress_args, master_display_columns, monitor_rows,
         )
         display.display_progress()
         display.display_monitor()
@@ -4570,7 +4538,6 @@ def plot_model(
         ("Gain Chart", "gain"),
     ]
     available_plots = {k: v for v, k in available_plots}
-    print(available_plots)
 
     if plot not in available_plots:
         raise ValueError(
@@ -4636,9 +4603,7 @@ def plot_model(
 
     if not display:
         progress_args = {"max": 5}
-        display = Display(
-            verbose, html_param, progress_args, None, None, logger=logger,
-        )
+        display = Display(verbose, html_param, progress_args, None, None,)
         display.display_progress()
 
     logger.info("Preloading libraries")
@@ -4711,7 +4676,6 @@ def plot_model(
             scale=scale,
             save=save,
             system=system,
-            logger=logger,
             display=display,
         )
 
@@ -4730,7 +4694,6 @@ def plot_model(
             scale=scale,
             save=save,
             system=system,
-            logger=logger,
             display=display,
         )
 
@@ -4749,7 +4712,6 @@ def plot_model(
             scale=scale,
             save=save,
             system=system,
-            logger=logger,
             display=display,
         )
 
@@ -4770,7 +4732,6 @@ def plot_model(
             scale=scale,
             save=save,
             system=system,
-            logger=logger,
             display=display,
         )
 
@@ -4789,7 +4750,6 @@ def plot_model(
             scale=scale,
             save=save,
             system=system,
-            logger=logger,
             display=display,
         )
 
@@ -4808,7 +4768,6 @@ def plot_model(
             scale=scale,
             save=save,
             system=system,
-            logger=logger,
             display=display,
         )
 
@@ -4842,10 +4801,9 @@ def plot_model(
             y_test=test_y_transformed,
             name=plot_name,
             scale=scale,
-            handle_train="draw",
+            handle_test="draw",
             save=save,
             system=system,
-            logger=logger,
             display=display,
             features=["Feature One", "Feature Two"],
             classes=["A", "B"],
@@ -4867,7 +4825,6 @@ def plot_model(
             scale=scale,
             save=save,
             system=system,
-            logger=logger,
             display=display,
         )
 
@@ -4890,7 +4847,6 @@ def plot_model(
             scale=scale,
             save=save,
             system=system,
-            logger=logger,
             display=display,
         )
 
@@ -4962,7 +4918,6 @@ def plot_model(
             scale=scale,
             save=save,
             system=system,
-            logger=logger,
             display=display,
         )
 
@@ -5100,7 +5055,6 @@ def plot_model(
             scale=scale,
             save=save,
             system=system,
-            logger=logger,
             display=display,
         )
 
@@ -5137,17 +5091,18 @@ def plot_model(
             scale=scale,
             save=save,
             system=system,
-            logger=logger,
             display=display,
         )
 
     elif plot == "feature":
-
-        if hasattr(estimator, "coef_"):
-            variables = abs(model.coef_[0])
+        temp_model = model
+        if hasattr(model, "steps"):
+            temp_model = model.steps[-1][1]
+        if hasattr(temp_model, "coef_"):
+            variables = abs(temp_model.coef_[0])
         else:
             logger.warning("No coef_ found. Trying feature_importances_")
-            variables = abs(model.feature_importances_)
+            variables = abs(temp_model.feature_importances_)
         coef_df = pd.DataFrame({"Variable": data_X.columns, "Value": variables})
         sorted_df = (
             coef_df.sort_values(by="Value", ascending=False)
@@ -5257,6 +5212,7 @@ def evaluate_model(estimator):
         verbose=fixed(True),
         scale=fixed(1),
         system=fixed(True),
+        display=fixed(None),
     )
 
 
@@ -5619,12 +5575,7 @@ def calibrate_model(
             ["ETC", ". . . . . . . . . . . . . . . . . .", "Calculating ETC"],
         ]
         display = Display(
-            verbose,
-            html_param,
-            progress_args,
-            master_display_columns,
-            monitor_rows,
-            logger=logger,
+            verbose, html_param, progress_args, master_display_columns, monitor_rows,
         )
 
         display.display_progress()
@@ -6053,7 +6004,7 @@ def predict_model(
     np.random.seed(seed)
 
     if not display:
-        display = Display(verbose, html_param, logger=logger,)
+        display = Display(verbose, html_param,)
 
     dtypes = None
 
@@ -6212,7 +6163,7 @@ def finalize_model(estimator, display=None) -> Any:  # added in pycaret==2.2.0
     logger.info(f"finalize_model({function_params_str})")
 
     if not display:
-        display = Display(False, html_param, logger=logger,)
+        display = Display(False, html_param,)
 
     # run_time
     runtime_start = time.time()
@@ -6802,12 +6753,19 @@ def add_metric(
         raise ValueError("id already present in metrics dataframe.")
 
     new_metric = ClassificationMetricContainer(
-        id=id, name=name, score_func=score_func, target=target, args=args, display_name=name, is_multiclass=bool(multiclass), is_custom=True
+        id=id,
+        name=name,
+        score_func=score_func,
+        target=target,
+        args=args,
+        display_name=name,
+        is_multiclass=bool(multiclass),
+        is_custom=True,
     )
 
     new_metric = new_metric.get_dict()
 
-    new_metric = pd.Series(new_metric, name=id.replace(" ", "_")).drop('ID')
+    new_metric = pd.Series(new_metric, name=id.replace(" ", "_")).drop("ID")
 
     last_row = all_metrics.iloc[-1]
     all_metrics.drop(all_metrics.index[-1], inplace=True)
@@ -7121,7 +7079,9 @@ def _sample_data(
         MONITOR UPDATE ENDS
         """
 
-        _stratify_columns = _get_columns_to_stratify_by(X, y, stratify_param, target_param)
+        _stratify_columns = _get_columns_to_stratify_by(
+            X, y, stratify_param, target_param
+        )
 
         X_, _, y_, _ = train_test_split(
             X,
@@ -7132,7 +7092,9 @@ def _sample_data(
             shuffle=data_split_shuffle,
         )
 
-        _stratify_columns = _get_columns_to_stratify_by(X_, y_, stratify_param, target_param)
+        _stratify_columns = _get_columns_to_stratify_by(
+            X_, y_, stratify_param, target_param
+        )
 
         X_train, X_test, y_train, y_test = train_test_split(
             X_,
@@ -7289,13 +7251,13 @@ def _get_model_id(e) -> str:
     return pycaret.internal.utils.get_model_id(e, models(internal=True))
 
 
-def _get_model_name(e) -> str:
+def _get_model_name(e, deep: bool = True) -> str:
     """
     Get model name.
     """
     import pycaret.internal.utils
 
-    return pycaret.internal.utils.get_model_name(e, models(internal=True))
+    return pycaret.internal.utils.get_model_name(e, models(internal=True), deep=deep)
 
 
 def _is_special_model(e) -> bool:
@@ -7338,7 +7300,7 @@ def _mlflow_log_model(
     # Creating Logs message monitor
     if display:
         display.update_monitor(1, "Creating Logs")
-        display.update_monitor(2, "Almost Finished")
+        display.update_monitor(-1, "Almost Finished")
         display.display_monitor()
 
     # import mlflow
