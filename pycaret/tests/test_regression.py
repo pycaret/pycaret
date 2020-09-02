@@ -34,7 +34,7 @@ def test():
     assert isinstance(reg1[19], str)
 
     # compare models
-    top3 = pycaret.regression.compare_models(n_select = 3)
+    top3 = pycaret.regression.compare_models()[:3]
     assert isinstance(top3, list)
 
     # tune model
