@@ -310,7 +310,7 @@ class DataTypes_Auto_infer(BaseEstimator,TransformerMixin):
     # just keep picking the data and keep applying to the test data set (be mindful of target variable)
     for i in data.columns: # we are taking all the columns in test , so we dot have to worry about droping target column
       if i == self.target and ((self.ml_usecase == 'classification') and (self.learent_dtypes[self.target]=='object')):
-        data[i] = self.le.transform(data[i])
+        data[i] = self.le.transform(data[i].apply(str).astype('object'))
         data[i] = data[i].astype('int64')
       else:
         data[i] = data[i].astype(self.learent_dtypes[i])
