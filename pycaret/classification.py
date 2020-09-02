@@ -86,6 +86,7 @@ def setup(
     fix_imbalance_method: Optional[Any] = None,
     data_split_shuffle: bool = True,
     folds_shuffle: bool = False,
+    stratify: Union[bool, List[str]] = True,
     n_jobs: int = -1,
     use_gpu: bool = False,  # added in pycaret==2.1
     custom_pipeline_steps_after_split: Union[
@@ -424,6 +425,11 @@ def setup(
     folds_shuffle: bool, default = False
         If set to False, prevents shuffling of rows when using cross validation.
 
+    stratify: bool or list, default = True
+        Whether to stratify when splitting data.
+        If True, will stratify by the target column. If False, will not stratify.
+        If list is passed, will stratify by the columns with the names in the list.
+
     n_jobs: int, default = -1
         The number of jobs to run in parallel (for functions that supports parallel 
         processing) -1 means using all processors. To run all functions on single 
@@ -450,7 +456,6 @@ def setup(
         This Pipeline is applied on each CV fold separately and on the final fit.
         The transformers will be applied before PyCaret transformers (eg. SMOTE).
 
-
     html: bool, default = True
         If set to False, prevents runtime display of monitor. This must be set to False
         when using environment that doesnt support HTML.
@@ -459,7 +464,7 @@ def setup(
         If None, a random seed is generated and returned in the Information grid. The 
         unique number is then distributed as a seed in all functions used during the 
         experiment. This can be used for later reproducibility of the entire experiment.
-    
+
     log_experiment: bool, default = False
         When set to True, all metrics and parameters are logged on MLFlow server.
 
@@ -489,7 +494,7 @@ def setup(
     profile: bool, default = False
         If set to true, a data profile for Exploratory Data Analysis will be displayed 
         in an interactive HTML report. 
-    
+
     Warnings
     --------
     - Some GPU models require conversion from float64 to float32,
@@ -700,6 +705,11 @@ def setup(
                 raise ValueError(
                     "Column type forced is either target column or doesn't exist in the dataset."
                 )
+
+    # stratify
+    if stratify:
+        if type(stratify) is not list and type(stratify) is not bool:
+            raise TypeError("stratify param only accepts a bool or a list of strings.")
 
     # high_cardinality_methods
     high_cardinality_allowed_methods = ["frequency", "clustering"]
@@ -1049,7 +1059,7 @@ def setup(
 
     # declaring global variables to be accessed by other functions
     logger.info("Declaring global variables")
-    global X, y, X_train, X_test, y_train, y_test, seed, prep_pipe, experiment__, folds_shuffle_param, n_jobs_param, gpu_n_jobs_param, create_model_container, master_model_container, display_container, exp_name_log, logging_param, log_plots_param, fix_imbalance_param, fix_imbalance_method_param, data_before_preprocess, target_param, gpu_param, all_models, _all_models_internal, all_metrics, _internal_pipeline_steps
+    global X, y, X_train, X_test, y_train, y_test, seed, prep_pipe, experiment__, folds_shuffle_param, n_jobs_param, gpu_n_jobs_param, create_model_container, master_model_container, display_container, exp_name_log, logging_param, log_plots_param, fix_imbalance_param, fix_imbalance_method_param, data_before_preprocess, target_param, gpu_param, all_models, _all_models_internal, all_metrics, _internal_pipeline_steps, stratify_param
 
     logger.info("Copying data for preprocessing")
 
@@ -1373,6 +1383,9 @@ def setup(
     # create gpu_param var
     gpu_param = use_gpu
 
+    # create stratify_param var
+    stratify_param = stratify
+
     # determining target type
     if _is_multiclass():
         target_type = "Multiclass"
@@ -1399,11 +1412,15 @@ def setup(
         display.update_monitor(1, "Splitting Data")
         display.display_monitor()
 
+        _stratify_columns = _get_columns_to_stratify_by(
+            X_before_preprocess, y_before_preprocess, stratify_param, target
+        )
+
         X_train, X_test, y_train, y_test = train_test_split(
             X_before_preprocess,
             y_before_preprocess,
             test_size=1 - train_size,
-            stratify=y_before_preprocess,
+            stratify=_stratify_columns,
             random_state=seed,
             shuffle=data_split_shuffle,
         )
@@ -1726,6 +1743,7 @@ def setup(
         target_param,
         gpu_param,
         gpu_n_jobs_param,
+        stratify_param,
     )
 
 
@@ -7108,20 +7126,24 @@ def _sample_data(
         MONITOR UPDATE ENDS
         """
 
+        _stratify_columns = _get_columns_to_stratify_by(X, y, stratify_param, target_param)
+
         X_, _, y_, _ = train_test_split(
             X,
             y,
             test_size=1 - i,
-            stratify=y,
+            stratify=_stratify_columns,
             random_state=seed,
             shuffle=data_split_shuffle,
         )
+
+        _stratify_columns = _get_columns_to_stratify_by(X_, y_, stratify_param, target_param)
 
         X_train, X_test, y_train, y_test = train_test_split(
             X_,
             y_,
             test_size=1 - train_size,
-            stratify=y_,
+            stratify=_stratify_columns,
             random_state=seed,
             shuffle=data_split_shuffle,
         )
@@ -7212,13 +7234,15 @@ def _sample_data(
 
     sample_size = input("Sample Size: ")
 
+    _stratify_columns = _get_columns_to_stratify_by(X, y, stratify_param, target_param)
+
     if sample_size == "" or sample_size == "1":
 
         X_train, X_test, y_train, y_test = train_test_split(
             X,
             y,
             test_size=1 - train_size,
-            stratify=y,
+            stratify=_stratify_columns,
             random_state=seed,
             shuffle=data_split_shuffle,
         )
@@ -7230,16 +7254,20 @@ def _sample_data(
             X,
             y,
             test_size=1 - sample_n,
-            stratify=y,
+            stratify=_stratify_columns,
             random_state=seed,
             shuffle=data_split_shuffle,
+        )
+
+        _stratify_columns = _get_columns_to_stratify_by(
+            X_selected, y_selected, stratify_param, target_param
         )
 
         X_train, X_test, y_train, y_test = train_test_split(
             X_selected,
             y_selected,
             test_size=1 - train_size,
-            stratify=y_selected,
+            stratify=_stratify_columns,
             random_state=seed,
             shuffle=data_split_shuffle,
         )
@@ -7462,3 +7490,19 @@ def _mlflow_log_model(
             input_example=input_example,
         )
         del prep_pipe_temp
+
+
+def _get_columns_to_stratify_by(
+    X: pd.DataFrame, y: pd.DataFrame, stratify: Union[bool, List[str]], target: str
+) -> pd.DataFrame:
+    if not stratify:
+        stratify = None
+    else:
+        if isinstance(stratify, list):
+            data = pd.concat([X, y], axis=1)
+            if not all(col in data.columns for col in stratify):
+                raise ValueError("Column to stratify by does not exist in the dataset.")
+            stratify = data[stratify]
+        else:
+            stratify = y
+    return stratify
