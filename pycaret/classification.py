@@ -6750,8 +6750,7 @@ def _get_metric(name_or_id: str):
 def add_metric(
     id: str,
     name: str,
-    score_func_type: type,
-    scorer=None,
+    score_func: type,
     target: str = "pred",
     args: dict = {},
     multiclass: bool = True,
@@ -6767,12 +6766,8 @@ def add_metric(
     name: str
         Display name of the metric.
 
-    score_func_type: type
-        Type of score function (or loss function) with signature score_func(y, y_pred, **kwargs).
-
-    scorer: sklearn.metrics.Scorer, default = None
-        The Scorer to be used in tuning and cross validation. If None, one will be created
-        from score_func_type and args.
+    score_func: type
+        Score function (or loss function) with signature score_func(y, y_pred, **kwargs).
 
     target: str, default = 'pred'
         The target of the score function.
@@ -6807,12 +6802,12 @@ def add_metric(
         raise ValueError("id already present in metrics dataframe.")
 
     new_metric = ClassificationMetricContainer(
-        id, name, score_func_type, scorer, target, args, name, bool(multiclass), True
+        id=id, name=name, score_func=score_func, target=target, args=args, display_name=name, is_multiclass=bool(multiclass), is_custom=True
     )
 
     new_metric = new_metric.get_dict()
 
-    new_metric = pd.Series(new_metric, name=id.replace(" ", "_"))
+    new_metric = pd.Series(new_metric, name=id.replace(" ", "_")).drop('ID')
 
     last_row = all_metrics.iloc[-1]
     all_metrics.drop(all_metrics.index[-1], inplace=True)
