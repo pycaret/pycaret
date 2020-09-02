@@ -3732,14 +3732,13 @@ def ensemble_model(
 
 
 def blend_models(
-    estimator_list="All",
+    estimator_list: list,
     fold: int = 10,
     round: int = 4,
     choose_better: bool = False,
     optimize: str = "Accuracy",
-    method: str = "hard",
+    method: str = "auto",
     weights: Optional[List[float]] = None,  # added in pycaret==2.2.0
-    turbo: bool = True,
     verbose: bool = True,
     display: Optional[Display] = None,  # added in pycaret==2.2.0
 ) -> Any:
@@ -3749,10 +3748,10 @@ def blend_models(
     estimators in the model library (excluding the few when turbo is True) or 
     for specific trained estimators passed as a list in estimator_list param.
     It scores it using Stratified Cross Validation. The output prints a score
-    grid that shows Accuracy,  AUC, Recall, Precision, F1, Kappa and MCC by 
-    fold (default CV = 10 Folds). 
+    grid that shows Accuracy, AUC, Recall, Precision, F1, Kappa and MCC by 
+    fold (default CV = 10 Folds).
 
-    This function returns a trained model object.  
+    This function returns a trained model object.
 
     Example
     -------
@@ -3775,7 +3774,7 @@ def blend_models(
 
     Parameters
     ----------
-    estimator_list : str ('All') or list of object, default = 'All'
+    estimator_list : list of objects
 
     fold: integer, default = 10
         Number of folds to be used in Kfold CV. Must be at least 2. 
@@ -3795,17 +3794,15 @@ def blend_models(
         optimize parameter are 'Accuracy', 'AUC', 'Recall', 'Precision', 'F1', 
         'Kappa', 'MCC'.
 
-    method: str, default = 'hard'
-        'hard' uses predicted class labels for majority rule voting.'soft', predicts 
+    method: str, default = 'auto'
+        'hard' uses predicted class labels for majority rule voting. 'soft', predicts 
         the class label based on the argmax of the sums of the predicted probabilities, 
-        which is recommended for an ensemble of well-calibrated classifiers. 
+        which is recommended for an ensemble of well-calibrated classifiers. Default value,
+        'auto', will try to use 'soft' and fall back to 'hard' if the former is not supported.
 
     weights: list, default = None
         Sequence of weights (float or int) to weight the occurrences of predicted class labels (hard voting)
         or class probabilities before averaging (soft voting). Uses uniform weights if None.
-
-    turbo: bool, default = True
-        When turbo is set to True, it excludes estimator that uses Radial Kernel.
 
     verbose: bool, default = True
         Score grid is not printed when verbose is set to False.
@@ -3850,30 +3847,36 @@ def blend_models(
     # run_time
     runtime_start = time.time()
 
-    # checking error for estimator_list (string)
+    # checking method parameter
+    available_method = ["auto", "soft", "hard"]
+    if method not in available_method:
+        raise ValueError(
+            "Method parameter only accepts 'auto', 'soft' or 'hard' as a parameter. See Docstring for details."
+        )
 
-    if estimator_list != "All":
-        if type(estimator_list) is not list:
-            raise ValueError(
-                "estimator_list parameter only accepts 'All' as str or list of trained models."
-            )
-
-        for i in estimator_list:
-            if not hasattr(i, "fit"):
-                raise ValueError(
-                    f"Estimator {i} does not have the required fit() method."
-                )
+    # checking error for estimator_list
+    for i in estimator_list:
+        if not hasattr(i, "fit"):
+            raise ValueError(f"Estimator {i} does not have the required fit() method.")
 
         # checking method param with estimator list
-        if method == "soft":
-
-            check = 0
+        if method != "hard":
 
             for i in estimator_list:
                 if not hasattr(i, "predict_proba"):
-                    raise TypeError(
-                        "Estimator list contains estimator that doesnt support probabilities and method is forced to soft. Either change the method or drop the estimator."
-                    )
+                    if method != "auto":
+                        raise TypeError(
+                            f"Estimator list contains estimator {i} that doesn't support probabilities and method is forced to 'soft'. Either change the method or drop the estimator."
+                        )
+                    else:
+                        logger.info(
+                            f"Estimator {i} doesn't support probabilities, falling back to 'hard'."
+                        )
+                        method = "hard"
+                        break
+
+            if method == "auto":
+                method = "soft"
 
     # checking fold parameter
     if type(fold) is not int:
@@ -3883,26 +3886,8 @@ def blend_models(
     if type(round) is not int:
         raise TypeError("Round parameter only accepts integer value.")
 
-    # checking method parameter
-    available_method = ["soft", "hard"]
-    if method not in available_method:
-        raise ValueError(
-            "Method parameter only accepts 'soft' or 'hard' as a parameter. See Docstring for details."
-        )
-
-    # checking verbose parameter
-    if type(turbo) is not bool:
-        raise TypeError("Turbo parameter can only take argument as True or False.")
-
     if weights is not None:
-        if isinstance(estimator_list, list):
-            num_estimators = len(estimator_list)
-        else:
-            num_estimators = models(internal=True)
-            num_estimators = num_estimators[num_estimators["Special"] == False]
-            if turbo:
-                num_estimators = num_estimators[num_estimators["Turbo"] == True]
-            num_estimators = len(num_estimators)
+        num_estimators = len(estimator_list)
         # checking weights parameter
         if len(weights) != num_estimators:
             raise ValueError(
@@ -3935,12 +3920,8 @@ def blend_models(
     
     """
 
-    # estimator_list_flag
-    all_flag = estimator_list == "All"
-
     if not display:
-        all_models_offset = len(models()) if all_flag else 0
-        progress_args = {"max": fold + 2 + 4 + all_models_offset}
+        progress_args = {"max": fold + 2 + 4}
         master_display_columns = all_metrics["Display Name"].to_list()
         timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
         monitor_rows = [
@@ -3986,42 +3967,18 @@ def blend_models(
     MONITOR UPDATE ENDS
     """
 
-    if all_flag:
-        models_to_check = models(internal=True)
-        models_to_check = models_to_check[models_to_check["Special"] == False]
-        if method == "soft":
-            models_to_check = models_to_check[models_to_check["Soft Voting"] == True]
-        if turbo:
-            models_to_check = models_to_check[models_to_check["Turbo"] == True]
-        estimator_list_str = models_to_check.index.to_list()
-        estimator_list = []
-        for model in estimator_list_str:
-            model_name = _get_model_name(model)
-            logger.info(
-                "SubProcess create_model() called =================================="
-            )
-            model = create_model(
-                estimator=model, system=False, verbose=False, fold=fold, round=round,
-            )
-            # re-instate display_constainer state
-            pull(pop=True)
-            logger.info(
-                "SubProcess create_model() end =================================="
-            )
-            estimator_list.append((model_name, model))
-            display.move_progress()
-    else:
-        estimator_dict = {}
-        for x in estimator_list:
-            name = _get_model_id(x)
-            suffix = 1
-            original_name = name
-            while name in estimator_dict:
-                name = f"{original_name}_{suffix}"
-                suffix += 1
-            estimator_dict[name] = x
+    logger.info("Getting model names")
+    estimator_dict = {}
+    for x in estimator_list:
+        name = _get_model_id(x)
+        suffix = 1
+        original_name = name
+        while name in estimator_dict:
+            name = f"{original_name}_{suffix}"
+            suffix += 1
+        estimator_dict[name] = x
 
-        estimator_list = list(estimator_dict.items())
+    estimator_list = list(estimator_dict.items())
 
     votingclassifier_model_definition = _all_models_internal.loc["Voting"]
     try:
@@ -4079,7 +4036,7 @@ def blend_models(
             logger.error(f"_mlflow_log_model() for {model} raised an exception:")
             logger.error(traceback.format_exc())
 
-    if choose_better and not all_flag:
+    if choose_better:
         model = _choose_better(
             model,
             estimator_list,
