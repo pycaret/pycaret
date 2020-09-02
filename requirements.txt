@@ -30,6 +30,7 @@ imbalanced-learn>=0.6.2
 #awscli - only required in deploy_model for AWS
 #azure-storage-blob - only required in deploy_model for Azure
 #google-cloud-storage - only required in deploy_model for GCP
+#linode-cli - only required in deploy_model for Linode Object Storage
 #shap - removing shap as it's causing issues building Docker image.
 #sckit-plot for lift and gain charts
 #statsmodels - for future timeseries module
