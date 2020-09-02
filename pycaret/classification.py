@@ -1753,12 +1753,11 @@ def compare_models(
     fold: int = 10,
     round: int = 4,
     sort: str = "Accuracy",
-    n_select: int = 1,
     budget_time: float = 0,  # added in pycaret==2.1.0
     turbo: bool = True,
     verbose: bool = True,
     display: Optional[Display] = None,
-) -> Any:
+) -> List[Any]:
 
     """
     This function train all the models available in the model library and scores them 
@@ -1766,10 +1765,7 @@ def compare_models(
     AUC, Recall, Precision, F1, Kappa and MCC (averaged accross folds), determined by
     fold parameter.
     
-    This function returns the best model based on metric defined in sort parameter. 
-    
-    To select top N models, use n_select parameter that is set to 1 by default.
-    Where n_select parameter > 1, it will return a list of trained model objects.
+    This function returns all of the models compared, sorted by the value of the selected metric.
 
     When turbo is set to True ('rbfsvm', 'gpc' and 'mlp') are excluded due to longer
     training time. By default turbo param is set to True.        
@@ -1846,6 +1842,9 @@ def compare_models(
         Kappa and MCC. Mean and standard deviation of the scores across 
         the folds are also returned.
 
+    list
+        List of fitted model objects that were compared.
+
     Warnings
     --------
     - compare_models() though attractive, might be time consuming with large 
@@ -1906,10 +1905,6 @@ def compare_models(
     # checking round parameter
     if type(round) is not int:
         raise TypeError("Round parameter only accepts integer value.")
-
-    # checking n_select parameter
-    if type(n_select) is not int:
-        raise TypeError("n_select parameter only accepts integer value.")
 
     # checking budget_time parameter
     if type(budget_time) is not int and type(budget_time) is not float:
@@ -2174,14 +2169,6 @@ def compare_models(
     display.display_monitor()
 
     sorted_models = master_display["Object"].to_list()
-    n_select = n_select if n_select <= len(sorted_models) else len(sorted_models)
-    if n_select < 0:
-        sorted_models = sorted_models[n_select:]
-    else:
-        sorted_models = sorted_models[:n_select]
-
-    if len(sorted_models) == 1:
-        sorted_models = sorted_models[0]
 
     display.display(compare_models_, clear=True)
 
