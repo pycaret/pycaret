@@ -206,7 +206,7 @@ class LogisticRegressionClassifierContainer(ClassifierContainer):
             except ImportError:
                 logger.warning("Couldn't import cuml.linear_model.LogisticRegression")
 
-        args = {}
+        args = {'max_iter': 1000}
         tune_args = {}
         tune_grid = {}
         tune_distributions = {}
@@ -420,11 +420,6 @@ class SGDClassifierContainer(ClassifierContainer):
             "alpha": UniformDistribution(0.0000000001, 0.9999999999),
             "eta0": UniformDistribution(0.001, 0.5),
         }
-
-        # common
-        tune_grid["n_neighbors"] = range(1, 51)
-        tune_grid["weights"] = ["uniform"]
-        tune_grid["metric"] = ["minkowski", "euclidean", "manhattan"]
 
         if gpu_imported:
             tune_grid["learning_rate"] += ["optimal"]
@@ -1241,34 +1236,6 @@ class VotingClassifierContainer(ClassifierContainer):
             is_gpu_enabled=False,
         )
 
-
-class OneVsRestClassifierContainer(ClassifierContainer):
-    def __init__(self, globals_dict: dict) -> None:
-        logger = get_logger()
-        np.random.seed(globals_dict["seed"])
-        from sklearn.multiclass import OneVsRestClassifier
-
-        args = {"n_jobs": globals_dict["gpu_n_jobs_param"]}
-        tune_args = {}
-        tune_grid = {}
-        tune_distributions = {}
-
-        _leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
-
-        super().__init__(
-            id="OneVsRest",
-            name="One Vs Rest Classifier",
-            class_def=OneVsRestClassifier,
-            args=args,
-            tune_grid=tune_grid,
-            tune_distribution=tune_distributions,
-            tune_args=tune_args,
-            shap=False,
-            is_special=True,
-            is_gpu_enabled=False,
-        )
-
-
 class CalibratedClassifierCVContainer(ClassifierContainer):
     def __init__(self, globals_dict: dict) -> None:
         logger = get_logger()
@@ -1296,8 +1263,8 @@ class CalibratedClassifierCVContainer(ClassifierContainer):
         )
 
 
-def get_all_model_containers(globals_dict: dict) -> Dict[str, ClassifierContainer]:
+def get_all_model_containers(globals_dict: dict, raise_errors: bool = True) -> Dict[str, ClassifierContainer]:
     return pycaret.containers.base_container.get_all_containers(
-        globals(), globals_dict, ClassifierContainer
+        globals(), globals_dict, ClassifierContainer, raise_errors
     )
 

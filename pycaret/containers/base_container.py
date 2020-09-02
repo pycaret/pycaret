@@ -83,7 +83,10 @@ class BaseContainer:
 
 
 def get_all_containers(
-    container_globals: dict, globals_dict: dict, type_var: type
+    container_globals: dict,
+    globals_dict: dict,
+    type_var: type,
+    raise_errors: bool = True,
 ) -> Dict[str, BaseContainer]:
     model_container_classes = [
         obj
@@ -91,6 +94,15 @@ def get_all_containers(
         if inspect.isclass(obj) and type_var in obj.__bases__
     ]
 
-    model_containers = [obj(globals_dict) for obj in model_container_classes]
+    model_containers = []
+
+    for obj in model_container_classes:
+        if raise_errors:
+            model_containers.append(obj(globals_dict))
+        else:
+            try:
+                model_containers.append(obj(globals_dict))
+            except:
+                pass
 
     return {container.id: container for container in model_containers}

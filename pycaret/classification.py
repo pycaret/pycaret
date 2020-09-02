@@ -4,12 +4,15 @@
 # Release: PyCaret 2.2
 # Last modified : 26/08/2020
 
-from pycaret.internal.utils import color_df
+from pycaret.internal.utils import color_df, normalize_custom_transformers
 from pycaret.internal.logging import get_logger
 from pycaret.internal.plotting import show_yellowbrick_plot
 from pycaret.internal.Display import Display
 from pycaret.internal.distributions import *
-from pycaret.containers.models.classification import get_all_model_containers
+from pycaret.containers.models.classification import (
+    get_all_model_containers,
+    LogisticRegressionClassifierContainer,
+)
 from pycaret.containers.metrics.classification import (
     get_all_metric_containers,
     ClassificationMetricContainer,
@@ -23,6 +26,7 @@ import time
 import random
 import gc
 from copy import deepcopy
+from sklearn.base import clone
 from typing import List, Tuple, Any, Union
 import warnings
 from IPython.utils import io
@@ -35,7 +39,7 @@ def setup(
     data: pd.DataFrame,
     target: str,
     train_size: float = 0.7,
-    sampling: bool = True,
+    sampling: bool = False,
     sample_estimator: Optional[Any] = None,
     categorical_features: Optional[List[str]] = None,
     categorical_imputation: str = "constant",
@@ -82,8 +86,12 @@ def setup(
     fix_imbalance_method: Optional[Any] = None,
     data_split_shuffle: bool = True,
     folds_shuffle: bool = False,
+    stratify: Union[bool, List[str]] = True,
     n_jobs: int = -1,
     use_gpu: bool = False,  # added in pycaret==2.1
+    custom_pipeline_steps_after_split: Union[
+        Any, Tuple[str, Any], List[Any], List[Tuple[str, Any]]
+    ] = None,
     html: bool = True,
     session_id: Optional[int] = None,
     log_experiment: bool = False,
@@ -121,14 +129,13 @@ def setup(
 
     target: str
         Name of the target column to be passed in as a string. The target variable could 
-        be binary or multiclass. In case of a multiclass target, all estimators are wrapped
-        with a OneVsRest classifier.
+        be binary or multiclass.
 
     train_size: float, default = 0.7
         Size of the training set. By default, 70% of the data will be used for training 
         and validation. The remaining data will be used for a test / hold-out set.
 
-    sampling: bool, default = True
+    sampling: bool, default = False
         When the sample size exceeds 25,000 samples, pycaret will build a base estimator
         at various sample sizes from the original dataset. This will return a performance 
         plot of AUC, Accuracy, Recall, Precision, Kappa and F1 values at various sample 
@@ -418,6 +425,11 @@ def setup(
     folds_shuffle: bool, default = False
         If set to False, prevents shuffling of rows when using cross validation.
 
+    stratify: bool or list, default = True
+        Whether to stratify when splitting data.
+        If True, will stratify by the target column. If False, will not stratify.
+        If list is passed, will stratify by the columns with the names in the list.
+
     n_jobs: int, default = -1
         The number of jobs to run in parallel (for functions that supports parallel 
         processing) -1 means using all processors. To run all functions on single 
@@ -437,6 +449,13 @@ def setup(
         - Logistic Regression, Ridge, SVM, SVC - requires cuML >= 0.15 to be installed.
           https://github.com/rapidsai/cuml
 
+    custom_pipeline_steps_after_split: transformer or list of transformers or tuple
+    (str, transformer) or list of tuples (str, transformer), default = None
+        If set, will append the passed transformers (including Pipelines) to the PyCaret
+        preprocessing Pipeline applied after train-test split during model fitting.
+        This Pipeline is applied on each CV fold separately and on the final fit.
+        The transformers will be applied before PyCaret transformers (eg. SMOTE).
+
     html: bool, default = True
         If set to False, prevents runtime display of monitor. This must be set to False
         when using environment that doesnt support HTML.
@@ -445,7 +464,7 @@ def setup(
         If None, a random seed is generated and returned in the Information grid. The 
         unique number is then distributed as a seed in all functions used during the 
         experiment. This can be used for later reproducibility of the entire experiment.
-    
+
     log_experiment: bool, default = False
         When set to True, all metrics and parameters are logged on MLFlow server.
 
@@ -475,7 +494,7 @@ def setup(
     profile: bool, default = False
         If set to true, a data profile for Exploratory Data Analysis will be displayed 
         in an interactive HTML report. 
-    
+
     Warnings
     --------
     - Some GPU models require conversion from float64 to float32,
@@ -686,6 +705,11 @@ def setup(
                 raise ValueError(
                     "Column type forced is either target column or doesn't exist in the dataset."
                 )
+
+    # stratify
+    if stratify:
+        if type(stratify) is not list and type(stratify) is not bool:
+            raise TypeError("stratify param only accepts a bool or a list of strings.")
 
     # high_cardinality_methods
     high_cardinality_allowed_methods = ["frequency", "clustering"]
@@ -1035,7 +1059,7 @@ def setup(
 
     # declaring global variables to be accessed by other functions
     logger.info("Declaring global variables")
-    global X, y, X_train, X_test, y_train, y_test, seed, prep_pipe, experiment__, folds_shuffle_param, n_jobs_param, gpu_n_jobs_param, create_model_container, master_model_container, display_container, exp_name_log, logging_param, log_plots_param, fix_imbalance_param, fix_imbalance_method_param, data_before_preprocess, target_param, gpu_param, all_models, _all_models_internal, all_metrics, _internal_pipeline_steps
+    global X, y, X_train, X_test, y_train, y_test, seed, prep_pipe, experiment__, folds_shuffle_param, n_jobs_param, gpu_n_jobs_param, create_model_container, master_model_container, display_container, exp_name_log, logging_param, log_plots_param, fix_imbalance_param, fix_imbalance_method_param, data_before_preprocess, target_param, gpu_param, all_models, _all_models_internal, all_metrics, _internal_pipeline_steps, stratify_param
 
     logger.info("Copying data for preprocessing")
 
@@ -1179,6 +1203,10 @@ def setup(
 
     display_dtypes_pass = False if silent else True
 
+    # creating variables to be used later in the function
+    X_before_preprocess = data.drop(target, axis=1)
+    y_before_preprocess = data[target]
+
     logger.info("Importing preprocessing module")
 
     # import library
@@ -1186,7 +1214,7 @@ def setup(
 
     logger.info("Creating preprocessing pipeline")
 
-    data = preprocess.Preprocess_Path_One(
+    prep_pipe = preprocess.Preprocess_Path_One(
         train_data=data,
         target_variable=target,
         categorical_features=cat_features_pass,
@@ -1240,21 +1268,14 @@ def setup(
         random_state=seed,
     )
 
+    dtypes = prep_pipe.named_steps["dtypes"]
+
     display.move_progress()
     logger.info("Preprocessing pipeline created successfully")
 
-    if hasattr(preprocess.dtypes, "replacement"):
-        label_encoded = preprocess.dtypes.replacement
-        label_encoded = str(label_encoded).replace("'", "")
-        label_encoded = str(label_encoded).replace("{", "")
-        label_encoded = str(label_encoded).replace("}", "")
-
-    else:
-        label_encoded = "None"
-
     try:
         res_type = ["quit", "Quit", "exit", "EXIT", "q", "Q", "e", "E", "QUIT", "Exit"]
-        res = preprocess.dtypes.response
+        res = dtypes.response
 
         if res in res_type:
             sys.exit(
@@ -1265,79 +1286,6 @@ def setup(
         logger.error(
             "(Process Exit): setup has been interupted with user command 'quit'. setup must rerun."
         )
-
-    # save prep pipe
-    prep_pipe = preprocess.pipe
-
-    logger.info("Creating grid variables")
-
-    # generate values for grid show
-    missing_values = data_before_preprocess.isna().sum().sum()
-    missing_flag = True if missing_values > 0 else False
-
-    normalize_grid = normalize_method if normalize else "None"
-
-    transformation_grid = transformation_method if transformation else "None"
-
-    pca_method_grid = pca_method if pca else "None"
-
-    pca_components_grid = pca_components_pass if pca else "None"
-
-    rare_level_threshold_grid = rare_level_threshold if combine_rare_levels else "None"
-
-    numeric_bin_grid = False if bin_numeric_features is None else True
-
-    outliers_threshold_grid = outliers_threshold if remove_outliers else None
-
-    multicollinearity_threshold_grid = (
-        multicollinearity_threshold if remove_multicollinearity else None
-    )
-
-    cluster_iter_grid = cluster_iter if create_clusters else None
-
-    polynomial_degree_grid = polynomial_degree if polynomial_features else None
-
-    polynomial_threshold_grid = (
-        polynomial_threshold if polynomial_features or trigonometry_features else None
-    )
-
-    feature_selection_threshold_grid = (
-        feature_selection_threshold if feature_selection else None
-    )
-
-    interaction_threshold_grid = (
-        interaction_threshold if feature_interaction or feature_ratio else None
-    )
-
-    ordinal_features_grid = False if ordinal_features is None else True
-
-    unknown_categorical_method_grid = (
-        unknown_categorical_method if handle_unknown_categorical else None
-    )
-
-    group_features_grid = False if group_features is None else True
-
-    high_cardinality_features_grid = (
-        False if high_cardinality_features is None else True
-    )
-
-    high_cardinality_method_grid = (
-        high_cardinality_method if high_cardinality_features_grid else None
-    )
-
-    learned_types = preprocess.dtypes.learent_dtypes
-    learned_types.drop(target, inplace=True)
-
-    float_type = 0
-    cat_type = 0
-
-    for i in preprocess.dtypes.learent_dtypes:
-        if "float" in str(i):
-            float_type += 1
-        elif "object" in str(i):
-            cat_type += 1
-        elif "int" in str(i):
-            float_type += 1
 
     """
     preprocessing ends here
@@ -1415,8 +1363,19 @@ def setup(
         fix_imbalance_model_name = str(fix_imbalance_method_param).split("(")[0]
         fix_imbalance_resampler = fix_imbalance_method_param
 
+    # add custom transformers to prep pipe
+    if custom_pipeline_steps_after_split:
+        custom_steps = normalize_custom_transformers(custom_pipeline_steps_after_split)
+        _internal_pipeline_steps.extend(custom_steps)
+
     if fix_imbalance_param:
         _internal_pipeline_steps.append(("fix_imbalance", fix_imbalance_resampler))
+
+    logger.info(f"Internal pipeline: {_internal_pipeline_steps}")
+
+    prep_pipe.steps.extend(
+        [step for step in _internal_pipeline_steps if hasattr(step, "transform")]
+    )
 
     # create target_param var
     target_param = target
@@ -1424,9 +1383,8 @@ def setup(
     # create gpu_param var
     gpu_param = use_gpu
 
-    # creating variables to be used later in the function
-    X = data.drop(target, axis=1)
-    y = data[target]
+    # create stratify_param var
+    stratify_param = stratify
 
     # determining target type
     if _is_multiclass():
@@ -1434,19 +1392,17 @@ def setup(
     else:
         target_type = "Binary"
 
-    all_models = models(force_regenerate=True)
-    _all_models_internal = models(internal=True, force_regenerate=True)
-    all_metrics = get_metrics()
+    lr = LogisticRegressionClassifierContainer(globals())
 
     # sample estimator
     if sample_estimator is None:
-        model = _all_models_internal.loc["lr"]["Class"]()
+        model = lr
     else:
         model = sample_estimator
 
     display.move_progress()
 
-    if sampling is True and data.shape[0] > 25000:  # change this back to 25000
+    if sampling and data.shape[0] > 25000:  # change this back to 25000
 
         X_train, X_test, y_train, y_test = _sample_data(
             model, seed, train_size, data_split_shuffle, display
@@ -1456,19 +1412,131 @@ def setup(
         display.update_monitor(1, "Splitting Data")
         display.display_monitor()
 
+        _stratify_columns = _get_columns_to_stratify_by(
+            X_before_preprocess, y_before_preprocess, stratify_param, target
+        )
+
         X_train, X_test, y_train, y_test = train_test_split(
-            X,
-            y,
+            X_before_preprocess,
+            y_before_preprocess,
             test_size=1 - train_size,
-            stratify=y,
+            stratify=_stratify_columns,
             random_state=seed,
             shuffle=data_split_shuffle,
         )
+
+        train_data = pd.concat([X_train, y_train], axis=1)
+        test_data = pd.concat([X_test, y_test], axis=1)
+
+        train_data = prep_pipe.fit_transform(train_data)
+        # workaround to also transform target
+        dtypes.final_training_columns.append(target)
+        test_data = prep_pipe.transform(test_data)
+
+        X_train = train_data.drop(target, axis=1)
+        y_train = train_data[target]
+
+        X_test = test_data.drop(target, axis=1)
+        y_test = test_data[target]
+
         display.move_progress()
+
+    data = prep_pipe.transform(data)
+    X = data.drop(target, axis=1)
+    y = data[target]
+    try:
+        dtypes.final_training_columns.remove(target)
+    except:
+        pass
+
+    all_models = models(force_regenerate=True, raise_errors=True)
+    _all_models_internal = models(
+        internal=True, force_regenerate=True, raise_errors=True
+    )
+    all_metrics = get_metrics()
 
     """
     Final display Starts
     """
+    logger.info("Creating grid variables")
+
+    if hasattr(dtypes, "replacement"):
+        label_encoded = dtypes.replacement
+        label_encoded = str(label_encoded).replace("'", "")
+        label_encoded = str(label_encoded).replace("{", "")
+        label_encoded = str(label_encoded).replace("}", "")
+
+    else:
+        label_encoded = "None"
+
+    # generate values for grid show
+    missing_values = data_before_preprocess.isna().sum().sum()
+    missing_flag = True if missing_values > 0 else False
+
+    normalize_grid = normalize_method if normalize else "None"
+
+    transformation_grid = transformation_method if transformation else "None"
+
+    pca_method_grid = pca_method if pca else "None"
+
+    pca_components_grid = pca_components_pass if pca else "None"
+
+    rare_level_threshold_grid = rare_level_threshold if combine_rare_levels else "None"
+
+    numeric_bin_grid = False if bin_numeric_features is None else True
+
+    outliers_threshold_grid = outliers_threshold if remove_outliers else None
+
+    multicollinearity_threshold_grid = (
+        multicollinearity_threshold if remove_multicollinearity else None
+    )
+
+    cluster_iter_grid = cluster_iter if create_clusters else None
+
+    polynomial_degree_grid = polynomial_degree if polynomial_features else None
+
+    polynomial_threshold_grid = (
+        polynomial_threshold if polynomial_features or trigonometry_features else None
+    )
+
+    feature_selection_threshold_grid = (
+        feature_selection_threshold if feature_selection else None
+    )
+
+    interaction_threshold_grid = (
+        interaction_threshold if feature_interaction or feature_ratio else None
+    )
+
+    ordinal_features_grid = False if ordinal_features is None else True
+
+    unknown_categorical_method_grid = (
+        unknown_categorical_method if handle_unknown_categorical else None
+    )
+
+    group_features_grid = False if group_features is None else True
+
+    high_cardinality_features_grid = (
+        False if high_cardinality_features is None else True
+    )
+
+    high_cardinality_method_grid = (
+        high_cardinality_method if high_cardinality_features_grid else None
+    )
+
+    learned_types = dtypes.learent_dtypes
+    learned_types.drop(target, inplace=True)
+
+    float_type = 0
+    cat_type = 0
+
+    for i in dtypes.learent_dtypes:
+        if "float" in str(i):
+            float_type += 1
+        elif "object" in str(i):
+            cat_type += 1
+        elif "int" in str(i):
+            float_type += 1
+
     if profile:
         print("Setup Succesfully Completed! Loading Profile Now... Please Wait!")
     else:
@@ -1675,6 +1743,7 @@ def setup(
         target_param,
         gpu_param,
         gpu_n_jobs_param,
+        stratify_param,
     )
 
 
@@ -1949,14 +2018,7 @@ def compare_models(
 
     for i, model in enumerate(model_library):
 
-        if (
-            not hasattr(model, "estimators")
-            and not isinstance(model, str)
-            and _is_multiclass()
-        ):
-            model_name = _get_model_name(model.estimator)
-        else:
-            model_name = _get_model_name(model)
+        model_name = _get_model_name(model)
 
         if isinstance(model, str):
             logger.info(f"Initializing {model_name}")
@@ -2157,7 +2219,7 @@ def create_model(
     system: bool = True,
     return_fit_time: bool = False,  # added in pycaret==2.2.0
     X_train_data: Optional[pd.DataFrame] = None,  # added in pycaret==2.2.0
-    Y_train_data: Optional[pd.DataFrame] = None,  # added in pycaret==2.2.0
+    y_train_data: Optional[pd.DataFrame] = None,  # added in pycaret==2.2.0
     display: Optional[Display] = None,  # added in pycaret==2.2.0
     **kwargs,
 ) -> Any:
@@ -2235,7 +2297,7 @@ def create_model(
         If not None, will use this dataframe as training features.
         Intended to be only changed by internal functions.
 
-    Y_train_data: pandas.DataFrame, default = None
+    y_train_data: pandas.DataFrame, default = None
         If not None, will use this dataframe as training target.
         Intended to be only changed by internal functions.
 
@@ -2350,7 +2412,6 @@ def create_model(
     # general dependencies
 
     from sklearn.model_selection import StratifiedKFold
-    from sklearn.base import clone
 
     np.random.seed(seed)
 
@@ -2358,7 +2419,7 @@ def create_model(
 
     # Storing X_train and y_train in data_X and data_y parameter
     data_X = X_train.copy() if X_train_data is None else X_train_data.copy()
-    data_y = y_train.copy() if Y_train_data is None else Y_train_data.copy()
+    data_y = y_train.copy() if y_train_data is None else y_train_data.copy()
 
     # reset index
     data_X.reset_index(drop=True, inplace=True)
@@ -2398,23 +2459,11 @@ def create_model(
         model = clone(estimator)
         model.set_params(**kwargs)
 
-        if _is_one_vs_rest(model):
-            full_name = _get_model_name(model.estimator)
-        else:
-            full_name = _get_model_name(model)
+        full_name = _get_model_name(model)
 
     logger.info(f"{full_name} Imported succesfully")
 
     display.move_progress()
-
-    onevsrest_model_definition = _all_models_internal.loc["OneVsRest"]
-    # multiclass checking
-    if _is_multiclass() and not _is_one_vs_rest(model):
-        logger.info("Target variable is Multiclass. OneVsRestClassifier activated")
-
-        model = onevsrest_model_definition["Class"](
-            model, **onevsrest_model_definition["Args"]
-        )
 
     model = _make_internal_pipeline(model)
 
@@ -2988,7 +3037,6 @@ def tune_model(
 
     # general dependencies
 
-    from sklearn.base import clone
     import logging
 
     np.random.seed(seed)
@@ -3015,14 +3063,9 @@ def tune_model(
 
     model = clone(estimator)
     is_stacked_model = False
-    is_one_vs_rest = False
 
     base_estimator = model
 
-    if _is_one_vs_rest(base_estimator):
-        logger.info("Model is OvR, using the definition of the base_estimator")
-        is_one_vs_rest = True
-        base_estimator = base_estimator.estimator
     if hasattr(base_estimator, "final_estimator"):
         logger.info("Model is stacked, using the definition of the meta-model")
         is_stacked_model = True
@@ -3075,10 +3118,6 @@ def tune_model(
         logger.info("Stacked model passed, will tune meta model hyperparameters")
         suffixes.append("final_estimator")
 
-    if is_one_vs_rest:
-        logger.info("OneVsRest model passed, will tune estimator hyperparameters")
-        suffixes.append("estimator")
-
     model = _make_internal_pipeline(model)
 
     suffixes.append("actual_estimator")
@@ -3106,7 +3145,7 @@ def tune_model(
         from sklearn.tree import BaseDecisionTree
         from sklearn.ensemble import BaseEnsemble
 
-        can_partial_fit = callable(getattr(estimator, "partial_fit", None))
+        can_partial_fit = hasattr(estimator, "partial_fit")
 
         if consider_warm_start:
             is_not_tree_subclass = not issubclass(type(estimator), BaseDecisionTree)
@@ -3158,7 +3197,7 @@ def tune_model(
             estimator=model,
             param_distributions=param_grid,
             cv=fold,
-            enable_pruning=early_stopping and _can_early_stop(base_estimator, False),
+            enable_pruning=early_stopping and _can_early_stop(model, False),
             max_iter=early_stopping_max_iters,
             n_jobs=n_jobs,
             n_trials=n_iter,
@@ -3179,7 +3218,7 @@ def tune_model(
         if early_stopping in early_stopping_translator:
             early_stopping = early_stopping_translator[early_stopping]
 
-        can_early_stop = early_stopping and _can_early_stop(base_estimator, False)
+        can_early_stop = early_stopping and _can_early_stop(model, True)
 
         if not can_early_stop and search_algorithm == "BOHB":
             raise ValueError(
@@ -3197,7 +3236,7 @@ def tune_model(
             model_grid = TuneGridSearchCV(
                 estimator=model,
                 param_grid=param_grid,
-                early_stopping=early_stopping and _can_early_stop(base_estimator, True),
+                early_stopping=can_early_stop,
                 scoring=optimize,
                 cv=fold,
                 max_iters=early_stopping_max_iters,
@@ -3218,7 +3257,7 @@ def tune_model(
                 search_optimization="hyperopt",
                 param_distributions=param_grid,
                 n_iter=n_iter,
-                early_stopping=early_stopping and _can_early_stop(base_estimator, True),
+                early_stopping=can_early_stop,
                 scoring=optimize,
                 cv=fold,
                 random_state=seed,
@@ -3240,7 +3279,7 @@ def tune_model(
                 search_optimization="bohb",
                 param_distributions=param_grid,
                 n_iter=n_iter,
-                early_stopping=early_stopping and _can_early_stop(base_estimator, True),
+                early_stopping=can_early_stop,
                 scoring=optimize,
                 cv=fold,
                 random_state=seed,
@@ -3258,7 +3297,7 @@ def tune_model(
             model_grid = TuneSearchCV(
                 estimator=model,
                 param_distributions=param_grid,
-                early_stopping=early_stopping and _can_early_stop(base_estimator, True),
+                early_stopping=can_early_stop,
                 n_iter=n_iter,
                 scoring=optimize,
                 cv=fold,
@@ -3508,24 +3547,11 @@ def ensemble_model(
         check_model = estimator
 
         try:
-            if _is_one_vs_rest(check_model):
-                check_model = check_model.estimator
-                check_model = boosting_model_definition["Class"](
-                    check_model,
-                    n_estimators=n_estimators,
-                    **boosting_model_definition["Args"],
-                )
-                onevsrest_model_definition = _all_models_internal.loc["OneVsRest"]
-                check_model = onevsrest_model_definition["Class"](
-                    check_model, **onevsrest_model_definition["Args"]
-                )
-
-            else:
-                check_model = boosting_model_definition["Class"](
-                    check_model,
-                    n_estimators=n_estimators,
-                    **boosting_model_definition["Args"],
-                )
+            check_model = boosting_model_definition["Class"](
+                check_model,
+                n_estimators=n_estimators,
+                **boosting_model_definition["Args"],
+            )
             with io.capture_output():
                 check_model.fit(X_train, y_train)
         except:
@@ -3561,12 +3587,6 @@ def ensemble_model(
         if not optimize["Multiclass"]:
             raise TypeError(
                 f"Optimization metric not supported for multiclass problems. See docstring for list of other optimization parameters."
-            )
-        if hasattr(estimator, "estimators") and any(
-            _is_one_vs_rest(model) for name, model in estimator.estimators
-        ):
-            raise TypeError(
-                f"Ensembling of VotingClassifier() and StackingClassifier() is not supported for multiclass problems."
             )
 
     """
@@ -3622,10 +3642,7 @@ def ensemble_model(
 
     _estimator_ = estimator
 
-    if _is_one_vs_rest(estimator):
-        estimator_id = _get_model_id(estimator.estimator)
-    else:
-        estimator_id = _get_model_id(estimator)
+    estimator_id = _get_model_id(estimator)
 
     estimator_definition = _all_models_internal.loc[estimator_id]
     estimator_name = estimator_definition["Name"]
@@ -3643,8 +3660,6 @@ def ensemble_model(
     """
 
     model = _estimator_
-    if _is_one_vs_rest(model):
-        model = model.estimator
 
     logger.info("Importing untrained ensembler")
 
@@ -3664,15 +3679,6 @@ def ensemble_model(
         boosting_model_definition = _all_models_internal.loc["ada"]
         model = boosting_model_definition["Class"](
             model, n_estimators=n_estimators, **boosting_model_definition["Args"]
-        )
-
-    onevsrest_model_definition = _all_models_internal.loc["OneVsRest"]
-    # multiclass checking
-    if _is_multiclass() and not _is_special_model(model):
-        logger.info("Target variable is Multiclass. OneVsRestClassifier activated")
-
-        model = onevsrest_model_definition["Class"](
-            model, **onevsrest_model_definition["Args"]
         )
 
     display.move_progress()
@@ -4032,24 +4038,17 @@ def blend_models(
             estimator_list.append((model_name, model))
             display.move_progress()
     else:
-        model_names = []
-        model_names_counter = {}
+        estimator_dict = {}
         for x in estimator_list:
-            if _is_one_vs_rest(x):
-                name = _get_model_name(x.estimator)
-            else:
-                name = _get_model_name(x)
-            if name in model_names_counter:
-                model_names_counter[name] += 1
-                name += f"_{model_names_counter[name]-1}"
-            else:
-                model_names_counter[name] = 1
-            model_names.append(name)
+            name = _get_model_id(x)
+            suffix = 1
+            original_name = name
+            while name in estimator_dict:
+                name = f"{original_name}_{suffix}"
+                suffix += 1
+            estimator_dict[name] = x
 
-        estimator_list = list(zip(model_names, estimator_list))
-
-    # if _is_multiclass():
-    #    estimator_list = [x.estimator for x in estimator_list]
+        estimator_list = list(estimator_dict.items())
 
     votingclassifier_model_definition = _all_models_internal.loc["Voting"]
     try:
@@ -4299,11 +4298,6 @@ def stack_models(
     
     """
 
-    logger.info("Preloading libraries")
-    # pre-load libraries
-
-    from sklearn.base import clone
-
     logger.info("Defining meta model")
     # Defining meta model.
     if meta_model == None:
@@ -4366,8 +4360,6 @@ def stack_models(
     logger.info("Getting model names")
     estimator_dict = {}
     for x in estimator_list:
-        if _is_one_vs_rest(x):
-            x = x.estimator
         name = _get_model_id(x)
         suffix = 1
         original_name = name
@@ -4511,7 +4503,9 @@ def plot_model(
         * 'vc' - Validation Curve                  
         * 'dimension' - Dimension Learning           
         * 'feature' - Feature Importance              
-        * 'parameter' - Model Hyperparameter          
+        * 'parameter' - Model Hyperparameter
+        * 'lift' - Lift Curve
+        * 'gain' - Gain Chart
 
     scale: float, default = 1
         The resolution scale of the figure.
@@ -4572,6 +4566,8 @@ def plot_model(
         ("Dimensions", "dimension"),
         ("Feature Importance", "feature"),
         ("Decision Boundary", "boundary"),
+        ("Lift Chart", "lift"),
+        ("Gain Chart", "gain"),
     ]
     available_plots = {k: v for v, k in available_plots}
     print(available_plots)
@@ -4686,6 +4682,19 @@ def plot_model(
     display.move_progress()
 
     model = _make_internal_pipeline(model)
+
+    _base_dpi = 100
+
+    class MatplotlibDefaultDPI(object):
+        def __init__(self, base_dpi: float = 100, scale_to_set: float = 1):
+            self.default_dpi = plt.rcParams["figure.dpi"]
+            plt.rcParams["figure.dpi"] = base_dpi * scale_to_set
+
+        def __enter__(self) -> None:
+            return None
+
+        def __exit__(self, type, value, traceback):
+            plt.rcParams["figure.dpi"] = self.default_dpi
 
     if plot == "auc":
 
@@ -4885,6 +4894,56 @@ def plot_model(
             display=display,
         )
 
+    elif plot == "lift":
+
+        import scikitplot as skplt
+
+        display.move_progress()
+        logger.info("Generating predictions / predict_proba on X_test")
+        y_test__ = model.predict(X_test)
+        predict_proba__ = model.predict_proba(X_test)
+        display.move_progress()
+        display.move_progress()
+        display.clear_output()
+        with MatplotlibDefaultDPI(base_dpi=_base_dpi, scale_to_set=scale):
+            fig = skplt.metrics.plot_lift_curve(
+                y_test__, predict_proba__, figsize=(10, 6)
+            )
+            if save:
+                logger.info(f"Saving '{plot_name}.png' in current active directory")
+                plt.savefig(f"{plot_name}.png")
+                if not system:
+                    plt.close()
+            else:
+                plt.show()
+
+        logger.info("Visual Rendered Successfully")
+
+    elif plot == "gain":
+
+        import scikitplot as skplt
+
+        display.move_progress()
+        logger.info("Generating predictions / predict_proba on X_test")
+        y_test__ = model.predict(X_test)
+        predict_proba__ = model.predict_proba(X_test)
+        display.move_progress()
+        display.move_progress()
+        display.clear_output()
+        with MatplotlibDefaultDPI(base_dpi=_base_dpi, scale_to_set=scale):
+            fig = skplt.metrics.plot_cumulative_gain(
+                y_test__, predict_proba__, figsize=(10, 6)
+            )
+            if save:
+                logger.info(f"Saving '{plot_name}.png' in current active directory")
+                plt.savefig(f"{plot_name}.png")
+                if not system:
+                    plt.close()
+            else:
+                plt.show()
+
+        logger.info("Visual Rendered Successfully")
+
     elif plot == "manifold":
 
         from yellowbrick.features import Manifold
@@ -4913,7 +4972,7 @@ def plot_model(
 
         model_name = str(model).split("(")[0]
 
-        plt.figure(figsize=(7, 6), dpi=100 * scale)
+        plt.figure(figsize=(7, 6), dpi=_base_dpi * scale)
         ax1 = plt.subplot2grid((3, 1), (0, 0), rowspan=2)
 
         ax1.plot([0, 1], [0, 1], "k:", label="Perfectly calibrated")
@@ -5097,7 +5156,7 @@ def plot_model(
         )
         my_range = range(1, len(sorted_df.index) + 1)
         display.move_progress()
-        plt.figure(figsize=(8, 5), dpi=100 * scale)
+        plt.figure(figsize=(8, 5), dpi=_base_dpi * scale)
         plt.hlines(y=my_range, xmin=0, xmax=sorted_df["Value"], color="skyblue")
         plt.plot(sorted_df["Value"], my_range, "o")
         display.move_progress()
@@ -5181,6 +5240,8 @@ def evaluate_model(estimator):
             ("Dimensions", "dimension"),
             ("Feature Importance", "feature"),
             ("Decision Boundary", "boundary"),
+            ("Lift Chart", "lift"),
+            ("Gain Chart", "gain"),
         ],
         description="Plot Type:",
         disabled=False,
@@ -5593,9 +5654,6 @@ def calibrate_model(
 
     logger.info("Importing untrained CalibratedClassifierCV")
 
-    if _is_one_vs_rest(estimator):
-        estimator = estimator.estimator
-
     calibrated_model_definition = _all_models_internal.loc["CalibratedCV"]
     model = calibrated_model_definition["Class"](
         base_estimator=estimator,
@@ -5755,11 +5813,6 @@ def optimize_threshold(
 
     # exception 1 for multi-class
     if _is_multiclass():
-        raise TypeError(
-            "optimize_threshold() cannot be used when target is multi-class."
-        )
-
-    if _is_one_vs_rest(estimator):
         raise TypeError(
             "optimize_threshold() cannot be used when target is multi-class."
         )
@@ -5971,11 +6024,6 @@ def predict_model(
     """
 
     if probability_threshold is not None:
-        if _is_one_vs_rest(estimator):
-            raise TypeError(
-                "probability_threshold parameter cannot be used when target is multi-class."
-            )
-
         # probability_threshold allowed types
         allowed_types = [int, float]
         if type(probability_threshold) not in allowed_types:
@@ -6007,34 +6055,30 @@ def predict_model(
     if not display:
         display = Display(verbose, html_param, logger=logger,)
 
+    dtypes = None
+
     # dataset
     if data is None:
 
         if "Pipeline" in str(type(estimator)):
             estimator = estimator[-1]
 
-        Xtest = X_test.copy()
-        ytest = y_test.copy()
         X_test_ = X_test.copy()
         y_test_ = y_test.copy()
 
-        _, dtypes = next(step for step in prep_pipe.steps if step[0] == "dtypes")
+        dtypes = prep_pipe.named_steps["dtypes"]
 
-        Xtest.reset_index(drop=True, inplace=True)
-        ytest.reset_index(drop=True, inplace=True)
         X_test_.reset_index(drop=True, inplace=True)
         y_test_.reset_index(drop=True, inplace=True)
 
     else:
 
-        if "Pipeline" in str(type(estimator)):
+        if hasattr(estimator, "steps") and hasattr(estimator, "predict"):
             logger.info(estimator)
-            _, dtypes = next(step for step in estimator.steps if step[0] == "dtypes")
+            dtypes = estimator.named_steps["dtypes"]
         else:
             try:
-                _, dtypes = next(
-                    step for step in prep_pipe.steps if step[0] == "dtypes"
-                )
+                dtypes = prep_pipe.named_steps["dtypes"]
                 estimator_ = deepcopy(prep_pipe)
                 estimator_.steps.append(["trained model", estimator])
                 estimator = estimator_
@@ -6043,7 +6087,6 @@ def predict_model(
             except:
                 raise ValueError("Pipeline not found")
 
-        Xtest = data.copy()
         X_test_ = data.copy()
 
     # function to replace encoded labels with their original values
@@ -6058,10 +6101,10 @@ def predict_model(
 
     # prediction starts here
 
-    pred_ = estimator.predict(Xtest)
+    pred_ = estimator.predict(X_test_)
 
     try:
-        pred_prob = estimator.predict_proba(Xtest)
+        pred_prob = estimator.predict_proba(X_test_)
 
         if len(pred_prob[0]) > 2:
             p_counter = 0
@@ -6087,7 +6130,7 @@ def predict_model(
     df_score = None
 
     if data is None:
-        metrics = _calculate_metrics(ytest, pred_, pred_prob)
+        metrics = _calculate_metrics(y_test_, pred_, pred_prob)
         df_score = pd.DataFrame(metrics)
         df_score.insert(0, "Model", full_name)
         df_score = df_score.round(round)
@@ -6101,8 +6144,8 @@ def predict_model(
 
     if data is None:
         if not encoded_labels:
-            replace_lables_in_column(ytest)
-        X_test_ = pd.concat([Xtest, ytest, label], axis=1)
+            replace_lables_in_column(y_test_)
+        X_test_ = pd.concat([X_test_, y_test_, label], axis=1)
     else:
         X_test_.insert(len(X_test_.columns), "Label", label["Label"].to_list())
 
@@ -6174,10 +6217,6 @@ def finalize_model(estimator, display=None) -> Any:  # added in pycaret==2.2.0
     # run_time
     runtime_start = time.time()
 
-    logger.info("Importing libraries")
-    # import depedencies
-    from sklearn.base import clone
-
     np.random.seed(seed)
 
     logger.info(f"Finalizing {estimator}")
@@ -6187,7 +6226,7 @@ def finalize_model(estimator, display=None) -> Any:  # added in pycaret==2.2.0
         verbose=False,
         system=False,
         X_train_data=X,
-        Y_train_data=y,
+        y_train_data=y,
         return_fit_time=True,
     )
     model_results = pull(pop=True)
@@ -6539,7 +6578,10 @@ def pull(pop=False) -> pd.DataFrame:  # added in pycaret==2.2.0
 
 
 def models(
-    type: Optional[str] = None, internal: bool = False, force_regenerate: bool = False
+    type: Optional[str] = None,
+    internal: bool = False,
+    force_regenerate: bool = False,
+    raise_errors: bool = True,
 ) -> pd.DataFrame:
 
     """
@@ -6566,6 +6608,10 @@ def models(
         If True, will force the DataFrame to be regenerated,
         instead of using a cached version.
 
+    raise_errors: bool, default = True
+        If False, will suppress all exceptions, ignoring models
+        that couldn't be created.
+
     Returns
     -------
     pandas.DataFrame
@@ -6573,9 +6619,11 @@ def models(
     """
 
     def filter_model_df_by_type(df):
-        model_type = {"linear": ["lr", "ridge", "svm"],
-                      "tree": ["dt"],
-                      "ensemble": ["rf", "et", "gbc", "xgboost", "lightgbm", "catboost", "ada"]}
+        model_type = {
+            "linear": ["lr", "ridge", "svm"],
+            "tree": ["dt"],
+            "ensemble": ["rf", "et", "gbc", "xgboost", "lightgbm", "catboost", "ada"],
+        }
 
         # Check if type is valid
         if type not in list(model_type) + [None]:
@@ -6595,7 +6643,7 @@ def models(
 
     logger.info(f"gpu_param set to {gpu_param}")
 
-    model_containers = get_all_model_containers(globals())
+    model_containers = get_all_model_containers(globals(), raise_errors)
     rows = [
         v.get_dict(internal)
         for k, v in model_containers.items()
@@ -6609,7 +6657,10 @@ def models(
 
 
 def get_metrics(
-    force_regenerate: bool = False, reset: bool = False, include_custom: bool = True
+    force_regenerate: bool = False,
+    reset: bool = False,
+    include_custom: bool = True,
+    raise_errors: bool = True,
 ) -> pd.DataFrame:
     """
     Returns table of metrics available.
@@ -6630,6 +6681,9 @@ def get_metrics(
         If True, will reset all changes made using add_metric() and get_metric().
     include_custom: bool, default = True
         Whether to include user added (custom) metrics or not.
+    raise_errors: bool, default = True
+        If False, will suppress all exceptions, ignoring models
+        that couldn't be created.
 
     Returns
     -------
@@ -6652,7 +6706,7 @@ def get_metrics(
 
     np.random.seed(seed)
 
-    metric_containers = get_all_metric_containers(globals())
+    metric_containers = get_all_metric_containers(globals(), raise_errors)
     rows = [v.get_dict() for k, v in metric_containers.items()]
 
     # Training time needs to be at the end
@@ -6696,8 +6750,7 @@ def _get_metric(name_or_id: str):
 def add_metric(
     id: str,
     name: str,
-    score_func_type: type,
-    scorer=None,
+    score_func: type,
     target: str = "pred",
     args: dict = {},
     multiclass: bool = True,
@@ -6713,12 +6766,8 @@ def add_metric(
     name: str
         Display name of the metric.
 
-    score_func_type: type
-        Type of score function (or loss function) with signature score_func(y, y_pred, **kwargs).
-
-    scorer: sklearn.metrics.Scorer, default = None
-        The Scorer to be used in tuning and cross validation. If None, one will be created
-        from score_func_type and args.
+    score_func: type
+        Score function (or loss function) with signature score_func(y, y_pred, **kwargs).
 
     target: str, default = 'pred'
         The target of the score function.
@@ -6753,12 +6802,12 @@ def add_metric(
         raise ValueError("id already present in metrics dataframe.")
 
     new_metric = ClassificationMetricContainer(
-        id, name, score_func_type, scorer, target, args, name, bool(multiclass), True
+        id=id, name=name, score_func=score_func, target=target, args=args, display_name=name, is_multiclass=bool(multiclass), is_custom=True
     )
 
     new_metric = new_metric.get_dict()
 
-    new_metric = pd.Series(new_metric, name=id.replace(" ", "_"))
+    new_metric = pd.Series(new_metric, name=id.replace(" ", "_")).drop('ID')
 
     last_row = all_metrics.iloc[-1]
     all_metrics.drop(all_metrics.index[-1], inplace=True)
@@ -6938,13 +6987,6 @@ def set_config(variable: str, value):
     return pycaret.internal.utils.set_config(variable, value, globals())
 
 
-def _is_one_vs_rest(e) -> bool:
-    """
-    Checks if the estimator is OneVsRestClassifier.
-    """
-    return type(e) == _all_models_internal.loc["OneVsRest"]["Class"]
-
-
 def _make_internal_pipeline(model):
     import pycaret.internal.utils
 
@@ -7079,20 +7121,24 @@ def _sample_data(
         MONITOR UPDATE ENDS
         """
 
-        X_, X__, y_, y__ = train_test_split(
+        _stratify_columns = _get_columns_to_stratify_by(X, y, stratify_param, target_param)
+
+        X_, _, y_, _ = train_test_split(
             X,
             y,
             test_size=1 - i,
-            stratify=y,
+            stratify=_stratify_columns,
             random_state=seed,
             shuffle=data_split_shuffle,
         )
+
+        _stratify_columns = _get_columns_to_stratify_by(X_, y_, stratify_param, target_param)
 
         X_train, X_test, y_train, y_test = train_test_split(
             X_,
             y_,
             test_size=1 - train_size,
-            stratify=y_,
+            stratify=_stratify_columns,
             random_state=seed,
             shuffle=data_split_shuffle,
         )
@@ -7183,13 +7229,15 @@ def _sample_data(
 
     sample_size = input("Sample Size: ")
 
+    _stratify_columns = _get_columns_to_stratify_by(X, y, stratify_param, target_param)
+
     if sample_size == "" or sample_size == "1":
 
         X_train, X_test, y_train, y_test = train_test_split(
             X,
             y,
             test_size=1 - train_size,
-            stratify=y,
+            stratify=_stratify_columns,
             random_state=seed,
             shuffle=data_split_shuffle,
         )
@@ -7197,20 +7245,24 @@ def _sample_data(
     else:
 
         sample_n = float(sample_size)
-        X_selected, X_discard, y_selected, y_discard = train_test_split(
+        X_selected, _, y_selected, _ = train_test_split(
             X,
             y,
             test_size=1 - sample_n,
-            stratify=y,
+            stratify=_stratify_columns,
             random_state=seed,
             shuffle=data_split_shuffle,
+        )
+
+        _stratify_columns = _get_columns_to_stratify_by(
+            X_selected, y_selected, stratify_param, target_param
         )
 
         X_train, X_test, y_train, y_test = train_test_split(
             X_selected,
             y_selected,
             test_size=1 - train_size,
-            stratify=y_selected,
+            stratify=_stratify_columns,
             random_state=seed,
             shuffle=data_split_shuffle,
         )
@@ -7433,3 +7485,19 @@ def _mlflow_log_model(
             input_example=input_example,
         )
         del prep_pipe_temp
+
+
+def _get_columns_to_stratify_by(
+    X: pd.DataFrame, y: pd.DataFrame, stratify: Union[bool, List[str]], target: str
+) -> pd.DataFrame:
+    if not stratify:
+        stratify = None
+    else:
+        if isinstance(stratify, list):
+            data = pd.concat([X, y], axis=1)
+            if not all(col in data.columns for col in stratify):
+                raise ValueError("Column to stratify by does not exist in the dataset.")
+            stratify = data[stratify]
+        else:
+            stratify = y
+    return stratify

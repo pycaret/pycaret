@@ -27,19 +27,19 @@ class ClassificationMetricContainer(MetricContainer):
         ID used as index.
     name : str
         Full name.
-    score_func_type : type
+    score_func : type
         The callable used for the score function, eg. sklearn.metrics.accuracy_score.
     scorer : str or callable, default = None
         The scorer passed to models. Can be a string representing a built-in sklearn scorer,
         a sklearn Scorer object, or None, in which case a Scorer object will be created from
-        score_func_type and args.
+        score_func and args.
     target : str, default = 'pred'
         The target of the score function.
         - 'pred' for the prediction table
         - 'pred_proba' for pred_proba
         - 'threshold' for decision_function or predict_proba
     args : dict, default = {}
-        The arguments to always pass to constructor when initializing score_func_type of class_def class.
+        The arguments to always pass to constructor when initializing score_func of class_def class.
     display_name : str, default = None
         Display name (shorter than name). If None or empty, will use name.
     is_multiclass : bool,  default = True
@@ -53,19 +53,19 @@ class ClassificationMetricContainer(MetricContainer):
         ID used as index.
     name : str
         Full name.
-    score_func_type : type
+    score_func : type
         The callable used for the score function, eg. metrics.accuracy_score.
     scorer : str or callable
         The scorer passed to models. Can be a string representing a built-in sklearn scorer,
         a sklearn Scorer object, or None, in which case a Scorer object will be created from
-        score_func_type and args.
+        score_func and args.
     target : str
         The target of the score function.
         - 'pred' for the prediction table
         - 'pred_proba' for pred_proba
         - 'threshold' for decision_function or predict_proba
     args : dict
-        The arguments to always pass to constructor when initializing score_func_type of class_def class.
+        The arguments to always pass to constructor when initializing score_func of class_def class.
     is_multiclass : bool
         Can the metric be used for multiclass problems.
     is_custom : bool
@@ -77,7 +77,7 @@ class ClassificationMetricContainer(MetricContainer):
         self,
         id: str,
         name: str,
-        score_func_type: type,
+        score_func: type,
         scorer: Optional[Union[str, _BaseScorer]] = None,
         target: str = "pred",
         args: Dict[str, Any] = {},
@@ -95,13 +95,13 @@ class ClassificationMetricContainer(MetricContainer):
 
         self.id = id
         self.name = name
-        self.score_func_type = score_func_type
+        self.score_func = score_func
         self.target = target
         self.scorer = (
             scorer
             if scorer
             else metrics.make_scorer(
-                score_func_type,
+                score_func,
                 needs_proba=target == "pred_proba",
                 needs_threshold="threshold",
                 **args,
@@ -132,7 +132,7 @@ class ClassificationMetricContainer(MetricContainer):
             "ID": self.id,
             "Name": self.name,
             "Display Name": self.display_name,
-            "Score Function": self.score_func_type,
+            "Score Function": self.score_func,
             "Scorer": self.scorer,
             "Target": self.target,
             "Args": self.args,
@@ -148,7 +148,7 @@ class AccuracyMetricContainer(ClassificationMetricContainer):
         super().__init__(
             id="acc",
             name="Accuracy",
-            score_func_type=metrics.accuracy_score,
+            score_func=metrics.accuracy_score,
             scorer="accuracy",
         )
 
@@ -158,7 +158,7 @@ class ROCAUCMetricContainer(ClassificationMetricContainer):
         super().__init__(
             id="auc",
             name="AUC",
-            score_func_type=metrics.roc_auc_score,
+            score_func=metrics.roc_auc_score,
             scorer="roc_auc",
             target="pred_proba",
             is_multiclass=False,
@@ -170,7 +170,7 @@ class RecallMetricContainer(ClassificationMetricContainer):
         super().__init__(
             id="recall",
             name="Recall",
-            score_func_type=metrics.recall_score,
+            score_func=metrics.recall_score,
             scorer=metrics.make_scorer(metrics.recall_score, average="macro")
             if globals_dict["y"].value_counts().count() > 2
             else "recall",
@@ -186,7 +186,7 @@ class PrecisionMetricContainer(ClassificationMetricContainer):
             id="precision",
             name="Precision",
             display_name="Prec.",
-            score_func_type=metrics.precision_score,
+            score_func=metrics.precision_score,
             scorer=metrics.make_scorer(metrics.precision_score, average="weighted")
             if globals_dict["y"].value_counts().count() > 2
             else "precision",
@@ -201,7 +201,7 @@ class F1MetricContainer(ClassificationMetricContainer):
         super().__init__(
             id="f1",
             name="F1",
-            score_func_type=metrics.f1_score,
+            score_func=metrics.f1_score,
             scorer=metrics.make_scorer(metrics.f1_score, average="weighted")
             if globals_dict["y"].value_counts().count() > 2
             else "f1",
@@ -216,7 +216,7 @@ class KappaMetricContainer(ClassificationMetricContainer):
         super().__init__(
             id="kappa",
             name="Kappa",
-            score_func_type=metrics.cohen_kappa_score,
+            score_func=metrics.cohen_kappa_score,
             scorer=metrics.make_scorer(metrics.cohen_kappa_score),
         )
 
@@ -226,7 +226,7 @@ class MCCMetricContainer(ClassificationMetricContainer):
         super().__init__(
             id="mcc",
             name="MCC",
-            score_func_type=metrics.matthews_corrcoef,
+            score_func=metrics.matthews_corrcoef,
             scorer=metrics.make_scorer(metrics.matthews_corrcoef),
         )
 
@@ -237,7 +237,7 @@ class TTMetricContainer(ClassificationMetricContainer):
         self.id = "tt"
         self.name = "TT"
         self.display_name = "TT (Sec)"
-        self.score_func_type = None
+        self.score_func = None
         self.scorer = None
         self.args = None
         self.target = None
@@ -246,9 +246,9 @@ class TTMetricContainer(ClassificationMetricContainer):
 
 
 def get_all_metric_containers(
-    globals_dict: dict,
+    globals_dict: dict, raise_errors: bool = True
 ) -> Dict[str, ClassificationMetricContainer]:
     return pycaret.containers.base_container.get_all_containers(
-        globals(), globals_dict, ClassificationMetricContainer
+        globals(), globals_dict, ClassificationMetricContainer, raise_errors
     )
 
