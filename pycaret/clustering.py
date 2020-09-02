@@ -3779,6 +3779,40 @@ def deploy_model(model,
     >>> os.environ['AZURE_STORAGE_CONNECTION_STRING'] = 'connection-string-here' 
     >>> deploy_model(model = kmeans, model_name = 'deploy_kmeans', platform = 'azure', authentication = {'container' : 'container-name'})
 
+	Platform: Linode
+    -------------
+    Before deploying a model to a Linode Object Storage (S3-compatible Storage),
+    environment variables must be configured using the command line interface.
+    To configure Linode env. variables, 2 steps are required:
+    (1) Type "linode-cli configure" in your python command line. linode-cli
+        will ask you to input the Personal Access Token (see Learn more (1))
+        and some linode vps configuration(ok to skip, just hit enter a couple
+        of times).
+    (2) Type "linode-cli obj ls" in your python command line. linode-cli
+        will show "Error: No default cluster is configured." and ask you to
+        choose a default cluster for Object Storage.
+        After choosing, the following three parameters will be written in the
+        config file for future use:
+            - plugin-obj-access-key (equivalent to AWS Access Key ID)
+            - plugin-obj-secret-key (equivalent to AWS Secret Key Access)
+            - plugin-obj-cluster (equivalent to Default Region Name)
+
+    Currently(2020/Sep), 3 data centers of Linode support Object Storage.
+        - Newark : us-east-1.linodeobjects.com
+        - Frankfurt : eu-central-1.linodeobjects.com
+        - Singapore : ap-south-1.linodeobjects.com
+
+    Learn more :
+    (1) https://www.linode.com/docs/platform/api/getting-started-with-the-linode-api/
+    (2) https://www.linode.com/docs/platform/object-storage/how-to-use-object-storage/
+    (3) https://www.linode.com/docs/platform/api/linode-cli/
+
+    >>> from pycaret.datasets import get_data
+    >>> jewellery = get_data('jewellery')
+    >>> experiment_name = setup(data = jewellery, silent=True)
+    >>> kmeans = create_model('kmeans')
+    >>> deploy_model(model = kmeans, model_name = 'deploy_kmeans', platform = 'linode', authentication = {'bucket' : 'bucket-name', 'region': 'region of bucket'})
+
     Parameters
     ----------
     model : object
@@ -3802,6 +3836,14 @@ def deploy_model(model,
 
         When platform = 'azure':
         {'container': 'name of container'}
+		
+        When platform = 'linode':
+        {'bucket' : 'name of bucket', 'region': 'region of bucket'}
+        'region' is optional.
+        If 'region' is not given, the region will be set acoording to
+        'plugin-obj-cluster'.
+        If 'plugin-obj-cluster' is not found in config file neither,
+        the region will be set to "us-east-1".
 
     Returns
     -------
@@ -3953,6 +3995,44 @@ def deploy_model(model,
         logger.info("Model Succesfully Deployed on Azure Storage Blob")
         logger.info(str(model))
 
+    elif platform == 'linode':
+
+        #checking if linodcli available
+        try:
+            import linodecli
+        except:
+            logger.error("linodecli library not found. pip install linode-cli to use deploy_model function.")
+            sys.exit("linodecli library not found. pip install linode-cli to use deploy_model function.")
+
+        import boto3
+
+        logger.info("Saving model in active working directory")
+        logger.info("SubProcess save_model() called ==================================")
+        save_model(model, model_name = model_name, verbose=False)
+        logger.info("SubProcess save_model() end ==================================")
+
+        #initiaze Linode Object Storage
+        logger.info("Initializing Linode Object Storage client")
+        region = authentication.get('region',linodecli.cli.config.get_value('plugin-obj-cluster')) or 'us-east-1'
+        cfg = {
+        "aws_access_key_id": linodecli.cli.config.get_value('plugin-obj-access-key'),
+        "aws_secret_access_key": linodecli.cli.config.get_value('plugin-obj-secret-key'),
+        "endpoint_url": 'https://' + region + '.linodeobjects.com',
+        }
+        s3 = boto3.client('s3', **cfg)
+        bucketname = authentication.get('bucket')
+        filename = str(model_name) + '.pkl'
+        key = str(model_name) + '.pkl'
+        s3.create_bucket(Bucket=bucketname)
+        s3.upload_file(Bucket=bucketname, Filename=filename, Key=key, ExtraArgs={'ACL': 'public-read'})
+        clear_output()
+
+        os.remove(filename)
+
+        print("Model Succesfully Deployed on Linode Object Storage")
+        logger.info("Model Succesfully Deployed on Linode Object Storage")
+        logger.info(str(model))
+
     else:
         logger.error('Platform {} is not supported by pycaret or illegal option'.format(platform))
         sys.exit('Platform {} is not supported by pycaret or illegal option'.format(platform))
@@ -4086,6 +4166,14 @@ def load_model(model_name,
 
         When platform = 'azure':
         {'container': 'name of container'}
+
+        When platform = 'linode':
+        {'bucket' : 'name of bucket', 'region': 'region of bucket'}
+        'region' is optional.
+        If 'region' is not given, the region will be set acoording to
+        'plugin-obj-cluster'.
+        If 'plugin-obj-cluster' is not found in config file neither,
+        the region will be set to "us-east-1".
     
     verbose: Boolean, default = True
         Success message is not printed when verbose is set to False.
@@ -4125,7 +4213,6 @@ def load_model(model_name,
         s3.Bucket(bucketname).download_file(filename, filename)
         filename = str(model_name)
         model = load_model(filename, verbose=False)
-        model = load_model(filename, verbose=False)
 
         if verbose:
             print('Transformation Pipeline and Model Successfully Loaded')
@@ -4159,6 +4246,31 @@ def load_model(model_name,
         if verbose:
             print('Transformation Pipeline and Model Successfully Loaded')
         return model
+		
+    elif platform == 'linode':
+
+        import boto3
+        import linodecli
+
+        region = authentication.get('region',linodecli.cli.config.get_value('plugin-obj-cluster')) or 'us-east-1'
+        cfg = {
+        "aws_access_key_id": linodecli.cli.config.get_value('plugin-obj-access-key'),
+        "aws_secret_access_key": linodecli.cli.config.get_value('plugin-obj-secret-key'),
+        "endpoint_url": 'https://' + region + '.linodeobjects.com',
+        }
+        s3 = boto3.client('s3', **cfg)
+        bucketname = authentication.get('bucket')
+        filename = str(model_name) + '.pkl'
+        key = str(model_name) + '.pkl'
+        s3.download_file(Bucket=bucketname, Filename=filename, Key=key)
+        filename = str(model_name)
+        model = load_model(filename, verbose=False)
+
+        if verbose:
+            print('Transformation Pipeline and Model Successfully Loaded')
+
+        return model	
+		
     else:
         print('Platform { } is not supported by pycaret or illegal option'.format(platform))
         
