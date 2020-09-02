@@ -96,10 +96,16 @@ def get_model_id(e, all_models: pd.DataFrame) -> str:
     return None
 
 
-def get_model_name(e, all_models: pd.DataFrame) -> str:
+def get_model_name(e, all_models: pd.DataFrame, deep: bool = True) -> str:
     if isinstance(e, str) and e in all_models.index:
         model_id = e
     else:
+        if deep:
+            if hasattr(e, "steps"):
+                e = e.steps[-1][1]
+            if hasattr(e, "estimator"):
+                e = e.estimator
+
         model_id = get_model_id(e, all_models)
 
     if model_id is not None:

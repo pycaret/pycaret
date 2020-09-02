@@ -1028,9 +1028,7 @@ def setup(
             ["Status", ". . . . . . . . . . . . . . . . . .", "Loading Dependencies"],
             ["ETC", ". . . . . . . . . . . . . . . . . .", "Calculating ETC"],
         ]
-        display = Display(
-            verbose, html_param, progress_args, monitor_rows, logger=logger,
-        )
+        display = Display(verbose, html_param, progress_args, monitor_rows,)
 
         display.display_progress()
         display.display_monitor()
@@ -1959,12 +1957,7 @@ def compare_models(
             ["ETC", ". . . . . . . . . . . . . . . . . .", "Calculating ETC"],
         ]
         display = Display(
-            verbose,
-            html_param,
-            progress_args,
-            master_display_columns,
-            monitor_rows,
-            logger=logger,
+            verbose, html_param, progress_args, master_display_columns, monitor_rows,
         )
 
         display.display_progress()
@@ -2121,9 +2114,9 @@ def compare_models(
 
             avgs_dict_log = {
                 k: v
-                for k, v in master_display.drop(["Object", "Model", "TT (Sec)"], axis=1)
-                .iloc[0]
-                .items()
+                for k, v in compare_models_.drop(
+                    ["Object", "Model", "TT (Sec)"], axis=1
+                ).items()
             }
 
             try:
@@ -2176,7 +2169,7 @@ def compare_models(
 
     display.move_progress()
 
-    display.update_monitor(1, "Compiling Final Model")
+    display.update_monitor(1, "Compiling Final Models")
     display.update_monitor(3, "Almost Finished")
     display.display_monitor()
 
@@ -2210,7 +2203,7 @@ def compare_models(
 
 
 def create_model(
-    estimator=None,
+    estimator,
     fold: int = 10,
     round: int = 4,
     cross_validation: bool = True,
@@ -2396,12 +2389,7 @@ def create_model(
             ["ETC", ". . . . . . . . . . . . . . . . . .", "Calculating ETC"],
         ]
         display = Display(
-            verbose,
-            html_param,
-            progress_args,
-            master_display_columns,
-            monitor_rows,
-            logger=logger,
+            verbose, html_param, progress_args, master_display_columns, monitor_rows,
         )
         display.display_progress()
         display.display_monitor()
@@ -2700,7 +2688,7 @@ def create_model(
 
 
 def tune_model(
-    estimator=None,
+    estimator,
     fold: int = 10,
     round: int = 4,
     n_iter: int = 10,
@@ -3017,12 +3005,7 @@ def tune_model(
             ["ETC", ". . . . . . . . . . . . . . . . . .", "Calculating ETC"],
         ]
         display = Display(
-            verbose,
-            html_param,
-            progress_args,
-            master_display_columns,
-            monitor_rows,
-            logger=logger,
+            verbose, html_param, progress_args, master_display_columns, monitor_rows,
         )
 
         display.display_progress()
@@ -3605,12 +3588,7 @@ def ensemble_model(
             ["ETC", ". . . . . . . . . . . . . . . . . .", "Calculating ETC"],
         ]
         display = Display(
-            verbose,
-            html_param,
-            progress_args,
-            master_display_columns,
-            monitor_rows,
-            logger=logger,
+            verbose, html_param, progress_args, master_display_columns, monitor_rows,
         )
 
         display.display_progress()
@@ -3754,14 +3732,13 @@ def ensemble_model(
 
 
 def blend_models(
-    estimator_list="All",
+    estimator_list: list,
     fold: int = 10,
     round: int = 4,
     choose_better: bool = False,
     optimize: str = "Accuracy",
-    method: str = "hard",
+    method: str = "auto",
     weights: Optional[List[float]] = None,  # added in pycaret==2.2.0
-    turbo: bool = True,
     verbose: bool = True,
     display: Optional[Display] = None,  # added in pycaret==2.2.0
 ) -> Any:
@@ -3771,10 +3748,10 @@ def blend_models(
     estimators in the model library (excluding the few when turbo is True) or 
     for specific trained estimators passed as a list in estimator_list param.
     It scores it using Stratified Cross Validation. The output prints a score
-    grid that shows Accuracy,  AUC, Recall, Precision, F1, Kappa and MCC by 
-    fold (default CV = 10 Folds). 
+    grid that shows Accuracy, AUC, Recall, Precision, F1, Kappa and MCC by 
+    fold (default CV = 10 Folds).
 
-    This function returns a trained model object.  
+    This function returns a trained model object.
 
     Example
     -------
@@ -3797,7 +3774,7 @@ def blend_models(
 
     Parameters
     ----------
-    estimator_list : str ('All') or list of object, default = 'All'
+    estimator_list : list of objects
 
     fold: integer, default = 10
         Number of folds to be used in Kfold CV. Must be at least 2. 
@@ -3817,17 +3794,15 @@ def blend_models(
         optimize parameter are 'Accuracy', 'AUC', 'Recall', 'Precision', 'F1', 
         'Kappa', 'MCC'.
 
-    method: str, default = 'hard'
-        'hard' uses predicted class labels for majority rule voting.'soft', predicts 
+    method: str, default = 'auto'
+        'hard' uses predicted class labels for majority rule voting. 'soft', predicts 
         the class label based on the argmax of the sums of the predicted probabilities, 
-        which is recommended for an ensemble of well-calibrated classifiers. 
+        which is recommended for an ensemble of well-calibrated classifiers. Default value,
+        'auto', will try to use 'soft' and fall back to 'hard' if the former is not supported.
 
     weights: list, default = None
         Sequence of weights (float or int) to weight the occurrences of predicted class labels (hard voting)
         or class probabilities before averaging (soft voting). Uses uniform weights if None.
-
-    turbo: bool, default = True
-        When turbo is set to True, it excludes estimator that uses Radial Kernel.
 
     verbose: bool, default = True
         Score grid is not printed when verbose is set to False.
@@ -3872,30 +3847,36 @@ def blend_models(
     # run_time
     runtime_start = time.time()
 
-    # checking error for estimator_list (string)
+    # checking method parameter
+    available_method = ["auto", "soft", "hard"]
+    if method not in available_method:
+        raise ValueError(
+            "Method parameter only accepts 'auto', 'soft' or 'hard' as a parameter. See Docstring for details."
+        )
 
-    if estimator_list != "All":
-        if type(estimator_list) is not list:
-            raise ValueError(
-                "estimator_list parameter only accepts 'All' as str or list of trained models."
-            )
-
-        for i in estimator_list:
-            if not hasattr(i, "fit"):
-                raise ValueError(
-                    f"Estimator {i} does not have the required fit() method."
-                )
+    # checking error for estimator_list
+    for i in estimator_list:
+        if not hasattr(i, "fit"):
+            raise ValueError(f"Estimator {i} does not have the required fit() method.")
 
         # checking method param with estimator list
-        if method == "soft":
-
-            check = 0
+        if method != "hard":
 
             for i in estimator_list:
                 if not hasattr(i, "predict_proba"):
-                    raise TypeError(
-                        "Estimator list contains estimator that doesnt support probabilities and method is forced to soft. Either change the method or drop the estimator."
-                    )
+                    if method != "auto":
+                        raise TypeError(
+                            f"Estimator list contains estimator {i} that doesn't support probabilities and method is forced to 'soft'. Either change the method or drop the estimator."
+                        )
+                    else:
+                        logger.info(
+                            f"Estimator {i} doesn't support probabilities, falling back to 'hard'."
+                        )
+                        method = "hard"
+                        break
+
+            if method == "auto":
+                method = "soft"
 
     # checking fold parameter
     if type(fold) is not int:
@@ -3905,26 +3886,8 @@ def blend_models(
     if type(round) is not int:
         raise TypeError("Round parameter only accepts integer value.")
 
-    # checking method parameter
-    available_method = ["soft", "hard"]
-    if method not in available_method:
-        raise ValueError(
-            "Method parameter only accepts 'soft' or 'hard' as a parameter. See Docstring for details."
-        )
-
-    # checking verbose parameter
-    if type(turbo) is not bool:
-        raise TypeError("Turbo parameter can only take argument as True or False.")
-
     if weights is not None:
-        if isinstance(estimator_list, list):
-            num_estimators = len(estimator_list)
-        else:
-            num_estimators = models(internal=True)
-            num_estimators = num_estimators[num_estimators["Special"] == False]
-            if turbo:
-                num_estimators = num_estimators[num_estimators["Turbo"] == True]
-            num_estimators = len(num_estimators)
+        num_estimators = len(estimator_list)
         # checking weights parameter
         if len(weights) != num_estimators:
             raise ValueError(
@@ -3957,12 +3920,8 @@ def blend_models(
     
     """
 
-    # estimator_list_flag
-    all_flag = estimator_list == "All"
-
     if not display:
-        all_models_offset = len(models()) if all_flag else 0
-        progress_args = {"max": fold + 2 + 4 + all_models_offset}
+        progress_args = {"max": fold + 2 + 4}
         master_display_columns = all_metrics["Display Name"].to_list()
         timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
         monitor_rows = [
@@ -3971,12 +3930,7 @@ def blend_models(
             ["ETC", ". . . . . . . . . . . . . . . . . .", "Calculating ETC"],
         ]
         display = Display(
-            verbose,
-            html_param,
-            progress_args,
-            master_display_columns,
-            monitor_rows,
-            logger=logger,
+            verbose, html_param, progress_args, master_display_columns, monitor_rows,
         )
         display.display_progress()
         display.display_monitor()
@@ -4013,42 +3967,18 @@ def blend_models(
     MONITOR UPDATE ENDS
     """
 
-    if all_flag:
-        models_to_check = models(internal=True)
-        models_to_check = models_to_check[models_to_check["Special"] == False]
-        if method == "soft":
-            models_to_check = models_to_check[models_to_check["Soft Voting"] == True]
-        if turbo:
-            models_to_check = models_to_check[models_to_check["Turbo"] == True]
-        estimator_list_str = models_to_check.index.to_list()
-        estimator_list = []
-        for model in estimator_list_str:
-            model_name = _get_model_name(model)
-            logger.info(
-                "SubProcess create_model() called =================================="
-            )
-            model = create_model(
-                estimator=model, system=False, verbose=False, fold=fold, round=round,
-            )
-            # re-instate display_constainer state
-            pull(pop=True)
-            logger.info(
-                "SubProcess create_model() end =================================="
-            )
-            estimator_list.append((model_name, model))
-            display.move_progress()
-    else:
-        estimator_dict = {}
-        for x in estimator_list:
-            name = _get_model_id(x)
-            suffix = 1
-            original_name = name
-            while name in estimator_dict:
-                name = f"{original_name}_{suffix}"
-                suffix += 1
-            estimator_dict[name] = x
+    logger.info("Getting model names")
+    estimator_dict = {}
+    for x in estimator_list:
+        name = _get_model_id(x)
+        suffix = 1
+        original_name = name
+        while name in estimator_dict:
+            name = f"{original_name}_{suffix}"
+            suffix += 1
+        estimator_dict[name] = x
 
-        estimator_list = list(estimator_dict.items())
+    estimator_list = list(estimator_dict.items())
 
     votingclassifier_model_definition = _all_models_internal.loc["Voting"]
     try:
@@ -4106,7 +4036,7 @@ def blend_models(
             logger.error(f"_mlflow_log_model() for {model} raised an exception:")
             logger.error(traceback.format_exc())
 
-    if choose_better and not all_flag:
+    if choose_better:
         model = _choose_better(
             model,
             estimator_list,
@@ -4318,12 +4248,7 @@ def stack_models(
             ["ETC", ". . . . . . . . . . . . . . . . . .", "Calculating ETC"],
         ]
         display = Display(
-            verbose,
-            html_param,
-            progress_args,
-            master_display_columns,
-            monitor_rows,
-            logger=logger,
+            verbose, html_param, progress_args, master_display_columns, monitor_rows,
         )
         display.display_progress()
         display.display_monitor()
@@ -4570,7 +4495,6 @@ def plot_model(
         ("Gain Chart", "gain"),
     ]
     available_plots = {k: v for v, k in available_plots}
-    print(available_plots)
 
     if plot not in available_plots:
         raise ValueError(
@@ -4636,9 +4560,7 @@ def plot_model(
 
     if not display:
         progress_args = {"max": 5}
-        display = Display(
-            verbose, html_param, progress_args, None, None, logger=logger,
-        )
+        display = Display(verbose, html_param, progress_args, None, None,)
         display.display_progress()
 
     logger.info("Preloading libraries")
@@ -4711,7 +4633,6 @@ def plot_model(
             scale=scale,
             save=save,
             system=system,
-            logger=logger,
             display=display,
         )
 
@@ -4730,7 +4651,6 @@ def plot_model(
             scale=scale,
             save=save,
             system=system,
-            logger=logger,
             display=display,
         )
 
@@ -4749,7 +4669,6 @@ def plot_model(
             scale=scale,
             save=save,
             system=system,
-            logger=logger,
             display=display,
         )
 
@@ -4770,7 +4689,6 @@ def plot_model(
             scale=scale,
             save=save,
             system=system,
-            logger=logger,
             display=display,
         )
 
@@ -4789,7 +4707,6 @@ def plot_model(
             scale=scale,
             save=save,
             system=system,
-            logger=logger,
             display=display,
         )
 
@@ -4808,7 +4725,6 @@ def plot_model(
             scale=scale,
             save=save,
             system=system,
-            logger=logger,
             display=display,
         )
 
@@ -4842,10 +4758,9 @@ def plot_model(
             y_test=test_y_transformed,
             name=plot_name,
             scale=scale,
-            handle_train="draw",
+            handle_test="draw",
             save=save,
             system=system,
-            logger=logger,
             display=display,
             features=["Feature One", "Feature Two"],
             classes=["A", "B"],
@@ -4867,7 +4782,6 @@ def plot_model(
             scale=scale,
             save=save,
             system=system,
-            logger=logger,
             display=display,
         )
 
@@ -4890,7 +4804,6 @@ def plot_model(
             scale=scale,
             save=save,
             system=system,
-            logger=logger,
             display=display,
         )
 
@@ -4962,7 +4875,6 @@ def plot_model(
             scale=scale,
             save=save,
             system=system,
-            logger=logger,
             display=display,
         )
 
@@ -5100,7 +5012,6 @@ def plot_model(
             scale=scale,
             save=save,
             system=system,
-            logger=logger,
             display=display,
         )
 
@@ -5137,17 +5048,18 @@ def plot_model(
             scale=scale,
             save=save,
             system=system,
-            logger=logger,
             display=display,
         )
 
     elif plot == "feature":
-
-        if hasattr(estimator, "coef_"):
-            variables = abs(model.coef_[0])
+        temp_model = model
+        if hasattr(model, "steps"):
+            temp_model = model.steps[-1][1]
+        if hasattr(temp_model, "coef_"):
+            variables = abs(temp_model.coef_[0])
         else:
             logger.warning("No coef_ found. Trying feature_importances_")
-            variables = abs(model.feature_importances_)
+            variables = abs(temp_model.feature_importances_)
         coef_df = pd.DataFrame({"Variable": data_X.columns, "Value": variables})
         sorted_df = (
             coef_df.sort_values(by="Value", ascending=False)
@@ -5257,6 +5169,7 @@ def evaluate_model(estimator):
         verbose=fixed(True),
         scale=fixed(1),
         system=fixed(True),
+        display=fixed(None),
     )
 
 
@@ -5619,12 +5532,7 @@ def calibrate_model(
             ["ETC", ". . . . . . . . . . . . . . . . . .", "Calculating ETC"],
         ]
         display = Display(
-            verbose,
-            html_param,
-            progress_args,
-            master_display_columns,
-            monitor_rows,
-            logger=logger,
+            verbose, html_param, progress_args, master_display_columns, monitor_rows,
         )
 
         display.display_progress()
@@ -6053,7 +5961,7 @@ def predict_model(
     np.random.seed(seed)
 
     if not display:
-        display = Display(verbose, html_param, logger=logger,)
+        display = Display(verbose, html_param,)
 
     dtypes = None
 
@@ -6212,7 +6120,7 @@ def finalize_model(estimator, display=None) -> Any:  # added in pycaret==2.2.0
     logger.info(f"finalize_model({function_params_str})")
 
     if not display:
-        display = Display(False, html_param, logger=logger,)
+        display = Display(False, html_param,)
 
     # run_time
     runtime_start = time.time()
@@ -6802,12 +6710,19 @@ def add_metric(
         raise ValueError("id already present in metrics dataframe.")
 
     new_metric = ClassificationMetricContainer(
-        id=id, name=name, score_func=score_func, target=target, args=args, display_name=name, is_multiclass=bool(multiclass), is_custom=True
+        id=id,
+        name=name,
+        score_func=score_func,
+        target=target,
+        args=args,
+        display_name=name,
+        is_multiclass=bool(multiclass),
+        is_custom=True,
     )
 
     new_metric = new_metric.get_dict()
 
-    new_metric = pd.Series(new_metric, name=id.replace(" ", "_")).drop('ID')
+    new_metric = pd.Series(new_metric, name=id.replace(" ", "_")).drop("ID")
 
     last_row = all_metrics.iloc[-1]
     all_metrics.drop(all_metrics.index[-1], inplace=True)
@@ -7121,7 +7036,9 @@ def _sample_data(
         MONITOR UPDATE ENDS
         """
 
-        _stratify_columns = _get_columns_to_stratify_by(X, y, stratify_param, target_param)
+        _stratify_columns = _get_columns_to_stratify_by(
+            X, y, stratify_param, target_param
+        )
 
         X_, _, y_, _ = train_test_split(
             X,
@@ -7132,7 +7049,9 @@ def _sample_data(
             shuffle=data_split_shuffle,
         )
 
-        _stratify_columns = _get_columns_to_stratify_by(X_, y_, stratify_param, target_param)
+        _stratify_columns = _get_columns_to_stratify_by(
+            X_, y_, stratify_param, target_param
+        )
 
         X_train, X_test, y_train, y_test = train_test_split(
             X_,
@@ -7289,13 +7208,13 @@ def _get_model_id(e) -> str:
     return pycaret.internal.utils.get_model_id(e, models(internal=True))
 
 
-def _get_model_name(e) -> str:
+def _get_model_name(e, deep: bool = True) -> str:
     """
     Get model name.
     """
     import pycaret.internal.utils
 
-    return pycaret.internal.utils.get_model_name(e, models(internal=True))
+    return pycaret.internal.utils.get_model_name(e, models(internal=True), deep=deep)
 
 
 def _is_special_model(e) -> bool:
@@ -7338,7 +7257,7 @@ def _mlflow_log_model(
     # Creating Logs message monitor
     if display:
         display.update_monitor(1, "Creating Logs")
-        display.update_monitor(2, "Almost Finished")
+        display.update_monitor(-1, "Almost Finished")
         display.display_monitor()
 
     # import mlflow

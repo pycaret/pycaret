@@ -3,6 +3,7 @@
 # License: MIT
 
 import datetime
+from pycaret.internal.logging import get_logger
 import pandas as pd
 import pandas.io.formats.style
 import ipywidgets as ipw
@@ -103,11 +104,10 @@ class Display:
         master_display_columns: Optional[List[str]] = None,
         monitor_rows: Optional[List[List[str]]] = None,
         round: int = 4,
-        logger=None,
     ):
+        self.logger = get_logger()
         self.verbose = verbose
         self.html_param = html_param
-        self.logger = logger
         self.round = round
 
         if not (self.verbose and self.html_param):
@@ -116,7 +116,7 @@ class Display:
         self.logger.info("Preparing display monitor")
 
         # progress bar
-        if progress_args:
+        if progress_args and verbose:
             progress_args = {**self.default_progress_args, **progress_args}
             self.progress = ipw.IntProgress(**progress_args)
 
