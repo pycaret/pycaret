@@ -45,51 +45,6 @@ from collections import defaultdict
 pd.set_option('display.max_columns', 500)
 pd.set_option('display.max_rows', 500)
 
-#ignore warnings
-import warnings
-warnings.filterwarnings('ignore') 
-import time, logging
-
-logger = logging.getLogger('logs')
-logger.setLevel(logging.DEBUG)
-
-# create console handler and set level to debug
-if logger.hasHandlers():
-    logger.handlers.clear()
-
-ch = logging.FileHandler('logs.log')
-ch.setLevel(logging.DEBUG)
-
-# create formatter
-formatter = logging.Formatter('%(asctime)s:%(levelname)s:%(message)s')
-
-# add formatter to ch
-ch.setFormatter(formatter)
-
-# add ch to logger
-logger.addHandler(ch)
-
-from contextlib import contextmanager
-
-@contextmanager
-def timing(description: str) -> None:
-    start = time.time()
-    yield
-    ellapsed_time = time.time() - start
-
-    logger.info(f"TIME: {description}: {ellapsed_time}")
-
-def timeit(method):
-    def timed(*args, **kw):
-        logger.info(f"TIME: starting {method}")
-        ts = time.time()
-        result = method(*args, **kw)
-        te = time.time()
-        logger.info(f"TIME: {method}: {te-ts}")
-        logger.info(result.columns)
-        return result
-    return timed
-
 #_____________________________________________________________________________________________________________________________
 
 class DataTypes_Auto_infer(BaseEstimator,TransformerMixin):
@@ -145,57 +100,51 @@ class DataTypes_Auto_infer(BaseEstimator,TransformerMixin):
     # 500 and above 2% or belwo
    
     # if there are inf or -inf then replace them with NaN
-    with timing('replace nans'):
-      data.replace([np.inf,-np.inf],np.NaN,inplace=True)
+    data.replace([np.inf,-np.inf],np.NaN,inplace=True)
 
     # also make sure that all the column names are string 
-    with timing('stringify col names'):
-      data.columns = [str(i) for i in data.columns]
+    data.columns = [str(i) for i in data.columns]
   
    
     # we canc check if somehow everything is object, we can try converting them in float
-    with timing('try convert to int'):
-      for i in data.select_dtypes(include=['object']).columns:
-        try:
-          data[i] = data[i].astype('int64')
-        except:
-          None
+    for i in data.select_dtypes(include=['object']).columns:
+      try:
+        data[i] = data[i].astype('int64')
+      except:
+        None
     
     # if data type is bool or pandas Categorical , convert to categorical
-    with timing('bool category to object'):
-      for i in data.select_dtypes(include=['bool', 'category']).columns:
-        data[i] = data[i].astype('object')
+    for i in data.select_dtypes(include=['bool', 'category']).columns:
+      data[i] = data[i].astype('object')
     
 
     # some times we have id column in the data set, we will try to find it and then  will drop it if found
-    with timing('find id col'):
-      len_samples = len(data)
-      self.id_columns = []
-      for i in data.select_dtypes(include=['int64','float64']).columns:
-        if i not in self.numerical_features:
-          if sum(data[i].isna()) == 0: 
-            if data[i].nunique() == len_samples:
-              # we extract column and sort it
-              features = data[i].sort_values()
-              # no we subtract i+1-th value from i-th (calculating increments)
-              increments = features.diff()[1:]
-              # if all increments are 1 (with float tolerance), then the column is ID column
-              if sum(np.abs(increments-1) < 1e-7) == len_samples-1:
-                self.id_columns.append(i)
+    len_samples = len(data)
+    self.id_columns = []
+    for i in data.select_dtypes(include=['int64','float64']).columns:
+      if i not in self.numerical_features:
+        if sum(data[i].isna()) == 0: 
+          if data[i].nunique() == len_samples:
+            # we extract column and sort it
+            features = data[i].sort_values()
+            # no we subtract i+1-th value from i-th (calculating increments)
+            increments = features.diff()[1:]
+            # if all increments are 1 (with float tolerance), then the column is ID column
+            if sum(np.abs(increments-1) < 1e-7) == len_samples-1:
+              self.id_columns.append(i)
               
     # wiith csv , if we have any null in  a colum that was int , panda will read it as float.
     # so first we need to convert any such floats that have NaN and unique values are lower than 20
-    with timing('find categoricals'):
-      for i in data.select_dtypes(include=['float64']).columns:
-        # count how many Nas are there
-        na_count = sum(data[i].isna())
-        # count how many digits are there that have decimiles
-        count_float = np.nansum([ False if r.is_integer() else True for r in data[i]])
-        # total decimiels digits
-        count_float = count_float - na_count # reducing it because we know NaN is counted as a float digit
-        # now if there isnt any float digit , & unique levales are less than 20 and there are Na's then convert it to object
-        if ( (count_float == 0) & (data[i].nunique() <=20) & (na_count>0) ):
-          data[i] = data[i].astype('object')
+    for i in data.select_dtypes(include=['float64']).columns:
+      # count how many Nas are there
+      na_count = sum(data[i].isna())
+      # count how many digits are there that have decimiles
+      count_float = np.nansum([ False if r.is_integer() else True for r in data[i]])
+      # total decimiels digits
+      count_float = count_float - na_count # reducing it because we know NaN is counted as a float digit
+      # now if there isnt any float digit , & unique levales are less than 20 and there are Na's then convert it to object
+      if ( (count_float == 0) & (data[i].nunique() <=20) & (na_count>0) ):
+        data[i] = data[i].astype('object')
         
 
     # should really be an absolute number say 20
@@ -212,61 +161,53 @@ class DataTypes_Auto_infer(BaseEstimator,TransformerMixin):
     #   th=.02
 
     # if column is int and unique counts are more than two, then: (exclude target)
-    with timing('handle int64'):
-      for i in data.select_dtypes(include=['int64']).columns:
-        if data[i].nunique() <=20: #hard coded
-          data[i]= data[i].apply(str)
-        else:
-          data[i]= data[i].astype('float64')
+    for i in data.select_dtypes(include=['int64']).columns:
+      if data[i].nunique() <=20: #hard coded
+        data[i]= data[i].apply(str)
+      else:
+        data[i]= data[i].astype('float64')
 
 
     # # if colum is objfloat  and only have two unique counts , this is probabaly one hot encoded
     # # make it object
-    with timing('float to object'):
-      for i in data.select_dtypes(include=['float64']).columns:
-        if data[i].nunique()==2:
-          data[i]= data[i].apply(str)
+    for i in data.select_dtypes(include=['float64']).columns:
+      if data[i].nunique()==2:
+        data[i]= data[i].apply(str)
     
-    with timing('handle datetime'):
-      #for time & dates
-      #self.drop_time = [] # for now we are deleting time columns
+    #for time & dates
+    #self.drop_time = [] # for now we are deleting time columns
 
-      for i in data.select_dtypes(include=['object']).drop(self.target,axis=1,errors='ignore').columns:
-        try:
-          data[i] = pd.to_datetime(data[i], infer_datetime_format=True, utc=False, errors='raise')
-        except:
-          continue
+    for i in data.select_dtypes(include=['object']).drop(self.target,axis=1,errors='ignore').columns:
+      try:
+        data[i] = pd.to_datetime(data[i], infer_datetime_format=True, utc=False, errors='raise')
+      except:
+        continue
 
     # now in case we were given any specific columns dtypes in advance , we will over ride theos 
-    with timing('override categoricals'):
-      for i in self.categorical_features:
-        try:
-          data[i]=data[i].apply(str)
-        except:
-          data[i]=dataset[i].apply(str)
+    for i in self.categorical_features:
+      try:
+        data[i]=data[i].apply(str)
+      except:
+        data[i]=dataset[i].apply(str)
 
-    with timing('override numericals'):
-      for i in self.numerical_features:
-        try:
-          data[i]=data[i].astype('float64')
-        except:
-          data[i]=dataset[i].astype('float64')
+    for i in self.numerical_features:
+      try:
+        data[i]=data[i].astype('float64')
+      except:
+        data[i]=dataset[i].astype('float64')
   
-    with timing('override datetime'):
-      for i in self.time_features:
-        try:
-          data[i] = pd.to_datetime(data[i], infer_datetime_format=True, utc=False, errors='raise')
-        except:
-          data[i] = pd.to_datetime(dataset[i], infer_datetime_format=True, utc=False, errors='raise')
-    logger.info(data.columns)
-    with timing('replace nans again'):
-      # table of learent types
-      self.learent_dtypes = data.dtypes
-      logger.info(self.learent_dtypes)
-      #self.training_columns = data.drop(self.target,axis=1).columns
+    for i in self.time_features:
+      try:
+        data[i] = pd.to_datetime(data[i], infer_datetime_format=True, utc=False, errors='raise')
+      except:
+        data[i] = pd.to_datetime(dataset[i], infer_datetime_format=True, utc=False, errors='raise')
 
-      # if there are inf or -inf then replace them with NaN
-      data = data.replace([np.inf,-np.inf],np.NaN).astype(self.learent_dtypes)
+    # table of learent types
+    self.learent_dtypes = data.dtypes
+    #self.training_columns = data.drop(self.target,axis=1).columns
+
+    # if there are inf or -inf then replace them with NaN
+    data = data.replace([np.inf,-np.inf],np.NaN).astype(self.learent_dtypes)
 
     # lets remove duplicates
     # remove duplicate columns (columns with same values)
@@ -274,16 +215,13 @@ class DataTypes_Auto_infer(BaseEstimator,TransformerMixin):
     # data_c = data.T.drop_duplicates()
     # data = data_c.T
     #remove columns with duplicate name 
-    with timing('remove columns with duplicate names'):
-      data = data.loc[:,~data.columns.duplicated()]
+    data = data.loc[:,~data.columns.duplicated()]
     # Remove NAs
-    with timing('replace NAs'):
-      data.dropna(axis=0, how='all', inplace=True)
-      data.dropna(axis=1, how='all', inplace=True)
-      # remove the row if target column has NA
-      data = data[~data[self.target].isnull()]
+    data.dropna(axis=0, how='all', inplace=True)
+    data.dropna(axis=1, how='all', inplace=True)
+    # remove the row if target column has NA
+    data = data[~data[self.target].isnull()]
             
-    logger.info(data.columns)
     #self.training_columns = data.drop(self.target,axis=1).columns
 
     # since due to transpose , all data types have changed, lets change the dtypes to original---- not required any more since not transposing any more
@@ -322,14 +260,12 @@ class DataTypes_Auto_infer(BaseEstimator,TransformerMixin):
       if self.response in ['quit','Quit','exit','EXIT','q','Q','e','E','QUIT','Exit']:
         sys.exit('Read the documentation of setup to learn how to overwrite data types over the inferred types. setup function must run again before you continue modeling.')
       
-    logger.info(data.columns)
     # drop time columns
     #data.drop(self.drop_time,axis=1,errors='ignore',inplace=True)
 
     # drop id columns
     data.drop(self.id_columns,axis=1,errors='ignore',inplace=True)
 
-    logger.info(data.columns)
     
     return(data)
   
@@ -379,17 +315,14 @@ class DataTypes_Auto_infer(BaseEstimator,TransformerMixin):
     return(data)
 
   # fit_transform
-  @timeit
   def fit_transform(self,dataset,y=None):
 
     data= dataset.copy()
     # drop any columns that were asked to drop
     data.drop(index=self.features_todrop,errors='ignore',inplace=True)
 
-    logger.info(data.columns)
     # since this is for training , we dont nees any transformation since it has already been transformed in fit
     data = self.fit(data)
-    logger.info(data.columns)
 
     # additionally we just need to treat the target variable
     # for ml use ase
@@ -410,13 +343,11 @@ class DataTypes_Auto_infer(BaseEstimator,TransformerMixin):
       # data[self.target] = data[self.target].astype('int64')
       # self.replacement = pd.DataFrame(dict(target_variable=self.u,replaced_with=self.replacement))
 
-    logger.info(data.columns)
     # drop time columns
     #data.drop(self.drop_time,axis=1,errors='ignore',inplace=True)
 
     # drop id columns
     data.drop(self.id_columns,axis=1,errors='ignore',inplace=True)
-    logger.info(data.columns)
     # finally save a list of columns that we would need from test data set
     self.final_training_columns = data.drop(self.target,axis=1).columns
 
@@ -499,7 +430,6 @@ class Simple_Imputer(BaseEstimator,TransformerMixin):
     
     return(data)
   
-  @timeit
   def fit_transform(self,dataset,y=None):
     data = dataset.copy() 
     data= self.fit(data)
@@ -631,7 +561,6 @@ class Surrogate_Imputer(BaseEstimator,TransformerMixin):
     
     return(data)
   
-  @timeit
   def fit_transform(self,dataset,y=None):
     data = dataset.copy()
     data= self.fit(data)
@@ -688,7 +617,6 @@ class Zroe_NearZero_Variance(BaseEstimator,TransformerMixin):
     data.drop(self.to_drop,axis=1,inplace=True)
     return(data)
   
-  @timeit
   def fit_transform(self,dataset,y=None):
     data= dataset.copy()
     self.fit(data)
@@ -750,7 +678,6 @@ class Catagorical_variables_With_Rare_levels(BaseEstimator,TransformerMixin):
       data[i].replace(to_replace=t_replace,value=self.new_level_name,inplace=True)
     return(data)
   
-  @timeit
   def fit_transform(self,dataset,y=None):
     data = dataset.copy()
     self.fit(data)
@@ -800,7 +727,6 @@ class New_Catagorical_Levels_in_TestData(BaseEstimator,TransformerMixin):
 
     return(data)
   
-  @timeit
   def fit_transform(self,data,y=None): #There is no transformation happening in training data set, its all about test 
     self.fit(data)
     return(data)
@@ -848,7 +774,6 @@ class Group_Similar_Features(BaseEstimator,TransformerMixin):
     else:
       return(data)
 
-  @timeit
   def fit_transform(self,data,y=None):
     self.fit(data)
     return(self.transform(data))
@@ -888,7 +813,6 @@ class Binning(BaseEstimator,TransformerMixin):
       data = pd.concat((data,data_t),axis=1)
     return(data)
 
-  @timeit
   def fit_transform(self,dataset,y=None):
     data = dataset.copy()
     # only do if features are given
@@ -984,7 +908,6 @@ class Scaling_and_Power_transformation(BaseEstimator,TransformerMixin):
     else:
       return(data) 
 
-  @timeit
   def fit_transform(self,dataset,y=None):
     data = dataset.copy()
     self.fit(data)
@@ -1023,7 +946,6 @@ class Target_Transformation(BaseEstimator,TransformerMixin):
   def transform(self,dataset,y=None):
     return(dataset) 
 
-  @timeit
   def fit_transform(self,dataset,y=None):
     data = dataset.copy()
     # if target has zero or negative values use yj instead
@@ -1100,7 +1022,6 @@ class Make_Time_Features(BaseEstimator,TransformerMixin):
 
     return(data)
 
-  @timeit
   def fit_transform(self,dataset,y=None):
     # if no columns names are given , then pick datetime columns
     if not self.time_feature:
@@ -1131,7 +1052,6 @@ class Ordinal(BaseEstimator,TransformerMixin):
       data[i] = new_data_test[i]
     return(data)
 
-  @timeit
   def fit_transform(self,dataset,y=None):
     data = dataset.copy()
     # creat categories from given keys in the data set
@@ -1202,7 +1122,6 @@ class Dummify(BaseEstimator,TransformerMixin):
     else:
       return(data)
 
-  @timeit
   def fit_transform(self,dataset,y=None):
     data = dataset.copy()
     # will only do this if there are categorical variables 
@@ -1243,7 +1162,6 @@ class Outlier(BaseEstimator,TransformerMixin):
   def transform(self,data,y=None):
     return(data)
 
-  @timeit
   def fit_transform(self,dataset,y=None):
 
     # dummify if there are any obects 
@@ -1308,7 +1226,6 @@ class Clean_Colum_Names(BaseEstimator,TransformerMixin):
     data.columns= data.columns.str.replace(r'[\,\}\{\]\[\:\"\']','')
     return(data)
 
-  @timeit
   def fit_transform(self,dataset,y=None):
     return(self.transform(dataset, y=y))
 #__________________________________________________________________________________________________________________________________________________________________________
@@ -1349,7 +1266,6 @@ class Cluster_Entire_Data(BaseEstimator,TransformerMixin):
     data['data_cluster'] = data['data_cluster'].astype('object')
     return(data)
 
-  @timeit
   def fit_transform(self,dataset,y=None):
     data = dataset.copy()
     # first convert to dummy (if there are objects in data set)
@@ -1429,7 +1345,6 @@ class Reduce_Cardinality_with_Clustering(BaseEstimator,TransformerMixin):
     
     return(data)
 
-  @timeit
   def fit_transform(self,dataset,y=None):
     data = dataset.copy()
     # first convert to dummy
@@ -1524,7 +1439,6 @@ class Reduce_Cardinality_with_Counts(BaseEstimator,TransformerMixin):
     
     return(data)
 
-  @timeit
   def fit_transform(self,dataset,y=None):
     data = dataset.copy()
     # 
@@ -1629,7 +1543,6 @@ class Make_NonLiner_Features(BaseEstimator,TransformerMixin):
   
     return(dummy_all[self.columns_to_keep])
 
-  @timeit
   def fit_transform(self,dataset,y=None):
     
     data = dataset.copy()
@@ -1723,7 +1636,6 @@ class Advanced_Feature_Selection_Classic(BaseEstimator,TransformerMixin):
     return(data[self.selected_columns_test])
     # return(data)
 
-  @timeit
   def fit_transform(self,dataset,y=None):
     
     dummy_all = dataset.copy()
@@ -1832,7 +1744,6 @@ class Boruta_Feature_Selection(BaseEstimator, TransformerMixin):
     return(data[self.selected_columns_test])
 
 
-  @timeit
   def fit_transform(self, dataset, y=None):
     dummy_data = dataset.copy()
     X, y = dummy_data.drop(self.target, axis=1), dummy_data[self.target]
@@ -2137,7 +2048,6 @@ class Fix_multicollinearity(BaseEstimator,TransformerMixin):
     return(data)
   
   # fit_transform
-  @timeit
   def fit_transform(self,data, y=None):
     
     '''
@@ -2166,7 +2076,6 @@ class Remove_100(BaseEstimator,TransformerMixin):
   def transform(self,dataset,y=None):
     return(dataset.drop(self.columns_to_drop,axis=1))
 
-  @timeit
   def fit_transform(self,dataset,y=None):
     data = dataset.copy()
 
@@ -2290,7 +2199,6 @@ class DFS_Classic(BaseEstimator,TransformerMixin):
     return(dummy_all[self.columns_to_keep])
 
     
-  @timeit
   def fit_transform(self,dataset,y=None):
 
     data= dataset.copy()
@@ -2407,7 +2315,6 @@ class Empty(BaseEstimator,TransformerMixin):
   def transform(self,data,y=None):
     return(data)
 
-  @timeit
   def fit_transform(self,data,y=None):
     return(self.transform(data))
 
@@ -2441,7 +2348,6 @@ class Reduce_Dimensions_For_Supervised_Path(BaseEstimator,TransformerMixin):
     else:
       return(dataset)
 
-  @timeit
   def fit_transform(self,dataset,y=None):
 
     if self.method == 'pca_liner':
