@@ -83,7 +83,7 @@ class DataTypes_Auto_infer(BaseEstimator,TransformerMixin):
     data = dataset.copy()
 
     # drop any columns that were asked to drop
-    data.drop(index=self.features_todrop,errors='ignore',inplace=True)
+    data.drop(columns=self.features_todrop,errors='ignore',inplace=True)
 
     # remove sepcial char from column names
     #data.columns= data.columns.str.replace('[,]','')
@@ -279,7 +279,7 @@ class DataTypes_Auto_infer(BaseEstimator,TransformerMixin):
     data = dataset.copy()
 
     # drop any columns that were asked to drop
-    data.drop(index=self.features_todrop,errors='ignore',inplace=True)
+    data.drop(columns=self.features_todrop,errors='ignore',inplace=True)
 
     # also make sure that all the column names are string 
     data.columns = [str(i) for i in data.columns]
@@ -319,7 +319,7 @@ class DataTypes_Auto_infer(BaseEstimator,TransformerMixin):
 
     data= dataset.copy()
     # drop any columns that were asked to drop
-    data.drop(index=self.features_todrop,errors='ignore',inplace=True)
+    data.drop(columns=self.features_todrop,errors='ignore',inplace=True)
 
     # since this is for training , we dont nees any transformation since it has already been transformed in fit
     data = self.fit(data)
