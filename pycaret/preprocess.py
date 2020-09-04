@@ -202,6 +202,9 @@ class DataTypes_Auto_infer(BaseEstimator,TransformerMixin):
       except:
         data[i] = pd.to_datetime(dataset[i], infer_datetime_format=True, utc=False, errors='raise')
 
+    for i in data.select_dtypes(include=['datetime64']).columns:
+      data[i] = data[i].astype('datetime64[ns]')
+
     # table of learent types
     self.learent_dtypes = data.dtypes
     #self.training_columns = data.drop(self.target,axis=1).columns
