@@ -995,7 +995,7 @@ class Make_Time_Features(BaseEstimator,TransformerMixin):
       if 'is_month_end' in self.list_of_features_o:
         features.append(("_is_month_end", '1' if calendar.monthrange(datetime.date(r).year,datetime.date(r).month)[1] == datetime.date(r).day else '0'))
       if 'is_month_start' in self.list_of_features_o:
-        features.append(("is_month_start", '1' if datetime.date(r).day == 1 else '0'))
+        features.append(("_is_month_start", '1' if datetime.date(r).day == 1 else '0'))
       return tuple(features)
 
     # start making features for every column in the time list
