@@ -2053,7 +2053,6 @@ def compare_models(
                 display=display,
                 fold=fold,
                 round=round,
-                return_fit_time=True,
                 budget_time=budget_time - total_runtime
                 if budget_time and budget_time > 0
                 else 0,
@@ -2111,7 +2110,7 @@ def compare_models(
                 k: v
                 for k, v in compare_models_.drop(
                     ["Object", "Model", "TT (Sec)"], axis=1
-                ).items()
+                ).iloc[0].items()
             }
 
             try:
@@ -2197,7 +2196,6 @@ def create_model(
     budget_time: float = 0,
     verbose: bool = True,
     system: bool = True,
-    return_fit_time: bool = False,  # added in pycaret==2.2.0
     X_train_data: Optional[pd.DataFrame] = None,  # added in pycaret==2.2.0
     y_train_data: Optional[pd.DataFrame] = None,  # added in pycaret==2.2.0
     display: Optional[Display] = None,  # added in pycaret==2.2.0
@@ -2268,10 +2266,7 @@ def create_model(
 
     system: bool, default = True
         Must remain True all times. Only to be changed by internal functions.
-    
-    return_fit_time: bool, default = False
-        If True, will return a tuple of the model and its fit time.
-        Only to be changed by internal functions.
+        If False, method will return a tuple of model and the model fit time.
 
     X_train_data: pandas.DataFrame, default = None
         If not None, will use this dataframe as training features.
@@ -2668,7 +2663,7 @@ def create_model(
     )
     gc.collect()
 
-    if return_fit_time:
+    if not system:
         return (model, model_fit_time)
 
     return model
@@ -3330,7 +3325,6 @@ def tune_model(
     best_model, model_fit_time = create_model(
         estimator=model,
         system=False,
-        return_fit_time=True,
         display=display,
         fold=fold,
         round=round,
@@ -3652,7 +3646,6 @@ def ensemble_model(
     model, model_fit_time = create_model(
         estimator=model,
         system=False,
-        return_fit_time=True,
         display=display,
         fold=fold,
         round=round,
@@ -3742,16 +3735,6 @@ def blend_models(
 
     Example
     -------
-    >>> from pycaret.datasets import get_data
-    >>> juice = get_data('juice')
-    >>> experiment_name = setup(data = juice,  target = 'Purchase')
-    >>> blend_all = blend_models() 
-
-    This will create a VotingClassifier for all models in the model library 
-    except for 'rbfsvm', 'gpc' and 'mlp'.
-
-    For specific models, you can use:
-
     >>> lr = create_model('lr')
     >>> rf = create_model('rf')
     >>> knn = create_model('knn')
@@ -3985,7 +3968,6 @@ def blend_models(
     model, model_fit_time = create_model(
         estimator=model,
         system=False,
-        return_fit_time=True,
         display=display,
         fold=fold,
         round=round,
@@ -4301,7 +4283,6 @@ def stack_models(
     model, model_fit_time = create_model(
         estimator=model,
         system=False,
-        return_fit_time=True,
         display=display,
         fold=fold,
         round=round,
@@ -4598,12 +4579,21 @@ def plot_model(
         def __init__(self, base_dpi: float = 100, scale_to_set: float = 1):
             self.default_dpi = plt.rcParams["figure.dpi"]
             plt.rcParams["figure.dpi"] = base_dpi * scale_to_set
+            try:
+                self.default_skplt_dpit = skplt.metrics.plt.rcParams["figure.dpi"]
+                skplt.metrics.plt.rcParams["figure.dpi"] = base_dpi * scale_to_set
+            except:
+                pass
 
         def __enter__(self) -> None:
             return None
 
         def __exit__(self, type, value, traceback):
             plt.rcParams["figure.dpi"] = self.default_dpi
+            try:
+                skplt.metrics.plt.rcParams["figure.dpi"] =  self.default_skplt_dpit
+            except:
+                pass
 
     if plot == "auc":
 
@@ -5563,7 +5553,6 @@ def calibrate_model(
     model, model_fit_time = create_model(
         estimator=model,
         system=False,
-        return_fit_time=True,
         display=display,
         fold=fold,
         round=round,
@@ -6122,7 +6111,6 @@ def finalize_model(estimator, display=None) -> Any:  # added in pycaret==2.2.0
         system=False,
         X_train_data=X,
         y_train_data=y,
-        return_fit_time=True,
     )
     model_results = pull(pop=True)
 
@@ -6950,7 +6938,7 @@ def _choose_better(
             logger.info(
                 "SubProcess create_model() called =================================="
             )
-            m = create_model(new_estimator, verbose=False, system=False, fold=fold)
+            m, _ = create_model(new_estimator, verbose=False, system=False, fold=fold)
             logger.info(
                 "SubProcess create_model() end =================================="
             )
@@ -7254,6 +7242,7 @@ def _mlflow_log_model(
     mlflow.set_experiment(exp_name_log)
 
     full_name = _get_model_name(model)
+    logger.info(f"Model: {full_name}")
 
     with mlflow.start_run(run_name=full_name) as run:
 
@@ -7261,7 +7250,10 @@ def _mlflow_log_model(
         RunID = mlflow.active_run().info.run_id
 
         # Log model parameters
-        params = model.get_params()
+        if hasattr(model, 'named_steps') and 'actual_estimator' in model.named_steps:
+            params = model.named_steps['actual_estimator'].get_params()
+        else:
+            params = model.get_params()
 
         for i in list(params):
             v = params.get(i)
