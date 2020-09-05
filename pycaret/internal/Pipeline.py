@@ -7,6 +7,9 @@ class Pipeline(imblearn.pipeline.Pipeline):
 
         try:
             self.coef_ = self.steps[-1][-1].coef_
+        except:
+            pass
+        try:
             self.feature_importances_ = self.steps[-1][-1].feature_importances_
         except:
             pass
