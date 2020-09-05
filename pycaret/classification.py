@@ -2083,7 +2083,7 @@ def compare_models(
             )
         master_display = master_display.round(round)
         master_display = master_display.sort_values(by=sort, ascending=False)
-        # master_display.reset_index(drop=True, inplace=True)
+        master_display.reset_index(drop=True, inplace=True)
 
         master_display_ = master_display.drop("Object", axis=1).style.set_precision(
             round
