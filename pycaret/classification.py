@@ -84,9 +84,9 @@ def setup(
     interaction_threshold: float = 0.01,
     fix_imbalance: bool = False,
     fix_imbalance_method: Optional[Any] = None,
-    data_split_shuffle: bool = True,
+    data_split_shuffle: bool = False,
     folds_shuffle: bool = False,
-    stratify: Union[bool, List[str]] = True,
+    data_split_stratify: Union[bool, List[str]] = False,
     n_jobs: int = -1,
     use_gpu: bool = False,  # added in pycaret==2.1
     custom_pipeline_steps_after_split: Union[
@@ -419,13 +419,13 @@ def setup(
         applied by default to oversample minority class during cross validation. This 
         parameter accepts any module from 'imblearn' that supports 'fit_resample' method.
 
-    data_split_shuffle: bool, default = True
+    data_split_shuffle: bool, default = False
         If set to False, prevents shuffling of rows when splitting data.
 
     folds_shuffle: bool, default = False
         If set to False, prevents shuffling of rows when using cross validation.
 
-    stratify: bool or list, default = True
+    data_split_stratify: bool or list, default = False
         Whether to stratify when splitting data.
         If True, will stratify by the target column. If False, will not stratify.
         If list is passed, will stratify by the columns with the names in the list.
@@ -707,8 +707,8 @@ def setup(
                 )
 
     # stratify
-    if stratify:
-        if type(stratify) is not list and type(stratify) is not bool:
+    if data_split_stratify:
+        if type(data_split_stratify) is not list and type(data_split_stratify) is not bool:
             raise TypeError("stratify param only accepts a bool or a list of strings.")
 
     # high_cardinality_methods
@@ -1382,7 +1382,7 @@ def setup(
     gpu_param = use_gpu
 
     # create stratify_param var
-    stratify_param = stratify
+    stratify_param = data_split_stratify
 
     # determining target type
     if _is_multiclass():
