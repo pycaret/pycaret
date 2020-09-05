@@ -304,9 +304,10 @@ class DataTypes_Auto_infer(BaseEstimator,TransformerMixin):
     ## we only need to take test columns that we used in ttaining (test in production may have a lot more columns)
     data = data[self.final_training_columns]
 
-    
     # just keep picking the data and keep applying to the test data set (be mindful of target variable)
-    for i in data.columns: # we are taking all the columns in test , so we dot have to worry about droping target column
+    for i in data.columns: # we are taking all the columns in test , so we dot have to worry about droping target columnself.lea
+      if self.learent_dtypes[i].name == 'datetime64[ns]':
+        data[i] = pd.to_datetime(data[i], infer_datetime_format=True, utc=False, errors='coerce')
       data[i] = data[i].astype(self.learent_dtypes[i])
     
     # drop time columns
