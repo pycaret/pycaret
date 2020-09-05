@@ -19,14 +19,14 @@ class MetricContainer(BaseContainer):
         ID used as index.
     name : str
         Full name.
-    score_func_type : type
+    score_func : type
         The callable used for the score function, eg. sklearn.metrics.accuracy_score.
     scorer : str or callable, default = None
         The scorer passed to models. Can be a string representing a built-in sklearn scorer,
         a sklearn Scorer object, or None, in which case a Scorer object will be created from
-        score_func_type and args.
+        score_func and args.
     args : dict, default = {}
-        The arguments to always pass to constructor when initializing score_func_type of class_def class.
+        The arguments to always pass to constructor when initializing score_func of class_def class.
     display_name : str, default = None
         Display name (shorter than name). If None or empty, will use name.
     is_custom : bool, default = False
@@ -38,14 +38,14 @@ class MetricContainer(BaseContainer):
         ID used as index.
     name : str
         Full name.
-    score_func_type : type
+    score_func : type
         The callable used for the score function, eg. sklearn.metrics.accuracy_score.
     scorer : str or callable
         The scorer passed to models. Can be a string representing a built-in sklearn scorer,
         a sklearn Scorer object, or None, in which case a Scorer object will be created from
-        score_func_type and args.
+        score_func and args.
     args : dict
-        The arguments to always pass to constructor when initializing score_func_type of class_def class.
+        The arguments to always pass to constructor when initializing score_func of class_def class.
     display_name : str
         Display name (shorter than name). If None or empty, will use name.
     is_custom : bool
@@ -57,7 +57,7 @@ class MetricContainer(BaseContainer):
         self,
         id: str,
         name: str,
-        score_func_type: type,
+        score_func: type,
         scorer: Optional[Union[str, _BaseScorer]] = None,
         args: Dict[str, Any] = {},
         display_name: Optional[str] = None,
@@ -65,8 +65,8 @@ class MetricContainer(BaseContainer):
     ) -> None:
         self.id = id
         self.name = name
-        self.score_func_type = score_func_type
-        self.scorer = scorer if scorer else make_scorer(score_func_type, **args)
+        self.score_func = score_func
+        self.scorer = scorer if scorer else make_scorer(score_func, **args)
         self.display_name = display_name if display_name else name
         self.args = args
         self.is_custom = is_custom
@@ -91,7 +91,7 @@ class MetricContainer(BaseContainer):
             "ID": self.id,
             "Name": self.name,
             "Display Name": self.display_name,
-            "Score Function": self.score_func_type,
+            "Score Function": self.score_func,
             "Scorer": self.scorer,
             "Args": self.args,
             "Custom": self.is_custom,

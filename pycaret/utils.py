@@ -51,7 +51,7 @@ def check_metric(actual: pd.Series, prediction: pd.Series, metric: str, round: i
 
     globals_dict = {"y": prediction}
     metric_containers = get_all_metric_containers(globals_dict)
-    metrics = {v.name: v.score_func_type for k, v in metric_containers.items()}
+    metrics = {v.name: v.score_func for k, v in metric_containers.items()}
 
     # metric calculation starts here
 
