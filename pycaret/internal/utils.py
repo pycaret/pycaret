@@ -101,10 +101,15 @@ def get_model_name(e, all_models: pd.DataFrame, deep: bool = True) -> str:
         model_id = e
     else:
         if deep:
-            if hasattr(e, "steps"):
-                e = e.steps[-1][1]
-            if hasattr(e, "estimator"):
-                e = e.estimator
+            while True:
+                if hasattr(e, "steps"):
+                    e = e.steps[-1][1]
+                elif hasattr(e, "base_estimator"):
+                    e = e.base_estimator
+                elif hasattr(e, "estimator"):
+                    e = e.estimator
+                else:
+                    break
 
         model_id = get_model_id(e, all_models)
 
@@ -142,7 +147,7 @@ def param_grid_to_lists(param_grid: dict) -> dict:
 
 
 def make_internal_pipeline(internal_pipeline_steps, model):
-    from imblearn.pipeline import Pipeline
+    from pycaret.internal.Pipeline import Pipeline
 
     return Pipeline(internal_pipeline_steps + [("actual_estimator", model)])
 
