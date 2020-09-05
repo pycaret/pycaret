@@ -9484,6 +9484,13 @@ def predict_model(estimator,
 
     score_grid
         A table containing the scoring metrics on hold-out / test set.
+
+    Warnings
+    --------
+    - `predict_model(estimator = my_estimator, data = my_data)` will throw an error if the model 
+      passed (e.g. my_model) was built with a different version of Pycaret than the one
+      which `predict_model` was instantiated with. 
+
     
     """
     
