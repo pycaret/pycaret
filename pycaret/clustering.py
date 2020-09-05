@@ -3676,9 +3676,13 @@ def predict_model(model,
 
     Warnings
     --------
-    - Models that donot support 'predict' function cannot be used in predict_model(). 
-       
-    
+    - Models that do not support 'predict' function cannot be used in predict_model(). 
+
+    - `predict_model(model = my_model, data = my_data)` will throw an error if the model 
+      passed (e.g. my_model) was built with a different version of Pycaret than the one
+      which `predict_model` was instantiated with. 
+
+
     """
     
     #ignore warnings
