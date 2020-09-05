@@ -35,7 +35,7 @@ def get_workflow_runs_for_id_branch(runs, workflow_id, branch):
     return [
         x
         for x in runs
-        if x["head_branch"] == branch and x["workflow_id"] == workflow_id
+        if x["head_branch"] == branch and x["workflow_id"] == workflow_id and x["event"] == "push"
     ]
 
 
