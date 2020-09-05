@@ -9914,7 +9914,213 @@ def deploy_model(model,
         
     logger.info("deploy_model() succesfully completed......................................")
 
-def optimize_threshold(estimator, 
+
+def create_webservice(model, model_name, port=8080, api_key=True,
+                      use_pydatic=True, pydantic_payload=None):
+    """
+    (In Preview)
+
+    This function deploys the transformation pipeline and trained model object for
+    production use. REST API base on FastAPI and could run on localhost, it use
+    model name as path to POST endpoint. ASYNC add
+    Parameters
+    ----------
+    model : object
+        A trained model object should be passed as an estimator.
+
+    model_name : string
+        Name of model to be passed as a string.
+
+    port : integer
+        port on which application listened.
+
+    platform: string, default = 'aws'
+        Name of platform for deployment. Current available options are: 'aws', 'gcp' and 'azure'
+
+    Returns
+    -------
+    Success_Message
+
+    Warnings
+    --------
+    - This function uses file storage services to deploy the model on cloud platform.
+      As such, this is efficient for batch-use. Where the production objective is to
+      obtain prediction at an instance level, this may not be the efficient choice as
+      it transmits the binary pickle file between your local python environment and
+      the platform.
+
+    """
+    import sys
+    import logging
+
+    try:
+        hasattr(logger, 'name')
+    except:
+        logger = logging.getLogger('logs')
+        logger.setLevel(logging.DEBUG)
+
+        # create console handler and set level to debug
+        if logger.hasHandlers():
+            logger.handlers.clear()
+
+        ch = logging.FileHandler('logs.log')
+        ch.setLevel(logging.DEBUG)
+
+        # create formatter
+        formatter = logging.Formatter('%(asctime)s:%(levelname)s:%(message)s')
+
+        # add formatter to ch
+        ch.setFormatter(formatter)
+
+        # add ch to logger
+        logger.addHandler(ch)
+
+    logger.info("Initializing create_service()")
+    logger.info("""create_service(model={}, model_name={}, port={})""". \
+                format(str(model), str(model_name), str(port)))
+    try:
+        from fastapi import FastAPI
+    except:
+        logger.error("fastapi library not found. pip install fastapi to use create_service function.")
+        sys.exit("fastapi library not found. pip install fastapi to use create_service function.")
+    try:
+        import uvicorn
+    except:
+        logger.error("uvicorn library not found. pip install uvicorn to use create_service function.")
+        sys.exit("uvicorn library not found. pip install uvicorn to use create_service function.")
+    # try initialize predict before add it to endpoint (cold start)
+    try:
+        _ = predict_model(estimator=model,
+                          verbose=False)
+    except:
+        sys.exit("Cannot predict on cold start check probability_threshold or model")
+
+    # check pydantic style
+    assert(isinstance(use_pydatic, bool))
+    if use_pydatic:
+        try:
+            from pydantic import create_model, BaseModel, Json
+            from pydantic.main import ModelMetaclass
+        except:
+            logger.error("pydantic library not found. pip install fastapi to use create_service function.")
+            sys.exit("pydantic library not found. pip install fastapi to use create_service function.")
+        if pydantic_payload is not None:
+            assert (isinstance(pydantic_payload, ModelMetaclass)), 'pydantic_payload must be ModelMetaClass type'
+        else:
+            # automatically create pydantic payload model
+            import json
+            from typing import Optional
+            logger.info("You are using an automatic data validation model it could fail in some cases")
+            logger.info("To be sure the model works properly create pydantic model in your own (pydantic_payload)")
+            fields = {name: (Optional[type(t)], ...) for name, t in json.loads(X_test.convert_dtypes().sample(1).to_json()).items()}
+            pydantic_payload = create_model("DefaultModel", __base__=BaseModel, **fields)
+            logger.info("Generated json schema: {}".format(pydantic_payload.schema_json(indent=2)))
+            e = input("To confirm press enter else type 'exit'")
+            if e == 'exit':
+                sys.exit("Make own Pydantic model schema and try again")
+    else:
+        logger.warning("Pycaret web service working best with pydantic models as payload.")
+        logger.warning("It can cause problems predictions and general working of API, consider using pydantic style.")
+
+    # generate apikey
+    if api_key:
+        import secrets
+        from typing import Optional
+        from fastapi.security.api_key import APIKeyHeader
+        from fastapi import HTTPException, Security
+        # generate key and log into console
+        key = secrets.token_urlsafe(30)
+        logger.info("API KEY: {}. Keep it safe!".format(key))
+        api_key_handler = APIKeyHeader(name="token", auto_error=False)
+        def validate_request(header: Optional[str] = Security(api_key_handler)):
+            if header is None:
+                raise HTTPException(
+                    status_code=HTTP_400_BAD_REQUEST, detail=NO_API_KEY, headers={}
+                )
+            if not secrets.compare_digest(header, str(key)):
+                raise HTTPException(
+                    status_code=HTTP_401_UNAUTHORIZED, detail=AUTH_REQ, headers={}
+                )
+            return True
+    else:
+        logger.info("API will be working without security")
+        def validate_request(header):
+            return True
+
+    validation = validate_request
+
+    # creating response model
+    from typing import Union, List, Optional
+    from pycaret.utils import __version__
+    class PredictionResult(BaseModel):
+        prediction: Union[List[float], float]
+        author: str = 'pycaret'
+        lib_version: str = __version__()
+        input_data: pydantic_payload
+        processed_input_data: Json = None
+        time_utc: Optional[str] = None
+        class Config:
+            schema_extra = {
+                "example": {
+                    "prediction": 1,
+                    "autohor": "pycaret",
+                    "lib_version": "2.0.0",
+                    "input_data": pydantic_payload,
+                    "processed_input_data": {"col1": 1,
+                                             "col2": "string"},
+                    "time": "2020-09-10 20:00:00"
+                }
+            }
+
+    app = FastAPI(title="REST API for ML prediction created by Pycaret",
+                  description="This is the REST API for the ML model generated" \
+                              "by the Pycaret library: https://pycaret.org. " \
+                              "All endpoints should run asynchronously, please validate" \
+                              "the Pydantic model and read api documentation. " \
+                              "In case of trouble, please add issuesto github: https://github.com/pycaret/pycaret/issues",
+                  version="pycaret: {}".format(__version__()),
+                  externalDocs={"Pycaret": "https://pycaret.org/"}
+                 )
+
+    # import additionals from fastAPI
+    import pandas as pd
+    from fastapi.middleware.cors import CORSMiddleware
+    from fastapi import Depends
+    from fastapi.encoders import jsonable_encoder
+
+    # enable CORS
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+    @app.post("/predict/{}".format(model_name), response_model=PredictionResult)
+    async def post_predict(authenticated: bool = Depends(validate_request),
+                           block_data: pydantic_payload = None):
+        # encode input data
+        encoded_data_df = pd.DataFrame(jsonable_encoder(block_data), index=[0])
+        # predict values
+        unseen_predictions = await predict_model(model, data=encoded_data_df)
+        # creating return object
+        predict_schema = PredictionResult(prediction=unseen_predictions['Label'],
+                                          input_data=block_data,
+                                          processed_input_data=unseen_predictions.drop(columns=['Label']).to_json(),
+                                          )
+        return predict_schema
+
+    # run REST API
+    import socket
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        if s.connect_ex(('localhost', port)) == 0:
+            logger.error("Make sure you are using the correct port number. {} this one is busy".format(port))
+            sys.exit("Make sure you are using the correct port number. {} this one is busy".format(port))
+    logger.info("Pycaret REST API running on: localhost:{}".format(port))
+    uvicorn.run(app=app, host='0.0.0.0', port=port)
+
+
+def optimize_threshold(estimator,
                        true_positive = 0, 
                        true_negative = 0, 
                        false_positive = 0, 
