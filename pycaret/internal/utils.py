@@ -147,7 +147,7 @@ def param_grid_to_lists(param_grid: dict) -> dict:
 
 
 def make_internal_pipeline(internal_pipeline_steps, model):
-    from imblearn.pipeline import Pipeline
+    from pycaret.internal.Pipeline import Pipeline
 
     return Pipeline(internal_pipeline_steps + [("actual_estimator", model)])
 
