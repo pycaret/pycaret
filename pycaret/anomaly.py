@@ -3629,6 +3629,13 @@ def predict_model(model,
     info_grid
         Information grid is printed when data is None.             
     
+    Warnings
+    --------
+    - `predict_model(model = my_model, data = my_data)` will throw an error if the model 
+      passed (e.g. my_model) was built with a different version of Pycaret than the one
+      which `predict_model` was instantiated with. 
+
+
     """
     
     #ignore warnings
