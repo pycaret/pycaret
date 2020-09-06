@@ -52,16 +52,47 @@ def test():
     
     # returns table of models
     all_models = pycaret.classification.models()
-    
-    # get config
-    X_train = pycaret.classification.get_config('X_train')
-    X_test = pycaret.classification.get_config('X_test')
-    y_train = pycaret.classification.get_config('y_train')
-    y_test = pycaret.classification.get_config('y_test')
+
+    # test webservice
+    import importlib
+    import json
+    fapi = importlib.util.find_spec("fastapi")
+    pyd = importlib.util.find_spec("pydantic")
+    best = pycaret.classification.create_model('lr')
+    if (fapi is not None) and (pyd is not None):
+        # test service without token
+        app = pycaret.classification.create_webservice(best, 'test_model', api_key=False)
+        from fastapi.testclient import TestClient
+        client = TestClient(app['Not_exist'])
+        test_sample = json.loads(data.convert_dtypes().drop(columns=['Purchase']).loc[[0]].to_json(orient='records'))[0]
+        response = client.post("predict/{}".format('test_model'),
+                               json=test_sample)
+        assert response.status_code == 200
+        assert response.json()['prediction'] == '0'
+        assert response.json()['input_data'] == test_sample
+        # second test
+        test_sample = json.loads(data.convert_dtypes().drop(columns=['Purchase']).loc[[3]].to_json(orient='records'))[0]
+        response = client.post("predict/{}".format('test_model'),
+                               json=test_sample)
+        assert response.status_code == 200
+        assert response.json()['prediction'] == '1'
+        assert response.json()['input_data'] == test_sample
+        # # test service with token
+        key, app = pycaret.classification.create_webservice(best, 'test_model', api_key=True).popitem()
+        client = TestClient(app)
+        response = client.post("predict/{}".format('test_model'),
+                               headers={"token": "WRONG_TOKEN"},
+                               json=test_sample)
+        assert response.status_code == 401
+        response = client.post("predict/{}".format('test_model'),
+                               headers={"token": key},
+                               json=test_sample
+                               )
+        assert response.status_code == 200
 
     # set config
-    pycaret.classification.set_config('seed', 123) 
-    
+    pycaret.classification.set_config('seed', 123)
+
     assert 1 == 1
     
 if __name__ == "__main__":

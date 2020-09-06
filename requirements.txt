@@ -32,3 +32,5 @@ imbalanced-learn
 #azure-storage-blob - only required in deploy_model for Azure
 #google-cloud-storage - only required in deploy_model for GCP
 #shap - removing shap as it's causing issues building Docker image.
+#fastapi>=0.61.1 only required in create_webservice for api
+#pydantic only required in create_webservice for api
