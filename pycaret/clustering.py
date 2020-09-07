@@ -3678,10 +3678,11 @@ def predict_model(model,
     --------
     - Models that do not support 'predict' function cannot be used in predict_model(). 
 
-    - `predict_model(model = my_model, data = my_data)` will throw an error if the model 
-      passed (e.g. my_model) was built with a different version of Pycaret than the one
-      which `predict_model` was instantiated with. 
-
+    - The behavior of the predict_model is changed in version 2.1 without backward compatibility.
+    As such, the pipelines trained using the version (<= 2.0), may not work for inference 
+    with version >= 2.1. You can either retrain your models with a newer version or downgrade
+    the version for inference.
+    
 
     """
     
