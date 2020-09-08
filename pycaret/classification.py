@@ -2259,7 +2259,7 @@ def create_model(
 ) -> Any:
 
     """  
-    This function creates a model and scores it using Stratified Cross Validation. 
+    This function creates a model and scores it using Cross Validation. 
     The output prints a score grid that shows Accuracy, AUC, Recall, Precision, 
     F1, Kappa and MCC by fold (default = 10 Fold). 
 
@@ -3786,7 +3786,7 @@ def blend_models(
     This function creates a Soft Voting / Majority Rule classifier for all the 
     estimators in the model library (excluding the few when turbo is True) or 
     for specific trained estimators passed as a list in estimator_list param.
-    It scores it using Stratified Cross Validation. The output prints a score
+    It scores it using Cross Validation. The output prints a score
     grid that shows Accuracy, AUC, Recall, Precision, F1, Kappa and MCC by 
     fold (default CV = 10 Folds).
 
@@ -4104,7 +4104,7 @@ def stack_models(
 ) -> Any:
 
     """
-    This function trains a meta model and scores it using Stratified Cross Validation.
+    This function trains a meta model and scores it using Cross Validation.
     The predictions from the base level models as passed in the estimator_list param 
     are used as input features for the meta model. The restacking parameter controls
     the ability to expose raw features to the meta model when set to True
@@ -4647,8 +4647,6 @@ def plot_model(
 
     class MatplotlibDefaultDPI(object):
         def __init__(self, base_dpi: float = 100, scale_to_set: float = 1):
-            self.default_dpi = plt.rcParams["figure.dpi"]
-            plt.rcParams["figure.dpi"] = base_dpi * scale_to_set
             try:
                 self.default_skplt_dpit = skplt.metrics.plt.rcParams["figure.dpi"]
                 skplt.metrics.plt.rcParams["figure.dpi"] = base_dpi * scale_to_set
@@ -4659,7 +4657,6 @@ def plot_model(
             return None
 
         def __exit__(self, type, value, traceback):
-            plt.rcParams["figure.dpi"] = self.default_dpi
             try:
                 skplt.metrics.plt.rcParams["figure.dpi"] = self.default_skplt_dpit
             except:
@@ -5142,6 +5139,11 @@ def plot_model(
         )
         display.display(param_df, clear=True)
         logger.info("Visual Rendered Successfully")
+
+    try:
+        plt.close()
+    except:
+        pass
 
     gc.collect()
 
