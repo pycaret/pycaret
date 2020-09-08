@@ -58,8 +58,8 @@ def show_yellowbrick_plot(
 
     if save:
         logger.info(f"Saving '{name}.png' in current active directory")
-        visualizer.show(outpath=f"{name}.png", clear_figure=(not system))
+        visualizer.show(outpath=f"{name}.png", clear_figure=True)
     else:
-        visualizer.show()
+        visualizer.show(clear_figure=True)
 
     logger.info("Visual Rendered Successfully")

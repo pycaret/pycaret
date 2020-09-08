@@ -85,8 +85,10 @@ def setup(
     fix_imbalance: bool = False,
     fix_imbalance_method: Optional[Any] = None,
     data_split_shuffle: bool = False,
+    data_split_stratify: Union[bool, List[str]] = False,  # added in pycaret==2.2
+    fold_strategy: Union[str, Any] = "stratifiedkfold",  # added in pycaret==2.2
+    fold: int = 10,  # added in pycaret==2.2
     folds_shuffle: bool = False,
-    data_split_stratify: Union[bool, List[str]] = False,
     n_jobs: int = -1,
     use_gpu: bool = False,  # added in pycaret==2.1
     custom_pipeline_steps_after_split: Union[
@@ -422,13 +424,26 @@ def setup(
     data_split_shuffle: bool, default = False
         If set to False, prevents shuffling of rows when splitting data.
 
-    folds_shuffle: bool, default = False
-        If set to False, prevents shuffling of rows when using cross validation.
-
     data_split_stratify: bool or list, default = False
         Whether to stratify when splitting data.
         If True, will stratify by the target column. If False, will not stratify.
         If list is passed, will stratify by the columns with the names in the list.
+
+    fold_strategy: str or scikit-learn compatible CV generator object, default = 'stratifiedkfold'
+        Choice of cross validation strategy. Possible values are:
+
+        * 'kfold' for KFold CV,
+        * 'stratifiedkfold' for Stratified KFold CV,
+        * 'timeseries' for TimeSeriesSplit CV,
+        * a custom CV generator object compatible with scikit-learn.
+
+    fold: integer, default = 10
+        Number of folds to be used in cross validation. Must be at least 2.
+        Ignored if fold_strategy is an object.
+
+    folds_shuffle: bool, default = False
+        If set to False, prevents shuffling of rows when using cross validation. Only applicable for
+        'kfold' and 'stratifiedkfold' fold_strategy. Ignored if fold_strategy is an object.
 
     n_jobs: int, default = -1
         The number of jobs to run in parallel (for functions that supports parallel 
@@ -708,7 +723,10 @@ def setup(
 
     # stratify
     if data_split_stratify:
-        if type(data_split_stratify) is not list and type(data_split_stratify) is not bool:
+        if (
+            type(data_split_stratify) is not list
+            and type(data_split_stratify) is not bool
+        ):
             raise TypeError("stratify param only accepts a bool or a list of strings.")
 
     # high_cardinality_methods
@@ -965,13 +983,23 @@ def setup(
     if use_gpu != "Force" and type(use_gpu) is not bool:
         raise TypeError("use_gpu parameter only accepts 'Force', True or False.")
 
-    # folds_shuffle
-    if type(folds_shuffle) is not bool:
-        raise TypeError("folds_shuffle parameter only accepts True or False.")
-
     # data_split_shuffle
     if type(data_split_shuffle) is not bool:
         raise TypeError("data_split_shuffle parameter only accepts True or False.")
+
+    possible_fold_strategy = ["kfold", "stratifiedkfold", "timeseries"]
+    if not (fold_strategy in possible_fold_strategy or hasattr(fold_strategy, "split")):
+        raise TypeError(
+            f"fold_strategy parameter must be either a scikit-learn compatible CV generator object or one of {', '.join(possible_fold_strategy)}."
+        )
+
+    # checking fold parameter
+    if type(fold) is not int:
+        raise TypeError("fold parameter only accepts integer value.")
+
+    # folds_shuffle
+    if type(folds_shuffle) is not bool:
+        raise TypeError("folds_shuffle parameter only accepts True or False.")
 
     # log_plots
     if type(log_plots) is not bool:
@@ -1057,7 +1085,7 @@ def setup(
 
     # declaring global variables to be accessed by other functions
     logger.info("Declaring global variables")
-    global X, y, X_train, X_test, y_train, y_test, seed, prep_pipe, experiment__, folds_shuffle_param, n_jobs_param, gpu_n_jobs_param, create_model_container, master_model_container, display_container, exp_name_log, logging_param, log_plots_param, fix_imbalance_param, fix_imbalance_method_param, data_before_preprocess, target_param, gpu_param, all_models, _all_models_internal, all_metrics, _internal_pipeline_steps, stratify_param
+    global X, y, X_train, X_test, y_train, y_test, seed, prep_pipe, experiment__, folds_shuffle_param, n_jobs_param, gpu_n_jobs_param, create_model_container, master_model_container, display_container, exp_name_log, logging_param, log_plots_param, fix_imbalance_param, fix_imbalance_method_param, data_before_preprocess, target_param, gpu_param, all_models, _all_models_internal, all_metrics, _internal_pipeline_steps, stratify_param, fold_generator, fold_param
 
     logger.info("Copying data for preprocessing")
 
@@ -1298,8 +1326,29 @@ def setup(
     # create an empty list for pickling later.
     experiment__ = []
 
-    # create folds_shuffle_param
+    # CV params
+    fold_param = fold
+
     folds_shuffle_param = folds_shuffle
+
+    from sklearn.model_selection import (
+        StratifiedKFold,
+        KFold,
+        TimeSeriesSplit,
+    )
+
+    if fold_strategy == "kfold":
+        fold_generator = KFold(
+            fold_param, random_state=seed, shuffle=folds_shuffle_param
+        )
+    elif fold_strategy == "stratifiedkfold":
+        fold_generator = StratifiedKFold(
+            fold_param, random_state=seed, shuffle=folds_shuffle_param
+        )
+    elif fold_strategy == "timeseries":
+        fold_generator = TimeSeriesSplit(fold_param)
+    else:
+        fold_generator = fold_strategy
 
     # create n_jobs_param
     n_jobs_param = n_jobs
@@ -1591,6 +1640,7 @@ def setup(
             ["Interaction Threshold ", interaction_threshold_grid],
             ["Fix Imbalance ", fix_imbalance_param],
             ["Fix Imbalance Method ", fix_imbalance_model_name],
+            ["CV Generator ", type(fold_generator).__name__],
         ],
         columns=["Description", "Value"],
     )
@@ -1742,6 +1792,8 @@ def setup(
         gpu_param,
         gpu_n_jobs_param,
         stratify_param,
+        fold_generator,
+        fold_param,
     )
 
 
@@ -1750,10 +1802,10 @@ def compare_models(
         List[Union[str, Any]]
     ] = None,  # changed whitelist to include in pycaret==2.1
     exclude: Optional[List[str]] = None,  # changed blacklist to exclude in pycaret==2.1
-    fold: int = 10,
+    fold: Optional[Union[int, Any]] = None,
     round: int = 4,
     sort: str = "Accuracy",
-    budget_time: float = 0,  # added in pycaret==2.1.0
+    budget_time: Optional[float] = None,  # added in pycaret==2.1.0
     turbo: bool = True,
     verbose: bool = True,
     display: Optional[Display] = None,
@@ -1761,14 +1813,13 @@ def compare_models(
 
     """
     This function train all the models available in the model library and scores them 
-    using Stratified Cross Validation. The output prints a score grid with Accuracy, 
-    AUC, Recall, Precision, F1, Kappa and MCC (averaged accross folds), determined by
-    fold parameter.
+    using Cross Validation. The output prints a score grid with Accuracy, 
+    AUC, Recall, Precision, F1, Kappa and MCC (averaged across folds).
     
     This function returns all of the models compared, sorted by the value of the selected metric.
 
     When turbo is set to True ('rbfsvm', 'gpc' and 'mlp') are excluded due to longer
-    training time. By default turbo param is set to True.        
+    training time. By default turbo param is set to True.
 
     Example
     -------
@@ -1809,8 +1860,9 @@ def compare_models(
         passed as a list of strings in include param. The list can also include estimator
         objects to be compared.
 
-    fold: integer, default = 10
-        Number of folds to be used in Kfold CV. Must be at least 2. 
+    fold: integer or scikit-learn compatible CV generator, default = None
+        Controls cross-validation. If None, will use the CV generator defined in setup().
+        If integer, will use StratifiedKFold CV with that many folds.
 
     round: integer, default = 4
         Number of decimal places the metrics in the score grid will be rounded to.
@@ -1823,8 +1875,8 @@ def compare_models(
         Number of top_n models to return. use negative argument for bottom selection.
         for example, n_select = -3 means bottom 3 models.
 
-    budget_time: int or float, default = 0
-        If set above 0, will terminate execution of the function after budget_time 
+    budget_time: int or float, default = None
+        If not 0 or None, will terminate execution of the function after budget_time 
         minutes have passed and return results up to that point.
 
     turbo: bool, default = True
@@ -1899,15 +1951,17 @@ def compare_models(
         )
 
     # checking fold parameter
-    if type(fold) is not int:
-        raise TypeError("Fold parameter only accepts integer value.")
+    if fold is not None and not (type(fold) is int or hasattr(fold, "split")):
+        raise TypeError(
+            "fold parameter must be either None, an integer or a scikit-learn compatible CV generator object."
+        )
 
     # checking round parameter
     if type(round) is not int:
         raise TypeError("Round parameter only accepts integer value.")
 
     # checking budget_time parameter
-    if type(budget_time) is not int and type(budget_time) is not float:
+    if budget_time and type(budget_time) is not int and type(budget_time) is not float:
         raise TypeError("budget_time parameter only accepts integer or float values.")
 
     # checking sort parameter
@@ -1942,7 +1996,7 @@ def compare_models(
         len_mod -= len(exclude)
 
     if not display:
-        progress_args = {"max": ((fold + 4) * len_mod) + 4 + len_mod}
+        progress_args = {"max": ((_get_cv_n_folds(fold) + 4) * len_mod) + 4 + len_mod}
         master_display_columns = ["Model"] + all_metrics["Display Name"].to_list()
         timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
         monitor_rows = [
@@ -2110,7 +2164,9 @@ def compare_models(
                 k: v
                 for k, v in compare_models_.drop(
                     ["Object", "Model", "TT (Sec)"], axis=1
-                ).iloc[0].items()
+                )
+                .iloc[0]
+                .items()
             }
 
             try:
@@ -2190,10 +2246,10 @@ def compare_models(
 
 def create_model(
     estimator,
-    fold: int = 10,
+    fold: Optional[Union[int, Any]] = None,
     round: int = 4,
     cross_validation: bool = True,
-    budget_time: float = 0,
+    budget_time: Optional[float] = None,
     verbose: bool = True,
     system: bool = True,
     X_train_data: Optional[pd.DataFrame] = None,  # added in pycaret==2.2.0
@@ -2203,7 +2259,7 @@ def create_model(
 ) -> Any:
 
     """  
-    This function creates a model and scores it using Stratified Cross Validation. 
+    This function creates a model and scores it using Cross Validation. 
     The output prints a score grid that shows Accuracy, AUC, Recall, Precision, 
     F1, Kappa and MCC by fold (default = 10 Fold). 
 
@@ -2247,14 +2303,15 @@ def create_model(
         * 'lightgbm' - Light Gradient Boosting              
         * 'catboost' - CatBoost Classifier             
 
-    fold: integer, default = 10
-        Number of folds to be used in Kfold CV. Must be at least 2. 
+    fold: integer or scikit-learn compatible CV generator, default = None
+        Controls cross-validation. If None, will use the CV generator defined in setup().
+        If integer, will use StratifiedKFold CV with that many folds.
 
     round: integer, default = 4
         Number of decimal places the metrics in the score grid will be rounded to. 
 
-    budget_time: int or float, default = 0
-        If set above 0, will terminate execution of the function after budget_time minutes have
+    budget_time: int or float, default = None
+        If not 0 or None, will terminate execution of the function after budget_time minutes have
         passed.
 
     cross_validation: bool, default = True
@@ -2330,15 +2387,17 @@ def create_model(
         )
 
     # checking fold parameter
-    if type(fold) is not int:
-        raise TypeError("Fold parameter only accepts integer value.")
+    if fold is not None and not (type(fold) is int or hasattr(fold, "split")):
+        raise TypeError(
+            "fold parameter must be either None, an integer or a scikit-learn compatible CV generator object."
+        )
 
     # checking round parameter
     if type(round) is not int:
         raise TypeError("Round parameter only accepts integer value.")
 
     # checking budget_time parameter
-    if type(budget_time) is not int and type(budget_time) is not float:
+    if budget_time and type(budget_time) is not int and type(budget_time) is not float:
         raise TypeError("budget_time parameter only accepts integer or float values.")
 
     # checking verbose parameter
@@ -2362,7 +2421,7 @@ def create_model(
     """
 
     if not display:
-        progress_args = {"max": fold + 4}
+        progress_args = {"max": _get_cv_n_folds(fold) + 4}
         master_display_columns = all_metrics["Display Name"].to_list()
         timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
         monitor_rows = [
@@ -2381,8 +2440,6 @@ def create_model(
 
     # general dependencies
 
-    from sklearn.model_selection import StratifiedKFold
-
     np.random.seed(seed)
 
     logger.info("Copying training dataset")
@@ -2400,7 +2457,7 @@ def create_model(
     logger.info("Defining folds")
 
     # cross validation setup starts here
-    kf = StratifiedKFold(fold, random_state=seed, shuffle=folds_shuffle_param)
+    kf = _get_cv_splitter(fold)
 
     logger.info("Declaring metric variables")
 
@@ -2464,7 +2521,7 @@ def create_model(
         with io.capture_output():
             model.fit(data_X, data_y)
 
-        display.display("", clear=True)
+        display.clear_output()
 
         logger.info(str(model))
         logger.info(
@@ -2496,7 +2553,7 @@ def create_model(
         """
         MONITOR UPDATE STARTS
         """
-        display.update_monitor(1, f"Fitting Fold {str(fold_num)} of {str(fold)}")
+        display.update_monitor(1, f"Fitting Fold {fold_num} of {_get_cv_n_folds(fold)}")
         display.display_monitor()
         """
         MONITOR UPDATE ENDS
@@ -2552,7 +2609,7 @@ def create_model(
         """
         t1 = time.time()
 
-        tt = (t1 - t0) * (fold - fold_num) / 60
+        tt = (t1 - t0) * (_get_cv_n_folds(fold) - fold_num) / 60
         tt = np.around(tt, 2)
 
         if tt < 1:
@@ -2671,7 +2728,7 @@ def create_model(
 
 def tune_model(
     estimator,
-    fold: int = 10,
+    fold: Optional[Union[int, Any]] = None,
     round: int = 4,
     n_iter: int = 10,
     custom_grid: Optional[Union[Dict[str, list], Any]] = None,
@@ -2709,8 +2766,9 @@ def tune_model(
     ----------
     estimator : object, default = None
 
-    fold: integer, default = 10
-        Number of folds to be used in Kfold CV. Must be at least 2. 
+    fold: integer or scikit-learn compatible CV generator, default = None
+        Controls cross-validation. If None, will use the CV generator defined in setup().
+        If integer, will use StratifiedKFold CV with that many folds.
 
     round: integer, default = 4
         Number of decimal places the metrics in the score grid will be rounded to. 
@@ -2854,8 +2912,10 @@ def tune_model(
         raise TypeError("VotingClassifier not allowed under tune_model().")
 
     # checking fold parameter
-    if type(fold) is not int:
-        raise TypeError("Fold parameter only accepts integer value.")
+    if fold is not None and not (type(fold) is int or hasattr(fold, "split")):
+        raise TypeError(
+            "fold parameter must be either None, an integer or a scikit-learn compatible CV generator object."
+        )
 
     # checking round parameter
     if type(round) is not int:
@@ -2978,7 +3038,7 @@ def tune_model(
     """
 
     if not display:
-        progress_args = {"max": fold + 3 + 4}
+        progress_args = {"max": _get_cv_n_folds(fold) + 3 + 4}
         master_display_columns = all_metrics["Display Name"].to_list()
         timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
         monitor_rows = [
@@ -3394,7 +3454,7 @@ def tune_model(
 def ensemble_model(
     estimator,
     method: str = "Bagging",
-    fold: int = 10,
+    fold: Optional[Union[int, Any]] = None,
     n_estimators: int = 10,
     round: int = 4,
     choose_better: bool = False,
@@ -3434,8 +3494,9 @@ def ensemble_model(
         incorrectly classified instances are adjusted such that subsequent 
         classifiers focus more on difficult cases.
     
-    fold: integer, default = 10
-        Number of folds to be used in Kfold CV. Must be at least 2.
+    fold: integer or scikit-learn compatible CV generator, default = None
+        Controls cross-validation. If None, will use the CV generator defined in setup().
+        If integer, will use StratifiedKFold CV with that many folds.
     
     n_estimators: integer, default = 10
         The number of base estimators in the ensemble.
@@ -3524,8 +3585,10 @@ def ensemble_model(
             )
 
     # checking fold parameter
-    if type(fold) is not int:
-        raise TypeError("Fold parameter only accepts integer value.")
+    if fold is not None and not (type(fold) is int or hasattr(fold, "split")):
+        raise TypeError(
+            "fold parameter must be either None, an integer or a scikit-learn compatible CV generator object."
+        )
 
     # checking n_estimators parameter
     if type(n_estimators) is not int:
@@ -3560,7 +3623,7 @@ def ensemble_model(
     """
 
     if not display:
-        progress_args = {"max": fold + 2 + 4}
+        progress_args = {"max": _get_cv_n_folds(fold) + 2 + 4}
         master_display_columns = all_metrics["Display Name"].to_list()
         timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
         monitor_rows = [
@@ -3644,11 +3707,7 @@ def ensemble_model(
 
     logger.info("SubProcess create_model() called ==================================")
     model, model_fit_time = create_model(
-        estimator=model,
-        system=False,
-        display=display,
-        fold=fold,
-        round=round,
+        estimator=model, system=False, display=display, fold=fold, round=round,
     )
     best_model = model
     model_results = pull()
@@ -3713,7 +3772,7 @@ def ensemble_model(
 
 def blend_models(
     estimator_list: list,
-    fold: int = 10,
+    fold: Optional[Union[int, Any]] = None,
     round: int = 4,
     choose_better: bool = False,
     optimize: str = "Accuracy",
@@ -3727,7 +3786,7 @@ def blend_models(
     This function creates a Soft Voting / Majority Rule classifier for all the 
     estimators in the model library (excluding the few when turbo is True) or 
     for specific trained estimators passed as a list in estimator_list param.
-    It scores it using Stratified Cross Validation. The output prints a score
+    It scores it using Cross Validation. The output prints a score
     grid that shows Accuracy, AUC, Recall, Precision, F1, Kappa and MCC by 
     fold (default CV = 10 Folds).
 
@@ -3746,8 +3805,9 @@ def blend_models(
     ----------
     estimator_list : list of objects
 
-    fold: integer, default = 10
-        Number of folds to be used in Kfold CV. Must be at least 2. 
+    fold: integer or scikit-learn compatible CV generator, default = None
+        Controls cross-validation. If None, will use the CV generator defined in setup().
+        If integer, will use StratifiedKFold CV with that many folds.
 
     round: integer, default = 4
         Number of decimal places the metrics in the score grid will be rounded to.
@@ -3849,8 +3909,10 @@ def blend_models(
                 method = "soft"
 
     # checking fold parameter
-    if type(fold) is not int:
-        raise TypeError("Fold parameter only accepts integer value.")
+    if fold is not None and not (type(fold) is int or hasattr(fold, "split")):
+        raise TypeError(
+            "fold parameter must be either None, an integer or a scikit-learn compatible CV generator object."
+        )
 
     # checking round parameter
     if type(round) is not int:
@@ -3891,7 +3953,7 @@ def blend_models(
     """
 
     if not display:
-        progress_args = {"max": fold + 2 + 4}
+        progress_args = {"max": _get_cv_n_folds(fold) + 2 + 4}
         master_display_columns = all_metrics["Display Name"].to_list()
         timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
         monitor_rows = [
@@ -3966,11 +4028,7 @@ def blend_models(
 
     logger.info("SubProcess create_model() called ==================================")
     model, model_fit_time = create_model(
-        estimator=model,
-        system=False,
-        display=display,
-        fold=fold,
-        round=round,
+        estimator=model, system=False, display=display, fold=fold, round=round,
     )
     model_results = pull()
     logger.info("SubProcess create_model() end ==================================")
@@ -4035,7 +4093,7 @@ def blend_models(
 def stack_models(
     estimator_list: list,
     meta_model=None,
-    fold: int = 10,
+    fold: Optional[Union[int, Any]] = None,
     round: int = 4,
     method: str = "auto",
     restack: bool = True,
@@ -4046,7 +4104,7 @@ def stack_models(
 ) -> Any:
 
     """
-    This function trains a meta model and scores it using Stratified Cross Validation.
+    This function trains a meta model and scores it using Cross Validation.
     The predictions from the base level models as passed in the estimator_list param 
     are used as input features for the meta model. The restacking parameter controls
     the ability to expose raw features to the meta model when set to True
@@ -4080,8 +4138,9 @@ def stack_models(
     meta_model : object, default = None
         If set to None, Logistic Regression is used as a meta model.
 
-    fold: integer, default = 10
-        Number of folds to be used in Kfold CV. Must be at least 2. 
+    fold: integer or scikit-learn compatible CV generator, default = None
+        Controls cross-validation. If None, will use the CV generator defined in setup().
+        If integer, will use StratifiedKFold CV with that many folds.
 
     round: integer, default = 4
         Number of decimal places the metrics in the score grid will be rounded to.
@@ -4155,8 +4214,10 @@ def stack_models(
             )
 
     # checking fold parameter
-    if type(fold) is not int:
-        raise TypeError("Fold parameter only accepts integer value.")
+    if fold is not None and not (type(fold) is int or hasattr(fold, "split")):
+        raise TypeError(
+            "fold parameter must be either None, an integer or a scikit-learn compatible CV generator object."
+        )
 
     # checking round parameter
     if type(round) is not int:
@@ -4208,7 +4269,7 @@ def stack_models(
         meta_model = clone(meta_model)
 
     if not display:
-        progress_args = {"max": fold + 2 + 4}
+        progress_args = {"max": _get_cv_n_folds(fold) + 2 + 4}
         master_display_columns = all_metrics["Display Name"].to_list()
         timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
         monitor_rows = [
@@ -4281,11 +4342,7 @@ def stack_models(
 
     logger.info("SubProcess create_model() called ==================================")
     model, model_fit_time = create_model(
-        estimator=model,
-        system=False,
-        display=display,
-        fold=fold,
-        round=round,
+        estimator=model, system=False, display=display, fold=fold, round=round,
     )
     model_results = pull()
     logger.info("SubProcess create_model() end ==================================")
@@ -4352,6 +4409,7 @@ def plot_model(
     plot: str = "auc",
     scale: float = 1,  # added in pycaret==2.1.0
     save: bool = False,
+    fold: Optional[Union[int, Any]] = None,
     verbose: bool = True,
     system: bool = True,
     display: Optional[Display] = None,  # added in pycaret==2.2.0
@@ -4405,6 +4463,10 @@ def plot_model(
 
     save: bool, default = False
         When set to True, Plot is saved as a 'png' file in current working directory.
+
+    fold: integer or scikit-learn compatible CV generator, default = None
+        Controls cross-validation used in certain plots. If None, will use the CV generator
+        defined in setup(). If integer, will use StratifiedKFold CV with that many folds.
 
     verbose: bool, default = True
         Progress bar not shown when verbose set to False. 
@@ -4520,6 +4582,12 @@ def plot_model(
             "Feature Importance plot not available for estimators that doesnt support coef_ or feature_importances_ attribute."
         )
 
+    # checking fold parameter
+    if fold is not None and not (type(fold) is int or hasattr(fold, "split")):
+        raise TypeError(
+            "fold parameter must be either None, an integer or a scikit-learn compatible CV generator object."
+        )
+
     """
     
     ERROR HANDLING ENDS HERE
@@ -4575,10 +4643,10 @@ def plot_model(
 
     _base_dpi = 100
 
+    cv = _get_cv_splitter(fold)
+
     class MatplotlibDefaultDPI(object):
         def __init__(self, base_dpi: float = 100, scale_to_set: float = 1):
-            self.default_dpi = plt.rcParams["figure.dpi"]
-            plt.rcParams["figure.dpi"] = base_dpi * scale_to_set
             try:
                 self.default_skplt_dpit = skplt.metrics.plt.rcParams["figure.dpi"]
                 skplt.metrics.plt.rcParams["figure.dpi"] = base_dpi * scale_to_set
@@ -4589,9 +4657,8 @@ def plot_model(
             return None
 
         def __exit__(self, type, value, traceback):
-            plt.rcParams["figure.dpi"] = self.default_dpi
             try:
-                skplt.metrics.plt.rcParams["figure.dpi"] =  self.default_skplt_dpit
+                skplt.metrics.plt.rcParams["figure.dpi"] = self.default_skplt_dpit
             except:
                 pass
 
@@ -4747,7 +4814,7 @@ def plot_model(
 
         from yellowbrick.model_selection import RFECV
 
-        visualizer = RFECV(model, cv=10)
+        visualizer = RFECV(model, cv=cv)
         show_yellowbrick_plot(
             visualizer=visualizer,
             X_train=data_X,
@@ -4768,7 +4835,7 @@ def plot_model(
 
         sizes = np.linspace(0.3, 1.0, 10)
         visualizer = LearningCurve(
-            model, cv=10, train_sizes=sizes, n_jobs=gpu_n_jobs_param, random_state=seed
+            model, cv=cv, train_sizes=sizes, n_jobs=gpu_n_jobs_param, random_state=seed
         )
         show_yellowbrick_plot(
             visualizer=visualizer,
@@ -4974,7 +5041,7 @@ def plot_model(
             model,
             param_name=param_name,
             param_range=param_range,
-            cv=10,
+            cv=cv,
             random_state=seed,
         )
         show_yellowbrick_plot(
@@ -5073,6 +5140,11 @@ def plot_model(
         display.display(param_df, clear=True)
         logger.info("Visual Rendered Successfully")
 
+    try:
+        plt.close()
+    except:
+        pass
+
     gc.collect()
 
     logger.info(
@@ -5145,6 +5217,7 @@ def evaluate_model(estimator):
         save=fixed(False),
         verbose=fixed(True),
         scale=fixed(1),
+        fold=fixed(None),
         system=fixed(True),
         display=fixed(None),
     )
@@ -5397,7 +5470,7 @@ def interpret_model(
 def calibrate_model(
     estimator,
     method: str = "sigmoid",
-    fold: int = 10,
+    fold: Optional[Union[int, Any]] = None,
     round: int = 4,
     verbose: bool = True,
     display: Optional[Display] = None,  # added in pycaret==2.2.0
@@ -5433,8 +5506,9 @@ def calibrate_model(
         method or 'isotonic' which is a non-parametric approach. It is not advised to use
         isotonic calibration with too few calibration samples
 
-    fold: integer, default = 10
-        Number of folds to be used in Kfold CV. Must be at least 2. 
+    fold: integer or scikit-learn compatible CV generator, default = None
+        Controls cross-validation. If None, will use the CV generator defined in setup().
+        If integer, will use StratifiedKFold CV with that many folds.
 
     round: integer, default = 4
         Number of decimal places the metrics in the score grid will be rounded to. 
@@ -5476,8 +5550,10 @@ def calibrate_model(
     runtime_start = time.time()
 
     # checking fold parameter
-    if type(fold) is not int:
-        raise TypeError("Fold parameter only accepts integer value.")
+    if fold is not None and not (type(fold) is int or hasattr(fold, "split")):
+        raise TypeError(
+            "fold parameter must be either None, an integer or a scikit-learn compatible CV generator object."
+        )
 
     # checking round parameter
     if type(round) is not int:
@@ -5500,7 +5576,7 @@ def calibrate_model(
     logger.info("Preparing display monitor")
 
     if not display:
-        progress_args = {"max": fold + 2 + 4}
+        progress_args = {"max": _get_cv_n_folds(fold) + 2 + 4}
         master_display_columns = all_metrics["Display Name"].to_list()
         timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
         monitor_rows = [
@@ -5551,11 +5627,7 @@ def calibrate_model(
 
     logger.info("SubProcess create_model() called ==================================")
     model, model_fit_time = create_model(
-        estimator=model,
-        system=False,
-        display=display,
-        fold=fold,
-        round=round,
+        estimator=model, system=False, display=display, fold=fold, round=round,
     )
     model_results = pull()
     logger.info("SubProcess create_model() end ==================================")
@@ -7250,10 +7322,15 @@ def _mlflow_log_model(
         RunID = mlflow.active_run().info.run_id
 
         # Log model parameters
-        if hasattr(model, 'named_steps') and 'actual_estimator' in model.named_steps:
-            params = model.named_steps['actual_estimator'].get_params()
+        if hasattr(model, "named_steps") and "actual_estimator" in model.named_steps:
+            params = model.named_steps["actual_estimator"]
         else:
-            params = model.get_params()
+            params = model
+
+        if hasattr(params, "get_all_params"):
+            params = params.get_all_params()
+        else:
+            params = params.get_params()
 
         for i in list(params):
             v = params.get(i)
@@ -7399,3 +7476,21 @@ def _get_columns_to_stratify_by(
         else:
             stratify = y
     return stratify
+
+
+def _get_cv_splitter(fold):
+    import pycaret.internal.utils
+
+    return pycaret.internal.utils.get_cv_splitter(
+        fold,
+        default=fold_generator,
+        seed=seed,
+        shuffle=folds_shuffle_param,
+        int_default="stratifiedkfold",
+    )
+
+
+def _get_cv_n_folds(fold):
+    import pycaret.internal.utils
+
+    return pycaret.internal.utils.get_cv_n_folds(fold, default_folds=fold_param)

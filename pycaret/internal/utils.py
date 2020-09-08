@@ -11,6 +11,7 @@ from pycaret.internal.logging import get_logger
 from typing import Any, List, Optional, Dict, Tuple, Union
 from sklearn.pipeline import Pipeline
 import numpy as np
+from sklearn.model_selection import KFold, StratifiedKFold, BaseCrossValidator
 
 
 def get_config(variable: str, globals_d: dict):
@@ -222,3 +223,33 @@ def _check_custom_transformer(transformer):
             "Transformer must be an object implementing methods 'fit', 'transform' and 'fit_transform'."
         )
 
+
+def get_cv_splitter(
+    fold: Optional[Union[int, Any]],
+    default: BaseCrossValidator,
+    seed: int,
+    shuffle: bool,
+    int_default: str = "kfold",
+) -> BaseCrossValidator:
+    if not fold:
+        return default
+    if hasattr(fold, "splits"):
+        return fold
+    if type(fold) is int:
+        if int_default == "kfold":
+            return KFold(fold, random_state=seed, shuffle=shuffle)
+        elif int_default == "stratifiedkfold":
+            return StratifiedKFold(fold, random_state=seed, shuffle=shuffle)
+        else:
+            raise ValueError(
+                "Wrong value for int_default param. Needs to be either 'kfold' or 'stratifiedkfold'."
+            )
+
+
+def get_cv_n_folds(fold: Optional[Union[int, Any]], default_folds: int) -> int:
+    if not fold:
+        return default_folds
+    if isinstance(fold, int):
+        return fold
+    else:
+        return fold.get_n_splits()
