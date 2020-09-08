@@ -1805,7 +1805,7 @@ def compare_models(
     fold: Optional[Union[int, Any]] = None,
     round: int = 4,
     sort: str = "Accuracy",
-    budget_time: float = 0,  # added in pycaret==2.1.0
+    budget_time: float = None,  # added in pycaret==2.1.0
     turbo: bool = True,
     verbose: bool = True,
     display: Optional[Display] = None,
@@ -1875,8 +1875,8 @@ def compare_models(
         Number of top_n models to return. use negative argument for bottom selection.
         for example, n_select = -3 means bottom 3 models.
 
-    budget_time: int or float, default = 0
-        If set above 0, will terminate execution of the function after budget_time 
+    budget_time: int or float, default = None
+        If not 0 or None, will terminate execution of the function after budget_time 
         minutes have passed and return results up to that point.
 
     turbo: bool, default = True
@@ -2249,7 +2249,7 @@ def create_model(
     fold: Optional[Union[int, Any]] = None,
     round: int = 4,
     cross_validation: bool = True,
-    budget_time: float = 0,
+    budget_time: float = None,
     verbose: bool = True,
     system: bool = True,
     X_train_data: Optional[pd.DataFrame] = None,  # added in pycaret==2.2.0
@@ -2310,8 +2310,8 @@ def create_model(
     round: integer, default = 4
         Number of decimal places the metrics in the score grid will be rounded to. 
 
-    budget_time: int or float, default = 0
-        If set above 0, will terminate execution of the function after budget_time minutes have
+    budget_time: int or float, default = None
+        If not 0 or None, will terminate execution of the function after budget_time minutes have
         passed.
 
     cross_validation: bool, default = True
@@ -2521,7 +2521,7 @@ def create_model(
         with io.capture_output():
             model.fit(data_X, data_y)
 
-        display.display("", clear=True)
+        display.clear_output()
 
         logger.info(str(model))
         logger.info(
@@ -7323,9 +7323,14 @@ def _mlflow_log_model(
 
         # Log model parameters
         if hasattr(model, "named_steps") and "actual_estimator" in model.named_steps:
-            params = model.named_steps["actual_estimator"].get_params()
+            params = model.named_steps["actual_estimator"]
         else:
-            params = model.get_params()
+            params = model
+
+        if hasattr(params, "get_all_params"):
+            params = params.get_all_params()
+        else:
+            params = params.get_params()
 
         for i in list(params):
             v = params.get(i)
