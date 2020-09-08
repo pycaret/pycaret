@@ -39,6 +39,7 @@ def setup(
     data: pd.DataFrame,
     target: str,
     train_size: float = 0.7,
+    test_data: Optional[pd.DataFrame] = None,
     sampling: bool = False,
     sample_estimator: Optional[Any] = None,
     categorical_features: Optional[List[str]] = None,
@@ -84,14 +85,14 @@ def setup(
     interaction_threshold: float = 0.01,
     fix_imbalance: bool = False,
     fix_imbalance_method: Optional[Any] = None,
-    data_split_shuffle: bool = False,
+    data_split_shuffle: bool = True,
     data_split_stratify: Union[bool, List[str]] = False,  # added in pycaret==2.2
-    fold_strategy: Union[str, Any] = "stratifiedkfold",  # added in pycaret==2.2
+    fold_strategy: Union[str, Any] = "kfold",  # added in pycaret==2.2
     fold: int = 10,  # added in pycaret==2.2
-    folds_shuffle: bool = False,
+    fold_shuffle: bool = False,
     n_jobs: int = -1,
     use_gpu: bool = False,  # added in pycaret==2.1
-    custom_pipeline_steps_after_split: Union[
+    custom_pipeline: Union[
         Any, Tuple[str, Any], List[Any], List[Tuple[str, Any]]
     ] = None,
     html: bool = True,
@@ -136,6 +137,10 @@ def setup(
     train_size: float, default = 0.7
         Size of the training set. By default, 70% of the data will be used for training 
         and validation. The remaining data will be used for a test / hold-out set.
+
+    test_data: pandas.DataFrame, default = None
+        When a dataframe is passed to this parameter it will be used as the test set, instead
+        of using a portion of the data to create one.
 
     sampling: bool, default = False
         When the sample size exceeds 25,000 samples, pycaret will build a base estimator
@@ -421,15 +426,16 @@ def setup(
         applied by default to oversample minority class during cross validation. This 
         parameter accepts any module from 'imblearn' that supports 'fit_resample' method.
 
-    data_split_shuffle: bool, default = False
+    data_split_shuffle: bool, default = True
         If set to False, prevents shuffling of rows when splitting data.
 
     data_split_stratify: bool or list, default = False
         Whether to stratify when splitting data.
         If True, will stratify by the target column. If False, will not stratify.
         If list is passed, will stratify by the columns with the names in the list.
+        Requires data_split_shuffle to be set to True.
 
-    fold_strategy: str or scikit-learn compatible CV generator object, default = 'stratifiedkfold'
+    fold_strategy: str or scikit-learn compatible CV generator object, default = 'kfold'
         Choice of cross validation strategy. Possible values are:
 
         * 'kfold' for KFold CV,
@@ -441,7 +447,7 @@ def setup(
         Number of folds to be used in cross validation. Must be at least 2.
         Ignored if fold_strategy is an object.
 
-    folds_shuffle: bool, default = False
+    fold_shuffle: bool, default = False
         If set to False, prevents shuffling of rows when using cross validation. Only applicable for
         'kfold' and 'stratifiedkfold' fold_strategy. Ignored if fold_strategy is an object.
 
@@ -464,7 +470,7 @@ def setup(
         - Logistic Regression, Ridge, SVM, SVC - requires cuML >= 0.15 to be installed.
           https://github.com/rapidsai/cuml
 
-    custom_pipeline_steps_after_split: transformer or list of transformers or tuple
+    custom_pipeline: transformer or list of transformers or tuple
     (str, transformer) or list of tuples (str, transformer), default = None
         If set, will append the passed transformers (including Pipelines) to the PyCaret
         preprocessing Pipeline applied after train-test split during model fitting.
@@ -727,7 +733,10 @@ def setup(
             type(data_split_stratify) is not list
             and type(data_split_stratify) is not bool
         ):
-            raise TypeError("stratify param only accepts a bool or a list of strings.")
+            raise TypeError("data_split_stratify param only accepts a bool or a list of strings.")
+
+        if not data_split_shuffle:
+            raise TypeError("data_split_stratify param requires data_split_shuffle to be set to True.")
 
     # high_cardinality_methods
     high_cardinality_allowed_methods = ["frequency", "clustering"]
@@ -988,7 +997,10 @@ def setup(
         raise TypeError("data_split_shuffle parameter only accepts True or False.")
 
     possible_fold_strategy = ["kfold", "stratifiedkfold", "timeseries"]
-    if not (fold_strategy in possible_fold_strategy or hasattr(fold_strategy, "split")):
+    if not (
+        fold_strategy in possible_fold_strategy
+        or (not isinstance(fold_strategy, str) and hasattr(fold_strategy, "split"))
+    ):
         raise TypeError(
             f"fold_strategy parameter must be either a scikit-learn compatible CV generator object or one of {', '.join(possible_fold_strategy)}."
         )
@@ -997,9 +1009,9 @@ def setup(
     if type(fold) is not int:
         raise TypeError("fold parameter only accepts integer value.")
 
-    # folds_shuffle
-    if type(folds_shuffle) is not bool:
-        raise TypeError("folds_shuffle parameter only accepts True or False.")
+    # fold_shuffle
+    if type(fold_shuffle) is not bool:
+        raise TypeError("fold_shuffle parameter only accepts True or False.")
 
     # log_plots
     if type(log_plots) is not bool:
@@ -1085,7 +1097,7 @@ def setup(
 
     # declaring global variables to be accessed by other functions
     logger.info("Declaring global variables")
-    global X, y, X_train, X_test, y_train, y_test, seed, prep_pipe, experiment__, folds_shuffle_param, n_jobs_param, gpu_n_jobs_param, create_model_container, master_model_container, display_container, exp_name_log, logging_param, log_plots_param, fix_imbalance_param, fix_imbalance_method_param, data_before_preprocess, target_param, gpu_param, all_models, _all_models_internal, all_metrics, _internal_pipeline_steps, stratify_param, fold_generator, fold_param
+    global X, y, X_train, X_test, y_train, y_test, seed, prep_pipe, experiment__, fold_shuffle_param, n_jobs_param, gpu_n_jobs_param, create_model_container, master_model_container, display_container, exp_name_log, logging_param, log_plots_param, fix_imbalance_param, fix_imbalance_method_param, data_before_preprocess, target_param, gpu_param, all_models, _all_models_internal, all_metrics, _internal_pipeline_steps, stratify_param, fold_generator, fold_param
 
     logger.info("Copying data for preprocessing")
 
@@ -1230,6 +1242,7 @@ def setup(
     display_dtypes_pass = False if silent else True
 
     # creating variables to be used later in the function
+    train_data = data
     X_before_preprocess = data.drop(target, axis=1)
     y_before_preprocess = data[target]
 
@@ -1329,7 +1342,7 @@ def setup(
     # CV params
     fold_param = fold
 
-    folds_shuffle_param = folds_shuffle
+    fold_shuffle_param = fold_shuffle
 
     from sklearn.model_selection import (
         StratifiedKFold,
@@ -1339,11 +1352,11 @@ def setup(
 
     if fold_strategy == "kfold":
         fold_generator = KFold(
-            fold_param, random_state=seed, shuffle=folds_shuffle_param
+            fold_param, random_state=seed, shuffle=fold_shuffle_param
         )
     elif fold_strategy == "stratifiedkfold":
         fold_generator = StratifiedKFold(
-            fold_param, random_state=seed, shuffle=folds_shuffle_param
+            fold_param, random_state=seed, shuffle=fold_shuffle_param
         )
     elif fold_strategy == "timeseries":
         fold_generator = TimeSeriesSplit(fold_param)
@@ -1411,8 +1424,8 @@ def setup(
         fix_imbalance_resampler = fix_imbalance_method_param
 
     # add custom transformers to prep pipe
-    if custom_pipeline_steps_after_split:
-        custom_steps = normalize_custom_transformers(custom_pipeline_steps_after_split)
+    if custom_pipeline:
+        custom_steps = normalize_custom_transformers(custom_pipeline)
         _internal_pipeline_steps.extend(custom_steps)
 
     if fix_imbalance_param:
@@ -1463,17 +1476,17 @@ def setup(
             X_before_preprocess, y_before_preprocess, stratify_param, target
         )
 
-        X_train, X_test, y_train, y_test = train_test_split(
-            X_before_preprocess,
-            y_before_preprocess,
-            test_size=1 - train_size,
-            stratify=_stratify_columns,
-            random_state=seed,
-            shuffle=data_split_shuffle,
-        )
-
-        train_data = pd.concat([X_train, y_train], axis=1)
-        test_data = pd.concat([X_test, y_test], axis=1)
+        if test_data is None:
+            X_train, X_test, y_train, y_test = train_test_split(
+                X_before_preprocess,
+                y_before_preprocess,
+                test_size=1 - train_size,
+                stratify=_stratify_columns,
+                random_state=seed,
+                shuffle=data_split_shuffle,
+            )
+            train_data = pd.concat([X_train, y_train], axis=1)
+            test_data = pd.concat([X_test, y_test], axis=1)
 
         train_data = prep_pipe.fit_transform(train_data)
         # workaround to also transform target
@@ -1641,6 +1654,7 @@ def setup(
             ["Fix Imbalance ", fix_imbalance_param],
             ["Fix Imbalance Method ", fix_imbalance_model_name],
             ["CV Generator ", type(fold_generator).__name__],
+            ["CV Folds ", fold_param],
         ],
         columns=["Description", "Value"],
     )
@@ -1774,7 +1788,7 @@ def setup(
         seed,
         prep_pipe,
         experiment__,
-        folds_shuffle_param,
+        fold_shuffle_param,
         n_jobs_param,
         html_param,
         create_model_container,
@@ -1807,6 +1821,9 @@ def compare_models(
     sort: str = "Accuracy",
     budget_time: Optional[float] = None,  # added in pycaret==2.1.0
     turbo: bool = True,
+    errors: str = "ignore",
+    fit_params: Optional[dict] = {},
+    groups=None,
     verbose: bool = True,
     display: Optional[Display] = None,
 ) -> List[Any]:
@@ -1862,7 +1879,7 @@ def compare_models(
 
     fold: integer or scikit-learn compatible CV generator, default = None
         Controls cross-validation. If None, will use the CV generator defined in setup().
-        If integer, will use StratifiedKFold CV with that many folds.
+        If integer, will use KFold CV with that many folds.
 
     round: integer, default = 4
         Number of decimal places the metrics in the score grid will be rounded to.
@@ -1882,6 +1899,18 @@ def compare_models(
     turbo: bool, default = True
         When turbo is set to True, it excludes estimators that have longer
         training time.
+
+    errors: str, default = 'ignore'
+        If 'ignore', will suppress model exceptions and continue.
+        If 'raise', will allow exceptions to be raised.
+
+    fit_params: dict, default = {} (empty dict)
+        Dictionary of parameters passed to the fit method of the model. The parameters will be applied to all models,
+        therefore it is recommended to set errors parameter to 'ignore'.
+
+    groups: array-like, with shape (n_samples,)
+        Optional Group labels for the samples used while splitting the dataset into train/test set.
+        Only used if a group based cross-validation generator is used (eg. GroupKFold).
 
     verbose: bool, default = True
         Score grid is not printed when verbose is set to False.
@@ -1951,7 +1980,9 @@ def compare_models(
         )
 
     # checking fold parameter
-    if fold is not None and not (type(fold) is int or hasattr(fold, "split")):
+    if fold is not None and not (
+        type(fold) is int or (not isinstance(fold, str) and hasattr(fold, "split"))
+    ):
         raise TypeError(
             "fold parameter must be either None, an integer or a scikit-learn compatible CV generator object."
         )
@@ -1969,6 +2000,13 @@ def compare_models(
     if sort is None:
         raise ValueError(
             f"Sort method not supported. See docstring for list of available parameters."
+        )
+
+    # checking errors parameter
+    possible_errors = ["ignore", "raise"]
+    if errors not in possible_errors:
+        raise ValueError(
+            f"errors parameter must be one of: {', '.join(possible_errors)}."
         )
 
     # checking optimize parameter for multiclass
@@ -2099,7 +2137,7 @@ def compare_models(
         logger.info(
             "SubProcess create_model() called =================================="
         )
-        try:
+        if errors == "raise":
             model, model_fit_time = create_model(
                 estimator=model,
                 system=False,
@@ -2110,12 +2148,30 @@ def compare_models(
                 budget_time=budget_time - total_runtime
                 if budget_time and budget_time > 0
                 else 0,
+                fit_params=fit_params,
+                groups=groups,
             )
             model_results = pull(pop=True)
-        except:
-            logger.error(f"create_model() for {model} raised an exception:")
-            logger.error(traceback.format_exc())
-            continue
+        else:
+            try:
+                model, model_fit_time = create_model(
+                    estimator=model,
+                    system=False,
+                    verbose=False,
+                    display=display,
+                    fold=fold,
+                    round=round,
+                    budget_time=budget_time - total_runtime
+                    if budget_time and budget_time > 0
+                    else 0,
+                    fit_params=fit_params,
+                    groups=groups,
+                )
+                model_results = pull(pop=True)
+            except:
+                logger.error(f"create_model() for {model} raised an exception:")
+                logger.error(traceback.format_exc())
+                continue
         logger.info("SubProcess create_model() end ==================================")
 
         if not model:
@@ -2196,21 +2252,11 @@ def compare_models(
         color = "lightgrey"
         return f"background-color: {color}"
 
-    if _is_multiclass():
-
-        compare_models_ = (
-            master_display.drop("Object", axis=1)
-            .style.apply(highlight_max, subset=master_display.columns[2:],)
-            .applymap(highlight_cols, subset=["TT (Sec)"])
-        )
-    else:
-
-        compare_models_ = (
-            master_display.drop("Object", axis=1)
-            .style.apply(highlight_max, subset=master_display.columns[2:],)
-            .applymap(highlight_cols, subset=["TT (Sec)"])
-        )
-
+    compare_models_ = (
+        master_display.drop("Object", axis=1)
+        .style.apply(highlight_max, subset=master_display.columns[2:],)
+        .applymap(highlight_cols, subset=["TT (Sec)"])
+    )
     compare_models_ = compare_models_.set_precision(round)
     compare_models_ = compare_models_.set_properties(**{"text-align": "left"})
     compare_models_ = compare_models_.set_table_styles(
@@ -2250,6 +2296,8 @@ def create_model(
     round: int = 4,
     cross_validation: bool = True,
     budget_time: Optional[float] = None,
+    fit_params: Optional[dict] = {},
+    groups=None,
     verbose: bool = True,
     system: bool = True,
     X_train_data: Optional[pd.DataFrame] = None,  # added in pycaret==2.2.0
@@ -2305,18 +2353,25 @@ def create_model(
 
     fold: integer or scikit-learn compatible CV generator, default = None
         Controls cross-validation. If None, will use the CV generator defined in setup().
-        If integer, will use StratifiedKFold CV with that many folds.
+        If integer, will use KFold CV with that many folds.
 
     round: integer, default = 4
         Number of decimal places the metrics in the score grid will be rounded to. 
+
+    cross_validation: bool, default = True
+        When cross_validation set to False fold parameter is ignored and model is trained
+        on entire training dataset. No metric evaluation is returned. 
 
     budget_time: int or float, default = None
         If not 0 or None, will terminate execution of the function after budget_time minutes have
         passed.
 
-    cross_validation: bool, default = True
-        When cross_validation set to False fold parameter is ignored and model is trained
-        on entire training dataset. No metric evaluation is returned. 
+    fit_params: dict, default = {} (empty dict)
+        Dictionary of parameters passed to the fit method of the model.
+
+    groups: array-like, with shape (n_samples,)
+        Optional Group labels for the samples used while splitting the dataset into train/test set.
+        Only used if a group based cross-validation generator is used (eg. GroupKFold).
 
     verbose: bool, default = True
         Score grid is not printed when verbose is set to False.
@@ -2387,7 +2442,9 @@ def create_model(
         )
 
     # checking fold parameter
-    if fold is not None and not (type(fold) is int or hasattr(fold, "split")):
+    if fold is not None and not (
+        type(fold) is int or (not isinstance(fold, str) and hasattr(fold, "split"))
+    ):
         raise TypeError(
             "fold parameter must be either None, an integer or a scikit-learn compatible CV generator object."
         )
@@ -2457,7 +2514,7 @@ def create_model(
     logger.info("Defining folds")
 
     # cross validation setup starts here
-    kf = _get_cv_splitter(fold)
+    cv = _get_cv_splitter(fold)
 
     logger.info("Declaring metric variables")
 
@@ -2519,7 +2576,7 @@ def create_model(
 
         logger.info("Fitting Model")
         with io.capture_output():
-            model.fit(data_X, data_y)
+            model.fit(data_X, data_y, **fit_params)
 
         display.clear_output()
 
@@ -2533,7 +2590,7 @@ def create_model(
 
     fold_num = 1
 
-    for train_i, test_i in kf.split(data_X, data_y):
+    for train_i, test_i in cv.split(data_X, data_y, groups=groups):
 
         logger.info(f"Initializing Fold {fold_num}")
 
@@ -2566,7 +2623,7 @@ def create_model(
 
         logger.info("Fitting Model")
         with io.capture_output():
-            model.fit(Xtrain, ytrain)
+            model.fit(Xtrain, ytrain, **fit_params)
         logger.info("Evaluating Metrics")
 
         if hasattr(model, "predict_proba"):
@@ -2662,7 +2719,7 @@ def create_model(
     model_fit_start = time.time()
     logger.info("Finalizing model")
     with io.capture_output():
-        model.fit(data_X, data_y)
+        model.fit(data_X, data_y, **fit_params)
     model_fit_end = time.time()
 
     model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
@@ -2739,14 +2796,16 @@ def tune_model(
     early_stopping: Any = "ASHA",
     early_stopping_max_iters: int = 10,
     choose_better: bool = False,
+    fit_params: Optional[dict] = {},
+    groups=None,
     verbose: bool = True,
     display: Optional[Display] = None,
     **kwargs,
 ) -> Any:
 
     """
-    This function tunes the hyperparameters of a model and scores it using Stratified 
-    Cross Validation. The output prints a score grid that shows Accuracy, AUC, Recall
+    This function tunes the hyperparameters of a model and scores it using Cross Validation.
+    The output prints a score grid that shows Accuracy, AUC, Recall
     Precision, F1, Kappa and MCC by fold (by default = 10 Folds).
 
     This function returns a trained model object.  
@@ -2768,7 +2827,7 @@ def tune_model(
 
     fold: integer or scikit-learn compatible CV generator, default = None
         Controls cross-validation. If None, will use the CV generator defined in setup().
-        If integer, will use StratifiedKFold CV with that many folds.
+        If integer, will use KFold CV with that many folds.
 
     round: integer, default = 4
         Number of decimal places the metrics in the score grid will be rounded to. 
@@ -2851,6 +2910,13 @@ def tune_model(
         equivalent to base estimator created using create_model or model returned by 
         compare_models.
 
+    fit_params: dict, default = {} (empty dict)
+        Dictionary of parameters passed to the fit method of the tuner.
+
+    groups: array-like, with shape (n_samples,)
+        Optional Group labels for the samples used while splitting the dataset into train/test set.
+        Only used if a group based cross-validation generator is used (eg. GroupKFold).
+
     verbose: bool, default = True
         Score grid is not printed when verbose is set to False.
 
@@ -2912,7 +2978,9 @@ def tune_model(
         raise TypeError("VotingClassifier not allowed under tune_model().")
 
     # checking fold parameter
-    if fold is not None and not (type(fold) is int or hasattr(fold, "split")):
+    if fold is not None and not (
+        type(fold) is int or (not isinstance(fold, str) and hasattr(fold, "split"))
+    ):
         raise TypeError(
             "fold parameter must be either None, an integer or a scikit-learn compatible CV generator object."
         )
@@ -3365,7 +3433,7 @@ def tune_model(
             )
 
     # with io.capture_output():
-    model_grid.fit(X_train, y_train)
+    model_grid.fit(X_train, y_train, groups=groups, **fit_params)
     best_params = model_grid.best_params_
     logger.info(f"best_params: {best_params}")
     best_params = {k[18:]: v for k, v in best_params.items()}
@@ -3388,6 +3456,8 @@ def tune_model(
         display=display,
         fold=fold,
         round=round,
+        groups=groups,
+        fit_params=fit_params,
         **best_params,
     )
     model_results = pull()
@@ -3400,6 +3470,8 @@ def tune_model(
             compare_dimension,
             fold,
             new_results_list=[model_results],
+            groups=groups,
+            fit_params=fit_params,
             display=display,
         )
 
@@ -3459,6 +3531,8 @@ def ensemble_model(
     round: int = 4,
     choose_better: bool = False,
     optimize: str = "Accuracy",
+    fit_params: Optional[dict] = {},
+    groups=None,
     verbose: bool = True,
     display: Optional[Display] = None,  # added in pycaret==2.2.0
 ) -> Any:
@@ -3496,7 +3570,7 @@ def ensemble_model(
     
     fold: integer or scikit-learn compatible CV generator, default = None
         Controls cross-validation. If None, will use the CV generator defined in setup().
-        If integer, will use StratifiedKFold CV with that many folds.
+        If integer, will use KFold CV with that many folds.
     
     n_estimators: integer, default = 10
         The number of base estimators in the ensemble.
@@ -3516,6 +3590,13 @@ def ensemble_model(
         to compare emsembled model with base estimator. Values accepted in 
         optimize parameter are 'Accuracy', 'AUC', 'Recall', 'Precision', 'F1', 
         'Kappa', 'MCC'.
+
+    fit_params: dict, default = {} (empty dict)
+        Dictionary of parameters passed to the fit method of the model.
+
+    groups: array-like, with shape (n_samples,)
+        Optional Group labels for the samples used while splitting the dataset into train/test set.
+        Only used if a group based cross-validation generator is used (eg. GroupKFold).
 
     verbose: bool, default = True
         Score grid is not printed when verbose is set to False.
@@ -3585,7 +3666,9 @@ def ensemble_model(
             )
 
     # checking fold parameter
-    if fold is not None and not (type(fold) is int or hasattr(fold, "split")):
+    if fold is not None and not (
+        type(fold) is int or (not isinstance(fold, str) and hasattr(fold, "split"))
+    ):
         raise TypeError(
             "fold parameter must be either None, an integer or a scikit-learn compatible CV generator object."
         )
@@ -3707,7 +3790,13 @@ def ensemble_model(
 
     logger.info("SubProcess create_model() called ==================================")
     model, model_fit_time = create_model(
-        estimator=model, system=False, display=display, fold=fold, round=round,
+        estimator=model,
+        system=False,
+        display=display,
+        fold=fold,
+        round=round,
+        fit_params=fit_params,
+        groups=groups,
     )
     best_model = model
     model_results = pull()
@@ -3750,6 +3839,8 @@ def ensemble_model(
             compare_dimension,
             fold,
             new_results_list=[model_results],
+            groups=groups,
+            fit_params=fit_params,
             display=display,
         )
 
@@ -3778,6 +3869,8 @@ def blend_models(
     optimize: str = "Accuracy",
     method: str = "auto",
     weights: Optional[List[float]] = None,  # added in pycaret==2.2.0
+    fit_params: Optional[dict] = {},
+    groups=None,
     verbose: bool = True,
     display: Optional[Display] = None,  # added in pycaret==2.2.0
 ) -> Any:
@@ -3807,7 +3900,7 @@ def blend_models(
 
     fold: integer or scikit-learn compatible CV generator, default = None
         Controls cross-validation. If None, will use the CV generator defined in setup().
-        If integer, will use StratifiedKFold CV with that many folds.
+        If integer, will use KFold CV with that many folds.
 
     round: integer, default = 4
         Number of decimal places the metrics in the score grid will be rounded to.
@@ -3833,6 +3926,13 @@ def blend_models(
     weights: list, default = None
         Sequence of weights (float or int) to weight the occurrences of predicted class labels (hard voting)
         or class probabilities before averaging (soft voting). Uses uniform weights if None.
+
+    fit_params: dict, default = {} (empty dict)
+        Dictionary of parameters passed to the fit method of the model.
+
+    groups: array-like, with shape (n_samples,)
+        Optional Group labels for the samples used while splitting the dataset into train/test set.
+        Only used if a group based cross-validation generator is used (eg. GroupKFold).
 
     verbose: bool, default = True
         Score grid is not printed when verbose is set to False.
@@ -3909,7 +4009,9 @@ def blend_models(
                 method = "soft"
 
     # checking fold parameter
-    if fold is not None and not (type(fold) is int or hasattr(fold, "split")):
+    if fold is not None and not (
+        type(fold) is int or (not isinstance(fold, str) and hasattr(fold, "split"))
+    ):
         raise TypeError(
             "fold parameter must be either None, an integer or a scikit-learn compatible CV generator object."
         )
@@ -4028,7 +4130,13 @@ def blend_models(
 
     logger.info("SubProcess create_model() called ==================================")
     model, model_fit_time = create_model(
-        estimator=model, system=False, display=display, fold=fold, round=round,
+        estimator=model,
+        system=False,
+        display=display,
+        fold=fold,
+        round=round,
+        fit_params=fit_params,
+        groups=groups,
     )
     model_results = pull()
     logger.info("SubProcess create_model() end ==================================")
@@ -4070,6 +4178,8 @@ def blend_models(
             compare_dimension,
             fold,
             model_results=model_results,
+            groups=groups,
+            fit_params=fit_params,
             display=display,
         )
 
@@ -4099,6 +4209,8 @@ def stack_models(
     restack: bool = True,
     choose_better: bool = False,
     optimize: str = "Accuracy",
+    fit_params: Optional[dict] = {},
+    groups=None,
     verbose: bool = True,
     display: Optional[Display] = None,
 ) -> Any:
@@ -4140,7 +4252,7 @@ def stack_models(
 
     fold: integer or scikit-learn compatible CV generator, default = None
         Controls cross-validation. If None, will use the CV generator defined in setup().
-        If integer, will use StratifiedKFold CV with that many folds.
+        If integer, will use KFold CV with that many folds.
 
     round: integer, default = 4
         Number of decimal places the metrics in the score grid will be rounded to.
@@ -4167,7 +4279,13 @@ def stack_models(
         to compare emsembled model with base estimator. Values accepted in 
         optimize parameter are 'Accuracy', 'AUC', 'Recall', 'Precision', 'F1', 
         'Kappa', 'MCC'.
-    
+    fit_params: dict, default = {} (empty dict)
+        Dictionary of parameters passed to the fit method of the model.
+
+    groups: array-like, with shape (n_samples,)
+        Optional Group labels for the samples used while splitting the dataset into train/test set.
+        Only used if a group based cross-validation generator is used (eg. GroupKFold).
+
     verbose: bool, default = True
         Score grid is not printed when verbose is set to False.
 
@@ -4214,7 +4332,9 @@ def stack_models(
             )
 
     # checking fold parameter
-    if fold is not None and not (type(fold) is int or hasattr(fold, "split")):
+    if fold is not None and not (
+        type(fold) is int or (not isinstance(fold, str) and hasattr(fold, "split"))
+    ):
         raise TypeError(
             "fold parameter must be either None, an integer or a scikit-learn compatible CV generator object."
         )
@@ -4342,7 +4462,13 @@ def stack_models(
 
     logger.info("SubProcess create_model() called ==================================")
     model, model_fit_time = create_model(
-        estimator=model, system=False, display=display, fold=fold, round=round,
+        estimator=model,
+        system=False,
+        display=display,
+        fold=fold,
+        round=round,
+        fit_params=fit_params,
+        groups=groups,
     )
     model_results = pull()
     logger.info("SubProcess create_model() end ==================================")
@@ -4384,6 +4510,8 @@ def stack_models(
             compare_dimension,
             fold,
             model_results=model_results,
+            groups=groups,
+            fit_params=fit_params,
             display=display,
         )
 
@@ -4410,6 +4538,8 @@ def plot_model(
     scale: float = 1,  # added in pycaret==2.1.0
     save: bool = False,
     fold: Optional[Union[int, Any]] = None,
+    fit_params: Optional[dict] = {},
+    groups=None,
     verbose: bool = True,
     system: bool = True,
     display: Optional[Display] = None,  # added in pycaret==2.2.0
@@ -4466,7 +4596,14 @@ def plot_model(
 
     fold: integer or scikit-learn compatible CV generator, default = None
         Controls cross-validation used in certain plots. If None, will use the CV generator
-        defined in setup(). If integer, will use StratifiedKFold CV with that many folds.
+        defined in setup(). If integer, will use KFold CV with that many folds.
+
+    fit_params: dict, default = {} (empty dict)
+        Dictionary of parameters passed to the fit method of the model.
+
+    groups: array-like, with shape (n_samples,)
+        Optional Group labels for the samples used while splitting the dataset into train/test set.
+        Only used if a group based cross-validation generator is used (eg. GroupKFold).
 
     verbose: bool, default = True
         Progress bar not shown when verbose set to False. 
@@ -4583,7 +4720,9 @@ def plot_model(
         )
 
     # checking fold parameter
-    if fold is not None and not (type(fold) is int or hasattr(fold, "split")):
+    if fold is not None and not (
+        type(fold) is int or (not isinstance(fold, str) and hasattr(fold, "split"))
+    ):
         raise TypeError(
             "fold parameter must be either None, an integer or a scikit-learn compatible CV generator object."
         )
@@ -4639,6 +4778,7 @@ def plot_model(
     plot_name = available_plots[plot]
     display.move_progress()
 
+    model_name = _get_model_name(model)
     model = _make_internal_pipeline(model)
 
     _base_dpi = 100
@@ -4676,6 +4816,8 @@ def plot_model(
             name=plot_name,
             scale=scale,
             save=save,
+            fit_params=fit_params,
+            groups=groups,
             system=system,
             display=display,
         )
@@ -4694,6 +4836,8 @@ def plot_model(
             name=plot_name,
             scale=scale,
             save=save,
+            fit_params=fit_params,
+            groups=groups,
             system=system,
             display=display,
         )
@@ -4712,6 +4856,8 @@ def plot_model(
             name=plot_name,
             scale=scale,
             save=save,
+            fit_params=fit_params,
+            groups=groups,
             system=system,
             display=display,
         )
@@ -4732,6 +4878,8 @@ def plot_model(
             name=plot_name,
             scale=scale,
             save=save,
+            fit_params=fit_params,
+            groups=groups,
             system=system,
             display=display,
         )
@@ -4750,6 +4898,8 @@ def plot_model(
             name=plot_name,
             scale=scale,
             save=save,
+            fit_params=fit_params,
+            groups=groups,
             system=system,
             display=display,
         )
@@ -4768,6 +4918,8 @@ def plot_model(
             name=plot_name,
             scale=scale,
             save=save,
+            fit_params=fit_params,
+            groups=groups,
             system=system,
             display=display,
         )
@@ -4804,6 +4956,8 @@ def plot_model(
             scale=scale,
             handle_test="draw",
             save=save,
+            fit_params=fit_params,
+            groups=groups,
             system=system,
             display=display,
             features=["Feature One", "Feature Two"],
@@ -4825,6 +4979,8 @@ def plot_model(
             name=plot_name,
             scale=scale,
             save=save,
+            fit_params=fit_params,
+            groups=groups,
             system=system,
             display=display,
         )
@@ -4847,6 +5003,8 @@ def plot_model(
             name=plot_name,
             scale=scale,
             save=save,
+            fit_params=fit_params,
+            groups=groups,
             system=system,
             display=display,
         )
@@ -4918,6 +5076,8 @@ def plot_model(
             name=plot_name,
             scale=scale,
             save=save,
+            fit_params=fit_params,
+            groups=groups,
             system=system,
             display=display,
         )
@@ -4925,8 +5085,6 @@ def plot_model(
     elif plot == "calibration":
 
         from sklearn.calibration import calibration_curve
-
-        model_name = str(model).split("(")[0]
 
         plt.figure(figsize=(7, 6), dpi=_base_dpi * scale)
         ax1 = plt.subplot2grid((3, 1), (0, 0), rowspan=2)
@@ -4965,8 +5123,6 @@ def plot_model(
         logger.info("Visual Rendered Successfully")
 
     elif plot == "vc":
-
-        model_name = str(model).split("(")[0]
 
         logger.info("Determining param_name")
 
@@ -5055,6 +5211,8 @@ def plot_model(
             name=plot_name,
             scale=scale,
             save=save,
+            fit_params=fit_params,
+            groups=groups,
             system=system,
             display=display,
         )
@@ -5091,6 +5249,8 @@ def plot_model(
             name=plot_name,
             scale=scale,
             save=save,
+            fit_params=fit_params,
+            groups=groups,
             system=system,
             display=display,
         )
@@ -5152,7 +5312,12 @@ def plot_model(
     )
 
 
-def evaluate_model(estimator):
+def evaluate_model(
+    estimator,
+    fold: Optional[Union[int, Any]] = None,
+    fit_params: Optional[dict] = {},
+    groups=None,
+):
 
     """
     This function displays a user interface for all of the available plots for 
@@ -5173,6 +5338,17 @@ def evaluate_model(estimator):
     ----------
     estimator : object, default = none
         A trained model object should be passed as an estimator. 
+
+    fold: integer or scikit-learn compatible CV generator, default = None
+        Controls cross-validation. If None, will use the CV generator defined in setup().
+        If integer, will use KFold CV with that many folds.
+
+    fit_params: dict, default = {} (empty dict)
+        Dictionary of parameters passed to the fit method of the model.
+
+    groups: array-like, with shape (n_samples,)
+        Optional Group labels for the samples used while splitting the dataset into train/test set.
+        Only used if a group based cross-validation generator is used (eg. GroupKFold).
 
     Returns
     -------
@@ -5217,7 +5393,9 @@ def evaluate_model(estimator):
         save=fixed(False),
         verbose=fixed(True),
         scale=fixed(1),
-        fold=fixed(None),
+        fold=fixed(fold),
+        fit_params=fixed(fit_params),
+        groups=fixed(groups),
         system=fixed(True),
         display=fixed(None),
     )
@@ -5472,6 +5650,8 @@ def calibrate_model(
     method: str = "sigmoid",
     fold: Optional[Union[int, Any]] = None,
     round: int = 4,
+    fit_params: Optional[dict] = {},
+    groups=None,
     verbose: bool = True,
     display: Optional[Display] = None,  # added in pycaret==2.2.0
 ) -> Any:
@@ -5508,10 +5688,17 @@ def calibrate_model(
 
     fold: integer or scikit-learn compatible CV generator, default = None
         Controls cross-validation. If None, will use the CV generator defined in setup().
-        If integer, will use StratifiedKFold CV with that many folds.
+        If integer, will use KFold CV with that many folds.
 
     round: integer, default = 4
         Number of decimal places the metrics in the score grid will be rounded to. 
+
+    fit_params: dict, default = {} (empty dict)
+        Dictionary of parameters passed to the fit method of the model.
+
+    groups: array-like, with shape (n_samples,)
+        Optional Group labels for the samples used while splitting the dataset into train/test set.
+        Only used if a group based cross-validation generator is used (eg. GroupKFold).
 
     verbose: bool, default = True
         Score grid is not printed when verbose is set to False.
@@ -5550,7 +5737,9 @@ def calibrate_model(
     runtime_start = time.time()
 
     # checking fold parameter
-    if fold is not None and not (type(fold) is int or hasattr(fold, "split")):
+    if fold is not None and not (
+        type(fold) is int or (not isinstance(fold, str) and hasattr(fold, "split"))
+    ):
         raise TypeError(
             "fold parameter must be either None, an integer or a scikit-learn compatible CV generator object."
         )
@@ -5627,7 +5816,13 @@ def calibrate_model(
 
     logger.info("SubProcess create_model() called ==================================")
     model, model_fit_time = create_model(
-        estimator=model, system=False, display=display, fold=fold, round=round,
+        estimator=model,
+        system=False,
+        display=display,
+        fold=fold,
+        round=round,
+        fit_params=fit_params,
+        groups=groups,
     )
     model_results = pull()
     logger.info("SubProcess create_model() end ==================================")
@@ -6122,7 +6317,9 @@ def predict_model(
     return X_test_
 
 
-def finalize_model(estimator, display=None) -> Any:  # added in pycaret==2.2.0
+def finalize_model(
+    estimator, fit_params: Optional[dict] = {}, groups=None, display=None
+) -> Any:  # added in pycaret==2.2.0
 
     """
     This function fits the estimator onto the complete dataset passed during the
@@ -6143,6 +6340,13 @@ def finalize_model(estimator, display=None) -> Any:  # added in pycaret==2.2.0
     ----------
     estimator : object, default = none
         A trained model object should be passed as an estimator. 
+
+    fit_params: dict, default = {} (empty dict)
+        Dictionary of parameters passed to the fit method of the model.
+
+    groups: array-like, with shape (n_samples,)
+        Optional Group labels for the samples used while splitting the dataset into train/test set.
+        Only used if a group based cross-validation generator is used (eg. GroupKFold).
 
     Returns
     -------
@@ -6183,6 +6387,8 @@ def finalize_model(estimator, display=None) -> Any:  # added in pycaret==2.2.0
         system=False,
         X_train_data=X,
         y_train_data=y,
+        fit_params=fit_params,
+        groups=groups,
     )
     model_results = pull(pop=True)
 
@@ -6875,7 +7081,7 @@ def get_config(variable: str):
     - y_test: Transformed test/holdout dataset (y)
     - seed: random state set through session_id
     - prep_pipe: Transformation pipeline configured through setup
-    - folds_shuffle_param: shuffle parameter used in Kfolds
+    - fold_shuffle_param: shuffle parameter used in Kfolds
     - n_jobs_param: n_jobs parameter used in model training
     - html_param: html_param configured through setup
     - create_model_container: results grid storage container
@@ -6922,7 +7128,7 @@ def set_config(variable: str, value):
     - y_test: Transformed test/holdout dataset (y)
     - seed: random state set through session_id
     - prep_pipe: Transformation pipeline configured through setup
-    - folds_shuffle_param: shuffle parameter used in Kfolds
+    - fold_shuffle_param: shuffle parameter used in Kfolds
     - n_jobs_param: n_jobs parameter used in model training
     - html_param: html_param configured through setup
     - create_model_container: results grid storage container
@@ -6964,6 +7170,8 @@ def _choose_better(
     fold: int,
     model_results=None,
     new_results_list: Optional[list] = None,
+    fit_params: Optional[dict] = {},
+    groups=None,
     display: Optional[Display] = None,
 ):
     """
@@ -6990,7 +7198,14 @@ def _choose_better(
         logger.info(
             "SubProcess create_model() called =================================="
         )
-        create_model(model, verbose=False, system=False, fold=fold)
+        create_model(
+            model,
+            verbose=False,
+            system=False,
+            fold=fold,
+            fit_params=fit_params,
+            groups=groups,
+        )
         logger.info("SubProcess create_model() end ==================================")
         model_results = pull(pop=True)
 
@@ -7010,7 +7225,14 @@ def _choose_better(
             logger.info(
                 "SubProcess create_model() called =================================="
             )
-            m, _ = create_model(new_estimator, verbose=False, system=False, fold=fold)
+            m, _ = create_model(
+                new_estimator,
+                verbose=False,
+                system=False,
+                fold=fold,
+                fit_params=fit_params,
+                groups=groups,
+            )
             logger.info(
                 "SubProcess create_model() end =================================="
             )
@@ -7485,8 +7707,8 @@ def _get_cv_splitter(fold):
         fold,
         default=fold_generator,
         seed=seed,
-        shuffle=folds_shuffle_param,
-        int_default="stratifiedkfold",
+        shuffle=fold_shuffle_param,
+        int_default="kfold",
     )
 
 
