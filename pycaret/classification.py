@@ -1805,7 +1805,7 @@ def compare_models(
     fold: Optional[Union[int, Any]] = None,
     round: int = 4,
     sort: str = "Accuracy",
-    budget_time: float = None,  # added in pycaret==2.1.0
+    budget_time: Optional[float] = None,  # added in pycaret==2.1.0
     turbo: bool = True,
     verbose: bool = True,
     display: Optional[Display] = None,
@@ -1961,7 +1961,7 @@ def compare_models(
         raise TypeError("Round parameter only accepts integer value.")
 
     # checking budget_time parameter
-    if type(budget_time) is not int and type(budget_time) is not float:
+    if budget_time and type(budget_time) is not int and type(budget_time) is not float:
         raise TypeError("budget_time parameter only accepts integer or float values.")
 
     # checking sort parameter
@@ -2249,7 +2249,7 @@ def create_model(
     fold: Optional[Union[int, Any]] = None,
     round: int = 4,
     cross_validation: bool = True,
-    budget_time: float = None,
+    budget_time: Optional[float] = None,
     verbose: bool = True,
     system: bool = True,
     X_train_data: Optional[pd.DataFrame] = None,  # added in pycaret==2.2.0
@@ -2397,7 +2397,7 @@ def create_model(
         raise TypeError("Round parameter only accepts integer value.")
 
     # checking budget_time parameter
-    if type(budget_time) is not int and type(budget_time) is not float:
+    if budget_time and type(budget_time) is not int and type(budget_time) is not float:
         raise TypeError("budget_time parameter only accepts integer or float values.")
 
     # checking verbose parameter
