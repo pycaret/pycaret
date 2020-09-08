@@ -2,7 +2,7 @@
 # Author: Moez Ali <moez.ali@queensu.ca> and Antoni Baum (Yard1) <antoni.baum@protonmail.com>
 # License: MIT
 
-from typing import Optional
+from typing import Any, Optional
 from pycaret.internal.logging import get_logger
 from pycaret.internal.Display import Display
 
@@ -18,6 +18,8 @@ def show_yellowbrick_plot(
     handle_test: str = "score",
     scale: float = 1,
     save: bool = False,
+    fit_params: Optional[dict] = {},
+    groups: Optional[Any] = None,
     system: bool = True,
     display: Optional[Display] = None,
     **kwargs,
@@ -28,15 +30,19 @@ def show_yellowbrick_plot(
     logger = get_logger()
     visualizer.fig.set_dpi(visualizer.fig.dpi * scale)
 
+    fit_params_and_kwargs = {**fit_params, **kwargs}
+
     if handle_train == "draw":
         logger.info("Drawing Model")
         visualizer.draw(X_train, y_train, **kwargs)
     elif handle_train == "fit":
         logger.info("Fitting Model")
-        visualizer.fit(X_train, y_train, **kwargs)
+        visualizer.fit(X_train, y_train, groups=groups, **fit_params_and_kwargs)
     elif handle_train == "fit_transform":
         logger.info("Fitting & Transforming Model")
-        visualizer.fit_transform(X_train, y_train, **kwargs)
+        visualizer.fit_transform(
+            X_train, y_train, groups=groups, **fit_params_and_kwargs
+        )
     elif handle_train == "score":
         logger.info("Scoring train set")
         visualizer.score(X_train, y_train, **kwargs)
@@ -46,9 +52,9 @@ def show_yellowbrick_plot(
     if handle_test == "draw":
         visualizer.draw(X_test, y_test)
     elif handle_test == "fit":
-        visualizer.fit(X_test, y_test)
+        visualizer.fit(X_test, y_test, groups=groups, **fit_params)
     elif handle_test == "fit_transform":
-        visualizer.fit_transform(X_test, y_test)
+        visualizer.fit_transform(X_test, y_test, groups=groups, **fit_params)
     elif handle_test == "score":
         logger.info("Scoring test/hold-out set")
         visualizer.score(X_test, y_test)

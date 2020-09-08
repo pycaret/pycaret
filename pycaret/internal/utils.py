@@ -225,7 +225,7 @@ def _check_custom_transformer(transformer):
 
 
 def get_cv_splitter(
-    fold: Optional[Union[int, Any]],
+    fold: Optional[Union[int, BaseCrossValidator]],
     default: BaseCrossValidator,
     seed: int,
     shuffle: bool,
@@ -233,7 +233,7 @@ def get_cv_splitter(
 ) -> BaseCrossValidator:
     if not fold:
         return default
-    if hasattr(fold, "splits"):
+    if not isinstance(fold, str) and hasattr(fold, "split"):
         return fold
     if type(fold) is int:
         if int_default == "kfold":
@@ -244,9 +244,12 @@ def get_cv_splitter(
             raise ValueError(
                 "Wrong value for int_default param. Needs to be either 'kfold' or 'stratifiedkfold'."
             )
+    raise TypeError(f"{fold} is of type {type(fold)} while it needs to be either a CV generator or int.")
 
 
-def get_cv_n_folds(fold: Optional[Union[int, Any]], default_folds: int) -> int:
+def get_cv_n_folds(
+    fold: Optional[Union[int, BaseCrossValidator]], default_folds: int
+) -> int:
     if not fold:
         return default_folds
     if isinstance(fold, int):
