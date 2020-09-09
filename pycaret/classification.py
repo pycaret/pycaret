@@ -40,6 +40,7 @@ def setup(
     target: str,
     train_size: float = 0.7,
     test_data: Optional[pd.DataFrame] = None,
+    preprocess: bool = True,
     sampling: bool = False,
     sample_estimator: Optional[Any] = None,
     categorical_features: Optional[List[str]] = None,
@@ -131,8 +132,8 @@ def setup(
         n_features is the number of features.
 
     target: str
-        Name of the target column to be passed in as a string. The target variable could 
-        be binary or multiclass.
+        Name of the target column to be passed in as a string. The target variable can 
+        be either binary or multiclass.
 
     train_size: float, default = 0.7
         Size of the training set. By default, 70% of the data will be used for training 
@@ -141,6 +142,11 @@ def setup(
     test_data: pandas.DataFrame, default = None
         When a dataframe is passed to this parameter it will be used as the test set, instead
         of using a portion of the data to create one.
+
+    preprocess: bool, default = True
+        If False, will not do any preprocessing on the data aside from mandatory steps, and
+        ignore all other parameters related to preprocessing (including 'ordinal_features' and 
+        'high_cardinality_features' params), aside from 'custom_pipeline'.
 
     sampling: bool, default = False
         When the sample size exceeds 25,000 samples, pycaret will build a base estimator
@@ -1253,11 +1259,11 @@ def setup(
     logger.info("Importing preprocessing module")
 
     # import library
-    import pycaret.preprocess as preprocess
+    import pycaret.preprocess
 
     logger.info("Creating preprocessing pipeline")
 
-    prep_pipe = preprocess.Preprocess_Path_One(
+    prep_pipe = pycaret.preprocess.Preprocess_Path_One(
         train_data=data,
         target_variable=target,
         categorical_features=cat_features_pass,
@@ -1329,6 +1335,9 @@ def setup(
         logger.error(
             "(Process Exit): setup has been interupted with user command 'quit'. setup must rerun."
         )
+
+    if not preprocess:
+        prep_pipe.steps = prep_pipe.steps[:1]
 
     """
     preprocessing ends here
@@ -1411,28 +1420,27 @@ def setup(
     else:
         log_plots_param = False
 
-    # create a fix_imbalance_param and fix_imbalance_method_param
-    fix_imbalance_param = fix_imbalance
-    fix_imbalance_method_param = fix_imbalance_method
-
-    if fix_imbalance_method_param is None:
-        fix_imbalance_model_name = "SMOTE"
-        import six
-
-        sys.modules["sklearn.externals.six"] = six
-        from imblearn.over_sampling import SMOTE
-
-        fix_imbalance_resampler = SMOTE(random_state=seed)
-    else:
-        fix_imbalance_model_name = str(fix_imbalance_method_param).split("(")[0]
-        fix_imbalance_resampler = fix_imbalance_method_param
-
     # add custom transformers to prep pipe
     if custom_pipeline:
         custom_steps = normalize_custom_transformers(custom_pipeline)
         _internal_pipeline_steps.extend(custom_steps)
 
+    # create a fix_imbalance_param and fix_imbalance_method_param
+    fix_imbalance_param = fix_imbalance and preprocess
+    fix_imbalance_method_param = fix_imbalance_method
+
     if fix_imbalance_param:
+        if fix_imbalance_method_param is None:
+            fix_imbalance_model_name = "SMOTE"
+            import six
+
+            sys.modules["sklearn.externals.six"] = six
+            from imblearn.over_sampling import SMOTE
+
+            fix_imbalance_resampler = SMOTE(random_state=seed)
+        else:
+            fix_imbalance_model_name = str(fix_imbalance_method_param).split("(")[0]
+            fix_imbalance_resampler = fix_imbalance_method_param
         _internal_pipeline_steps.append(("fix_imbalance", fix_imbalance_resampler))
 
     logger.info(f"Internal pipeline: {_internal_pipeline_steps}")
@@ -1616,47 +1624,63 @@ def setup(
             ["Missing Values ", missing_flag],
             ["Numeric Features ", str(float_type)],
             ["Categorical Features ", str(cat_type)],
-            ["Ordinal Features ", ordinal_features_grid],
-            ["High Cardinality Features ", high_cardinality_features_grid],
-            ["High Cardinality Method ", high_cardinality_method_grid],
+        ]
+        + (
+            [
+                ["Ordinal Features ", ordinal_features_grid],
+                ["High Cardinality Features ", high_cardinality_features_grid],
+                ["High Cardinality Method ", high_cardinality_method_grid],
+            ]
+            if preprocess
+            else []
+        )
+        + [
             [
                 "Sampled Data ",
                 f"({X_train.shape[0] + X_test.shape[0]}, {data_before_preprocess.shape[1]})",
             ],
             ["Transformed Train Set ", X_train.shape],
             ["Transformed Test Set ", X_test.shape],
-            ["Numeric Imputer ", numeric_imputation],
-            ["Categorical Imputer ", categorical_imputation],
-            ["Unknown Categoricals Handling ", unknown_categorical_method_grid],
-            ["Normalize ", normalize],
-            ["Normalize Method ", normalize_grid],
-            ["Transformation ", transformation],
-            ["Transformation Method ", transformation_grid],
-            ["PCA ", pca],
-            ["PCA Method ", pca_method_grid],
-            ["PCA Components ", pca_components_grid],
-            ["Ignore Low Variance ", ignore_low_variance],
-            ["Combine Rare Levels ", combine_rare_levels],
-            ["Rare Level Threshold ", rare_level_threshold_grid],
-            ["Numeric Binning ", numeric_bin_grid],
-            ["Remove Outliers ", remove_outliers],
-            ["Outliers Threshold ", outliers_threshold_grid],
-            ["Remove Multicollinearity ", remove_multicollinearity],
-            ["Multicollinearity Threshold ", multicollinearity_threshold_grid],
-            ["Clustering ", create_clusters],
-            ["Clustering Iteration ", cluster_iter_grid],
-            ["Polynomial Features ", polynomial_features],
-            ["Polynomial Degree ", polynomial_degree_grid],
-            ["Trignometry Features ", trigonometry_features],
-            ["Polynomial Threshold ", polynomial_threshold_grid],
-            ["Group Features ", group_features_grid],
-            ["Feature Selection ", feature_selection],
-            ["Features Selection Threshold ", feature_selection_threshold_grid],
-            ["Feature Interaction ", feature_interaction],
-            ["Feature Ratio ", feature_ratio],
-            ["Interaction Threshold ", interaction_threshold_grid],
-            ["Fix Imbalance ", fix_imbalance_param],
-            ["Fix Imbalance Method ", fix_imbalance_model_name],
+        ]
+        + (
+            [
+                ["Numeric Imputer ", numeric_imputation],
+                ["Categorical Imputer ", categorical_imputation],
+                ["Unknown Categoricals Handling ", unknown_categorical_method_grid],
+                ["Normalize ", normalize],
+                ["Normalize Method ", normalize_grid],
+                ["Transformation ", transformation],
+                ["Transformation Method ", transformation_grid],
+                ["PCA ", pca],
+                ["PCA Method ", pca_method_grid],
+                ["PCA Components ", pca_components_grid],
+                ["Ignore Low Variance ", ignore_low_variance],
+                ["Combine Rare Levels ", combine_rare_levels],
+                ["Rare Level Threshold ", rare_level_threshold_grid],
+                ["Numeric Binning ", numeric_bin_grid],
+                ["Remove Outliers ", remove_outliers],
+                ["Outliers Threshold ", outliers_threshold_grid],
+                ["Remove Multicollinearity ", remove_multicollinearity],
+                ["Multicollinearity Threshold ", multicollinearity_threshold_grid],
+                ["Clustering ", create_clusters],
+                ["Clustering Iteration ", cluster_iter_grid],
+                ["Polynomial Features ", polynomial_features],
+                ["Polynomial Degree ", polynomial_degree_grid],
+                ["Trignometry Features ", trigonometry_features],
+                ["Polynomial Threshold ", polynomial_threshold_grid],
+                ["Group Features ", group_features_grid],
+                ["Feature Selection ", feature_selection],
+                ["Features Selection Threshold ", feature_selection_threshold_grid],
+                ["Feature Interaction ", feature_interaction],
+                ["Feature Ratio ", feature_ratio],
+                ["Interaction Threshold ", interaction_threshold_grid],
+                ["Fix Imbalance ", fix_imbalance_param],
+                ["Fix Imbalance Method ", fix_imbalance_model_name],
+            ]
+            if preprocess
+            else []
+        )
+        + [
             ["CV Generator ", type(fold_generator).__name__],
             ["CV Folds ", fold_param],
         ],
