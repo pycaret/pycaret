@@ -1094,6 +1094,7 @@ class LGBMClassifierContainer(ClassifierContainer):
             tune_distribution=tune_distributions,
             tune_args=tune_args,
             shap="type1",
+            is_gpu_enabled=False
         )
 
 

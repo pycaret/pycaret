@@ -9,6 +9,9 @@ class Distrubution:
     def __init__(self):
         raise NotImplementedError("This is an abstract class.")
 
+    def get_skopt(self):
+        raise NotImplementedError("This is an abstract class.")
+
     def get_optuna(self):
         raise NotImplementedError("This is an abstract class.")
 
@@ -24,6 +27,14 @@ class UniformDistribution(Distrubution):
         self.lower = lower
         self.upper = upper
         self.log = log
+
+    def get_skopt(self):
+        import skopt.space
+
+        if self.log:
+            return skopt.space.Real(self.lower, self.upper, prior="log-uniform")
+        else:
+            return skopt.space.Real(self.lower, self.upper, prior="uniform")
 
     def get_optuna(self):
         import optuna
@@ -57,6 +68,14 @@ class IntUniformDistribution(Distrubution):
         self.lower = lower
         self.upper = upper
         self.log = log
+
+    def get_skopt(self):
+        import skopt.space
+
+        if self.log:
+            return skopt.space.Integer(self.lower, self.upper, prior="log-uniform")
+        else:
+            return skopt.space.Integer(self.lower, self.upper, prior="uniform")
 
     def get_optuna(self):
         import optuna
@@ -94,6 +113,12 @@ class DiscreteUniformDistribution(Distrubution):
         self.upper = upper
         self.q = q
 
+    def get_skopt(self):
+        import skopt.space
+
+        # not supported, return standard uniform distribution
+        return skopt.space.Real(self.lower, self.upper, prior="uniform")
+
     def get_optuna(self):
         import optuna
 
@@ -121,6 +146,11 @@ class CategoricalDistribution(Distrubution):
     def __init__(self, values):
         self.values = values
 
+    def get_skopt(self):
+        import skopt.space
+
+        return skopt.space.Categorical(self.values)
+
     def get_optuna(self):
         import optuna
 
@@ -138,6 +168,10 @@ class CategoricalDistribution(Distrubution):
 
     def __repl__(self):
         return f"CategoricalDistribution(values={self.values})"
+
+
+def get_skopt_distributions(distributions: Dict[str, Distrubution]) -> dict:
+    return {k: v.get_skopt() for k, v in distributions.items()}
 
 
 def get_optuna_distributions(distributions: Dict[str, Distrubution]) -> dict:
