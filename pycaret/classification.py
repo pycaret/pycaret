@@ -733,10 +733,14 @@ def setup(
             type(data_split_stratify) is not list
             and type(data_split_stratify) is not bool
         ):
-            raise TypeError("data_split_stratify param only accepts a bool or a list of strings.")
+            raise TypeError(
+                "data_split_stratify param only accepts a bool or a list of strings."
+            )
 
         if not data_split_shuffle:
-            raise TypeError("data_split_stratify param requires data_split_shuffle to be set to True.")
+            raise TypeError(
+                "data_split_stratify param requires data_split_shuffle to be set to True."
+            )
 
     # high_cardinality_methods
     high_cardinality_allowed_methods = ["frequency", "clustering"]
@@ -2550,6 +2554,7 @@ def create_model(
     display.move_progress()
 
     model = _make_internal_pipeline(model)
+    fit_params = _get_pipeline_fit_params(model, fit_params)
 
     """
     MONITOR UPDATE STARTS
@@ -3212,6 +3217,7 @@ def tune_model(
         suffixes.append("final_estimator")
 
     model = _make_internal_pipeline(model)
+    fit_params = _get_pipeline_fit_params(model, fit_params)
 
     suffixes.append("actual_estimator")
 
@@ -7716,3 +7722,16 @@ def _get_cv_n_folds(fold):
     import pycaret.internal.utils
 
     return pycaret.internal.utils.get_cv_n_folds(fold, default_folds=fold_param)
+
+
+def _get_pipeline_fit_params(pipeline, fit_params: dict) -> dict:
+    try:
+        model_step = pipeline.steps[-1]
+    except:
+        return fit_params
+
+    if any(model_step[0] in k for k in fit_params.keys()):
+        return fit_params
+
+    return {f"{model_step[0]}__{k}": v for k, v in fit_params.items()}
+
