@@ -1429,9 +1429,11 @@ def setup(
     fix_imbalance_param = fix_imbalance and preprocess
     fix_imbalance_method_param = fix_imbalance_method
 
+    if fix_imbalance_method_param is None:
+        fix_imbalance_model_name = "SMOTE"
+
     if fix_imbalance_param:
         if fix_imbalance_method_param is None:
-            fix_imbalance_model_name = "SMOTE"
             import six
 
             sys.modules["sklearn.externals.six"] = six
