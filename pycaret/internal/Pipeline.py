@@ -2,8 +2,8 @@ import imblearn.pipeline
 
 
 class Pipeline(imblearn.pipeline.Pipeline):
-    def fit(self, X, y=None, **fit_params):
-        result = super().fit(X, y=y, **fit_params)
+    def fit(self, X, y=None, **fit_kwargs):
+        result = super().fit(X, y=y, **fit_kwargs)
 
         try:
             self.coef_ = self.steps[-1][-1].coef_

@@ -40,6 +40,9 @@ def get_config(variable: str, globals_d: dict):
     logger.info("Initializing get_config()")
     logger.info(f"get_config({function_params_str})")
 
+    if not variable in globals_d["pycaret_globals"]:
+        raise ValueError(f"Variable {variable} not found.")
+
     global_var = globals_d[variable]
 
     logger.info(f"Global variable: {variable} returned as {global_var}")
@@ -72,11 +75,91 @@ def set_config(variable: str, value, globals_d: dict):
     logger.info("Initializing set_config()")
     logger.info(f"set_config({function_params_str})")
 
+    if not variable in globals_d["pycaret_globals"] or variable == "pycaret_globals":
+        raise ValueError(f"Variable {variable} not found.")
+
     globals_d[variable] = value
 
     logger.info(f"Global variable: {variable} updated to {value}")
     logger.info(
         "set_config() succesfully completed......................................"
+    )
+
+
+def save_config(file_name: str, globals_d: dict):
+    """
+    This function is used to save all enviroment variables to file,
+    allowing to later resume modeling without rerunning setup().
+
+    Example
+    -------
+    >>> save_config('myvars.pkl') 
+
+    This will save all enviroment variables to 'myvars.pkl'.
+
+    """
+
+    function_params_str = ", ".join(
+        [f"{k}={v}" for k, v in locals().items() if not k == "globals_d"]
+    )
+
+    logger = get_logger()
+
+    logger.info("Initializing save_config()")
+    logger.info(f"save_config({function_params_str})")
+
+    globals_to_dump = {
+        k: v for k, v in globals_d.items() if k in globals_d["pycaret_globals"]
+    }
+
+    import joblib
+
+    joblib.dump(globals_to_dump, file_name)
+
+    logger.info(f"Global variables dumped to {file_name}")
+    logger.info(
+        "save_config() succesfully completed......................................"
+    )
+
+
+def load_config(file_name: str, globals_d: dict):
+    """
+    This function is used to load enviroment variables from file created with save_config(),
+    allowing to later resume modeling without rerunning setup().
+
+
+    Example
+    -------
+    >>> load_config('myvars.pkl') 
+
+    This will load all enviroment variables from 'myvars.pkl'.
+
+    """
+
+    function_params_str = ", ".join(
+        [f"{k}={v}" for k, v in locals().items() if not k == "globals_d"]
+    )
+
+    logger = get_logger()
+
+    logger.info("Initializing load_config()")
+    logger.info(f"load_config({function_params_str})")
+
+    import joblib
+
+    loaded_globals = joblib.load(file_name)
+
+    logger.info(f"Global variables loaded from {file_name}")
+
+    for k, v in loaded_globals.items():
+        globals_d[k] = v
+
+    globals_d['logger'] = get_logger()
+
+    logger.info(f"Global variables set to match those in {file_name}")
+
+    logger.info(
+        "load_config() succesfully completed......................................"
     )
 
 
@@ -244,7 +327,9 @@ def get_cv_splitter(
             raise ValueError(
                 "Wrong value for int_default param. Needs to be either 'kfold' or 'stratifiedkfold'."
             )
-    raise TypeError(f"{fold} is of type {type(fold)} while it needs to be either a CV generator or int.")
+    raise TypeError(
+        f"{fold} is of type {type(fold)} while it needs to be either a CV generator or int."
+    )
 
 
 def get_cv_n_folds(

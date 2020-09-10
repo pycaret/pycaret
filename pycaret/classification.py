@@ -40,6 +40,7 @@ def setup(
     target: str,
     train_size: float = 0.7,
     test_data: Optional[pd.DataFrame] = None,
+    preprocess: bool = True,
     sampling: bool = False,
     sample_estimator: Optional[Any] = None,
     categorical_features: Optional[List[str]] = None,
@@ -131,8 +132,8 @@ def setup(
         n_features is the number of features.
 
     target: str
-        Name of the target column to be passed in as a string. The target variable could 
-        be binary or multiclass.
+        Name of the target column to be passed in as a string. The target variable can 
+        be either binary or multiclass.
 
     train_size: float, default = 0.7
         Size of the training set. By default, 70% of the data will be used for training 
@@ -141,6 +142,11 @@ def setup(
     test_data: pandas.DataFrame, default = None
         When a dataframe is passed to this parameter it will be used as the test set, instead
         of using a portion of the data to create one.
+
+    preprocess: bool, default = True
+        If False, will not do any preprocessing on the data aside from mandatory steps, and
+        ignore all other parameters related to preprocessing (including 'ordinal_features' and 
+        'high_cardinality_features' params), aside from 'custom_pipeline'.
 
     sampling: bool, default = False
         When the sample size exceeds 25,000 samples, pycaret will build a base estimator
@@ -554,13 +560,6 @@ def setup(
     logger.info("Initializing setup()")
     logger.info(f"setup({function_params_str})")
 
-    # generate USI for mlflow tracking
-    import secrets
-
-    global USI
-    USI = secrets.token_hex(nbytes=2)
-    logger.info(f"USI: {USI}")
-
     # logging environment and libraries
     logger.info("Checking environment")
 
@@ -733,10 +732,14 @@ def setup(
             type(data_split_stratify) is not list
             and type(data_split_stratify) is not bool
         ):
-            raise TypeError("data_split_stratify param only accepts a bool or a list of strings.")
+            raise TypeError(
+                "data_split_stratify param only accepts a bool or a list of strings."
+            )
 
         if not data_split_shuffle:
-            raise TypeError("data_split_stratify param requires data_split_shuffle to be set to True.")
+            raise TypeError(
+                "data_split_stratify param requires data_split_shuffle to be set to True."
+            )
 
     # high_cardinality_methods
     high_cardinality_allowed_methods = ["frequency", "clustering"]
@@ -1043,8 +1046,19 @@ def setup(
     pd.set_option("display.max_columns", 500)
     pd.set_option("display.max_rows", 500)
 
-    # global html_param
-    global html_param
+    # so that we can later ignore python built-in globals and such
+    old_globals = set(globals().keys())
+
+    # generate USI for mlflow tracking
+    import secrets
+
+    global USI
+    USI = secrets.token_hex(nbytes=2)
+    logger.info(f"USI: {USI}")
+
+    # declaring global variables to be accessed by other functions
+    logger.info("Declaring global variables")
+    global html_param, X, y, X_train, X_test, y_train, y_test, seed, prep_pipe, experiment__, fold_shuffle_param, n_jobs_param, gpu_n_jobs_param, create_model_container, master_model_container, display_container, exp_name_log, logging_param, log_plots_param, fix_imbalance_param, fix_imbalance_method_param, data_before_preprocess, target_param, gpu_param, all_models, _all_models_internal, all_metrics, _internal_pipeline_steps, stratify_param, fold_generator, fold_param
 
     # create html_param
     html_param = html
@@ -1094,10 +1108,6 @@ def setup(
 
     cf.go_offline()
     cf.set_config_file(offline=False, world_readable=True)
-
-    # declaring global variables to be accessed by other functions
-    logger.info("Declaring global variables")
-    global X, y, X_train, X_test, y_train, y_test, seed, prep_pipe, experiment__, fold_shuffle_param, n_jobs_param, gpu_n_jobs_param, create_model_container, master_model_container, display_container, exp_name_log, logging_param, log_plots_param, fix_imbalance_param, fix_imbalance_method_param, data_before_preprocess, target_param, gpu_param, all_models, _all_models_internal, all_metrics, _internal_pipeline_steps, stratify_param, fold_generator, fold_param
 
     logger.info("Copying data for preprocessing")
 
@@ -1249,11 +1259,11 @@ def setup(
     logger.info("Importing preprocessing module")
 
     # import library
-    import pycaret.preprocess as preprocess
+    import pycaret.preprocess
 
     logger.info("Creating preprocessing pipeline")
 
-    prep_pipe = preprocess.Preprocess_Path_One(
+    prep_pipe = pycaret.preprocess.Preprocess_Path_One(
         train_data=data,
         target_variable=target,
         categorical_features=cat_features_pass,
@@ -1325,6 +1335,9 @@ def setup(
         logger.error(
             "(Process Exit): setup has been interupted with user command 'quit'. setup must rerun."
         )
+
+    if not preprocess:
+        prep_pipe.steps = prep_pipe.steps[:1]
 
     """
     preprocessing ends here
@@ -1407,28 +1420,29 @@ def setup(
     else:
         log_plots_param = False
 
-    # create a fix_imbalance_param and fix_imbalance_method_param
-    fix_imbalance_param = fix_imbalance
-    fix_imbalance_method_param = fix_imbalance_method
-
-    if fix_imbalance_method_param is None:
-        fix_imbalance_model_name = "SMOTE"
-        import six
-
-        sys.modules["sklearn.externals.six"] = six
-        from imblearn.over_sampling import SMOTE
-
-        fix_imbalance_resampler = SMOTE(random_state=seed)
-    else:
-        fix_imbalance_model_name = str(fix_imbalance_method_param).split("(")[0]
-        fix_imbalance_resampler = fix_imbalance_method_param
-
     # add custom transformers to prep pipe
     if custom_pipeline:
         custom_steps = normalize_custom_transformers(custom_pipeline)
         _internal_pipeline_steps.extend(custom_steps)
 
+    # create a fix_imbalance_param and fix_imbalance_method_param
+    fix_imbalance_param = fix_imbalance and preprocess
+    fix_imbalance_method_param = fix_imbalance_method
+
+    if fix_imbalance_method_param is None:
+        fix_imbalance_model_name = "SMOTE"
+
     if fix_imbalance_param:
+        if fix_imbalance_method_param is None:
+            import six
+
+            sys.modules["sklearn.externals.six"] = six
+            from imblearn.over_sampling import SMOTE
+
+            fix_imbalance_resampler = SMOTE(random_state=seed)
+        else:
+            fix_imbalance_model_name = str(fix_imbalance_method_param).split("(")[0]
+            fix_imbalance_resampler = fix_imbalance_method_param
         _internal_pipeline_steps.append(("fix_imbalance", fix_imbalance_resampler))
 
     logger.info(f"Internal pipeline: {_internal_pipeline_steps}")
@@ -1612,47 +1626,63 @@ def setup(
             ["Missing Values ", missing_flag],
             ["Numeric Features ", str(float_type)],
             ["Categorical Features ", str(cat_type)],
-            ["Ordinal Features ", ordinal_features_grid],
-            ["High Cardinality Features ", high_cardinality_features_grid],
-            ["High Cardinality Method ", high_cardinality_method_grid],
+        ]
+        + (
+            [
+                ["Ordinal Features ", ordinal_features_grid],
+                ["High Cardinality Features ", high_cardinality_features_grid],
+                ["High Cardinality Method ", high_cardinality_method_grid],
+            ]
+            if preprocess
+            else []
+        )
+        + [
             [
                 "Sampled Data ",
                 f"({X_train.shape[0] + X_test.shape[0]}, {data_before_preprocess.shape[1]})",
             ],
             ["Transformed Train Set ", X_train.shape],
             ["Transformed Test Set ", X_test.shape],
-            ["Numeric Imputer ", numeric_imputation],
-            ["Categorical Imputer ", categorical_imputation],
-            ["Unknown Categoricals Handling ", unknown_categorical_method_grid],
-            ["Normalize ", normalize],
-            ["Normalize Method ", normalize_grid],
-            ["Transformation ", transformation],
-            ["Transformation Method ", transformation_grid],
-            ["PCA ", pca],
-            ["PCA Method ", pca_method_grid],
-            ["PCA Components ", pca_components_grid],
-            ["Ignore Low Variance ", ignore_low_variance],
-            ["Combine Rare Levels ", combine_rare_levels],
-            ["Rare Level Threshold ", rare_level_threshold_grid],
-            ["Numeric Binning ", numeric_bin_grid],
-            ["Remove Outliers ", remove_outliers],
-            ["Outliers Threshold ", outliers_threshold_grid],
-            ["Remove Multicollinearity ", remove_multicollinearity],
-            ["Multicollinearity Threshold ", multicollinearity_threshold_grid],
-            ["Clustering ", create_clusters],
-            ["Clustering Iteration ", cluster_iter_grid],
-            ["Polynomial Features ", polynomial_features],
-            ["Polynomial Degree ", polynomial_degree_grid],
-            ["Trignometry Features ", trigonometry_features],
-            ["Polynomial Threshold ", polynomial_threshold_grid],
-            ["Group Features ", group_features_grid],
-            ["Feature Selection ", feature_selection],
-            ["Features Selection Threshold ", feature_selection_threshold_grid],
-            ["Feature Interaction ", feature_interaction],
-            ["Feature Ratio ", feature_ratio],
-            ["Interaction Threshold ", interaction_threshold_grid],
-            ["Fix Imbalance ", fix_imbalance_param],
-            ["Fix Imbalance Method ", fix_imbalance_model_name],
+        ]
+        + (
+            [
+                ["Numeric Imputer ", numeric_imputation],
+                ["Categorical Imputer ", categorical_imputation],
+                ["Unknown Categoricals Handling ", unknown_categorical_method_grid],
+                ["Normalize ", normalize],
+                ["Normalize Method ", normalize_grid],
+                ["Transformation ", transformation],
+                ["Transformation Method ", transformation_grid],
+                ["PCA ", pca],
+                ["PCA Method ", pca_method_grid],
+                ["PCA Components ", pca_components_grid],
+                ["Ignore Low Variance ", ignore_low_variance],
+                ["Combine Rare Levels ", combine_rare_levels],
+                ["Rare Level Threshold ", rare_level_threshold_grid],
+                ["Numeric Binning ", numeric_bin_grid],
+                ["Remove Outliers ", remove_outliers],
+                ["Outliers Threshold ", outliers_threshold_grid],
+                ["Remove Multicollinearity ", remove_multicollinearity],
+                ["Multicollinearity Threshold ", multicollinearity_threshold_grid],
+                ["Clustering ", create_clusters],
+                ["Clustering Iteration ", cluster_iter_grid],
+                ["Polynomial Features ", polynomial_features],
+                ["Polynomial Degree ", polynomial_degree_grid],
+                ["Trignometry Features ", trigonometry_features],
+                ["Polynomial Threshold ", polynomial_threshold_grid],
+                ["Group Features ", group_features_grid],
+                ["Feature Selection ", feature_selection],
+                ["Features Selection Threshold ", feature_selection_threshold_grid],
+                ["Feature Interaction ", feature_interaction],
+                ["Feature Ratio ", feature_ratio],
+                ["Interaction Threshold ", interaction_threshold_grid],
+                ["Fix Imbalance ", fix_imbalance_param],
+                ["Fix Imbalance Method ", fix_imbalance_model_name],
+            ]
+            if preprocess
+            else []
+        )
+        + [
             ["CV Generator ", type(fold_generator).__name__],
             ["CV Folds ", fold_param],
         ],
@@ -1769,6 +1799,10 @@ def setup(
                 os.remove("Train.csv")
                 os.remove("Test.csv")
 
+    global pycaret_globals
+    pycaret_globals = None
+    pycaret_globals = set([k for k in globals().keys() if k not in old_globals])
+
     logger.info(f"create_model_container: {len(create_model_container)}")
     logger.info(f"master_model_container: {len(master_model_container)}")
     logger.info(f"display_container: {len(display_container)}")
@@ -1822,7 +1856,7 @@ def compare_models(
     budget_time: Optional[float] = None,  # added in pycaret==2.1.0
     turbo: bool = True,
     errors: str = "ignore",
-    fit_params: Optional[dict] = {},
+    fit_kwargs: Optional[dict] = {},
     groups=None,
     verbose: bool = True,
     display: Optional[Display] = None,
@@ -1904,8 +1938,8 @@ def compare_models(
         If 'ignore', will suppress model exceptions and continue.
         If 'raise', will allow exceptions to be raised.
 
-    fit_params: dict, default = {} (empty dict)
-        Dictionary of parameters passed to the fit method of the model. The parameters will be applied to all models,
+    fit_kwargs: dict, default = {} (empty dict)
+        Dictionary of arguments passed to the fit method of the model. The parameters will be applied to all models,
         therefore it is recommended to set errors parameter to 'ignore'.
 
     groups: array-like, with shape (n_samples,)
@@ -2138,7 +2172,7 @@ def compare_models(
             "SubProcess create_model() called =================================="
         )
         if errors == "raise":
-            model, model_fit_time = create_model(
+            model, model_fit_time = _create_model(
                 estimator=model,
                 system=False,
                 verbose=False,
@@ -2148,13 +2182,13 @@ def compare_models(
                 budget_time=budget_time - total_runtime
                 if budget_time and budget_time > 0
                 else 0,
-                fit_params=fit_params,
+                fit_kwargs=fit_kwargs,
                 groups=groups,
             )
             model_results = pull(pop=True)
         else:
             try:
-                model, model_fit_time = create_model(
+                model, model_fit_time = _create_model(
                     estimator=model,
                     system=False,
                     verbose=False,
@@ -2164,7 +2198,7 @@ def compare_models(
                     budget_time=budget_time - total_runtime
                     if budget_time and budget_time > 0
                     else 0,
-                    fit_params=fit_params,
+                    fit_kwargs=fit_kwargs,
                     groups=groups,
                 )
                 model_results = pull(pop=True)
@@ -2295,8 +2329,125 @@ def create_model(
     fold: Optional[Union[int, Any]] = None,
     round: int = 4,
     cross_validation: bool = True,
+    fit_kwargs: Optional[dict] = {},
+    groups=None,
+    verbose: bool = True,
+    display: Optional[Display] = None,  # added in pycaret==2.2.0
+    **kwargs,
+) -> Any:
+    """  
+    This function creates a model and scores it using Cross Validation. 
+    The output prints a score grid that shows Accuracy, AUC, Recall, Precision, 
+    F1, Kappa and MCC by fold (default = 10 Fold). 
+
+    This function returns a trained model object. 
+
+    setup() function must be called before using create_model()
+
+    Example
+    -------
+    >>> from pycaret.datasets import get_data
+    >>> juice = get_data('juice')
+    >>> experiment_name = setup(data = juice,  target = 'Purchase')
+    >>> lr = create_model('lr')
+
+    This will create a trained Logistic Regression model.
+
+    Parameters
+    ----------
+    estimator : str / object, default = None
+        Enter ID of the estimators available in model library or pass an untrained model 
+        object consistent with fit / predict API to train and evaluate model. All 
+        estimators support binary or multiclass problem. List of estimators in model 
+        library (ID - Name):
+
+        * 'lr' - Logistic Regression             
+        * 'knn' - K Nearest Neighbour            
+        * 'nb' - Naive Bayes             
+        * 'dt' - Decision Tree Classifier                   
+        * 'svm' - SVM - Linear Kernel	            
+        * 'rbfsvm' - SVM - Radial Kernel               
+        * 'gpc' - Gaussian Process Classifier                  
+        * 'mlp' - Multi Level Perceptron                  
+        * 'ridge' - Ridge Classifier                
+        * 'rf' - Random Forest Classifier                   
+        * 'qda' - Quadratic Discriminant Analysis                  
+        * 'ada' - Ada Boost Classifier                 
+        * 'gbc' - Gradient Boosting Classifier                  
+        * 'lda' - Linear Discriminant Analysis                  
+        * 'et' - Extra Trees Classifier                   
+        * 'xgboost' - Extreme Gradient Boosting              
+        * 'lightgbm' - Light Gradient Boosting              
+        * 'catboost' - CatBoost Classifier             
+
+    fold: integer or scikit-learn compatible CV generator, default = None
+        Controls cross-validation. If None, will use the CV generator defined in setup().
+        If integer, will use KFold CV with that many folds.
+
+    round: integer, default = 4
+        Number of decimal places the metrics in the score grid will be rounded to. 
+
+    cross_validation: bool, default = True
+        When cross_validation set to False fold parameter is ignored and model is trained
+        on entire training dataset. No metric evaluation is returned. 
+
+    fit_kwargs: dict, default = {} (empty dict)
+        Dictionary of arguments passed to the fit method of the model.
+
+    groups: array-like, with shape (n_samples,)
+        Optional Group labels for the samples used while splitting the dataset into train/test set.
+        Only used if a group based cross-validation generator is used (eg. GroupKFold).
+
+    verbose: bool, default = True
+        Score grid is not printed when verbose is set to False.
+
+    **kwargs: 
+        Additional keyword arguments to pass to the estimator.
+
+    Returns
+    -------
+    score_grid
+        A table containing the scores of the model across the kfolds. 
+        Scoring metrics used are Accuracy, AUC, Recall, Precision, F1, 
+        Kappa and MCC. Mean and standard deviation of the scores across 
+        the folds are highlighted in yellow.
+
+    model
+        trained model object
+
+    Warnings
+    --------
+    - 'svm' and 'ridge' doesn't support predict_proba method. As such, AUC will be
+      returned as zero (0.0)
+     
+    - If target variable is multiclass (more than 2 classes), AUC will be returned 
+      as zero (0.0)
+
+    - 'rbfsvm' and 'gpc' uses non-linear kernel and hence the fit time complexity is 
+      more than quadratic. These estimators are hard to scale on datasets with more 
+      than 10,000 samples.
+
+    """
+    return _create_model(
+        estimator,
+        fold=fold,
+        round=round,
+        cross_validation=cross_validation,
+        fit_kwargs=fit_kwargs,
+        groups=groups,
+        verbose=verbose,
+        display=display,
+        **kwargs,
+    )
+
+
+def _create_model(
+    estimator,
+    fold: Optional[Union[int, Any]] = None,
+    round: int = 4,
+    cross_validation: bool = True,
     budget_time: Optional[float] = None,
-    fit_params: Optional[dict] = {},
+    fit_kwargs: Optional[dict] = {},
     groups=None,
     verbose: bool = True,
     system: bool = True,
@@ -2307,6 +2458,8 @@ def create_model(
 ) -> Any:
 
     """  
+    This is an internal version of the create_model function.
+
     This function creates a model and scores it using Cross Validation. 
     The output prints a score grid that shows Accuracy, AUC, Recall, Precision, 
     F1, Kappa and MCC by fold (default = 10 Fold). 
@@ -2366,8 +2519,8 @@ def create_model(
         If not 0 or None, will terminate execution of the function after budget_time minutes have
         passed.
 
-    fit_params: dict, default = {} (empty dict)
-        Dictionary of parameters passed to the fit method of the model.
+    fit_kwargs: dict, default = {} (empty dict)
+        Dictionary of arguments passed to the fit method of the model.
 
     groups: array-like, with shape (n_samples,)
         Optional Group labels for the samples used while splitting the dataset into train/test set.
@@ -2550,6 +2703,7 @@ def create_model(
     display.move_progress()
 
     model = _make_internal_pipeline(model)
+    fit_kwargs = _get_pipeline_fit_kwargs(model, fit_kwargs)
 
     """
     MONITOR UPDATE STARTS
@@ -2576,7 +2730,7 @@ def create_model(
 
         logger.info("Fitting Model")
         with io.capture_output():
-            model.fit(data_X, data_y, **fit_params)
+            model.fit(data_X, data_y, **fit_kwargs)
 
         display.clear_output()
 
@@ -2623,7 +2777,7 @@ def create_model(
 
         logger.info("Fitting Model")
         with io.capture_output():
-            model.fit(Xtrain, ytrain, **fit_params)
+            model.fit(Xtrain, ytrain, **fit_kwargs)
         logger.info("Evaluating Metrics")
 
         if hasattr(model, "predict_proba"):
@@ -2719,7 +2873,7 @@ def create_model(
     model_fit_start = time.time()
     logger.info("Finalizing model")
     with io.capture_output():
-        model.fit(data_X, data_y, **fit_params)
+        model.fit(data_X, data_y, **fit_kwargs)
     model_fit_end = time.time()
 
     model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
@@ -2792,11 +2946,11 @@ def tune_model(
     optimize: str = "Accuracy",
     custom_scorer=None,  # added in pycaret==2.1 - depreciated
     search_library: str = "scikit-learn",
-    search_algorithm: str = "Random",
+    search_algorithm: Optional[str] = None,
     early_stopping: Any = "ASHA",
     early_stopping_max_iters: int = 10,
     choose_better: bool = False,
-    fit_params: Optional[dict] = {},
+    fit_kwargs: Optional[dict] = {},
     groups=None,
     verbose: bool = True,
     display: Optional[Display] = None,
@@ -2857,23 +3011,30 @@ def tune_model(
         Possible values:
 
         - 'scikit-learn' - default, requires no further installation
+        - 'scikit-optimize' - scikit-optimize. `pip install scikit-optimize` https://scikit-optimize.github.io/stable/
         - 'tune-sklearn' - Ray Tune scikit API. Does not support GPU models.
           `pip install tune-sklearn ray[tune]` https://github.com/ray-project/tune-sklearn
         - 'optuna' - Optuna. `pip install optuna` https://optuna.org/
 
-    search_algorithm: str, default = 'Random'
+    search_algorithm: str, default = None
         The search algorithm to be used for finding the best hyperparameters.
         Selection of search algorithms depends on the search_library parameter.
         Some search algorithms require additional libraries to be installed.
+        If None, will use search library-specific default algorith.
         'scikit-learn' possible values:
 
-        - 'Random' - randomized search
+        - 'Random' - randomized search (default)
         - 'Grid' - grid search
+
+        'scikit-optimize' possible values:
+
+        - 'Bayesian' - Bayesian search (default)
 
         'tune-sklearn' possible values:
 
-        - 'Random' - randomized search
+        - 'Random' - randomized search (default)
         - 'Grid' - grid search
+        - 'Bayesian' - Bayesian search using scikit-optimize
         - 'Hyperopt' - Tree-structured Parzen Estimator search using Hyperopt 
           `pip install tune-sklearn ray[tune] hyperopt`
         - 'BOHB' - Bayesian search using HpBandSter 
@@ -2882,7 +3043,7 @@ def tune_model(
         'optuna' possible values:
 
         - 'Random' - randomized search
-        - 'TPE' - Tree-structured Parzen Estimator search
+        - 'TPE' - Tree-structured Parzen Estimator search (default)
 
     early_stopping: bool or str or object, default = 'ASHA'
         Use early stopping to stop fitting to a hyperparameter configuration 
@@ -2910,8 +3071,8 @@ def tune_model(
         equivalent to base estimator created using create_model or model returned by 
         compare_models.
 
-    fit_params: dict, default = {} (empty dict)
-        Dictionary of parameters passed to the fit method of the tuner.
+    fit_kwargs: dict, default = {} (empty dict)
+        Dictionary of arguments passed to the fit method of the tuner.
 
     groups: array-like, with shape (n_samples,)
         Optional Group labels for the samples used while splitting the dataset into train/test set.
@@ -3010,14 +3171,36 @@ def tune_model(
         )
 
     # checking search_library parameter
-    possible_search_libraries = ["scikit-learn", "tune-sklearn", "optuna"]
+    possible_search_libraries = [
+        "scikit-learn",
+        "scikit-optimize",
+        "tune-sklearn",
+        "optuna",
+    ]
     search_library = search_library.lower()
     if search_library not in possible_search_libraries:
         raise ValueError(
             f"search_library parameter must be one of {', '.join(possible_search_libraries)}"
         )
 
-    if search_library == "tune-sklearn":
+    if search_library == "scikit-optimize":
+        try:
+            import skopt
+        except ImportError:
+            raise ImportError(
+                "'scikit-optimize' requires scikit-optimize package to be installed. Do: pip install scikit-optimize"
+            )
+
+        if not search_algorithm:
+            search_algorithm = "Bayesian"
+
+        possible_search_algorithms = ["Bayesian"]
+        if search_algorithm not in possible_search_algorithms:
+            raise ValueError(
+                f"For 'scikit-optimize' search_algorithm parameter must be one of {', '.join(possible_search_algorithms)}"
+            )
+
+    elif search_library == "tune-sklearn":
         try:
             import tune_sklearn
         except ImportError:
@@ -3025,7 +3208,10 @@ def tune_model(
                 "'tune-sklearn' requires tune_sklearn package to be installed. Do: pip install tune-sklearn ray[tune]"
             )
 
-        possible_search_algorithms = ["Random", "Grid", "Hyperopt", "BOHB"]
+        if not search_algorithm:
+            search_algorithm = "Random"
+
+        possible_search_algorithms = ["Random", "Grid", "Bayesian", "Hyperopt", "BOHB"]
         if search_algorithm not in possible_search_algorithms:
             raise ValueError(
                 f"For 'tune-sklearn' search_algorithm parameter must be one of {', '.join(possible_search_algorithms)}"
@@ -3049,6 +3235,13 @@ def tune_model(
                 raise ImportError(
                     "It appears that hyperopt is not installed. Do: pip install hyperopt"
                 )
+        elif search_algorithm == "Bayesian":
+            try:
+                import skopt
+            except ImportError:
+                raise ImportError(
+                    "It appears that scikit-optimize is not installed. Do: pip install scikit-optimize"
+                )
 
     elif search_library == "optuna":
         try:
@@ -3058,12 +3251,18 @@ def tune_model(
                 "'optuna' requires optuna package to be installed. Do: pip install optuna"
             )
 
+        if not search_algorithm:
+            search_algorithm = "TPE"
+
         possible_search_algorithms = ["Random", "TPE"]
         if search_algorithm not in possible_search_algorithms:
             raise ValueError(
                 f"For 'optuna' search_algorithm parameter must be one of {', '.join(possible_search_algorithms)}"
             )
     else:
+        if not search_algorithm:
+            search_algorithm = "Random"
+
         possible_search_algorithms = ["Random", "Grid"]
         if search_algorithm not in possible_search_algorithms:
             raise ValueError(
@@ -3212,6 +3411,7 @@ def tune_model(
         suffixes.append("final_estimator")
 
     model = _make_internal_pipeline(model)
+    fit_kwargs = _get_pipeline_fit_kwargs(model, fit_kwargs)
 
     suffixes.append("actual_estimator")
 
@@ -3231,8 +3431,11 @@ def tune_model(
         Only sklearn estimators with `partial_fit` or `warm_start` can be early
         stopped. warm_start works by picking up training from the previous
         call to `fit`.
-        Returns:
-            bool: if the estimator can early stop
+        
+        Returns
+        -------
+            bool
+                if the estimator can early stop
         """
 
         from sklearn.tree import BaseDecisionTree
@@ -3242,12 +3445,14 @@ def tune_model(
 
         if consider_warm_start:
             is_not_tree_subclass = not issubclass(type(estimator), BaseDecisionTree)
-            is_not_ensemble_subclass = not issubclass(type(estimator), BaseEnsemble)
-            can_warm_start = (
-                hasattr(estimator, "warm_start")
-                and hasattr(estimator, "max_iter")
-                and is_not_ensemble_subclass
-                and is_not_tree_subclass
+            is_ensemble_subclass = issubclass(type(estimator), BaseEnsemble)
+            can_warm_start = hasattr(estimator, "warm_start") and (
+                (
+                    hasattr(estimator, "max_iter")
+                    and is_not_tree_subclass
+                    and not is_ensemble_subclass
+                )
+                or (is_ensemble_subclass and hasattr(estimator, "n_estimators"))
             )
         else:
             can_warm_start = False
@@ -3361,6 +3566,28 @@ def tune_model(
                 verbose=0,
                 **search_kwargs,
             )
+        elif search_algorithm == "Bayesian":
+            from tune_sklearn import TuneSearchCV
+
+            if custom_grid is None:
+                param_grid = get_skopt_distributions(param_grid)
+            logger.info("Initializing tune_sklearn.TuneSearchCV, bayesian")
+            model_grid = TuneSearchCV(
+                estimator=model,
+                search_optimization="bayesian",
+                param_distributions=param_grid,
+                n_iter=n_iter,
+                early_stopping=can_early_stop,
+                scoring=optimize,
+                cv=fold,
+                random_state=seed,
+                max_iters=early_stopping_max_iters,
+                n_jobs=n_jobs,
+                use_gpu=gpu_param,
+                refit=True,
+                verbose=0,
+                **search_kwargs,
+            )
         elif search_algorithm == "BOHB":
             from tune_sklearn import TuneSearchCV
 
@@ -3402,6 +3629,25 @@ def tune_model(
                 verbose=0,
                 **search_kwargs,
             )
+
+    elif search_library == "scikit-optimize":
+        import skopt
+
+        if custom_grid is None:
+            param_grid = get_skopt_distributions(param_grid)
+
+        logger.info("Initializing skopt.BayesSearchCV")
+        model_grid = skopt.BayesSearchCV(
+            estimator=model,
+            search_spaces=param_grid,
+            scoring=optimize,
+            n_iter=n_iter,
+            cv=fold,
+            random_state=seed,
+            refit=False,
+            n_jobs=n_jobs,
+            **search_kwargs,
+        )
     else:
         if search_algorithm == "Grid":
             from sklearn.model_selection import GridSearchCV
@@ -3433,7 +3679,7 @@ def tune_model(
             )
 
     # with io.capture_output():
-    model_grid.fit(X_train, y_train, groups=groups, **fit_params)
+    model_grid.fit(X_train, y_train, groups=groups, **fit_kwargs)
     best_params = model_grid.best_params_
     logger.info(f"best_params: {best_params}")
     best_params = {k[18:]: v for k, v in best_params.items()}
@@ -3450,14 +3696,14 @@ def tune_model(
     logger.info("Random search completed")
 
     logger.info("SubProcess create_model() called ==================================")
-    best_model, model_fit_time = create_model(
+    best_model, model_fit_time = _create_model(
         estimator=model,
         system=False,
         display=display,
         fold=fold,
         round=round,
         groups=groups,
-        fit_params=fit_params,
+        fit_kwargs=fit_kwargs,
         **best_params,
     )
     model_results = pull()
@@ -3471,7 +3717,7 @@ def tune_model(
             fold,
             new_results_list=[model_results],
             groups=groups,
-            fit_params=fit_params,
+            fit_kwargs=fit_kwargs,
             display=display,
         )
 
@@ -3531,7 +3777,7 @@ def ensemble_model(
     round: int = 4,
     choose_better: bool = False,
     optimize: str = "Accuracy",
-    fit_params: Optional[dict] = {},
+    fit_kwargs: Optional[dict] = {},
     groups=None,
     verbose: bool = True,
     display: Optional[Display] = None,  # added in pycaret==2.2.0
@@ -3591,8 +3837,8 @@ def ensemble_model(
         optimize parameter are 'Accuracy', 'AUC', 'Recall', 'Precision', 'F1', 
         'Kappa', 'MCC'.
 
-    fit_params: dict, default = {} (empty dict)
-        Dictionary of parameters passed to the fit method of the model.
+    fit_kwargs: dict, default = {} (empty dict)
+        Dictionary of arguments passed to the fit method of the model.
 
     groups: array-like, with shape (n_samples,)
         Optional Group labels for the samples used while splitting the dataset into train/test set.
@@ -3789,13 +4035,13 @@ def ensemble_model(
     display.move_progress()
 
     logger.info("SubProcess create_model() called ==================================")
-    model, model_fit_time = create_model(
+    model, model_fit_time = _create_model(
         estimator=model,
         system=False,
         display=display,
         fold=fold,
         round=round,
-        fit_params=fit_params,
+        fit_kwargs=fit_kwargs,
         groups=groups,
     )
     best_model = model
@@ -3840,7 +4086,7 @@ def ensemble_model(
             fold,
             new_results_list=[model_results],
             groups=groups,
-            fit_params=fit_params,
+            fit_kwargs=fit_kwargs,
             display=display,
         )
 
@@ -3869,7 +4115,7 @@ def blend_models(
     optimize: str = "Accuracy",
     method: str = "auto",
     weights: Optional[List[float]] = None,  # added in pycaret==2.2.0
-    fit_params: Optional[dict] = {},
+    fit_kwargs: Optional[dict] = {},
     groups=None,
     verbose: bool = True,
     display: Optional[Display] = None,  # added in pycaret==2.2.0
@@ -3927,8 +4173,8 @@ def blend_models(
         Sequence of weights (float or int) to weight the occurrences of predicted class labels (hard voting)
         or class probabilities before averaging (soft voting). Uses uniform weights if None.
 
-    fit_params: dict, default = {} (empty dict)
-        Dictionary of parameters passed to the fit method of the model.
+    fit_kwargs: dict, default = {} (empty dict)
+        Dictionary of arguments passed to the fit method of the model.
 
     groups: array-like, with shape (n_samples,)
         Optional Group labels for the samples used while splitting the dataset into train/test set.
@@ -4129,13 +4375,13 @@ def blend_models(
     display.move_progress()
 
     logger.info("SubProcess create_model() called ==================================")
-    model, model_fit_time = create_model(
+    model, model_fit_time = _create_model(
         estimator=model,
         system=False,
         display=display,
         fold=fold,
         round=round,
-        fit_params=fit_params,
+        fit_kwargs=fit_kwargs,
         groups=groups,
     )
     model_results = pull()
@@ -4179,7 +4425,7 @@ def blend_models(
             fold,
             model_results=model_results,
             groups=groups,
-            fit_params=fit_params,
+            fit_kwargs=fit_kwargs,
             display=display,
         )
 
@@ -4209,7 +4455,7 @@ def stack_models(
     restack: bool = True,
     choose_better: bool = False,
     optimize: str = "Accuracy",
-    fit_params: Optional[dict] = {},
+    fit_kwargs: Optional[dict] = {},
     groups=None,
     verbose: bool = True,
     display: Optional[Display] = None,
@@ -4279,8 +4525,9 @@ def stack_models(
         to compare emsembled model with base estimator. Values accepted in 
         optimize parameter are 'Accuracy', 'AUC', 'Recall', 'Precision', 'F1', 
         'Kappa', 'MCC'.
-    fit_params: dict, default = {} (empty dict)
-        Dictionary of parameters passed to the fit method of the model.
+
+    fit_kwargs: dict, default = {} (empty dict)
+        Dictionary of arguments passed to the fit method of the model.
 
     groups: array-like, with shape (n_samples,)
         Optional Group labels for the samples used while splitting the dataset into train/test set.
@@ -4461,13 +4708,13 @@ def stack_models(
     display.move_progress()
 
     logger.info("SubProcess create_model() called ==================================")
-    model, model_fit_time = create_model(
+    model, model_fit_time = _create_model(
         estimator=model,
         system=False,
         display=display,
         fold=fold,
         round=round,
-        fit_params=fit_params,
+        fit_kwargs=fit_kwargs,
         groups=groups,
     )
     model_results = pull()
@@ -4511,7 +4758,7 @@ def stack_models(
             fold,
             model_results=model_results,
             groups=groups,
-            fit_params=fit_params,
+            fit_kwargs=fit_kwargs,
             display=display,
         )
 
@@ -4538,7 +4785,7 @@ def plot_model(
     scale: float = 1,  # added in pycaret==2.1.0
     save: bool = False,
     fold: Optional[Union[int, Any]] = None,
-    fit_params: Optional[dict] = {},
+    fit_kwargs: Optional[dict] = {},
     groups=None,
     verbose: bool = True,
     system: bool = True,
@@ -4598,8 +4845,8 @@ def plot_model(
         Controls cross-validation used in certain plots. If None, will use the CV generator
         defined in setup(). If integer, will use KFold CV with that many folds.
 
-    fit_params: dict, default = {} (empty dict)
-        Dictionary of parameters passed to the fit method of the model.
+    fit_kwargs: dict, default = {} (empty dict)
+        Dictionary of arguments passed to the fit method of the model.
 
     groups: array-like, with shape (n_samples,)
         Optional Group labels for the samples used while splitting the dataset into train/test set.
@@ -4816,7 +5063,7 @@ def plot_model(
             name=plot_name,
             scale=scale,
             save=save,
-            fit_params=fit_params,
+            fit_kwargs=fit_kwargs,
             groups=groups,
             system=system,
             display=display,
@@ -4836,7 +5083,7 @@ def plot_model(
             name=plot_name,
             scale=scale,
             save=save,
-            fit_params=fit_params,
+            fit_kwargs=fit_kwargs,
             groups=groups,
             system=system,
             display=display,
@@ -4856,7 +5103,7 @@ def plot_model(
             name=plot_name,
             scale=scale,
             save=save,
-            fit_params=fit_params,
+            fit_kwargs=fit_kwargs,
             groups=groups,
             system=system,
             display=display,
@@ -4878,7 +5125,7 @@ def plot_model(
             name=plot_name,
             scale=scale,
             save=save,
-            fit_params=fit_params,
+            fit_kwargs=fit_kwargs,
             groups=groups,
             system=system,
             display=display,
@@ -4898,7 +5145,7 @@ def plot_model(
             name=plot_name,
             scale=scale,
             save=save,
-            fit_params=fit_params,
+            fit_kwargs=fit_kwargs,
             groups=groups,
             system=system,
             display=display,
@@ -4918,7 +5165,7 @@ def plot_model(
             name=plot_name,
             scale=scale,
             save=save,
-            fit_params=fit_params,
+            fit_kwargs=fit_kwargs,
             groups=groups,
             system=system,
             display=display,
@@ -4956,7 +5203,7 @@ def plot_model(
             scale=scale,
             handle_test="draw",
             save=save,
-            fit_params=fit_params,
+            fit_kwargs=fit_kwargs,
             groups=groups,
             system=system,
             display=display,
@@ -4979,7 +5226,7 @@ def plot_model(
             name=plot_name,
             scale=scale,
             save=save,
-            fit_params=fit_params,
+            fit_kwargs=fit_kwargs,
             groups=groups,
             system=system,
             display=display,
@@ -5003,7 +5250,7 @@ def plot_model(
             name=plot_name,
             scale=scale,
             save=save,
-            fit_params=fit_params,
+            fit_kwargs=fit_kwargs,
             groups=groups,
             system=system,
             display=display,
@@ -5076,7 +5323,7 @@ def plot_model(
             name=plot_name,
             scale=scale,
             save=save,
-            fit_params=fit_params,
+            fit_kwargs=fit_kwargs,
             groups=groups,
             system=system,
             display=display,
@@ -5211,7 +5458,7 @@ def plot_model(
             name=plot_name,
             scale=scale,
             save=save,
-            fit_params=fit_params,
+            fit_kwargs=fit_kwargs,
             groups=groups,
             system=system,
             display=display,
@@ -5249,7 +5496,7 @@ def plot_model(
             name=plot_name,
             scale=scale,
             save=save,
-            fit_params=fit_params,
+            fit_kwargs=fit_kwargs,
             groups=groups,
             system=system,
             display=display,
@@ -5315,7 +5562,7 @@ def plot_model(
 def evaluate_model(
     estimator,
     fold: Optional[Union[int, Any]] = None,
-    fit_params: Optional[dict] = {},
+    fit_kwargs: Optional[dict] = {},
     groups=None,
 ):
 
@@ -5343,8 +5590,8 @@ def evaluate_model(
         Controls cross-validation. If None, will use the CV generator defined in setup().
         If integer, will use KFold CV with that many folds.
 
-    fit_params: dict, default = {} (empty dict)
-        Dictionary of parameters passed to the fit method of the model.
+    fit_kwargs: dict, default = {} (empty dict)
+        Dictionary of arguments passed to the fit method of the model.
 
     groups: array-like, with shape (n_samples,)
         Optional Group labels for the samples used while splitting the dataset into train/test set.
@@ -5394,7 +5641,7 @@ def evaluate_model(
         verbose=fixed(True),
         scale=fixed(1),
         fold=fixed(fold),
-        fit_params=fixed(fit_params),
+        fit_kwargs=fixed(fit_kwargs),
         groups=fixed(groups),
         system=fixed(True),
         display=fixed(None),
@@ -5650,7 +5897,7 @@ def calibrate_model(
     method: str = "sigmoid",
     fold: Optional[Union[int, Any]] = None,
     round: int = 4,
-    fit_params: Optional[dict] = {},
+    fit_kwargs: Optional[dict] = {},
     groups=None,
     verbose: bool = True,
     display: Optional[Display] = None,  # added in pycaret==2.2.0
@@ -5693,8 +5940,8 @@ def calibrate_model(
     round: integer, default = 4
         Number of decimal places the metrics in the score grid will be rounded to. 
 
-    fit_params: dict, default = {} (empty dict)
-        Dictionary of parameters passed to the fit method of the model.
+    fit_kwargs: dict, default = {} (empty dict)
+        Dictionary of arguments passed to the fit method of the model.
 
     groups: array-like, with shape (n_samples,)
         Optional Group labels for the samples used while splitting the dataset into train/test set.
@@ -5815,13 +6062,13 @@ def calibrate_model(
     display.move_progress()
 
     logger.info("SubProcess create_model() called ==================================")
-    model, model_fit_time = create_model(
+    model, model_fit_time = _create_model(
         estimator=model,
         system=False,
         display=display,
         fold=fold,
         round=round,
-        fit_params=fit_params,
+        fit_kwargs=fit_kwargs,
         groups=groups,
     )
     model_results = pull()
@@ -6318,7 +6565,7 @@ def predict_model(
 
 
 def finalize_model(
-    estimator, fit_params: Optional[dict] = {}, groups=None, display=None
+    estimator, fit_kwargs: Optional[dict] = {}, groups=None, display=None
 ) -> Any:  # added in pycaret==2.2.0
 
     """
@@ -6341,8 +6588,8 @@ def finalize_model(
     estimator : object, default = none
         A trained model object should be passed as an estimator. 
 
-    fit_params: dict, default = {} (empty dict)
-        Dictionary of parameters passed to the fit method of the model.
+    fit_kwargs: dict, default = {} (empty dict)
+        Dictionary of arguments passed to the fit method of the model.
 
     groups: array-like, with shape (n_samples,)
         Optional Group labels for the samples used while splitting the dataset into train/test set.
@@ -6381,13 +6628,13 @@ def finalize_model(
 
     logger.info(f"Finalizing {estimator}")
     display.clear_output()
-    model_final, model_fit_time = create_model(
+    model_final, model_fit_time = _create_model(
         estimator=estimator,
         verbose=False,
         system=False,
         X_train_data=X,
         y_train_data=y,
-        fit_params=fit_params,
+        fit_kwargs=fit_kwargs,
         groups=groups,
     )
     model_results = pull(pop=True)
@@ -7155,6 +7402,45 @@ def set_config(variable: str, value):
     return pycaret.internal.utils.set_config(variable, value, globals())
 
 
+def save_config(file_name: str):
+
+    """
+    This function is used to save all enviroment variables to file,
+    allowing to later resume modeling without rerunning setup().
+
+    Example
+    -------
+    >>> save_config('myvars.pkl') 
+
+    This will save all enviroment variables to 'myvars.pkl'.
+
+    """
+
+    import pycaret.internal.utils
+
+    return pycaret.internal.utils.save_config(file_name, globals())
+
+
+def load_config(file_name: str):
+
+    """
+    This function is used to load enviroment variables from file created with save_config(),
+    allowing to later resume modeling without rerunning setup().
+
+
+    Example
+    -------
+    >>> load_config('myvars.pkl') 
+
+    This will load all enviroment variables from 'myvars.pkl'.
+
+    """
+
+    import pycaret.internal.utils
+
+    return pycaret.internal.utils.load_config(file_name, globals())
+
+
 def _make_internal_pipeline(model):
     import pycaret.internal.utils
 
@@ -7170,7 +7456,7 @@ def _choose_better(
     fold: int,
     model_results=None,
     new_results_list: Optional[list] = None,
-    fit_params: Optional[dict] = {},
+    fit_kwargs: Optional[dict] = {},
     groups=None,
     display: Optional[Display] = None,
 ):
@@ -7198,12 +7484,12 @@ def _choose_better(
         logger.info(
             "SubProcess create_model() called =================================="
         )
-        create_model(
+        _create_model(
             model,
             verbose=False,
             system=False,
             fold=fold,
-            fit_params=fit_params,
+            fit_kwargs=fit_kwargs,
             groups=groups,
         )
         logger.info("SubProcess create_model() end ==================================")
@@ -7225,12 +7511,12 @@ def _choose_better(
             logger.info(
                 "SubProcess create_model() called =================================="
             )
-            m, _ = create_model(
+            m, _ = _create_model(
                 new_estimator,
                 verbose=False,
                 system=False,
                 fold=fold,
-                fit_params=fit_params,
+                fit_kwargs=fit_kwargs,
                 groups=groups,
             )
             logger.info(
@@ -7716,3 +8002,16 @@ def _get_cv_n_folds(fold):
     import pycaret.internal.utils
 
     return pycaret.internal.utils.get_cv_n_folds(fold, default_folds=fold_param)
+
+
+def _get_pipeline_fit_kwargs(pipeline, fit_kwargs: dict) -> dict:
+    try:
+        model_step = pipeline.steps[-1]
+    except:
+        return fit_kwargs
+
+    if any(k.startswith(f"{model_step[0]}__") for k in fit_kwargs.keys()):
+        return fit_kwargs
+
+    return {f"{model_step[0]}__{k}": v for k, v in fit_kwargs.items()}
+

@@ -18,7 +18,7 @@ def show_yellowbrick_plot(
     handle_test: str = "score",
     scale: float = 1,
     save: bool = False,
-    fit_params: Optional[dict] = {},
+    fit_kwargs: Optional[dict] = {},
     groups: Optional[Any] = None,
     system: bool = True,
     display: Optional[Display] = None,
@@ -30,18 +30,18 @@ def show_yellowbrick_plot(
     logger = get_logger()
     visualizer.fig.set_dpi(visualizer.fig.dpi * scale)
 
-    fit_params_and_kwargs = {**fit_params, **kwargs}
+    fit_kwargs_and_kwargs = {**fit_kwargs, **kwargs}
 
     if handle_train == "draw":
         logger.info("Drawing Model")
         visualizer.draw(X_train, y_train, **kwargs)
     elif handle_train == "fit":
         logger.info("Fitting Model")
-        visualizer.fit(X_train, y_train, groups=groups, **fit_params_and_kwargs)
+        visualizer.fit(X_train, y_train, groups=groups, **fit_kwargs_and_kwargs)
     elif handle_train == "fit_transform":
         logger.info("Fitting & Transforming Model")
         visualizer.fit_transform(
-            X_train, y_train, groups=groups, **fit_params_and_kwargs
+            X_train, y_train, groups=groups, **fit_kwargs_and_kwargs
         )
     elif handle_train == "score":
         logger.info("Scoring train set")
@@ -52,9 +52,9 @@ def show_yellowbrick_plot(
     if handle_test == "draw":
         visualizer.draw(X_test, y_test)
     elif handle_test == "fit":
-        visualizer.fit(X_test, y_test, groups=groups, **fit_params)
+        visualizer.fit(X_test, y_test, groups=groups, **fit_kwargs)
     elif handle_test == "fit_transform":
-        visualizer.fit_transform(X_test, y_test, groups=groups, **fit_params)
+        visualizer.fit_transform(X_test, y_test, groups=groups, **fit_kwargs)
     elif handle_test == "score":
         logger.info("Scoring test/hold-out set")
         visualizer.score(X_test, y_test)
