@@ -1046,19 +1046,20 @@ def setup(
     pd.set_option("display.max_columns", 500)
     pd.set_option("display.max_rows", 500)
 
-    # so that we can later ignore python built-in globals and such
-    old_globals = set(globals().keys())
-
     # generate USI for mlflow tracking
     import secrets
 
-    global USI
+    # declaring global variables to be accessed by other functions
+    logger.info("Declaring global variables")
+    global USI, html_param, X, y, X_train, X_test, y_train, y_test, seed, prep_pipe, experiment__, fold_shuffle_param, n_jobs_param, gpu_n_jobs_param, create_model_container, master_model_container, display_container, exp_name_log, logging_param, log_plots_param, fix_imbalance_param, fix_imbalance_method_param, data_before_preprocess, target_param, gpu_param, all_models, _all_models_internal, all_metrics, _internal_pipeline_steps, stratify_param, fold_generator, fold_param
+
     USI = secrets.token_hex(nbytes=2)
     logger.info(f"USI: {USI}")
 
-    # declaring global variables to be accessed by other functions
-    logger.info("Declaring global variables")
-    global html_param, X, y, X_train, X_test, y_train, y_test, seed, prep_pipe, experiment__, fold_shuffle_param, n_jobs_param, gpu_n_jobs_param, create_model_container, master_model_container, display_container, exp_name_log, logging_param, log_plots_param, fix_imbalance_param, fix_imbalance_method_param, data_before_preprocess, target_param, gpu_param, all_models, _all_models_internal, all_metrics, _internal_pipeline_steps, stratify_param, fold_generator, fold_param
+    global pycaret_globals
+    pycaret_globals = {"pycaret_globals", "USI", "html_param", "X", "y", "X_train", "X_test", "y_train", "y_test", "seed", "prep_pipe", "experiment__", "fold_shuffle_param", "n_jobs_param", "gpu_n_jobs_param", "create_model_container", "master_model_container", "display_container", "exp_name_log", "logging_param", "log_plots_param", "fix_imbalance_param", "fix_imbalance_method_param", "data_before_preprocess", "target_param", "gpu_param", "all_models", "_all_models_internal", "all_metrics", "_internal_pipeline_steps", "stratify_param", "fold_generator", "fold_param"}
+
+    logger.info(f"pycaret_globals: {pycaret_globals}")
 
     # create html_param
     html_param = html
@@ -1798,12 +1799,6 @@ def setup(
                 mlflow.log_artifact("Test.csv")
                 os.remove("Train.csv")
                 os.remove("Test.csv")
-
-    global pycaret_globals
-    pycaret_globals = None
-    pycaret_globals = set([k for k in globals().keys() if k not in old_globals])
-
-    logger.info(f"pycaret_globals: {pycaret_globals}")
 
     logger.info(f"create_model_container: {len(create_model_container)}")
     logger.info(f"master_model_container: {len(master_model_container)}")
