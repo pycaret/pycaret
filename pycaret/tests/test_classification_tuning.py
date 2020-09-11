@@ -21,20 +21,20 @@ def test():
 
     for model in models:
         print(f"Testing model {model}")
-        tune_model(model, fold=2, search_library='scikit-learn', search_algorithm='random', early_stopping=False)
-        tune_model(model, fold=2, search_library='scikit-optimize', search_algorithm='bayesian', early_stopping=False)
-        tune_model(model, fold=2, search_library='scikit-optimize', search_algorithm='bayesian', early_stopping=False)
-        tune_model(model, fold=2, search_library='optuna', search_algorithm='tpe', early_stopping=False)
-        tune_model(model, fold=2, search_library='tune-sklearn', search_algorithm='random', early_stopping=False)
+        pycaret.classification.tune_model(model, fold=2, search_library='scikit-learn', search_algorithm='random', early_stopping=False)
+        pycaret.classification.tune_model(model, fold=2, search_library='scikit-optimize', search_algorithm='bayesian', early_stopping=False)
+        pycaret.classification.tune_model(model, fold=2, search_library='scikit-optimize', search_algorithm='bayesian', early_stopping=False)
+        pycaret.classification.tune_model(model, fold=2, search_library='optuna', search_algorithm='tpe', early_stopping=False)
+        pycaret.classification.tune_model(model, fold=2, search_library='tune-sklearn', search_algorithm='random', early_stopping=False)
  
     # test early stopping (enabled by default)
     model = pycaret.classification.create_model('svm', fold=2)
 
-    tune_model(model, fold=2, search_library='optuna', search_algorithm='tpe')
-    tune_model(model, fold=2, search_library='tune-sklearn', search_algorithm='hyperopt')
-    tune_model(model, fold=2, search_library='tune-sklearn', search_algorithm='bayesian')
+    pycaret.classification.tune_model(model, fold=2, search_library='optuna', search_algorithm='tpe')
+    pycaret.classification.tune_model(model, fold=2, search_library='tune-sklearn', search_algorithm='hyperopt')
+    pycaret.classification.tune_model(model, fold=2, search_library='tune-sklearn', search_algorithm='bayesian')
     # bohb is broken in current ray[tune] release
-    #tune_model(model, fold=2, search_library='tune-sklearn', search_algorithm='bohb')
+    #pycaret.classification.tune_model(model, fold=2, search_library='tune-sklearn', search_algorithm='bohb')
 
     assert 1 == 1
     
