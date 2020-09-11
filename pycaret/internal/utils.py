@@ -86,6 +86,10 @@ def set_config(variable: str, value, globals_d: dict):
 
     globals_d[variable] = value
 
+    # special case
+    if value and variable == "n_jobs_param" and value < globals_d["gpu_n_jobs_param"]:
+        globals_d["gpu_n_jobs_param"] = value
+
     logger.info(f"Global variable: {variable} updated to {value}")
     logger.info(
         "set_config() succesfully completed......................................"
