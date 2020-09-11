@@ -1046,19 +1046,20 @@ def setup(
     pd.set_option("display.max_columns", 500)
     pd.set_option("display.max_rows", 500)
 
-    # so that we can later ignore python built-in globals and such
-    old_globals = set(globals().keys())
-
     # generate USI for mlflow tracking
     import secrets
 
-    global USI
+    # declaring global variables to be accessed by other functions
+    logger.info("Declaring global variables")
+    global USI, html_param, X, y, X_train, X_test, y_train, y_test, seed, prep_pipe, experiment__, fold_shuffle_param, n_jobs_param, gpu_n_jobs_param, create_model_container, master_model_container, display_container, exp_name_log, logging_param, log_plots_param, fix_imbalance_param, fix_imbalance_method_param, data_before_preprocess, target_param, gpu_param, all_models, _all_models_internal, all_metrics, _internal_pipeline_steps, stratify_param, fold_generator, fold_param
+
     USI = secrets.token_hex(nbytes=2)
     logger.info(f"USI: {USI}")
 
-    # declaring global variables to be accessed by other functions
-    logger.info("Declaring global variables")
-    global html_param, X, y, X_train, X_test, y_train, y_test, seed, prep_pipe, experiment__, fold_shuffle_param, n_jobs_param, gpu_n_jobs_param, create_model_container, master_model_container, display_container, exp_name_log, logging_param, log_plots_param, fix_imbalance_param, fix_imbalance_method_param, data_before_preprocess, target_param, gpu_param, all_models, _all_models_internal, all_metrics, _internal_pipeline_steps, stratify_param, fold_generator, fold_param
+    global pycaret_globals
+    pycaret_globals = {"pycaret_globals", "USI", "html_param", "X", "y", "X_train", "X_test", "y_train", "y_test", "seed", "prep_pipe", "experiment__", "fold_shuffle_param", "n_jobs_param", "gpu_n_jobs_param", "create_model_container", "master_model_container", "display_container", "exp_name_log", "logging_param", "log_plots_param", "fix_imbalance_param", "fix_imbalance_method_param", "data_before_preprocess", "target_param", "gpu_param", "all_models", "_all_models_internal", "all_metrics", "_internal_pipeline_steps", "stratify_param", "fold_generator", "fold_param"}
+
+    logger.info(f"pycaret_globals: {pycaret_globals}")
 
     # create html_param
     html_param = html
@@ -1799,10 +1800,6 @@ def setup(
                 os.remove("Train.csv")
                 os.remove("Test.csv")
 
-    global pycaret_globals
-    pycaret_globals = None
-    pycaret_globals = set([k for k in globals().keys() if k not in old_globals])
-
     logger.info(f"create_model_container: {len(create_model_container)}")
     logger.info(f"master_model_container: {len(master_model_container)}")
     logger.info(f"display_container: {len(display_container)}")
@@ -2069,7 +2066,9 @@ def compare_models(
 
     if not display:
         progress_args = {"max": ((_get_cv_n_folds(fold) + 4) * len_mod) + 4 + len_mod}
-        master_display_columns = ["Model"] + all_metrics["Display Name"].to_list()
+        master_display_columns = (
+            ["Model"] + all_metrics["Display Name"].to_list() + ["TT (Sec)"]
+        )
         timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
         monitor_rows = [
             ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
@@ -2215,6 +2214,7 @@ def compare_models(
 
         logger.info("Creating metrics dataframe")
         compare_models_ = pd.DataFrame(model_results.loc["Mean"]).T
+        compare_models_.insert(len(compare_models_.columns), "TT (Sec)", model_fit_time)
         compare_models_.insert(0, "Model", model_name)
         compare_models_.insert(0, "Object", [model])
         compare_models_.insert(0, "index", [i])
@@ -2744,6 +2744,8 @@ def _create_model(
 
     fold_num = 1
 
+    fit_kwargs_cv = fit_kwargs.copy()
+
     for train_i, test_i in cv.split(data_X, data_y, groups=groups):
 
         logger.info(f"Initializing Fold {fold_num}")
@@ -2772,12 +2774,23 @@ def _create_model(
 
         Xtrain, Xtest = data_X.iloc[train_i], data_X.iloc[test_i]
         ytrain, ytest = data_y.iloc[train_i], data_y.iloc[test_i]
+
+        if fit_kwargs_cv and "sample_weight" in fit_kwargs_cv:
+            weights_train, weights_test = (
+                fit_kwargs_cv["sample_weight"][train_i],
+                fit_kwargs_cv["sample_weight"][test_i],
+            )
+            fit_kwargs_cv["sample_weight"] = weights_train
+        else:
+            weights_train = None
+            weights_test = None
+
         # time just for fitting
         time_start = time.time()
 
         logger.info("Fitting Model")
         with io.capture_output():
-            model.fit(Xtrain, ytrain, **fit_kwargs)
+            model.fit(Xtrain, ytrain, **fit_kwargs_cv)
         logger.info("Evaluating Metrics")
 
         if hasattr(model, "predict_proba"):
@@ -2791,14 +2804,11 @@ def _create_model(
 
         pred_ = model.predict(Xtest)
 
-        _calculate_metrics(ytest, pred_, pred_prob, score_dict)
+        _calculate_metrics(ytest, pred_, pred_prob, score_dict, weights_test)
 
         logger.info("Compiling Metrics")
         time_end = time.time()
         training_time = time_end - time_start
-
-        if "TT (Sec)" in score_dict:
-            score_dict["TT (Sec)"] = np.append(score_dict["TT (Sec)"], training_time)
 
         display.move_progress()
 
@@ -2886,7 +2896,6 @@ def _create_model(
     if logging_param and system:
 
         avgs_dict_log = avgs_dict.copy()
-        avgs_dict_log.pop("TT (Sec)")
         avgs_dict_log = {k: v[0] for k, v in avgs_dict_log.items()}
 
         try:
@@ -3728,12 +3737,7 @@ def tune_model(
     # mlflow logging
     if logging_param:
 
-        avgs_dict_log = {
-            k: v
-            for k, v in model_results.drop("TT (Sec)", axis=1, errors="ignore")
-            .loc["Mean"]
-            .items()
-        }
+        avgs_dict_log = {k: v for k, v in model_results.loc["Mean"].items()}
 
         try:
             _mlflow_log_model(
@@ -4055,12 +4059,7 @@ def ensemble_model(
     # mlflow logging
     if logging_param:
 
-        avgs_dict_log = {
-            k: v
-            for k, v in model_results.drop("TT (Sec)", axis=1, errors="ignore")
-            .loc["Mean"]
-            .items()
-        }
+        avgs_dict_log = {k: v for k, v in model_results.loc["Mean"].items()}
 
         try:
             _mlflow_log_model(
@@ -4394,12 +4393,7 @@ def blend_models(
     # mlflow logging
     if logging_param:
 
-        avgs_dict_log = {
-            k: v
-            for k, v in model_results.drop("TT (Sec)", axis=1, errors="ignore")
-            .loc["Mean"]
-            .items()
-        }
+        avgs_dict_log = {k: v for k, v in model_results.loc["Mean"].items()}
 
         try:
             _mlflow_log_model(
@@ -4727,12 +4721,7 @@ def stack_models(
     # mlflow logging
     if logging_param:
 
-        avgs_dict_log = {
-            k: v
-            for k, v in model_results.drop("TT (Sec)", axis=1, errors="ignore")
-            .loc["Mean"]
-            .items()
-        }
+        avgs_dict_log = {k: v for k, v in model_results.loc["Mean"].items()}
 
         try:
             _mlflow_log_model(
@@ -6085,12 +6074,7 @@ def calibrate_model(
     # mlflow logging
     if logging_param:
 
-        avgs_dict_log = {
-            k: v
-            for k, v in model_results.drop("TT (Sec)", axis=1, errors="ignore")
-            .loc["Mean"]
-            .items()
-        }
+        avgs_dict_log = {k: v for k, v in model_results.loc["Mean"].items()}
 
         try:
             _mlflow_log_model(
@@ -6646,12 +6630,7 @@ def finalize_model(
     # mlflow logging
     if logging_param:
 
-        avgs_dict_log = {
-            k: v
-            for k, v in model_results.drop("TT (Sec)", axis=1, errors="ignore")
-            .loc["Mean"]
-            .items()
-        }
+        avgs_dict_log = {k: v for k, v in model_results.loc["Mean"].items()}
 
         try:
             _mlflow_log_model(
@@ -7117,12 +7096,6 @@ def get_metrics(
     metric_containers = get_all_metric_containers(globals(), raise_errors)
     rows = [v.get_dict() for k, v in metric_containers.items()]
 
-    # Training time needs to be at the end
-    if not rows[-1]["ID"] == "tt":
-        tt_row = next(x for x in rows if x["ID"] == "tt")
-        rows = [x for x in rows if not x["ID"] == "tt"]
-        rows.append(tt_row)
-
     df = pd.DataFrame(rows)
     df.set_index("ID", inplace=True, drop=True)
 
@@ -7189,11 +7162,6 @@ def add_metric(
     multiclass: bool, default = True
         Whether the metric supports multiclass problems.
 
-    Notes
-    -----
-    The row will be inserted into the second to last position. The last position is reserved
-    for the Training Time (tt) metric.
-
     Returns
     -------
     pandas.Series
@@ -7224,11 +7192,8 @@ def add_metric(
 
     new_metric = pd.Series(new_metric, name=id.replace(" ", "_")).drop("ID")
 
-    last_row = all_metrics.iloc[-1]
-    all_metrics.drop(all_metrics.index[-1], inplace=True)
     all_metrics = all_metrics.append(new_metric)
-    all_metrics = all_metrics.append(last_row)
-    return all_metrics.iloc[-2]
+    return all_metrics.iloc[-1]
 
 
 def remove_metric(name_or_id: str):
@@ -7782,14 +7747,20 @@ def _is_special_model(e) -> bool:
 
 
 def _calculate_metrics(
-    ytest, pred_, pred_prob: float, score_dict: Optional[Dict[str, np.array]] = None
+    ytest,
+    pred_,
+    pred_prob: float,
+    score_dict: Optional[Dict[str, np.array]] = None,
+    weights: Optional[list] = None,
 ) -> dict:
     """
     Calculate all metrics in get_metrics().
     """
     from pycaret.internal.utils import calculate_metrics
 
-    return calculate_metrics(get_metrics(), ytest, pred_, pred_prob, score_dict)
+    return calculate_metrics(
+        get_metrics(), ytest, pred_, pred_prob, score_dict, weights
+    )
 
 
 def _mlflow_log_model(

@@ -1308,6 +1308,7 @@ class Cluster_Entire_Data(BaseEstimator,TransformerMixin):
 
   def transform(self,dataset,y=None):
     data = dataset.copy()
+    data.drop(self.target,axis=1,inplace=True,errors='ignore')
     # first convert to dummy
     if len(data.select_dtypes(include='object').columns)>0:
       data_t1 = self.dummy.transform(data)
@@ -1321,6 +1322,8 @@ class Cluster_Entire_Data(BaseEstimator,TransformerMixin):
     predict =pd.DataFrame(self.k_object.predict(data_t1),index=data.index)
     data['data_cluster'] = predict
     data['data_cluster'] = data['data_cluster'].astype('object')
+    if self.target in dataset.columns:
+      data[self.target] = dataset[self.target]
     return(data)
 
   def fit_transform(self,dataset,y=None):
@@ -2398,64 +2401,68 @@ class Reduce_Dimensions_For_Supervised_Path(BaseEstimator,TransformerMixin):
     return(None)
 
   def transform(self,dataset,y=None):
+    data = dataset.copy()
+    data.drop(self.target,axis=1,inplace=True,errors='ignore')
     if self.method in ['pca_liner' , 'pca_kernal', 'tsne' , 'incremental']: #if self.method in ['pca_liner' , 'pca_kernal', 'tsne' , 'incremental','psa']
-      data_pca = self.pca.transform(dataset)
+      data_pca = self.pca.transform(data)
       data_pca = pd.DataFrame(data_pca)
       data_pca.columns = ["Component_"+str(i) for i in np.arange(1,len(data_pca.columns)+1)]
-      data_pca.index = dataset.index
+      data_pca.index = data.index
+      if self.target in dataset.columns:
+        data_pca[self.target] = dataset[self.target]
       return(data_pca)
     else:
-      return(dataset)
+      return(data)
 
   def fit_transform(self,dataset,y=None):
-
+    data = dataset.copy()
     if self.method == 'pca_liner':
       self.pca = PCA(self.variance_retained,random_state=self.random_state)
       # fit transform
-      data_pca = self.pca.fit_transform(dataset.drop(self.target,axis=1))
+      data_pca = self.pca.fit_transform(data.drop(self.target,axis=1))
       data_pca = pd.DataFrame(data_pca)
       data_pca.columns = ["Component_"+str(i) for i in np.arange(1,len(data_pca.columns)+1)]
-      data_pca.index = dataset.index
-      data_pca[self.target] = dataset[self.target]
+      data_pca.index = data.index
+      data_pca[self.target] = data[self.target]
       return(data_pca)
     elif self.method == 'pca_kernal': # take number of components only
       self.pca = KernelPCA(self.variance_retained,kernel='rbf',random_state=self.random_state,n_jobs=-1)
       # fit transform
-      data_pca = self.pca.fit_transform(dataset.drop(self.target,axis=1))
+      data_pca = self.pca.fit_transform(data.drop(self.target,axis=1))
       data_pca = pd.DataFrame(data_pca)
       data_pca.columns = ["Component_"+str(i) for i in np.arange(1,len(data_pca.columns)+1)]
-      data_pca.index = dataset.index
-      data_pca[self.target] = dataset[self.target]
+      data_pca.index = data.index
+      data_pca[self.target] = data[self.target]
       return(data_pca)
     # elif self.method == 'pls': # take number of components only
     #   self.pca = PLSRegression(self.variance_retained,scale=False)
     #   # fit transform
-    #   data_pca = self.pca.fit_transform(dataset.drop(self.target,axis=1),dataset[self.target])[0] 
+    #   data_pca = self.pca.fit_transform(data.drop(self.target,axis=1),data[self.target])[0] 
     #   data_pca = pd.DataFrame(data_pca)
     #   data_pca.columns = ["Component_"+str(i) for i in np.arange(1,len(data_pca.columns)+1)]
-    #   data_pca.index = dataset.index
-    #   data_pca[self.target] = dataset[self.target]
+    #   data_pca.index = data.index
+    #   data_pca[self.target] = data[self.target]
     #   return(data_pca)
     elif self.method == 'tsne': # take number of components only
       self.pca = TSNE(self.variance_retained,random_state=self.random_state)
       # fit transform
-      data_pca = self.pca.fit_transform(dataset.drop(self.target,axis=1))
+      data_pca = self.pca.fit_transform(data.drop(self.target,axis=1))
       data_pca = pd.DataFrame(data_pca)
       data_pca.columns = ["Component_"+str(i) for i in np.arange(1,len(data_pca.columns)+1)]
-      data_pca.index = dataset.index
-      data_pca[self.target] = dataset[self.target]
+      data_pca.index = data.index
+      data_pca[self.target] = data[self.target]
       return(data_pca)
     elif self.method == 'incremental': # take number of components only
       self.pca = IncrementalPCA(self.variance_retained)
       # fit transform
-      data_pca = self.pca.fit_transform(dataset.drop(self.target,axis=1))
+      data_pca = self.pca.fit_transform(data.drop(self.target,axis=1))
       data_pca = pd.DataFrame(data_pca)
       data_pca.columns = ["Component_"+str(i) for i in np.arange(1,len(data_pca.columns)+1)]
-      data_pca.index = dataset.index
-      data_pca[self.target] = dataset[self.target]
+      data_pca.index = data.index
+      data_pca[self.target] = data[self.target]
       return(data_pca)
     else:
-      return(dataset)
+      return(data)
 
 
 #___________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________
