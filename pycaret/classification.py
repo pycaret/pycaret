@@ -6555,6 +6555,9 @@ def predict_model(
         except:
             pass
 
+    if pred_prob is None:
+        pred_prob = pred_
+
     df_score = None
 
     if data is None:
