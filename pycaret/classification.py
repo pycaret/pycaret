@@ -9,6 +9,7 @@ from pycaret.internal.logging import get_logger
 from pycaret.internal.plotting import show_yellowbrick_plot
 from pycaret.internal.Display import Display
 from pycaret.internal.distributions import *
+from pycaret.internal.validation import *
 from pycaret.containers.models.classification import (
     get_all_model_containers,
     LogisticRegressionClassifierContainer,
@@ -91,6 +92,7 @@ def setup(
     fold_strategy: Union[str, Any] = "kfold",  # added in pycaret==2.2
     fold: int = 10,  # added in pycaret==2.2
     fold_shuffle: bool = False,
+    fold_groups=None,
     n_jobs: int = -1,
     use_gpu: bool = False,  # added in pycaret==2.1
     custom_pipeline: Union[
@@ -446,6 +448,7 @@ def setup(
 
         * 'kfold' for KFold CV,
         * 'stratifiedkfold' for Stratified KFold CV,
+        * 'groupkfold' for Group KFold CV,
         * 'timeseries' for TimeSeriesSplit CV,
         * a custom CV generator object compatible with scikit-learn.
 
@@ -456,6 +459,10 @@ def setup(
     fold_shuffle: bool, default = False
         If set to False, prevents shuffling of rows when using cross validation. Only applicable for
         'kfold' and 'stratifiedkfold' fold_strategy. Ignored if fold_strategy is an object.
+    
+    fold_groups: array-like, with shape (n_samples,), default = None
+        Optional Group labels for the samples used while splitting the dataset into train/test set.
+        Only used if a group based cross-validation generator is used (eg. GroupKFold).
 
     n_jobs: int, default = -1
         The number of jobs to run in parallel (for functions that supports parallel 
@@ -999,13 +1006,18 @@ def setup(
     if type(data_split_shuffle) is not bool:
         raise TypeError("data_split_shuffle parameter only accepts True or False.")
 
-    possible_fold_strategy = ["kfold", "stratifiedkfold", "timeseries"]
+    possible_fold_strategy = ["kfold", "stratifiedkfold", "groupkfold", "timeseries"]
     if not (
         fold_strategy in possible_fold_strategy
-        or (not isinstance(fold_strategy, str) and hasattr(fold_strategy, "split"))
+        or is_sklearn_cv_generator(fold_strategy)
     ):
         raise TypeError(
             f"fold_strategy parameter must be either a scikit-learn compatible CV generator object or one of {', '.join(possible_fold_strategy)}."
+        )
+
+    if fold_strategy == "groupkfold" and (fold_groups is None or len(fold_groups) == 0):
+        raise ValueError(
+            "'groupkfold' fold_strategy requires 'fold_groups' to be a non-empty array-like object."
         )
 
     # checking fold parameter
@@ -1051,7 +1063,7 @@ def setup(
 
     # declaring global variables to be accessed by other functions
     logger.info("Declaring global variables")
-    global USI, html_param, X, y, X_train, X_test, y_train, y_test, seed, prep_pipe, experiment__, fold_shuffle_param, n_jobs_param, gpu_n_jobs_param, create_model_container, master_model_container, display_container, exp_name_log, logging_param, log_plots_param, fix_imbalance_param, fix_imbalance_method_param, data_before_preprocess, target_param, gpu_param, all_models, _all_models_internal, all_metrics, _internal_pipeline_steps, stratify_param, fold_generator, fold_param
+    global USI, html_param, X, y, X_train, X_test, y_train, y_test, seed, prep_pipe, experiment__, fold_shuffle_param, n_jobs_param, gpu_n_jobs_param, create_model_container, master_model_container, display_container, exp_name_log, logging_param, log_plots_param, fix_imbalance_param, fix_imbalance_method_param, data_before_preprocess, target_param, gpu_param, all_models, _all_models_internal, all_metrics, _internal_pipeline_steps, stratify_param, fold_generator, fold_param, fold_groups_param
 
     USI = secrets.token_hex(nbytes=2)
     logger.info(f"USI: {USI}")
@@ -1091,6 +1103,7 @@ def setup(
         "stratify_param",
         "fold_generator",
         "fold_param",
+        "fold_groups_param",
     }
 
     logger.info(f"pycaret_globals: {pycaret_globals}")
@@ -1389,12 +1402,13 @@ def setup(
 
     # CV params
     fold_param = fold
-
+    fold_groups_param = fold_groups
     fold_shuffle_param = fold_shuffle
 
     from sklearn.model_selection import (
         StratifiedKFold,
         KFold,
+        GroupKFold,
         TimeSeriesSplit,
     )
 
@@ -1406,6 +1420,8 @@ def setup(
         fold_generator = StratifiedKFold(
             fold_param, random_state=seed, shuffle=fold_shuffle_param
         )
+    elif fold_strategy == "groupkfold":
+        fold_generator = GroupKFold(fold_param)
     elif fold_strategy == "timeseries":
         fold_generator = TimeSeriesSplit(fold_param)
     else:
@@ -1873,6 +1889,7 @@ def setup(
         stratify_param,
         fold_generator,
         fold_param,
+        fold_groups_param,
     )
 
 
@@ -1978,9 +1995,10 @@ def compare_models(
         Dictionary of arguments passed to the fit method of the model. The parameters will be applied to all models,
         therefore it is recommended to set errors parameter to 'ignore'.
 
-    groups: array-like, with shape (n_samples,)
+    groups: array-like, with shape (n_samples,), default = None
         Optional Group labels for the samples used while splitting the dataset into train/test set.
         Only used if a group based cross-validation generator is used (eg. GroupKFold).
+        If None, will use the value set in fold_groups param in setup().
 
     verbose: bool, default = True
         Score grid is not printed when verbose is set to False.
@@ -2051,9 +2069,7 @@ def compare_models(
         )
 
     # checking fold parameter
-    if fold is not None and not (
-        type(fold) is int or (not isinstance(fold, str) and hasattr(fold, "split"))
-    ):
+    if fold is not None and not (type(fold) is int or is_sklearn_cv_generator(fold)):
         raise TypeError(
             "fold parameter must be either None, an integer or a scikit-learn compatible CV generator object."
         )
@@ -2092,6 +2108,9 @@ def compare_models(
     ERROR HANDLING ENDS HERE
     
     """
+
+    if groups is None:
+        groups = fold_groups_param
 
     pd.set_option("display.max_columns", 500)
 
@@ -2439,9 +2458,10 @@ def create_model(
     fit_kwargs: dict, default = {} (empty dict)
         Dictionary of arguments passed to the fit method of the model.
 
-    groups: array-like, with shape (n_samples,)
+    groups: array-like, with shape (n_samples,), default = None
         Optional Group labels for the samples used while splitting the dataset into train/test set.
         Only used if a group based cross-validation generator is used (eg. GroupKFold).
+        If None, will use the value set in fold_groups param in setup().
 
     verbose: bool, default = True
         Score grid is not printed when verbose is set to False.
@@ -2569,9 +2589,10 @@ def _create_model(
     fit_kwargs: dict, default = {} (empty dict)
         Dictionary of arguments passed to the fit method of the model.
 
-    groups: array-like, with shape (n_samples,)
+    groups: array-like, with shape (n_samples,), default = None
         Optional Group labels for the samples used while splitting the dataset into train/test set.
         Only used if a group based cross-validation generator is used (eg. GroupKFold).
+        If None, will use the value set in fold_groups param in setup().
 
     verbose: bool, default = True
         Score grid is not printed when verbose is set to False.
@@ -2644,9 +2665,7 @@ def _create_model(
         )
 
     # checking fold parameter
-    if fold is not None and not (
-        type(fold) is int or (not isinstance(fold, str) and hasattr(fold, "split"))
-    ):
+    if fold is not None and not (type(fold) is int or is_sklearn_cv_generator(fold)):
         raise TypeError(
             "fold parameter must be either None, an integer or a scikit-learn compatible CV generator object."
         )
@@ -2678,6 +2697,9 @@ def _create_model(
     ERROR HANDLING ENDS HERE
     
     """
+
+    if groups is None:
+        groups = fold_groups_param
 
     if not display:
         progress_args = {"max": _get_cv_n_folds(fold) + 4}
@@ -3149,9 +3171,10 @@ def tune_model(
     fit_kwargs: dict, default = {} (empty dict)
         Dictionary of arguments passed to the fit method of the tuner.
 
-    groups: array-like, with shape (n_samples,)
+    groups: array-like, with shape (n_samples,), default = None
         Optional Group labels for the samples used while splitting the dataset into train/test set.
         Only used if a group based cross-validation generator is used (eg. GroupKFold).
+        If None, will use the value set in fold_groups param in setup().
 
     verbose: bool, default = True
         Score grid is not printed when verbose is set to False.
@@ -3214,9 +3237,7 @@ def tune_model(
         raise TypeError("VotingClassifier not allowed under tune_model().")
 
     # checking fold parameter
-    if fold is not None and not (
-        type(fold) is int or (not isinstance(fold, str) and hasattr(fold, "split"))
-    ):
+    if fold is not None and not (type(fold) is int or is_sklearn_cv_generator(fold)):
         raise TypeError(
             "fold parameter must be either None, an integer or a scikit-learn compatible CV generator object."
         )
@@ -3378,6 +3399,9 @@ def tune_model(
     ERROR HANDLING ENDS HERE
     
     """
+
+    if groups is None:
+        groups = fold_groups_param
 
     if not display:
         progress_args = {"max": _get_cv_n_folds(fold) + 3 + 4}
@@ -3922,9 +3946,10 @@ def ensemble_model(
     fit_kwargs: dict, default = {} (empty dict)
         Dictionary of arguments passed to the fit method of the model.
 
-    groups: array-like, with shape (n_samples,)
+    groups: array-like, with shape (n_samples,), default = None
         Optional Group labels for the samples used while splitting the dataset into train/test set.
         Only used if a group based cross-validation generator is used (eg. GroupKFold).
+        If None, will use the value set in fold_groups param in setup().
 
     verbose: bool, default = True
         Score grid is not printed when verbose is set to False.
@@ -3994,9 +4019,7 @@ def ensemble_model(
             )
 
     # checking fold parameter
-    if fold is not None and not (
-        type(fold) is int or (not isinstance(fold, str) and hasattr(fold, "split"))
-    ):
+    if fold is not None and not (type(fold) is int or is_sklearn_cv_generator(fold)):
         raise TypeError(
             "fold parameter must be either None, an integer or a scikit-learn compatible CV generator object."
         )
@@ -4032,6 +4055,9 @@ def ensemble_model(
     ERROR HANDLING ENDS HERE
     
     """
+
+    if groups is None:
+        groups = fold_groups_param
 
     if not display:
         progress_args = {"max": _get_cv_n_folds(fold) + 2 + 4}
@@ -4253,9 +4279,10 @@ def blend_models(
     fit_kwargs: dict, default = {} (empty dict)
         Dictionary of arguments passed to the fit method of the model.
 
-    groups: array-like, with shape (n_samples,)
+    groups: array-like, with shape (n_samples,), default = None
         Optional Group labels for the samples used while splitting the dataset into train/test set.
         Only used if a group based cross-validation generator is used (eg. GroupKFold).
+        If None, will use the value set in fold_groups param in setup().
 
     verbose: bool, default = True
         Score grid is not printed when verbose is set to False.
@@ -4332,9 +4359,7 @@ def blend_models(
                 method = "soft"
 
     # checking fold parameter
-    if fold is not None and not (
-        type(fold) is int or (not isinstance(fold, str) and hasattr(fold, "split"))
-    ):
+    if fold is not None and not (type(fold) is int or is_sklearn_cv_generator(fold)):
         raise TypeError(
             "fold parameter must be either None, an integer or a scikit-learn compatible CV generator object."
         )
@@ -4376,6 +4401,9 @@ def blend_models(
     ERROR HANDLING ENDS HERE
     
     """
+
+    if groups is None:
+        groups = fold_groups_param
 
     if not display:
         progress_args = {"max": _get_cv_n_folds(fold) + 2 + 4}
@@ -4601,9 +4629,10 @@ def stack_models(
     fit_kwargs: dict, default = {} (empty dict)
         Dictionary of arguments passed to the fit method of the model.
 
-    groups: array-like, with shape (n_samples,)
+    groups: array-like, with shape (n_samples,), default = None
         Optional Group labels for the samples used while splitting the dataset into train/test set.
         Only used if a group based cross-validation generator is used (eg. GroupKFold).
+        If None, will use the value set in fold_groups param in setup().
 
     verbose: bool, default = True
         Score grid is not printed when verbose is set to False.
@@ -4651,9 +4680,7 @@ def stack_models(
             )
 
     # checking fold parameter
-    if fold is not None and not (
-        type(fold) is int or (not isinstance(fold, str) and hasattr(fold, "split"))
-    ):
+    if fold is not None and not (type(fold) is int or is_sklearn_cv_generator(fold)):
         raise TypeError(
             "fold parameter must be either None, an integer or a scikit-learn compatible CV generator object."
         )
@@ -4696,6 +4723,9 @@ def stack_models(
     ERROR HANDLING ENDS HERE
     
     """
+
+    if groups is None:
+        groups = fold_groups_param
 
     logger.info("Defining meta model")
     # Defining meta model.
@@ -4915,9 +4945,10 @@ def plot_model(
     fit_kwargs: dict, default = {} (empty dict)
         Dictionary of arguments passed to the fit method of the model.
 
-    groups: array-like, with shape (n_samples,)
+    groups: array-like, with shape (n_samples,), default = None
         Optional Group labels for the samples used while splitting the dataset into train/test set.
         Only used if a group based cross-validation generator is used (eg. GroupKFold).
+        If None, will use the value set in fold_groups param in setup().
 
     verbose: bool, default = True
         Progress bar not shown when verbose set to False. 
@@ -5034,9 +5065,7 @@ def plot_model(
         )
 
     # checking fold parameter
-    if fold is not None and not (
-        type(fold) is int or (not isinstance(fold, str) and hasattr(fold, "split"))
-    ):
+    if fold is not None and not (type(fold) is int or is_sklearn_cv_generator(fold)):
         raise TypeError(
             "fold parameter must be either None, an integer or a scikit-learn compatible CV generator object."
         )
@@ -5046,6 +5075,9 @@ def plot_model(
     ERROR HANDLING ENDS HERE
     
     """
+
+    if groups is None:
+        groups = fold_groups_param
 
     if not display:
         progress_args = {"max": 5}
@@ -5660,9 +5692,10 @@ def evaluate_model(
     fit_kwargs: dict, default = {} (empty dict)
         Dictionary of arguments passed to the fit method of the model.
 
-    groups: array-like, with shape (n_samples,)
+    groups: array-like, with shape (n_samples,), default = None
         Optional Group labels for the samples used while splitting the dataset into train/test set.
         Only used if a group based cross-validation generator is used (eg. GroupKFold).
+        If None, will use the value set in fold_groups param in setup().
 
     Returns
     -------
@@ -5699,6 +5732,9 @@ def evaluate_model(
         button_style="",  # 'success', 'info', 'warning', 'danger' or ''
         icons=[""],
     )
+
+    if groups is None:
+        groups = fold_groups_param
 
     d = interact(
         plot_model,
@@ -6010,9 +6046,10 @@ def calibrate_model(
     fit_kwargs: dict, default = {} (empty dict)
         Dictionary of arguments passed to the fit method of the model.
 
-    groups: array-like, with shape (n_samples,)
+    groups: array-like, with shape (n_samples,), default = None
         Optional Group labels for the samples used while splitting the dataset into train/test set.
         Only used if a group based cross-validation generator is used (eg. GroupKFold).
+        If None, will use the value set in fold_groups param in setup().
 
     verbose: bool, default = True
         Score grid is not printed when verbose is set to False.
@@ -6051,9 +6088,7 @@ def calibrate_model(
     runtime_start = time.time()
 
     # checking fold parameter
-    if fold is not None and not (
-        type(fold) is int or (not isinstance(fold, str) and hasattr(fold, "split"))
-    ):
+    if fold is not None and not (type(fold) is int or is_sklearn_cv_generator(fold)):
         raise TypeError(
             "fold parameter must be either None, an integer or a scikit-learn compatible CV generator object."
         )
@@ -6071,6 +6106,9 @@ def calibrate_model(
     ERROR HANDLING ENDS HERE
     
     """
+
+    if groups is None:
+        groups = fold_groups_param
 
     logger.info("Preloading libraries")
 
@@ -6520,8 +6558,8 @@ def predict_model(
     # dataset
     if data is None:
 
-        if "Pipeline" in str(type(estimator)):
-            estimator = estimator[-1]
+        if is_sklearn_pipeline(estimator):
+            estimator = estimator.steps[-1][1]
 
         X_test_ = X_test.copy()
         y_test_ = y_test.copy()
@@ -6534,7 +6572,6 @@ def predict_model(
     else:
 
         if hasattr(estimator, "steps") and hasattr(estimator, "predict"):
-            logger.info(estimator)
             dtypes = estimator.named_steps["dtypes"]
         else:
             try:
@@ -6656,9 +6693,10 @@ def finalize_model(
     fit_kwargs: dict, default = {} (empty dict)
         Dictionary of arguments passed to the fit method of the model.
 
-    groups: array-like, with shape (n_samples,)
+    groups: array-like, with shape (n_samples,), default = None
         Optional Group labels for the samples used while splitting the dataset into train/test set.
         Only used if a group based cross-validation generator is used (eg. GroupKFold).
+        If None, will use the value set in fold_groups param in setup().
 
     Returns
     -------
@@ -6682,6 +6720,9 @@ def finalize_model(
 
     logger.info("Initializing finalize_model()")
     logger.info(f"finalize_model({function_params_str})")
+
+    if groups is None:
+        groups = fold_groups_param
 
     if not display:
         display = Display(False, html_param,)

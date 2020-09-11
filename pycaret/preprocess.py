@@ -1114,7 +1114,7 @@ class Ordinal(BaseEstimator,TransformerMixin):
       cat_list = cat_list + i
     
     # now do fit transform 
-    self.enc = OrdinalEncoder(cat_list)
+    self.enc = OrdinalEncoder(categories=cat_list)
     new_data_train = pd.DataFrame(self.enc.fit_transform(data.loc[:,self.info_as_dict.keys()]),columns=self.info_as_dict,index= data.index )
     # new_data = pd.DataFrame(self.enc.fit_transform(data.loc[:,self.info_as_dict.keys()]))
     for i in self.info_as_dict.keys():

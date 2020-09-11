@@ -8,6 +8,7 @@ import pandas.io.formats.style
 import ipywidgets as ipw
 from IPython.display import display, HTML, clear_output, update_display
 from pycaret.internal.logging import get_logger
+from pycaret.internal.validation import *
 from typing import Any, List, Optional, Dict, Tuple, Union
 from sklearn.pipeline import Pipeline
 import numpy as np
@@ -303,7 +304,7 @@ def normalize_custom_transformers(
         _check_custom_transformer(transformers)
         if not isinstance(transformers, tuple):
             transformers = (f"custom_step", transformers)
-        if isinstance(transformers[0], Pipeline):
+        if is_sklearn_pipeline(transformers[0]):
             return transformers.steps
         transformers = [transformers]
     return transformers
@@ -336,7 +337,7 @@ def get_cv_splitter(
 ) -> BaseCrossValidator:
     if not fold:
         return default
-    if not isinstance(fold, str) and hasattr(fold, "split"):
+    if is_sklearn_cv_generator(fold):
         return fold
     if type(fold) is int:
         if int_default == "kfold":
