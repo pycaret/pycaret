@@ -2238,9 +2238,6 @@ def compare_models(
                 fold=fold,
                 round=round,
                 cross_validation=cross_validation,
-                budget_time=budget_time - total_runtime
-                if budget_time and budget_time > 0
-                else 0,
                 fit_kwargs=fit_kwargs,
                 groups=groups,
             )
@@ -2255,9 +2252,6 @@ def compare_models(
                     fold=fold,
                     round=round,
                     cross_validation=cross_validation,
-                    budget_time=budget_time - total_runtime
-                    if budget_time and budget_time > 0
-                    else 0,
                     fit_kwargs=fit_kwargs,
                     groups=groups,
                 )
@@ -2513,7 +2507,6 @@ def _create_model(
     fold: Optional[Union[int, Any]] = None,
     round: int = 4,
     cross_validation: bool = True,
-    budget_time: Optional[float] = None,
     fit_kwargs: Optional[dict] = {},
     groups=None,
     verbose: bool = True,
@@ -2581,10 +2574,6 @@ def _create_model(
     cross_validation: bool, default = True
         When cross_validation set to False fold parameter is ignored and model is trained
         on entire training dataset. No metric evaluation is returned. 
-
-    budget_time: int or float, default = None
-        If not 0 or None, will terminate execution of the function after budget_time minutes have
-        passed.
 
     fit_kwargs: dict, default = {} (empty dict)
         Dictionary of arguments passed to the fit method of the model.
@@ -2673,10 +2662,6 @@ def _create_model(
     # checking round parameter
     if type(round) is not int:
         raise TypeError("Round parameter only accepts integer value.")
-
-    # checking budget_time parameter
-    if budget_time and type(budget_time) is not int and type(budget_time) is not float:
-        raise TypeError("budget_time parameter only accepts integer or float values.")
 
     # checking verbose parameter
     if type(verbose) is not bool:
@@ -2787,12 +2772,6 @@ def _create_model(
     MONITOR UPDATE ENDS
     """
 
-    total_runtime_start = time.time()
-    total_runtime = 0
-    over_time_budget = False
-    if budget_time and budget_time > 0:
-        logger.info(f"Time budget is {budget_time} minutes")
-
     if not cross_validation:
 
         logger.info("Cross validation set to False")
@@ -2829,10 +2808,6 @@ def _create_model(
             return (model, model_fit_time)
         return model
 
-    fold_num = 1
-
-    fit_kwargs_cv = fit_kwargs.copy()
-
     """
     MONITOR UPDATE STARTS
     """
@@ -2845,6 +2820,8 @@ def _create_model(
     from sklearn.model_selection import cross_validate
 
     metrics_dict = dict(zip(all_metrics.index, all_metrics["Scorer"]))
+
+    logger.info("Starting cross validation")
 
     scores = cross_validate(
         model,
