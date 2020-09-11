@@ -154,7 +154,7 @@ def load_config(file_name: str, globals_d: dict):
     for k, v in loaded_globals.items():
         globals_d[k] = v
 
-    globals_d['logger'] = get_logger()
+    globals_d["logger"] = get_logger()
 
     logger.info(f"Global variables set to match those in {file_name}")
 
@@ -242,10 +242,13 @@ def calculate_metrics(
     pred_,
     pred_proba: Optional[float] = None,
     score_dict: Optional[Dict[str, np.array]] = None,
+    weights: Optional[list] = None,
 ) -> Dict[str, np.array]:
     columns = list(metrics.columns)
     score_function_idx = columns.index("Score Function") + 1
     display_name_idx = columns.index("Display Name") + 1
+
+    logger = get_logger()
 
     if not score_dict:
         score_dict = {
@@ -259,9 +262,17 @@ def calculate_metrics(
             continue
         target = pred_proba if row.Target == "pred_proba" else pred_
         try:
-            calculated_metric = row[score_function_idx](ytest, target, **row.Args)
+            calculated_metric = row[score_function_idx](
+                ytest, target, sample_weight=weights, **row.Args
+            )
         except:
-            calculated_metric = 0
+            logger.warning(
+                f"sample_weights not supported for {row[score_function_idx]}."
+            )
+            try:
+                calculated_metric = row[score_function_idx](ytest, target, **row.Args)
+            except:
+                calculated_metric = 0
 
         score_dict[row[display_name_idx]] = np.append(
             score_dict[row[display_name_idx]], calculated_metric

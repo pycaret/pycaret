@@ -2747,6 +2747,8 @@ def _create_model(
 
     fold_num = 1
 
+    fit_kwargs_cv = fit_kwargs.copy()
+
     for train_i, test_i in cv.split(data_X, data_y, groups=groups):
 
         logger.info(f"Initializing Fold {fold_num}")
@@ -2775,12 +2777,23 @@ def _create_model(
 
         Xtrain, Xtest = data_X.iloc[train_i], data_X.iloc[test_i]
         ytrain, ytest = data_y.iloc[train_i], data_y.iloc[test_i]
+
+        if fit_kwargs_cv and "sample_weight" in fit_kwargs_cv:
+            weights_train, weights_test = (
+                fit_kwargs_cv["sample_weight"][train_i],
+                fit_kwargs_cv["sample_weight"][test_i],
+            )
+            fit_kwargs_cv["sample_weight"] = weights_train
+        else:
+            weights_train = None
+            weights_test = None
+
         # time just for fitting
         time_start = time.time()
 
         logger.info("Fitting Model")
         with io.capture_output():
-            model.fit(Xtrain, ytrain, **fit_kwargs)
+            model.fit(Xtrain, ytrain, **fit_kwargs_cv)
         logger.info("Evaluating Metrics")
 
         if hasattr(model, "predict_proba"):
@@ -2794,7 +2807,7 @@ def _create_model(
 
         pred_ = model.predict(Xtest)
 
-        _calculate_metrics(ytest, pred_, pred_prob, score_dict)
+        _calculate_metrics(ytest, pred_, pred_prob, score_dict, weights_test)
 
         logger.info("Compiling Metrics")
         time_end = time.time()
@@ -7737,14 +7750,20 @@ def _is_special_model(e) -> bool:
 
 
 def _calculate_metrics(
-    ytest, pred_, pred_prob: float, score_dict: Optional[Dict[str, np.array]] = None
+    ytest,
+    pred_,
+    pred_prob: float,
+    score_dict: Optional[Dict[str, np.array]] = None,
+    weights: Optional[list] = None,
 ) -> dict:
     """
     Calculate all metrics in get_metrics().
     """
     from pycaret.internal.utils import calculate_metrics
 
-    return calculate_metrics(get_metrics(), ytest, pred_, pred_prob, score_dict)
+    return calculate_metrics(
+        get_metrics(), ytest, pred_, pred_prob, score_dict, weights
+    )
 
 
 def _mlflow_log_model(
