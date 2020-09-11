@@ -267,11 +267,14 @@ def calculate_metrics(
             )
         except:
             logger.warning(
-                f"sample_weights not supported for {row[score_function_idx]}."
+                f"sample_weight not supported for {row[score_function_idx]}."
             )
             try:
                 calculated_metric = row[score_function_idx](ytest, target, **row.Args)
             except:
+                logger.warning(
+                    f"{row[score_function_idx]} not supported, setting to 0"
+                )
                 calculated_metric = 0
 
         score_dict[row[display_name_idx]] = np.append(

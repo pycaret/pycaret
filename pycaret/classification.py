@@ -1803,6 +1803,8 @@ def setup(
     pycaret_globals = None
     pycaret_globals = set([k for k in globals().keys() if k not in old_globals])
 
+    logger.info(f"pycaret_globals: {pycaret_globals}")
+
     logger.info(f"create_model_container: {len(create_model_container)}")
     logger.info(f"master_model_container: {len(master_model_container)}")
     logger.info(f"display_container: {len(display_container)}")
