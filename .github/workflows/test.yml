@@ -30,3 +30,30 @@ jobs:
     - name: Test with pytest
       run: |
         pytest
+
+  test_tuning:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python 3.8
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.8
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        python -m pip install -U pytest
+        python -m pip install codecov
+        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+        if [ -f requirements-optional.txt ]; then pip install -r requirements-optional.txt; fi
+        python -m spacy download en
+    - name: Remove tests
+      run: |
+        cd pycaret/tests
+        find . -type f -not -name 'test_classification_tuning.py' -delete
+        cd ../..
+    - name: Test with pytest
+      run: |
+        pytest
