@@ -1883,6 +1883,7 @@ def compare_models(
     exclude: Optional[List[str]] = None,  # changed blacklist to exclude in pycaret==2.1
     fold: Optional[Union[int, Any]] = None,
     round: int = 4,
+    cross_validation: bool = True,
     sort: str = "Accuracy",
     budget_time: Optional[float] = None,  # added in pycaret==2.1.0
     turbo: bool = True,
@@ -1949,6 +1950,10 @@ def compare_models(
     round: integer, default = 4
         Number of decimal places the metrics in the score grid will be rounded to.
   
+    cross_validation: bool, default = True
+        When cross_validation set to False fold parameter is ignored and models are trained
+        on entire training dataset, returning metrics calculated using the train (holdout) set.
+
     sort: str, default = 'Accuracy'
         The scoring measure specified is used for sorting the average score grid
         Other options are 'AUC', 'Recall', 'Precision', 'F1', 'Kappa' and 'MCC'.
@@ -1998,11 +2003,12 @@ def compare_models(
       have longer training times. Changing turbo parameter to False may result 
       in very high training times with datasets where number of samples exceed 
       10,000.
-      
+
     - If target variable is multiclass (more than 2 classes), AUC will be 
-      returned as zero (0.0)      
-             
-    
+      returned as zero (0.0)
+
+    - If cross_validation param is set to False, no models will be logged with MLFlow.
+
     """
 
     function_params_str = ", ".join([f"{k}={v}" for k, v in locals().items()])
@@ -2212,6 +2218,7 @@ def compare_models(
                 display=display,
                 fold=fold,
                 round=round,
+                cross_validation=cross_validation,
                 budget_time=budget_time - total_runtime
                 if budget_time and budget_time > 0
                 else 0,
@@ -2228,6 +2235,7 @@ def compare_models(
                     display=display,
                     fold=fold,
                     round=round,
+                    cross_validation=cross_validation,
                     budget_time=budget_time - total_runtime
                     if budget_time and budget_time > 0
                     else 0,
@@ -2247,7 +2255,10 @@ def compare_models(
             break
 
         logger.info("Creating metrics dataframe")
-        compare_models_ = pd.DataFrame(model_results.loc["Mean"]).T
+        if cross_validation:
+            compare_models_ = pd.DataFrame(model_results.loc["Mean"]).T
+        else:
+            compare_models_ = pd.DataFrame(model_results.iloc[0]).T
         compare_models_.insert(len(compare_models_.columns), "TT (Sec)", model_fit_time)
         compare_models_.insert(0, "Model", model_name)
         compare_models_.insert(0, "Object", [model])
@@ -2282,7 +2293,7 @@ def compare_models(
         MLflow logging starts here
         """
 
-        if logging_param:
+        if logging_param and cross_validation:
 
             avgs_dict_log = {
                 k: v
@@ -2423,7 +2434,7 @@ def create_model(
 
     cross_validation: bool, default = True
         When cross_validation set to False fold parameter is ignored and model is trained
-        on entire training dataset. No metric evaluation is returned. 
+        on entire training dataset, returning metrics calculated using the train (holdout) set.
 
     fit_kwargs: dict, default = {} (empty dict)
         Dictionary of arguments passed to the fit method of the model.
@@ -2460,6 +2471,8 @@ def create_model(
     - 'rbfsvm' and 'gpc' uses non-linear kernel and hence the fit time complexity is 
       more than quadratic. These estimators are hard to scale on datasets with more 
       than 10,000 samples.
+
+    - If cross_validation param is set to False, model will not be logged with MLFlow.
 
     """
     return _create_model(
@@ -2600,6 +2613,8 @@ def _create_model(
     - 'rbfsvm' and 'gpc' uses non-linear kernel and hence the fit time complexity is 
       more than quadratic. These estimators are hard to scale on datasets with more 
       than 10,000 samples.
+
+    - If cross_validation param is set to False, model will not be logged with MLFlow.
 
     """
 
@@ -2763,10 +2778,14 @@ def _create_model(
         logger.info("Cross validation set to False")
 
         logger.info("Fitting Model")
+        model_fit_start = time.time()
         with io.capture_output():
             model.fit(data_X, data_y, **fit_kwargs)
+        model_fit_end = time.time()
 
-        predict_model(model, verbose=True)
+        model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
+
+        predict_model(model, verbose=False)
         model_results = pull(pop=True).drop("Model", axis=1)
 
         display_container.append(model_results)
@@ -2775,8 +2794,6 @@ def _create_model(
             model_results, clear=system, override=False if not system else None
         )
 
-        logger.info(f"create_model_container: {len(create_model_container)}")
-        logger.info(f"master_model_container: {len(master_model_container)}")
         logger.info(f"display_container: {len(display_container)}")
 
         logger.info(str(model))
@@ -2784,8 +2801,13 @@ def _create_model(
             "create_models() succesfully completed......................................"
         )
 
+        model = model.named_steps["actual_estimator"]
+
         gc.collect()
-        return model.named_steps["actual_estimator"]
+
+        if not system:
+            return (model, model_fit_time)
+        return model
 
     fold_num = 1
 
@@ -2853,7 +2875,6 @@ def _create_model(
 
         logger.info("Compiling Metrics")
         time_end = time.time()
-        training_time = time_end - time_start
 
         display.move_progress()
 
