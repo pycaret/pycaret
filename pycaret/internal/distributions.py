@@ -3,7 +3,7 @@
 # License: MIT
 
 from typing import Dict, Hashable, Optional
-from collections import Hashable
+from collections.abc import Hashable
 
 
 class Distrubution:

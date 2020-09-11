@@ -2766,9 +2766,18 @@ def _create_model(
         with io.capture_output():
             model.fit(data_X, data_y, **fit_kwargs)
 
-        display.clear_output()
-
         predict_model(model, verbose=True)
+        model_results = pull(pop=True).drop("Model", axis=1)
+
+        display_container.append(model_results)
+
+        display.display(
+            model_results, clear=system, override=False if not system else None
+        )
+
+        logger.info(f"create_model_container: {len(create_model_container)}")
+        logger.info(f"master_model_container: {len(master_model_container)}")
+        logger.info(f"display_container: {len(display_container)}")
 
         logger.info(str(model))
         logger.info(
