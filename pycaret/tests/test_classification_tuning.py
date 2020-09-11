@@ -29,8 +29,9 @@ def test():
 
     tune_model(model, fold=2, search_library='optuna', search_algorithm='tpe')
     tune_model(model, fold=2, search_library='tune-sklearn', search_algorithm='hyperopt')
-    tune_model(model, fold=2, search_library='tune-sklearn', search_algorithm='bohb')
     tune_model(model, fold=2, search_library='tune-sklearn', search_algorithm='bayesian')
+    # bohb is broken in current ray[tune] release
+    #tune_model(model, fold=2, search_library='tune-sklearn', search_algorithm='bohb')
 
     assert 1 == 1
     
