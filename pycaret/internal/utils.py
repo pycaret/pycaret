@@ -3,6 +3,7 @@
 # License: MIT
 
 import datetime
+from joblib.parallel import Parallel, delayed
 import pandas as pd
 import pandas.io.formats.style
 import ipywidgets as ipw
@@ -257,37 +258,42 @@ def calculate_metrics(
     score_function_idx = columns.index("Score Function") + 1
     display_name_idx = columns.index("Display Name") + 1
 
-    logger = get_logger()
-
-    if not score_dict:
-        score_dict = {
-            metric._2: np.empty((0, 0))
-            for metric in metrics.itertuples()
-            if metric[score_function_idx]
-        }
+    score_dict = []
 
     for row in metrics.itertuples():
-        if not row[score_function_idx]:
-            continue
-        target = pred_proba if row.Target == "pred_proba" else pred_
-        try:
-            calculated_metric = row[score_function_idx](
-                ytest, target, sample_weight=weights, **row.Args
+        score_dict.append(
+            _calculate_metric(
+                row,
+                score_function_idx,
+                display_name_idx,
+                ytest,
+                pred_,
+                pred_proba,
+                weights,
             )
-        except:
-            logger.warning(
-                f"sample_weight not supported for {row[score_function_idx]}."
-            )
-            try:
-                calculated_metric = row[score_function_idx](ytest, target, **row.Args)
-            except:
-                logger.warning(f"{row[score_function_idx]} not supported, setting to 0")
-                calculated_metric = 0
-
-        score_dict[row[display_name_idx]] = np.append(
-            score_dict[row[display_name_idx]], calculated_metric
         )
+
+    score_dict = dict([x for x in score_dict if x is not None])
     return score_dict
+
+
+def _calculate_metric(
+    row, score_function_idx, display_name_idx, ytest, pred_, pred_proba, weights
+):
+    if not row[score_function_idx]:
+        return None
+    target = pred_proba if row.Target == "pred_proba" else pred_
+    try:
+        calculated_metric = row[score_function_idx](
+            ytest, target, sample_weight=weights, **row.Args
+        )
+    except:
+        try:
+            calculated_metric = row[score_function_idx](ytest, target, **row.Args)
+        except:
+            calculated_metric = 0
+
+    return (row[display_name_idx], calculated_metric)
 
 
 def normalize_custom_transformers(

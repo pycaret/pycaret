@@ -93,7 +93,7 @@ def setup(
     fold: int = 10,  # added in pycaret==2.2
     fold_shuffle: bool = False,
     fold_groups=None,
-    n_jobs: int = -1,
+    n_jobs: Optional[int] = -1,
     use_gpu: bool = False,  # added in pycaret==2.1
     custom_pipeline: Union[
         Any, Tuple[str, Any], List[Any], List[Tuple[str, Any]]
@@ -6515,7 +6515,7 @@ def predict_model(
 
     if data is None:
         metrics = _calculate_metrics(y_test_, pred_, pred_prob)
-        df_score = pd.DataFrame(metrics)
+        df_score = pd.DataFrame(metrics, index=[0])
         df_score.insert(0, "Model", full_name)
         df_score = df_score.round(round)
         display.display(df_score.style.set_precision(round), clear=False)
@@ -7596,7 +7596,7 @@ def _sample_data(
             logger.warning("model has no predict_proba attribute.")
             pred_prob = 0
 
-        _calculate_metrics(y_test, pred_, pred_prob, score_dict)
+        score_dict = _calculate_metrics(y_test, pred_, pred_prob)
 
         t1 = time.time()
 
@@ -7738,11 +7738,7 @@ def _is_special_model(e) -> bool:
 
 
 def _calculate_metrics(
-    ytest,
-    pred_,
-    pred_prob: float,
-    score_dict: Optional[Dict[str, np.array]] = None,
-    weights: Optional[list] = None,
+    ytest, pred_, pred_prob: float, weights: Optional[list] = None,
 ) -> dict:
     """
     Calculate all metrics in get_metrics().
@@ -7750,7 +7746,11 @@ def _calculate_metrics(
     from pycaret.internal.utils import calculate_metrics
 
     return calculate_metrics(
-        get_metrics(), ytest, pred_, pred_prob, score_dict, weights
+        metrics=get_metrics(),
+        ytest=ytest,
+        pred_=pred_,
+        pred_proba=pred_prob,
+        weights=weights,
     )
 
 
