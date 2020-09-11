@@ -1128,7 +1128,6 @@ def setup(
         monitor_rows = [
             ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
             ["Status", ". . . . . . . . . . . . . . . . . .", "Loading Dependencies"],
-            ["ETC", ". . . . . . . . . . . . . . . . . .", "Calculating ETC"],
         ]
         display = Display(verbose, html_param, progress_args, monitor_rows,)
 
@@ -2133,7 +2132,6 @@ def compare_models(
             ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
             ["Status", ". . . . . . . . . . . . . . . . . .", "Loading Dependencies"],
             ["Estimator", ". . . . . . . . . . . . . . . . . .", "Compiling Library"],
-            ["ETC", ". . . . . . . . . . . . . . . . . .", "Calculating ETC"],
         ]
         display = Display(
             verbose, html_param, progress_args, master_display_columns, monitor_rows,
@@ -2218,7 +2216,6 @@ def compare_models(
         """
 
         display.update_monitor(2, model_name)
-        display.update_monitor(3, "Calculating ETC")
         display.display_monitor()
 
         """
@@ -2358,7 +2355,6 @@ def compare_models(
     display.move_progress()
 
     display.update_monitor(1, "Compiling Final Models")
-    display.update_monitor(3, "Almost Finished")
     display.display_monitor()
 
     sorted_models = master_display["Object"].to_list()
@@ -2693,7 +2689,6 @@ def _create_model(
         monitor_rows = [
             ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
             ["Status", ". . . . . . . . . . . . . . . . . .", "Loading Dependencies"],
-            ["ETC", ". . . . . . . . . . . . . . . . . .", "Calculating ETC"],
         ]
         display = Display(
             verbose, html_param, progress_args, master_display_columns, monitor_rows,
@@ -2860,7 +2855,6 @@ def _create_model(
 
     # refitting the model on complete X_train, y_train
     display.update_monitor(1, "Finalizing Model")
-    display.update_monitor(-1, "Almost Finished")
     display.display_monitor()
 
     model_fit_start = time.time()
@@ -3305,7 +3299,6 @@ def tune_model(
         monitor_rows = [
             ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
             ["Status", ". . . . . . . . . . . . . . . . . .", "Loading Dependencies"],
-            ["ETC", ". . . . . . . . . . . . . . . . . .", "Calculating ETC"],
         ]
         display = Display(
             verbose, html_param, progress_args, master_display_columns, monitor_rows,
@@ -3961,7 +3954,6 @@ def ensemble_model(
         monitor_rows = [
             ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
             ["Status", ". . . . . . . . . . . . . . . . . .", "Loading Dependencies"],
-            ["ETC", ". . . . . . . . . . . . . . . . . .", "Calculating ETC"],
         ]
         display = Display(
             verbose, html_param, progress_args, master_display_columns, monitor_rows,
@@ -4307,7 +4299,6 @@ def blend_models(
         monitor_rows = [
             ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
             ["Status", ". . . . . . . . . . . . . . . . . .", "Loading Dependencies"],
-            ["ETC", ". . . . . . . . . . . . . . . . . .", "Calculating ETC"],
         ]
         display = Display(
             verbose, html_param, progress_args, master_display_columns, monitor_rows,
@@ -4639,7 +4630,6 @@ def stack_models(
         monitor_rows = [
             ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
             ["Status", ". . . . . . . . . . . . . . . . . .", "Loading Dependencies"],
-            ["ETC", ". . . . . . . . . . . . . . . . . .", "Calculating ETC"],
         ]
         display = Display(
             verbose, html_param, progress_args, master_display_columns, monitor_rows,
@@ -6018,7 +6008,6 @@ def calibrate_model(
         monitor_rows = [
             ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
             ["Status", ". . . . . . . . . . . . . . . . . .", "Loading Dependencies"],
-            ["ETC", ". . . . . . . . . . . . . . . . . .", "Calculating ETC"],
         ]
         display = Display(
             verbose, html_param, progress_args, master_display_columns, monitor_rows,
@@ -7457,7 +7446,6 @@ def _choose_better(
     logger = get_logger()
     logger.info("choose_better activated")
     display.update_monitor(1, "Compiling Final Results")
-    display.update_monitor(2, "Almost Finished")
     display.display_monitor()
 
     scorer = []
@@ -7624,20 +7612,6 @@ def _sample_data(
             ss = total_tt * remain
             split_perc_tt_total.append(ss)
 
-        ttt = sum(split_perc_tt_total) / 60
-        ttt = np.around(ttt, 2)
-
-        if ttt < 1:
-            ttt = str(np.around((ttt * 60), 2))
-            ETC = f"{ttt} Seconds Remaining"
-
-        else:
-            ttt = str(ttt)
-            ETC = f"{ttt} Minutes Remaining"
-
-        display.update_monitor(2, ETC)
-        display.display_monitor()
-
         """
         Time calculation Ends
         """
@@ -7800,7 +7774,6 @@ def _mlflow_log_model(
     # Creating Logs message monitor
     if display:
         display.update_monitor(1, "Creating Logs")
-        display.update_monitor(-1, "Almost Finished")
         display.display_monitor()
 
     # import mlflow
