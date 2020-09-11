@@ -1057,7 +1057,41 @@ def setup(
     logger.info(f"USI: {USI}")
 
     global pycaret_globals
-    pycaret_globals = {"pycaret_globals", "USI", "html_param", "X", "y", "X_train", "X_test", "y_train", "y_test", "seed", "prep_pipe", "experiment__", "fold_shuffle_param", "n_jobs_param", "gpu_n_jobs_param", "create_model_container", "master_model_container", "display_container", "exp_name_log", "logging_param", "log_plots_param", "fix_imbalance_param", "fix_imbalance_method_param", "data_before_preprocess", "target_param", "gpu_param", "all_models", "_all_models_internal", "all_metrics", "_internal_pipeline_steps", "stratify_param", "fold_generator", "fold_param"}
+    pycaret_globals = {
+        "pycaret_globals",
+        "USI",
+        "html_param",
+        "X",
+        "y",
+        "X_train",
+        "X_test",
+        "y_train",
+        "y_test",
+        "seed",
+        "prep_pipe",
+        "experiment__",
+        "fold_shuffle_param",
+        "n_jobs_param",
+        "gpu_n_jobs_param",
+        "create_model_container",
+        "master_model_container",
+        "display_container",
+        "exp_name_log",
+        "logging_param",
+        "log_plots_param",
+        "fix_imbalance_param",
+        "fix_imbalance_method_param",
+        "data_before_preprocess",
+        "target_param",
+        "gpu_param",
+        "all_models",
+        "_all_models_internal",
+        "all_metrics",
+        "_internal_pipeline_steps",
+        "stratify_param",
+        "fold_generator",
+        "fold_param",
+    }
 
     logger.info(f"pycaret_globals: {pycaret_globals}")
 
@@ -2956,7 +2990,7 @@ def tune_model(
     custom_scorer=None,  # added in pycaret==2.1 - depreciated
     search_library: str = "scikit-learn",
     search_algorithm: Optional[str] = None,
-    early_stopping: Any = "ASHA",
+    early_stopping: Any = "asha",
     early_stopping_max_iters: int = 10,
     choose_better: bool = False,
     fit_kwargs: Optional[dict] = {},
@@ -3032,29 +3066,29 @@ def tune_model(
         If None, will use search library-specific default algorith.
         'scikit-learn' possible values:
 
-        - 'Random' - randomized search (default)
-        - 'Grid' - grid search
+        - 'random' - randomized search (default)
+        - 'grid' - grid search
 
         'scikit-optimize' possible values:
 
-        - 'Bayesian' - Bayesian search (default)
+        - 'bayesian' - Bayesian search (default)
 
         'tune-sklearn' possible values:
 
-        - 'Random' - randomized search (default)
-        - 'Grid' - grid search
-        - 'Bayesian' - Bayesian search using scikit-optimize
-        - 'Hyperopt' - Tree-structured Parzen Estimator search using Hyperopt 
+        - 'random' - randomized search (default)
+        - 'grid' - grid search
+        - 'bayesian' - Bayesian search using scikit-optimize
+        - 'hyperopt' - Tree-structured Parzen Estimator search using Hyperopt 
           `pip install tune-sklearn ray[tune] hyperopt`
-        - 'BOHB' - Bayesian search using HpBandSter 
+        - 'bohb' - Bayesian search using HpBandSter 
           `pip install hpbandster ConfigSpace`
 
         'optuna' possible values:
 
-        - 'Random' - randomized search
-        - 'TPE' - Tree-structured Parzen Estimator search (default)
+        - 'random' - randomized search
+        - 'tpe' - Tree-structured Parzen Estimator search (default)
 
-    early_stopping: bool or str or object, default = 'ASHA'
+    early_stopping: bool or str or object, default = 'asha'
         Use early stopping to stop fitting to a hyperparameter configuration 
         if it performs poorly. Ignored if search_library is `scikit-learn`, or
         if the estimator doesn't have partial_fit attribute.
@@ -3062,9 +3096,9 @@ def tune_model(
         Can be either an object accepted by the search library or one of the
         following:
 
-        - 'ASHA' for Asynchronous Successive Halving Algorithm
-        - 'Hyperband' for Hyperband
-        - 'Median' for median stopping rule
+        - 'asha' for Asynchronous Successive Halving Algorithm
+        - 'hyperband' for Hyperband
+        - 'median' for median stopping rule
         - If False or None, early stopping will not be used.
 
         More info for Optuna - https://optuna.readthedocs.io/en/stable/reference/pruners.html
@@ -3164,7 +3198,7 @@ def tune_model(
         raise TypeError("n_iter parameter only accepts integer value.")
 
     # checking early_stopping parameter
-    possible_early_stopping = ["ASHA", "Hyperband", "Median"]
+    possible_early_stopping = ["asha", "Hyperband", "Median"]
     if (
         isinstance(early_stopping, str)
         and early_stopping not in possible_early_stopping
@@ -3201,9 +3235,9 @@ def tune_model(
             )
 
         if not search_algorithm:
-            search_algorithm = "Bayesian"
+            search_algorithm = "bayesian"
 
-        possible_search_algorithms = ["Bayesian"]
+        possible_search_algorithms = ["bayesian"]
         if search_algorithm not in possible_search_algorithms:
             raise ValueError(
                 f"For 'scikit-optimize' search_algorithm parameter must be one of {', '.join(possible_search_algorithms)}"
@@ -3218,15 +3252,15 @@ def tune_model(
             )
 
         if not search_algorithm:
-            search_algorithm = "Random"
+            search_algorithm = "random"
 
-        possible_search_algorithms = ["Random", "Grid", "Bayesian", "Hyperopt", "BOHB"]
+        possible_search_algorithms = ["random", "grid", "bayesian", "hyperopt", "bohb"]
         if search_algorithm not in possible_search_algorithms:
             raise ValueError(
                 f"For 'tune-sklearn' search_algorithm parameter must be one of {', '.join(possible_search_algorithms)}"
             )
 
-        if search_algorithm == "BOHB":
+        if search_algorithm == "bohb":
             try:
                 from ray.tune.suggest.bohb import TuneBOHB
                 from ray.tune.schedulers import HyperBandForBOHB
@@ -3236,7 +3270,7 @@ def tune_model(
                 raise ImportError(
                     "It appears that either HpBandSter or ConfigSpace is not installed. Do: pip install hpbandster ConfigSpace"
                 )
-        elif search_algorithm == "Hyperopt":
+        elif search_algorithm == "hyperopt":
             try:
                 from ray.tune.suggest.hyperopt import HyperOptSearch
                 from hyperopt import hp
@@ -3244,7 +3278,7 @@ def tune_model(
                 raise ImportError(
                     "It appears that hyperopt is not installed. Do: pip install hyperopt"
                 )
-        elif search_algorithm == "Bayesian":
+        elif search_algorithm == "bayesian":
             try:
                 import skopt
             except ImportError:
@@ -3261,18 +3295,18 @@ def tune_model(
             )
 
         if not search_algorithm:
-            search_algorithm = "TPE"
+            search_algorithm = "tpe"
 
-        possible_search_algorithms = ["Random", "TPE"]
+        possible_search_algorithms = ["random", "tpe"]
         if search_algorithm not in possible_search_algorithms:
             raise ValueError(
                 f"For 'optuna' search_algorithm parameter must be one of {', '.join(possible_search_algorithms)}"
             )
     else:
         if not search_algorithm:
-            search_algorithm = "Random"
+            search_algorithm = "random"
 
-        possible_search_algorithms = ["Random", "Grid"]
+        possible_search_algorithms = ["random", "grid"]
         if search_algorithm not in possible_search_algorithms:
             raise ValueError(
                 f"For 'scikit-learn' search_algorithm parameter must be one of {', '.join(possible_search_algorithms)}"
@@ -3402,7 +3436,7 @@ def tune_model(
         param_grid = custom_grid
     elif search_library == "scikit-learn" or (
         search_library == "tune-sklearn"
-        and (search_algorithm == "Grid" or search_algorithm == "Random")
+        and (search_algorithm == "grid" or search_algorithm == "random")
     ):
         param_grid = estimator_definition["Tune Grid"]
     else:
@@ -3432,7 +3466,7 @@ def tune_model(
 
     logger.info(f"param_grid: {param_grid}")
 
-    def _can_early_stop(estimator, consider_warm_start):
+    def _can_early_stop(estimator, consider_warm_start, consider_xgboost):
         """
         From https://github.com/ray-project/tune-sklearn/blob/master/tune_sklearn/tune_basesearch.py.
         
@@ -3466,7 +3500,18 @@ def tune_model(
         else:
             can_warm_start = False
 
-        return can_partial_fit or can_warm_start
+        if consider_xgboost:
+            from xgboost.sklearn import XGBModel
+
+            is_xgboost = isinstance(estimator, XGBModel)
+        else:
+            is_xgboost = False
+
+        logger.info(
+            f"can_partial_fit: {can_partial_fit}, can_warm_start: {can_warm_start}, is_xgboost: {is_xgboost}"
+        )
+
+        return can_partial_fit or can_warm_start or is_xgboost
 
     n_jobs = gpu_n_jobs_param
     logger.info(f"Tuning with n_jobs={n_jobs}")
@@ -3476,9 +3521,9 @@ def tune_model(
         logging.getLogger("optuna").setLevel(logging.ERROR)
 
         pruner_translator = {
-            "ASHA": optuna.pruners.SuccessiveHalvingPruner(),
-            "Hyperband": optuna.pruners.HyperbandPruner(),
-            "Median": optuna.pruners.MedianPruner(),
+            "asha": optuna.pruners.SuccessiveHalvingPruner(),
+            "hyperband": optuna.pruners.HyperbandPruner(),
+            "median": optuna.pruners.MedianPruner(),
             False: optuna.pruners.NopPruner(),
             None: optuna.pruners.NopPruner(),
         }
@@ -3487,8 +3532,8 @@ def tune_model(
             pruner = pruner_translator[early_stopping]
 
         sampler_translator = {
-            "TPE": optuna.samplers.TPESampler(seed=seed),
-            "Random": optuna.samplers.RandomSampler(seed=seed),
+            "tpe": optuna.samplers.TPESampler(seed=seed),
+            "random": optuna.samplers.RandomSampler(seed=seed),
         }
         sampler = sampler_translator[search_algorithm]
 
@@ -3504,7 +3549,8 @@ def tune_model(
             estimator=model,
             param_distributions=param_grid,
             cv=fold,
-            enable_pruning=early_stopping and _can_early_stop(model, False),
+            enable_pruning=early_stopping
+            and _can_early_stop(base_estimator, False, False),
             max_iter=early_stopping_max_iters,
             n_jobs=n_jobs,
             n_trials=n_iter,
@@ -3518,25 +3564,25 @@ def tune_model(
 
     elif search_library == "tune-sklearn":
         early_stopping_translator = {
-            "ASHA": "ASHAScheduler",
-            "Hyperband": "HyperBandScheduler",
-            "Median": "MedianStoppingRule",
+            "asha": "ASHAScheduler",
+            "hyperband": "HyperBandScheduler",
+            "median": "MedianStoppingRule",
         }
         if early_stopping in early_stopping_translator:
             early_stopping = early_stopping_translator[early_stopping]
 
-        can_early_stop = early_stopping and _can_early_stop(model, True)
+        can_early_stop = early_stopping and _can_early_stop(base_estimator, True, True)
 
-        if not can_early_stop and search_algorithm == "BOHB":
+        if not can_early_stop and search_algorithm == "bohb":
             raise ValueError(
-                "'BOHB' requires early_stopping = True and the estimator to support partial_fit or have warm_start param set to True."
+                "'bohb' requires early_stopping = True and the estimator to support partial_fit or have warm_start param set to True."
             )
 
         # if n_jobs is None:
         # enable Ray local mode - otherwise the performance is terrible
         n_jobs = 1
 
-        if search_algorithm == "Grid":
+        if search_algorithm == "grid":
             from tune_sklearn import TuneGridSearchCV
 
             logger.info("Initializing tune_sklearn.TuneGridSearchCV")
@@ -3553,7 +3599,7 @@ def tune_model(
                 verbose=0,
                 **search_kwargs,
             )
-        elif search_algorithm == "Hyperopt":
+        elif search_algorithm == "hyperopt":
             from tune_sklearn import TuneSearchCV
 
             if custom_grid is None:
@@ -3563,7 +3609,7 @@ def tune_model(
                 estimator=model,
                 search_optimization="hyperopt",
                 param_distributions=param_grid,
-                n_iter=n_iter,
+                n_trials=n_iter,
                 early_stopping=can_early_stop,
                 scoring=optimize,
                 cv=fold,
@@ -3572,10 +3618,10 @@ def tune_model(
                 n_jobs=n_jobs,
                 use_gpu=gpu_param,
                 refit=True,
-                verbose=0,
+                verbose=2,
                 **search_kwargs,
             )
-        elif search_algorithm == "Bayesian":
+        elif search_algorithm == "bayesian":
             from tune_sklearn import TuneSearchCV
 
             if custom_grid is None:
@@ -3585,7 +3631,7 @@ def tune_model(
                 estimator=model,
                 search_optimization="bayesian",
                 param_distributions=param_grid,
-                n_iter=n_iter,
+                n_trials=n_iter,
                 early_stopping=can_early_stop,
                 scoring=optimize,
                 cv=fold,
@@ -3597,7 +3643,7 @@ def tune_model(
                 verbose=0,
                 **search_kwargs,
             )
-        elif search_algorithm == "BOHB":
+        elif search_algorithm == "bohb":
             from tune_sklearn import TuneSearchCV
 
             if custom_grid is None:
@@ -3607,7 +3653,7 @@ def tune_model(
                 estimator=model,
                 search_optimization="bohb",
                 param_distributions=param_grid,
-                n_iter=n_iter,
+                n_trials=n_iter,
                 early_stopping=can_early_stop,
                 scoring=optimize,
                 cv=fold,
@@ -3627,7 +3673,7 @@ def tune_model(
                 estimator=model,
                 param_distributions=param_grid,
                 early_stopping=can_early_stop,
-                n_iter=n_iter,
+                n_trials=n_iter,
                 scoring=optimize,
                 cv=fold,
                 random_state=seed,
@@ -3658,7 +3704,7 @@ def tune_model(
             **search_kwargs,
         )
     else:
-        if search_algorithm == "Grid":
+        if search_algorithm == "grid":
             from sklearn.model_selection import GridSearchCV
 
             logger.info("Initializing GridSearchCV")
