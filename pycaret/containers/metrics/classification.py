@@ -159,9 +159,8 @@ class ROCAUCMetricContainer(ClassificationMetricContainer):
             id="auc",
             name="AUC",
             score_func=metrics.roc_auc_score,
-            scorer="roc_auc",
+            scorer="roc_auc_ovr_weighted",
             target="pred_proba",
-            is_multiclass=False,
         )
 
 
