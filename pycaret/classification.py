@@ -2768,6 +2768,8 @@ def _create_model(
 
         display.clear_output()
 
+        predict_model(model, verbose=True)
+
         logger.info(str(model))
         logger.info(
             "create_models() succesfully completed......................................"
