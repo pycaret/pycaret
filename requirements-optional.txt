@@ -1,6 +1,7 @@
-tune-sklearn
+git+https://github.com/ray-project/tune-sklearn.git
 ray[tune]
 hyperopt
 hpbandster
 ConfigSpace
 optuna
+scikit-optimize>=0.8.1
