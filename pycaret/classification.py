@@ -3618,7 +3618,7 @@ def tune_model(
                 n_jobs=n_jobs,
                 use_gpu=gpu_param,
                 refit=True,
-                verbose=2,
+                verbose=0,
                 **search_kwargs,
             )
         elif search_algorithm == "bayesian":
