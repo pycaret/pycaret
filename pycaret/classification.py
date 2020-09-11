@@ -2742,8 +2742,6 @@ def _create_model(
 
     logger.info("Declaring metric variables")
 
-    score_dict = {metric: np.empty((0, 0)) for metric in all_metrics["Display Name"]}
-
     """
     MONITOR UPDATE STARTS
     """
@@ -2835,115 +2833,35 @@ def _create_model(
 
     fit_kwargs_cv = fit_kwargs.copy()
 
-    for train_i, test_i in cv.split(data_X, data_y, groups=groups):
+    """
+    MONITOR UPDATE STARTS
+    """
+    display.update_monitor(1, f"Fitting {_get_cv_n_folds(fold)} Folds")
+    display.display_monitor()
+    """
+    MONITOR UPDATE ENDS
+    """
 
-        logger.info(f"Initializing Fold {fold_num}")
+    from sklearn.model_selection import cross_validate
 
-        t0 = time.time()
-        total_runtime += (t0 - total_runtime_start) / 60
-        logger.info(f"Total runtime is {total_runtime} minutes")
-        over_time_budget = (
-            budget_time and budget_time > 0 and total_runtime > budget_time
-        )
-        if over_time_budget:
-            logger.info(
-                f"Total runtime {total_runtime} is over time budget by {total_runtime - budget_time}, terminating function"
-            )
-            return None
-        total_runtime_start = t0
+    metrics_dict = dict(zip(all_metrics.index, all_metrics["Scorer"]))
 
-        """
-        MONITOR UPDATE STARTS
-        """
-        display.update_monitor(1, f"Fitting Fold {fold_num} of {_get_cv_n_folds(fold)}")
-        display.display_monitor()
-        """
-        MONITOR UPDATE ENDS
-        """
+    scores = cross_validate(
+        model,
+        data_X,
+        data_y,
+        cv=cv,
+        groups=groups,
+        scoring=metrics_dict,
+        fit_params=fit_kwargs,
+        n_jobs=gpu_n_jobs_param,
+        return_train_score=False,
+    )
 
-        Xtrain, Xtest = data_X.iloc[train_i], data_X.iloc[test_i]
-        ytrain, ytest = data_y.iloc[train_i], data_y.iloc[test_i]
-
-        if fit_kwargs_cv and "sample_weight" in fit_kwargs_cv:
-            weights_train, weights_test = (
-                fit_kwargs_cv["sample_weight"][train_i],
-                fit_kwargs_cv["sample_weight"][test_i],
-            )
-            fit_kwargs_cv["sample_weight"] = weights_train
-        else:
-            weights_train = None
-            weights_test = None
-
-        # time just for fitting
-        time_start = time.time()
-
-        logger.info("Fitting Model")
-        with io.capture_output():
-            model.fit(Xtrain, ytrain, **fit_kwargs_cv)
-        logger.info("Evaluating Metrics")
-
-        if hasattr(model, "predict_proba"):
-            pred_prob = model.predict_proba(Xtest)
-            pred_prob = pred_prob[:, 1]
-        else:
-            logger.warning(
-                "model has no predict_proba attribute. pred_prob set to 0.00"
-            )
-            pred_prob = 0.00
-
-        pred_ = model.predict(Xtest)
-
-        _calculate_metrics(ytest, pred_, pred_prob, score_dict, weights_test)
-
-        logger.info("Compiling Metrics")
-        time_end = time.time()
-
-        display.move_progress()
-
-        """
-        
-        This section handles time calculation and is created to update_display() as code loops through 
-        the fold defined.
-        
-        """
-
-        fold_results = pd.DataFrame({k: [v[-1]] for k, v in score_dict.items()}).round(
-            round
-        )
-        display.append_to_master_display(fold_results,)
-        fold_results = []
-
-        """
-        TIME CALCULATION SUB-SECTION STARTS HERE
-        """
-        t1 = time.time()
-
-        tt = (t1 - t0) * (_get_cv_n_folds(fold) - fold_num) / 60
-        tt = np.around(tt, 2)
-
-        if tt < 1:
-            tt = str(np.around((tt * 60), 2))
-            ETC = f"{tt} Seconds Remaining"
-
-        else:
-            tt = str(tt)
-            ETC = f"{tt} Minutes Remaining"
-
-        """
-        MONITOR UPDATE STARTS
-        """
-        display.update_monitor(-1, ETC)
-        display.display_monitor()
-        """
-        MONITOR UPDATE ENDS
-        """
-
-        fold_num += 1
-
-        """
-        TIME CALCULATION ENDS HERE
-        """
-        display.display_master_display()
+    score_dict = dict(
+        zip([f"test_{x}" for x in all_metrics.index], all_metrics["Display Name"])
+    )
+    score_dict = {v: scores[k] for k, v in score_dict.items()}
 
     logger.info("Calculating mean and std")
 
