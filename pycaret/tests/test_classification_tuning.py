@@ -25,7 +25,7 @@ def test():
     tune_model(model, fold=2, search_library='tune-sklearn', search_algorithm='random', early_stopping=False)
  
     # test early stopping (enabled by default)
-    model = pycaret.classification.create_model('lr', fold=2)
+    model = pycaret.classification.create_model('svm', fold=2)
 
     tune_model(model, fold=2, search_library='optuna', search_algorithm='tpe')
     tune_model(model, fold=2, search_library='tune-sklearn', search_algorithm='hyperopt')
