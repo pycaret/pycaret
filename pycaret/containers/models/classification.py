@@ -206,7 +206,7 @@ class LogisticRegressionClassifierContainer(ClassifierContainer):
             except ImportError:
                 logger.warning("Couldn't import cuml.linear_model.LogisticRegression")
 
-        args = {'max_iter': 1000}
+        args = {"max_iter": 1000}
         tune_args = {}
         tune_grid = {}
         tune_distributions = {}
@@ -504,7 +504,6 @@ class GaussianProcessClassifierContainer(ClassifierContainer):
 
         args = {
             "random_state": globals_dict["seed"],
-            "n_jobs": globals_dict["n_jobs_param"],
         }
         tune_args = {}
         tune_grid = {
@@ -753,10 +752,7 @@ class RandomForestClassifierContainer(ClassifierContainer):
                     return f"RandomForestClassifier({args})"
 
         args = (
-            {
-                "random_state": globals_dict["seed"],
-                "n_jobs": globals_dict["n_jobs_param"],
-            }
+            {"random_state": globals_dict["seed"],}
             if not gpu_imported
             else {"seed": globals_dict["seed"]}
         )
@@ -970,7 +966,6 @@ class ExtraTreesClassifierContainer(ClassifierContainer):
 
         args = {
             "random_state": globals_dict["seed"],
-            "n_jobs": globals_dict["n_jobs_param"],
         }
         tune_args = {}
         tune_grid = {
@@ -1011,7 +1006,6 @@ class XGBClassifierContainer(ClassifierContainer):
 
         args = {
             "random_state": globals_dict["seed"],
-            "n_jobs": globals_dict["n_jobs_param"],
             "verbosity": 0,
             "booster": "gbtree",
             "tree_method": "gpu_hist" if globals_dict["gpu_param"] else "auto",
@@ -1061,7 +1055,6 @@ class LGBMClassifierContainer(ClassifierContainer):
 
         args = {
             "random_state": globals_dict["seed"],
-            "n_jobs": globals_dict["n_jobs_param"],
         }
         tune_args = {}
         tune_grid = {
@@ -1094,7 +1087,7 @@ class LGBMClassifierContainer(ClassifierContainer):
             tune_distribution=tune_distributions,
             tune_args=tune_args,
             shap="type1",
-            is_gpu_enabled=False
+            is_gpu_enabled=False,
         )
 
 
@@ -1114,7 +1107,6 @@ class CatBoostClassifierContainer(ClassifierContainer):
         args = {
             "random_state": globals_dict["seed"],
             "verbose": False,
-            "thread_count": globals_dict["n_jobs_param"],
             "task_type": "GPU" if use_gpu else "CPU",
         }
         tune_args = {}
@@ -1156,7 +1148,7 @@ class BaggingClassifierContainer(ClassifierContainer):
 
         args = {
             "random_state": globals_dict["seed"],
-            "n_jobs": globals_dict["gpu_n_jobs_param"],
+            "n_jobs": 1 if globals_dict["gpu_param"] else None,
         }
         tune_args = {}
         tune_grid = {
@@ -1237,6 +1229,7 @@ class VotingClassifierContainer(ClassifierContainer):
             is_gpu_enabled=False,
         )
 
+
 class CalibratedClassifierCVContainer(ClassifierContainer):
     def __init__(self, globals_dict: dict) -> None:
         logger = get_logger()
@@ -1264,7 +1257,9 @@ class CalibratedClassifierCVContainer(ClassifierContainer):
         )
 
 
-def get_all_model_containers(globals_dict: dict, raise_errors: bool = True) -> Dict[str, ClassifierContainer]:
+def get_all_model_containers(
+    globals_dict: dict, raise_errors: bool = True
+) -> Dict[str, ClassifierContainer]:
     return pycaret.containers.base_container.get_all_containers(
         globals(), globals_dict, ClassifierContainer, raise_errors
     )
