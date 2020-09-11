@@ -41,7 +41,7 @@ def get_config(variable: str, globals_d: dict):
     logger.info(f"get_config({function_params_str})")
 
     if not variable in globals_d["pycaret_globals"]:
-        raise ValueError(f"Variable {variable} not found.")
+        raise ValueError(f"Variable {variable} not found. Possible variables are: {globals_d["pycaret_globals"]}")
 
     global_var = globals_d[variable]
 
@@ -76,7 +76,7 @@ def set_config(variable: str, value, globals_d: dict):
     logger.info(f"set_config({function_params_str})")
 
     if not variable in globals_d["pycaret_globals"] or variable == "pycaret_globals":
-        raise ValueError(f"Variable {variable} not found.")
+        raise ValueError(f"Variable {variable} not found. Possible variables are: {globals_d["pycaret_globals"]}")
 
     globals_d[variable] = value
 
