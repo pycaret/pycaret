@@ -54,4 +54,4 @@ jobs:
         find pycaret/tests -type f -not -name '__init__.py' -not -name 'test_classification_tuning.py' -delete
     - name: Test with pytest
       run: |
-        pytest
+        pytest --log_cli=true
