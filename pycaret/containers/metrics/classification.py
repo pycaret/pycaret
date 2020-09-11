@@ -231,20 +231,6 @@ class MCCMetricContainer(ClassificationMetricContainer):
         )
 
 
-class TTMetricContainer(ClassificationMetricContainer):
-    def __init__(self, globals_dict: dict) -> None:
-        # special case
-        self.id = "tt"
-        self.name = "TT"
-        self.display_name = "TT (Sec)"
-        self.score_func = None
-        self.scorer = None
-        self.args = None
-        self.target = None
-        self.is_multiclass = True
-        self.is_custom = False
-
-
 def get_all_metric_containers(
     globals_dict: dict, raise_errors: bool = True
 ) -> Dict[str, ClassificationMetricContainer]:

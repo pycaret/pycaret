@@ -2069,7 +2069,9 @@ def compare_models(
 
     if not display:
         progress_args = {"max": ((_get_cv_n_folds(fold) + 4) * len_mod) + 4 + len_mod}
-        master_display_columns = ["Model"] + all_metrics["Display Name"].to_list()
+        master_display_columns = (
+            ["Model"] + all_metrics["Display Name"].to_list() + ["TT (Sec)"]
+        )
         timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
         monitor_rows = [
             ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
@@ -2215,6 +2217,7 @@ def compare_models(
 
         logger.info("Creating metrics dataframe")
         compare_models_ = pd.DataFrame(model_results.loc["Mean"]).T
+        compare_models_.insert(len(compare_models_.columns), "TT (Sec)", model_fit_time)
         compare_models_.insert(0, "Model", model_name)
         compare_models_.insert(0, "Object", [model])
         compare_models_.insert(0, "index", [i])
@@ -2797,9 +2800,6 @@ def _create_model(
         time_end = time.time()
         training_time = time_end - time_start
 
-        if "TT (Sec)" in score_dict:
-            score_dict["TT (Sec)"] = np.append(score_dict["TT (Sec)"], training_time)
-
         display.move_progress()
 
         """
@@ -2886,7 +2886,6 @@ def _create_model(
     if logging_param and system:
 
         avgs_dict_log = avgs_dict.copy()
-        avgs_dict_log.pop("TT (Sec)")
         avgs_dict_log = {k: v[0] for k, v in avgs_dict_log.items()}
 
         try:
@@ -3728,12 +3727,7 @@ def tune_model(
     # mlflow logging
     if logging_param:
 
-        avgs_dict_log = {
-            k: v
-            for k, v in model_results.drop("TT (Sec)", axis=1, errors="ignore")
-            .loc["Mean"]
-            .items()
-        }
+        avgs_dict_log = {k: v for k, v in model_results.loc["Mean"].items()}
 
         try:
             _mlflow_log_model(
@@ -4055,12 +4049,7 @@ def ensemble_model(
     # mlflow logging
     if logging_param:
 
-        avgs_dict_log = {
-            k: v
-            for k, v in model_results.drop("TT (Sec)", axis=1, errors="ignore")
-            .loc["Mean"]
-            .items()
-        }
+        avgs_dict_log = {k: v for k, v in model_results.loc["Mean"].items()}
 
         try:
             _mlflow_log_model(
@@ -4394,12 +4383,7 @@ def blend_models(
     # mlflow logging
     if logging_param:
 
-        avgs_dict_log = {
-            k: v
-            for k, v in model_results.drop("TT (Sec)", axis=1, errors="ignore")
-            .loc["Mean"]
-            .items()
-        }
+        avgs_dict_log = {k: v for k, v in model_results.loc["Mean"].items()}
 
         try:
             _mlflow_log_model(
@@ -4727,12 +4711,7 @@ def stack_models(
     # mlflow logging
     if logging_param:
 
-        avgs_dict_log = {
-            k: v
-            for k, v in model_results.drop("TT (Sec)", axis=1, errors="ignore")
-            .loc["Mean"]
-            .items()
-        }
+        avgs_dict_log = {k: v for k, v in model_results.loc["Mean"].items()}
 
         try:
             _mlflow_log_model(
@@ -6085,12 +6064,7 @@ def calibrate_model(
     # mlflow logging
     if logging_param:
 
-        avgs_dict_log = {
-            k: v
-            for k, v in model_results.drop("TT (Sec)", axis=1, errors="ignore")
-            .loc["Mean"]
-            .items()
-        }
+        avgs_dict_log = {k: v for k, v in model_results.loc["Mean"].items()}
 
         try:
             _mlflow_log_model(
@@ -6646,12 +6620,7 @@ def finalize_model(
     # mlflow logging
     if logging_param:
 
-        avgs_dict_log = {
-            k: v
-            for k, v in model_results.drop("TT (Sec)", axis=1, errors="ignore")
-            .loc["Mean"]
-            .items()
-        }
+        avgs_dict_log = {k: v for k, v in model_results.loc["Mean"].items()}
 
         try:
             _mlflow_log_model(
@@ -7117,12 +7086,6 @@ def get_metrics(
     metric_containers = get_all_metric_containers(globals(), raise_errors)
     rows = [v.get_dict() for k, v in metric_containers.items()]
 
-    # Training time needs to be at the end
-    if not rows[-1]["ID"] == "tt":
-        tt_row = next(x for x in rows if x["ID"] == "tt")
-        rows = [x for x in rows if not x["ID"] == "tt"]
-        rows.append(tt_row)
-
     df = pd.DataFrame(rows)
     df.set_index("ID", inplace=True, drop=True)
 
@@ -7189,11 +7152,6 @@ def add_metric(
     multiclass: bool, default = True
         Whether the metric supports multiclass problems.
 
-    Notes
-    -----
-    The row will be inserted into the second to last position. The last position is reserved
-    for the Training Time (tt) metric.
-
     Returns
     -------
     pandas.Series
@@ -7224,11 +7182,8 @@ def add_metric(
 
     new_metric = pd.Series(new_metric, name=id.replace(" ", "_")).drop("ID")
 
-    last_row = all_metrics.iloc[-1]
-    all_metrics.drop(all_metrics.index[-1], inplace=True)
     all_metrics = all_metrics.append(new_metric)
-    all_metrics = all_metrics.append(last_row)
-    return all_metrics.iloc[-2]
+    return all_metrics.iloc[-1]
 
 
 def remove_metric(name_or_id: str):
