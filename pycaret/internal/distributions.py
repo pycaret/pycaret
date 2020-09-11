@@ -2,7 +2,8 @@
 # Author: Antoni Baum (Yard1) <antoni.baum@protonmail.com>
 # License: MIT
 
-from typing import Dict, Optional
+from typing import Dict, Hashable, Optional
+from collections.abc import Hashable
 
 
 class Distrubution:
@@ -149,7 +150,9 @@ class CategoricalDistribution(Distrubution):
     def get_skopt(self):
         import skopt.space
 
-        return skopt.space.Categorical(self.values)
+        return skopt.space.Categorical(
+            [x if isinstance(x, Hashable) else None for x in self.values]
+        )
 
     def get_optuna(self):
         import optuna

@@ -9,6 +9,7 @@ from pycaret.internal.logging import get_logger
 from pycaret.internal.plotting import show_yellowbrick_plot
 from pycaret.internal.Display import Display
 from pycaret.internal.distributions import *
+from pycaret.internal.validation import *
 from pycaret.containers.models.classification import (
     get_all_model_containers,
     LogisticRegressionClassifierContainer,
@@ -91,6 +92,7 @@ def setup(
     fold_strategy: Union[str, Any] = "kfold",  # added in pycaret==2.2
     fold: int = 10,  # added in pycaret==2.2
     fold_shuffle: bool = False,
+    fold_groups=None,
     n_jobs: int = -1,
     use_gpu: bool = False,  # added in pycaret==2.1
     custom_pipeline: Union[
@@ -446,6 +448,7 @@ def setup(
 
         * 'kfold' for KFold CV,
         * 'stratifiedkfold' for Stratified KFold CV,
+        * 'groupkfold' for Group KFold CV,
         * 'timeseries' for TimeSeriesSplit CV,
         * a custom CV generator object compatible with scikit-learn.
 
@@ -456,6 +459,10 @@ def setup(
     fold_shuffle: bool, default = False
         If set to False, prevents shuffling of rows when using cross validation. Only applicable for
         'kfold' and 'stratifiedkfold' fold_strategy. Ignored if fold_strategy is an object.
+    
+    fold_groups: array-like, with shape (n_samples,), default = None
+        Optional Group labels for the samples used while splitting the dataset into train/test set.
+        Only used if a group based cross-validation generator is used (eg. GroupKFold).
 
     n_jobs: int, default = -1
         The number of jobs to run in parallel (for functions that supports parallel 
@@ -999,13 +1006,18 @@ def setup(
     if type(data_split_shuffle) is not bool:
         raise TypeError("data_split_shuffle parameter only accepts True or False.")
 
-    possible_fold_strategy = ["kfold", "stratifiedkfold", "timeseries"]
+    possible_fold_strategy = ["kfold", "stratifiedkfold", "groupkfold", "timeseries"]
     if not (
         fold_strategy in possible_fold_strategy
-        or (not isinstance(fold_strategy, str) and hasattr(fold_strategy, "split"))
+        or is_sklearn_cv_generator(fold_strategy)
     ):
         raise TypeError(
             f"fold_strategy parameter must be either a scikit-learn compatible CV generator object or one of {', '.join(possible_fold_strategy)}."
+        )
+
+    if fold_strategy == "groupkfold" and (fold_groups is None or len(fold_groups) == 0):
+        raise ValueError(
+            "'groupkfold' fold_strategy requires 'fold_groups' to be a non-empty array-like object."
         )
 
     # checking fold parameter
@@ -1051,13 +1063,48 @@ def setup(
 
     # declaring global variables to be accessed by other functions
     logger.info("Declaring global variables")
-    global USI, html_param, X, y, X_train, X_test, y_train, y_test, seed, prep_pipe, experiment__, fold_shuffle_param, n_jobs_param, gpu_n_jobs_param, create_model_container, master_model_container, display_container, exp_name_log, logging_param, log_plots_param, fix_imbalance_param, fix_imbalance_method_param, data_before_preprocess, target_param, gpu_param, all_models, _all_models_internal, all_metrics, _internal_pipeline_steps, stratify_param, fold_generator, fold_param
+    global USI, html_param, X, y, X_train, X_test, y_train, y_test, seed, prep_pipe, experiment__, fold_shuffle_param, n_jobs_param, gpu_n_jobs_param, create_model_container, master_model_container, display_container, exp_name_log, logging_param, log_plots_param, fix_imbalance_param, fix_imbalance_method_param, data_before_preprocess, target_param, gpu_param, all_models, _all_models_internal, all_metrics, _internal_pipeline_steps, stratify_param, fold_generator, fold_param, fold_groups_param
 
     USI = secrets.token_hex(nbytes=2)
     logger.info(f"USI: {USI}")
 
     global pycaret_globals
-    pycaret_globals = {"pycaret_globals", "USI", "html_param", "X", "y", "X_train", "X_test", "y_train", "y_test", "seed", "prep_pipe", "experiment__", "fold_shuffle_param", "n_jobs_param", "gpu_n_jobs_param", "create_model_container", "master_model_container", "display_container", "exp_name_log", "logging_param", "log_plots_param", "fix_imbalance_param", "fix_imbalance_method_param", "data_before_preprocess", "target_param", "gpu_param", "all_models", "_all_models_internal", "all_metrics", "_internal_pipeline_steps", "stratify_param", "fold_generator", "fold_param"}
+    pycaret_globals = {
+        "pycaret_globals",
+        "USI",
+        "html_param",
+        "X",
+        "y",
+        "X_train",
+        "X_test",
+        "y_train",
+        "y_test",
+        "seed",
+        "prep_pipe",
+        "experiment__",
+        "fold_shuffle_param",
+        "n_jobs_param",
+        "gpu_n_jobs_param",
+        "create_model_container",
+        "master_model_container",
+        "display_container",
+        "exp_name_log",
+        "logging_param",
+        "log_plots_param",
+        "fix_imbalance_param",
+        "fix_imbalance_method_param",
+        "data_before_preprocess",
+        "target_param",
+        "gpu_param",
+        "all_models",
+        "_all_models_internal",
+        "all_metrics",
+        "_internal_pipeline_steps",
+        "stratify_param",
+        "fold_generator",
+        "fold_param",
+        "fold_groups_param",
+    }
 
     logger.info(f"pycaret_globals: {pycaret_globals}")
 
@@ -1081,7 +1128,6 @@ def setup(
         monitor_rows = [
             ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
             ["Status", ". . . . . . . . . . . . . . . . . .", "Loading Dependencies"],
-            ["ETC", ". . . . . . . . . . . . . . . . . .", "Calculating ETC"],
         ]
         display = Display(verbose, html_param, progress_args, monitor_rows,)
 
@@ -1355,12 +1401,13 @@ def setup(
 
     # CV params
     fold_param = fold
-
+    fold_groups_param = fold_groups
     fold_shuffle_param = fold_shuffle
 
     from sklearn.model_selection import (
         StratifiedKFold,
         KFold,
+        GroupKFold,
         TimeSeriesSplit,
     )
 
@@ -1372,6 +1419,8 @@ def setup(
         fold_generator = StratifiedKFold(
             fold_param, random_state=seed, shuffle=fold_shuffle_param
         )
+    elif fold_strategy == "groupkfold":
+        fold_generator = GroupKFold(fold_param)
     elif fold_strategy == "timeseries":
         fold_generator = TimeSeriesSplit(fold_param)
     else:
@@ -1839,6 +1888,7 @@ def setup(
         stratify_param,
         fold_generator,
         fold_param,
+        fold_groups_param,
     )
 
 
@@ -1849,6 +1899,7 @@ def compare_models(
     exclude: Optional[List[str]] = None,  # changed blacklist to exclude in pycaret==2.1
     fold: Optional[Union[int, Any]] = None,
     round: int = 4,
+    cross_validation: bool = True,
     sort: str = "Accuracy",
     budget_time: Optional[float] = None,  # added in pycaret==2.1.0
     turbo: bool = True,
@@ -1915,6 +1966,10 @@ def compare_models(
     round: integer, default = 4
         Number of decimal places the metrics in the score grid will be rounded to.
   
+    cross_validation: bool, default = True
+        When cross_validation set to False fold parameter is ignored and models are trained
+        on entire training dataset, returning metrics calculated using the train (holdout) set.
+
     sort: str, default = 'Accuracy'
         The scoring measure specified is used for sorting the average score grid
         Other options are 'AUC', 'Recall', 'Precision', 'F1', 'Kappa' and 'MCC'.
@@ -1939,9 +1994,10 @@ def compare_models(
         Dictionary of arguments passed to the fit method of the model. The parameters will be applied to all models,
         therefore it is recommended to set errors parameter to 'ignore'.
 
-    groups: array-like, with shape (n_samples,)
+    groups: array-like, with shape (n_samples,), default = None
         Optional Group labels for the samples used while splitting the dataset into train/test set.
         Only used if a group based cross-validation generator is used (eg. GroupKFold).
+        If None, will use the value set in fold_groups param in setup().
 
     verbose: bool, default = True
         Score grid is not printed when verbose is set to False.
@@ -1964,11 +2020,12 @@ def compare_models(
       have longer training times. Changing turbo parameter to False may result 
       in very high training times with datasets where number of samples exceed 
       10,000.
-      
+
     - If target variable is multiclass (more than 2 classes), AUC will be 
-      returned as zero (0.0)      
-             
-    
+      returned as zero (0.0)
+
+    - If cross_validation param is set to False, no models will be logged with MLFlow.
+
     """
 
     function_params_str = ", ".join([f"{k}={v}" for k, v in locals().items()])
@@ -2011,9 +2068,7 @@ def compare_models(
         )
 
     # checking fold parameter
-    if fold is not None and not (
-        type(fold) is int or (not isinstance(fold, str) and hasattr(fold, "split"))
-    ):
+    if fold is not None and not (type(fold) is int or is_sklearn_cv_generator(fold)):
         raise TypeError(
             "fold parameter must be either None, an integer or a scikit-learn compatible CV generator object."
         )
@@ -2053,6 +2108,9 @@ def compare_models(
     
     """
 
+    if groups is None:
+        groups = fold_groups_param
+
     pd.set_option("display.max_columns", 500)
 
     logger.info("Preparing display monitor")
@@ -2074,7 +2132,6 @@ def compare_models(
             ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
             ["Status", ". . . . . . . . . . . . . . . . . .", "Loading Dependencies"],
             ["Estimator", ". . . . . . . . . . . . . . . . . .", "Compiling Library"],
-            ["ETC", ". . . . . . . . . . . . . . . . . .", "Calculating ETC"],
         ]
         display = Display(
             verbose, html_param, progress_args, master_display_columns, monitor_rows,
@@ -2159,7 +2216,6 @@ def compare_models(
         """
 
         display.update_monitor(2, model_name)
-        display.update_monitor(3, "Calculating ETC")
         display.display_monitor()
 
         """
@@ -2178,9 +2234,7 @@ def compare_models(
                 display=display,
                 fold=fold,
                 round=round,
-                budget_time=budget_time - total_runtime
-                if budget_time and budget_time > 0
-                else 0,
+                cross_validation=cross_validation,
                 fit_kwargs=fit_kwargs,
                 groups=groups,
             )
@@ -2194,9 +2248,7 @@ def compare_models(
                     display=display,
                     fold=fold,
                     round=round,
-                    budget_time=budget_time - total_runtime
-                    if budget_time and budget_time > 0
-                    else 0,
+                    cross_validation=cross_validation,
                     fit_kwargs=fit_kwargs,
                     groups=groups,
                 )
@@ -2213,7 +2265,10 @@ def compare_models(
             break
 
         logger.info("Creating metrics dataframe")
-        compare_models_ = pd.DataFrame(model_results.loc["Mean"]).T
+        if cross_validation:
+            compare_models_ = pd.DataFrame(model_results.loc["Mean"]).T
+        else:
+            compare_models_ = pd.DataFrame(model_results.iloc[0]).T
         compare_models_.insert(len(compare_models_.columns), "TT (Sec)", model_fit_time)
         compare_models_.insert(0, "Model", model_name)
         compare_models_.insert(0, "Object", [model])
@@ -2248,7 +2303,7 @@ def compare_models(
         MLflow logging starts here
         """
 
-        if logging_param:
+        if logging_param and cross_validation:
 
             avgs_dict_log = {
                 k: v
@@ -2300,7 +2355,6 @@ def compare_models(
     display.move_progress()
 
     display.update_monitor(1, "Compiling Final Models")
-    display.update_monitor(3, "Almost Finished")
     display.display_monitor()
 
     sorted_models = master_display["Object"].to_list()
@@ -2389,14 +2443,15 @@ def create_model(
 
     cross_validation: bool, default = True
         When cross_validation set to False fold parameter is ignored and model is trained
-        on entire training dataset. No metric evaluation is returned. 
+        on entire training dataset, returning metrics calculated using the train (holdout) set.
 
     fit_kwargs: dict, default = {} (empty dict)
         Dictionary of arguments passed to the fit method of the model.
 
-    groups: array-like, with shape (n_samples,)
+    groups: array-like, with shape (n_samples,), default = None
         Optional Group labels for the samples used while splitting the dataset into train/test set.
         Only used if a group based cross-validation generator is used (eg. GroupKFold).
+        If None, will use the value set in fold_groups param in setup().
 
     verbose: bool, default = True
         Score grid is not printed when verbose is set to False.
@@ -2427,6 +2482,8 @@ def create_model(
       more than quadratic. These estimators are hard to scale on datasets with more 
       than 10,000 samples.
 
+    - If cross_validation param is set to False, model will not be logged with MLFlow.
+
     """
     return _create_model(
         estimator,
@@ -2446,7 +2503,6 @@ def _create_model(
     fold: Optional[Union[int, Any]] = None,
     round: int = 4,
     cross_validation: bool = True,
-    budget_time: Optional[float] = None,
     fit_kwargs: Optional[dict] = {},
     groups=None,
     verbose: bool = True,
@@ -2515,16 +2571,13 @@ def _create_model(
         When cross_validation set to False fold parameter is ignored and model is trained
         on entire training dataset. No metric evaluation is returned. 
 
-    budget_time: int or float, default = None
-        If not 0 or None, will terminate execution of the function after budget_time minutes have
-        passed.
-
     fit_kwargs: dict, default = {} (empty dict)
         Dictionary of arguments passed to the fit method of the model.
 
-    groups: array-like, with shape (n_samples,)
+    groups: array-like, with shape (n_samples,), default = None
         Optional Group labels for the samples used while splitting the dataset into train/test set.
         Only used if a group based cross-validation generator is used (eg. GroupKFold).
+        If None, will use the value set in fold_groups param in setup().
 
     verbose: bool, default = True
         Score grid is not printed when verbose is set to False.
@@ -2567,6 +2620,8 @@ def _create_model(
       more than quadratic. These estimators are hard to scale on datasets with more 
       than 10,000 samples.
 
+    - If cross_validation param is set to False, model will not be logged with MLFlow.
+
     """
 
     function_params_str = ", ".join([f"{k}={v}" for k, v in locals().items()])
@@ -2595,9 +2650,7 @@ def _create_model(
         )
 
     # checking fold parameter
-    if fold is not None and not (
-        type(fold) is int or (not isinstance(fold, str) and hasattr(fold, "split"))
-    ):
+    if fold is not None and not (type(fold) is int or is_sklearn_cv_generator(fold)):
         raise TypeError(
             "fold parameter must be either None, an integer or a scikit-learn compatible CV generator object."
         )
@@ -2605,10 +2658,6 @@ def _create_model(
     # checking round parameter
     if type(round) is not int:
         raise TypeError("Round parameter only accepts integer value.")
-
-    # checking budget_time parameter
-    if budget_time and type(budget_time) is not int and type(budget_time) is not float:
-        raise TypeError("budget_time parameter only accepts integer or float values.")
 
     # checking verbose parameter
     if type(verbose) is not bool:
@@ -2630,6 +2679,9 @@ def _create_model(
     
     """
 
+    if groups is None:
+        groups = fold_groups_param
+
     if not display:
         progress_args = {"max": _get_cv_n_folds(fold) + 4}
         master_display_columns = all_metrics["Display Name"].to_list()
@@ -2637,7 +2689,6 @@ def _create_model(
         monitor_rows = [
             ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
             ["Status", ". . . . . . . . . . . . . . . . . .", "Loading Dependencies"],
-            ["ETC", ". . . . . . . . . . . . . . . . . .", "Calculating ETC"],
         ]
         display = Display(
             verbose, html_param, progress_args, master_display_columns, monitor_rows,
@@ -2670,8 +2721,6 @@ def _create_model(
     cv = _get_cv_splitter(fold)
 
     logger.info("Declaring metric variables")
-
-    score_dict = {metric: np.empty((0, 0)) for metric in all_metrics["Display Name"]}
 
     """
     MONITOR UPDATE STARTS
@@ -2718,144 +2767,73 @@ def _create_model(
     MONITOR UPDATE ENDS
     """
 
-    total_runtime_start = time.time()
-    total_runtime = 0
-    over_time_budget = False
-    if budget_time and budget_time > 0:
-        logger.info(f"Time budget is {budget_time} minutes")
-
     if not cross_validation:
 
         logger.info("Cross validation set to False")
 
         logger.info("Fitting Model")
+        model_fit_start = time.time()
         with io.capture_output():
             model.fit(data_X, data_y, **fit_kwargs)
+        model_fit_end = time.time()
 
-        display.clear_output()
+        model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
+
+        predict_model(model, verbose=False)
+        model_results = pull(pop=True).drop("Model", axis=1)
+
+        display_container.append(model_results)
+
+        display.display(
+            model_results, clear=system, override=False if not system else None
+        )
+
+        logger.info(f"display_container: {len(display_container)}")
 
         logger.info(str(model))
         logger.info(
             "create_models() succesfully completed......................................"
         )
 
+        model = model.named_steps["actual_estimator"]
+
         gc.collect()
-        return model.named_steps["actual_estimator"]
 
-    fold_num = 1
+        if not system:
+            return (model, model_fit_time)
+        return model
 
-    fit_kwargs_cv = fit_kwargs.copy()
+    """
+    MONITOR UPDATE STARTS
+    """
+    display.update_monitor(1, f"Fitting {_get_cv_n_folds(fold)} Folds")
+    display.display_monitor()
+    """
+    MONITOR UPDATE ENDS
+    """
 
-    for train_i, test_i in cv.split(data_X, data_y, groups=groups):
+    from sklearn.model_selection import cross_validate
 
-        logger.info(f"Initializing Fold {fold_num}")
+    metrics_dict = dict(zip(all_metrics.index, all_metrics["Scorer"]))
 
-        t0 = time.time()
-        total_runtime += (t0 - total_runtime_start) / 60
-        logger.info(f"Total runtime is {total_runtime} minutes")
-        over_time_budget = (
-            budget_time and budget_time > 0 and total_runtime > budget_time
-        )
-        if over_time_budget:
-            logger.info(
-                f"Total runtime {total_runtime} is over time budget by {total_runtime - budget_time}, terminating function"
-            )
-            return None
-        total_runtime_start = t0
+    logger.info("Starting cross validation")
 
-        """
-        MONITOR UPDATE STARTS
-        """
-        display.update_monitor(1, f"Fitting Fold {fold_num} of {_get_cv_n_folds(fold)}")
-        display.display_monitor()
-        """
-        MONITOR UPDATE ENDS
-        """
+    scores = cross_validate(
+        model,
+        data_X,
+        data_y,
+        cv=cv,
+        groups=groups,
+        scoring=metrics_dict,
+        fit_params=fit_kwargs,
+        n_jobs=gpu_n_jobs_param,
+        return_train_score=False,
+    )
 
-        Xtrain, Xtest = data_X.iloc[train_i], data_X.iloc[test_i]
-        ytrain, ytest = data_y.iloc[train_i], data_y.iloc[test_i]
-
-        if fit_kwargs_cv and "sample_weight" in fit_kwargs_cv:
-            weights_train, weights_test = (
-                fit_kwargs_cv["sample_weight"][train_i],
-                fit_kwargs_cv["sample_weight"][test_i],
-            )
-            fit_kwargs_cv["sample_weight"] = weights_train
-        else:
-            weights_train = None
-            weights_test = None
-
-        # time just for fitting
-        time_start = time.time()
-
-        logger.info("Fitting Model")
-        with io.capture_output():
-            model.fit(Xtrain, ytrain, **fit_kwargs_cv)
-        logger.info("Evaluating Metrics")
-
-        if hasattr(model, "predict_proba"):
-            pred_prob = model.predict_proba(Xtest)
-            pred_prob = pred_prob[:, 1]
-        else:
-            logger.warning(
-                "model has no predict_proba attribute. pred_prob set to 0.00"
-            )
-            pred_prob = 0.00
-
-        pred_ = model.predict(Xtest)
-
-        _calculate_metrics(ytest, pred_, pred_prob, score_dict, weights_test)
-
-        logger.info("Compiling Metrics")
-        time_end = time.time()
-        training_time = time_end - time_start
-
-        display.move_progress()
-
-        """
-        
-        This section handles time calculation and is created to update_display() as code loops through 
-        the fold defined.
-        
-        """
-
-        fold_results = pd.DataFrame({k: [v[-1]] for k, v in score_dict.items()}).round(
-            round
-        )
-        display.append_to_master_display(fold_results,)
-        fold_results = []
-
-        """
-        TIME CALCULATION SUB-SECTION STARTS HERE
-        """
-        t1 = time.time()
-
-        tt = (t1 - t0) * (_get_cv_n_folds(fold) - fold_num) / 60
-        tt = np.around(tt, 2)
-
-        if tt < 1:
-            tt = str(np.around((tt * 60), 2))
-            ETC = f"{tt} Seconds Remaining"
-
-        else:
-            tt = str(tt)
-            ETC = f"{tt} Minutes Remaining"
-
-        """
-        MONITOR UPDATE STARTS
-        """
-        display.update_monitor(-1, ETC)
-        display.display_monitor()
-        """
-        MONITOR UPDATE ENDS
-        """
-
-        fold_num += 1
-
-        """
-        TIME CALCULATION ENDS HERE
-        """
-        display.display_master_display()
+    score_dict = dict(
+        zip([f"test_{x}" for x in all_metrics.index], all_metrics["Display Name"])
+    )
+    score_dict = {v: scores[k] for k, v in score_dict.items()}
 
     logger.info("Calculating mean and std")
 
@@ -2877,7 +2855,6 @@ def _create_model(
 
     # refitting the model on complete X_train, y_train
     display.update_monitor(1, "Finalizing Model")
-    display.update_monitor(-1, "Almost Finished")
     display.display_monitor()
 
     model_fit_start = time.time()
@@ -2956,7 +2933,7 @@ def tune_model(
     custom_scorer=None,  # added in pycaret==2.1 - depreciated
     search_library: str = "scikit-learn",
     search_algorithm: Optional[str] = None,
-    early_stopping: Any = "ASHA",
+    early_stopping: Any = "asha",
     early_stopping_max_iters: int = 10,
     choose_better: bool = False,
     fit_kwargs: Optional[dict] = {},
@@ -3032,29 +3009,29 @@ def tune_model(
         If None, will use search library-specific default algorith.
         'scikit-learn' possible values:
 
-        - 'Random' - randomized search (default)
-        - 'Grid' - grid search
+        - 'random' - randomized search (default)
+        - 'grid' - grid search
 
         'scikit-optimize' possible values:
 
-        - 'Bayesian' - Bayesian search (default)
+        - 'bayesian' - Bayesian search (default)
 
         'tune-sklearn' possible values:
 
-        - 'Random' - randomized search (default)
-        - 'Grid' - grid search
-        - 'Bayesian' - Bayesian search using scikit-optimize
-        - 'Hyperopt' - Tree-structured Parzen Estimator search using Hyperopt 
+        - 'random' - randomized search (default)
+        - 'grid' - grid search
+        - 'bayesian' - Bayesian search using scikit-optimize
+        - 'hyperopt' - Tree-structured Parzen Estimator search using Hyperopt 
           `pip install tune-sklearn ray[tune] hyperopt`
-        - 'BOHB' - Bayesian search using HpBandSter 
+        - 'bohb' - Bayesian search using HpBandSter 
           `pip install hpbandster ConfigSpace`
 
         'optuna' possible values:
 
-        - 'Random' - randomized search
-        - 'TPE' - Tree-structured Parzen Estimator search (default)
+        - 'random' - randomized search
+        - 'tpe' - Tree-structured Parzen Estimator search (default)
 
-    early_stopping: bool or str or object, default = 'ASHA'
+    early_stopping: bool or str or object, default = 'asha'
         Use early stopping to stop fitting to a hyperparameter configuration 
         if it performs poorly. Ignored if search_library is `scikit-learn`, or
         if the estimator doesn't have partial_fit attribute.
@@ -3062,9 +3039,9 @@ def tune_model(
         Can be either an object accepted by the search library or one of the
         following:
 
-        - 'ASHA' for Asynchronous Successive Halving Algorithm
-        - 'Hyperband' for Hyperband
-        - 'Median' for median stopping rule
+        - 'asha' for Asynchronous Successive Halving Algorithm
+        - 'hyperband' for Hyperband
+        - 'median' for median stopping rule
         - If False or None, early stopping will not be used.
 
         More info for Optuna - https://optuna.readthedocs.io/en/stable/reference/pruners.html
@@ -3083,9 +3060,10 @@ def tune_model(
     fit_kwargs: dict, default = {} (empty dict)
         Dictionary of arguments passed to the fit method of the tuner.
 
-    groups: array-like, with shape (n_samples,)
+    groups: array-like, with shape (n_samples,), default = None
         Optional Group labels for the samples used while splitting the dataset into train/test set.
         Only used if a group based cross-validation generator is used (eg. GroupKFold).
+        If None, will use the value set in fold_groups param in setup().
 
     verbose: bool, default = True
         Score grid is not printed when verbose is set to False.
@@ -3148,9 +3126,7 @@ def tune_model(
         raise TypeError("VotingClassifier not allowed under tune_model().")
 
     # checking fold parameter
-    if fold is not None and not (
-        type(fold) is int or (not isinstance(fold, str) and hasattr(fold, "split"))
-    ):
+    if fold is not None and not (type(fold) is int or is_sklearn_cv_generator(fold)):
         raise TypeError(
             "fold parameter must be either None, an integer or a scikit-learn compatible CV generator object."
         )
@@ -3164,7 +3140,7 @@ def tune_model(
         raise TypeError("n_iter parameter only accepts integer value.")
 
     # checking early_stopping parameter
-    possible_early_stopping = ["ASHA", "Hyperband", "Median"]
+    possible_early_stopping = ["asha", "Hyperband", "Median"]
     if (
         isinstance(early_stopping, str)
         and early_stopping not in possible_early_stopping
@@ -3201,9 +3177,9 @@ def tune_model(
             )
 
         if not search_algorithm:
-            search_algorithm = "Bayesian"
+            search_algorithm = "bayesian"
 
-        possible_search_algorithms = ["Bayesian"]
+        possible_search_algorithms = ["bayesian"]
         if search_algorithm not in possible_search_algorithms:
             raise ValueError(
                 f"For 'scikit-optimize' search_algorithm parameter must be one of {', '.join(possible_search_algorithms)}"
@@ -3218,15 +3194,15 @@ def tune_model(
             )
 
         if not search_algorithm:
-            search_algorithm = "Random"
+            search_algorithm = "random"
 
-        possible_search_algorithms = ["Random", "Grid", "Bayesian", "Hyperopt", "BOHB"]
+        possible_search_algorithms = ["random", "grid", "bayesian", "hyperopt", "bohb"]
         if search_algorithm not in possible_search_algorithms:
             raise ValueError(
                 f"For 'tune-sklearn' search_algorithm parameter must be one of {', '.join(possible_search_algorithms)}"
             )
 
-        if search_algorithm == "BOHB":
+        if search_algorithm == "bohb":
             try:
                 from ray.tune.suggest.bohb import TuneBOHB
                 from ray.tune.schedulers import HyperBandForBOHB
@@ -3236,7 +3212,7 @@ def tune_model(
                 raise ImportError(
                     "It appears that either HpBandSter or ConfigSpace is not installed. Do: pip install hpbandster ConfigSpace"
                 )
-        elif search_algorithm == "Hyperopt":
+        elif search_algorithm == "hyperopt":
             try:
                 from ray.tune.suggest.hyperopt import HyperOptSearch
                 from hyperopt import hp
@@ -3244,7 +3220,7 @@ def tune_model(
                 raise ImportError(
                     "It appears that hyperopt is not installed. Do: pip install hyperopt"
                 )
-        elif search_algorithm == "Bayesian":
+        elif search_algorithm == "bayesian":
             try:
                 import skopt
             except ImportError:
@@ -3261,18 +3237,18 @@ def tune_model(
             )
 
         if not search_algorithm:
-            search_algorithm = "TPE"
+            search_algorithm = "tpe"
 
-        possible_search_algorithms = ["Random", "TPE"]
+        possible_search_algorithms = ["random", "tpe"]
         if search_algorithm not in possible_search_algorithms:
             raise ValueError(
                 f"For 'optuna' search_algorithm parameter must be one of {', '.join(possible_search_algorithms)}"
             )
     else:
         if not search_algorithm:
-            search_algorithm = "Random"
+            search_algorithm = "random"
 
-        possible_search_algorithms = ["Random", "Grid"]
+        possible_search_algorithms = ["random", "grid"]
         if search_algorithm not in possible_search_algorithms:
             raise ValueError(
                 f"For 'scikit-learn' search_algorithm parameter must be one of {', '.join(possible_search_algorithms)}"
@@ -3313,6 +3289,9 @@ def tune_model(
     
     """
 
+    if groups is None:
+        groups = fold_groups_param
+
     if not display:
         progress_args = {"max": _get_cv_n_folds(fold) + 3 + 4}
         master_display_columns = all_metrics["Display Name"].to_list()
@@ -3320,7 +3299,6 @@ def tune_model(
         monitor_rows = [
             ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
             ["Status", ". . . . . . . . . . . . . . . . . .", "Loading Dependencies"],
-            ["ETC", ". . . . . . . . . . . . . . . . . .", "Calculating ETC"],
         ]
         display = Display(
             verbose, html_param, progress_args, master_display_columns, monitor_rows,
@@ -3402,7 +3380,7 @@ def tune_model(
         param_grid = custom_grid
     elif search_library == "scikit-learn" or (
         search_library == "tune-sklearn"
-        and (search_algorithm == "Grid" or search_algorithm == "Random")
+        and (search_algorithm == "grid" or search_algorithm == "random")
     ):
         param_grid = estimator_definition["Tune Grid"]
     else:
@@ -3432,7 +3410,7 @@ def tune_model(
 
     logger.info(f"param_grid: {param_grid}")
 
-    def _can_early_stop(estimator, consider_warm_start):
+    def _can_early_stop(estimator, consider_warm_start, consider_xgboost):
         """
         From https://github.com/ray-project/tune-sklearn/blob/master/tune_sklearn/tune_basesearch.py.
         
@@ -3466,7 +3444,18 @@ def tune_model(
         else:
             can_warm_start = False
 
-        return can_partial_fit or can_warm_start
+        if consider_xgboost:
+            from xgboost.sklearn import XGBModel
+
+            is_xgboost = isinstance(estimator, XGBModel)
+        else:
+            is_xgboost = False
+
+        logger.info(
+            f"can_partial_fit: {can_partial_fit}, can_warm_start: {can_warm_start}, is_xgboost: {is_xgboost}"
+        )
+
+        return can_partial_fit or can_warm_start or is_xgboost
 
     n_jobs = gpu_n_jobs_param
     logger.info(f"Tuning with n_jobs={n_jobs}")
@@ -3476,9 +3465,9 @@ def tune_model(
         logging.getLogger("optuna").setLevel(logging.ERROR)
 
         pruner_translator = {
-            "ASHA": optuna.pruners.SuccessiveHalvingPruner(),
-            "Hyperband": optuna.pruners.HyperbandPruner(),
-            "Median": optuna.pruners.MedianPruner(),
+            "asha": optuna.pruners.SuccessiveHalvingPruner(),
+            "hyperband": optuna.pruners.HyperbandPruner(),
+            "median": optuna.pruners.MedianPruner(),
             False: optuna.pruners.NopPruner(),
             None: optuna.pruners.NopPruner(),
         }
@@ -3487,8 +3476,8 @@ def tune_model(
             pruner = pruner_translator[early_stopping]
 
         sampler_translator = {
-            "TPE": optuna.samplers.TPESampler(seed=seed),
-            "Random": optuna.samplers.RandomSampler(seed=seed),
+            "tpe": optuna.samplers.TPESampler(seed=seed),
+            "random": optuna.samplers.RandomSampler(seed=seed),
         }
         sampler = sampler_translator[search_algorithm]
 
@@ -3504,7 +3493,8 @@ def tune_model(
             estimator=model,
             param_distributions=param_grid,
             cv=fold,
-            enable_pruning=early_stopping and _can_early_stop(model, False),
+            enable_pruning=early_stopping
+            and _can_early_stop(base_estimator, False, False),
             max_iter=early_stopping_max_iters,
             n_jobs=n_jobs,
             n_trials=n_iter,
@@ -3518,25 +3508,25 @@ def tune_model(
 
     elif search_library == "tune-sklearn":
         early_stopping_translator = {
-            "ASHA": "ASHAScheduler",
-            "Hyperband": "HyperBandScheduler",
-            "Median": "MedianStoppingRule",
+            "asha": "ASHAScheduler",
+            "hyperband": "HyperBandScheduler",
+            "median": "MedianStoppingRule",
         }
         if early_stopping in early_stopping_translator:
             early_stopping = early_stopping_translator[early_stopping]
 
-        can_early_stop = early_stopping and _can_early_stop(model, True)
+        can_early_stop = early_stopping and _can_early_stop(base_estimator, True, True)
 
-        if not can_early_stop and search_algorithm == "BOHB":
+        if not can_early_stop and search_algorithm == "bohb":
             raise ValueError(
-                "'BOHB' requires early_stopping = True and the estimator to support partial_fit or have warm_start param set to True."
+                "'bohb' requires early_stopping = True and the estimator to support partial_fit or have warm_start param set to True."
             )
 
         # if n_jobs is None:
         # enable Ray local mode - otherwise the performance is terrible
         n_jobs = 1
 
-        if search_algorithm == "Grid":
+        if search_algorithm == "grid":
             from tune_sklearn import TuneGridSearchCV
 
             logger.info("Initializing tune_sklearn.TuneGridSearchCV")
@@ -3553,7 +3543,7 @@ def tune_model(
                 verbose=0,
                 **search_kwargs,
             )
-        elif search_algorithm == "Hyperopt":
+        elif search_algorithm == "hyperopt":
             from tune_sklearn import TuneSearchCV
 
             if custom_grid is None:
@@ -3563,7 +3553,7 @@ def tune_model(
                 estimator=model,
                 search_optimization="hyperopt",
                 param_distributions=param_grid,
-                n_iter=n_iter,
+                n_trials=n_iter,
                 early_stopping=can_early_stop,
                 scoring=optimize,
                 cv=fold,
@@ -3575,7 +3565,7 @@ def tune_model(
                 verbose=0,
                 **search_kwargs,
             )
-        elif search_algorithm == "Bayesian":
+        elif search_algorithm == "bayesian":
             from tune_sklearn import TuneSearchCV
 
             if custom_grid is None:
@@ -3585,7 +3575,7 @@ def tune_model(
                 estimator=model,
                 search_optimization="bayesian",
                 param_distributions=param_grid,
-                n_iter=n_iter,
+                n_trials=n_iter,
                 early_stopping=can_early_stop,
                 scoring=optimize,
                 cv=fold,
@@ -3597,7 +3587,7 @@ def tune_model(
                 verbose=0,
                 **search_kwargs,
             )
-        elif search_algorithm == "BOHB":
+        elif search_algorithm == "bohb":
             from tune_sklearn import TuneSearchCV
 
             if custom_grid is None:
@@ -3607,7 +3597,7 @@ def tune_model(
                 estimator=model,
                 search_optimization="bohb",
                 param_distributions=param_grid,
-                n_iter=n_iter,
+                n_trials=n_iter,
                 early_stopping=can_early_stop,
                 scoring=optimize,
                 cv=fold,
@@ -3627,7 +3617,7 @@ def tune_model(
                 estimator=model,
                 param_distributions=param_grid,
                 early_stopping=can_early_stop,
-                n_iter=n_iter,
+                n_trials=n_iter,
                 scoring=optimize,
                 cv=fold,
                 random_state=seed,
@@ -3658,7 +3648,7 @@ def tune_model(
             **search_kwargs,
         )
     else:
-        if search_algorithm == "Grid":
+        if search_algorithm == "grid":
             from sklearn.model_selection import GridSearchCV
 
             logger.info("Initializing GridSearchCV")
@@ -3844,9 +3834,10 @@ def ensemble_model(
     fit_kwargs: dict, default = {} (empty dict)
         Dictionary of arguments passed to the fit method of the model.
 
-    groups: array-like, with shape (n_samples,)
+    groups: array-like, with shape (n_samples,), default = None
         Optional Group labels for the samples used while splitting the dataset into train/test set.
         Only used if a group based cross-validation generator is used (eg. GroupKFold).
+        If None, will use the value set in fold_groups param in setup().
 
     verbose: bool, default = True
         Score grid is not printed when verbose is set to False.
@@ -3916,9 +3907,7 @@ def ensemble_model(
             )
 
     # checking fold parameter
-    if fold is not None and not (
-        type(fold) is int or (not isinstance(fold, str) and hasattr(fold, "split"))
-    ):
+    if fold is not None and not (type(fold) is int or is_sklearn_cv_generator(fold)):
         raise TypeError(
             "fold parameter must be either None, an integer or a scikit-learn compatible CV generator object."
         )
@@ -3955,6 +3944,9 @@ def ensemble_model(
     
     """
 
+    if groups is None:
+        groups = fold_groups_param
+
     if not display:
         progress_args = {"max": _get_cv_n_folds(fold) + 2 + 4}
         master_display_columns = all_metrics["Display Name"].to_list()
@@ -3962,7 +3954,6 @@ def ensemble_model(
         monitor_rows = [
             ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
             ["Status", ". . . . . . . . . . . . . . . . . .", "Loading Dependencies"],
-            ["ETC", ". . . . . . . . . . . . . . . . . .", "Calculating ETC"],
         ]
         display = Display(
             verbose, html_param, progress_args, master_display_columns, monitor_rows,
@@ -4175,9 +4166,10 @@ def blend_models(
     fit_kwargs: dict, default = {} (empty dict)
         Dictionary of arguments passed to the fit method of the model.
 
-    groups: array-like, with shape (n_samples,)
+    groups: array-like, with shape (n_samples,), default = None
         Optional Group labels for the samples used while splitting the dataset into train/test set.
         Only used if a group based cross-validation generator is used (eg. GroupKFold).
+        If None, will use the value set in fold_groups param in setup().
 
     verbose: bool, default = True
         Score grid is not printed when verbose is set to False.
@@ -4254,9 +4246,7 @@ def blend_models(
                 method = "soft"
 
     # checking fold parameter
-    if fold is not None and not (
-        type(fold) is int or (not isinstance(fold, str) and hasattr(fold, "split"))
-    ):
+    if fold is not None and not (type(fold) is int or is_sklearn_cv_generator(fold)):
         raise TypeError(
             "fold parameter must be either None, an integer or a scikit-learn compatible CV generator object."
         )
@@ -4299,6 +4289,9 @@ def blend_models(
     
     """
 
+    if groups is None:
+        groups = fold_groups_param
+
     if not display:
         progress_args = {"max": _get_cv_n_folds(fold) + 2 + 4}
         master_display_columns = all_metrics["Display Name"].to_list()
@@ -4306,7 +4299,6 @@ def blend_models(
         monitor_rows = [
             ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
             ["Status", ". . . . . . . . . . . . . . . . . .", "Loading Dependencies"],
-            ["ETC", ". . . . . . . . . . . . . . . . . .", "Calculating ETC"],
         ]
         display = Display(
             verbose, html_param, progress_args, master_display_columns, monitor_rows,
@@ -4523,9 +4515,10 @@ def stack_models(
     fit_kwargs: dict, default = {} (empty dict)
         Dictionary of arguments passed to the fit method of the model.
 
-    groups: array-like, with shape (n_samples,)
+    groups: array-like, with shape (n_samples,), default = None
         Optional Group labels for the samples used while splitting the dataset into train/test set.
         Only used if a group based cross-validation generator is used (eg. GroupKFold).
+        If None, will use the value set in fold_groups param in setup().
 
     verbose: bool, default = True
         Score grid is not printed when verbose is set to False.
@@ -4573,9 +4566,7 @@ def stack_models(
             )
 
     # checking fold parameter
-    if fold is not None and not (
-        type(fold) is int or (not isinstance(fold, str) and hasattr(fold, "split"))
-    ):
+    if fold is not None and not (type(fold) is int or is_sklearn_cv_generator(fold)):
         raise TypeError(
             "fold parameter must be either None, an integer or a scikit-learn compatible CV generator object."
         )
@@ -4619,6 +4610,9 @@ def stack_models(
     
     """
 
+    if groups is None:
+        groups = fold_groups_param
+
     logger.info("Defining meta model")
     # Defining meta model.
     if meta_model == None:
@@ -4636,7 +4630,6 @@ def stack_models(
         monitor_rows = [
             ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
             ["Status", ". . . . . . . . . . . . . . . . . .", "Loading Dependencies"],
-            ["ETC", ". . . . . . . . . . . . . . . . . .", "Calculating ETC"],
         ]
         display = Display(
             verbose, html_param, progress_args, master_display_columns, monitor_rows,
@@ -4837,9 +4830,10 @@ def plot_model(
     fit_kwargs: dict, default = {} (empty dict)
         Dictionary of arguments passed to the fit method of the model.
 
-    groups: array-like, with shape (n_samples,)
+    groups: array-like, with shape (n_samples,), default = None
         Optional Group labels for the samples used while splitting the dataset into train/test set.
         Only used if a group based cross-validation generator is used (eg. GroupKFold).
+        If None, will use the value set in fold_groups param in setup().
 
     verbose: bool, default = True
         Progress bar not shown when verbose set to False. 
@@ -4956,9 +4950,7 @@ def plot_model(
         )
 
     # checking fold parameter
-    if fold is not None and not (
-        type(fold) is int or (not isinstance(fold, str) and hasattr(fold, "split"))
-    ):
+    if fold is not None and not (type(fold) is int or is_sklearn_cv_generator(fold)):
         raise TypeError(
             "fold parameter must be either None, an integer or a scikit-learn compatible CV generator object."
         )
@@ -4968,6 +4960,9 @@ def plot_model(
     ERROR HANDLING ENDS HERE
     
     """
+
+    if groups is None:
+        groups = fold_groups_param
 
     if not display:
         progress_args = {"max": 5}
@@ -5582,9 +5577,10 @@ def evaluate_model(
     fit_kwargs: dict, default = {} (empty dict)
         Dictionary of arguments passed to the fit method of the model.
 
-    groups: array-like, with shape (n_samples,)
+    groups: array-like, with shape (n_samples,), default = None
         Optional Group labels for the samples used while splitting the dataset into train/test set.
         Only used if a group based cross-validation generator is used (eg. GroupKFold).
+        If None, will use the value set in fold_groups param in setup().
 
     Returns
     -------
@@ -5621,6 +5617,9 @@ def evaluate_model(
         button_style="",  # 'success', 'info', 'warning', 'danger' or ''
         icons=[""],
     )
+
+    if groups is None:
+        groups = fold_groups_param
 
     d = interact(
         plot_model,
@@ -5932,9 +5931,10 @@ def calibrate_model(
     fit_kwargs: dict, default = {} (empty dict)
         Dictionary of arguments passed to the fit method of the model.
 
-    groups: array-like, with shape (n_samples,)
+    groups: array-like, with shape (n_samples,), default = None
         Optional Group labels for the samples used while splitting the dataset into train/test set.
         Only used if a group based cross-validation generator is used (eg. GroupKFold).
+        If None, will use the value set in fold_groups param in setup().
 
     verbose: bool, default = True
         Score grid is not printed when verbose is set to False.
@@ -5973,9 +5973,7 @@ def calibrate_model(
     runtime_start = time.time()
 
     # checking fold parameter
-    if fold is not None and not (
-        type(fold) is int or (not isinstance(fold, str) and hasattr(fold, "split"))
-    ):
+    if fold is not None and not (type(fold) is int or is_sklearn_cv_generator(fold)):
         raise TypeError(
             "fold parameter must be either None, an integer or a scikit-learn compatible CV generator object."
         )
@@ -5994,6 +5992,9 @@ def calibrate_model(
     
     """
 
+    if groups is None:
+        groups = fold_groups_param
+
     logger.info("Preloading libraries")
 
     # pre-load libraries
@@ -6007,7 +6008,6 @@ def calibrate_model(
         monitor_rows = [
             ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
             ["Status", ". . . . . . . . . . . . . . . . . .", "Loading Dependencies"],
-            ["ETC", ". . . . . . . . . . . . . . . . . .", "Calculating ETC"],
         ]
         display = Display(
             verbose, html_param, progress_args, master_display_columns, monitor_rows,
@@ -6442,8 +6442,8 @@ def predict_model(
     # dataset
     if data is None:
 
-        if "Pipeline" in str(type(estimator)):
-            estimator = estimator[-1]
+        if is_sklearn_pipeline(estimator):
+            estimator = estimator.steps[-1][1]
 
         X_test_ = X_test.copy()
         y_test_ = y_test.copy()
@@ -6456,7 +6456,6 @@ def predict_model(
     else:
 
         if hasattr(estimator, "steps") and hasattr(estimator, "predict"):
-            logger.info(estimator)
             dtypes = estimator.named_steps["dtypes"]
         else:
             try:
@@ -6508,6 +6507,9 @@ def predict_model(
             pred_ = (pred_prob >= probability_threshold).astype(int)
         except:
             pass
+
+    if pred_prob is None:
+        pred_prob = pred_
 
     df_score = None
 
@@ -6575,9 +6577,10 @@ def finalize_model(
     fit_kwargs: dict, default = {} (empty dict)
         Dictionary of arguments passed to the fit method of the model.
 
-    groups: array-like, with shape (n_samples,)
+    groups: array-like, with shape (n_samples,), default = None
         Optional Group labels for the samples used while splitting the dataset into train/test set.
         Only used if a group based cross-validation generator is used (eg. GroupKFold).
+        If None, will use the value set in fold_groups param in setup().
 
     Returns
     -------
@@ -6601,6 +6604,9 @@ def finalize_model(
 
     logger.info("Initializing finalize_model()")
     logger.info(f"finalize_model({function_params_str})")
+
+    if groups is None:
+        groups = fold_groups_param
 
     if not display:
         display = Display(False, html_param,)
@@ -7440,7 +7446,6 @@ def _choose_better(
     logger = get_logger()
     logger.info("choose_better activated")
     display.update_monitor(1, "Compiling Final Results")
-    display.update_monitor(2, "Almost Finished")
     display.display_monitor()
 
     scorer = []
@@ -7607,20 +7612,6 @@ def _sample_data(
             ss = total_tt * remain
             split_perc_tt_total.append(ss)
 
-        ttt = sum(split_perc_tt_total) / 60
-        ttt = np.around(ttt, 2)
-
-        if ttt < 1:
-            ttt = str(np.around((ttt * 60), 2))
-            ETC = f"{ttt} Seconds Remaining"
-
-        else:
-            ttt = str(ttt)
-            ETC = f"{ttt} Minutes Remaining"
-
-        display.update_monitor(2, ETC)
-        display.display_monitor()
-
         """
         Time calculation Ends
         """
@@ -7783,7 +7774,6 @@ def _mlflow_log_model(
     # Creating Logs message monitor
     if display:
         display.update_monitor(1, "Creating Logs")
-        display.update_monitor(-1, "Almost Finished")
         display.display_monitor()
 
     # import mlflow

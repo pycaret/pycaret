@@ -8,6 +8,7 @@ import pandas.io.formats.style
 import ipywidgets as ipw
 from IPython.display import display, HTML, clear_output, update_display
 from pycaret.internal.logging import get_logger
+from pycaret.internal.validation import *
 from typing import Any, List, Optional, Dict, Tuple, Union
 from sklearn.pipeline import Pipeline
 import numpy as np
@@ -41,7 +42,9 @@ def get_config(variable: str, globals_d: dict):
     logger.info(f"get_config({function_params_str})")
 
     if not variable in globals_d["pycaret_globals"]:
-        raise ValueError(f"Variable {variable} not found. Possible variables are: {globals_d['pycaret_globals']}")
+        raise ValueError(
+            f"Variable {variable} not found. Possible variables are: {globals_d['pycaret_globals']}"
+        )
 
     global_var = globals_d[variable]
 
@@ -76,7 +79,9 @@ def set_config(variable: str, value, globals_d: dict):
     logger.info(f"set_config({function_params_str})")
 
     if not variable in globals_d["pycaret_globals"] or variable == "pycaret_globals":
-        raise ValueError(f"Variable {variable} not found. Possible variables are: {globals_d['pycaret_globals']}")
+        raise ValueError(
+            f"Variable {variable} not found. Possible variables are: {globals_d['pycaret_globals']}"
+        )
 
     globals_d[variable] = value
 
@@ -231,8 +236,12 @@ def param_grid_to_lists(param_grid: dict) -> dict:
 
 
 def make_internal_pipeline(internal_pipeline_steps, model):
-    from pycaret.internal.Pipeline import Pipeline
+    from pycaret.internal.Pipeline import Pipeline, PartialFitPipeline
 
+    if hasattr(model, "partial_fit"):
+        return PartialFitPipeline(
+            internal_pipeline_steps + [("actual_estimator", model)]
+        )
     return Pipeline(internal_pipeline_steps + [("actual_estimator", model)])
 
 
@@ -272,9 +281,7 @@ def calculate_metrics(
             try:
                 calculated_metric = row[score_function_idx](ytest, target, **row.Args)
             except:
-                logger.warning(
-                    f"{row[score_function_idx]} not supported, setting to 0"
-                )
+                logger.warning(f"{row[score_function_idx]} not supported, setting to 0")
                 calculated_metric = 0
 
         score_dict[row[display_name_idx]] = np.append(
@@ -297,7 +304,7 @@ def normalize_custom_transformers(
         _check_custom_transformer(transformers)
         if not isinstance(transformers, tuple):
             transformers = (f"custom_step", transformers)
-        if isinstance(transformers[0], Pipeline):
+        if is_sklearn_pipeline(transformers[0]):
             return transformers.steps
         transformers = [transformers]
     return transformers
@@ -330,7 +337,7 @@ def get_cv_splitter(
 ) -> BaseCrossValidator:
     if not fold:
         return default
-    if not isinstance(fold, str) and hasattr(fold, "split"):
+    if is_sklearn_cv_generator(fold):
         return fold
     if type(fold) is int:
         if int_default == "kfold":
