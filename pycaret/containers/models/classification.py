@@ -504,6 +504,7 @@ class GaussianProcessClassifierContainer(ClassifierContainer):
 
         args = {
             "random_state": globals_dict["seed"],
+            "n_jobs": globals_dict["n_jobs_param"],
         }
         tune_args = {}
         tune_grid = {
@@ -752,7 +753,10 @@ class RandomForestClassifierContainer(ClassifierContainer):
                     return f"RandomForestClassifier({args})"
 
         args = (
-            {"random_state": globals_dict["seed"],}
+            {
+                "random_state": globals_dict["seed"],
+                "n_jobs": globals_dict["n_jobs_param"],
+            }
             if not gpu_imported
             else {"seed": globals_dict["seed"]}
         )
@@ -966,6 +970,7 @@ class ExtraTreesClassifierContainer(ClassifierContainer):
 
         args = {
             "random_state": globals_dict["seed"],
+            "n_jobs": globals_dict["n_jobs_param"],
         }
         tune_args = {}
         tune_grid = {
@@ -1006,6 +1011,7 @@ class XGBClassifierContainer(ClassifierContainer):
 
         args = {
             "random_state": globals_dict["seed"],
+            "n_jobs": globals_dict["n_jobs_param"],
             "verbosity": 0,
             "booster": "gbtree",
             "tree_method": "gpu_hist" if globals_dict["gpu_param"] else "auto",
@@ -1055,6 +1061,7 @@ class LGBMClassifierContainer(ClassifierContainer):
 
         args = {
             "random_state": globals_dict["seed"],
+            "n_jobs": globals_dict["n_jobs_param"],
         }
         tune_args = {}
         tune_grid = {
@@ -1107,6 +1114,7 @@ class CatBoostClassifierContainer(ClassifierContainer):
         args = {
             "random_state": globals_dict["seed"],
             "verbose": False,
+            "thread_count": globals_dict["n_jobs_param"],
             "task_type": "GPU" if use_gpu else "CPU",
         }
         tune_args = {}
