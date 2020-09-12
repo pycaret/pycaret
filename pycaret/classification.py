@@ -1439,21 +1439,21 @@ def setup(
     if use_gpu:
         try:
             from cuml import __version__
-            cuml_version = __version__
-        except:
-            cuml_version = (0, 0)
-        
-        logger.info(f"cuml=={cuml_version}")
 
-        cuml_version = cuml_version.split(".")
-        cuml_version = (int(cuml_version[0]), int(cuml_version[1]))
+            cuml_version = __version__
+            logger.info(f"cuml=={cuml_version}")
+
+            cuml_version = cuml_version.split(".")
+            cuml_version = (int(cuml_version[0]), int(cuml_version[1]))
+        except:
+            logger.warning(f"cuML not found")
+
         if not cuml_version >= (0, 15):
-            message = f"cuML is outdated. Required version is >=0.15, got {__version__}"
+            message = f"cuML is outdated or not found. Required version is >=0.15, got {__version__}"
             if use_gpu == "Force":
                 raise ImportError(message)
             else:
                 logger.warning(message)
-                use_gpu = False
 
     # create gpu_n_jobs_param
     gpu_n_jobs_param = n_jobs if not use_gpu else 1
