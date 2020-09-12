@@ -202,10 +202,10 @@ class RecallMetricContainer(ClassificationMetricContainer):
             name="Recall",
             score_func=metrics.recall_score,
             scorer=metrics.make_scorer(metrics.recall_score, average="macro")
-            if globals_dict["y"].value_counts().count() > 2
+            if globals_dict["y_train"].value_counts().count() > 2
             else "recall",
             args={"average": "macro"}
-            if globals_dict["y"].value_counts().count() > 2
+            if globals_dict["y_train"].value_counts().count() > 2
             else {},
         )
 
@@ -218,10 +218,10 @@ class PrecisionMetricContainer(ClassificationMetricContainer):
             display_name="Prec.",
             score_func=metrics.precision_score,
             scorer=metrics.make_scorer(metrics.precision_score, average="weighted")
-            if globals_dict["y"].value_counts().count() > 2
+            if globals_dict["y_train"].value_counts().count() > 2
             else "precision",
             args={"average": "weighted"}
-            if globals_dict["y"].value_counts().count() > 2
+            if globals_dict["y_train"].value_counts().count() > 2
             else {},
         )
 
@@ -233,10 +233,10 @@ class F1MetricContainer(ClassificationMetricContainer):
             name="F1",
             score_func=metrics.f1_score,
             scorer=metrics.make_scorer(metrics.f1_score, average="weighted")
-            if globals_dict["y"].value_counts().count() > 2
+            if globals_dict["y_train"].value_counts().count() > 2
             else "f1",
             args={"average": "weighted"}
-            if globals_dict["y"].value_counts().count() > 2
+            if globals_dict["y_train"].value_counts().count() > 2
             else {},
         )
 
