@@ -2967,10 +2967,9 @@ def _create_model(
     create_model_container.append(model_results.data)
     display_container.append(model_results.data)
 
-    if refit:
-        # storing results in master_model_container
-        logger.info("Uploading model into container now")
-        master_model_container.append(model)
+    # storing results in master_model_container
+    logger.info("Uploading model into container now")
+    master_model_container.append(model)
 
     display.display(model_results, clear=system, override=False if not system else None)
 
