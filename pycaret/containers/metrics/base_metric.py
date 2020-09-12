@@ -59,7 +59,7 @@ class MetricContainer(BaseContainer):
         name: str,
         score_func: type,
         scorer: Optional[Union[str, _BaseScorer]] = None,
-        args: Dict[str, Any] = {},
+        args: Dict[str, Any] = None,
         display_name: Optional[str] = None,
         is_custom: bool = False,
     ) -> None:
@@ -68,6 +68,8 @@ class MetricContainer(BaseContainer):
         self.score_func = score_func
         self.scorer = scorer if scorer else make_scorer(score_func, **args)
         self.display_name = display_name if display_name else name
+        if not args:
+            args = {}
         self.args = args
         self.is_custom = is_custom
 

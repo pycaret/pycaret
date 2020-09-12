@@ -49,13 +49,15 @@ class ModelContainer(BaseContainer):
         id: str,
         name: str,
         class_def: type,
-        args: Dict[str, Any] = {},
+        args: Dict[str, Any] = None,
         is_special: bool = False,
     ) -> None:
         self.id = id
         self.name = name
         self.class_def = class_def
         self.reference = self.get_class_name()
+        if not args:
+            args = {}
         self.args = args
         self.is_special = is_special
 

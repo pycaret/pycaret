@@ -80,11 +80,14 @@ class ClassificationMetricContainer(MetricContainer):
         score_func: type,
         scorer: Optional[Union[str, _BaseScorer]] = None,
         target: str = "pred",
-        args: Dict[str, Any] = {},
+        args: Dict[str, Any] = None,
         display_name: Optional[str] = None,
         is_multiclass: bool = True,
         is_custom: bool = False,
     ) -> None:
+
+        if not args:
+            args = {}
 
         if not isinstance(args, dict):
             raise TypeError("args needs to be a dictionary.")

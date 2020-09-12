@@ -96,11 +96,11 @@ class ClassifierContainer(ModelContainer):
         name: str,
         class_def: type,
         is_turbo: bool = True,
-        args: Dict[str, Any] = {},
+        args: Dict[str, Any] = None,
         is_special: bool = False,
-        tune_grid: Dict[str, list] = {},
-        tune_distribution: Dict[str, Distrubution] = {},
-        tune_args: Dict[str, Any] = {},
+        tune_grid: Dict[str, list] = None,
+        tune_distribution: Dict[str, Distrubution] = None,
+        tune_args: Dict[str, Any] = None,
         shap: Union[bool, str] = False,
         is_gpu_enabled: Optional[bool] = None,
         is_boosting_supported: Optional[bool] = None,
@@ -110,6 +110,18 @@ class ClassifierContainer(ModelContainer):
         self.shap = shap
         if not (isinstance(shap, bool) or shap in ["type1", "type2"]):
             raise ValueError("shap must be either bool or 'type1', 'type2'.")
+
+        if not args:
+            args = {}
+
+        if not tune_grid:
+            tune_grid = {}
+
+        if not tune_distribution:
+            tune_distribution = {}
+
+        if not tune_args:
+            tune_args = {}
 
         super().__init__(id, name, class_def, args, is_special)
         self.is_turbo = is_turbo
@@ -503,6 +515,7 @@ class GaussianProcessClassifierContainer(ClassifierContainer):
         from sklearn.gaussian_process import GaussianProcessClassifier
 
         args = {
+            "copy_X_train": False,
             "random_state": globals_dict["seed"],
             "n_jobs": globals_dict["n_jobs_param"],
         }

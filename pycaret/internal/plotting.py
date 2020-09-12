@@ -18,7 +18,7 @@ def show_yellowbrick_plot(
     handle_test: str = "score",
     scale: float = 1,
     save: bool = False,
-    fit_kwargs: Optional[dict] = {},
+    fit_kwargs: Optional[dict] = None,
     groups: Optional[Any] = None,
     system: bool = True,
     display: Optional[Display] = None,
@@ -29,6 +29,9 @@ def show_yellowbrick_plot(
     """
     logger = get_logger()
     visualizer.fig.set_dpi(visualizer.fig.dpi * scale)
+
+    if not fit_kwargs:
+        fit_kwargs = {}
 
     fit_kwargs_and_kwargs = {**fit_kwargs, **kwargs}
 

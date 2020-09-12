@@ -4,7 +4,12 @@
 # Release: PyCaret 2.2
 # Last modified : 26/08/2020
 
-from pycaret.internal.utils import color_df, normalize_custom_transformers
+from pycaret.internal.utils import (
+    color_df,
+    normalize_custom_transformers,
+    nullcontext,
+    true_warm_start,
+)
 from pycaret.internal.logging import get_logger
 from pycaret.internal.plotting import show_yellowbrick_plot
 from pycaret.internal.Display import Display
@@ -32,6 +37,7 @@ from typing import List, Tuple, Any, Union
 import warnings
 from IPython.utils import io
 import traceback
+from contextlib import ExitStack
 
 warnings.filterwarnings("ignore")
 
@@ -89,7 +95,7 @@ def setup(
     fix_imbalance_method: Optional[Any] = None,
     data_split_shuffle: bool = True,
     data_split_stratify: Union[bool, List[str]] = False,  # added in pycaret==2.2
-    fold_strategy: Union[str, Any] = "kfold",  # added in pycaret==2.2
+    fold_strategy: Union[str, Any] = "stratifiedkfold",  # added in pycaret==2.2
     fold: int = 10,  # added in pycaret==2.2
     fold_shuffle: bool = False,
     fold_groups=None,
@@ -443,7 +449,7 @@ def setup(
         If list is passed, will stratify by the columns with the names in the list.
         Requires data_split_shuffle to be set to True.
 
-    fold_strategy: str or scikit-learn compatible CV generator object, default = 'kfold'
+    fold_strategy: str or scikit-learn compatible CV generator object, default = 'stratifiedkfold'
         Choice of cross validation strategy. Possible values are:
 
         * 'kfold' for KFold CV,
@@ -1901,10 +1907,11 @@ def compare_models(
     round: int = 4,
     cross_validation: bool = True,
     sort: str = "Accuracy",
+    n_select: int = 1,
     budget_time: Optional[float] = None,  # added in pycaret==2.1.0
     turbo: bool = True,
     errors: str = "ignore",
-    fit_kwargs: Optional[dict] = {},
+    fit_kwargs: Optional[dict] = None,
     groups=None,
     verbose: bool = True,
     display: Optional[Display] = None,
@@ -2037,7 +2044,8 @@ def compare_models(
 
     logger.info("Checking exceptions")
 
-    # exception checking
+    if not fit_kwargs:
+        fit_kwargs = {}
 
     # checking error for exclude (string)
     available_estimators = all_models.index
@@ -2082,11 +2090,12 @@ def compare_models(
         raise TypeError("budget_time parameter only accepts integer or float values.")
 
     # checking sort parameter
-    sort = _get_metric(sort)
-    if sort is None:
-        raise ValueError(
-            f"Sort method not supported. See docstring for list of available parameters."
-        )
+    if not isinstance(sort, str) and (sort == "TT" or sort == "TT (Sec)"):
+        sort = _get_metric(sort)
+        if sort is None:
+            raise ValueError(
+                f"Sort method not supported. See docstring for list of available parameters."
+            )
 
     # checking errors parameter
     possible_errors = ["ignore", "raise"]
@@ -2149,7 +2158,10 @@ def compare_models(
 
     # defining sort parameter (making Precision equivalent to Prec. )
 
-    sort = sort["Display Name"]
+    if not isinstance(sort, str) and (sort == "TT" or sort == "TT (Sec)"):
+        sort = sort["Display Name"]
+    else:
+        sort = "TT (Sec)"
 
     """
     MONITOR UPDATE STARTS
@@ -2239,6 +2251,7 @@ def compare_models(
                 cross_validation=cross_validation,
                 fit_kwargs=fit_kwargs,
                 groups=groups,
+                refit=False,
             )
             model_results = pull(pop=True)
         else:
@@ -2253,6 +2266,7 @@ def compare_models(
                     cross_validation=cross_validation,
                     fit_kwargs=fit_kwargs,
                     groups=groups,
+                    refit=False,
                 )
                 model_results = pull(pop=True)
             except:
@@ -2261,7 +2275,7 @@ def compare_models(
                 continue
         logger.info("SubProcess create_model() end ==================================")
 
-        if not model:
+        if model is None:
             over_time_budget = True
             logger.info(f"Time budged exceeded in create_model(), breaking loop")
             break
@@ -2361,6 +2375,26 @@ def compare_models(
 
     sorted_models = master_display["Object"].to_list()
 
+    if n_select < 0:
+        sorted_models = sorted_models[n_select:]
+    else:
+        sorted_models = sorted_models[:n_select]
+
+    sorted_models = [
+        _create_model(
+            estimator=model,
+            system=False,
+            verbose=False,
+            fold=fold,
+            round=round,
+            cross_validation=False,
+            predict=False,
+            fit_kwargs=fit_kwargs,
+            groups=groups,
+        )[0]
+        for model in sorted_models
+    ]
+
     display.display(compare_models_, clear=True)
 
     pd.reset_option("display.max_columns")
@@ -2385,7 +2419,7 @@ def create_model(
     fold: Optional[Union[int, Any]] = None,
     round: int = 4,
     cross_validation: bool = True,
-    fit_kwargs: Optional[dict] = {},
+    fit_kwargs: Optional[dict] = None,
     groups=None,
     verbose: bool = True,
     display: Optional[Display] = None,  # added in pycaret==2.2.0
@@ -2505,8 +2539,10 @@ def _create_model(
     fold: Optional[Union[int, Any]] = None,
     round: int = 4,
     cross_validation: bool = True,
-    fit_kwargs: Optional[dict] = {},
+    predict: bool = True,
+    fit_kwargs: Optional[dict] = None,
     groups=None,
+    refit: bool = True,
     verbose: bool = True,
     system: bool = True,
     X_train_data: Optional[pd.DataFrame] = None,  # added in pycaret==2.2.0
@@ -2571,7 +2607,10 @@ def _create_model(
 
     cross_validation: bool, default = True
         When cross_validation set to False fold parameter is ignored and model is trained
-        on entire training dataset. No metric evaluation is returned. 
+        on entire training dataset.
+
+    predict: bool, default = True
+        Whether to predict model on holdout if cross_validation == False.
 
     fit_kwargs: dict, default = {} (empty dict)
         Dictionary of arguments passed to the fit method of the model.
@@ -2580,6 +2619,9 @@ def _create_model(
         Optional Group labels for the samples used while splitting the dataset into train/test set.
         Only used if a group based cross-validation generator is used (eg. GroupKFold).
         If None, will use the value set in fold_groups param in setup().
+
+    refit: bool, default = True
+        Whether to refit the model on the entire dataset after CV. Ignored if cross_validation == False.
 
     verbose: bool, default = True
         Score grid is not printed when verbose is set to False.
@@ -2639,6 +2681,9 @@ def _create_model(
     runtime_start = time.time()
 
     available_estimators = set(_all_models_internal.index)
+
+    if not fit_kwargs:
+        fit_kwargs = {}
 
     # only raise exception of estimator is of type string.
     if isinstance(estimator, str):
@@ -2781,16 +2826,17 @@ def _create_model(
 
         model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
 
-        predict_model(model, verbose=False)
-        model_results = pull(pop=True).drop("Model", axis=1)
+        if predict:
+            predict_model(model, verbose=False)
+            model_results = pull(pop=True).drop("Model", axis=1)
 
-        display_container.append(model_results)
+            display_container.append(model_results)
 
-        display.display(
-            model_results, clear=system, override=False if not system else None
-        )
+            display.display(
+                model_results, clear=system, override=False if not system else None
+            )
 
-        logger.info(f"display_container: {len(display_container)}")
+            logger.info(f"display_container: {len(display_container)}")
 
         logger.info(str(model))
         logger.info(
@@ -2820,6 +2866,15 @@ def _create_model(
 
     logger.info("Starting cross validation")
 
+    n_jobs = gpu_n_jobs_param
+    from sklearn.gaussian_process import GaussianProcessClassifier
+
+    # special case to prevent running out of memory
+    if isinstance(model, GaussianProcessClassifier):
+        n_jobs = 1
+
+    logger.info(f"Cross validating with n_jobs={n_jobs}")
+
     scores = cross_validate(
         model,
         data_X,
@@ -2828,7 +2883,7 @@ def _create_model(
         groups=groups,
         scoring=metrics_dict,
         fit_params=fit_kwargs,
-        n_jobs=gpu_n_jobs_param,
+        n_jobs=n_jobs,
         return_train_score=False,
         error_score=0,
     )
@@ -2860,20 +2915,23 @@ def _create_model(
     display.update_monitor(1, "Finalizing Model")
     display.display_monitor()
 
-    model_fit_start = time.time()
-    logger.info("Finalizing model")
-    with io.capture_output():
-        model.fit(data_X, data_y, **fit_kwargs)
-    model_fit_end = time.time()
+    if refit:
+        model_fit_start = time.time()
+        logger.info("Finalizing model")
+        with io.capture_output():
+            model.fit(data_X, data_y, **fit_kwargs)
+        model_fit_end = time.time()
 
-    model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
+        model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
+    else:
+        model_fit_time = np.mean(scores["fit_time"])
 
     # end runtime
     runtime_end = time.time()
     runtime = np.array(runtime_end - runtime_start).round(2)
 
     # mlflow logging
-    if logging_param and system:
+    if logging_param and system and refit:
 
         avgs_dict_log = avgs_dict.copy()
         avgs_dict_log = {k: v[0] for k, v in avgs_dict_log.items()}
@@ -2904,9 +2962,10 @@ def _create_model(
     create_model_container.append(model_results.data)
     display_container.append(model_results.data)
 
-    # storing results in master_model_container
-    logger.info("Uploading model into container now")
-    master_model_container.append(model)
+    if refit:
+        # storing results in master_model_container
+        logger.info("Uploading model into container now")
+        master_model_container.append(model)
 
     display.display(model_results, clear=system, override=False if not system else None)
 
@@ -2939,7 +2998,7 @@ def tune_model(
     early_stopping: Any = "asha",
     early_stopping_max_iters: int = 10,
     choose_better: bool = False,
-    fit_kwargs: Optional[dict] = {},
+    fit_kwargs: Optional[dict] = None,
     groups=None,
     verbose: bool = True,
     display: Optional[Display] = None,
@@ -3111,6 +3170,9 @@ def tune_model(
 
     # run_time
     runtime_start = time.time()
+
+    if not fit_kwargs:
+        fit_kwargs = {}
 
     # checking estimator if string
     if type(estimator) is str:
@@ -3463,6 +3525,13 @@ def tune_model(
         return can_partial_fit or can_warm_start or is_xgboost
 
     n_jobs = gpu_n_jobs_param
+
+    from sklearn.gaussian_process import GaussianProcessClassifier
+
+    # special case to prevent running out of memory
+    if isinstance(model, GaussianProcessClassifier):
+        n_jobs = 1
+
     logger.info(f"Tuning with n_jobs={n_jobs}")
 
     if search_library == "optuna":
@@ -3533,111 +3602,112 @@ def tune_model(
         # enable Ray local mode - otherwise the performance is terrible
         n_jobs = 1
 
-        if search_algorithm == "grid":
-            from tune_sklearn import TuneGridSearchCV
+        with true_warm_start(model) if can_early_stop else nullcontext():
+            if search_algorithm == "grid":
+                from tune_sklearn import TuneGridSearchCV
 
-            logger.info("Initializing tune_sklearn.TuneGridSearchCV")
-            model_grid = TuneGridSearchCV(
-                estimator=model,
-                param_grid=param_grid,
-                early_stopping=can_early_stop,
-                scoring=optimize,
-                cv=fold,
-                max_iters=early_stopping_max_iters,
-                n_jobs=n_jobs,
-                use_gpu=gpu_param,
-                refit=True,
-                verbose=0,
-                **search_kwargs,
-            )
-        elif search_algorithm == "hyperopt":
-            from tune_sklearn import TuneSearchCV
+                logger.info("Initializing tune_sklearn.TuneGridSearchCV")
+                model_grid = TuneGridSearchCV(
+                    estimator=model,
+                    param_grid=param_grid,
+                    early_stopping=can_early_stop,
+                    scoring=optimize,
+                    cv=fold,
+                    max_iters=early_stopping_max_iters,
+                    n_jobs=n_jobs,
+                    use_gpu=gpu_param,
+                    refit=True,
+                    verbose=0,
+                    **search_kwargs,
+                )
+            elif search_algorithm == "hyperopt":
+                from tune_sklearn import TuneSearchCV
 
-            if custom_grid is None:
-                param_grid = get_hyperopt_distributions(param_grid)
-            logger.info(f"param_grid: {param_grid}")
-            logger.info("Initializing tune_sklearn.TuneSearchCV, hyperopt")
-            model_grid = TuneSearchCV(
-                estimator=model,
-                search_optimization="hyperopt",
-                param_distributions=param_grid,
-                n_trials=n_iter,
-                early_stopping=can_early_stop,
-                scoring=optimize,
-                cv=fold,
-                random_state=seed,
-                max_iters=early_stopping_max_iters,
-                n_jobs=n_jobs,
-                use_gpu=gpu_param,
-                refit=True,
-                verbose=0,
-                **search_kwargs,
-            )
-        elif search_algorithm == "bayesian":
-            from tune_sklearn import TuneSearchCV
+                if custom_grid is None:
+                    param_grid = get_hyperopt_distributions(param_grid)
+                logger.info(f"param_grid: {param_grid}")
+                logger.info("Initializing tune_sklearn.TuneSearchCV, hyperopt")
+                model_grid = TuneSearchCV(
+                    estimator=model,
+                    search_optimization="hyperopt",
+                    param_distributions=param_grid,
+                    n_trials=n_iter,
+                    early_stopping=can_early_stop,
+                    scoring=optimize,
+                    cv=fold,
+                    random_state=seed,
+                    max_iters=early_stopping_max_iters,
+                    n_jobs=n_jobs,
+                    use_gpu=gpu_param,
+                    refit=True,
+                    verbose=0,
+                    **search_kwargs,
+                )
+            elif search_algorithm == "bayesian":
+                from tune_sklearn import TuneSearchCV
 
-            if custom_grid is None:
-                param_grid = get_skopt_distributions(param_grid)
-            logger.info(f"param_grid: {param_grid}")
-            logger.info("Initializing tune_sklearn.TuneSearchCV, bayesian")
-            model_grid = TuneSearchCV(
-                estimator=model,
-                search_optimization="bayesian",
-                param_distributions=param_grid,
-                n_trials=n_iter,
-                early_stopping=can_early_stop,
-                scoring=optimize,
-                cv=fold,
-                random_state=seed,
-                max_iters=early_stopping_max_iters,
-                n_jobs=n_jobs,
-                use_gpu=gpu_param,
-                refit=True,
-                verbose=0,
-                **search_kwargs,
-            )
-        elif search_algorithm == "bohb":
-            from tune_sklearn import TuneSearchCV
+                if custom_grid is None:
+                    param_grid = get_skopt_distributions(param_grid)
+                logger.info(f"param_grid: {param_grid}")
+                logger.info("Initializing tune_sklearn.TuneSearchCV, bayesian")
+                model_grid = TuneSearchCV(
+                    estimator=model,
+                    search_optimization="bayesian",
+                    param_distributions=param_grid,
+                    n_trials=n_iter,
+                    early_stopping=can_early_stop,
+                    scoring=optimize,
+                    cv=fold,
+                    random_state=seed,
+                    max_iters=early_stopping_max_iters,
+                    n_jobs=n_jobs,
+                    use_gpu=gpu_param,
+                    refit=True,
+                    verbose=0,
+                    **search_kwargs,
+                )
+            elif search_algorithm == "bohb":
+                from tune_sklearn import TuneSearchCV
 
-            if custom_grid is None:
-                param_grid = get_CS_distributions(param_grid)
-            logger.info(f"param_grid: {param_grid}")
-            logger.info("Initializing tune_sklearn.TuneSearchCV, bohb")
-            model_grid = TuneSearchCV(
-                estimator=model,
-                search_optimization="bohb",
-                param_distributions=param_grid,
-                n_trials=n_iter,
-                early_stopping=can_early_stop,
-                scoring=optimize,
-                cv=fold,
-                random_state=seed,
-                max_iters=early_stopping_max_iters,
-                n_jobs=n_jobs,
-                use_gpu=gpu_param,
-                refit=True,
-                verbose=0,
-                **search_kwargs,
-            )
-        else:
-            from tune_sklearn import TuneSearchCV
+                if custom_grid is None:
+                    param_grid = get_CS_distributions(param_grid)
+                logger.info(f"param_grid: {param_grid}")
+                logger.info("Initializing tune_sklearn.TuneSearchCV, bohb")
+                model_grid = TuneSearchCV(
+                    estimator=model,
+                    search_optimization="bohb",
+                    param_distributions=param_grid,
+                    n_trials=n_iter,
+                    early_stopping=can_early_stop,
+                    scoring=optimize,
+                    cv=fold,
+                    random_state=seed,
+                    max_iters=early_stopping_max_iters,
+                    n_jobs=n_jobs,
+                    use_gpu=gpu_param,
+                    refit=True,
+                    verbose=0,
+                    **search_kwargs,
+                )
+            else:
+                from tune_sklearn import TuneSearchCV
 
-            logger.info("Initializing tune_sklearn.TuneSearchCV, random")
-            model_grid = TuneSearchCV(
-                estimator=model,
-                param_distributions=param_grid,
-                early_stopping=can_early_stop,
-                n_trials=n_iter,
-                scoring=optimize,
-                cv=fold,
-                random_state=seed,
-                max_iters=early_stopping_max_iters,
-                n_jobs=n_jobs,
-                use_gpu=gpu_param,
-                refit=True,
-                verbose=0,
-                **search_kwargs,
-            )
+                logger.info("Initializing tune_sklearn.TuneSearchCV, random")
+                model_grid = TuneSearchCV(
+                    estimator=model,
+                    param_distributions=param_grid,
+                    early_stopping=can_early_stop,
+                    n_trials=n_iter,
+                    scoring=optimize,
+                    cv=fold,
+                    random_state=seed,
+                    max_iters=early_stopping_max_iters,
+                    n_jobs=n_jobs,
+                    use_gpu=gpu_param,
+                    refit=True,
+                    verbose=0,
+                    **search_kwargs,
+                )
 
     elif search_library == "scikit-optimize":
         import skopt
@@ -3783,7 +3853,7 @@ def ensemble_model(
     round: int = 4,
     choose_better: bool = False,
     optimize: str = "Accuracy",
-    fit_kwargs: Optional[dict] = {},
+    fit_kwargs: Optional[dict] = None,
     groups=None,
     verbose: bool = True,
     display: Optional[Display] = None,  # added in pycaret==2.2.0
@@ -3884,6 +3954,9 @@ def ensemble_model(
 
     # run_time
     runtime_start = time.time()
+
+    if not fit_kwargs:
+        fit_kwargs = {}
 
     # Check for estimator
     if not hasattr(estimator, "fit"):
@@ -4119,7 +4192,7 @@ def blend_models(
     optimize: str = "Accuracy",
     method: str = "auto",
     weights: Optional[List[float]] = None,  # added in pycaret==2.2.0
-    fit_kwargs: Optional[dict] = {},
+    fit_kwargs: Optional[dict] = None,
     groups=None,
     verbose: bool = True,
     display: Optional[Display] = None,  # added in pycaret==2.2.0
@@ -4227,6 +4300,9 @@ def blend_models(
 
     # run_time
     runtime_start = time.time()
+
+    if not fit_kwargs:
+        fit_kwargs = {}
 
     # checking method parameter
     available_method = ["auto", "soft", "hard"]
@@ -4457,7 +4533,7 @@ def stack_models(
     restack: bool = True,
     choose_better: bool = False,
     optimize: str = "Accuracy",
-    fit_kwargs: Optional[dict] = {},
+    fit_kwargs: Optional[dict] = None,
     groups=None,
     verbose: bool = True,
     display: Optional[Display] = None,
@@ -4568,6 +4644,9 @@ def stack_models(
 
     # run_time
     runtime_start = time.time()
+
+    if not fit_kwargs:
+        fit_kwargs = {}
 
     # checking error for estimator_list
     for i in estimator_list:
@@ -4785,7 +4864,7 @@ def plot_model(
     scale: float = 1,  # added in pycaret==2.1.0
     save: bool = False,
     fold: Optional[Union[int, Any]] = None,
-    fit_kwargs: Optional[dict] = {},
+    fit_kwargs: Optional[dict] = None,
     groups=None,
     verbose: bool = True,
     system: bool = True,
@@ -4887,7 +4966,8 @@ def plot_model(
 
     logger.info("Checking exceptions")
 
-    # exception checking
+    if not fit_kwargs:
+        fit_kwargs = {}
 
     # checking plots (string)
     available_plots = [
@@ -5566,7 +5646,7 @@ def plot_model(
 def evaluate_model(
     estimator,
     fold: Optional[Union[int, Any]] = None,
-    fit_kwargs: Optional[dict] = {},
+    fit_kwargs: Optional[dict] = None,
     groups=None,
 ):
 
@@ -5611,6 +5691,9 @@ def evaluate_model(
 
     from ipywidgets import widgets
     from ipywidgets.widgets import interact, fixed
+
+    if not fit_kwargs:
+        fit_kwargs = {}
 
     a = widgets.ToggleButtons(
         options=[
@@ -5907,7 +5990,7 @@ def calibrate_model(
     method: str = "sigmoid",
     fold: Optional[Union[int, Any]] = None,
     round: int = 4,
-    fit_kwargs: Optional[dict] = {},
+    fit_kwargs: Optional[dict] = None,
     groups=None,
     verbose: bool = True,
     display: Optional[Display] = None,  # added in pycaret==2.2.0
@@ -5993,6 +6076,9 @@ def calibrate_model(
 
     # run_time
     runtime_start = time.time()
+
+    if not fit_kwargs:
+        fit_kwargs = {}
 
     # checking fold parameter
     if fold is not None and not (type(fold) is int or is_sklearn_cv_generator(fold)):
@@ -6575,7 +6661,7 @@ def predict_model(
 
 
 def finalize_model(
-    estimator, fit_kwargs: Optional[dict] = {}, groups=None, display=None
+    estimator, fit_kwargs: Optional[dict] = None, groups=None, display=None
 ) -> Any:  # added in pycaret==2.2.0
 
     """
@@ -6629,14 +6715,17 @@ def finalize_model(
     logger.info("Initializing finalize_model()")
     logger.info(f"finalize_model({function_params_str})")
 
+    # run_time
+    runtime_start = time.time()
+
+    if not fit_kwargs:
+        fit_kwargs = {}
+
     if groups is None:
         groups = fold_groups_param
 
     if not display:
         display = Display(False, html_param,)
-
-    # run_time
-    runtime_start = time.time()
 
     np.random.seed(seed)
 
@@ -7163,7 +7252,7 @@ def add_metric(
     name: str,
     score_func: type,
     target: str = "pred",
-    args: dict = {},
+    args: dict = None,
     multiclass: bool = True,
 ) -> pd.Series:
     """
@@ -7198,6 +7287,9 @@ def add_metric(
         The created row as Series.
 
     """
+
+    if not args:
+        args = {}
 
     if not "all_metrics" in globals():
         raise ValueError("setup() needs to be ran first.")
@@ -7451,7 +7543,7 @@ def _choose_better(
     fold: int,
     model_results=None,
     new_results_list: Optional[list] = None,
-    fit_kwargs: Optional[dict] = {},
+    fit_kwargs: Optional[dict] = None,
     groups=None,
     display: Optional[Display] = None,
 ):
@@ -7473,6 +7565,9 @@ def _choose_better(
     display.display_monitor()
 
     scorer = []
+
+    if not fit_kwargs:
+        fit_kwargs = {}
 
     if model_results is None:
         logger.info(
@@ -7979,7 +8074,7 @@ def _get_cv_splitter(fold):
         default=fold_generator,
         seed=seed,
         shuffle=fold_shuffle_param,
-        int_default="kfold",
+        int_default="stratifiedkfold",
     )
 
 
