@@ -6640,8 +6640,6 @@ def finalize_model(
     logger.info("Initializing finalize_model()")
     logger.info(f"finalize_model({function_params_str})")
 
-    fold = _get_cv_splitter(fold)
-
     if groups is None:
         groups = fold_groups_param
 
