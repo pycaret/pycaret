@@ -2163,6 +2163,8 @@ def compare_models(
     else:
         sort = "TT (Sec)"
 
+    sort_ascending = sort == "TT (Sec)"
+
     """
     MONITOR UPDATE STARTS
     """
@@ -2297,7 +2299,7 @@ def compare_models(
                 [master_display, compare_models_], ignore_index=True
             )
         master_display = master_display.round(round)
-        master_display = master_display.sort_values(by=sort, ascending=False)
+        master_display = master_display.sort_values(by=sort, ascending=sort_ascending)
         master_display.reset_index(drop=True, inplace=True)
 
         master_display_ = master_display.drop("Object", axis=1).style.set_precision(
