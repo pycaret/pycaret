@@ -3090,8 +3090,9 @@ def tune_model(
         - 'random' - randomized search (default)
         - 'grid' - grid search
         - 'bayesian' - Bayesian search using scikit-optimize
+          ``pip install scikit-optimize``
         - 'hyperopt' - Tree-structured Parzen Estimator search using Hyperopt 
-          ``pip install tune-sklearn ray[tune] hyperopt``
+          ``pip install hyperopt``
         - 'bohb' - Bayesian search using HpBandSter 
           ``pip install hpbandster ConfigSpace``
 
