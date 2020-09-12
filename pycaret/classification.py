@@ -2816,12 +2816,7 @@ def _create_model(
 
     from sklearn.model_selection import cross_validate
 
-    metrics = all_metrics
-
-    if not hasattr(model, "predict_proba"):
-        metrics = metrics[metrics["Target"] != "pred_proba"]
-
-    metrics_dict = dict(zip(metrics.index, metrics["Scorer"]))
+    metrics_dict = dict(zip(all_metrics.index, all_metrics["Scorer"]))
 
     logger.info("Starting cross validation")
 
@@ -2838,16 +2833,10 @@ def _create_model(
         error_score=0,
     )
 
-    score_dict = {}
-
-    display_name_idx = list(all_metrics.columns).index("Display Name") + 1
-
-    for metric in all_metrics.itertuples():
-        k = f"test_{metric.Index}"
-        if k in scores:
-            score_dict[metric[display_name_idx]] = scores[k]
-        else:
-            score_dict[metric[display_name_idx]] = 0
+    score_dict = dict(
+        zip([f"test_{x}" for x in all_metrics.index], all_metrics["Display Name"])
+    )
+    score_dict = {v: scores[k] for k, v in score_dict.items()}
 
     logger.info("Calculating mean and std")
 
