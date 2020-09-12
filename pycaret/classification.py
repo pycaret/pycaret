@@ -7,8 +7,10 @@
 from pycaret.internal.utils import (
     color_df,
     normalize_custom_transformers,
+    make_internal_pipeline,
     nullcontext,
     true_warm_start,
+    estimator_pipeline,
 )
 from pycaret.internal.logging import get_logger
 from pycaret.internal.plotting import show_yellowbrick_plot
@@ -1069,7 +1071,7 @@ def setup(
 
     # declaring global variables to be accessed by other functions
     logger.info("Declaring global variables")
-    global USI, html_param, X, y, X_train, X_test, y_train, y_test, seed, prep_pipe, experiment__, fold_shuffle_param, n_jobs_param, gpu_n_jobs_param, create_model_container, master_model_container, display_container, exp_name_log, logging_param, log_plots_param, fix_imbalance_param, fix_imbalance_method_param, data_before_preprocess, target_param, gpu_param, all_models, _all_models_internal, all_metrics, _internal_pipeline_steps, stratify_param, fold_generator, fold_param, fold_groups_param
+    global USI, html_param, X, y, X_train, X_test, y_train, y_test, seed, prep_pipe, experiment__, fold_shuffle_param, n_jobs_param, gpu_n_jobs_param, create_model_container, master_model_container, display_container, exp_name_log, logging_param, log_plots_param, fix_imbalance_param, fix_imbalance_method_param, data_before_preprocess, target_param, gpu_param, all_models, _all_models_internal, all_metrics, _internal_pipeline, stratify_param, fold_generator, fold_param, fold_groups_param
 
     USI = secrets.token_hex(nbytes=2)
     logger.info(f"USI: {USI}")
@@ -1105,7 +1107,7 @@ def setup(
         "all_models",
         "_all_models_internal",
         "all_metrics",
-        "_internal_pipeline_steps",
+        "_internal_pipeline",
         "stratify_param",
         "fold_generator",
         "fold_param",
@@ -1172,7 +1174,7 @@ def setup(
 
     np.random.seed(seed)
 
-    _internal_pipeline_steps = []
+    _internal_pipeline = []
 
     """
     preprocessing starts here
@@ -1482,7 +1484,7 @@ def setup(
     # add custom transformers to prep pipe
     if custom_pipeline:
         custom_steps = normalize_custom_transformers(custom_pipeline)
-        _internal_pipeline_steps.extend(custom_steps)
+        _internal_pipeline.extend(custom_steps)
 
     # create a fix_imbalance_param and fix_imbalance_method_param
     fix_imbalance_param = fix_imbalance and preprocess
@@ -1502,13 +1504,15 @@ def setup(
         else:
             fix_imbalance_model_name = str(fix_imbalance_method_param).split("(")[0]
             fix_imbalance_resampler = fix_imbalance_method_param
-        _internal_pipeline_steps.append(("fix_imbalance", fix_imbalance_resampler))
-
-    logger.info(f"Internal pipeline: {_internal_pipeline_steps}")
+        _internal_pipeline.append(("fix_imbalance", fix_imbalance_resampler))
 
     prep_pipe.steps.extend(
-        [step for step in _internal_pipeline_steps if hasattr(step, "transform")]
+        [step for step in _internal_pipeline if hasattr(step, "transform")]
     )
+
+    _internal_pipeline = make_internal_pipeline(_internal_pipeline)
+
+    logger.info(f"Internal pipeline: {_internal_pipeline}")
 
     # create target_param var
     target_param = target
@@ -2803,9 +2807,6 @@ def _create_model(
 
     display.move_progress()
 
-    model = _make_internal_pipeline(model)
-    fit_kwargs = _get_pipeline_fit_kwargs(model, fit_kwargs)
-
     """
     MONITOR UPDATE STARTS
     """
@@ -2821,34 +2822,34 @@ def _create_model(
 
     if not cross_validation:
 
-        logger.info("Cross validation set to False")
+        with estimator_pipeline(_internal_pipeline, model) as pipeline_with_model:
+            fit_kwargs = _get_pipeline_fit_kwargs(pipeline_with_model, fit_kwargs)
+            logger.info("Cross validation set to False")
 
-        logger.info("Fitting Model")
-        model_fit_start = time.time()
-        with io.capture_output():
-            model.fit(data_X, data_y, **fit_kwargs)
-        model_fit_end = time.time()
+            logger.info("Fitting Model")
+            model_fit_start = time.time()
+            with io.capture_output():
+                pipeline_with_model.fit(data_X, data_y, **fit_kwargs)
+            model_fit_end = time.time()
 
-        model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
+            model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
 
-        if predict:
-            predict_model(model, verbose=False)
-            model_results = pull(pop=True).drop("Model", axis=1)
+            if predict:
+                predict_model(pipeline_with_model, verbose=False)
+                model_results = pull(pop=True).drop("Model", axis=1)
 
-            display_container.append(model_results)
+                display_container.append(model_results)
 
-            display.display(
-                model_results, clear=system, override=False if not system else None
-            )
+                display.display(
+                    model_results, clear=system, override=False if not system else None
+                )
 
-            logger.info(f"display_container: {len(display_container)}")
+                logger.info(f"display_container: {len(display_container)}")
 
         logger.info(str(model))
         logger.info(
             "create_models() succesfully completed......................................"
         )
-
-        model = model.named_steps["actual_estimator"]
 
         gc.collect()
 
@@ -2878,88 +2879,90 @@ def _create_model(
     if isinstance(model, GaussianProcessClassifier):
         n_jobs = 1
 
-    logger.info(f"Cross validating with n_jobs={n_jobs}")
+    with estimator_pipeline(_internal_pipeline, model) as pipeline_with_model:
+        fit_kwargs = _get_pipeline_fit_kwargs(pipeline_with_model, fit_kwargs)
+        logger.info(f"Cross validating with n_jobs={n_jobs}")
 
-    scores = cross_validate(
-        model,
-        data_X,
-        data_y,
-        cv=cv,
-        groups=groups,
-        scoring=metrics_dict,
-        fit_params=fit_kwargs,
-        n_jobs=n_jobs,
-        return_train_score=False,
-        error_score=0,
-    )
+        scores = cross_validate(
+            pipeline_with_model,
+            data_X,
+            data_y,
+            cv=cv,
+            groups=groups,
+            scoring=metrics_dict,
+            fit_params=fit_kwargs,
+            n_jobs=n_jobs,
+            return_train_score=False,
+            error_score=0,
+        )
 
-    score_dict = dict(
-        zip([f"test_{x}" for x in all_metrics.index], all_metrics["Display Name"])
-    )
-    score_dict = {v: scores[k] for k, v in score_dict.items()}
+        score_dict = dict(
+            zip([f"test_{x}" for x in all_metrics.index], all_metrics["Display Name"])
+        )
+        score_dict = {v: scores[k] for k, v in score_dict.items()}
 
-    logger.info("Calculating mean and std")
+        logger.info("Calculating mean and std")
 
-    avgs_dict = {k: [np.mean(v), np.std(v)] for k, v in score_dict.items()}
+        avgs_dict = {k: [np.mean(v), np.std(v)] for k, v in score_dict.items()}
 
-    display.move_progress()
+        display.move_progress()
 
-    logger.info("Creating metrics dataframe")
+        logger.info("Creating metrics dataframe")
 
-    model_results = pd.DataFrame(score_dict)
-    model_avgs = pd.DataFrame(avgs_dict, index=["Mean", "SD"],)
+        model_results = pd.DataFrame(score_dict)
+        model_avgs = pd.DataFrame(avgs_dict, index=["Mean", "SD"],)
 
-    model_results = model_results.append(model_avgs)
-    model_results = model_results.round(round)
+        model_results = model_results.append(model_avgs)
+        model_results = model_results.round(round)
 
-    # yellow the mean
-    model_results = color_df(model_results, "yellow", ["Mean"], axis=1)
-    model_results = model_results.set_precision(round)
+        # yellow the mean
+        model_results = color_df(model_results, "yellow", ["Mean"], axis=1)
+        model_results = model_results.set_precision(round)
 
-    # refitting the model on complete X_train, y_train
-    display.update_monitor(1, "Finalizing Model")
-    display.display_monitor()
+        # refitting the model on complete X_train, y_train
+        display.update_monitor(1, "Finalizing Model")
+        display.display_monitor()
 
-    if refit:
-        model_fit_start = time.time()
-        logger.info("Finalizing model")
-        with io.capture_output():
-            model.fit(data_X, data_y, **fit_kwargs)
-        model_fit_end = time.time()
+        if refit:
+            model_fit_start = time.time()
+            logger.info("Finalizing model")
+            with io.capture_output():
+                pipeline_with_model.fit(data_X, data_y, **fit_kwargs)
+            model_fit_end = time.time()
 
-        model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
-    else:
-        model_fit_time = np.mean(scores["fit_time"])
+            model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
+        else:
+            model_fit_time = np.mean(scores["fit_time"])
 
-    # end runtime
-    runtime_end = time.time()
-    runtime = np.array(runtime_end - runtime_start).round(2)
+        # end runtime
+        runtime_end = time.time()
+        runtime = np.array(runtime_end - runtime_start).round(2)
 
-    # mlflow logging
-    if logging_param and system and refit:
+        # mlflow logging
+        if logging_param and system and refit:
 
-        avgs_dict_log = avgs_dict.copy()
-        avgs_dict_log = {k: v[0] for k, v in avgs_dict_log.items()}
+            avgs_dict_log = avgs_dict.copy()
+            avgs_dict_log = {k: v[0] for k, v in avgs_dict_log.items()}
 
-        try:
-            _mlflow_log_model(
-                model=model,
-                model_results=model_results,
-                score_dict=avgs_dict_log,
-                source="create_model",
-                runtime=runtime,
-                model_fit_time=model_fit_time,
-                _prep_pipe=prep_pipe,
-                log_plots=log_plots_param,
-                display=display,
-            )
-        except:
-            logger.error(f"_mlflow_log_model() for {model} raised an exception:")
-            logger.error(traceback.format_exc())
+            try:
+                _mlflow_log_model(
+                    model=pipeline_with_model,
+                    model_results=model_results,
+                    score_dict=avgs_dict_log,
+                    source="create_model",
+                    runtime=runtime,
+                    model_fit_time=model_fit_time,
+                    _prep_pipe=prep_pipe,
+                    log_plots=log_plots_param,
+                    display=display,
+                )
+            except:
+                logger.error(
+                    f"_mlflow_log_model() for {pipeline_with_model} raised an exception:"
+                )
+                logger.error(traceback.format_exc())
 
-    display.move_progress()
-
-    model = model.named_steps["actual_estimator"]
+        display.move_progress()
 
     logger.info("Uploading results into container")
 
@@ -3468,291 +3471,266 @@ def tune_model(
         logger.info("Stacked model passed, will tune meta model hyperparameters")
         suffixes.append("final_estimator")
 
-    model = _make_internal_pipeline(model)
-    fit_kwargs = _get_pipeline_fit_kwargs(model, fit_kwargs)
+    with estimator_pipeline(_internal_pipeline, model) as pipeline_with_model:
+        fit_kwargs = _get_pipeline_fit_kwargs(pipeline_with_model, fit_kwargs)
 
-    suffixes.append("actual_estimator")
+        suffixes.append("actual_estimator")
 
-    suffixes = "__".join(reversed(suffixes))
+        suffixes = "__".join(reversed(suffixes))
 
-    param_grid = {f"{suffixes}__{k}": v for k, v in param_grid.items()}
+        param_grid = {f"{suffixes}__{k}": v for k, v in param_grid.items()}
 
-    search_kwargs = {**estimator_definition["Tune Args"], **kwargs}
-
-    logger.info(f"param_grid: {param_grid}")
-
-    def _can_early_stop(estimator, consider_warm_start, consider_xgboost):
-        """
-        From https://github.com/ray-project/tune-sklearn/blob/master/tune_sklearn/tune_basesearch.py.
-        
-        Helper method to determine if it is possible to do early stopping.
-        Only sklearn estimators with `partial_fit` or `warm_start` can be early
-        stopped. warm_start works by picking up training from the previous
-        call to `fit`.
-        
-        Returns
-        -------
-            bool
-                if the estimator can early stop
-        """
-
-        from sklearn.tree import BaseDecisionTree
-        from sklearn.ensemble import BaseEnsemble
-
-        can_partial_fit = hasattr(estimator, "partial_fit")
-
-        if consider_warm_start:
-            is_not_tree_subclass = not issubclass(type(estimator), BaseDecisionTree)
-            is_ensemble_subclass = issubclass(type(estimator), BaseEnsemble)
-            can_warm_start = hasattr(estimator, "warm_start") and (
-                (
-                    hasattr(estimator, "max_iter")
-                    and is_not_tree_subclass
-                    and not is_ensemble_subclass
-                )
-                or (is_ensemble_subclass and hasattr(estimator, "n_estimators"))
-            )
-        else:
-            can_warm_start = False
-
-        if consider_xgboost:
-            from xgboost.sklearn import XGBModel
-
-            is_xgboost = isinstance(estimator, XGBModel)
-        else:
-            is_xgboost = False
-
-        logger.info(
-            f"can_partial_fit: {can_partial_fit}, can_warm_start: {can_warm_start}, is_xgboost: {is_xgboost}"
-        )
-
-        return can_partial_fit or can_warm_start or is_xgboost
-
-    n_jobs = gpu_n_jobs_param
-
-    from sklearn.gaussian_process import GaussianProcessClassifier
-
-    # special case to prevent running out of memory
-    if isinstance(model, GaussianProcessClassifier):
-        n_jobs = 1
-
-    logger.info(f"Tuning with n_jobs={n_jobs}")
-
-    if search_library == "optuna":
-        # suppress output
-        logging.getLogger("optuna").setLevel(logging.ERROR)
-
-        pruner_translator = {
-            "asha": optuna.pruners.SuccessiveHalvingPruner(),
-            "hyperband": optuna.pruners.HyperbandPruner(),
-            "median": optuna.pruners.MedianPruner(),
-            False: optuna.pruners.NopPruner(),
-            None: optuna.pruners.NopPruner(),
-        }
-        pruner = early_stopping
-        if pruner in pruner_translator:
-            pruner = pruner_translator[early_stopping]
-
-        sampler_translator = {
-            "tpe": optuna.samplers.TPESampler(seed=seed),
-            "random": optuna.samplers.RandomSampler(seed=seed),
-        }
-        sampler = sampler_translator[search_algorithm]
-
-        if custom_grid is None:
-            param_grid = get_optuna_distributions(param_grid)
+        search_kwargs = {**estimator_definition["Tune Args"], **kwargs}
 
         logger.info(f"param_grid: {param_grid}")
 
-        study = optuna.create_study(
-            direction="maximize", sampler=sampler, pruner=pruner
-        )
+        def _can_early_stop(estimator, consider_warm_start, consider_xgboost):
+            """
+            From https://github.com/ray-project/tune-sklearn/blob/master/tune_sklearn/tune_basesearch.py.
+            
+            Helper method to determine if it is possible to do early stopping.
+            Only sklearn estimators with `partial_fit` or `warm_start` can be early
+            stopped. warm_start works by picking up training from the previous
+            call to `fit`.
+            
+            Returns
+            -------
+                bool
+                    if the estimator can early stop
+            """
 
-        logger.info("Initializing optuna.integration.OptunaSearchCV")
-        model_grid = optuna.integration.OptunaSearchCV(
-            estimator=model,
-            param_distributions=param_grid,
-            cv=fold,
-            enable_pruning=early_stopping
-            and _can_early_stop(base_estimator, False, False),
-            max_iter=early_stopping_max_iters,
-            n_jobs=n_jobs,
-            n_trials=n_iter,
-            random_state=seed,
-            scoring=optimize,
-            study=study,
-            refit=False,
-            verbose=0,
-            **search_kwargs,
-        )
+            from sklearn.tree import BaseDecisionTree
+            from sklearn.ensemble import BaseEnsemble
 
-    elif search_library == "tune-sklearn":
-        early_stopping_translator = {
-            "asha": "ASHAScheduler",
-            "hyperband": "HyperBandScheduler",
-            "median": "MedianStoppingRule",
-        }
-        if early_stopping in early_stopping_translator:
-            early_stopping = early_stopping_translator[early_stopping]
+            can_partial_fit = hasattr(estimator, "partial_fit")
 
-        can_early_stop = early_stopping and _can_early_stop(base_estimator, True, True)
-
-        if not can_early_stop and search_algorithm == "bohb":
-            raise ValueError(
-                "'bohb' requires early_stopping = True and the estimator to support partial_fit or have warm_start param set to True."
-            )
-
-        # if n_jobs is None:
-        # enable Ray local mode - otherwise the performance is terrible
-        n_jobs = 1
-
-        with true_warm_start(model) if can_early_stop else nullcontext():
-            if search_algorithm == "grid":
-                from tune_sklearn import TuneGridSearchCV
-
-                logger.info("Initializing tune_sklearn.TuneGridSearchCV")
-                model_grid = TuneGridSearchCV(
-                    estimator=model,
-                    param_grid=param_grid,
-                    early_stopping=can_early_stop,
-                    scoring=optimize,
-                    cv=fold,
-                    max_iters=early_stopping_max_iters,
-                    n_jobs=n_jobs,
-                    use_gpu=gpu_param,
-                    refit=True,
-                    verbose=0,
-                    **search_kwargs,
-                )
-            elif search_algorithm == "hyperopt":
-                from tune_sklearn import TuneSearchCV
-
-                if custom_grid is None:
-                    param_grid = get_hyperopt_distributions(param_grid)
-                logger.info(f"param_grid: {param_grid}")
-                logger.info("Initializing tune_sklearn.TuneSearchCV, hyperopt")
-                model_grid = TuneSearchCV(
-                    estimator=model,
-                    search_optimization="hyperopt",
-                    param_distributions=param_grid,
-                    n_trials=n_iter,
-                    early_stopping=can_early_stop,
-                    scoring=optimize,
-                    cv=fold,
-                    random_state=seed,
-                    max_iters=early_stopping_max_iters,
-                    n_jobs=n_jobs,
-                    use_gpu=gpu_param,
-                    refit=True,
-                    verbose=0,
-                    **search_kwargs,
-                )
-            elif search_algorithm == "bayesian":
-                from tune_sklearn import TuneSearchCV
-
-                if custom_grid is None:
-                    param_grid = get_skopt_distributions(param_grid)
-                logger.info(f"param_grid: {param_grid}")
-                logger.info("Initializing tune_sklearn.TuneSearchCV, bayesian")
-                model_grid = TuneSearchCV(
-                    estimator=model,
-                    search_optimization="bayesian",
-                    param_distributions=param_grid,
-                    n_trials=n_iter,
-                    early_stopping=can_early_stop,
-                    scoring=optimize,
-                    cv=fold,
-                    random_state=seed,
-                    max_iters=early_stopping_max_iters,
-                    n_jobs=n_jobs,
-                    use_gpu=gpu_param,
-                    refit=True,
-                    verbose=0,
-                    **search_kwargs,
-                )
-            elif search_algorithm == "bohb":
-                from tune_sklearn import TuneSearchCV
-
-                if custom_grid is None:
-                    param_grid = get_CS_distributions(param_grid)
-                logger.info(f"param_grid: {param_grid}")
-                logger.info("Initializing tune_sklearn.TuneSearchCV, bohb")
-                model_grid = TuneSearchCV(
-                    estimator=model,
-                    search_optimization="bohb",
-                    param_distributions=param_grid,
-                    n_trials=n_iter,
-                    early_stopping=can_early_stop,
-                    scoring=optimize,
-                    cv=fold,
-                    random_state=seed,
-                    max_iters=early_stopping_max_iters,
-                    n_jobs=n_jobs,
-                    use_gpu=gpu_param,
-                    refit=True,
-                    verbose=0,
-                    **search_kwargs,
+            if consider_warm_start:
+                is_not_tree_subclass = not issubclass(type(estimator), BaseDecisionTree)
+                is_ensemble_subclass = issubclass(type(estimator), BaseEnsemble)
+                can_warm_start = hasattr(estimator, "warm_start") and (
+                    (
+                        hasattr(estimator, "max_iter")
+                        and is_not_tree_subclass
+                        and not is_ensemble_subclass
+                    )
+                    or (is_ensemble_subclass and hasattr(estimator, "n_estimators"))
                 )
             else:
-                from tune_sklearn import TuneSearchCV
+                can_warm_start = False
 
-                logger.info("Initializing tune_sklearn.TuneSearchCV, random")
-                model_grid = TuneSearchCV(
-                    estimator=model,
-                    param_distributions=param_grid,
-                    early_stopping=can_early_stop,
-                    n_trials=n_iter,
-                    scoring=optimize,
-                    cv=fold,
-                    random_state=seed,
-                    max_iters=early_stopping_max_iters,
-                    n_jobs=n_jobs,
-                    use_gpu=gpu_param,
-                    refit=True,
-                    verbose=0,
-                    **search_kwargs,
-                )
+            if consider_xgboost:
+                from xgboost.sklearn import XGBModel
 
-    elif search_library == "scikit-optimize":
-        import skopt
+                is_xgboost = isinstance(estimator, XGBModel)
+            else:
+                is_xgboost = False
 
-        if custom_grid is None:
-            param_grid = get_skopt_distributions(param_grid)
-        logger.info(f"param_grid: {param_grid}")
+            logger.info(
+                f"can_partial_fit: {can_partial_fit}, can_warm_start: {can_warm_start}, is_xgboost: {is_xgboost}"
+            )
 
-        logger.info("Initializing skopt.BayesSearchCV")
-        model_grid = skopt.BayesSearchCV(
-            estimator=model,
-            search_spaces=param_grid,
-            scoring=optimize,
-            n_iter=n_iter,
-            cv=fold,
-            random_state=seed,
-            refit=False,
-            n_jobs=n_jobs,
-            **search_kwargs,
-        )
-    else:
-        if search_algorithm == "grid":
-            from sklearn.model_selection import GridSearchCV
+            return can_partial_fit or can_warm_start or is_xgboost
 
-            logger.info("Initializing GridSearchCV")
-            model_grid = GridSearchCV(
-                estimator=model,
-                param_grid=param_grid,
-                scoring=optimize,
+        n_jobs = gpu_n_jobs_param
+
+        from sklearn.gaussian_process import GaussianProcessClassifier
+
+        # special case to prevent running out of memory
+        if isinstance(pipeline_with_model, GaussianProcessClassifier):
+            n_jobs = 1
+
+        logger.info(f"Tuning with n_jobs={n_jobs}")
+
+        if search_library == "optuna":
+            # suppress output
+            logging.getLogger("optuna").setLevel(logging.ERROR)
+
+            pruner_translator = {
+                "asha": optuna.pruners.SuccessiveHalvingPruner(),
+                "hyperband": optuna.pruners.HyperbandPruner(),
+                "median": optuna.pruners.MedianPruner(),
+                False: optuna.pruners.NopPruner(),
+                None: optuna.pruners.NopPruner(),
+            }
+            pruner = early_stopping
+            if pruner in pruner_translator:
+                pruner = pruner_translator[early_stopping]
+
+            sampler_translator = {
+                "tpe": optuna.samplers.TPESampler(seed=seed),
+                "random": optuna.samplers.RandomSampler(seed=seed),
+            }
+            sampler = sampler_translator[search_algorithm]
+
+            if custom_grid is None:
+                param_grid = get_optuna_distributions(param_grid)
+
+            logger.info(f"param_grid: {param_grid}")
+
+            study = optuna.create_study(
+                direction="maximize", sampler=sampler, pruner=pruner
+            )
+
+            logger.info("Initializing optuna.integration.OptunaSearchCV")
+            model_grid = optuna.integration.OptunaSearchCV(
+                estimator=pipeline_with_model,
+                param_distributions=param_grid,
                 cv=fold,
-                refit=False,
+                enable_pruning=early_stopping
+                and _can_early_stop(base_estimator, False, False),
+                max_iter=early_stopping_max_iters,
                 n_jobs=n_jobs,
+                n_trials=n_iter,
+                random_state=seed,
+                scoring=optimize,
+                study=study,
+                refit=False,
+                verbose=0,
                 **search_kwargs,
             )
-        else:
-            from sklearn.model_selection import RandomizedSearchCV
 
-            logger.info("Initializing RandomizedSearchCV")
-            model_grid = RandomizedSearchCV(
-                estimator=model,
-                param_distributions=param_grid,
+        elif search_library == "tune-sklearn":
+            early_stopping_translator = {
+                "asha": "ASHAScheduler",
+                "hyperband": "HyperBandScheduler",
+                "median": "MedianStoppingRule",
+            }
+            if early_stopping in early_stopping_translator:
+                early_stopping = early_stopping_translator[early_stopping]
+
+            can_early_stop = early_stopping and _can_early_stop(
+                base_estimator, True, True
+            )
+
+            if not can_early_stop and search_algorithm == "bohb":
+                raise ValueError(
+                    "'bohb' requires early_stopping = True and the estimator to support partial_fit or have warm_start param set to True."
+                )
+
+            # if n_jobs is None:
+            # enable Ray local mode - otherwise the performance is terrible
+            n_jobs = 1
+
+            with true_warm_start(
+                pipeline_with_model
+            ) if can_early_stop else nullcontext():
+                if search_algorithm == "grid":
+                    from tune_sklearn import TuneGridSearchCV
+
+                    logger.info("Initializing tune_sklearn.TuneGridSearchCV")
+                    model_grid = TuneGridSearchCV(
+                        estimator=pipeline_with_model,
+                        param_grid=param_grid,
+                        early_stopping=can_early_stop,
+                        scoring=optimize,
+                        cv=fold,
+                        max_iters=early_stopping_max_iters,
+                        n_jobs=n_jobs,
+                        use_gpu=gpu_param,
+                        refit=True,
+                        verbose=0,
+                        **search_kwargs,
+                    )
+                elif search_algorithm == "hyperopt":
+                    from tune_sklearn import TuneSearchCV
+
+                    if custom_grid is None:
+                        param_grid = get_hyperopt_distributions(param_grid)
+                    logger.info(f"param_grid: {param_grid}")
+                    logger.info("Initializing tune_sklearn.TuneSearchCV, hyperopt")
+                    model_grid = TuneSearchCV(
+                        estimator=pipeline_with_model,
+                        search_optimization="hyperopt",
+                        param_distributions=param_grid,
+                        n_trials=n_iter,
+                        early_stopping=can_early_stop,
+                        scoring=optimize,
+                        cv=fold,
+                        random_state=seed,
+                        max_iters=early_stopping_max_iters,
+                        n_jobs=n_jobs,
+                        use_gpu=gpu_param,
+                        refit=True,
+                        verbose=0,
+                        **search_kwargs,
+                    )
+                elif search_algorithm == "bayesian":
+                    from tune_sklearn import TuneSearchCV
+
+                    if custom_grid is None:
+                        param_grid = get_skopt_distributions(param_grid)
+                    logger.info(f"param_grid: {param_grid}")
+                    logger.info("Initializing tune_sklearn.TuneSearchCV, bayesian")
+                    model_grid = TuneSearchCV(
+                        estimator=pipeline_with_model,
+                        search_optimization="bayesian",
+                        param_distributions=param_grid,
+                        n_trials=n_iter,
+                        early_stopping=can_early_stop,
+                        scoring=optimize,
+                        cv=fold,
+                        random_state=seed,
+                        max_iters=early_stopping_max_iters,
+                        n_jobs=n_jobs,
+                        use_gpu=gpu_param,
+                        refit=True,
+                        verbose=0,
+                        **search_kwargs,
+                    )
+                elif search_algorithm == "bohb":
+                    from tune_sklearn import TuneSearchCV
+
+                    if custom_grid is None:
+                        param_grid = get_CS_distributions(param_grid)
+                    logger.info(f"param_grid: {param_grid}")
+                    logger.info("Initializing tune_sklearn.TuneSearchCV, bohb")
+                    model_grid = TuneSearchCV(
+                        estimator=pipeline_with_model,
+                        search_optimization="bohb",
+                        param_distributions=param_grid,
+                        n_trials=n_iter,
+                        early_stopping=can_early_stop,
+                        scoring=optimize,
+                        cv=fold,
+                        random_state=seed,
+                        max_iters=early_stopping_max_iters,
+                        n_jobs=n_jobs,
+                        use_gpu=gpu_param,
+                        refit=True,
+                        verbose=0,
+                        **search_kwargs,
+                    )
+                else:
+                    from tune_sklearn import TuneSearchCV
+
+                    logger.info("Initializing tune_sklearn.TuneSearchCV, random")
+                    model_grid = TuneSearchCV(
+                        estimator=pipeline_with_model,
+                        param_distributions=param_grid,
+                        early_stopping=can_early_stop,
+                        n_trials=n_iter,
+                        scoring=optimize,
+                        cv=fold,
+                        random_state=seed,
+                        max_iters=early_stopping_max_iters,
+                        n_jobs=n_jobs,
+                        use_gpu=gpu_param,
+                        refit=True,
+                        verbose=0,
+                        **search_kwargs,
+                    )
+
+        elif search_library == "scikit-optimize":
+            import skopt
+
+            if custom_grid is None:
+                param_grid = get_skopt_distributions(param_grid)
+            logger.info(f"param_grid: {param_grid}")
+
+            logger.info("Initializing skopt.BayesSearchCV")
+            model_grid = skopt.BayesSearchCV(
+                estimator=pipeline_with_model,
+                search_spaces=param_grid,
                 scoring=optimize,
                 n_iter=n_iter,
                 cv=fold,
@@ -3761,20 +3739,47 @@ def tune_model(
                 n_jobs=n_jobs,
                 **search_kwargs,
             )
+        else:
+            if search_algorithm == "grid":
+                from sklearn.model_selection import GridSearchCV
 
-    # with io.capture_output():
-    model_grid.fit(X_train, y_train, groups=groups, **fit_kwargs)
-    best_params = model_grid.best_params_
-    logger.info(f"best_params: {best_params}")
-    # 18 chars - actual_estimator__
-    best_params = {k[18:]: v for k, v in best_params.items()}
-    cv_results = None
-    try:
-        cv_results = model_grid.cv_results_
-    except:
-        logger.warning("Couldn't get cv_results from model_grid.")
+                logger.info("Initializing GridSearchCV")
+                model_grid = GridSearchCV(
+                    estimator=pipeline_with_model,
+                    param_grid=param_grid,
+                    scoring=optimize,
+                    cv=fold,
+                    refit=False,
+                    n_jobs=n_jobs,
+                    **search_kwargs,
+                )
+            else:
+                from sklearn.model_selection import RandomizedSearchCV
 
-    model = model.named_steps["actual_estimator"]
+                logger.info("Initializing RandomizedSearchCV")
+                model_grid = RandomizedSearchCV(
+                    estimator=pipeline_with_model,
+                    param_distributions=param_grid,
+                    scoring=optimize,
+                    n_iter=n_iter,
+                    cv=fold,
+                    random_state=seed,
+                    refit=False,
+                    n_jobs=n_jobs,
+                    **search_kwargs,
+                )
+
+        # with io.capture_output():
+        model_grid.fit(X_train, y_train, groups=groups, **fit_kwargs)
+        best_params = model_grid.best_params_
+        logger.info(f"best_params: {best_params}")
+        # 18 chars - actual_estimator__
+        best_params = {k[18:]: v for k, v in best_params.items()}
+        cv_results = None
+        try:
+            cv_results = model_grid.cv_results_
+        except:
+            logger.warning("Couldn't get cv_results from model_grid.")
 
     display.move_progress()
 
@@ -5114,531 +5119,541 @@ def plot_model(
     display.move_progress()
 
     model_name = _get_model_name(model)
-    model = _make_internal_pipeline(model)
+    with estimator_pipeline(_internal_pipeline, model) as pipeline_with_model:
+        fit_kwargs = _get_pipeline_fit_kwargs(pipeline_with_model, fit_kwargs)
 
-    _base_dpi = 100
+        _base_dpi = 100
 
-    cv = _get_cv_splitter(fold)
+        cv = _get_cv_splitter(fold)
 
-    class MatplotlibDefaultDPI(object):
-        def __init__(self, base_dpi: float = 100, scale_to_set: float = 1):
-            try:
-                self.default_skplt_dpit = skplt.metrics.plt.rcParams["figure.dpi"]
-                skplt.metrics.plt.rcParams["figure.dpi"] = base_dpi * scale_to_set
-            except:
-                pass
+        class MatplotlibDefaultDPI(object):
+            def __init__(self, base_dpi: float = 100, scale_to_set: float = 1):
+                try:
+                    self.default_skplt_dpit = skplt.metrics.plt.rcParams["figure.dpi"]
+                    skplt.metrics.plt.rcParams["figure.dpi"] = base_dpi * scale_to_set
+                except:
+                    pass
 
-        def __enter__(self) -> None:
-            return None
+            def __enter__(self) -> None:
+                return None
 
-        def __exit__(self, type, value, traceback):
-            try:
-                skplt.metrics.plt.rcParams["figure.dpi"] = self.default_skplt_dpit
-            except:
-                pass
+            def __exit__(self, type, value, traceback):
+                try:
+                    skplt.metrics.plt.rcParams["figure.dpi"] = self.default_skplt_dpit
+                except:
+                    pass
 
-    if plot == "auc":
+        if plot == "auc":
 
-        from yellowbrick.classifier import ROCAUC
+            from yellowbrick.classifier import ROCAUC
 
-        visualizer = ROCAUC(model)
-        show_yellowbrick_plot(
-            visualizer=visualizer,
-            X_train=data_X,
-            y_train=data_y,
-            X_test=test_X,
-            y_test=test_y,
-            name=plot_name,
-            scale=scale,
-            save=save,
-            fit_kwargs=fit_kwargs,
-            groups=groups,
-            system=system,
-            display=display,
-        )
-
-    elif plot == "threshold":
-
-        from yellowbrick.classifier import DiscriminationThreshold
-
-        visualizer = DiscriminationThreshold(model, random_state=seed)
-        show_yellowbrick_plot(
-            visualizer=visualizer,
-            X_train=data_X,
-            y_train=data_y,
-            X_test=test_X,
-            y_test=test_y,
-            name=plot_name,
-            scale=scale,
-            save=save,
-            fit_kwargs=fit_kwargs,
-            groups=groups,
-            system=system,
-            display=display,
-        )
-
-    elif plot == "pr":
-
-        from yellowbrick.classifier import PrecisionRecallCurve
-
-        visualizer = PrecisionRecallCurve(model, random_state=seed)
-        show_yellowbrick_plot(
-            visualizer=visualizer,
-            X_train=data_X,
-            y_train=data_y,
-            X_test=test_X,
-            y_test=test_y,
-            name=plot_name,
-            scale=scale,
-            save=save,
-            fit_kwargs=fit_kwargs,
-            groups=groups,
-            system=system,
-            display=display,
-        )
-
-    elif plot == "confusion_matrix":
-
-        from yellowbrick.classifier import ConfusionMatrix
-
-        visualizer = ConfusionMatrix(
-            model, random_state=seed, fontsize=15, cmap="Greens"
-        )
-        show_yellowbrick_plot(
-            visualizer=visualizer,
-            X_train=data_X,
-            y_train=data_y,
-            X_test=test_X,
-            y_test=test_y,
-            name=plot_name,
-            scale=scale,
-            save=save,
-            fit_kwargs=fit_kwargs,
-            groups=groups,
-            system=system,
-            display=display,
-        )
-
-    elif plot == "error":
-
-        from yellowbrick.classifier import ClassPredictionError
-
-        visualizer = ClassPredictionError(model, random_state=seed)
-        show_yellowbrick_plot(
-            visualizer=visualizer,
-            X_train=data_X,
-            y_train=data_y,
-            X_test=test_X,
-            y_test=test_y,
-            name=plot_name,
-            scale=scale,
-            save=save,
-            fit_kwargs=fit_kwargs,
-            groups=groups,
-            system=system,
-            display=display,
-        )
-
-    elif plot == "class_report":
-
-        from yellowbrick.classifier import ClassificationReport
-
-        visualizer = ClassificationReport(model, random_state=seed, support=True)
-        show_yellowbrick_plot(
-            visualizer=visualizer,
-            X_train=data_X,
-            y_train=data_y,
-            X_test=test_X,
-            y_test=test_y,
-            name=plot_name,
-            scale=scale,
-            save=save,
-            fit_kwargs=fit_kwargs,
-            groups=groups,
-            system=system,
-            display=display,
-        )
-
-    elif plot == "boundary":
-
-        from sklearn.preprocessing import StandardScaler
-        from sklearn.decomposition import PCA
-        from yellowbrick.contrib.classifier import DecisionViz
-
-        model2 = deepcopy(estimator)
-
-        data_X_transformed = data_X.select_dtypes(include="float64")
-        test_X_transformed = test_X.select_dtypes(include="float64")
-        logger.info("Fitting StandardScaler()")
-        data_X_transformed = StandardScaler().fit_transform(data_X_transformed)
-        test_X_transformed = StandardScaler().fit_transform(test_X_transformed)
-        pca = PCA(n_components=2, random_state=seed)
-        logger.info("Fitting PCA()")
-        data_X_transformed = pca.fit_transform(data_X_transformed)
-        test_X_transformed = pca.fit_transform(test_X_transformed)
-
-        data_y_transformed = np.array(data_y)
-        test_y_transformed = np.array(test_y)
-
-        viz_ = DecisionViz(model2)
-        show_yellowbrick_plot(
-            visualizer=viz_,
-            X_train=data_X_transformed,
-            y_train=data_y_transformed,
-            X_test=test_X_transformed,
-            y_test=test_y_transformed,
-            name=plot_name,
-            scale=scale,
-            handle_test="draw",
-            save=save,
-            fit_kwargs=fit_kwargs,
-            groups=groups,
-            system=system,
-            display=display,
-            features=["Feature One", "Feature Two"],
-            classes=["A", "B"],
-        )
-
-    elif plot == "rfe":
-
-        from yellowbrick.model_selection import RFECV
-
-        visualizer = RFECV(model, cv=cv)
-        show_yellowbrick_plot(
-            visualizer=visualizer,
-            X_train=data_X,
-            y_train=data_y,
-            X_test=test_X,
-            y_test=test_y,
-            handle_test="",
-            name=plot_name,
-            scale=scale,
-            save=save,
-            fit_kwargs=fit_kwargs,
-            groups=groups,
-            system=system,
-            display=display,
-        )
-
-    elif plot == "learning":
-
-        from yellowbrick.model_selection import LearningCurve
-
-        sizes = np.linspace(0.3, 1.0, 10)
-        visualizer = LearningCurve(
-            model, cv=cv, train_sizes=sizes, n_jobs=gpu_n_jobs_param, random_state=seed
-        )
-        show_yellowbrick_plot(
-            visualizer=visualizer,
-            X_train=data_X,
-            y_train=data_y,
-            X_test=test_X,
-            y_test=test_y,
-            handle_test="",
-            name=plot_name,
-            scale=scale,
-            save=save,
-            fit_kwargs=fit_kwargs,
-            groups=groups,
-            system=system,
-            display=display,
-        )
-
-    elif plot == "lift":
-
-        import scikitplot as skplt
-
-        display.move_progress()
-        logger.info("Generating predictions / predict_proba on X_test")
-        y_test__ = model.predict(X_test)
-        predict_proba__ = model.predict_proba(X_test)
-        display.move_progress()
-        display.move_progress()
-        display.clear_output()
-        with MatplotlibDefaultDPI(base_dpi=_base_dpi, scale_to_set=scale):
-            fig = skplt.metrics.plot_lift_curve(
-                y_test__, predict_proba__, figsize=(10, 6)
-            )
-            if save:
-                logger.info(f"Saving '{plot_name}.png' in current active directory")
-                plt.savefig(f"{plot_name}.png")
-                if not system:
-                    plt.close()
-            else:
-                plt.show()
-
-        logger.info("Visual Rendered Successfully")
-
-    elif plot == "gain":
-
-        import scikitplot as skplt
-
-        display.move_progress()
-        logger.info("Generating predictions / predict_proba on X_test")
-        y_test__ = model.predict(X_test)
-        predict_proba__ = model.predict_proba(X_test)
-        display.move_progress()
-        display.move_progress()
-        display.clear_output()
-        with MatplotlibDefaultDPI(base_dpi=_base_dpi, scale_to_set=scale):
-            fig = skplt.metrics.plot_cumulative_gain(
-                y_test__, predict_proba__, figsize=(10, 6)
-            )
-            if save:
-                logger.info(f"Saving '{plot_name}.png' in current active directory")
-                plt.savefig(f"{plot_name}.png")
-                if not system:
-                    plt.close()
-            else:
-                plt.show()
-
-        logger.info("Visual Rendered Successfully")
-
-    elif plot == "manifold":
-
-        from yellowbrick.features import Manifold
-
-        data_X_transformed = data_X.select_dtypes(include="float64")
-        visualizer = Manifold(manifold="tsne", random_state=seed)
-        show_yellowbrick_plot(
-            visualizer=visualizer,
-            X_train=data_X_transformed,
-            y_train=data_y,
-            X_test=test_X,
-            y_test=test_y,
-            handle_train="fit_transform",
-            handle_test="",
-            name=plot_name,
-            scale=scale,
-            save=save,
-            fit_kwargs=fit_kwargs,
-            groups=groups,
-            system=system,
-            display=display,
-        )
-
-    elif plot == "calibration":
-
-        from sklearn.calibration import calibration_curve
-
-        plt.figure(figsize=(7, 6), dpi=_base_dpi * scale)
-        ax1 = plt.subplot2grid((3, 1), (0, 0), rowspan=2)
-
-        ax1.plot([0, 1], [0, 1], "k:", label="Perfectly calibrated")
-        display.move_progress()
-        logger.info("Scoring test/hold-out set")
-        prob_pos = model.predict_proba(test_X)[:, 1]
-        prob_pos = (prob_pos - prob_pos.min()) / (prob_pos.max() - prob_pos.min())
-        fraction_of_positives, mean_predicted_value = calibration_curve(
-            test_y, prob_pos, n_bins=10
-        )
-        display.move_progress()
-        ax1.plot(
-            mean_predicted_value, fraction_of_positives, "s-", label=f"{model_name}",
-        )
-
-        ax1.set_ylabel("Fraction of positives")
-        ax1.set_ylim([0, 1])
-        ax1.set_xlim([0, 1])
-        ax1.legend(loc="lower right")
-        ax1.set_title("Calibration plots  (reliability curve)")
-        ax1.set_facecolor("white")
-        ax1.grid(b=True, color="grey", linewidth=0.5, linestyle="-")
-        plt.tight_layout()
-        display.move_progress()
-        display.clear_output()
-        if save:
-            logger.info(f"Saving '{plot_name}.png' in current active directory")
-            plt.savefig(f"{plot_name}.png")
-            if not system:
-                plt.close()
-        else:
-            plt.show()
-
-        logger.info("Visual Rendered Successfully")
-
-    elif plot == "vc":
-
-        logger.info("Determining param_name")
-
-        # SGD Classifier
-        if model_name == "SGDClassifier":
-            param_name = "l1_ratio"
-            param_range = np.arange(0, 1, 0.01)
-
-        elif model_name == "LinearDiscriminantAnalysis":
-            raise ValueError(
-                "Shrinkage Parameter not supported in Validation Curve Plot."
+            visualizer = ROCAUC(pipeline_with_model)
+            show_yellowbrick_plot(
+                visualizer=visualizer,
+                X_train=data_X,
+                y_train=data_y,
+                X_test=test_X,
+                y_test=test_y,
+                name=plot_name,
+                scale=scale,
+                save=save,
+                fit_kwargs=fit_kwargs,
+                groups=groups,
+                system=system,
+                display=display,
             )
 
-        # tree based models
-        elif hasattr(model, "max_depth"):
-            param_name = "max_depth"
-            param_range = np.arange(1, 11)
+        elif plot == "threshold":
 
-        # knn
-        elif hasattr(model, "n_neighbors"):
-            param_name = "n_neighbors"
-            param_range = np.arange(1, 11)
+            from yellowbrick.classifier import DiscriminationThreshold
 
-        # MLP / Ridge
-        elif hasattr(model, "alpha"):
-            param_name = "alpha"
-            param_range = np.arange(0, 1, 0.1)
+            visualizer = DiscriminationThreshold(pipeline_with_model, random_state=seed)
+            show_yellowbrick_plot(
+                visualizer=visualizer,
+                X_train=data_X,
+                y_train=data_y,
+                X_test=test_X,
+                y_test=test_y,
+                name=plot_name,
+                scale=scale,
+                save=save,
+                fit_kwargs=fit_kwargs,
+                groups=groups,
+                system=system,
+                display=display,
+            )
 
-        # Logistic Regression
-        elif hasattr(model, "C"):
-            param_name = "C"
-            param_range = np.arange(1, 11)
+        elif plot == "pr":
 
-        # Bagging / Boosting
-        elif hasattr(model, "n_estimators"):
-            param_name = "n_estimators"
-            param_range = np.arange(1, 100, 10)
+            from yellowbrick.classifier import PrecisionRecallCurve
 
-        # Bagging / Boosting / gbc / ada /
-        elif hasattr(model, "n_estimators"):
-            param_name = "n_estimators"
-            param_range = np.arange(1, 100, 10)
+            visualizer = PrecisionRecallCurve(pipeline_with_model, random_state=seed)
+            show_yellowbrick_plot(
+                visualizer=visualizer,
+                X_train=data_X,
+                y_train=data_y,
+                X_test=test_X,
+                y_test=test_y,
+                name=plot_name,
+                scale=scale,
+                save=save,
+                fit_kwargs=fit_kwargs,
+                groups=groups,
+                system=system,
+                display=display,
+            )
 
-        # Naive Bayes
-        elif hasattr(model, "var_smoothing"):
-            param_name = "var_smoothing"
-            param_range = np.arange(0.1, 1, 0.01)
+        elif plot == "confusion_matrix":
 
-        # QDA
-        elif hasattr(model, "reg_param"):
-            param_name = "reg_param"
-            param_range = np.arange(0, 1, 0.1)
+            from yellowbrick.classifier import ConfusionMatrix
 
-        # GPC
-        elif hasattr(model, "max_iter_predict"):
-            param_name = "max_iter_predict"
-            param_range = np.arange(100, 1000, 100)
+            visualizer = ConfusionMatrix(
+                pipeline_with_model, random_state=seed, fontsize=15, cmap="Greens"
+            )
+            show_yellowbrick_plot(
+                visualizer=visualizer,
+                X_train=data_X,
+                y_train=data_y,
+                X_test=test_X,
+                y_test=test_y,
+                name=plot_name,
+                scale=scale,
+                save=save,
+                fit_kwargs=fit_kwargs,
+                groups=groups,
+                system=system,
+                display=display,
+            )
 
-        else:
+        elif plot == "error":
+
+            from yellowbrick.classifier import ClassPredictionError
+
+            visualizer = ClassPredictionError(pipeline_with_model, random_state=seed)
+            show_yellowbrick_plot(
+                visualizer=visualizer,
+                X_train=data_X,
+                y_train=data_y,
+                X_test=test_X,
+                y_test=test_y,
+                name=plot_name,
+                scale=scale,
+                save=save,
+                fit_kwargs=fit_kwargs,
+                groups=groups,
+                system=system,
+                display=display,
+            )
+
+        elif plot == "class_report":
+
+            from yellowbrick.classifier import ClassificationReport
+
+            visualizer = ClassificationReport(
+                pipeline_with_model, random_state=seed, support=True
+            )
+            show_yellowbrick_plot(
+                visualizer=visualizer,
+                X_train=data_X,
+                y_train=data_y,
+                X_test=test_X,
+                y_test=test_y,
+                name=plot_name,
+                scale=scale,
+                save=save,
+                fit_kwargs=fit_kwargs,
+                groups=groups,
+                system=system,
+                display=display,
+            )
+
+        elif plot == "boundary":
+
+            from sklearn.preprocessing import StandardScaler
+            from sklearn.decomposition import PCA
+            from yellowbrick.contrib.classifier import DecisionViz
+
+            model2 = deepcopy(estimator)
+
+            data_X_transformed = data_X.select_dtypes(include="float64")
+            test_X_transformed = test_X.select_dtypes(include="float64")
+            logger.info("Fitting StandardScaler()")
+            data_X_transformed = StandardScaler().fit_transform(data_X_transformed)
+            test_X_transformed = StandardScaler().fit_transform(test_X_transformed)
+            pca = PCA(n_components=2, random_state=seed)
+            logger.info("Fitting PCA()")
+            data_X_transformed = pca.fit_transform(data_X_transformed)
+            test_X_transformed = pca.fit_transform(test_X_transformed)
+
+            data_y_transformed = np.array(data_y)
+            test_y_transformed = np.array(test_y)
+
+            viz_ = DecisionViz(model2)
+            show_yellowbrick_plot(
+                visualizer=viz_,
+                X_train=data_X_transformed,
+                y_train=data_y_transformed,
+                X_test=test_X_transformed,
+                y_test=test_y_transformed,
+                name=plot_name,
+                scale=scale,
+                handle_test="draw",
+                save=save,
+                fit_kwargs=fit_kwargs,
+                groups=groups,
+                system=system,
+                display=display,
+                features=["Feature One", "Feature Two"],
+                classes=["A", "B"],
+            )
+
+        elif plot == "rfe":
+
+            from yellowbrick.model_selection import RFECV
+
+            visualizer = RFECV(pipeline_with_model, cv=cv)
+            show_yellowbrick_plot(
+                visualizer=visualizer,
+                X_train=data_X,
+                y_train=data_y,
+                X_test=test_X,
+                y_test=test_y,
+                handle_test="",
+                name=plot_name,
+                scale=scale,
+                save=save,
+                fit_kwargs=fit_kwargs,
+                groups=groups,
+                system=system,
+                display=display,
+            )
+
+        elif plot == "learning":
+
+            from yellowbrick.model_selection import LearningCurve
+
+            sizes = np.linspace(0.3, 1.0, 10)
+            visualizer = LearningCurve(
+                pipeline_with_model,
+                cv=cv,
+                train_sizes=sizes,
+                n_jobs=gpu_n_jobs_param,
+                random_state=seed,
+            )
+            show_yellowbrick_plot(
+                visualizer=visualizer,
+                X_train=data_X,
+                y_train=data_y,
+                X_test=test_X,
+                y_test=test_y,
+                handle_test="",
+                name=plot_name,
+                scale=scale,
+                save=save,
+                fit_kwargs=fit_kwargs,
+                groups=groups,
+                system=system,
+                display=display,
+            )
+
+        elif plot == "lift":
+
+            import scikitplot as skplt
+
+            display.move_progress()
+            logger.info("Generating predictions / predict_proba on X_test")
+            y_test__ = pipeline_with_model.predict(X_test)
+            predict_proba__ = pipeline_with_model.predict_proba(X_test)
+            display.move_progress()
+            display.move_progress()
             display.clear_output()
-            raise TypeError(
-                "Plot not supported for this estimator. Try different estimator."
+            with MatplotlibDefaultDPI(base_dpi=_base_dpi, scale_to_set=scale):
+                fig = skplt.metrics.plot_lift_curve(
+                    y_test__, predict_proba__, figsize=(10, 6)
+                )
+                if save:
+                    logger.info(f"Saving '{plot_name}.png' in current active directory")
+                    plt.savefig(f"{plot_name}.png")
+                    if not system:
+                        plt.close()
+                else:
+                    plt.show()
+
+            logger.info("Visual Rendered Successfully")
+
+        elif plot == "gain":
+
+            import scikitplot as skplt
+
+            display.move_progress()
+            logger.info("Generating predictions / predict_proba on X_test")
+            y_test__ = pipeline_with_model.predict(X_test)
+            predict_proba__ = pipeline_with_model.predict_proba(X_test)
+            display.move_progress()
+            display.move_progress()
+            display.clear_output()
+            with MatplotlibDefaultDPI(base_dpi=_base_dpi, scale_to_set=scale):
+                fig = skplt.metrics.plot_cumulative_gain(
+                    y_test__, predict_proba__, figsize=(10, 6)
+                )
+                if save:
+                    logger.info(f"Saving '{plot_name}.png' in current active directory")
+                    plt.savefig(f"{plot_name}.png")
+                    if not system:
+                        plt.close()
+                else:
+                    plt.show()
+
+            logger.info("Visual Rendered Successfully")
+
+        elif plot == "manifold":
+
+            from yellowbrick.features import Manifold
+
+            data_X_transformed = data_X.select_dtypes(include="float64")
+            visualizer = Manifold(manifold="tsne", random_state=seed)
+            show_yellowbrick_plot(
+                visualizer=visualizer,
+                X_train=data_X_transformed,
+                y_train=data_y,
+                X_test=test_X,
+                y_test=test_y,
+                handle_train="fit_transform",
+                handle_test="",
+                name=plot_name,
+                scale=scale,
+                save=save,
+                fit_kwargs=fit_kwargs,
+                groups=groups,
+                system=system,
+                display=display,
             )
 
-        logger.info(f"param_name: {param_name}")
+        elif plot == "calibration":
 
-        display.move_progress()
+            from sklearn.calibration import calibration_curve
 
-        from yellowbrick.model_selection import ValidationCurve
+            plt.figure(figsize=(7, 6), dpi=_base_dpi * scale)
+            ax1 = plt.subplot2grid((3, 1), (0, 0), rowspan=2)
 
-        viz = ValidationCurve(
-            model,
-            param_name=param_name,
-            param_range=param_range,
-            cv=cv,
-            random_state=seed,
-        )
-        show_yellowbrick_plot(
-            visualizer=viz,
-            X_train=data_X,
-            y_train=data_y,
-            X_test=test_X,
-            y_test=test_y,
-            handle_train="fit",
-            handle_test="",
-            name=plot_name,
-            scale=scale,
-            save=save,
-            fit_kwargs=fit_kwargs,
-            groups=groups,
-            system=system,
-            display=display,
-        )
+            ax1.plot([0, 1], [0, 1], "k:", label="Perfectly calibrated")
+            display.move_progress()
+            logger.info("Scoring test/hold-out set")
+            prob_pos = pipeline_with_model.predict_proba(test_X)[:, 1]
+            prob_pos = (prob_pos - prob_pos.min()) / (prob_pos.max() - prob_pos.min())
+            fraction_of_positives, mean_predicted_value = calibration_curve(
+                test_y, prob_pos, n_bins=10
+            )
+            display.move_progress()
+            ax1.plot(
+                mean_predicted_value,
+                fraction_of_positives,
+                "s-",
+                label=f"{model_name}",
+            )
 
-    elif plot == "dimension":
+            ax1.set_ylabel("Fraction of positives")
+            ax1.set_ylim([0, 1])
+            ax1.set_xlim([0, 1])
+            ax1.legend(loc="lower right")
+            ax1.set_title("Calibration plots  (reliability curve)")
+            ax1.set_facecolor("white")
+            ax1.grid(b=True, color="grey", linewidth=0.5, linestyle="-")
+            plt.tight_layout()
+            display.move_progress()
+            display.clear_output()
+            if save:
+                logger.info(f"Saving '{plot_name}.png' in current active directory")
+                plt.savefig(f"{plot_name}.png")
+                if not system:
+                    plt.close()
+            else:
+                plt.show()
 
-        from yellowbrick.features import RadViz
-        from sklearn.preprocessing import StandardScaler
-        from sklearn.decomposition import PCA
+            logger.info("Visual Rendered Successfully")
 
-        data_X_transformed = data_X.select_dtypes(include="float64")
-        logger.info("Fitting StandardScaler()")
-        data_X_transformed = StandardScaler().fit_transform(data_X_transformed)
-        data_y_transformed = np.array(data_y)
+        elif plot == "vc":
 
-        features = min(round(len(data_X.columns) * 0.3, 0), 5)
-        features = int(features)
+            logger.info("Determining param_name")
 
-        pca = PCA(n_components=features, random_state=seed)
-        logger.info("Fitting PCA()")
-        data_X_transformed = pca.fit_transform(data_X_transformed)
-        display.move_progress()
-        classes = data_y.unique().tolist()
-        visualizer = RadViz(classes=classes, alpha=0.25)
+            # SGD Classifier
+            if model_name == "SGDClassifier":
+                param_name = "l1_ratio"
+                param_range = np.arange(0, 1, 0.01)
 
-        show_yellowbrick_plot(
-            visualizer=visualizer,
-            X_train=data_X_transformed,
-            y_train=data_y_transformed,
-            X_test=test_X,
-            y_test=test_y,
-            handle_train="fit_transform",
-            handle_test="",
-            name=plot_name,
-            scale=scale,
-            save=save,
-            fit_kwargs=fit_kwargs,
-            groups=groups,
-            system=system,
-            display=display,
-        )
+            elif model_name == "LinearDiscriminantAnalysis":
+                raise ValueError(
+                    "Shrinkage Parameter not supported in Validation Curve Plot."
+                )
 
-    elif plot == "feature":
-        temp_model = model
-        if hasattr(model, "steps"):
-            temp_model = model.steps[-1][1]
-        if hasattr(temp_model, "coef_"):
-            variables = abs(temp_model.coef_[0])
-        else:
-            logger.warning("No coef_ found. Trying feature_importances_")
-            variables = abs(temp_model.feature_importances_)
-        coef_df = pd.DataFrame({"Variable": data_X.columns, "Value": variables})
-        sorted_df = (
-            coef_df.sort_values(by="Value", ascending=False)
-            .head(10)
-            .sort_values(by="Value")
-        )
-        my_range = range(1, len(sorted_df.index) + 1)
-        display.move_progress()
-        plt.figure(figsize=(8, 5), dpi=_base_dpi * scale)
-        plt.hlines(y=my_range, xmin=0, xmax=sorted_df["Value"], color="skyblue")
-        plt.plot(sorted_df["Value"], my_range, "o")
-        display.move_progress()
-        plt.yticks(my_range, sorted_df["Variable"])
-        plt.title("Feature Importance Plot")
-        plt.xlabel("Variable Importance")
-        plt.ylabel("Features")
-        display.move_progress()
-        display.clear_output()
-        if save:
-            logger.info(f"Saving '{plot_name}.png' in current active directory")
-            plt.savefig(f"{plot_name}.png")
-            if not system:
-                plt.close()
-        else:
-            plt.show()
+            # tree based models
+            elif hasattr(pipeline_with_model, "actual_estimator__max_depth"):
+                param_name = "actual_estimator__max_depth"
+                param_range = np.arange(1, 11)
 
-        logger.info("Visual Rendered Successfully")
+            # knn
+            elif hasattr(pipeline_with_model, "actual_estimator__n_neighbors"):
+                param_name = "actual_estimator__n_neighbors"
+                param_range = np.arange(1, 11)
 
-    elif plot == "parameter":
+            # MLP / Ridge
+            elif hasattr(pipeline_with_model, "actual_estimator__alpha"):
+                param_name = "actual_estimator__alpha"
+                param_range = np.arange(0, 1, 0.1)
 
-        param_df = pd.DataFrame.from_dict(
-            estimator.get_params(estimator), orient="index", columns=["Parameters"]
-        )
-        display.display(param_df, clear=True)
-        logger.info("Visual Rendered Successfully")
+            # Logistic Regression
+            elif hasattr(pipeline_with_model, "actual_estimator__C"):
+                param_name = "actual_estimator__C"
+                param_range = np.arange(1, 11)
 
-    try:
-        plt.close()
-    except:
-        pass
+            # Bagging / Boosting
+            elif hasattr(pipeline_with_model, "actual_estimator__n_estimators"):
+                param_name = "actual_estimator__n_estimators"
+                param_range = np.arange(1, 100, 10)
+
+            # Bagging / Boosting / gbc / ada /
+            elif hasattr(pipeline_with_model, "actual_estimator__n_estimators"):
+                param_name = "actual_estimator__n_estimators"
+                param_range = np.arange(1, 100, 10)
+
+            # Naive Bayes
+            elif hasattr(pipeline_with_model, "actual_estimator__var_smoothing"):
+                param_name = "actual_estimator__var_smoothing"
+                param_range = np.arange(0.1, 1, 0.01)
+
+            # QDA
+            elif hasattr(pipeline_with_model, "actual_estimator__reg_param"):
+                param_name = "actual_estimator__reg_param"
+                param_range = np.arange(0, 1, 0.1)
+
+            # GPC
+            elif hasattr(pipeline_with_model, "actual_estimator__max_iter_predict"):
+                param_name = "actual_estimator__max_iter_predict"
+                param_range = np.arange(100, 1000, 100)
+
+            else:
+                display.clear_output()
+                raise TypeError(
+                    "Plot not supported for this estimator. Try different estimator."
+                )
+
+            logger.info(f"param_name: {param_name}")
+
+            display.move_progress()
+
+            from yellowbrick.model_selection import ValidationCurve
+
+            viz = ValidationCurve(
+                pipeline_with_model,
+                param_name=param_name,
+                param_range=param_range,
+                cv=cv,
+                random_state=seed,
+            )
+            show_yellowbrick_plot(
+                visualizer=viz,
+                X_train=data_X,
+                y_train=data_y,
+                X_test=test_X,
+                y_test=test_y,
+                handle_train="fit",
+                handle_test="",
+                name=plot_name,
+                scale=scale,
+                save=save,
+                fit_kwargs=fit_kwargs,
+                groups=groups,
+                system=system,
+                display=display,
+            )
+
+        elif plot == "dimension":
+
+            from yellowbrick.features import RadViz
+            from sklearn.preprocessing import StandardScaler
+            from sklearn.decomposition import PCA
+
+            data_X_transformed = data_X.select_dtypes(include="float64")
+            logger.info("Fitting StandardScaler()")
+            data_X_transformed = StandardScaler().fit_transform(data_X_transformed)
+            data_y_transformed = np.array(data_y)
+
+            features = min(round(len(data_X.columns) * 0.3, 0), 5)
+            features = int(features)
+
+            pca = PCA(n_components=features, random_state=seed)
+            logger.info("Fitting PCA()")
+            data_X_transformed = pca.fit_transform(data_X_transformed)
+            display.move_progress()
+            classes = data_y.unique().tolist()
+            visualizer = RadViz(classes=classes, alpha=0.25)
+
+            show_yellowbrick_plot(
+                visualizer=visualizer,
+                X_train=data_X_transformed,
+                y_train=data_y_transformed,
+                X_test=test_X,
+                y_test=test_y,
+                handle_train="fit_transform",
+                handle_test="",
+                name=plot_name,
+                scale=scale,
+                save=save,
+                fit_kwargs=fit_kwargs,
+                groups=groups,
+                system=system,
+                display=display,
+            )
+
+        elif plot == "feature":
+            temp_model = pipeline_with_model
+            if hasattr(pipeline_with_model, "steps"):
+                temp_model = pipeline_with_model.steps[-1][1]
+            if hasattr(temp_model, "coef_"):
+                variables = abs(temp_model.coef_[0])
+            else:
+                logger.warning("No coef_ found. Trying feature_importances_")
+                variables = abs(temp_model.feature_importances_)
+            coef_df = pd.DataFrame({"Variable": data_X.columns, "Value": variables})
+            sorted_df = (
+                coef_df.sort_values(by="Value", ascending=False)
+                .head(10)
+                .sort_values(by="Value")
+            )
+            my_range = range(1, len(sorted_df.index) + 1)
+            display.move_progress()
+            plt.figure(figsize=(8, 5), dpi=_base_dpi * scale)
+            plt.hlines(y=my_range, xmin=0, xmax=sorted_df["Value"], color="skyblue")
+            plt.plot(sorted_df["Value"], my_range, "o")
+            display.move_progress()
+            plt.yticks(my_range, sorted_df["Variable"])
+            plt.title("Feature Importance Plot")
+            plt.xlabel("Variable Importance")
+            plt.ylabel("Features")
+            display.move_progress()
+            display.clear_output()
+            if save:
+                logger.info(f"Saving '{plot_name}.png' in current active directory")
+                plt.savefig(f"{plot_name}.png")
+                if not system:
+                    plt.close()
+            else:
+                plt.show()
+
+            logger.info("Visual Rendered Successfully")
+
+        elif plot == "parameter":
+
+            param_df = pd.DataFrame.from_dict(
+                estimator.get_params(estimator), orient="index", columns=["Parameters"]
+            )
+            display.display(param_df, clear=True)
+            logger.info("Visual Rendered Successfully")
+
+        try:
+            plt.close()
+        except:
+            pass
 
     gc.collect()
 
@@ -7530,14 +7545,6 @@ def load_config(file_name: str):
     import pycaret.internal.utils
 
     return pycaret.internal.utils.load_config(file_name, globals())
-
-
-def _make_internal_pipeline(model):
-    import pycaret.internal.utils
-
-    return pycaret.internal.utils.make_internal_pipeline(
-        _internal_pipeline_steps, model
-    )
 
 
 def _choose_better(

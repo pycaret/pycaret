@@ -14,6 +14,7 @@ from typing import Any, List, Optional, Dict, Tuple, Union
 from sklearn.pipeline import Pipeline
 import numpy as np
 from sklearn.model_selection import KFold, StratifiedKFold, BaseCrossValidator
+import pycaret.internal.Pipeline
 
 
 def get_config(variable: str, globals_d: dict):
@@ -240,14 +241,23 @@ def param_grid_to_lists(param_grid: dict) -> dict:
     return param_grid
 
 
-def make_internal_pipeline(internal_pipeline_steps, model):
-    from pycaret.internal.Pipeline import Pipeline, PartialFitPipeline
+def make_internal_pipeline(
+    internal_pipeline_steps: list, memory=None
+) -> pycaret.internal.Pipeline.Pipeline:
 
-    if hasattr(model, "partial_fit"):
-        return PartialFitPipeline(
-            internal_pipeline_steps + [("actual_estimator", model)]
-        )
-    return Pipeline(internal_pipeline_steps + [("actual_estimator", model)])
+    if not internal_pipeline_steps:
+        internal_pipeline_steps = [('passthrough', pycaret.internal.Pipeline.EmptyStep())]
+
+    return pycaret.internal.Pipeline.Pipeline(internal_pipeline_steps, memory=memory)
+
+
+def add_estimator_to_pipeline(pipeline: Pipeline, estimator):
+    pipeline.steps.append(("actual_estimator", estimator))
+
+
+def remove_estimator_from_pipeline(pipeline: Pipeline):
+    if pipeline.steps[-1][0] == "actual_estimator":
+        pipeline.steps.pop()
 
 
 def calculate_metrics(
@@ -378,6 +388,7 @@ class none_n_jobs(object):
     """
     Context which sets `n_jobs` or `thread_count` to None for passed model.
     """
+
     def __init__(self, model):
         self.params = {}
         self.model = model
@@ -398,10 +409,12 @@ class none_n_jobs(object):
         if self.params:
             self.model.set_params(**self.params)
 
+
 class true_warm_start(object):
     """
     Context which sets `warm_start` to True for passed model.
     """
+
     def __init__(self, model):
         self.params = {}
         self.model = model
@@ -421,6 +434,24 @@ class true_warm_start(object):
     def __exit__(self, type, value, traceback):
         if self.params:
             self.model.set_params(**self.params)
+
+
+class estimator_pipeline(object):
+    """
+    Context which adds an estimator to pipeline.
+    """
+
+    def __init__(self, pipeline: Pipeline, estimator):
+        self.pipeline = pipeline
+        self.estimator = estimator
+
+    def __enter__(self):
+        add_estimator_to_pipeline(self.pipeline, self.estimator)
+        return self.pipeline
+
+    def __exit__(self, type, value, traceback):
+        remove_estimator_from_pipeline(self.pipeline)
+
 
 class nullcontext(object):
     def __init__(self, enter_result=None):

@@ -1,8 +1,28 @@
 import imblearn.pipeline
 from sklearn.utils import _print_elapsed_time
+from sklearn.base import BaseEstimator , TransformerMixin
 
+class EmptyStep(BaseEstimator,TransformerMixin):
+    def fit_transform(self, X, y=None, **fit_params):
+        return X
+
+    def fit(self, X, y=None, **fit_params):
+        return X
+
+    def transform(self, X, y=None, **fit_params):
+        return X
 
 class Pipeline(imblearn.pipeline.Pipeline):
+    def __init__(self, steps, *, memory=None, verbose=False):
+        self.steps = steps
+        self.memory = memory
+        self.verbose = verbose
+        self._validate_steps()
+        if hasattr(self._final_estimator, "warm_start"):
+            self.warm_start = self._final_estimator.warm_start
+        self.Xt_ = None
+        self.yt_ = None
+
     def fit(self, X, y=None, **fit_kwargs):
         result = super().fit(X, y=y, **fit_kwargs)
 
@@ -15,18 +35,6 @@ class Pipeline(imblearn.pipeline.Pipeline):
         except:
             pass
         return result
-
-
-class PartialFitPipeline(Pipeline):
-    def __init__(self, steps, *, memory=None, verbose=False):
-        self.steps = steps
-        self.memory = memory
-        self.verbose = verbose
-        self._validate_steps()
-        if hasattr(self._final_estimator, "warm_start"):
-            self.warm_start = self._final_estimator.warm_start
-        self.Xt_ = None
-        self.yt_ = None
 
     def partial_fit(self, X, y, classes=None, sample_weight=None):
         """Fit the model.
