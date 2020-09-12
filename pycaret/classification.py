@@ -3066,10 +3066,10 @@ def tune_model(
         Possible values:
 
         - 'scikit-learn' - default, requires no further installation
-        - 'scikit-optimize' - scikit-optimize. `pip install scikit-optimize` https://scikit-optimize.github.io/stable/
+        - 'scikit-optimize' - scikit-optimize. ``pip install scikit-optimize`` https://scikit-optimize.github.io/stable/
         - 'tune-sklearn' - Ray Tune scikit API. Does not support GPU models.
-          `pip install tune-sklearn ray[tune]` https://github.com/ray-project/tune-sklearn
-        - 'optuna' - Optuna. `pip install optuna` https://optuna.org/
+          ``pip install tune-sklearn ray[tune]`` https://github.com/ray-project/tune-sklearn
+        - 'optuna' - Optuna. ``pip install optuna`` https://optuna.org/
 
     search_algorithm: str, default = None
         The search algorithm to be used for finding the best hyperparameters.
@@ -3091,9 +3091,9 @@ def tune_model(
         - 'grid' - grid search
         - 'bayesian' - Bayesian search using scikit-optimize
         - 'hyperopt' - Tree-structured Parzen Estimator search using Hyperopt 
-          `pip install tune-sklearn ray[tune] hyperopt`
+          ``pip install tune-sklearn ray[tune] hyperopt``
         - 'bohb' - Bayesian search using HpBandSter 
-          `pip install hpbandster ConfigSpace`
+          ``pip install hpbandster ConfigSpace``
 
         'optuna' possible values:
 
@@ -3102,7 +3102,7 @@ def tune_model(
 
     early_stopping: bool or str or object, default = 'asha'
         Use early stopping to stop fitting to a hyperparameter configuration 
-        if it performs poorly. Ignored if search_library is `scikit-learn`, or
+        if it performs poorly. Ignored if search_library is ``scikit-learn``, or
         if the estimator doesn't have partial_fit attribute.
         If False or None, early stopping will not be used.
         Can be either an object accepted by the search library or one of the
@@ -3151,20 +3151,19 @@ def tune_model(
     model
         Trained and tuned model object. 
 
+    Notes
+    -----
+
+    - If a StackingClassifier is passed, the hyperparameters of the meta model (final_estimator)
+      will be tuned.
+
     Warnings
     --------
-   
-    - If target variable is multiclass (more than 2 classes), optimize param 'AUC' is 
-      not acceptable.
-      
-    - If target variable is multiclass (more than 2 classes), AUC will be returned as
-      zero (0.0)
 
     - Using 'Grid' search algorithm with default parameter grids may result in very
       long computation.
-        
-          
-    
+
+
     """
     function_params_str = ", ".join([f"{k}={v}" for k, v in locals().items()])
 
@@ -3489,9 +3488,9 @@ def tune_model(
             From https://github.com/ray-project/tune-sklearn/blob/master/tune_sklearn/tune_basesearch.py.
             
             Helper method to determine if it is possible to do early stopping.
-            Only sklearn estimators with `partial_fit` or `warm_start` can be early
+            Only sklearn estimators with ``partial_fit`` or ``warm_start`` can be early
             stopped. warm_start works by picking up training from the previous
-            call to `fit`.
+            call to ``fit``.
             
             Returns
             -------
