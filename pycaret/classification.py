@@ -3536,7 +3536,7 @@ def tune_model(
         from sklearn.gaussian_process import GaussianProcessClassifier
 
         # special case to prevent running out of memory
-        if isinstance(pipeline_with_model, GaussianProcessClassifier):
+        if isinstance(pipeline_with_model.steps[-1][1], GaussianProcessClassifier):
             n_jobs = 1
 
         logger.info(f"Tuning with n_jobs={n_jobs}")
