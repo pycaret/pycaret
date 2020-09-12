@@ -23,7 +23,8 @@ class PartialFitPipeline(Pipeline):
         self.memory = memory
         self.verbose = verbose
         self._validate_steps()
-        self.warm_start = self._final_estimator.warm_start
+        if hasattr(self._final_estimator, "warm_start"):
+            self.warm_start = self._final_estimator.warm_start
         self.Xt_ = None
         self.yt_ = None
 
