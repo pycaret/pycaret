@@ -372,3 +372,62 @@ def get_cv_n_folds(
         return fold
     else:
         return fold.get_n_splits()
+
+
+class none_n_jobs(object):
+    """
+    Context which sets `n_jobs` or `thread_count` to None for passed model.
+    """
+    def __init__(self, model):
+        self.params = {}
+        self.model = model
+        try:
+            self.params = {
+                k: v
+                for k, v in self.model.get_params().items()
+                if k.endswith("n_jobs") or k.endswith("thread_count")
+            }
+        except:
+            pass
+
+    def __enter__(self):
+        if self.params:
+            self.model.set_params(**{k: None for k, v in self.params.items()})
+
+    def __exit__(self, type, value, traceback):
+        if self.params:
+            self.model.set_params(**self.params)
+
+class true_warm_start(object):
+    """
+    Context which sets `warm_start` to True for passed model.
+    """
+    def __init__(self, model):
+        self.params = {}
+        self.model = model
+        try:
+            self.params = {
+                k: v
+                for k, v in self.model.get_params().items()
+                if k.endswith("warm_start")
+            }
+        except:
+            pass
+
+    def __enter__(self):
+        if self.params:
+            self.model.set_params(**{k: True for k, v in self.params.items()})
+
+    def __exit__(self, type, value, traceback):
+        if self.params:
+            self.model.set_params(**self.params)
+
+class nullcontext(object):
+    def __init__(self, enter_result=None):
+        self.enter_result = enter_result
+
+    def __enter__(self):
+        return self.enter_result
+
+    def __exit__(self, *excinfo):
+        pass
