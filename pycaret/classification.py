@@ -2090,7 +2090,7 @@ def compare_models(
         raise TypeError("budget_time parameter only accepts integer or float values.")
 
     # checking sort parameter
-    if not isinstance(sort, str) and (sort == "TT" or sort == "TT (Sec)"):
+    if not (isinstance(sort, str) and (sort == "TT" or sort == "TT (Sec)")):
         sort = _get_metric(sort)
         if sort is None:
             raise ValueError(
@@ -2158,7 +2158,7 @@ def compare_models(
 
     # defining sort parameter (making Precision equivalent to Prec. )
 
-    if not isinstance(sort, str) and (sort == "TT" or sort == "TT (Sec)"):
+    if not (isinstance(sort, str) and (sort == "TT" or sort == "TT (Sec)")):
         sort = sort["Display Name"]
     else:
         sort = "TT (Sec)"
