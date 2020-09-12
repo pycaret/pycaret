@@ -93,7 +93,7 @@ def setup(
     fold: int = 10,  # added in pycaret==2.2
     fold_shuffle: bool = False,
     fold_groups=None,
-    n_jobs: int = -1,
+    n_jobs: Optional[int] = -1,
     use_gpu: bool = False,  # added in pycaret==2.1
     custom_pipeline: Union[
         Any, Tuple[str, Any], List[Any], List[Tuple[str, Any]]
@@ -2108,6 +2108,8 @@ def compare_models(
     
     """
 
+    fold = _get_cv_splitter(fold)
+
     if groups is None:
         groups = fold_groups_param
 
@@ -2123,7 +2125,7 @@ def compare_models(
         len_mod -= len(exclude)
 
     if not display:
-        progress_args = {"max": ((_get_cv_n_folds(fold) + 4) * len_mod) + 4 + len_mod}
+        progress_args = {"max": (4 * int(cross_validation) * len_mod) + 4 + len_mod}
         master_display_columns = (
             ["Model"] + all_metrics["Display Name"].to_list() + ["TT (Sec)"]
         )
@@ -2683,7 +2685,7 @@ def _create_model(
         groups = fold_groups_param
 
     if not display:
-        progress_args = {"max": _get_cv_n_folds(fold) + 4}
+        progress_args = {"max": 4}
         master_display_columns = all_metrics["Display Name"].to_list()
         timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
         monitor_rows = [
@@ -2828,6 +2830,7 @@ def _create_model(
         fit_params=fit_kwargs,
         n_jobs=gpu_n_jobs_param,
         return_train_score=False,
+        error_score=0,
     )
 
     score_dict = dict(
@@ -3289,11 +3292,13 @@ def tune_model(
     
     """
 
+    fold = _get_cv_splitter(fold)
+
     if groups is None:
         groups = fold_groups_param
 
     if not display:
-        progress_args = {"max": _get_cv_n_folds(fold) + 3 + 4}
+        progress_args = {"max": 3 + 4}
         master_display_columns = all_metrics["Display Name"].to_list()
         timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
         monitor_rows = [
@@ -3484,6 +3489,8 @@ def tune_model(
         if custom_grid is None:
             param_grid = get_optuna_distributions(param_grid)
 
+        logger.info(f"param_grid: {param_grid}")
+
         study = optuna.create_study(
             direction="maximize", sampler=sampler, pruner=pruner
         )
@@ -3548,6 +3555,7 @@ def tune_model(
 
             if custom_grid is None:
                 param_grid = get_hyperopt_distributions(param_grid)
+            logger.info(f"param_grid: {param_grid}")
             logger.info("Initializing tune_sklearn.TuneSearchCV, hyperopt")
             model_grid = TuneSearchCV(
                 estimator=model,
@@ -3570,6 +3578,7 @@ def tune_model(
 
             if custom_grid is None:
                 param_grid = get_skopt_distributions(param_grid)
+            logger.info(f"param_grid: {param_grid}")
             logger.info("Initializing tune_sklearn.TuneSearchCV, bayesian")
             model_grid = TuneSearchCV(
                 estimator=model,
@@ -3592,6 +3601,7 @@ def tune_model(
 
             if custom_grid is None:
                 param_grid = get_CS_distributions(param_grid)
+            logger.info(f"param_grid: {param_grid}")
             logger.info("Initializing tune_sklearn.TuneSearchCV, bohb")
             model_grid = TuneSearchCV(
                 estimator=model,
@@ -3634,6 +3644,7 @@ def tune_model(
 
         if custom_grid is None:
             param_grid = get_skopt_distributions(param_grid)
+        logger.info(f"param_grid: {param_grid}")
 
         logger.info("Initializing skopt.BayesSearchCV")
         model_grid = skopt.BayesSearchCV(
@@ -3681,6 +3692,7 @@ def tune_model(
     model_grid.fit(X_train, y_train, groups=groups, **fit_kwargs)
     best_params = model_grid.best_params_
     logger.info(f"best_params: {best_params}")
+    # 18 chars - actual_estimator__
     best_params = {k[18:]: v for k, v in best_params.items()}
     cv_results = None
     try:
@@ -3944,11 +3956,13 @@ def ensemble_model(
     
     """
 
+    fold = _get_cv_splitter(fold)
+
     if groups is None:
         groups = fold_groups_param
 
     if not display:
-        progress_args = {"max": _get_cv_n_folds(fold) + 2 + 4}
+        progress_args = {"max": 2 + 4}
         master_display_columns = all_metrics["Display Name"].to_list()
         timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
         monitor_rows = [
@@ -4289,11 +4303,13 @@ def blend_models(
     
     """
 
+    fold = _get_cv_splitter(fold)
+
     if groups is None:
         groups = fold_groups_param
 
     if not display:
-        progress_args = {"max": _get_cv_n_folds(fold) + 2 + 4}
+        progress_args = {"max": 2 + 4}
         master_display_columns = all_metrics["Display Name"].to_list()
         timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
         monitor_rows = [
@@ -4610,6 +4626,8 @@ def stack_models(
     
     """
 
+    fold = _get_cv_splitter(fold)
+
     if groups is None:
         groups = fold_groups_param
 
@@ -4624,7 +4642,7 @@ def stack_models(
         meta_model = clone(meta_model)
 
     if not display:
-        progress_args = {"max": _get_cv_n_folds(fold) + 2 + 4}
+        progress_args = {"max": 2 + 4}
         master_display_columns = all_metrics["Display Name"].to_list()
         timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
         monitor_rows = [
@@ -4960,6 +4978,8 @@ def plot_model(
     ERROR HANDLING ENDS HERE
     
     """
+
+    fold = _get_cv_splitter(fold)
 
     if groups is None:
         groups = fold_groups_param
@@ -5618,6 +5638,8 @@ def evaluate_model(
         icons=[""],
     )
 
+    fold = _get_cv_splitter(fold)
+
     if groups is None:
         groups = fold_groups_param
 
@@ -5992,6 +6014,8 @@ def calibrate_model(
     
     """
 
+    fold = _get_cv_splitter(fold)
+
     if groups is None:
         groups = fold_groups_param
 
@@ -6002,7 +6026,7 @@ def calibrate_model(
     logger.info("Preparing display monitor")
 
     if not display:
-        progress_args = {"max": _get_cv_n_folds(fold) + 2 + 4}
+        progress_args = {"max": 2 + 4}
         master_display_columns = all_metrics["Display Name"].to_list()
         timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
         monitor_rows = [
@@ -6515,7 +6539,7 @@ def predict_model(
 
     if data is None:
         metrics = _calculate_metrics(y_test_, pred_, pred_prob)
-        df_score = pd.DataFrame(metrics)
+        df_score = pd.DataFrame(metrics, index=[0])
         df_score.insert(0, "Model", full_name)
         df_score = df_score.round(round)
         display.display(df_score.style.set_precision(round), clear=False)
@@ -7596,7 +7620,7 @@ def _sample_data(
             logger.warning("model has no predict_proba attribute.")
             pred_prob = 0
 
-        _calculate_metrics(y_test, pred_, pred_prob, score_dict)
+        score_dict = _calculate_metrics(y_test, pred_, pred_prob)
 
         t1 = time.time()
 
@@ -7738,11 +7762,7 @@ def _is_special_model(e) -> bool:
 
 
 def _calculate_metrics(
-    ytest,
-    pred_,
-    pred_prob: float,
-    score_dict: Optional[Dict[str, np.array]] = None,
-    weights: Optional[list] = None,
+    ytest, pred_, pred_prob: float, weights: Optional[list] = None,
 ) -> dict:
     """
     Calculate all metrics in get_metrics().
@@ -7750,7 +7770,11 @@ def _calculate_metrics(
     from pycaret.internal.utils import calculate_metrics
 
     return calculate_metrics(
-        get_metrics(), ytest, pred_, pred_prob, score_dict, weights
+        metrics=get_metrics(),
+        ytest=ytest,
+        pred_=pred_,
+        pred_proba=pred_prob,
+        weights=weights,
     )
 
 

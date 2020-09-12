@@ -206,7 +206,7 @@ class LogisticRegressionClassifierContainer(ClassifierContainer):
             except ImportError:
                 logger.warning("Couldn't import cuml.linear_model.LogisticRegression")
 
-        args = {'max_iter': 1000}
+        args = {"max_iter": 1000}
         tune_args = {}
         tune_grid = {}
         tune_distributions = {}
@@ -356,16 +356,16 @@ class DecisionTreeClassifierContainer(ClassifierContainer):
         args = {"random_state": globals_dict["seed"]}
         tune_args = {}
         tune_grid = {
-            "max_depth": list(range(1, int(len(globals_dict["X"].columns) + 1 * 0.85))),
-            "max_features": list(range(1, len(globals_dict["X"].columns) + 1)),
+            "max_depth": list(range(1, int(len(globals_dict["X_train"].columns) + 1 * 0.85))),
+            "max_features": list(range(1, len(globals_dict["X_train"].columns) + 1)),
             "min_samples_leaf": [2, 3, 4, 5, 6],
             "criterion": ["gini", "entropy"],
         }
         tune_distributions = {
             "max_depth": IntUniformDistribution(
-                1, int(len(globals_dict["X"].columns) * 0.85)
+                1, int(len(globals_dict["X_train"].columns) * 0.85)
             ),
-            "max_features": IntUniformDistribution(1, len(globals_dict["X"].columns)),
+            "max_features": IntUniformDistribution(1, len(globals_dict["X_train"].columns)),
             "min_samples_leaf": IntUniformDistribution(2, 6),
         }
 
@@ -450,7 +450,7 @@ class SVCClassifierContainer(ClassifierContainer):
         from sklearn.svm import SVC
 
         # known limitation - cuML SVC only supports binary problems
-        if globals_dict["y"].value_counts().count() <= 2:
+        if globals_dict["y_train"].value_counts().count() <= 2:
             if globals_dict["gpu_param"] == "Force":
                 from cuml.svm import SVC
 
@@ -504,7 +504,6 @@ class GaussianProcessClassifierContainer(ClassifierContainer):
 
         args = {
             "random_state": globals_dict["seed"],
-            "n_jobs": globals_dict["n_jobs_param"],
         }
         tune_args = {}
         tune_grid = {
@@ -753,10 +752,7 @@ class RandomForestClassifierContainer(ClassifierContainer):
                     return f"RandomForestClassifier({args})"
 
         args = (
-            {
-                "random_state": globals_dict["seed"],
-                "n_jobs": globals_dict["n_jobs_param"],
-            }
+            {"random_state": globals_dict["seed"],}
             if not gpu_imported
             else {"seed": globals_dict["seed"]}
         )
@@ -787,7 +783,7 @@ class RandomForestClassifierContainer(ClassifierContainer):
         }
 
         if gpu_imported:
-            if globals_dict["y"].value_counts().count() > 2:
+            if globals_dict["y_train"].value_counts().count() > 2:
                 tune_grid.pop("max_features")
                 args["max_features"] = 1.0
             tune_grid["split_criterion"] = [0, 1]
@@ -970,7 +966,6 @@ class ExtraTreesClassifierContainer(ClassifierContainer):
 
         args = {
             "random_state": globals_dict["seed"],
-            "n_jobs": globals_dict["n_jobs_param"],
         }
         tune_args = {}
         tune_grid = {
@@ -1011,7 +1006,6 @@ class XGBClassifierContainer(ClassifierContainer):
 
         args = {
             "random_state": globals_dict["seed"],
-            "n_jobs": globals_dict["n_jobs_param"],
             "verbosity": 0,
             "booster": "gbtree",
             "tree_method": "gpu_hist" if globals_dict["gpu_param"] else "auto",
@@ -1020,7 +1014,7 @@ class XGBClassifierContainer(ClassifierContainer):
         tune_grid = {
             "learning_rate": np.arange(0, 1, 0.01),
             "n_estimators": np.arange(10, 100, 20)
-            if globals_dict["y"].value_counts().count() > 2
+            if globals_dict["y_train"].value_counts().count() > 2
             else [10, 30, 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000,],
             "subsample": [0.1, 0.2, 0.3, 0.5, 0.7, 0.9, 1],
             "max_depth": [int(x) for x in np.linspace(1, 11, num=11)],
@@ -1030,7 +1024,7 @@ class XGBClassifierContainer(ClassifierContainer):
         tune_distributions = {
             "learning_rate": UniformDistribution(0, 1),
             "n_estimators": IntUniformDistribution(10, 100)
-            if globals_dict["y"].value_counts().count() > 2
+            if globals_dict["y_train"].value_counts().count() > 2
             else IntUniformDistribution(10, 1000, log=True),
             "subsample": UniformDistribution(0.1, 1),
             "max_depth": IntUniformDistribution(1, 11),
@@ -1061,7 +1055,6 @@ class LGBMClassifierContainer(ClassifierContainer):
 
         args = {
             "random_state": globals_dict["seed"],
-            "n_jobs": globals_dict["n_jobs_param"],
         }
         tune_args = {}
         tune_grid = {
@@ -1094,7 +1087,7 @@ class LGBMClassifierContainer(ClassifierContainer):
             tune_distribution=tune_distributions,
             tune_args=tune_args,
             shap="type1",
-            is_gpu_enabled=False
+            is_gpu_enabled=False,
         )
 
 
@@ -1108,13 +1101,12 @@ class CatBoostClassifierContainer(ClassifierContainer):
         logging.getLogger("catboost").setLevel(logging.ERROR)
 
         use_gpu = globals_dict["gpu_param"] == "Force" or (
-            globals_dict["gpu_param"] and len(globals_dict["X"]) >= 50000
+            globals_dict["gpu_param"] and len(globals_dict["X_train"]) >= 50000
         )
 
         args = {
             "random_state": globals_dict["seed"],
             "verbose": False,
-            "thread_count": globals_dict["n_jobs_param"],
             "task_type": "GPU" if use_gpu else "CPU",
         }
         tune_args = {}
@@ -1156,7 +1148,7 @@ class BaggingClassifierContainer(ClassifierContainer):
 
         args = {
             "random_state": globals_dict["seed"],
-            "n_jobs": globals_dict["gpu_n_jobs_param"],
+            "n_jobs": 1 if globals_dict["gpu_param"] else None,
         }
         tune_args = {}
         tune_grid = {
@@ -1237,6 +1229,7 @@ class VotingClassifierContainer(ClassifierContainer):
             is_gpu_enabled=False,
         )
 
+
 class CalibratedClassifierCVContainer(ClassifierContainer):
     def __init__(self, globals_dict: dict) -> None:
         logger = get_logger()
@@ -1264,7 +1257,9 @@ class CalibratedClassifierCVContainer(ClassifierContainer):
         )
 
 
-def get_all_model_containers(globals_dict: dict, raise_errors: bool = True) -> Dict[str, ClassifierContainer]:
+def get_all_model_containers(
+    globals_dict: dict, raise_errors: bool = True
+) -> Dict[str, ClassifierContainer]:
     return pycaret.containers.base_container.get_all_containers(
         globals(), globals_dict, ClassifierContainer, raise_errors
     )
