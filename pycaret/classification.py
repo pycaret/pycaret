@@ -1437,9 +1437,12 @@ def setup(
 
     cuml_version = None
     if use_gpu:
-        from cuml import __version__
-
-        cuml_version = __version__
+        try:
+            from cuml import __version__
+            cuml_version = __version__
+        except:
+            cuml_version = (0, 0)
+        
         logger.info(f"cuml=={cuml_version}")
 
         cuml_version = cuml_version.split(".")
