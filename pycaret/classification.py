@@ -1935,7 +1935,7 @@ def compare_models(
     turbo: bool = True,
     errors: str = "ignore",
     fit_kwargs: Optional[dict] = None,
-    groups=None,
+    groups: Optional[Union[str, Any]] = None,
     verbose: bool = True,
     display: Optional[Display] = None,
 ) -> List[Any]:
@@ -2026,6 +2026,7 @@ def compare_models(
 
     groups: array-like, with shape (n_samples,), default = None
         Optional Group labels for the samples used while splitting the dataset into train/test set.
+        If string is passed, will use the data column with that name as the groups.
         Only used if a group based cross-validation generator is used (eg. GroupKFold).
         If None, will use the value set in fold_groups param in setup().
 
@@ -2448,7 +2449,7 @@ def create_model(
     round: int = 4,
     cross_validation: bool = True,
     fit_kwargs: Optional[dict] = None,
-    groups=None,
+    groups: Optional[Union[str, Any]] = None,
     verbose: bool = True,
     display: Optional[Display] = None,  # added in pycaret==2.2.0
     **kwargs,
@@ -2514,6 +2515,7 @@ def create_model(
 
     groups: array-like, with shape (n_samples,), default = None
         Optional Group labels for the samples used while splitting the dataset into train/test set.
+        If string is passed, will use the data column with that name as the groups.
         Only used if a group based cross-validation generator is used (eg. GroupKFold).
         If None, will use the value set in fold_groups param in setup().
 
@@ -2569,7 +2571,7 @@ def _create_model(
     cross_validation: bool = True,
     predict: bool = True,
     fit_kwargs: Optional[dict] = None,
-    groups=None,
+    groups: Optional[Union[str, Any]] = None,
     refit: bool = True,
     verbose: bool = True,
     system: bool = True,
@@ -2645,6 +2647,7 @@ def _create_model(
 
     groups: array-like, with shape (n_samples,), default = None
         Optional Group labels for the samples used while splitting the dataset into train/test set.
+        If string is passed, will use the data column with that name as the groups.
         Only used if a group based cross-validation generator is used (eg. GroupKFold).
         If None, will use the value set in fold_groups param in setup().
 
@@ -3032,7 +3035,7 @@ def tune_model(
     early_stopping_max_iters: int = 10,
     choose_better: bool = False,
     fit_kwargs: Optional[dict] = None,
-    groups=None,
+    groups: Optional[Union[str, Any]] = None,
     verbose: bool = True,
     display: Optional[Display] = None,
     **kwargs,
@@ -3043,7 +3046,7 @@ def tune_model(
     The output prints a score grid that shows Accuracy, AUC, Recall
     Precision, F1, Kappa and MCC by fold (by default = 10 Folds).
 
-    This function returns a trained model object.  
+    This function returns a trained model object.
 
     Example
     -------
@@ -3158,6 +3161,7 @@ def tune_model(
 
     groups: array-like, with shape (n_samples,), default = None
         Optional Group labels for the samples used while splitting the dataset into train/test set.
+        If string is passed, will use the data column with that name as the groups.
         Only used if a group based cross-validation generator is used (eg. GroupKFold).
         If None, will use the value set in fold_groups param in setup().
 
@@ -3183,6 +3187,8 @@ def tune_model(
 
     - If a StackingClassifier is passed, the hyperparameters of the meta model (final_estimator)
       will be tuned.
+    
+    - If a VotingClassifier is passed, the weights will be tuned.
 
     Warnings
     --------
@@ -3218,10 +3224,6 @@ def tune_model(
         raise ValueError(
             f"Estimator {estimator} does not have the required fit() method."
         )
-
-    # restrict VotingClassifier
-    if hasattr(estimator, "voting"):
-        raise TypeError("VotingClassifier not allowed under tune_model().")
 
     # checking fold parameter
     if fold is not None and not (type(fold) is int or is_sklearn_cv_generator(fold)):
@@ -3479,6 +3481,8 @@ def tune_model(
 
     logger.info("Defining Hyperparameters")
 
+    from sklearn.ensemble import VotingClassifier
+
     if custom_grid is not None:
         param_grid = custom_grid
     elif search_library == "scikit-learn" or (
@@ -3486,8 +3490,23 @@ def tune_model(
         and (search_algorithm == "grid" or search_algorithm == "random")
     ):
         param_grid = estimator_definition["Tune Grid"]
+        if isinstance(base_estimator, VotingClassifier):
+            # special case to handle VotingClassifier, as weights need to be
+            # generated dynamically
+            param_grid = {
+                f"weight_{i}": np.arange(0.1, 1, 0.1)
+                for i, e in enumerate(base_estimator.estimators)
+            }
     else:
         param_grid = estimator_definition["Tune Distributions"]
+
+        if isinstance(base_estimator, VotingClassifier):
+            # special case to handle VotingClassifier, as weights need to be
+            # generated dynamically
+            param_grid = {
+                f"weight_{i}": UniformDistribution(0.000000001, 1)
+                for i, e in enumerate(base_estimator.estimators)
+            }
 
     if not param_grid:
         raise ValueError(
@@ -3892,7 +3911,7 @@ def ensemble_model(
     choose_better: bool = False,
     optimize: str = "Accuracy",
     fit_kwargs: Optional[dict] = None,
-    groups=None,
+    groups: Optional[Union[str, Any]] = None,
     verbose: bool = True,
     display: Optional[Display] = None,  # added in pycaret==2.2.0
 ) -> Any:
@@ -3956,6 +3975,7 @@ def ensemble_model(
 
     groups: array-like, with shape (n_samples,), default = None
         Optional Group labels for the samples used while splitting the dataset into train/test set.
+        If string is passed, will use the data column with that name as the groups.
         Only used if a group based cross-validation generator is used (eg. GroupKFold).
         If None, will use the value set in fold_groups param in setup().
 
@@ -4234,7 +4254,7 @@ def blend_models(
     method: str = "auto",
     weights: Optional[List[float]] = None,  # added in pycaret==2.2.0
     fit_kwargs: Optional[dict] = None,
-    groups=None,
+    groups: Optional[Union[str, Any]] = None,
     verbose: bool = True,
     display: Optional[Display] = None,  # added in pycaret==2.2.0
 ) -> Any:
@@ -4296,6 +4316,7 @@ def blend_models(
 
     groups: array-like, with shape (n_samples,), default = None
         Optional Group labels for the samples used while splitting the dataset into train/test set.
+        If string is passed, will use the data column with that name as the groups.
         Only used if a group based cross-validation generator is used (eg. GroupKFold).
         If None, will use the value set in fold_groups param in setup().
 
@@ -4578,7 +4599,7 @@ def stack_models(
     choose_better: bool = False,
     optimize: str = "Accuracy",
     fit_kwargs: Optional[dict] = None,
-    groups=None,
+    groups: Optional[Union[str, Any]] = None,
     verbose: bool = True,
     display: Optional[Display] = None,
 ) -> Any:
@@ -4653,6 +4674,7 @@ def stack_models(
 
     groups: array-like, with shape (n_samples,), default = None
         Optional Group labels for the samples used while splitting the dataset into train/test set.
+        If string is passed, will use the data column with that name as the groups.
         Only used if a group based cross-validation generator is used (eg. GroupKFold).
         If None, will use the value set in fold_groups param in setup().
 
@@ -4912,7 +4934,7 @@ def plot_model(
     save: bool = False,
     fold: Optional[Union[int, Any]] = None,
     fit_kwargs: Optional[dict] = None,
-    groups=None,
+    groups: Optional[Union[str, Any]] = None,
     verbose: bool = True,
     system: bool = True,
     display: Optional[Display] = None,  # added in pycaret==2.2.0
@@ -4976,6 +4998,7 @@ def plot_model(
 
     groups: array-like, with shape (n_samples,), default = None
         Optional Group labels for the samples used while splitting the dataset into train/test set.
+        If string is passed, will use the data column with that name as the groups.
         Only used if a group based cross-validation generator is used (eg. GroupKFold).
         If None, will use the value set in fold_groups param in setup().
 
@@ -5703,7 +5726,7 @@ def evaluate_model(
     estimator,
     fold: Optional[Union[int, Any]] = None,
     fit_kwargs: Optional[dict] = None,
-    groups=None,
+    groups: Optional[Union[str, Any]] = None,
 ):
 
     """
@@ -5735,6 +5758,7 @@ def evaluate_model(
 
     groups: array-like, with shape (n_samples,), default = None
         Optional Group labels for the samples used while splitting the dataset into train/test set.
+        If string is passed, will use the data column with that name as the groups.
         Only used if a group based cross-validation generator is used (eg. GroupKFold).
         If None, will use the value set in fold_groups param in setup().
 
@@ -6046,7 +6070,7 @@ def calibrate_model(
     fold: Optional[Union[int, Any]] = None,
     round: int = 4,
     fit_kwargs: Optional[dict] = None,
-    groups=None,
+    groups: Optional[Union[str, Any]] = None,
     verbose: bool = True,
     display: Optional[Display] = None,  # added in pycaret==2.2.0
 ) -> Any:
@@ -6093,6 +6117,7 @@ def calibrate_model(
 
     groups: array-like, with shape (n_samples,), default = None
         Optional Group labels for the samples used while splitting the dataset into train/test set.
+        If string is passed, will use the data column with that name as the groups.
         Only used if a group based cross-validation generator is used (eg. GroupKFold).
         If None, will use the value set in fold_groups param in setup().
 
@@ -6727,7 +6752,10 @@ def predict_model(
 
 
 def finalize_model(
-    estimator, fit_kwargs: Optional[dict] = None, groups=None, display=None
+    estimator,
+    fit_kwargs: Optional[dict] = None,
+    groups: Optional[Union[str, Any]] = None,
+    display=None,
 ) -> Any:  # added in pycaret==2.2.0
 
     """
@@ -6755,6 +6783,7 @@ def finalize_model(
 
     groups: array-like, with shape (n_samples,), default = None
         Optional Group labels for the samples used while splitting the dataset into train/test set.
+        If string is passed, will use the data column with that name as the groups.
         Only used if a group based cross-validation generator is used (eg. GroupKFold).
         If None, will use the value set in fold_groups param in setup().
 
@@ -7806,7 +7835,7 @@ def _choose_better(
     model_results=None,
     new_results_list: Optional[list] = None,
     fit_kwargs: Optional[dict] = None,
-    groups=None,
+    groups: Optional[Union[str, Any]] = None,
     display: Optional[Display] = None,
 ):
     """

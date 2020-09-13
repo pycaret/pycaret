@@ -1,3 +1,9 @@
+# Module: internal.Pipeline
+# Author: Antoni Baum (Yard1) <antoni.baum@protonmail.com>
+# License: MIT
+
+# Provides a Pipeline supporting partial fitting and several attributes needed for plotting.
+
 import imblearn.pipeline
 from sklearn.utils import _print_elapsed_time
 from sklearn.base import BaseEstimator , TransformerMixin
