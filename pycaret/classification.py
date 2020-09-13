@@ -2413,8 +2413,10 @@ def compare_models(
     else:
         sorted_models = sorted_models[:n_select]
 
-    sorted_models = [
-        _create_model(
+    def create_model_and_update_display(model, fold, round, fit_kwargs, groups):
+        display.update_monitor(2, _get_model_name(model))
+        display.display_monitor()
+        return _create_model(
             estimator=model,
             system=False,
             verbose=False,
@@ -2425,8 +2427,14 @@ def compare_models(
             fit_kwargs=fit_kwargs,
             groups=groups,
         )[0]
+
+    sorted_models = [
+        create_model_and_update_display(model, fold, round, fit_kwargs, groups)
         for model in sorted_models
     ]
+
+    if len(sorted_models) == 1:
+        sorted_models = sorted_models[0]
 
     display.display(compare_models_, clear=True)
 
@@ -3661,7 +3669,7 @@ def tune_model(
 
             # if n_jobs is None:
             # enable Ray local mode - otherwise the performance is terrible
-            #n_jobs = 1
+            # n_jobs = 1
 
             TuneSearchCV = get_tune_sklearn_tunesearchcv()
             TuneGridSearchCV = get_tune_sklearn_tunegridsearchcv()
