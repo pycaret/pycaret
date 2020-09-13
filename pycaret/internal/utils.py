@@ -247,7 +247,9 @@ def make_internal_pipeline(
 
     if not internal_pipeline_steps:
         memory = None
-        internal_pipeline_steps = [('passthrough', pycaret.internal.Pipeline.EmptyStep())]
+        internal_pipeline_steps = [
+            ("passthrough", pycaret.internal.Pipeline.EmptyStep())
+        ]
 
     return pycaret.internal.Pipeline.Pipeline(internal_pipeline_steps, memory=memory)
 
@@ -463,3 +465,31 @@ class nullcontext(object):
 
     def __exit__(self, *excinfo):
         pass
+
+
+def get_groups(
+    groups: Union[str, pd.DataFrame], X_train: pd.DataFrame, default: pd.DataFrame
+):
+    logger = get_logger()
+    if groups is None:
+        return default
+    if isinstance(groups, str):
+        if groups not in X_train.columns:
+            raise ValueError(
+                f"Column {groups} used for groups is not present in the dataset."
+            )
+        groups = X_train[groups]
+    else:
+        try:
+            groups = groups[groups.index.isin(X_train.index)]
+        except Exception as e:
+            logger.warn(
+                "Couldn't get the same rows in groups as in X_train. Exception below:"
+            )
+            logger.warn(e)
+        if len(groups) != len(X_train):
+            raise ValueError(
+                f"groups has lenght {len(groups)} which doesn't match X_train length of {len(X_train)}."
+            )
+
+    return groups

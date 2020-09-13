@@ -99,7 +99,7 @@ def setup(
     fold_strategy: Union[str, Any] = "stratifiedkfold",  # added in pycaret==2.2
     fold: int = 10,  # added in pycaret==2.2
     fold_shuffle: bool = False,
-    fold_groups=None,
+    fold_groups: Optional[Union[str, pd.DataFrame]] = None,
     n_jobs: Optional[int] = -1,
     use_gpu: bool = False,  # added in pycaret==2.1
     custom_pipeline: Union[
@@ -467,8 +467,9 @@ def setup(
         If set to False, prevents shuffling of rows when using cross validation. Only applicable for
         'kfold' and 'stratifiedkfold' fold_strategy. Ignored if fold_strategy is an object.
     
-    fold_groups: array-like, with shape (n_samples,), default = None
+    fold_groups: str or array-like, with shape (n_samples,), default = None
         Optional Group labels for the samples used while splitting the dataset into train/test set.
+        If string is passed, will use the data column with that name as the groups.
         Only used if a group based cross-validation generator is used (eg. GroupKFold).
 
     n_jobs: int, default = -1
@@ -651,6 +652,9 @@ def setup(
     runtime_start = time.time()
 
     logger.info("Checking Exceptions")
+
+    all_cols = list(data.columns)
+    all_cols.remove(target)
 
     # checking data type
     if hasattr(data, "shape") is False:
@@ -850,9 +854,6 @@ def setup(
 
     # bin numeric features
     if bin_numeric_features is not None:
-        all_cols = list(data.columns)
-        all_cols.remove(target)
-
         for i in bin_numeric_features:
             if i not in all_cols:
                 raise ValueError(
@@ -942,10 +943,6 @@ def setup(
     if type(interaction_threshold) is not float:
         raise TypeError("interaction_threshold must be a float between 0 and 1.")
 
-    # forced type check
-    all_cols = list(data.columns)
-    all_cols.remove(target)
-
     # categorical
     if categorical_features is not None:
         for i in categorical_features:
@@ -1026,6 +1023,12 @@ def setup(
         raise ValueError(
             "'groupkfold' fold_strategy requires 'fold_groups' to be a non-empty array-like object."
         )
+
+    if isinstance(fold_groups, str):
+        if fold_groups not in all_cols:
+            raise ValueError(
+                f"Column {fold_groups} used for fold_groups is not present in the dataset."
+            )
 
     # checking fold parameter
     if type(fold) is not int:
@@ -1413,7 +1416,11 @@ def setup(
 
     # CV params
     fold_param = fold
-    fold_groups_param = fold_groups
+
+    if fold_groups is not None and isinstance(fold_groups, str):
+        fold_groups_param = X_before_preprocess[fold_groups]
+    else:
+        fold_groups_param = fold_groups
     fold_shuffle_param = fold_shuffle
 
     from sklearn.model_selection import (
@@ -1579,6 +1586,10 @@ def setup(
 
         X_test = test_data.drop(target, axis=1)
         y_test = test_data[target]
+
+        fold_groups_param = fold_groups_param[
+            fold_groups_param.index.isin(X_train.index)
+        ]
 
         display.move_progress()
 
@@ -2130,8 +2141,7 @@ def compare_models(
 
     fold = _get_cv_splitter(fold)
 
-    if groups is None:
-        groups = fold_groups_param
+    groups = _get_groups(groups)
 
     pd.set_option("display.max_columns", 500)
 
@@ -2743,8 +2753,7 @@ def _create_model(
     
     """
 
-    if groups is None:
-        groups = fold_groups_param
+    groups = _get_groups(groups)
 
     if not display:
         progress_args = {"max": 4}
@@ -3379,8 +3388,7 @@ def tune_model(
 
     fold = _get_cv_splitter(fold)
 
-    if groups is None:
-        groups = fold_groups_param
+    groups = _get_groups(groups)
 
     if not display:
         progress_args = {"max": 3 + 4}
@@ -4060,8 +4068,7 @@ def ensemble_model(
 
     fold = _get_cv_splitter(fold)
 
-    if groups is None:
-        groups = fold_groups_param
+    groups = _get_groups(groups)
 
     if not display:
         progress_args = {"max": 2 + 4}
@@ -4414,8 +4421,7 @@ def blend_models(
 
     fold = _get_cv_splitter(fold)
 
-    if groups is None:
-        groups = fold_groups_param
+    groups = _get_groups(groups)
 
     if not display:
         progress_args = {"max": 2 + 4}
@@ -4744,8 +4750,7 @@ def stack_models(
 
     fold = _get_cv_splitter(fold)
 
-    if groups is None:
-        groups = fold_groups_param
+    groups = _get_groups(groups)
 
     logger.info("Defining meta model")
     # Defining meta model.
@@ -5102,8 +5107,7 @@ def plot_model(
 
     fold = _get_cv_splitter(fold)
 
-    if groups is None:
-        groups = fold_groups_param
+    groups = _get_groups(groups)
 
     if not display:
         progress_args = {"max": 5}
@@ -5774,8 +5778,7 @@ def evaluate_model(
 
     fold = _get_cv_splitter(fold)
 
-    if groups is None:
-        groups = fold_groups_param
+    groups = _get_groups(groups)
 
     d = interact(
         plot_model,
@@ -6153,8 +6156,7 @@ def calibrate_model(
 
     fold = _get_cv_splitter(fold)
 
-    if groups is None:
-        groups = fold_groups_param
+    groups = _get_groups(groups)
 
     logger.info("Preloading libraries")
 
@@ -6784,8 +6786,7 @@ def finalize_model(
     if not fit_kwargs:
         fit_kwargs = {}
 
-    if groups is None:
-        groups = fold_groups_param
+    groups = _get_groups(groups)
 
     if not display:
         display = Display(verbose=False, html_param=html_param,)
@@ -8355,3 +8356,8 @@ def _get_pipeline_fit_kwargs(pipeline, fit_kwargs: dict) -> dict:
 
     return {f"{model_step[0]}__{k}": v for k, v in fit_kwargs.items()}
 
+
+def _get_groups(groups):
+    import pycaret.internal.utils
+
+    return pycaret.internal.utils.get_groups(groups, X_train, fold_groups_param)
