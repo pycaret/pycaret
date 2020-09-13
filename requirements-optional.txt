@@ -1,4 +1,4 @@
-tune-sklearn
+tune-sklearn>=0.1.0
 ray[tune]
 hyperopt
 hpbandster
