@@ -250,7 +250,7 @@ def make_internal_pipeline(
     if not internal_pipeline_steps:
         memory = None
         internal_pipeline_steps = [
-            ("passthrough", pycaret.internal.Pipeline.EmptyStep())
+            ("empty_step", "passthrough")
         ]
 
     return pycaret.internal.Pipeline.Pipeline(internal_pipeline_steps, memory=memory)

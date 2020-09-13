@@ -8,17 +8,6 @@ import imblearn.pipeline
 from sklearn.utils import _print_elapsed_time
 from sklearn.base import BaseEstimator, TransformerMixin
 
-class EmptyStep(BaseEstimator, TransformerMixin):
-    def fit_transform(self, X, y=None, **fit_params):
-        return X
-
-    def fit(self, X, y=None, **fit_params):
-        return X
-
-    def transform(self, X, y=None, **fit_params):
-        return X
-
-
 class Pipeline(imblearn.pipeline.Pipeline):
     def fit(self, X, y=None, **fit_kwargs):
         result = super().fit(X, y=y, **fit_kwargs)
