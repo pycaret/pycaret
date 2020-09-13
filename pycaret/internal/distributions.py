@@ -93,9 +93,9 @@ class IntUniformDistribution(Distrubution):
         from hyperopt.pyll import scope
 
         if self.log:
-            return scope.int(hp.qloguniform(label, self.lower, self.upper, 1))
+            return hp.qloguniform(label, self.lower, self.upper, 1)
         else:
-            return scope.int(hp.quniform(label, self.lower, self.upper, 1))
+            return hp.quniform(label, self.lower, self.upper, 1)
 
     def get_CS(self, label):
         import ConfigSpace.hyperparameters as CSH
