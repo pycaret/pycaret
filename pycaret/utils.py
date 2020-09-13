@@ -2,6 +2,9 @@
 # Author: Moez Ali <moez.ali@queensu.ca>
 # License: MIT
 
+import numpy as np
+import pandas as pd
+
 version_ = "2.2"
 nightly_version_ = "2.2.1"
 
