@@ -1,4 +1,4 @@
-git+https://github.com/ray-project/tune-sklearn.git
+tune-sklearn
 ray[tune]
 hyperopt
 hpbandster
