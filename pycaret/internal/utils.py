@@ -12,6 +12,7 @@ from pycaret.internal.logging import get_logger
 from pycaret.internal.validation import *
 from typing import Any, List, Optional, Dict, Tuple, Union
 from sklearn.pipeline import Pipeline
+from sklearn import clone
 import numpy as np
 from sklearn.model_selection import KFold, StratifiedKFold, BaseCrossValidator
 import pycaret.internal.Pipeline
@@ -445,7 +446,7 @@ class estimator_pipeline(object):
     """
 
     def __init__(self, pipeline: Pipeline, estimator):
-        self.pipeline = pipeline
+        self.pipeline = clone(pipeline)
         self.estimator = estimator
 
     def __enter__(self):
@@ -453,7 +454,7 @@ class estimator_pipeline(object):
         return self.pipeline
 
     def __exit__(self, type, value, traceback):
-        remove_estimator_from_pipeline(self.pipeline)
+        return
 
 
 class nullcontext(object):
