@@ -4,6 +4,10 @@
 # Release: PyCaret 2.2
 # Last modified : 26/08/2020
 
+from pycaret.internal.tune_sklearn_patches import (
+    get_tune_sklearn_tunegridsearchcv,
+    get_tune_sklearn_tunesearchcv,
+)
 from pycaret.internal.utils import (
     color_df,
     normalize_custom_transformers,
@@ -3657,13 +3661,15 @@ def tune_model(
 
             # if n_jobs is None:
             # enable Ray local mode - otherwise the performance is terrible
-            n_jobs = 1
+            #n_jobs = 1
+
+            TuneSearchCV = get_tune_sklearn_tunesearchcv()
+            TuneGridSearchCV = get_tune_sklearn_tunegridsearchcv()
 
             with true_warm_start(
                 pipeline_with_model
             ) if can_early_stop else nullcontext():
                 if search_algorithm == "grid":
-                    from tune_sklearn import TuneGridSearchCV
 
                     logger.info("Initializing tune_sklearn.TuneGridSearchCV")
                     model_grid = TuneGridSearchCV(
@@ -3680,8 +3686,6 @@ def tune_model(
                         **search_kwargs,
                     )
                 elif search_algorithm == "hyperopt":
-                    from tune_sklearn import TuneSearchCV
-
                     if custom_grid is None:
                         param_grid = get_hyperopt_distributions(param_grid)
                     logger.info(f"param_grid: {param_grid}")
@@ -3703,8 +3707,6 @@ def tune_model(
                         **search_kwargs,
                     )
                 elif search_algorithm == "bayesian":
-                    from tune_sklearn import TuneSearchCV
-
                     if custom_grid is None:
                         param_grid = get_skopt_distributions(param_grid)
                     logger.info(f"param_grid: {param_grid}")
@@ -3726,8 +3728,6 @@ def tune_model(
                         **search_kwargs,
                     )
                 elif search_algorithm == "bohb":
-                    from tune_sklearn import TuneSearchCV
-
                     if custom_grid is None:
                         param_grid = get_CS_distributions(param_grid)
                     logger.info(f"param_grid: {param_grid}")
@@ -3749,8 +3749,6 @@ def tune_model(
                         **search_kwargs,
                     )
                 else:
-                    from tune_sklearn import TuneSearchCV
-
                     logger.info("Initializing tune_sklearn.TuneSearchCV, random")
                     model_grid = TuneSearchCV(
                         estimator=pipeline_with_model,

@@ -8,6 +8,7 @@ import pandas as pd
 import pandas.io.formats.style
 import ipywidgets as ipw
 from IPython.display import display, HTML, clear_output, update_display
+from pycaret.internal.Pipeline import PartialFitPipeline
 from pycaret.internal.logging import get_logger
 from pycaret.internal.validation import *
 from typing import Any, List, Optional, Dict, Tuple, Union
@@ -448,6 +449,8 @@ class estimator_pipeline(object):
     def __init__(self, pipeline: Pipeline, estimator):
         self.pipeline = clone(pipeline)
         self.estimator = estimator
+        if hasattr(self.estimator, "partial_fit"):
+            self.pipeline.__class__ = PartialFitPipeline
 
     def __enter__(self):
         add_estimator_to_pipeline(self.pipeline, self.estimator)
