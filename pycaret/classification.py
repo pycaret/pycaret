@@ -2024,7 +2024,7 @@ def compare_models(
         Dictionary of arguments passed to the fit method of the model. The parameters will be applied to all models,
         therefore it is recommended to set errors parameter to 'ignore'.
 
-    groups: array-like, with shape (n_samples,), default = None
+    groups: str or array-like, with shape (n_samples,), default = None
         Optional Group labels for the samples used while splitting the dataset into train/test set.
         If string is passed, will use the data column with that name as the groups.
         Only used if a group based cross-validation generator is used (eg. GroupKFold).
@@ -2513,7 +2513,7 @@ def create_model(
     fit_kwargs: dict, default = {} (empty dict)
         Dictionary of arguments passed to the fit method of the model.
 
-    groups: array-like, with shape (n_samples,), default = None
+    groups: str or array-like, with shape (n_samples,), default = None
         Optional Group labels for the samples used while splitting the dataset into train/test set.
         If string is passed, will use the data column with that name as the groups.
         Only used if a group based cross-validation generator is used (eg. GroupKFold).
@@ -2645,7 +2645,7 @@ def _create_model(
     fit_kwargs: dict, default = {} (empty dict)
         Dictionary of arguments passed to the fit method of the model.
 
-    groups: array-like, with shape (n_samples,), default = None
+    groups: str or array-like, with shape (n_samples,), default = None
         Optional Group labels for the samples used while splitting the dataset into train/test set.
         If string is passed, will use the data column with that name as the groups.
         Only used if a group based cross-validation generator is used (eg. GroupKFold).
@@ -3159,7 +3159,7 @@ def tune_model(
     fit_kwargs: dict, default = {} (empty dict)
         Dictionary of arguments passed to the fit method of the tuner.
 
-    groups: array-like, with shape (n_samples,), default = None
+    groups: str or array-like, with shape (n_samples,), default = None
         Optional Group labels for the samples used while splitting the dataset into train/test set.
         If string is passed, will use the data column with that name as the groups.
         Only used if a group based cross-validation generator is used (eg. GroupKFold).
@@ -3973,7 +3973,7 @@ def ensemble_model(
     fit_kwargs: dict, default = {} (empty dict)
         Dictionary of arguments passed to the fit method of the model.
 
-    groups: array-like, with shape (n_samples,), default = None
+    groups: str or array-like, with shape (n_samples,), default = None
         Optional Group labels for the samples used while splitting the dataset into train/test set.
         If string is passed, will use the data column with that name as the groups.
         Only used if a group based cross-validation generator is used (eg. GroupKFold).
@@ -4314,7 +4314,7 @@ def blend_models(
     fit_kwargs: dict, default = {} (empty dict)
         Dictionary of arguments passed to the fit method of the model.
 
-    groups: array-like, with shape (n_samples,), default = None
+    groups: str or array-like, with shape (n_samples,), default = None
         Optional Group labels for the samples used while splitting the dataset into train/test set.
         If string is passed, will use the data column with that name as the groups.
         Only used if a group based cross-validation generator is used (eg. GroupKFold).
@@ -4672,7 +4672,7 @@ def stack_models(
     fit_kwargs: dict, default = {} (empty dict)
         Dictionary of arguments passed to the fit method of the model.
 
-    groups: array-like, with shape (n_samples,), default = None
+    groups: str or array-like, with shape (n_samples,), default = None
         Optional Group labels for the samples used while splitting the dataset into train/test set.
         If string is passed, will use the data column with that name as the groups.
         Only used if a group based cross-validation generator is used (eg. GroupKFold).
@@ -4996,7 +4996,7 @@ def plot_model(
     fit_kwargs: dict, default = {} (empty dict)
         Dictionary of arguments passed to the fit method of the model.
 
-    groups: array-like, with shape (n_samples,), default = None
+    groups: str or array-like, with shape (n_samples,), default = None
         Optional Group labels for the samples used while splitting the dataset into train/test set.
         If string is passed, will use the data column with that name as the groups.
         Only used if a group based cross-validation generator is used (eg. GroupKFold).
@@ -5756,7 +5756,7 @@ def evaluate_model(
     fit_kwargs: dict, default = {} (empty dict)
         Dictionary of arguments passed to the fit method of the model.
 
-    groups: array-like, with shape (n_samples,), default = None
+    groups: str or array-like, with shape (n_samples,), default = None
         Optional Group labels for the samples used while splitting the dataset into train/test set.
         If string is passed, will use the data column with that name as the groups.
         Only used if a group based cross-validation generator is used (eg. GroupKFold).
@@ -6115,7 +6115,7 @@ def calibrate_model(
     fit_kwargs: dict, default = {} (empty dict)
         Dictionary of arguments passed to the fit method of the model.
 
-    groups: array-like, with shape (n_samples,), default = None
+    groups: str or array-like, with shape (n_samples,), default = None
         Optional Group labels for the samples used while splitting the dataset into train/test set.
         If string is passed, will use the data column with that name as the groups.
         Only used if a group based cross-validation generator is used (eg. GroupKFold).
@@ -6781,7 +6781,7 @@ def finalize_model(
     fit_kwargs: dict, default = {} (empty dict)
         Dictionary of arguments passed to the fit method of the model.
 
-    groups: array-like, with shape (n_samples,), default = None
+    groups: str or array-like, with shape (n_samples,), default = None
         Optional Group labels for the samples used while splitting the dataset into train/test set.
         If string is passed, will use the data column with that name as the groups.
         Only used if a group based cross-validation generator is used (eg. GroupKFold).
