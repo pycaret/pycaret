@@ -39,7 +39,6 @@ from typing import List, Tuple, Any, Union
 import warnings
 from IPython.utils import io
 import traceback
-from contextlib import ExitStack
 
 warnings.filterwarnings("ignore")
 
@@ -1137,7 +1136,12 @@ def setup(
             ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
             ["Status", ". . . . . . . . . . . . . . . . . .", "Loading Dependencies"],
         ]
-        display = Display(verbose, html_param, progress_args, monitor_rows,)
+        display = Display(
+            verbose=verbose,
+            html_param=html_param,
+            progress_args=progress_args,
+            monitor_rows=monitor_rows,
+        )
 
         display.display_progress()
         display.display_monitor()
@@ -2141,7 +2145,7 @@ def compare_models(
         len_mod -= len(exclude)
 
     if not display:
-        progress_args = {"max": (4 * int(cross_validation) * len_mod) + 4 + len_mod}
+        progress_args = {"max": (4 * len_mod) + 4 + len_mod}
         master_display_columns = (
             ["Model"] + all_metrics["Display Name"].to_list() + ["TT (Sec)"]
         )
@@ -2152,7 +2156,11 @@ def compare_models(
             ["Estimator", ". . . . . . . . . . . . . . . . . .", "Compiling Library"],
         ]
         display = Display(
-            verbose, html_param, progress_args, master_display_columns, monitor_rows,
+            verbose=verbose,
+            html_param=html_param,
+            progress_args=progress_args,
+            master_display_columns=master_display_columns,
+            monitor_rows=monitor_rows,
         )
 
         display.display_progress()
@@ -2747,7 +2755,11 @@ def _create_model(
             ["Status", ". . . . . . . . . . . . . . . . . .", "Loading Dependencies"],
         ]
         display = Display(
-            verbose, html_param, progress_args, master_display_columns, monitor_rows,
+            verbose=verbose,
+            html_param=html_param,
+            progress_args=progress_args,
+            master_display_columns=master_display_columns,
+            monitor_rows=monitor_rows,
         )
         display.display_progress()
         display.display_monitor()
@@ -2834,6 +2846,8 @@ def _create_model(
 
             model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
 
+            display.move_progress()
+
             if predict:
                 predict_model(pipeline_with_model, verbose=False)
                 model_results = pull(pop=True).drop("Model", axis=1)
@@ -2845,6 +2859,8 @@ def _create_model(
                 )
 
                 logger.info(f"display_container: {len(display_container)}")
+
+        display.move_progress()
 
         logger.info(str(model))
         logger.info(
@@ -3375,7 +3391,11 @@ def tune_model(
             ["Status", ". . . . . . . . . . . . . . . . . .", "Loading Dependencies"],
         ]
         display = Display(
-            verbose, html_param, progress_args, master_display_columns, monitor_rows,
+            verbose=verbose,
+            html_param=html_param,
+            progress_args=progress_args,
+            master_display_columns=master_display_columns,
+            monitor_rows=monitor_rows,
         )
 
         display.display_progress()
@@ -4052,7 +4072,11 @@ def ensemble_model(
             ["Status", ". . . . . . . . . . . . . . . . . .", "Loading Dependencies"],
         ]
         display = Display(
-            verbose, html_param, progress_args, master_display_columns, monitor_rows,
+            verbose=verbose,
+            html_param=html_param,
+            progress_args=progress_args,
+            master_display_columns=master_display_columns,
+            monitor_rows=monitor_rows,
         )
 
         display.display_progress()
@@ -4402,7 +4426,11 @@ def blend_models(
             ["Status", ". . . . . . . . . . . . . . . . . .", "Loading Dependencies"],
         ]
         display = Display(
-            verbose, html_param, progress_args, master_display_columns, monitor_rows,
+            verbose=verbose,
+            html_param=html_param,
+            progress_args=progress_args,
+            master_display_columns=master_display_columns,
+            monitor_rows=monitor_rows,
         )
         display.display_progress()
         display.display_monitor()
@@ -4738,7 +4766,11 @@ def stack_models(
             ["Status", ". . . . . . . . . . . . . . . . . .", "Loading Dependencies"],
         ]
         display = Display(
-            verbose, html_param, progress_args, master_display_columns, monitor_rows,
+            verbose=verbose,
+            html_param=html_param,
+            progress_args=progress_args,
+            master_display_columns=master_display_columns,
+            monitor_rows=monitor_rows,
         )
         display.display_progress()
         display.display_monitor()
@@ -5075,7 +5107,9 @@ def plot_model(
 
     if not display:
         progress_args = {"max": 5}
-        display = Display(verbose, html_param, progress_args, None, None,)
+        display = Display(
+            verbose=verbose, html_param=html_param, progress_args=progress_args
+        )
         display.display_progress()
 
     logger.info("Preloading libraries")
@@ -5273,8 +5307,6 @@ def plot_model(
             from sklearn.decomposition import PCA
             from yellowbrick.contrib.classifier import DecisionViz
 
-            model2 = deepcopy(estimator)
-
             data_X_transformed = data_X.select_dtypes(include="float64")
             test_X_transformed = test_X.select_dtypes(include="float64")
             logger.info("Fitting StandardScaler()")
@@ -5288,7 +5320,7 @@ def plot_model(
             data_y_transformed = np.array(data_y)
             test_y_transformed = np.array(test_y)
 
-            viz_ = DecisionViz(model2)
+            viz_ = DecisionViz(pipeline_with_model)
             show_yellowbrick_plot(
                 visualizer=viz_,
                 X_train=data_X_transformed,
@@ -6139,7 +6171,11 @@ def calibrate_model(
             ["Status", ". . . . . . . . . . . . . . . . . .", "Loading Dependencies"],
         ]
         display = Display(
-            verbose, html_param, progress_args, master_display_columns, monitor_rows,
+            verbose=verbose,
+            html_param=html_param,
+            progress_args=progress_args,
+            master_display_columns=master_display_columns,
+            monitor_rows=monitor_rows,
         )
 
         display.display_progress()
@@ -6564,7 +6600,7 @@ def predict_model(
     np.random.seed(seed)
 
     if not display:
-        display = Display(verbose, html_param,)
+        display = Display(verbose=verbose, html_param=html_param,)
 
     dtypes = None
 
@@ -6744,7 +6780,7 @@ def finalize_model(
         groups = fold_groups_param
 
     if not display:
-        display = Display(False, html_param,)
+        display = Display(verbose=False, html_param=html_param,)
 
     np.random.seed(seed)
 
