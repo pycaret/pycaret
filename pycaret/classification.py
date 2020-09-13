@@ -1587,9 +1587,10 @@ def setup(
         X_test = test_data.drop(target, axis=1)
         y_test = test_data[target]
 
-        fold_groups_param = fold_groups_param[
-            fold_groups_param.index.isin(X_train.index)
-        ]
+        if fold_groups_param is not None:
+            fold_groups_param = fold_groups_param[
+                fold_groups_param.index.isin(X_train.index)
+            ]
 
         display.move_progress()
 
