@@ -1228,12 +1228,15 @@ class VotingClassifierContainer(ClassifierContainer):
     def __init__(self, globals_dict: dict) -> None:
         logger = get_logger()
         np.random.seed(globals_dict["seed"])
-        from sklearn.ensemble import VotingClassifier
+        from pycaret.internal.Tunable import TunableVotingClassifier as VotingClassifier
 
         args = {}
         tune_args = {}
         tune_grid = {}
         tune_distributions = {}
+
+        # VotingClassifier is a special case. Its weights can be tuned, but we do not know how many of them will be there
+        # before it is initiated. Therefore, code to handle it will be added directly to tune_model().
 
         _leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 

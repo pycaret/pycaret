@@ -12,8 +12,10 @@ from pycaret.internal.logging import get_logger
 from pycaret.internal.validation import *
 from typing import Any, List, Optional, Dict, Tuple, Union
 from sklearn.pipeline import Pipeline
+from sklearn import clone
 import numpy as np
 from sklearn.model_selection import KFold, StratifiedKFold, BaseCrossValidator
+import pycaret.internal.Pipeline
 
 
 def get_config(variable: str, globals_d: dict):
@@ -240,14 +242,26 @@ def param_grid_to_lists(param_grid: dict) -> dict:
     return param_grid
 
 
-def make_internal_pipeline(internal_pipeline_steps, model):
-    from pycaret.internal.Pipeline import Pipeline, PartialFitPipeline
+def make_internal_pipeline(
+    internal_pipeline_steps: list, memory=None
+) -> pycaret.internal.Pipeline.Pipeline:
 
-    if hasattr(model, "partial_fit"):
-        return PartialFitPipeline(
-            internal_pipeline_steps + [("actual_estimator", model)]
-        )
-    return Pipeline(internal_pipeline_steps + [("actual_estimator", model)])
+    if not internal_pipeline_steps:
+        memory = None
+        internal_pipeline_steps = [
+            ("passthrough", pycaret.internal.Pipeline.EmptyStep())
+        ]
+
+    return pycaret.internal.Pipeline.Pipeline(internal_pipeline_steps, memory=memory)
+
+
+def add_estimator_to_pipeline(pipeline: Pipeline, estimator):
+    pipeline.steps.append(("actual_estimator", estimator))
+
+
+def remove_estimator_from_pipeline(pipeline: Pipeline):
+    if pipeline.steps[-1][0] == "actual_estimator":
+        pipeline.steps.pop()
 
 
 def calculate_metrics(
@@ -378,6 +392,7 @@ class none_n_jobs(object):
     """
     Context which sets `n_jobs` or `thread_count` to None for passed model.
     """
+
     def __init__(self, model):
         self.params = {}
         self.model = model
@@ -398,10 +413,12 @@ class none_n_jobs(object):
         if self.params:
             self.model.set_params(**self.params)
 
+
 class true_warm_start(object):
     """
     Context which sets `warm_start` to True for passed model.
     """
+
     def __init__(self, model):
         self.params = {}
         self.model = model
@@ -422,6 +439,24 @@ class true_warm_start(object):
         if self.params:
             self.model.set_params(**self.params)
 
+
+class estimator_pipeline(object):
+    """
+    Context which adds an estimator to pipeline.
+    """
+
+    def __init__(self, pipeline: Pipeline, estimator):
+        self.pipeline = clone(pipeline)
+        self.estimator = estimator
+
+    def __enter__(self):
+        add_estimator_to_pipeline(self.pipeline, self.estimator)
+        return self.pipeline
+
+    def __exit__(self, type, value, traceback):
+        return
+
+
 class nullcontext(object):
     def __init__(self, enter_result=None):
         self.enter_result = enter_result
@@ -431,3 +466,31 @@ class nullcontext(object):
 
     def __exit__(self, *excinfo):
         pass
+
+
+def get_groups(
+    groups: Union[str, pd.DataFrame], X_train: pd.DataFrame, default: pd.DataFrame
+):
+    logger = get_logger()
+    if groups is None:
+        return default
+    if isinstance(groups, str):
+        if groups not in X_train.columns:
+            raise ValueError(
+                f"Column {groups} used for groups is not present in the dataset."
+            )
+        groups = X_train[groups]
+    else:
+        try:
+            groups = groups[groups.index.isin(X_train.index)]
+        except Exception as e:
+            logger.warn(
+                "Couldn't get the same rows in groups as in X_train. Exception below:"
+            )
+            logger.warn(e)
+        if len(groups) != len(X_train):
+            raise ValueError(
+                f"groups has lenght {len(groups)} which doesn't match X_train length of {len(X_train)}."
+            )
+
+    return groups

@@ -2,9 +2,6 @@
 # Author: Fahad Akbar <m.akbar@queensu.ca>
 # License: MIT
 
-
-
-
 import pandas as pd
 import numpy as np
 import ipywidgets as wg 
@@ -41,12 +38,9 @@ import datefinder
 from datetime import datetime
 import calendar
 from sklearn.preprocessing import LabelEncoder
+from collections import defaultdict
 pd.set_option('display.max_columns', 500)
 pd.set_option('display.max_rows', 500)
-
-#ignore warnings
-import warnings
-warnings.filterwarnings('ignore') 
 
 #_____________________________________________________________________________________________________________________________
 
@@ -84,6 +78,10 @@ class DataTypes_Auto_infer(BaseEstimator,TransformerMixin):
       Panda Data Frame
     '''
     data = dataset.copy()
+
+    # drop any columns that were asked to drop
+    data.drop(columns=self.features_todrop,errors='ignore',inplace=True)
+
     # remove sepcial char from column names
     #data.columns= data.columns.str.replace('[,]','')
 
@@ -123,7 +121,7 @@ class DataTypes_Auto_infer(BaseEstimator,TransformerMixin):
     for i in data.select_dtypes(include=['int64','float64']).columns:
       if i not in self.numerical_features:
         if sum(data[i].isna()) == 0: 
-          if len(data[i].unique()) == len_samples:
+          if data[i].nunique() == len_samples:
             # we extract column and sort it
             features = data[i].sort_values()
             # no we subtract i+1-th value from i-th (calculating increments)
@@ -142,7 +140,7 @@ class DataTypes_Auto_infer(BaseEstimator,TransformerMixin):
       # total decimiels digits
       count_float = count_float - na_count # reducing it because we know NaN is counted as a float digit
       # now if there isnt any float digit , & unique levales are less than 20 and there are Na's then convert it to object
-      if ( (count_float == 0) & (len(data[i].unique()) <=20) & (na_count>0) ):
+      if ( (count_float == 0) & (data[i].nunique() <=20) & (na_count>0) ):
         data[i] = data[i].astype('object')
         
 
@@ -161,7 +159,7 @@ class DataTypes_Auto_infer(BaseEstimator,TransformerMixin):
 
     # if column is int and unique counts are more than two, then: (exclude target)
     for i in data.select_dtypes(include=['int64']).columns:
-      if len(data[i].unique()) <=20: #hard coded
+      if data[i].nunique() <=20: #hard coded
         data[i]= data[i].apply(str)
       else:
         data[i]= data[i].astype('float64')
@@ -170,20 +168,15 @@ class DataTypes_Auto_infer(BaseEstimator,TransformerMixin):
     # # if colum is objfloat  and only have two unique counts , this is probabaly one hot encoded
     # # make it object
     for i in data.select_dtypes(include=['float64']).columns:
-      if (len(data[i].unique())==2):
+      if data[i].nunique()==2:
         data[i]= data[i].apply(str)
-    
     
     #for time & dates
     #self.drop_time = [] # for now we are deleting time columns
-    for i in data.drop(self.target,axis=1).columns:
-      # we are going to check every first row of every column and see if it is a date
-      match = datefinder.find_dates(data[i].values[0]) # to get the first value
+
+    for i in data.select_dtypes(include=['object']).drop(self.target,axis=1,errors='ignore').columns:
       try:
-        for m in match:
-          if isinstance(m, datetime) == True:
-            data[i] = pd.to_datetime(data[i])
-            #self.drop_time.append(i)  # for now we are deleting time columns
+        data[i] = pd.to_datetime(data[i], infer_datetime_format=True, utc=False, errors='raise')
       except:
         continue
 
@@ -202,9 +195,12 @@ class DataTypes_Auto_infer(BaseEstimator,TransformerMixin):
   
     for i in self.time_features:
       try:
-        data[i]=pd.to_datetime(data[i])
+        data[i] = pd.to_datetime(data[i], infer_datetime_format=True, utc=False, errors='raise')
       except:
-        data[i]=pd.to_datetime(dataset[i])
+        data[i] = pd.to_datetime(dataset[i], infer_datetime_format=True, utc=False, errors='raise')
+
+    for i in data.select_dtypes(include=['datetime64']).columns:
+      data[i] = data[i].astype('datetime64[ns]')
 
     # table of learent types
     self.learent_dtypes = data.dtypes
@@ -226,7 +222,6 @@ class DataTypes_Auto_infer(BaseEstimator,TransformerMixin):
     # remove the row if target column has NA
     data = data[~data[self.target].isnull()]
             
-
     #self.training_columns = data.drop(self.target,axis=1).columns
 
     # since due to transpose , all data types have changed, lets change the dtypes to original---- not required any more since not transposing any more
@@ -241,7 +236,9 @@ class DataTypes_Auto_infer(BaseEstimator,TransformerMixin):
       
       for i in dt_print_out.index:
         if i != self.target:
-          if dt_print_out.loc[i,'Feature_Type'] == 'object':
+          if i in self.id_columns:
+            dt_print_out.loc[i,'Data Type'] = 'ID Column'
+          elif dt_print_out.loc[i,'Feature_Type'] == 'object':
             dt_print_out.loc[i,'Data Type'] = 'Categorical'
           elif dt_print_out.loc[i,'Feature_Type'] == 'float64':
             dt_print_out.loc[i,'Data Type'] = 'Numeric'
@@ -251,16 +248,9 @@ class DataTypes_Auto_infer(BaseEstimator,TransformerMixin):
           #  dt_print_out.loc[i,'Data Type'] = 'Categorical'
         else:
           dt_print_out.loc[i,'Data Type'] = 'Label'
-
-      # for ID column:
-      for i in dt_print_out.index:
-        if i in self.id_columns:
-          dt_print_out.loc[i,'Data Type'] = 'ID Column'
       
       # if we added the dummy  target column , then drop it 
       dt_print_out.drop(index='dummy_target',errors='ignore',inplace=True)
-      # drop any columns that were asked to drop
-      dt_print_out.drop(index=self.features_todrop,errors='ignore',inplace=True)
 
 
       display(dt_print_out[['Data Type']])
@@ -270,12 +260,12 @@ class DataTypes_Auto_infer(BaseEstimator,TransformerMixin):
       if self.response in ['quit','Quit','exit','EXIT','q','Q','e','E','QUIT','Exit']:
         sys.exit('Read the documentation of setup to learn how to overwrite data types over the inferred types. setup function must run again before you continue modeling.')
       
-      
     # drop time columns
     #data.drop(self.drop_time,axis=1,errors='ignore',inplace=True)
 
     # drop id columns
     data.drop(self.id_columns,axis=1,errors='ignore',inplace=True)
+
     
     return(data)
   
@@ -287,6 +277,10 @@ class DataTypes_Auto_infer(BaseEstimator,TransformerMixin):
         Panda Data Frame
     '''
     data = dataset.copy()
+
+    # drop any columns that were asked to drop
+    data.drop(columns=self.features_todrop,errors='ignore',inplace=True)
+
     # also make sure that all the column names are string 
     data.columns = [str(i) for i in data.columns]
 
@@ -313,6 +307,8 @@ class DataTypes_Auto_infer(BaseEstimator,TransformerMixin):
         data[i] = self.le.transform(data[i].apply(str).astype('object'))
         data[i] = data[i].astype('int64')
       else:
+        if self.learent_dtypes[i].name == 'datetime64[ns]':
+          data[i] = pd.to_datetime(data[i], infer_datetime_format=True, utc=False, errors='coerce')
         data[i] = data[i].astype(self.learent_dtypes[i])
     
     # drop time columns
@@ -320,9 +316,6 @@ class DataTypes_Auto_infer(BaseEstimator,TransformerMixin):
 
     # drop id columns
     data.drop(self.id_columns,axis=1,errors='ignore',inplace=True)
-
-     # drop custome columns
-    data.drop(self.features_todrop,axis=1,errors='ignore',inplace=True)
     
     return(data)
 
@@ -330,6 +323,9 @@ class DataTypes_Auto_infer(BaseEstimator,TransformerMixin):
   def fit_transform(self,dataset,y=None):
 
     data= dataset.copy()
+    # drop any columns that were asked to drop
+    data.drop(columns=self.features_todrop,errors='ignore',inplace=True)
+
     # since this is for training , we dont nees any transformation since it has already been transformed in fit
     data = self.fit(data)
 
@@ -352,16 +348,11 @@ class DataTypes_Auto_infer(BaseEstimator,TransformerMixin):
       # data[self.target] = data[self.target].astype('int64')
       # self.replacement = pd.DataFrame(dict(target_variable=self.u,replaced_with=self.replacement))
 
-    
     # drop time columns
     #data.drop(self.drop_time,axis=1,errors='ignore',inplace=True)
 
     # drop id columns
     data.drop(self.id_columns,axis=1,errors='ignore',inplace=True)
-
-    # drop custome columns
-    data.drop(self.features_todrop,axis=1,errors='ignore',inplace=True)
-    
     # finally save a list of columns that we would need from test data set
     self.final_training_columns = data.columns.to_list()
     self.final_training_columns.remove(self.target)
@@ -994,7 +985,7 @@ class Make_Time_Features(BaseEstimator,TransformerMixin):
 
   def __init__(self,time_feature=[],list_of_features=['month','weekday','is_month_end','is_month_start','hour']):
     self.time_feature = time_feature
-    self.list_of_features_o = list_of_features
+    self.list_of_features_o = set(list_of_features)
     return(None)
 
   def fit(self,data,y=None):
@@ -1006,28 +997,29 @@ class Make_Time_Features(BaseEstimator,TransformerMixin):
 
     # run fit transform first
 
+    def get_time_features(r):
+      features = []
+      if 'month' in self.list_of_features_o:
+        features.append(("_month", str(datetime.date(r).month)))
+      if 'weekday' in self.list_of_features_o:
+        features.append(("_weekday", str(datetime.weekday(r))))
+      if 'is_month_end' in self.list_of_features_o:
+        features.append(("_is_month_end", '1' if calendar.monthrange(datetime.date(r).year,datetime.date(r).month)[1] == datetime.date(r).day else '0'))
+      if 'is_month_start' in self.list_of_features_o:
+        features.append(("_is_month_start", '1' if datetime.date(r).day == 1 else '0'))
+      return tuple(features)
+
     # start making features for every column in the time list
     for i in self.time_feature:
-      # make month column if month is choosen
-      if 'month' in self.list_of_features_o:
-        data[i+"_month"] = [datetime.date(r).month for r in data[i]]
-        data[i+"_month"] = data[i+"_month"].apply(str)
+      list_of_features = [ get_time_features(r) for r in data[i] ]
 
-      # make weekday column if weekday is choosen ( 0 for monday 6 for sunday)
-      if 'weekday' in self.list_of_features_o:
-        data[i+"_weekday"] = [datetime.weekday(r) for r in data[i]]
-        data[i+"_weekday"] = data[i+"_weekday"].apply(str)
-      
-      # make Is_month_end column  choosen
-      if 'is_month_end' in self.list_of_features_o:
-        data[i+"_is_month_end"] = [ 1 if calendar.monthrange(datetime.date(r).year,datetime.date(r).month)[1] == datetime.date(r).day  else 0 for r in data[i] ]
-        data[i+"_is_month_end"] = data[i+"_is_month_end"].apply(str)
-        
-      
-      # make Is_month_start column if choosen
-      if 'is_month_start' in self.list_of_features_o:
-        data[i+"_is_month_start"] = [ 1 if datetime.date(r).day == 1 else 0 for r in data[i] ]
-        data[i+"_is_month_start"] = data[i+"_is_month_start"].apply(str)
+      fd = defaultdict(list)
+      for x in list_of_features:
+        for k, v in x:
+          fd[k].append(v)
+
+      for k, v in fd.items():
+        data[i+k] = v
       
       # make hour column if choosen
       if 'hour' in self.list_of_features_o:
@@ -1042,45 +1034,11 @@ class Make_Time_Features(BaseEstimator,TransformerMixin):
     return(data)
 
   def fit_transform(self,dataset,y=None):
-    data = dataset.copy()
     # if no columns names are given , then pick datetime columns
-    if len(self.time_feature) == 0 :
-      self.time_feature = [i for i in data.columns if data[i].dtype == 'datetime64[ns]']
-    
-    # now start making features for every column in the time list
-    for i in self.time_feature:
-      # make month column if month is choosen
-      if 'month' in self.list_of_features_o:
-        data[i+"_month"] = [datetime.date(r).month for r in data[i]]
-        data[i+"_month"] = data[i+"_month"].apply(str)
+    if not self.time_feature:
+      self.time_feature = dataset.select_dtypes(include=['datetime64[ns]']).columns
 
-      # make weekday column if weekday is choosen ( 0 for monday 6 for sunday)
-      if 'weekday' in self.list_of_features_o:
-        data[i+"_weekday"] = [datetime.weekday(r) for r in data[i]]
-        data[i+"_weekday"] = data[i+"_weekday"].apply(str)
-      
-      # make Is_month_end column  choosen
-      if 'is_month_end' in self.list_of_features_o:
-        data[i+"_is_month_end"] = [ 1 if calendar.monthrange(datetime.date(r).year,datetime.date(r).month)[1] == datetime.date(r).day  else 0 for r in data[i] ]
-        data[i+"_is_month_end"] = data[i+"_is_month_end"].apply(str)
-        
-      
-      # make Is_month_start column if choosen
-      if 'is_month_start' in self.list_of_features_o:
-        data[i+"_is_month_start"] = [ 1 if datetime.date(r).day == 1 else 0 for r in data[i] ]
-        data[i+"_is_month_start"] = data[i+"_is_month_start"].apply(str)
-      
-      # make hour column if choosen
-      if 'hour' in self.list_of_features_o:
-        h = [ datetime.time(r).hour for r in data[i] ]
-        if sum(h) > 0:  
-          data[i+"_hour"] = h
-          data[i+"_hour"] = data[i+"_hour"].apply(str)
-    
-    # we dont need time columns any more 
-    data.drop(self.time_feature,axis=1,inplace=True)
-
-    return(data)
+    return(self.transform(dataset, y=y))
 
  #____________________________________________________________________________________________________________________________________________________________________
 # Ordinal transformer
@@ -1603,7 +1561,6 @@ class Make_NonLiner_Features(BaseEstimator,TransformerMixin):
   
     return(dummy_all[self.columns_to_keep])
 
-
   def fit_transform(self,dataset,y=None):
     
     data = dataset.copy()
@@ -2048,7 +2005,7 @@ class Fix_multicollinearity(BaseEstimator,TransformerMixin):
     
     for i in self.u_column:
       #print(i)
-      r = self.one[self.one['column']==i]['variable'].values
+      r = self.one[self.one['column']==i]['variable']
       for q in r:
         if q in self.u_all:
           #print("_"+q)
@@ -2260,14 +2217,13 @@ class DFS_Classic(BaseEstimator,TransformerMixin):
     return(dummy_all[self.columns_to_keep])
 
     
-
   def fit_transform(self,dataset,y=None):
 
     data= dataset.copy()
 
     # we need to seperate numerical and ont hot encoded columns
     # self.ohe_columns = [i if ((len(data[i].unique())==2) & (data[i].unique()[0] in [0,1]) & (data[i].unique()[1] in [0,1]) ) else None for i in data.drop(self.target,axis=1).columns]
-    self.ohe_columns =[i for i in data.columns if len(data[i].unique()) == 2 and data[i].unique()[0] in [0,1] and data[i].unique()[1] in [0,1]]
+    self.ohe_columns =[i for i in data.columns if data[i].nunique() == 2 and data[i].unique()[0] in [0,1] and data[i].unique()[1] in [0,1]]
     # self.ohe_columns = [i for i in self.ohe_columns if i is not None]
     self.numeric_columns = [i for i in data.drop(self.target,axis=1).columns if i not in self.ohe_columns]
     target_variable = data[[self.target]]
@@ -2528,7 +2484,7 @@ def Preprocess_Path_One(train_data,target_variable,ml_usecase=None,test_data =No
 
   # WE NEED TO AUTO INFER the ml use case
   c1 = train_data[target_variable].dtype == 'int64'
-  c2 = len(train_data[target_variable].unique()) <= 20
+  c2 = train_data[target_variable].nunique() <= 20
   c3 = train_data[target_variable].dtype.name in ['object', 'bool', 'category']
   
   if ml_usecase is None:
@@ -2537,7 +2493,7 @@ def Preprocess_Path_One(train_data,target_variable,ml_usecase=None,test_data =No
     else:
       ml_usecase ='regression'
   
-  if ((len(train_data[target_variable].unique()) > 2) and (ml_usecase != 'regression')):
+  if ((train_data[target_variable].nunique() > 2) and (ml_usecase != 'regression')):
     subcase = 'multi'
   else:
     subcase = 'binary'

@@ -1,7 +1,10 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
-#### Release: PyCaret 2.1.1 | Release Date: August 30, 2020 (BUG FIX FOR 2.1)
+#### Release: PyCaret 2.1.2 | Release Date: August 31, 2020 (BUG FIX)
+- Post-release `2.1` a bug has been reported preventing `predict_model` function to work in `regression` module in a new notebook session, when `transform_target` was set to `False` during model training. This issue has been fixed in PyCaret release `2.1.2`. To learn more about the issue: https://github.com/pycaret/pycaret/issues/525
+
+#### Release: PyCaret 2.1.1 | Release Date: August 30, 2020 (BUG FIX)
 - Post-release `2.1` a bug has been identified in MLFlow back-end. The error is only caused when `log_experiment` in the `setup` function is set to True and is applicable to all the modules. The cause of the error has been identified and an issue is opened with `MLFlow`. The error is caused by `infer_signature` function in `mlflow.sklearn.log_model` and is only raised when there are missing values in the dataset. This issue has been fixed in PyCaret release `2.1.1` by skipping the signature in cases where `MLFlow` raises exception.
 
 #### Release: PyCaret 2.1 | Release Date: August 28, 2020

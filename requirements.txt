@@ -34,4 +34,5 @@ imbalanced-learn>=0.7.0
 #sckit-plot for lift and gain charts
 #statsmodels - for future timeseries module
 #pmdarima - for future timeseries module
-
+#fastapi>=0.61.1 # only required in create_webservice for api
+#pydantic # only required in create_webservice for api
