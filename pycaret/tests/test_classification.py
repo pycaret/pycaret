@@ -35,7 +35,7 @@ def test():
     assert isinstance(clf1[19], bool)
 
     # compare models
-    top3 = pycaret.classification.compare_models(errors='raise', n_select=3)
+    top3 = pycaret.classification.compare_models(errors='raise', n_select=100)[:3]
     assert isinstance(top3, list)
 
     # tune model
