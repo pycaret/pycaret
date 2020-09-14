@@ -3921,7 +3921,7 @@ def tune_model(
 
     model_results = color_df(model_results, "yellow", ["Mean"], axis=1)
     model_results = model_results.set_precision(round)
-    # display.display(model_results, clear=True)
+    display.display(model_results, clear=True)
 
     logger.info(f"create_model_container: {len(create_model_container)}")
     logger.info(f"master_model_container: {len(master_model_container)}")
