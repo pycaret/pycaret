@@ -154,7 +154,7 @@ class ClassifierContainer(ModelContainer):
         if is_gpu_enabled is not None:
             self.is_gpu_enabled = is_gpu_enabled
         else:
-            self.is_gpu_enabled = bool(self.get_package_name() != "sklearn")
+            self.is_gpu_enabled = bool(self.get_package_name() == "cuml")
 
     def get_dict(self, internal: bool = True) -> Dict[str, Any]:
         """
@@ -368,7 +368,9 @@ class DecisionTreeClassifierContainer(ClassifierContainer):
         args = {"random_state": globals_dict["seed"]}
         tune_args = {}
         tune_grid = {
-            "max_depth": list(range(1, int(len(globals_dict["X_train"].columns) + 1 * 0.85))),
+            "max_depth": list(
+                range(1, int(len(globals_dict["X_train"].columns) + 1 * 0.85))
+            ),
             "max_features": list(range(1, len(globals_dict["X_train"].columns) + 1)),
             "min_samples_leaf": [2, 3, 4, 5, 6],
             "criterion": ["gini", "entropy"],
@@ -377,7 +379,9 @@ class DecisionTreeClassifierContainer(ClassifierContainer):
             "max_depth": IntUniformDistribution(
                 1, int(len(globals_dict["X_train"].columns) * 0.85)
             ),
-            "max_features": IntUniformDistribution(1, len(globals_dict["X_train"].columns)),
+            "max_features": IntUniformDistribution(
+                1, len(globals_dict["X_train"].columns)
+            ),
             "min_samples_leaf": IntUniformDistribution(2, 6),
         }
 
@@ -542,25 +546,23 @@ class MLPClassifierContainer(ClassifierContainer):
     def __init__(self, globals_dict: dict) -> None:
         logger = get_logger()
         np.random.seed(globals_dict["seed"])
-        from sklearn.neural_network import MLPClassifier
+        from pycaret.internal.Tunable import TunableMLPClassifier as MLPClassifier
 
         args = {"random_state": globals_dict["seed"], "max_iter": 500}
         tune_args = {}
         tune_grid = {
             "learning_rate": ["constant", "invscaling", "adaptive"],
-            "solver": ["lbfgs", "sgd", "adam"],
             "alpha": np.arange(0, 1, 0.0001),
-            "hidden_layer_sizes": [
-                (50, 50, 50),
-                (50, 100, 50),
-                (100,),
-                (100, 50, 100),
-                (100, 100, 100),
-            ],
+            "hidden_layer_size_0": [50, 100],
+            "hidden_layer_size_1": [0, 50, 100],
+            "hidden_layer_size_2": [0, 50, 100],
             "activation": ["tanh", "identity", "logistic", "relu"],
         }
         tune_distributions = {
             "alpha": UniformDistribution(0, 1),
+            "hidden_layer_size_0": IntUniformDistribution(50, 100),
+            "hidden_layer_size_1": IntUniformDistribution(0, 100),
+            "hidden_layer_size_2": IntUniformDistribution(0, 100),
         }
 
         _leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
@@ -958,7 +960,7 @@ class LinearDiscriminantAnalysisContainer(ClassifierContainer):
             ],
         }
         tune_distributions = {
-            "shrinkage": UniformDistribution(0.000000001, 1, log=True),
+            "shrinkage": UniformDistribution(0.0001, 1, log=True),
         }
 
         _leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)

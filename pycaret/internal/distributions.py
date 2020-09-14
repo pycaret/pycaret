@@ -5,6 +5,8 @@
 from typing import Dict, Hashable, Optional
 from collections.abc import Hashable
 
+import numpy as np
+
 
 class Distrubution:
     def __init__(self):
@@ -49,7 +51,7 @@ class UniformDistribution(Distrubution):
         from hyperopt import hp
 
         if self.log:
-            return hp.loguniform(label, self.lower, self.upper)
+            return hp.loguniform(label, np.log(self.lower), np.log(self.upper))
         else:
             return hp.uniform(label, self.lower, self.upper)
 
@@ -93,9 +95,11 @@ class IntUniformDistribution(Distrubution):
         from hyperopt.pyll import scope
 
         if self.log:
-            return hp.qloguniform(label, self.lower, self.upper, 1)
+            return scope.int(
+                hp.qloguniform(label, np.log(self.lower), np.log(self.upper), 1)
+            )
         else:
-            return hp.quniform(label, self.lower, self.upper, 1)
+            return scope.int(hp.quniform(label, self.lower, self.upper, 1))
 
     def get_CS(self, label):
         import ConfigSpace.hyperparameters as CSH
@@ -151,7 +155,8 @@ class CategoricalDistribution(Distrubution):
         import skopt.space
 
         return skopt.space.Categorical(
-            [x if isinstance(x, Hashable) else None for x in self.values], transform="identity"
+            [x if isinstance(x, Hashable) else None for x in self.values],
+            transform="identity",
         )
 
     def get_optuna(self):
