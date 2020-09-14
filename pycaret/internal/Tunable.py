@@ -260,6 +260,7 @@ class TunableMLPClassifier(MLPClassifier):
     Kingma, Diederik, and Jimmy Ba. "Adam: A method for stochastic
         optimization." arXiv preprint arXiv:1412.6980 (2014).
     """
+
     def __init__(
         self,
         hidden_layer_sizes=None,
@@ -568,7 +569,7 @@ class TunableVotingClassifier(VotingClassifier):
         **kwargs,
     ):
         self.weights = weights
-        self._weights_to_weight_kwargs()
+        self._weight_kwargs_to_weights(kwargs, estimators=estimators)
         super().__init__(
             estimators=estimators,
             voting=voting,
@@ -583,6 +584,8 @@ class TunableVotingClassifier(VotingClassifier):
             estimators = self.estimators
         if not self.weights:
             self.weights = [1 for x in estimators]
+        if len(self.weights) < len(estimators):
+            self.weights += [1] * (len(self.weights) - len(estimators))
         for k, v in kwargs.items():
             if k.startswith("weight_"):
                 try:
