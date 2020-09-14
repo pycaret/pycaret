@@ -189,6 +189,7 @@ class ROCAUCMetricContainer(ClassificationMetricContainer):
             score_func=self.roc_auc_score_with_error,
             scorer=metrics.make_scorer(
                 self.roc_auc_score_with_error,
+                needs_proba=True,
                 average="weighted",
                 multi_class="ovr",
                 error_score=0.0,
