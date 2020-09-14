@@ -249,9 +249,7 @@ def make_internal_pipeline(
 
     if not internal_pipeline_steps:
         memory = None
-        internal_pipeline_steps = [
-            ("empty_step", "passthrough")
-        ]
+        internal_pipeline_steps = [("empty_step", "passthrough")]
 
     return pycaret.internal.Pipeline.Pipeline(internal_pipeline_steps, memory=memory)
 
@@ -441,6 +439,22 @@ class true_warm_start(object):
             self.model.set_params(**self.params)
 
 
+def supports_partial_fit(estimator, params: dict = None) -> bool:
+    # special case for MLP
+    from sklearn.neural_network import MLPClassifier
+
+    if isinstance(estimator, MLPClassifier):
+        try:
+            if (
+                params and "solver" in params and "lbfgs" in list(params["solver"])
+            ) or estimator.solver == "lbfgs":
+                return False
+        except:
+            return False
+
+    return hasattr(estimator, "partial_fit")
+
+
 class estimator_pipeline(object):
     """
     Context which adds an estimator to pipeline.
@@ -449,7 +463,7 @@ class estimator_pipeline(object):
     def __init__(self, pipeline: Pipeline, estimator):
         self.pipeline = clone(pipeline)
         self.estimator = estimator
-        if hasattr(self.estimator, "partial_fit"):
+        if supports_partial_fit(self.estimator):
             self.pipeline.__class__ = PartialFitPipeline
 
     def __enter__(self):

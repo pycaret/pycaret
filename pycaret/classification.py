@@ -13,6 +13,7 @@ from pycaret.internal.utils import (
     normalize_custom_transformers,
     make_internal_pipeline,
     nullcontext,
+    supports_partial_fit,
     true_warm_start,
     estimator_pipeline,
 )
@@ -2302,9 +2303,28 @@ def compare_models(
                     refit=False,
                 )
                 model_results = pull(pop=True)
+                assert np.sum(model_results.iloc[0]) > 0
             except:
-                logger.error(f"create_model() for {model} raised an exception:")
+                logger.error(
+                    f"create_model() for {model} raised an exception or returned all 0.0, trying without fit_kwargs:"
+                )
                 logger.error(traceback.format_exc())
+                try:
+                    model, model_fit_time = _create_model(
+                        estimator=model,
+                        system=False,
+                        verbose=False,
+                        display=display,
+                        fold=fold,
+                        round=round,
+                        cross_validation=cross_validation,
+                        groups=groups,
+                        refit=False,
+                    )
+                    model_results = pull(pop=True)
+                except:
+                    logger.error(f"create_model() for {model} raised an exception:")
+                    logger.error(traceback.format_exc())
                 continue
         logger.info("SubProcess create_model() end ==================================")
 
@@ -2921,6 +2941,7 @@ def _create_model(
         fit_kwargs = _get_pipeline_fit_kwargs(pipeline_with_model, fit_kwargs)
         logger.info(f"Cross validating with n_jobs={n_jobs}")
 
+        model_fit_start = time.time()
         scores = cross_validate(
             pipeline_with_model,
             data_X,
@@ -2933,6 +2954,8 @@ def _create_model(
             return_train_score=False,
             error_score=0,
         )
+        model_fit_end = time.time()
+        model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
 
         score_dict = dict(
             zip([f"test_{x}" for x in all_metrics.index], all_metrics["Display Name"])
@@ -2970,7 +2993,7 @@ def _create_model(
 
             model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
         else:
-            model_fit_time = np.mean(scores["fit_time"])
+            model_fit_time /= _get_cv_n_folds(cv)
 
         # end runtime
         runtime_end = time.time()
@@ -3528,6 +3551,8 @@ def tune_model(
         logger.info("Stacked model passed, will tune meta model hyperparameters")
         suffixes.append("final_estimator")
 
+    gc.collect()
+
     with estimator_pipeline(_internal_pipeline, model) as pipeline_with_model:
         fit_kwargs = _get_pipeline_fit_kwargs(pipeline_with_model, fit_kwargs)
 
@@ -3541,7 +3566,7 @@ def tune_model(
 
         logger.info(f"param_grid: {param_grid}")
 
-        def _can_early_stop(estimator, consider_warm_start, consider_xgboost):
+        def _can_early_stop(estimator, consider_warm_start, consider_xgboost, params):
             """
             From https://github.com/ray-project/tune-sklearn/blob/master/tune_sklearn/tune_basesearch.py.
             
@@ -3559,7 +3584,7 @@ def tune_model(
             from sklearn.tree import BaseDecisionTree
             from sklearn.ensemble import BaseEnsemble
 
-            can_partial_fit = hasattr(estimator, "partial_fit")
+            can_partial_fit = supports_partial_fit(estimator, params=params)
 
             if consider_warm_start:
                 is_not_tree_subclass = not issubclass(type(estimator), BaseDecisionTree)
@@ -3634,7 +3659,7 @@ def tune_model(
                 param_distributions=param_grid,
                 cv=fold,
                 enable_pruning=early_stopping
-                and _can_early_stop(base_estimator, False, False),
+                and _can_early_stop(base_estimator, False, False, param_grid),
                 max_iter=early_stopping_max_iters,
                 n_jobs=n_jobs,
                 n_trials=n_iter,
@@ -3656,7 +3681,7 @@ def tune_model(
                 early_stopping = early_stopping_translator[early_stopping]
 
             can_early_stop = early_stopping and _can_early_stop(
-                base_estimator, True, True
+                base_estimator, True, True, param_grid
             )
 
             if not can_early_stop and search_algorithm == "bohb":
@@ -3666,7 +3691,7 @@ def tune_model(
 
             # if n_jobs is None:
             # enable Ray local mode - otherwise the performance is terrible
-            # n_jobs = 1
+            n_jobs = 1
 
             TuneSearchCV = get_tune_sklearn_tunesearchcv()
             TuneGridSearchCV = get_tune_sklearn_tunegridsearchcv()
@@ -3688,6 +3713,7 @@ def tune_model(
                         use_gpu=gpu_param,
                         refit=True,
                         verbose=0,
+                        # pipeline_detection=False,
                         **search_kwargs,
                     )
                 elif search_algorithm == "hyperopt":
@@ -3709,6 +3735,7 @@ def tune_model(
                         use_gpu=gpu_param,
                         refit=True,
                         verbose=0,
+                        # pipeline_detection=False,
                         **search_kwargs,
                     )
                 elif search_algorithm == "bayesian":
@@ -3730,6 +3757,7 @@ def tune_model(
                         use_gpu=gpu_param,
                         refit=True,
                         verbose=0,
+                        # pipeline_detection=False,
                         **search_kwargs,
                     )
                 elif search_algorithm == "bohb":
@@ -3751,6 +3779,7 @@ def tune_model(
                         use_gpu=gpu_param,
                         refit=True,
                         verbose=0,
+                        # pipeline_detection=False,
                         **search_kwargs,
                     )
                 else:
@@ -3768,6 +3797,7 @@ def tune_model(
                         use_gpu=gpu_param,
                         refit=True,
                         verbose=0,
+                        # pipeline_detection=False,
                         **search_kwargs,
                     )
 
@@ -3788,6 +3818,7 @@ def tune_model(
                 random_state=seed,
                 refit=False,
                 n_jobs=n_jobs,
+                verbose=0,
                 **search_kwargs,
             )
         else:
@@ -3890,7 +3921,7 @@ def tune_model(
 
     model_results = color_df(model_results, "yellow", ["Mean"], axis=1)
     model_results = model_results.set_precision(round)
-    display.display(model_results, clear=True)
+    # display.display(model_results, clear=True)
 
     logger.info(f"create_model_container: {len(create_model_container)}")
     logger.info(f"master_model_container: {len(master_model_container)}")
