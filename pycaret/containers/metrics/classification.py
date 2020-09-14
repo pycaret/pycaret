@@ -157,45 +157,20 @@ class AccuracyMetricContainer(ClassificationMetricContainer):
 
 
 class ROCAUCMetricContainer(ClassificationMetricContainer):
-    def roc_auc_score_with_error(
-        self,
-        y_true,
-        y_score,
-        *,
-        average="macro",
-        sample_weight=None,
-        max_fpr=None,
-        multi_class="raise",
-        labels=None,
-        error_score=np.nan,
-    ):
-        try:
-            return metrics.roc_auc_score(
-                y_true,
-                y_score,
-                average=average,
-                sample_weight=sample_weight,
-                max_fpr=max_fpr,
-                multi_class=multi_class,
-                labels=labels,
-            )
-        except:
-            return error_score
-
     def __init__(self, globals_dict: dict) -> None:
         super().__init__(
             id="auc",
             name="AUC",
-            score_func=self.roc_auc_score_with_error,
-            scorer=metrics.make_scorer(
-                self.roc_auc_score_with_error,
+            score_func=metrics.roc_auc_score,
+            scorer=pycaret.internal.metrics.make_scorer_with_error_score(
+                metrics.roc_auc_score,
                 needs_proba=True,
+                error_score=0.0,
                 average="weighted",
                 multi_class="ovr",
-                error_score=0.0,
             ),
             target="pred_proba",
-            args={"average": "weighted", "multi_class": "ovr", "error_score": 0.0},
+            args={"average": "weighted", "multi_class": "ovr"},
         )
 
 
