@@ -2303,7 +2303,7 @@ def compare_models(
                     refit=False,
                 )
                 model_results = pull(pop=True)
-                assert np.sum(model_results.iloc[0]) > 0
+                assert np.sum(model_results.iloc[0]) != 0.0
             except:
                 logger.error(
                     f"create_model() for {model} raised an exception or returned all 0.0, trying without fit_kwargs:"
