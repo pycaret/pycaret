@@ -2348,38 +2348,6 @@ def compare_models(
         runtime_end = time.time()
         runtime = np.array(runtime_end - runtime_start).round(2)
 
-        """
-        MLflow logging starts here
-        """
-
-        if logging_param and cross_validation:
-
-            avgs_dict_log = {
-                k: v
-                for k, v in compare_models_.drop(
-                    ["Object", "Model", "TT (Sec)"], axis=1
-                )
-                .iloc[0]
-                .items()
-            }
-
-            try:
-                _mlflow_log_model(
-                    model=model,
-                    model_results=model_results,
-                    score_dict=avgs_dict_log,
-                    source="compare_models",
-                    runtime=runtime,
-                    model_fit_time=model_fit_time,
-                    _prep_pipe=prep_pipe,
-                    log_plots=False,
-                    URI=URI,
-                    display=display,
-                )
-            except:
-                logger.error(f"_mlflow_log_model() for {model} raised an exception:")
-                logger.error(traceback.format_exc())
-
     display.move_progress()
 
     def highlight_max(s):
@@ -2413,10 +2381,10 @@ def compare_models(
     else:
         sorted_models = sorted_models[:n_select]
 
-    def create_model_and_update_display(model, fold, round, fit_kwargs, groups):
+    def create_model_and_update_display(model, i, fold, round, fit_kwargs, groups):
         display.update_monitor(2, _get_model_name(model))
         display.display_monitor()
-        return _create_model(
+        model, model_fit_time = _create_model(
             estimator=model,
             system=False,
             verbose=False,
@@ -2426,11 +2394,40 @@ def compare_models(
             predict=False,
             fit_kwargs=fit_kwargs,
             groups=groups,
-        )[0]
+        )
+
+        if logging_param and cross_validation:
+
+            avgs_dict_log = {
+                k: v
+                for k, v in compare_models_.data.drop(
+                    ["Object", "Model", "TT (Sec)"], errors="ignore", axis=1
+                )
+                .iloc[i]
+                .items()
+            }
+
+            try:
+                _mlflow_log_model(
+                    model=model,
+                    model_results=model_results,
+                    score_dict=avgs_dict_log,
+                    source="compare_models",
+                    runtime=runtime,
+                    model_fit_time=model_fit_time,
+                    _prep_pipe=prep_pipe,
+                    log_plots=False,
+                    URI=URI,
+                    display=display,
+                )
+            except:
+                logger.error(f"_mlflow_log_model() for {model} raised an exception:")
+                logger.error(traceback.format_exc())
+        return model
 
     sorted_models = [
-        create_model_and_update_display(model, fold, round, fit_kwargs, groups)
-        for model in sorted_models
+        create_model_and_update_display(model, i, fold, round, fit_kwargs, groups)
+        for i, model in enumerate(sorted_models)
     ]
 
     if len(sorted_models) == 1:
