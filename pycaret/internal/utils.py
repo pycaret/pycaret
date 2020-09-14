@@ -198,7 +198,7 @@ def get_model_name(e, all_models: pd.DataFrame, deep: bool = True) -> str:
         model_id = e
     else:
         if deep:
-            while True:
+            while hasattr(e, "get_params"):
                 params = e.get_params()
                 if "steps" in params:
                     e = params["steps"][-1][1]
