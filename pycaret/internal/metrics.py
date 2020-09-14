@@ -40,7 +40,7 @@ class _ThresholdScorerWithErrorScore(_ThresholdScorer):
         """
 
         try:
-            super()._score(
+            return super()._score(
                 method_caller=method_caller,
                 clf=clf,
                 X=X,
@@ -89,7 +89,7 @@ class _ProbaScorerWithErrorScore(_ProbaScorer):
         """
 
         try:
-            super()._score(
+            return super()._score(
                 method_caller=method_caller,
                 clf=clf,
                 X=X,

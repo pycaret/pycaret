@@ -12,6 +12,7 @@ from typing import Optional, Union, Dict, Any
 from pycaret.containers.metrics.base_metric import MetricContainer
 from sklearn.metrics._scorer import _BaseScorer
 import pycaret.containers.base_container
+import pycaret.internal.metrics
 import numpy as np
 from sklearn import metrics
 
