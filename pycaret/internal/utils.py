@@ -199,12 +199,13 @@ def get_model_name(e, all_models: pd.DataFrame, deep: bool = True) -> str:
     else:
         if deep:
             while True:
-                if hasattr(e, "steps"):
-                    e = e.steps[-1][1]
-                elif hasattr(e, "base_estimator"):
-                    e = e.base_estimator
-                elif hasattr(e, "estimator"):
-                    e = e.estimator
+                params = e.get_params()
+                if "steps" in params:
+                    e = params["steps"][-1][1]
+                elif "base_estimator" in params:
+                    e = params["base_estimator"]
+                elif "estimator" in params:
+                    e = params["estimator"]
                 else:
                     break
 
