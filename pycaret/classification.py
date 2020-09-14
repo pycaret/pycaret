@@ -3139,7 +3139,7 @@ def tune_model(
         If None, will use search library-specific default algorith.
         'scikit-learn' possible values:
 
-        - 'random' - randomized search (default)
+        - 'random' - random grid search (default)
         - 'grid' - grid search
 
         'scikit-optimize' possible values:
@@ -3148,7 +3148,7 @@ def tune_model(
 
         'tune-sklearn' possible values:
 
-        - 'random' - randomized search (default)
+        - 'random' - random grid search (default)
         - 'grid' - grid search
         - 'bayesian' - Bayesian search using scikit-optimize
           ``pip install scikit-optimize``
