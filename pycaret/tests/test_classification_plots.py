@@ -16,7 +16,7 @@ def test():
     # init setup
     clf1 = pycaret.classification.setup(data, target='Purchase', log_experiment=True, silent=True, html=False, session_id=123, fold=2)
     
-    model = pycaret.classification.create_model('svm')
+    model = pycaret.classification.create_model('knn')
 
     available_plots = [
         "parameter",
