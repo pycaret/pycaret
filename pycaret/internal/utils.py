@@ -259,8 +259,10 @@ def make_internal_pipeline(
 
 
 def add_estimator_to_pipeline(pipeline: Pipeline, estimator):
-    pipeline.steps.append(("actual_estimator", estimator))
-    pipeline._carry_over_final_estimator_fit()
+    try:
+        pipeline.replace_final_estimator(estimator)
+    except:
+        pipeline.steps.append(("actual_estimator", estimator))
 
 
 def remove_estimator_from_pipeline(pipeline: Pipeline):

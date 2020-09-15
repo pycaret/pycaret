@@ -13,9 +13,20 @@ from sklearn.utils.metaestimators import if_delegate_has_method
 class Pipeline(imblearn.pipeline.Pipeline):
     def __init__(self, steps, *, memory=None, verbose=False):
         super().__init__(steps, memory=memory, verbose=verbose)
-        self._carry_over_final_estimator_fit()
+        self._carry_over_final_estimator_fit_vars()
 
-    def _carry_over_final_estimator_fit(self):
+    def replace_final_estimator(self, new_final_estimator, name: str = None):
+        if hasattr(self._final_estimator, "fit"):
+            self._clear_final_estimator_fit_vars()
+            self.steps[-1] = (
+                self.steps[-1][0] if not name else name,
+                new_final_estimator,
+            )
+        else:
+            self.steps.append(name if name else "actual_estimator", new_final_estimator)
+        self._carry_over_final_estimator_fit_vars()
+
+    def _carry_over_final_estimator_fit_vars(self):
         from pycaret.internal.utils import is_fitted
 
         if hasattr(self._final_estimator, "fit") and is_fitted(self._final_estimator):
@@ -26,29 +37,38 @@ class Pipeline(imblearn.pipeline.Pipeline):
                     except:
                         pass
 
+    def _clear_final_estimator_fit_vars(self):
+        if hasattr(self._final_estimator, "fit"):
+            for k, v in vars(self._final_estimator).items():
+                if k and k.endswith("_") and not k.startswith("__"):
+                    try:
+                        delattr(self, k)
+                    except:
+                        pass
+
     def fit(self, X, y=None, **fit_kwargs):
         result = super().fit(X, y=y, **fit_kwargs)
 
-        self._carry_over_final_estimator_fit()
+        self._carry_over_final_estimator_fit_vars()
         return result
 
     def fit_predict(self, X, y=None, **fit_params):
         result = super().fit_predict(X, y=y, **fit_params)
 
-        self._carry_over_final_estimator_fit()
+        self._carry_over_final_estimator_fit_vars()
         return result
 
     def fit_resample(self, X, y=None, **fit_params):
         result = super().fit_resample(X, y=y, **fit_params)
 
-        self._carry_over_final_estimator_fit()
+        self._carry_over_final_estimator_fit_vars()
         return result
 
     @if_delegate_has_method(delegate="_final_estimator")
     def fit_transform(self, X, y=None, **fit_params):
         result = super().fit_transform(X, y=y, **fit_params)
 
-        self._carry_over_final_estimator_fit()
+        self._carry_over_final_estimator_fit_vars()
         return result
 
     @if_delegate_has_method(delegate="_final_estimator")
@@ -96,5 +116,5 @@ class Pipeline(imblearn.pipeline.Pipeline):
                 self._final_estimator.partial_fit(
                     Xt, yt, classes=classes, sample_weight=sample_weight
                 )
-        self._carry_over_final_estimator_fit()
+        self._carry_over_final_estimator_fit_vars()
         return self
