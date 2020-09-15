@@ -48,6 +48,27 @@ import traceback
 
 warnings.filterwarnings("ignore")
 
+_available_plots = {
+    "parameter": "Hyperparameters",
+    "auc": "AUC",
+    "confusion_matrix": "Confusion Matrix",
+    "threshold": "Threshold",
+    "pr": "Precision Recall",
+    "error": "Error",
+    "class_report": "Class Report",
+    "rfe": "Feature Selection",
+    "learning": "Learning Curve",
+    "manifold": "Manifold Learning",
+    "calibration": "Calibration Curve",
+    "vc": "Validation Curve",
+    "dimension": "Dimensions",
+    "feature": "Feature Importance",
+    "feature_all": "Feature Importance (All)",
+    "boundary": "Decision Boundary",
+    "lift": "Lift Chart",
+    "gain": "Gain Chart",
+}
+
 
 def setup(
     data: pd.DataFrame,
@@ -113,7 +134,7 @@ def setup(
     session_id: Optional[int] = None,
     log_experiment: bool = False,
     experiment_name: Optional[str] = None,
-    log_plots: bool = False,
+    log_plots: Union[bool, list] = False,
     log_profile: bool = False,
     log_data: bool = False,
     silent: bool = False,
@@ -507,9 +528,10 @@ def setup(
         Name of experiment for logging. When set to None, 'clf' is by default used as 
         alias for the experiment name.
 
-    log_plots: bool, default = False
-        When set to True, specific plots are logged in MLflow as a png file. By default,
-        it is set to False. 
+    log_plots: bool or list, default = False
+        When set to True, AUC, Confusion Matrix and Feature Importance plots will be logged.
+        When set to a list of plot IDs (consult ``plot_model``), will log those plots.
+        If False, will log no plots. 
 
     log_profile: bool, default = False
         When set to True, data profile is also logged on MLflow as a html file. 
@@ -1028,8 +1050,14 @@ def setup(
         raise TypeError("fold_shuffle parameter only accepts True or False.")
 
     # log_plots
-    if type(log_plots) is not bool:
-        raise TypeError("log_plots parameter only accepts True or False.")
+    if isinstance(log_plots, list):
+        for i in log_plots:
+            if i not in _available_plots:
+                raise ValueError(
+                    f"Incorrect value for log_plots '{i}'. Possible values are: {', '.join(_available_plots.keys())}."
+                )
+    elif type(log_plots) is not bool:
+        raise TypeError("log_plots parameter must be a bool or a list.")
 
     # log_data
     if type(log_data) is not bool:
@@ -1062,7 +1090,7 @@ def setup(
 
     # declaring global variables to be accessed by other functions
     logger.info("Declaring global variables")
-    global USI, html_param, X, y, X_train, X_test, y_train, y_test, seed, prep_pipe, experiment__, fold_shuffle_param, n_jobs_param, gpu_n_jobs_param, create_model_container, master_model_container, display_container, exp_name_log, logging_param, log_plots_param, fix_imbalance_param, fix_imbalance_method_param, data_before_preprocess, target_param, gpu_param, all_models, _all_models_internal, all_metrics, _internal_pipeline, stratify_param, fold_generator, fold_param, fold_groups_param
+    global USI, html_param, X, y, X_train, X_test, y_train, y_test, seed, prep_pipe, experiment__, fold_shuffle_param, n_jobs_param, _gpu_n_jobs_param, create_model_container, master_model_container, display_container, exp_name_log, logging_param, log_plots_param, fix_imbalance_param, fix_imbalance_method_param, data_before_preprocess, target_param, gpu_param, all_models, _all_models_internal, all_metrics, _internal_pipeline, stratify_param, fold_generator, fold_param, fold_groups_param
 
     USI = secrets.token_hex(nbytes=2)
     logger.info(f"USI: {USI}")
@@ -1083,7 +1111,7 @@ def setup(
         "experiment__",
         "fold_shuffle_param",
         "n_jobs_param",
-        "gpu_n_jobs_param",
+        "_gpu_n_jobs_param",
         "create_model_container",
         "master_model_container",
         "display_container",
@@ -1451,8 +1479,8 @@ def setup(
             else:
                 logger.warning(message)
 
-    # create gpu_n_jobs_param
-    gpu_n_jobs_param = n_jobs if not use_gpu else 1
+    # create _gpu_n_jobs_param
+    _gpu_n_jobs_param = n_jobs if not use_gpu else 1
 
     # create create_model_container
     create_model_container = []
@@ -1470,10 +1498,12 @@ def setup(
     exp_name_log = "no_logging"
 
     # create an empty log_plots_param
-    if log_plots:
-        log_plots_param = True
-    else:
+    if log_plots == True:
+        log_plots_param = ["auc", "confusion_matrix", "feature"]
+    elif not log_plots:
         log_plots_param = False
+    else:
+        log_plots_param = log_plots
 
     # add custom transformers to prep pipe
     if custom_pipeline:
@@ -1877,7 +1907,7 @@ def setup(
         data_before_preprocess,
         target_param,
         gpu_param,
-        gpu_n_jobs_param,
+        _gpu_n_jobs_param,
         stratify_param,
         fold_generator,
         fold_param,
@@ -2880,7 +2910,7 @@ def _create_model(
 
     logger.info("Starting cross validation")
 
-    n_jobs = gpu_n_jobs_param
+    n_jobs = _gpu_n_jobs_param
     from sklearn.gaussian_process import GaussianProcessClassifier
 
     # special case to prevent running out of memory
@@ -3560,7 +3590,7 @@ def tune_model(
             return can_partial_fit or can_warm_start or is_xgboost
 
         n_jobs = (
-            gpu_n_jobs_param if estimator_definition["GPU Enabled"] else n_jobs_param
+            _gpu_n_jobs_param if estimator_definition["GPU Enabled"] else n_jobs_param
         )
 
         from sklearn.gaussian_process import GaussianProcessClassifier
@@ -4494,7 +4524,7 @@ def blend_models(
     votingclassifier_model_definition = _all_models_internal.loc["Voting"]
     try:
         model = votingclassifier_model_definition["Class"](
-            estimators=estimator_list, voting=method, n_jobs=gpu_n_jobs_param
+            estimators=estimator_list, voting=method, n_jobs=_gpu_n_jobs_param
         )
         logger.info("n_jobs multiple passed")
     except:
@@ -4837,7 +4867,7 @@ def stack_models(
         final_estimator=meta_model,
         cv=fold,
         stack_method=method,
-        n_jobs=gpu_n_jobs_param,
+        n_jobs=_gpu_n_jobs_param,
         passthrough=restack,
     )
 
@@ -4921,7 +4951,7 @@ def plot_model(
     verbose: bool = True,
     system: bool = True,
     display: Optional[Display] = None,  # added in pycaret==2.2.0
-):
+) -> str:
 
     """
     This function takes a trained model object and returns a plot based on the
@@ -4996,6 +5026,8 @@ def plot_model(
     -------
     Visual_Plot
         Prints the visual plot. 
+    str:
+        If save param is True, will return the name of the saved file.
 
     Warnings
     --------
@@ -5023,29 +5055,7 @@ def plot_model(
     if not fit_kwargs:
         fit_kwargs = {}
 
-    # checking plots (string)
-    available_plots = {
-        "parameter": "Hyperparameters",
-        "auc": "AUC",
-        "confusion_matrix": "Confusion Matrix",
-        "threshold": "Threshold",
-        "pr": "Precision Recall",
-        "error": "Error",
-        "class_report": "Class Report",
-        "rfe": "Feature Selection",
-        "learning": "Learning Curve",
-        "manifold": "Manifold Learning",
-        "calibration": "Calibration Curve",
-        "vc": "Validation Curve",
-        "dimension": "Dimensions",
-        "feature": "Feature Importance",
-        "feature_all": "Feature Importance (All)",
-        "boundary": "Decision Boundary",
-        "lift": "Lift Chart",
-        "gain": "Gain Chart",
-    }
-
-    if plot not in available_plots:
+    if plot not in _available_plots:
         raise ValueError(
             "Plot Not Available. Please see docstring for list of available Plots."
         )
@@ -5162,7 +5172,7 @@ def plot_model(
     test_y.reset_index(drop=True, inplace=True)
 
     logger.info(f"Plot type: {plot}")
-    plot_name = available_plots[plot]
+    plot_name = _available_plots[plot]
     display.move_progress()
 
     model_name = _get_model_name(model)
@@ -5382,7 +5392,7 @@ def plot_model(
                 pipeline_with_model,
                 cv=cv,
                 train_sizes=sizes,
-                n_jobs=gpu_n_jobs_param,
+                n_jobs=_gpu_n_jobs_param,
                 random_state=seed,
             )
             show_yellowbrick_plot(
@@ -5727,6 +5737,9 @@ def plot_model(
         "plot_model() succesfully completed......................................"
     )
 
+    if save:
+        return f"{plot_name}.png"
+
 
 def evaluate_model(
     estimator,
@@ -5782,25 +5795,7 @@ def evaluate_model(
         fit_kwargs = {}
 
     a = widgets.ToggleButtons(
-        options=[
-            ("Hyperparameters", "parameter"),
-            ("AUC", "auc"),
-            ("Confusion Matrix", "confusion_matrix"),
-            ("Threshold", "threshold"),
-            ("Precision Recall", "pr"),
-            ("Error", "error"),
-            ("Class Report", "class_report"),
-            ("Feature Selection", "rfe"),
-            ("Learning Curve", "learning"),
-            ("Manifold Learning", "manifold"),
-            ("Calibration Curve", "calibration"),
-            ("Validation Curve", "vc"),
-            ("Dimensions", "dimension"),
-            ("Feature Importance", "feature"),
-            ("Decision Boundary", "boundary"),
-            ("Lift Chart", "lift"),
-            ("Gain Chart", "gain"),
-        ],
+        options=[(v, k) for k, v in _available_plots.items()],
         description="Plot Type:",
         disabled=False,
         button_style="",  # 'success', 'info', 'warning', 'danger' or ''
@@ -8115,34 +8110,18 @@ def _mlflow_log_model(
                 "SubProcess plot_model() called =================================="
             )
 
-            try:
-                plot_model(model, plot="auc", verbose=False, save=True, system=False)
-                mlflow.log_artifact("AUC.png")
-                os.remove("AUC.png")
-            except:
-                pass
+            def _log_plot(plot):
+                try:
+                    plot_name = plot_model(
+                        model, plot=plot, verbose=False, save=True, system=False
+                    )
+                    mlflow.log_artifact(plot_name)
+                    os.remove(plot_name)
+                except:
+                    pass
 
-            try:
-                plot_model(
-                    model,
-                    plot="confusion_matrix",
-                    verbose=False,
-                    save=True,
-                    system=False,
-                )
-                mlflow.log_artifact("Confusion Matrix.png")
-                os.remove("Confusion Matrix.png")
-            except:
-                pass
-
-            try:
-                plot_model(
-                    model, plot="feature", verbose=False, save=True, system=False
-                )
-                mlflow.log_artifact("Feature Importance.png")
-                os.remove("Feature Importance.png")
-            except:
-                pass
+            for plot in log_plots:
+                _log_plot(plot)
 
             logger.info(
                 "SubProcess plot_model() end =================================="

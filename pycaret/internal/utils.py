@@ -77,6 +77,11 @@ def set_config(variable: str, value, globals_d: dict):
     logger.info("Initializing set_config()")
     logger.info(f"set_config({function_params_str})")
 
+    if variable.startswith("_"):
+        raise ValueError(
+            f"Variable {variable} is read only ('_' prefix)."
+        )
+
     if not variable in globals_d["pycaret_globals"] or variable == "pycaret_globals":
         raise ValueError(
             f"Variable {variable} not found. Possible variables are: {globals_d['pycaret_globals']}"
@@ -86,7 +91,7 @@ def set_config(variable: str, value, globals_d: dict):
 
     # special case
     if not globals_d["gpu_param"] and variable == "n_jobs_param":
-        globals_d["gpu_n_jobs_param"] = value
+        globals_d["_gpu_n_jobs_param"] = value
 
     logger.info(f"Global variable: {variable} updated to {value}")
     logger.info(
