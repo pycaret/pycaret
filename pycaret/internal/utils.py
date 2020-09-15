@@ -194,11 +194,13 @@ def get_model_id(e, all_models: pd.DataFrame) -> str:
 
 
 def get_model_name(e, all_models: pd.DataFrame, deep: bool = True) -> str:
+    old_e = e
     if isinstance(e, str) and e in all_models.index:
         model_id = e
     else:
         if deep:
             while hasattr(e, "get_params"):
+                old_e = e
                 params = e.get_params()
                 if "steps" in params:
                     e = params["steps"][-1][1]
@@ -208,7 +210,8 @@ def get_model_name(e, all_models: pd.DataFrame, deep: bool = True) -> str:
                     e = params["estimator"]
                 else:
                     break
-
+        if not e:
+            e = old_e
         model_id = get_model_id(e, all_models)
 
     if model_id is not None:
