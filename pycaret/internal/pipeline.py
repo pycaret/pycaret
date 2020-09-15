@@ -15,13 +15,13 @@ from sklearn.utils.metaestimators import if_delegate_has_method
 import sklearn.pipeline
 from pycaret.internal.validation import is_fitted
 
-class Pipeline(imblearn.pipeline.Pipeline):
 
+class Pipeline(imblearn.pipeline.Pipeline):
     def __init__(self, steps, *, memory=None, verbose=False):
         super().__init__(steps, memory=memory, verbose=verbose)
         self.fit_vars = set()
         self._carry_over_final_estimator_fit_vars()
-    
+
     def _carry_over_final_estimator_fit_vars(self):
         self._clear_final_estimator_fit_vars()
         if hasattr(self._final_estimator, "fit") and is_fitted(self._final_estimator):
