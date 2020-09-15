@@ -91,7 +91,10 @@ class Display:
         elif (
             self.verbose and not self.html_param and override != False
         ) or override == True:
-            print(df.data)
+            try:
+                print(df.data)
+            except:
+                print(df)
 
     def clear_output(self):
         clear_output()
