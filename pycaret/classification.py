@@ -1046,11 +1046,11 @@ def setup(
     # fix_imbalance_method
     if fix_imbalance:
         if fix_imbalance_method is not None:
-            if hasattr(fix_imbalance_method, "fit_sample"):
+            if hasattr(fix_imbalance_method, "fit_resample"):
                 pass
             else:
                 raise TypeError(
-                    "fix_imbalance_method must contain resampler with fit_sample method."
+                    "fix_imbalance_method must contain resampler with fit_resample method."
                 )
 
     # pandas option
