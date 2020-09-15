@@ -2,10 +2,8 @@
 # Author: Antoni Baum (Yard1) <antoni.baum@protonmail.com>
 # License: MIT
 
-import datetime
 from pycaret.internal.logging import get_logger
 import pandas as pd
-import pandas.io.formats.style
 import ipywidgets as ipw
 from IPython.display import display, HTML, clear_output, update_display
 from typing import Optional, List, Dict, Any
@@ -37,17 +35,19 @@ class Display:
         if self.progress is None:
             return
         if (self.verbose and self.html_param and override != False) or override == True:
-            display(self.progress)
+            self._display(self.progress)
 
     def display_master_display(self, override=None):
         if self.master_display is None:
             return
         if (self.verbose and self.html_param and override != False) or override == True:
             if not self.master_display_id:
-                display_ = display(self.master_display, display_id=True)
+                display_ = self._display(self.master_display, display_id=True)
                 self.master_display_id = display_.display_id
             else:
-                update_display(self.master_display, display_id=self.master_display_id)
+                self._update_display(
+                    self.master_display, display_id=self.master_display_id
+                )
 
     def display_monitor(self, override=None):
         if self.monitor is None:
@@ -55,9 +55,9 @@ class Display:
         if (self.verbose and self.html_param and override != False) or override == True:
             if not self.monitor_id:
                 self.monitor_id = "monitor"
-                display(self.monitor, display_id=self.monitor_id)
+                self._display(self.monitor, display_id=self.monitor_id)
             else:
-                update_display(self.monitor, display_id=self.monitor_id)
+                self._update_display(self.monitor, display_id=self.monitor_id)
 
     def move_progress(self, value: int = 1, override=None):
         if self.progress is None:
@@ -87,7 +87,7 @@ class Display:
         if (self.verbose and self.html_param and override != False) or override == True:
             if clear:
                 self.clear_output()
-            display(df)
+            self._display(df)
         elif (
             self.verbose and not self.html_param and override != False
         ) or override == True:
@@ -98,6 +98,24 @@ class Display:
 
     def clear_output(self):
         clear_output()
+
+    def _display(self, df, *args, **kwargs):
+        if self.enviroment == "google.colab":
+            try:
+                return display(df.data, *args, **kwargs)
+            except:
+                return display(df, *args, **kwargs)
+        else:
+            return display(df, *args, **kwargs)
+
+    def _update_display(self, df, *args, **kwargs):
+        if self.enviroment == "google.colab":
+            try:
+                return update_display(df.data, *args, **kwargs)
+            except:
+                return update_display(df, *args, **kwargs)
+        else:
+            return update_display(df, *args, **kwargs)
 
     def __init__(
         self,
@@ -112,6 +130,10 @@ class Display:
         self.verbose = verbose
         self.html_param = html_param
         self.round = round
+        try:
+            self.enviroment = str(get_ipython())
+        except:
+            self.enviroment = ""
 
         if not (self.verbose and self.html_param):
             return
