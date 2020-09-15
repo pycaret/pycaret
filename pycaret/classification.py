@@ -5530,58 +5530,61 @@ def plot_model(
 
             logger.info("Determining param_name")
 
-            # SGD Classifier
-            if model_name == "SGDClassifier":
-                param_name = "l1_ratio"
-                param_range = np.arange(0, 1, 0.01)
-
-            elif model_name == "LinearDiscriminantAnalysis":
-                raise ValueError(
-                    "Shrinkage Parameter not supported in Validation Curve Plot."
+            try:
+                model_params = pipeline_with_model.get_params()
+            except:
+                display.clear_output()
+                raise TypeError(
+                    "Plot not supported for this estimator. Try different estimator."
                 )
 
+            # SGD Classifier
+            if "actual_estimator__l1_ratio" in model_params:
+                param_name = "actual_estimator__l1_ratio"
+                param_range = np.arange(0, 1, 0.01)
+
             # tree based models
-            elif hasattr(pipeline_with_model, "actual_estimator__max_depth"):
+            elif "actual_estimator__max_depth" in model_params:
                 param_name = "actual_estimator__max_depth"
                 param_range = np.arange(1, 11)
 
             # knn
-            elif hasattr(pipeline_with_model, "actual_estimator__n_neighbors"):
+            elif "actual_estimator__n_neighbors" in model_params:
                 param_name = "actual_estimator__n_neighbors"
                 param_range = np.arange(1, 11)
 
             # MLP / Ridge
-            elif hasattr(pipeline_with_model, "actual_estimator__alpha"):
+            elif "actual_estimator__alpha" in model_params:
                 param_name = "actual_estimator__alpha"
                 param_range = np.arange(0, 1, 0.1)
 
             # Logistic Regression
-            elif hasattr(pipeline_with_model, "actual_estimator__C"):
+            elif "actual_estimator__C" in model_params:
                 param_name = "actual_estimator__C"
                 param_range = np.arange(1, 11)
 
             # Bagging / Boosting
-            elif hasattr(pipeline_with_model, "actual_estimator__n_estimators"):
+            elif "actual_estimator__n_estimators" in model_params:
                 param_name = "actual_estimator__n_estimators"
                 param_range = np.arange(1, 100, 10)
 
             # Bagging / Boosting / gbc / ada /
-            elif hasattr(pipeline_with_model, "actual_estimator__n_estimators"):
+            elif "actual_estimator__n_estimators" in model_params:
                 param_name = "actual_estimator__n_estimators"
                 param_range = np.arange(1, 100, 10)
 
             # Naive Bayes
-            elif hasattr(pipeline_with_model, "actual_estimator__var_smoothing"):
+            elif "actual_estimator__var_smoothing" in model_params:
                 param_name = "actual_estimator__var_smoothing"
                 param_range = np.arange(0.1, 1, 0.01)
 
             # QDA
-            elif hasattr(pipeline_with_model, "actual_estimator__reg_param"):
+            elif "actual_estimator__reg_param" in model_params:
                 param_name = "actual_estimator__reg_param"
                 param_range = np.arange(0, 1, 0.1)
 
             # GPC
-            elif hasattr(pipeline_with_model, "actual_estimator__max_iter_predict"):
+            elif "actual_estimator__max_iter_predict" in model_params:
                 param_name = "actual_estimator__max_iter_predict"
                 param_range = np.arange(100, 1000, 100)
 
