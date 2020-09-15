@@ -1,7 +1,5 @@
-from build.lib.pycaret.classification import interpret_model
 import os, sys
 
-from pycaret.classification import plot_model
 sys.path.insert(0, os.path.abspath(".."))
 
 import pandas as pd
@@ -40,7 +38,7 @@ def test():
     ]
 
     for plot in available_plots:
-        plot_model(model, plot=plot)
+        pycaret.classification.plot_model(model, plot=plot)
 
     models = [pycaret.classification.create_model('et'), pycaret.classification.create_model('xgboost')]
 
@@ -48,7 +46,7 @@ def test():
 
     for model in models:
         for plot in available_shap:
-            interpret_model(model, plot=plot)
+            pycaret.classification.interpret_model(model, plot=plot)
 
     assert 1 == 1
     
