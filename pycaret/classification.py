@@ -470,7 +470,7 @@ def setup(
         processor set n_jobs to None.
 
     use_gpu: str or bool, default = False
-        If set to 'Force', will try to use GPU with all algorithms that support it,
+        If set to 'force', will try to use GPU with all algorithms that support it,
         and raise exceptions if they are unavailable.
         If set to True, will use GPU with algorithms that support it, and fall
         back to CPU if they are unavailable.
@@ -480,6 +480,7 @@ def setup(
         
         - CatBoost
         - XGBoost
+        - LightGBM - requires https://lightgbm.readthedocs.io/en/latest/GPU-Tutorial.html
         - Logistic Regression, Ridge, SVM, SVC - requires cuML >= 0.15 to be installed.
           https://github.com/rapidsai/cuml
 
@@ -991,8 +992,8 @@ def setup(
         raise TypeError("html parameter only accepts True or False.")
 
     # use_gpu
-    if use_gpu != "Force" and type(use_gpu) is not bool:
-        raise TypeError("use_gpu parameter only accepts 'Force', True or False.")
+    if use_gpu != "force" and type(use_gpu) is not bool:
+        raise TypeError("use_gpu parameter only accepts 'force', True or False.")
 
     # data_split_shuffle
     if type(data_split_shuffle) is not bool:
@@ -1445,7 +1446,7 @@ def setup(
 
         if not cuml_version >= (0, 15):
             message = f"cuML is outdated or not found. Required version is >=0.15, got {__version__}"
-            if use_gpu == "Force":
+            if use_gpu == "force":
                 raise ImportError(message)
             else:
                 logger.warning(message)
