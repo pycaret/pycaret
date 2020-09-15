@@ -2337,7 +2337,7 @@ def compare_models(
         return f"background-color: {color}"
 
     compare_models_ = master_display_.apply(
-        highlight_max, subset=master_display.columns[2:],
+        highlight_max, subset=master_display_.columns[1:],
     ).applymap(highlight_cols, subset=["TT (Sec)"])
 
     display.update_monitor(1, "Compiling Final Models")
