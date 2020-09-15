@@ -2,8 +2,6 @@
 # Author: Moez Ali <moez.ali@queensu.ca> and Antoni Baum (Yard1) <antoni.baum@protonmail.com>
 # License: MIT
 
-import datetime
-from joblib.parallel import Parallel, delayed
 import pandas as pd
 import pandas.io.formats.style
 import ipywidgets as ipw
@@ -11,12 +9,9 @@ from IPython.display import display, HTML, clear_output, update_display
 from pycaret.internal.logging import get_logger
 from pycaret.internal.validation import *
 from typing import Any, List, Optional, Dict, Tuple, Union
-from sklearn.pipeline import Pipeline
 from sklearn import clone
 import numpy as np
 from sklearn.model_selection import KFold, StratifiedKFold, BaseCrossValidator
-from sklearn.utils.validation import check_is_fitted
-import pycaret.internal.Pipeline
 
 
 def get_config(variable: str, globals_d: dict):
@@ -247,24 +242,6 @@ def param_grid_to_lists(param_grid: dict) -> dict:
     return param_grid
 
 
-def make_internal_pipeline(
-    internal_pipeline_steps: list, memory=None
-) -> pycaret.internal.Pipeline.Pipeline:
-
-    if not internal_pipeline_steps:
-        memory = None
-        internal_pipeline_steps = [("empty_step", "passthrough")]
-
-    return pycaret.internal.Pipeline.Pipeline(internal_pipeline_steps, memory=memory)
-
-
-def add_estimator_to_pipeline(pipeline: Pipeline, estimator, name="actual_estimator"):
-    try:
-        pipeline.replace_final_estimator(estimator, name=name)
-    except:
-        pipeline.steps.append((name, estimator))
-
-
 def calculate_metrics(
     metrics: pd.DataFrame,
     ytest,
@@ -441,73 +418,6 @@ class true_warm_start(object):
             self.model.set_params(**self.params)
 
 
-def supports_partial_fit(estimator, params: dict = None) -> bool:
-    # special case for MLP
-    from sklearn.neural_network import MLPClassifier
-
-    if isinstance(estimator, MLPClassifier):
-        try:
-            if (
-                params and "solver" in params and "lbfgs" in list(params["solver"])
-            ) or estimator.solver == "lbfgs":
-                return False
-        except:
-            return False
-
-    return hasattr(estimator, "partial_fit")
-
-
-class estimator_pipeline(object):
-    """
-    Context which adds an estimator to pipeline.
-    """
-
-    def __init__(self, pipeline: Pipeline, estimator):
-        self.pipeline = clone(pipeline)
-        self.estimator = estimator
-
-    def __enter__(self):
-        add_estimator_to_pipeline(self.pipeline, self.estimator)
-        return self.pipeline
-
-    def __exit__(self, type, value, traceback):
-        return
-
-
-class fit_if_not_fitted(object):
-    """
-    Context which fits an estimator if it's not fitted.
-    """
-
-    def __init__(
-        self,
-        estimator,
-        X_train: pd.DataFrame,
-        y_train: pd.DataFrame,
-        groups=None,
-        **fit_kwargs,
-    ):
-        logger = get_logger()
-        self.estimator = clone(estimator)
-        if not is_fitted(self.estimator):
-            try:
-                self.estimator._carry_over_final_estimator_fit_vars()
-            except:
-                pass
-            if not is_fitted(self.estimator):
-                logger.info(f"fit_if_not_fitted: {estimator} is not fitted, fitting")
-                try:
-                    self.estimator.fit(X_train, y_train, groups=groups, **fit_kwargs)
-                except:
-                    self.estimator.fit(X_train, y_train, **fit_kwargs)
-
-    def __enter__(self):
-        return self.estimator
-
-    def __exit__(self, type, value, traceback):
-        return
-
-
 class nullcontext(object):
     def __init__(self, enter_result=None):
         self.enter_result = enter_result
@@ -545,19 +455,3 @@ def get_groups(
             )
 
     return groups
-
-
-def is_fitted(estimator) -> bool:
-    try:
-        check_is_fitted(estimator)
-        return True
-    except:
-        return False
-
-
-def merge_pipelines(pipeline_to_merge_to: Pipeline, pipeline_to_be_merged: Pipeline):
-    pipeline_to_merge_to.steps.extend(pipeline_to_be_merged.steps)
-    try:
-        pipeline_to_merge_to._carry_over_final_estimator_fit_vars()
-    except:
-        pass

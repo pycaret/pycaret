@@ -8,27 +8,24 @@ from pycaret.internal.tune_sklearn_patches import (
     get_tune_sklearn_tunegridsearchcv,
     get_tune_sklearn_tunesearchcv,
 )
-from pycaret.internal.utils import (
+from pycaret.internal.pipeline import (
     add_estimator_to_pipeline,
-    color_df,
-    fit_if_not_fitted,
-    merge_pipelines,
-    normalize_custom_transformers,
     make_internal_pipeline,
-    nullcontext,
-    supports_partial_fit,
-    true_warm_start,
     estimator_pipeline,
+    merge_pipelines,
+)
+from pycaret.internal.utils import (
+    color_df,
+    normalize_custom_transformers,
+    nullcontext,
+    true_warm_start,
 )
 from pycaret.internal.logging import get_logger
 from pycaret.internal.plotting import show_yellowbrick_plot
 from pycaret.internal.Display import Display
 from pycaret.internal.distributions import *
 from pycaret.internal.validation import *
-from pycaret.containers.models.classification import (
-    get_all_model_containers,
-    LogisticRegressionClassifierContainer,
-)
+from pycaret.containers.models.classification import get_all_model_containers
 from pycaret.containers.metrics.classification import (
     get_all_metric_containers,
     ClassificationMetricContainer,
@@ -5096,10 +5093,9 @@ def plot_model(
         )
 
     # checking for feature plot
-    if (
-        not (hasattr(estimator, "coef_") or hasattr(estimator, "feature_importances_"))
-        and (plot == "feature" or plot == "feature_all")
-    ):
+    if not (
+        hasattr(estimator, "coef_") or hasattr(estimator, "feature_importances_")
+    ) and (plot == "feature" or plot == "feature_all"):
         raise TypeError(
             "Feature Importance plot not available for estimators that doesnt support coef_ or feature_importances_ attribute."
         )

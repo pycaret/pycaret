@@ -1,13 +1,18 @@
-# Module: internal.Pipeline
+# Module: internal.pipeline
 # Author: Antoni Baum (Yard1) <antoni.baum@protonmail.com>
 # License: MIT
 
-# Provides a Pipeline supporting partial fitting and several attributes needed for plotting.
+# Provides a Pipeline supporting partial_fit (needed for tune warm start)
+# and copying over fit attributes from the final estimator, so that it can be plotted directly
+# and is considered fitted.
+
+# This pipeline is only to be used internally.
 
 import imblearn.pipeline
 from sklearn.utils import _print_elapsed_time
-from sklearn.base import BaseEstimator, TransformerMixin
+from sklearn.base import BaseEstimator, TransformerMixin, clone
 from sklearn.utils.metaestimators import if_delegate_has_method
+import sklearn.pipeline
 
 
 class Pipeline(imblearn.pipeline.Pipeline):
@@ -15,6 +20,9 @@ class Pipeline(imblearn.pipeline.Pipeline):
         super().__init__(steps, memory=memory, verbose=verbose)
         self.fit_vars = set()
         self._carry_over_final_estimator_fit_vars()
+
+    def get_sklearn_pipeline(self) -> sklearn.pipeline.Pipeline:
+        return sklearn.pipeline.Pipeline(self.steps)
 
     def replace_final_estimator(self, new_final_estimator, name: str = None):
         self._clear_final_estimator_fit_vars(all=True)
@@ -130,3 +138,44 @@ class Pipeline(imblearn.pipeline.Pipeline):
                 )
         self._carry_over_final_estimator_fit_vars()
         return self
+
+
+class estimator_pipeline(object):
+    """
+    Context which adds an estimator to pipeline.
+    """
+
+    def __init__(self, pipeline: Pipeline, estimator):
+        self.pipeline = clone(pipeline)
+        self.estimator = estimator
+
+    def __enter__(self):
+        add_estimator_to_pipeline(self.pipeline, self.estimator)
+        return self.pipeline
+
+    def __exit__(self, type, value, traceback):
+        return
+
+
+def make_internal_pipeline(internal_pipeline_steps: list, memory=None) -> Pipeline:
+
+    if not internal_pipeline_steps:
+        memory = None
+        internal_pipeline_steps = [("empty_step", "passthrough")]
+
+    return Pipeline(internal_pipeline_steps, memory=memory)
+
+
+def add_estimator_to_pipeline(pipeline: Pipeline, estimator, name="actual_estimator"):
+    try:
+        pipeline.replace_final_estimator(estimator, name=name)
+    except:
+        pipeline.steps.append((name, estimator))
+
+
+def merge_pipelines(pipeline_to_merge_to: Pipeline, pipeline_to_be_merged: Pipeline):
+    pipeline_to_merge_to.steps.extend(pipeline_to_be_merged.steps)
+    try:
+        pipeline_to_merge_to._carry_over_final_estimator_fit_vars()
+    except:
+        pass

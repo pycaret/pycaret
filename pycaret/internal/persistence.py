@@ -3,10 +3,8 @@
 # License: MIT
 
 from typing import Dict, Optional
-from pycaret.classification import prep_pipe
 from pycaret.internal.utils import get_logger
 from pycaret.internal.Display import Display
-import logging
 
 
 def deploy_model(
