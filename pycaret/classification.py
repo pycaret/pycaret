@@ -5190,7 +5190,7 @@ def plot_model(
                 except:
                     pass
 
-        if plot == "auc":
+        def auc():
 
             from yellowbrick.classifier import ROCAUC
 
@@ -5210,7 +5210,7 @@ def plot_model(
                 display=display,
             )
 
-        elif plot == "threshold":
+        def threshold():
 
             from yellowbrick.classifier import DiscriminationThreshold
 
@@ -5230,7 +5230,7 @@ def plot_model(
                 display=display,
             )
 
-        elif plot == "pr":
+        def pr():
 
             from yellowbrick.classifier import PrecisionRecallCurve
 
@@ -5250,7 +5250,7 @@ def plot_model(
                 display=display,
             )
 
-        elif plot == "confusion_matrix":
+        def confusion_matrix():
 
             from yellowbrick.classifier import ConfusionMatrix
 
@@ -5272,7 +5272,7 @@ def plot_model(
                 display=display,
             )
 
-        elif plot == "error":
+        def error():
 
             from yellowbrick.classifier import ClassPredictionError
 
@@ -5292,7 +5292,7 @@ def plot_model(
                 display=display,
             )
 
-        elif plot == "class_report":
+        def class_report():
 
             from yellowbrick.classifier import ClassificationReport
 
@@ -5314,7 +5314,7 @@ def plot_model(
                 display=display,
             )
 
-        elif plot == "boundary":
+        def boundary():
 
             from sklearn.preprocessing import StandardScaler
             from sklearn.decomposition import PCA
@@ -5352,7 +5352,7 @@ def plot_model(
                 classes=["A", "B"],
             )
 
-        elif plot == "rfe":
+        def rfe():
 
             from yellowbrick.model_selection import RFECV
 
@@ -5373,7 +5373,7 @@ def plot_model(
                 display=display,
             )
 
-        elif plot == "learning":
+        def learning():
 
             from yellowbrick.model_selection import LearningCurve
 
@@ -5401,7 +5401,7 @@ def plot_model(
                 display=display,
             )
 
-        elif plot == "lift":
+        def lift():
 
             import scikitplot as skplt
 
@@ -5429,7 +5429,7 @@ def plot_model(
 
             logger.info("Visual Rendered Successfully")
 
-        elif plot == "gain":
+        def gain():
 
             import scikitplot as skplt
 
@@ -5457,7 +5457,7 @@ def plot_model(
 
             logger.info("Visual Rendered Successfully")
 
-        elif plot == "manifold":
+        def manifold():
 
             from yellowbrick.features import Manifold
 
@@ -5480,7 +5480,7 @@ def plot_model(
                 display=display,
             )
 
-        elif plot == "calibration":
+        def calibration():
 
             from sklearn.calibration import calibration_curve
 
@@ -5526,7 +5526,7 @@ def plot_model(
 
             logger.info("Visual Rendered Successfully")
 
-        elif plot == "vc":
+        def vc():
 
             logger.info("Determining param_name")
 
@@ -5624,7 +5624,7 @@ def plot_model(
                 display=display,
             )
 
-        elif plot == "dimension":
+        def dimension():
 
             from yellowbrick.features import RadViz
             from sklearn.preprocessing import StandardScaler
@@ -5662,7 +5662,7 @@ def plot_model(
                 display=display,
             )
 
-        elif plot == "feature":
+        def feature():
             temp_model = pipeline_with_model
             if hasattr(pipeline_with_model, "steps"):
                 temp_model = pipeline_with_model.steps[-1][1]
@@ -5699,13 +5699,16 @@ def plot_model(
 
             logger.info("Visual Rendered Successfully")
 
-        elif plot == "parameter":
+        def parameter():
 
             param_df = pd.DataFrame.from_dict(
                 estimator.get_params(estimator), orient="index", columns=["Parameters"]
             )
             display.display(param_df, clear=True)
             logger.info("Visual Rendered Successfully")
+
+        # execute the plot method
+        locals()[plot]()
 
         try:
             plt.close()
@@ -5939,7 +5942,7 @@ def interpret_model(
 
     shap_plot = None
 
-    if plot == "summary":
+    def summary():
 
         logger.info("Creating TreeExplainer")
         explainer = shap.TreeExplainer(model)
@@ -5947,7 +5950,7 @@ def interpret_model(
         shap_values = explainer.shap_values(X_test)
         shap_plot = shap.summary_plot(shap_values, X_test, **kwargs)
 
-    elif plot == "correlation":
+    def correlation():
 
         if feature == None:
 
@@ -5975,7 +5978,7 @@ def interpret_model(
             logger.info("model type detected: type 2")
             shap.dependence_plot(dependence, shap_values, X_test, **kwargs)
 
-    elif plot == "reason":
+    def reason():
 
         if model_id in shap_models_type1:
             logger.info("model type detected: type 1")
@@ -6050,6 +6053,8 @@ def interpret_model(
                     X_test.iloc[row_to_show, :],
                     **kwargs,
                 )
+
+    locals()[plot]()
 
     logger.info("Visual Rendered Successfully")
 
