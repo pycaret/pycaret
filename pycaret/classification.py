@@ -2263,10 +2263,10 @@ def compare_models(
                 model_results = pull(pop=True)
                 assert np.sum(model_results.iloc[0]) != 0.0
             except:
-                logger.error(
+                logger.warning(
                     f"create_model() for {model} raised an exception or returned all 0.0, trying without fit_kwargs:"
                 )
-                logger.error(traceback.format_exc())
+                logger.warning(traceback.format_exc())
                 try:
                     model, model_fit_time = _create_model(
                         estimator=model,
@@ -2291,6 +2291,9 @@ def compare_models(
             logger.info(f"Time budged exceeded in create_model(), breaking loop")
             break
 
+        runtime_end = time.time()
+        runtime = np.array(runtime_end - runtime_start).round(2)
+
         logger.info("Creating metrics dataframe")
         if cross_validation:
             compare_models_ = pd.DataFrame(model_results.loc["Mean"]).T
@@ -2299,8 +2302,7 @@ def compare_models(
         compare_models_.insert(len(compare_models_.columns), "TT (Sec)", model_fit_time)
         compare_models_.insert(0, "Model", model_name)
         compare_models_.insert(0, "Object", [model])
-        compare_models_.insert(0, "index", [i])
-        compare_models_.set_index("index", drop=True, inplace=True)
+        compare_models_.insert(0, "runtime", runtime)
         if master_display is None:
             master_display = compare_models_
         else:
@@ -2311,9 +2313,9 @@ def compare_models(
         master_display = master_display.sort_values(by=sort, ascending=sort_ascending)
         master_display.reset_index(drop=True, inplace=True)
 
-        master_display_ = master_display.drop("Object", axis=1).style.set_precision(
-            round
-        )
+        master_display_ = master_display.drop(
+            ["Object", "runtime"], axis=1, errors="ignore"
+        ).style.set_precision(round)
         master_display_ = master_display_.set_properties(**{"text-align": "left"})
         master_display_ = master_display_.set_table_styles(
             [dict(selector="th", props=[("text-align", "left")])]
@@ -2322,9 +2324,6 @@ def compare_models(
         display.replace_master_display(master_display_)
 
         display.display_master_display()
-        # end runtime
-        runtime_end = time.time()
-        runtime = np.array(runtime_end - runtime_start).round(2)
 
     display.move_progress()
 
@@ -2336,78 +2335,69 @@ def compare_models(
         color = "lightgrey"
         return f"background-color: {color}"
 
-    compare_models_ = (
-        master_display.drop("Object", axis=1)
-        .style.apply(highlight_max, subset=master_display.columns[2:],)
-        .applymap(highlight_cols, subset=["TT (Sec)"])
-    )
-    compare_models_ = compare_models_.set_precision(round)
-    compare_models_ = compare_models_.set_properties(**{"text-align": "left"})
-    compare_models_ = compare_models_.set_table_styles(
-        [dict(selector="th", props=[("text-align", "left")])]
-    )
-
-    display.move_progress()
+    compare_models_ = master_display_.apply(
+        highlight_max, subset=master_display.columns[2:],
+    ).applymap(highlight_cols, subset=["TT (Sec)"])
 
     display.update_monitor(1, "Compiling Final Models")
     display.display_monitor()
 
-    sorted_models = master_display["Object"].to_list()
+    display.move_progress()
+
+    sorted_models = []
 
     if n_select < 0:
-        sorted_models = sorted_models[n_select:]
+        n_select_range = range(len(master_display) - n_select, len(master_display))
     else:
-        sorted_models = sorted_models[:n_select]
+        n_select_range = range(0, n_select)
 
-    def create_model_and_update_display(model, i, fold, round, fit_kwargs, groups):
-        display.update_monitor(2, _get_model_name(model))
-        display.display_monitor()
-        model, model_fit_time = _create_model(
-            estimator=model,
-            system=False,
-            verbose=False,
-            fold=fold,
-            round=round,
-            cross_validation=False,
-            predict=False,
-            fit_kwargs=fit_kwargs,
-            groups=groups,
+    for index, row in master_display.iterrows():
+        model = row["Object"]
+
+        results = row.to_frame().T.drop(
+            ["Object", "Model", "runtime", "TT (Sec)"], errors="ignore", axis=1
         )
-        pull(pop=True)
+
+        avgs_dict_log = {k: v for k, v in results.iloc[0].items()}
+
+        log_holdout = False
+
+        if index in n_select_range:
+            display.update_monitor(2, _get_model_name(model))
+            display.display_monitor()
+            model, model_fit_time = _create_model(
+                estimator=model,
+                system=False,
+                verbose=False,
+                fold=fold,
+                round=round,
+                cross_validation=False,
+                predict=False,
+                fit_kwargs=fit_kwargs,
+                groups=groups,
+            )
+            sorted_models.append(model)
+            log_holdout = True
 
         if logging_param and cross_validation:
-
-            avgs_dict_log = {
-                k: v
-                for k, v in compare_models_.data.drop(
-                    ["Object", "Model", "TT (Sec)"], errors="ignore", axis=1
-                )
-                .iloc[i]
-                .items()
-            }
 
             try:
                 _mlflow_log_model(
                     model=model,
-                    model_results=model_results,
+                    model_results=results,
                     score_dict=avgs_dict_log,
                     source="compare_models",
-                    runtime=runtime,
-                    model_fit_time=model_fit_time,
+                    runtime=row["runtime"],
+                    model_fit_time=row["TT (Sec)"],
                     _prep_pipe=prep_pipe,
                     log_plots=False,
+                    log_holdout=log_holdout,
                     URI=URI,
                     display=display,
                 )
             except:
                 logger.error(f"_mlflow_log_model() for {model} raised an exception:")
                 logger.error(traceback.format_exc())
-        return model
-
-    sorted_models = [
-        create_model_and_update_display(model, i, fold, round, fit_kwargs, groups)
-        for i, model in enumerate(sorted_models)
-    ]
 
     if len(sorted_models) == 1:
         sorted_models = sorted_models[0]
@@ -2939,11 +2929,10 @@ def _create_model(
         model_results = color_df(model_results, "yellow", ["Mean"], axis=1)
         model_results = model_results.set_precision(round)
 
-        # refitting the model on complete X_train, y_train
-        display.update_monitor(1, "Finalizing Model")
-        display.display_monitor()
-
         if refit:
+            # refitting the model on complete X_train, y_train
+            display.update_monitor(1, "Finalizing Model")
+            display.display_monitor()
             model_fit_start = time.time()
             logger.info("Finalizing model")
             with io.capture_output():
@@ -7387,6 +7376,8 @@ def pull(pop=False) -> pd.DataFrame:  # added in pycaret==2.2.0
         Equivalent to get_config('display_container')[-1]
 
     """
+    if not display_container:
+        return None
     return display_container.pop(-1) if pop else display_container[-1]
 
 
@@ -7987,6 +7978,7 @@ def _mlflow_log_model(
     runtime: float,
     model_fit_time: float,
     _prep_pipe,
+    log_holdout: bool = True,
     log_plots: bool = False,
     tune_cv_results=None,
     URI=None,
@@ -8021,10 +8013,14 @@ def _mlflow_log_model(
         else:
             params = model
 
-        if hasattr(params, "get_all_params"):
-            params = params.get_all_params()
-        else:
-            params = params.get_params()
+        try:
+            try:
+                params = params.get_all_params()
+            except:
+                params = params.get_params()
+        except:
+            logger.warning("Couldn't get params for model")
+            params = {}
 
         for i in list(params):
             v = params.get(i)
@@ -8059,13 +8055,20 @@ def _mlflow_log_model(
         mlflow.log_artifact("Results.html")
         os.remove("Results.html")
 
-        # Generate hold-out predictions and save as html
-        holdout = predict_model(model, verbose=False)
-        holdout_score = pull(pop=True)
-        del holdout
-        holdout_score.to_html("Holdout.html", col_space=65, justify="left")
-        mlflow.log_artifact("Holdout.html")
-        os.remove("Holdout.html")
+        if log_holdout:
+            # Generate hold-out predictions and save as html
+            try:
+                holdout = predict_model(model, verbose=False)
+                holdout_score = pull(pop=True)
+                del holdout
+                holdout_score.to_html("Holdout.html", col_space=65, justify="left")
+                mlflow.log_artifact("Holdout.html")
+                os.remove("Holdout.html")
+            except:
+                logger.warning(
+                    "Couldn't create holdout prediction for model, exception below:"
+                )
+                logger.warning(traceback.format_exc())
 
         # Log AUC and Confusion Matrix plot
 

@@ -210,7 +210,7 @@ def get_model_name(e, all_models: pd.DataFrame, deep: bool = True) -> str:
                     e = params["estimator"]
                 else:
                     break
-        if not e:
+        if e is None:
             e = old_e
         model_id = get_model_id(e, all_models)
 
