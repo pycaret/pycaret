@@ -42,7 +42,11 @@ class ClassificationMetricContainer(MetricContainer):
     args : dict, default = {}
         The arguments to always pass to constructor when initializing score_func of class_def class.
     display_name : str, default = None
-        Display name (shorter than name). If None or empty, will use name.
+        Display name (shorter than name). Used in display dataframe header. If None or empty, will use name.
+    greater_is_better: bool
+        Whether score_func is a score function (default), meaning high is good,
+        or a loss function, meaning low is good. In the latter case, the
+        scorer object will sign-flip the outcome of the score_func.
     is_multiclass : bool,  default = True
         Can the metric be used for multiclass problems.
     is_custom : bool, default = False
@@ -67,6 +71,12 @@ class ClassificationMetricContainer(MetricContainer):
         - 'threshold' for decision_function or predict_proba
     args : dict
         The arguments to always pass to constructor when initializing score_func of class_def class.
+    display_name : str
+        Display name (shorter than name). Used in display dataframe header.
+    greater_is_better: bool
+        Whether score_func is a score function (default), meaning high is good,
+        or a loss function, meaning low is good. In the latter case, the
+        scorer object will sign-flip the outcome of the score_func.
     is_multiclass : bool
         Can the metric be used for multiclass problems.
     is_custom : bool
@@ -83,6 +93,7 @@ class ClassificationMetricContainer(MetricContainer):
         target: str = "pred",
         args: Dict[str, Any] = None,
         display_name: Optional[str] = None,
+        greater_is_better: bool = True,
         is_multiclass: bool = True,
         is_custom: bool = False,
     ) -> None:
@@ -108,11 +119,13 @@ class ClassificationMetricContainer(MetricContainer):
                 score_func,
                 needs_proba=target == "pred_proba",
                 needs_threshold="threshold",
+                greater_is_better=greater_is_better,
                 **args,
             )
         )
         self.display_name = display_name if display_name else name
         self.args = args
+        self.greater_is_better = greater_is_better
         self.is_multiclass = is_multiclass
         self.is_custom = is_custom
 
@@ -140,6 +153,7 @@ class ClassificationMetricContainer(MetricContainer):
             "Scorer": self.scorer,
             "Target": self.target,
             "Args": self.args,
+            "Greater is Better": self.greater_is_better,
             "Multiclass": self.is_multiclass,
             "Custom": self.is_custom,
         }

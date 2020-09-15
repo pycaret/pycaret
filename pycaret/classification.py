@@ -2150,11 +2150,11 @@ def compare_models(
     # defining sort parameter (making Precision equivalent to Prec. )
 
     if not (isinstance(sort, str) and (sort == "TT" or sort == "TT (Sec)")):
+        sort_ascending = not sort["Greater is Better"]
         sort = sort["Display Name"]
     else:
+        sort_ascending = True
         sort = "TT (Sec)"
-
-    sort_ascending = sort == "TT (Sec)"
 
     """
     MONITOR UPDATE STARTS
@@ -3559,7 +3559,9 @@ def tune_model(
 
             return can_partial_fit or can_warm_start or is_xgboost
 
-        n_jobs = gpu_n_jobs_param if estimator_definition["GPU Enabled"] else n_jobs_param
+        n_jobs = (
+            gpu_n_jobs_param if estimator_definition["GPU Enabled"] else n_jobs_param
+        )
 
         from sklearn.gaussian_process import GaussianProcessClassifier
 
@@ -7578,6 +7580,7 @@ def add_metric(
     name: str,
     score_func: type,
     target: str = "pred",
+    greater_is_better: bool = True,
     args: dict = None,
     multiclass: bool = True,
 ) -> pd.Series:
@@ -7600,6 +7603,11 @@ def add_metric(
         - 'pred' for the prediction table
         - 'pred_proba' for pred_proba
         - 'threshold' for decision_function or predict_proba
+
+    greater_is_better: bool, default = True
+        Whether score_func is a score function (default), meaning high is good,
+        or a loss function, meaning low is good. In the latter case, the
+        scorer object will sign-flip the outcome of the score_func.
 
     args: dict, default = {}
         Arguments to be passed to score function.
@@ -7632,6 +7640,7 @@ def add_metric(
         target=target,
         args=args,
         display_name=name,
+        greater_is_better=greater_is_better,
         is_multiclass=bool(multiclass),
         is_custom=True,
     )
