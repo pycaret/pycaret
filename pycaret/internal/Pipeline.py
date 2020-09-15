@@ -13,11 +13,12 @@ from sklearn.utils.metaestimators import if_delegate_has_method
 class Pipeline(imblearn.pipeline.Pipeline):
     def __init__(self, steps, *, memory=None, verbose=False):
         super().__init__(steps, memory=memory, verbose=verbose)
+        self.fit_vars = set()
         self._carry_over_final_estimator_fit_vars()
 
     def replace_final_estimator(self, new_final_estimator, name: str = None):
+        self._clear_final_estimator_fit_vars(all=True)
         if hasattr(self._final_estimator, "fit"):
-            self._clear_final_estimator_fit_vars()
             self.steps[-1] = (
                 self.steps[-1][0] if not name else name,
                 new_final_estimator,
@@ -29,22 +30,33 @@ class Pipeline(imblearn.pipeline.Pipeline):
     def _carry_over_final_estimator_fit_vars(self):
         from pycaret.internal.utils import is_fitted
 
+        self._clear_final_estimator_fit_vars()
         if hasattr(self._final_estimator, "fit") and is_fitted(self._final_estimator):
             for k, v in vars(self._final_estimator).items():
-                if k and k.endswith("_") and not k.startswith("__"):
+                if k and k.endswith("_") and not k.startswith("_"):
                     try:
                         setattr(self, k, v)
+                        self.fit_vars.add(k)
                     except:
                         pass
 
-    def _clear_final_estimator_fit_vars(self):
-        if hasattr(self._final_estimator, "fit"):
-            for k, v in vars(self._final_estimator).items():
-                if k and k.endswith("_") and not k.startswith("__"):
-                    try:
-                        delattr(self, k)
-                    except:
-                        pass
+    def _clear_final_estimator_fit_vars(self, all: bool = False):
+        vars_to_remove = []
+        for var in self.fit_vars:
+            if all or var not in vars(self._final_estimator):
+                vars_to_remove.append(var)
+        for var in vars_to_remove:
+            try:
+                delattr(self, var)
+                self.fit_vars.remove(var)
+            except:
+                pass
+
+    def set_params(self, **kwargs):
+        result = super().set_params(**kwargs)
+
+        self._carry_over_final_estimator_fit_vars()
+        return result
 
     def fit(self, X, y=None, **fit_kwargs):
         result = super().fit(X, y=y, **fit_kwargs)
