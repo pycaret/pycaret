@@ -5,3 +5,13 @@ hpbandster
 ConfigSpace
 optuna
 scikit-optimize>=0.8.1
+psutil #removing it as causing problem in Dockerfile
+awscli #only required in deploy_model for AWS
+azure-storage-blob #only required in deploy_model for Azure
+google-cloud-storage #only required in deploy_model for GCP
+shap #removing shap as it's causing issues building Docker image.
+sckit-plot #for lift and gain charts
+statsmodels #for future timeseries module
+pmdarima #for future timeseries module
+fastapi>=0.61.1 #only required in create_webservice for api
+pydantic #only required in create_webservice for api
