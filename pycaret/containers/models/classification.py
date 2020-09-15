@@ -826,7 +826,7 @@ class RandomForestClassifierContainer(ClassifierContainer):
             tune_distribution=tune_distributions,
             tune_args=tune_args,
             shap="type1",
-            is_gpu_enabled=gpu_imported
+            is_gpu_enabled=gpu_imported,
         )
         if gpu_imported:
             self.reference = get_class_name(cuml.ensemble.RandomForestClassifier)
@@ -1074,6 +1074,7 @@ class LGBMClassifierContainer(ClassifierContainer):
         logger = get_logger()
         np.random.seed(globals_dict["seed"])
         from lightgbm import LGBMClassifier
+        from lightgbm.basic import LightGBMError
 
         args = {
             "random_state": globals_dict["seed"],
@@ -1101,6 +1102,21 @@ class LGBMClassifierContainer(ClassifierContainer):
 
         _leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 
+        is_gpu_enabled = False
+        if globals_dict["gpu_param"]:
+            if globals_dict["gpu_param"] == "force":
+                is_gpu_enabled = True
+            else:
+                try:
+                    lgb = LGBMClassifier(device="gpu")
+                    lgb.fit(np.zeros((2, 2)), [0, 1])
+                    is_gpu_enabled = True
+                except LightGBMError:
+                    is_gpu_enabled = False
+
+        if is_gpu_enabled:
+            args["device"] = "gpu"
+
         super().__init__(
             id="lightgbm",
             name="Light Gradient Boosting Machine",
@@ -1110,7 +1126,7 @@ class LGBMClassifierContainer(ClassifierContainer):
             tune_distribution=tune_distributions,
             tune_args=tune_args,
             shap="type1",
-            is_gpu_enabled=False,
+            is_gpu_enabled=is_gpu_enabled,
         )
 
 
