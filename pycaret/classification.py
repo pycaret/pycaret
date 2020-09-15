@@ -6658,10 +6658,8 @@ def predict_model(
         else:
             try:
                 dtypes = prep_pipe.named_steps["dtypes"]
-                estimator_ = deepcopy(prep_pipe)
-                estimator_.steps.append(["trained model", estimator])
-                estimator = estimator_
-                del estimator_
+                estimator = deepcopy(prep_pipe)
+                estimator.steps.append(["trained_model", estimator])
 
             except:
                 raise ValueError("Pipeline not found")
@@ -8162,7 +8160,7 @@ def _mlflow_log_model(
 
         # log model as sklearn flavor
         prep_pipe_temp = deepcopy(_prep_pipe)
-        prep_pipe_temp.steps.append(["trained model", model])
+        prep_pipe_temp.steps.append(["trained_model", model])
         mlflow.sklearn.log_model(
             prep_pipe_temp,
             "model",
@@ -8171,6 +8169,7 @@ def _mlflow_log_model(
             input_example=input_example,
         )
         del prep_pipe_temp
+    gc.collect()
 
 
 def _get_columns_to_stratify_by(
