@@ -5023,26 +5023,25 @@ def plot_model(
         fit_kwargs = {}
 
     # checking plots (string)
-    available_plots = [
-        ("Hyperparameters", "parameter"),
-        ("AUC", "auc"),
-        ("Confusion Matrix", "confusion_matrix"),
-        ("Threshold", "threshold"),
-        ("Precision Recall", "pr"),
-        ("Error", "error"),
-        ("Class Report", "class_report"),
-        ("Feature Selection", "rfe"),
-        ("Learning Curve", "learning"),
-        ("Manifold Learning", "manifold"),
-        ("Calibration Curve", "calibration"),
-        ("Validation Curve", "vc"),
-        ("Dimensions", "dimension"),
-        ("Feature Importance", "feature"),
-        ("Decision Boundary", "boundary"),
-        ("Lift Chart", "lift"),
-        ("Gain Chart", "gain"),
-    ]
-    available_plots = {k: v for v, k in available_plots}
+    available_plots = {
+        "Hyperparameters": "parameter",
+        "AUC": "auc",
+        "Confusion Matrix": "confusion_matrix",
+        "Threshold": "threshold",
+        "Precision Recall": "pr",
+        "Error": "error",
+        "Class Report": "class_report",
+        "Feature Selection": "rfe",
+        "Learning Curve": "learning",
+        "Manifold Learning": "manifold",
+        "Calibration Curve": "calibration",
+        "Validation Curve": "vc",
+        "Dimensions": "dimension",
+        "Feature Importance": "feature",
+        "Decision Boundary": "boundary",
+        "Lift Chart": "lift",
+        "Gain Chart": "gain",
+    }
 
     if plot not in available_plots:
         raise ValueError(

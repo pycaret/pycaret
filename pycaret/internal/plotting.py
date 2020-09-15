@@ -40,11 +40,11 @@ def show_yellowbrick_plot(
         visualizer.draw(X_train, y_train, **kwargs)
     elif handle_train == "fit":
         logger.info("Fitting Model")
-        visualizer.fit(X_train, y_train, groups=groups, **fit_kwargs_and_kwargs)
+        visualizer.fit(X_train, y_train, **fit_kwargs_and_kwargs)
     elif handle_train == "fit_transform":
         logger.info("Fitting & Transforming Model")
         visualizer.fit_transform(
-            X_train, y_train, groups=groups, **fit_kwargs_and_kwargs
+            X_train, y_train, **fit_kwargs_and_kwargs
         )
     elif handle_train == "score":
         logger.info("Scoring train set")
@@ -55,9 +55,9 @@ def show_yellowbrick_plot(
     if handle_test == "draw":
         visualizer.draw(X_test, y_test)
     elif handle_test == "fit":
-        visualizer.fit(X_test, y_test, groups=groups, **fit_kwargs)
+        visualizer.fit(X_test, y_test, **fit_kwargs)
     elif handle_test == "fit_transform":
-        visualizer.fit_transform(X_test, y_test, groups=groups, **fit_kwargs)
+        visualizer.fit_transform(X_test, y_test, **fit_kwargs)
     elif handle_test == "score":
         logger.info("Scoring test/hold-out set")
         visualizer.score(X_test, y_test)
