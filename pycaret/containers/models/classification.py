@@ -826,6 +826,7 @@ class RandomForestClassifierContainer(ClassifierContainer):
             tune_distribution=tune_distributions,
             tune_args=tune_args,
             shap="type1",
+            is_gpu_enabled=gpu_imported
         )
         if gpu_imported:
             self.reference = get_class_name(cuml.ensemble.RandomForestClassifier)

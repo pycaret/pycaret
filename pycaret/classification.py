@@ -3441,9 +3441,6 @@ def tune_model(
     estimator_name = estimator_definition["Name"]
     logger.info(f"Base model : {estimator_name}")
 
-    if search_library == "tune-sklearn" and estimator_definition["GPU Enabled"]:
-        raise ValueError("tune-sklearn not supported for GPU enabled models.")
-
     display.move_progress()
 
     logger.info("Declaring metric variables")
@@ -3561,7 +3558,7 @@ def tune_model(
 
             return can_partial_fit or can_warm_start or is_xgboost
 
-        n_jobs = gpu_n_jobs_param
+        n_jobs = gpu_n_jobs_param if estimator_definition["GPU Enabled"] else n_jobs_param
 
         from sklearn.gaussian_process import GaussianProcessClassifier
 
