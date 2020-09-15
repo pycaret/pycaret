@@ -16,6 +16,7 @@ from sklearn.pipeline import Pipeline
 from sklearn import clone
 import numpy as np
 from sklearn.model_selection import KFold, StratifiedKFold, BaseCrossValidator
+from sklearn.utils.validation import check_is_fitted
 import pycaret.internal.Pipeline
 
 
@@ -473,6 +474,37 @@ class estimator_pipeline(object):
     def __enter__(self):
         add_estimator_to_pipeline(self.pipeline, self.estimator)
         return self.pipeline
+
+    def __exit__(self, type, value, traceback):
+        return
+
+
+class fit_if_not_fitted(object):
+    """
+    Context which fits an estimator if it's not fitted.
+    """
+
+    def __init__(
+        self,
+        estimator,
+        X_train: pd.DataFrame,
+        y_train: pd.DataFrame,
+        groups=None,
+        **fit_kwargs,
+    ):
+        logger = get_logger()
+        self.estimator = clone(estimator)
+        try:
+            check_is_fitted(self.estimator)
+        except:
+            logger.info(f"fit_if_not_fitted: {estimator} is not fitted, fitting")
+            try:
+                self.estimator.fit(X_train, y_train, groups=groups, **fit_kwargs)
+            except:
+                self.estimator.fit(X_train, y_train, **fit_kwargs)
+
+    def __enter__(self):
+        return self.estimator
 
     def __exit__(self, type, value, traceback):
         return

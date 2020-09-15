@@ -10,6 +10,7 @@ from pycaret.internal.tune_sklearn_patches import (
 )
 from pycaret.internal.utils import (
     color_df,
+    fit_if_not_fitted,
     normalize_custom_transformers,
     make_internal_pipeline,
     nullcontext,
@@ -5405,8 +5406,11 @@ def plot_model(
 
             display.move_progress()
             logger.info("Generating predictions / predict_proba on X_test")
-            y_test__ = pipeline_with_model.predict(X_test)
-            predict_proba__ = pipeline_with_model.predict_proba(X_test)
+            with fit_if_not_fitted(
+                pipeline_with_model, data_X, data_y, groups=groups, **fit_kwargs
+            ) as fitted_pipeline_with_model:
+                y_test__ = fitted_pipeline_with_model.predict(X_test)
+                predict_proba__ = fitted_pipeline_with_model.predict_proba(X_test)
             display.move_progress()
             display.move_progress()
             display.clear_output()
@@ -5430,8 +5434,11 @@ def plot_model(
 
             display.move_progress()
             logger.info("Generating predictions / predict_proba on X_test")
-            y_test__ = pipeline_with_model.predict(X_test)
-            predict_proba__ = pipeline_with_model.predict_proba(X_test)
+            with fit_if_not_fitted(
+                pipeline_with_model, data_X, data_y, groups=groups, **fit_kwargs
+            ) as fitted_pipeline_with_model:
+                y_test__ = fitted_pipeline_with_model.predict(X_test)
+                predict_proba__ = fitted_pipeline_with_model.predict_proba(X_test)
             display.move_progress()
             display.move_progress()
             display.clear_output()
@@ -5482,7 +5489,10 @@ def plot_model(
             ax1.plot([0, 1], [0, 1], "k:", label="Perfectly calibrated")
             display.move_progress()
             logger.info("Scoring test/hold-out set")
-            prob_pos = pipeline_with_model.predict_proba(test_X)[:, 1]
+            with fit_if_not_fitted(
+                pipeline_with_model, data_X, data_y, groups=groups, **fit_kwargs
+            ) as fitted_pipeline_with_model:
+                prob_pos = fitted_pipeline_with_model.predict_proba(test_X)[:, 1]
             prob_pos = (prob_pos - prob_pos.min()) / (prob_pos.max() - prob_pos.min())
             fraction_of_positives, mean_predicted_value = calibration_curve(
                 test_y, prob_pos, n_bins=10
