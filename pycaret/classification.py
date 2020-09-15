@@ -40,6 +40,7 @@ import random
 import gc
 from copy import deepcopy
 from sklearn.base import clone
+from sklearn.exceptions import NotFittedError
 from typing import List, Tuple, Any, Union
 import warnings
 from IPython.utils import io
@@ -54,8 +55,6 @@ def setup(
     train_size: float = 0.7,
     test_data: Optional[pd.DataFrame] = None,
     preprocess: bool = True,
-    sampling: bool = False,
-    sample_estimator: Optional[Any] = None,
     categorical_features: Optional[List[str]] = None,
     categorical_imputation: str = "constant",
     ordinal_features: Optional[Dict[str, list]] = None,
@@ -162,18 +161,6 @@ def setup(
         ignore all other parameters related to preprocessing (including 'ordinal_features' and 
         'high_cardinality_features' params), aside from 'custom_pipeline'.
 
-    sampling: bool, default = False
-        When the sample size exceeds 25,000 samples, pycaret will build a base estimator
-        at various sample sizes from the original dataset. This will return a performance 
-        plot of AUC, Accuracy, Recall, Precision, Kappa and F1 values at various sample 
-        levels, that will assist in deciding the preferred sample size for modeling. 
-        The desired sample size must then be entered for training and validation in the 
-        pycaret environment. When sample_size entered is less than 1, the remaining dataset 
-        (1 - sample) is used for fitting the model only when finalize_model() is called.
-    
-    sample_estimator: object, default = None
-        If None, Logistic Regression is used by default.
-    
     categorical_features: list, default = None
         If the inferred data types are not correct, categorical_features can be used to
         overwrite the inferred type. If when running setup the type of 'column1' is
@@ -669,11 +656,7 @@ def setup(
     if type(train_size) is not float:
         raise TypeError("train_size parameter only accepts float value.")
 
-    # checking sampling parameter
-    if type(sampling) is not bool:
-        raise TypeError("sampling parameter only accepts True or False.")
-
-    # checking sampling parameter
+    # checking target parameter
     if target not in data.columns:
         raise ValueError("Target parameter doesnt exist in the data provided.")
 
@@ -682,7 +665,7 @@ def setup(
         if type(session_id) is not int:
             raise TypeError("session_id parameter must be an integer.")
 
-    # checking sampling parameter
+    # checking profile parameter
     if type(profile) is not bool:
         raise TypeError("profile parameter only accepts True or False.")
 
@@ -1126,17 +1109,11 @@ def setup(
     # create html_param
     html_param = html
 
-    # silent parameter to also set sampling to False
-    if silent:
-        sampling = False
-
     logger.info("Preparing display monitor")
 
     if not display:
         # progress bar
         max_steps = 3
-        if sampling:
-            max_steps += 10
 
         progress_args = {"max": max_steps}
         timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
@@ -1545,59 +1522,44 @@ def setup(
     else:
         target_type = "Binary"
 
-    lr = LogisticRegressionClassifierContainer(globals())
-
-    # sample estimator
-    if sample_estimator is None:
-        model = lr
-    else:
-        model = sample_estimator
-
     display.move_progress()
 
-    if sampling and data.shape[0] > 25000:  # change this back to 25000
+    display.update_monitor(1, "Splitting Data")
+    display.display_monitor()
 
-        X_train, X_test, y_train, y_test = _sample_data(
-            model, seed, train_size, data_split_shuffle, display
+    _stratify_columns = _get_columns_to_stratify_by(
+        X_before_preprocess, y_before_preprocess, stratify_param, target
+    )
+
+    if test_data is None:
+        X_train, X_test, y_train, y_test = train_test_split(
+            X_before_preprocess,
+            y_before_preprocess,
+            test_size=1 - train_size,
+            stratify=_stratify_columns,
+            random_state=seed,
+            shuffle=data_split_shuffle,
         )
+        train_data = pd.concat([X_train, y_train], axis=1)
+        test_data = pd.concat([X_test, y_test], axis=1)
 
-    else:
-        display.update_monitor(1, "Splitting Data")
-        display.display_monitor()
+    train_data = prep_pipe.fit_transform(train_data)
+    # workaround to also transform target
+    dtypes.final_training_columns.append(target)
+    test_data = prep_pipe.transform(test_data)
 
-        _stratify_columns = _get_columns_to_stratify_by(
-            X_before_preprocess, y_before_preprocess, stratify_param, target
-        )
+    X_train = train_data.drop(target, axis=1)
+    y_train = train_data[target]
 
-        if test_data is None:
-            X_train, X_test, y_train, y_test = train_test_split(
-                X_before_preprocess,
-                y_before_preprocess,
-                test_size=1 - train_size,
-                stratify=_stratify_columns,
-                random_state=seed,
-                shuffle=data_split_shuffle,
-            )
-            train_data = pd.concat([X_train, y_train], axis=1)
-            test_data = pd.concat([X_test, y_test], axis=1)
+    X_test = test_data.drop(target, axis=1)
+    y_test = test_data[target]
 
-        train_data = prep_pipe.fit_transform(train_data)
-        # workaround to also transform target
-        dtypes.final_training_columns.append(target)
-        test_data = prep_pipe.transform(test_data)
+    if fold_groups_param is not None:
+        fold_groups_param = fold_groups_param[
+            fold_groups_param.index.isin(X_train.index)
+        ]
 
-        X_train = train_data.drop(target, axis=1)
-        y_train = train_data[target]
-
-        X_test = test_data.drop(target, axis=1)
-        y_test = test_data[target]
-
-        if fold_groups_param is not None:
-            fold_groups_param = fold_groups_param[
-                fold_groups_param.index.isin(X_train.index)
-            ]
-
-        display.move_progress()
+    display.move_progress()
 
     data = prep_pipe.transform(data)
     X = data.drop(target, axis=1)
@@ -1721,10 +1683,6 @@ def setup(
             else []
         )
         + [
-            [
-                "Sampled Data ",
-                f"({X_train.shape[0] + X_test.shape[0]}, {data_before_preprocess.shape[1]})",
-            ],
             ["Transformed Train Set ", X_train.shape],
             ["Transformed Test Set ", X_test.shape],
         ]
@@ -2325,7 +2283,7 @@ def compare_models(
                 except:
                     logger.error(f"create_model() for {model} raised an exception:")
                     logger.error(traceback.format_exc())
-                continue
+                    continue
         logger.info("SubProcess create_model() end ==================================")
 
         if model is None:
@@ -2415,6 +2373,7 @@ def compare_models(
             fit_kwargs=fit_kwargs,
             groups=groups,
         )
+        pull(pop=True)
 
         if logging_param and cross_validation:
 
@@ -3691,7 +3650,8 @@ def tune_model(
 
             # if n_jobs is None:
             # enable Ray local mode - otherwise the performance is terrible
-            n_jobs = 1
+            if len(X_train) <= 50000:
+                n_jobs = 1
 
             TuneSearchCV = get_tune_sklearn_tunesearchcv()
             TuneGridSearchCV = get_tune_sklearn_tunegridsearchcv()
@@ -7371,7 +7331,21 @@ def automl(optimize: str = "Accuracy", use_holdout: bool = False) -> Any:
     if use_holdout:
         logger.info("Model Selection Basis : Holdout set")
         for i in master_model_container:
-            pred_holdout = predict_model(i, verbose=False)
+            try:
+                pred_holdout = predict_model(i, verbose=False)
+            except NotFittedError:
+                logger.warning(f"Model {i} is not fitted, running _create_model")
+                i, _ = _create_model(
+                    estimator=i,
+                    system=False,
+                    verbose=False,
+                    cross_validation=False,
+                    predict=False,
+                    groups=fold_groups_param,
+                )
+                pull(pop=True)
+                pred_holdout = predict_model(i, verbose=False)
+
             p = pull(pop=True)
             p = p[compare_dimension][0]
             scorer.append(p)
@@ -7949,199 +7923,6 @@ def _choose_better(
 
     logger.info("choose_better completed")
     return model
-
-
-def _sample_data(
-    model, seed: int, train_size: float, data_split_shuffle: bool, display: Display
-):
-    """
-    Method to sample data.
-    """
-
-    from sklearn.model_selection import train_test_split
-    import plotly.express as px
-
-    np.random.seed(seed)
-
-    logger = get_logger()
-
-    logger.info("Sampling dataset")
-
-    split_perc = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.99]
-    split_perc_text = [
-        "10%",
-        "20%",
-        "30%",
-        "40%",
-        "50%",
-        "60%",
-        "70%",
-        "80%",
-        "90%",
-        "100%",
-    ]
-    split_perc_tt = split_perc.copy()
-    split_perc_tt_total = []
-
-    score_dict = {metric: np.empty((0, 0)) for metric in all_metrics["Display Name"]}
-
-    counter = 0
-
-    for i in split_perc:
-
-        display.move_progress()
-
-        t0 = time.time()
-
-        """
-        MONITOR UPDATE STARTS
-        """
-
-        perc_text = split_perc_text[counter]
-        display.update_monitor(1, f"Fitting Model on {perc_text} sample")
-        display.display_monitor()
-
-        """
-        MONITOR UPDATE ENDS
-        """
-
-        _stratify_columns = _get_columns_to_stratify_by(
-            X, y, stratify_param, target_param
-        )
-
-        X_, _, y_, _ = train_test_split(
-            X,
-            y,
-            test_size=1 - i,
-            stratify=_stratify_columns,
-            random_state=seed,
-            shuffle=data_split_shuffle,
-        )
-
-        _stratify_columns = _get_columns_to_stratify_by(
-            X_, y_, stratify_param, target_param
-        )
-
-        X_train, X_test, y_train, y_test = train_test_split(
-            X_,
-            y_,
-            test_size=1 - train_size,
-            stratify=_stratify_columns,
-            random_state=seed,
-            shuffle=data_split_shuffle,
-        )
-
-        with io.capture_output():
-            model.fit(X_train, y_train)
-        pred_ = model.predict(X_test)
-        try:
-            pred_prob = model.predict_proba(X_test)[:, 1]
-        except:
-            logger.warning("model has no predict_proba attribute.")
-            pred_prob = 0
-
-        score_dict = _calculate_metrics(y_test, pred_, pred_prob)
-
-        t1 = time.time()
-
-        """
-        Time calculation begins
-        """
-
-        tt = t1 - t0
-        total_tt = tt / i
-        split_perc_tt.pop(0)
-
-        for remain in split_perc_tt:
-            ss = total_tt * remain
-            split_perc_tt_total.append(ss)
-
-        """
-        Time calculation Ends
-        """
-
-        split_perc_tt_total = []
-        counter += 1
-
-    model_results = []
-    for i in split_perc:
-        for metric_name, metric in score_dict.items():
-            row = (i, metric[i], metric_name)
-            model_results.append(row)
-
-    model_results = pd.DataFrame(
-        model_results, columns=["Sample", "Metric", "Metric Name"]
-    )
-    fig = px.line(
-        model_results,
-        x="Sample",
-        y="Metric",
-        color="Metric Name",
-        line_shape="linear",
-        range_y=[0, 1],
-    )
-    fig.update_layout(plot_bgcolor="rgb(245,245,245)")
-    title = f"{_get_model_name(model)} Metrics and Sample %"
-    fig.update_layout(
-        title={
-            "text": title,
-            "y": 0.95,
-            "x": 0.45,
-            "xanchor": "center",
-            "yanchor": "top",
-        }
-    )
-    fig.show()
-
-    display.update_monitor(1, "Waiting for input")
-    display.display_monitor()
-
-    print(
-        "Please Enter the sample % of data you would like to use for modeling. Example: Enter 0.3 for 30%."
-    )
-    print("Press Enter if you would like to use 100% of the data.")
-
-    sample_size = input("Sample Size: ")
-
-    _stratify_columns = _get_columns_to_stratify_by(X, y, stratify_param, target_param)
-
-    if sample_size == "" or sample_size == "1":
-
-        X_train, X_test, y_train, y_test = train_test_split(
-            X,
-            y,
-            test_size=1 - train_size,
-            stratify=_stratify_columns,
-            random_state=seed,
-            shuffle=data_split_shuffle,
-        )
-
-    else:
-
-        sample_n = float(sample_size)
-        X_selected, _, y_selected, _ = train_test_split(
-            X,
-            y,
-            test_size=1 - sample_n,
-            stratify=_stratify_columns,
-            random_state=seed,
-            shuffle=data_split_shuffle,
-        )
-
-        _stratify_columns = _get_columns_to_stratify_by(
-            X_selected, y_selected, stratify_param, target_param
-        )
-
-        X_train, X_test, y_train, y_test = train_test_split(
-            X_selected,
-            y_selected,
-            test_size=1 - train_size,
-            stratify=_stratify_columns,
-            random_state=seed,
-            shuffle=data_split_shuffle,
-        )
-
-    return X_train, X_test, y_train, y_test
 
 
 def _is_multiclass() -> bool:
