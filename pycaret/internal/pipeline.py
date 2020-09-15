@@ -13,31 +13,16 @@ from sklearn.utils import _print_elapsed_time
 from sklearn.base import BaseEstimator, TransformerMixin, clone
 from sklearn.utils.metaestimators import if_delegate_has_method
 import sklearn.pipeline
-
+from pycaret.internal.validation import is_fitted
 
 class Pipeline(imblearn.pipeline.Pipeline):
+
     def __init__(self, steps, *, memory=None, verbose=False):
         super().__init__(steps, memory=memory, verbose=verbose)
         self.fit_vars = set()
         self._carry_over_final_estimator_fit_vars()
-
-    def get_sklearn_pipeline(self) -> sklearn.pipeline.Pipeline:
-        return sklearn.pipeline.Pipeline(self.steps)
-
-    def replace_final_estimator(self, new_final_estimator, name: str = None):
-        self._clear_final_estimator_fit_vars(all=True)
-        if hasattr(self._final_estimator, "fit"):
-            self.steps[-1] = (
-                self.steps[-1][0] if not name else name,
-                new_final_estimator,
-            )
-        else:
-            self.steps.append(name if name else "actual_estimator", new_final_estimator)
-        self._carry_over_final_estimator_fit_vars()
-
+    
     def _carry_over_final_estimator_fit_vars(self):
-        from pycaret.internal.utils import is_fitted
-
         self._clear_final_estimator_fit_vars()
         if hasattr(self._final_estimator, "fit") and is_fitted(self._final_estimator):
             for k, v in vars(self._final_estimator).items():
@@ -59,6 +44,20 @@ class Pipeline(imblearn.pipeline.Pipeline):
                 self.fit_vars.remove(var)
             except:
                 pass
+
+    def get_sklearn_pipeline(self) -> sklearn.pipeline.Pipeline:
+        return sklearn.pipeline.Pipeline(self.steps)
+
+    def replace_final_estimator(self, new_final_estimator, name: str = None):
+        self._clear_final_estimator_fit_vars(all=True)
+        if hasattr(self._final_estimator, "fit"):
+            self.steps[-1] = (
+                self.steps[-1][0] if not name else name,
+                new_final_estimator,
+            )
+        else:
+            self.steps.append(name if name else "actual_estimator", new_final_estimator)
+        self._carry_over_final_estimator_fit_vars()
 
     def set_params(self, **kwargs):
         result = super().set_params(**kwargs)
