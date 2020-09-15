@@ -6,7 +6,10 @@
 
 from sklearn.ensemble import VotingClassifier
 from sklearn.neural_network import MLPClassifier
-
+try:
+    from collections.abc import Iterable
+except:
+    from collections import Iterable
 
 class TunableMLPClassifier(MLPClassifier):
     """
@@ -320,7 +323,7 @@ class TunableMLPClassifier(MLPClassifier):
     def _hidden_layer_size_kwargs_to_hidden_layer_sizes(self, kwargs):
         if not self.hidden_layer_sizes:
             self.hidden_layer_sizes = [100]
-        if not hasattr(self.hidden_layer_sizes, "__iter__"):
+        if not isinstance(self.hidden_layer_sizes, Iterable):
             self.hidden_layer_sizes = [self.hidden_layer_sizes]
         if not isinstance(self.hidden_layer_sizes, list):
             self.hidden_layer_sizes = list(self.hidden_layer_sizes)

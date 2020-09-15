@@ -3,7 +3,10 @@
 # License: MIT
 
 from typing import Dict, Hashable, Optional
-from collections.abc import Hashable
+try:
+    from collections.abc import Hashable
+except:
+    from collections import Hashable
 
 import numpy as np
 
