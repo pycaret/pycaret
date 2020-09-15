@@ -8,7 +8,6 @@ import pandas as pd
 import pandas.io.formats.style
 import ipywidgets as ipw
 from IPython.display import display, HTML, clear_output, update_display
-from pycaret.internal.Pipeline import PartialFitPipeline
 from pycaret.internal.logging import get_logger
 from pycaret.internal.validation import *
 from typing import Any, List, Optional, Dict, Tuple, Union
@@ -261,6 +260,7 @@ def make_internal_pipeline(
 
 def add_estimator_to_pipeline(pipeline: Pipeline, estimator):
     pipeline.steps.append(("actual_estimator", estimator))
+    pipeline._carry_over_final_estimator_fit()
 
 
 def remove_estimator_from_pipeline(pipeline: Pipeline):
@@ -468,8 +468,6 @@ class estimator_pipeline(object):
     def __init__(self, pipeline: Pipeline, estimator):
         self.pipeline = clone(pipeline)
         self.estimator = estimator
-        if supports_partial_fit(self.estimator):
-            self.pipeline.__class__ = PartialFitPipeline
 
     def __enter__(self):
         add_estimator_to_pipeline(self.pipeline, self.estimator)
@@ -494,14 +492,14 @@ class fit_if_not_fitted(object):
     ):
         logger = get_logger()
         self.estimator = clone(estimator)
-        try:
-            check_is_fitted(self.estimator)
-        except:
-            logger.info(f"fit_if_not_fitted: {estimator} is not fitted, fitting")
-            try:
-                self.estimator.fit(X_train, y_train, groups=groups, **fit_kwargs)
-            except:
-                self.estimator.fit(X_train, y_train, **fit_kwargs)
+        if not is_fitted(self.estimator):
+            self.estimator._carry_over_final_estimator_fit()
+            if not is_fitted(self.estimator):
+                logger.info(f"fit_if_not_fitted: {estimator} is not fitted, fitting")
+                try:
+                    self.estimator.fit(X_train, y_train, groups=groups, **fit_kwargs)
+                except:
+                    self.estimator.fit(X_train, y_train, **fit_kwargs)
 
     def __enter__(self):
         return self.estimator
@@ -547,3 +545,11 @@ def get_groups(
             )
 
     return groups
+
+
+def is_fitted(estimator) -> bool:
+    try:
+        check_is_fitted(estimator)
+        return True
+    except:
+        return False

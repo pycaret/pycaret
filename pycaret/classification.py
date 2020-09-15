@@ -5132,7 +5132,8 @@ def plot_model(
     display.move_progress()
 
     # defining estimator as model locally
-    estimator = clone(estimator)
+    # deepcopy instead of clone so we have a fitted estimator
+    estimator = deepcopy(estimator)
     model = estimator
 
     display.move_progress()
