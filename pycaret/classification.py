@@ -4965,6 +4965,7 @@ def plot_model(
         * 'vc' - Validation Curve                  
         * 'dimension' - Dimension Learning           
         * 'feature' - Feature Importance              
+        * 'feature_all' - Feature Importance (All)
         * 'parameter' - Model Hyperparameter
         * 'lift' - Lift Curve
         * 'gain' - Gain Chart
@@ -5041,6 +5042,7 @@ def plot_model(
         "vc": "Validation Curve",
         "dimension": "Dimensions",
         "feature": "Feature Importance",
+        "feature_all": "Feature Importance (All)",
         "boundary": "Decision Boundary",
         "lift": "Lift Chart",
         "gain": "Gain Chart",
@@ -5096,7 +5098,7 @@ def plot_model(
     # checking for feature plot
     if (
         not (hasattr(estimator, "coef_") or hasattr(estimator, "feature_importances_"))
-        and plot == "feature"
+        and (plot == "feature" or plot == "feature_all")
     ):
         raise TypeError(
             "Feature Importance plot not available for estimators that doesnt support coef_ or feature_importances_ attribute."
@@ -5665,6 +5667,12 @@ def plot_model(
             )
 
         def feature():
+            _feature(10)
+
+        def feature_all():
+            _feature(len(data_X.columns))
+
+        def _feature(n: int):
             temp_model = pipeline_with_model
             if hasattr(pipeline_with_model, "steps"):
                 temp_model = pipeline_with_model.steps[-1][1]
@@ -5676,7 +5684,7 @@ def plot_model(
             coef_df = pd.DataFrame({"Variable": data_X.columns, "Value": variables})
             sorted_df = (
                 coef_df.sort_values(by="Value", ascending=False)
-                .head(10)
+                .head(n)
                 .sort_values(by="Value")
             )
             my_range = range(1, len(sorted_df.index) + 1)
