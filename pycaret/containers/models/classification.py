@@ -204,7 +204,7 @@ class LogisticRegressionClassifierContainer(ClassifierContainer):
 
         from sklearn.linear_model import LogisticRegression
 
-        if globals_dict["gpu_param"] == "Force":
+        if globals_dict["gpu_param"] == "force":
             from cuml.linear_model import LogisticRegression
 
             logger.info("Imported cuml.linear_model.LogisticRegression")
@@ -257,7 +257,7 @@ class KNeighborsClassifierContainer(ClassifierContainer):
 
         from sklearn.neighbors import KNeighborsClassifier
 
-        if globals_dict["gpu_param"] == "Force":
+        if globals_dict["gpu_param"] == "force":
             from cuml.neighbors import KNeighborsClassifier
 
             logger.info("Imported cuml.neighbors.KNeighborsClassifier")
@@ -407,7 +407,7 @@ class SGDClassifierContainer(ClassifierContainer):
 
         from sklearn.linear_model import SGDClassifier
 
-        if globals_dict["gpu_param"] == "Force":
+        if globals_dict["gpu_param"] == "force":
             from cuml import MBSGDClassifier as SGDClassifier
 
             logger.info("Imported cuml.MBSGDClassifier")
@@ -467,7 +467,7 @@ class SVCClassifierContainer(ClassifierContainer):
 
         # known limitation - cuML SVC only supports binary problems
         if globals_dict["y_train"].value_counts().count() <= 2:
-            if globals_dict["gpu_param"] == "Force":
+            if globals_dict["gpu_param"] == "force":
                 from cuml.svm import SVC
 
                 logger.info("Imported cuml.svm.SVC")
@@ -588,7 +588,7 @@ class RidgeClassifierContainer(ClassifierContainer):
 
         from sklearn.linear_model import RidgeClassifier
 
-        if globals_dict["gpu_param"] == "Force":
+        if globals_dict["gpu_param"] == "force":
             from cuml import MBSGDClassifier as RidgeClassifier
 
             logger.info("Imported cuml.MBSGDClassifier")
@@ -652,7 +652,7 @@ class RandomForestClassifierContainer(ClassifierContainer):
 
         from sklearn.ensemble import RandomForestClassifier
 
-        if globals_dict["gpu_param"] == "Force":
+        if globals_dict["gpu_param"] == "force":
             import cuml.ensemble
 
             logger.info("Imported cuml.ensemble")
@@ -826,6 +826,7 @@ class RandomForestClassifierContainer(ClassifierContainer):
             tune_distribution=tune_distributions,
             tune_args=tune_args,
             shap="type1",
+            is_gpu_enabled=gpu_imported,
         )
         if gpu_imported:
             self.reference = get_class_name(cuml.ensemble.RandomForestClassifier)
@@ -1073,6 +1074,7 @@ class LGBMClassifierContainer(ClassifierContainer):
         logger = get_logger()
         np.random.seed(globals_dict["seed"])
         from lightgbm import LGBMClassifier
+        from lightgbm.basic import LightGBMError
 
         args = {
             "random_state": globals_dict["seed"],
@@ -1100,6 +1102,22 @@ class LGBMClassifierContainer(ClassifierContainer):
 
         _leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 
+        is_gpu_enabled = False
+        if globals_dict["gpu_param"]:
+            try:
+                lgb = LGBMClassifier(device="gpu")
+                lgb.fit(np.zeros((2, 2)), [0, 1])
+                is_gpu_enabled = True
+            except LightGBMError:
+                is_gpu_enabled = False
+                if globals_dict["gpu_param"] == "force":
+                    raise RuntimeError(
+                        f"LightGBM GPU mode not available. Consult https://lightgbm.readthedocs.io/en/latest/GPU-Tutorial.html."
+                    )
+
+        if is_gpu_enabled:
+            args["device"] = "gpu"
+
         super().__init__(
             id="lightgbm",
             name="Light Gradient Boosting Machine",
@@ -1109,7 +1127,7 @@ class LGBMClassifierContainer(ClassifierContainer):
             tune_distribution=tune_distributions,
             tune_args=tune_args,
             shap="type1",
-            is_gpu_enabled=False,
+            is_gpu_enabled=is_gpu_enabled,
         )
 
 
@@ -1122,7 +1140,7 @@ class CatBoostClassifierContainer(ClassifierContainer):
         # suppress output
         logging.getLogger("catboost").setLevel(logging.ERROR)
 
-        use_gpu = globals_dict["gpu_param"] == "Force" or (
+        use_gpu = globals_dict["gpu_param"] == "force" or (
             globals_dict["gpu_param"] and len(globals_dict["X_train"]) >= 50000
         )
 

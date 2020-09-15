@@ -61,6 +61,7 @@ class MetricContainer(BaseContainer):
         scorer: Optional[Union[str, _BaseScorer]] = None,
         args: Dict[str, Any] = None,
         display_name: Optional[str] = None,
+        greater_is_better: bool = True,
         is_custom: bool = False,
     ) -> None:
         self.id = id
@@ -71,6 +72,7 @@ class MetricContainer(BaseContainer):
         if not args:
             args = {}
         self.args = args
+        self.greater_is_better = greater_is_better
         self.is_custom = is_custom
 
     def get_dict(self, internal: bool = True) -> Dict[str, Any]:
@@ -96,6 +98,7 @@ class MetricContainer(BaseContainer):
             "Score Function": self.score_func,
             "Scorer": self.scorer,
             "Args": self.args,
+            "Greater is Better": self.greater_is_better,
             "Custom": self.is_custom,
         }
 
