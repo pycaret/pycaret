@@ -2,21 +2,16 @@
 # Author: Moez Ali <moez.ali@queensu.ca> and Antoni Baum (Yard1) <antoni.baum@protonmail.com>
 # License: MIT
 
-import datetime
-from joblib.parallel import Parallel, delayed
 import pandas as pd
 import pandas.io.formats.style
 import ipywidgets as ipw
 from IPython.display import display, HTML, clear_output, update_display
-from pycaret.internal.Pipeline import PartialFitPipeline
 from pycaret.internal.logging import get_logger
 from pycaret.internal.validation import *
 from typing import Any, List, Optional, Dict, Tuple, Union
-from sklearn.pipeline import Pipeline
 from sklearn import clone
 import numpy as np
 from sklearn.model_selection import KFold, StratifiedKFold, BaseCrossValidator
-import pycaret.internal.Pipeline
 
 
 def get_config(variable: str, globals_d: dict):
@@ -194,11 +189,13 @@ def get_model_id(e, all_models: pd.DataFrame) -> str:
 
 
 def get_model_name(e, all_models: pd.DataFrame, deep: bool = True) -> str:
+    old_e = e
     if isinstance(e, str) and e in all_models.index:
         model_id = e
     else:
         if deep:
             while hasattr(e, "get_params"):
+                old_e = e
                 params = e.get_params()
                 if "steps" in params:
                     e = params["steps"][-1][1]
@@ -208,7 +205,8 @@ def get_model_name(e, all_models: pd.DataFrame, deep: bool = True) -> str:
                     e = params["estimator"]
                 else:
                     break
-
+        if e is None:
+            e = old_e
         model_id = get_model_id(e, all_models)
 
     if model_id is not None:
@@ -242,26 +240,6 @@ def param_grid_to_lists(param_grid: dict) -> dict:
         for k, v in param_grid.items():
             param_grid[k] = list(v)
     return param_grid
-
-
-def make_internal_pipeline(
-    internal_pipeline_steps: list, memory=None
-) -> pycaret.internal.Pipeline.Pipeline:
-
-    if not internal_pipeline_steps:
-        memory = None
-        internal_pipeline_steps = [("empty_step", "passthrough")]
-
-    return pycaret.internal.Pipeline.Pipeline(internal_pipeline_steps, memory=memory)
-
-
-def add_estimator_to_pipeline(pipeline: Pipeline, estimator):
-    pipeline.steps.append(("actual_estimator", estimator))
-
-
-def remove_estimator_from_pipeline(pipeline: Pipeline):
-    if pipeline.steps[-1][0] == "actual_estimator":
-        pipeline.steps.pop()
 
 
 def calculate_metrics(
@@ -438,41 +416,6 @@ class true_warm_start(object):
     def __exit__(self, type, value, traceback):
         if self.params:
             self.model.set_params(**self.params)
-
-
-def supports_partial_fit(estimator, params: dict = None) -> bool:
-    # special case for MLP
-    from sklearn.neural_network import MLPClassifier
-
-    if isinstance(estimator, MLPClassifier):
-        try:
-            if (
-                params and "solver" in params and "lbfgs" in list(params["solver"])
-            ) or estimator.solver == "lbfgs":
-                return False
-        except:
-            return False
-
-    return hasattr(estimator, "partial_fit")
-
-
-class estimator_pipeline(object):
-    """
-    Context which adds an estimator to pipeline.
-    """
-
-    def __init__(self, pipeline: Pipeline, estimator):
-        self.pipeline = clone(pipeline)
-        self.estimator = estimator
-        if supports_partial_fit(self.estimator):
-            self.pipeline.__class__ = PartialFitPipeline
-
-    def __enter__(self):
-        add_estimator_to_pipeline(self.pipeline, self.estimator)
-        return self.pipeline
-
-    def __exit__(self, type, value, traceback):
-        return
 
 
 class nullcontext(object):

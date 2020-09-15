@@ -8,24 +8,24 @@ from pycaret.internal.tune_sklearn_patches import (
     get_tune_sklearn_tunegridsearchcv,
     get_tune_sklearn_tunesearchcv,
 )
+from pycaret.internal.pipeline import (
+    add_estimator_to_pipeline,
+    make_internal_pipeline,
+    estimator_pipeline,
+    merge_pipelines,
+)
 from pycaret.internal.utils import (
     color_df,
     normalize_custom_transformers,
-    make_internal_pipeline,
     nullcontext,
-    supports_partial_fit,
     true_warm_start,
-    estimator_pipeline,
 )
 from pycaret.internal.logging import get_logger
 from pycaret.internal.plotting import show_yellowbrick_plot
 from pycaret.internal.Display import Display
 from pycaret.internal.distributions import *
 from pycaret.internal.validation import *
-from pycaret.containers.models.classification import (
-    get_all_model_containers,
-    LogisticRegressionClassifierContainer,
-)
+from pycaret.containers.models.classification import get_all_model_containers
 from pycaret.containers.metrics.classification import (
     get_all_metric_containers,
     ClassificationMetricContainer,
@@ -40,6 +40,7 @@ import random
 import gc
 from copy import deepcopy
 from sklearn.base import clone
+from sklearn.exceptions import NotFittedError
 from typing import List, Tuple, Any, Union
 import warnings
 from IPython.utils import io
@@ -54,8 +55,6 @@ def setup(
     train_size: float = 0.7,
     test_data: Optional[pd.DataFrame] = None,
     preprocess: bool = True,
-    sampling: bool = False,
-    sample_estimator: Optional[Any] = None,
     categorical_features: Optional[List[str]] = None,
     categorical_imputation: str = "constant",
     ordinal_features: Optional[Dict[str, list]] = None,
@@ -162,18 +161,6 @@ def setup(
         ignore all other parameters related to preprocessing (including 'ordinal_features' and 
         'high_cardinality_features' params), aside from 'custom_pipeline'.
 
-    sampling: bool, default = False
-        When the sample size exceeds 25,000 samples, pycaret will build a base estimator
-        at various sample sizes from the original dataset. This will return a performance 
-        plot of AUC, Accuracy, Recall, Precision, Kappa and F1 values at various sample 
-        levels, that will assist in deciding the preferred sample size for modeling. 
-        The desired sample size must then be entered for training and validation in the 
-        pycaret environment. When sample_size entered is less than 1, the remaining dataset 
-        (1 - sample) is used for fitting the model only when finalize_model() is called.
-    
-    sample_estimator: object, default = None
-        If None, Logistic Regression is used by default.
-    
     categorical_features: list, default = None
         If the inferred data types are not correct, categorical_features can be used to
         overwrite the inferred type. If when running setup the type of 'column1' is
@@ -669,11 +656,7 @@ def setup(
     if type(train_size) is not float:
         raise TypeError("train_size parameter only accepts float value.")
 
-    # checking sampling parameter
-    if type(sampling) is not bool:
-        raise TypeError("sampling parameter only accepts True or False.")
-
-    # checking sampling parameter
+    # checking target parameter
     if target not in data.columns:
         raise ValueError("Target parameter doesnt exist in the data provided.")
 
@@ -682,7 +665,7 @@ def setup(
         if type(session_id) is not int:
             raise TypeError("session_id parameter must be an integer.")
 
-    # checking sampling parameter
+    # checking profile parameter
     if type(profile) is not bool:
         raise TypeError("profile parameter only accepts True or False.")
 
@@ -1062,11 +1045,11 @@ def setup(
     # fix_imbalance_method
     if fix_imbalance:
         if fix_imbalance_method is not None:
-            if hasattr(fix_imbalance_method, "fit_sample"):
+            if hasattr(fix_imbalance_method, "fit_resample"):
                 pass
             else:
                 raise TypeError(
-                    "fix_imbalance_method must contain resampler with fit_sample method."
+                    "fix_imbalance_method must contain resampler with fit_resample method."
                 )
 
     # pandas option
@@ -1126,17 +1109,11 @@ def setup(
     # create html_param
     html_param = html
 
-    # silent parameter to also set sampling to False
-    if silent:
-        sampling = False
-
     logger.info("Preparing display monitor")
 
     if not display:
         # progress bar
         max_steps = 3
-        if sampling:
-            max_steps += 10
 
         progress_args = {"max": max_steps}
         timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
@@ -1545,59 +1522,44 @@ def setup(
     else:
         target_type = "Binary"
 
-    lr = LogisticRegressionClassifierContainer(globals())
-
-    # sample estimator
-    if sample_estimator is None:
-        model = lr
-    else:
-        model = sample_estimator
-
     display.move_progress()
 
-    if sampling and data.shape[0] > 25000:  # change this back to 25000
+    display.update_monitor(1, "Splitting Data")
+    display.display_monitor()
 
-        X_train, X_test, y_train, y_test = _sample_data(
-            model, seed, train_size, data_split_shuffle, display
+    _stratify_columns = _get_columns_to_stratify_by(
+        X_before_preprocess, y_before_preprocess, stratify_param, target
+    )
+
+    if test_data is None:
+        X_train, X_test, y_train, y_test = train_test_split(
+            X_before_preprocess,
+            y_before_preprocess,
+            test_size=1 - train_size,
+            stratify=_stratify_columns,
+            random_state=seed,
+            shuffle=data_split_shuffle,
         )
+        train_data = pd.concat([X_train, y_train], axis=1)
+        test_data = pd.concat([X_test, y_test], axis=1)
 
-    else:
-        display.update_monitor(1, "Splitting Data")
-        display.display_monitor()
+    train_data = prep_pipe.fit_transform(train_data)
+    # workaround to also transform target
+    dtypes.final_training_columns.append(target)
+    test_data = prep_pipe.transform(test_data)
 
-        _stratify_columns = _get_columns_to_stratify_by(
-            X_before_preprocess, y_before_preprocess, stratify_param, target
-        )
+    X_train = train_data.drop(target, axis=1)
+    y_train = train_data[target]
 
-        if test_data is None:
-            X_train, X_test, y_train, y_test = train_test_split(
-                X_before_preprocess,
-                y_before_preprocess,
-                test_size=1 - train_size,
-                stratify=_stratify_columns,
-                random_state=seed,
-                shuffle=data_split_shuffle,
-            )
-            train_data = pd.concat([X_train, y_train], axis=1)
-            test_data = pd.concat([X_test, y_test], axis=1)
+    X_test = test_data.drop(target, axis=1)
+    y_test = test_data[target]
 
-        train_data = prep_pipe.fit_transform(train_data)
-        # workaround to also transform target
-        dtypes.final_training_columns.append(target)
-        test_data = prep_pipe.transform(test_data)
+    if fold_groups_param is not None:
+        fold_groups_param = fold_groups_param[
+            fold_groups_param.index.isin(X_train.index)
+        ]
 
-        X_train = train_data.drop(target, axis=1)
-        y_train = train_data[target]
-
-        X_test = test_data.drop(target, axis=1)
-        y_test = test_data[target]
-
-        if fold_groups_param is not None:
-            fold_groups_param = fold_groups_param[
-                fold_groups_param.index.isin(X_train.index)
-            ]
-
-        display.move_progress()
+    display.move_progress()
 
     data = prep_pipe.transform(data)
     X = data.drop(target, axis=1)
@@ -1721,10 +1683,6 @@ def setup(
             else []
         )
         + [
-            [
-                "Sampled Data ",
-                f"({X_train.shape[0] + X_test.shape[0]}, {data_before_preprocess.shape[1]})",
-            ],
             ["Transformed Train Set ", X_train.shape],
             ["Transformed Test Set ", X_test.shape],
         ]
@@ -2305,10 +2263,10 @@ def compare_models(
                 model_results = pull(pop=True)
                 assert np.sum(model_results.iloc[0]) != 0.0
             except:
-                logger.error(
+                logger.warning(
                     f"create_model() for {model} raised an exception or returned all 0.0, trying without fit_kwargs:"
                 )
-                logger.error(traceback.format_exc())
+                logger.warning(traceback.format_exc())
                 try:
                     model, model_fit_time = _create_model(
                         estimator=model,
@@ -2325,13 +2283,16 @@ def compare_models(
                 except:
                     logger.error(f"create_model() for {model} raised an exception:")
                     logger.error(traceback.format_exc())
-                continue
+                    continue
         logger.info("SubProcess create_model() end ==================================")
 
         if model is None:
             over_time_budget = True
             logger.info(f"Time budged exceeded in create_model(), breaking loop")
             break
+
+        runtime_end = time.time()
+        runtime = np.array(runtime_end - runtime_start).round(2)
 
         logger.info("Creating metrics dataframe")
         if cross_validation:
@@ -2341,8 +2302,7 @@ def compare_models(
         compare_models_.insert(len(compare_models_.columns), "TT (Sec)", model_fit_time)
         compare_models_.insert(0, "Model", model_name)
         compare_models_.insert(0, "Object", [model])
-        compare_models_.insert(0, "index", [i])
-        compare_models_.set_index("index", drop=True, inplace=True)
+        compare_models_.insert(0, "runtime", runtime)
         if master_display is None:
             master_display = compare_models_
         else:
@@ -2353,9 +2313,9 @@ def compare_models(
         master_display = master_display.sort_values(by=sort, ascending=sort_ascending)
         master_display.reset_index(drop=True, inplace=True)
 
-        master_display_ = master_display.drop("Object", axis=1).style.set_precision(
-            round
-        )
+        master_display_ = master_display.drop(
+            ["Object", "runtime"], axis=1, errors="ignore"
+        ).style.set_precision(round)
         master_display_ = master_display_.set_properties(**{"text-align": "left"})
         master_display_ = master_display_.set_table_styles(
             [dict(selector="th", props=[("text-align", "left")])]
@@ -2364,9 +2324,6 @@ def compare_models(
         display.replace_master_display(master_display_)
 
         display.display_master_display()
-        # end runtime
-        runtime_end = time.time()
-        runtime = np.array(runtime_end - runtime_start).round(2)
 
     display.move_progress()
 
@@ -2378,77 +2335,69 @@ def compare_models(
         color = "lightgrey"
         return f"background-color: {color}"
 
-    compare_models_ = (
-        master_display.drop("Object", axis=1)
-        .style.apply(highlight_max, subset=master_display.columns[2:],)
-        .applymap(highlight_cols, subset=["TT (Sec)"])
-    )
-    compare_models_ = compare_models_.set_precision(round)
-    compare_models_ = compare_models_.set_properties(**{"text-align": "left"})
-    compare_models_ = compare_models_.set_table_styles(
-        [dict(selector="th", props=[("text-align", "left")])]
-    )
-
-    display.move_progress()
+    compare_models_ = master_display_.apply(
+        highlight_max, subset=master_display_.columns[1:],
+    ).applymap(highlight_cols, subset=["TT (Sec)"])
 
     display.update_monitor(1, "Compiling Final Models")
     display.display_monitor()
 
-    sorted_models = master_display["Object"].to_list()
+    display.move_progress()
+
+    sorted_models = []
 
     if n_select < 0:
-        sorted_models = sorted_models[n_select:]
+        n_select_range = range(len(master_display) - n_select, len(master_display))
     else:
-        sorted_models = sorted_models[:n_select]
+        n_select_range = range(0, n_select)
 
-    def create_model_and_update_display(model, i, fold, round, fit_kwargs, groups):
-        display.update_monitor(2, _get_model_name(model))
-        display.display_monitor()
-        model, model_fit_time = _create_model(
-            estimator=model,
-            system=False,
-            verbose=False,
-            fold=fold,
-            round=round,
-            cross_validation=False,
-            predict=False,
-            fit_kwargs=fit_kwargs,
-            groups=groups,
+    for index, row in master_display.iterrows():
+        model = row["Object"]
+
+        results = row.to_frame().T.drop(
+            ["Object", "Model", "runtime", "TT (Sec)"], errors="ignore", axis=1
         )
 
-        if logging_param and cross_validation:
+        avgs_dict_log = {k: v for k, v in results.iloc[0].items()}
 
-            avgs_dict_log = {
-                k: v
-                for k, v in compare_models_.data.drop(
-                    ["Object", "Model", "TT (Sec)"], errors="ignore", axis=1
-                )
-                .iloc[i]
-                .items()
-            }
+        log_holdout = False
+
+        if index in n_select_range:
+            display.update_monitor(2, _get_model_name(model))
+            display.display_monitor()
+            model, model_fit_time = _create_model(
+                estimator=model,
+                system=False,
+                verbose=False,
+                fold=fold,
+                round=round,
+                cross_validation=False,
+                predict=False,
+                fit_kwargs=fit_kwargs,
+                groups=groups,
+            )
+            sorted_models.append(model)
+            log_holdout = True
+
+        if logging_param and cross_validation:
 
             try:
                 _mlflow_log_model(
                     model=model,
-                    model_results=model_results,
+                    model_results=results,
                     score_dict=avgs_dict_log,
                     source="compare_models",
-                    runtime=runtime,
-                    model_fit_time=model_fit_time,
+                    runtime=row["runtime"],
+                    model_fit_time=row["TT (Sec)"],
                     _prep_pipe=prep_pipe,
                     log_plots=False,
+                    log_holdout=log_holdout,
                     URI=URI,
                     display=display,
                 )
             except:
                 logger.error(f"_mlflow_log_model() for {model} raised an exception:")
                 logger.error(traceback.format_exc())
-        return model
-
-    sorted_models = [
-        create_model_and_update_display(model, i, fold, round, fit_kwargs, groups)
-        for i, model in enumerate(sorted_models)
-    ]
 
     if len(sorted_models) == 1:
         sorted_models = sorted_models[0]
@@ -2980,11 +2929,10 @@ def _create_model(
         model_results = color_df(model_results, "yellow", ["Mean"], axis=1)
         model_results = model_results.set_precision(round)
 
-        # refitting the model on complete X_train, y_train
-        display.update_monitor(1, "Finalizing Model")
-        display.display_monitor()
-
         if refit:
+            # refitting the model on complete X_train, y_train
+            display.update_monitor(1, "Finalizing Model")
+            display.display_monitor()
             model_fit_start = time.time()
             logger.info("Finalizing model")
             with io.capture_output():
@@ -3691,7 +3639,8 @@ def tune_model(
 
             # if n_jobs is None:
             # enable Ray local mode - otherwise the performance is terrible
-            n_jobs = 1
+            if len(X_train) <= 50000:
+                n_jobs = 1
 
             TuneSearchCV = get_tune_sklearn_tunesearchcv()
             TuneGridSearchCV = get_tune_sklearn_tunegridsearchcv()
@@ -5013,6 +4962,7 @@ def plot_model(
         * 'vc' - Validation Curve                  
         * 'dimension' - Dimension Learning           
         * 'feature' - Feature Importance              
+        * 'feature_all' - Feature Importance (All)
         * 'parameter' - Model Hyperparameter
         * 'lift' - Lift Curve
         * 'gain' - Gain Chart
@@ -5074,26 +5024,26 @@ def plot_model(
         fit_kwargs = {}
 
     # checking plots (string)
-    available_plots = [
-        ("Hyperparameters", "parameter"),
-        ("AUC", "auc"),
-        ("Confusion Matrix", "confusion_matrix"),
-        ("Threshold", "threshold"),
-        ("Precision Recall", "pr"),
-        ("Error", "error"),
-        ("Class Report", "class_report"),
-        ("Feature Selection", "rfe"),
-        ("Learning Curve", "learning"),
-        ("Manifold Learning", "manifold"),
-        ("Calibration Curve", "calibration"),
-        ("Validation Curve", "vc"),
-        ("Dimensions", "dimension"),
-        ("Feature Importance", "feature"),
-        ("Decision Boundary", "boundary"),
-        ("Lift Chart", "lift"),
-        ("Gain Chart", "gain"),
-    ]
-    available_plots = {k: v for v, k in available_plots}
+    available_plots = {
+        "parameter": "Hyperparameters",
+        "auc": "AUC",
+        "confusion_matrix": "Confusion Matrix",
+        "threshold": "Threshold",
+        "pr": "Precision Recall",
+        "error": "Error",
+        "class_report": "Class Report",
+        "rfe": "Feature Selection",
+        "learning": "Learning Curve",
+        "manifold": "Manifold Learning",
+        "calibration": "Calibration Curve",
+        "vc": "Validation Curve",
+        "dimension": "Dimensions",
+        "feature": "Feature Importance",
+        "feature_all": "Feature Importance (All)",
+        "boundary": "Decision Boundary",
+        "lift": "Lift Chart",
+        "gain": "Gain Chart",
+    }
 
     if plot not in available_plots:
         raise ValueError(
@@ -5143,10 +5093,9 @@ def plot_model(
         )
 
     # checking for feature plot
-    if (
-        not (hasattr(estimator, "coef_") or hasattr(estimator, "feature_importances_"))
-        and plot == "feature"
-    ):
+    if not (
+        hasattr(estimator, "coef_") or hasattr(estimator, "feature_importances_")
+    ) and (plot == "feature" or plot == "feature_all"):
         raise TypeError(
             "Feature Importance plot not available for estimators that doesnt support coef_ or feature_importances_ attribute."
         )
@@ -5183,6 +5132,8 @@ def plot_model(
     display.move_progress()
 
     # defining estimator as model locally
+    # deepcopy instead of clone so we have a fitted estimator
+    estimator = deepcopy(estimator)
     model = estimator
 
     display.move_progress()
@@ -5239,7 +5190,7 @@ def plot_model(
                 except:
                     pass
 
-        if plot == "auc":
+        def auc():
 
             from yellowbrick.classifier import ROCAUC
 
@@ -5259,7 +5210,7 @@ def plot_model(
                 display=display,
             )
 
-        elif plot == "threshold":
+        def threshold():
 
             from yellowbrick.classifier import DiscriminationThreshold
 
@@ -5279,7 +5230,7 @@ def plot_model(
                 display=display,
             )
 
-        elif plot == "pr":
+        def pr():
 
             from yellowbrick.classifier import PrecisionRecallCurve
 
@@ -5299,7 +5250,7 @@ def plot_model(
                 display=display,
             )
 
-        elif plot == "confusion_matrix":
+        def confusion_matrix():
 
             from yellowbrick.classifier import ConfusionMatrix
 
@@ -5321,7 +5272,7 @@ def plot_model(
                 display=display,
             )
 
-        elif plot == "error":
+        def error():
 
             from yellowbrick.classifier import ClassPredictionError
 
@@ -5341,7 +5292,7 @@ def plot_model(
                 display=display,
             )
 
-        elif plot == "class_report":
+        def class_report():
 
             from yellowbrick.classifier import ClassificationReport
 
@@ -5363,7 +5314,7 @@ def plot_model(
                 display=display,
             )
 
-        elif plot == "boundary":
+        def boundary():
 
             from sklearn.preprocessing import StandardScaler
             from sklearn.decomposition import PCA
@@ -5401,7 +5352,7 @@ def plot_model(
                 classes=["A", "B"],
             )
 
-        elif plot == "rfe":
+        def rfe():
 
             from yellowbrick.model_selection import RFECV
 
@@ -5422,7 +5373,7 @@ def plot_model(
                 display=display,
             )
 
-        elif plot == "learning":
+        def learning():
 
             from yellowbrick.model_selection import LearningCurve
 
@@ -5450,14 +5401,17 @@ def plot_model(
                 display=display,
             )
 
-        elif plot == "lift":
+        def lift():
 
             import scikitplot as skplt
 
             display.move_progress()
             logger.info("Generating predictions / predict_proba on X_test")
-            y_test__ = pipeline_with_model.predict(X_test)
-            predict_proba__ = pipeline_with_model.predict_proba(X_test)
+            with fit_if_not_fitted(
+                pipeline_with_model, data_X, data_y, groups=groups, **fit_kwargs
+            ) as fitted_pipeline_with_model:
+                y_test__ = fitted_pipeline_with_model.predict(X_test)
+                predict_proba__ = fitted_pipeline_with_model.predict_proba(X_test)
             display.move_progress()
             display.move_progress()
             display.clear_output()
@@ -5475,14 +5429,17 @@ def plot_model(
 
             logger.info("Visual Rendered Successfully")
 
-        elif plot == "gain":
+        def gain():
 
             import scikitplot as skplt
 
             display.move_progress()
             logger.info("Generating predictions / predict_proba on X_test")
-            y_test__ = pipeline_with_model.predict(X_test)
-            predict_proba__ = pipeline_with_model.predict_proba(X_test)
+            with fit_if_not_fitted(
+                pipeline_with_model, data_X, data_y, groups=groups, **fit_kwargs
+            ) as fitted_pipeline_with_model:
+                y_test__ = fitted_pipeline_with_model.predict(X_test)
+                predict_proba__ = fitted_pipeline_with_model.predict_proba(X_test)
             display.move_progress()
             display.move_progress()
             display.clear_output()
@@ -5500,7 +5457,7 @@ def plot_model(
 
             logger.info("Visual Rendered Successfully")
 
-        elif plot == "manifold":
+        def manifold():
 
             from yellowbrick.features import Manifold
 
@@ -5523,7 +5480,7 @@ def plot_model(
                 display=display,
             )
 
-        elif plot == "calibration":
+        def calibration():
 
             from sklearn.calibration import calibration_curve
 
@@ -5533,7 +5490,10 @@ def plot_model(
             ax1.plot([0, 1], [0, 1], "k:", label="Perfectly calibrated")
             display.move_progress()
             logger.info("Scoring test/hold-out set")
-            prob_pos = pipeline_with_model.predict_proba(test_X)[:, 1]
+            with fit_if_not_fitted(
+                pipeline_with_model, data_X, data_y, groups=groups, **fit_kwargs
+            ) as fitted_pipeline_with_model:
+                prob_pos = fitted_pipeline_with_model.predict_proba(test_X)[:, 1]
             prob_pos = (prob_pos - prob_pos.min()) / (prob_pos.max() - prob_pos.min())
             fraction_of_positives, mean_predicted_value = calibration_curve(
                 test_y, prob_pos, n_bins=10
@@ -5566,62 +5526,65 @@ def plot_model(
 
             logger.info("Visual Rendered Successfully")
 
-        elif plot == "vc":
+        def vc():
 
             logger.info("Determining param_name")
 
-            # SGD Classifier
-            if model_name == "SGDClassifier":
-                param_name = "l1_ratio"
-                param_range = np.arange(0, 1, 0.01)
-
-            elif model_name == "LinearDiscriminantAnalysis":
-                raise ValueError(
-                    "Shrinkage Parameter not supported in Validation Curve Plot."
+            try:
+                model_params = pipeline_with_model.get_params()
+            except:
+                display.clear_output()
+                raise TypeError(
+                    "Plot not supported for this estimator. Try different estimator."
                 )
 
+            # SGD Classifier
+            if "actual_estimator__l1_ratio" in model_params:
+                param_name = "actual_estimator__l1_ratio"
+                param_range = np.arange(0, 1, 0.01)
+
             # tree based models
-            elif hasattr(pipeline_with_model, "actual_estimator__max_depth"):
+            elif "actual_estimator__max_depth" in model_params:
                 param_name = "actual_estimator__max_depth"
                 param_range = np.arange(1, 11)
 
             # knn
-            elif hasattr(pipeline_with_model, "actual_estimator__n_neighbors"):
+            elif "actual_estimator__n_neighbors" in model_params:
                 param_name = "actual_estimator__n_neighbors"
                 param_range = np.arange(1, 11)
 
             # MLP / Ridge
-            elif hasattr(pipeline_with_model, "actual_estimator__alpha"):
+            elif "actual_estimator__alpha" in model_params:
                 param_name = "actual_estimator__alpha"
                 param_range = np.arange(0, 1, 0.1)
 
             # Logistic Regression
-            elif hasattr(pipeline_with_model, "actual_estimator__C"):
+            elif "actual_estimator__C" in model_params:
                 param_name = "actual_estimator__C"
                 param_range = np.arange(1, 11)
 
             # Bagging / Boosting
-            elif hasattr(pipeline_with_model, "actual_estimator__n_estimators"):
+            elif "actual_estimator__n_estimators" in model_params:
                 param_name = "actual_estimator__n_estimators"
                 param_range = np.arange(1, 100, 10)
 
             # Bagging / Boosting / gbc / ada /
-            elif hasattr(pipeline_with_model, "actual_estimator__n_estimators"):
+            elif "actual_estimator__n_estimators" in model_params:
                 param_name = "actual_estimator__n_estimators"
                 param_range = np.arange(1, 100, 10)
 
             # Naive Bayes
-            elif hasattr(pipeline_with_model, "actual_estimator__var_smoothing"):
+            elif "actual_estimator__var_smoothing" in model_params:
                 param_name = "actual_estimator__var_smoothing"
                 param_range = np.arange(0.1, 1, 0.01)
 
             # QDA
-            elif hasattr(pipeline_with_model, "actual_estimator__reg_param"):
+            elif "actual_estimator__reg_param" in model_params:
                 param_name = "actual_estimator__reg_param"
                 param_range = np.arange(0, 1, 0.1)
 
             # GPC
-            elif hasattr(pipeline_with_model, "actual_estimator__max_iter_predict"):
+            elif "actual_estimator__max_iter_predict" in model_params:
                 param_name = "actual_estimator__max_iter_predict"
                 param_range = np.arange(100, 1000, 100)
 
@@ -5661,7 +5624,7 @@ def plot_model(
                 display=display,
             )
 
-        elif plot == "dimension":
+        def dimension():
 
             from yellowbrick.features import RadViz
             from sklearn.preprocessing import StandardScaler
@@ -5699,7 +5662,13 @@ def plot_model(
                 display=display,
             )
 
-        elif plot == "feature":
+        def feature():
+            _feature(10)
+
+        def feature_all():
+            _feature(len(data_X.columns))
+
+        def _feature(n: int):
             temp_model = pipeline_with_model
             if hasattr(pipeline_with_model, "steps"):
                 temp_model = pipeline_with_model.steps[-1][1]
@@ -5711,7 +5680,7 @@ def plot_model(
             coef_df = pd.DataFrame({"Variable": data_X.columns, "Value": variables})
             sorted_df = (
                 coef_df.sort_values(by="Value", ascending=False)
-                .head(10)
+                .head(n)
                 .sort_values(by="Value")
             )
             my_range = range(1, len(sorted_df.index) + 1)
@@ -5736,13 +5705,16 @@ def plot_model(
 
             logger.info("Visual Rendered Successfully")
 
-        elif plot == "parameter":
+        def parameter():
 
             param_df = pd.DataFrame.from_dict(
                 estimator.get_params(estimator), orient="index", columns=["Parameters"]
             )
             display.display(param_df, clear=True)
             logger.info("Visual Rendered Successfully")
+
+        # execute the plot method
+        locals()[plot]()
 
         try:
             plt.close()
@@ -5976,7 +5948,7 @@ def interpret_model(
 
     shap_plot = None
 
-    if plot == "summary":
+    def summary():
 
         logger.info("Creating TreeExplainer")
         explainer = shap.TreeExplainer(model)
@@ -5984,7 +5956,7 @@ def interpret_model(
         shap_values = explainer.shap_values(X_test)
         shap_plot = shap.summary_plot(shap_values, X_test, **kwargs)
 
-    elif plot == "correlation":
+    def correlation():
 
         if feature == None:
 
@@ -6012,7 +5984,7 @@ def interpret_model(
             logger.info("model type detected: type 2")
             shap.dependence_plot(dependence, shap_values, X_test, **kwargs)
 
-    elif plot == "reason":
+    def reason():
 
         if model_id in shap_models_type1:
             logger.info("model type detected: type 1")
@@ -6087,6 +6059,8 @@ def interpret_model(
                     X_test.iloc[row_to_show, :],
                     **kwargs,
                 )
+
+    locals()[plot]()
 
     logger.info("Visual Rendered Successfully")
 
@@ -6690,15 +6664,20 @@ def predict_model(
 
     else:
 
-        if hasattr(estimator, "steps") and hasattr(estimator, "predict"):
+        if is_sklearn_pipeline(estimator) and hasattr(estimator, "predict"):
             dtypes = estimator.named_steps["dtypes"]
         else:
             try:
                 dtypes = prep_pipe.named_steps["dtypes"]
                 estimator_ = deepcopy(prep_pipe)
-                estimator_.steps.append(["trained model", estimator])
+                if is_sklearn_pipeline(estimator):
+                    merge_pipelines(estimator_, estimator)
+                    estimator_.steps[-1] = ("trained_model", estimator_.steps[-1][1])
+                else:
+                    add_estimator_to_pipeline(
+                        estimator_, estimator, name="trained_model"
+                    )
                 estimator = estimator_
-                del estimator_
 
             except:
                 raise ValueError("Pipeline not found")
@@ -7371,7 +7350,21 @@ def automl(optimize: str = "Accuracy", use_holdout: bool = False) -> Any:
     if use_holdout:
         logger.info("Model Selection Basis : Holdout set")
         for i in master_model_container:
-            pred_holdout = predict_model(i, verbose=False)
+            try:
+                pred_holdout = predict_model(i, verbose=False)
+            except NotFittedError:
+                logger.warning(f"Model {i} is not fitted, running _create_model")
+                i, _ = _create_model(
+                    estimator=i,
+                    system=False,
+                    verbose=False,
+                    cross_validation=False,
+                    predict=False,
+                    groups=fold_groups_param,
+                )
+                pull(pop=True)
+                pred_holdout = predict_model(i, verbose=False)
+
             p = pull(pop=True)
             p = p[compare_dimension][0]
             scorer.append(p)
@@ -7413,6 +7406,8 @@ def pull(pop=False) -> pd.DataFrame:  # added in pycaret==2.2.0
         Equivalent to get_config('display_container')[-1]
 
     """
+    if not display_container:
+        return None
     return display_container.pop(-1) if pop else display_container[-1]
 
 
@@ -7951,199 +7946,6 @@ def _choose_better(
     return model
 
 
-def _sample_data(
-    model, seed: int, train_size: float, data_split_shuffle: bool, display: Display
-):
-    """
-    Method to sample data.
-    """
-
-    from sklearn.model_selection import train_test_split
-    import plotly.express as px
-
-    np.random.seed(seed)
-
-    logger = get_logger()
-
-    logger.info("Sampling dataset")
-
-    split_perc = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.99]
-    split_perc_text = [
-        "10%",
-        "20%",
-        "30%",
-        "40%",
-        "50%",
-        "60%",
-        "70%",
-        "80%",
-        "90%",
-        "100%",
-    ]
-    split_perc_tt = split_perc.copy()
-    split_perc_tt_total = []
-
-    score_dict = {metric: np.empty((0, 0)) for metric in all_metrics["Display Name"]}
-
-    counter = 0
-
-    for i in split_perc:
-
-        display.move_progress()
-
-        t0 = time.time()
-
-        """
-        MONITOR UPDATE STARTS
-        """
-
-        perc_text = split_perc_text[counter]
-        display.update_monitor(1, f"Fitting Model on {perc_text} sample")
-        display.display_monitor()
-
-        """
-        MONITOR UPDATE ENDS
-        """
-
-        _stratify_columns = _get_columns_to_stratify_by(
-            X, y, stratify_param, target_param
-        )
-
-        X_, _, y_, _ = train_test_split(
-            X,
-            y,
-            test_size=1 - i,
-            stratify=_stratify_columns,
-            random_state=seed,
-            shuffle=data_split_shuffle,
-        )
-
-        _stratify_columns = _get_columns_to_stratify_by(
-            X_, y_, stratify_param, target_param
-        )
-
-        X_train, X_test, y_train, y_test = train_test_split(
-            X_,
-            y_,
-            test_size=1 - train_size,
-            stratify=_stratify_columns,
-            random_state=seed,
-            shuffle=data_split_shuffle,
-        )
-
-        with io.capture_output():
-            model.fit(X_train, y_train)
-        pred_ = model.predict(X_test)
-        try:
-            pred_prob = model.predict_proba(X_test)[:, 1]
-        except:
-            logger.warning("model has no predict_proba attribute.")
-            pred_prob = 0
-
-        score_dict = _calculate_metrics(y_test, pred_, pred_prob)
-
-        t1 = time.time()
-
-        """
-        Time calculation begins
-        """
-
-        tt = t1 - t0
-        total_tt = tt / i
-        split_perc_tt.pop(0)
-
-        for remain in split_perc_tt:
-            ss = total_tt * remain
-            split_perc_tt_total.append(ss)
-
-        """
-        Time calculation Ends
-        """
-
-        split_perc_tt_total = []
-        counter += 1
-
-    model_results = []
-    for i in split_perc:
-        for metric_name, metric in score_dict.items():
-            row = (i, metric[i], metric_name)
-            model_results.append(row)
-
-    model_results = pd.DataFrame(
-        model_results, columns=["Sample", "Metric", "Metric Name"]
-    )
-    fig = px.line(
-        model_results,
-        x="Sample",
-        y="Metric",
-        color="Metric Name",
-        line_shape="linear",
-        range_y=[0, 1],
-    )
-    fig.update_layout(plot_bgcolor="rgb(245,245,245)")
-    title = f"{_get_model_name(model)} Metrics and Sample %"
-    fig.update_layout(
-        title={
-            "text": title,
-            "y": 0.95,
-            "x": 0.45,
-            "xanchor": "center",
-            "yanchor": "top",
-        }
-    )
-    fig.show()
-
-    display.update_monitor(1, "Waiting for input")
-    display.display_monitor()
-
-    print(
-        "Please Enter the sample % of data you would like to use for modeling. Example: Enter 0.3 for 30%."
-    )
-    print("Press Enter if you would like to use 100% of the data.")
-
-    sample_size = input("Sample Size: ")
-
-    _stratify_columns = _get_columns_to_stratify_by(X, y, stratify_param, target_param)
-
-    if sample_size == "" or sample_size == "1":
-
-        X_train, X_test, y_train, y_test = train_test_split(
-            X,
-            y,
-            test_size=1 - train_size,
-            stratify=_stratify_columns,
-            random_state=seed,
-            shuffle=data_split_shuffle,
-        )
-
-    else:
-
-        sample_n = float(sample_size)
-        X_selected, _, y_selected, _ = train_test_split(
-            X,
-            y,
-            test_size=1 - sample_n,
-            stratify=_stratify_columns,
-            random_state=seed,
-            shuffle=data_split_shuffle,
-        )
-
-        _stratify_columns = _get_columns_to_stratify_by(
-            X_selected, y_selected, stratify_param, target_param
-        )
-
-        X_train, X_test, y_train, y_test = train_test_split(
-            X_selected,
-            y_selected,
-            test_size=1 - train_size,
-            stratify=_stratify_columns,
-            random_state=seed,
-            shuffle=data_split_shuffle,
-        )
-
-    return X_train, X_test, y_train, y_test
-
-
 def _is_multiclass() -> bool:
     """
     Method to check if the problem is multiclass.
@@ -8206,6 +8008,7 @@ def _mlflow_log_model(
     runtime: float,
     model_fit_time: float,
     _prep_pipe,
+    log_holdout: bool = True,
     log_plots: bool = False,
     tune_cv_results=None,
     URI=None,
@@ -8240,10 +8043,14 @@ def _mlflow_log_model(
         else:
             params = model
 
-        if hasattr(params, "get_all_params"):
-            params = params.get_all_params()
-        else:
-            params = params.get_params()
+        try:
+            try:
+                params = params.get_all_params()
+            except:
+                params = params.get_params()
+        except:
+            logger.warning("Couldn't get params for model")
+            params = {}
 
         for i in list(params):
             v = params.get(i)
@@ -8278,13 +8085,20 @@ def _mlflow_log_model(
         mlflow.log_artifact("Results.html")
         os.remove("Results.html")
 
-        # Generate hold-out predictions and save as html
-        holdout = predict_model(model, verbose=False)
-        holdout_score = pull(pop=True)
-        del holdout
-        holdout_score.to_html("Holdout.html", col_space=65, justify="left")
-        mlflow.log_artifact("Holdout.html")
-        os.remove("Holdout.html")
+        if log_holdout:
+            # Generate hold-out predictions and save as html
+            try:
+                holdout = predict_model(model, verbose=False)
+                holdout_score = pull(pop=True)
+                del holdout
+                holdout_score.to_html("Holdout.html", col_space=65, justify="left")
+                mlflow.log_artifact("Holdout.html")
+                os.remove("Holdout.html")
+            except:
+                logger.warning(
+                    "Couldn't create holdout prediction for model, exception below:"
+                )
+                logger.warning(traceback.format_exc())
 
         # Log AUC and Confusion Matrix plot
 
@@ -8364,7 +8178,7 @@ def _mlflow_log_model(
 
         # log model as sklearn flavor
         prep_pipe_temp = deepcopy(_prep_pipe)
-        prep_pipe_temp.steps.append(["trained model", model])
+        prep_pipe_temp.steps.append(["trained_model", model])
         mlflow.sklearn.log_model(
             prep_pipe_temp,
             "model",
@@ -8373,6 +8187,7 @@ def _mlflow_log_model(
             input_example=input_example,
         )
         del prep_pipe_temp
+    gc.collect()
 
 
 def _get_columns_to_stratify_by(
