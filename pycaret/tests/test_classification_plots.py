@@ -1,3 +1,4 @@
+from build.lib.pycaret.classification import interpret_model
 import os, sys
 
 from pycaret.classification import plot_model
@@ -40,6 +41,14 @@ def test():
 
     for plot in available_plots:
         plot_model(model, plot=plot)
+
+    models = [pycaret.classification.create_model('et'), pycaret.classification.create_model('xgboost')]
+
+    available_shap = ["summary", "correlation", "reason"]
+
+    for model in models:
+        for plot in available_shap:
+            interpret_model(model, plot=plot)
 
     assert 1 == 1
     
