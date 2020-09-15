@@ -258,16 +258,11 @@ def make_internal_pipeline(
     return pycaret.internal.Pipeline.Pipeline(internal_pipeline_steps, memory=memory)
 
 
-def add_estimator_to_pipeline(pipeline: Pipeline, estimator):
+def add_estimator_to_pipeline(pipeline: Pipeline, estimator, name="actual_estimator"):
     try:
-        pipeline.replace_final_estimator(estimator)
+        pipeline.replace_final_estimator(estimator, name=name)
     except:
-        pipeline.steps.append(("actual_estimator", estimator))
-
-
-def remove_estimator_from_pipeline(pipeline: Pipeline):
-    if pipeline.steps[-1][0] == "actual_estimator":
-        pipeline.steps.pop()
+        pipeline.steps.append((name, estimator))
 
 
 def calculate_metrics(
@@ -558,3 +553,11 @@ def is_fitted(estimator) -> bool:
         return True
     except:
         return False
+
+
+def merge_pipelines(pipeline_to_merge_to: Pipeline, pipeline_to_be_merged: Pipeline):
+    pipeline_to_merge_to.steps.extend(pipeline_to_be_merged.steps)
+    try:
+        pipeline_to_merge_to._carry_over_final_estimator_fit_vars()
+    except:
+        pass

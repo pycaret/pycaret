@@ -9,8 +9,10 @@ from pycaret.internal.tune_sklearn_patches import (
     get_tune_sklearn_tunesearchcv,
 )
 from pycaret.internal.utils import (
+    add_estimator_to_pipeline,
     color_df,
     fit_if_not_fitted,
+    merge_pipelines,
     normalize_custom_transformers,
     make_internal_pipeline,
     nullcontext,
@@ -6658,13 +6660,19 @@ def predict_model(
 
     else:
 
-        if hasattr(estimator, "steps") and hasattr(estimator, "predict"):
+        if is_sklearn_pipeline(estimator) and hasattr(estimator, "predict"):
             dtypes = estimator.named_steps["dtypes"]
         else:
             try:
                 dtypes = prep_pipe.named_steps["dtypes"]
                 estimator_ = deepcopy(prep_pipe)
-                estimator_.steps.append(["trained model", estimator])
+                if is_sklearn_pipeline(estimator):
+                    merge_pipelines(estimator_, estimator)
+                    estimator_.steps[-1] = ("trained_model", estimator_.steps[-1][1])
+                else:
+                    add_estimator_to_pipeline(
+                        estimator_, estimator, name="trained_model"
+                    )
                 estimator = estimator_
 
             except:
