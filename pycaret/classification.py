@@ -5132,7 +5132,7 @@ def plot_model(
     display.move_progress()
 
     # defining estimator as model locally
-    model = estimator
+    model = clone(estimator)
 
     display.move_progress()
 
