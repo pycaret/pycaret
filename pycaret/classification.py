@@ -6663,9 +6663,9 @@ def predict_model(
         else:
             try:
                 dtypes = prep_pipe.named_steps["dtypes"]
-                prep_pipe = deepcopy(prep_pipe)
-                prep_pipe.steps.append(["trained_model", estimator])
-                estimator = prep_pipe
+                estimator_ = deepcopy(prep_pipe)
+                estimator_.steps.append(["trained model", estimator])
+                estimator = estimator_
 
             except:
                 raise ValueError("Pipeline not found")
@@ -6680,8 +6680,6 @@ def predict_model(
             label_column.replace(replacement_mapper, inplace=True)
 
     # model name
-    logger.info(estimator)
-    logger.info(vars(estimator))
     full_name = _get_model_name(estimator)
 
     # prediction starts here
