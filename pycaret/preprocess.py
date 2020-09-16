@@ -51,6 +51,11 @@ SKLEARN_EMPTY_STEP = "passthrough"
 
 #_____________________________________________________________________________________________________________________________
 
+def str_if_not_null(x):
+  if pd.isnull(x) or (x is None) or pd.isna(x) or np.isnan(x) or (x is not x):
+    return x
+  return str(x)
+
 class DataTypes_Auto_infer(BaseEstimator,TransformerMixin):
   '''
     - This will try to infer data types automatically, option to override learent data types is also available.
@@ -134,7 +139,7 @@ class DataTypes_Auto_infer(BaseEstimator,TransformerMixin):
     self.id_columns = []
     for i in data.select_dtypes(include=['int64','float64']).columns:
       if i not in self.numerical_features:
-        if sum(data[i].isna()) == 0: 
+        if sum(data[i].isnull()) == 0: 
           if data[i].nunique() == len_samples:
             # we extract column and sort it
             features = data[i].sort_values()
@@ -148,7 +153,7 @@ class DataTypes_Auto_infer(BaseEstimator,TransformerMixin):
     # so first we need to convert any such floats that have NaN and unique values are lower than 20
     for i in data.select_dtypes(include=['float64']).columns:
       # count how many Nas are there
-      na_count = sum(data[i].isna())
+      na_count = sum(data[i].isnull())
       # count how many digits are there that have decimiles
       count_float = np.nansum([ False if r.is_integer() else True for r in data[i]])
       # total decimiels digits
@@ -174,7 +179,7 @@ class DataTypes_Auto_infer(BaseEstimator,TransformerMixin):
     # if column is int and unique counts are more than two, then: (exclude target)
     for i in data.select_dtypes(include=['int64']).columns:
       if data[i].nunique() <=20: #hard coded
-        data[i]= data[i].apply(str)
+        data[i]= data[i].apply(str_if_not_null)
       else:
         data[i]= data[i].astype('float64')
 
@@ -183,7 +188,7 @@ class DataTypes_Auto_infer(BaseEstimator,TransformerMixin):
     # # make it object
     for i in data.select_dtypes(include=['float64']).columns:
       if data[i].nunique()==2:
-        data[i]= data[i].apply(str)
+        data[i]= data[i].apply(str_if_not_null)
 
     #for time & dates
     #self.drop_time = [] # for now we are deleting time columns
@@ -191,9 +196,9 @@ class DataTypes_Auto_infer(BaseEstimator,TransformerMixin):
     # now in case we were given any specific columns dtypes in advance , we will over ride theos 
     for i in self.categorical_features:
       try:
-        data[i]=data[i].apply(str)
+        data[i]=data[i].apply(str_if_not_null)
       except:
-        data[i]=dataset[i].apply(str)
+        data[i]=dataset[i].apply(str_if_not_null)
 
     for i in self.numerical_features:
       try:
@@ -497,7 +502,7 @@ class Surrogate_Imputer(_BaseImputer):
     # also need to learn if any columns had NA in training
     self.numeric_na = pd.DataFrame(columns=self.numeric_columns)
     for i in self.numeric_columns:
-      if data[i].isna().any() == True:
+      if data[i].isnull().any() == True:
         self.numeric_na.loc[0,i] = True
       else:
         self.numeric_na.loc[0,i] = False 
@@ -511,7 +516,7 @@ class Surrogate_Imputer(_BaseImputer):
       # also need to learn if any columns had NA in training, but this is only valid if strategy is "most frequent"
       self.categorical_na = pd.DataFrame(columns=self.categorical_columns)
       for i in self.categorical_columns:
-        if sum(data[i].isna()) > 0:
+        if sum(data[i].isnull()) > 0:
           self.categorical_na.loc[0,i] = True
         else:
           self.categorical_na.loc[0,i] = False        
@@ -529,7 +534,7 @@ class Surrogate_Imputer(_BaseImputer):
     
     # learn if time columns were NA
     for i in self.time_columns:
-      if data[i].isna().any() == True:
+      if data[i].isnull().any() == True:
         self.time_na.loc[0,i] = True
       else:
         self.time_na.loc[0,i] = False
@@ -542,7 +547,7 @@ class Surrogate_Imputer(_BaseImputer):
     data = dataset 
     # for numeric columns
     for i,s in zip(data[self.numeric_columns].columns,self.numeric_stats):
-      array = data[i].isna()
+      array = data[i].isnull()
       data[i].fillna(s,inplace=True)
       # make a surrogate column if there was any
       if self.numeric_na.loc[0,i] == True:
@@ -555,7 +560,7 @@ class Surrogate_Imputer(_BaseImputer):
     if self.categorical_strategy == 'most frequent':
       for i in (self.categorical_stats.columns):
         #data[i].fillna(self.categorical_stats.loc[0,i],inplace=True)
-        array = data[i].isna()
+        array = data[i].isnull()
         data[i] = data[i].fillna(self.categorical_stats.loc[0,i])
         data[i] = data[i].apply(str)  
         # make surrogate column
@@ -571,7 +576,7 @@ class Surrogate_Imputer(_BaseImputer):
     
     # for time
     for i in (self.time_stats.columns):
-      array = data[i].isna()
+      array = data[i].isnull()
       data[i].fillna(self.time_stats.loc[0,i],inplace=True)
       # make surrogate column
       if self.time_na.loc[0,i] == True:
@@ -796,8 +801,7 @@ class Zroe_NearZero_Variance(BaseEstimator,TransformerMixin):
 
   
   def transform(self,dataset,y=None): # since it is only for training data set , nothing here
-    data = dataset
-    data.drop(self.to_drop,axis=1,inplace=True)
+    data = dataset.drop(self.to_drop,axis=1)
     return(data)
   
   def fit_transform(self,dataset,y=None):
@@ -1369,22 +1373,24 @@ class Outlier(BaseEstimator,TransformerMixin):
     # except:
     #   None
 
+    data_without_target = data.drop(self.target,axis=1)
+
     if 'knn' in self.methods:
       self.knn = KNN(contamination=self.contamination)
-      self.knn.fit(data.drop(self.target,axis=1))
-      knn_predict = self.knn.predict(data.drop(self.target,axis=1))
+      self.knn.fit(data_without_target)
+      knn_predict = self.knn.predict(data_without_target)
       data['knn'] = knn_predict
     
     if 'iso' in self.methods:
       self.iso = IForest(contamination=self.contamination,random_state=self.random_state,behaviour='new')
-      self.iso.fit(data.drop(self.target,axis=1))
-      iso_predict = self.iso.predict(data.drop(self.target,axis=1))
+      self.iso.fit(data_without_target)
+      iso_predict = self.iso.predict(data_without_target)
       data['iso'] = iso_predict
 
     if 'pca' in self.methods:
       self.pca = PCA_od(contamination=self.contamination,random_state=self.random_state)
-      self.pca.fit(data.drop(self.target,axis=1))
-      pca_predict = self.pca.predict(data.drop(self.target,axis=1))
+      self.pca.fit(data_without_target)
+      pca_predict = self.pca.predict(data_without_target)
       data['pca'] = pca_predict
 
     data['vote_outlier'] = 0
@@ -1443,7 +1449,7 @@ class Cluster_Entire_Data(BaseEstimator,TransformerMixin):
 
   def transform(self,dataset,y=None):
     data = dataset
-    data.drop(self.target,axis=1,inplace=True,errors='ignore')
+    data = data.drop(self.target,axis=1,errors='ignore')
     # first convert to dummy
     if len(data.select_dtypes(include='object').columns)>0:
       data_t1 = self.dummy.transform(data)
@@ -1462,7 +1468,7 @@ class Cluster_Entire_Data(BaseEstimator,TransformerMixin):
     return(data)
 
   def fit_transform(self,dataset,y=None):
-    data = dataset
+    data = dataset.copy()
     # first convert to dummy (if there are objects in data set)
     if len(data.select_dtypes(include='object').columns)>0:
       self.dummy = Dummify(self.target)
@@ -1508,6 +1514,9 @@ class Cluster_Entire_Data(BaseEstimator,TransformerMixin):
     data['data_cluster'] = predict
     data['data_cluster'] = data['data_cluster'].astype('object')
 
+    if self.target in dataset.columns:
+      data[self.target] = dataset[self.target]
+
     return(data)
 #__________________________________________________________________________________________________________________________________________
 # Clustering catagorical data
@@ -1537,11 +1546,10 @@ class Reduce_Cardinality_with_Clustering(BaseEstimator,TransformerMixin):
     # we already know which leval belongs to whihc cluster , so all w need is to replace levels with clusters we already have from training data set
     for i,z in zip(self.feature,self.ph_data):
       data[i] = data[i].replace(list(z['levels']),z['cluster'])
-    
     return(data)
 
   def fit_transform(self,dataset,y=None):
-    data = dataset
+    data = dataset.copy()
     # first convert to dummy
     if len(data.select_dtypes(include='object').columns)>0:
       self.dummy = Dummify(self.target)
@@ -1608,6 +1616,8 @@ class Reduce_Cardinality_with_Clustering(BaseEstimator,TransformerMixin):
       data[i] = data[i].replace(list(data_t1['levels']),data_t1['cluster'])
       self.ph_data.append(data_t1)
 
+    if self.target in dataset.columns:
+      data[self.target] = dataset[self.target]
     return(data)
 
 #____________________________________________________________________________________________________________________________________________
@@ -2237,7 +2247,7 @@ class Fix_multicollinearity(BaseEstimator,TransformerMixin):
             data frame
     '''
     data = dataset
-    data.drop(self.to_drop,axis=1,inplace=True)
+    data = data.drop(self.to_drop,axis=1)
     # now drop less correlated data
     data.drop(self.to_drop_taret_correlation,axis=1,inplace=True,errors='ignore')
     return(data)
@@ -2343,13 +2353,15 @@ class DFS_Classic(BaseEstimator,TransformerMixin):
   def transform(self,dataset,y=None):
 
     data = dataset
+
+    data_without_target = data.drop(self.target,axis=1,errors='ignore')
      # for multiplication:
     # we need bot catagorical and numerical columns
 
     if 'multiply' in self.interactions:
       
-      data_multiply = pd.concat([data.drop(self.target,axis=1,errors='ignore').mul(col[1], axis="index") for col in data.drop(self.target,axis=1,errors='ignore').iteritems()], axis=1)
-      data_multiply.columns = ["_multiply_".join([i, j]) for j in data.drop(self.target,axis=1,errors='ignore').columns for i in data.drop(self.target,axis=1,errors='ignore').columns]
+      data_multiply = pd.concat([data_without_target.mul(col[1], axis="index") for col in data_without_target.iteritems()], axis=1)
+      data_multiply.columns = ["_multiply_".join([i, j]) for j in data_without_target.columns for i in data_without_target.columns]
       # we dont need to apply rest of conditions
       data_multiply.index = data.index 
     else:
@@ -2358,8 +2370,8 @@ class DFS_Classic(BaseEstimator,TransformerMixin):
      # for division, we only want it to apply to numerical columns
     if 'divide' in self.interactions:
       
-      data_divide = pd.concat([data.drop(self.target,axis=1,errors='ignore')[self.numeric_columns].div(col[1], axis="index") for col in data.drop(self.target,axis=1,errors='ignore')[self.numeric_columns].iteritems()], axis=1)
-      data_divide.columns = ["_divide_".join([i, j]) for j in data.drop(self.target,axis=1,errors='ignore')[self.numeric_columns].columns for i in data.drop(self.target,axis=1,errors='ignore')[self.numeric_columns].columns]
+      data_divide = pd.concat([data_without_target[self.numeric_columns].div(col[1], axis="index") for col in data_without_target[self.numeric_columns].iteritems()], axis=1)
+      data_divide.columns = ["_divide_".join([i, j]) for j in data_without_target[self.numeric_columns].columns for i in data_without_target[self.numeric_columns].columns]
       data_divide.replace([np.inf,-np.inf],0,inplace=True)
       data_divide.fillna(0,inplace=True)
       data_divide.index = data.index
@@ -2369,8 +2381,8 @@ class DFS_Classic(BaseEstimator,TransformerMixin):
      # for addition, we only want it to apply to numerical columns
     if 'add' in self.interactions:
 
-      data_add = pd.concat([data.drop(self.target,axis=1,errors='ignore')[self.numeric_columns].add(col[1], axis="index") for col in data.drop(self.target,axis=1,errors='ignore')[self.numeric_columns].iteritems()], axis=1)
-      data_add.columns = ["_add_".join([i, j]) for j in data.drop(self.target,axis=1,errors='ignore')[self.numeric_columns].columns for i in data.drop(self.target,axis=1,errors='ignore')[self.numeric_columns].columns]
+      data_add = pd.concat([data_without_target[self.numeric_columns].add(col[1], axis="index") for col in data_without_target[self.numeric_columns].iteritems()], axis=1)
+      data_add.columns = ["_add_".join([i, j]) for j in data_without_target[self.numeric_columns].columns for i in data_without_target[self.numeric_columns].columns]
       data_add.index = data.index
     else:
       data_add= pd.DataFrame()
@@ -2378,8 +2390,8 @@ class DFS_Classic(BaseEstimator,TransformerMixin):
     # for substraction, we only want it to apply to numerical columns
     if 'subtract' in self.interactions:
       
-      data_substract = pd.concat([data.drop(self.target,axis=1,errors='ignore')[self.numeric_columns].sub(col[1], axis="index") for col in data.drop(self.target,axis=1,errors='ignore')[self.numeric_columns].iteritems()], axis=1)
-      data_substract.columns = ["_subtract_".join([i, j]) for j in data.drop(self.target,axis=1,errors='ignore')[self.numeric_columns].columns for i in data.drop(self.target,axis=1,errors='ignore')[self.numeric_columns].columns]
+      data_substract = pd.concat([data_without_target[self.numeric_columns].sub(col[1], axis="index") for col in data_without_target[self.numeric_columns].iteritems()], axis=1)
+      data_substract.columns = ["_subtract_".join([i, j]) for j in data_without_target[self.numeric_columns].columns for i in data_without_target[self.numeric_columns].columns]
       data_substract.index = data.index
     else:
       data_substract= pd.DataFrame()
@@ -2398,21 +2410,23 @@ class DFS_Classic(BaseEstimator,TransformerMixin):
 
     data = dataset
 
+    data_without_target = data.drop(self.target,axis=1,errors='ignore')
+
     # we need to seperate numerical and ont hot encoded columns
     # self.ohe_columns = [i if ((len(data[i].unique())==2) & (data[i].unique()[0] in [0,1]) & (data[i].unique()[1] in [0,1]) ) else None for i in data.drop(self.target,axis=1).columns]
     self.ohe_columns =[i for i in data.columns if data[i].nunique() == 2 and data[i].unique()[0] in [0,1] and data[i].unique()[1] in [0,1]]
     # self.ohe_columns = [i for i in self.ohe_columns if i is not None]
-    self.numeric_columns = [i for i in data.drop(self.target,axis=1).columns if i not in self.ohe_columns]
+    self.numeric_columns = [i for i in data_without_target.columns if i not in self.ohe_columns]
     target_variable = data[[self.target]]
 
     # for multiplication:
     # we need bot catagorical and numerical columns
 
     if 'multiply' in self.interactions:
-      data_multiply = pd.concat([data.drop(self.target,axis=1).mul(col[1], axis="index") for col in data.drop(self.target,axis=1).iteritems()], axis=1)
-      data_multiply.columns = ["_multiply_".join([i, j]) for j in data.drop(self.target,axis=1).columns for i in data.drop(self.target,axis=1).columns]
+      data_multiply = pd.concat([data_without_target.mul(col[1], axis="index") for col in data_without_target.iteritems()], axis=1)
+      data_multiply.columns = ["_multiply_".join([i, j]) for j in data_without_target.columns for i in data_without_target.columns]
       # we dont need columns that are self interacted
-      col = ["_multiply_".join([i, j]) for j in data.drop(self.target,axis=1).columns for i in data.drop(self.target,axis=1).columns if i!=j]
+      col = ["_multiply_".join([i, j]) for j in data_without_target.columns for i in data_without_target.columns if i!=j]
       data_multiply = data_multiply[col]
       # we dont need columns where the sum of the total column is null (to catagorical variables never happening togather)
       col1 = [i for i in data_multiply.columns if np.nansum(data_multiply[i])!=0 ]
@@ -2423,10 +2437,10 @@ class DFS_Classic(BaseEstimator,TransformerMixin):
 
     # for division, we only want it to apply to numerical columns
     if 'divide' in self.interactions:
-      data_divide = pd.concat([data.drop(self.target,axis=1)[self.numeric_columns].div(col[1], axis="index") for col in data.drop(self.target,axis=1)[self.numeric_columns].iteritems()], axis=1)
-      data_divide.columns = ["_divide_".join([i, j]) for j in data.drop(self.target,axis=1)[self.numeric_columns].columns for i in data.drop(self.target,axis=1)[self.numeric_columns].columns]
+      data_divide = pd.concat([data_without_target[self.numeric_columns].div(col[1], axis="index") for col in data_without_target[self.numeric_columns].iteritems()], axis=1)
+      data_divide.columns = ["_divide_".join([i, j]) for j in data_without_target[self.numeric_columns].columns for i in data_without_target[self.numeric_columns].columns]
       # we dont need columns that are self interacted
-      col = ["_divide_".join([i, j]) for j in data.drop(self.target,axis=1)[self.numeric_columns].columns for i in data.drop(self.target,axis=1)[self.numeric_columns].columns if i!=j]
+      col = ["_divide_".join([i, j]) for j in data_without_target[self.numeric_columns].columns for i in data_without_target[self.numeric_columns].columns if i!=j]
       data_divide = data_divide[col]
       # we dont need columns where the sum of the total column is null (to catagorical variables never happening togather)
       col1 = [i for i in data_divide.columns if np.nansum(data_divide[i])!=0 ]
@@ -2440,10 +2454,10 @@ class DFS_Classic(BaseEstimator,TransformerMixin):
 
     # for addition, we only want it to apply to numerical columns
     if 'add' in self.interactions:
-      data_add = pd.concat([data.drop(self.target,axis=1)[self.numeric_columns].add(col[1], axis="index") for col in data.drop(self.target,axis=1)[self.numeric_columns].iteritems()], axis=1)
-      data_add.columns = ["_add_".join([i, j]) for j in data.drop(self.target,axis=1)[self.numeric_columns].columns for i in data.drop(self.target,axis=1)[self.numeric_columns].columns]
+      data_add = pd.concat([data_without_target[self.numeric_columns].add(col[1], axis="index") for col in data_without_target[self.numeric_columns].iteritems()], axis=1)
+      data_add.columns = ["_add_".join([i, j]) for j in data_without_target[self.numeric_columns].columns for i in data_without_target[self.numeric_columns].columns]
       # we dont need columns that are self interacted
-      col = ["_add_".join([i, j]) for j in data.drop(self.target,axis=1)[self.numeric_columns].columns for i in data.drop(self.target,axis=1)[self.numeric_columns].columns if i!=j]
+      col = ["_add_".join([i, j]) for j in data_without_target[self.numeric_columns].columns for i in data_without_target[self.numeric_columns].columns if i!=j]
       data_add = data_add[col]
       # we dont need columns where the sum of the total column is null (to catagorical variables never happening togather)
       col1 = [i for i in data_add.columns if np.nansum(data_add[i])!=0 ]
@@ -2454,10 +2468,10 @@ class DFS_Classic(BaseEstimator,TransformerMixin):
 
     # for substraction, we only want it to apply to numerical columns
     if 'subtract' in self.interactions:
-      data_substract = pd.concat([data.drop(self.target,axis=1)[self.numeric_columns].sub(col[1], axis="index") for col in data.drop(self.target,axis=1)[self.numeric_columns].iteritems()], axis=1)
-      data_substract.columns = ["_subtract_".join([i, j]) for j in data.drop(self.target,axis=1)[self.numeric_columns].columns for i in data.drop(self.target,axis=1)[self.numeric_columns].columns]
+      data_substract = pd.concat([data_without_target[self.numeric_columns].sub(col[1], axis="index") for col in data_without_target[self.numeric_columns].iteritems()], axis=1)
+      data_substract.columns = ["_subtract_".join([i, j]) for j in data_without_target[self.numeric_columns].columns for i in data_without_target[self.numeric_columns].columns]
       # we dont need columns that are self interacted
-      col = ["_subtract_".join([i, j]) for j in data.drop(self.target,axis=1)[self.numeric_columns].columns for i in data.drop(self.target,axis=1)[self.numeric_columns].columns if i!=j]
+      col = ["_subtract_".join([i, j]) for j in data_without_target[self.numeric_columns].columns for i in data_without_target[self.numeric_columns].columns if i!=j]
       data_substract = data_substract[col]
       # we dont need columns where the sum of the total column is null (to catagorical variables never happening togather)
       col1 = [i for i in data_substract.columns if np.nansum(data_substract[i])!=0 ]
@@ -2535,8 +2549,8 @@ class Reduce_Dimensions_For_Supervised_Path(BaseEstimator,TransformerMixin):
 
   def transform(self,dataset,y=None):
     data = dataset
-    data.drop(self.target,axis=1,inplace=True,errors='ignore')
     if self.method in ['pca_liner' , 'pca_kernal', 'tsne' , 'incremental']: #if self.method in ['pca_liner' , 'pca_kernal', 'tsne' , 'incremental','psa']
+      data = data.drop(self.target,axis=1,errors='ignore')
       data_pca = self.pca.transform(data)
       data_pca = pd.DataFrame(data_pca)
       data_pca.columns = ["Component_"+str(i) for i in np.arange(1,len(data_pca.columns)+1)]
@@ -2545,7 +2559,7 @@ class Reduce_Dimensions_For_Supervised_Path(BaseEstimator,TransformerMixin):
         data_pca[self.target] = dataset[self.target]
       return(data_pca)
     else:
-      return(data)
+      return(dataset)
 
   def fit_transform(self,dataset,y=None):
     data = dataset
@@ -2595,7 +2609,7 @@ class Reduce_Dimensions_For_Supervised_Path(BaseEstimator,TransformerMixin):
       data_pca[self.target] = data[self.target]
       return(data_pca)
     else:
-      return(data)
+      return(dataset)
 
 
 #___________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________
@@ -2729,7 +2743,7 @@ def Preprocess_Path_One(train_data,target_variable,ml_usecase=None,test_data =No
   if apply_ordinal_encoding == True:
     # we need to make sure that if the columns chosen by user have NA & imputer strategy is not_availablle then we add that to the category first
     for i in ordinal_columns_and_categories.keys():
-      if sum(train_data[i].isna()) > 0:
+      if sum(train_data[i].isnull()) > 0:
         if categorical_imputation_strategy=='not_available':
           lis = ['not_available'] + ordinal_columns_and_categories[i]
           ordinal_columns_and_categories.update({i:lis})
@@ -2973,7 +2987,7 @@ def Preprocess_Path_Two(train_data,ml_usecase=None,test_data =None,categorical_f
   if apply_ordinal_encoding == True:
     # we need to make sure that if the columns chosen by user have NA & imputer strategy is not_availablle then we add that to the categories first
     for i in ordinal_columns_and_categories.keys():
-      if sum(train_data[i].isna()) > 0:
+      if sum(train_data[i].isnull()) > 0:
         if categorical_imputation_strategy=='not_available':
           lis = ['not_available'] + ordinal_columns_and_categories[i]
           ordinal_columns_and_categories.update({i:lis})
