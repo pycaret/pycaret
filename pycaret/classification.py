@@ -22,7 +22,7 @@ from pycaret.internal.utils import (
 )
 from pycaret.internal.logging import get_logger
 from pycaret.internal.plotting import show_yellowbrick_plot
-from pycaret.internal.Display import Display
+from pycaret.internal.Display import Display, is_in_colab, enable_colab
 from pycaret.internal.distributions import *
 from pycaret.internal.validation import *
 from pycaret.containers.models.classification import (
@@ -51,6 +51,9 @@ from IPython.utils import io
 import traceback
 
 warnings.filterwarnings("ignore")
+
+if is_in_colab():
+    enable_colab()
 
 _available_plots = {
     "parameter": "Hyperparameters",
