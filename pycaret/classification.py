@@ -1986,6 +1986,7 @@ def compare_models(
     fold: integer or scikit-learn compatible CV generator, default = None
         Controls cross-validation. If None, will use the CV generator defined in setup().
         If integer, will use KFold CV with that many folds.
+        When cross_validation is False, this parameter is ignored.
 
     round: integer, default = 4
         Number of decimal places the metrics in the score grid will be rounded to.
@@ -2134,6 +2135,8 @@ def compare_models(
     ERROR HANDLING ENDS HERE
     
     """
+
+    data = data.copy()
 
     fold = _get_cv_splitter(fold)
 
@@ -2391,7 +2394,7 @@ def compare_models(
 
         avgs_dict_log = {k: v for k, v in results.iloc[0].items()}
 
-        log_holdout = False
+        full_logging = False
 
         if index in n_select_range:
             display.update_monitor(2, _get_model_name(model))
@@ -2408,7 +2411,7 @@ def compare_models(
                 groups=groups,
             )
             sorted_models.append(model)
-            log_holdout = True
+            full_logging = True
 
         if logging_param and cross_validation:
 
@@ -2421,8 +2424,8 @@ def compare_models(
                     runtime=row["runtime"],
                     model_fit_time=row["TT (Sec)"],
                     _prep_pipe=prep_pipe,
-                    log_plots=False,
-                    log_holdout=log_holdout,
+                    log_plots=log_plots_param if full_logging else False,
+                    log_holdout=full_logging,
                     URI=URI,
                     display=display,
                 )
@@ -2511,6 +2514,7 @@ def create_model(
     fold: integer or scikit-learn compatible CV generator, default = None
         Controls cross-validation. If None, will use the CV generator defined in setup().
         If integer, will use KFold CV with that many folds.
+        When cross_validation is False, this parameter is ignored.
 
     round: integer, default = 4
         Number of decimal places the metrics in the score grid will be rounded to. 
@@ -2640,6 +2644,7 @@ def _create_model(
     fold: integer or scikit-learn compatible CV generator, default = None
         Controls cross-validation. If None, will use the CV generator defined in setup().
         If integer, will use KFold CV with that many folds.
+        When cross_validation is False, this parameter is ignored.
 
     round: integer, default = 4
         Number of decimal places the metrics in the score grid will be rounded to. 
@@ -3077,6 +3082,7 @@ def tune_model(
     fold: integer or scikit-learn compatible CV generator, default = None
         Controls cross-validation. If None, will use the CV generator defined in setup().
         If integer, will use KFold CV with that many folds.
+        When cross_validation is False, this parameter is ignored.
 
     round: integer, default = 4
         Number of decimal places the metrics in the score grid will be rounded to. 
@@ -3963,6 +3969,7 @@ def ensemble_model(
     fold: integer or scikit-learn compatible CV generator, default = None
         Controls cross-validation. If None, will use the CV generator defined in setup().
         If integer, will use KFold CV with that many folds.
+        When cross_validation is False, this parameter is ignored.
     
     n_estimators: integer, default = 10
         The number of base estimators in the ensemble.
@@ -4298,6 +4305,7 @@ def blend_models(
     fold: integer or scikit-learn compatible CV generator, default = None
         Controls cross-validation. If None, will use the CV generator defined in setup().
         If integer, will use KFold CV with that many folds.
+        When cross_validation is False, this parameter is ignored.
 
     round: integer, default = 4
         Number of decimal places the metrics in the score grid will be rounded to.
@@ -4655,6 +4663,7 @@ def stack_models(
     fold: integer or scikit-learn compatible CV generator, default = None
         Controls cross-validation. If None, will use the CV generator defined in setup().
         If integer, will use KFold CV with that many folds.
+        When cross_validation is False, this parameter is ignored.
 
     round: integer, default = 4
         Number of decimal places the metrics in the score grid will be rounded to.
@@ -5006,6 +5015,7 @@ def plot_model(
     fold: integer or scikit-learn compatible CV generator, default = None
         Controls cross-validation used in certain plots. If None, will use the CV generator
         defined in setup(). If integer, will use KFold CV with that many folds.
+        When cross_validation is False, this parameter is ignored.
 
     fit_kwargs: dict, default = {} (empty dict)
         Dictionary of arguments passed to the fit method of the model.
@@ -5771,6 +5781,7 @@ def evaluate_model(
     fold: integer or scikit-learn compatible CV generator, default = None
         Controls cross-validation. If None, will use the CV generator defined in setup().
         If integer, will use KFold CV with that many folds.
+        When cross_validation is False, this parameter is ignored.
 
     fit_kwargs: dict, default = {} (empty dict)
         Dictionary of arguments passed to the fit method of the model.
@@ -6111,6 +6122,7 @@ def calibrate_model(
     fold: integer or scikit-learn compatible CV generator, default = None
         Controls cross-validation. If None, will use the CV generator defined in setup().
         If integer, will use KFold CV with that many folds.
+        When cross_validation is False, this parameter is ignored.
 
     round: integer, default = 4
         Number of decimal places the metrics in the score grid will be rounded to. 
