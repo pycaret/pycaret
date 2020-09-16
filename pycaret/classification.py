@@ -5745,7 +5745,9 @@ def plot_model(
         def parameter():
 
             param_df = pd.DataFrame.from_dict(
-                estimator.get_params(estimator), orient="index", columns=["Parameters"]
+                {str(k): str(v) for k, v in estimator.get_params(deep=False).items()},
+                orient="index",
+                columns=["Parameters"],
             )
             display.display(param_df, clear=True)
             logger.info("Visual Rendered Successfully")
