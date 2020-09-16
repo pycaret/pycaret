@@ -278,7 +278,7 @@ def save_model(model, model_name: str, prep_pipe_=None, verbose: bool = True):
         logger.warning("Only Model saved. Transformations in prep_pipe are ignored.")
     else:
         model_ = deepcopy(prep_pipe_)
-        model_.steps.append(["trained model", model])
+        model_.steps.append(["trained_model", model])
 
     import joblib
 

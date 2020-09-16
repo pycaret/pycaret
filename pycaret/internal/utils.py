@@ -78,9 +78,7 @@ def set_config(variable: str, value, globals_d: dict):
     logger.info(f"set_config({function_params_str})")
 
     if variable.startswith("_"):
-        raise ValueError(
-            f"Variable {variable} is read only ('_' prefix)."
-        )
+        raise ValueError(f"Variable {variable} is read only ('_' prefix).")
 
     if not variable in globals_d["pycaret_globals"] or variable == "pycaret_globals":
         raise ValueError(

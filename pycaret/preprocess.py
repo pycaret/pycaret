@@ -7,7 +7,7 @@ import numpy as np
 import ipywidgets as wg 
 from IPython.display import display
 from ipywidgets import Layout
-from sklearn.base import BaseEstimator , TransformerMixin
+from sklearn.base import BaseEstimator , TransformerMixin, clone
 from sklearn.impute._base import _BaseImputer
 from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import StandardScaler
@@ -41,8 +41,13 @@ from datetime import datetime
 import calendar
 from sklearn.preprocessing import LabelEncoder
 from collections import defaultdict
+
+from sklearn.utils.validation import check_is_fitted, check_random_state
+
 pd.set_option('display.max_columns', 500)
 pd.set_option('display.max_rows', 500)
+
+SKLEARN_EMPTY_STEP = "passthrough"
 
 #_____________________________________________________________________________________________________________________________
 
@@ -113,6 +118,12 @@ class DataTypes_Auto_infer(BaseEstimator,TransformerMixin):
       except:
         None
     
+    for i in data.select_dtypes(include=['object']).drop(self.target,axis=1,errors='ignore').columns:
+      try:
+        data[i] = pd.to_datetime(data[i], infer_datetime_format=True, utc=False, errors='raise')
+      except:
+        continue
+
     # if data type is bool or pandas Categorical , convert to categorical
     for i in data.select_dtypes(include=['bool', 'category']).columns:
       data[i] = data[i].astype('object')
@@ -173,15 +184,9 @@ class DataTypes_Auto_infer(BaseEstimator,TransformerMixin):
     for i in data.select_dtypes(include=['float64']).columns:
       if data[i].nunique()==2:
         data[i]= data[i].apply(str)
-    
+
     #for time & dates
     #self.drop_time = [] # for now we are deleting time columns
-
-    for i in data.select_dtypes(include=['object']).drop(self.target,axis=1,errors='ignore').columns:
-      try:
-        data[i] = pd.to_datetime(data[i], infer_datetime_format=True, utc=False, errors='raise')
-      except:
-        continue
 
     # now in case we were given any specific columns dtypes in advance , we will over ride theos 
     for i in self.categorical_features:
@@ -315,6 +320,9 @@ class DataTypes_Auto_infer(BaseEstimator,TransformerMixin):
           data[i] = pd.to_datetime(data[i], infer_datetime_format=True, utc=False, errors='coerce')
         data[i] = data[i].astype(self.learent_dtypes[i])
     
+    for i in data.select_dtypes(include=['object']).columns:
+      data[i]= data[i].apply(str)
+
     # drop time columns
     #data.drop(self.drop_time,axis=1,errors='ignore',inplace=True)
 
@@ -339,13 +347,7 @@ class DataTypes_Auto_infer(BaseEstimator,TransformerMixin):
     if ((self.ml_usecase == 'classification') &  (data[self.target].dtype=='object')):
       self.le = LabelEncoder()
       data[self.target] = self.le.fit_transform(data[self.target])
-
-      # now get the replacement dict
-      rev= self.le.inverse_transform(range(0,len(self.le.classes_)))
-      rep = np.array(range(0,len(self.le.classes_)))
-      self.replacement={}
-      for i,k in zip(rev,rep):
-        self.replacement[i] = k
+      self.replacement = _get_labelencoder_reverse_dict(self.le)
 
       # self.u = list(pd.unique(data[self.target]))
       # self.replacement = np.arange(0,len(self.u))
@@ -355,6 +357,9 @@ class DataTypes_Auto_infer(BaseEstimator,TransformerMixin):
 
     # drop time columns
     #data.drop(self.drop_time,axis=1,errors='ignore',inplace=True)
+
+    for i in data.select_dtypes(include=['object']).columns:
+      data[i]= data[i].apply(str)
 
     # drop id columns
     data.drop(self.id_columns,axis=1,errors='ignore',inplace=True)
@@ -366,6 +371,7 @@ class DataTypes_Auto_infer(BaseEstimator,TransformerMixin):
     return(data)
 # _______________________________________________________________________________________________________________________
 # Imputation
+
 class Simple_Imputer(_BaseImputer):
   '''
     Imputes all type of data (numerical,categorical & Time).
@@ -380,10 +386,10 @@ class Simple_Imputer(_BaseImputer):
         target: string , name of the target variable
 
   '''
-  _numeric_strategies = {'mean':'mean', 'median':'median', 'most frequent':'most_frequent', 'zero': 'constant'}
-  _categorical_strategies = {'most frequent':'most_frequent', 'not_available':'constant'}
+  _numeric_strategies = {'mean':'mean', 'median':'median', 'most frequent':'most_frequent', 'most_frequent':'most_frequent', 'zero': 'constant'}
+  _categorical_strategies = {'most frequent':'most_frequent', 'most_frequent':'most_frequent', 'not_available':'constant'}
 
-  def __init__(self,numeric_strategy,categorical_strategy,target_variable):
+  def __init__(self,numeric_strategy,categorical_strategy,target_variable,fill_value_numerical=0,fill_value_categorical="not_available"):
     if numeric_strategy not in self._numeric_strategies:
       numeric_strategy = 'zero'
     self.numeric_strategy = numeric_strategy
@@ -391,43 +397,55 @@ class Simple_Imputer(_BaseImputer):
     if categorical_strategy not in self._categorical_strategies:
       categorical_strategy = 'not_available'
     self.categorical_strategy = categorical_strategy
-    self.numeric_imputer = SimpleImputer(strategy=self._numeric_strategies[self.numeric_strategy], fill_value = 0)
-    self.categorical_imputer = SimpleImputer(strategy=self._categorical_strategies[self.categorical_strategy], fill_value = "not_available")
+    self.numeric_imputer = SimpleImputer(strategy=self._numeric_strategies[self.numeric_strategy], fill_value = fill_value_numerical)
+    self.categorical_imputer = SimpleImputer(strategy=self._categorical_strategies[self.categorical_strategy], fill_value = fill_value_categorical)
     self.time_imputer = SimpleImputer(strategy='most_frequent')
   
   def fit(self,dataset,y=None): #
-
-    data = dataset.drop(self.target,axis=1)
+    try:
+      data = dataset.drop(self.target,axis=1)
+    except:
+      data = dataset
     self.numeric_columns = data.select_dtypes(include=['float64','int64']).columns
     self.categorical_columns = data.select_dtypes(include=['object']).columns
     self.time_columns = data.select_dtypes(include=['datetime64[ns]']).columns
 
+    statistics = []
+
     if not self.numeric_columns.empty:
       self.numeric_imputer.fit(data[self.numeric_columns])
+      statistics.append((self.numeric_imputer.statistics_, self.numeric_columns))
     if not self.categorical_columns.empty:
       self.categorical_imputer.fit(data[self.categorical_columns])
+      statistics.append((self.categorical_imputer.statistics_, self.categorical_columns))
     if not self.time_columns.empty:
       self.time_imputer.fit(data[self.time_columns])
+      statistics.append((self.time_imputer.statistics_, self.time_columns))
+
+    self.statistics_ = np.zeros(shape=len(data.columns), dtype=object)
+    columns = list(data.columns)
+    for s, index in statistics:
+      for i, j in enumerate(index):
+        self.statistics_[columns.index(j)] = s[i]
 
     return
-
-      
   
   def transform(self,dataset,y=None):
     data = dataset
     imputed_data = []
     if not self.numeric_columns.empty:
-      numeric_data = pd.DataFrame(self.numeric_imputer.transform(data[self.numeric_columns]), columns=self.numeric_columns, index=data.index)
+      numeric_data = pd.DataFrame(self.numeric_imputer.transform(data[self.numeric_columns]), columns=self.numeric_columns, index=data.index, dtype="float64")
       imputed_data.append(numeric_data)
     if not self.categorical_columns.empty:
-      categorical_data = pd.DataFrame(self.categorical_imputer.transform(data[self.categorical_columns]), columns=self.categorical_columns, index=data.index)
+      categorical_data = pd.DataFrame(self.categorical_imputer.transform(data[self.categorical_columns]), columns=self.categorical_columns, index=data.index, dtype="object").apply(str)
       imputed_data.append(categorical_data)
     if not self.time_columns.empty:
-      time_data = pd.DataFrame(self.time_imputer.transform(data[self.time_columns]), columns=self.time_columns, index=data.index)
+      time_data = pd.DataFrame(self.time_imputer.transform(data[self.time_columns]), columns=self.time_columns, index=data.index, dtype="datetime64[ns]")
       imputed_data.append(time_data)
 
     if imputed_data:
       data.update(pd.concat(imputed_data, axis=1))
+    data.astype(dataset.dtypes)
 
     return(data)
   
@@ -566,6 +584,169 @@ class Surrogate_Imputer(_BaseImputer):
     data = dataset
     data= self.fit(data)
     return(self.transform(data))
+
+
+class Iterative_Imputer(_BaseImputer):
+    def __init__(
+        self,
+        regressor: BaseEstimator,
+        classifier: BaseEstimator,
+        *,
+        target = None,
+        missing_values=np.nan,
+        initial_strategy_numeric: str = "mean",
+        initial_strategy_categorical: str = "most_frequent",
+        max_iter: int = 1,
+        warm_start: bool = True,
+        imputation_order: str = "ascending",
+        verbose: int = 0,
+        random_state: int = None,
+        add_indicator: bool = False
+    ):
+        super().__init__(missing_values=missing_values, add_indicator=add_indicator)
+
+        self.regressor = regressor
+        self.classifier = classifier
+        self.initial_strategy_numeric = initial_strategy_numeric
+        self.initial_strategy_categorical = initial_strategy_categorical
+        self.max_iter = max_iter
+        self.warm_start = warm_start
+        self.imputation_order = imputation_order
+        self.verbose = verbose
+        self.random_state = random_state
+        self.target = target
+
+    def _initial_imputation(self, X):
+        if self.initial_imputer_ is None:
+            self.initial_imputer_ = Simple_Imputer(
+                target_variable="__TARGET__",  # dummy value, we don't actually want to drop anything
+                numeric_strategy=self.initial_strategy_numeric,
+                categorical_strategy=self.initial_strategy_categorical,
+            )
+            X_filled = self.initial_imputer_.fit_transform(X)
+        else:
+            X_filled = self.initial_imputer_.transform(X)
+
+        return X_filled
+
+    def _impute_one_feature(self, X, column, X_na_mask, fit):
+        if not fit:
+            check_is_fitted(self)
+        is_classification = X[column].dtype.name == "object"
+        if is_classification:
+            if column in self.classifiers_:
+                dummy, le, estimator = self.classifiers_[column]
+            elif not fit:
+              return X
+            else:
+                estimator = clone(self._classifier)
+                dummy = Dummify(column)
+                le = LabelEncoder()
+        else:
+            if column in self.regressors_:
+                dummy, le, estimator = self.regressors_[column]
+            elif not fit:
+              return X
+            else:
+                estimator = clone(self._regressor)
+                dummy = Dummify(column)
+                le = None
+
+        if fit:
+            X_train = X[~X_na_mask[column]]
+            y_train = X[~X_na_mask[column]][column]
+            X_train = dummy.fit_transform(X_train).drop(column, axis=1)
+
+            if le:
+                y_train = le.fit_transform(y_train)
+
+            try:
+                assert self.warm_start
+                estimator.partial_fit(X_train, y_train)
+            except:
+                estimator.fit(X_train, y_train)
+
+        X_test = X.drop(column, axis=1)[X_na_mask[column]]
+        X_test = dummy.transform(X_test)
+
+        result = estimator.predict(X_test)
+        if le:
+            result = le.inverse_transform(result)
+
+        if is_classification:
+            self.classifiers_[column] = (dummy, le, estimator)
+        else:
+            self.regressors_[column] = (dummy, le, estimator)
+
+        X_test[column] = result
+        X.update(X_test[column])
+        return X
+
+    def _impute(self, X, fit: bool):
+        if self.target in X.columns:
+          target_column = X[self.target]
+          X = X.drop(self.target, axis=1)
+        else:
+          target_column = None
+        self.imputation_sequence_ = (
+            X.isnull().sum().sort_values(ascending=self.imputation_order == "ascending")
+        )
+        self.imputation_sequence_ = [
+            col
+            for col in self.imputation_sequence_[self.imputation_sequence_ > 0].index
+            if X[col].dtype.name != "datetime64[ns]"
+        ]
+
+        X_na_mask = X.isnull()
+
+        X_imputed = self._initial_imputation(X.copy())
+
+        for _ in range(self.max_iter):
+            for feature in self.imputation_sequence_:
+                X_imputed = self._impute_one_feature(X_imputed, feature, X_na_mask, fit)
+
+        if target_column is not None:
+          X_imputed[self.target] = target_column
+
+        return X_imputed
+
+    def transform(self, X, y=None, **fit_params):
+        return self._impute(X, fit=False)
+
+    def fit_transform(self, X, y=None, **fit_params):
+        self.random_state_ = getattr(
+            self, "random_state_", check_random_state(self.random_state)
+        )
+        if self.regressor is None:
+            raise ValueError("No regressor provided")
+        else:
+            self._regressor = clone(self.regressor)
+        try:
+          self._regressor.set_param(random_state=self.random_state_)
+        except:
+          pass
+        if self.classifier is None:
+            raise ValueError("No classifier provided")
+        else:
+            self._classifier = clone(self.classifier)
+        try:
+          self._classifier.set_param(random_state=self.random_state_)
+        except:
+          pass
+
+        self.classifiers_ = {}
+        self.regressors_ = {}
+
+        self.initial_imputer_ = None
+
+        return self._impute(X, fit=True)
+
+    def fit(self, X, y=None, **fit_params):
+        self.fit_transform(X, y=y, **fit_params)
+
+        return self
+
+
 # _______________________________________________________________________________________________________________________
 # Zero and Near Zero Variance
 class Zroe_NearZero_Variance(BaseEstimator,TransformerMixin):
@@ -2420,6 +2601,11 @@ class Reduce_Dimensions_For_Supervised_Path(BaseEstimator,TransformerMixin):
 # preprocess_all_in_one
 def Preprocess_Path_One(train_data,target_variable,ml_usecase=None,test_data =None,categorical_features=[],numerical_features=[],time_features=[],features_todrop=[],display_types=True,
                                 imputation_type = "simple imputer" ,numeric_imputation_strategy='mean',categorical_imputation_strategy='not_available',
+                                imputation_classifier = None,
+                                imputation_regressor = None,
+                                imputation_max_iter = 10,
+                                imputation_warm_start = True,
+                                imputation_order = "ascending",
                                 apply_zero_nearZero_variance = False,
                                 club_rare_levels = False, rara_level_threshold_percentage =0.05,
                                 apply_untrained_levels_treatment= False,untrained_levels_treatment_method = 'least frequent',
@@ -2439,7 +2625,8 @@ def Preprocess_Path_One(train_data,target_variable,ml_usecase=None,test_data =No
                                 apply_feature_interactions= False, feature_interactions_to_apply=['multiply','divide','add','subtract'],feature_interactions_top_features_to_select_percentage=.01,
                                 cluster_entire_data= False, range_of_clusters_to_try=20,
                                 apply_pca = False , pca_method = 'pca_liner',pca_variance_retained_or_number_of_components =.99 ,
-                                random_state=42
+                                random_state=42,
+                                n_jobs=-1,
                                 
 
                                ):
@@ -2468,7 +2655,6 @@ def Preprocess_Path_One(train_data,target_variable,ml_usecase=None,test_data =No
       -20) Apply diamension reduction techniques such as pca_liner, pca_kernal, incremental, tsne 
           - except for pca_liner, all other method only takes number of component (as integer) i.e no variance explaination metohd available  
   '''
-  global c2, subcase
 
   # also make sure that all the column names are string 
   train_data.columns = [str(i) for i in train_data.columns]
@@ -2493,54 +2679,50 @@ def Preprocess_Path_One(train_data,target_variable,ml_usecase=None,test_data =No
   else:
     subcase = 'binary'
   
-  global dtypes 
   dtypes = DataTypes_Auto_infer(target=target_variable,ml_usecase=ml_usecase,categorical_features=categorical_features,numerical_features=numerical_features,time_features=time_features,features_todrop=features_todrop,display_types=display_types)
 
   
   # for imputation
+  #imputation_type = "A"
   if imputation_type == "simple imputer":
-    global imputer
     imputer = Simple_Imputer(numeric_strategy=numeric_imputation_strategy, target_variable= target_variable,categorical_strategy=categorical_imputation_strategy)
-  else:
+  elif imputation_type == "surrogate imputer":
     imputer = Surrogate_Imputer(numeric_strategy=numeric_imputation_strategy,categorical_strategy=categorical_imputation_strategy,target_variable=target_variable)
+  else:
+    imputer = Iterative_Imputer(classifier=imputation_classifier, regressor=imputation_regressor, target=target_variable, initial_strategy_numeric=numeric_imputation_strategy,max_iter=imputation_max_iter, warm_start=imputation_warm_start, imputation_order=imputation_order,random_state=random_state)
   
   # for zero_near_zero
   if apply_zero_nearZero_variance == True:
-    global znz
     znz = Zroe_NearZero_Variance(target=target_variable)
   else:
-    znz = Empty()
+    znz = SKLEARN_EMPTY_STEP
 
   # for rare levels clubbing:
   
   if club_rare_levels == True:
-    global club_R_L
     club_R_L = Catagorical_variables_With_Rare_levels(target=target_variable,threshold=rara_level_threshold_percentage)
   else:
-    club_R_L= Empty()
+    club_R_L= SKLEARN_EMPTY_STEP
 
   # untrained levels in test
   if apply_untrained_levels_treatment ==  True:
-    global new_levels 
     new_levels = New_Catagorical_Levels_in_TestData(target=target_variable,replacement_strategy=untrained_levels_treatment_method)
   else:
-    new_levels= Empty()
+    new_levels= SKLEARN_EMPTY_STEP
 
   # untrained levels in test(ordinal specific)
   if apply_untrained_levels_treatment ==  True:
-    global new_levels1 
     new_levels1 = New_Catagorical_Levels_in_TestData(target=target_variable,replacement_strategy=untrained_levels_treatment_method)
   else:
-    new_levels1= Empty()
+    new_levels1= SKLEARN_EMPTY_STEP
  
   # cardinality:
-  global cardinality
   if apply_cardinality_reduction==True and cardinal_method =='cluster':
     cardinality = Reduce_Cardinality_with_Clustering(target_variable=target_variable, catagorical_feature=cardinal_features, check_clusters_upto=50,random_state=random_state)
   elif apply_cardinality_reduction==True and cardinal_method =='count':
     cardinality = Reduce_Cardinality_with_Counts(catagorical_feature=cardinal_features)
   else:
-    cardinality= Empty()
+    cardinality= SKLEARN_EMPTY_STEP
 
   # ordinal coding
   if apply_ordinal_encoding == True:
@@ -2551,79 +2733,67 @@ def Preprocess_Path_One(train_data,target_variable,ml_usecase=None,test_data =No
           lis = ['not_available'] + ordinal_columns_and_categories[i]
           ordinal_columns_and_categories.update({i:lis})
     
-    global ordinal
     ordinal = Ordinal(info_as_dict=ordinal_columns_and_categories)
   else:
-    ordinal = Empty()
+    ordinal = SKLEARN_EMPTY_STEP
 
   # grouping
   if apply_grouping == True:
-    global group
     group = Group_Similar_Features(group_name=group_name,list_of_grouped_features=features_to_group_ListofList)
   else:
-    group = Empty()
+    group = SKLEARN_EMPTY_STEP
 
   # non_liner_features
   if apply_polynomial_trigonometry_features == True:
-    global nonliner
     nonliner = Make_NonLiner_Features(target=target_variable,ml_usecase=ml_usecase,Polynomial_degree=max_polynomial,other_nonliner_features=trigonometry_calculations,top_features_to_pick=top_poly_trig_features_to_select_percentage,random_state=random_state,subclass=subcase)
   else:
-    nonliner = Empty()
+    nonliner = SKLEARN_EMPTY_STEP
 
   # binning 
   if apply_binning == True:
-    global binn
     binn = Binning(features_to_discretize=features_to_binn)
   else:
-    binn = Empty()
+    binn = SKLEARN_EMPTY_STEP
 
   # scaling & power transform
   if scale_data == True:
-    global scaling 
     scaling = Scaling_and_Power_transformation(target=target_variable,function_to_apply=scaling_method,random_state_quantile=random_state)
   else: 
-    scaling = Empty()
+    scaling = SKLEARN_EMPTY_STEP
   
   if Power_transform_data== True:
-    global P_transform
     P_transform = Scaling_and_Power_transformation(target=target_variable,function_to_apply=Power_transform_method,random_state_quantile=random_state)
   else:
-    P_transform= Empty()
+    P_transform= SKLEARN_EMPTY_STEP
   
   # target transformation
   if ((target_transformation == True) and (ml_usecase == 'regression')):
-    global pt_target
     pt_target = Target_Transformation(target=target_variable,function_to_apply=target_transformation_method)
   else:
-    pt_target = Empty()
+    pt_target = SKLEARN_EMPTY_STEP
 
 
   # for Time Variables
-  global feature_time
   feature_time = Make_Time_Features()
-  global dummy
   dummy = Dummify(target_variable)
 
   # remove putliers
   if remove_outliers == True:
-    global rem_outliers
     rem_outliers= Outlier(target=target_variable,contamination=outlier_contamination_percentage,random_state=random_state,methods=outlier_methods )
   else:
-    rem_outliers = Empty()
+    rem_outliers = SKLEARN_EMPTY_STEP
   
   # cluster all data:
   if cluster_entire_data ==True:
-    global cluster_all
     cluster_all = Cluster_Entire_Data(target_variable=target_variable,check_clusters_upto=range_of_clusters_to_try, random_state = random_state )
   else:
-    cluster_all = Empty()
+    cluster_all = SKLEARN_EMPTY_STEP
   
   # clean column names for special char
   clean_names =Clean_Colum_Names()
 
   # feature selection 
   if apply_feature_selection:
-    global feature_select
     # TODO: add autoselect 
     if feature_selection_method == 'boruta':
       feature_select = Boruta_Feature_Selection(target=target_variable,ml_usecase=ml_usecase,top_features_to_pick=feature_selection_top_features_percentage,
@@ -2631,41 +2801,36 @@ def Preprocess_Path_One(train_data,target_variable,ml_usecase=None,test_data =No
     else:
       feature_select = Advanced_Feature_Selection_Classic(target=target_variable,ml_usecase=ml_usecase,top_features_to_pick=feature_selection_top_features_percentage,random_state=random_state,subclass=subcase)
   else:
-    feature_select= Empty()
+    feature_select= SKLEARN_EMPTY_STEP
   
   # removing multicollinearity
-  global fix_multi
   if remove_multicollinearity == True and subcase != 'multi':
     fix_multi = Fix_multicollinearity(target_variable=target_variable,threshold=maximum_correlation_between_features)
   elif remove_multicollinearity == True and subcase == 'multi':
     fix_multi = Fix_multicollinearity(target_variable=target_variable,threshold=maximum_correlation_between_features,correlation_with_target_preference=0.0)
   else:
-    fix_multi = Empty()
+    fix_multi = SKLEARN_EMPTY_STEP
   
   # remove 100% collinearity
   if remove_perfect_collinearity == True:
-    global fix_perfect
     fix_perfect = Remove_100(target=target_variable)
   else:
-    fix_perfect = Empty()
+    fix_perfect = SKLEARN_EMPTY_STEP
 
   
   # apply dfs
   if apply_feature_interactions == True:
-    global dfs
     dfs = DFS_Classic(target=target_variable,ml_usecase=ml_usecase,interactions=feature_interactions_to_apply,top_features_to_pick_percentage=feature_interactions_top_features_to_select_percentage,random_state=random_state,subclass=subcase )
   else:
-    dfs= Empty()
+    dfs= SKLEARN_EMPTY_STEP
 
   
   # apply pca
   if apply_pca == True:
-    global pca
     pca = Reduce_Dimensions_For_Supervised_Path(target=target_variable,method = pca_method ,variance_retained_or_number_of_components=pca_variance_retained_or_number_of_components, random_state=random_state)
   else:
-    pca= Empty()
+    pca= SKLEARN_EMPTY_STEP
 
-  global pipe
   pipe = Pipeline([
                  ('dtypes',dtypes),
                  ('imputer',imputer),
@@ -2761,54 +2926,47 @@ def Preprocess_Path_Two(train_data,ml_usecase=None,test_data =None,categorical_f
   ml_usecase ='regression'
   
 
-  global dtypes 
   dtypes = DataTypes_Auto_infer(target=target_variable,ml_usecase=ml_usecase,categorical_features=categorical_features,numerical_features=numerical_features,time_features=time_features,features_todrop=features_todrop,display_types=display_types)
 
   
   # for imputation
-  global imputer
   if imputation_type == "simple imputer":
     imputer = Simple_Imputer(numeric_strategy=numeric_imputation_strategy, target_variable= target_variable,categorical_strategy=categorical_imputation_strategy)
   else:
     imputer = Surrogate_Imputer(numeric_strategy=numeric_imputation_strategy,categorical_strategy=categorical_imputation_strategy,target_variable=target_variable)
   
   # for zero_near_zero
-  global znz
   if apply_zero_nearZero_variance == True:
     znz = Zroe_NearZero_Variance(target=target_variable)
   else:
-    znz = Empty()
+    znz = SKLEARN_EMPTY_STEP
  
   # for rare levels clubbing:
-  global club_R_L
   if club_rare_levels == True:
     club_R_L = Catagorical_variables_With_Rare_levels(target=target_variable,threshold=rara_level_threshold_percentage)
   else:
-    club_R_L= Empty()
+    club_R_L= SKLEARN_EMPTY_STEP
   
   # untrained levels in test
   if apply_untrained_levels_treatment ==  True:
-    global new_levels 
     new_levels = New_Catagorical_Levels_in_TestData(target=target_variable,replacement_strategy=untrained_levels_treatment_method)
   else:
-    new_levels= Empty()
+    new_levels= SKLEARN_EMPTY_STEP
 
   # untrained levels in test(ordinal specific)
   if apply_untrained_levels_treatment ==  True:
-    global new_levels1 
     new_levels1 = New_Catagorical_Levels_in_TestData(target=target_variable,replacement_strategy=untrained_levels_treatment_method)
   else:
-    new_levels1= Empty()
+    new_levels1= SKLEARN_EMPTY_STEP
 
   # cardinality:
-  global cardinality
   if apply_cardinality_reduction==True and cardinal_method =='cluster':
     # cardinality = Reduce_Cardinality_with_Clustering(target_variable=target_variable, catagorical_feature=cardinal_features, check_clusters_upto=50,random_state=random_state)
-    cardinality= Empty()
+    cardinality= SKLEARN_EMPTY_STEP
   elif apply_cardinality_reduction==True and cardinal_method =='count':
     cardinality = Reduce_Cardinality_with_Counts(catagorical_feature=cardinal_features)
   else:
-    cardinality= Empty()
+    cardinality= SKLEARN_EMPTY_STEP
   
  # ordinal coding
   if apply_ordinal_encoding == True:
@@ -2819,78 +2977,67 @@ def Preprocess_Path_Two(train_data,ml_usecase=None,test_data =None,categorical_f
           lis = ['not_available'] + ordinal_columns_and_categories[i]
           ordinal_columns_and_categories.update({i:lis})
     
-    global ordinal
     ordinal = Ordinal(info_as_dict=ordinal_columns_and_categories)
   else:
-    ordinal = Empty()
+    ordinal = SKLEARN_EMPTY_STEP
   
   # grouping
   if apply_grouping == True:
-    global group
     group = Group_Similar_Features(group_name=group_name,list_of_grouped_features=features_to_group_ListofList)
   else:
-    group = Empty()
+    group = SKLEARN_EMPTY_STEP
   
 
   # binning 
-  global binn
 
   if apply_binning == True:
     binn = Binning(features_to_discretize=features_to_binn)
   else:
-    binn = Empty()
+    binn = SKLEARN_EMPTY_STEP
   
   # for scaling
-  global scaling ,P_transform
   if scale_data == True:
     scaling = Scaling_and_Power_transformation(target=target_variable,function_to_apply=scaling_method,random_state_quantile=random_state)
   else: 
-    scaling = Empty()
+    scaling = SKLEARN_EMPTY_STEP
   
   if Power_transform_data== True:
     P_transform = Scaling_and_Power_transformation(target=target_variable,function_to_apply=Power_transform_method,random_state_quantile=random_state)
   else:
-    P_transform= Empty()
+    P_transform= SKLEARN_EMPTY_STEP
 
   # for Time Variables
-  global feature_time
   feature_time = Make_Time_Features()
-  global dummy
   dummy = Dummify(target_variable)
   
   # remove putliers
   if remove_outliers == True:
-    global rem_outliers
     rem_outliers= Outlier(target=target_variable,contamination=outlier_contamination_percentage,random_state=random_state,methods=outlier_methods )
   else:
-    rem_outliers = Empty()
+    rem_outliers = SKLEARN_EMPTY_STEP
 
   # clean column names for special char
   clean_names =Clean_Colum_Names()
 
   # removing multicollinearity
   if remove_multicollinearity == True: 
-    global fix_multi
     fix_multi = Fix_multicollinearity(target_variable=target_variable,threshold=maximum_correlation_between_features,correlation_with_target_preference=0.0)
   else:
-    fix_multi = Empty()
+    fix_multi = SKLEARN_EMPTY_STEP
 
   # remove 100% collinearity
   if remove_perfect_collinearity == True:
-    global fix_perfect
     fix_perfect = Remove_100(target=target_variable)
   else:
-    fix_perfect = Empty()
+    fix_perfect = SKLEARN_EMPTY_STEP
   
   # apply pca
-  global pca
   if apply_pca == True:
     pca = Reduce_Dimensions_For_Supervised_Path(target=target_variable,method = pca_method ,variance_retained_or_number_of_components=pca_variance_retained_or_number_of_components, random_state=random_state)
   
   else:
-    pca= Empty()
+    pca= SKLEARN_EMPTY_STEP
 
-  global pipe
   pipe = Pipeline([
                  ('dtypes',dtypes),
                  ('imputer',imputer),
@@ -2920,3 +3067,12 @@ def Preprocess_Path_Two(train_data,ml_usecase=None,test_data =None,categorical_f
   else:
     train_t = pipe.fit_transform(train_data)
     return(train_t.drop(target_variable,axis=1))
+
+def _get_labelencoder_reverse_dict(le: LabelEncoder) -> dict:
+  # now get the replacement dict
+  rev = le.inverse_transform(range(0,len(le.classes_)))
+  rep = np.array(range(0,len(le.classes_)))
+  replacement={}
+  for i,k in zip(rev,rep):
+    replacement[i] = k
+  return replacement

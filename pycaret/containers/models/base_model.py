@@ -2,6 +2,7 @@
 # Author: Antoni Baum (Yard1) <antoni.baum@protonmail.com>
 # License: MIT
 
+from pycaret.internal.distributions import CategoricalDistribution
 import pycaret.internal.utils
 from pycaret.containers.base_container import BaseContainer
 from typing import Dict, Any
@@ -87,3 +88,11 @@ class ModelContainer(BaseContainer):
             ]
 
         return dict(d)
+
+
+def _leftover_parameters_to_categorical_distributions(
+    tune_grid: dict, tune_distributions: dict
+) -> None:
+    for k, v in tune_grid.items():
+        if not k in tune_distributions:
+            tune_distributions[k] = CategoricalDistribution(v)
