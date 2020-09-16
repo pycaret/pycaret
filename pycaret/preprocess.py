@@ -76,7 +76,7 @@ class DataTypes_Auto_infer(BaseEstimator,TransformerMixin):
     self.time_features =time_features
     self.features_todrop = features_todrop
     self.display_types = display_types
-  
+
   def fit(self,dataset,y=None): # learning data types of all the columns
     '''
     Args: 
@@ -320,8 +320,6 @@ class DataTypes_Auto_infer(BaseEstimator,TransformerMixin):
           data[i] = pd.to_datetime(data[i], infer_datetime_format=True, utc=False, errors='coerce')
         data[i] = data[i].astype(self.learent_dtypes[i])
     
-    for i in data.select_dtypes(include=['object']).columns:
-      data[i]= data[i].apply(str)
 
     # drop time columns
     #data.drop(self.drop_time,axis=1,errors='ignore',inplace=True)
@@ -358,9 +356,6 @@ class DataTypes_Auto_infer(BaseEstimator,TransformerMixin):
     # drop time columns
     #data.drop(self.drop_time,axis=1,errors='ignore',inplace=True)
 
-    for i in data.select_dtypes(include=['object']).columns:
-      data[i]= data[i].apply(str)
-
     # drop id columns
     data.drop(self.id_columns,axis=1,errors='ignore',inplace=True)
     # finally save a list of columns that we would need from test data set
@@ -395,7 +390,7 @@ class Simple_Imputer(_BaseImputer):
     self.numeric_strategy = numeric_strategy
     self.target = target_variable
     if categorical_strategy not in self._categorical_strategies:
-      categorical_strategy = 'not_available'
+      categorical_strategy = 'most_frequent'
     self.categorical_strategy = categorical_strategy
     self.numeric_imputer = SimpleImputer(strategy=self._numeric_strategies[self.numeric_strategy], fill_value = fill_value_numerical)
     self.categorical_imputer = SimpleImputer(strategy=self._categorical_strategies[self.categorical_strategy], fill_value = fill_value_categorical)
@@ -434,13 +429,15 @@ class Simple_Imputer(_BaseImputer):
     data = dataset
     imputed_data = []
     if not self.numeric_columns.empty:
-      numeric_data = pd.DataFrame(self.numeric_imputer.transform(data[self.numeric_columns]), columns=self.numeric_columns, index=data.index, dtype="float64")
+      numeric_data = pd.DataFrame(self.numeric_imputer.transform(data[self.numeric_columns]), columns=self.numeric_columns, index=data.index)
       imputed_data.append(numeric_data)
     if not self.categorical_columns.empty:
-      categorical_data = pd.DataFrame(self.categorical_imputer.transform(data[self.categorical_columns]), columns=self.categorical_columns, index=data.index, dtype="object").apply(str)
+      categorical_data = pd.DataFrame(self.categorical_imputer.transform(data[self.categorical_columns]), columns=self.categorical_columns, index=data.index)
+      for col in categorical_data.columns:
+        categorical_data[col] = categorical_data[col].apply(str)
       imputed_data.append(categorical_data)
     if not self.time_columns.empty:
-      time_data = pd.DataFrame(self.time_imputer.transform(data[self.time_columns]), columns=self.time_columns, index=data.index, dtype="datetime64[ns]")
+      time_data = pd.DataFrame(self.time_imputer.transform(data[self.time_columns]), columns=self.time_columns, index=data.index)
       imputed_data.append(time_data)
 
     if imputed_data:
@@ -680,6 +677,7 @@ class Iterative_Imputer(_BaseImputer):
 
         X_test[column] = result
         X.update(X_test[column])
+
         return X
 
     def _impute(self, X, fit: bool):
@@ -707,7 +705,6 @@ class Iterative_Imputer(_BaseImputer):
 
         if target_column is not None:
           X_imputed[self.target] = target_column
-
         return X_imputed
 
     def transform(self, X, y=None, **fit_params):
@@ -1597,7 +1594,7 @@ class Reduce_Cardinality_with_Clustering(BaseEstimator,TransformerMixin):
       predict =self.k_object.fit_predict(data_t1)
       # put it back with the group by aggregate columns
       data_t1['cluster'] = predict
-      data_t1['cluster'] = data_t1['cluster'] .apply(str)
+      data_t1['cluster'] = data_t1['cluster'].apply(str)
       # now we dont need all the columns, only the cluster column is required along with the index (index also has a name , we  groupy as "levels")
       data_t1 = data_t1[['cluster']]
       # now convert index ot the column
@@ -2600,7 +2597,7 @@ class Reduce_Dimensions_For_Supervised_Path(BaseEstimator,TransformerMixin):
 #___________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________
 # preprocess_all_in_one
 def Preprocess_Path_One(train_data,target_variable,ml_usecase=None,test_data =None,categorical_features=[],numerical_features=[],time_features=[],features_todrop=[],display_types=True,
-                                imputation_type = "simple imputer" ,numeric_imputation_strategy='mean',categorical_imputation_strategy='not_available',
+                                imputation_type = "simple" ,numeric_imputation_strategy='mean',categorical_imputation_strategy='not_available',
                                 imputation_classifier = None,
                                 imputation_regressor = None,
                                 imputation_max_iter = 10,
@@ -2684,10 +2681,10 @@ def Preprocess_Path_One(train_data,target_variable,ml_usecase=None,test_data =No
   
   # for imputation
   #imputation_type = "A"
-  if imputation_type == "simple imputer":
+  if imputation_type == "simple":
     imputer = Simple_Imputer(numeric_strategy=numeric_imputation_strategy, target_variable= target_variable,categorical_strategy=categorical_imputation_strategy)
-  elif imputation_type == "surrogate imputer":
-    imputer = Surrogate_Imputer(numeric_strategy=numeric_imputation_strategy,categorical_strategy=categorical_imputation_strategy,target_variable=target_variable)
+  #elif imputation_type == "surrogate imputer":
+  #  imputer = Surrogate_Imputer(numeric_strategy=numeric_imputation_strategy,categorical_strategy=categorical_imputation_strategy,target_variable=target_variable)
   else:
     imputer = Iterative_Imputer(classifier=imputation_classifier, regressor=imputation_regressor, target=target_variable, initial_strategy_numeric=numeric_imputation_strategy,max_iter=imputation_max_iter, warm_start=imputation_warm_start, imputation_order=imputation_order,random_state=random_state)
   
@@ -2865,7 +2862,7 @@ def Preprocess_Path_One(train_data,target_variable,ml_usecase=None,test_data =No
 # ______________________________________________________________________________________________________________________________________________________
 # preprocess_all_in_one_unsupervised
 def Preprocess_Path_Two(train_data,ml_usecase=None,test_data =None,categorical_features=[],numerical_features=[],time_features=[],features_todrop=[],display_types=False,
-                                imputation_type = "simple imputer" ,numeric_imputation_strategy='mean',categorical_imputation_strategy='not_available',
+                                imputation_type = "simple" ,numeric_imputation_strategy='mean',categorical_imputation_strategy='not_available',
                                 apply_zero_nearZero_variance = False,
                                 club_rare_levels = False, rara_level_threshold_percentage =0.05,
                                 apply_untrained_levels_treatment= False,untrained_levels_treatment_method = 'least frequent',
@@ -2930,7 +2927,7 @@ def Preprocess_Path_Two(train_data,ml_usecase=None,test_data =None,categorical_f
 
   
   # for imputation
-  if imputation_type == "simple imputer":
+  if imputation_type == "simple":
     imputer = Simple_Imputer(numeric_strategy=numeric_imputation_strategy, target_variable= target_variable,categorical_strategy=categorical_imputation_strategy)
   else:
     imputer = Surrogate_Imputer(numeric_strategy=numeric_imputation_strategy,categorical_strategy=categorical_imputation_strategy,target_variable=target_variable)

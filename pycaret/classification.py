@@ -77,6 +77,7 @@ def setup(
     train_size: float = 0.7,
     test_data: Optional[pd.DataFrame] = None,
     preprocess: bool = True,
+    imputation_type: str = "simple",
     categorical_features: Optional[List[str]] = None,
     categorical_imputation: str = "constant",
     ordinal_features: Optional[Dict[str, list]] = None,
@@ -1374,6 +1375,7 @@ def setup(
 
     prep_pipe = pycaret.preprocess.Preprocess_Path_One(
         train_data=train_data,
+        imputation_type=imputation_type,
         target_variable=target,
         imputation_regressor=imputation_regressor,
         imputation_classifier=imputation_classifier,
