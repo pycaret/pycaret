@@ -1325,9 +1325,9 @@ def setup(
     display_dtypes_pass = False if silent else True
 
     # creating variables to be used later in the function
-    train_data = data
-    X_before_preprocess = data.drop(target, axis=1)
-    y_before_preprocess = data[target]
+    train_data = data_before_preprocess.copy()
+    X_before_preprocess = train_data.drop(target, axis=1)
+    y_before_preprocess = train_data[target]
 
     logger.info("Importing preprocessing module")
 
@@ -1337,7 +1337,7 @@ def setup(
     logger.info("Creating preprocessing pipeline")
 
     prep_pipe = pycaret.preprocess.Preprocess_Path_One(
-        train_data=data,
+        train_data=train_data,
         target_variable=target,
         categorical_features=cat_features_pass,
         apply_ordinal_encoding=apply_ordinal_encoding_pass,
@@ -1592,7 +1592,7 @@ def setup(
 
     display.move_progress()
 
-    data = prep_pipe.transform(data)
+    data = prep_pipe.transform(data_before_preprocess.copy())
     X = data.drop(target, axis=1)
     y = data[target]
     try:
@@ -2135,8 +2135,6 @@ def compare_models(
     ERROR HANDLING ENDS HERE
     
     """
-
-    data = data.copy()
 
     fold = _get_cv_splitter(fold)
 
