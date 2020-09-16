@@ -77,7 +77,8 @@ class DataTypes_Auto_infer(BaseEstimator,TransformerMixin):
     Returns:
       Panda Data Frame
     '''
-    data = dataset.copy()
+
+    data = dataset
 
     # drop any columns that were asked to drop
     data.drop(columns=self.features_todrop,errors='ignore',inplace=True)
@@ -276,7 +277,8 @@ class DataTypes_Auto_infer(BaseEstimator,TransformerMixin):
       Returns:
         Panda Data Frame
     '''
-    data = dataset.copy()
+
+    data = dataset
 
     # drop any columns that were asked to drop
     data.drop(columns=self.features_todrop,errors='ignore',inplace=True)
@@ -322,7 +324,8 @@ class DataTypes_Auto_infer(BaseEstimator,TransformerMixin):
   # fit_transform
   def fit_transform(self,dataset,y=None):
 
-    data= dataset.copy()
+    data = dataset
+
     # drop any columns that were asked to drop
     data.drop(columns=self.features_todrop,errors='ignore',inplace=True)
 
@@ -385,7 +388,7 @@ class Simple_Imputer(BaseEstimator,TransformerMixin):
     def zeros(x):
       return 0
 
-    data = dataset.copy()
+    data = dataset
     # make a table for numerical variable with strategy stats
     if self.numeric_strategy == 'mean':
       self.numeric_stats = data.drop(self.target,axis=1).select_dtypes(include=['float64','int64']).apply(np.nanmean)
@@ -415,7 +418,7 @@ class Simple_Imputer(BaseEstimator,TransformerMixin):
       
   
   def transform(self,dataset,y=None):
-    data = dataset.copy() 
+    data = dataset 
     # for numeric columns
     for i,s in zip(data[self.numeric_columns].columns,self.numeric_stats):
       data[i].fillna(s,inplace=True)
@@ -437,7 +440,7 @@ class Simple_Imputer(BaseEstimator,TransformerMixin):
     return(data)
   
   def fit_transform(self,dataset,y=None):
-    data = dataset.copy() 
+    data = dataset 
     data= self.fit(data)
     return(self.transform(data))
 
@@ -470,7 +473,7 @@ class Surrogate_Imputer(BaseEstimator,TransformerMixin):
     def zeros(x):
       return 0
 
-    data = dataset.copy()
+    data = dataset
     # make a table for numerical variable with strategy stats
     if self.numeric_strategy == 'mean':
       self.numeric_stats = data.drop(self.target,axis=1).select_dtypes(include=['float64','int64']).apply(np.nanmean)
@@ -525,7 +528,7 @@ class Surrogate_Imputer(BaseEstimator,TransformerMixin):
       
   
   def transform(self,dataset,y=None):
-    data = dataset.copy() 
+    data = dataset 
     # for numeric columns
     for i,s in zip(data[self.numeric_columns].columns,self.numeric_stats):
       array = data[i].isna()
@@ -568,7 +571,7 @@ class Surrogate_Imputer(BaseEstimator,TransformerMixin):
     return(data)
   
   def fit_transform(self,dataset,y=None):
-    data = dataset.copy()
+    data = dataset
     data= self.fit(data)
     return(self.transform(data))
 # _______________________________________________________________________________________________________________________
@@ -596,7 +599,7 @@ class Zroe_NearZero_Variance(BaseEstimator,TransformerMixin):
     self.target = target
   
   def fit(self,dataset,y=None): # from training data set we are going to learn what columns to drop
-    data = dataset.copy()
+    data = dataset
     self.to_drop= []
     self.sampl_len = len(data[self.target])
     for i in data.drop(self.target,axis=1).columns:
@@ -619,12 +622,12 @@ class Zroe_NearZero_Variance(BaseEstimator,TransformerMixin):
 
   
   def transform(self,dataset,y=None): # since it is only for training data set , nothing here
-    data= dataset.copy()
+    data = dataset
     data.drop(self.to_drop,axis=1,inplace=True)
     return(data)
   
   def fit_transform(self,dataset,y=None):
-    data= dataset.copy()
+    data = dataset
     self.fit(data)
     return(self.transform(data))
 #____________________________________________________________________________________________________________________________
@@ -654,7 +657,7 @@ class Catagorical_variables_With_Rare_levels(BaseEstimator,TransformerMixin):
     # every level of the catagorical feature has to be more than threshols, if not they will be clubed togather as "others"
     # in order to apply, there should be atleast two levels belwo the threshold ! 
     # creat a place holder
-    data = dataset.copy()
+    data = dataset
     self.ph = pd.DataFrame(columns=data.drop(self.target,axis=1).select_dtypes(include="object").columns)
     #ph.columns = df.columns# catagorical only 
     for i in data[self.ph.columns].columns:
@@ -678,14 +681,14 @@ class Catagorical_variables_With_Rare_levels(BaseEstimator,TransformerMixin):
   
   def transform(self,dataset,y=None): # 
     # transorm 
-    data = dataset.copy()
+    data = dataset
     for i in data[self.ph.columns].columns:
       t_replace = self.ph.loc[0,i]
       data[i].replace(to_replace=t_replace,value=self.new_level_name,inplace=True)
     return(data)
   
   def fit_transform(self,dataset,y=None):
-    data = dataset.copy()
+    data = dataset
     self.fit(data)
     return(self.transform(data))
 
@@ -765,7 +768,7 @@ class Group_Similar_Features(BaseEstimator,TransformerMixin):
       return(None)
 
   def transform(self,dataset,y=None):
-    data = dataset.copy()
+    data = dataset
     # # only going to process if there is an actual missing value in training data set
     if len(self.list_of_similar_features) > 0:
       for f,g in zip(self.list_of_similar_features,self.group_name): 
@@ -805,7 +808,7 @@ class Binning(BaseEstimator,TransformerMixin):
     return(None)
 
   def transform(self,dataset,y=None):
-    data = dataset.copy()
+    data = dataset
     #only do if features are provided
     if len(self.features_to_discretize) > 0:
       data_t = self.disc.transform(np.array(data[self.features_to_discretize]).reshape(-1,self.len_columns))
@@ -820,7 +823,7 @@ class Binning(BaseEstimator,TransformerMixin):
     return(data)
 
   def fit_transform(self,dataset,y=None):
-    data = dataset.copy()
+    data = dataset
     # only do if features are given
 
     if len(self.features_to_discretize) > 0:
@@ -869,7 +872,7 @@ class Scaling_and_Power_transformation(BaseEstimator,TransformerMixin):
   
   def fit(self,dataset,y=None):
     
-    data=dataset.copy()
+    data=dataset
     # we only want to apply if there are numeric columns
     self.numeric_features = data.drop(self.target,axis=1,errors='ignore').select_dtypes(include=["float64",'int64']).columns
     if len(self.numeric_features) > 0:
@@ -900,7 +903,7 @@ class Scaling_and_Power_transformation(BaseEstimator,TransformerMixin):
 
   
   def transform(self,dataset,y=None):
-    data = dataset.copy()
+    data = dataset
     
     if len(self.numeric_features) > 0:
       self.data_t = pd.DataFrame(self.scale_and_power.transform(data[self.numeric_features]))
@@ -915,7 +918,7 @@ class Scaling_and_Power_transformation(BaseEstimator,TransformerMixin):
       return(data) 
 
   def fit_transform(self,dataset,y=None):
-    data = dataset.copy()
+    data = dataset
     self.fit(data)
     # convert target if appropriate
     # default behavious is quantile transformer
@@ -951,14 +954,14 @@ class Target_Transformation(BaseEstimator,TransformerMixin):
   
   def transform(self,dataset,y=None):
     if self.target in dataset.columns:
-      data = dataset.copy()
+      data = dataset
       # apply transformation
       data[self.target]=self.p_transform_target.transform(np.array(data[self.target]).reshape(-1,1))
       return(data)
     return(dataset) 
 
   def fit_transform(self,dataset,y=None):
-    data = dataset.copy()
+    data = dataset
     # if target has zero or negative values use yj instead
     if any(data[self.target]<= 0):
       self.function_to_apply = 'yeo-johnson'
@@ -993,7 +996,7 @@ class Make_Time_Features(BaseEstimator,TransformerMixin):
     return(None)
 
   def transform(self,dataset,y=None):
-    data = dataset.copy()
+    data = dataset
 
     # run fit transform first
 
@@ -1057,14 +1060,14 @@ class Ordinal(BaseEstimator,TransformerMixin):
     return(None)
 
   def transform(self,dataset,y=None):
-    data = dataset.copy()
+    data = dataset
     new_data_test = pd.DataFrame(self.enc.transform(data[self.info_as_dict.keys()]),columns= self.info_as_dict.keys(),index= data.index)
     for i in self.info_as_dict.keys():
       data[i] = new_data_test[i]
     return(data)
 
   def fit_transform(self,dataset,y=None):
-    data = dataset.copy()
+    data = dataset
     # creat categories from given keys in the data set
     cat_list = []
     for i in self.info_as_dict.values():
@@ -1100,7 +1103,7 @@ class Dummify(BaseEstimator,TransformerMixin):
     self.ohe = OneHotEncoder(handle_unknown='ignore')
   
   def fit(self,dataset,y=None):
-    data = dataset.copy()
+    data = dataset
     # will only do this if there are categorical variables 
     if len(data.select_dtypes(include=('object')).columns) > 0:
       # we need to learn the column names once the training data set is dummify
@@ -1117,7 +1120,7 @@ class Dummify(BaseEstimator,TransformerMixin):
     return(None)
  
   def transform(self,dataset,y=None):
-    data = dataset.copy()
+    data = dataset
     # will only do this if there are categorical variables 
     if len(data.select_dtypes(include=('object')).columns) > 0:
       # only for test data
@@ -1138,7 +1141,7 @@ class Dummify(BaseEstimator,TransformerMixin):
       return(data)
 
   def fit_transform(self,dataset,y=None):
-    data = dataset.copy()
+    data = dataset
     # will only do this if there are categorical variables 
     if len(data.select_dtypes(include=('object')).columns) > 0:
       self.fit(data)
@@ -1184,7 +1187,7 @@ class Outlier(BaseEstimator,TransformerMixin):
       self.dummy = Dummify(self.target)
       data = self.dummy.fit_transform(dataset)
     else:
-      data = dataset.copy()
+      data = dataset
 
     # reduce data size for faster processing
     # try:
@@ -1237,7 +1240,7 @@ class Clean_Colum_Names(BaseEstimator,TransformerMixin):
     return(None)
 
   def transform(self,dataset,y=None):
-    data= dataset.copy()
+    data = dataset
     data.columns= data.columns.str.replace(r'[\,\}\{\]\[\:\"\']','')
     return(data)
 
@@ -1265,13 +1268,13 @@ class Cluster_Entire_Data(BaseEstimator,TransformerMixin):
     return(None)
 
   def transform(self,dataset,y=None):
-    data = dataset.copy()
+    data = dataset
     data.drop(self.target,axis=1,inplace=True,errors='ignore')
     # first convert to dummy
     if len(data.select_dtypes(include='object').columns)>0:
       data_t1 = self.dummy.transform(data)
     else:
-      data_t1 = data.copy()
+      data_t1 = data
 
     # # # now make PLS 
     # # data_t1 = self.pls.transform(data_t1)
@@ -1285,14 +1288,14 @@ class Cluster_Entire_Data(BaseEstimator,TransformerMixin):
     return(data)
 
   def fit_transform(self,dataset,y=None):
-    data = dataset.copy()
+    data = dataset
     # first convert to dummy (if there are objects in data set)
     if len(data.select_dtypes(include='object').columns)>0:
       self.dummy = Dummify(self.target)
       data_t1 = self.dummy.fit_transform(data)
       data_t1 = data_t1.drop(self.target,axis=1)
     else:
-      data_t1 = data.drop(self.target,axis=1).copy()
+      data_t1 = data.drop(self.target,axis=1)
       
     
     # now make PLS 
@@ -1356,7 +1359,7 @@ class Reduce_Cardinality_with_Clustering(BaseEstimator,TransformerMixin):
     return(None)
 
   def transform(self,dataset,y=None):
-    data= dataset.copy()
+    data = dataset
     # we already know which leval belongs to whihc cluster , so all w need is to replace levels with clusters we already have from training data set
     for i,z in zip(self.feature,self.ph_data):
       data[i] = data[i].replace(list(z['levels']),z['cluster'])
@@ -1364,14 +1367,14 @@ class Reduce_Cardinality_with_Clustering(BaseEstimator,TransformerMixin):
     return(data)
 
   def fit_transform(self,dataset,y=None):
-    data = dataset.copy()
+    data = dataset
     # first convert to dummy
     if len(data.select_dtypes(include='object').columns)>0:
       self.dummy = Dummify(self.target)
       data_t = self.dummy.fit_transform(data.drop(self.feature,axis=1))
       #data_t1 = data_t1.drop(self.target,axis=1)
     else:
-      data_t = data.drop(self.feature,axis=1).copy()
+      data_t = data.drop(self.feature,axis=1)
 
     # now make PLS 
     self.pls = PLSRegression(n_components=2) # since we are only using two componenets to group #PLSRegression(n_components=len(data_t1.columns)-1)
@@ -1449,7 +1452,7 @@ class Reduce_Cardinality_with_Counts(BaseEstimator,TransformerMixin):
     return(None)
 
   def transform(self,dataset,y=None):
-    data= dataset.copy()
+    data = dataset
     # we already know level counts 
     for i,z,k in zip(self.feature,self.ph_data,self.ph_u):
       data[i] = data[i].replace(k,z['counts'])
@@ -1458,7 +1461,7 @@ class Reduce_Cardinality_with_Counts(BaseEstimator,TransformerMixin):
     return(data)
 
   def fit_transform(self,dataset,y=None):
-    data = dataset.copy()
+    data = dataset
     # 
     self.ph_data = []
     self.ph_u= []
@@ -1501,7 +1504,7 @@ class Make_NonLiner_Features(BaseEstimator,TransformerMixin):
       return(None)
  
   def transform(self,dataset,y=None):# same application for test and train
-    data = dataset.copy()
+    data = dataset
     
     self.numeric_columns = data.drop(self.target,axis=1,errors='ignore').select_dtypes(include="float64").columns
     if self.Polynomial_degree >= 2: # dont run anything if powr is les than 2
@@ -1563,7 +1566,7 @@ class Make_NonLiner_Features(BaseEstimator,TransformerMixin):
 
   def fit_transform(self,dataset,y=None):
     
-    data = dataset.copy()
+    data = dataset
     
     self.numeric_columns = data.drop(self.target,axis=1,errors='ignore').select_dtypes(include="float64").columns
     if self.Polynomial_degree >= 2: # dont run anything if powr is les than 2
@@ -1649,14 +1652,14 @@ class Advanced_Feature_Selection_Classic(BaseEstimator,TransformerMixin):
 
   def transform(self,dataset,y=None):
     # return the data with onlys specific columns
-    data= dataset.copy()
+    data = dataset
     # self.selected_columns.remove(self.target)
     return(data[self.selected_columns_test])
     # return(data)
 
   def fit_transform(self,dataset,y=None):
     
-    dummy_all = dataset.copy()
+    dummy_all = dataset
 
     # Random Forest
     max_fe = min(70, int(np.sqrt(len(dummy_all.columns))))
@@ -1757,13 +1760,13 @@ class Boruta_Feature_Selection(BaseEstimator, TransformerMixin):
 
   def transform(self,dataset,y=None):
     # return the data with columns which match the threshold
-    data = dataset.copy()
+    data = dataset
     # self.selected_columns.remove(self.target)
     return(data[self.selected_columns_test])
 
 
   def fit_transform(self, dataset, y=None):
-    dummy_data = dataset.copy()
+    dummy_data = dataset
     X, y = dummy_data.drop(self.target, axis=1), dummy_data[self.target]
     n_sample, n_feat = X.shape
     _iter = 1
@@ -1782,7 +1785,7 @@ class Boruta_Feature_Selection(BaseEstimator, TransformerMixin):
     while np.any(dec_reg == 0) and _iter < self.max_iteration:
       # get tentative features
       x_ind = self._get_idx(X, dec_reg)
-      X_tent = X.iloc[:, x_ind].copy()
+      X_tent = X.iloc[:, x_ind]
       X_boruta = X_tent.copy()
       # create boruta features
       for col in X_tent.columns:
@@ -1913,7 +1916,7 @@ class Fix_multicollinearity(BaseEstimator,TransformerMixin):
     '''
       
     #global data1
-    self.data1 = data.copy()
+    self.data1 = data
     # try:
     #   self.data1 = self.data1.astype('float16')
     # except:
@@ -2059,7 +2062,7 @@ class Fix_multicollinearity(BaseEstimator,TransformerMixin):
         Returns:
             data frame
     '''
-    data = dataset.copy()
+    data = dataset
     data.drop(self.to_drop,axis=1,inplace=True)
     # now drop less correlated data
     data.drop(self.to_drop_taret_correlation,axis=1,inplace=True,errors='ignore')
@@ -2095,7 +2098,7 @@ class Remove_100(BaseEstimator,TransformerMixin):
     return(dataset.drop(self.columns_to_drop,axis=1))
 
   def fit_transform(self,dataset,y=None):
-    data = dataset.copy()
+    data = dataset
 
     targetless_data = data.drop(self.target, axis=1)
 
@@ -2165,7 +2168,7 @@ class DFS_Classic(BaseEstimator,TransformerMixin):
 
   def transform(self,dataset,y=None):
 
-    data= dataset.copy()
+    data = dataset
      # for multiplication:
     # we need bot catagorical and numerical columns
 
@@ -2219,7 +2222,7 @@ class DFS_Classic(BaseEstimator,TransformerMixin):
     
   def fit_transform(self,dataset,y=None):
 
-    data= dataset.copy()
+    data = dataset
 
     # we need to seperate numerical and ont hot encoded columns
     # self.ohe_columns = [i if ((len(data[i].unique())==2) & (data[i].unique()[0] in [0,1]) & (data[i].unique()[1] in [0,1]) ) else None for i in data.drop(self.target,axis=1).columns]
@@ -2357,7 +2360,7 @@ class Reduce_Dimensions_For_Supervised_Path(BaseEstimator,TransformerMixin):
     return(None)
 
   def transform(self,dataset,y=None):
-    data = dataset.copy()
+    data = dataset
     data.drop(self.target,axis=1,inplace=True,errors='ignore')
     if self.method in ['pca_liner' , 'pca_kernal', 'tsne' , 'incremental']: #if self.method in ['pca_liner' , 'pca_kernal', 'tsne' , 'incremental','psa']
       data_pca = self.pca.transform(data)
@@ -2371,7 +2374,7 @@ class Reduce_Dimensions_For_Supervised_Path(BaseEstimator,TransformerMixin):
       return(data)
 
   def fit_transform(self,dataset,y=None):
-    data = dataset.copy()
+    data = dataset
     if self.method == 'pca_liner':
       self.pca = PCA(self.variance_retained,random_state=self.random_state)
       # fit transform
