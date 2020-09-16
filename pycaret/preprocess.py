@@ -394,7 +394,7 @@ class Simple_Imputer(_BaseImputer):
     self.categorical_strategy = categorical_strategy
     self.numeric_imputer = SimpleImputer(strategy=self._numeric_strategies[self.numeric_strategy], fill_value = fill_value_numerical)
     self.categorical_imputer = SimpleImputer(strategy=self._categorical_strategies[self.categorical_strategy], fill_value = fill_value_categorical)
-    self.time_imputer = SimpleImputer(strategy='most_frequent')
+    self.most_frequent_time = []
   
   def fit(self,dataset,y=None): #
     try:
@@ -414,8 +414,10 @@ class Simple_Imputer(_BaseImputer):
       self.categorical_imputer.fit(data[self.categorical_columns])
       statistics.append((self.categorical_imputer.statistics_, self.categorical_columns))
     if not self.time_columns.empty:
-      self.time_imputer.fit(data[self.time_columns])
-      statistics.append((self.time_imputer.statistics_, self.time_columns))
+      self.most_frequent_time = []
+      for col in self.time_columns:
+        self.most_frequent_time.append(data[col].mode()[0])
+      statistics.append((self.most_frequent_time, self.time_columns))
 
     self.statistics_ = np.zeros(shape=len(data.columns), dtype=object)
     columns = list(data.columns)
@@ -437,7 +439,9 @@ class Simple_Imputer(_BaseImputer):
         categorical_data[col] = categorical_data[col].apply(str)
       imputed_data.append(categorical_data)
     if not self.time_columns.empty:
-      time_data = pd.DataFrame(self.time_imputer.transform(data[self.time_columns]), columns=self.time_columns, index=data.index)
+      time_data = data[self.time_columns]
+      for i, col in enumerate(time_data.columns):
+        time_data[col].fillna(self.most_frequent_time[i])
       imputed_data.append(time_data)
 
     if imputed_data:
