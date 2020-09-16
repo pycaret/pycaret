@@ -22,7 +22,7 @@ from pycaret.internal.utils import (
 )
 from pycaret.internal.logging import get_logger
 from pycaret.internal.plotting import show_yellowbrick_plot
-from pycaret.internal.Display import Display
+from pycaret.internal.Display import Display, is_in_colab, enable_colab
 from pycaret.internal.distributions import *
 from pycaret.internal.validation import *
 from pycaret.containers.models.classification import (
@@ -51,6 +51,9 @@ from IPython.utils import io
 import traceback
 
 warnings.filterwarnings("ignore")
+
+if is_in_colab():
+    enable_colab()
 
 _available_plots = {
     "parameter": "Hyperparameters",
@@ -5574,52 +5577,52 @@ def plot_model(
 
             # SGD Classifier
             if "actual_estimator__l1_ratio" in model_params:
-                param_name = "l1_ratio"
+                param_name = "actual_estimator__l1_ratio"
                 param_range = np.arange(0, 1, 0.01)
 
             # tree based models
             elif "actual_estimator__max_depth" in model_params:
-                param_name = "max_depth"
+                param_name = "actual_estimator__max_depth"
                 param_range = np.arange(1, 11)
 
             # knn
             elif "actual_estimator__n_neighbors" in model_params:
-                param_name = "n_neighbors"
+                param_name = "actual_estimator__n_neighbors"
                 param_range = np.arange(1, 11)
 
             # MLP / Ridge
             elif "actual_estimator__alpha" in model_params:
-                param_name = "alpha"
+                param_name = "actual_estimator__alpha"
                 param_range = np.arange(0, 1, 0.1)
 
             # Logistic Regression
             elif "actual_estimator__C" in model_params:
-                param_name = "C"
+                param_name = "actual_estimator__C"
                 param_range = np.arange(1, 11)
 
             # Bagging / Boosting
             elif "actual_estimator__n_estimators" in model_params:
-                param_name = "n_estimators"
+                param_name = "actual_estimator__n_estimators"
                 param_range = np.arange(1, 100, 10)
 
             # Bagging / Boosting / gbc / ada /
             elif "actual_estimator__n_estimators" in model_params:
-                param_name = "n_estimators"
+                param_name = "actual_estimator__n_estimators"
                 param_range = np.arange(1, 100, 10)
 
             # Naive Bayes
             elif "actual_estimator__var_smoothing" in model_params:
-                param_name = "var_smoothing"
+                param_name = "actual_estimator__var_smoothing"
                 param_range = np.arange(0.1, 1, 0.01)
 
             # QDA
             elif "actual_estimator__reg_param" in model_params:
-                param_name = "reg_param"
+                param_name = "actual_estimator__reg_param"
                 param_range = np.arange(0, 1, 0.1)
 
             # GPC
             elif "actual_estimator__max_iter_predict" in model_params:
-                param_name = "max_iter_predict"
+                param_name = "actual_estimator__max_iter_predict"
                 param_range = np.arange(100, 1000, 100)
 
             else:
@@ -5742,7 +5745,9 @@ def plot_model(
         def parameter():
 
             param_df = pd.DataFrame.from_dict(
-                estimator.get_params(estimator), orient="index", columns=["Parameters"]
+                {str(k): str(v) for k, v in estimator.get_params(deep=False).items()},
+                orient="index",
+                columns=["Parameters"],
             )
             display.display(param_df, clear=True)
             logger.info("Visual Rendered Successfully")

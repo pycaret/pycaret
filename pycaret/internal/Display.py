@@ -8,6 +8,7 @@ import ipywidgets as ipw
 from IPython import get_ipython
 from IPython.display import display, HTML, clear_output, update_display
 from typing import Optional, List, Dict, Any
+from pycaret.utils import enable_colab
 
 
 class Display:
@@ -133,7 +134,7 @@ class Display:
         self.round = round
         try:
             self.enviroment = str(get_ipython())
-            self.enviroment = "google.colab" if "google.colab" in self.enviroment else self.enviroment
+            self.enviroment = "google.colab" if is_in_colab() else self.enviroment
         except:
             self.enviroment = ""
 
@@ -154,3 +155,10 @@ class Display:
             self.monitor = pd.DataFrame(
                 monitor_rows, columns=[" " * i for i in range(len(monitor_rows[0]))],
             ).set_index("")
+
+
+def is_in_colab():
+    try:
+        return "google.colab" in str(get_ipython())
+    except:
+        return False
