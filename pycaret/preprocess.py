@@ -8,6 +8,8 @@ import ipywidgets as wg
 from IPython.display import display
 from ipywidgets import Layout
 from sklearn.base import BaseEstimator , TransformerMixin
+from sklearn.impute._base import _BaseImputer
+from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import StandardScaler
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.preprocessing import RobustScaler
@@ -364,7 +366,7 @@ class DataTypes_Auto_infer(BaseEstimator,TransformerMixin):
     return(data)
 # _______________________________________________________________________________________________________________________
 # Imputation
-class Simple_Imputer(BaseEstimator,TransformerMixin):
+class Simple_Imputer(_BaseImputer):
   '''
     Imputes all type of data (numerical,categorical & Time).
       Highly recommended to run Define_dataTypes class first
@@ -378,75 +380,65 @@ class Simple_Imputer(BaseEstimator,TransformerMixin):
         target: string , name of the target variable
 
   '''
+  _numeric_strategies = {'mean':'mean', 'median':'median', 'most frequent':'most_frequent', 'zero': 'constant'}
+  _categorical_strategies = {'most frequent':'most_frequent', 'not_available':'constant'}
 
   def __init__(self,numeric_strategy,categorical_strategy,target_variable):
+    if numeric_strategy not in self._numeric_strategies:
+      numeric_strategy = 'zero'
     self.numeric_strategy = numeric_strategy
     self.target = target_variable
+    if categorical_strategy not in self._categorical_strategies:
+      categorical_strategy = 'not_available'
     self.categorical_strategy = categorical_strategy
+    self.numeric_imputer = SimpleImputer(strategy=self._numeric_strategies[self.numeric_strategy], fill_value = 0)
+    self.categorical_imputer = SimpleImputer(strategy=self._categorical_strategies[self.categorical_strategy], fill_value = "not_available")
+    self.time_imputer = SimpleImputer(strategy='most_frequent')
   
   def fit(self,dataset,y=None): #
-    def zeros(x):
-      return 0
 
-    data = dataset
-    # make a table for numerical variable with strategy stats
-    if self.numeric_strategy == 'mean':
-      self.numeric_stats = data.drop(self.target,axis=1).select_dtypes(include=['float64','int64']).apply(np.nanmean)
-    elif self.numeric_strategy == 'median':
-      self.numeric_stats = data.drop(self.target,axis=1).select_dtypes(include=['float64','int64']).apply(np.nanmedian)
-    else:
-      self.numeric_stats = data.drop(self.target,axis=1).select_dtypes(include=['float64','int64']).apply(zeros)
+    data = dataset.drop(self.target,axis=1)
+    self.numeric_columns = data.select_dtypes(include=['float64','int64']).columns
+    self.categorical_columns = data.select_dtypes(include=['object']).columns
+    self.time_columns = data.select_dtypes(include=['datetime64[ns]']).columns
 
-    self.numeric_columns = data.drop(self.target,axis=1).select_dtypes(include=['float64','int64']).columns
+    if not self.numeric_columns.empty:
+      self.numeric_imputer.fit(data[self.numeric_columns])
+    if not self.categorical_columns.empty:
+      self.categorical_imputer.fit(data[self.categorical_columns])
+    if not self.time_columns.empty:
+      self.time_imputer.fit(data[self.time_columns])
 
-    #for Catgorical , 
-    if self.categorical_strategy == 'most frequent':
-      self.categorical_columns = data.drop(self.target,axis=1).select_dtypes(include=['object']).columns
-      self.categorical_stats = pd.DataFrame(columns=self.categorical_columns) # place holder
-      for i in (self.categorical_stats.columns):
-        self.categorical_stats.loc[0,i] = data[i].value_counts().index[0]
-    else:
-      self.categorical_columns = data.drop(self.target,axis=1).select_dtypes(include=['object']).columns
-    
-    # for time, there is only one way, pick up the most frequent one
-    self.time_columns = data.drop(self.target,axis=1).select_dtypes(include=['datetime64[ns]']).columns
-    self.time_stats = pd.DataFrame(columns=self.time_columns) # place holder
-    for i in (self.time_columns):
-      self.time_stats.loc[0,i] = data[i].value_counts().index[0]
-    return(data)
+    return
 
       
   
   def transform(self,dataset,y=None):
-    data = dataset 
-    # for numeric columns
-    for i,s in zip(data[self.numeric_columns].columns,self.numeric_stats):
-      data[i].fillna(s,inplace=True)
-    
-    # for categorical columns
-    if self.categorical_strategy == 'most frequent':
-      for i in (self.categorical_stats.columns):
-        #data[i].fillna(self.categorical_stats.loc[0,i],inplace=True)
-        data[i] = data[i].fillna(self.categorical_stats.loc[0,i])
-        data[i] = data[i].apply(str)    
-    else: # this means replace na with "not_available"
-      for i in (self.categorical_columns):
-        data[i].fillna("not_available",inplace=True)
-        data[i] = data[i].apply(str)
-    # for time
-    for i in (self.time_stats.columns):
-        data[i].fillna(self.time_stats.loc[0,i],inplace=True)
-    
+    data = dataset
+    imputed_data = []
+    if not self.numeric_columns.empty:
+      numeric_data = pd.DataFrame(self.numeric_imputer.transform(data[self.numeric_columns]), columns=self.numeric_columns, index=data.index)
+      imputed_data.append(numeric_data)
+    if not self.categorical_columns.empty:
+      categorical_data = pd.DataFrame(self.categorical_imputer.transform(data[self.categorical_columns]), columns=self.categorical_columns, index=data.index)
+      imputed_data.append(categorical_data)
+    if not self.time_columns.empty:
+      time_data = pd.DataFrame(self.time_imputer.transform(data[self.time_columns]), columns=self.time_columns, index=data.index)
+      imputed_data.append(time_data)
+
+    if imputed_data:
+      data.update(pd.concat(imputed_data, axis=1))
+
     return(data)
   
   def fit_transform(self,dataset,y=None):
-    data = dataset 
-    data= self.fit(data)
+    data = dataset
+    self.fit(data)
     return(self.transform(data))
 
 # _______________________________________________________________________________________________________________________
 # Imputation with surrogate columns
-class Surrogate_Imputer(BaseEstimator,TransformerMixin):
+class Surrogate_Imputer(_BaseImputer):
   '''
     Imputes feature with surrogate column (numerical,categorical & Time).
       - Highly recommended to run Define_dataTypes class first
