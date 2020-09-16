@@ -1,4 +1,4 @@
-# Module: containers.models.base_model
+# Module: containers.models.classification
 # Author: Moez Ali <moez.ali@queensu.ca> and Antoni Baum (Yard1) <antoni.baum@protonmail.com>
 # License: MIT
 
@@ -10,20 +10,11 @@
 
 import logging
 from typing import Union, Dict, Any, Optional
-from pycaret.containers.models.base_model import ModelContainer
+from pycaret.containers.models.base_model import ModelContainer, _leftover_parameters_to_categorical_distributions
 from pycaret.internal.utils import param_grid_to_lists, get_logger, get_class_name
 from pycaret.internal.distributions import *
 import pycaret.containers.base_container
 import numpy as np
-
-
-def _leftover_parameters_to_categorical_distributions(
-    tune_grid: dict, tune_distributions: dict
-) -> None:
-    for k, v in tune_grid.items():
-        if not k in tune_distributions:
-            tune_distributions[k] = CategoricalDistribution(v)
-
 
 class ClassifierContainer(ModelContainer):
     """
@@ -792,7 +783,7 @@ class RandomForestClassifierContainer(ClassifierContainer):
                 0.05,
                 0.1,
             ],
-            "max_features": [1.0, "auto", "sqrt", "log2"],
+            "max_features": ["auto", "sqrt", "log2"],
             "bootstrap": [True, False],
         }
         tune_distributions = {
@@ -804,7 +795,7 @@ class RandomForestClassifierContainer(ClassifierContainer):
         if gpu_imported:
             if globals_dict["y_train"].value_counts().count() > 2:
                 tune_grid.pop("max_features")
-                args["max_features"] = 1.0
+                args["max_features"] = [1.0]
             tune_grid["split_criterion"] = [0, 1]
         else:
             tune_grid["criterion"] = ["gini", "entropy"]

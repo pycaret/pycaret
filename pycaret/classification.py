@@ -25,7 +25,11 @@ from pycaret.internal.plotting import show_yellowbrick_plot
 from pycaret.internal.Display import Display
 from pycaret.internal.distributions import *
 from pycaret.internal.validation import *
-from pycaret.containers.models.classification import get_all_model_containers
+from pycaret.containers.models.classification import (
+    get_all_model_containers,
+    LGBMClassifierContainer,
+)
+from pycaret.containers.models.regression import BayesianRidgeContainer
 from pycaret.containers.metrics.classification import (
     get_all_metric_containers,
     ClassificationMetricContainer,
@@ -76,6 +80,7 @@ def setup(
     train_size: float = 0.7,
     test_data: Optional[pd.DataFrame] = None,
     preprocess: bool = True,
+    imputation_type: str = "simple",
     categorical_features: Optional[List[str]] = None,
     categorical_imputation: str = "constant",
     ordinal_features: Optional[Dict[str, list]] = None,
@@ -1324,6 +1329,35 @@ def setup(
 
     display_dtypes_pass = False if silent else True
 
+    # create n_jobs_param
+    n_jobs_param = n_jobs
+
+    cuml_version = None
+    if use_gpu:
+        try:
+            from cuml import __version__
+
+            cuml_version = __version__
+            logger.info(f"cuml=={cuml_version}")
+
+            cuml_version = cuml_version.split(".")
+            cuml_version = (int(cuml_version[0]), int(cuml_version[1]))
+        except:
+            logger.warning(f"cuML not found")
+
+        if cuml_version is None or not cuml_version >= (0, 15):
+            message = f"cuML is outdated or not found. Required version is >=0.15, got {__version__}"
+            if use_gpu == "force":
+                raise ImportError(message)
+            else:
+                logger.warning(message)
+
+    # create _gpu_n_jobs_param
+    _gpu_n_jobs_param = n_jobs if not use_gpu else 1
+
+    # create gpu_param var
+    gpu_param = use_gpu
+
     # creating variables to be used later in the function
     train_data = data_before_preprocess.copy()
     X_before_preprocess = train_data.drop(target, axis=1)
@@ -1336,9 +1370,20 @@ def setup(
 
     logger.info("Creating preprocessing pipeline")
 
+    imputation_regressor = BayesianRidgeContainer(globals())
+    imputation_regressor = imputation_regressor.class_def(**imputation_regressor.args)
+
+    imputation_classifier = LGBMClassifierContainer(globals())
+    imputation_classifier = imputation_classifier.class_def(
+        **imputation_classifier.args
+    )
+
     prep_pipe = pycaret.preprocess.Preprocess_Path_One(
         train_data=train_data,
+        imputation_type=imputation_type,
         target_variable=target,
+        imputation_regressor=imputation_regressor,
+        imputation_classifier=imputation_classifier,
         categorical_features=cat_features_pass,
         apply_ordinal_encoding=apply_ordinal_encoding_pass,
         ordinal_columns_and_categories=ordinal_columns_and_categories_pass,
@@ -1456,32 +1501,6 @@ def setup(
     else:
         fold_generator = fold_strategy
 
-    # create n_jobs_param
-    n_jobs_param = n_jobs
-
-    cuml_version = None
-    if use_gpu:
-        try:
-            from cuml import __version__
-
-            cuml_version = __version__
-            logger.info(f"cuml=={cuml_version}")
-
-            cuml_version = cuml_version.split(".")
-            cuml_version = (int(cuml_version[0]), int(cuml_version[1]))
-        except:
-            logger.warning(f"cuML not found")
-
-        if not cuml_version >= (0, 15):
-            message = f"cuML is outdated or not found. Required version is >=0.15, got {__version__}"
-            if use_gpu == "force":
-                raise ImportError(message)
-            else:
-                logger.warning(message)
-
-    # create _gpu_n_jobs_param
-    _gpu_n_jobs_param = n_jobs if not use_gpu else 1
-
     # create create_model_container
     create_model_container = []
 
@@ -1541,9 +1560,6 @@ def setup(
     # create target_param var
     target_param = target
 
-    # create gpu_param var
-    gpu_param = use_gpu
-
     # create stratify_param var
     stratify_param = data_split_stratify
 
@@ -1555,7 +1571,7 @@ def setup(
 
     display.move_progress()
 
-    display.update_monitor(1, "Splitting Data")
+    display.update_monitor(1, "Preprocessing Data")
     display.display_monitor()
 
     _stratify_columns = _get_columns_to_stratify_by(
@@ -5558,52 +5574,52 @@ def plot_model(
 
             # SGD Classifier
             if "actual_estimator__l1_ratio" in model_params:
-                param_name = "actual_estimator__l1_ratio"
+                param_name = "l1_ratio"
                 param_range = np.arange(0, 1, 0.01)
 
             # tree based models
             elif "actual_estimator__max_depth" in model_params:
-                param_name = "actual_estimator__max_depth"
+                param_name = "max_depth"
                 param_range = np.arange(1, 11)
 
             # knn
             elif "actual_estimator__n_neighbors" in model_params:
-                param_name = "actual_estimator__n_neighbors"
+                param_name = "n_neighbors"
                 param_range = np.arange(1, 11)
 
             # MLP / Ridge
             elif "actual_estimator__alpha" in model_params:
-                param_name = "actual_estimator__alpha"
+                param_name = "alpha"
                 param_range = np.arange(0, 1, 0.1)
 
             # Logistic Regression
             elif "actual_estimator__C" in model_params:
-                param_name = "actual_estimator__C"
+                param_name = "C"
                 param_range = np.arange(1, 11)
 
             # Bagging / Boosting
             elif "actual_estimator__n_estimators" in model_params:
-                param_name = "actual_estimator__n_estimators"
+                param_name = "n_estimators"
                 param_range = np.arange(1, 100, 10)
 
             # Bagging / Boosting / gbc / ada /
             elif "actual_estimator__n_estimators" in model_params:
-                param_name = "actual_estimator__n_estimators"
+                param_name = "n_estimators"
                 param_range = np.arange(1, 100, 10)
 
             # Naive Bayes
             elif "actual_estimator__var_smoothing" in model_params:
-                param_name = "actual_estimator__var_smoothing"
+                param_name = "var_smoothing"
                 param_range = np.arange(0.1, 1, 0.01)
 
             # QDA
             elif "actual_estimator__reg_param" in model_params:
-                param_name = "actual_estimator__reg_param"
+                param_name = "reg_param"
                 param_range = np.arange(0, 1, 0.1)
 
             # GPC
             elif "actual_estimator__max_iter_predict" in model_params:
-                param_name = "actual_estimator__max_iter_predict"
+                param_name = "max_iter_predict"
                 param_range = np.arange(100, 1000, 100)
 
             else:
@@ -5703,7 +5719,7 @@ def plot_model(
             )
             my_range = range(1, len(sorted_df.index) + 1)
             display.move_progress()
-            plt.figure(figsize=(8, 5), dpi=_base_dpi * scale)
+            plt.figure(figsize=(8, 5 * (n // 10)), dpi=_base_dpi * scale)
             plt.hlines(y=my_range, xmin=0, xmax=sorted_df["Value"], color="skyblue")
             plt.plot(sorted_df["Value"], my_range, "o")
             display.move_progress()
@@ -5959,6 +5975,7 @@ def interpret_model(
         logger.info("Compiling shap values")
         shap_values = explainer.shap_values(X_test)
         shap_plot = shap.summary_plot(shap_values, X_test, **kwargs)
+        return shap_plot
 
     def correlation():
 
@@ -5987,9 +6004,10 @@ def interpret_model(
         elif model_id in shap_models_type2:
             logger.info("model type detected: type 2")
             shap.dependence_plot(dependence, shap_values, X_test, **kwargs)
+        return None
 
     def reason():
-
+        shap_plot = None
         if model_id in shap_models_type1:
             logger.info("model type detected: type 1")
 
@@ -6063,8 +6081,9 @@ def interpret_model(
                     X_test.iloc[row_to_show, :],
                     **kwargs,
                 )
+        return shap_plot
 
-    locals()[plot]()
+    shap_plot = locals()[plot]()
 
     logger.info("Visual Rendered Successfully")
 
@@ -7249,7 +7268,7 @@ def save_model(model, model_name: str, model_only: bool = False, verbose: bool =
     import pycaret.internal.persistence
 
     return pycaret.internal.persistence.save_model(
-        model, model_name, prep_pipe if model_only else None, verbose
+        model, model_name, None if model_only else prep_pipe, verbose
     )
 
 
@@ -7357,7 +7376,7 @@ def automl(optimize: str = "Accuracy", use_holdout: bool = False) -> Any:
         for i in master_model_container:
             try:
                 pred_holdout = predict_model(i, verbose=False)
-            except NotFittedError:
+            except:
                 logger.warning(f"Model {i} is not fitted, running _create_model")
                 i, _ = _create_model(
                     estimator=i,

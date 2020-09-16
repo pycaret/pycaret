@@ -5,6 +5,7 @@
 from pycaret.internal.logging import get_logger
 import pandas as pd
 import ipywidgets as ipw
+from IPython import get_ipython
 from IPython.display import display, HTML, clear_output, update_display
 from typing import Optional, List, Dict, Any
 
@@ -132,6 +133,7 @@ class Display:
         self.round = round
         try:
             self.enviroment = str(get_ipython())
+            self.enviroment = "google.colab" if "google.colab" in self.enviroment else self.enviroment
         except:
             self.enviroment = ""
 
