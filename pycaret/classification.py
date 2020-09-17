@@ -676,9 +676,6 @@ def setup(
 
     logger.info("Checking Exceptions")
 
-    all_cols = list(data.columns)
-    all_cols.remove(target)
-
     # checking data type
     if hasattr(data, "shape") is False:
         raise TypeError("data passed must be of type pandas.DataFrame")
@@ -707,6 +704,9 @@ def setup(
     # checking transformation parameter
     if type(transformation) is not bool:
         raise TypeError("transformation parameter only accepts True or False.")
+
+    all_cols = list(data.columns)
+    all_cols.remove(target)
 
     # checking categorical imputation
     allowed_categorical_imputation = ["constant", "mode"]
@@ -1566,12 +1566,6 @@ def setup(
     # create stratify_param var
     stratify_param = data_split_stratify
 
-    # determining target type
-    if _is_multiclass():
-        target_type = "Multiclass"
-    else:
-        target_type = "Binary"
-
     display.move_progress()
 
     display.update_monitor(1, "Preprocessing Data")
@@ -1618,6 +1612,12 @@ def setup(
         dtypes.final_training_columns.remove(target)
     except:
         pass
+
+    # determining target type
+    if _is_multiclass():
+        target_type = "Multiclass"
+    else:
+        target_type = "Binary"
 
     all_models = models(force_regenerate=True, raise_errors=True)
     _all_models_internal = models(
