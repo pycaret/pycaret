@@ -56,6 +56,28 @@ def str_if_not_null(x):
     return x
   return str(x)
 
+def find_id_columns(data, numerical_features):
+  # some times we have id column in the data set, we will try to find it and then  will drop it if found
+  len_samples = len(data)
+  id_columns = []
+  for i in data.select_dtypes(include=['object', 'int64','float64']).columns:
+    col = data[i]
+    if i not in numerical_features:
+      if sum(col.isnull()) == 0: 
+        try:
+          col = col.astype('int64')
+        except:
+          continue
+        if col.nunique() == len_samples:
+          # we extract column and sort it
+          features = col.sort_values()
+          # no we subtract i+1-th value from i-th (calculating increments)
+          increments = features.diff()[1:]
+          # if all increments are 1 (with float tolerance), then the column is ID column
+          if sum(np.abs(increments-1) < 1e-7) == len_samples-1:
+            id_columns.append(i)
+  return id_columns
+
 class DataTypes_Auto_infer(BaseEstimator,TransformerMixin):
   '''
     - This will try to infer data types automatically, option to override learent data types is also available.
@@ -63,7 +85,7 @@ class DataTypes_Auto_infer(BaseEstimator,TransformerMixin):
       remove columns and rows where all the records are null
   '''
 
-  def __init__(self,target,ml_usecase,categorical_features=[],numerical_features=[],time_features=[],features_todrop=[],display_types=True): # nothing to define
+  def __init__(self,target,ml_usecase,categorical_features=[],numerical_features=[],time_features=[],features_todrop=[],id_columns=[],display_types=True): # nothing to define
     '''
     User to define the target (y) variable
       args:
@@ -81,6 +103,7 @@ class DataTypes_Auto_infer(BaseEstimator,TransformerMixin):
     self.time_features =time_features
     self.features_todrop = features_todrop
     self.display_types = display_types
+    self.id_columns = id_columns
 
   def fit(self,dataset,y=None): # learning data types of all the columns
     '''
@@ -133,22 +156,6 @@ class DataTypes_Auto_infer(BaseEstimator,TransformerMixin):
     for i in data.select_dtypes(include=['bool', 'category']).columns:
       data[i] = data[i].astype('object')
     
-
-    # some times we have id column in the data set, we will try to find it and then  will drop it if found
-    len_samples = len(data)
-    self.id_columns = []
-    for i in data.select_dtypes(include=['int64','float64']).columns:
-      if i not in self.numerical_features:
-        if sum(data[i].isnull()) == 0: 
-          if data[i].nunique() == len_samples:
-            # we extract column and sort it
-            features = data[i].sort_values()
-            # no we subtract i+1-th value from i-th (calculating increments)
-            increments = features.diff()[1:]
-            # if all increments are 1 (with float tolerance), then the column is ID column
-            if sum(np.abs(increments-1) < 1e-7) == len_samples-1:
-              self.id_columns.append(i)
-              
     # wiith csv , if we have any null in  a colum that was int , panda will read it as float.
     # so first we need to convert any such floats that have NaN and unique values are lower than 20
     for i in data.select_dtypes(include=['float64']).columns:
@@ -2694,7 +2701,7 @@ def Preprocess_Path_One(train_data,target_variable,ml_usecase=None,test_data =No
   else:
     subcase = 'binary'
   
-  dtypes = DataTypes_Auto_infer(target=target_variable,ml_usecase=ml_usecase,categorical_features=categorical_features,numerical_features=numerical_features,time_features=time_features,features_todrop=features_todrop,display_types=display_types)
+  dtypes = DataTypes_Auto_infer(target=target_variable,ml_usecase=ml_usecase,categorical_features=categorical_features,numerical_features=numerical_features,time_features=time_features,features_todrop=features_todrop,display_types=display_types,id_columns=find_id_columns(train_data, numerical_features=numerical_features))
 
   
   # for imputation
