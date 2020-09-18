@@ -5225,6 +5225,24 @@ def plot_model(
     plot_name = _available_plots[plot]
     display.move_progress()
 
+    # yellowbrick workaround start
+    import yellowbrick.utils.types
+
+    def is_estimator(model):
+        try:
+            return callable(getattr(model, "fit")) and callable(
+                getattr(model, "predict")
+            )
+        except:
+            return False
+
+    yellowbrick.utils.types.is_estimator = is_estimator
+
+    import yellowbrick.utils.helpers
+
+    yellowbrick.utils.helpers.is_estimator = is_estimator
+    # yellowbrick workaround end
+
     model_name = _get_model_name(model)
     with estimator_pipeline(_internal_pipeline, model) as pipeline_with_model:
         fit_kwargs = _get_pipeline_fit_kwargs(pipeline_with_model, fit_kwargs)
