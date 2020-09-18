@@ -430,6 +430,8 @@ class SGDClassifierContainer(ClassifierContainer):
 
         if gpu_imported:
             tune_grid["learning_rate"] += ["optimal"]
+            batch_size = int(len(globals_dict["X_train"]) * 0.5)
+            args["batch_size"] = batch_size if batch_size > 32 else 32
         else:
             args["random_state"] = globals_dict["seed"]
             args["n_jobs"] = globals_dict["n_jobs_param"]
@@ -599,7 +601,9 @@ class RidgeClassifierContainer(ClassifierContainer):
         tune_distributions = {}
 
         if gpu_imported:
+            batch_size = int(len(globals_dict["X_train"]) * 0.5)
             args = {
+                "batch_size": batch_size if batch_size > 32 else 32,
                 "tol": 0.001,
                 "loss": "squared_loss",
                 "penalty": "l2",
