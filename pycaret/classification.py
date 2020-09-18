@@ -6733,7 +6733,7 @@ def predict_model(
     try:
         score = estimator.predict_proba(X_test_)
 
-        if not _is_multiclass():
+        if pred_.value_counts().count() <= 2:
             pred_prob = score[:, 1]
         else:
             pred_prob = score
