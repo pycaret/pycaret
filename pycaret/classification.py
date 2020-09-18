@@ -3514,6 +3514,22 @@ def tune_model(
 
     from sklearn.ensemble import VotingClassifier
 
+    def total_combintaions_in_grid(grid):
+        nc = 1
+
+        def get_iter(x):
+            if isinstance(x, dict):
+                return x.values()
+            return x
+
+        for v in get_iter(grid):
+            if isinstance(v, dict):
+                for v2 in get_iter(v):
+                    nc *= len(v2)
+            else:
+                nc *= len(v)
+        return nc
+
     if custom_grid is not None:
         param_grid = custom_grid
     elif search_library == "scikit-learn" or (
@@ -3528,6 +3544,13 @@ def tune_model(
                 f"weight_{i}": np.arange(0.1, 1, 0.1)
                 for i, e in enumerate(base_estimator.estimators)
             }
+        if search_algorithm != "grid":
+            tc = total_combintaions_in_grid(param_grid)
+            if tc <= n_iter:
+                logger.info(
+                    f"{n_iter} is bigger than total combinations {tc}, setting search algorithm to grid"
+                )
+                search_algorithm = "grid"
     else:
         param_grid = estimator_definition["Tune Distributions"]
 
@@ -3692,7 +3715,7 @@ def tune_model(
 
             # if n_jobs is None:
             # enable Ray local mode - otherwise the performance is terrible
-            #if len(X_train) <= 50000:
+            # if len(X_train) <= 50000:
             n_jobs = 1
 
             TuneSearchCV = get_tune_sklearn_tunesearchcv()
