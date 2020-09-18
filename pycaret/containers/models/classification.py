@@ -416,14 +416,14 @@ class SGDClassifierContainer(ClassifierContainer):
             except ImportError:
                 logger.warning("Couldn't import cuml.MBSGDClassifier")
 
-        args = {"tol": 0.001, "loss": "hinge"}
+        args = {"tol": 0.001, "loss": "hinge", "penalty": "l2", "eta0": 0.001}
         tune_args = {}
         tune_grid = {
             "penalty": ["elasticnet", "l2", "l1"],
             "l1_ratio": np.arange(0.0000000001, 0.9999999999, 0.01),
             "alpha": [0.0001, 0.001, 0.01, 0.0002, 0.002, 0.02, 0.0005, 0.005, 0.05,],
             "fit_intercept": [True, False],
-            "learning_rate": ["constant", "invscaling", "adaptive"],
+            "learning_rate": ["constant", "invscaling", "adaptive", "optimal"],
             "eta0": [0.001, 0.01, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5],
         }
         tune_distributions = {
@@ -433,9 +433,19 @@ class SGDClassifierContainer(ClassifierContainer):
         }
 
         if gpu_imported:
-            tune_grid["learning_rate"] += ["optimal"]
-            batch_size = int(len(globals_dict["X_train"]) * 0.5)
-            args["batch_size"] = batch_size if batch_size > 32 else 32
+            tune_grid["learning_rate"].remove("optimal")
+            batch_size = [
+                (512, 50000),
+                (256, 25000),
+                (128, 10000),
+                (64, 5000),
+                (32, 1000),
+                (16, 0),
+            ]
+            for arg, x_len in batch_size:
+                if len(globals_dict["X_train"]) >= x_len:
+                    args["batch_size"] = arg
+                    break
         else:
             args["random_state"] = globals_dict["seed"]
             args["n_jobs"] = globals_dict["n_jobs_param"]
@@ -605,9 +615,19 @@ class RidgeClassifierContainer(ClassifierContainer):
         tune_distributions = {}
 
         if gpu_imported:
-            batch_size = int(len(globals_dict["X_train"]) * 0.5)
+            batch_size = [
+                (512, 50000),
+                (256, 25000),
+                (128, 10000),
+                (64, 5000),
+                (32, 1000),
+                (16, 0),
+            ]
+            for arg, x_len in batch_size:
+                if len(globals_dict["X_train"]) >= x_len:
+                    args["batch_size"] = arg
+                    break
             args = {
-                "batch_size": batch_size if batch_size > 32 else 32,
                 "tol": 0.001,
                 "loss": "squared_loss",
                 "penalty": "l2",
