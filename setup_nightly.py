@@ -17,7 +17,7 @@ with open('requirements.txt') as f:
 
 setup(
     name="pycaret-nightly",
-    version=f"{nightly_version()}.dev{int(time.time())}",
+    version=str(nightly_version()) + ".dev" + str(int(time.time())),
     description="Nightly version of PyCaret - An open source, low-code machine learning library in Python.",
     long_description=nightly_readme+readme(),
     long_description_content_type="text/markdown",

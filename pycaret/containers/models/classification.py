@@ -741,7 +741,7 @@ class RandomForestClassifierContainer(ClassifierContainer):
                 ):
                     X = X.astype(np.float32)
                     y = y.astype(np.int32)
-                    return super().predict_proba(
+                    return super().score(
                         X,
                         y,
                         threshold=threshold,
@@ -787,7 +787,7 @@ class RandomForestClassifierContainer(ClassifierContainer):
                 0.05,
                 0.1,
             ],
-            "max_features": ["auto", "sqrt", "log2"],
+            "max_features": [1.0, "sqrt", "log2"],
             "bootstrap": [True, False],
         }
         tune_distributions = {
@@ -797,9 +797,6 @@ class RandomForestClassifierContainer(ClassifierContainer):
         }
 
         if gpu_imported:
-            if globals_dict["y_train"].value_counts().count() > 2:
-                tune_grid.pop("max_features")
-                args["max_features"] = 1.0
             tune_grid["split_criterion"] = [0, 1]
         else:
             tune_grid["criterion"] = ["gini", "entropy"]
