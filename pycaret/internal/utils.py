@@ -359,14 +359,14 @@ def get_cv_splitter(
 
 
 def get_cv_n_folds(
-    fold: Optional[Union[int, BaseCrossValidator]], default_folds: int
+    fold: Optional[Union[int, BaseCrossValidator]], default, X, groups=None
 ) -> int:
     if not fold:
-        return default_folds
+        fold = default
     if isinstance(fold, int):
         return fold
     else:
-        return fold.get_n_splits()
+        return fold.get_n_splits(X, groups)
 
 
 class none_n_jobs(object):
