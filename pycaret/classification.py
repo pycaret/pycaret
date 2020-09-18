@@ -6666,6 +6666,11 @@ def predict_model(
     exception checking starts here
     """
 
+    if data is None and "pycaret_globals" not in globals():
+        raise ValueError(
+            "data parameter may not be None without running setup() first."
+        )
+
     if probability_threshold is not None:
         # probability_threshold allowed types
         allowed_types = [int, float]
@@ -6695,11 +6700,10 @@ def predict_model(
 
     try:
         np.random.seed(seed)
+        if not display:
+            display = Display(verbose=verbose, html_param=html_param,)
     except:
-        pass
-
-    if not display:
-        display = Display(verbose=verbose, html_param=html_param,)
+        display = Display(verbose=False, html_param=False,)
 
     dtypes = None
 
@@ -6746,9 +6750,6 @@ def predict_model(
             replacement_mapper = {int(v): k for k, v in dtypes.replacement.items()}
             label_column.replace(replacement_mapper, inplace=True)
 
-    # model name
-    full_name = _get_model_name(estimator)
-
     # prediction starts here
 
     pred_ = estimator.predict(X_test_)
@@ -6777,6 +6778,8 @@ def predict_model(
     df_score = None
 
     if data is None:
+        # model name
+        full_name = _get_model_name(estimator)
         metrics = _calculate_metrics(y_test_, pred_, pred_prob)
         df_score = pd.DataFrame(metrics, index=[0])
         df_score.insert(0, "Model", full_name)
