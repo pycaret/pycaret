@@ -5750,7 +5750,10 @@ def plot_model(
             if hasattr(pipeline_with_model, "steps"):
                 temp_model = pipeline_with_model.steps[-1][1]
             if hasattr(temp_model, "coef_"):
-                variables = abs(temp_model.coef_[0])
+                coef = temp_model.coef_.flatten()
+                if len(coef) > len(data_X.columns):
+                    coef = coef[:len(data_X.columns)]
+                variables = abs(coef)
             else:
                 logger.warning("No coef_ found. Trying feature_importances_")
                 variables = abs(temp_model.feature_importances_)
