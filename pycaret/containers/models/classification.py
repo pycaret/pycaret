@@ -741,7 +741,7 @@ class RandomForestClassifierContainer(ClassifierContainer):
                 ):
                     X = X.astype(np.float32)
                     y = y.astype(np.int32)
-                    return super().predict_proba(
+                    return super().score(
                         X,
                         y,
                         threshold=threshold,
