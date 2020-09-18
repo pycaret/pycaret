@@ -34,6 +34,7 @@ from pycaret.containers.metrics.classification import (
     get_all_metric_containers,
     ClassificationMetricContainer,
 )
+import pycaret.preprocess
 import pandas as pd
 import numpy as np
 import os
@@ -110,7 +111,7 @@ def setup(
     outliers_threshold: float = 0.05,
     remove_multicollinearity: bool = False,
     multicollinearity_threshold: float = 0.9,
-    remove_perfect_collinearity: bool = False,
+    remove_perfect_collinearity: bool = True,
     create_clusters: bool = False,
     cluster_iter: int = 20,
     polynomial_features: bool = False,
@@ -358,7 +359,7 @@ def setup(
         Threshold used for dropping the correlated features. Only comes into effect when 
         remove_multicollinearity is set to True.
     
-    remove_perfect_collinearity: bool, default = False
+    remove_perfect_collinearity: bool, default = True
         When set to True, perfect collinearity (features with correlation = 1) is removed
         from the dataset, When two features are 100% correlated, one of it is randomly 
         dropped from the dataset.
@@ -1369,8 +1370,6 @@ def setup(
     logger.info("Importing preprocessing module")
 
     # import library
-    import pycaret.preprocess
-
     logger.info("Creating preprocessing pipeline")
 
     imputation_regressor = BayesianRidgeContainer(globals())
