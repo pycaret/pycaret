@@ -318,11 +318,12 @@ class DataTypes_Auto_infer(BaseEstimator,TransformerMixin):
     # just keep picking the data and keep applying to the test data set (be mindful of target variable)
     for i in data.columns: # we are taking all the columns in test , so we dot have to worry about droping target column
       if i == self.target and ((self.ml_usecase == 'classification') and (self.learent_dtypes[self.target]=='object')):
-        data[i] = self.le.transform(data[i].apply(str))
+        data[i] = self.le.transform(data[i].apply(str).astype("object"))
+        data[i] = data[i].astype("int64")
       else:
         if self.learent_dtypes[i].name == 'datetime64[ns]':
           data[i] = pd.to_datetime(data[i], infer_datetime_format=True, utc=False, errors='coerce')
-      data[i] = data[i].astype(self.learent_dtypes[i])
+        data[i] = data[i].astype(self.learent_dtypes[i])
     
 
     # drop time columns
@@ -348,9 +349,8 @@ class DataTypes_Auto_infer(BaseEstimator,TransformerMixin):
     # for ml use ase
     if ((self.ml_usecase == 'classification') &  (data[self.target].dtype=='object')):
       self.le = LabelEncoder()
-      data[self.target] = self.le.fit_transform(data[self.target].apply(str))
+      data[self.target] = self.le.fit_transform(data[self.target].apply(str).astype("object"))
       self.replacement = _get_labelencoder_reverse_dict(self.le)
-      self.learent_dtypes[self.target] = data[self.target].dtype
 
       # self.u = list(pd.unique(data[self.target]))
       # self.replacement = np.arange(0,len(self.u))

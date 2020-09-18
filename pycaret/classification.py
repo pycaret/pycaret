@@ -2920,7 +2920,7 @@ def _create_model(
     """
     MONITOR UPDATE STARTS
     """
-    display.update_monitor(1, f"Fitting {_get_cv_n_folds(fold)} Folds")
+    display.update_monitor(1, f"Fitting {_get_cv_n_folds(fold, X_train, groups)} Folds")
     display.display_monitor()
     """
     MONITOR UPDATE ENDS
@@ -2994,7 +2994,7 @@ def _create_model(
 
             model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
         else:
-            model_fit_time /= _get_cv_n_folds(cv)
+            model_fit_time /= _get_cv_n_folds(cv, X_train, groups)
 
         # end runtime
         runtime_end = time.time()
@@ -6670,7 +6670,10 @@ def predict_model(
     # general dependencies
     from sklearn import metrics
 
-    np.random.seed(seed)
+    try:
+        np.random.seed(seed)
+    except:
+        pass
 
     if not display:
         display = Display(verbose=verbose, html_param=html_param,)
@@ -6728,21 +6731,15 @@ def predict_model(
     pred_ = estimator.predict(X_test_)
 
     try:
-        pred_prob = estimator.predict_proba(X_test_)
+        score = estimator.predict_proba(X_test_)
 
-        if len(pred_prob[0]) > 2:
-            p_counter = 0
-            d = []
-            for i in range(0, len(pred_prob)):
-                d.append(pred_prob[i][pred_[p_counter]])
-                p_counter += 1
-
-            pred_prob = d
-
+        if not _is_multiclass():
+            pred_prob = score[:, 1]
         else:
-            pred_prob = pred_prob[:, 1]
+            pred_prob = score
 
     except:
+        score = None
         pred_prob = None
 
     if probability_threshold is not None and pred_prob is not None:
@@ -6776,9 +6773,14 @@ def predict_model(
     else:
         X_test_.insert(len(X_test_.columns), "Label", label["Label"].to_list())
 
-    if pred_prob is not None:
+    if score is not None:
+        d = []
+        for i in range(0, len(score)):
+            d.append(score[i][pred_[i]])
+
+        score = d
         try:
-            score = pd.DataFrame(pred_prob)
+            score = pd.DataFrame(score)
             score.columns = ["Score"]
             score = score.round(round)
             X_test_ = pd.concat([X_test_, score], axis=1)
@@ -8238,10 +8240,12 @@ def _get_cv_splitter(fold):
     )
 
 
-def _get_cv_n_folds(fold):
+def _get_cv_n_folds(fold, X, groups=None):
     import pycaret.internal.utils
 
-    return pycaret.internal.utils.get_cv_n_folds(fold, default_folds=fold_param)
+    return pycaret.internal.utils.get_cv_n_folds(
+        fold, default=fold_generator, X=X, groups=groups
+    )
 
 
 def _get_pipeline_fit_kwargs(pipeline, fit_kwargs: dict) -> dict:

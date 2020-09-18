@@ -795,7 +795,7 @@ class RandomForestClassifierContainer(ClassifierContainer):
         if gpu_imported:
             if globals_dict["y_train"].value_counts().count() > 2:
                 tune_grid.pop("max_features")
-                args["max_features"] = [1.0]
+                args["max_features"] = 1.0
             tune_grid["split_criterion"] = [0, 1]
         else:
             tune_grid["criterion"] = ["gini", "entropy"]
