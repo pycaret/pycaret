@@ -3692,8 +3692,8 @@ def tune_model(
 
             # if n_jobs is None:
             # enable Ray local mode - otherwise the performance is terrible
-            if len(X_train) <= 50000:
-                n_jobs = 1
+            #if len(X_train) <= 50000:
+            n_jobs = 1
 
             TuneSearchCV = get_tune_sklearn_tunesearchcv()
             TuneGridSearchCV = get_tune_sklearn_tunegridsearchcv()
