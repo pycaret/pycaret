@@ -10,11 +10,15 @@
 
 import logging
 from typing import Union, Dict, Any, Optional
-from pycaret.containers.models.base_model import ModelContainer, _leftover_parameters_to_categorical_distributions
+from pycaret.containers.models.base_model import (
+    ModelContainer,
+    _leftover_parameters_to_categorical_distributions,
+)
 from pycaret.internal.utils import param_grid_to_lists, get_logger, get_class_name
 from pycaret.internal.distributions import *
 import pycaret.containers.base_container
 import numpy as np
+
 
 class ClassifierContainer(ModelContainer):
     """
@@ -696,15 +700,19 @@ class RandomForestClassifierContainer(ClassifierContainer):
                     fil_sparse_format="auto",
                 ):
                     X = X.astype(np.float32)
-                    return super().predict(
-                        X,
-                        predict_model=predict_model,
-                        output_class=output_class,
-                        threshold=threshold,
-                        algo=algo,
-                        num_classes=num_classes,
-                        convert_dtype=convert_dtype,
-                        fil_sparse_format=fil_sparse_format,
+                    return (
+                        super()
+                        .predict(
+                            X,
+                            predict_model=predict_model,
+                            output_class=output_class,
+                            threshold=threshold,
+                            algo=algo,
+                            num_classes=num_classes,
+                            convert_dtype=convert_dtype,
+                            fil_sparse_format=fil_sparse_format,
+                        )
+                        .astype(int)
                     )
 
                 def predict_proba(
