@@ -5171,7 +5171,7 @@ def plot_model(
     
     """
 
-    fold = _get_cv_splitter(fold)
+    cv = _get_cv_splitter(fold)
 
     groups = _get_groups(groups)
 
@@ -5247,8 +5247,6 @@ def plot_model(
         fit_kwargs = _get_pipeline_fit_kwargs(pipeline_with_model, fit_kwargs)
 
         _base_dpi = 100
-
-        cv = _get_cv_splitter(fold)
 
         class MatplotlibDefaultDPI(object):
             def __init__(self, base_dpi: float = 100, scale_to_set: float = 1):
