@@ -6796,10 +6796,7 @@ def predict_model(
 
     if data is None:
         # model name
-        try:
-            full_name = _get_model_name(estimator)
-        except:
-            full_name = type(estimator).__name__
+        full_name = _get_model_name(estimator)
         metrics = _calculate_metrics(y_test_, pred_, pred_prob)
         df_score = pd.DataFrame(metrics, index=[0])
         df_score.insert(0, "Model", full_name)
