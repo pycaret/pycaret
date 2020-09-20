@@ -36,6 +36,9 @@ class ClassifierContainer(ModelContainer):
         The class used for the model, eg. LogisticRegression.
     is_turbo : bool, default = True
         Should the model be used with 'turbo = True' in compare_models().
+    eq_function : type, default = None
+        Function to use to check whether an object (model) can be considered equal to the model
+        in the container. If None, will be ``is_instance(x, class_def)`` where x is the object.
     args : dict, default = {}
         The arguments to always pass to constructor when initializing object of class_def class.
     is_special : bool, default = False
@@ -65,6 +68,9 @@ class ClassifierContainer(ModelContainer):
         The class used for the model, eg. LogisticRegression.
     is_turbo : bool
         Should the model be used with 'turbo = True' in compare_models().
+    eq_function : type
+        Function to use to check whether an object (model) can be considered equal to the model
+        in the container. If None, will be ``is_instance(x, class_def)`` where x is the object.
     args : dict
         The arguments to always pass to constructor when initializing object of class_def class.
     is_special : bool
@@ -92,6 +98,7 @@ class ClassifierContainer(ModelContainer):
         name: str,
         class_def: type,
         is_turbo: bool = True,
+        eq_function: Optional[type] = None,
         args: Dict[str, Any] = None,
         is_special: bool = False,
         tune_grid: Dict[str, list] = None,
@@ -119,7 +126,14 @@ class ClassifierContainer(ModelContainer):
         if not tune_args:
             tune_args = {}
 
-        super().__init__(id, name, class_def, args, is_special)
+        super().__init__(
+            id=id,
+            name=name,
+            class_def=class_def,
+            eq_function=eq_function,
+            args=args,
+            is_special=is_special,
+        )
         self.is_turbo = is_turbo
         self.tune_grid = param_grid_to_lists(tune_grid)
         self.tune_distribution = tune_distribution
@@ -179,6 +193,7 @@ class ClassifierContainer(ModelContainer):
             d += [
                 ("Special", self.is_special),
                 ("Class", self.class_def),
+                ("Equality", self.eq_function),
                 ("Args", self.args),
                 ("Tune Grid", self.tune_grid),
                 ("Tune Distributions", self.tune_distribution),

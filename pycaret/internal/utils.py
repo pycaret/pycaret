@@ -2,6 +2,8 @@
 # Author: Moez Ali <moez.ali@queensu.ca> and Antoni Baum (Yard1) <antoni.baum@protonmail.com>
 # License: MIT
 
+from pycaret.containers.metrics.base_metric import MetricContainer
+from pycaret.containers.models.base_model import ModelContainer
 import pandas as pd
 import pandas.io.formats.style
 import ipywidgets as ipw
@@ -183,17 +185,13 @@ def color_df(
     )
 
 
-def get_model_id(e, all_models: pd.DataFrame) -> str:
-    for row in all_models.itertuples():
-        if type(e) is row.Class:
-            return row[0]
-
-    return None
+def get_model_id(e, all_models: Dict[str, ModelContainer]) -> str:
+    return next((k for k, v in all_models.items() if v.is_estimator_equal(e)), None)
 
 
-def get_model_name(e, all_models: pd.DataFrame, deep: bool = True) -> str:
+def get_model_name(e, all_models: Dict[str, ModelContainer], deep: bool = True) -> str:
     old_e = e
-    if isinstance(e, str) and e in all_models.index:
+    if isinstance(e, str) and e in all_models:
         model_id = e
     else:
         if deep:
@@ -213,19 +211,21 @@ def get_model_name(e, all_models: pd.DataFrame, deep: bool = True) -> str:
         model_id = get_model_id(e, all_models)
 
     if model_id is not None:
-        name = all_models.loc[model_id]["Name"]
+        name = all_models[model_id].name
     else:
-        name = str(e).split("(")[0]
+        try:
+            name = type(e).__name__
+        except:
+            name = str(e).split("(")[0]
 
     return name
 
 
-def is_special_model(e, all_models: pd.DataFrame) -> bool:
-    for row in all_models.itertuples():
-        if type(e) is row.Class:
-            return row.Special
-
-    return False
+def is_special_model(e, all_models: Dict[str, ModelContainer]) -> bool:
+    try:
+        return all_models[get_model_id(e)].is_special
+    except:
+        return False
 
 
 def get_class_name(class_var: Any) -> str:
@@ -246,29 +246,20 @@ def param_grid_to_lists(param_grid: dict) -> dict:
 
 
 def calculate_metrics(
-    metrics: pd.DataFrame,
+    metrics: Dict[str, MetricContainer],
     ytest,
     pred_,
     pred_proba: Optional[float] = None,
     score_dict: Optional[Dict[str, np.array]] = None,
     weights: Optional[list] = None,
 ) -> Dict[str, np.array]:
-    columns = list(metrics.columns)
-    score_function_idx = columns.index("Score Function") + 1
-    display_name_idx = columns.index("Display Name") + 1
 
     score_dict = []
 
-    for row in metrics.itertuples():
+    for k, v in metrics.items():
         score_dict.append(
             _calculate_metric(
-                row,
-                score_function_idx,
-                display_name_idx,
-                ytest,
-                pred_,
-                pred_proba,
-                weights,
+                v, v.score_func, v.display_name, ytest, pred_, pred_proba, weights,
             )
         )
 
@@ -277,22 +268,22 @@ def calculate_metrics(
 
 
 def _calculate_metric(
-    row, score_function_idx, display_name_idx, ytest, pred_, pred_proba, weights
+    container, score_func, display_name, ytest, pred_, pred_proba, weights
 ):
-    if not row[score_function_idx]:
+    if not score_func:
         return None
-    target = pred_proba if row.Target == "pred_proba" else pred_
+    target = pred_proba if container.target == "pred_proba" else pred_
     try:
-        calculated_metric = row[score_function_idx](
-            ytest, target, sample_weight=weights, **row.Args
+        calculated_metric = score_func(
+            ytest, target, sample_weight=weights, **container.args
         )
     except:
         try:
-            calculated_metric = row[score_function_idx](ytest, target, **row.Args)
+            calculated_metric = score_func(ytest, target, **container.args)
         except:
             calculated_metric = 0
 
-    return (row[display_name_idx], calculated_metric)
+    return (display_name, calculated_metric)
 
 
 def normalize_custom_transformers(
