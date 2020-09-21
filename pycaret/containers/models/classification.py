@@ -1071,14 +1071,14 @@ class CatBoostClassifierContainer(ClassifierContainer):
         tune_args = {}
         tune_grid = {
             "depth": list(range(1,17)),
-            "n_estimators": [250, 100, 500, 1000, 1250, 1500, 1750, 2000],
-            "learning_rate": [0.03, 0.001, 0.01, 0.1, 0.2, 0.3, 0.4, 0.5, 0.7, 0.8, 0.9, 1],
+            "n_estimators": [250, 100, 500, 1000],
+            "learning_rate": [0.03, 0.001, 0.01, 0.1, 0.2, 0.3, 0.4, 0.5,],
             "l2_leaf_reg": [3, 1, 5, 10, 20, 50, 100, 200],
         }
         tune_distributions = {
             "depth": IntUniformDistribution(1, 16),
-            "n_estimators": IntUniformDistribution(250, 2000, log=False),
-            "learning_rate": UniformDistribution(0.0001, 1, log=False),
+            "n_estimators": IntUniformDistribution(250, 1000, log=False),
+            "learning_rate": UniformDistribution(0.0001, 0.5, log=False),
             "l2_leaf_reg": IntUniformDistribution(1, 200, log=True),
         }
         
