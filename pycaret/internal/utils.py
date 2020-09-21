@@ -223,7 +223,7 @@ def get_model_name(e, all_models: Dict[str, ModelContainer], deep: bool = True) 
 
 def is_special_model(e, all_models: Dict[str, ModelContainer]) -> bool:
     try:
-        return all_models[get_model_id(e)].is_special
+        return all_models[get_model_id(e, all_models)].is_special
     except:
         return False
 

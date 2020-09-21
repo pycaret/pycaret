@@ -10,6 +10,7 @@ from pycaret.internal.tune_sklearn_patches import (
 )
 from pycaret.internal.pipeline import (
     add_estimator_to_pipeline,
+    get_pipeline_estimator_label,
     make_internal_pipeline,
     estimator_pipeline,
     merge_pipelines,
@@ -1714,71 +1715,87 @@ def setup(
         if verbose:
             print("Setup Succesfully Completed!")
 
+    if logging_param:
+        if experiment_name is None:
+            exp_name_ = "clf-default-name"
+        else:
+            exp_name_ = experiment_name
+
+        URI = secrets.token_hex(nbytes=4)
+        exp_name_log = exp_name_
+
     functions = pd.DataFrame(
         [
-            ["session_id ", seed],
-            ["Target Type ", target_type],
-            ["Label Encoded ", label_encoded],
-            ["Original Data ", data_before_preprocess.shape],
-            ["Missing Values ", missing_flag],
-            ["Numeric Features ", str(float_type)],
-            ["Categorical Features ", str(cat_type)],
+            ["session_id", seed],
+            ["Target", target],
+            ["Target Type", target_type],
+            ["Label Encoded", label_encoded],
+            ["Original Data", data_before_preprocess.shape],
+            ["Missing Values", missing_flag],
+            ["Numeric Features", str(float_type)],
+            ["Categorical Features", str(cat_type)],
         ]
         + (
             [
-                ["Ordinal Features ", ordinal_features_grid],
-                ["High Cardinality Features ", high_cardinality_features_grid],
-                ["High Cardinality Method ", high_cardinality_method_grid],
+                ["Ordinal Features", ordinal_features_grid],
+                ["High Cardinality Features", high_cardinality_features_grid],
+                ["High Cardinality Method", high_cardinality_method_grid],
             ]
             if preprocess
             else []
         )
         + [
-            ["Transformed Train Set ", X_train.shape],
-            ["Transformed Test Set ", X_test.shape],
+            ["Transformed Train Set", X_train.shape],
+            ["Transformed Test Set", X_test.shape],
+            ["Shuffle Train-Test", str(data_split_shuffle)],
+            ["Stratify Train-Test", str(data_split_stratify)],
+            ["Fold Generator", type(fold_generator).__name__],
+            ["Fold Number", fold_param],
+            ["Fold Groups", fold_groups_param],
+            ["CPU Jobs", n_jobs_param],
+            ["Use GPU", gpu_param],
+            ["Log Experiment", logging_param],
+            ["Experiment Name", exp_name_],
+            ["USI", USI],
         ]
         + (
             [
-                ["Numeric Imputer ", numeric_imputation],
-                ["Categorical Imputer ", categorical_imputation],
-                ["Unknown Categoricals Handling ", unknown_categorical_method_grid],
-                ["Normalize ", normalize],
-                ["Normalize Method ", normalize_grid],
-                ["Transformation ", transformation],
-                ["Transformation Method ", transformation_grid],
-                ["PCA ", pca],
-                ["PCA Method ", pca_method_grid],
-                ["PCA Components ", pca_components_grid],
-                ["Ignore Low Variance ", ignore_low_variance],
-                ["Combine Rare Levels ", combine_rare_levels],
-                ["Rare Level Threshold ", rare_level_threshold_grid],
-                ["Numeric Binning ", numeric_bin_grid],
-                ["Remove Outliers ", remove_outliers],
-                ["Outliers Threshold ", outliers_threshold_grid],
-                ["Remove Multicollinearity ", remove_multicollinearity],
-                ["Multicollinearity Threshold ", multicollinearity_threshold_grid],
-                ["Clustering ", create_clusters],
-                ["Clustering Iteration ", cluster_iter_grid],
-                ["Polynomial Features ", polynomial_features],
-                ["Polynomial Degree ", polynomial_degree_grid],
-                ["Trignometry Features ", trigonometry_features],
-                ["Polynomial Threshold ", polynomial_threshold_grid],
-                ["Group Features ", group_features_grid],
-                ["Feature Selection ", feature_selection],
-                ["Features Selection Threshold ", feature_selection_threshold_grid],
-                ["Feature Interaction ", feature_interaction],
-                ["Feature Ratio ", feature_ratio],
-                ["Interaction Threshold ", interaction_threshold_grid],
-                ["Fix Imbalance ", fix_imbalance_param],
-                ["Fix Imbalance Method ", fix_imbalance_model_name],
+                ["Numeric Imputer", numeric_imputation],
+                ["Categorical Imputer", categorical_imputation],
+                ["Unknown Categoricals Handling", unknown_categorical_method_grid],
+                ["Normalize", normalize],
+                ["Normalize Method", normalize_grid],
+                ["Transformation", transformation],
+                ["Transformation Method", transformation_grid],
+                ["PCA", pca],
+                ["PCA Method", pca_method_grid],
+                ["PCA Components", pca_components_grid],
+                ["Ignore Low Variance", ignore_low_variance],
+                ["Combine Rare Levels", combine_rare_levels],
+                ["Rare Level Threshold", rare_level_threshold_grid],
+                ["Numeric Binning", numeric_bin_grid],
+                ["Remove Outliers", remove_outliers],
+                ["Outliers Threshold", outliers_threshold_grid],
+                ["Remove Multicollinearity", remove_multicollinearity],
+                ["Multicollinearity Threshold", multicollinearity_threshold_grid],
+                ["Clustering", create_clusters],
+                ["Clustering Iteration", cluster_iter_grid],
+                ["Polynomial Features", polynomial_features],
+                ["Polynomial Degree", polynomial_degree_grid],
+                ["Trignometry Features", trigonometry_features],
+                ["Polynomial Threshold", polynomial_threshold_grid],
+                ["Group Features", group_features_grid],
+                ["Feature Selection", feature_selection],
+                ["Features Selection Threshold", feature_selection_threshold_grid],
+                ["Feature Interaction", feature_interaction],
+                ["Feature Ratio", feature_ratio],
+                ["Interaction Threshold", interaction_threshold_grid],
+                ["Fix Imbalance", fix_imbalance_param],
+                ["Fix Imbalance Method", fix_imbalance_model_name],
             ]
             if preprocess
             else []
-        )
-        + [
-            ["CV Generator ", type(fold_generator).__name__],
-            ["CV Folds ", fold_param],
-        ],
+        ),
         columns=["Description", "Value"],
     )
 
@@ -1821,14 +1838,6 @@ def setup(
         logger.info("Logging experiment in MLFlow")
 
         import mlflow
-
-        if experiment_name is None:
-            exp_name_ = "clf-default-name"
-        else:
-            exp_name_ = experiment_name
-
-        URI = secrets.token_hex(nbytes=4)
-        exp_name_log = exp_name_
 
         try:
             mlflow.create_experiment(exp_name_log)
@@ -3583,7 +3592,9 @@ def tune_model(
     with estimator_pipeline(_internal_pipeline, model) as pipeline_with_model:
         fit_kwargs = _get_pipeline_fit_kwargs(pipeline_with_model, fit_kwargs)
 
-        suffixes.append("actual_estimator")
+        actual_estimator_label = get_pipeline_estimator_label(pipeline_with_model)
+
+        suffixes.append(actual_estimator_label)
 
         suffixes = "__".join(reversed(suffixes))
 
@@ -3885,8 +3896,10 @@ def tune_model(
         model_grid.fit(X_train, y_train, groups=groups, **fit_kwargs)
         best_params = model_grid.best_params_
         logger.info(f"best_params: {best_params}")
-        # 18 chars - actual_estimator__
-        best_params = {k[18:]: v for k, v in best_params.items()}
+        best_params = {
+            k.replace(f"{actual_estimator_label}__", ""): v
+            for k, v in best_params.items()
+        }
         cv_results = None
         try:
             cv_results = model_grid.cv_results_
@@ -5117,10 +5130,10 @@ def plot_model(
             )
 
     # exception for CatBoost
-    #if "CatBoostClassifier" in str(type(estimator)):
+    # if "CatBoostClassifier" in str(type(estimator)):
     #    raise ValueError(
-        #    "CatBoost estimator is not compatible with plot_model function, try using Catboost with interpret_model instead."
-        #)
+    #    "CatBoost estimator is not compatible with plot_model function, try using Catboost with interpret_model instead."
+    # )
 
     # checking for auc plot
     if not hasattr(estimator, "predict_proba") and plot == "auc":
@@ -5612,54 +5625,56 @@ def plot_model(
                     "Plot not supported for this estimator. Try different estimator."
                 )
 
+            actual_estimator_label = get_pipeline_estimator_label(pipeline_with_model)
+
             # SGD Classifier
-            if "actual_estimator__l1_ratio" in model_params:
-                param_name = "actual_estimator__l1_ratio"
+            if f"{actual_estimator_label}__l1_ratio" in model_params:
+                param_name = f"{actual_estimator_label}__l1_ratio"
                 param_range = np.arange(0, 1, 0.01)
 
             # tree based models
-            elif "actual_estimator__max_depth" in model_params:
-                param_name = "actual_estimator__max_depth"
+            elif f"{actual_estimator_label}__max_depth" in model_params:
+                param_name = f"{actual_estimator_label}__max_depth"
                 param_range = np.arange(1, 11)
 
             # knn
-            elif "actual_estimator__n_neighbors" in model_params:
-                param_name = "actual_estimator__n_neighbors"
+            elif f"{actual_estimator_label}__n_neighbors" in model_params:
+                param_name = f"{actual_estimator_label}__n_neighbors"
                 param_range = np.arange(1, 11)
 
             # MLP / Ridge
-            elif "actual_estimator__alpha" in model_params:
-                param_name = "actual_estimator__alpha"
+            elif f"{actual_estimator_label}__alpha" in model_params:
+                param_name = f"{actual_estimator_label}__alpha"
                 param_range = np.arange(0, 1, 0.1)
 
             # Logistic Regression
-            elif "actual_estimator__C" in model_params:
-                param_name = "actual_estimator__C"
+            elif f"{actual_estimator_label}__C" in model_params:
+                param_name = f"{actual_estimator_label}__C"
                 param_range = np.arange(1, 11)
 
             # Bagging / Boosting
-            elif "actual_estimator__n_estimators" in model_params:
-                param_name = "actual_estimator__n_estimators"
+            elif f"{actual_estimator_label}__n_estimators" in model_params:
+                param_name = f"{actual_estimator_label}__n_estimators"
                 param_range = np.arange(1, 100, 10)
 
             # Bagging / Boosting / gbc / ada /
-            elif "actual_estimator__n_estimators" in model_params:
-                param_name = "actual_estimator__n_estimators"
+            elif f"{actual_estimator_label}__n_estimators" in model_params:
+                param_name = f"{actual_estimator_label}__n_estimators"
                 param_range = np.arange(1, 100, 10)
 
             # Naive Bayes
-            elif "actual_estimator__var_smoothing" in model_params:
-                param_name = "actual_estimator__var_smoothing"
+            elif f"{actual_estimator_label}__var_smoothing" in model_params:
+                param_name = f"{actual_estimator_label}__var_smoothing"
                 param_range = np.arange(0.1, 1, 0.01)
 
             # QDA
-            elif "actual_estimator__reg_param" in model_params:
-                param_name = "actual_estimator__reg_param"
+            elif f"{actual_estimator_label}__reg_param" in model_params:
+                param_name = f"{actual_estimator_label}__reg_param"
                 param_range = np.arange(0, 1, 0.1)
 
             # GPC
-            elif "actual_estimator__max_iter_predict" in model_params:
-                param_name = "actual_estimator__max_iter_predict"
+            elif f"{actual_estimator_label}__max_iter_predict" in model_params:
+                param_name = f"{actual_estimator_label}__max_iter_predict"
                 param_range = np.arange(100, 1000, 100)
 
             else:
@@ -8099,8 +8114,9 @@ def _mlflow_log_model(
         RunID = mlflow.active_run().info.run_id
 
         # Log model parameters
-        if hasattr(model, "named_steps") and "actual_estimator" in model.named_steps:
-            params = model.named_steps["actual_estimator"]
+        pipeline_estimator_name = get_pipeline_estimator_label(model)
+        if pipeline_estimator_name:
+            params = model.named_steps[pipeline_estimator_name]
         else:
             params = model
 
@@ -8272,15 +8288,9 @@ def _get_cv_n_folds(fold, X, groups=None):
 
 
 def _get_pipeline_fit_kwargs(pipeline, fit_kwargs: dict) -> dict:
-    try:
-        model_step = pipeline.steps[-1]
-    except:
-        return fit_kwargs
+    import pycaret.internal.pipeline
 
-    if any(k.startswith(f"{model_step[0]}__") for k in fit_kwargs.keys()):
-        return fit_kwargs
-
-    return {f"{model_step[0]}__{k}": v for k, v in fit_kwargs.items()}
+    return pycaret.internal.pipeline.get_pipeline_fit_kwargs(pipeline, fit_kwargs)
 
 
 def _get_groups(groups):

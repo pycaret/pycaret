@@ -178,3 +178,24 @@ def merge_pipelines(pipeline_to_merge_to: Pipeline, pipeline_to_be_merged: Pipel
         pipeline_to_merge_to._carry_over_final_estimator_fit_vars()
     except:
         pass
+
+
+def get_pipeline_estimator_label(pipeline: Pipeline) -> str:
+    try:
+        model_step = pipeline.steps[-1]
+    except:
+        return ""
+
+    return model_step[0]
+
+
+def get_pipeline_fit_kwargs(pipeline: Pipeline, fit_kwargs: dict) -> dict:
+    try:
+        model_step = pipeline.steps[-1]
+    except:
+        return fit_kwargs
+
+    if any(k.startswith(f"{model_step[0]}__") for k in fit_kwargs.keys()):
+        return fit_kwargs
+
+    return {f"{model_step[0]}__{k}": v for k, v in fit_kwargs.items()}
