@@ -698,7 +698,7 @@ class RandomForestClassifierContainer(ClassifierContainer):
         tune_args = {}
         tune_grid = {
             "n_estimators": [int(x) for x in np.linspace(10, 1000, num=100)],
-            "max_depth": [int(x) for x in np.linspace(10, 110, num=11)],
+            "max_depth": [int(x) for x in np.linspace(1, 11, num=11)],
             "min_impurity_decrease": [
                 0,
                 0.0001,
@@ -717,7 +717,7 @@ class RandomForestClassifierContainer(ClassifierContainer):
         }
         tune_distributions = {
             "n_estimators": IntUniformDistribution(10, 1000),
-            "max_depth": IntUniformDistribution(10, 110),
+            "max_depth": IntUniformDistribution(1, 11),
             "min_impurity_decrease": UniformDistribution(0, 0.1),
         }
 
@@ -820,7 +820,7 @@ class GradientBoostingClassifierContainer(ClassifierContainer):
             "subsample": np.arange(0.1, 1, 0.05),
             "min_samples_split": [2, 4, 5, 7, 9, 10],
             "min_samples_leaf": [1, 2, 3, 4, 5],
-            "max_depth": [int(x) for x in np.linspace(10, 110, num=11)],
+            "max_depth": [int(x) for x in np.linspace(1, 11, num=11)],
             "max_features": ["auto", "sqrt", "log2"],
         }
         tune_distributions = {
@@ -829,7 +829,7 @@ class GradientBoostingClassifierContainer(ClassifierContainer):
             "subsample": UniformDistribution(0.1, 1),
             "min_samples_split": IntUniformDistribution(2, 10),
             "min_samples_leaf": IntUniformDistribution(1, 5),
-            "max_depth": IntUniformDistribution(10, 110),
+            "max_depth": IntUniformDistribution(1, 11),
         }
 
         _leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
@@ -909,7 +909,7 @@ class ExtraTreesClassifierContainer(ClassifierContainer):
         tune_grid = {
             "n_estimators": np.arange(10, 200, 5),
             "criterion": ["gini", "entropy"],
-            "max_depth": [int(x) for x in np.linspace(10, 110, num=11)],
+            "max_depth": [int(x) for x in np.linspace(1, 11, num=11)],
             "min_samples_split": [2, 5, 7, 9, 10],
             "min_samples_leaf": [1, 2, 4],
             "max_features": ["auto", "sqrt", "log2"],
@@ -917,7 +917,7 @@ class ExtraTreesClassifierContainer(ClassifierContainer):
         }
         tune_distributions = {
             "n_estimators": IntUniformDistribution(10, 200),
-            "max_depth": IntUniformDistribution(10, 110),
+            "max_depth": IntUniformDistribution(1, 11),
             "min_samples_split": IntUniformDistribution(2, 10),
             "min_samples_leaf": IntUniformDistribution(1, 5),
         }
@@ -1066,22 +1066,25 @@ class CatBoostClassifierContainer(ClassifierContainer):
             "verbose": False,
             "thread_count": globals_dict["n_jobs_param"],
             "task_type": "GPU" if use_gpu else "CPU",
+            "border_count": 32 if use_gpu else 254,
         }
         tune_args = {}
         tune_grid = {
-            "depth": [3, 1, 2, 6, 4, 5, 7, 8, 9, 10],
-            "iterations": [250, 100, 500, 1000],
-            "learning_rate": [0.03, 0.001, 0.01, 0.1, 0.2, 0.3],
-            "l2_leaf_reg": [3, 1, 5, 10, 100],
-            "border_count": [32, 5, 10, 20, 50, 100, 200],
+            "depth": list(range(1,17)),
+            "n_estimators": [250, 100, 500, 1000, 1250, 1500, 1750, 2000],
+            "learning_rate": [0.03, 0.001, 0.01, 0.1, 0.2, 0.3, 0.4, 0.5, 0.7, 0.8, 0.9, 1],
+            "l2_leaf_reg": [3, 1, 5, 10, 20, 50, 100, 200],
         }
         tune_distributions = {
-            "depth": IntUniformDistribution(1, 10),
-            "iterations": IntUniformDistribution(250, 1000, log=True),
-            "learning_rate": UniformDistribution(0.0001, 0.3, log=True),
-            "l2_leaf_reg": IntUniformDistribution(1, 100, log=True),
-            "border_count": IntUniformDistribution(5, 200, log=True),
+            "depth": IntUniformDistribution(1, 16),
+            "n_estimators": IntUniformDistribution(250, 2000, log=False),
+            "learning_rate": UniformDistribution(0.0001, 1, log=False),
+            "l2_leaf_reg": IntUniformDistribution(1, 200, log=True),
         }
+        
+        if use_gpu:
+            tune_grid["depth"] = list(range(1,9))
+            tune_distributions["depth"] = IntUniformDistribution(1, 8),
 
         _leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 
