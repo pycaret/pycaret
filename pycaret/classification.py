@@ -1836,11 +1836,26 @@ def setup(
         + (
             [
                 ["Imputation Type", imputation_type],
-                ["Iterative Imputation Iteration", iterative_imputation_iters_param],
+                [
+                    "Iterative Imputation Iteration",
+                    iterative_imputation_iters_param
+                    if imputation_type == "iterative"
+                    else "None",
+                ],
                 ["Numeric Imputer", numeric_imputation],
-                ["Iterative Imputation Numeric Model", imputation_regressor_name],
+                [
+                    "Iterative Imputation Numeric Model",
+                    imputation_regressor_name
+                    if imputation_type == "iterative"
+                    else "None",
+                ],
                 ["Categorical Imputer", categorical_imputation],
-                ["Iterative Imputation Categorical Model", imputation_classifier_name],
+                [
+                    "Iterative Imputation Categorical Model",
+                    imputation_classifier_name
+                    if imputation_type == "iterative"
+                    else "None",
+                ],
                 ["Unknown Categoricals Handling", unknown_categorical_method_grid],
                 ["Normalize", normalize],
                 ["Normalize Method", normalize_grid],
