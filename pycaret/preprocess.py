@@ -608,7 +608,7 @@ class Iterative_Imputer(_BaseImputer):
         missing_values=np.nan,
         initial_strategy_numeric: str = "mean",
         initial_strategy_categorical: str = "most_frequent",
-        max_iter: int = 1,
+        max_iter: int = 10,
         warm_start: bool = True,
         imputation_order: str = "ascending",
         verbose: int = 0,

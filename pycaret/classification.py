@@ -26,11 +26,8 @@ from pycaret.internal.plotting import show_yellowbrick_plot
 from pycaret.internal.Display import Display, is_in_colab, enable_colab
 from pycaret.internal.distributions import *
 from pycaret.internal.validation import *
-from pycaret.containers.models.classification import (
-    get_all_model_containers,
-    LGBMClassifierContainer,
-)
-from pycaret.containers.models.regression import BayesianRidgeContainer
+from pycaret.containers.models.classification import get_all_model_containers
+import pycaret.containers.models.regression
 from pycaret.containers.metrics.classification import (
     get_all_metric_containers,
     ClassificationMetricContainer,
@@ -86,13 +83,16 @@ def setup(
     test_data: Optional[pd.DataFrame] = None,
     preprocess: bool = True,
     imputation_type: str = "simple",
+    iterative_imputation_iters: int = 10,
     categorical_features: Optional[List[str]] = None,
     categorical_imputation: str = "constant",
+    categorical_iterative_imputation_model: Union[str, Any] = "rf",
     ordinal_features: Optional[Dict[str, list]] = None,
     high_cardinality_features: Optional[List[str]] = None,
     high_cardinality_method: str = "frequency",
     numeric_features: Optional[List[str]] = None,
     numeric_imputation: str = "mean",  # method 'zero' added in pycaret==2.1
+    numeric_iterative_imputation_model: Union[str, Any] = "br",  # todo change
     date_features: Optional[List[str]] = None,
     ignore_features: Optional[List[str]] = None,
     normalize: bool = False,
@@ -191,6 +191,9 @@ def setup(
         If False, will not do any preprocessing on the data aside from mandatory steps, and
         ignore all other parameters related to preprocessing (including 'ordinal_features' and 
         'high_cardinality_features' params), aside from 'custom_pipeline'.
+
+    imputation_type: str, default = 'simple'
+        The type of imputation to use. Can be either 'simple' or 'iterative'.
 
     categorical_features: list, default = None
         If the inferred data types are not correct, categorical_features can be used to
@@ -710,6 +713,14 @@ def setup(
     all_cols = list(data.columns)
     all_cols.remove(target)
 
+    # checking imputation type
+    allowed_imputation_type = ["simple", "iterative"]
+    if imputation_type not in allowed_imputation_type:
+        raise ValueError("imputation_type param only accepts 'simple' or 'iterative'")
+
+    if type(iterative_imputation_iters) is not int or iterative_imputation_iters <= 0:
+        raise TypeError("iterative_imputation_iters must be an integer greater than 0.")
+
     # checking categorical imputation
     allowed_categorical_imputation = ["constant", "mode"]
     if categorical_imputation not in allowed_categorical_imputation:
@@ -1100,7 +1111,7 @@ def setup(
 
     # declaring global variables to be accessed by other functions
     logger.info("Declaring global variables")
-    global USI, html_param, X, y, X_train, X_test, y_train, y_test, seed, prep_pipe, experiment__, fold_shuffle_param, n_jobs_param, _gpu_n_jobs_param, create_model_container, master_model_container, display_container, exp_name_log, logging_param, log_plots_param, fix_imbalance_param, fix_imbalance_method_param, data_before_preprocess, target_param, gpu_param, _all_models, _all_models_internal, _all_metrics, _internal_pipeline, stratify_param, fold_generator, fold_param, fold_groups_param
+    global USI, html_param, X, y, X_train, X_test, y_train, y_test, seed, prep_pipe, experiment__, fold_shuffle_param, n_jobs_param, _gpu_n_jobs_param, create_model_container, master_model_container, display_container, exp_name_log, logging_param, log_plots_param, fix_imbalance_param, fix_imbalance_method_param, data_before_preprocess, target_param, gpu_param, _all_models, _all_models_internal, _all_metrics, _internal_pipeline, stratify_param, fold_generator, fold_param, fold_groups_param, imputation_regressor, imputation_classifier, iterative_imputation_iters_param
 
     USI = secrets.token_hex(nbytes=2)
     logger.info(f"USI: {USI}")
@@ -1141,6 +1152,9 @@ def setup(
         "fold_generator",
         "fold_param",
         "fold_groups_param",
+        "imputation_regressor",
+        "imputation_classifier",
+        "iterative_imputation_iters_param",
     }
 
     logger.info(f"pycaret_globals: {pycaret_globals}")
@@ -1363,23 +1377,84 @@ def setup(
     # create gpu_param var
     gpu_param = use_gpu
 
+    iterative_imputation_iters_param = iterative_imputation_iters
+
     # creating variables to be used later in the function
     train_data = data_before_preprocess.copy()
     X_before_preprocess = train_data.drop(target, axis=1)
     y_before_preprocess = train_data[target]
 
-    logger.info("Importing preprocessing module")
+    imputation_regressor = numeric_iterative_imputation_model
+    imputation_classifier = categorical_iterative_imputation_model
+    imputation_regressor_name = "Bayesian Ridge"  # todo change
+    imputation_classifier_name = "Random Forest Classifier"
 
-    # import library
+    if imputation_type == "iterative":
+        logger.info("Setting up iterative imputation")
+
+        iterative_imputer_models_globals = globals().copy()
+        iterative_imputer_models_globals["y_train"] = y_before_preprocess
+        iterative_imputer_models_globals["X_train"] = X_before_preprocess
+        iterative_imputer_classification_models = {
+            k: v
+            for k, v in get_all_model_containers(
+                iterative_imputer_models_globals, raise_errors=True
+            ).items()
+            if not v.is_special
+        }
+        iterative_imputer_regression_models = {
+            k: v
+            for k, v in pycaret.containers.models.regression.get_all_model_containers(
+                iterative_imputer_models_globals, raise_errors=True
+            ).items()
+            if not v.is_special
+        }
+
+        if not (
+            (
+                isinstance(imputation_regressor, str)
+                and imputation_regressor in iterative_imputer_regression_models
+            )
+            or hasattr(imputation_regressor, "predict")
+        ):
+            raise ValueError(
+                f"numeric_iterative_imputation_model param must be either a scikit-learn estimator or a string - one of {', '.join(iterative_imputer_regression_models.keys())}."
+            )
+
+        if not (
+            (
+                isinstance(imputation_classifier, str)
+                and imputation_classifier in iterative_imputer_classification_models
+            )
+            or hasattr(imputation_classifier, "predict")
+        ):
+            raise ValueError(
+                f"categorical_iterative_imputation_model param must be either a scikit-learn estimator or a string - one of {', '.join(iterative_imputer_classification_models.keys())}."
+            )
+
+        if isinstance(imputation_regressor, str):
+            imputation_regressor = iterative_imputer_regression_models[
+                imputation_regressor
+            ]
+            imputation_regressor_name = imputation_regressor.name
+            imputation_regressor = imputation_regressor.class_def(
+                **imputation_regressor.args
+            )
+        else:
+            imputation_regressor_name = type(imputation_regressor).__name__
+
+        if isinstance(imputation_classifier, str):
+            imputation_classifier = iterative_imputer_classification_models[
+                imputation_classifier
+            ]
+            imputation_classifier_name = imputation_classifier.name
+            imputation_classifier = imputation_classifier.class_def(
+                **imputation_classifier.args
+            )
+        else:
+            imputation_classifier_name = type(imputation_classifier).__name__
+
     logger.info("Creating preprocessing pipeline")
-
-    imputation_regressor = BayesianRidgeContainer(globals())
-    imputation_regressor = imputation_regressor.class_def(**imputation_regressor.args)
-
-    imputation_classifier = LGBMClassifierContainer(globals())
-    imputation_classifier = imputation_classifier.class_def(
-        **imputation_classifier.args
-    )
 
     prep_pipe = pycaret.preprocess.Preprocess_Path_One(
         train_data=train_data,
@@ -1387,6 +1462,7 @@ def setup(
         target_variable=target,
         imputation_regressor=imputation_regressor,
         imputation_classifier=imputation_classifier,
+        imputation_max_iter=iterative_imputation_iters_param,
         categorical_features=cat_features_pass,
         apply_ordinal_encoding=apply_ordinal_encoding_pass,
         ordinal_columns_and_categories=ordinal_columns_and_categories_pass,
@@ -1715,14 +1791,13 @@ def setup(
         if verbose:
             print("Setup Succesfully Completed!")
 
-    if logging_param:
-        if experiment_name is None:
-            exp_name_ = "clf-default-name"
-        else:
-            exp_name_ = experiment_name
+    if experiment_name is None:
+        exp_name_ = "clf-default-name"
+    else:
+        exp_name_ = experiment_name
 
-        URI = secrets.token_hex(nbytes=4)
-        exp_name_log = exp_name_
+    URI = secrets.token_hex(nbytes=4)
+    exp_name_log = exp_name_
 
     functions = pd.DataFrame(
         [
@@ -1760,8 +1835,12 @@ def setup(
         ]
         + (
             [
+                ["Imputation Type", imputation_type],
+                ["Iterative Imputation Iteration", iterative_imputation_iters_param],
                 ["Numeric Imputer", numeric_imputation],
+                ["Iterative Imputation Numeric Model", imputation_regressor_name],
                 ["Categorical Imputer", categorical_imputation],
+                ["Iterative Imputation Categorical Model", imputation_classifier_name],
                 ["Unknown Categoricals Handling", unknown_categorical_method_grid],
                 ["Normalize", normalize],
                 ["Normalize Method", normalize_grid],
