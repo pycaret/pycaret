@@ -36,7 +36,6 @@ from lightgbm import LGBMRegressor as lgbmr
 import sys 
 from sklearn.pipeline import Pipeline
 from sklearn import metrics
-import datefinder
 from datetime import datetime
 import calendar
 from sklearn.preprocessing import LabelEncoder
@@ -609,7 +608,7 @@ class Iterative_Imputer(_BaseImputer):
         missing_values=np.nan,
         initial_strategy_numeric: str = "mean",
         initial_strategy_categorical: str = "most_frequent",
-        max_iter: int = 1,
+        max_iter: int = 10,
         warm_start: bool = True,
         imputation_order: str = "ascending",
         verbose: int = 0,
@@ -1752,8 +1751,10 @@ class Make_NonLiner_Features(BaseEstimator,TransformerMixin):
     # # and we only want to do this if the dummy all have more than 50 features 
     # if len(dummy_all.columns) > 71:
 
-  
-    return(dummy_all[self.columns_to_keep])
+    dummy_all = dummy_all[self.columns_to_keep]
+    if self.target in dataset.columns:
+      dummy_all[self.target] = dataset[self.target]
+    return(dummy_all)
 
   def fit_transform(self,dataset,y=None):
     
@@ -1818,7 +1819,6 @@ class Make_NonLiner_Features(BaseEstimator,TransformerMixin):
      # # making sure no duplicated columns are there
     data = data.loc[:,~data.columns.duplicated()] 
     self.columns_to_keep = data.drop(self.target,axis=1).columns 
-
     return(data)
 
 #______________________________________________________________________________________________________________________________________________________
@@ -1845,8 +1845,10 @@ class Advanced_Feature_Selection_Classic(BaseEstimator,TransformerMixin):
     # return the data with onlys specific columns
     data = dataset
     # self.selected_columns.remove(self.target)
-    return(data[self.selected_columns_test])
-    # return(data)
+    data = data[self.selected_columns_test]
+    if self.target in dataset.columns:
+      data[self.target] = dataset[self.target]
+    return data
 
   def fit_transform(self,dataset,y=None):
     
@@ -1950,10 +1952,13 @@ class Boruta_Feature_Selection(BaseEstimator, TransformerMixin):
 
 
   def transform(self,dataset,y=None):
-    # return the data with columns which match the threshold
+    # return the data with onlys specific columns
     data = dataset
     # self.selected_columns.remove(self.target)
-    return(data[self.selected_columns_test])
+    data = data[self.selected_columns_test]
+    if self.target in dataset.columns:
+      data[self.target] = dataset[self.target]
+    return data
 
 
   def fit_transform(self, dataset, y=None):
@@ -2410,7 +2415,10 @@ class DFS_Classic(BaseEstimator,TransformerMixin):
     del(data_add)
     del(data_substract)
     # now only return the columns we want:
-    return(dummy_all[self.columns_to_keep])
+    dummy_all = dummy_all[self.columns_to_keep]
+    if self.target in dataset.columns:
+      dummy_all[self.target] = dataset[self.target]
+    return dummy_all
 
     
   def fit_transform(self,dataset,y=None):

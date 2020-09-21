@@ -9,6 +9,7 @@
 # to complete the process. Refer to the existing classes for examples.
 
 import logging
+import pycaret.internal.cuml_wrappers
 from typing import Union, Dict, Any, Optional
 from pycaret.containers.models.base_model import (
     ModelContainer,
@@ -35,6 +36,9 @@ class ClassifierContainer(ModelContainer):
         The class used for the model, eg. LogisticRegression.
     is_turbo : bool, default = True
         Should the model be used with 'turbo = True' in compare_models().
+    eq_function : type, default = None
+        Function to use to check whether an object (model) can be considered equal to the model
+        in the container. If None, will be ``is_instance(x, class_def)`` where x is the object.
     args : dict, default = {}
         The arguments to always pass to constructor when initializing object of class_def class.
     is_special : bool, default = False
@@ -64,6 +68,9 @@ class ClassifierContainer(ModelContainer):
         The class used for the model, eg. LogisticRegression.
     is_turbo : bool
         Should the model be used with 'turbo = True' in compare_models().
+    eq_function : type
+        Function to use to check whether an object (model) can be considered equal to the model
+        in the container. If None, will be ``is_instance(x, class_def)`` where x is the object.
     args : dict
         The arguments to always pass to constructor when initializing object of class_def class.
     is_special : bool
@@ -91,6 +98,7 @@ class ClassifierContainer(ModelContainer):
         name: str,
         class_def: type,
         is_turbo: bool = True,
+        eq_function: Optional[type] = None,
         args: Dict[str, Any] = None,
         is_special: bool = False,
         tune_grid: Dict[str, list] = None,
@@ -118,7 +126,14 @@ class ClassifierContainer(ModelContainer):
         if not tune_args:
             tune_args = {}
 
-        super().__init__(id, name, class_def, args, is_special)
+        super().__init__(
+            id=id,
+            name=name,
+            class_def=class_def,
+            eq_function=eq_function,
+            args=args,
+            is_special=is_special,
+        )
         self.is_turbo = is_turbo
         self.tune_grid = param_grid_to_lists(tune_grid)
         self.tune_distribution = tune_distribution
@@ -178,6 +193,7 @@ class ClassifierContainer(ModelContainer):
             d += [
                 ("Special", self.is_special),
                 ("Class", self.class_def),
+                ("Equality", self.eq_function),
                 ("Args", self.args),
                 ("Tune Grid", self.tune_grid),
                 ("Tune Distributions", self.tune_distribution),
@@ -596,18 +612,18 @@ class RidgeClassifierContainer(ClassifierContainer):
         from sklearn.linear_model import RidgeClassifier
 
         if globals_dict["gpu_param"] == "force":
-            from cuml import MBSGDClassifier as RidgeClassifier
+            import cuml.linear_model
 
-            logger.info("Imported cuml.MBSGDClassifier")
+            logger.info("Imported cuml.linear_model")
             gpu_imported = True
         elif globals_dict["gpu_param"]:
             try:
-                from cuml import MBSGDClassifier as RidgeClassifier
+                import cuml.linear_model
 
-                logger.info("Imported cuml.MBSGDClassifier")
+                logger.info("Imported cuml.linear_model")
                 gpu_imported = True
             except ImportError:
-                logger.warning("Couldn't import cuml.MBSGDClassifier")
+                logger.warning("Couldn't import cuml.linear_model")
 
         args = {}
         tune_args = {}
@@ -615,35 +631,13 @@ class RidgeClassifierContainer(ClassifierContainer):
         tune_distributions = {}
 
         if gpu_imported:
-            batch_size = [
-                (512, 50000),
-                (256, 25000),
-                (128, 10000),
-                (64, 5000),
-                (32, 1000),
-                (16, 0),
-            ]
-            for arg, x_len in batch_size:
-                if len(globals_dict["X_train"]) >= x_len:
-                    args["batch_size"] = arg
-                    break
-            args = {
-                "tol": 0.001,
-                "loss": "squared_loss",
-                "penalty": "l2",
-            }
-            tune_grid = {
-                "learning_rate": ["constant", "invscaling", "adaptive"],
-                "eta0": [0.001, 0.01, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5],
-            }
-            tune_distributions = {
-                "eta0": UniformDistribution(0.001, 0.5),
-            }
+            RidgeClassifier = pycaret.internal.cuml_wrappers.get_ridge_classifier()
         else:
-            tune_grid = {
-                "normalize": [True, False],
-            }
             args = {"random_state": globals_dict["seed"]}
+
+        tune_grid = {
+            "normalize": [True, False],
+        }
 
         tune_grid["alpha"] = np.arange(0.001, 0.999, 0.001)
         tune_grid["fit_intercept"] = [True, False]
@@ -660,7 +654,10 @@ class RidgeClassifierContainer(ClassifierContainer):
             tune_distribution=tune_distributions,
             tune_args=tune_args,
             shap=False,
+            is_gpu_enabled=gpu_imported,
         )
+        if gpu_imported:
+            self.reference = get_class_name(cuml.linear_model.Ridge)
 
 
 class RandomForestClassifierContainer(ClassifierContainer):
@@ -686,109 +683,9 @@ class RandomForestClassifierContainer(ClassifierContainer):
                 logger.warning("Couldn't import cuml.ensemble")
 
         if gpu_imported:
-
-            class RandomForestClassifier(cuml.ensemble.RandomForestClassifier):
-                """
-                This is a wrapper to convert data on the fly to float32.
-                When cuML updates to allow float64 for Random Forest, this
-                can be safely removed.
-
-                Warnings
-                --------
-                The conversion from float64 to float32 may result in loss
-                of precision. It should not be an issue in majority of cases.
-
-                See Also
-                --------
-                cuml.ensemble.RandomForestClassifier : description of the underlying class
-                """
-
-                def fit(self, X, y, convert_dtype=True):
-                    X = X.astype(np.float32)
-                    y = y.astype(np.int32)
-                    return super().fit(X, y, convert_dtype=convert_dtype)
-
-                def predict(
-                    self,
-                    X,
-                    predict_model="GPU",
-                    output_class=True,
-                    threshold=0.5,
-                    algo="auto",
-                    num_classes=None,
-                    convert_dtype=True,
-                    fil_sparse_format="auto",
-                ):
-                    X = X.astype(np.float32)
-                    return (
-                        super()
-                        .predict(
-                            X,
-                            predict_model=predict_model,
-                            output_class=output_class,
-                            threshold=threshold,
-                            algo=algo,
-                            num_classes=num_classes,
-                            convert_dtype=convert_dtype,
-                            fil_sparse_format=fil_sparse_format,
-                        )
-                        .astype(int)
-                    )
-
-                def predict_proba(
-                    self,
-                    X,
-                    output_class=True,
-                    threshold=0.5,
-                    algo="auto",
-                    num_classes=None,
-                    convert_dtype=True,
-                    fil_sparse_format="auto",
-                ):
-                    X = X.astype(np.float32)
-                    return super().predict_proba(
-                        X,
-                        output_class=output_class,
-                        threshold=threshold,
-                        algo=algo,
-                        num_classes=num_classes,
-                        convert_dtype=convert_dtype,
-                        fil_sparse_format=fil_sparse_format,
-                    )
-
-                def score(
-                    self,
-                    X,
-                    y,
-                    threshold=0.5,
-                    algo="auto",
-                    num_classes=None,
-                    predict_model="GPU",
-                    convert_dtype=True,
-                    fil_sparse_format="auto",
-                ):
-                    X = X.astype(np.float32)
-                    y = y.astype(np.int32)
-                    return super().score(
-                        X,
-                        y,
-                        threshold=threshold,
-                        algo=algo,
-                        num_classes=num_classes,
-                        predict_model=predict_model,
-                        convert_dtype=convert_dtype,
-                        fil_sparse_format=fil_sparse_format,
-                    )
-
-                def __repr__(self):
-                    def quote_strs(x: str) -> str:
-                        return x if not isinstance(x, str) else f"'{x}'"
-
-                    args = ", ".join(
-                        [f"{k}={quote_strs(v)}" for k, v in self.get_params().items()]
-                        + [f"handle={self.handle}", f"output_type='{self.output_type}'"]
-                    )
-                    return f"RandomForestClassifier({args})"
+            RandomForestClassifier = (
+                pycaret.internal.cuml_wrappers.get_random_forest_classifier()
+            )
 
         args = (
             {

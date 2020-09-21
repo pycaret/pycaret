@@ -10,6 +10,7 @@ from pycaret.internal.tune_sklearn_patches import (
 )
 from pycaret.internal.pipeline import (
     add_estimator_to_pipeline,
+    get_pipeline_estimator_label,
     make_internal_pipeline,
     estimator_pipeline,
     merge_pipelines,
@@ -25,11 +26,8 @@ from pycaret.internal.plotting import show_yellowbrick_plot
 from pycaret.internal.Display import Display, is_in_colab, enable_colab
 from pycaret.internal.distributions import *
 from pycaret.internal.validation import *
-from pycaret.containers.models.classification import (
-    get_all_model_containers,
-    LGBMClassifierContainer,
-)
-from pycaret.containers.models.regression import BayesianRidgeContainer
+from pycaret.containers.models.classification import get_all_model_containers
+import pycaret.containers.models.regression
 from pycaret.containers.metrics.classification import (
     get_all_metric_containers,
     ClassificationMetricContainer,
@@ -85,13 +83,16 @@ def setup(
     test_data: Optional[pd.DataFrame] = None,
     preprocess: bool = True,
     imputation_type: str = "simple",
+    iterative_imputation_iters: int = 10,
     categorical_features: Optional[List[str]] = None,
     categorical_imputation: str = "constant",
+    categorical_iterative_imputation_model: Union[str, Any] = "rf",
     ordinal_features: Optional[Dict[str, list]] = None,
     high_cardinality_features: Optional[List[str]] = None,
     high_cardinality_method: str = "frequency",
     numeric_features: Optional[List[str]] = None,
     numeric_imputation: str = "mean",  # method 'zero' added in pycaret==2.1
+    numeric_iterative_imputation_model: Union[str, Any] = "br",  # todo change
     date_features: Optional[List[str]] = None,
     ignore_features: Optional[List[str]] = None,
     normalize: bool = False,
@@ -190,6 +191,9 @@ def setup(
         If False, will not do any preprocessing on the data aside from mandatory steps, and
         ignore all other parameters related to preprocessing (including 'ordinal_features' and 
         'high_cardinality_features' params), aside from 'custom_pipeline'.
+
+    imputation_type: str, default = 'simple'
+        The type of imputation to use. Can be either 'simple' or 'iterative'.
 
     categorical_features: list, default = None
         If the inferred data types are not correct, categorical_features can be used to
@@ -709,6 +713,14 @@ def setup(
     all_cols = list(data.columns)
     all_cols.remove(target)
 
+    # checking imputation type
+    allowed_imputation_type = ["simple", "iterative"]
+    if imputation_type not in allowed_imputation_type:
+        raise ValueError("imputation_type param only accepts 'simple' or 'iterative'")
+
+    if type(iterative_imputation_iters) is not int or iterative_imputation_iters <= 0:
+        raise TypeError("iterative_imputation_iters must be an integer greater than 0.")
+
     # checking categorical imputation
     allowed_categorical_imputation = ["constant", "mode"]
     if categorical_imputation not in allowed_categorical_imputation:
@@ -1099,7 +1111,7 @@ def setup(
 
     # declaring global variables to be accessed by other functions
     logger.info("Declaring global variables")
-    global USI, html_param, X, y, X_train, X_test, y_train, y_test, seed, prep_pipe, experiment__, fold_shuffle_param, n_jobs_param, _gpu_n_jobs_param, create_model_container, master_model_container, display_container, exp_name_log, logging_param, log_plots_param, fix_imbalance_param, fix_imbalance_method_param, data_before_preprocess, target_param, gpu_param, all_models, _all_models_internal, all_metrics, _internal_pipeline, stratify_param, fold_generator, fold_param, fold_groups_param
+    global USI, html_param, X, y, X_train, X_test, y_train, y_test, seed, prep_pipe, experiment__, fold_shuffle_param, n_jobs_param, _gpu_n_jobs_param, create_model_container, master_model_container, display_container, exp_name_log, logging_param, log_plots_param, fix_imbalance_param, fix_imbalance_method_param, data_before_preprocess, target_param, gpu_param, _all_models, _all_models_internal, _all_metrics, _internal_pipeline, stratify_param, fold_generator, fold_param, fold_groups_param, imputation_regressor, imputation_classifier, iterative_imputation_iters_param
 
     USI = secrets.token_hex(nbytes=2)
     logger.info(f"USI: {USI}")
@@ -1132,14 +1144,17 @@ def setup(
         "data_before_preprocess",
         "target_param",
         "gpu_param",
-        "all_models",
+        "_all_models",
         "_all_models_internal",
-        "all_metrics",
+        "_all_metrics",
         "_internal_pipeline",
         "stratify_param",
         "fold_generator",
         "fold_param",
         "fold_groups_param",
+        "imputation_regressor",
+        "imputation_classifier",
+        "iterative_imputation_iters_param",
     }
 
     logger.info(f"pycaret_globals: {pycaret_globals}")
@@ -1362,23 +1377,84 @@ def setup(
     # create gpu_param var
     gpu_param = use_gpu
 
+    iterative_imputation_iters_param = iterative_imputation_iters
+
     # creating variables to be used later in the function
     train_data = data_before_preprocess.copy()
     X_before_preprocess = train_data.drop(target, axis=1)
     y_before_preprocess = train_data[target]
 
-    logger.info("Importing preprocessing module")
+    imputation_regressor = numeric_iterative_imputation_model
+    imputation_classifier = categorical_iterative_imputation_model
+    imputation_regressor_name = "Bayesian Ridge"  # todo change
+    imputation_classifier_name = "Random Forest Classifier"
 
-    # import library
+    if imputation_type == "iterative":
+        logger.info("Setting up iterative imputation")
+
+        iterative_imputer_models_globals = globals().copy()
+        iterative_imputer_models_globals["y_train"] = y_before_preprocess
+        iterative_imputer_models_globals["X_train"] = X_before_preprocess
+        iterative_imputer_classification_models = {
+            k: v
+            for k, v in get_all_model_containers(
+                iterative_imputer_models_globals, raise_errors=True
+            ).items()
+            if not v.is_special
+        }
+        iterative_imputer_regression_models = {
+            k: v
+            for k, v in pycaret.containers.models.regression.get_all_model_containers(
+                iterative_imputer_models_globals, raise_errors=True
+            ).items()
+            if not v.is_special
+        }
+
+        if not (
+            (
+                isinstance(imputation_regressor, str)
+                and imputation_regressor in iterative_imputer_regression_models
+            )
+            or hasattr(imputation_regressor, "predict")
+        ):
+            raise ValueError(
+                f"numeric_iterative_imputation_model param must be either a scikit-learn estimator or a string - one of {', '.join(iterative_imputer_regression_models.keys())}."
+            )
+
+        if not (
+            (
+                isinstance(imputation_classifier, str)
+                and imputation_classifier in iterative_imputer_classification_models
+            )
+            or hasattr(imputation_classifier, "predict")
+        ):
+            raise ValueError(
+                f"categorical_iterative_imputation_model param must be either a scikit-learn estimator or a string - one of {', '.join(iterative_imputer_classification_models.keys())}."
+            )
+
+        if isinstance(imputation_regressor, str):
+            imputation_regressor = iterative_imputer_regression_models[
+                imputation_regressor
+            ]
+            imputation_regressor_name = imputation_regressor.name
+            imputation_regressor = imputation_regressor.class_def(
+                **imputation_regressor.args
+            )
+        else:
+            imputation_regressor_name = type(imputation_regressor).__name__
+
+        if isinstance(imputation_classifier, str):
+            imputation_classifier = iterative_imputer_classification_models[
+                imputation_classifier
+            ]
+            imputation_classifier_name = imputation_classifier.name
+            imputation_classifier = imputation_classifier.class_def(
+                **imputation_classifier.args
+            )
+        else:
+            imputation_classifier_name = type(imputation_classifier).__name__
+
     logger.info("Creating preprocessing pipeline")
-
-    imputation_regressor = BayesianRidgeContainer(globals())
-    imputation_regressor = imputation_regressor.class_def(**imputation_regressor.args)
-
-    imputation_classifier = LGBMClassifierContainer(globals())
-    imputation_classifier = imputation_classifier.class_def(
-        **imputation_classifier.args
-    )
 
     prep_pipe = pycaret.preprocess.Preprocess_Path_One(
         train_data=train_data,
@@ -1386,6 +1462,7 @@ def setup(
         target_variable=target,
         imputation_regressor=imputation_regressor,
         imputation_classifier=imputation_classifier,
+        imputation_max_iter=iterative_imputation_iters_param,
         categorical_features=cat_features_pass,
         apply_ordinal_encoding=apply_ordinal_encoding_pass,
         ordinal_columns_and_categories=ordinal_columns_and_categories_pass,
@@ -1618,11 +1695,13 @@ def setup(
     else:
         target_type = "Binary"
 
-    all_models = models(force_regenerate=True, raise_errors=True)
-    _all_models_internal = models(
-        internal=True, force_regenerate=True, raise_errors=True
-    )
-    all_metrics = get_metrics()
+    _all_models = {
+        k: v
+        for k, v in get_all_model_containers(globals(), raise_errors=True).items()
+        if not v.is_special
+    }
+    _all_models_internal = get_all_model_containers(globals(), raise_errors=True)
+    _all_metrics = get_all_metric_containers(globals(), raise_errors=True)
 
     """
     Final display Starts
@@ -1712,71 +1791,105 @@ def setup(
         if verbose:
             print("Setup Succesfully Completed!")
 
+    if experiment_name is None:
+        exp_name_ = "clf-default-name"
+    else:
+        exp_name_ = experiment_name
+
+    URI = secrets.token_hex(nbytes=4)
+    exp_name_log = exp_name_
+
     functions = pd.DataFrame(
         [
-            ["session_id ", seed],
-            ["Target Type ", target_type],
-            ["Label Encoded ", label_encoded],
-            ["Original Data ", data_before_preprocess.shape],
-            ["Missing Values ", missing_flag],
-            ["Numeric Features ", str(float_type)],
-            ["Categorical Features ", str(cat_type)],
+            ["session_id", seed],
+            ["Target", target],
+            ["Target Type", target_type],
+            ["Label Encoded", label_encoded],
+            ["Original Data", data_before_preprocess.shape],
+            ["Missing Values", missing_flag],
+            ["Numeric Features", str(float_type)],
+            ["Categorical Features", str(cat_type)],
         ]
         + (
             [
-                ["Ordinal Features ", ordinal_features_grid],
-                ["High Cardinality Features ", high_cardinality_features_grid],
-                ["High Cardinality Method ", high_cardinality_method_grid],
+                ["Ordinal Features", ordinal_features_grid],
+                ["High Cardinality Features", high_cardinality_features_grid],
+                ["High Cardinality Method", high_cardinality_method_grid],
             ]
             if preprocess
             else []
         )
         + [
-            ["Transformed Train Set ", X_train.shape],
-            ["Transformed Test Set ", X_test.shape],
+            ["Transformed Train Set", X_train.shape],
+            ["Transformed Test Set", X_test.shape],
+            ["Shuffle Train-Test", str(data_split_shuffle)],
+            ["Stratify Train-Test", str(data_split_stratify)],
+            ["Fold Generator", type(fold_generator).__name__],
+            ["Fold Number", fold_param],
+            ["Fold Groups", fold_groups_param],
+            ["CPU Jobs", n_jobs_param],
+            ["Use GPU", gpu_param],
+            ["Log Experiment", logging_param],
+            ["Experiment Name", exp_name_],
+            ["USI", USI],
         ]
         + (
             [
-                ["Numeric Imputer ", numeric_imputation],
-                ["Categorical Imputer ", categorical_imputation],
-                ["Unknown Categoricals Handling ", unknown_categorical_method_grid],
-                ["Normalize ", normalize],
-                ["Normalize Method ", normalize_grid],
-                ["Transformation ", transformation],
-                ["Transformation Method ", transformation_grid],
-                ["PCA ", pca],
-                ["PCA Method ", pca_method_grid],
-                ["PCA Components ", pca_components_grid],
-                ["Ignore Low Variance ", ignore_low_variance],
-                ["Combine Rare Levels ", combine_rare_levels],
-                ["Rare Level Threshold ", rare_level_threshold_grid],
-                ["Numeric Binning ", numeric_bin_grid],
-                ["Remove Outliers ", remove_outliers],
-                ["Outliers Threshold ", outliers_threshold_grid],
-                ["Remove Multicollinearity ", remove_multicollinearity],
-                ["Multicollinearity Threshold ", multicollinearity_threshold_grid],
-                ["Clustering ", create_clusters],
-                ["Clustering Iteration ", cluster_iter_grid],
-                ["Polynomial Features ", polynomial_features],
-                ["Polynomial Degree ", polynomial_degree_grid],
-                ["Trignometry Features ", trigonometry_features],
-                ["Polynomial Threshold ", polynomial_threshold_grid],
-                ["Group Features ", group_features_grid],
-                ["Feature Selection ", feature_selection],
-                ["Features Selection Threshold ", feature_selection_threshold_grid],
-                ["Feature Interaction ", feature_interaction],
-                ["Feature Ratio ", feature_ratio],
-                ["Interaction Threshold ", interaction_threshold_grid],
-                ["Fix Imbalance ", fix_imbalance_param],
-                ["Fix Imbalance Method ", fix_imbalance_model_name],
+                ["Imputation Type", imputation_type],
+                [
+                    "Iterative Imputation Iteration",
+                    iterative_imputation_iters_param
+                    if imputation_type == "iterative"
+                    else "None",
+                ],
+                ["Numeric Imputer", numeric_imputation],
+                [
+                    "Iterative Imputation Numeric Model",
+                    imputation_regressor_name
+                    if imputation_type == "iterative"
+                    else "None",
+                ],
+                ["Categorical Imputer", categorical_imputation],
+                [
+                    "Iterative Imputation Categorical Model",
+                    imputation_classifier_name
+                    if imputation_type == "iterative"
+                    else "None",
+                ],
+                ["Unknown Categoricals Handling", unknown_categorical_method_grid],
+                ["Normalize", normalize],
+                ["Normalize Method", normalize_grid],
+                ["Transformation", transformation],
+                ["Transformation Method", transformation_grid],
+                ["PCA", pca],
+                ["PCA Method", pca_method_grid],
+                ["PCA Components", pca_components_grid],
+                ["Ignore Low Variance", ignore_low_variance],
+                ["Combine Rare Levels", combine_rare_levels],
+                ["Rare Level Threshold", rare_level_threshold_grid],
+                ["Numeric Binning", numeric_bin_grid],
+                ["Remove Outliers", remove_outliers],
+                ["Outliers Threshold", outliers_threshold_grid],
+                ["Remove Multicollinearity", remove_multicollinearity],
+                ["Multicollinearity Threshold", multicollinearity_threshold_grid],
+                ["Clustering", create_clusters],
+                ["Clustering Iteration", cluster_iter_grid],
+                ["Polynomial Features", polynomial_features],
+                ["Polynomial Degree", polynomial_degree_grid],
+                ["Trignometry Features", trigonometry_features],
+                ["Polynomial Threshold", polynomial_threshold_grid],
+                ["Group Features", group_features_grid],
+                ["Feature Selection", feature_selection],
+                ["Features Selection Threshold", feature_selection_threshold_grid],
+                ["Feature Interaction", feature_interaction],
+                ["Feature Ratio", feature_ratio],
+                ["Interaction Threshold", interaction_threshold_grid],
+                ["Fix Imbalance", fix_imbalance_param],
+                ["Fix Imbalance Method", fix_imbalance_model_name],
             ]
             if preprocess
             else []
-        )
-        + [
-            ["CV Generator ", type(fold_generator).__name__],
-            ["CV Folds ", fold_param],
-        ],
+        ),
         columns=["Description", "Value"],
     )
 
@@ -1819,14 +1932,6 @@ def setup(
         logger.info("Logging experiment in MLFlow")
 
         import mlflow
-
-        if experiment_name is None:
-            exp_name_ = "clf-default-name"
-        else:
-            exp_name_ = experiment_name
-
-        URI = secrets.token_hex(nbytes=4)
-        exp_name_log = exp_name_
 
         try:
             mlflow.create_experiment(exp_name_log)
@@ -2085,7 +2190,7 @@ def compare_models(
         fit_kwargs = {}
 
     # checking error for exclude (string)
-    available_estimators = all_models.index
+    available_estimators = _all_models
 
     if exclude != None:
         for i in exclude:
@@ -2143,7 +2248,7 @@ def compare_models(
 
     # checking optimize parameter for multiclass
     if _is_multiclass():
-        if not sort["Multiclass"]:
+        if not sort.is_multiclass:
             raise TypeError(
                 f"{sort} metric not supported for multiclass problems. See docstring for list of other optimization parameters."
             )
@@ -2162,7 +2267,11 @@ def compare_models(
 
     logger.info("Preparing display monitor")
 
-    len_mod = len(all_models[all_models["Turbo"] == True]) if turbo else len(all_models)
+    len_mod = (
+        len({k: v for k, v in _all_models.items() if v.is_turbo})
+        if turbo
+        else len(_all_models)
+    )
 
     if include:
         len_mod = len(include)
@@ -2172,7 +2281,7 @@ def compare_models(
     if not display:
         progress_args = {"max": (4 * len_mod) + 4 + len_mod}
         master_display_columns = (
-            ["Model"] + all_metrics["Display Name"].to_list() + ["TT (Sec)"]
+            ["Model"] + [v.display_name for k, v in _all_metrics.items()] + ["TT (Sec)"]
         )
         timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
         monitor_rows = [
@@ -2199,8 +2308,8 @@ def compare_models(
     # defining sort parameter (making Precision equivalent to Prec. )
 
     if not (isinstance(sort, str) and (sort == "TT" or sort == "TT (Sec)")):
-        sort_ascending = not sort["Greater is Better"]
-        sort = sort["Display Name"]
+        sort_ascending = not sort.greater_is_better
+        sort = sort.display_name
     else:
         sort_ascending = True
         sort = "TT (Sec)"
@@ -2220,10 +2329,10 @@ def compare_models(
         model_library = include
     else:
         if turbo:
-            model_library = models()
-            model_library = list(model_library[model_library["Turbo"] == True].index)
+            model_library = _all_models
+            model_library = [k for k, v in _all_models.items() if v.is_turbo]
         else:
-            model_library = list(models().index)
+            model_library = list(_all_models.keys())
         if exclude:
             model_library = [x for x in model_library if x not in exclude]
 
@@ -2741,7 +2850,7 @@ def _create_model(
     # run_time
     runtime_start = time.time()
 
-    available_estimators = set(_all_models_internal.index)
+    available_estimators = set(_all_models_internal.keys())
 
     if not fit_kwargs:
         fit_kwargs = {}
@@ -2791,7 +2900,7 @@ def _create_model(
 
     if not display:
         progress_args = {"max": 4}
-        master_display_columns = all_metrics["Display Name"].to_list()
+        master_display_columns = [v.display_name for k, v in _all_metrics.items()]
         timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
         monitor_rows = [
             ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
@@ -2845,11 +2954,11 @@ def _create_model(
     logger.info("Importing untrained model")
 
     if isinstance(estimator, str) and estimator in available_estimators:
-        model_definition = _all_models_internal.loc[estimator]
-        model_args = model_definition["Args"]
+        model_definition = _all_models_internal[estimator]
+        model_args = model_definition.args
         model_args = {**model_args, **kwargs}
-        model = model_definition["Class"](**model_args)
-        full_name = model_definition["Name"]
+        model = model_definition.class_def(**model_args)
+        full_name = model_definition.name
     else:
         logger.info("Declaring custom model")
 
@@ -2927,7 +3036,7 @@ def _create_model(
 
     from sklearn.model_selection import cross_validate
 
-    metrics_dict = dict(zip(all_metrics.index, all_metrics["Scorer"]))
+    metrics_dict = dict([(k, v.scorer) for k, v in _all_metrics.items()])
 
     logger.info("Starting cross validation")
 
@@ -2959,7 +3068,7 @@ def _create_model(
         model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
 
         score_dict = dict(
-            zip([f"test_{x}" for x in all_metrics.index], all_metrics["Display Name"])
+            [(f"test_{k}", v.display_name) for k, v in _all_metrics.items()]
         )
         score_dict = {v: scores[k] for k, v in score_dict.items()}
 
@@ -3405,7 +3514,7 @@ def tune_model(
 
         # checking optimize parameter for multiclass
         if _is_multiclass():
-            if not optimize["Multiclass"]:
+            if not optimize.is_multiclass:
                 raise TypeError(
                     "Optimization metric not supported for multiclass problems. See docstring for list of other optimization parameters."
                 )
@@ -3428,7 +3537,7 @@ def tune_model(
 
     if not display:
         progress_args = {"max": 3 + 4}
-        master_display_columns = all_metrics["Display Name"].to_list()
+        master_display_columns = [v.display_name for k, v in _all_metrics.items()]
         timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
         monitor_rows = [
             ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
@@ -3471,8 +3580,8 @@ def tune_model(
 
     # setting optimize parameter
 
-    compare_dimension = optimize["Display Name"]
-    optimize = optimize["Scorer"]
+    compare_dimension = optimize.display_name
+    optimize = optimize.scorer
 
     # convert trained estimator into string name for grids
 
@@ -3490,8 +3599,8 @@ def tune_model(
 
     estimator_id = _get_model_id(base_estimator)
 
-    estimator_definition = _all_models_internal.loc[estimator_id]
-    estimator_name = estimator_definition["Name"]
+    estimator_definition = _all_models_internal[estimator_id]
+    estimator_name = estimator_definition.name
     logger.info(f"Base model : {estimator_name}")
 
     display.move_progress()
@@ -3535,7 +3644,7 @@ def tune_model(
         search_library == "tune-sklearn"
         and (search_algorithm == "grid" or search_algorithm == "random")
     ):
-        param_grid = estimator_definition["Tune Grid"]
+        param_grid = estimator_definition.tune_grid
         if isinstance(base_estimator, VotingClassifier):
             # special case to handle VotingClassifier, as weights need to be
             # generated dynamically
@@ -3551,7 +3660,7 @@ def tune_model(
                 )
                 search_algorithm = "grid"
     else:
-        param_grid = estimator_definition["Tune Distributions"]
+        param_grid = estimator_definition.tune_distribution
 
         if isinstance(base_estimator, VotingClassifier):
             # special case to handle VotingClassifier, as weights need to be
@@ -3577,13 +3686,15 @@ def tune_model(
     with estimator_pipeline(_internal_pipeline, model) as pipeline_with_model:
         fit_kwargs = _get_pipeline_fit_kwargs(pipeline_with_model, fit_kwargs)
 
-        suffixes.append("actual_estimator")
+        actual_estimator_label = get_pipeline_estimator_label(pipeline_with_model)
+
+        suffixes.append(actual_estimator_label)
 
         suffixes = "__".join(reversed(suffixes))
 
         param_grid = {f"{suffixes}__{k}": v for k, v in param_grid.items()}
 
-        search_kwargs = {**estimator_definition["Tune Args"], **kwargs}
+        search_kwargs = {**estimator_definition.tune_args, **kwargs}
 
         logger.info(f"param_grid: {param_grid}")
 
@@ -3635,7 +3746,7 @@ def tune_model(
             return can_partial_fit or can_warm_start or is_xgboost
 
         n_jobs = (
-            _gpu_n_jobs_param if estimator_definition["GPU Enabled"] else n_jobs_param
+            _gpu_n_jobs_param if estimator_definition.is_gpu_enabled else n_jobs_param
         )
 
         from sklearn.gaussian_process import GaussianProcessClassifier
@@ -3879,8 +3990,10 @@ def tune_model(
         model_grid.fit(X_train, y_train, groups=groups, **fit_kwargs)
         best_params = model_grid.best_params_
         logger.info(f"best_params: {best_params}")
-        # 18 chars - actual_estimator__
-        best_params = {k[18:]: v for k, v in best_params.items()}
+        best_params = {
+            k.replace(f"{actual_estimator_label}__", ""): v
+            for k, v in best_params.items()
+        }
         cv_results = None
         try:
             cv_results = model_grid.cv_results_
@@ -4091,15 +4204,15 @@ def ensemble_model(
     # check boosting conflict
     if method == "Boosting":
 
-        boosting_model_definition = _all_models_internal.loc["ada"]
+        boosting_model_definition = _all_models_internal["ada"]
 
         check_model = estimator
 
         try:
-            check_model = boosting_model_definition["Class"](
+            check_model = boosting_model_definition.class_def(
                 check_model,
                 n_estimators=n_estimators,
-                **boosting_model_definition["Args"],
+                **boosting_model_definition.args,
             )
             with io.capture_output():
                 check_model.fit(X_train, y_train)
@@ -4135,7 +4248,7 @@ def ensemble_model(
 
     # checking optimize parameter for multiclass
     if _is_multiclass():
-        if not optimize["Multiclass"]:
+        if not optimize.is_multiclass:
             raise TypeError(
                 f"Optimization metric not supported for multiclass problems. See docstring for list of other optimization parameters."
             )
@@ -4152,7 +4265,7 @@ def ensemble_model(
 
     if not display:
         progress_args = {"max": 2 + 4}
-        master_display_columns = all_metrics["Display Name"].to_list()
+        master_display_columns = [v.display_name for k, v in _all_metrics.items()]
         timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
         monitor_rows = [
             ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
@@ -4188,8 +4301,8 @@ def ensemble_model(
 
     # setting optimize parameter
 
-    compare_dimension = optimize["Display Name"]
-    optimize = optimize["Scorer"]
+    compare_dimension = optimize.display_name
+    optimize = optimize.scorer
 
     logger.info("Checking base model")
 
@@ -4197,8 +4310,8 @@ def ensemble_model(
 
     estimator_id = _get_model_id(estimator)
 
-    estimator_definition = _all_models_internal.loc[estimator_id]
-    estimator_name = estimator_definition["Name"]
+    estimator_definition = _all_models_internal[estimator_id]
+    estimator_name = estimator_definition.name
     logger.info(f"Base model : {estimator_name}")
 
     """
@@ -4218,20 +4331,20 @@ def ensemble_model(
 
     if method == "Bagging":
         logger.info("Ensemble method set to Bagging")
-        bagging_model_definition = _all_models_internal.loc["Bagging"]
+        bagging_model_definition = _all_models_internal["Bagging"]
 
-        model = bagging_model_definition["Class"](
+        model = bagging_model_definition.class_def(
             model,
             bootstrap=True,
             n_estimators=n_estimators,
-            **bagging_model_definition["Args"],
+            **bagging_model_definition.args,
         )
 
     else:
         logger.info("Ensemble method set to Boosting")
-        boosting_model_definition = _all_models_internal.loc["ada"]
-        model = boosting_model_definition["Class"](
-            model, n_estimators=n_estimators, **boosting_model_definition["Args"]
+        boosting_model_definition = _all_models_internal["ada"]
+        model = boosting_model_definition.class_def(
+            model, n_estimators=n_estimators, **boosting_model_definition.args
         )
 
     display.move_progress()
@@ -4490,7 +4603,7 @@ def blend_models(
 
     # checking optimize parameter for multiclass
     if _is_multiclass():
-        if not optimize["Multiclass"]:
+        if not optimize.is_multiclass:
             raise TypeError(
                 f"Optimization metric not supported for multiclass problems. See docstring for list of other optimization parameters."
             )
@@ -4507,7 +4620,7 @@ def blend_models(
 
     if not display:
         progress_args = {"max": 2 + 4}
-        master_display_columns = all_metrics["Display Name"].to_list()
+        master_display_columns = [v.display_name for k, v in _all_metrics.items()]
         timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
         monitor_rows = [
             ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
@@ -4539,8 +4652,8 @@ def blend_models(
     data_y.reset_index(drop=True, inplace=True)
 
     # setting optimize parameter
-    compare_dimension = optimize["Display Name"]
-    optimize = optimize["Scorer"]
+    compare_dimension = optimize.display_name
+    optimize = optimize.scorer
 
     display.move_progress()
 
@@ -4568,17 +4681,10 @@ def blend_models(
 
     estimator_list = list(estimator_dict.items())
 
-    votingclassifier_model_definition = _all_models_internal.loc["Voting"]
-    try:
-        model = votingclassifier_model_definition["Class"](
-            estimators=estimator_list, voting=method, n_jobs=_gpu_n_jobs_param
-        )
-        logger.info("n_jobs multiple passed")
-    except:
-        logger.info("n_jobs multiple failed")
-        model = votingclassifier_model_definition["Class"](
-            estimators=estimator_list, voting=method, weights=weights
-        )
+    votingclassifier_model_definition = _all_models_internal["Voting"]
+    model = votingclassifier_model_definition.class_def(
+        estimators=estimator_list, voting=method, n_jobs=_gpu_n_jobs_param
+    )
 
     display.move_progress()
 
@@ -4821,7 +4927,7 @@ def stack_models(
 
     # checking optimize parameter for multiclass
     if _is_multiclass():
-        if not optimize["Multiclass"]:
+        if not optimize.is_multiclass:
             raise TypeError(
                 f"Optimization metric not supported for multiclass problems. See docstring for list of other optimization parameters."
             )
@@ -4840,15 +4946,15 @@ def stack_models(
     # Defining meta model.
     if meta_model == None:
         estimator = "lr"
-        meta_model_definition = _all_models_internal.loc[estimator]
-        meta_model_args = meta_model_definition["Args"]
-        meta_model = meta_model_definition["Class"](**meta_model_args)
+        meta_model_definition = _all_models_internal[estimator]
+        meta_model_args = meta_model_definition.args
+        meta_model = meta_model_definition.class_def(**meta_model_args)
     else:
         meta_model = clone(meta_model)
 
     if not display:
         progress_args = {"max": 2 + 4}
-        master_display_columns = all_metrics["Display Name"].to_list()
+        master_display_columns = [v.display_name for k, v in _all_metrics.items()]
         timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
         monitor_rows = [
             ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
@@ -4877,8 +4983,8 @@ def stack_models(
     data_y.reset_index(drop=True, inplace=True)
 
     # setting optimize parameter
-    compare_dimension = optimize["Display Name"]
-    optimize = optimize["Scorer"]
+    compare_dimension = optimize.display_name
+    optimize = optimize.scorer
 
     display.move_progress()
 
@@ -4909,8 +5015,8 @@ def stack_models(
     logger.info(estimator_list)
     logger.info("Creating StackingClassifier()")
 
-    stackingclassifier_model_definition = _all_models_internal.loc["Stacking"]
-    model = stackingclassifier_model_definition["Class"](
+    stackingclassifier_model_definition = _all_models_internal["Stacking"]
+    model = stackingclassifier_model_definition.class_def(
         estimators=estimator_list,
         final_estimator=meta_model,
         cv=fold,
@@ -5118,10 +5224,10 @@ def plot_model(
             )
 
     # exception for CatBoost
-    if "CatBoostClassifier" in str(type(estimator)):
-        raise ValueError(
-            "CatBoost estimator is not compatible with plot_model function, try using Catboost with interpret_model instead."
-        )
+    # if "CatBoostClassifier" in str(type(estimator)):
+    #    raise ValueError(
+    #    "CatBoost estimator is not compatible with plot_model function, try using Catboost with interpret_model instead."
+    # )
 
     # checking for auc plot
     if not hasattr(estimator, "predict_proba") and plot == "auc":
@@ -5171,7 +5277,7 @@ def plot_model(
     
     """
 
-    fold = _get_cv_splitter(fold)
+    cv = _get_cv_splitter(fold)
 
     groups = _get_groups(groups)
 
@@ -5247,8 +5353,6 @@ def plot_model(
         fit_kwargs = _get_pipeline_fit_kwargs(pipeline_with_model, fit_kwargs)
 
         _base_dpi = 100
-
-        cv = _get_cv_splitter(fold)
 
         class MatplotlibDefaultDPI(object):
             def __init__(self, base_dpi: float = 100, scale_to_set: float = 1):
@@ -5615,54 +5719,56 @@ def plot_model(
                     "Plot not supported for this estimator. Try different estimator."
                 )
 
+            actual_estimator_label = get_pipeline_estimator_label(pipeline_with_model)
+
             # SGD Classifier
-            if "actual_estimator__l1_ratio" in model_params:
-                param_name = "actual_estimator__l1_ratio"
+            if f"{actual_estimator_label}__l1_ratio" in model_params:
+                param_name = f"{actual_estimator_label}__l1_ratio"
                 param_range = np.arange(0, 1, 0.01)
 
             # tree based models
-            elif "actual_estimator__max_depth" in model_params:
-                param_name = "actual_estimator__max_depth"
+            elif f"{actual_estimator_label}__max_depth" in model_params:
+                param_name = f"{actual_estimator_label}__max_depth"
                 param_range = np.arange(1, 11)
 
             # knn
-            elif "actual_estimator__n_neighbors" in model_params:
-                param_name = "actual_estimator__n_neighbors"
+            elif f"{actual_estimator_label}__n_neighbors" in model_params:
+                param_name = f"{actual_estimator_label}__n_neighbors"
                 param_range = np.arange(1, 11)
 
             # MLP / Ridge
-            elif "actual_estimator__alpha" in model_params:
-                param_name = "actual_estimator__alpha"
+            elif f"{actual_estimator_label}__alpha" in model_params:
+                param_name = f"{actual_estimator_label}__alpha"
                 param_range = np.arange(0, 1, 0.1)
 
             # Logistic Regression
-            elif "actual_estimator__C" in model_params:
-                param_name = "actual_estimator__C"
+            elif f"{actual_estimator_label}__C" in model_params:
+                param_name = f"{actual_estimator_label}__C"
                 param_range = np.arange(1, 11)
 
             # Bagging / Boosting
-            elif "actual_estimator__n_estimators" in model_params:
-                param_name = "actual_estimator__n_estimators"
+            elif f"{actual_estimator_label}__n_estimators" in model_params:
+                param_name = f"{actual_estimator_label}__n_estimators"
                 param_range = np.arange(1, 100, 10)
 
             # Bagging / Boosting / gbc / ada /
-            elif "actual_estimator__n_estimators" in model_params:
-                param_name = "actual_estimator__n_estimators"
+            elif f"{actual_estimator_label}__n_estimators" in model_params:
+                param_name = f"{actual_estimator_label}__n_estimators"
                 param_range = np.arange(1, 100, 10)
 
             # Naive Bayes
-            elif "actual_estimator__var_smoothing" in model_params:
-                param_name = "actual_estimator__var_smoothing"
+            elif f"{actual_estimator_label}__var_smoothing" in model_params:
+                param_name = f"{actual_estimator_label}__var_smoothing"
                 param_range = np.arange(0.1, 1, 0.01)
 
             # QDA
-            elif "actual_estimator__reg_param" in model_params:
-                param_name = "actual_estimator__reg_param"
+            elif f"{actual_estimator_label}__reg_param" in model_params:
+                param_name = f"{actual_estimator_label}__reg_param"
                 param_range = np.arange(0, 1, 0.1)
 
             # GPC
-            elif "actual_estimator__max_iter_predict" in model_params:
-                param_name = "actual_estimator__max_iter_predict"
+            elif f"{actual_estimator_label}__max_iter_predict" in model_params:
+                param_name = f"{actual_estimator_label}__max_iter_predict"
                 param_range = np.arange(100, 1000, 100)
 
             else:
@@ -5752,7 +5858,7 @@ def plot_model(
             if hasattr(temp_model, "coef_"):
                 coef = temp_model.coef_.flatten()
                 if len(coef) > len(data_X.columns):
-                    coef = coef[:len(data_X.columns)]
+                    coef = coef[: len(data_X.columns)]
                 variables = abs(coef)
             else:
                 logger.warning("No coef_ found. Trying feature_importances_")
@@ -5980,8 +6086,8 @@ def interpret_model(
     # allowed models
     model_id = _get_model_id(estimator)
 
-    shap_models = _all_models_internal[_all_models_internal["SHAP"] != False]
-    shap_models_ids = set(shap_models.index)
+    shap_models = {k: v for k, v in _all_models_internal.items() if v.shap}
+    shap_models_ids = set(shap_models.keys())
 
     if model_id not in shap_models_ids:
         raise TypeError(
@@ -6009,8 +6115,8 @@ def interpret_model(
     model = estimator
 
     # defining type of classifier
-    shap_models_type1 = set(shap_models[shap_models["SHAP"] == "type1"].index)
-    shap_models_type2 = set(shap_models[shap_models["SHAP"] == "type2"].index)
+    shap_models_type1 = {k for k, v in shap_models.items() if v.shap == "type1"}
+    shap_models_type2 = {k for k, v in shap_models.items() if v.shap == "type2"}
 
     logger.info(f"plot type: {plot}")
 
@@ -6272,7 +6378,7 @@ def calibrate_model(
 
     if not display:
         progress_args = {"max": 2 + 4}
-        master_display_columns = all_metrics["Display Name"].to_list()
+        master_display_columns = [v.display_name for k, v in _all_metrics.items()]
         timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
         monitor_rows = [
             ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
@@ -6313,12 +6419,12 @@ def calibrate_model(
 
     logger.info("Importing untrained CalibratedClassifierCV")
 
-    calibrated_model_definition = _all_models_internal.loc["CalibratedCV"]
-    model = calibrated_model_definition["Class"](
+    calibrated_model_definition = _all_models_internal["CalibratedCV"]
+    model = calibrated_model_definition.class_def(
         base_estimator=estimator,
         method=method,
         cv=fold,
-        **calibrated_model_definition["Args"],
+        **calibrated_model_definition.args,
     )
 
     display.move_progress()
@@ -7414,13 +7520,13 @@ def automl(optimize: str = "Accuracy", use_holdout: bool = False) -> Any:
 
     # checking optimize parameter for multiclass
     if _is_multiclass():
-        if not optimize["Multiclass"]:
+        if not optimize.is_multiclass:
             raise TypeError(
                 f"Optimization metric not supported for multiclass problems. See docstring for list of other optimization parameters."
             )
 
-    compare_dimension = optimize["Display Name"]
-    optimize = optimize["Scorer"]
+    compare_dimension = optimize.display_name
+    optimize = optimize.scorer
 
     scorer = []
 
@@ -7489,10 +7595,7 @@ def pull(pop=False) -> pd.DataFrame:  # added in pycaret==2.2.0
 
 
 def models(
-    type: Optional[str] = None,
-    internal: bool = False,
-    force_regenerate: bool = False,
-    raise_errors: bool = True,
+    type: Optional[str] = None, internal: bool = False, raise_errors: bool = True,
 ) -> pd.DataFrame:
 
     """
@@ -7500,7 +7603,7 @@ def models(
 
     Example
     -------
-    >>> all_models = models()
+    >>> _all_models = models()
 
     This will return pandas dataframe with all available 
     models and their metadata.
@@ -7514,10 +7617,6 @@ def models(
     
     internal: bool, default = False
         If True, will return extra columns and rows used internally.
-
-    force_regenerate: bool, default = False
-        If True, will force the DataFrame to be regenerated,
-        instead of using a cached version.
 
     raise_errors: bool, default = True
         If False, will suppress all exceptions, ignoring models
@@ -7543,15 +7642,6 @@ def models(
             )
         return df[df.index.isin(model_type.get(type, df.index))]
 
-    if not force_regenerate:
-        try:
-            if internal:
-                return filter_model_df_by_type(_all_models_internal)
-            else:
-                return filter_model_df_by_type(all_models)
-        except:
-            pass
-
     logger.info(f"gpu_param set to {gpu_param}")
 
     model_containers = get_all_model_containers(globals(), raise_errors)
@@ -7568,10 +7658,7 @@ def models(
 
 
 def get_metrics(
-    force_regenerate: bool = False,
-    reset: bool = False,
-    include_custom: bool = True,
-    raise_errors: bool = True,
+    reset: bool = False, include_custom: bool = True, raise_errors: bool = True,
 ) -> pd.DataFrame:
     """
     Returns table of metrics available.
@@ -7585,9 +7672,6 @@ def get_metrics(
 
     Parameters
     ----------
-    force_regenerate: bool, default = False
-        If True, will return a regenerated DataFrame,
-        instead of using a cached version.
     reset: bool, default = False
         If True, will reset all changes made using add_metric() and get_metric().
     include_custom: bool, default = True
@@ -7602,22 +7686,17 @@ def get_metrics(
 
     """
 
-    if reset and not "all_metrics" in globals():
+    if reset and not "_all_metrics" in globals():
         raise ValueError("setup() needs to be ran first.")
 
-    global all_metrics
-
-    if not force_regenerate and not reset:
-        try:
-            if not include_custom:
-                return all_metrics[all_metrics["Custom"] == False]
-            return all_metrics
-        except:
-            pass
+    global _all_metrics
 
     np.random.seed(seed)
 
-    metric_containers = get_all_metric_containers(globals(), raise_errors)
+    if reset:
+        _all_metrics = get_all_metric_containers(globals(), raise_errors)
+
+    metric_containers = _all_metrics
     rows = [v.get_dict() for k, v in metric_containers.items()]
 
     df = pd.DataFrame(rows)
@@ -7626,8 +7705,6 @@ def get_metrics(
     if not include_custom:
         df = df[df["Custom"] == False]
 
-    if reset:
-        all_metrics = df
     return df
 
 
@@ -7635,16 +7712,16 @@ def _get_metric(name_or_id: str):
     """
     Gets a metric from get_metrics() by name or index.
     """
-    metrics = get_metrics()
+    metrics = _all_metrics
     metric = None
     try:
-        metric = metrics.loc[name_or_id]
+        metric = metrics[name_or_id]
         return metric
     except:
         pass
 
     try:
-        metric = metrics[metrics["Name"] == name_or_id].iloc[0]
+        metric = next(v for k, v in metrics.items() if v.name == name_or_id)
         return metric
     except:
         pass
@@ -7702,12 +7779,12 @@ def add_metric(
     if not args:
         args = {}
 
-    if not "all_metrics" in globals():
+    if not "_all_metrics" in globals():
         raise ValueError("setup() needs to be ran first.")
 
-    global all_metrics
+    global _all_metrics
 
-    if id in all_metrics.index:
+    if id in _all_metrics:
         raise ValueError("id already present in metrics dataframe.")
 
     new_metric = ClassificationMetricContainer(
@@ -7722,12 +7799,13 @@ def add_metric(
         is_custom=True,
     )
 
+    _all_metrics[id] = new_metric
+
     new_metric = new_metric.get_dict()
 
     new_metric = pd.Series(new_metric, name=id.replace(" ", "_")).drop("ID")
 
-    all_metrics = all_metrics.append(new_metric)
-    return all_metrics.iloc[-1]
+    return new_metric
 
 
 def remove_metric(name_or_id: str):
@@ -7740,25 +7818,24 @@ def remove_metric(name_or_id: str):
         Display name or ID of the metric.
 
     """
-    if not "all_metrics" in globals():
+    if not "_all_metrics" in globals():
         raise ValueError("setup() needs to be ran first.")
 
     try:
-        all_metrics.drop(name_or_id, axis=0, inplace=True)
+        _all_metrics.pop(name_or_id)
         return
     except:
         pass
 
     try:
-        all_metrics.drop(
-            all_metrics[all_metrics["Name"] == name_or_id].index, axis=0, inplace=True
-        )
+        k_to_remove = next(k for k, v in _all_metrics.items() if v.name == name_or_id)
+        _all_metrics.pop(k_to_remove)
         return
     except:
         pass
 
     raise ValueError(
-        f"No row with 'Display Name' or 'ID' (index) {name_or_id} present in the metrics dataframe."
+        f"No metric 'Display Name' or 'ID' (index) {name_or_id} present in the metrics repository."
     )
 
 
@@ -8046,7 +8123,7 @@ def _get_model_id(e) -> str:
     """
     import pycaret.internal.utils
 
-    return pycaret.internal.utils.get_model_id(e, models(internal=True))
+    return pycaret.internal.utils.get_model_id(e, _all_models_internal)
 
 
 def _get_model_name(e, deep: bool = True) -> str:
@@ -8055,7 +8132,7 @@ def _get_model_name(e, deep: bool = True) -> str:
     """
     import pycaret.internal.utils
 
-    return pycaret.internal.utils.get_model_name(e, models(internal=True), deep=deep)
+    return pycaret.internal.utils.get_model_name(e, _all_models_internal, deep=deep)
 
 
 def _is_special_model(e) -> bool:
@@ -8064,24 +8141,33 @@ def _is_special_model(e) -> bool:
     """
     import pycaret.internal.utils
 
-    return pycaret.internal.utils.is_special_model(e, models(internal=True))
+    return pycaret.internal.utils.is_special_model(e, _all_models_internal)
 
 
 def _calculate_metrics(
     ytest, pred_, pred_prob: float, weights: Optional[list] = None,
 ) -> dict:
     """
-    Calculate all metrics in get_metrics().
+    Calculate all metrics in _all_metrics.
     """
     from pycaret.internal.utils import calculate_metrics
 
-    return calculate_metrics(
-        metrics=get_metrics(),
-        ytest=ytest,
-        pred_=pred_,
-        pred_proba=pred_prob,
-        weights=weights,
-    )
+    try:
+        return calculate_metrics(
+            metrics=_all_metrics,
+            ytest=ytest,
+            pred_=pred_,
+            pred_proba=pred_prob,
+            weights=weights,
+        )
+    except:
+        return calculate_metrics(
+            metrics=get_all_metric_containers(globals(), True),
+            ytest=ytest,
+            pred_=pred_,
+            pred_proba=pred_prob,
+            weights=weights,
+        )
 
 
 def _mlflow_log_model(
@@ -8122,8 +8208,9 @@ def _mlflow_log_model(
         RunID = mlflow.active_run().info.run_id
 
         # Log model parameters
-        if hasattr(model, "named_steps") and "actual_estimator" in model.named_steps:
-            params = model.named_steps["actual_estimator"]
+        pipeline_estimator_name = get_pipeline_estimator_label(model)
+        if pipeline_estimator_name:
+            params = model.named_steps[pipeline_estimator_name]
         else:
             params = model
 
@@ -8295,15 +8382,9 @@ def _get_cv_n_folds(fold, X, groups=None):
 
 
 def _get_pipeline_fit_kwargs(pipeline, fit_kwargs: dict) -> dict:
-    try:
-        model_step = pipeline.steps[-1]
-    except:
-        return fit_kwargs
+    import pycaret.internal.pipeline
 
-    if any(k.startswith(f"{model_step[0]}__") for k in fit_kwargs.keys()):
-        return fit_kwargs
-
-    return {f"{model_step[0]}__{k}": v for k, v in fit_kwargs.items()}
+    return pycaret.internal.pipeline.get_pipeline_fit_kwargs(pipeline, fit_kwargs)
 
 
 def _get_groups(groups):
