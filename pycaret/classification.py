@@ -5117,10 +5117,10 @@ def plot_model(
             )
 
     # exception for CatBoost
-    if "CatBoostClassifier" in str(type(estimator)):
-        raise ValueError(
-            "CatBoost estimator is not compatible with plot_model function, try using Catboost with interpret_model instead."
-        )
+    #if "CatBoostClassifier" in str(type(estimator)):
+    #    raise ValueError(
+        #    "CatBoost estimator is not compatible with plot_model function, try using Catboost with interpret_model instead."
+        #)
 
     # checking for auc plot
     if not hasattr(estimator, "predict_proba") and plot == "auc":
