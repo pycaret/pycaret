@@ -40,6 +40,7 @@ from datetime import datetime
 import calendar
 from sklearn.preprocessing import LabelEncoder
 from collections import defaultdict
+from typing import Optional, Union
 
 from sklearn.utils.validation import check_is_fitted, check_random_state
 
@@ -608,8 +609,9 @@ class Iterative_Imputer(_BaseImputer):
         missing_values=np.nan,
         initial_strategy_numeric: str = "mean",
         initial_strategy_categorical: str = "most_frequent",
+        ordinal_columns: Optional[list] = None,
         max_iter: int = 10,
-        warm_start: bool = True,
+        warm_start: bool = False,
         imputation_order: str = "ascending",
         verbose: int = 0,
         random_state: int = None,
@@ -627,6 +629,9 @@ class Iterative_Imputer(_BaseImputer):
         self.verbose = verbose
         self.random_state = random_state
         self.target = target
+        if ordinal_columns is None:
+          ordinal_columns = []
+        self.ordinal_columns = ordinal_columns
 
     def _initial_imputation(self, X):
         if self.initial_imputer_ is None:
@@ -644,7 +649,7 @@ class Iterative_Imputer(_BaseImputer):
     def _impute_one_feature(self, X, column, X_na_mask, fit):
         if not fit:
             check_is_fitted(self)
-        is_classification = X[column].dtype.name == "object"
+        is_classification = X[column].dtype.name == "object" or column in self.ordinal_columns
         if is_classification:
             if column in self.classifiers_:
                 dummy, le, estimator = self.classifiers_[column]
@@ -2719,7 +2724,7 @@ def Preprocess_Path_One(train_data,target_variable,ml_usecase=None,test_data =No
   #elif imputation_type == "surrogate imputer":
   #  imputer = Surrogate_Imputer(numeric_strategy=numeric_imputation_strategy,categorical_strategy=categorical_imputation_strategy,target_variable=target_variable)
   else:
-    imputer = Iterative_Imputer(classifier=imputation_classifier, regressor=imputation_regressor, target=target_variable, initial_strategy_numeric=numeric_imputation_strategy,max_iter=imputation_max_iter, warm_start=imputation_warm_start, imputation_order=imputation_order,random_state=random_state)
+    imputer = Iterative_Imputer(classifier=imputation_classifier, regressor=imputation_regressor, target=target_variable, initial_strategy_numeric=numeric_imputation_strategy,max_iter=imputation_max_iter, warm_start=imputation_warm_start, imputation_order=imputation_order,random_state=random_state, ordinal_columns=ordinal_columns_and_categories.keys())
   
   # for zero_near_zero
   if apply_zero_nearZero_variance == True:

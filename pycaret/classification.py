@@ -756,7 +756,7 @@ def setup(
             value_in_keys = ordinal_features.get(i)
             value_in_data = list(data[i].unique().astype(str))
             for j in value_in_keys:
-                if j not in value_in_data:
+                if str(j) not in value_in_data:
                     raise ValueError(
                         f"Column name '{i}' doesn't contain any level named '{j}'."
                     )
@@ -3445,6 +3445,9 @@ def tune_model(
             )
 
         if search_algorithm == "bohb":
+            # TEMPORARY
+            raise ValueError("BOHB is not available at this time.")
+
             try:
                 from ray.tune.suggest.bohb import TuneBOHB
                 from ray.tune.schedulers import HyperBandForBOHB
