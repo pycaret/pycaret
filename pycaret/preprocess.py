@@ -40,6 +40,7 @@ from datetime import datetime
 import calendar
 from sklearn.preprocessing import LabelEncoder
 from collections import defaultdict
+from typing import Optional, Union
 
 from sklearn.utils.validation import check_is_fitted, check_random_state
 
