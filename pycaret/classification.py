@@ -5734,7 +5734,7 @@ def plot_model(
             # Catboost
             if "depth" in model_params:
                 param_name = f"{actual_estimator_label}__depth"
-                param_range = np.arange(1, 8 if gpu_param else 16)
+                param_range = np.arange(1, 8 if gpu_param else 11)
 
             # SGD Classifier
             elif f"{actual_estimator_label}__l1_ratio" in model_params:
