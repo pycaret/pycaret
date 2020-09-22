@@ -5799,6 +5799,7 @@ def plot_model(
                 param_range=param_range,
                 cv=cv,
                 random_state=seed,
+                n_jobs=_gpu_n_jobs_param,
             )
             show_yellowbrick_plot(
                 visualizer=viz,
