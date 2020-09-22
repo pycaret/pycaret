@@ -3445,6 +3445,9 @@ def tune_model(
             )
 
         if search_algorithm == "bohb":
+            # TEMPORARY
+            raise ValueError("BOHB is not available at this time.")
+
             try:
                 from ray.tune.suggest.bohb import TuneBOHB
                 from ray.tune.schedulers import HyperBandForBOHB
