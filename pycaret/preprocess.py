@@ -609,7 +609,7 @@ class Iterative_Imputer(_BaseImputer):
         initial_strategy_numeric: str = "mean",
         initial_strategy_categorical: str = "most_frequent",
         max_iter: int = 10,
-        warm_start: bool = True,
+        warm_start: bool = False,
         imputation_order: str = "ascending",
         verbose: int = 0,
         random_state: int = None,
