@@ -5714,18 +5714,30 @@ def plot_model(
 
             logger.info("Determining param_name")
 
+            actual_estimator_label = get_pipeline_estimator_label(pipeline_with_model)
+            actual_estimator = pipeline_with_model.named_steps[actual_estimator_label]
+
             try:
-                model_params = pipeline_with_model.get_params()
+                try:
+                    # catboost special case
+                    model_params = (
+                        actual_estimator.get_all_params()
+                    )
+                except:
+                    model_params = pipeline_with_model.get_params()
             except:
                 display.clear_output()
                 raise TypeError(
                     "Plot not supported for this estimator. Try different estimator."
                 )
 
-            actual_estimator_label = get_pipeline_estimator_label(pipeline_with_model)
+            # Catboost
+            if "depth" in model_params:
+                param_name = f"{actual_estimator_label}__depth"
+                param_range = np.arange(1, 8 if gpu_param else 16)
 
             # SGD Classifier
-            if f"{actual_estimator_label}__l1_ratio" in model_params:
+            elif f"{actual_estimator_label}__l1_ratio" in model_params:
                 param_name = f"{actual_estimator_label}__l1_ratio"
                 param_range = np.arange(0, 1, 0.01)
 
@@ -5750,11 +5762,6 @@ def plot_model(
                 param_range = np.arange(1, 11)
 
             # Bagging / Boosting
-            elif f"{actual_estimator_label}__n_estimators" in model_params:
-                param_name = f"{actual_estimator_label}__n_estimators"
-                param_range = np.arange(1, 100, 10)
-
-            # Bagging / Boosting / gbc / ada /
             elif f"{actual_estimator_label}__n_estimators" in model_params:
                 param_name = f"{actual_estimator_label}__n_estimators"
                 param_range = np.arange(1, 100, 10)
