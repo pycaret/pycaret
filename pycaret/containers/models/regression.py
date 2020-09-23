@@ -1041,7 +1041,7 @@ class DecisionTreeRegressorContainer(RegressorContainer):
             "max_features": UniformDistribution(0.001, 1),
             "min_samples_leaf": IntUniformDistribution(2, 6),
             "min_samples_split": IntUniformDistribution(2, 10),
-            "min_impurity_decrease": UniformDistribution(0, 0.5, log=True),
+            "min_impurity_decrease": UniformDistribution(0.000000001, 0.5, log=True),
         }
 
         _leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
@@ -1120,7 +1120,7 @@ class RandomForestRegressorContainer(RegressorContainer):
         tune_distributions = {
             "n_estimators": IntUniformDistribution(10, 1000),
             "max_depth": IntUniformDistribution(1, 11),
-            "min_impurity_decrease": UniformDistribution(0, 0.5, log=True),
+            "min_impurity_decrease": UniformDistribution(0.000000001, 0.5, log=True),
             "max_features": UniformDistribution(0.001, 1),
         }
 
@@ -1193,7 +1193,7 @@ class ExtraTreesRegressorContainer(RegressorContainer):
             "min_samples_split": IntUniformDistribution(2, 10),
             "min_samples_leaf": IntUniformDistribution(1, 5),
             "max_features": UniformDistribution(0.001, 1),
-            "min_impurity_decrease": UniformDistribution(0, 0.5, log=True),
+            "min_impurity_decrease": UniformDistribution(0.000000001, 0.5, log=True),
         }
 
         _leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
@@ -1285,7 +1285,7 @@ class GradientBoostingRegressorContainer(RegressorContainer):
             "min_samples_leaf": IntUniformDistribution(1, 5),
             "max_depth": IntUniformDistribution(1, 11),
             "max_features": UniformDistribution(0.001, 1),
-            "min_impurity_decrease": UniformDistribution(0, 0.5, log=True),
+            "min_impurity_decrease": UniformDistribution(0.000000001, 0.5, log=True),
         }
 
         _leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
