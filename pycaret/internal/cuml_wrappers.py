@@ -472,3 +472,92 @@ def get_random_forest_classifier():
             return f"RandomForestClassifier({args})"
 
     return RandomForestClassifier
+
+
+def get_random_forest_regressor():
+    from cuml.ensemble import RandomForestRegressor as cuMLRandomForestRegressor
+
+    class RandomForestRegressor(cuMLRandomForestRegressor):
+        """
+        This is a wrapper to convert data on the fly to float32.
+        When cuML updates to allow float64 for Random Forest, this
+        can be safely removed.
+
+        Warnings
+        --------
+        The conversion from float64 to float32 may result in loss
+        of precision. It should not be an issue in majority of cases.
+
+        See Also
+        --------
+        cuml.ensemble.RandomForestRegressor : description of the underlying class
+        """
+
+        def fit(self, X, y, convert_dtype=True):
+            X = X.astype(np.float32)
+            y = y.astype(np.float32)
+            return super().fit(X, y, convert_dtype=convert_dtype)
+
+        def predict(
+            self,
+            X,
+            predict_model="GPU",
+            algo="auto",
+            convert_dtype=True,
+            fil_sparse_format="auto",
+        ):
+            X = X.astype(np.float32)
+            return (
+                super()
+                .predict(
+                    X,
+                    predict_model=predict_model,
+                    algo=algo,
+                    convert_dtype=convert_dtype,
+                    fil_sparse_format=fil_sparse_format,
+                )
+                .astype(int)
+            )
+
+        def predict_proba(
+            self, X, algo="auto", convert_dtype=True, fil_sparse_format="auto",
+        ):
+            X = X.astype(np.float32)
+            return super().predict_proba(
+                X,
+                algo=algo,
+                convert_dtype=convert_dtype,
+                fil_sparse_format=fil_sparse_format,
+            )
+
+        def score(
+            self,
+            X,
+            y,
+            algo="auto",
+            predict_model="GPU",
+            convert_dtype=True,
+            fil_sparse_format="auto",
+        ):
+            X = X.astype(np.float32)
+            y = y.astype(np.float32)
+            return super().score(
+                X,
+                y,
+                algo=algo,
+                predict_model=predict_model,
+                convert_dtype=convert_dtype,
+                fil_sparse_format=fil_sparse_format,
+            )
+
+        def __repr__(self):
+            def quote_strs(x: str) -> str:
+                return x if not isinstance(x, str) else f"'{x}'"
+
+            args = ", ".join(
+                [f"{k}={quote_strs(v)}" for k, v in self.get_params().items()]
+                + [f"handle={self.handle}", f"output_type='{self.output_type}'"]
+            )
+            return f"RandomForestRegressor({args})"
+
+    return RandomForestRegressor
