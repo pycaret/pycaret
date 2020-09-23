@@ -3641,8 +3641,16 @@ def tune_model(
                 nc *= len(v)
         return nc
 
+    def get_ccp_alphas(estimator):
+        path = estimator.cost_complexity_pruning_path(
+            X_train, y_train, sample_weight=sample_weight
+        )
+        ccp_alphas, impurities = path.ccp_alphas, path.impurities
+        return list(ccp_alphas[:-1])
+
     if custom_grid is not None:
         param_grid = custom_grid
+
     elif search_library == "scikit-learn" or (
         search_library == "tune-sklearn"
         and (search_algorithm == "grid" or search_algorithm == "random")
@@ -3655,6 +3663,12 @@ def tune_model(
                 f"weight_{i}": np.arange(0.1, 1, 0.1)
                 for i, e in enumerate(base_estimator.estimators)
             }
+        if hasattr(base_estimator, "cost_complexity_pruning_path"):
+            # special case for Tree-based models
+            param_grid["ccp_alpha"] = get_ccp_alphas(base_estimator)
+            if "min_impurity_decrease" in param_grid:
+                param_grid.pop("min_impurity_decrease")
+
         if search_algorithm != "grid":
             tc = total_combintaions_in_grid(param_grid)
             if tc <= n_iter:
@@ -3672,6 +3686,13 @@ def tune_model(
                 f"weight_{i}": UniformDistribution(0.000000001, 1)
                 for i, e in enumerate(base_estimator.estimators)
             }
+        if hasattr(base_estimator, "cost_complexity_pruning_path"):
+            # special case for Tree-based models
+            param_grid["ccp_alpha"] = CategoricalDistribution(
+                get_ccp_alphas(base_estimator)
+            )
+            if "min_impurity_decrease" in param_grid:
+                param_grid.pop("min_impurity_decrease")
 
     if not param_grid:
         raise ValueError(
@@ -5720,9 +5741,7 @@ def plot_model(
             try:
                 try:
                     # catboost special case
-                    model_params = (
-                        actual_estimator.get_all_params()
-                    )
+                    model_params = actual_estimator.get_all_params()
                 except:
                     model_params = pipeline_with_model.get_params()
             except:
