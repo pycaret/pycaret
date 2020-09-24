@@ -1,6 +1,5 @@
 import numpy as np
 from sklearn.metrics._scorer import _ProbaScorer, _ThresholdScorer, _PredictScorer
-from sklearn.utils.multiclass import type_of_target
 
 
 class _ThresholdScorerWithErrorScore(_ThresholdScorer):
@@ -103,6 +102,51 @@ class _ProbaScorerWithErrorScore(_ProbaScorer):
         return f", needs_proba=True, error_score={self.error_score}"
 
 
+class _PredictScorerWithErrorScore(_PredictScorer):
+    def __init__(self, score_func, sign, kwargs, error_score=np.nan):
+        super().__init__(score_func=score_func, sign=sign, kwargs=kwargs)
+        self.error_score = error_score
+
+    def _score(self, method_caller, estimator, X, y_true, sample_weight=None):
+        """Evaluate predicted target values for X relative to y_true.
+
+        Parameters
+        ----------
+        method_caller : callable
+            Returns predictions given an estimator, method name, and other
+            arguments, potentially caching results.
+
+        estimator : object
+            Trained estimator to use for scoring. Must have a predict_proba
+            method; the output of that is used to compute the score.
+
+        X : array-like or sparse matrix
+            Test data that will be fed to estimator.predict.
+
+        y_true : array-like
+            Gold standard target values for X.
+
+        sample_weight : array-like, optional (default=None)
+            Sample weights.
+
+        Returns
+        -------
+        score : float
+            Score function applied to prediction of estimator on X.
+        """
+
+        try:
+            return super()._score(
+                method_caller=method_caller,
+                estimator=estimator,
+                X=X,
+                y_true=y_true,
+                sample_weight=sample_weight,
+            )
+        except:
+            return self.error_score
+
+
 def make_scorer_with_error_score(
     score_func,
     *,
@@ -191,5 +235,5 @@ def make_scorer_with_error_score(
     elif needs_threshold:
         cls = _ThresholdScorerWithErrorScore
     else:
-        cls = _PredictScorer
+        cls = _PredictScorerWithErrorScore
     return cls(score_func, sign, kwargs, error_score)

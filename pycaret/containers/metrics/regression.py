@@ -199,6 +199,9 @@ class RMSLEMetricContainer(RegressionMetricContainer):
             id="rmsle",
             name="RMSLE",
             score_func=root_mean_squared_log_error,
+            scorer=pycaret.internal.metrics.make_scorer_with_error_score(
+                root_mean_squared_log_error, error_score=0.0,
+            ),
             greater_is_better=False,
         )
 
