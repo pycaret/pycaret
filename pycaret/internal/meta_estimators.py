@@ -74,3 +74,18 @@ class PowerTransformedTargetRegressor(sklearn.compose.TransformedTargetRegressor
         r["power_transformer_standardize"] = self.power_transformer_standardize
         r["regressor"] = self.regressor
         return r
+
+
+def get_estimator_from_meta_estimator(estimator):
+    """
+    If ``estimator`` is a meta estimator, get estimator inside.
+    Otherwise return ``estimator``. Will try to return the fitted
+    estimator first.
+    """
+    try:
+        return estimator.regressor_
+    except:
+        try:
+            return estimator.regressor
+        except:
+            return estimator

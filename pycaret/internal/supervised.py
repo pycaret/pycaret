@@ -4,7 +4,10 @@
 # Release: PyCaret 2.2
 # Last modified : 26/08/2020
 
-from pycaret.internal.meta_estimators import PowerTransformedTargetRegressor
+from pycaret.internal.meta_estimators import (
+    PowerTransformedTargetRegressor,
+    get_estimator_from_meta_estimator,
+)
 from pycaret.internal.tune_sklearn_patches import (
     get_tune_sklearn_tunegridsearchcv,
     get_tune_sklearn_tunesearchcv,
@@ -5765,11 +5768,8 @@ def interpret_model(
             "shap library not found. pip install shap to use interpret_model function."
         )
 
-    # get regressor from meta estimator
-    try:
-        estimator = estimator.regressor_
-    except:
-        pass
+    # get estimator from meta estimator
+    estimator = get_estimator_from_meta_estimator(estimator)
 
     # allowed models
     model_id = _get_model_id(estimator)
@@ -7939,10 +7939,7 @@ def _mlflow_log_model(
             params = model
 
         # get regressor from meta estimator
-        try:
-            params = params.regressor
-        except:
-            pass
+        params = get_estimator_from_meta_estimator(params)
 
         try:
             try:
