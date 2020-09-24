@@ -100,7 +100,6 @@ class RegressorContainer(ModelContainer):
         tune_args: Dict[str, Any] = None,
         shap: Union[bool, str] = False,
         is_gpu_enabled: Optional[bool] = None,
-        is_boosting_supported: Optional[bool] = None,
     ) -> None:
 
         self.shap = shap
@@ -132,25 +131,8 @@ class RegressorContainer(ModelContainer):
         self.tune_distribution = tune_distribution
         self.tune_args = tune_args
 
-        try:
-            model_instance = class_def()
-
-            self.is_boosting_supported = bool(
-                hasattr(model_instance, "class_weights")
-                or hasattr(model_instance, "predict_proba")
-            )
-
-            self.is_soft_voting_supported = bool(
-                hasattr(model_instance, "predict_proba")
-            )
-
-            del model_instance
-        except:
-            self.is_boosting_supported = False
-            self.is_soft_voting_supported = False
-        finally:
-            if is_boosting_supported is not None:
-                self.is_boosting_supported = is_boosting_supported
+        self.is_boosting_supported = True
+        self.is_soft_voting_supported = True
 
         if is_gpu_enabled is not None:
             self.is_gpu_enabled = is_gpu_enabled
@@ -191,7 +173,6 @@ class RegressorContainer(ModelContainer):
                 ("Tune Args", self.tune_args),
                 ("SHAP", self.shap),
                 ("GPU Enabled", self.is_gpu_enabled),
-                ("Boosting Supported", self.is_boosting_supported),
             ]
 
         return dict(d)
@@ -730,7 +711,7 @@ class PassiveAggressiveRegressorContainer(RegressorContainer):
             "loss": ["epsilon_insensitive", "squared_epsilon_insensitive"],
             "epsilon": [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9],
             "shuffle": [True, False],
-            "class_weight": ["balanced", {}]
+            "class_weight": ["balanced", {}],
         }
         tune_distributions = {
             "C": UniformDistribution(0, 10),
@@ -1124,7 +1105,6 @@ class RandomForestRegressorContainer(RegressorContainer):
             tune_grid["split_criterion"] = [2, 3]
         else:
             tune_grid["criterion"] = ["mse", "mae"]
-            tune_grid["class_weight"] = ["balanced", "balanced_subsample", {}]
             tune_grid["min_samples_split"] = [2, 5, 7, 9, 10]
             tune_grid["min_samples_leaf"] = [2, 3, 4, 5, 6]
             tune_distributions["min_samples_split"] = IntUniformDistribution(2, 10)
@@ -1183,7 +1163,6 @@ class ExtraTreesRegressorContainer(RegressorContainer):
             "bootstrap": [True, False],
             "min_samples_split": [2, 5, 7, 9, 10],
             "min_samples_leaf": [2, 3, 4, 5, 6],
-            "class_weight": ["balanced", "balanced_subsample", {}]
         }
         tune_distributions = {
             "n_estimators": IntUniformDistribution(10, 200),
