@@ -131,6 +131,8 @@ def get_ridge_classifier():
             self : object
                 Estimator instance.
             """
+            if "n_jobs" in params:
+                params.pop("n_jobs")
             super().set_params(**params)
             estimator_params = self.estimator.get_params()
             self.estimator.set_params(
