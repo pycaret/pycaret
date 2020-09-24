@@ -1466,7 +1466,6 @@ class CatBoostRegressorContainer(RegressorContainer):
             "l2_leaf_reg": [3, 1, 5, 10, 20, 50, 100, 200],
             "reg_alpha": np.arange(0, 10, 0.01),
             "reg_lambda": np.arange(0, 10, 0.01),
-            "scale_pos_weight": np.arange(0, 50, 0.1),
         }
         tune_distributions = {
             "depth": IntUniformDistribution(1, 11),
@@ -1475,7 +1474,6 @@ class CatBoostRegressorContainer(RegressorContainer):
             "l2_leaf_reg": IntUniformDistribution(1, 200, log=True),
             "reg_alpha": UniformDistribution(0, 10),
             "reg_lambda": UniformDistribution(0, 10),
-            "scale_pos_weight": UniformDistribution(1, 50),
         }
 
         if use_gpu:
