@@ -5765,6 +5765,12 @@ def interpret_model(
             "shap library not found. pip install shap to use interpret_model function."
         )
 
+    # get regressor from meta estimator
+    try:
+        estimator = estimator.regressor_
+    except:
+        pass
+
     # allowed models
     model_id = _get_model_id(estimator)
 
@@ -5773,7 +5779,7 @@ def interpret_model(
 
     if model_id not in shap_models_ids:
         raise TypeError(
-            f"This function only supports tree based models for binary classification: {', '.join(shap_models['Name'].to_list())}."
+            f"This function only supports tree based models for binary classification: {', '.join(shap_models_ids)}."
         )
 
     # plot type
@@ -7932,6 +7938,12 @@ def _mlflow_log_model(
         else:
             params = model
 
+        # get regressor from meta estimator
+        try:
+            params = params.regressor
+        except:
+            pass
+
         try:
             try:
                 params = params.get_all_params()
@@ -7940,9 +7952,6 @@ def _mlflow_log_model(
         except:
             logger.warning("Couldn't get params for model")
             params = {}
-
-        if "regressor" in params:
-            params.pop("regressor")
 
         for i in list(params):
             v = params.get(i)
