@@ -13,7 +13,7 @@ import pycaret.internal.cuml_wrappers
 from typing import Union, Dict, Any, Optional
 from pycaret.containers.models.base_model import (
     ModelContainer,
-    _leftover_parameters_to_categorical_distributions,
+    leftover_parameters_to_categorical_distributions,
 )
 from pycaret.internal.utils import param_grid_to_lists, get_logger, get_class_name
 from pycaret.internal.distributions import *
@@ -246,7 +246,7 @@ class LogisticRegressionClassifierContainer(ClassifierContainer):
             tune_grid["class_weight"] = ["balanced", {}]
 
         tune_distributions["C"] = UniformDistribution(0, 10)
-        _leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 
         super().__init__(
             id="lr",
@@ -297,7 +297,7 @@ class KNeighborsClassifierContainer(ClassifierContainer):
             tune_grid["weights"] += ["distance"]
 
         tune_distributions["n_neighbors"] = IntUniformDistribution(1, 51)
-        _leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 
         super().__init__(
             id="knn",
@@ -407,7 +407,7 @@ class DecisionTreeClassifierContainer(ClassifierContainer):
             "min_impurity_decrease": UniformDistribution(0.000000001, 0.5, log=True),
         }
 
-        _leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 
         super().__init__(
             id="dt",
@@ -477,7 +477,7 @@ class SGDClassifierContainer(ClassifierContainer):
             args["random_state"] = globals_dict["seed"]
             args["n_jobs"] = globals_dict["n_jobs_param"]
 
-        _leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 
         super().__init__(
             id="svm",
@@ -531,7 +531,7 @@ class SVCClassifierContainer(ClassifierContainer):
             "C": UniformDistribution(0, 50),
         }
 
-        _leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 
         super().__init__(
             id="rbfsvm",
@@ -599,7 +599,7 @@ class MLPClassifierContainer(ClassifierContainer):
             "hidden_layer_size_2": IntUniformDistribution(0, 100),
         }
 
-        _leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 
         super().__init__(
             id="mlp",
@@ -654,7 +654,7 @@ class RidgeClassifierContainer(ClassifierContainer):
         tune_grid["fit_intercept"] = [True, False]
         tune_distributions["alpha"] = UniformDistribution(0.0000000001, 0.9999999999)
 
-        _leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 
         super().__init__(
             id="ridge",
@@ -747,7 +747,7 @@ class RandomForestClassifierContainer(ClassifierContainer):
             tune_distributions["min_samples_split"] = IntUniformDistribution(2, 10)
             tune_distributions["min_samples_leaf"] = IntUniformDistribution(2, 6)
 
-        _leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 
         super().__init__(
             id="rf",
@@ -775,7 +775,7 @@ class QuadraticDiscriminantAnalysisContainer(ClassifierContainer):
         tune_grid = {"reg_param": np.arange(0, 1, 0.01)}
         tune_distributions = {"reg_param": UniformDistribution(0, 1)}
 
-        _leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 
         super().__init__(
             id="qda",
@@ -807,7 +807,7 @@ class AdaBoostClassifierContainer(ClassifierContainer):
             "learning_rate": UniformDistribution(0, 0.5, log=False),
         }
 
-        _leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 
         super().__init__(
             id="ada",
@@ -865,7 +865,7 @@ class GradientBoostingClassifierContainer(ClassifierContainer):
             "min_impurity_decrease": UniformDistribution(0.000000001, 0.5, log=True),
         }
 
-        _leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 
         super().__init__(
             id="gbc",
@@ -914,7 +914,7 @@ class LinearDiscriminantAnalysisContainer(ClassifierContainer):
             "shrinkage": UniformDistribution(0.0001, 1, log=True),
         }
 
-        _leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 
         super().__init__(
             id="lda",
@@ -975,7 +975,7 @@ class ExtraTreesClassifierContainer(ClassifierContainer):
             "min_impurity_decrease": UniformDistribution(0.000000001, 0.5, log=True),
         }
 
-        _leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 
         super().__init__(
             id="et",
@@ -1026,7 +1026,7 @@ class XGBClassifierContainer(ClassifierContainer):
             "scale_pos_weight": UniformDistribution(1, 50),
         }
 
-        _leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 
         super().__init__(
             id="xgboost",
@@ -1077,7 +1077,7 @@ class LGBMClassifierContainer(ClassifierContainer):
             "feature_fraction": UniformDistribution(0.01, 1),
         }
 
-        _leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 
         is_gpu_enabled = False
         if globals_dict["gpu_param"]:
@@ -1165,7 +1165,7 @@ class CatBoostClassifierContainer(ClassifierContainer):
             tune_grid["depth"] = list(range(1, 9))
             tune_distributions["depth"] = (IntUniformDistribution(1, 8),)
 
-        _leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 
         super().__init__(
             id="catboost",
@@ -1200,7 +1200,7 @@ class BaggingClassifierContainer(ClassifierContainer):
             "n_estimators": IntUniformDistribution(10, 1000),
         }
 
-        _leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 
         super().__init__(
             id="Bagging",
@@ -1227,7 +1227,7 @@ class StackingClassifierContainer(ClassifierContainer):
         tune_grid = {}
         tune_distributions = {}
 
-        _leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 
         super().__init__(
             id="Stacking",
@@ -1257,7 +1257,7 @@ class VotingClassifierContainer(ClassifierContainer):
         # VotingClassifier is a special case. Its weights can be tuned, but we do not know how many of them will be there
         # before it is initiated. Therefore, code to handle it will be added directly to tune_model().
 
-        _leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 
         super().__init__(
             id="Voting",
@@ -1284,7 +1284,7 @@ class CalibratedClassifierCVContainer(ClassifierContainer):
         tune_grid = {}
         tune_distributions = {}
 
-        _leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 
         super().__init__(
             id="CalibratedCV",

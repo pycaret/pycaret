@@ -115,7 +115,6 @@ def setup(
     silent: bool = False,
     verbose: bool = True,
     profile: bool = False,
-    display: Optional[Display] = None,
 ):
 
     """
@@ -450,7 +449,7 @@ def setup(
         * 'timeseries' for TimeSeriesSplit CV,
         * a custom CV generator object compatible with scikit-learn.
 
-    fold: integer, default = 10
+    fold: int, default = 10
         Number of folds to be used in cross validation. Must be at least 2.
         Ignored if fold_strategy is an object.
 
@@ -480,7 +479,7 @@ def setup(
         - CatBoost
         - XGBoost
         - LightGBM - requires https://lightgbm.readthedocs.io/en/latest/GPU-Tutorial.html
-        - Logistic Regression, Ridge, SVM, SVC - requires cuML >= 0.15 to be installed.
+        - Logistic Regression, Ridge, Random Forest, KNN, SVM, SVC - requires cuML >= 0.15 to be installed.
           https://github.com/rapidsai/cuml
 
     custom_pipeline: transformer or list of transformers or tuple
@@ -555,7 +554,7 @@ def setup(
         "confusion_matrix": "Confusion Matrix",
         "threshold": "Threshold",
         "pr": "Precision Recall",
-        "error": "Error",
+        "error": "Prediction Error",
         "class_report": "Class Report",
         "rfe": "Feature Selection",
         "learning": "Learning Curve",
@@ -569,6 +568,9 @@ def setup(
         "lift": "Lift Chart",
         "gain": "Gain Chart",
     }
+
+    if log_plots == True:
+        log_plots = ["auc", "confusion_matrix", "feature"]
 
     return pycaret.internal.supervised.setup(
         ml_usecase="classification",
@@ -644,7 +646,6 @@ def setup(
         silent=silent,
         verbose=verbose,
         profile=profile,
-        display=display,
     )
 
 
@@ -664,7 +665,6 @@ def compare_models(
     fit_kwargs: Optional[dict] = None,
     groups: Optional[Union[str, Any]] = None,
     verbose: bool = True,
-    display: Optional[Display] = None,
 ) -> Union[Any, List[Any]]:
 
     """
@@ -673,6 +673,9 @@ def compare_models(
     AUC, Recall, Precision, F1, Kappa and MCC (averaged across folds).
     
     This function returns all of the models compared, sorted by the value of the selected metric.
+
+    To select top N models, use n_select parameter that is set to 1 by default.
+    Where n_select parameter > 1, it will return a list of trained model objects.
 
     When turbo is set to True ('rbfsvm', 'gpc' and 'mlp') are excluded due to longer
     training time. By default turbo param is set to True.
@@ -716,12 +719,12 @@ def compare_models(
         passed as a list of strings in include param. The list can also include estimator
         objects to be compared.
 
-    fold: integer or scikit-learn compatible CV generator, default = None
+    fold: int or scikit-learn compatible CV generator, default = None
         Controls cross-validation. If None, will use the CV generator defined in setup().
-        If integer, will use KFold CV with that many folds.
+        If integer, will use StratifiedKFold CV with that many folds.
         When cross_validation is False, this parameter is ignored.
 
-    round: integer, default = 4
+    round: int, default = 4
         Number of decimal places the metrics in the score grid will be rounded to.
   
     cross_validation: bool, default = True
@@ -769,8 +772,8 @@ def compare_models(
         Kappa and MCC. Mean and standard deviation of the scores across 
         the folds are also returned.
 
-    list
-        List of fitted model objects that were compared.
+    list or model
+        List or one fitted model objects that were compared.
 
     Warnings
     --------
@@ -801,7 +804,6 @@ def compare_models(
         fit_kwargs=fit_kwargs,
         groups=groups,
         verbose=verbose,
-        display=display,
     )
 
 
@@ -813,7 +815,6 @@ def create_model(
     fit_kwargs: Optional[dict] = None,
     groups: Optional[Union[str, Any]] = None,
     verbose: bool = True,
-    display: Optional[Display] = None,  # added in pycaret==2.2.0
     **kwargs,
 ) -> Any:
     """  
@@ -861,12 +862,12 @@ def create_model(
         * 'lightgbm' - Light Gradient Boosting              
         * 'catboost' - CatBoost Classifier             
 
-    fold: integer or scikit-learn compatible CV generator, default = None
+    fold: int or scikit-learn compatible CV generator, default = None
         Controls cross-validation. If None, will use the CV generator defined in setup().
-        If integer, will use KFold CV with that many folds.
+        If integer, will use StratifiedKFold CV with that many folds.
         When cross_validation is False, this parameter is ignored.
 
-    round: integer, default = 4
+    round: int, default = 4
         Number of decimal places the metrics in the score grid will be rounded to. 
 
     cross_validation: bool, default = True
@@ -914,6 +915,7 @@ def create_model(
     - If cross_validation param is set to False, model will not be logged with MLFlow.
 
     """
+
     return pycaret.internal.supervised.create_model(
         estimator=estimator,
         fold=fold,
@@ -922,7 +924,6 @@ def create_model(
         fit_kwargs=fit_kwargs,
         groups=groups,
         verbose=verbose,
-        display=display,
         **kwargs,
     )
 
@@ -943,7 +944,6 @@ def tune_model(
     fit_kwargs: Optional[dict] = None,
     groups: Optional[Union[str, Any]] = None,
     verbose: bool = True,
-    display: Optional[Display] = None,
     **kwargs,
 ) -> Any:
 
@@ -969,15 +969,15 @@ def tune_model(
     ----------
     estimator : object, default = None
 
-    fold: integer or scikit-learn compatible CV generator, default = None
+    fold: int or scikit-learn compatible CV generator, default = None
         Controls cross-validation. If None, will use the CV generator defined in setup().
-        If integer, will use KFold CV with that many folds.
+        If integer, will use StratifiedKFold CV with that many folds.
         When cross_validation is False, this parameter is ignored.
 
-    round: integer, default = 4
+    round: int, default = 4
         Number of decimal places the metrics in the score grid will be rounded to. 
 
-    n_iter: integer, default = 10
+    n_iter: int, default = 10
         Number of iterations within the Random Grid Search. For every iteration, 
         the model randomly selects one value from the pre-defined grid of 
         hyperparameters.
@@ -1103,7 +1103,6 @@ def tune_model(
     - Using 'Grid' search algorithm with default parameter grids may result in very
       long computation.
 
-
     """
 
     return pycaret.internal.supervised.tune_model(
@@ -1122,7 +1121,6 @@ def tune_model(
         fit_kwargs=fit_kwargs,
         groups=groups,
         verbose=verbose,
-        display=display,
         **kwargs,
     )
 
@@ -1138,7 +1136,6 @@ def ensemble_model(
     fit_kwargs: Optional[dict] = None,
     groups: Optional[Union[str, Any]] = None,
     verbose: bool = True,
-    display: Optional[Display] = None,  # added in pycaret==2.2.0
 ) -> Any:
     """
     This function ensembles the trained base estimator using the method defined in 
@@ -1172,16 +1169,16 @@ def ensemble_model(
         incorrectly classified instances are adjusted such that subsequent 
         classifiers focus more on difficult cases.
     
-    fold: integer or scikit-learn compatible CV generator, default = None
+    fold: int or scikit-learn compatible CV generator, default = None
         Controls cross-validation. If None, will use the CV generator defined in setup().
-        If integer, will use KFold CV with that many folds.
+        If integer, will use StratifiedKFold CV with that many folds.
         When cross_validation is False, this parameter is ignored.
     
-    n_estimators: integer, default = 10
+    n_estimators: int, default = 10
         The number of base estimators in the ensemble.
         In case of perfect fit, the learning procedure is stopped early.
 
-    round: integer, default = 4
+    round: int, default = 4
         Number of decimal places the metrics in the score grid will be rounded to.
 
     choose_better: bool, default = False
@@ -1238,7 +1235,6 @@ def ensemble_model(
         fit_kwargs=fit_kwargs,
         groups=groups,
         verbose=verbose,
-        display=display,
     )
 
 
@@ -1253,7 +1249,6 @@ def blend_models(
     fit_kwargs: Optional[dict] = None,
     groups: Optional[Union[str, Any]] = None,
     verbose: bool = True,
-    display: Optional[Display] = None,  # added in pycaret==2.2.0
 ) -> Any:
 
     """
@@ -1279,12 +1274,12 @@ def blend_models(
     ----------
     estimator_list : list of objects
 
-    fold: integer or scikit-learn compatible CV generator, default = None
+    fold: int or scikit-learn compatible CV generator, default = None
         Controls cross-validation. If None, will use the CV generator defined in setup().
-        If integer, will use KFold CV with that many folds.
+        If integer, will use StratifiedKFold CV with that many folds.
         When cross_validation is False, this parameter is ignored.
 
-    round: integer, default = 4
+    round: int, default = 4
         Number of decimal places the metrics in the score grid will be rounded to.
 
     choose_better: bool, default = False
@@ -1337,16 +1332,7 @@ def blend_models(
     - When passing estimator_list with method set to 'soft'. All the models in the
       estimator_list must support predict_proba function. 'svm' and 'ridge' doesnt
       support the predict_proba and hence an exception will be raised.
-      
-    - When estimator_list is set to 'All' and method is forced to 'soft', estimators
-      that doesnt support the predict_proba function will be dropped from the estimator
-      list.
-          
-    - If target variable is multiclass (more than 2 classes), AUC will be returned as
-      zero (0.0).
-        
-       
-  
+
     """
 
     return pycaret.internal.supervised.blend_models(
@@ -1360,7 +1346,6 @@ def blend_models(
         fit_kwargs=fit_kwargs,
         groups=groups,
         verbose=verbose,
-        display=display,
     )
 
 
@@ -1376,7 +1361,6 @@ def stack_models(
     fit_kwargs: Optional[dict] = None,
     groups: Optional[Union[str, Any]] = None,
     verbose: bool = True,
-    display: Optional[Display] = None,
 ) -> Any:
 
     """
@@ -1414,15 +1398,15 @@ def stack_models(
     meta_model : object, default = None
         If set to None, Logistic Regression is used as a meta model.
 
-    fold: integer or scikit-learn compatible CV generator, default = None
+    fold: int or scikit-learn compatible CV generator, default = None
         Controls cross-validation. If None, will use the CV generator defined in setup().
-        If integer, will use KFold CV with that many folds.
+        If integer, will use StratifiedKFold CV with that many folds.
         When cross_validation is False, this parameter is ignored.
 
-    round: integer, default = 4
+    round: int, default = 4
         Number of decimal places the metrics in the score grid will be rounded to.
 
-    method: string, default = 'auto'
+    method: str, default = 'auto'
         - if ‘auto’, it will try to invoke, for each estimator, 'predict_proba', 
         'decision_function' or 'predict' in that order.
         - otherwise, one of 'predict_proba', 'decision_function' or 'predict'. 
@@ -1487,7 +1471,6 @@ def stack_models(
         fit_kwargs=fit_kwargs,
         groups=groups,
         verbose=verbose,
-        display=display,
     )
 
 
@@ -1500,16 +1483,12 @@ def plot_model(
     fit_kwargs: Optional[dict] = None,
     groups: Optional[Union[str, Any]] = None,
     verbose: bool = True,
-    system: bool = True,
-    display: Optional[Display] = None,  # added in pycaret==2.2.0
 ) -> str:
 
     """
     This function takes a trained model object and returns a plot based on the
     test / hold-out set. The process may require the model to be re-trained in
     certain cases. See list of plots supported below. 
-    
-    Model must be created using create_model() or tune_model().
 
     Example
     -------
@@ -1526,23 +1505,23 @@ def plot_model(
     estimator : object, default = none
         A trained model object should be passed as an estimator. 
 
-    plot : str, default = auc
+    plot : str, default = 'auc'
         Enter abbreviation of type of plot. The current list of plots supported are (Plot - Name):
 
-        * 'auc' - Area Under the Curve                 
-        * 'threshold' - Discrimination Threshold           
-        * 'pr' - Precision Recall Curve                  
-        * 'confusion_matrix' - Confusion Matrix    
-        * 'error' - Class Prediction Error                
-        * 'class_report' - Classification Report        
-        * 'boundary' - Decision Boundary            
-        * 'rfe' - Recursive Feature Selection                 
-        * 'learning' - Learning Curve             
-        * 'manifold' - Manifold Learning            
-        * 'calibration' - Calibration Curve         
-        * 'vc' - Validation Curve                  
-        * 'dimension' - Dimension Learning           
-        * 'feature' - Feature Importance              
+        * 'auc' - Area Under the Curve
+        * 'threshold' - Discrimination Threshold
+        * 'pr' - Precision Recall Curve
+        * 'confusion_matrix' - Confusion Matrix
+        * 'error' - Class Prediction Error
+        * 'class_report' - Classification Report
+        * 'boundary' - Decision Boundary
+        * 'rfe' - Recursive Feature Selection
+        * 'learning' - Learning Curve
+        * 'manifold' - Manifold Learning
+        * 'calibration' - Calibration Curve
+        * 'vc' - Validation Curve
+        * 'dimension' - Dimension Learning
+        * 'feature' - Feature Importance
         * 'feature_all' - Feature Importance (All)
         * 'parameter' - Model Hyperparameter
         * 'lift' - Lift Curve
@@ -1554,9 +1533,9 @@ def plot_model(
     save: bool, default = False
         When set to True, Plot is saved as a 'png' file in current working directory.
 
-    fold: integer or scikit-learn compatible CV generator, default = None
+    fold: int or scikit-learn compatible CV generator, default = None
         Controls cross-validation used in certain plots. If None, will use the CV generator
-        defined in setup(). If integer, will use KFold CV with that many folds.
+        defined in setup(). If integer, will use StratifiedKFold CV with that many folds.
         When cross_validation is False, this parameter is ignored.
 
     fit_kwargs: dict, default = {} (empty dict)
@@ -1569,10 +1548,7 @@ def plot_model(
         If None, will use the value set in fold_groups param in setup().
 
     verbose: bool, default = True
-        Progress bar not shown when verbose set to False. 
-
-    system: bool, default = True
-        Must remain True all times. Only to be changed by internal functions.
+        Progress bar not shown when verbose set to False.
 
     Returns
     -------
@@ -1591,7 +1567,6 @@ def plot_model(
               
     -   'calibration', 'threshold', 'manifold' and 'rfe' plots are not available for
          multiclass problems.
-                
 
     """
 
@@ -1604,8 +1579,7 @@ def plot_model(
         fit_kwargs=fit_kwargs,
         groups=groups,
         verbose=verbose,
-        system=system,
-        display=display,
+        system=True,
     )
 
 
@@ -1636,9 +1610,9 @@ def evaluate_model(
     estimator : object, default = none
         A trained model object should be passed as an estimator. 
 
-    fold: integer or scikit-learn compatible CV generator, default = None
+    fold: int or scikit-learn compatible CV generator, default = None
         Controls cross-validation. If None, will use the CV generator defined in setup().
-        If integer, will use KFold CV with that many folds.
+        If integer, will use StratifiedKFold CV with that many folds.
         When cross_validation is False, this parameter is ignored.
 
     fit_kwargs: dict, default = {} (empty dict)
@@ -1703,7 +1677,7 @@ def interpret_model(
         set to None which means the first column of the dataset will be used as a 
         variable. A feature parameter must be passed to change this.
 
-    observation: integer, default = None
+    observation: int, default = None
         This parameter only comes into effect when plot is set to 'reason'. If no 
         observation number is provided, it will return an analysis of all observations 
         with the option to select the feature on x and y axes through drop down 
@@ -1742,7 +1716,6 @@ def calibrate_model(
     fit_kwargs: Optional[dict] = None,
     groups: Optional[Union[str, Any]] = None,
     verbose: bool = True,
-    display: Optional[Display] = None,  # added in pycaret==2.2.0
 ) -> Any:
 
     """
@@ -1775,12 +1748,12 @@ def calibrate_model(
         method or 'isotonic' which is a non-parametric approach. It is not advised to use
         isotonic calibration with too few calibration samples
 
-    fold: integer or scikit-learn compatible CV generator, default = None
+    fold: int or scikit-learn compatible CV generator, default = None
         Controls cross-validation. If None, will use the CV generator defined in setup().
-        If integer, will use KFold CV with that many folds.
+        If integer, will use StratifiedKFold CV with that many folds.
         When cross_validation is False, this parameter is ignored.
 
-    round: integer, default = 4
+    round: int, default = 4
         Number of decimal places the metrics in the score grid will be rounded to. 
 
     fit_kwargs: dict, default = {} (empty dict)
@@ -1824,7 +1797,6 @@ def calibrate_model(
         fit_kwargs=fit_kwargs,
         groups=groups,
         verbose=verbose,
-        display=display,
     )
 
 
@@ -1900,7 +1872,6 @@ def predict_model(
     encoded_labels: bool = False,  # added in pycaret==2.1.0
     round: int = 4,  # added in pycaret==2.2.0
     verbose: bool = True,
-    display: Optional[Display] = None,  # added in pycaret==2.2.0
 ) -> pd.DataFrame:
 
     """
@@ -1932,10 +1903,10 @@ def predict_model(
         the probability threshold for all binary classifiers is 0.5 (50%). This can be 
         changed using probability_threshold param.
 
-    encoded_labels: Boolean, default = False
+    encoded_labels: bool, default = False
         If True, will return labels encoded as an integer.
 
-    round: integer, default = 4
+    round: int, default = 4
         Number of decimal places the metrics in the score grid will be rounded to. 
 
     verbose: bool, default = True
@@ -1967,7 +1938,6 @@ def predict_model(
         encoded_labels=encoded_labels,
         round=round,
         verbose=verbose,
-        display=display,
     )
 
 
@@ -1975,7 +1945,6 @@ def finalize_model(
     estimator,
     fit_kwargs: Optional[dict] = None,
     groups: Optional[Union[str, Any]] = None,
-    display: Optional[Display] = None,
 ) -> Any:  # added in pycaret==2.2.0
 
     """
@@ -2024,7 +1993,7 @@ def finalize_model(
     """
 
     return pycaret.internal.supervised.finalize_model(
-        estimator=estimator, fit_kwargs=fit_kwargs, groups=groups, display=display,
+        estimator=estimator, fit_kwargs=fit_kwargs, groups=groups,
     )
 
 
@@ -2148,7 +2117,7 @@ def create_webservice(model, model_endopoint, api_key=True, pydantic_payload=Non
     model : object
         A trained model object should be passed as an estimator.
 
-    model_endopoint : string
+    model_endopoint : str
         Name of model to be passed as a string.
 
     api_key: bool, default = True

@@ -10,19 +10,14 @@
 
 import logging
 from typing import Union, Dict, Any, Optional
-from pycaret.containers.models.base_model import ModelContainer
+from pycaret.containers.models.base_model import (
+    ModelContainer,
+    leftover_parameters_to_categorical_distributions,
+)
 from pycaret.internal.utils import param_grid_to_lists, get_logger, get_class_name
 from pycaret.internal.distributions import *
 import pycaret.containers.base_container
 import numpy as np
-
-
-def _leftover_parameters_to_categorical_distributions(
-    tune_grid: dict, tune_distributions: dict
-) -> None:
-    for k, v in tune_grid.items():
-        if not k in tune_distributions:
-            tune_distributions[k] = CategoricalDistribution(v)
 
 
 class RegressorContainer(ModelContainer):
@@ -232,7 +227,7 @@ class LinearRegressionContainer(RegressorContainer):
         if not gpu_imported:
             args["n_jobs"] = globals_dict["n_jobs_param"]
 
-        _leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 
         super().__init__(
             id="lr",
@@ -281,7 +276,7 @@ class LassoRegressionContainer(RegressorContainer):
         if not gpu_imported:
             args["random_state"] = globals_dict["seed"]
 
-        _leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 
         super().__init__(
             id="lasso",
@@ -330,7 +325,7 @@ class RidgeRegressionContainer(RegressorContainer):
         if not gpu_imported:
             args["random_state"] = globals_dict["seed"]
 
-        _leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 
         super().__init__(
             id="ridge",
@@ -383,7 +378,7 @@ class ElasticNetContainer(RegressorContainer):
         if not gpu_imported:
             args["random_state"] = globals_dict["seed"]
 
-        _leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 
         super().__init__(
             id="en",
@@ -428,7 +423,7 @@ class LarsContainer(RegressorContainer):
             "eps": UniformDistribution(0.00001, 0.1),
         }
 
-        _leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 
         super().__init__(
             id="lar",
@@ -474,7 +469,7 @@ class LassoLarsContainer(RegressorContainer):
             "alpha": UniformDistribution(0.0000000001, 0.9999999999, log=True),
         }
 
-        _leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 
         super().__init__(
             id="llar",
@@ -508,7 +503,7 @@ class OrthogonalMatchingPursuitContainer(RegressorContainer):
             )
         }
 
-        _leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 
         super().__init__(
             id="omp",
@@ -599,7 +594,7 @@ class BayesianRidgeContainer(RegressorContainer):
             "lambda_2": UniformDistribution(0.0000000001, 0.9999999999, log=True),
         }
 
-        _leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 
         super().__init__(
             id="br",
@@ -705,7 +700,7 @@ class AutomaticRelevanceDeterminationContainer(RegressorContainer):
             "threshold_lambda": IntUniformDistribution(1000, 100000),
         }
 
-        _leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 
         super().__init__(
             id="ard",
@@ -742,7 +737,7 @@ class PassiveAggressiveRegressorContainer(RegressorContainer):
             "epsilon": UniformDistribution(0.0000000001, 0.9999999999),
         }
 
-        _leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 
         super().__init__(
             id="par",
@@ -781,7 +776,7 @@ class RANSACRegressorContainer(RegressorContainer):
             "stop_probability": UniformDistribution(0, 1),
         }
 
-        _leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 
         super().__init__(
             id="ransac",
@@ -823,7 +818,7 @@ class TheilSenRegressorContainer(RegressorContainer):
         }
         tune_distributions = {"max_subpopulation": IntUniformDistribution(5000, 50000)}
 
-        _leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 
         super().__init__(
             id="tr",
@@ -857,7 +852,7 @@ class HuberRegressorContainer(RegressorContainer):
             "alpha": UniformDistribution(0.0000000001, 0.9999999999),
         }
 
-        _leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 
         super().__init__(
             id="huber",
@@ -885,7 +880,7 @@ class KernelRidgeContainer(RegressorContainer):
             "alpha": UniformDistribution(0.0000000001, 0.9999999999),
         }
 
-        _leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 
         super().__init__(
             id="kr",
@@ -935,7 +930,7 @@ class SVRContainer(RegressorContainer):
         if not gpu_imported:
             tune_grid["shrinking"] = [True, False]
 
-        _leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 
         super().__init__(
             id="svm",
@@ -989,7 +984,7 @@ class KNeighborsRegressorContainer(RegressorContainer):
 
         tune_distributions["n_neighbors"] = IntUniformDistribution(1, 51)
 
-        _leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 
         super().__init__(
             id="knn",
@@ -1045,7 +1040,7 @@ class DecisionTreeRegressorContainer(RegressorContainer):
             "min_impurity_decrease": UniformDistribution(0.000000001, 0.5, log=True),
         }
 
-        _leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 
         super().__init__(
             id="dt",
@@ -1055,7 +1050,7 @@ class DecisionTreeRegressorContainer(RegressorContainer):
             tune_grid=tune_grid,
             tune_distribution=tune_distributions,
             tune_args=tune_args,
-            shap="type1",
+            shap="type2",
         )
 
 
@@ -1135,7 +1130,7 @@ class RandomForestRegressorContainer(RegressorContainer):
             tune_distributions["min_samples_split"] = IntUniformDistribution(2, 10)
             tune_distributions["min_samples_leaf"] = IntUniformDistribution(2, 6)
 
-        _leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 
         super().__init__(
             id="rf",
@@ -1146,7 +1141,7 @@ class RandomForestRegressorContainer(RegressorContainer):
             tune_distribution=tune_distributions,
             tune_args=tune_args,
             is_gpu_enabled=gpu_imported,
-            shap="type1",
+            shap="type2",
         )
 
 
@@ -1199,7 +1194,7 @@ class ExtraTreesRegressorContainer(RegressorContainer):
             "min_impurity_decrease": UniformDistribution(0.000000001, 0.5, log=True),
         }
 
-        _leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 
         super().__init__(
             id="et",
@@ -1209,7 +1204,7 @@ class ExtraTreesRegressorContainer(RegressorContainer):
             tune_grid=tune_grid,
             tune_distribution=tune_distributions,
             tune_args=tune_args,
-            shap="type1",
+            shap="type2",
         )
 
 
@@ -1231,7 +1226,7 @@ class AdaBoostRegressorContainer(RegressorContainer):
             "n_estimators": IntUniformDistribution(10, 1000),
         }
 
-        _leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 
         super().__init__(
             id="ada",
@@ -1291,7 +1286,7 @@ class GradientBoostingRegressorContainer(RegressorContainer):
             "min_impurity_decrease": UniformDistribution(0.000000001, 0.5, log=True),
         }
 
-        _leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 
         super().__init__(
             id="gbr",
@@ -1329,7 +1324,7 @@ class MLPRegressorContainer(RegressorContainer):
             "hidden_layer_size_2": IntUniformDistribution(0, 100),
         }
 
-        _leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 
         super().__init__(
             id="mlp",
@@ -1382,7 +1377,7 @@ class XGBRegressorContainer(RegressorContainer):
             "scale_pos_weight": UniformDistribution(1, 50),
         }
 
-        _leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 
         super().__init__(
             id="xgboost",
@@ -1433,7 +1428,7 @@ class LGBMRegressorContainer(RegressorContainer):
             "feature_fraction": UniformDistribution(0.01, 1),
         }
 
-        _leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 
         is_gpu_enabled = False
         if globals_dict["gpu_param"]:
@@ -1459,7 +1454,7 @@ class LGBMRegressorContainer(RegressorContainer):
             tune_grid=tune_grid,
             tune_distribution=tune_distributions,
             tune_args=tune_args,
-            shap="type1",
+            shap="type2",
             is_gpu_enabled=is_gpu_enabled,
         )
 
@@ -1508,7 +1503,7 @@ class CatBoostRegressorContainer(RegressorContainer):
             tune_grid["depth"] = list(range(1, 9))
             tune_distributions["depth"] = (IntUniformDistribution(1, 8),)
 
-        _leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 
         super().__init__(
             id="catboost",
@@ -1543,7 +1538,7 @@ class BaggingRegressorContainer(RegressorContainer):
             "n_estimators": IntUniformDistribution(10, 1000),
         }
 
-        _leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 
         super().__init__(
             id="Bagging",
@@ -1570,7 +1565,7 @@ class StackingRegressorContainer(RegressorContainer):
         tune_grid = {}
         tune_distributions = {}
 
-        _leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 
         super().__init__(
             id="Stacking",
@@ -1600,7 +1595,7 @@ class VotingRegressorContainer(RegressorContainer):
         # VotingRegressor is a special case. Its weights can be tuned, but we do not know how many of them will be there
         # before it is initiated. Therefore, code to handle it will be added directly to tune_model().
 
-        _leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 
         super().__init__(
             id="Voting",

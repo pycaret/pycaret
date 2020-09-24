@@ -237,8 +237,8 @@ class MAPEMetricContainer(RegressionMetricContainer):
             return np.average(output_errors, weights=multioutput)
 
         super().__init__(
-            id="rmsle",
-            name="RMSLE",
+            id="mape",
+            name="MAPE",
             score_func=mean_absolute_percentage_error,
             greater_is_better=False,
         )

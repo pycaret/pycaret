@@ -1129,25 +1129,27 @@ class Target_Transformation(BaseEstimator,TransformerMixin):
 
   def __init__(self,target,function_to_apply='bc'):
     self.target = target
-    self.function_to_apply = function_to_apply
-    if self.function_to_apply == 'bc':
-      self.function_to_apply = 'box-cox'
+    if function_to_apply == 'bc':
+      function_to_apply = 'box-cox'
     else:
-      self.function_to_apply = 'yeo-johnson'
+      function_to_apply = 'yeo-johnson'
+    self.function_to_apply = function_to_apply
 
-  
+  def inverse_transform(self, dataset,y=None):
+    data = self.p_transform_target.inverse_transform(np.array(dataset).reshape(-1,1))
+    return(data) 
+
   def fit(self,dataset,y=None):
-    return(None)
+    self.fit_transform(dataset, y=y)
     
-
+    return(self)
   
   def transform(self,dataset,y=None):
+    data = dataset
     if self.target in dataset.columns:
-      data = dataset
       # apply transformation
       data[self.target]=self.p_transform_target.transform(np.array(data[self.target]).reshape(-1,1))
-      return(data)
-    return(dataset) 
+    return(data) 
 
   def fit_transform(self,dataset,y=None):
     data = dataset
@@ -2651,7 +2653,6 @@ def Preprocess_Path_One(train_data,target_variable,ml_usecase=None,test_data =No
                                 apply_polynomial_trigonometry_features = False, max_polynomial=2,trigonometry_calculations=['sin','cos','tan'], top_poly_trig_features_to_select_percentage=.20,
                                 scale_data= False, scaling_method='zscore',
                                 Power_transform_data = False, Power_transform_method ='quantile',
-                                target_transformation= False,target_transformation_method ='bc',
                                 remove_outliers = False, outlier_contamination_percentage= 0.01,outlier_methods=['pca','iso','knn'],
                                 apply_feature_selection = False, feature_selection_top_features_percentage=.80,
                                 feature_selection_method = 'classic',
@@ -2800,13 +2801,6 @@ def Preprocess_Path_One(train_data,target_variable,ml_usecase=None,test_data =No
     P_transform = Scaling_and_Power_transformation(target=target_variable,function_to_apply=Power_transform_method,random_state_quantile=random_state)
   else:
     P_transform= SKLEARN_EMPTY_STEP
-  
-  # target transformation
-  if ((target_transformation == True) and (ml_usecase == 'regression')):
-    pt_target = Target_Transformation(target=target_variable,function_to_apply=target_transformation_method)
-  else:
-    pt_target = SKLEARN_EMPTY_STEP
-
 
   # for Time Variables
   feature_time = Make_Time_Features()
@@ -2880,7 +2874,6 @@ def Preprocess_Path_One(train_data,target_variable,ml_usecase=None,test_data =No
                  ('nonliner',nonliner),
                  ('scaling',scaling),
                  ('P_transform',P_transform),
-                 ('pt_target',pt_target),
                  ('binn',binn),
                  ('rem_outliers',rem_outliers),
                  ('cluster_all',cluster_all),

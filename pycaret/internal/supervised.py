@@ -4,6 +4,7 @@
 # Release: PyCaret 2.2
 # Last modified : 26/08/2020
 
+from pycaret.internal.meta_estimators import PowerTransformedTargetRegressor
 from pycaret.internal.tune_sklearn_patches import (
     get_tune_sklearn_tunegridsearchcv,
     get_tune_sklearn_tunesearchcv,
@@ -42,6 +43,7 @@ import gc
 from copy import deepcopy
 from sklearn.base import clone
 from sklearn.exceptions import NotFittedError
+from sklearn.compose import TransformedTargetRegressor
 from typing import List, Tuple, Any, Union
 import warnings
 from IPython.utils import io
@@ -116,7 +118,7 @@ def setup(
     transform_target_method="box-cox",
     data_split_shuffle: bool = True,
     data_split_stratify: Union[bool, List[str]] = False,  # added in pycaret==2.2
-    fold_strategy: Union[str, Any] = "stratifiedkfold",  # added in pycaret==2.2
+    fold_strategy: Union[str, Any] = "kfold",  # added in pycaret==2.2
     fold: int = 10,  # added in pycaret==2.2
     fold_shuffle: bool = False,
     fold_groups: Optional[Union[str, pd.DataFrame]] = None,
@@ -939,9 +941,8 @@ def setup(
     display_dtypes_pass = False if silent else True
 
     # transform target method
-    transform_target_dict = {"box-cox": "bc", "yeo-johnson": "yj"}
     transform_target_param = transform_target
-    transform_target_method_param = transform_target_dict[transform_target_method]
+    transform_target_method_param = transform_target_method
 
     # create n_jobs_param
     n_jobs_param = n_jobs
@@ -1104,8 +1105,6 @@ def setup(
         apply_feature_interactions=apply_feature_interactions_pass,
         feature_interactions_to_apply=interactions_to_apply_pass,
         feature_interactions_top_features_to_select_percentage=interaction_threshold,
-        target_transformation=transform_target_param,
-        target_transformation_method=transform_target_method_param,
         display_types=display_dtypes_pass,  # this is for inferred input box
         random_state=seed,
     )
@@ -1192,9 +1191,7 @@ def setup(
     exp_name_log = "no_logging"
 
     # create an empty log_plots_param
-    if log_plots == True:
-        log_plots_param = ["auc", "confusion_matrix", "feature"]
-    elif not log_plots:
+    if not log_plots:
         log_plots_param = False
     else:
         log_plots_param = log_plots
@@ -1291,19 +1288,34 @@ def setup(
     else:
         target_type = "Binary"
 
-    _all_models = {
-        k: v
-        for k, v in pycaret.containers.models.classification.get_all_model_containers(
+    if _ml_usecase == "classification":
+        _all_models = {
+            k: v
+            for k, v in pycaret.containers.models.classification.get_all_model_containers(
+                globals(), raise_errors=True
+            ).items()
+            if not v.is_special
+        }
+        _all_models_internal = pycaret.containers.models.classification.get_all_model_containers(
             globals(), raise_errors=True
-        ).items()
-        if not v.is_special
-    }
-    _all_models_internal = pycaret.containers.models.classification.get_all_model_containers(
-        globals(), raise_errors=True
-    )
-    _all_metrics = pycaret.containers.metrics.classification.get_all_metric_containers(
-        globals(), raise_errors=True
-    )
+        )
+        _all_metrics = pycaret.containers.metrics.classification.get_all_metric_containers(
+            globals(), raise_errors=True
+        )
+    elif _ml_usecase == "regression":
+        _all_models = {
+            k: v
+            for k, v in pycaret.containers.models.regression.get_all_model_containers(
+                globals(), raise_errors=True
+            ).items()
+            if not v.is_special
+        }
+        _all_models_internal = pycaret.containers.models.regression.get_all_model_containers(
+            globals(), raise_errors=True
+        )
+        _all_metrics = pycaret.containers.metrics.regression.get_all_metric_containers(
+            globals(), raise_errors=True
+        )
 
     """
     Final display Starts
@@ -1373,12 +1385,6 @@ def setup(
         high_cardinality_method if high_cardinality_features_grid else None
     )
 
-    transform_target_method_grid = (
-        prep_pipe.named_steps["pt_target"].function_to_apply
-        if transform_target_param
-        else None
-    )
-
     learned_types = dtypes.learent_dtypes
     learned_types.drop(target, inplace=True)
 
@@ -1399,8 +1405,12 @@ def setup(
         if verbose:
             print("Setup Succesfully Completed!")
 
+    exp_name_dict = {
+        "classification": "clf-default-name",
+        "regression": "reg-default-name",
+    }
     if experiment_name is None:
-        exp_name_ = "clf-default-name"
+        exp_name_ = exp_name_dict[_ml_usecase]
     else:
         exp_name_ = experiment_name
 
@@ -1408,11 +1418,13 @@ def setup(
     exp_name_log = exp_name_
 
     functions = pd.DataFrame(
-        [
-            ["session_id", seed],
-            ["Target", target],
-            ["Target Type", target_type],
-            ["Label Encoded", label_encoded],
+        [["session_id", seed], ["Target", target],]
+        + (
+            [["Target Type", target_type], ["Label Encoded", label_encoded],]
+            if _ml_usecase == "classification"
+            else []
+        )
+        + [
             ["Original Data", data_before_preprocess.shape],
             ["Missing Values", missing_flag],
             ["Numeric Features", str(float_type)],
@@ -1507,7 +1519,7 @@ def setup(
         + (
             [
                 ["Transform Target", transform_target_param],
-                ["Transform Target Method", transform_target_method_grid],
+                ["Transform Target Method", transform_target_method_param],
             ]
             if _ml_usecase == "regression"
             else []
@@ -1922,6 +1934,11 @@ def compare_models(
         display.display_monitor()
         display.display_master_display()
 
+    greater_is_worse_columns = set(
+        [v.display_name for k, v in _all_metrics.items() if not v.greater_is_better]
+        + ["TT (Sec)"]
+    )
+
     np.random.seed(seed)
 
     display.move_progress()
@@ -2021,7 +2038,7 @@ def compare_models(
             "SubProcess create_model() called =================================="
         )
         if errors == "raise":
-            model, model_fit_time = _create_model(
+            model, model_fit_time = create_model(
                 estimator=model,
                 system=False,
                 verbose=False,
@@ -2036,7 +2053,7 @@ def compare_models(
             model_results = pull(pop=True)
         else:
             try:
-                model, model_fit_time = _create_model(
+                model, model_fit_time = create_model(
                     estimator=model,
                     system=False,
                     verbose=False,
@@ -2056,7 +2073,7 @@ def compare_models(
                 )
                 logger.warning(traceback.format_exc())
                 try:
-                    model, model_fit_time = _create_model(
+                    model, model_fit_time = create_model(
                         estimator=model,
                         system=False,
                         verbose=False,
@@ -2119,13 +2136,31 @@ def compare_models(
         to_highlight = s == s.max()
         return ["background-color: yellow" if v else "" for v in to_highlight]
 
+    def highlight_min(s):
+        to_highlight = s == s.min()
+        return ["background-color: yellow" if v else "" for v in to_highlight]
+
     def highlight_cols(s):
         color = "lightgrey"
         return f"background-color: {color}"
 
-    compare_models_ = master_display_.apply(
-        highlight_max, subset=master_display_.columns[1:],
-    ).applymap(highlight_cols, subset=["TT (Sec)"])
+    compare_models_ = (
+        master_display_.apply(
+            highlight_max,
+            subset=[
+                x
+                for x in master_display_.columns[1:]
+                if x not in greater_is_worse_columns
+            ],
+        )
+        .apply(
+            highlight_min,
+            subset=[
+                x for x in master_display_.columns[1:] if x in greater_is_worse_columns
+            ],
+        )
+        .applymap(highlight_cols, subset=["TT (Sec)"])
+    )
 
     display.update_monitor(1, "Compiling Final Models")
     display.display_monitor()
@@ -2154,7 +2189,7 @@ def compare_models(
         if index in n_select_range:
             display.update_monitor(2, _get_model_name(model))
             display.display_monitor()
-            model, model_fit_time = _create_model(
+            model, model_fit_time = create_model(
                 estimator=model,
                 system=False,
                 verbose=False,
@@ -2211,128 +2246,6 @@ def compare_models(
 
 
 def create_model(
-    estimator,
-    fold: Optional[Union[int, Any]] = None,
-    round: int = 4,
-    cross_validation: bool = True,
-    fit_kwargs: Optional[dict] = None,
-    groups: Optional[Union[str, Any]] = None,
-    verbose: bool = True,
-    display: Optional[Display] = None,  # added in pycaret==2.2.0
-    **kwargs,
-) -> Any:
-    """  
-    This function creates a model and scores it using Cross Validation. 
-    The output prints a score grid that shows Accuracy, AUC, Recall, Precision, 
-    F1, Kappa and MCC by fold (default = 10 Fold). 
-
-    This function returns a trained model object. 
-
-    setup() function must be called before using create_model()
-
-    Example
-    -------
-    >>> from pycaret.datasets import get_data
-    >>> juice = get_data('juice')
-    >>> experiment_name = setup(data = juice,  target = 'Purchase')
-    >>> lr = create_model('lr')
-
-    This will create a trained Logistic Regression model.
-
-    Parameters
-    ----------
-    estimator : str / object, default = None
-        Enter ID of the estimators available in model library or pass an untrained model 
-        object consistent with fit / predict API to train and evaluate model. All 
-        estimators support binary or multiclass problem. List of estimators in model 
-        library (ID - Name):
-
-        * 'lr' - Logistic Regression             
-        * 'knn' - K Nearest Neighbour            
-        * 'nb' - Naive Bayes             
-        * 'dt' - Decision Tree Classifier                   
-        * 'svm' - SVM - Linear Kernel	            
-        * 'rbfsvm' - SVM - Radial Kernel               
-        * 'gpc' - Gaussian Process Classifier                  
-        * 'mlp' - Multi Level Perceptron                  
-        * 'ridge' - Ridge Classifier                
-        * 'rf' - Random Forest Classifier                   
-        * 'qda' - Quadratic Discriminant Analysis                  
-        * 'ada' - Ada Boost Classifier                 
-        * 'gbc' - Gradient Boosting Classifier                  
-        * 'lda' - Linear Discriminant Analysis                  
-        * 'et' - Extra Trees Classifier                   
-        * 'xgboost' - Extreme Gradient Boosting              
-        * 'lightgbm' - Light Gradient Boosting              
-        * 'catboost' - CatBoost Classifier             
-
-    fold: integer or scikit-learn compatible CV generator, default = None
-        Controls cross-validation. If None, will use the CV generator defined in setup().
-        If integer, will use KFold CV with that many folds.
-        When cross_validation is False, this parameter is ignored.
-
-    round: integer, default = 4
-        Number of decimal places the metrics in the score grid will be rounded to. 
-
-    cross_validation: bool, default = True
-        When cross_validation set to False fold parameter is ignored and model is trained
-        on entire training dataset, returning metrics calculated using the train (holdout) set.
-
-    fit_kwargs: dict, default = {} (empty dict)
-        Dictionary of arguments passed to the fit method of the model.
-
-    groups: str or array-like, with shape (n_samples,), default = None
-        Optional Group labels for the samples used while splitting the dataset into train/test set.
-        If string is passed, will use the data column with that name as the groups.
-        Only used if a group based cross-validation generator is used (eg. GroupKFold).
-        If None, will use the value set in fold_groups param in setup().
-
-    verbose: bool, default = True
-        Score grid is not printed when verbose is set to False.
-
-    **kwargs: 
-        Additional keyword arguments to pass to the estimator.
-
-    Returns
-    -------
-    score_grid
-        A table containing the scores of the model across the kfolds. 
-        Scoring metrics used are Accuracy, AUC, Recall, Precision, F1, 
-        Kappa and MCC. Mean and standard deviation of the scores across 
-        the folds are highlighted in yellow.
-
-    model
-        trained model object
-
-    Warnings
-    --------
-    - 'svm' and 'ridge' doesn't support predict_proba method. As such, AUC will be
-      returned as zero (0.0)
-     
-    - If target variable is multiclass (more than 2 classes), AUC will be returned 
-      as zero (0.0)
-
-    - 'rbfsvm' and 'gpc' uses non-linear kernel and hence the fit time complexity is 
-      more than quadratic. These estimators are hard to scale on datasets with more 
-      than 10,000 samples.
-
-    - If cross_validation param is set to False, model will not be logged with MLFlow.
-
-    """
-    return _create_model(
-        estimator,
-        fold=fold,
-        round=round,
-        cross_validation=cross_validation,
-        fit_kwargs=fit_kwargs,
-        groups=groups,
-        verbose=verbose,
-        display=display,
-        **kwargs,
-    )
-
-
-def _create_model(
     estimator,
     fold: Optional[Union[int, Any]] = None,
     round: int = 4,
@@ -2597,6 +2510,11 @@ def _create_model(
 
         full_name = _get_model_name(model)
 
+    if transform_target_param and not isinstance(model, TransformedTargetRegressor):
+        model = PowerTransformedTargetRegressor(
+            regressor=model, power_transformer_method=transform_target_method_param
+        )
+
     logger.info(f"{full_name} Imported succesfully")
 
     display.move_progress()
@@ -2671,10 +2589,13 @@ def _create_model(
     logger.info("Starting cross validation")
 
     n_jobs = _gpu_n_jobs_param
-    from sklearn.gaussian_process import GaussianProcessClassifier
+    from sklearn.gaussian_process import (
+        GaussianProcessClassifier,
+        GaussianProcessRegressor,
+    )
 
     # special case to prevent running out of memory
-    if isinstance(model, GaussianProcessClassifier):
+    if isinstance(model, (GaussianProcessClassifier, GaussianProcessRegressor)):
         n_jobs = 1
 
     with estimator_pipeline(_internal_pipeline, model) as pipeline_with_model:
@@ -2697,10 +2618,10 @@ def _create_model(
         model_fit_end = time.time()
         model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
 
-        score_dict = dict(
-            [(f"test_{k}", v.display_name) for k, v in _all_metrics.items()]
-        )
-        score_dict = {v: scores[k] for k, v in score_dict.items()}
+        score_dict = {
+            v.display_name: scores[f"test_{k}"] * (1 if v.greater_is_better else -1)
+            for k, v in _all_metrics.items()
+        }
 
         logger.info("Calculating mean and std")
 
@@ -3253,7 +3174,7 @@ def tune_model(
 
     logger.info("Defining Hyperparameters")
 
-    from sklearn.ensemble import VotingClassifier
+    from pycaret.internal.Tunable import VotingClassifier, VotingRegressor
 
     def total_combintaions_in_grid(grid):
         nc = 1
@@ -3272,9 +3193,7 @@ def tune_model(
         return nc
 
     def get_ccp_alphas(estimator):
-        path = estimator.cost_complexity_pruning_path(
-            X_train, y_train, sample_weight=sample_weight
-        )
+        path = estimator.cost_complexity_pruning_path(X_train, y_train)
         ccp_alphas, impurities = path.ccp_alphas, path.impurities
         return list(ccp_alphas[:-1])
 
@@ -3286,11 +3205,11 @@ def tune_model(
         and (search_algorithm == "grid" or search_algorithm == "random")
     ):
         param_grid = estimator_definition.tune_grid
-        if isinstance(base_estimator, VotingClassifier):
+        if isinstance(base_estimator, (VotingClassifier, VotingRegressor)):
             # special case to handle VotingClassifier, as weights need to be
             # generated dynamically
             param_grid = {
-                f"weight_{i}": np.arange(0.1, 1, 0.1)
+                f"weight_{i}": np.arange(0.01, 1, 0.01)
                 for i, e in enumerate(base_estimator.estimators)
             }
         if hasattr(base_estimator, "cost_complexity_pruning_path"):
@@ -3309,7 +3228,7 @@ def tune_model(
     else:
         param_grid = estimator_definition.tune_distribution
 
-        if isinstance(base_estimator, VotingClassifier):
+        if isinstance(base_estimator, (VotingClassifier, VotingRegressor)):
             # special case to handle VotingClassifier, as weights need to be
             # generated dynamically
             param_grid = {
@@ -3455,7 +3374,7 @@ def tune_model(
                 scoring=optimize,
                 study=study,
                 refit=False,
-                verbose=0,
+                verbose=1,
                 **search_kwargs,
             )
 
@@ -3501,7 +3420,7 @@ def tune_model(
                         n_jobs=n_jobs,
                         use_gpu=gpu_param,
                         refit=True,
-                        verbose=0,
+                        verbose=1,
                         # pipeline_detection=False,
                         **search_kwargs,
                     )
@@ -3523,7 +3442,7 @@ def tune_model(
                         n_jobs=n_jobs,
                         use_gpu=gpu_param,
                         refit=True,
-                        verbose=0,
+                        verbose=1,
                         # pipeline_detection=False,
                         **search_kwargs,
                     )
@@ -3545,7 +3464,7 @@ def tune_model(
                         n_jobs=n_jobs,
                         use_gpu=gpu_param,
                         refit=True,
-                        verbose=0,
+                        verbose=1,
                         # pipeline_detection=False,
                         **search_kwargs,
                     )
@@ -3567,7 +3486,7 @@ def tune_model(
                         n_jobs=n_jobs,
                         use_gpu=gpu_param,
                         refit=True,
-                        verbose=0,
+                        verbose=1,
                         # pipeline_detection=False,
                         **search_kwargs,
                     )
@@ -3585,7 +3504,7 @@ def tune_model(
                         n_jobs=n_jobs,
                         use_gpu=gpu_param,
                         refit=True,
-                        verbose=0,
+                        verbose=1,
                         # pipeline_detection=False,
                         **search_kwargs,
                     )
@@ -3607,7 +3526,7 @@ def tune_model(
                 random_state=seed,
                 refit=False,
                 n_jobs=n_jobs,
-                verbose=0,
+                verbose=1,
                 **search_kwargs,
             )
         else:
@@ -3622,6 +3541,7 @@ def tune_model(
                     cv=fold,
                     refit=False,
                     n_jobs=n_jobs,
+                    verbose=1,
                     **search_kwargs,
                 )
             else:
@@ -3637,6 +3557,7 @@ def tune_model(
                     random_state=seed,
                     refit=False,
                     n_jobs=n_jobs,
+                    verbose=1,
                     **search_kwargs,
                 )
 
@@ -3659,7 +3580,7 @@ def tune_model(
     logger.info("Random search completed")
 
     logger.info("SubProcess create_model() called ==================================")
-    best_model, model_fit_time = _create_model(
+    best_model, model_fit_time = create_model(
         estimator=model,
         system=False,
         display=display,
@@ -4004,7 +3925,7 @@ def ensemble_model(
     display.move_progress()
 
     logger.info("SubProcess create_model() called ==================================")
-    model, model_fit_time = _create_model(
+    model, model_fit_time = create_model(
         estimator=model,
         system=False,
         display=display,
@@ -4204,25 +4125,25 @@ def blend_models(
     for i in estimator_list:
         if not hasattr(i, "fit"):
             raise ValueError(f"Estimator {i} does not have the required fit() method.")
+        if _ml_usecase == "classification":
+            # checking method param with estimator list
+            if method != "hard":
 
-        # checking method param with estimator list
-        if method != "hard":
+                for i in estimator_list:
+                    if not hasattr(i, "predict_proba"):
+                        if method != "auto":
+                            raise TypeError(
+                                f"Estimator list contains estimator {i} that doesn't support probabilities and method is forced to 'soft'. Either change the method or drop the estimator."
+                            )
+                        else:
+                            logger.info(
+                                f"Estimator {i} doesn't support probabilities, falling back to 'hard'."
+                            )
+                            method = "hard"
+                            break
 
-            for i in estimator_list:
-                if not hasattr(i, "predict_proba"):
-                    if method != "auto":
-                        raise TypeError(
-                            f"Estimator list contains estimator {i} that doesn't support probabilities and method is forced to 'soft'. Either change the method or drop the estimator."
-                        )
-                    else:
-                        logger.info(
-                            f"Estimator {i} doesn't support probabilities, falling back to 'hard'."
-                        )
-                        method = "hard"
-                        break
-
-            if method == "auto":
-                method = "soft"
+                if method == "auto":
+                    method = "soft"
 
     # checking fold parameter
     if fold is not None and not (type(fold) is int or is_sklearn_cv_generator(fold)):
@@ -4335,15 +4256,20 @@ def blend_models(
 
     estimator_list = list(estimator_dict.items())
 
-    votingclassifier_model_definition = _all_models_internal["Voting"]
-    model = votingclassifier_model_definition.class_def(
-        estimators=estimator_list, voting=method, n_jobs=_gpu_n_jobs_param
-    )
+    voting_model_definition = _all_models_internal["Voting"]
+    if _ml_usecase == "classification":
+        model = voting_model_definition.class_def(
+            estimators=estimator_list, voting=method, n_jobs=_gpu_n_jobs_param
+        )
+    else:
+        model = voting_model_definition.class_def(
+            estimators=estimator_list, n_jobs=_gpu_n_jobs_param
+        )
 
     display.move_progress()
 
     logger.info("SubProcess create_model() called ==================================")
-    model, model_fit_time = _create_model(
+    model, model_fit_time = create_model(
         estimator=model,
         system=False,
         display=display,
@@ -4667,22 +4593,30 @@ def stack_models(
     estimator_list = list(estimator_dict.items())
 
     logger.info(estimator_list)
-    logger.info("Creating StackingClassifier()")
 
-    stackingclassifier_model_definition = _all_models_internal["Stacking"]
-    model = stackingclassifier_model_definition.class_def(
-        estimators=estimator_list,
-        final_estimator=meta_model,
-        cv=fold,
-        stack_method=method,
-        n_jobs=_gpu_n_jobs_param,
-        passthrough=restack,
-    )
+    stacking_model_definition = _all_models_internal["Stacking"]
+    if _ml_usecase == "classification":
+        model = stacking_model_definition.class_def(
+            estimators=estimator_list,
+            final_estimator=meta_model,
+            cv=fold,
+            stack_method=method,
+            n_jobs=_gpu_n_jobs_param,
+            passthrough=restack,
+        )
+    else:
+        model = stacking_model_definition.class_def(
+            estimators=estimator_list,
+            final_estimator=meta_model,
+            cv=fold,
+            n_jobs=_gpu_n_jobs_param,
+            passthrough=restack,
+        )
 
     display.move_progress()
 
     logger.info("SubProcess create_model() called ==================================")
-    model, model_fit_time = _create_model(
+    model, model_fit_time = create_model(
         estimator=model,
         system=False,
         display=display,
@@ -4984,6 +4918,8 @@ def plot_model(
     plot_name = _available_plots[plot]
     display.move_progress()
 
+    import scikitplot as skplt
+
     # yellowbrick workaround start
     import yellowbrick.utils.types
 
@@ -5024,6 +4960,26 @@ def plot_model(
                     skplt.metrics.plt.rcParams["figure.dpi"] = self.default_skplt_dpit
                 except:
                     pass
+
+        def residuals():
+
+            from yellowbrick.regressor import ResidualsPlot
+
+            visualizer = ResidualsPlot(pipeline_with_model)
+            show_yellowbrick_plot(
+                visualizer=visualizer,
+                X_train=data_X,
+                y_train=data_y,
+                X_test=test_X,
+                y_test=test_y,
+                name=plot_name,
+                scale=scale,
+                save=save,
+                fit_kwargs=fit_kwargs,
+                groups=groups,
+                system=system,
+                display=display,
+            )
 
         def auc():
 
@@ -5109,9 +5065,18 @@ def plot_model(
 
         def error():
 
-            from yellowbrick.classifier import ClassPredictionError
+            if _ml_usecase == "classification":
+                from yellowbrick.classifier import ClassPredictionError
 
-            visualizer = ClassPredictionError(pipeline_with_model, random_state=seed)
+                visualizer = ClassPredictionError(
+                    pipeline_with_model, random_state=seed
+                )
+
+            elif _ml_usecase == "regression":
+                from yellowbrick.regressor import PredictionError
+
+                visualizer = PredictionError(pipeline_with_model, random_state=seed)
+
             show_yellowbrick_plot(
                 visualizer=visualizer,
                 X_train=data_X,
@@ -5122,6 +5087,27 @@ def plot_model(
                 scale=scale,
                 save=save,
                 fit_kwargs=fit_kwargs,
+                groups=groups,
+                system=system,
+                display=display,
+            )
+
+        def cooks():
+
+            from yellowbrick.regressor import CooksDistance
+
+            visualizer = CooksDistance()
+            show_yellowbrick_plot(
+                visualizer=visualizer,
+                X_train=X,
+                y_train=y,
+                X_test=test_X,
+                y_test=test_y,
+                name=plot_name,
+                scale=scale,
+                save=save,
+                fit_kwargs=fit_kwargs,
+                handle_test="",
                 groups=groups,
                 system=system,
                 display=display,
@@ -5238,8 +5224,6 @@ def plot_model(
 
         def lift():
 
-            import scikitplot as skplt
-
             display.move_progress()
             logger.info("Generating predictions / predict_proba on X_test")
             with fit_if_not_fitted(
@@ -5265,8 +5249,6 @@ def plot_model(
             logger.info("Visual Rendered Successfully")
 
         def gain():
-
-            import scikitplot as skplt
 
             display.move_progress()
             logger.info("Generating predictions / predict_proba on X_test")
@@ -5380,61 +5362,120 @@ def plot_model(
                     "Plot not supported for this estimator. Try different estimator."
                 )
 
-            # Catboost
-            if "depth" in model_params:
-                param_name = f"{actual_estimator_label}__depth"
-                param_range = np.arange(1, 8 if gpu_param else 11)
+            if _ml_usecase == "classification":
 
-            # SGD Classifier
-            elif f"{actual_estimator_label}__l1_ratio" in model_params:
-                param_name = f"{actual_estimator_label}__l1_ratio"
-                param_range = np.arange(0, 1, 0.01)
+                # Catboost
+                if "depth" in model_params:
+                    param_name = f"{actual_estimator_label}__depth"
+                    param_range = np.arange(1, 8 if gpu_param else 11)
 
-            # tree based models
-            elif f"{actual_estimator_label}__max_depth" in model_params:
-                param_name = f"{actual_estimator_label}__max_depth"
-                param_range = np.arange(1, 11)
+                # SGD Classifier
+                elif f"{actual_estimator_label}__l1_ratio" in model_params:
+                    param_name = f"{actual_estimator_label}__l1_ratio"
+                    param_range = np.arange(0, 1, 0.01)
 
-            # knn
-            elif f"{actual_estimator_label}__n_neighbors" in model_params:
-                param_name = f"{actual_estimator_label}__n_neighbors"
-                param_range = np.arange(1, 11)
+                # tree based models
+                elif f"{actual_estimator_label}__max_depth" in model_params:
+                    param_name = f"{actual_estimator_label}__max_depth"
+                    param_range = np.arange(1, 11)
 
-            # MLP / Ridge
-            elif f"{actual_estimator_label}__alpha" in model_params:
-                param_name = f"{actual_estimator_label}__alpha"
-                param_range = np.arange(0, 1, 0.1)
+                # knn
+                elif f"{actual_estimator_label}__n_neighbors" in model_params:
+                    param_name = f"{actual_estimator_label}__n_neighbors"
+                    param_range = np.arange(1, 11)
 
-            # Logistic Regression
-            elif f"{actual_estimator_label}__C" in model_params:
-                param_name = f"{actual_estimator_label}__C"
-                param_range = np.arange(1, 11)
+                # MLP / Ridge
+                elif f"{actual_estimator_label}__alpha" in model_params:
+                    param_name = f"{actual_estimator_label}__alpha"
+                    param_range = np.arange(0, 1, 0.1)
 
-            # Bagging / Boosting
-            elif f"{actual_estimator_label}__n_estimators" in model_params:
-                param_name = f"{actual_estimator_label}__n_estimators"
-                param_range = np.arange(1, 100, 10)
+                # Logistic Regression
+                elif f"{actual_estimator_label}__C" in model_params:
+                    param_name = f"{actual_estimator_label}__C"
+                    param_range = np.arange(1, 11)
 
-            # Naive Bayes
-            elif f"{actual_estimator_label}__var_smoothing" in model_params:
-                param_name = f"{actual_estimator_label}__var_smoothing"
-                param_range = np.arange(0.1, 1, 0.01)
+                # Bagging / Boosting
+                elif f"{actual_estimator_label}__n_estimators" in model_params:
+                    param_name = f"{actual_estimator_label}__n_estimators"
+                    param_range = np.arange(1, 1000, 10)
 
-            # QDA
-            elif f"{actual_estimator_label}__reg_param" in model_params:
-                param_name = f"{actual_estimator_label}__reg_param"
-                param_range = np.arange(0, 1, 0.1)
+                # Naive Bayes
+                elif f"{actual_estimator_label}__var_smoothing" in model_params:
+                    param_name = f"{actual_estimator_label}__var_smoothing"
+                    param_range = np.arange(0.1, 1, 0.01)
 
-            # GPC
-            elif f"{actual_estimator_label}__max_iter_predict" in model_params:
-                param_name = f"{actual_estimator_label}__max_iter_predict"
-                param_range = np.arange(100, 1000, 100)
+                # QDA
+                elif f"{actual_estimator_label}__reg_param" in model_params:
+                    param_name = f"{actual_estimator_label}__reg_param"
+                    param_range = np.arange(0, 1, 0.1)
 
-            else:
-                display.clear_output()
-                raise TypeError(
-                    "Plot not supported for this estimator. Try different estimator."
-                )
+                # GPC
+                elif f"{actual_estimator_label}__max_iter_predict" in model_params:
+                    param_name = f"{actual_estimator_label}__max_iter_predict"
+                    param_range = np.arange(100, 1000, 100)
+
+                else:
+                    display.clear_output()
+                    raise TypeError(
+                        "Plot not supported for this estimator. Try different estimator."
+                    )
+
+            elif _ml_usecase == "regression":
+
+                # Catboost
+                if "depth" in model_params:
+                    param_name = f"{actual_estimator_label}__depth"
+                    param_range = np.arange(1, 8 if gpu_param else 11)
+
+                # lasso/ridge/en/llar/huber/kr/mlp/br/ard
+                elif f"{actual_estimator_label}__alpha" in model_params:
+                    param_name = f"{actual_estimator_label}__alpha"
+                    param_range = np.arange(0, 1, 0.1)
+
+                elif f"{actual_estimator_label}__alpha_1" in model_params:
+                    param_name = f"{actual_estimator_label}__alpha_1"
+                    param_range = np.arange(0, 1, 0.1)
+
+                # par/svm
+                elif f"{actual_estimator_label}__C" in model_params:
+                    param_name = f"{actual_estimator_label}__C"
+                    param_range = np.arange(1, 11)
+
+                # tree based models (dt/rf/et)
+                elif f"{actual_estimator_label}__max_depth" in model_params:
+                    param_name = f"{actual_estimator_label}__max_depth"
+                    param_range = np.arange(1, 11)
+
+                # knn
+                elif f"{actual_estimator_label}__n_neighbors" in model_params:
+                    param_name = f"{actual_estimator_label}__n_neighbors"
+                    param_range = np.arange(1, 11)
+
+                # Bagging / Boosting (ada/gbr)
+                elif f"{actual_estimator_label}__n_estimators" in model_params:
+                    param_name = f"{actual_estimator_label}__n_estimators"
+                    param_range = np.arange(1, 1000, 10)
+
+                # Bagging / Boosting (ada/gbr)
+                elif f"{actual_estimator_label}__n_nonzero_coefs" in model_params:
+                    param_name = f"{actual_estimator_label}__n_nonzero_coefs"
+                    if len(X_train.columns) >= 10:
+                        param_max = 11
+                    else:
+                        param_max = len(X_train.columns) + 1
+                    param_range = np.arange(1, param_max, 1)
+
+                elif f"{actual_estimator_label}__eps" in model_params:
+                    param_name = f"{actual_estimator_label}__eps"
+                    param_range = np.arange(0, 1, 0.1)
+
+                elif f"{actual_estimator_label}__max_subpopulation" in model_params:
+                    param_name = f"{actual_estimator_label}__max_subpopulation"
+                    param_range = np.arange(1000, 100000, 2000)
+
+                elif f"{actual_estimator_label}__min_samples" in model_params:
+                    param_name = f"{actual_estimator_label}__max_subpopulation"
+                    param_range = np.arange(0.01, 1, 0.1)
 
             logger.info(f"param_name: {param_name}")
 
@@ -5553,8 +5594,13 @@ def plot_model(
 
         def parameter():
 
+            try:
+                params = estimator.get_all_params()
+            except:
+                params = estimator.get_params(deep=False)
+
             param_df = pd.DataFrame.from_dict(
-                {str(k): str(v) for k, v in estimator.get_params(deep=False).items()},
+                {str(k): str(v) for k, v in params.items()},
                 orient="index",
                 columns=["Parameters"],
             )
@@ -6097,7 +6143,7 @@ def calibrate_model(
     display.move_progress()
 
     logger.info("SubProcess create_model() called ==================================")
-    model, model_fit_time = _create_model(
+    model, model_fit_time = create_model(
         estimator=model,
         system=False,
         display=display,
@@ -6510,10 +6556,6 @@ def predict_model(
         y_test_ = y_test.copy()
 
         dtypes = prep_pipe.named_steps["dtypes"]
-        try:
-            target_transformer = prep_pipe.named_steps["pt_target"].p_transform_target
-        except:
-            target_transformer = None
 
         X_test_.reset_index(drop=True, inplace=True)
         y_test_.reset_index(drop=True, inplace=True)
@@ -6522,17 +6564,10 @@ def predict_model(
 
         if is_sklearn_pipeline(estimator) and hasattr(estimator, "predict"):
             dtypes = estimator.named_steps["dtypes"]
-            try:
-                target_transformer = estimator.named_steps["pt_target"].p_transform_target
-            except:
-                target_transformer = None
         else:
             try:
                 dtypes = prep_pipe.named_steps["dtypes"]
-                try:
-                    target_transformer = prep_pipe.named_steps["pt_target"].p_transform_target
-                except:
-                    target_transformer = None
+
                 estimator_ = deepcopy(prep_pipe)
                 if is_sklearn_pipeline(estimator):
                     merge_pipelines(estimator_, estimator)
@@ -6557,16 +6592,7 @@ def predict_model(
 
     # prediction starts here
 
-    pred_ = estimator.predict(X_test_)
-
-    try:
-        pred_ = target_transformer.inverse_transform(
-            np.array(pred_).reshape(-1, 1)
-        )
-    except:
-        pass
-    
-    pred_ = np.nan_to_num(pred_)
+    pred_ = np.nan_to_num(estimator.predict(X_test_))
 
     try:
         score = estimator.predict_proba(X_test_)
@@ -6602,7 +6628,8 @@ def predict_model(
 
     label = pd.DataFrame(pred_)
     label.columns = ["Label"]
-    label["Label"] = label["Label"].astype(int)
+    if _ml_usecase == "classification":
+        label["Label"] = label["Label"].astype(int)
     if not encoded_labels:
         replace_lables_in_column(label["Label"])
 
@@ -6709,7 +6736,7 @@ def finalize_model(
 
     logger.info(f"Finalizing {estimator}")
     display.clear_output()
-    model_final, model_fit_time = _create_model(
+    model_final, model_fit_time = create_model(
         estimator=estimator,
         verbose=False,
         system=False,
@@ -7224,8 +7251,8 @@ def automl(optimize: str = "Accuracy", use_holdout: bool = False) -> Any:
             try:
                 pred_holdout = predict_model(i, verbose=False)
             except:
-                logger.warning(f"Model {i} is not fitted, running _create_model")
-                i, _ = _create_model(
+                logger.warning(f"Model {i} is not fitted, running create_model")
+                i, _ = create_model(
                     estimator=i,
                     system=False,
                     verbose=False,
@@ -7318,9 +7345,34 @@ def models(
 
     def filter_model_df_by_type(df):
         model_type = {
-            "linear": ["lr", "ridge", "svm"],
+            "linear": [
+                "lr",
+                "ridge",
+                "svm",
+                "lasso",
+                "en",
+                "lar",
+                "llar",
+                "omp",
+                "br",
+                "ard",
+                "par",
+                "ransac",
+                "tr",
+                "huber",
+                "kr",
+            ],
             "tree": ["dt"],
-            "ensemble": ["rf", "et", "gbc", "xgboost", "lightgbm", "catboost", "ada"],
+            "ensemble": [
+                "rf",
+                "et",
+                "gbc",
+                "gbr",
+                "xgboost",
+                "lightgbm",
+                "catboost",
+                "ada",
+            ],
         }
 
         # Check if type is valid
@@ -7746,7 +7798,7 @@ def _choose_better(
         logger.info(
             "SubProcess create_model() called =================================="
         )
-        _create_model(
+        create_model(
             model,
             verbose=False,
             system=False,
@@ -7759,6 +7811,9 @@ def _choose_better(
 
     model_results = model_results.loc["Mean"][compare_dimension]
     logger.info(f"Base model {model} result for {compare_dimension} is {model_results}")
+
+    if not _all_metrics[compare_dimension].greater_is_better:
+        model_results *= -1
 
     scorer.append(model_results)
 
@@ -7773,7 +7828,7 @@ def _choose_better(
             logger.info(
                 "SubProcess create_model() called =================================="
             )
-            m, _ = _create_model(
+            m, _ = create_model(
                 new_estimator,
                 verbose=False,
                 system=False,
@@ -7916,6 +7971,9 @@ def _mlflow_log_model(
         except:
             logger.warning("Couldn't get params for model")
             params = {}
+
+        if "regressor" in params:
+            params.pop("regressor")
 
         for i in list(params):
             v = params.get(i)
@@ -8063,7 +8121,7 @@ def _get_cv_splitter(fold):
         default=fold_generator,
         seed=seed,
         shuffle=fold_shuffle_param,
-        int_default="stratifiedkfold",
+        int_default="stratifiedkfold" if _ml_usecase == "classification" else "kfold",
     )
 
 
