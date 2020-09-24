@@ -741,6 +741,7 @@ class RandomForestClassifierContainer(ClassifierContainer):
             tune_grid["split_criterion"] = [0, 1]
         else:
             tune_grid["criterion"] = ["gini", "entropy"]
+            tune_grid["class_weight"] = ["balanced", "balanced_subsample", {}]
             tune_grid["min_samples_split"] = [2, 5, 7, 9, 10]
             tune_grid["min_samples_leaf"] = [2, 3, 4, 5, 6]
             tune_distributions["min_samples_split"] = IntUniformDistribution(2, 10)
@@ -963,6 +964,7 @@ class ExtraTreesClassifierContainer(ClassifierContainer):
             "bootstrap": [True, False],
             "min_samples_split": [2, 5, 7, 9, 10],
             "min_samples_leaf": [2, 3, 4, 5, 6],
+            "class_weight": ["balanced", "balanced_subsample", {}]
         }
         tune_distributions = {
             "n_estimators": IntUniformDistribution(10, 200),

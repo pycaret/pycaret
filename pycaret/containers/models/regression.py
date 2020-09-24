@@ -735,6 +735,7 @@ class PassiveAggressiveRegressorContainer(RegressorContainer):
             "loss": ["epsilon_insensitive", "squared_epsilon_insensitive"],
             "epsilon": [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9],
             "shuffle": [True, False],
+            "class_weight": ["balanced", {}]
         }
         tune_distributions = {
             "C": UniformDistribution(0, 10),
@@ -1128,6 +1129,7 @@ class RandomForestRegressorContainer(RegressorContainer):
             tune_grid["split_criterion"] = [2, 3]
         else:
             tune_grid["criterion"] = ["mse", "mae"]
+            tune_grid["class_weight"] = ["balanced", "balanced_subsample", {}]
             tune_grid["min_samples_split"] = [2, 5, 7, 9, 10]
             tune_grid["min_samples_leaf"] = [2, 3, 4, 5, 6]
             tune_distributions["min_samples_split"] = IntUniformDistribution(2, 10)
@@ -1186,6 +1188,7 @@ class ExtraTreesRegressorContainer(RegressorContainer):
             "bootstrap": [True, False],
             "min_samples_split": [2, 5, 7, 9, 10],
             "min_samples_leaf": [2, 3, 4, 5, 6],
+            "class_weight": ["balanced", "balanced_subsample", {}]
         }
         tune_distributions = {
             "n_estimators": IntUniformDistribution(10, 200),
