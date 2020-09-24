@@ -1131,27 +1131,8 @@ class CatBoostClassifierContainer(ClassifierContainer):
         tune_args = {}
         tune_grid = {
             "depth": list(range(1, 12)),
-            "n_estimators": [
-                10,
-                30,
-                50,
-                70,
-                90,
-                100,
-                120,
-                150,
-                170,
-                200,
-                300,
-                400,
-                500,
-                600,
-                700,
-                800,
-                900,
-                1000,
-            ],
-            "learning_rate": [0.03, 0.001, 0.01, 0.1, 0.2, 0.3, 0.4, 0.5,],
+            "n_estimators": np.arange(10, 1000, 10),
+            "learning_rate": np.arange(0, 0.5, 0.001),
             "l2_leaf_reg": [3, 1, 5, 10, 20, 50, 100, 200],
         }
         tune_distributions = {
