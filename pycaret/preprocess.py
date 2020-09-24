@@ -41,6 +41,7 @@ import calendar
 from sklearn.preprocessing import LabelEncoder
 from collections import defaultdict
 from typing import Optional, Union
+from pycaret.internal.logging import get_logger
 
 from sklearn.utils.validation import check_is_fitted, check_random_state
 
@@ -672,7 +673,10 @@ class Iterative_Imputer(_BaseImputer):
         if fit:
             X_train = X[~X_na_mask[column]]
             y_train = X[~X_na_mask[column]][column]
-            X_train = dummy.fit_transform(X_train).drop(column, axis=1)
+            # catboost handles categoricals itself
+            if "catboost" not in str(type(estimator)).lower():
+              X_train = dummy.fit_transform(X_train)
+            X_train.drop(column, axis=1, inplace=True)
 
             if le:
                 y_train = le.fit_transform(y_train)
@@ -684,7 +688,9 @@ class Iterative_Imputer(_BaseImputer):
                 estimator.fit(X_train, y_train)
 
         X_test = X.drop(column, axis=1)[X_na_mask[column]]
-        X_test = dummy.transform(X_test)
+        # catboost handles categoricals itself
+        if "catboost" not in str(type(estimator)).lower():
+          X_test = dummy.transform(X_test)
 
         result = estimator.predict(X_test)
         if le:
@@ -719,8 +725,9 @@ class Iterative_Imputer(_BaseImputer):
 
         X_imputed = self._initial_imputation(X.copy())
 
-        for _ in range(self.max_iter):
+        for i in range(self.max_iter):
             for feature in self.imputation_sequence_:
+                get_logger().info(f"Iterative Imputation: {i+1} cycle | {feature}")
                 X_imputed = self._impute_one_feature(X_imputed, feature, X_na_mask, fit)
 
         if target_column is not None:

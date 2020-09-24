@@ -153,7 +153,7 @@ def setup(
 
     """
 
-    function_params_str = ", ".join([f"{k}={v}" for k, v in locals().items()])
+    function_params_str = ", ".join([f"{k}={v}" for k, v in locals().items() if k != "data"])
 
     global _available_plots
 
@@ -1003,7 +1003,7 @@ def setup(
         }
         iterative_imputer_regression_models = {
             k: v
-            for k, v in pycaret.containers.models.regression.pycaret.containers.models.classification.get_all_model_containers(
+            for k, v in pycaret.containers.models.regression.get_all_model_containers(
                 iterative_imputer_models_globals, raise_errors=True
             ).items()
             if not v.is_special
