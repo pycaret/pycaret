@@ -1057,8 +1057,6 @@ class LGBMClassifierContainer(ClassifierContainer):
             "num_leaves": [10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 150, 200],
             "learning_rate": np.arange(0, 0.5, 0.01),
             "n_estimators": np.arange(10, 1000, 10),
-            "subsample": [0, 0.1, 0.2, 0.3, 0.5, 0.7, 0.9, 1],
-            "bagging_freq": [int(x) for x in np.linspace(0, 100, num=20)],
             "min_split_gain": [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9],
             "reg_alpha": np.arange(0, 10, 0.01),
             "reg_lambda": np.arange(0, 10, 0.01),
@@ -1072,8 +1070,6 @@ class LGBMClassifierContainer(ClassifierContainer):
             "reg_alpha": UniformDistribution(0, 10),
             "reg_lambda": UniformDistribution(0, 10),
             "min_data_in_leaf": IntUniformDistribution(10, 10000),
-            "subsample": UniformDistribution(0, 1),
-            "bagging_freq": IntUniformDistribution(0, 100),
             "feature_fraction": UniformDistribution(0.01, 1),
         }
 
