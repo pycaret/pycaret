@@ -2353,6 +2353,14 @@ def compare_models(
 
     for i, model in enumerate(model_library):
 
+        model_id = (
+            model
+            if (
+                isinstance(model, str)
+                and all(isinstance(m, str) for m in model_library)
+            )
+            else str(i)
+        )
         model_name = _get_model_name(model)
 
         if isinstance(model, str):
@@ -2462,15 +2470,15 @@ def compare_models(
         compare_models_.insert(0, "Model", model_name)
         compare_models_.insert(0, "Object", [model])
         compare_models_.insert(0, "runtime", runtime)
+        compare_models_.index = [model_id]
         if master_display is None:
             master_display = compare_models_
         else:
             master_display = pd.concat(
-                [master_display, compare_models_], ignore_index=True
+                [master_display, compare_models_], ignore_index=False
             )
         master_display = master_display.round(round)
         master_display = master_display.sort_values(by=sort, ascending=sort_ascending)
-        master_display.reset_index(drop=True, inplace=True)
 
         master_display_ = master_display.drop(
             ["Object", "runtime"], axis=1, errors="ignore"
@@ -2510,7 +2518,8 @@ def compare_models(
     else:
         n_select_range = range(0, n_select)
 
-    for index, row in master_display.iterrows():
+    for index, row in enumerate(master_display.iterrows()):
+        loc, row = row
         model = row["Object"]
 
         results = row.to_frame().T.drop(
