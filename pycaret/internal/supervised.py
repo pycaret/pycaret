@@ -1637,38 +1637,7 @@ def setup(
 
     gc.collect()
 
-    return (
-        X,
-        y,
-        X_train,
-        X_test,
-        y_train,
-        y_test,
-        seed,
-        prep_pipe,
-        experiment__,
-        fold_shuffle_param,
-        n_jobs_param,
-        html_param,
-        create_model_container,
-        master_model_container,
-        display_container,
-        exp_name_log,
-        logging_param,
-        log_plots_param,
-        USI,
-        fix_imbalance_param,
-        fix_imbalance_method_param,
-        logger,
-        data_before_preprocess,
-        target_param,
-        gpu_param,
-        _gpu_n_jobs_param,
-        stratify_param,
-        fold_generator,
-        fold_param,
-        fold_groups_param,
-    )
+    return tuple([globals()[v] for v in pycaret_globals])
 
 
 def compare_models(
