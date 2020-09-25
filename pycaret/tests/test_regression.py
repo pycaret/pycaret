@@ -15,7 +15,7 @@ def test():
     reg1 = pycaret.regression.setup(data, target='medv',silent=True, log_experiment=True, html=False, session_id=123)
 
     # compare models
-    top3 = pycaret.regression.compare_models(n_select=100)[:3]
+    top3 = pycaret.regression.compare_models(n_select=100, exclude=["catboost"])[:3]
     assert isinstance(top3, list)
 
     # tune model
