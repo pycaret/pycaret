@@ -187,6 +187,7 @@ def color_df(
 
 def get_model_id(e, all_models: Dict[str, ModelContainer]) -> str:
     from pycaret.internal.meta_estimators import get_estimator_from_meta_estimator
+
     return next(
         (
             k
@@ -360,14 +361,14 @@ def get_cv_splitter(
 
 
 def get_cv_n_folds(
-    fold: Optional[Union[int, BaseCrossValidator]], default, X, groups=None
+    fold: Optional[Union[int, BaseCrossValidator]], default, X, y=None, groups=None
 ) -> int:
     if not fold:
         fold = default
     if isinstance(fold, int):
         return fold
     else:
-        return fold.get_n_splits(X, groups)
+        return fold.get_n_splits(X, y=y, groups=groups)
 
 
 class none_n_jobs(object):
@@ -457,7 +458,6 @@ def get_groups(
             raise ValueError(
                 f"groups has lenght {len(groups)} which doesn't match X_train length of {len(X_train)}."
             )
-
     return groups
 
 

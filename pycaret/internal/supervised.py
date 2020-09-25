@@ -2556,7 +2556,9 @@ def create_model(
     """
     MONITOR UPDATE STARTS
     """
-    display.update_monitor(1, f"Fitting {_get_cv_n_folds(fold, X_train, groups)} Folds")
+    display.update_monitor(
+        1, f"Fitting {_get_cv_n_folds(fold, X_train, y=y_train, groups=groups)} Folds"
+    )
     display.display_monitor()
     """
     MONITOR UPDATE ENDS
@@ -2633,7 +2635,7 @@ def create_model(
 
             model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
         else:
-            model_fit_time /= _get_cv_n_folds(cv, X_train, groups)
+            model_fit_time /= _get_cv_n_folds(cv, X_train, y=y_train, groups=groups)
 
         # end runtime
         runtime_end = time.time()
@@ -8148,11 +8150,11 @@ def _get_cv_splitter(fold):
     )
 
 
-def _get_cv_n_folds(fold, X, groups=None):
+def _get_cv_n_folds(fold, X, y=None, groups=None):
     import pycaret.internal.utils
 
     return pycaret.internal.utils.get_cv_n_folds(
-        fold, default=fold_generator, X=X, groups=groups
+        fold, default=fold_generator, X=X, y=y, groups=groups
     )
 
 
