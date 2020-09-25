@@ -2104,7 +2104,7 @@ def add_metric(
     name: str,
     score_func: type,
     greater_is_better: bool = True,
-    args: dict = None,
+    **kwargs,
 ) -> pd.Series:
     """
     Adds a custom metric to be used in all functions.
@@ -2125,7 +2125,7 @@ def add_metric(
         or a loss function, meaning low is good. In the latter case, the
         scorer object will sign-flip the outcome of the score_func.
 
-    args: dict, default = {}
+    **kwargs:
         Arguments to be passed to score function.
 
     Returns
@@ -2141,7 +2141,7 @@ def add_metric(
         score_func=score_func,
         target="pred",
         greater_is_better=greater_is_better,
-        args=args,
+        **kwargs,
     )
 
 

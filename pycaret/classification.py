@@ -2364,8 +2364,8 @@ def add_metric(
     score_func: type,
     target: str = "pred",
     greater_is_better: bool = True,
-    args: dict = None,
     multiclass: bool = True,
+    **kwargs
 ) -> pd.Series:
     """
     Adds a custom metric to be used in all functions.
@@ -2392,11 +2392,11 @@ def add_metric(
         or a loss function, meaning low is good. In the latter case, the
         scorer object will sign-flip the outcome of the score_func.
 
-    args: dict, default = {}
-        Arguments to be passed to score function.
-
     multiclass: bool, default = True
         Whether the metric supports multiclass problems.
+
+    **kwargs:
+        Arguments to be passed to score function.
 
     Returns
     -------
@@ -2411,8 +2411,8 @@ def add_metric(
         score_func=score_func,
         target=target,
         greater_is_better=greater_is_better,
-        args=args,
         multiclass=multiclass,
+        **kwargs,
     )
 
 

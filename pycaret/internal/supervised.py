@@ -2556,7 +2556,9 @@ def create_model(
     """
     MONITOR UPDATE STARTS
     """
-    display.update_monitor(1, f"Fitting {_get_cv_n_folds(fold, X_train, groups)} Folds")
+    display.update_monitor(
+        1, f"Fitting {_get_cv_n_folds(fold, X_train, y=y_train, groups=groups)} Folds"
+    )
     display.display_monitor()
     """
     MONITOR UPDATE ENDS
@@ -2633,7 +2635,7 @@ def create_model(
 
             model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
         else:
-            model_fit_time /= _get_cv_n_folds(cv, X_train, groups)
+            model_fit_time /= _get_cv_n_folds(cv, X_train, y=y_train, groups=groups)
 
         # end runtime
         runtime_end = time.time()
@@ -3880,7 +3882,7 @@ def ensemble_model(
     MONITOR UPDATE ENDS
     """
 
-    model = _estimator_
+    model = get_estimator_from_meta_estimator(_estimator_)
 
     logger.info("Importing untrained ensembler")
 
@@ -4226,6 +4228,7 @@ def blend_models(
     logger.info("Getting model names")
     estimator_dict = {}
     for x in estimator_list:
+        x = get_estimator_from_meta_estimator(x)
         name = _get_model_id(x)
         suffix = 1
         original_name = name
@@ -4510,7 +4513,7 @@ def stack_models(
         meta_model_args = meta_model_definition.args
         meta_model = meta_model_definition.class_def(**meta_model_args)
     else:
-        meta_model = clone(meta_model)
+        meta_model = clone(get_estimator_from_meta_estimator(meta_model))
 
     if not display:
         progress_args = {"max": 2 + 4}
@@ -4562,6 +4565,7 @@ def stack_models(
     logger.info("Getting model names")
     estimator_dict = {}
     for x in estimator_list:
+        x = get_estimator_from_meta_estimator(x)
         name = _get_model_id(x)
         suffix = 1
         original_name = name
@@ -6571,12 +6575,12 @@ def predict_model(
 
     # prediction starts here
 
-    pred_ = np.nan_to_num(estimator.predict(X_test_))
+    pred = np.nan_to_num(estimator.predict(X_test_))
 
     try:
         score = estimator.predict_proba(X_test_)
 
-        if len(np.unique(pred_)) <= 2:
+        if len(np.unique(pred)) <= 2:
             pred_prob = score[:, 1]
         else:
             pred_prob = score
@@ -6587,25 +6591,25 @@ def predict_model(
 
     if probability_threshold is not None and pred_prob is not None:
         try:
-            pred_ = (pred_prob >= probability_threshold).astype(int)
+            pred = (pred_prob >= probability_threshold).astype(int)
         except:
             pass
 
     if pred_prob is None:
-        pred_prob = pred_
+        pred_prob = pred
 
     df_score = None
 
     if data is None:
         # model name
         full_name = _get_model_name(estimator)
-        metrics = _calculate_metrics(y_test_, pred_, pred_prob)
+        metrics = _calculate_metrics(y_test_, pred, pred_prob)
         df_score = pd.DataFrame(metrics, index=[0])
         df_score.insert(0, "Model", full_name)
         df_score = df_score.round(round)
         display.display(df_score.style.set_precision(round), clear=False)
 
-    label = pd.DataFrame(pred_)
+    label = pd.DataFrame(pred)
     label.columns = ["Label"]
     if _ml_usecase == MLUsecase.CLASSIFICATION:
         label["Label"] = label["Label"].astype(int)
@@ -6622,7 +6626,7 @@ def predict_model(
     if score is not None:
         d = []
         for i in range(0, len(score)):
-            d.append(score[i][pred_[i]])
+            d.append(score[i][pred[i]])
 
         score = d
         try:
@@ -7367,9 +7371,14 @@ def models(
 
     logger.info(f"gpu_param set to {gpu_param}")
 
-    model_containers = pycaret.containers.models.classification.get_all_model_containers(
-        globals(), raise_errors
-    )
+    if _ml_usecase == MLUsecase.CLASSIFICATION:
+        model_containers = pycaret.containers.models.classification.get_all_model_containers(
+            globals(), raise_errors
+        )
+    elif _ml_usecase == MLUsecase.REGRESSION:
+        model_containers = pycaret.containers.models.regression.get_all_model_containers(
+            globals(), raise_errors
+        )
     rows = [
         v.get_dict(internal)
         for k, v in model_containers.items()
@@ -7419,9 +7428,14 @@ def get_metrics(
     np.random.seed(seed)
 
     if reset:
-        _all_metrics = pycaret.containers.metrics.classification.get_all_metric_containers(
-            globals(), raise_errors
-        )
+        if _ml_usecase == MLUsecase.CLASSIFICATION:
+            _all_metrics = pycaret.containers.metrics.classification.get_all_metric_containers(
+                globals(), raise_errors
+            )
+        elif _ml_usecase == MLUsecase.REGRESSION:
+            _all_metrics = pycaret.containers.metrics.regression.get_all_metric_containers(
+                globals(), raise_errors
+            )
 
     metric_containers = _all_metrics
     rows = [v.get_dict() for k, v in metric_containers.items()]
@@ -7462,8 +7476,8 @@ def add_metric(
     score_func: type,
     target: str = "pred",
     greater_is_better: bool = True,
-    args: dict = None,
     multiclass: bool = True,
+    **kwargs,
 ) -> pd.Series:
     """
     Adds a custom metric to be used in all functions.
@@ -7490,11 +7504,11 @@ def add_metric(
         or a loss function, meaning low is good. In the latter case, the
         scorer object will sign-flip the outcome of the score_func.
 
-    args: dict, default = {}
-        Arguments to be passed to score function.
-
     multiclass: bool, default = True
         Whether the metric supports multiclass problems.
+
+    **kwargs:
+        Arguments to be passed to score function.
 
     Returns
     -------
@@ -7502,9 +7516,6 @@ def add_metric(
         The created row as Series.
 
     """
-
-    if not args:
-        args = {}
 
     if not "_all_metrics" in globals():
         raise ValueError("setup() needs to be ran first.")
@@ -7520,7 +7531,7 @@ def add_metric(
             name=name,
             score_func=score_func,
             target=target,
-            args=args,
+            args=kwargs,
             display_name=name,
             greater_is_better=greater_is_better,
             is_multiclass=bool(multiclass),
@@ -7531,7 +7542,7 @@ def add_metric(
             id=id,
             name=name,
             score_func=score_func,
-            args=args,
+            args=kwargs,
             display_name=name,
             greater_is_better=greater_is_better,
             is_custom=True,
@@ -7886,7 +7897,7 @@ def _is_special_model(e) -> bool:
 
 
 def _calculate_metrics(
-    ytest, pred_, pred_prob: float, weights: Optional[list] = None,
+    y_test, pred, pred_prob: float, weights: Optional[list] = None,
 ) -> dict:
     """
     Calculate all metrics in _all_metrics.
@@ -7896,21 +7907,39 @@ def _calculate_metrics(
     try:
         return calculate_metrics(
             metrics=_all_metrics,
-            ytest=ytest,
-            pred_=pred_,
+            y_test=y_test,
+            pred=pred,
             pred_proba=pred_prob,
             weights=weights,
         )
     except:
-        return calculate_metrics(
-            metrics=pycaret.containers.metrics.classification.get_all_metric_containers(
+        ml_usecase = get_ml_task(y_test)
+        if ml_usecase == MLUsecase.CLASSIFICATION:
+            metrics = pycaret.containers.metrics.classification.get_all_metric_containers(
                 globals(), True
-            ),
-            ytest=ytest,
-            pred_=pred_,
+            )
+        elif ml_usecase == MLUsecase.REGRESSION:
+            metrics = pycaret.containers.metrics.regression.get_all_metric_containers(
+                globals(), True
+            )
+        return calculate_metrics(
+            metrics=metrics,
+            y_test=y_test,
+            pred=pred,
             pred_proba=pred_prob,
             weights=weights,
         )
+
+
+def get_ml_task(y):
+    c1 = y.dtype == "int64"
+    c2 = y.nunique() <= 20
+    c3 = y.dtype.name in ["object", "bool", "category"]
+    if ((c1) & (c2)) | (c3):
+        ml_usecase = MLUsecase.CLASSIFICATION
+    else:
+        ml_usecase = MLUsecase.REGRESSION
+    return ml_usecase
 
 
 def _mlflow_log_model(
@@ -8121,11 +8150,11 @@ def _get_cv_splitter(fold):
     )
 
 
-def _get_cv_n_folds(fold, X, groups=None):
+def _get_cv_n_folds(fold, X, y=None, groups=None):
     import pycaret.internal.utils
 
     return pycaret.internal.utils.get_cv_n_folds(
-        fold, default=fold_generator, X=X, groups=groups
+        fold, default=fold_generator, X=X, y=y, groups=groups
     )
 
 
