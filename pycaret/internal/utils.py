@@ -14,7 +14,6 @@ from typing import Any, List, Optional, Dict, Tuple, Union
 from sklearn import clone
 import numpy as np
 from sklearn.model_selection import KFold, StratifiedKFold, BaseCrossValidator
-from pycaret.internal.meta_estimators import get_estimator_from_meta_estimator
 
 
 def get_config(variable: str, globals_d: dict):
@@ -187,6 +186,7 @@ def color_df(
 
 
 def get_model_id(e, all_models: Dict[str, ModelContainer]) -> str:
+    from pycaret.internal.meta_estimators import get_estimator_from_meta_estimator
     return next(
         (
             k
