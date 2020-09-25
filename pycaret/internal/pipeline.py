@@ -22,6 +22,34 @@ class Pipeline(imblearn.pipeline.Pipeline):
         self.fit_vars = set()
         self._carry_over_final_estimator_fit_vars()
 
+    @property
+    def inverse_transform(self):
+        """Apply inverse transformations in reverse order.
+
+        Parameters
+        ----------
+        Xt : array-like of shape  (n_samples, n_transformed_features)
+            Data samples, where ``n_samples`` is the number of samples and
+            ``n_features`` is the number of features. Must fulfill
+            input requirements of last step of pipeline's
+            ``inverse_transform`` method.
+
+        Returns
+        -------
+        Xt : array-like of shape (n_samples, n_features)
+        """
+        return self._inverse_transform
+
+    def _inverse_transform(self, X):
+        Xt = X
+        reverse_iter = reversed(list(self._iter()))
+        for _, _, transform in reverse_iter:
+            try:
+                Xt = transform.inverse_transform(Xt)
+            except:
+                pass
+        return Xt
+
     def _carry_over_final_estimator_fit_vars(self):
         self._clear_final_estimator_fit_vars()
         if hasattr(self._final_estimator, "fit") and is_fitted(self._final_estimator):
@@ -65,6 +93,10 @@ class Pipeline(imblearn.pipeline.Pipeline):
         self._carry_over_final_estimator_fit_vars()
         return result
 
+    def predict(self, X, **predict_params):
+        result = super().predict(X, **predict_params)
+        return self.inverse_transform(result)
+
     def fit(self, X, y=None, **fit_kwargs):
         result = super().fit(X, y=y, **fit_kwargs)
 
@@ -75,7 +107,7 @@ class Pipeline(imblearn.pipeline.Pipeline):
         result = super().fit_predict(X, y=y, **fit_params)
 
         self._carry_over_final_estimator_fit_vars()
-        return result
+        return self.inverse_transform(result)
 
     def fit_resample(self, X, y=None, **fit_params):
         result = super().fit_resample(X, y=y, **fit_params)

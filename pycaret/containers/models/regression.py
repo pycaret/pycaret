@@ -10,22 +10,17 @@
 
 import logging
 from typing import Union, Dict, Any, Optional
-from pycaret.containers.models.base_model import ModelContainer
+from pycaret.containers.models.base_model import (
+    ModelContainer,
+    leftover_parameters_to_categorical_distributions,
+)
 from pycaret.internal.utils import param_grid_to_lists, get_logger, get_class_name
 from pycaret.internal.distributions import *
 import pycaret.containers.base_container
 import numpy as np
 
 
-def _leftover_parameters_to_categorical_distributions(
-    tune_grid: dict, tune_distributions: dict
-) -> None:
-    for k, v in tune_grid.items():
-        if not k in tune_distributions:
-            tune_distributions[k] = CategoricalDistribution(v)
-
-
-class RegressionContainer(ModelContainer):
+class RegressorContainer(ModelContainer):
     """
     Base regression model container class, for easier definition of containers. Ensures consistent format
     before being turned into a dataframe row.
@@ -105,7 +100,6 @@ class RegressionContainer(ModelContainer):
         tune_args: Dict[str, Any] = None,
         shap: Union[bool, str] = False,
         is_gpu_enabled: Optional[bool] = None,
-        is_boosting_supported: Optional[bool] = None,
     ) -> None:
 
         self.shap = shap
@@ -137,25 +131,8 @@ class RegressionContainer(ModelContainer):
         self.tune_distribution = tune_distribution
         self.tune_args = tune_args
 
-        try:
-            model_instance = class_def()
-
-            self.is_boosting_supported = bool(
-                hasattr(model_instance, "class_weights")
-                or hasattr(model_instance, "predict_proba")
-            )
-
-            self.is_soft_voting_supported = bool(
-                hasattr(model_instance, "predict_proba")
-            )
-
-            del model_instance
-        except:
-            self.is_boosting_supported = False
-            self.is_soft_voting_supported = False
-        finally:
-            if is_boosting_supported is not None:
-                self.is_boosting_supported = is_boosting_supported
+        self.is_boosting_supported = True
+        self.is_soft_voting_supported = True
 
         if is_gpu_enabled is not None:
             self.is_gpu_enabled = is_gpu_enabled
@@ -196,13 +173,12 @@ class RegressionContainer(ModelContainer):
                 ("Tune Args", self.tune_args),
                 ("SHAP", self.shap),
                 ("GPU Enabled", self.is_gpu_enabled),
-                ("Boosting Supported", self.is_boosting_supported),
             ]
 
         return dict(d)
 
 
-class LinearRegressionContainer(RegressionContainer):
+class LinearRegressionContainer(RegressorContainer):
     def __init__(self, globals_dict: dict) -> None:
         logger = get_logger()
         np.random.seed(globals_dict["seed"])
@@ -210,26 +186,29 @@ class LinearRegressionContainer(RegressionContainer):
 
         from sklearn.linear_model import LinearRegression
 
-        # if globals_dict["gpu_param"] == "force":
-        #     from cuml.linear_model import LogisticRegression
+        if globals_dict["gpu_param"] == "force":
+            from cuml.linear_model import LinearRegression
 
-        #     logger.info("Imported cuml.linear_model.LogisticRegression")
-        #     gpu_imported = True
-        # elif globals_dict["gpu_param"]:
-        #     try:
-        #         from cuml.linear_model import LogisticRegression
+            logger.info("Imported cuml.linear_model.LinearRegression")
+            gpu_imported = True
+        elif globals_dict["gpu_param"]:
+            try:
+                from cuml.linear_model import LinearRegression
 
-        #         logger.info("Imported cuml.linear_model.LogisticRegression")
-        #         gpu_imported = True
-        #     except ImportError:
-        #         logger.warning("Couldn't import cuml.linear_model.LogisticRegression")
+                logger.info("Imported cuml.linear_model.LinearRegression")
+                gpu_imported = True
+            except ImportError:
+                logger.warning("Couldn't import cuml.linear_model.LinearRegression")
 
-        args = {"n_jobs": globals_dict["n_jobs_param"]}
+        args = {}
         tune_args = {}
         tune_grid = {"fit_intercept": [True, False], "normalize": [True, False]}
         tune_distributions = {}
 
-        _leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+        if not gpu_imported:
+            args["n_jobs"] = globals_dict["n_jobs_param"]
+
+        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 
         super().__init__(
             id="lr",
@@ -239,37 +218,364 @@ class LinearRegressionContainer(RegressionContainer):
             tune_grid=tune_grid,
             tune_distribution=tune_distributions,
             tune_args=tune_args,
+            is_gpu_enabled=gpu_imported,
             shap=False,
         )
 
-class BayesianRidgeContainer(RegressionContainer):
+
+class LassoRegressionContainer(RegressorContainer):
     def __init__(self, globals_dict: dict) -> None:
         logger = get_logger()
         np.random.seed(globals_dict["seed"])
         gpu_imported = False
 
-        from sklearn.linear_model import BayesianRidge
+        from sklearn.linear_model import Lasso
 
-        # if globals_dict["gpu_param"] == "force":
-        #     from cuml.linear_model import LogisticRegression
+        if globals_dict["gpu_param"] == "force":
+            from cuml.linear_model import Lasso
 
-        #     logger.info("Imported cuml.linear_model.LogisticRegression")
-        #     gpu_imported = True
-        # elif globals_dict["gpu_param"]:
-        #     try:
-        #         from cuml.linear_model import LogisticRegression
+            logger.info("Imported cuml.linear_model.Lasso")
+            gpu_imported = True
+        elif globals_dict["gpu_param"]:
+            try:
+                from cuml.linear_model import Lasso
 
-        #         logger.info("Imported cuml.linear_model.LogisticRegression")
-        #         gpu_imported = True
-        #     except ImportError:
-        #         logger.warning("Couldn't import cuml.linear_model.LogisticRegression")
+                logger.info("Imported cuml.linear_model.Lasso")
+                gpu_imported = True
+            except ImportError:
+                logger.warning("Couldn't import cuml.linear_model.Lasso")
 
         args = {}
         tune_args = {}
-        tune_grid = {}
-        tune_distributions = {}
+        tune_grid = {
+            "alpha": np.arange(0.001, 1, 0.001),
+            "fit_intercept": [True, False],
+            "normalize": [True, False],
+        }
+        tune_distributions = {"alpha": UniformDistribution(0.000000001, 1)}
 
-        _leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+        if not gpu_imported:
+            args["random_state"] = globals_dict["seed"]
+
+        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+
+        super().__init__(
+            id="lasso",
+            name="Lasso Regression",
+            class_def=Lasso,
+            args=args,
+            tune_grid=tune_grid,
+            tune_distribution=tune_distributions,
+            tune_args=tune_args,
+            is_gpu_enabled=gpu_imported,
+            shap=False,
+        )
+
+
+class RidgeRegressionContainer(RegressorContainer):
+    def __init__(self, globals_dict: dict) -> None:
+        logger = get_logger()
+        np.random.seed(globals_dict["seed"])
+        gpu_imported = False
+
+        from sklearn.linear_model import Ridge
+
+        if globals_dict["gpu_param"] == "force":
+            from cuml.linear_model import Ridge
+
+            logger.info("Imported cuml.linear_model.Ridge")
+            gpu_imported = True
+        elif globals_dict["gpu_param"]:
+            try:
+                from cuml.linear_model import Ridge
+
+                logger.info("Imported cuml.linear_model.Ridge")
+                gpu_imported = True
+            except ImportError:
+                logger.warning("Couldn't import cuml.linear_model.Ridge")
+
+        args = {}
+        tune_args = {}
+        tune_grid = {
+            "alpha": np.arange(0.001, 1, 0.001),
+            "fit_intercept": [True, False],
+            "normalize": [True, False],
+        }
+        tune_distributions = {"alpha": UniformDistribution(0.000000001, 1)}
+
+        if not gpu_imported:
+            args["random_state"] = globals_dict["seed"]
+
+        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+
+        super().__init__(
+            id="ridge",
+            name="Ridge Regression",
+            class_def=Ridge,
+            args=args,
+            tune_grid=tune_grid,
+            tune_distribution=tune_distributions,
+            tune_args=tune_args,
+            is_gpu_enabled=gpu_imported,
+            shap=False,
+        )
+
+
+class ElasticNetContainer(RegressorContainer):
+    def __init__(self, globals_dict: dict) -> None:
+        logger = get_logger()
+        np.random.seed(globals_dict["seed"])
+        gpu_imported = False
+
+        from sklearn.linear_model import ElasticNet
+
+        if globals_dict["gpu_param"] == "force":
+            from cuml.linear_model import ElasticNet
+
+            logger.info("Imported cuml.linear_model.ElasticNet")
+            gpu_imported = True
+        elif globals_dict["gpu_param"]:
+            try:
+                from cuml.linear_model import ElasticNet
+
+                logger.info("Imported cuml.linear_model.ElasticNet")
+                gpu_imported = True
+            except ImportError:
+                logger.warning("Couldn't import cuml.linear_model.ElasticNet")
+
+        args = {}
+        tune_args = {}
+        tune_grid = {
+            "alpha": np.arange(0.0000000001, 0.9999999999, 0.01),
+            "l1_ratio": np.arange(0.0000000001, 0.9999999999, 0.01),
+            "fit_intercept": [True, False],
+            "normalize": [True, False],
+        }
+        tune_distributions = {
+            "l1_ratio": UniformDistribution(0.0000000001, 0.9999999999),
+            "alpha": UniformDistribution(0.0000000001, 0.9999999999),
+        }
+
+        if not gpu_imported:
+            args["random_state"] = globals_dict["seed"]
+
+        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+
+        super().__init__(
+            id="en",
+            name="Elastic Net",
+            class_def=ElasticNet,
+            args=args,
+            tune_grid=tune_grid,
+            tune_distribution=tune_distributions,
+            tune_args=tune_args,
+            is_gpu_enabled=gpu_imported,
+            shap=False,
+        )
+
+
+class LarsContainer(RegressorContainer):
+    def __init__(self, globals_dict: dict) -> None:
+        logger = get_logger()
+        np.random.seed(globals_dict["seed"])
+
+        from sklearn.linear_model import Lars
+
+        args = {"random_state": globals_dict["seed"]}
+        tune_args = {}
+        tune_grid = {
+            "fit_intercept": [True, False],
+            "normalize": [True, False],
+            "eps": [
+                0.00001,
+                0.0001,
+                0.001,
+                0.01,
+                0.05,
+                0.0005,
+                0.005,
+                0.00005,
+                0.02,
+                0.007,
+                0.1,
+            ],
+        }
+        tune_distributions = {
+            "eps": UniformDistribution(0.00001, 0.1),
+        }
+
+        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+
+        super().__init__(
+            id="lar",
+            name="Least Angle Regression",
+            class_def=Lars,
+            args=args,
+            tune_grid=tune_grid,
+            tune_distribution=tune_distributions,
+            tune_args=tune_args,
+            shap=False,
+        )
+
+
+class LassoLarsContainer(RegressorContainer):
+    def __init__(self, globals_dict: dict) -> None:
+        logger = get_logger()
+        np.random.seed(globals_dict["seed"])
+
+        from sklearn.linear_model import LassoLars
+
+        args = {"random_state": globals_dict["seed"]}
+        tune_args = {}
+        tune_grid = {
+            "fit_intercept": [True, False],
+            "normalize": [True, False],
+            "alpha": np.arange(0.001, 1, 0.001),
+            "eps": [
+                0.00001,
+                0.0001,
+                0.001,
+                0.01,
+                0.05,
+                0.0005,
+                0.005,
+                0.00005,
+                0.02,
+                0.007,
+                0.1,
+            ],
+        }
+        tune_distributions = {
+            "eps": UniformDistribution(0.00001, 0.1),
+            "alpha": UniformDistribution(0.0000000001, 0.9999999999, log=True),
+        }
+
+        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+
+        super().__init__(
+            id="llar",
+            name="Lasso Least Angle Regression",
+            class_def=LassoLars,
+            args=args,
+            tune_grid=tune_grid,
+            tune_distribution=tune_distributions,
+            tune_args=tune_args,
+            shap=False,
+        )
+
+
+class OrthogonalMatchingPursuitContainer(RegressorContainer):
+    def __init__(self, globals_dict: dict) -> None:
+        logger = get_logger()
+        np.random.seed(globals_dict["seed"])
+
+        from sklearn.linear_model import OrthogonalMatchingPursuit
+
+        args = {}
+        tune_args = {}
+        tune_grid = {
+            "n_nonzero_coefs": range(1, len(globals_dict["X_train"].columns) + 1),
+            "fit_intercept": [True, False],
+            "normalize": [True, False],
+        }
+        tune_distributions = {
+            "n_nonzero_coefs": IntUniformDistribution(
+                1, len(globals_dict["X_train"].columns)
+            )
+        }
+
+        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+
+        super().__init__(
+            id="omp",
+            name="Orthogonal Matching Pursuit",
+            class_def=OrthogonalMatchingPursuit,
+            args=args,
+            tune_grid=tune_grid,
+            tune_distribution=tune_distributions,
+            tune_args=tune_args,
+            shap=False,
+        )
+
+
+class BayesianRidgeContainer(RegressorContainer):
+    def __init__(self, globals_dict: dict) -> None:
+        logger = get_logger()
+        np.random.seed(globals_dict["seed"])
+
+        from sklearn.linear_model import BayesianRidge
+
+        args = {}
+        tune_args = {}
+        tune_grid = {
+            "alpha_1": [
+                0.0000001,
+                0.000001,
+                0.0001,
+                0.001,
+                0.01,
+                0.0005,
+                0.005,
+                0.05,
+                0.1,
+                0.15,
+                0.2,
+                0.3,
+            ],
+            "alpha_2": [
+                0.0000001,
+                0.000001,
+                0.0001,
+                0.001,
+                0.01,
+                0.0005,
+                0.005,
+                0.05,
+                0.1,
+                0.15,
+                0.2,
+                0.3,
+            ],
+            "lambda_1": [
+                0.0000001,
+                0.000001,
+                0.0001,
+                0.001,
+                0.01,
+                0.0005,
+                0.005,
+                0.05,
+                0.1,
+                0.15,
+                0.2,
+                0.3,
+            ],
+            "lambda_2": [
+                0.0000001,
+                0.000001,
+                0.0001,
+                0.001,
+                0.01,
+                0.0005,
+                0.005,
+                0.05,
+                0.1,
+                0.15,
+                0.2,
+                0.3,
+            ],
+            "compute_score": [True, False],
+            "fit_intercept": [True, False],
+            "normalize": [True, False],
+        }
+        tune_distributions = {
+            "alpha_1": UniformDistribution(0.0000000001, 0.9999999999, log=True),
+            "alpha_2": UniformDistribution(0.0000000001, 0.9999999999, log=True),
+            "lambda_1": UniformDistribution(0.0000000001, 0.9999999999, log=True),
+            "lambda_2": UniformDistribution(0.0000000001, 0.9999999999, log=True),
+        }
+
+        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 
         super().__init__(
             id="br",
@@ -283,10 +589,1001 @@ class BayesianRidgeContainer(RegressionContainer):
         )
 
 
+class AutomaticRelevanceDeterminationContainer(RegressorContainer):
+    def __init__(self, globals_dict: dict) -> None:
+        logger = get_logger()
+        np.random.seed(globals_dict["seed"])
+
+        from sklearn.linear_model import ARDRegression
+
+        args = {"n_iter": 1000}
+        tune_args = {}
+        tune_grid = {
+            "alpha_1": [
+                0.0000001,
+                0.000001,
+                0.0001,
+                0.001,
+                0.01,
+                0.0005,
+                0.005,
+                0.05,
+                0.1,
+                0.15,
+                0.2,
+                0.3,
+            ],
+            "alpha_2": [
+                0.0000001,
+                0.000001,
+                0.0001,
+                0.001,
+                0.01,
+                0.0005,
+                0.005,
+                0.05,
+                0.1,
+                0.15,
+                0.2,
+                0.3,
+            ],
+            "lambda_1": [
+                0.0000001,
+                0.000001,
+                0.0001,
+                0.001,
+                0.01,
+                0.0005,
+                0.005,
+                0.05,
+                0.1,
+                0.15,
+                0.2,
+                0.3,
+            ],
+            "lambda_2": [
+                0.0000001,
+                0.000001,
+                0.0001,
+                0.001,
+                0.01,
+                0.0005,
+                0.005,
+                0.05,
+                0.1,
+                0.15,
+                0.2,
+                0.3,
+            ],
+            "threshold_lambda": [
+                5000,
+                10000,
+                15000,
+                20000,
+                25000,
+                30000,
+                35000,
+                40000,
+                45000,
+                50000,
+                55000,
+                60000,
+            ],
+            "compute_score": [True, False],
+            "fit_intercept": [True, False],
+            "normalize": [True, False],
+        }
+        tune_distributions = {
+            "alpha_1": UniformDistribution(0.0000000001, 0.9999999999, log=True),
+            "alpha_2": UniformDistribution(0.0000000001, 0.9999999999, log=True),
+            "lambda_1": UniformDistribution(0.0000000001, 0.9999999999, log=True),
+            "lambda_2": UniformDistribution(0.0000000001, 0.9999999999, log=True),
+            "threshold_lambda": IntUniformDistribution(1000, 100000),
+        }
+
+        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+
+        super().__init__(
+            id="ard",
+            name="Automatic Relevance Determination",
+            class_def=ARDRegression,
+            args=args,
+            tune_grid=tune_grid,
+            tune_distribution=tune_distributions,
+            tune_args=tune_args,
+            shap=False,
+        )
+
+
+class PassiveAggressiveRegressorContainer(RegressorContainer):
+    def __init__(self, globals_dict: dict) -> None:
+        logger = get_logger()
+        np.random.seed(globals_dict["seed"])
+
+        from sklearn.linear_model import PassiveAggressiveRegressor
+
+        args = {"random_state": globals_dict["seed"]}
+        tune_args = {}
+        tune_grid = {
+            "C": np.arange(0, 10, 0.001),
+            "fit_intercept": [True, False],
+            "early_stopping": [True, False],
+            "loss": ["epsilon_insensitive", "squared_epsilon_insensitive"],
+            "epsilon": [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9],
+            "shuffle": [True, False],
+            "class_weight": ["balanced", {}],
+        }
+        tune_distributions = {
+            "C": UniformDistribution(0, 10),
+            "epsilon": UniformDistribution(0.0000000001, 0.9999999999),
+        }
+
+        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+
+        super().__init__(
+            id="par",
+            name="Passive Aggressive Regressor",
+            class_def=PassiveAggressiveRegressor,
+            args=args,
+            tune_grid=tune_grid,
+            tune_distribution=tune_distributions,
+            tune_args=tune_args,
+            shap=False,
+        )
+
+
+class RANSACRegressorContainer(RegressorContainer):
+    def __init__(self, globals_dict: dict) -> None:
+        logger = get_logger()
+        np.random.seed(globals_dict["seed"])
+
+        from sklearn.linear_model import RANSACRegressor
+
+        args = {"random_state": globals_dict["seed"]}
+        tune_args = {}
+        tune_grid = {
+            "min_samples": np.arange(0, 1, 0.05),
+            "max_trials": np.arange(1, 20, 1),
+            "max_skips": np.arange(1, 20, 1),
+            "stop_n_inliers": np.arange(1, 25, 1),
+            "stop_probability": np.arange(0, 1, 0.01),
+            "loss": ["absolute_loss", "squared_loss"],
+        }
+        tune_distributions = {
+            "min_samples": UniformDistribution(0, 1),
+            "max_trials": IntUniformDistribution(1, 20),
+            "max_skips": IntUniformDistribution(1, 20),
+            "stop_n_inliers": IntUniformDistribution(1, 25),
+            "stop_probability": UniformDistribution(0, 1),
+        }
+
+        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+
+        super().__init__(
+            id="ransac",
+            name="Random Sample Consensus",
+            class_def=RANSACRegressor,
+            args=args,
+            tune_grid=tune_grid,
+            tune_distribution=tune_distributions,
+            tune_args=tune_args,
+            shap=False,
+        )
+
+
+class TheilSenRegressorContainer(RegressorContainer):
+    def __init__(self, globals_dict: dict) -> None:
+        logger = get_logger()
+        np.random.seed(globals_dict["seed"])
+
+        from sklearn.linear_model import TheilSenRegressor
+
+        args = {
+            "n_jobs": globals_dict["n_jobs_param"],
+            "randm_state": globals_dict["seed"],
+            "max_iter": 1000,
+        }
+        tune_args = {}
+        tune_grid = {
+            "fit_intercept": [True, False],
+            "max_subpopulation": [
+                5000,
+                10000,
+                15000,
+                20000,
+                25000,
+                30000,
+                40000,
+                50000,
+            ],
+        }
+        tune_distributions = {"max_subpopulation": IntUniformDistribution(5000, 50000)}
+
+        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+
+        super().__init__(
+            id="tr",
+            name="TheilSen Regressor",
+            class_def=TheilSenRegressor,
+            args=args,
+            tune_grid=tune_grid,
+            tune_distribution=tune_distributions,
+            tune_args=tune_args,
+            is_turbo=False,
+            shap=False,
+        )
+
+
+class HuberRegressorContainer(RegressorContainer):
+    def __init__(self, globals_dict: dict) -> None:
+        logger = get_logger()
+        np.random.seed(globals_dict["seed"])
+
+        from sklearn.linear_model import HuberRegressor
+
+        args = {}
+        tune_args = {}
+        tune_grid = {
+            "epsilon": [1, 1.1, 1.2, 1.3, 1.35, 1.4, 1.5, 1.55, 1.6, 1.7, 1.8, 1.9],
+            "alpha": np.arange(0, 1, 0.00001),
+            "fit_intercept": [True, False],
+        }
+        tune_distributions = {
+            "epsilon": UniformDistribution(1, 2),
+            "alpha": UniformDistribution(0.0000000001, 0.9999999999),
+        }
+
+        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+
+        super().__init__(
+            id="huber",
+            name="Huber Regressor",
+            class_def=HuberRegressor,
+            args=args,
+            tune_grid=tune_grid,
+            tune_distribution=tune_distributions,
+            tune_args=tune_args,
+            shap=False,
+        )
+
+
+class KernelRidgeContainer(RegressorContainer):
+    def __init__(self, globals_dict: dict) -> None:
+        logger = get_logger()
+        np.random.seed(globals_dict["seed"])
+
+        from sklearn.kernel_ridge import KernelRidge
+
+        args = {}
+        tune_args = {}
+        tune_grid = {"alpha": np.arange(0, 1, 0.00001)}
+        tune_distributions = {
+            "alpha": UniformDistribution(0.0000000001, 0.9999999999),
+        }
+
+        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+
+        super().__init__(
+            id="kr",
+            name="Kernel Ridge",
+            class_def=KernelRidge,
+            args=args,
+            tune_grid=tune_grid,
+            tune_distribution=tune_distributions,
+            tune_args=tune_args,
+            shap=False,
+        )
+
+
+class SVRContainer(RegressorContainer):
+    def __init__(self, globals_dict: dict) -> None:
+        logger = get_logger()
+        np.random.seed(globals_dict["seed"])
+        gpu_imported = False
+
+        from sklearn.svm import SVR
+
+        if globals_dict["gpu_param"] == "force":
+            from cuml.svm import SVR
+
+            logger.info("Imported cuml.svm.SVR")
+            gpu_imported = True
+        elif globals_dict["gpu_param"]:
+            try:
+                from cuml.svm import SVR
+
+                logger.info("Imported cuml.svm.SVR")
+                gpu_imported = True
+            except ImportError:
+                logger.warning("Couldn't import cuml.svm.SVR")
+
+        args = {}
+        tune_args = {}
+        tune_grid = {
+            "C": np.arange(0, 10, 0.001),
+            "epsilon": [1.1, 1.2, 1.3, 1.35, 1.4, 1.5, 1.55, 1.6, 1.7, 1.8, 1.9],
+        }
+        tune_distributions = {
+            "epsilon": UniformDistribution(1, 2),
+            "C": UniformDistribution(0, 10),
+        }
+
+        if not gpu_imported:
+            tune_grid["shrinking"] = [True, False]
+
+        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+
+        super().__init__(
+            id="svm",
+            name="Support Vector Regression",
+            class_def=SVR,
+            args=args,
+            tune_grid=tune_grid,
+            tune_distribution=tune_distributions,
+            tune_args=tune_args,
+            is_gpu_enabled=gpu_imported,
+            is_turbo=False,
+            shap=False,
+        )
+
+
+class KNeighborsRegressorContainer(RegressorContainer):
+    def __init__(self, globals_dict: dict) -> None:
+        logger = get_logger()
+        np.random.seed(globals_dict["seed"])
+        gpu_imported = False
+
+        from sklearn.neighbors import KNeighborsRegressor
+
+        if globals_dict["gpu_param"] == "force":
+            from cuml.neighbors import KNeighborsRegressor
+
+            logger.info("Imported cuml.neighbors.KNeighborsRegressor")
+            gpu_imported = True
+        elif globals_dict["gpu_param"]:
+            try:
+                from cuml.neighbors import KNeighborsRegressor
+
+                logger.info("Imported cuml.neighbors.KNeighborsRegressor")
+                gpu_imported = True
+            except ImportError:
+                logger.warning("Couldn't import cuml.neighbors.KNeighborsRegressor")
+
+        args = {}
+        tune_args = {}
+        tune_grid = {}
+        tune_distributions = {}
+
+        # common
+        tune_grid["n_neighbors"] = range(1, 51)
+        tune_grid["weights"] = ["uniform"]
+        tune_grid["metric"] = ["minkowski", "euclidean", "manhattan"]
+
+        if not gpu_imported:
+            args["n_jobs"] = globals_dict["n_jobs_param"]
+            tune_grid["weights"] += ["distance"]
+
+        tune_distributions["n_neighbors"] = IntUniformDistribution(1, 51)
+
+        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+
+        super().__init__(
+            id="knn",
+            name="K Neighbors Regressor",
+            class_def=KNeighborsRegressor,
+            args=args,
+            tune_grid=tune_grid,
+            tune_distribution=tune_distributions,
+            tune_args=tune_args,
+            is_gpu_enabled=gpu_imported,
+            shap=False,
+        )
+
+
+class DecisionTreeRegressorContainer(RegressorContainer):
+    def __init__(self, globals_dict: dict) -> None:
+        logger = get_logger()
+        np.random.seed(globals_dict["seed"])
+
+        from sklearn.tree import DecisionTreeRegressor
+
+        args = {"random_state": globals_dict["seed"]}
+        tune_args = {}
+        tune_grid = {
+            "max_depth": [int(x) for x in np.linspace(1, 16, num=16)],
+            "max_features": [1.0, "sqrt", "log2"],
+            "min_samples_leaf": [2, 3, 4, 5, 6],
+            "min_samples_split": [2, 5, 7, 9, 10],
+            "min_impurity_decrease": [
+                0,
+                0.0001,
+                0.001,
+                0.01,
+                0.0002,
+                0.002,
+                0.02,
+                0.0005,
+                0.005,
+                0.05,
+                0.1,
+                0.2,
+                0.3,
+                0.4,
+                0.5,
+            ],
+            "criterion": ["mse", "mae", "friedman_mse"],
+        }
+        tune_distributions = {
+            "max_depth": IntUniformDistribution(1, 16),
+            "max_features": UniformDistribution(0.001, 1),
+            "min_samples_leaf": IntUniformDistribution(2, 6),
+            "min_samples_split": IntUniformDistribution(2, 10),
+            "min_impurity_decrease": UniformDistribution(0.000000001, 0.5, log=True),
+        }
+
+        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+
+        super().__init__(
+            id="dt",
+            name="Decision Tree Regressor",
+            class_def=DecisionTreeRegressor,
+            args=args,
+            tune_grid=tune_grid,
+            tune_distribution=tune_distributions,
+            tune_args=tune_args,
+            shap="type2",
+        )
+
+
+class RandomForestRegressorContainer(RegressorContainer):
+    def __init__(self, globals_dict: dict) -> None:
+        logger = get_logger()
+        np.random.seed(globals_dict["seed"])
+        gpu_imported = False
+
+        from sklearn.ensemble import RandomForestRegressor
+
+        if globals_dict["gpu_param"] == "force":
+            import cuml.ensemble
+
+            logger.info("Imported cuml.ensemble")
+            gpu_imported = True
+        elif globals_dict["gpu_param"]:
+            try:
+                import cuml.ensemble
+
+                logger.info("Imported cuml.ensemble")
+                gpu_imported = True
+            except ImportError:
+                logger.warning("Couldn't import cuml.ensemble")
+
+        if gpu_imported:
+            RandomForestRegressor = (
+                pycaret.internal.cuml_wrappers.get_random_forest_regressor()
+            )
+
+        args = (
+            {
+                "random_state": globals_dict["seed"],
+                "n_jobs": globals_dict["n_jobs_param"],
+            }
+            if not gpu_imported
+            else {"seed": globals_dict["seed"]}
+        )
+        tune_args = {}
+        tune_grid = {
+            "n_estimators": [int(x) for x in np.linspace(10, 1000, num=100)],
+            "max_depth": [int(x) for x in np.linspace(1, 11, num=11)],
+            "min_impurity_decrease": [
+                0,
+                0.0001,
+                0.001,
+                0.01,
+                0.0002,
+                0.002,
+                0.02,
+                0.0005,
+                0.005,
+                0.05,
+                0.1,
+                0.2,
+                0.3,
+                0.4,
+                0.5,
+            ],
+            "max_features": [1.0, "sqrt", "log2"],
+            "bootstrap": [True, False],
+        }
+        tune_distributions = {
+            "n_estimators": IntUniformDistribution(10, 1000),
+            "max_depth": IntUniformDistribution(1, 11),
+            "min_impurity_decrease": UniformDistribution(0.000000001, 0.5, log=True),
+            "max_features": UniformDistribution(0.001, 1),
+        }
+
+        if gpu_imported:
+            tune_grid["split_criterion"] = [2, 3]
+        else:
+            tune_grid["criterion"] = ["mse", "mae"]
+            tune_grid["min_samples_split"] = [2, 5, 7, 9, 10]
+            tune_grid["min_samples_leaf"] = [2, 3, 4, 5, 6]
+            tune_distributions["min_samples_split"] = IntUniformDistribution(2, 10)
+            tune_distributions["min_samples_leaf"] = IntUniformDistribution(2, 6)
+
+        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+
+        super().__init__(
+            id="rf",
+            name="Random Forest Regressor",
+            class_def=RandomForestRegressor,
+            args=args,
+            tune_grid=tune_grid,
+            tune_distribution=tune_distributions,
+            tune_args=tune_args,
+            is_gpu_enabled=gpu_imported,
+            shap="type2",
+        )
+
+
+class ExtraTreesRegressorContainer(RegressorContainer):
+    def __init__(self, globals_dict: dict) -> None:
+        logger = get_logger()
+        np.random.seed(globals_dict["seed"])
+        gpu_imported = False
+
+        from sklearn.ensemble import ExtraTreesRegressor
+
+        args = {
+            "random_state": globals_dict["seed"],
+            "n_jobs": globals_dict["n_jobs_param"],
+        }
+        tune_args = {}
+        tune_grid = {
+            "n_estimators": [int(x) for x in np.linspace(10, 1000, num=100)],
+            "criterion": ["mse", "mae"],
+            "max_depth": [int(x) for x in np.linspace(1, 11, num=11)],
+            "min_impurity_decrease": [
+                0,
+                0.0001,
+                0.001,
+                0.01,
+                0.0002,
+                0.002,
+                0.02,
+                0.0005,
+                0.005,
+                0.05,
+                0.1,
+                0.2,
+                0.3,
+                0.4,
+                0.5,
+            ],
+            "max_features": [1.0, "sqrt", "log2"],
+            "bootstrap": [True, False],
+            "min_samples_split": [2, 5, 7, 9, 10],
+            "min_samples_leaf": [2, 3, 4, 5, 6],
+        }
+        tune_distributions = {
+            "n_estimators": IntUniformDistribution(10, 200),
+            "max_depth": IntUniformDistribution(1, 11),
+            "min_samples_split": IntUniformDistribution(2, 10),
+            "min_samples_leaf": IntUniformDistribution(1, 5),
+            "max_features": UniformDistribution(0.001, 1),
+            "min_impurity_decrease": UniformDistribution(0.000000001, 0.5, log=True),
+        }
+
+        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+
+        super().__init__(
+            id="et",
+            name="Extra Trees Regressor",
+            class_def=ExtraTreesRegressor,
+            args=args,
+            tune_grid=tune_grid,
+            tune_distribution=tune_distributions,
+            tune_args=tune_args,
+            shap="type2",
+        )
+
+
+class AdaBoostRegressorContainer(RegressorContainer):
+    def __init__(self, globals_dict: dict) -> None:
+        logger = get_logger()
+        np.random.seed(globals_dict["seed"])
+        from sklearn.ensemble import AdaBoostRegressor
+
+        args = {"random_state": globals_dict["seed"]}
+        tune_args = {}
+        tune_grid = {
+            "n_estimators": np.arange(10, 1000, 10),
+            "learning_rate": np.arange(0, 0.5, 0.001),
+            "loss": ["linear", "square", "exponential"],
+        }
+        tune_distributions = {
+            "learning_rate": UniformDistribution(0, 0.5, log=False),
+            "n_estimators": IntUniformDistribution(10, 1000),
+        }
+
+        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+
+        super().__init__(
+            id="ada",
+            name="AdaBoost Regressor",
+            class_def=AdaBoostRegressor,
+            args=args,
+            tune_grid=tune_grid,
+            tune_distribution=tune_distributions,
+            tune_args=tune_args,
+            shap=False,
+        )
+
+
+class GradientBoostingRegressorContainer(RegressorContainer):
+    def __init__(self, globals_dict: dict) -> None:
+        logger = get_logger()
+        np.random.seed(globals_dict["seed"])
+
+        from sklearn.ensemble import GradientBoostingRegressor
+
+        args = {"random_state": globals_dict["seed"]}
+        tune_args = {}
+        tune_grid = {
+            "n_estimators": np.arange(10, 1000, 10),
+            "learning_rate": np.arange(0, 0.5, 0.001),
+            "subsample": np.arange(0.1, 1, 0.05),
+            "min_samples_split": [2, 4, 5, 7, 9, 10],
+            "min_samples_leaf": [1, 2, 3, 4, 5],
+            "max_depth": [int(x) for x in np.linspace(1, 11, num=11)],
+            "min_impurity_decrease": [
+                0,
+                0.0001,
+                0.001,
+                0.01,
+                0.0002,
+                0.002,
+                0.02,
+                0.0005,
+                0.005,
+                0.05,
+                0.1,
+                0.2,
+                0.3,
+                0.4,
+                0.5,
+            ],
+            "max_features": ["auto", "sqrt", "log2"],
+        }
+        tune_distributions = {
+            "n_estimators": IntUniformDistribution(10, 1000),
+            "learning_rate": UniformDistribution(0, 0.5),
+            "subsample": UniformDistribution(0.1, 1),
+            "min_samples_split": IntUniformDistribution(2, 10),
+            "min_samples_leaf": IntUniformDistribution(1, 5),
+            "max_depth": IntUniformDistribution(1, 11),
+            "max_features": UniformDistribution(0.001, 1),
+            "min_impurity_decrease": UniformDistribution(0.000000001, 0.5, log=True),
+        }
+
+        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+
+        super().__init__(
+            id="gbr",
+            name="Gradient Boosting Regressor",
+            class_def=GradientBoostingRegressor,
+            args=args,
+            tune_grid=tune_grid,
+            tune_distribution=tune_distributions,
+            tune_args=tune_args,
+            shap=False,
+        )
+
+
+class MLPRegressorContainer(RegressorContainer):
+    def __init__(self, globals_dict: dict) -> None:
+        logger = get_logger()
+        np.random.seed(globals_dict["seed"])
+
+        from pycaret.internal.Tunable import TunableMLPRegressor as MLPRegressor
+
+        args = {"random_state": globals_dict["seed"], "max_iter": 500}
+        tune_args = {}
+        tune_grid = {
+            "learning_rate": ["constant", "invscaling", "adaptive"],
+            "alpha": np.arange(0, 1, 0.0001),
+            "hidden_layer_size_0": [50, 100],
+            "hidden_layer_size_1": [0, 50, 100],
+            "hidden_layer_size_2": [0, 50, 100],
+            "activation": ["tanh", "identity", "logistic", "relu"],
+        }
+        tune_distributions = {
+            "alpha": UniformDistribution(0, 1),
+            "hidden_layer_size_0": IntUniformDistribution(50, 100),
+            "hidden_layer_size_1": IntUniformDistribution(0, 100),
+            "hidden_layer_size_2": IntUniformDistribution(0, 100),
+        }
+
+        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+
+        super().__init__(
+            id="mlp",
+            name="MLP Regressor",
+            class_def=MLPRegressor,
+            args=args,
+            tune_grid=tune_grid,
+            tune_distribution=tune_distributions,
+            tune_args=tune_args,
+            is_turbo=False,
+            shap=False,
+        )
+
+
+class XGBRegressorContainer(RegressorContainer):
+    def __init__(self, globals_dict: dict) -> None:
+        logger = get_logger()
+        np.random.seed(globals_dict["seed"])
+
+        from xgboost import XGBRegressor
+
+        args = {
+            "random_state": globals_dict["seed"],
+            "n_jobs": globals_dict["n_jobs_param"],
+            "verbosity": 0,
+            "booster": "gbtree",
+            "tree_method": "gpu_hist" if globals_dict["gpu_param"] else "auto",
+        }
+        tune_args = {}
+        tune_grid = {
+            "learning_rate": np.arange(0, 0.5, 0.001),
+            "n_estimators": np.arange(10, 1000, 10),
+            "subsample": [0, 0.1, 0.2, 0.3, 0.5, 0.7, 0.9, 1],
+            "max_depth": [int(x) for x in np.linspace(1, 11, num=11)],
+            "colsample_bytree": [0.5, 0.7, 0.9, 1],
+            "min_child_weight": [1, 2, 3, 4],
+            "reg_alpha": np.arange(0, 10, 0.01),
+            "reg_lambda": np.arange(0, 10, 0.01),
+            "scale_pos_weight": np.arange(0, 50, 0.1),
+        }
+        tune_distributions = {
+            "learning_rate": UniformDistribution(0, 0.5),
+            "n_estimators": IntUniformDistribution(10, 1000),
+            "subsample": UniformDistribution(0, 1),
+            "max_depth": IntUniformDistribution(1, 11),
+            "colsample_bytree": UniformDistribution(0.5, 1),
+            "min_child_weight": IntUniformDistribution(1, 4),
+            "reg_alpha": UniformDistribution(0, 10),
+            "reg_lambda": UniformDistribution(0, 10),
+            "scale_pos_weight": UniformDistribution(1, 50),
+        }
+
+        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+
+        super().__init__(
+            id="xgboost",
+            name="Extreme Gradient Boosting",
+            class_def=XGBRegressor,
+            args=args,
+            tune_grid=tune_grid,
+            tune_distribution=tune_distributions,
+            tune_args=tune_args,
+            shap="type2",
+            is_gpu_enabled=bool(globals_dict["gpu_param"]),
+        )
+
+
+class LGBMRegressorContainer(RegressorContainer):
+    def __init__(self, globals_dict: dict) -> None:
+        logger = get_logger()
+        np.random.seed(globals_dict["seed"])
+        from lightgbm import LGBMRegressor
+        from lightgbm.basic import LightGBMError
+
+        args = {
+            "random_state": globals_dict["seed"],
+            "n_jobs": globals_dict["n_jobs_param"],
+        }
+        tune_args = {}
+        tune_grid = {
+            "num_leaves": [10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 150, 200],
+            "learning_rate": np.arange(0, 0.5, 0.001),
+            "n_estimators": np.arange(10, 1000, 10),
+            "min_split_gain": [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9],
+            "reg_alpha": np.arange(0, 10, 0.01),
+            "reg_lambda": np.arange(0, 10, 0.01),
+            "feature_fraction": np.arange(0.01, 1, 0.01),
+        }
+        tune_distributions = {
+            "num_leaves": IntUniformDistribution(10, 200),
+            "learning_rate": UniformDistribution(0, 0.5),
+            "n_estimators": IntUniformDistribution(10, 1000),
+            "min_split_gain": UniformDistribution(0, 1),
+            "reg_alpha": UniformDistribution(0, 10),
+            "reg_lambda": UniformDistribution(0, 10),
+            "min_data_in_leaf": IntUniformDistribution(10, 10000),
+            "feature_fraction": UniformDistribution(0.01, 1),
+        }
+
+        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+
+        is_gpu_enabled = False
+        if globals_dict["gpu_param"]:
+            try:
+                lgb = LGBMRegressor(device="gpu")
+                lgb.fit(np.zeros((2, 2)), [0, 1])
+                is_gpu_enabled = True
+            except LightGBMError:
+                is_gpu_enabled = False
+                if globals_dict["gpu_param"] == "force":
+                    raise RuntimeError(
+                        f"LightGBM GPU mode not available. Consult https://lightgbm.readthedocs.io/en/latest/GPU-Tutorial.html."
+                    )
+
+        if is_gpu_enabled:
+            args["device"] = "gpu"
+
+        super().__init__(
+            id="lightgbm",
+            name="Light Gradient Boosting Machine",
+            class_def=LGBMRegressor,
+            args=args,
+            tune_grid=tune_grid,
+            tune_distribution=tune_distributions,
+            tune_args=tune_args,
+            shap="type2",
+            is_gpu_enabled=is_gpu_enabled,
+        )
+
+
+class CatBoostRegressorContainer(RegressorContainer):
+    def __init__(self, globals_dict: dict) -> None:
+        logger = get_logger()
+        np.random.seed(globals_dict["seed"])
+        from catboost import CatBoostRegressor
+
+        # suppress output
+        logging.getLogger("catboost").setLevel(logging.ERROR)
+
+        use_gpu = globals_dict["gpu_param"] == "force" or (
+            globals_dict["gpu_param"] and len(globals_dict["X_train"]) >= 50000
+        )
+
+        args = {
+            "random_state": globals_dict["seed"],
+            "verbose": False,
+            "thread_count": globals_dict["n_jobs_param"],
+            "task_type": "GPU" if use_gpu else "CPU",
+            "border_count": 32 if use_gpu else 254,
+        }
+        tune_args = {}
+        tune_grid = {
+            "depth": list(range(1, 12)),
+            "n_estimators": np.arange(10, 1000, 10),
+            "learning_rate": np.arange(0, 0.5, 0.001),
+            "l2_leaf_reg": [3, 1, 5, 10, 20, 50, 100, 200],
+        }
+        tune_distributions = {
+            "depth": IntUniformDistribution(1, 11),
+            "n_estimators": IntUniformDistribution(10, 1000, log=False),
+            "learning_rate": UniformDistribution(0, 0.5, log=False),
+            "l2_leaf_reg": IntUniformDistribution(1, 200, log=True),
+        }
+
+        if use_gpu:
+            tune_grid["depth"] = list(range(1, 9))
+            tune_distributions["depth"] = (IntUniformDistribution(1, 8),)
+
+        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+
+        super().__init__(
+            id="catboost",
+            name="CatBoost Regressor",
+            class_def=CatBoostRegressor,
+            args=args,
+            tune_grid=tune_grid,
+            tune_distribution=tune_distributions,
+            tune_args=tune_args,
+            shap="type2",
+            is_gpu_enabled=use_gpu,
+        )
+
+
+class BaggingRegressorContainer(RegressorContainer):
+    def __init__(self, globals_dict: dict) -> None:
+        logger = get_logger()
+        np.random.seed(globals_dict["seed"])
+        from sklearn.ensemble import BaggingRegressor
+
+        args = {
+            "random_state": globals_dict["seed"],
+            "n_jobs": 1 if globals_dict["gpu_param"] else None,
+        }
+        tune_args = {}
+        tune_grid = {
+            "n_estimators": np.arange(10, 1000, 10),
+            "bootstrap": [True, False],
+            "bootstrap_features": [True, False],
+        }
+        tune_distributions = {
+            "n_estimators": IntUniformDistribution(10, 1000),
+        }
+
+        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+
+        super().__init__(
+            id="Bagging",
+            name="Bagging Regressor",
+            class_def=BaggingRegressor,
+            args=args,
+            tune_grid=tune_grid,
+            tune_distribution=tune_distributions,
+            tune_args=tune_args,
+            shap=False,
+            is_special=True,
+            is_gpu_enabled=False,
+        )
+
+
+class StackingRegressorContainer(RegressorContainer):
+    def __init__(self, globals_dict: dict) -> None:
+        logger = get_logger()
+        np.random.seed(globals_dict["seed"])
+        from sklearn.ensemble import StackingRegressor
+
+        args = {}
+        tune_args = {}
+        tune_grid = {}
+        tune_distributions = {}
+
+        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+
+        super().__init__(
+            id="Stacking",
+            name="Stacking Regressor",
+            class_def=StackingRegressor,
+            args=args,
+            tune_grid=tune_grid,
+            tune_distribution=tune_distributions,
+            tune_args=tune_args,
+            shap=False,
+            is_special=True,
+            is_gpu_enabled=False,
+        )
+
+
+class VotingRegressorContainer(RegressorContainer):
+    def __init__(self, globals_dict: dict) -> None:
+        logger = get_logger()
+        np.random.seed(globals_dict["seed"])
+        from pycaret.internal.Tunable import TunableVotingRegressor as VotingRegressor
+
+        args = {}
+        tune_args = {}
+        tune_grid = {}
+        tune_distributions = {}
+
+        # VotingRegressor is a special case. Its weights can be tuned, but we do not know how many of them will be there
+        # before it is initiated. Therefore, code to handle it will be added directly to tune_model().
+
+        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+
+        super().__init__(
+            id="Voting",
+            name="Voting Regressor",
+            class_def=VotingRegressor,
+            args=args,
+            tune_grid=tune_grid,
+            tune_distribution=tune_distributions,
+            tune_args=tune_args,
+            shap=False,
+            is_special=True,
+            is_gpu_enabled=False,
+        )
+
+
 def get_all_model_containers(
     globals_dict: dict, raise_errors: bool = True
-) -> Dict[str, RegressionContainer]:
+) -> Dict[str, RegressorContainer]:
     return pycaret.containers.base_container.get_all_containers(
-        globals(), globals_dict, RegressionContainer, raise_errors
+        globals(), globals_dict, RegressorContainer, raise_errors
     )
 

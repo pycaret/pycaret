@@ -202,6 +202,8 @@ def get_model_name(e, all_models: Dict[str, ModelContainer], deep: bool = True) 
                     e = params["steps"][-1][1]
                 elif "base_estimator" in params:
                     e = params["base_estimator"]
+                elif "regressor" in params:
+                    e = params["regressor"]
                 elif "estimator" in params:
                     e = params["estimator"]
                 else:

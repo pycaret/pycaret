@@ -101,7 +101,7 @@ class ModelContainer(BaseContainer):
         return dict(d)
 
 
-def _leftover_parameters_to_categorical_distributions(
+def leftover_parameters_to_categorical_distributions(
     tune_grid: dict, tune_distributions: dict
 ) -> None:
     for k, v in tune_grid.items():
