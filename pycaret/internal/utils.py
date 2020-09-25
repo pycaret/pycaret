@@ -451,3 +451,13 @@ def get_groups(
             )
 
     return groups
+
+
+def get_all_object_vars_and_properties(object):
+    # from https://stackoverflow.com/a/59769926
+    return {
+        k: getattr(object, k, "")
+        for k in object.__dir__()
+        if k[:2] != "__" and type(getattr(object, k, "")).__name__ != "method"
+    }
+

@@ -153,7 +153,9 @@ def setup(
 
     """
 
-    function_params_str = ", ".join([f"{k}={v}" for k, v in locals().items() if k != "data"])
+    function_params_str = ", ".join(
+        [f"{k}={v}" for k, v in locals().items() if k != "data"]
+    )
 
     global _available_plots
 
@@ -4807,23 +4809,14 @@ def plot_model(
             "Calibration plot not available for estimators with no predict_proba attribute."
         )
 
-    # checking for rfe
-    if (
-        hasattr(estimator, "max_features")
-        and plot == "rfe"
-        and estimator.max_features_ != X_train.shape[1]
-    ):
-        raise TypeError(
-            "RFE plot not available when max_features parameter is not set to None."
-        )
-
     # checking for feature plot
     if not (
         hasattr(estimator, "coef_") or hasattr(estimator, "feature_importances_")
-    ) and (plot == "feature" or plot == "feature_all"):
+    ) and (plot == "feature" or plot == "feature_all" or plot == "rfe"):
         raise TypeError(
-            "Feature Importance plot not available for estimators that doesnt support coef_ or feature_importances_ attribute."
+            "Feature Importance and RFE plots not available for estimators that doesnt support coef_ or feature_importances_ attribute."
         )
+
 
     # checking fold parameter
     if fold is not None and not (type(fold) is int or is_sklearn_cv_generator(fold)):
@@ -5448,6 +5441,12 @@ def plot_model(
                 elif f"{actual_estimator_label}__min_samples" in model_params:
                     param_name = f"{actual_estimator_label}__max_subpopulation"
                     param_range = np.arange(0.01, 1, 0.1)
+
+                else:
+                    display.clear_output()
+                    raise TypeError(
+                        "Plot not supported for this estimator. Try different estimator."
+                    )
 
             logger.info(f"param_name: {param_name}")
 
@@ -7510,17 +7509,28 @@ def add_metric(
     if id in _all_metrics:
         raise ValueError("id already present in metrics dataframe.")
 
-    new_metric = pycaret.containers.metrics.classification.ClassificationMetricContainer(
-        id=id,
-        name=name,
-        score_func=score_func,
-        target=target,
-        args=args,
-        display_name=name,
-        greater_is_better=greater_is_better,
-        is_multiclass=bool(multiclass),
-        is_custom=True,
-    )
+    if _ml_usecase == "classification":
+        new_metric = pycaret.containers.metrics.classification.ClassificationMetricContainer(
+            id=id,
+            name=name,
+            score_func=score_func,
+            target=target,
+            args=args,
+            display_name=name,
+            greater_is_better=greater_is_better,
+            is_multiclass=bool(multiclass),
+            is_custom=True,
+        )
+    else:
+        new_metric = pycaret.containers.metrics.regression.RegressionMetricContainer(
+            id=id,
+            name=name,
+            score_func=score_func,
+            args=args,
+            display_name=name,
+            greater_is_better=greater_is_better,
+            is_custom=True,
+        )
 
     _all_metrics[id] = new_metric
 
