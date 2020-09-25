@@ -7216,6 +7216,7 @@ def automl(optimize: str = "Accuracy", use_holdout: bool = False) -> Any:
             )
 
     compare_dimension = optimize.display_name
+    greater_is_better = optimize.greater_is_better
     optimize = optimize.scorer
 
     scorer = []
@@ -7249,7 +7250,10 @@ def automl(optimize: str = "Accuracy", use_holdout: bool = False) -> Any:
             scorer.append(r)
 
     # returning better model
-    index_scorer = scorer.index(max(scorer))
+    if greater_is_better:
+        index_scorer = scorer.index(max(scorer))
+    else:
+        index_scorer = scorer.index(min(scorer))
 
     automl_result = master_model_container[index_scorer]
 

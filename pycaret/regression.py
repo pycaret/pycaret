@@ -676,7 +676,7 @@ def compare_models(
         When cross_validation set to False fold parameter is ignored and models are trained
         on entire training dataset, returning metrics calculated using the train (holdout) set.
 
-    sort: str, default = 'Accuracy'
+    sort: str, default = 'R2'
         The scoring measure specified is used for sorting the average score grid
         Other options are 'AUC', 'Recall', 'Precision', 'F1', 'Kappa' and 'MCC'.
 
@@ -844,7 +844,7 @@ def create_model(
     -------
     score_grid
         A table containing the scores of the model across the kfolds. 
-        Scoring metrics used are Accuracy, AUC, Recall, Precision, F1, 
+        Scoring metrics used are R2, AUC, Recall, Precision, F1, 
         Kappa and MCC. Mean and standard deviation of the scores across 
         the folds are highlighted in yellow.
 
@@ -925,7 +925,7 @@ def tune_model(
         and values to be iterated. When set to None it uses pre-defined tuning grid.
         Custom grids must be in a format supported by the chosen search library.
 
-    optimize: str, default = 'Accuracy'
+    optimize: str, default = 'R2'
         Measure used to select the best model through hyperparameter tuning.
         Can be either a string representing a metric or a custom scorer object
         created using sklearn.make_scorer. 
@@ -1020,7 +1020,7 @@ def tune_model(
     -------
     score_grid
         A table containing the scores of the model across the kfolds. 
-        Scoring metrics used are Accuracy, AUC, Recall, Precision, F1, 
+        Scoring metrics used are R2, AUC, Recall, Precision, F1, 
         Kappa and MCC. Mean and standard deviation of the scores across 
         the folds are also returned.
 
@@ -1130,10 +1130,10 @@ def ensemble_model(
         atleast equivalent to base estimator created using create_model or model 
         returned by compare_models.
 
-    optimize: str, default = 'Accuracy'
+    optimize: str, default = 'R2'
         Only used when choose_better is set to True. optimize parameter is used
         to compare emsembled model with base estimator. Values accepted in 
-        optimize parameter are 'Accuracy', 'AUC', 'Recall', 'Precision', 'F1', 
+        optimize parameter are 'R2', 'AUC', 'Recall', 'Precision', 'F1', 
         'Kappa', 'MCC'.
 
     fit_kwargs: dict, default = {} (empty dict)
@@ -1235,10 +1235,10 @@ def blend_models(
         atleast equivalent to base estimator created using create_model or model 
         returned by compare_models.
 
-    optimize: str, default = 'Accuracy'
+    optimize: str, default = 'R2'
         Only used when choose_better is set to True. optimize parameter is used
         to compare emsembled model with base estimator. Values accepted in 
-        optimize parameter are 'Accuracy', 'AUC', 'Recall', 'Precision', 'F1', 
+        optimize parameter are 'R2', 'AUC', 'Recall', 'Precision', 'F1', 
         'Kappa', 'MCC'.
 
     weights: list, default = None
@@ -1293,7 +1293,7 @@ def stack_models(
     method: str = "auto",
     restack: bool = True,
     choose_better: bool = False,
-    optimize: str = "Accuracy",
+    optimize: str = "R2",
     fit_kwargs: Optional[dict] = None,
     groups: Optional[Union[str, Any]] = None,
     verbose: bool = True,
@@ -1353,10 +1353,10 @@ def stack_models(
         atleast equivalent to base estimator created using create_model or model 
         returned by compare_models.
 
-    optimize: str, default = 'Accuracy'
+    optimize: str, default = 'R2'
         Only used when choose_better is set to True. optimize parameter is used
         to compare emsembled model with base estimator. Values accepted in 
-        optimize parameter are 'Accuracy', 'AUC', 'Recall', 'Precision', 'F1', 
+        optimize parameter are 'R2', 'AUC', 'Recall', 'Precision', 'F1', 
         'Kappa', 'MCC'.
 
     fit_kwargs: dict, default = {} (empty dict)
@@ -1986,7 +1986,7 @@ def load_model(
     )
 
 
-def automl(optimize: str = "Accuracy", use_holdout: bool = False) -> Any:
+def automl(optimize: str = "R2", use_holdout: bool = False) -> Any:
 
     """
     This function returns the best model out of all models created in 
@@ -1994,7 +1994,7 @@ def automl(optimize: str = "Accuracy", use_holdout: bool = False) -> Any:
 
     Parameters
     ----------
-    optimize : str, default = 'Accuracy'
+    optimize : str, default = 'R2'
         Other values you can pass in optimize param are 'AUC', 'Recall', 'Precision',
         'F1', 'Kappa', and 'MCC'.
 
