@@ -7369,9 +7369,14 @@ def models(
 
     logger.info(f"gpu_param set to {gpu_param}")
 
-    model_containers = pycaret.containers.models.classification.get_all_model_containers(
-        globals(), raise_errors
-    )
+    if _ml_usecase == MLUsecase.CLASSIFICATION:
+        model_containers = pycaret.containers.models.classification.get_all_model_containers(
+            globals(), raise_errors
+        )
+    elif _ml_usecase == MLUsecase.REGRESSION:
+        model_containers = pycaret.containers.models.regression.get_all_model_containers(
+            globals(), raise_errors
+        )
     rows = [
         v.get_dict(internal)
         for k, v in model_containers.items()
@@ -7421,9 +7426,14 @@ def get_metrics(
     np.random.seed(seed)
 
     if reset:
-        _all_metrics = pycaret.containers.metrics.classification.get_all_metric_containers(
-            globals(), raise_errors
-        )
+        if _ml_usecase == MLUsecase.CLASSIFICATION:
+            _all_metrics = pycaret.containers.metrics.classification.get_all_metric_containers(
+                globals(), raise_errors
+            )
+        elif _ml_usecase == MLUsecase.REGRESSION:
+            _all_metrics = pycaret.containers.metrics.regression.get_all_metric_containers(
+                globals(), raise_errors
+            )
 
     metric_containers = _all_metrics
     rows = [v.get_dict() for k, v in metric_containers.items()]
@@ -7901,15 +7911,33 @@ def _calculate_metrics(
             weights=weights,
         )
     except:
-        return calculate_metrics(
-            metrics=pycaret.containers.metrics.classification.get_all_metric_containers(
+        ml_usecase = get_ml_task(y_test)
+        if ml_usecase == MLUsecase.CLASSIFICATION:
+            metrics = pycaret.containers.metrics.classification.get_all_metric_containers(
                 globals(), True
-            ),
+            )
+        elif ml_usecase == MLUsecase.REGRESSION:
+            metrics = pycaret.containers.metrics.regression.get_all_metric_containers(
+                globals(), True
+            )
+        return calculate_metrics(
+            metrics=metrics,
             y_test=y_test,
             pred=pred,
             pred_proba=pred_prob,
             weights=weights,
         )
+
+
+def get_ml_task(y):
+    c1 = y.dtype == "int64"
+    c2 = y.nunique() <= 20
+    c3 = y.dtype.name in ["object", "bool", "category"]
+    if ((c1) & (c2)) | (c3):
+        ml_usecase = MLUsecase.CLASSIFICATION
+    else:
+        ml_usecase = MLUsecase.REGRESSION
+    return ml_usecase
 
 
 def _mlflow_log_model(
