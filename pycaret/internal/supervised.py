@@ -1417,8 +1417,8 @@ def setup(
             print("Setup Succesfully Completed!")
 
     exp_name_dict = {
-        "classification": "clf-default-name",
-        "regression": "reg-default-name",
+        MLUsecase.CLASSIFICATION: "clf-default-name",
+        MLUsecase.REGRESSION: "reg-default-name",
     }
     if experiment_name is None:
         exp_name_ = exp_name_dict[_ml_usecase]
