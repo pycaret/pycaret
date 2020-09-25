@@ -3880,7 +3880,7 @@ def ensemble_model(
     MONITOR UPDATE ENDS
     """
 
-    model = _estimator_
+    model = get_estimator_from_meta_estimator(_estimator_)
 
     logger.info("Importing untrained ensembler")
 
@@ -4226,6 +4226,7 @@ def blend_models(
     logger.info("Getting model names")
     estimator_dict = {}
     for x in estimator_list:
+        x = get_estimator_from_meta_estimator(x)
         name = _get_model_id(x)
         suffix = 1
         original_name = name
@@ -4562,6 +4563,7 @@ def stack_models(
     logger.info("Getting model names")
     estimator_dict = {}
     for x in estimator_list:
+        x = get_estimator_from_meta_estimator(x)
         name = _get_model_id(x)
         suffix = 1
         original_name = name
@@ -7463,7 +7465,7 @@ def add_metric(
     target: str = "pred",
     greater_is_better: bool = True,
     multiclass: bool = True,
-    **kwargs
+    **kwargs,
 ) -> pd.Series:
     """
     Adds a custom metric to be used in all functions.
