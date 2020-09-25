@@ -7462,8 +7462,8 @@ def add_metric(
     score_func: type,
     target: str = "pred",
     greater_is_better: bool = True,
-    args: dict = None,
     multiclass: bool = True,
+    **kwargs
 ) -> pd.Series:
     """
     Adds a custom metric to be used in all functions.
@@ -7490,11 +7490,11 @@ def add_metric(
         or a loss function, meaning low is good. In the latter case, the
         scorer object will sign-flip the outcome of the score_func.
 
-    args: dict, default = {}
-        Arguments to be passed to score function.
-
     multiclass: bool, default = True
         Whether the metric supports multiclass problems.
+
+    **kwargs:
+        Arguments to be passed to score function.
 
     Returns
     -------
@@ -7502,9 +7502,6 @@ def add_metric(
         The created row as Series.
 
     """
-
-    if not args:
-        args = {}
 
     if not "_all_metrics" in globals():
         raise ValueError("setup() needs to be ran first.")
@@ -7520,7 +7517,7 @@ def add_metric(
             name=name,
             score_func=score_func,
             target=target,
-            args=args,
+            args=kwargs,
             display_name=name,
             greater_is_better=greater_is_better,
             is_multiclass=bool(multiclass),
@@ -7531,7 +7528,7 @@ def add_metric(
             id=id,
             name=name,
             score_func=score_func,
-            args=args,
+            args=kwargs,
             display_name=name,
             greater_is_better=greater_is_better,
             is_custom=True,
