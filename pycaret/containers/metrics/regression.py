@@ -191,7 +191,10 @@ class RMSLEMetricContainer(RegressionMetricContainer):
         ):
             return np.sqrt(
                 metrics.mean_squared_log_error(
-                    y_true, y_pred, sample_weight=sample_weight, multioutput=multioutput
+                    np.abs(y_true),
+                    np.abs(y_pred),
+                    sample_weight=sample_weight,
+                    multioutput=multioutput,
                 )
             )
 
@@ -200,7 +203,7 @@ class RMSLEMetricContainer(RegressionMetricContainer):
             name="RMSLE",
             score_func=root_mean_squared_log_error,
             scorer=pycaret.internal.metrics.make_scorer_with_error_score(
-                root_mean_squared_log_error, error_score=np.inf, greater_is_better=False
+                root_mean_squared_log_error, error_score=0.0, greater_is_better=False
             ),
             greater_is_better=False,
         )

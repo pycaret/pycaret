@@ -4511,7 +4511,7 @@ def stack_models(
         meta_model_args = meta_model_definition.args
         meta_model = meta_model_definition.class_def(**meta_model_args)
     else:
-        meta_model = clone(meta_model)
+        meta_model = clone(get_estimator_from_meta_estimator(meta_model))
 
     if not display:
         progress_args = {"max": 2 + 4}
@@ -6573,12 +6573,12 @@ def predict_model(
 
     # prediction starts here
 
-    pred_ = np.nan_to_num(estimator.predict(X_test_))
+    pred = np.nan_to_num(estimator.predict(X_test_))
 
     try:
         score = estimator.predict_proba(X_test_)
 
-        if len(np.unique(pred_)) <= 2:
+        if len(np.unique(pred)) <= 2:
             pred_prob = score[:, 1]
         else:
             pred_prob = score
@@ -6589,25 +6589,25 @@ def predict_model(
 
     if probability_threshold is not None and pred_prob is not None:
         try:
-            pred_ = (pred_prob >= probability_threshold).astype(int)
+            pred = (pred_prob >= probability_threshold).astype(int)
         except:
             pass
 
     if pred_prob is None:
-        pred_prob = pred_
+        pred_prob = pred
 
     df_score = None
 
     if data is None:
         # model name
         full_name = _get_model_name(estimator)
-        metrics = _calculate_metrics(y_test_, pred_, pred_prob)
+        metrics = _calculate_metrics(y_test_, pred, pred_prob)
         df_score = pd.DataFrame(metrics, index=[0])
         df_score.insert(0, "Model", full_name)
         df_score = df_score.round(round)
         display.display(df_score.style.set_precision(round), clear=False)
 
-    label = pd.DataFrame(pred_)
+    label = pd.DataFrame(pred)
     label.columns = ["Label"]
     if _ml_usecase == MLUsecase.CLASSIFICATION:
         label["Label"] = label["Label"].astype(int)
@@ -6624,7 +6624,7 @@ def predict_model(
     if score is not None:
         d = []
         for i in range(0, len(score)):
-            d.append(score[i][pred_[i]])
+            d.append(score[i][pred[i]])
 
         score = d
         try:
@@ -7885,7 +7885,7 @@ def _is_special_model(e) -> bool:
 
 
 def _calculate_metrics(
-    ytest, pred_, pred_prob: float, weights: Optional[list] = None,
+    y_test, pred, pred_prob: float, weights: Optional[list] = None,
 ) -> dict:
     """
     Calculate all metrics in _all_metrics.
@@ -7895,8 +7895,8 @@ def _calculate_metrics(
     try:
         return calculate_metrics(
             metrics=_all_metrics,
-            ytest=ytest,
-            pred_=pred_,
+            y_test=y_test,
+            pred=pred,
             pred_proba=pred_prob,
             weights=weights,
         )
@@ -7905,8 +7905,8 @@ def _calculate_metrics(
             metrics=pycaret.containers.metrics.classification.get_all_metric_containers(
                 globals(), True
             ),
-            ytest=ytest,
-            pred_=pred_,
+            y_test=y_test,
+            pred=pred,
             pred_proba=pred_prob,
             weights=weights,
         )

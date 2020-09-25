@@ -257,8 +257,8 @@ def param_grid_to_lists(param_grid: dict) -> dict:
 
 def calculate_metrics(
     metrics: Dict[str, MetricContainer],
-    ytest,
-    pred_,
+    y_test,
+    pred,
     pred_proba: Optional[float] = None,
     score_dict: Optional[Dict[str, np.array]] = None,
     weights: Optional[list] = None,
@@ -269,7 +269,7 @@ def calculate_metrics(
     for k, v in metrics.items():
         score_dict.append(
             _calculate_metric(
-                v, v.score_func, v.display_name, ytest, pred_, pred_proba, weights,
+                v, v.score_func, v.display_name, y_test, pred, pred_proba, weights,
             )
         )
 
@@ -278,18 +278,18 @@ def calculate_metrics(
 
 
 def _calculate_metric(
-    container, score_func, display_name, ytest, pred_, pred_proba, weights
+    container, score_func, display_name, y_test, pred_, pred_proba, weights
 ):
     if not score_func:
         return None
     target = pred_proba if container.target == "pred_proba" else pred_
     try:
         calculated_metric = score_func(
-            ytest, target, sample_weight=weights, **container.args
+            y_test, target, sample_weight=weights, **container.args
         )
     except:
         try:
-            calculated_metric = score_func(ytest, target, **container.args)
+            calculated_metric = score_func(y_test, target, **container.args)
         except:
             calculated_metric = 0
 
