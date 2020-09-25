@@ -454,7 +454,13 @@ def get_groups(
 
 
 def get_all_object_vars_and_properties(object):
-    # from https://stackoverflow.com/a/59769926
+    """
+    Gets all class, static and dynamic attributes from an object.
+    
+    Calling ``vars()`` would only return static attributes.
+    
+    https://stackoverflow.com/a/59769926
+    """
     return {
         k: getattr(object, k, "")
         for k in object.__dir__()
