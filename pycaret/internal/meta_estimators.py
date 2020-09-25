@@ -1,6 +1,7 @@
 import sklearn.compose
 from sklearn.preprocessing import PowerTransformer
 
+from pycaret.internal.utils import get_all_object_vars_and_properties
 
 class PowerTransformedTargetRegressor(sklearn.compose.TransformedTargetRegressor):
     def __init__(
@@ -21,7 +22,59 @@ class PowerTransformedTargetRegressor(sklearn.compose.TransformedTargetRegressor
         self.func = None
         self.inverse_func = None
         self.check_inverse = False
+        self._fit_vars = set()
         self.set_params(**kwargs)
+
+    def _carry_over_regressor_fit_vars(self):
+        self._clear_regressor_fit_vars()
+        for k, v in get_all_object_vars_and_properties(self.regressor_).items():
+            if k and k.endswith("_") and not k.startswith("_"):
+                try:
+                    setattr(self, k, v)
+                    self._fit_vars.add(k)
+                except:
+                    pass
+
+    def _clear_regressor_fit_vars(self, all: bool = False):
+        vars_to_remove = []
+        try:
+            for var in self._fit_vars:
+                if all or var not in get_all_object_vars_and_properties(self.regressor_):
+                    vars_to_remove.append(var)
+            for var in vars_to_remove:
+                try:
+                    delattr(self, var)
+                    self._fit_vars.remove(var)
+                except:
+                    pass
+        except:
+            pass
+
+    def fit(self, X, y, **fit_params):
+        """Fit the model according to the given training data.
+
+        Parameters
+        ----------
+        X : {array-like, sparse matrix} of shape (n_samples, n_features)
+            Training vector, where n_samples is the number of samples and
+            n_features is the number of features.
+
+        y : array-like of shape (n_samples,)
+            Target values.
+
+        **fit_params : dict
+            Parameters passed to the ``fit`` method of the underlying
+            regressor.
+
+
+        Returns
+        -------
+        self : object
+        """
+
+        r = super().fit(X, y, **fit_params)
+        self._carry_over_regressor_fit_vars()
+        return r
 
     def set_params(self, **params):
         """

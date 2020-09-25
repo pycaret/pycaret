@@ -4,6 +4,7 @@
 # Release: PyCaret 2.2
 # Last modified : 26/08/2020
 
+from enum import Enum, auto
 from pycaret.internal.meta_estimators import (
     PowerTransformedTargetRegressor,
     get_estimator_from_meta_estimator,
@@ -58,6 +59,11 @@ if is_in_colab():
     enable_colab()
 
 _available_plots = {}
+
+
+class MLUsecase(Enum):
+    CLASSIFICATION = auto()
+    REGRESSION = auto()
 
 
 def setup(
@@ -153,7 +159,9 @@ def setup(
 
     """
 
-    function_params_str = ", ".join([f"{k}={v}" for k, v in locals().items() if k != "data"])
+    function_params_str = ", ".join(
+        [f"{k}={v}" for k, v in locals().items() if k != "data"]
+    )
 
     global _available_plots
 
@@ -706,7 +714,7 @@ def setup(
     USI = secrets.token_hex(nbytes=2)
     logger.info(f"USI: {USI}")
 
-    _ml_usecase = ml_usecase
+    _ml_usecase = MLUsecase[ml_usecase.upper()]
 
     global pycaret_globals
     pycaret_globals = {
@@ -1291,7 +1299,7 @@ def setup(
     else:
         target_type = "Binary"
 
-    if _ml_usecase == "classification":
+    if _ml_usecase == MLUsecase.CLASSIFICATION:
         _all_models = {
             k: v
             for k, v in pycaret.containers.models.classification.get_all_model_containers(
@@ -1305,7 +1313,7 @@ def setup(
         _all_metrics = pycaret.containers.metrics.classification.get_all_metric_containers(
             globals(), raise_errors=True
         )
-    elif _ml_usecase == "regression":
+    elif _ml_usecase == MLUsecase.REGRESSION:
         _all_models = {
             k: v
             for k, v in pycaret.containers.models.regression.get_all_model_containers(
@@ -1409,8 +1417,8 @@ def setup(
             print("Setup Succesfully Completed!")
 
     exp_name_dict = {
-        "classification": "clf-default-name",
-        "regression": "reg-default-name",
+        MLUsecase.CLASSIFICATION: "clf-default-name",
+        MLUsecase.REGRESSION: "reg-default-name",
     }
     if experiment_name is None:
         exp_name_ = exp_name_dict[_ml_usecase]
@@ -1424,7 +1432,7 @@ def setup(
         [["session_id", seed], ["Target", target],]
         + (
             [["Target Type", target_type], ["Label Encoded", label_encoded],]
-            if _ml_usecase == "classification"
+            if _ml_usecase == MLUsecase.CLASSIFICATION
             else []
         )
         + [
@@ -1516,7 +1524,7 @@ def setup(
                 ["Fix Imbalance", fix_imbalance_param],
                 ["Fix Imbalance Method", fix_imbalance_model_name],
             ]
-            if _ml_usecase == "classification"
+            if _ml_usecase == MLUsecase.CLASSIFICATION
             else []
         )
         + (
@@ -1524,7 +1532,7 @@ def setup(
                 ["Transform Target", transform_target_param],
                 ["Transform Target Method", transform_target_method_param],
             ]
-            if _ml_usecase == "regression"
+            if _ml_usecase == MLUsecase.REGRESSION
             else []
         ),
         columns=["Description", "Value"],
@@ -4097,7 +4105,7 @@ def blend_models(
     for i in estimator_list:
         if not hasattr(i, "fit"):
             raise ValueError(f"Estimator {i} does not have the required fit() method.")
-        if _ml_usecase == "classification":
+        if _ml_usecase == MLUsecase.CLASSIFICATION:
             # checking method param with estimator list
             if method != "hard":
 
@@ -4229,7 +4237,7 @@ def blend_models(
     estimator_list = list(estimator_dict.items())
 
     voting_model_definition = _all_models_internal["Voting"]
-    if _ml_usecase == "classification":
+    if _ml_usecase == MLUsecase.CLASSIFICATION:
         model = voting_model_definition.class_def(
             estimators=estimator_list, voting=method, n_jobs=_gpu_n_jobs_param
         )
@@ -4567,7 +4575,7 @@ def stack_models(
     logger.info(estimator_list)
 
     stacking_model_definition = _all_models_internal["Stacking"]
-    if _ml_usecase == "classification":
+    if _ml_usecase == MLUsecase.CLASSIFICATION:
         model = stacking_model_definition.class_def(
             estimators=estimator_list,
             final_estimator=meta_model,
@@ -4807,22 +4815,12 @@ def plot_model(
             "Calibration plot not available for estimators with no predict_proba attribute."
         )
 
-    # checking for rfe
-    if (
-        hasattr(estimator, "max_features")
-        and plot == "rfe"
-        and estimator.max_features_ != X_train.shape[1]
-    ):
-        raise TypeError(
-            "RFE plot not available when max_features parameter is not set to None."
-        )
-
     # checking for feature plot
     if not (
         hasattr(estimator, "coef_") or hasattr(estimator, "feature_importances_")
-    ) and (plot == "feature" or plot == "feature_all"):
+    ) and (plot == "feature" or plot == "feature_all" or plot == "rfe"):
         raise TypeError(
-            "Feature Importance plot not available for estimators that doesnt support coef_ or feature_importances_ attribute."
+            "Feature Importance and RFE plots not available for estimators that doesnt support coef_ or feature_importances_ attribute."
         )
 
     # checking fold parameter
@@ -5037,14 +5035,14 @@ def plot_model(
 
         def error():
 
-            if _ml_usecase == "classification":
+            if _ml_usecase == MLUsecase.CLASSIFICATION:
                 from yellowbrick.classifier import ClassPredictionError
 
                 visualizer = ClassPredictionError(
                     pipeline_with_model, random_state=seed
                 )
 
-            elif _ml_usecase == "regression":
+            elif _ml_usecase == MLUsecase.REGRESSION:
                 from yellowbrick.regressor import PredictionError
 
                 visualizer = PredictionError(pipeline_with_model, random_state=seed)
@@ -5334,7 +5332,7 @@ def plot_model(
                     "Plot not supported for this estimator. Try different estimator."
                 )
 
-            if _ml_usecase == "classification":
+            if _ml_usecase == MLUsecase.CLASSIFICATION:
 
                 # Catboost
                 if "depth" in model_params:
@@ -5392,7 +5390,7 @@ def plot_model(
                         "Plot not supported for this estimator. Try different estimator."
                     )
 
-            elif _ml_usecase == "regression":
+            elif _ml_usecase == MLUsecase.REGRESSION:
 
                 # Catboost
                 if "depth" in model_params:
@@ -5448,6 +5446,12 @@ def plot_model(
                 elif f"{actual_estimator_label}__min_samples" in model_params:
                     param_name = f"{actual_estimator_label}__max_subpopulation"
                     param_range = np.arange(0.01, 1, 0.1)
+
+                else:
+                    display.clear_output()
+                    raise TypeError(
+                        "Plot not supported for this estimator. Try different estimator."
+                    )
 
             logger.info(f"param_name: {param_name}")
 
@@ -6603,7 +6607,7 @@ def predict_model(
 
     label = pd.DataFrame(pred_)
     label.columns = ["Label"]
-    if _ml_usecase == "classification":
+    if _ml_usecase == MLUsecase.CLASSIFICATION:
         label["Label"] = label["Label"].astype(int)
     if not encoded_labels:
         replace_lables_in_column(label["Label"])
@@ -7510,17 +7514,28 @@ def add_metric(
     if id in _all_metrics:
         raise ValueError("id already present in metrics dataframe.")
 
-    new_metric = pycaret.containers.metrics.classification.ClassificationMetricContainer(
-        id=id,
-        name=name,
-        score_func=score_func,
-        target=target,
-        args=args,
-        display_name=name,
-        greater_is_better=greater_is_better,
-        is_multiclass=bool(multiclass),
-        is_custom=True,
-    )
+    if _ml_usecase == MLUsecase.CLASSIFICATION:
+        new_metric = pycaret.containers.metrics.classification.ClassificationMetricContainer(
+            id=id,
+            name=name,
+            score_func=score_func,
+            target=target,
+            args=args,
+            display_name=name,
+            greater_is_better=greater_is_better,
+            is_multiclass=bool(multiclass),
+            is_custom=True,
+        )
+    else:
+        new_metric = pycaret.containers.metrics.regression.RegressionMetricContainer(
+            id=id,
+            name=name,
+            score_func=score_func,
+            args=args,
+            display_name=name,
+            greater_is_better=greater_is_better,
+            is_custom=True,
+        )
 
     _all_metrics[id] = new_metric
 
@@ -7838,7 +7853,7 @@ def _is_multiclass() -> bool:
     Method to check if the problem is multiclass.
     """
     try:
-        return _ml_usecase == "classification" and y.value_counts().count() > 2
+        return _ml_usecase == MLUsecase.CLASSIFICATION and y.value_counts().count() > 2
     except:
         return False
 
@@ -8100,7 +8115,9 @@ def _get_cv_splitter(fold):
         default=fold_generator,
         seed=seed,
         shuffle=fold_shuffle_param,
-        int_default="stratifiedkfold" if _ml_usecase == "classification" else "kfold",
+        int_default="stratifiedkfold"
+        if _ml_usecase == MLUsecase.CLASSIFICATION
+        else "kfold",
     )
 
 

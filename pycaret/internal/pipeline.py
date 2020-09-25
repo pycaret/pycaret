@@ -8,6 +8,7 @@
 
 # This pipeline is only to be used internally.
 
+from pycaret.internal.utils import get_all_object_vars_and_properties
 import imblearn.pipeline
 from sklearn.utils import _print_elapsed_time
 from sklearn.base import BaseEstimator, TransformerMixin, clone
@@ -19,7 +20,7 @@ from pycaret.internal.validation import is_fitted
 class Pipeline(imblearn.pipeline.Pipeline):
     def __init__(self, steps, *, memory=None, verbose=False):
         super().__init__(steps, memory=memory, verbose=verbose)
-        self.fit_vars = set()
+        self._fit_vars = set()
         self._carry_over_final_estimator_fit_vars()
 
     @property
@@ -53,25 +54,36 @@ class Pipeline(imblearn.pipeline.Pipeline):
     def _carry_over_final_estimator_fit_vars(self):
         self._clear_final_estimator_fit_vars()
         if hasattr(self._final_estimator, "fit") and is_fitted(self._final_estimator):
-            for k, v in vars(self._final_estimator).items():
+            for k, v in get_all_object_vars_and_properties(
+                self._final_estimator
+            ).items():
                 if k and k.endswith("_") and not k.startswith("_"):
                     try:
                         setattr(self, k, v)
-                        self.fit_vars.add(k)
+                        self._fit_vars.add(k)
                     except:
                         pass
 
     def _clear_final_estimator_fit_vars(self, all: bool = False):
         vars_to_remove = []
-        for var in self.fit_vars:
-            if all or var not in vars(self._final_estimator):
-                vars_to_remove.append(var)
-        for var in vars_to_remove:
-            try:
-                delattr(self, var)
-                self.fit_vars.remove(var)
-            except:
-                pass
+        try:
+            for var in self._fit_vars:
+                if (
+                    all
+                    or var
+                    not in get_all_object_vars_and_properties(
+                        self._final_estimator
+                    ).items()
+                ):
+                    vars_to_remove.append(var)
+            for var in vars_to_remove:
+                try:
+                    delattr(self, var)
+                    self._fit_vars.remove(var)
+                except:
+                    pass
+        except:
+            pass
 
     def get_sklearn_pipeline(self) -> sklearn.pipeline.Pipeline:
         return sklearn.pipeline.Pipeline(self.steps)

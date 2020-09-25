@@ -451,3 +451,19 @@ def get_groups(
             )
 
     return groups
+
+
+def get_all_object_vars_and_properties(object):
+    """
+    Gets all class, static and dynamic attributes from an object.
+    
+    Calling ``vars()`` would only return static attributes.
+    
+    https://stackoverflow.com/a/59769926
+    """
+    return {
+        k: getattr(object, k, "")
+        for k in object.__dir__()
+        if k[:2] != "__" and type(getattr(object, k, "")).__name__ != "method"
+    }
+

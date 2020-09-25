@@ -118,7 +118,7 @@ class ClassificationMetricContainer(MetricContainer):
             else metrics.make_scorer(
                 score_func,
                 needs_proba=target == "pred_proba",
-                needs_threshold="threshold",
+                needs_threshold=target == "threshold",
                 greater_is_better=greater_is_better,
                 **args,
             )

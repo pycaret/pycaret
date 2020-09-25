@@ -28,6 +28,7 @@ jobs:
       run: |
         rm pycaret/tests/test_classification_tuning.py
         rm pycaret/tests/test_classification_plots.py
+        rm pycaret/tests/test_regression_plots.py
     - name: Test with pytest
       run: |
         pytest
@@ -77,7 +78,7 @@ jobs:
         python -m spacy download en
     - name: Remove tests
       run: |
-        find pycaret/tests -type f -not -name '__init__.py' -not -name 'test_classification_plots.py' -delete
+        find pycaret/tests -type f -not -name '__init__.py' -not -name 'test_classification_plots.py' -not -name 'test_regression_plots.py' -delete
     - name: Test with pytest
       run: |
         pytest -o log_cli=true
