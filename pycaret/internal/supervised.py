@@ -25,6 +25,7 @@ from pycaret.internal.utils import (
     normalize_custom_transformers,
     nullcontext,
     true_warm_start,
+    sample_without_replacement,
 )
 from pycaret.internal.logging import get_logger
 from pycaret.internal.plotting import show_yellowbrick_plot
@@ -52,6 +53,7 @@ from typing import List, Tuple, Any, Union
 import warnings
 from IPython.utils import io
 import traceback
+from unittest.mock import patch
 
 warnings.filterwarnings("ignore")
 
@@ -3514,35 +3516,58 @@ def tune_model(
             )
         else:
             if search_algorithm == "grid":
-                from sklearn.model_selection import GridSearchCV
+                # needs to be imported like that for the monkeypatch
+                import sklearn.model_selection._search
 
+                unpatched_sample_without_replacement = (
+                    sklearn.model_selection._search.sample_without_replacement
+                )
                 logger.info("Initializing GridSearchCV")
-                model_grid = GridSearchCV(
-                    estimator=pipeline_with_model,
-                    param_grid=param_grid,
-                    scoring=optimize,
-                    cv=fold,
-                    refit=False,
-                    n_jobs=n_jobs,
-                    verbose=1,
-                    **search_kwargs,
-                )
+                try:
+                    model_grid = sklearn.model_selection._search.GridSearchCV(
+                        estimator=pipeline_with_model,
+                        param_grid=param_grid,
+                        scoring=optimize,
+                        cv=fold,
+                        refit=False,
+                        n_jobs=n_jobs,
+                        verbose=1,
+                        **search_kwargs,
+                    )
+                except Exception as e:
+                    sklearn.model_selection._search.sample_without_replacement = (
+                        unpatched_sample_without_replacement
+                    )
+                    raise e
             else:
-                from sklearn.model_selection import RandomizedSearchCV
+                # needs to be imported like that for the monkeypatch
+                import sklearn.model_selection._search
 
-                logger.info("Initializing RandomizedSearchCV")
-                model_grid = RandomizedSearchCV(
-                    estimator=pipeline_with_model,
-                    param_distributions=param_grid,
-                    scoring=optimize,
-                    n_iter=n_iter,
-                    cv=fold,
-                    random_state=seed,
-                    refit=False,
-                    n_jobs=n_jobs,
-                    verbose=1,
-                    **search_kwargs,
+                unpatched_sample_without_replacement = (
+                    sklearn.model_selection._search.sample_without_replacement
                 )
+                logger.info("Initializing RandomizedSearchCV")
+                try:
+                    sklearn.model_selection._search.sample_without_replacement = (
+                        sample_without_replacement
+                    )
+                    model_grid = sklearn.model_selection._search.RandomizedSearchCV(
+                        estimator=pipeline_with_model,
+                        param_distributions=param_grid,
+                        scoring=optimize,
+                        n_iter=n_iter,
+                        cv=fold,
+                        random_state=seed,
+                        refit=False,
+                        n_jobs=n_jobs,
+                        verbose=1,
+                        **search_kwargs,
+                    )
+                except Exception as e:
+                    sklearn.model_selection._search.sample_without_replacement = (
+                        unpatched_sample_without_replacement
+                    )
+                    raise e
 
         # with io.capture_output():
         model_grid.fit(X_train, y_train, groups=groups, **fit_kwargs)
