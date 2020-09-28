@@ -526,13 +526,17 @@ def sample_without_replacement(
         not be randomized, see the method argument.
     """
     _sample_without_replacement_check_input(n_population, n_samples)
+
+    out = np.empty((n_samples, ), dtype=np.int64)
     rng = check_random_state(random_state)
-    selected_n = np.empty(n_samples, dtype=np.int64)
-    selected_n[:] = np.NaN
-    index = 0
-    while index < n_samples:
-        n = rng.choice(n_population)
-        if n not in selected_n:
-            selected_n[index] = n
-            index += 1
-    return selected_n
+    rng_randint = rng.randint
+    # The following line of code are heavily inspired from python core,
+    # more precisely of random.sample.
+    selected = set()
+    for i in range(n_samples):
+        j = rng_randint(n_population)
+        while j in selected:
+            j = rng_randint(n_population)
+        selected.add(j)
+        out[i] = j
+    return out
