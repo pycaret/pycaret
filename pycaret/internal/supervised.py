@@ -3524,6 +3524,9 @@ def tune_model(
                 )
                 logger.info("Initializing GridSearchCV")
                 try:
+                    sklearn.model_selection._search.sample_without_replacement = (
+                        sample_without_replacement
+                    )
                     model_grid = sklearn.model_selection._search.GridSearchCV(
                         estimator=pipeline_with_model,
                         param_grid=param_grid,
