@@ -961,7 +961,7 @@ class Group_Similar_Features(BaseEstimator,TransformerMixin):
   
   def fit(self,data,y=None):
     # nothing to learn
-      return(None)
+    return self
 
   def transform(self,dataset,y=None):
     data = dataset
@@ -980,7 +980,6 @@ class Group_Similar_Features(BaseEstimator,TransformerMixin):
       return(data)
 
   def fit_transform(self,data,y=None):
-    self.fit(data)
     return(self.transform(data))
     
 
@@ -998,10 +997,10 @@ class Binning(BaseEstimator,TransformerMixin):
 
   def __init__(self, features_to_discretize):
     self.features_to_discretize =features_to_discretize
-    return(None)
 
   def fit(self,data,y=None):
-    return(None)
+    self.fit_transform(data, y=y)
+    return self
 
   def transform(self,dataset,y=None):
     data = dataset
@@ -1091,10 +1090,7 @@ class Scaling_and_Power_transformation(BaseEstimator,TransformerMixin):
         self.scale_and_power = MaxAbsScaler()
         self.scale_and_power.fit(data[self.numeric_features])
 
-      else:
-        return(None)
-    else:
-      return(None)
+    return self
     
 
   
@@ -1187,11 +1183,11 @@ class Make_Time_Features(BaseEstimator,TransformerMixin):
   def __init__(self,time_feature=[],list_of_features=['month','weekday','is_month_end','is_month_start','hour']):
     self.time_feature = time_feature
     self.list_of_features_o = set(list_of_features)
-    return(None)
 
   def fit(self,data,y=None):
-
-    return(None)
+    if not self.time_feature:
+      self.time_feature = data.select_dtypes(include=['datetime64[ns]']).columns
+    return self
 
   def transform(self,dataset,y=None):
     data = dataset
@@ -1236,8 +1232,7 @@ class Make_Time_Features(BaseEstimator,TransformerMixin):
 
   def fit_transform(self,dataset,y=None):
     # if no columns names are given , then pick datetime columns
-    if not self.time_feature:
-      self.time_feature = dataset.select_dtypes(include=['datetime64[ns]']).columns
+    self.fit(dataset, y=y)
 
     return(self.transform(dataset, y=y))
 
@@ -1252,10 +1247,10 @@ class Ordinal(BaseEstimator,TransformerMixin):
 
   def __init__(self, info_as_dict):
     self.info_as_dict = info_as_dict
-    return(None)
 
   def fit(self,data,y=None):
-    return(None)
+    self.fit_transform(data, y=y)
+    return self
 
   def transform(self,dataset,y=None):
     data = dataset
@@ -1313,9 +1308,8 @@ class Dummify(BaseEstimator,TransformerMixin):
       # # now fit the trainin column
       self.ohe.fit(categorical_data)
       self.data_columns = self.ohe.get_feature_names(categorical_data.columns)
-    else:
-      None
-    return(None)
+
+    return self
  
   def transform(self,dataset,y=None):
     data = dataset
@@ -1369,11 +1363,9 @@ class Outlier(BaseEstimator,TransformerMixin):
     self.random_state = random_state
     self.methods = methods
 
-    return(None)
-
   def fit(self,data,y=None):
-    #self.abod.fit(data)
-    return(None)
+    self.fit_transform(data, y=y)
+    return self
 
   def transform(self,data,y=None):
     return(data)
@@ -1433,11 +1425,8 @@ class Clean_Colum_Names(BaseEstimator,TransformerMixin):
     - Cleans special chars that are not supported by jason format
   '''
 
-  def __init__(self):
-    return(None)
-
   def fit(self,data,y=None):
-    return(None)
+    return self
 
   def transform(self,dataset,y=None):
     data = dataset
@@ -1465,7 +1454,8 @@ class Cluster_Entire_Data(BaseEstimator,TransformerMixin):
     
 
   def fit(self,data,y=None):
-    return(None)
+    self.fit_transform(data,y=y)
+    return self
 
   def transform(self,dataset,y=None):
     data = dataset
@@ -1559,7 +1549,8 @@ class Reduce_Cardinality_with_Clustering(BaseEstimator,TransformerMixin):
     
 
   def fit(self,data,y=None):
-    return(None)
+    self.fit_transform(data,y=y)
+    return self
 
   def transform(self,dataset,y=None):
     data = dataset
@@ -1653,7 +1644,8 @@ class Reduce_Cardinality_with_Counts(BaseEstimator,TransformerMixin):
     self.feature = catagorical_feature    
 
   def fit(self,data,y=None):
-    return(None)
+    self.fit_transform(data,y=y)
+    return self
 
   def transform(self,dataset,y=None):
     data = dataset
@@ -1704,8 +1696,8 @@ class Make_NonLiner_Features(BaseEstimator,TransformerMixin):
     self.subclass = subclass
   
   def fit(self,data,y=None):
-    # nothing to learn
-      return(None)
+    self.fit_transform(data,y=y)
+    return self
  
   def transform(self,dataset,y=None):# same application for test and train
     data = dataset
@@ -1850,10 +1842,9 @@ class Advanced_Feature_Selection_Classic(BaseEstimator,TransformerMixin):
     self.random_state = random_state
     self.subclass = subclass
 
-    return(None)
-
   def fit(self,dataset,y=None):
-    return(None)
+    self.fit_transform(dataset,y=y)
+    return self
 
   def transform(self,dataset,y=None):
     # return the data with onlys specific columns
@@ -1958,11 +1949,10 @@ class Boruta_Feature_Selection(BaseEstimator, TransformerMixin):
     self.alpha = alpha
     self.percentile = percentile
 
-    return(None)
-
 
   def fit(self,dataset,y=None):
-    return(None)
+    self.fit_transform(dataset,y=y)
+    return self
 
 
   def transform(self,dataset,y=None):
@@ -2299,10 +2289,10 @@ class Remove_100(BaseEstimator,TransformerMixin):
 
   def __init__(self,target):
     self.target = target
-    return(None)
 
   def fit(self,data,y=None):
-    return(None)
+    self.fit_transform(data,y=y)
+    return self
 
   def transform(self,dataset,y=None):
     return(dataset.drop(self.columns_to_drop,axis=1))
@@ -2369,12 +2359,10 @@ class DFS_Classic(BaseEstimator,TransformerMixin):
     self.ml_usecase = ml_usecase
     self.random_state = random_state
     self.subclass = subclass
-    
-
-    return(None)
 
   def fit(self,data,y=None):
-    return(None)
+    self.fit_transform(data,y=y)
+    return self
 
   def transform(self,dataset,y=None):
 
@@ -2544,11 +2532,8 @@ class Empty(BaseEstimator,TransformerMixin):
     - Takes DF, return same DF 
   '''
 
-  def __init__(self):
-    return(None)
-
   def fit(self,data,y=None):
-    return(None)
+    return self
 
   def transform(self,data,y=None):
     return(data)
@@ -2571,10 +2556,10 @@ class Reduce_Dimensions_For_Supervised_Path(BaseEstimator,TransformerMixin):
     self.variance_retained = variance_retained_or_number_of_components
     self.random_state= random_state
     self.method = method
-    return(None)
 
   def fit(self,data,y=None):
-    return(None)
+    self.fit_transform(data,y=y)
+    return self
 
   def transform(self,dataset,y=None):
     data = dataset
