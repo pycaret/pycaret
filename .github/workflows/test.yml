@@ -3,6 +3,7 @@ name: pytest on push
 on: [push, pull_request]
 
 jobs:
+  # JOBS MUST START WITH test !!!!
   test:
 
     runs-on: ubuntu-latest
