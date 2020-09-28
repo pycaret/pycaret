@@ -853,7 +853,7 @@ class GradientBoostingClassifierContainer(ClassifierContainer):
                 0.4,
                 0.5,
             ],
-            "max_features": ["auto", "sqrt", "log2"],
+            "max_features": [1.0, "sqrt", "log2"],
         }
         tune_distributions = {
             "n_estimators": IntUniformDistribution(10, 1000),

@@ -422,7 +422,7 @@ class TunableMLPClassifier(MLPClassifier):
                     r[f"hidden_layer_size_{i}"] = w
         return r
 
-    def fit(self, X, y, sample_weight=None):
+    def fit(self, X, y, **fit_params):
         """Fit the model to data matrix X and target(s) y.
 
         Parameters
@@ -440,7 +440,7 @@ class TunableMLPClassifier(MLPClassifier):
         """
         return super().fit(X, y)
 
-    def _partial_fit(self, X, y, classes=None, sample_weight=None):
+    def _partial_fit(self, X, y, classes=None, **fit_params):
         return super()._partial_fit(X, y, classes=classes)
 
 
@@ -840,7 +840,7 @@ class TunableMLPRegressor(MLPRegressor):
                     r[f"hidden_layer_size_{i}"] = w
         return r
 
-    def fit(self, X, y, sample_weight=None):
+    def fit(self, X, y, **fit_params):
         """Fit the model to data matrix X and target(s) y.
 
         Parameters
@@ -858,7 +858,7 @@ class TunableMLPRegressor(MLPRegressor):
         """
         return super().fit(X, y)
 
-    def _partial_fit(self, X, y, sample_weight=None):
+    def _partial_fit(self, X, y, **fit_params):
         return super()._partial_fit(X, y)
 
 

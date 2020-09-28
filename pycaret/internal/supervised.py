@@ -84,7 +84,7 @@ def setup(
     high_cardinality_method: str = "frequency",
     numeric_features: Optional[List[str]] = None,
     numeric_imputation: str = "mean",  # method 'zero' added in pycaret==2.1
-    numeric_iterative_imputation_model: Union[str, Any] = "br",  # todo change
+    numeric_iterative_imputation_model: Union[str, Any] = "rf",
     date_features: Optional[List[str]] = None,
     ignore_features: Optional[List[str]] = None,
     normalize: bool = False,
@@ -3314,7 +3314,7 @@ def tune_model(
 
         if search_library == "optuna":
             # suppress output
-            logging.getLogger("optuna").setLevel(logging.ERROR)
+            logging.getLogger("optuna").setLevel(logging.WARNING)
 
             pruner_translator = {
                 "asha": optuna.pruners.SuccessiveHalvingPruner(),
@@ -3357,6 +3357,7 @@ def tune_model(
                 study=study,
                 refit=False,
                 verbose=1,
+                error_score="raise",
                 **search_kwargs,
             )
 
