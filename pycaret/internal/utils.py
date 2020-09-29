@@ -525,6 +525,7 @@ def sample_without_replacement(
         The sampled subsets of integer. The subset of selected integer might
         not be randomized, see the method argument.
     """
+    get_logger().info(n_population, n_samples)
     _sample_without_replacement_check_input(n_population, n_samples)
 
     out = np.empty((n_samples, ), dtype=np.int64)

@@ -3541,7 +3541,7 @@ def tune_model(
                     sklearn.model_selection._search.sample_without_replacement = (
                         unpatched_sample_without_replacement
                     )
-                    raise e
+                    raise RuntimeError from e
                 sklearn.model_selection._search.sample_without_replacement = (
                     unpatched_sample_without_replacement
                 )
@@ -3573,7 +3573,7 @@ def tune_model(
                     sklearn.model_selection._search.sample_without_replacement = (
                         unpatched_sample_without_replacement
                     )
-                    raise e
+                    raise RuntimeError from e
                 sklearn.model_selection._search.sample_without_replacement = (
                     unpatched_sample_without_replacement
                 )
