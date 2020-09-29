@@ -3542,6 +3542,9 @@ def tune_model(
                         unpatched_sample_without_replacement
                     )
                     raise e
+                sklearn.model_selection._search.sample_without_replacement = (
+                    unpatched_sample_without_replacement
+                )
             else:
                 # needs to be imported like that for the monkeypatch
                 import sklearn.model_selection._search
@@ -3571,6 +3574,9 @@ def tune_model(
                         unpatched_sample_without_replacement
                     )
                     raise e
+                sklearn.model_selection._search.sample_without_replacement = (
+                    unpatched_sample_without_replacement
+                )
 
         # with io.capture_output():
         model_grid.fit(X_train, y_train, groups=groups, **fit_kwargs)
