@@ -57,7 +57,7 @@ jobs:
         python -m spacy download en
     - name: Remove tests
       run: |
-        remove-item pycaret/tests/* -Include @('test_classification_tuning.py','test_classification_plots.py')
+        remove-item pycaret/tests/* -Include @('test_classification_tuning.py','test_classification_plots.py','test_regression_plots.py')
     - name: Test with pytest
       run: |
         pytest
