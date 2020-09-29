@@ -532,4 +532,5 @@ def sample_without_replacement(
             j = rng_randint(n_population, dtype=np.int64)
         selected.add(j)
         out[i] = j
+    get_logger().info(out)
     return out
