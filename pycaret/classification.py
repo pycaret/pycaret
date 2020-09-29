@@ -14,6 +14,8 @@ import warnings
 from IPython.utils import io
 import traceback
 
+from pycaret.internal.supervised import MLUsecase
+
 warnings.filterwarnings("ignore")
 
 if is_in_colab():
@@ -1938,6 +1940,7 @@ def predict_model(
         encoded_labels=encoded_labels,
         round=round,
         verbose=verbose,
+        ml_usecase=MLUsecase.CLASSIFICATION,
     )
 
 

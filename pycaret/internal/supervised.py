@@ -6430,6 +6430,7 @@ def predict_model(
     encoded_labels: bool = False,  # added in pycaret==2.1.0
     round: int = 4,  # added in pycaret==2.2.0
     verbose: bool = True,
+    ml_usecase: Optional[MLUsecase]=None,
     display: Optional[Display] = None,  # added in pycaret==2.2.0
 ) -> pd.DataFrame:
 
@@ -6502,6 +6503,9 @@ def predict_model(
     """
     exception checking starts here
     """
+
+    if ml_usecase is None:
+        ml_usecase = _ml_usecase
 
     if data is None and "pycaret_globals" not in globals():
         raise ValueError(
@@ -6626,7 +6630,7 @@ def predict_model(
 
     label = pd.DataFrame(pred)
     label.columns = ["Label"]
-    if _ml_usecase == MLUsecase.CLASSIFICATION:
+    if ml_usecase == MLUsecase.CLASSIFICATION:
         label["Label"] = label["Label"].astype(int)
     if not encoded_labels:
         replace_lables_in_column(label["Label"])
