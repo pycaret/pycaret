@@ -520,16 +520,16 @@ def sample_without_replacement(
             % (n_samples, n_population)
         )
 
-    out = np.empty((n_samples,), dtype=np.int64)
+    out = np.empty((n_samples,), dtype=np.uint64)
     rng = check_random_state(random_state)
     rng_randint = rng.randint
     # The following line of code are heavily inspired from python core,
     # more precisely of random.sample.
     selected = set()
     for i in range(n_samples):
-        j = rng_randint(n_population, dtype=np.int64)
+        j = rng_randint(n_population, dtype=np.uint64)
         while j in selected:
-            j = rng_randint(n_population, dtype=np.int64)
+            j = rng_randint(n_population, dtype=np.uint64)
         selected.add(j)
         out[i] = j
     get_logger().info(out)

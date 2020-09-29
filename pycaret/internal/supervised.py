@@ -3566,6 +3566,7 @@ def tune_model(
                 """
                 # This is used to make discrete sampling without replacement memory
                 # efficient.
+                ind = int(ind)
                 for sub_grid in self.param_grid:
                     # XXX: could memoize information used here
                     if not sub_grid:
@@ -3578,7 +3579,7 @@ def tune_model(
                     # Reverse so most frequent cycling parameter comes first
                     keys, values_lists = zip(*sorted(sub_grid.items())[::-1])
                     sizes = [len(v_list) for v_list in values_lists]
-                    total = np.product(sizes, dtype=np.int64)
+                    total = int(np.product(sizes, dtype=np.uint64))
 
                     if ind >= total:
                         # Try the next grid
@@ -3586,7 +3587,7 @@ def tune_model(
                     else:
                         out = {}
                         for key, v_list, n in zip(keys, values_lists, sizes):
-                            ind, offset = divmod(ind, n)
+                            ind, offset = divmod(int(ind), n)
                             out[key] = v_list[offset]
                         return out
 
