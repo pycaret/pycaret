@@ -3,6 +3,7 @@
 # License: MIT
 
 import os
+import numpy as np
 from pycaret.containers.metrics.base_metric import MetricContainer
 from pycaret.containers.models.base_model import ModelContainer
 import pandas as pd
@@ -13,8 +14,6 @@ from pycaret.internal.logging import get_logger
 from pycaret.internal.validation import *
 from typing import Any, List, Optional, Dict, Tuple, Union
 from sklearn import clone
-from sklearn.utils import check_random_state
-import numpy as np
 from sklearn.model_selection import KFold, StratifiedKFold, BaseCrossValidator
 
 
@@ -476,61 +475,3 @@ def get_all_object_vars_and_properties(object):
         for k in object.__dir__()
         if k[:2] != "__" and type(getattr(object, k, "")).__name__ != "method"
     }
-
-
-# adapted from https://github.com/scikit-learn/scikit-learn/blob/master/sklearn/utils/_random.pyx
-def sample_without_replacement(
-    n_population: int, n_samples: int, method=None, random_state=None
-) -> Any:
-    """Sample integers without replacement.
-
-    Select n_samples integers from the set [0, n_population) without
-    replacement.
-
-
-    Parameters
-    ----------
-    n_population : int
-        The size of the set to sample from.
-
-    n_samples : int
-        The number of integer to sample.
-
-    random_state : int, RandomState instance or None, default=None
-        If int, random_state is the seed used by the random number generator;
-        If RandomState instance, random_state is the random number generator;
-        If None, the random number generator is the RandomState instance used
-        by `np.random`.
-
-    Returns
-    -------
-    out : ndarray of shape (n_samples,)
-        The sampled subsets of integer. The subset of selected integer might
-        not be randomized, see the method argument.
-    """
-    if n_population < 0:
-        raise ValueError(
-            "n_population should be greater than 0, got %s." % n_population
-        )
-
-    if n_samples > n_population:
-        raise ValueError(
-            "n_population should be greater or equal than "
-            "n_samples, got n_samples > n_population (%s > %s)"
-            % (n_samples, n_population)
-        )
-
-    out = np.empty((n_samples,), dtype=np.uint64)
-    rng = check_random_state(random_state)
-    rng_randint = rng.randint
-    # The following line of code are heavily inspired from python core,
-    # more precisely of random.sample.
-    selected = set()
-    for i in range(n_samples):
-        j = rng_randint(n_population, dtype=np.uint64)
-        while j in selected:
-            j = rng_randint(n_population, dtype=np.uint64)
-        selected.add(j)
-        out[i] = j
-    get_logger().info(out)
-    return out 

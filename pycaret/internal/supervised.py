@@ -26,7 +26,7 @@ from pycaret.internal.utils import (
     nullcontext,
     true_warm_start,
 )
-import pycaret.internal.utils
+import pycaret.internal.patches.sklearn
 from pycaret.internal.logging import get_logger
 from pycaret.internal.plotting import show_yellowbrick_plot
 from pycaret.internal.Display import Display, is_in_colab, enable_colab
@@ -3519,9 +3519,6 @@ def tune_model(
             # needs to be imported like that for the monkeypatch
             import sklearn.model_selection._search
 
-            unpatched_sample_without_replacement = (
-                sklearn.model_selection._search.sample_without_replacement
-            )
             if search_algorithm == "grid":
                 logger.info("Initializing GridSearchCV")
                 model_grid = sklearn.model_selection._search.GridSearchCV(
@@ -3550,55 +3547,15 @@ def tune_model(
                 )
 
         # with io.capture_output():
-        if unpatched_sample_without_replacement is not None:
-            def getitem(self, ind):
-                """Get the parameters that would be ``ind``th in iteration
-
-                Parameters
-                ----------
-                ind : int
-                    The iteration index
-
-                Returns
-                -------
-                params : dict of str to any
-                    Equal to list(self)[ind]
-                """
-                # This is used to make discrete sampling without replacement memory
-                # efficient.
-                ind = int(ind)
-                for sub_grid in self.param_grid:
-                    # XXX: could memoize information used here
-                    if not sub_grid:
-                        if ind == 0:
-                            return {}
-                        else:
-                            ind -= 1
-                            continue
-
-                    # Reverse so most frequent cycling parameter comes first
-                    keys, values_lists = zip(*sorted(sub_grid.items())[::-1])
-                    sizes = [len(v_list) for v_list in values_lists]
-                    total = int(np.product(sizes, dtype=np.uint64))
-
-                    if ind >= total:
-                        # Try the next grid
-                        ind -= total
-                    else:
-                        out = {}
-                        for key, v_list, n in zip(keys, values_lists, sizes):
-                            ind, offset = divmod(int(ind), n)
-                            out[key] = v_list[offset]
-                        return out
-
-                raise IndexError('ParameterGrid index out of range')
+        if search_library == "scikit-learn":
+            # monkey patching to fix overflows on Windows
             with patch(
                 "sklearn.model_selection._search.sample_without_replacement",
-                pycaret.internal.utils.sample_without_replacement,
+                pycaret.internal.patches.sklearn._mp_sample_without_replacement,
             ):
                 with patch(
                     "sklearn.model_selection._search.ParameterGrid.__getitem__",
-                    getitem
+                    pycaret.internal.patches.sklearn._mp_ParameterGrid_getitem,
                 ):
                     model_grid.fit(X_train, y_train, groups=groups, **fit_kwargs)
         else:
