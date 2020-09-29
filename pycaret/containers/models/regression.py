@@ -711,7 +711,6 @@ class PassiveAggressiveRegressorContainer(RegressorContainer):
             "loss": ["epsilon_insensitive", "squared_epsilon_insensitive"],
             "epsilon": [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9],
             "shuffle": [True, False],
-            "class_weight": ["balanced", {}],
         }
         tune_distributions = {
             "C": UniformDistribution(0, 10),
@@ -780,7 +779,7 @@ class TheilSenRegressorContainer(RegressorContainer):
 
         args = {
             "n_jobs": globals_dict["n_jobs_param"],
-            "randm_state": globals_dict["seed"],
+            "random_state": globals_dict["seed"],
             "max_iter": 1000,
         }
         tune_args = {}

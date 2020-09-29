@@ -135,7 +135,7 @@ class Pipeline(imblearn.pipeline.Pipeline):
         return result
 
     @if_delegate_has_method(delegate="_final_estimator")
-    def partial_fit(self, X, y, classes=None, sample_weight=None):
+    def partial_fit(self, X, y=None, **fit_params):
         """Fit the model.
 
         Fit all the transforms/samplers one after the other and
@@ -176,9 +176,7 @@ class Pipeline(imblearn.pipeline.Pipeline):
             yt = self.yt_
         with _print_elapsed_time("Pipeline", self._log_message(len(self.steps) - 1)):
             if self._final_estimator != "passthrough":
-                self._final_estimator.partial_fit(
-                    Xt, yt, classes=classes, sample_weight=sample_weight
-                )
+                self._final_estimator.partial_fit(Xt, yt, **fit_params)
         self._carry_over_final_estimator_fit_vars()
         return self
 

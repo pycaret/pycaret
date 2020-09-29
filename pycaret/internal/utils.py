@@ -2,6 +2,8 @@
 # Author: Moez Ali <moez.ali@queensu.ca> and Antoni Baum (Yard1) <antoni.baum@protonmail.com>
 # License: MIT
 
+import os
+import numpy as np
 from pycaret.containers.metrics.base_metric import MetricContainer
 from pycaret.containers.models.base_model import ModelContainer
 import pandas as pd
@@ -12,7 +14,6 @@ from pycaret.internal.logging import get_logger
 from pycaret.internal.validation import *
 from typing import Any, List, Optional, Dict, Tuple, Union
 from sklearn import clone
-import numpy as np
 from sklearn.model_selection import KFold, StratifiedKFold, BaseCrossValidator
 
 
@@ -474,4 +475,3 @@ def get_all_object_vars_and_properties(object):
         for k in object.__dir__()
         if k[:2] != "__" and type(getattr(object, k, "")).__name__ != "method"
     }
-

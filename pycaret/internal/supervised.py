@@ -9,7 +9,7 @@ from pycaret.internal.meta_estimators import (
     PowerTransformedTargetRegressor,
     get_estimator_from_meta_estimator,
 )
-from pycaret.internal.tune_sklearn_patches import (
+from pycaret.internal.patches.tune_sklearn import (
     get_tune_sklearn_tunegridsearchcv,
     get_tune_sklearn_tunesearchcv,
 )
@@ -26,6 +26,7 @@ from pycaret.internal.utils import (
     nullcontext,
     true_warm_start,
 )
+import pycaret.internal.patches.sklearn
 from pycaret.internal.logging import get_logger
 from pycaret.internal.plotting import show_yellowbrick_plot
 from pycaret.internal.Display import Display, is_in_colab, enable_colab
@@ -52,6 +53,7 @@ from typing import List, Tuple, Any, Union
 import warnings
 from IPython.utils import io
 import traceback
+from unittest.mock import patch
 
 warnings.filterwarnings("ignore")
 
@@ -84,7 +86,7 @@ def setup(
     high_cardinality_method: str = "frequency",
     numeric_features: Optional[List[str]] = None,
     numeric_imputation: str = "mean",  # method 'zero' added in pycaret==2.1
-    numeric_iterative_imputation_model: Union[str, Any] = "br",  # todo change
+    numeric_iterative_imputation_model: Union[str, Any] = "rf",
     date_features: Optional[List[str]] = None,
     ignore_features: Optional[List[str]] = None,
     normalize: bool = False,
@@ -3311,10 +3313,11 @@ def tune_model(
             n_jobs = 1
 
         logger.info(f"Tuning with n_jobs={n_jobs}")
+        unpatched_sample_without_replacement = None
 
         if search_library == "optuna":
             # suppress output
-            logging.getLogger("optuna").setLevel(logging.ERROR)
+            logging.getLogger("optuna").setLevel(logging.WARNING)
 
             pruner_translator = {
                 "asha": optuna.pruners.SuccessiveHalvingPruner(),
@@ -3357,6 +3360,7 @@ def tune_model(
                 study=study,
                 refit=False,
                 verbose=1,
+                error_score="raise",
                 **search_kwargs,
             )
 
@@ -3512,11 +3516,12 @@ def tune_model(
                 **search_kwargs,
             )
         else:
-            if search_algorithm == "grid":
-                from sklearn.model_selection import GridSearchCV
+            # needs to be imported like that for the monkeypatch
+            import sklearn.model_selection._search
 
+            if search_algorithm == "grid":
                 logger.info("Initializing GridSearchCV")
-                model_grid = GridSearchCV(
+                model_grid = sklearn.model_selection._search.GridSearchCV(
                     estimator=pipeline_with_model,
                     param_grid=param_grid,
                     scoring=optimize,
@@ -3527,10 +3532,8 @@ def tune_model(
                     **search_kwargs,
                 )
             else:
-                from sklearn.model_selection import RandomizedSearchCV
-
                 logger.info("Initializing RandomizedSearchCV")
-                model_grid = RandomizedSearchCV(
+                model_grid = sklearn.model_selection._search.RandomizedSearchCV(
                     estimator=pipeline_with_model,
                     param_distributions=param_grid,
                     scoring=optimize,
@@ -3544,7 +3547,19 @@ def tune_model(
                 )
 
         # with io.capture_output():
-        model_grid.fit(X_train, y_train, groups=groups, **fit_kwargs)
+        if search_library == "scikit-learn":
+            # monkey patching to fix overflows on Windows
+            with patch(
+                "sklearn.model_selection._search.sample_without_replacement",
+                pycaret.internal.patches.sklearn._mp_sample_without_replacement,
+            ):
+                with patch(
+                    "sklearn.model_selection._search.ParameterGrid.__getitem__",
+                    pycaret.internal.patches.sklearn._mp_ParameterGrid_getitem,
+                ):
+                    model_grid.fit(X_train, y_train, groups=groups, **fit_kwargs)
+        else:
+            model_grid.fit(X_train, y_train, groups=groups, **fit_kwargs)
         best_params = model_grid.best_params_
         logger.info(f"best_params: {best_params}")
         best_params = {

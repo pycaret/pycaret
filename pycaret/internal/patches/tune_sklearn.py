@@ -3,7 +3,7 @@
 # License: MIT
 
 # Provides methods returning monkey patched tune-sklearn classes to allow for Pipeline support.
-
+from pycaret.internal.logging import get_logger
 
 def get_tune_trainable():
     import tune_sklearn._trainable
@@ -27,6 +27,10 @@ def get_tune_trainable():
             self.early_stopping = config.pop("early_stopping")
             X_id = config.pop("X_id")
             self.X = ray.get(X_id)
+            try:
+                config.pop("early_stop_type")
+            except:
+                pass
 
             y_id = config.pop("y_id")
             self.y = ray.get(y_id)
@@ -69,12 +73,19 @@ def get_tune_trainable():
                 if self._is_xgb():
                     self.saved_models = [None for _ in range(n_splits)]
             else:
+                get_logger().info(self.estimator_config)
                 self.main_estimator.set_params(**self.estimator_config)
 
         def _is_xgb(self):
             from xgboost.sklearn import XGBModel
 
             return isinstance(self.main_estimator.steps[-1][1], XGBModel)
+
+        def _early_stopping_partial_fit(self, i, estimator, X_train, y_train):
+            """Handles early stopping on estimators that support `partial_fit`.
+
+            """
+            estimator.partial_fit(X_train, y_train, classes=np.unique(self.y))
 
         def _can_warm_start_ensemble(self):
             estimator = self.main_estimator.steps[-1][1]
