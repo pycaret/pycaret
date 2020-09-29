@@ -25,8 +25,8 @@ from pycaret.internal.utils import (
     normalize_custom_transformers,
     nullcontext,
     true_warm_start,
-    sample_without_replacement,
 )
+import pycaret.internal.utils
 from pycaret.internal.logging import get_logger
 from pycaret.internal.plotting import show_yellowbrick_plot
 from pycaret.internal.Display import Display, is_in_colab, enable_colab
@@ -3313,6 +3313,7 @@ def tune_model(
             n_jobs = 1
 
         logger.info(f"Tuning with n_jobs={n_jobs}")
+        unpatched_sample_without_replacement = None
 
         if search_library == "optuna":
             # suppress output
@@ -3515,71 +3516,48 @@ def tune_model(
                 **search_kwargs,
             )
         else:
-            if search_algorithm == "grid":
-                # needs to be imported like that for the monkeypatch
-                import sklearn.model_selection._search
+            # needs to be imported like that for the monkeypatch
+            import sklearn.model_selection._search
 
-                unpatched_sample_without_replacement = (
-                    sklearn.model_selection._search.sample_without_replacement
-                )
+            unpatched_sample_without_replacement = (
+                sklearn.model_selection._search.sample_without_replacement
+            )
+            if search_algorithm == "grid":
                 logger.info("Initializing GridSearchCV")
-                try:
-                    sklearn.model_selection._search.sample_without_replacement = (
-                        sample_without_replacement
-                    )
-                    model_grid = sklearn.model_selection._search.GridSearchCV(
-                        estimator=pipeline_with_model,
-                        param_grid=param_grid,
-                        scoring=optimize,
-                        cv=fold,
-                        refit=False,
-                        n_jobs=n_jobs,
-                        verbose=1,
-                        **search_kwargs,
-                    )
-                except Exception as e:
-                    sklearn.model_selection._search.sample_without_replacement = (
-                        unpatched_sample_without_replacement
-                    )
-                    raise RuntimeError from e
-                sklearn.model_selection._search.sample_without_replacement = (
-                    unpatched_sample_without_replacement
+                model_grid = sklearn.model_selection._search.GridSearchCV(
+                    estimator=pipeline_with_model,
+                    param_grid=param_grid,
+                    scoring=optimize,
+                    cv=fold,
+                    refit=False,
+                    n_jobs=n_jobs,
+                    verbose=1,
+                    **search_kwargs,
                 )
             else:
-                # needs to be imported like that for the monkeypatch
-                import sklearn.model_selection._search
-
-                unpatched_sample_without_replacement = (
-                    sklearn.model_selection._search.sample_without_replacement
-                )
                 logger.info("Initializing RandomizedSearchCV")
-                try:
-                    sklearn.model_selection._search.sample_without_replacement = (
-                        sample_without_replacement
-                    )
-                    model_grid = sklearn.model_selection._search.RandomizedSearchCV(
-                        estimator=pipeline_with_model,
-                        param_distributions=param_grid,
-                        scoring=optimize,
-                        n_iter=n_iter,
-                        cv=fold,
-                        random_state=seed,
-                        refit=False,
-                        n_jobs=n_jobs,
-                        verbose=1,
-                        **search_kwargs,
-                    )
-                except Exception as e:
-                    sklearn.model_selection._search.sample_without_replacement = (
-                        unpatched_sample_without_replacement
-                    )
-                    raise RuntimeError from e
-                sklearn.model_selection._search.sample_without_replacement = (
-                    unpatched_sample_without_replacement
+                model_grid = sklearn.model_selection._search.RandomizedSearchCV(
+                    estimator=pipeline_with_model,
+                    param_distributions=param_grid,
+                    scoring=optimize,
+                    n_iter=n_iter,
+                    cv=fold,
+                    random_state=seed,
+                    refit=False,
+                    n_jobs=n_jobs,
+                    verbose=1,
+                    **search_kwargs,
                 )
 
         # with io.capture_output():
-        model_grid.fit(X_train, y_train, groups=groups, **fit_kwargs)
+        if unpatched_sample_without_replacement is not None:
+            with patch(
+                "sklearn.model_selection._search.sample_without_replacement",
+                pycaret.internal.utils.sample_without_replacement,
+            ):
+                model_grid.fit(X_train, y_train, groups=groups, **fit_kwargs)
+        else:
+            model_grid.fit(X_train, y_train, groups=groups, **fit_kwargs)
         best_params = model_grid.best_params_
         logger.info(f"best_params: {best_params}")
         best_params = {

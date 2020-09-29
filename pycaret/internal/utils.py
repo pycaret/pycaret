@@ -16,7 +16,6 @@ from sklearn import clone
 from sklearn.utils import check_random_state
 import numpy as np
 from sklearn.model_selection import KFold, StratifiedKFold, BaseCrossValidator
-import sklearn.model_selection._search
 
 
 def get_config(variable: str, globals_d: dict):
@@ -480,22 +479,6 @@ def get_all_object_vars_and_properties(object):
 
 
 # adapted from https://github.com/scikit-learn/scikit-learn/blob/master/sklearn/utils/_random.pyx
-def _sample_without_replacement_check_input(n_population: int, n_samples: int):
-    """ Check that input are consistent for sample_without_replacement"""
-    if n_population < 0:
-        raise ValueError(
-            "n_population should be greater than 0, got %s." % n_population
-        )
-
-    if n_samples > n_population:
-        raise ValueError(
-            "n_population should be greater or equal than "
-            "n_samples, got n_samples > n_population (%s > %s)"
-            % (n_samples, n_population)
-        )
-
-
-# adapted from https://github.com/scikit-learn/scikit-learn/blob/master/sklearn/utils/_random.pyx
 def sample_without_replacement(
     n_population: int, n_samples: int, method=None, random_state=None
 ) -> Any:
@@ -525,10 +508,19 @@ def sample_without_replacement(
         The sampled subsets of integer. The subset of selected integer might
         not be randomized, see the method argument.
     """
-    get_logger().info(n_population, n_samples)
-    _sample_without_replacement_check_input(n_population, n_samples)
+    if n_population < 0:
+        raise ValueError(
+            "n_population should be greater than 0, got %s." % n_population
+        )
 
-    out = np.empty((n_samples, ), dtype=np.int64)
+    if n_samples > n_population:
+        raise ValueError(
+            "n_population should be greater or equal than "
+            "n_samples, got n_samples > n_population (%s > %s)"
+            % (n_samples, n_population)
+        )
+
+    out = np.empty((n_samples,), dtype=np.int64)
     rng = check_random_state(random_state)
     rng_randint = rng.randint
     # The following line of code are heavily inspired from python core,
