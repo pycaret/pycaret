@@ -27,6 +27,10 @@ def get_tune_trainable():
             self.early_stopping = config.pop("early_stopping")
             X_id = config.pop("X_id")
             self.X = ray.get(X_id)
+            try:
+                config.pop("early_stop_type")
+            except:
+                pass
 
             y_id = config.pop("y_id")
             self.y = ray.get(y_id)
@@ -69,6 +73,7 @@ def get_tune_trainable():
                 if self._is_xgb():
                     self.saved_models = [None for _ in range(n_splits)]
             else:
+                print(self.estimator_config)
                 self.main_estimator.set_params(**self.estimator_config)
 
         def _is_xgb(self):
