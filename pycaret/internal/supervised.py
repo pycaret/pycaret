@@ -3578,7 +3578,7 @@ def tune_model(
                     # Reverse so most frequent cycling parameter comes first
                     keys, values_lists = zip(*sorted(sub_grid.items())[::-1])
                     sizes = [len(v_list) for v_list in values_lists]
-                    total = np.product(sizes, dtype=np.uint64)
+                    total = np.product(sizes, dtype=np.int64)
 
                     if ind >= total:
                         # Try the next grid
