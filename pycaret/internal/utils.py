@@ -531,5 +531,5 @@ def sample_without_replacement(
         while j in selected:
             j = rng_randint(n_population, dtype=np.uint64)
         selected.add(j)
-    get_logger().info(out)
+    get_logger().info(selected)
     return list(selected) 
