@@ -3551,11 +3551,55 @@ def tune_model(
 
         # with io.capture_output():
         if unpatched_sample_without_replacement is not None:
+            def getitem(self, ind):
+                """Get the parameters that would be ``ind``th in iteration
+
+                Parameters
+                ----------
+                ind : int
+                    The iteration index
+
+                Returns
+                -------
+                params : dict of str to any
+                    Equal to list(self)[ind]
+                """
+                # This is used to make discrete sampling without replacement memory
+                # efficient.
+                for sub_grid in self.param_grid:
+                    # XXX: could memoize information used here
+                    if not sub_grid:
+                        if ind == 0:
+                            return {}
+                        else:
+                            ind -= 1
+                            continue
+
+                    # Reverse so most frequent cycling parameter comes first
+                    keys, values_lists = zip(*sorted(sub_grid.items())[::-1])
+                    sizes = [len(v_list) for v_list in values_lists]
+                    total = np.product(sizes, dtype=np.uint64)
+
+                    if ind >= total:
+                        # Try the next grid
+                        ind -= total
+                    else:
+                        out = {}
+                        for key, v_list, n in zip(keys, values_lists, sizes):
+                            ind, offset = divmod(ind, n)
+                            out[key] = v_list[offset]
+                        return out
+
+                raise IndexError('ParameterGrid index out of range')
             with patch(
                 "sklearn.model_selection._search.sample_without_replacement",
                 pycaret.internal.utils.sample_without_replacement,
             ):
-                model_grid.fit(X_train, y_train, groups=groups, **fit_kwargs)
+                with patch(
+                    "sklearn.model_selection._search.ParameterGrid.__getitem__",
+                    getitem
+                ):
+                    model_grid.fit(X_train, y_train, groups=groups, **fit_kwargs)
         else:
             model_grid.fit(X_train, y_train, groups=groups, **fit_kwargs)
         best_params = model_grid.best_params_
