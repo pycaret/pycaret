@@ -103,8 +103,8 @@ jobs:
         python -m pip install --upgrade pip
         python -m pip install -U pytest
         python -m pip install codecov
-        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-        if [ -f requirements-optional.txt ]; then pip install -r requirements-optional.txt; fi
+        pip install -r requirements.txt
+        pip install -r requirements-optional.txt
         python -m spacy download en
     - name: Remove tests
       run: |
