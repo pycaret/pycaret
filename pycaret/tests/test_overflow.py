@@ -16,4 +16,4 @@ def test():
     tuned_xgboost = tune_model(xgboost)
     lightgbm = create_model('lightgbm')
     tuned_lightgbm = tune_model(lightgbm)
-    assert 1==1
+    assert 1==2
