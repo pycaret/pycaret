@@ -155,12 +155,7 @@ class CategoricalDistribution(Distrubution):
         self.values = values
 
     def get_skopt(self):
-        import skopt.space
-
-        return skopt.space.Categorical(
-            [x if isinstance(x, Hashable) else None for x in self.values],
-            transform="identity",
-        )
+        return self.values
 
     def get_optuna(self):
         import optuna
