@@ -8,11 +8,11 @@ import pycaret.datasets
 
 def test():
     # loading dataset
-    data = pycaret.datasets.get_data('juice').head(140)
+    data = pycaret.datasets.get_data('juice').head(200)
     assert isinstance(data, pd.core.frame.DataFrame)
 
     # init setup
-    clf1 = pycaret.classification.setup(data, target='Purchase', fold=2, silent=True, html=False, session_id=123)
+    clf1 = pycaret.classification.setup(data, target='Purchase',train_size=0.99, fold=2, silent=True, html=False, session_id=123)
     
     models = pycaret.classification.compare_models(turbo=False, n_select=100)
 
