@@ -534,9 +534,9 @@ def sample_without_replacement(
     # more precisely of random.sample.
     selected = set()
     for i in range(n_samples):
-        j = rng_randint(n_population)
+        j = rng_randint(n_population, dtype=np.int64)
         while j in selected:
-            j = rng_randint(n_population)
+            j = rng_randint(n_population, dtype=np.int64)
         selected.add(j)
         out[i] = j
     return out
