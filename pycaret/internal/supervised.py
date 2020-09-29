@@ -9,7 +9,7 @@ from pycaret.internal.meta_estimators import (
     PowerTransformedTargetRegressor,
     get_estimator_from_meta_estimator,
 )
-from pycaret.internal.tune_sklearn_patches import (
+from pycaret.internal.patches.tune_sklearn import (
     get_tune_sklearn_tunegridsearchcv,
     get_tune_sklearn_tunesearchcv,
 )
