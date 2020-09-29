@@ -3275,18 +3275,20 @@ def tune_model(
             from sklearn.tree import BaseDecisionTree
             from sklearn.ensemble import BaseEnsemble
 
-            can_partial_fit = supports_partial_fit(estimator, params=params)
+            base_estimator = estimator.steps[-1][1]
+
+            can_partial_fit = supports_partial_fit(base_estimator, params=params)
 
             if consider_warm_start:
-                is_not_tree_subclass = not issubclass(type(estimator), BaseDecisionTree)
-                is_ensemble_subclass = issubclass(type(estimator), BaseEnsemble)
-                can_warm_start = hasattr(estimator, "warm_start") and (
+                is_not_tree_subclass = not issubclass(type(base_estimator), BaseDecisionTree)
+                is_ensemble_subclass = issubclass(type(base_estimator), BaseEnsemble)
+                can_warm_start = hasattr(base_estimator, "warm_start") and (
                     (
-                        hasattr(estimator, "max_iter")
+                        hasattr(base_estimator, "max_iter")
                         and is_not_tree_subclass
                         and not is_ensemble_subclass
                     )
-                    or (is_ensemble_subclass and hasattr(estimator, "n_estimators"))
+                    or (is_ensemble_subclass and hasattr(base_estimator, "n_estimators"))
                 )
             else:
                 can_warm_start = False
@@ -3294,7 +3296,7 @@ def tune_model(
             if consider_xgboost:
                 from xgboost.sklearn import XGBModel
 
-                is_xgboost = isinstance(estimator, XGBModel)
+                is_xgboost = isinstance(base_estimator, XGBModel)
             else:
                 is_xgboost = False
 
@@ -3353,7 +3355,7 @@ def tune_model(
                 param_distributions=param_grid,
                 cv=fold,
                 enable_pruning=early_stopping
-                and _can_early_stop(base_estimator, False, False, param_grid),
+                and _can_early_stop(pipeline_with_model, False, False, param_grid),
                 max_iter=early_stopping_max_iters,
                 n_jobs=n_jobs,
                 n_trials=n_iter,
@@ -3376,7 +3378,7 @@ def tune_model(
                 early_stopping = early_stopping_translator[early_stopping]
 
             can_early_stop = early_stopping and _can_early_stop(
-                base_estimator, True, True, param_grid
+                pipeline_with_model, True, True, param_grid
             )
 
             if not can_early_stop and search_algorithm == "bohb":

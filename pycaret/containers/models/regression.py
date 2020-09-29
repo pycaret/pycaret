@@ -702,12 +702,11 @@ class PassiveAggressiveRegressorContainer(RegressorContainer):
 
         from sklearn.linear_model import PassiveAggressiveRegressor
 
-        args = {"random_state": globals_dict["seed"], "early_stopping": False}
+        args = {"random_state": globals_dict["seed"]}
         tune_args = {}
         tune_grid = {
             "C": np.arange(0, 10, 0.001),
             "fit_intercept": [True, False],
-            "early_stopping": [True, False],
             "loss": ["epsilon_insensitive", "squared_epsilon_insensitive"],
             "epsilon": [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9],
             "shuffle": [True, False],
