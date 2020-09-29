@@ -1280,6 +1280,8 @@ def setup(
     X_test = test_data.drop(target, axis=1)
     y_test = test_data[target]
 
+    fold_groups_grid = fold_groups_param
+
     if fold_groups_param is not None:
         fold_groups_param = fold_groups_param[
             fold_groups_param.index.isin(X_train.index)
@@ -1459,7 +1461,7 @@ def setup(
             ["Stratify Train-Test", str(data_split_stratify)],
             ["Fold Generator", type(fold_generator).__name__],
             ["Fold Number", fold_param],
-            ["Fold Groups", fold_groups_param],
+            ["Fold Groups", str(fold_groups_grid)],
             ["CPU Jobs", n_jobs_param],
             ["Use GPU", gpu_param],
             ["Log Experiment", logging_param],
@@ -2116,11 +2118,11 @@ def compare_models(
 
     def highlight_max(s):
         to_highlight = s == s.max()
-        return ["background-color: yellow" if v else "" for v in to_highlight]
+        return ["background-color: yellow" if v is not None else "" for v in to_highlight]
 
     def highlight_min(s):
         to_highlight = s == s.min()
-        return ["background-color: yellow" if v else "" for v in to_highlight]
+        return ["background-color: yellow" if v is not None else "" for v in to_highlight]
 
     def highlight_cols(s):
         color = "lightgrey"
