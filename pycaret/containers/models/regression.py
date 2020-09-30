@@ -1490,9 +1490,13 @@ class BaggingRegressorContainer(RegressorContainer):
             "n_estimators": np.arange(10, 1000, 10),
             "bootstrap": [True, False],
             "bootstrap_features": [True, False],
+            "max_features": np.arange(0.1, 1, 0.1),
+            "max_samples": np.arange(0.4, 1, 0.1),
         }
         tune_distributions = {
             "n_estimators": IntUniformDistribution(10, 1000),
+            "max_features": UniformDistribution(0.01, 1),
+            "max_samples": UniformDistribution(0.4, 1)
         }
 
         leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
