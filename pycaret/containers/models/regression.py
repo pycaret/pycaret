@@ -691,6 +691,7 @@ class AutomaticRelevanceDeterminationContainer(RegressorContainer):
             tune_grid=tune_grid,
             tune_distribution=tune_distributions,
             tune_args=tune_args,
+            is_turbo=False,
             shap=False,
         )
 
@@ -765,6 +766,7 @@ class RANSACRegressorContainer(RegressorContainer):
             tune_grid=tune_grid,
             tune_distribution=tune_distributions,
             tune_args=tune_args,
+            is_turbo=False,
             shap=False,
         )
 
@@ -859,6 +861,7 @@ class KernelRidgeContainer(RegressorContainer):
             tune_grid=tune_grid,
             tune_distribution=tune_distributions,
             tune_args=tune_args,
+            is_turbo=False,
             shap=False,
         )
 
