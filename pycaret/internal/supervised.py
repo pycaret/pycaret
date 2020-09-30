@@ -2121,15 +2121,11 @@ def compare_models(
 
     def highlight_max(s):
         to_highlight = s == s.max()
-        return [
-            "background-color: yellow" if v is not None else "" for v in to_highlight
-        ]
+        return ["background-color: yellow" if v else "" for v in to_highlight]
 
     def highlight_min(s):
         to_highlight = s == s.min()
-        return [
-            "background-color: yellow" if v is not None else "" for v in to_highlight
-        ]
+        return ["background-color: yellow" if v else "" for v in to_highlight]
 
     def highlight_cols(s):
         color = "lightgrey"
