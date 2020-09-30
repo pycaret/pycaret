@@ -14,10 +14,15 @@ import warnings
 from IPython.utils import io
 import traceback
 
+from pycaret.internal.supervised import MLUsecase
+
 warnings.filterwarnings("ignore")
 
-if is_in_colab():
-    enable_colab()
+try:
+    if is_in_colab():
+        enable_colab()
+except:
+    pass
 
 
 def setup(
@@ -30,13 +35,13 @@ def setup(
     iterative_imputation_iters: int = 10,
     categorical_features: Optional[List[str]] = None,
     categorical_imputation: str = "constant",
-    categorical_iterative_imputation_model: Union[str, Any] = "rf",
+    categorical_iterative_imputer: Union[str, Any] = "rf",
     ordinal_features: Optional[Dict[str, list]] = None,
     high_cardinality_features: Optional[List[str]] = None,
     high_cardinality_method: str = "frequency",
     numeric_features: Optional[List[str]] = None,
     numeric_imputation: str = "mean",  # method 'zero' added in pycaret==2.1
-    numeric_iterative_imputation_model: Union[str, Any] = "br",  # todo change
+    numeric_iterative_imputer: Union[str, Any] = "br",  # todo change
     date_features: Optional[List[str]] = None,
     ignore_features: Optional[List[str]] = None,
     normalize: bool = False,
@@ -535,13 +540,13 @@ def setup(
         iterative_imputation_iters=iterative_imputation_iters,
         categorical_features=categorical_features,
         categorical_imputation=categorical_imputation,
-        categorical_iterative_imputation_model=categorical_iterative_imputation_model,
+        categorical_iterative_imputer=categorical_iterative_imputer,
         ordinal_features=ordinal_features,
         high_cardinality_features=high_cardinality_features,
         high_cardinality_method=high_cardinality_method,
         numeric_features=numeric_features,
         numeric_imputation=numeric_imputation,
-        numeric_iterative_imputation_model=numeric_iterative_imputation_model,
+        numeric_iterative_imputer=numeric_iterative_imputer,
         date_features=date_features,
         ignore_features=ignore_features,
         normalize=normalize,
@@ -1679,6 +1684,7 @@ def predict_model(
         encoded_labels=True,
         round=round,
         verbose=verbose,
+        ml_usecase=MLUsecase.REGRESSION
     )
 
 

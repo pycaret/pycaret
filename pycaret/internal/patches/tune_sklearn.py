@@ -85,7 +85,10 @@ def get_tune_trainable():
             """Handles early stopping on estimators that support `partial_fit`.
 
             """
-            estimator.partial_fit(X_train, y_train, classes=np.unique(self.y))
+            try:
+                estimator.partial_fit(X_train, y_train, classes=np.unique(self.y))
+            except:
+                estimator.partial_fit(X_train, y_train)
 
         def _can_warm_start_ensemble(self):
             estimator = self.main_estimator.steps[-1][1]

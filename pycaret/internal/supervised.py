@@ -57,8 +57,11 @@ from unittest.mock import patch
 
 warnings.filterwarnings("ignore")
 
-if is_in_colab():
-    enable_colab()
+try:
+    if is_in_colab():
+        enable_colab()
+except:
+    pass
 
 _available_plots = {}
 
@@ -80,13 +83,13 @@ def setup(
     iterative_imputation_iters: int = 10,
     categorical_features: Optional[List[str]] = None,
     categorical_imputation: str = "constant",
-    categorical_iterative_imputation_model: Union[str, Any] = "rf",
+    categorical_iterative_imputer: Union[str, Any] = "rf",
     ordinal_features: Optional[Dict[str, list]] = None,
     high_cardinality_features: Optional[List[str]] = None,
     high_cardinality_method: str = "frequency",
     numeric_features: Optional[List[str]] = None,
     numeric_imputation: str = "mean",  # method 'zero' added in pycaret==2.1
-    numeric_iterative_imputation_model: Union[str, Any] = "rf",
+    numeric_iterative_imputer: Union[str, Any] = "rf",
     date_features: Optional[List[str]] = None,
     ignore_features: Optional[List[str]] = None,
     normalize: bool = False,
@@ -993,8 +996,8 @@ def setup(
     X_before_preprocess = train_data.drop(target, axis=1)
     y_before_preprocess = train_data[target]
 
-    imputation_regressor = numeric_iterative_imputation_model
-    imputation_classifier = categorical_iterative_imputation_model
+    imputation_regressor = numeric_iterative_imputer
+    imputation_classifier = categorical_iterative_imputer
     imputation_regressor_name = "Bayesian Ridge"  # todo change
     imputation_classifier_name = "Random Forest Classifier"
 
@@ -1027,7 +1030,7 @@ def setup(
             or hasattr(imputation_regressor, "predict")
         ):
             raise ValueError(
-                f"numeric_iterative_imputation_model param must be either a scikit-learn estimator or a string - one of {', '.join(iterative_imputer_regression_models.keys())}."
+                f"numeric_iterative_imputer param must be either a scikit-learn estimator or a string - one of {', '.join(iterative_imputer_regression_models.keys())}."
             )
 
         if not (
@@ -1038,7 +1041,7 @@ def setup(
             or hasattr(imputation_classifier, "predict")
         ):
             raise ValueError(
-                f"categorical_iterative_imputation_model param must be either a scikit-learn estimator or a string - one of {', '.join(iterative_imputer_classification_models.keys())}."
+                f"categorical_iterative_imputer param must be either a scikit-learn estimator or a string - one of {', '.join(iterative_imputer_classification_models.keys())}."
             )
 
         if isinstance(imputation_regressor, str):
@@ -1280,6 +1283,8 @@ def setup(
     X_test = test_data.drop(target, axis=1)
     y_test = test_data[target]
 
+    fold_groups_grid = fold_groups_param
+
     if fold_groups_param is not None:
         fold_groups_param = fold_groups_param[
             fold_groups_param.index.isin(X_train.index)
@@ -1459,7 +1464,7 @@ def setup(
             ["Stratify Train-Test", str(data_split_stratify)],
             ["Fold Generator", type(fold_generator).__name__],
             ["Fold Number", fold_param],
-            ["Fold Groups", fold_groups_param],
+            ["Fold Groups", str(fold_groups_grid)],
             ["CPU Jobs", n_jobs_param],
             ["Use GPU", gpu_param],
             ["Log Experiment", logging_param],
@@ -2116,11 +2121,15 @@ def compare_models(
 
     def highlight_max(s):
         to_highlight = s == s.max()
-        return ["background-color: yellow" if v else "" for v in to_highlight]
+        return [
+            "background-color: yellow" if v is not None else "" for v in to_highlight
+        ]
 
     def highlight_min(s):
         to_highlight = s == s.min()
-        return ["background-color: yellow" if v else "" for v in to_highlight]
+        return [
+            "background-color: yellow" if v is not None else "" for v in to_highlight
+        ]
 
     def highlight_cols(s):
         color = "lightgrey"
@@ -3196,11 +3205,11 @@ def tune_model(
                 f"weight_{i}": np.arange(0.01, 1, 0.01)
                 for i, e in enumerate(base_estimator.estimators)
             }
-        if hasattr(base_estimator, "cost_complexity_pruning_path"):
-            # special case for Tree-based models
-            param_grid["ccp_alpha"] = get_ccp_alphas(base_estimator)
-            if "min_impurity_decrease" in param_grid:
-                param_grid.pop("min_impurity_decrease")
+        # if hasattr(base_estimator, "cost_complexity_pruning_path"):
+        #     # special case for Tree-based models
+        #     param_grid["ccp_alpha"] = get_ccp_alphas(base_estimator)
+        #     if "min_impurity_decrease" in param_grid:
+        #         param_grid.pop("min_impurity_decrease")
 
         if search_algorithm != "grid":
             tc = total_combintaions_in_grid(param_grid)
@@ -3219,13 +3228,13 @@ def tune_model(
                 f"weight_{i}": UniformDistribution(0.000000001, 1)
                 for i, e in enumerate(base_estimator.estimators)
             }
-        if hasattr(base_estimator, "cost_complexity_pruning_path"):
-            # special case for Tree-based models
-            param_grid["ccp_alpha"] = CategoricalDistribution(
-                get_ccp_alphas(base_estimator)
-            )
-            if "min_impurity_decrease" in param_grid:
-                param_grid.pop("min_impurity_decrease")
+        # if hasattr(base_estimator, "cost_complexity_pruning_path"):
+        #     # special case for Tree-based models
+        #     param_grid["ccp_alpha"] = CategoricalDistribution(
+        #         get_ccp_alphas(base_estimator)
+        #     )
+        #     if "min_impurity_decrease" in param_grid:
+        #         param_grid.pop("min_impurity_decrease")
 
     if not param_grid:
         raise ValueError(
@@ -3255,7 +3264,13 @@ def tune_model(
 
         logger.info(f"param_grid: {param_grid}")
 
-        def _can_early_stop(estimator, consider_warm_start, consider_xgboost, params):
+        def _can_early_stop(
+            estimator,
+            consider_partial_fit,
+            consider_warm_start,
+            consider_xgboost,
+            params,
+        ):
             """
             From https://github.com/ray-project/tune-sklearn/blob/master/tune_sklearn/tune_basesearch.py.
             
@@ -3273,18 +3288,27 @@ def tune_model(
             from sklearn.tree import BaseDecisionTree
             from sklearn.ensemble import BaseEnsemble
 
-            can_partial_fit = supports_partial_fit(estimator, params=params)
+            base_estimator = estimator.steps[-1][1]
+
+            if consider_partial_fit:
+                can_partial_fit = supports_partial_fit(base_estimator, params=params)
+            else:
+                can_partial_fit = False
 
             if consider_warm_start:
-                is_not_tree_subclass = not issubclass(type(estimator), BaseDecisionTree)
-                is_ensemble_subclass = issubclass(type(estimator), BaseEnsemble)
-                can_warm_start = hasattr(estimator, "warm_start") and (
+                is_not_tree_subclass = not issubclass(
+                    type(base_estimator), BaseDecisionTree
+                )
+                is_ensemble_subclass = issubclass(type(base_estimator), BaseEnsemble)
+                can_warm_start = hasattr(base_estimator, "warm_start") and (
                     (
-                        hasattr(estimator, "max_iter")
+                        hasattr(base_estimator, "max_iter")
                         and is_not_tree_subclass
                         and not is_ensemble_subclass
                     )
-                    or (is_ensemble_subclass and hasattr(estimator, "n_estimators"))
+                    or (
+                        is_ensemble_subclass and hasattr(base_estimator, "n_estimators")
+                    )
                 )
             else:
                 can_warm_start = False
@@ -3292,7 +3316,7 @@ def tune_model(
             if consider_xgboost:
                 from xgboost.sklearn import XGBModel
 
-                is_xgboost = isinstance(estimator, XGBModel)
+                is_xgboost = isinstance(base_estimator, XGBModel)
             else:
                 is_xgboost = False
 
@@ -3351,7 +3375,9 @@ def tune_model(
                 param_distributions=param_grid,
                 cv=fold,
                 enable_pruning=early_stopping
-                and _can_early_stop(base_estimator, False, False, param_grid),
+                and _can_early_stop(
+                    pipeline_with_model, True, False, False, param_grid
+                ),
                 max_iter=early_stopping_max_iters,
                 n_jobs=n_jobs,
                 n_trials=n_iter,
@@ -3374,13 +3400,31 @@ def tune_model(
                 early_stopping = early_stopping_translator[early_stopping]
 
             can_early_stop = early_stopping and _can_early_stop(
-                base_estimator, True, True, param_grid
+                pipeline_with_model, True, True, True, param_grid
             )
 
             if not can_early_stop and search_algorithm == "bohb":
                 raise ValueError(
-                    "'bohb' requires early_stopping = True and the estimator to support partial_fit or have warm_start param set to True."
+                    "'bohb' requires early_stopping = True and the estimator to support partial_fit or have warm_start param available."
                 )
+
+            elif early_stopping and _can_early_stop(
+                pipeline_with_model, False, True, False, param_grid
+            ):
+                if "n_estimators" in param_grid:
+                    if custom_grid is None:
+                        param_grid.pop("n_estimators")
+                    else:
+                        raise ValueError(
+                            "Param grid cannot contain n_estimators or max_iter if early_stopping is True and the model is warm started."
+                        )
+                if "max_iter" in param_grid:
+                    if custom_grid is None:
+                        param_grid.pop("max_iter")
+                    else:
+                        raise ValueError(
+                            "Param grid cannot contain n_estimators or max_iter if early_stopping is True and the model is warm started."
+                        )
 
             # if n_jobs is None:
             # enable Ray local mode - otherwise the performance is terrible
@@ -6430,6 +6474,7 @@ def predict_model(
     encoded_labels: bool = False,  # added in pycaret==2.1.0
     round: int = 4,  # added in pycaret==2.2.0
     verbose: bool = True,
+    ml_usecase: Optional[MLUsecase] = None,
     display: Optional[Display] = None,  # added in pycaret==2.2.0
 ) -> pd.DataFrame:
 
@@ -6502,6 +6547,9 @@ def predict_model(
     """
     exception checking starts here
     """
+
+    if ml_usecase is None:
+        ml_usecase = _ml_usecase
 
     if data is None and "pycaret_globals" not in globals():
         raise ValueError(
@@ -6626,7 +6674,7 @@ def predict_model(
 
     label = pd.DataFrame(pred)
     label.columns = ["Label"]
-    if _ml_usecase == MLUsecase.CLASSIFICATION:
+    if ml_usecase == MLUsecase.CLASSIFICATION:
         label["Label"] = label["Label"].astype(int)
     if not encoded_labels:
         replace_lables_in_column(label["Label"])

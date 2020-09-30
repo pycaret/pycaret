@@ -863,6 +863,7 @@ class GradientBoostingClassifierContainer(ClassifierContainer):
             "min_samples_leaf": IntUniformDistribution(1, 5),
             "max_depth": IntUniformDistribution(1, 11),
             "min_impurity_decrease": UniformDistribution(0.000000001, 0.5, log=True),
+            "max_features": UniformDistribution(0.001, 1),
         }
 
         leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
@@ -1172,9 +1173,13 @@ class BaggingClassifierContainer(ClassifierContainer):
             "n_estimators": np.arange(10, 1000, 10),
             "bootstrap": [True, False],
             "bootstrap_features": [True, False],
+            "max_features": np.arange(0.1, 1, 0.1),
+            "max_samples": np.arange(0.4, 1, 0.1),
         }
         tune_distributions = {
             "n_estimators": IntUniformDistribution(10, 1000),
+            "max_features": UniformDistribution(0.01, 1),
+            "max_samples": UniformDistribution(0.4, 1)
         }
 
         leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)

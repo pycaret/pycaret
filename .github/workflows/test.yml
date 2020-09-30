@@ -30,6 +30,7 @@ jobs:
         rm pycaret/tests/test_classification_tuning.py
         rm pycaret/tests/test_classification_plots.py
         rm pycaret/tests/test_regression_plots.py
+        rm pycaret/tests/test_regression_tuning.py
     - name: Test with pytest
       run: |
         pytest
@@ -57,7 +58,7 @@ jobs:
         python -m spacy download en
     - name: Remove tests
       run: |
-        remove-item pycaret/tests/* -Include @('test_classification_tuning.py','test_classification_plots.py','test_regression_plots.py')
+        remove-item pycaret/tests/* -Include @('test_classification_tuning.py','test_classification_plots.py','test_regression_plots.py', 'test_regression_tuning.py')
     - name: Test with pytest
       run: |
         pytest
@@ -82,7 +83,32 @@ jobs:
         python -m spacy download en
     - name: Remove tests
       run: |
-        find pycaret/tests -type f -not -name '__init__.py' -not -name 'test_classification_tuning.py' -delete
+        find pycaret/tests -type f -not -name '__init__.py' -not -name 'test_classification_tuning.py' -not -name 'test_regression_tuning.py' -delete
+    - name: Test with pytest
+      run: |
+        pytest -o log_cli=true
+
+  test_tuning_windows:
+
+    runs-on: windows-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python 3.8
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.8
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        python -m pip install -U pytest
+        python -m pip install codecov
+        pip install -r requirements.txt
+        pip install -r requirements-optional.txt
+        python -m spacy download en
+    - name: Remove tests
+      run: |
+        remove-item pycaret/tests/* -Exclude @('__init__.py','test_regression_tuning.py','test_classification_tuning.py')
     - name: Test with pytest
       run: |
         pytest -o log_cli=true

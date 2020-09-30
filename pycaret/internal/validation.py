@@ -5,6 +5,7 @@ from pycaret.internal.logging import get_logger
 from pycaret.internal.Display import Display
 from sklearn.base import clone
 from sklearn.utils.validation import check_is_fitted
+from sklearn.pipeline import Pipeline
 
 
 def is_sklearn_pipeline(object):
@@ -71,5 +72,8 @@ def supports_partial_fit(estimator, params: dict = None) -> bool:
                 return False
         except:
             return False
+
+    if isinstance(estimator, Pipeline):
+        return hasattr(estimator.steps[-1][1], "partial_fit")
 
     return hasattr(estimator, "partial_fit")

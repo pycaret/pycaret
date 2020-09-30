@@ -707,7 +707,6 @@ class PassiveAggressiveRegressorContainer(RegressorContainer):
         tune_grid = {
             "C": np.arange(0, 10, 0.001),
             "fit_intercept": [True, False],
-            "early_stopping": [True, False],
             "loss": ["epsilon_insensitive", "squared_epsilon_insensitive"],
             "epsilon": [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9],
             "shuffle": [True, False],
@@ -785,18 +784,8 @@ class TheilSenRegressorContainer(RegressorContainer):
         tune_args = {}
         tune_grid = {
             "fit_intercept": [True, False],
-            "max_subpopulation": [
-                5000,
-                10000,
-                15000,
-                20000,
-                25000,
-                30000,
-                40000,
-                50000,
-            ],
         }
-        tune_distributions = {"max_subpopulation": IntUniformDistribution(5000, 50000)}
+        tune_distributions = {}
 
         leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 
@@ -1251,7 +1240,7 @@ class GradientBoostingRegressorContainer(RegressorContainer):
                 0.4,
                 0.5,
             ],
-            "max_features": ["auto", "sqrt", "log2"],
+            "max_features": [1.0, "sqrt", "log2"],
         }
         tune_distributions = {
             "n_estimators": IntUniformDistribution(10, 1000),
@@ -1501,9 +1490,13 @@ class BaggingRegressorContainer(RegressorContainer):
             "n_estimators": np.arange(10, 1000, 10),
             "bootstrap": [True, False],
             "bootstrap_features": [True, False],
+            "max_features": np.arange(0.1, 1, 0.1),
+            "max_samples": np.arange(0.4, 1, 0.1),
         }
         tune_distributions = {
             "n_estimators": IntUniformDistribution(10, 1000),
+            "max_features": UniformDistribution(0.01, 1),
+            "max_samples": UniformDistribution(0.4, 1)
         }
 
         leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
