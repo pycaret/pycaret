@@ -29,7 +29,7 @@ from pycaret.internal.utils import (
 import pycaret.internal.patches.sklearn
 from pycaret.internal.logging import get_logger
 from pycaret.internal.plotting import show_yellowbrick_plot
-from pycaret.internal.Display import Display, is_in_colab, enable_colab
+from pycaret.internal.Display import Display
 from pycaret.internal.distributions import *
 from pycaret.internal.validation import *
 import pycaret.containers.metrics.classification
@@ -56,12 +56,6 @@ import traceback
 from unittest.mock import patch
 
 warnings.filterwarnings("ignore")
-
-try:
-    if is_in_colab():
-        enable_colab()
-except:
-    pass
 
 _available_plots = {}
 

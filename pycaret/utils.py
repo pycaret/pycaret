@@ -137,6 +137,7 @@ def enable_colab():
     IPython.get_ipython().events.register(
         "pre_run_cell", configure_plotly_browser_state
     )
+    print("Colab mode enabled.")
 
 
 def get_system_logs():
