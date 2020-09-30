@@ -863,6 +863,7 @@ class GradientBoostingClassifierContainer(ClassifierContainer):
             "min_samples_leaf": IntUniformDistribution(1, 5),
             "max_depth": IntUniformDistribution(1, 11),
             "min_impurity_decrease": UniformDistribution(0.000000001, 0.5, log=True),
+            "max_features": UniformDistribution(0.001, 1),
         }
 
         leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)

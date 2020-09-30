@@ -80,13 +80,13 @@ def setup(
     iterative_imputation_iters: int = 10,
     categorical_features: Optional[List[str]] = None,
     categorical_imputation: str = "constant",
-    categorical_iterative_imputation_model: Union[str, Any] = "rf",
+    categorical_iterative_imputer: Union[str, Any] = "rf",
     ordinal_features: Optional[Dict[str, list]] = None,
     high_cardinality_features: Optional[List[str]] = None,
     high_cardinality_method: str = "frequency",
     numeric_features: Optional[List[str]] = None,
     numeric_imputation: str = "mean",  # method 'zero' added in pycaret==2.1
-    numeric_iterative_imputation_model: Union[str, Any] = "rf",
+    numeric_iterative_imputer: Union[str, Any] = "rf",
     date_features: Optional[List[str]] = None,
     ignore_features: Optional[List[str]] = None,
     normalize: bool = False,
@@ -993,8 +993,8 @@ def setup(
     X_before_preprocess = train_data.drop(target, axis=1)
     y_before_preprocess = train_data[target]
 
-    imputation_regressor = numeric_iterative_imputation_model
-    imputation_classifier = categorical_iterative_imputation_model
+    imputation_regressor = numeric_iterative_imputer
+    imputation_classifier = categorical_iterative_imputer
     imputation_regressor_name = "Bayesian Ridge"  # todo change
     imputation_classifier_name = "Random Forest Classifier"
 
@@ -1027,7 +1027,7 @@ def setup(
             or hasattr(imputation_regressor, "predict")
         ):
             raise ValueError(
-                f"numeric_iterative_imputation_model param must be either a scikit-learn estimator or a string - one of {', '.join(iterative_imputer_regression_models.keys())}."
+                f"numeric_iterative_imputer param must be either a scikit-learn estimator or a string - one of {', '.join(iterative_imputer_regression_models.keys())}."
             )
 
         if not (
@@ -1038,7 +1038,7 @@ def setup(
             or hasattr(imputation_classifier, "predict")
         ):
             raise ValueError(
-                f"categorical_iterative_imputation_model param must be either a scikit-learn estimator or a string - one of {', '.join(iterative_imputer_classification_models.keys())}."
+                f"categorical_iterative_imputer param must be either a scikit-learn estimator or a string - one of {', '.join(iterative_imputer_classification_models.keys())}."
             )
 
         if isinstance(imputation_regressor, str):

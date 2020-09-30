@@ -155,7 +155,7 @@ class CategoricalDistribution(Distrubution):
         self.values = values
 
     def get_skopt(self):
-        return self.values
+        return [x if isinstance(x, Hashable) else None for x in self.values]
 
     def get_optuna(self):
         import optuna
