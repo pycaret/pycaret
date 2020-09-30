@@ -269,6 +269,8 @@ def np_list_arange(
     stop = stop + (step if inclusive else 0)
     range = list(np.arange(start, stop, step))
     range = [start if x < start else stop if x > stop else x for x in range]
+    range[0] = start
+    range[-1] = stop - step
     return range
 
 
