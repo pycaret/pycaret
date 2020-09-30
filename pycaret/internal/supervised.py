@@ -57,8 +57,11 @@ from unittest.mock import patch
 
 warnings.filterwarnings("ignore")
 
-if is_in_colab():
-    enable_colab()
+try:
+    if is_in_colab():
+        enable_colab()
+except:
+    pass
 
 _available_plots = {}
 
