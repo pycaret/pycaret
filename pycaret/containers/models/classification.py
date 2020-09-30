@@ -15,7 +15,12 @@ from pycaret.containers.models.base_model import (
     ModelContainer,
     leftover_parameters_to_categorical_distributions,
 )
-from pycaret.internal.utils import param_grid_to_lists, get_logger, get_class_name
+from pycaret.internal.utils import (
+    param_grid_to_lists,
+    get_logger,
+    get_class_name,
+    np_list_arange,
+)
 from pycaret.internal.distributions import *
 import pycaret.containers.base_container
 import numpy as np
@@ -236,7 +241,7 @@ class LogisticRegressionClassifierContainer(ClassifierContainer):
 
         # common
         tune_grid["penalty"] = ["l2", "none"]
-        tune_grid["C"] = np.arange(0, 10.001, 0.001)
+        tune_grid["C"] = np_list_arange(0, 10, 0.001, inclusive=True)
 
         if gpu_imported:
             tune_grid["penalty"] += ["l1"]
@@ -447,7 +452,7 @@ class SGDClassifierContainer(ClassifierContainer):
         tune_args = {}
         tune_grid = {
             "penalty": ["elasticnet", "l2", "l1"],
-            "l1_ratio": np.arange(0.0000000001, 1, 0.01),
+            "l1_ratio": np_list_arange(0.0000000001, 1, 0.01, inclusive=False),
             "alpha": [0.0001, 0.001, 0.01, 0.0002, 0.002, 0.02, 0.0005, 0.005, 0.05,],
             "fit_intercept": [True, False],
             "learning_rate": ["constant", "invscaling", "adaptive", "optimal"],
@@ -524,7 +529,7 @@ class SVCClassifierContainer(ClassifierContainer):
         }
         tune_args = {}
         tune_grid = {
-            "C": np.arange(0, 50.01, 0.01),
+            "C": np_list_arange(0, 50, 0.01, inclusive=True),
             "class_weight": ["balanced", {}],
         }
         tune_distributions = {
@@ -586,7 +591,7 @@ class MLPClassifierContainer(ClassifierContainer):
         tune_args = {}
         tune_grid = {
             "learning_rate": ["constant", "invscaling", "adaptive"],
-            "alpha": np.arange(0, 1.0001, 0.0001),
+            "alpha": np_list_arange(0, 1, 0.0001, inclusive=True),
             "hidden_layer_size_0": [50, 100],
             "hidden_layer_size_1": [0, 50, 100],
             "hidden_layer_size_2": [0, 50, 100],
@@ -650,7 +655,7 @@ class RidgeClassifierContainer(ClassifierContainer):
             "normalize": [True, False],
         }
 
-        tune_grid["alpha"] = np.arange(0.001, 1, 0.001)
+        tune_grid["alpha"] = np_list_arange(0.001, 1, 0.001, inclusive=False)
         tune_grid["fit_intercept"] = [True, False]
         tune_distributions["alpha"] = UniformDistribution(0.0000000001, 0.9999999999)
 
@@ -772,7 +777,7 @@ class QuadraticDiscriminantAnalysisContainer(ClassifierContainer):
 
         args = {}
         tune_args = {}
-        tune_grid = {"reg_param": np.arange(0, 1.01, 0.01)}
+        tune_grid = {"reg_param": np_list_arange(0, 1, 0.01, inclusive=True)}
         tune_distributions = {"reg_param": UniformDistribution(0, 1)}
 
         leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
@@ -798,8 +803,8 @@ class AdaBoostClassifierContainer(ClassifierContainer):
         args = {"random_state": globals_dict["seed"]}
         tune_args = {}
         tune_grid = {
-            "n_estimators": np.arange(10, 1010, 10),
-            "learning_rate": np.arange(0, 0.501, 0.001),
+            "n_estimators": np_list_arange(10, 1000, 10, inclusive=True),
+            "learning_rate": np_list_arange(0, 0.5, 0.001, inclusive=True),
             "algorithm": ["SAMME", "SAMME.R"],
         }
         tune_distributions = {
@@ -830,9 +835,9 @@ class GradientBoostingClassifierContainer(ClassifierContainer):
         args = {"random_state": globals_dict["seed"]}
         tune_args = {}
         tune_grid = {
-            "n_estimators": np.arange(10, 1010, 10),
-            "learning_rate": np.arange(0, 0.501, 0.001),
-            "subsample": np.arange(0.1, 1.05, 0.05),
+            "n_estimators": np_list_arange(10, 1000, 10, inclusive=True),
+            "learning_rate": np_list_arange(0, 0.5, 0.001, inclusive=True),
+            "subsample": np_list_arange(0.1, 1, 0.05, inclusive=True),
             "min_samples_split": [2, 4, 5, 7, 9, 10],
             "min_samples_leaf": [1, 2, 3, 4, 5],
             "max_depth": [int(x) for x in np.linspace(1, 11, num=11)],
@@ -965,7 +970,7 @@ class ExtraTreesClassifierContainer(ClassifierContainer):
             "bootstrap": [True, False],
             "min_samples_split": [2, 5, 7, 9, 10],
             "min_samples_leaf": [2, 3, 4, 5, 6],
-            "class_weight": ["balanced", "balanced_subsample", {}]
+            "class_weight": ["balanced", "balanced_subsample", {}],
         }
         tune_distributions = {
             "n_estimators": IntUniformDistribution(10, 200),
@@ -1005,15 +1010,15 @@ class XGBClassifierContainer(ClassifierContainer):
         }
         tune_args = {}
         tune_grid = {
-            "learning_rate": np.arange(0, 0.51, 0.01),
-            "n_estimators": np.arange(10, 1010, 10),
+            "learning_rate": np_list_arange(0, 0.5, 0.01, inclusive=True),
+            "n_estimators": np_list_arange(10, 1000, 10, inclusive=True),
             "subsample": [0, 0.1, 0.2, 0.3, 0.5, 0.7, 0.9, 1],
             "max_depth": [int(x) for x in np.linspace(1, 11, num=11)],
             "colsample_bytree": [0.5, 0.7, 0.9, 1],
             "min_child_weight": [1, 2, 3, 4],
-            "reg_alpha": np.arange(0, 10.01, 0.01),
-            "reg_lambda": np.arange(0, 10.01, 0.01),
-            "scale_pos_weight": np.arange(0, 50.1, 0.1),
+            "reg_alpha": np_list_arange(0, 10, 0.01, inclusive=True),
+            "reg_lambda": np_list_arange(0, 10, 0.01, inclusive=True),
+            "scale_pos_weight": np_list_arange(0, 50, 0.1, inclusive=True),
         }
         tune_distributions = {
             "learning_rate": UniformDistribution(0, 0.5, log=False),
@@ -1056,12 +1061,12 @@ class LGBMClassifierContainer(ClassifierContainer):
         tune_args = {}
         tune_grid = {
             "num_leaves": [10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 150, 200],
-            "learning_rate": np.arange(0, 0.51, 0.01),
-            "n_estimators": np.arange(10, 1010, 10),
+            "learning_rate": np_list_arange(0, 0.5, 0.01, inclusive=True),
+            "n_estimators": np_list_arange(10, 1000, 10, inclusive=True),
             "min_split_gain": [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9],
-            "reg_alpha": np.arange(0, 10.01, 0.01),
-            "reg_lambda": np.arange(0, 10.01, 0.01),
-            "feature_fraction": np.arange(0.01, 1.01, 0.01),
+            "reg_alpha": np_list_arange(0, 10, 0.01, inclusive=True),
+            "reg_lambda": np_list_arange(0, 10, 0.01, inclusive=True),
+            "feature_fraction": np_list_arange(0.01, 1, 0.01, inclusive=True),
         }
         tune_distributions = {
             "num_leaves": IntUniformDistribution(10, 200),
@@ -1128,8 +1133,8 @@ class CatBoostClassifierContainer(ClassifierContainer):
         tune_args = {}
         tune_grid = {
             "depth": list(range(1, 12)),
-            "n_estimators": np.arange(10, 1010, 10),
-            "learning_rate": np.arange(0, 0.501, 0.001),
+            "n_estimators": np_list_arange(10, 1000, 10, inclusive=True),
+            "learning_rate": np_list_arange(0, 0.5, 0.001, inclusive=True),
             "l2_leaf_reg": [3, 1, 5, 10, 20, 50, 100, 200],
         }
         tune_distributions = {
@@ -1172,12 +1177,12 @@ class BaggingClassifierContainer(ClassifierContainer):
         tune_grid = {
             "bootstrap": [True, False],
             "bootstrap_features": [True, False],
-            "max_features": np.arange(0.1, 1.1, 0.1),
-            "max_samples": np.arange(0.4, 1.1, 0.1),
+            "max_features": np_list_arange(0.1, 1, 0.1, inclusive=True),
+            "max_samples": np_list_arange(0.4, 1, 0.1, inclusive=True),
         }
         tune_distributions = {
             "max_features": UniformDistribution(0.01, 1),
-            "max_samples": UniformDistribution(0.4, 1)
+            "max_samples": UniformDistribution(0.4, 1),
         }
 
         leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)

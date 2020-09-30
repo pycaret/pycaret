@@ -259,6 +259,19 @@ def param_grid_to_lists(param_grid: dict) -> dict:
     return param_grid
 
 
+def np_list_arange(
+    start: float, stop: float, step: float, inclusive: bool = False
+) -> List[float]:
+    """
+    Numpy arange returned as list with floating point conversion
+    failsafes.
+    """
+    stop = stop + (step if inclusive else 0)
+    range = list(np.arange(start, stop, step))
+    range = [start if x < start else stop if x > stop else x for x in range]
+    return range
+
+
 def calculate_metrics(
     metrics: Dict[str, MetricContainer],
     y_test,

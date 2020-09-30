@@ -14,7 +14,12 @@ from pycaret.containers.models.base_model import (
     ModelContainer,
     leftover_parameters_to_categorical_distributions,
 )
-from pycaret.internal.utils import param_grid_to_lists, get_logger, get_class_name
+from pycaret.internal.utils import (
+    param_grid_to_lists,
+    get_logger,
+    get_class_name,
+    np_list_arange,
+)
 from pycaret.internal.distributions import *
 import pycaret.containers.base_container
 import numpy as np
@@ -248,7 +253,7 @@ class LassoRegressionContainer(RegressorContainer):
         args = {}
         tune_args = {}
         tune_grid = {
-            "alpha": np.arange(0.001, 1.001, 0.001),
+            "alpha": np_list_arange(0.001, 1, 0.001, inclusive=True),
             "fit_intercept": [True, False],
             "normalize": [True, False],
         }
@@ -297,7 +302,7 @@ class RidgeRegressionContainer(RegressorContainer):
         args = {}
         tune_args = {}
         tune_grid = {
-            "alpha": np.arange(0.001, 1.001, 0.001),
+            "alpha": np_list_arange(0.001, 1, 0.001, inclusive=True),
             "fit_intercept": [True, False],
             "normalize": [True, False],
         }
@@ -346,8 +351,8 @@ class ElasticNetContainer(RegressorContainer):
         args = {}
         tune_args = {}
         tune_grid = {
-            "alpha": np.arange(0.0000000001, 1, 0.01),
-            "l1_ratio": np.arange(0.0000000001, 1, 0.01),
+            "alpha": np_list_arange(0.0000000001, 1, 0.01, inclusive=False),
+            "l1_ratio": np_list_arange(0.0000000001, 1, 0.01, inclusive=False),
             "fit_intercept": [True, False],
             "normalize": [True, False],
         }
@@ -430,7 +435,7 @@ class LassoLarsContainer(RegressorContainer):
         tune_grid = {
             "fit_intercept": [True, False],
             "normalize": [True, False],
-            "alpha": np.arange(0.001, 1.001, 0.001),
+            "alpha": np_list_arange(0.001, 1, 0.001, inclusive=True),
             "eps": [
                 0.00001,
                 0.0001,
@@ -706,7 +711,7 @@ class PassiveAggressiveRegressorContainer(RegressorContainer):
         args = {"random_state": globals_dict["seed"]}
         tune_args = {}
         tune_grid = {
-            "C": np.arange(0, 10.001, 0.001),
+            "C": np_list_arange(0, 10, 0.001, inclusive=True),
             "fit_intercept": [True, False],
             "loss": ["epsilon_insensitive", "squared_epsilon_insensitive"],
             "epsilon": [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9],
@@ -741,11 +746,11 @@ class RANSACRegressorContainer(RegressorContainer):
         args = {"random_state": globals_dict["seed"]}
         tune_args = {}
         tune_grid = {
-            "min_samples": np.arange(0, 1.05, 0.05),
-            "max_trials": np.arange(1, 21, 1),
-            "max_skips": np.arange(1, 21, 1),
-            "stop_n_inliers": np.arange(1, 26, 1),
-            "stop_probability": np.arange(0, 1.01, 0.01),
+            "min_samples": np_list_arange(0, 1, 0.05, inclusive=True),
+            "max_trials": np_list_arange(1, 20, 1, inclusive=True),
+            "max_skips": np_list_arange(1, 20, 1, inclusive=True),
+            "stop_n_inliers": np_list_arange(1, 25, 1, inclusive=True),
+            "stop_probability": np_list_arange(0, 1, 0.01, inclusive=True),
             "loss": ["absolute_loss", "squared_loss"],
         }
         tune_distributions = {
@@ -815,7 +820,7 @@ class HuberRegressorContainer(RegressorContainer):
         tune_args = {}
         tune_grid = {
             "epsilon": [1, 1.1, 1.2, 1.3, 1.35, 1.4, 1.5, 1.55, 1.6, 1.7, 1.8, 1.9],
-            "alpha": np.arange(0, 1.00001, 0.00001),
+            "alpha": np_list_arange(0, 1, 0.00001, inclusive=True),
             "fit_intercept": [True, False],
         }
         tune_distributions = {
@@ -846,7 +851,7 @@ class KernelRidgeContainer(RegressorContainer):
 
         args = {}
         tune_args = {}
-        tune_grid = {"alpha": np.arange(0, 1.00001, 0.00001)}
+        tune_grid = {"alpha": np_list_arange(0, 1, 0.00001, inclusive=True)}
         tune_distributions = {
             "alpha": UniformDistribution(0.0000000001, 0.9999999999),
         }
@@ -891,7 +896,7 @@ class SVRContainer(RegressorContainer):
         args = {}
         tune_args = {}
         tune_grid = {
-            "C": np.arange(0, 10.001, 0.001),
+            "C": np_list_arange(0, 10, 0.001, inclusive=True),
             "epsilon": [1.1, 1.2, 1.3, 1.35, 1.4, 1.5, 1.55, 1.6, 1.7, 1.8, 1.9],
         }
         tune_distributions = {
@@ -1187,8 +1192,8 @@ class AdaBoostRegressorContainer(RegressorContainer):
         args = {"random_state": globals_dict["seed"]}
         tune_args = {}
         tune_grid = {
-            "n_estimators": np.arange(10, 1010, 10),
-            "learning_rate": np.arange(0, 0.501, 0.001),
+            "n_estimators": np_list_arange(10, 1000, 10, inclusive=True),
+            "learning_rate": np_list_arange(0, 0.5, 0.001, inclusive=True),
             "loss": ["linear", "square", "exponential"],
         }
         tune_distributions = {
@@ -1220,9 +1225,9 @@ class GradientBoostingRegressorContainer(RegressorContainer):
         args = {"random_state": globals_dict["seed"]}
         tune_args = {}
         tune_grid = {
-            "n_estimators": np.arange(10, 1010, 10),
-            "learning_rate": np.arange(0, 0.501, 0.001),
-            "subsample": np.arange(0.1, 1.05, 0.05),
+            "n_estimators": np_list_arange(10, 1000, 10, inclusive=True),
+            "learning_rate": np_list_arange(0, 0.5, 0.001, inclusive=True),
+            "subsample": np_list_arange(0.1, 1, 0.05, inclusive=True),
             "min_samples_split": [2, 4, 5, 7, 9, 10],
             "min_samples_leaf": [1, 2, 3, 4, 5],
             "max_depth": [int(x) for x in np.linspace(1, 11, num=11)],
@@ -1281,7 +1286,7 @@ class MLPRegressorContainer(RegressorContainer):
         tune_args = {}
         tune_grid = {
             "learning_rate": ["constant", "invscaling", "adaptive"],
-            "alpha": np.arange(0, 1.0001, 0.0001),
+            "alpha": np_list_arange(0, 1, 0.0001, inclusive=True),
             "hidden_layer_size_0": [50, 100],
             "hidden_layer_size_1": [0, 50, 100],
             "hidden_layer_size_2": [0, 50, 100],
@@ -1325,15 +1330,15 @@ class XGBRegressorContainer(RegressorContainer):
         }
         tune_args = {}
         tune_grid = {
-            "learning_rate": np.arange(0, 0.501, 0.001),
-            "n_estimators": np.arange(10, 1010, 10),
+            "learning_rate": np_list_arange(0, 0.5, 0.001, inclusive=True),
+            "n_estimators": np_list_arange(10, 1000, 10, inclusive=True),
             "subsample": [0, 0.1, 0.2, 0.3, 0.5, 0.7, 0.9, 1],
             "max_depth": [int(x) for x in np.linspace(1, 11, num=11)],
             "colsample_bytree": [0.5, 0.7, 0.9, 1],
             "min_child_weight": [1, 2, 3, 4],
-            "reg_alpha": np.arange(0, 10.01, 0.01),
-            "reg_lambda": np.arange(0, 10.01, 0.01),
-            "scale_pos_weight": np.arange(0, 50.1, 0.1),
+            "reg_alpha": np_list_arange(0, 10, 0.01, inclusive=True),
+            "reg_lambda": np_list_arange(0, 10, 0.01, inclusive=True),
+            "scale_pos_weight": np_list_arange(0, 50, 0.1, inclusive=True),
         }
         tune_distributions = {
             "learning_rate": UniformDistribution(0, 0.5),
@@ -1376,12 +1381,12 @@ class LGBMRegressorContainer(RegressorContainer):
         tune_args = {}
         tune_grid = {
             "num_leaves": [10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 150, 200],
-            "learning_rate": np.arange(0, 0.501, 0.001),
-            "n_estimators": np.arange(10, 1010, 10),
+            "learning_rate": np_list_arange(0, 0.5, 0.001, inclusive=True),
+            "n_estimators": np_list_arange(10, 1000, 10, inclusive=True),
             "min_split_gain": [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9],
-            "reg_alpha": np.arange(0, 10.01, 0.01),
-            "reg_lambda": np.arange(0, 10.01, 0.01),
-            "feature_fraction": np.arange(0.01, 1.01, 0.01),
+            "reg_alpha": np_list_arange(0, 10, 0.01, inclusive=True),
+            "reg_lambda": np_list_arange(0, 10, 0.01, inclusive=True),
+            "feature_fraction": np_list_arange(0.01, 1, 0.01, inclusive=True),
         }
         tune_distributions = {
             "num_leaves": IntUniformDistribution(10, 200),
@@ -1448,8 +1453,8 @@ class CatBoostRegressorContainer(RegressorContainer):
         tune_args = {}
         tune_grid = {
             "depth": list(range(1, 12)),
-            "n_estimators": np.arange(10, 1010, 10),
-            "learning_rate": np.arange(0, 0.501, 0.001),
+            "n_estimators": np_list_arange(10, 1000, 10, inclusive=True),
+            "learning_rate": np_list_arange(0, 0.5, 0.001, inclusive=True),
             "l2_leaf_reg": [3, 1, 5, 10, 20, 50, 100, 200],
         }
         tune_distributions = {
@@ -1492,12 +1497,12 @@ class BaggingRegressorContainer(RegressorContainer):
         tune_grid = {
             "bootstrap": [True, False],
             "bootstrap_features": [True, False],
-            "max_features": np.arange(0.1, 1.1, 0.1),
-            "max_samples": np.arange(0.4, 1.1, 0.1),
+            "max_features": np_list_arange(0.1, 1, 0.1, inclusive=True),
+            "max_samples": np_list_arange(0.4, 1, 0.1, inclusive=True),
         }
         tune_distributions = {
             "max_features": UniformDistribution(0.01, 1),
-            "max_samples": UniformDistribution(0.4, 1)
+            "max_samples": UniformDistribution(0.4, 1),
         }
 
         leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
