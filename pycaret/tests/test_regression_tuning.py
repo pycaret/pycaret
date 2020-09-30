@@ -8,7 +8,7 @@ import pycaret.datasets
 
 def test():
     # loading dataset
-    data = pycaret.datasets.get_data('boston').head(200)
+    data = pycaret.datasets.get_data('boston')
     assert isinstance(data, pd.core.frame.DataFrame)
 
     # init setup
