@@ -253,11 +253,9 @@ def get_package_name(class_var: Any) -> str:
 def param_grid_to_lists(param_grid: dict) -> dict:
     if param_grid:
         for k, v in param_grid.items():
-            param_grid[k] = list(v)
-            # conversion from numpy floats to python floats
-            # causes the floats to sometimes have a different last decimal
-            # in order to take care of that, we just cut it
-            param_grid[k] = [round(x, 15) if isinstance(x, float) else x for x in v]
+            if not isinstance(v, np.ndarray):
+                v = list(v)
+            param_grid[k] = v
     return param_grid
 
 
