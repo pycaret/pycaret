@@ -1277,8 +1277,6 @@ def setup(
     X_test = test_data.drop(target, axis=1)
     y_test = test_data[target]
 
-    fold_groups_grid = fold_groups_param
-
     if fold_groups_param is not None:
         fold_groups_param = fold_groups_param[
             fold_groups_param.index.isin(X_train.index)
@@ -1458,7 +1456,6 @@ def setup(
             ["Stratify Train-Test", str(data_split_stratify)],
             ["Fold Generator", type(fold_generator).__name__],
             ["Fold Number", fold_param],
-            ["Fold Groups", str(fold_groups_grid)],
             ["CPU Jobs", n_jobs_param],
             ["Use GPU", gpu_param],
             ["Log Experiment", logging_param],
@@ -5582,15 +5579,19 @@ def plot_model(
             _feature(len(data_X.columns))
 
         def _feature(n: int):
+            variables = None
             temp_model = pipeline_with_model
             if hasattr(pipeline_with_model, "steps"):
                 temp_model = pipeline_with_model.steps[-1][1]
             if hasattr(temp_model, "coef_"):
-                coef = temp_model.coef_.flatten()
-                if len(coef) > len(data_X.columns):
-                    coef = coef[: len(data_X.columns)]
-                variables = abs(coef)
-            else:
+                try:
+                    coef = temp_model.coef_.flatten()
+                    if len(coef) > len(data_X.columns):
+                        coef = coef[: len(data_X.columns)]
+                    variables = abs(coef)
+                except:
+                    pass
+            if variables is None:
                 logger.warning("No coef_ found. Trying feature_importances_")
                 variables = abs(temp_model.feature_importances_)
             coef_df = pd.DataFrame({"Variable": data_X.columns, "Value": variables})
@@ -8056,6 +8057,7 @@ def _mlflow_log_model(
             if len(str(v)) > 250:
                 params.pop(i)
 
+        logger.info(f"logged params: {params}")
         mlflow.log_params(params)
 
         # Log metrics
@@ -8114,8 +8116,8 @@ def _mlflow_log_model(
                     )
                     mlflow.log_artifact(plot_name)
                     os.remove(plot_name)
-                except:
-                    pass
+                except Exception as e:
+                    logger.warning(e)
 
             for plot in log_plots:
                 _log_plot(plot)

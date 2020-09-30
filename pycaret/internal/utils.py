@@ -448,16 +448,9 @@ def get_groups(
             )
         groups = X_train[groups]
     else:
-        try:
-            groups = groups[groups.index.isin(X_train.index)]
-        except Exception as e:
-            logger.warn(
-                "Couldn't get the same rows in groups as in X_train. Exception below:"
-            )
-            logger.warn(e)
-        if len(groups) != len(X_train):
+        if groups.shape[0] != X_train.shape[0]:
             raise ValueError(
-                f"groups has lenght {len(groups)} which doesn't match X_train length of {len(X_train)}."
+                f"groups has lenght {groups.shape[0]} which doesn't match X_train length of {len(X_train)}."
             )
     return groups
 
