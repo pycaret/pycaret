@@ -837,7 +837,7 @@ class GradientBoostingClassifierContainer(ClassifierContainer):
         tune_grid = {
             "n_estimators": np_list_arange(10, 1000, 10, inclusive=True),
             "learning_rate": np_list_arange(0, 0.5, 0.001, inclusive=True),
-            "subsample": np_list_arange(0.1, 1, 0.05, inclusive=True),
+            "subsample": np_list_arange(0.2, 1, 0.05, inclusive=True),
             "min_samples_split": [2, 4, 5, 7, 9, 10],
             "min_samples_leaf": [1, 2, 3, 4, 5],
             "max_depth": [int(x) for x in np.linspace(1, 11, num=11)],
@@ -863,7 +863,7 @@ class GradientBoostingClassifierContainer(ClassifierContainer):
         tune_distributions = {
             "n_estimators": IntUniformDistribution(10, 1000),
             "learning_rate": UniformDistribution(0, 0.5),
-            "subsample": UniformDistribution(0.1, 1),
+            "subsample": UniformDistribution(0.2, 1),
             "min_samples_split": IntUniformDistribution(2, 10),
             "min_samples_leaf": IntUniformDistribution(1, 5),
             "max_depth": IntUniformDistribution(1, 11),
@@ -1012,7 +1012,7 @@ class XGBClassifierContainer(ClassifierContainer):
         tune_grid = {
             "learning_rate": np_list_arange(0, 0.5, 0.01, inclusive=True),
             "n_estimators": np_list_arange(10, 1000, 10, inclusive=True),
-            "subsample": [0, 0.1, 0.2, 0.3, 0.5, 0.7, 0.9, 1],
+            "subsample": [0.2, 0.3, 0.5, 0.7, 0.9, 1],
             "max_depth": [int(x) for x in np.linspace(1, 11, num=11)],
             "colsample_bytree": [0.5, 0.7, 0.9, 1],
             "min_child_weight": [1, 2, 3, 4],
@@ -1023,7 +1023,7 @@ class XGBClassifierContainer(ClassifierContainer):
         tune_distributions = {
             "learning_rate": UniformDistribution(0, 0.5, log=False),
             "n_estimators": IntUniformDistribution(10, 1000),
-            "subsample": UniformDistribution(0, 1),
+            "subsample": UniformDistribution(0.2, 1),
             "max_depth": IntUniformDistribution(1, 11),
             "colsample_bytree": UniformDistribution(0.5, 1),
             "min_child_weight": IntUniformDistribution(1, 4),
