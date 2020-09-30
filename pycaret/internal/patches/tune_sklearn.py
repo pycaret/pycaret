@@ -4,12 +4,22 @@
 
 # Provides methods returning monkey patched tune-sklearn classes to allow for Pipeline support.
 from pycaret.internal.logging import get_logger
+import numpy as np
+
+
+def numpy_types_to_python(o):
+    try:
+        if isinstance(o, np.generic) and not isinstance(o, np.ndarray):
+            return o.item()
+    except:
+        pass
+    return o
+
 
 def get_tune_trainable():
     import tune_sklearn._trainable
     import ray
     from sklearn.base import clone
-    import numpy as np
 
     class _Trainable(tune_sklearn._trainable._Trainable):
         def _setup(self, config):
@@ -41,7 +51,10 @@ def get_tune_trainable():
             self.cv = config.pop("cv")
             self.return_train_score = config.pop("return_train_score")
             self.n_jobs = config.pop("n_jobs")
-            self.estimator_config = config
+
+            self.estimator_config = {
+                k: numpy_types_to_python(v) for k, v in config.items()
+            }
             self.train_accuracy = None
             self.test_accuracy = None
             self.saved_models = []  # XGBoost specific
@@ -185,10 +198,44 @@ def get_early_stop():
     return _can_early_stop
 
 
+def _clean_config_dict(self, config):
+    """Helper to remove keys from the ``config`` dictionary returned from
+    ``tune.run``.
+
+    Args:
+        config (:obj:`dict`): Dictionary of all hyperparameter
+            configurations and extra output from ``tune.run``., Keys for
+            hyperparameters are the hyperparameter variable names
+            and the values are the numeric values set to those variables.
+
+    Returns:
+        config (:obj:`dict`): Dictionary of all hyperparameter
+            configurations without the output from ``tune.run``., Keys for
+            hyperparameters are the hyperparameter variable names
+            and the values are the numeric values set to those variables.
+    """
+    for key in [
+        "estimator_list",
+        "early_stopping",
+        "X_id",
+        "y_id",
+        "groups",
+        "cv",
+        "fit_params",
+        "scoring",
+        "max_iters",
+        "return_train_score",
+        "n_jobs",
+    ]:
+        config.pop(key, None)
+    return {k: numpy_types_to_python(v) for k, v in config.items()}
+
+
 def get_tune_sklearn_tunesearchcv():
     import tune_sklearn.tune_search
 
     tune_sklearn.tune_search.TuneBaseSearchCV._can_early_stop = get_early_stop()
+    tune_sklearn.tune_search.TuneBaseSearchCV._clean_config_dict = _clean_config_dict
 
     tune_sklearn.tune_search._Trainable = get_tune_trainable()
     return tune_sklearn.tune_search.TuneSearchCV
@@ -198,6 +245,7 @@ def get_tune_sklearn_tunegridsearchcv():
     import tune_sklearn.tune_gridsearch
 
     tune_sklearn.tune_gridsearch.TuneBaseSearchCV._can_early_stop = get_early_stop()
+    tune_sklearn.tune_search.TuneBaseSearchCV._clean_config_dict = _clean_config_dict
 
     tune_sklearn.tune_gridsearch._Trainable = get_tune_trainable()
     return tune_sklearn.tune_gridsearch.TuneGridSearchCV

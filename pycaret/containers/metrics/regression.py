@@ -184,6 +184,18 @@ class RMSEMetricContainer(RegressionMetricContainer):
         )
 
 
+class R2MetricContainer(RegressionMetricContainer):
+    def __init__(self, globals_dict: dict) -> None:
+
+        super().__init__(
+            id="r2",
+            name="R2",
+            score_func=metrics.r2_score,
+            greater_is_better=True,
+            scorer="r2",
+        )
+
+
 class RMSLEMetricContainer(RegressionMetricContainer):
     def __init__(self, globals_dict: dict) -> None:
         def root_mean_squared_log_error(
@@ -206,18 +218,6 @@ class RMSLEMetricContainer(RegressionMetricContainer):
                 root_mean_squared_log_error, error_score=0.0, greater_is_better=False
             ),
             greater_is_better=False,
-        )
-
-
-class R2MetricContainer(RegressionMetricContainer):
-    def __init__(self, globals_dict: dict) -> None:
-
-        super().__init__(
-            id="r2",
-            name="R2",
-            score_func=metrics.r2_score,
-            greater_is_better=True,
-            scorer="r2",
         )
 
 

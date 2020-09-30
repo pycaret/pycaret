@@ -29,7 +29,7 @@ from pycaret.internal.utils import (
 import pycaret.internal.patches.sklearn
 from pycaret.internal.logging import get_logger
 from pycaret.internal.plotting import show_yellowbrick_plot
-from pycaret.internal.Display import Display, is_in_colab, enable_colab
+from pycaret.internal.Display import Display
 from pycaret.internal.distributions import *
 from pycaret.internal.validation import *
 import pycaret.containers.metrics.classification
@@ -57,12 +57,6 @@ from unittest.mock import patch
 
 warnings.filterwarnings("ignore")
 
-try:
-    if is_in_colab():
-        enable_colab()
-except:
-    pass
-
 _available_plots = {}
 
 
@@ -82,14 +76,14 @@ def setup(
     imputation_type: str = "simple",
     iterative_imputation_iters: int = 10,
     categorical_features: Optional[List[str]] = None,
-    categorical_imputation: str = "constant",
-    categorical_iterative_imputer: Union[str, Any] = "rf",
+    categorical_imputation: str = "mode",
+    categorical_iterative_imputer: Union[str, Any] = "lightgbm",
     ordinal_features: Optional[Dict[str, list]] = None,
     high_cardinality_features: Optional[List[str]] = None,
     high_cardinality_method: str = "frequency",
     numeric_features: Optional[List[str]] = None,
     numeric_imputation: str = "mean",  # method 'zero' added in pycaret==2.1
-    numeric_iterative_imputer: Union[str, Any] = "rf",
+    numeric_iterative_imputer: Union[str, Any] = "lightgbm",
     date_features: Optional[List[str]] = None,
     ignore_features: Optional[List[str]] = None,
     normalize: bool = False,
@@ -1283,8 +1277,6 @@ def setup(
     X_test = test_data.drop(target, axis=1)
     y_test = test_data[target]
 
-    fold_groups_grid = fold_groups_param
-
     if fold_groups_param is not None:
         fold_groups_param = fold_groups_param[
             fold_groups_param.index.isin(X_train.index)
@@ -1464,7 +1456,6 @@ def setup(
             ["Stratify Train-Test", str(data_split_stratify)],
             ["Fold Generator", type(fold_generator).__name__],
             ["Fold Number", fold_param],
-            ["Fold Groups", str(fold_groups_grid)],
             ["CPU Jobs", n_jobs_param],
             ["Use GPU", gpu_param],
             ["Log Experiment", logging_param],
@@ -2121,15 +2112,11 @@ def compare_models(
 
     def highlight_max(s):
         to_highlight = s == s.max()
-        return [
-            "background-color: yellow" if v is not None else "" for v in to_highlight
-        ]
+        return ["background-color: yellow" if v else "" for v in to_highlight]
 
     def highlight_min(s):
         to_highlight = s == s.min()
-        return [
-            "background-color: yellow" if v is not None else "" for v in to_highlight
-        ]
+        return ["background-color: yellow" if v else "" for v in to_highlight]
 
     def highlight_cols(s):
         color = "lightgrey"
@@ -5174,8 +5161,8 @@ def plot_model(
             from sklearn.decomposition import PCA
             from yellowbrick.contrib.classifier import DecisionViz
 
-            data_X_transformed = data_X.select_dtypes(include="float64")
-            test_X_transformed = test_X.select_dtypes(include="float64")
+            data_X_transformed = data_X.select_dtypes(include="float32")
+            test_X_transformed = test_X.select_dtypes(include="float32")
             logger.info("Fitting StandardScaler()")
             data_X_transformed = StandardScaler().fit_transform(data_X_transformed)
             test_X_transformed = StandardScaler().fit_transform(test_X_transformed)
@@ -5311,7 +5298,7 @@ def plot_model(
 
             from yellowbrick.features import Manifold
 
-            data_X_transformed = data_X.select_dtypes(include="float64")
+            data_X_transformed = data_X.select_dtypes(include="float32")
             visualizer = Manifold(manifold="tsne", random_state=seed)
             show_yellowbrick_plot(
                 visualizer=visualizer,
@@ -5553,7 +5540,7 @@ def plot_model(
             from sklearn.preprocessing import StandardScaler
             from sklearn.decomposition import PCA
 
-            data_X_transformed = data_X.select_dtypes(include="float64")
+            data_X_transformed = data_X.select_dtypes(include="float32")
             logger.info("Fitting StandardScaler()")
             data_X_transformed = StandardScaler().fit_transform(data_X_transformed)
             data_y_transformed = np.array(data_y)
@@ -5592,15 +5579,19 @@ def plot_model(
             _feature(len(data_X.columns))
 
         def _feature(n: int):
+            variables = None
             temp_model = pipeline_with_model
             if hasattr(pipeline_with_model, "steps"):
                 temp_model = pipeline_with_model.steps[-1][1]
             if hasattr(temp_model, "coef_"):
-                coef = temp_model.coef_.flatten()
-                if len(coef) > len(data_X.columns):
-                    coef = coef[: len(data_X.columns)]
-                variables = abs(coef)
-            else:
+                try:
+                    coef = temp_model.coef_.flatten()
+                    if len(coef) > len(data_X.columns):
+                        coef = coef[: len(data_X.columns)]
+                    variables = abs(coef)
+                except:
+                    pass
+            if variables is None:
                 logger.warning("No coef_ found. Trying feature_importances_")
                 variables = abs(temp_model.feature_importances_)
             coef_df = pd.DataFrame({"Variable": data_X.columns, "Value": variables})
@@ -8066,6 +8057,7 @@ def _mlflow_log_model(
             if len(str(v)) > 250:
                 params.pop(i)
 
+        logger.info(f"logged params: {params}")
         mlflow.log_params(params)
 
         # Log metrics
@@ -8124,8 +8116,8 @@ def _mlflow_log_model(
                     )
                     mlflow.log_artifact(plot_name)
                     os.remove(plot_name)
-                except:
-                    pass
+                except Exception as e:
+                    logger.warning(e)
 
             for plot in log_plots:
                 _log_plot(plot)

@@ -253,8 +253,25 @@ def get_package_name(class_var: Any) -> str:
 def param_grid_to_lists(param_grid: dict) -> dict:
     if param_grid:
         for k, v in param_grid.items():
-            param_grid[k] = list(v)
+            if not isinstance(v, np.ndarray):
+                v = list(v)
+            param_grid[k] = v
     return param_grid
+
+
+def np_list_arange(
+    start: float, stop: float, step: float, inclusive: bool = False
+) -> List[float]:
+    """
+    Numpy arange returned as list with floating point conversion
+    failsafes.
+    """
+    stop = stop + (step if inclusive else 0)
+    range = list(np.arange(start, stop, step))
+    range = [start if x < start else stop if x > stop else float(round(x,15)) for x in range]
+    range[0] = start
+    range[-1] = stop - step
+    return range
 
 
 def calculate_metrics(
@@ -448,16 +465,9 @@ def get_groups(
             )
         groups = X_train[groups]
     else:
-        try:
-            groups = groups[groups.index.isin(X_train.index)]
-        except Exception as e:
-            logger.warn(
-                "Couldn't get the same rows in groups as in X_train. Exception below:"
-            )
-            logger.warn(e)
-        if len(groups) != len(X_train):
+        if groups.shape[0] != X_train.shape[0]:
             raise ValueError(
-                f"groups has lenght {len(groups)} which doesn't match X_train length of {len(X_train)}."
+                f"groups has lenght {groups.shape[0]} which doesn't match X_train length of {len(X_train)}."
             )
     return groups
 
