@@ -61,7 +61,7 @@ def find_id_columns(data, numerical_features):
   # some times we have id column in the data set, we will try to find it and then  will drop it if found
   len_samples = len(data)
   id_columns = []
-  for i in data.select_dtypes(include=['object', 'int64','float64']).columns:
+  for i in data.select_dtypes(include=['object', 'int64','float64','float32']).columns:
     col = data[i]
     if i not in numerical_features:
       if sum(col.isnull()) == 0: 
@@ -160,6 +160,7 @@ class DataTypes_Auto_infer(BaseEstimator,TransformerMixin):
     # wiith csv , if we have any null in  a colum that was int , panda will read it as float.
     # so first we need to convert any such floats that have NaN and unique values are lower than 20
     for i in data.select_dtypes(include=['float64']).columns:
+      data[i] = data[i].astype('float32')
       # count how many Nas are there
       na_count = sum(data[i].isnull())
       # count how many digits are there that have decimiles
@@ -189,12 +190,12 @@ class DataTypes_Auto_infer(BaseEstimator,TransformerMixin):
       if data[i].nunique() <=20: #hard coded
         data[i]= data[i].apply(str_if_not_null)
       else:
-        data[i]= data[i].astype('float64')
+        data[i]= data[i].astype('float32')
 
 
     # # if colum is objfloat  and only have two unique counts , this is probabaly one hot encoded
     # # make it object
-    for i in data.select_dtypes(include=['float64']).columns:
+    for i in data.select_dtypes(include=['float32']).columns:
       if data[i].nunique()==2:
         data[i]= data[i].apply(str_if_not_null)
 
@@ -210,9 +211,9 @@ class DataTypes_Auto_infer(BaseEstimator,TransformerMixin):
 
     for i in self.numerical_features:
       try:
-        data[i]=data[i].astype('float64')
+        data[i]=data[i].astype('float32')
       except:
-        data[i]=dataset[i].astype('float64')
+        data[i]=dataset[i].astype('float32')
   
     for i in self.time_features:
       try:
@@ -261,7 +262,7 @@ class DataTypes_Auto_infer(BaseEstimator,TransformerMixin):
             dt_print_out.loc[i,'Data Type'] = 'ID Column'
           elif dt_print_out.loc[i,'Feature_Type'] == 'object':
             dt_print_out.loc[i,'Data Type'] = 'Categorical'
-          elif dt_print_out.loc[i,'Feature_Type'] == 'float64':
+          elif dt_print_out.loc[i,'Feature_Type'] == 'float32':
             dt_print_out.loc[i,'Data Type'] = 'Numeric'
           elif dt_print_out.loc[i,'Feature_Type'] == 'datetime64[ns]':
             dt_print_out.loc[i,'Data Type'] = 'Date'
@@ -414,7 +415,7 @@ class Simple_Imputer(_BaseImputer):
       data = dataset.drop(self.target,axis=1)
     except:
       data = dataset
-    self.numeric_columns = data.select_dtypes(include=['float64','int64']).columns
+    self.numeric_columns = data.select_dtypes(include=['float32','int64']).columns
     self.categorical_columns = data.select_dtypes(include=['object']).columns
     self.time_columns = data.select_dtypes(include=['datetime64[ns]']).columns
 
@@ -500,13 +501,13 @@ class Surrogate_Imputer(_BaseImputer):
     data = dataset
     # make a table for numerical variable with strategy stats
     if self.numeric_strategy == 'mean':
-      self.numeric_stats = data.drop(self.target,axis=1).select_dtypes(include=['float64','int64']).apply(np.nanmean)
+      self.numeric_stats = data.drop(self.target,axis=1).select_dtypes(include=['float32','int64']).apply(np.nanmean)
     elif self.numeric_strategy == 'median':
-      self.numeric_stats = data.drop(self.target,axis=1).select_dtypes(include=['float64','int64']).apply(np.nanmedian)
+      self.numeric_stats = data.drop(self.target,axis=1).select_dtypes(include=['float32','int64']).apply(np.nanmedian)
     else:
-      self.numeric_stats = data.drop(self.target,axis=1).select_dtypes(include=['float64','int64']).apply(zeros)
+      self.numeric_stats = data.drop(self.target,axis=1).select_dtypes(include=['float32','int64']).apply(zeros)
 
-    self.numeric_columns = data.drop(self.target,axis=1).select_dtypes(include=['float64','int64']).columns
+    self.numeric_columns = data.drop(self.target,axis=1).select_dtypes(include=['float32','int64']).columns
     # also need to learn if any columns had NA in training
     self.numeric_na = pd.DataFrame(columns=self.numeric_columns)
     for i in self.numeric_columns:
@@ -1069,7 +1070,7 @@ class Scaling_and_Power_transformation(BaseEstimator,TransformerMixin):
     
     data=dataset
     # we only want to apply if there are numeric columns
-    self.numeric_features = data.drop(self.target,axis=1,errors='ignore').select_dtypes(include=["float64",'int64']).columns
+    self.numeric_features = data.drop(self.target,axis=1,errors='ignore').select_dtypes(include=["float32",'int64']).columns
     if len(self.numeric_features) > 0:
       if self.function_to_apply == 'zscore':
         self.scale_and_power = StandardScaler()
@@ -1293,7 +1294,7 @@ class Dummify(BaseEstimator,TransformerMixin):
 
     
     # creat ohe object 
-    self.ohe = OneHotEncoder(handle_unknown='ignore')
+    self.ohe = OneHotEncoder(handle_unknown='ignore',dtype=np.float32)
   
   def fit(self,dataset,y=None):
     data = dataset
@@ -1652,7 +1653,7 @@ class Reduce_Cardinality_with_Counts(BaseEstimator,TransformerMixin):
     # we already know level counts 
     for i,z,k in zip(self.feature,self.ph_data,self.ph_u):
       data[i] = data[i].replace(k,z['counts'])
-      data[i] = data[i].astype('float64')
+      data[i] = data[i].astype('float32')
     
     return(data)
 
@@ -1666,7 +1667,7 @@ class Reduce_Cardinality_with_Counts(BaseEstimator,TransformerMixin):
       u = data[i].unique()
       # replace levels with counts
       data[i].replace(u,data_t1['counts'],inplace=True)
-      data[i] = data[i].astype('float64')
+      data[i] = data[i].astype('float32')
       self.ph_data.append(data_t1)
       self.ph_u.append(u)
     
@@ -1678,7 +1679,7 @@ class Make_NonLiner_Features(BaseEstimator,TransformerMixin):
     - convert numerical features into polynomial features
     - it is HIGHLY recommended to run the Autoinfer_Data_Type class first
     - Ignores target variable
-    - it picks up data type float64 as numerical 
+    - it picks up data type float32 as numerical 
     - for multiclass classification problem , set subclass arg to 'multi'
 
       Args: 
@@ -1702,9 +1703,9 @@ class Make_NonLiner_Features(BaseEstimator,TransformerMixin):
   def transform(self,dataset,y=None):# same application for test and train
     data = dataset
     
-    self.numeric_columns = data.drop(self.target,axis=1,errors='ignore').select_dtypes(include="float64").columns
+    self.numeric_columns = data.drop(self.target,axis=1,errors='ignore').select_dtypes(include="float32").columns
     if self.Polynomial_degree >= 2: # dont run anything if powr is les than 2
-      #self.numeric_columns = data.drop(self.target,axis=1,errors='ignore').select_dtypes(include="float64").columns
+      #self.numeric_columns = data.drop(self.target,axis=1,errors='ignore').select_dtypes(include="float32").columns
       # start taking powers
       for i in range(2,self.Polynomial_degree+1):
         ddc_power = np.power(data[self.numeric_columns],i)
@@ -1766,9 +1767,9 @@ class Make_NonLiner_Features(BaseEstimator,TransformerMixin):
     
     data = dataset
     
-    self.numeric_columns = data.drop(self.target,axis=1,errors='ignore').select_dtypes(include="float64").columns
+    self.numeric_columns = data.drop(self.target,axis=1,errors='ignore').select_dtypes(include="float32").columns
     if self.Polynomial_degree >= 2: # dont run anything if powr is les than 2
-      #self.numeric_columns = data.drop(self.target,axis=1,errors='ignore').select_dtypes(include="float64").columns
+      #self.numeric_columns = data.drop(self.target,axis=1,errors='ignore').select_dtypes(include="float32").columns
       # start taking powers
       for i in range(2,self.Polynomial_degree+1):
         ddc_power = np.power(data[self.numeric_columns],i)

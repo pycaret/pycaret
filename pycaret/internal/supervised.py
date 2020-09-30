@@ -5161,8 +5161,8 @@ def plot_model(
             from sklearn.decomposition import PCA
             from yellowbrick.contrib.classifier import DecisionViz
 
-            data_X_transformed = data_X.select_dtypes(include="float64")
-            test_X_transformed = test_X.select_dtypes(include="float64")
+            data_X_transformed = data_X.select_dtypes(include="float32")
+            test_X_transformed = test_X.select_dtypes(include="float32")
             logger.info("Fitting StandardScaler()")
             data_X_transformed = StandardScaler().fit_transform(data_X_transformed)
             test_X_transformed = StandardScaler().fit_transform(test_X_transformed)
@@ -5298,7 +5298,7 @@ def plot_model(
 
             from yellowbrick.features import Manifold
 
-            data_X_transformed = data_X.select_dtypes(include="float64")
+            data_X_transformed = data_X.select_dtypes(include="float32")
             visualizer = Manifold(manifold="tsne", random_state=seed)
             show_yellowbrick_plot(
                 visualizer=visualizer,
@@ -5540,7 +5540,7 @@ def plot_model(
             from sklearn.preprocessing import StandardScaler
             from sklearn.decomposition import PCA
 
-            data_X_transformed = data_X.select_dtypes(include="float64")
+            data_X_transformed = data_X.select_dtypes(include="float32")
             logger.info("Fitting StandardScaler()")
             data_X_transformed = StandardScaler().fit_transform(data_X_transformed)
             data_y_transformed = np.array(data_y)
