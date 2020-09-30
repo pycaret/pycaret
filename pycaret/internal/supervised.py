@@ -2121,11 +2121,15 @@ def compare_models(
 
     def highlight_max(s):
         to_highlight = s == s.max()
-        return ["background-color: yellow" if v is not None else "" for v in to_highlight]
+        return [
+            "background-color: yellow" if v is not None else "" for v in to_highlight
+        ]
 
     def highlight_min(s):
         to_highlight = s == s.min()
-        return ["background-color: yellow" if v is not None else "" for v in to_highlight]
+        return [
+            "background-color: yellow" if v is not None else "" for v in to_highlight
+        ]
 
     def highlight_cols(s):
         color = "lightgrey"
@@ -3201,11 +3205,11 @@ def tune_model(
                 f"weight_{i}": np.arange(0.01, 1, 0.01)
                 for i, e in enumerate(base_estimator.estimators)
             }
-        if hasattr(base_estimator, "cost_complexity_pruning_path"):
-            # special case for Tree-based models
-            param_grid["ccp_alpha"] = get_ccp_alphas(base_estimator)
-            if "min_impurity_decrease" in param_grid:
-                param_grid.pop("min_impurity_decrease")
+        # if hasattr(base_estimator, "cost_complexity_pruning_path"):
+        #     # special case for Tree-based models
+        #     param_grid["ccp_alpha"] = get_ccp_alphas(base_estimator)
+        #     if "min_impurity_decrease" in param_grid:
+        #         param_grid.pop("min_impurity_decrease")
 
         if search_algorithm != "grid":
             tc = total_combintaions_in_grid(param_grid)
@@ -3224,13 +3228,13 @@ def tune_model(
                 f"weight_{i}": UniformDistribution(0.000000001, 1)
                 for i, e in enumerate(base_estimator.estimators)
             }
-        if hasattr(base_estimator, "cost_complexity_pruning_path"):
-            # special case for Tree-based models
-            param_grid["ccp_alpha"] = CategoricalDistribution(
-                get_ccp_alphas(base_estimator)
-            )
-            if "min_impurity_decrease" in param_grid:
-                param_grid.pop("min_impurity_decrease")
+        # if hasattr(base_estimator, "cost_complexity_pruning_path"):
+        #     # special case for Tree-based models
+        #     param_grid["ccp_alpha"] = CategoricalDistribution(
+        #         get_ccp_alphas(base_estimator)
+        #     )
+        #     if "min_impurity_decrease" in param_grid:
+        #         param_grid.pop("min_impurity_decrease")
 
     if not param_grid:
         raise ValueError(
@@ -3260,7 +3264,13 @@ def tune_model(
 
         logger.info(f"param_grid: {param_grid}")
 
-        def _can_early_stop(estimator, consider_warm_start, consider_xgboost, params):
+        def _can_early_stop(
+            estimator,
+            consider_partial_fit,
+            consider_warm_start,
+            consider_xgboost,
+            params,
+        ):
             """
             From https://github.com/ray-project/tune-sklearn/blob/master/tune_sklearn/tune_basesearch.py.
             
@@ -3280,10 +3290,15 @@ def tune_model(
 
             base_estimator = estimator.steps[-1][1]
 
-            can_partial_fit = supports_partial_fit(base_estimator, params=params)
+            if consider_partial_fit:
+                can_partial_fit = supports_partial_fit(base_estimator, params=params)
+            else:
+                can_partial_fit = False
 
             if consider_warm_start:
-                is_not_tree_subclass = not issubclass(type(base_estimator), BaseDecisionTree)
+                is_not_tree_subclass = not issubclass(
+                    type(base_estimator), BaseDecisionTree
+                )
                 is_ensemble_subclass = issubclass(type(base_estimator), BaseEnsemble)
                 can_warm_start = hasattr(base_estimator, "warm_start") and (
                     (
@@ -3291,7 +3306,9 @@ def tune_model(
                         and is_not_tree_subclass
                         and not is_ensemble_subclass
                     )
-                    or (is_ensemble_subclass and hasattr(base_estimator, "n_estimators"))
+                    or (
+                        is_ensemble_subclass and hasattr(base_estimator, "n_estimators")
+                    )
                 )
             else:
                 can_warm_start = False
@@ -3358,7 +3375,9 @@ def tune_model(
                 param_distributions=param_grid,
                 cv=fold,
                 enable_pruning=early_stopping
-                and _can_early_stop(pipeline_with_model, False, False, param_grid),
+                and _can_early_stop(
+                    pipeline_with_model, True, False, False, param_grid
+                ),
                 max_iter=early_stopping_max_iters,
                 n_jobs=n_jobs,
                 n_trials=n_iter,
@@ -3381,13 +3400,31 @@ def tune_model(
                 early_stopping = early_stopping_translator[early_stopping]
 
             can_early_stop = early_stopping and _can_early_stop(
-                pipeline_with_model, True, True, param_grid
+                pipeline_with_model, True, True, True, param_grid
             )
 
             if not can_early_stop and search_algorithm == "bohb":
                 raise ValueError(
-                    "'bohb' requires early_stopping = True and the estimator to support partial_fit or have warm_start param set to True."
+                    "'bohb' requires early_stopping = True and the estimator to support partial_fit or have warm_start param available."
                 )
+
+            elif early_stopping and _can_early_stop(
+                pipeline_with_model, False, True, False, param_grid
+            ):
+                if "n_estimators" in param_grid:
+                    if custom_grid is None:
+                        param_grid.pop("n_estimators")
+                    else:
+                        raise ValueError(
+                            "Param grid cannot contain n_estimators or max_iter if early_stopping is True and the model is warm started."
+                        )
+                if "max_iter" in param_grid:
+                    if custom_grid is None:
+                        param_grid.pop("max_iter")
+                    else:
+                        raise ValueError(
+                            "Param grid cannot contain n_estimators or max_iter if early_stopping is True and the model is warm started."
+                        )
 
             # if n_jobs is None:
             # enable Ray local mode - otherwise the performance is terrible
@@ -6437,7 +6474,7 @@ def predict_model(
     encoded_labels: bool = False,  # added in pycaret==2.1.0
     round: int = 4,  # added in pycaret==2.2.0
     verbose: bool = True,
-    ml_usecase: Optional[MLUsecase]=None,
+    ml_usecase: Optional[MLUsecase] = None,
     display: Optional[Display] = None,  # added in pycaret==2.2.0
 ) -> pd.DataFrame:
 

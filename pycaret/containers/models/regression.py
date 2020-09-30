@@ -784,18 +784,8 @@ class TheilSenRegressorContainer(RegressorContainer):
         tune_args = {}
         tune_grid = {
             "fit_intercept": [True, False],
-            "max_subpopulation": [
-                5000,
-                10000,
-                15000,
-                20000,
-                25000,
-                30000,
-                40000,
-                50000,
-            ],
         }
-        tune_distributions = {"max_subpopulation": IntUniformDistribution(5000, 50000)}
+        tune_distributions = {}
 
         leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 
