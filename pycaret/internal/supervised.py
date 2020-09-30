@@ -3445,7 +3445,7 @@ def tune_model(
                         max_iters=early_stopping_max_iters,
                         n_jobs=n_jobs,
                         use_gpu=gpu_param,
-                        refit=True,
+                        refit=False,
                         verbose=1,
                         # pipeline_detection=False,
                         **search_kwargs,
