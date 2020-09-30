@@ -1250,7 +1250,7 @@ class GradientBoostingRegressorContainer(RegressorContainer):
                 0.4,
                 0.5,
             ],
-            "max_features": ["auto", "sqrt", "log2"],
+            "max_features": [1.0, "sqrt", "log2"],
         }
         tune_distributions = {
             "n_estimators": IntUniformDistribution(10, 1000),
@@ -1261,7 +1261,6 @@ class GradientBoostingRegressorContainer(RegressorContainer):
             "max_depth": IntUniformDistribution(1, 11),
             "max_features": UniformDistribution(0.001, 1),
             "min_impurity_decrease": UniformDistribution(0.000000001, 0.5, log=True),
-            "max_features": UniformDistribution(0.001, 1),
         }
 
         leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
