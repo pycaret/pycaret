@@ -672,12 +672,21 @@ class Iterative_Imputer(_BaseImputer):
                 le = None
 
         if fit:
+            fit_kwargs = {}
             X_train = X[~X_na_mask[column]]
             y_train = X[~X_na_mask[column]][column]
             # catboost handles categoricals itself
             if "catboost" not in str(type(estimator)).lower():
               X_train = dummy.fit_transform(X_train)
-            X_train.drop(column, axis=1, inplace=True)
+              X_train.drop(column, axis=1, inplace=True)
+            else:
+              X_train.drop(column, axis=1, inplace=True)
+              fit_kwargs["cat_features"] = []
+              for i, col in enumerate(X_train.columns):
+                if X_train[col].dtype.name == "object":
+                  X_train[col] = pd.Categorical(X_train[col], ordered=column in self.ordinal_columns)
+                  fit_kwargs["cat_features"].append(i)
+              fit_kwargs["cat_features"] = np.array(fit_kwargs["cat_features"], dtype=int)
 
             if le:
                 y_train = le.fit_transform(y_train)
@@ -686,13 +695,15 @@ class Iterative_Imputer(_BaseImputer):
                 assert self.warm_start
                 estimator.partial_fit(X_train, y_train)
             except:
-                estimator.fit(X_train, y_train)
+                estimator.fit(X_train, y_train, **fit_kwargs)
 
         X_test = X.drop(column, axis=1)[X_na_mask[column]]
         # catboost handles categoricals itself
         if "catboost" not in str(type(estimator)).lower():
           X_test = dummy.transform(X_test)
-
+        else:
+          for col in X_test.select_dtypes("object").columns:
+            X_test[col] = pd.Categorical(X_test[col], ordered=column in self.ordinal_columns)
         result = estimator.predict(X_test)
         if le:
             result = le.inverse_transform(result)
