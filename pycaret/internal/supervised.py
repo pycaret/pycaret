@@ -3336,12 +3336,10 @@ def tune_model(
             ):
                 if "actual_estimator__n_estimators" in param_grid:
                     if custom_grid is None:
-                        early_stopping_max_iters = (
-                            get_min_max(
-                                param_grid.pop("actual_estimator__n_estimators")
-                            )
-                            // 20
+                        _, early_stopping_max_iters = get_min_max(
+                            param_grid.pop("actual_estimator__n_estimators")
                         )
+                        early_stopping_max_iters = early_stopping_max_iters // 20
                         early_stopping_max_iters = (
                             early_stopping_max_iters
                             if early_stopping_max_iters > 10
@@ -3353,10 +3351,10 @@ def tune_model(
                         )
                 if "actual_estimator__max_iter" in param_grid:
                     if custom_grid is None:
-                        early_stopping_max_iters = (
-                            get_min_max(param_grid.pop("actual_estimator__max_iter"))
-                            // 20
+                        _, early_stopping_max_iters = get_min_max(
+                            param_grid.pop("actual_estimator__max_iter")
                         )
+                        early_stopping_max_iters = early_stopping_max_iters // 20
                         early_stopping_max_iters = (
                             early_stopping_max_iters
                             if early_stopping_max_iters > 10
@@ -3371,7 +3369,7 @@ def tune_model(
                 # enable ray local mode
                 n_jobs = 1
             elif n_jobs == -1:
-                n_jobs = int(math.ceil(multiprocessing.cpu_count()/2))
+                n_jobs = int(math.ceil(multiprocessing.cpu_count() / 2))
 
             TuneSearchCV = get_tune_sklearn_tunesearchcv()
             TuneGridSearchCV = get_tune_sklearn_tunegridsearchcv()
