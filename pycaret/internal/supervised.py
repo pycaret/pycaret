@@ -3249,7 +3249,8 @@ def tune_model(
 
         search_kwargs = {**estimator_definition.tune_args, **kwargs}
 
-        logger.info(f"param_grid: {param_grid}")
+        if custom_grid is not None:
+            logger.info(f"custom_grid: {param_grid}")
 
         def _can_early_stop(
             estimator,
@@ -3350,8 +3351,6 @@ def tune_model(
             if custom_grid is None:
                 param_grid = get_optuna_distributions(param_grid)
 
-            logger.info(f"param_grid: {param_grid}")
-
             study = optuna.create_study(
                 direction="maximize", sampler=sampler, pruner=pruner
             )
@@ -3444,7 +3443,6 @@ def tune_model(
                 elif search_algorithm == "hyperopt":
                     if custom_grid is None:
                         param_grid = get_hyperopt_distributions(param_grid)
-                    logger.info(f"param_grid: {param_grid}")
                     logger.info("Initializing tune_sklearn.TuneSearchCV, hyperopt")
                     model_grid = TuneSearchCV(
                         estimator=pipeline_with_model,
@@ -3466,7 +3464,6 @@ def tune_model(
                 elif search_algorithm == "bayesian":
                     if custom_grid is None:
                         param_grid = get_skopt_distributions(param_grid)
-                    logger.info(f"param_grid: {param_grid}")
                     logger.info("Initializing tune_sklearn.TuneSearchCV, bayesian")
                     model_grid = TuneSearchCV(
                         estimator=pipeline_with_model,
@@ -3488,7 +3485,6 @@ def tune_model(
                 elif search_algorithm == "bohb":
                     if custom_grid is None:
                         param_grid = get_CS_distributions(param_grid)
-                    logger.info(f"param_grid: {param_grid}")
                     logger.info("Initializing tune_sklearn.TuneSearchCV, bohb")
                     model_grid = TuneSearchCV(
                         estimator=pipeline_with_model,
@@ -3531,7 +3527,6 @@ def tune_model(
 
             if custom_grid is None:
                 param_grid = get_skopt_distributions(param_grid)
-            logger.info(f"param_grid: {param_grid}")
 
             logger.info("Initializing skopt.BayesSearchCV")
             model_grid = skopt.BayesSearchCV(
