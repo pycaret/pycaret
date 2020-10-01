@@ -3,6 +3,7 @@
 # License: MIT
 
 from typing import Dict, Hashable, Optional
+
 try:
     from collections.abc import Hashable
 except:
@@ -157,7 +158,10 @@ class CategoricalDistribution(Distrubution):
     def get_skopt(self):
         import skopt.space
 
-        return skopt.space.Categorical([x if isinstance(x, Hashable) else None for x in self.values], transform="identity")
+        return skopt.space.Categorical(
+            [x if isinstance(x, Hashable) else None for x in self.values],
+            transform="identity",
+        )
 
     def get_optuna(self):
         import optuna
@@ -172,7 +176,9 @@ class CategoricalDistribution(Distrubution):
     def get_CS(self, label):
         import ConfigSpace.hyperparameters as CSH
 
-        return CSH.CategoricalHyperparameter(name=label, choices=[x for x in self.values if isinstance(x, Hashable)])
+        return CSH.CategoricalHyperparameter(
+            name=label, choices=[x for x in self.values if isinstance(x, Hashable)]
+        )
 
     def __repr__(self):
         return f"CategoricalDistribution(values={self.values})"
@@ -192,3 +198,13 @@ def get_hyperopt_distributions(distributions: Dict[str, Distrubution]) -> dict:
 
 def get_CS_distributions(distributions: Dict[str, Distrubution]) -> dict:
     return {k: v.get_CS(k) for k, v in distributions.items()}
+
+
+def get_min_max(o):
+    if isinstance(o, CategoricalDistribution):
+        o = o.values
+    elif isinstance(o, Distrubution):
+        return (o.lower, o.upper)
+
+    o = sorted(o)
+    return (o[0], o[-1])

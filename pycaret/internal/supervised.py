@@ -25,7 +25,7 @@ from pycaret.internal.utils import (
     normalize_custom_transformers,
     nullcontext,
     true_warm_start,
-    can_early_stop
+    can_early_stop,
 )
 import pycaret.internal.patches.sklearn
 from pycaret.internal.logging import get_logger
@@ -3297,9 +3297,7 @@ def tune_model(
                 param_distributions=param_grid,
                 cv=fold,
                 enable_pruning=early_stopping
-                and can_early_stop(
-                    pipeline_with_model, True, False, False, param_grid
-                ),
+                and can_early_stop(pipeline_with_model, True, False, False, param_grid),
                 max_iter=early_stopping_max_iters,
                 n_jobs=n_jobs,
                 n_trials=n_iter,
@@ -3313,6 +3311,7 @@ def tune_model(
             )
 
         elif search_library == "tune-sklearn":
+
             early_stopping_translator = {
                 "asha": "ASHAScheduler",
                 "hyperband": "HyperBandScheduler",
@@ -3333,21 +3332,42 @@ def tune_model(
             elif early_stopping and can_early_stop(
                 pipeline_with_model, False, True, False, param_grid
             ):
-                if "n_estimators" in param_grid:
+                if "actual_estimator__n_estimators" in param_grid:
                     if custom_grid is None:
-                        param_grid.pop("n_estimators")
-                    else:
-                        raise ValueError(
-                            "Param grid cannot contain n_estimators or max_iter if early_stopping is True and the model is warm started."
+                        early_stopping_max_iters = (
+                            get_min_max(
+                                param_grid.pop("actual_estimator__n_estimators")
+                            )
+                            // 20
                         )
-                if "max_iter" in param_grid:
-                    if custom_grid is None:
-                        param_grid.pop("max_iter")
+                        early_stopping_max_iters = (
+                            early_stopping_max_iters
+                            if early_stopping_max_iters > 10
+                            else 10
+                        )
                     else:
                         raise ValueError(
-                            "Param grid cannot contain n_estimators or max_iter if early_stopping is True and the model is warm started."
+                            "Param grid cannot contain n_estimators or max_iter if early_stopping is True and the model is warm started. Use early_stopping_max_iters params to set the upper bound of n_estimators or max_iter."
+                        )
+                if "actual_estimator__max_iter" in param_grid:
+                    if custom_grid is None:
+                        early_stopping_max_iters = (
+                            get_min_max(param_grid.pop("actual_estimator__max_iter"))
+                            // 20
+                        )
+                        early_stopping_max_iters = (
+                            early_stopping_max_iters
+                            if early_stopping_max_iters > 10
+                            else 10
+                        )
+                    else:
+                        raise ValueError(
+                            "Param grid cannot contain n_estimators or max_iter if early_stopping is True and the model is warm started. Use early_stopping_max_iters params to set the upper bound of n_estimators or max_iter."
                         )
 
+            if not do_early_stop:
+                # enable ray local mode
+                n_jobs = 1
 
             TuneSearchCV = get_tune_sklearn_tunesearchcv()
             TuneGridSearchCV = get_tune_sklearn_tunegridsearchcv()
