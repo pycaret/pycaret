@@ -29,7 +29,7 @@ def test():
         pycaret.classification.tune_model(model, fold=2, n_iter=2, search_library='optuna', search_algorithm='tpe')
         pycaret.classification.tune_model(model, fold=2, n_iter=2, search_library='tune-sklearn', search_algorithm='hyperopt')
         pycaret.classification.tune_model(model, fold=2, n_iter=2, search_library='tune-sklearn', search_algorithm='bayesian')
-        if can_early_stop(model, True, True, True):
+        if can_early_stop(model, True, True, True, {}):
             pycaret.classification.tune_model(model, fold=2, n_iter=2, search_library='tune-sklearn', search_algorithm='bohb')
 
     assert 1 == 1
