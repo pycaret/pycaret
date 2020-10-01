@@ -25,6 +25,7 @@ from pycaret.internal.utils import (
     normalize_custom_transformers,
     nullcontext,
     true_warm_start,
+    can_early_stop
 )
 import pycaret.internal.patches.sklearn
 from pycaret.internal.logging import get_logger
@@ -3249,68 +3250,6 @@ def tune_model(
         if custom_grid is not None:
             logger.info(f"custom_grid: {param_grid}")
 
-        def _can_early_stop(
-            estimator,
-            consider_partial_fit,
-            consider_warm_start,
-            consider_xgboost,
-            params,
-        ):
-            """
-            From https://github.com/ray-project/tune-sklearn/blob/master/tune_sklearn/tune_basesearch.py.
-            
-            Helper method to determine if it is possible to do early stopping.
-            Only sklearn estimators with ``partial_fit`` or ``warm_start`` can be early
-            stopped. warm_start works by picking up training from the previous
-            call to ``fit``.
-            
-            Returns
-            -------
-                bool
-                    if the estimator can early stop
-            """
-
-            from sklearn.tree import BaseDecisionTree
-            from sklearn.ensemble import BaseEnsemble
-
-            base_estimator = estimator.steps[-1][1]
-
-            if consider_partial_fit:
-                can_partial_fit = supports_partial_fit(base_estimator, params=params)
-            else:
-                can_partial_fit = False
-
-            if consider_warm_start:
-                is_not_tree_subclass = not issubclass(
-                    type(base_estimator), BaseDecisionTree
-                )
-                is_ensemble_subclass = issubclass(type(base_estimator), BaseEnsemble)
-                can_warm_start = hasattr(base_estimator, "warm_start") and (
-                    (
-                        hasattr(base_estimator, "max_iter")
-                        and is_not_tree_subclass
-                        and not is_ensemble_subclass
-                    )
-                    or (
-                        is_ensemble_subclass and hasattr(base_estimator, "n_estimators")
-                    )
-                )
-            else:
-                can_warm_start = False
-
-            if consider_xgboost:
-                from xgboost.sklearn import XGBModel
-
-                is_xgboost = isinstance(base_estimator, XGBModel)
-            else:
-                is_xgboost = False
-
-            logger.info(
-                f"can_partial_fit: {can_partial_fit}, can_warm_start: {can_warm_start}, is_xgboost: {is_xgboost}"
-            )
-
-            return can_partial_fit or can_warm_start or is_xgboost
-
         n_jobs = (
             _gpu_n_jobs_param if estimator_definition.is_gpu_enabled else n_jobs_param
         )
@@ -3358,7 +3297,7 @@ def tune_model(
                 param_distributions=param_grid,
                 cv=fold,
                 enable_pruning=early_stopping
-                and _can_early_stop(
+                and can_early_stop(
                     pipeline_with_model, True, False, False, param_grid
                 ),
                 max_iter=early_stopping_max_iters,
@@ -3382,16 +3321,16 @@ def tune_model(
             if early_stopping in early_stopping_translator:
                 early_stopping = early_stopping_translator[early_stopping]
 
-            can_early_stop = early_stopping and _can_early_stop(
+            do_early_stop = early_stopping and can_early_stop(
                 pipeline_with_model, True, True, True, param_grid
             )
 
-            if not can_early_stop and search_algorithm == "bohb":
+            if not do_early_stop and search_algorithm == "bohb":
                 raise ValueError(
                     "'bohb' requires early_stopping = True and the estimator to support early stopping (has partial_fit, warm_start or is an XGBoost, LightGBM or Catboost model)."
                 )
 
-            elif early_stopping and _can_early_stop(
+            elif early_stopping and can_early_stop(
                 pipeline_with_model, False, True, False, param_grid
             ):
                 if "n_estimators" in param_grid:
@@ -3415,14 +3354,14 @@ def tune_model(
 
             with true_warm_start(
                 pipeline_with_model
-            ) if can_early_stop else nullcontext():
+            ) if do_early_stop else nullcontext():
                 if search_algorithm == "grid":
 
                     logger.info("Initializing tune_sklearn.TuneGridSearchCV")
                     model_grid = TuneGridSearchCV(
                         estimator=pipeline_with_model,
                         param_grid=param_grid,
-                        early_stopping=can_early_stop,
+                        early_stopping=do_early_stop,
                         scoring=optimize,
                         cv=fold,
                         max_iters=early_stopping_max_iters,
@@ -3442,7 +3381,7 @@ def tune_model(
                         search_optimization="hyperopt",
                         param_distributions=param_grid,
                         n_trials=n_iter,
-                        early_stopping=can_early_stop,
+                        early_stopping=do_early_stop,
                         scoring=optimize,
                         cv=fold,
                         random_state=seed,
@@ -3463,7 +3402,7 @@ def tune_model(
                         search_optimization="bayesian",
                         param_distributions=param_grid,
                         n_trials=n_iter,
-                        early_stopping=can_early_stop,
+                        early_stopping=do_early_stop,
                         scoring=optimize,
                         cv=fold,
                         random_state=seed,
@@ -3484,7 +3423,7 @@ def tune_model(
                         search_optimization="bohb",
                         param_distributions=param_grid,
                         n_trials=n_iter,
-                        early_stopping=can_early_stop,
+                        early_stopping=do_early_stop,
                         scoring=optimize,
                         cv=fold,
                         random_state=seed,
@@ -3501,7 +3440,7 @@ def tune_model(
                     model_grid = TuneSearchCV(
                         estimator=pipeline_with_model,
                         param_distributions=param_grid,
-                        early_stopping=can_early_stop,
+                        early_stopping=do_early_stop,
                         n_trials=n_iter,
                         scoring=optimize,
                         cv=fold,
