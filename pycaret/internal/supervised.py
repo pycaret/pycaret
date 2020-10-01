@@ -2976,9 +2976,6 @@ def tune_model(
             )
 
         if search_algorithm == "bohb":
-            # TEMPORARY
-            raise ValueError("BOHB is not available at this time.")
-
             try:
                 from ray.tune.suggest.bohb import TuneBOHB
                 from ray.tune.schedulers import HyperBandForBOHB
@@ -3391,7 +3388,7 @@ def tune_model(
 
             if not can_early_stop and search_algorithm == "bohb":
                 raise ValueError(
-                    "'bohb' requires early_stopping = True and the estimator to support partial_fit or have warm_start param available."
+                    "'bohb' requires early_stopping = True and the estimator to support early stopping (has partial_fit, warm_start or is an XGBoost, LightGBM or Catboost model)."
                 )
 
             elif early_stopping and _can_early_stop(
@@ -3412,10 +3409,6 @@ def tune_model(
                             "Param grid cannot contain n_estimators or max_iter if early_stopping is True and the model is warm started."
                         )
 
-            # if n_jobs is None:
-            # enable Ray local mode - otherwise the performance is terrible
-            # if len(X_train) <= 50000:
-            n_jobs = 1
 
             TuneSearchCV = get_tune_sklearn_tunesearchcv()
             TuneGridSearchCV = get_tune_sklearn_tunegridsearchcv()
