@@ -497,11 +497,7 @@ def get_all_object_vars_and_properties(object):
 
 
 def can_early_stop(
-    estimator,
-    consider_partial_fit,
-    consider_warm_start,
-    consider_xgboost,
-    params,
+    estimator, consider_partial_fit, consider_warm_start, consider_xgboost, params,
 ):
     """
     From https://github.com/ray-project/tune-sklearn/blob/master/tune_sklearn/tune_basesearch.py.
@@ -522,7 +518,10 @@ def can_early_stop(
     from sklearn.tree import BaseDecisionTree
     from sklearn.ensemble import BaseEnsemble
 
-    base_estimator = estimator.steps[-1][1]
+    try:
+        base_estimator = estimator.steps[-1][1]
+    except:
+        base_estimator = estimator
 
     if consider_partial_fit:
         can_partial_fit = supports_partial_fit(base_estimator, params=params)
@@ -530,9 +529,7 @@ def can_early_stop(
         can_partial_fit = False
 
     if consider_warm_start:
-        is_not_tree_subclass = not issubclass(
-            type(base_estimator), BaseDecisionTree
-        )
+        is_not_tree_subclass = not issubclass(type(base_estimator), BaseDecisionTree)
         is_ensemble_subclass = issubclass(type(base_estimator), BaseEnsemble)
         can_warm_start = hasattr(base_estimator, "warm_start") and (
             (
@@ -540,9 +537,7 @@ def can_early_stop(
                 and is_not_tree_subclass
                 and not is_ensemble_subclass
             )
-            or (
-                is_ensemble_subclass and hasattr(base_estimator, "n_estimators")
-            )
+            or (is_ensemble_subclass and hasattr(base_estimator, "n_estimators"))
         )
     else:
         can_warm_start = False
