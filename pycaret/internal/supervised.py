@@ -5,6 +5,7 @@
 # Last modified : 26/08/2020
 
 from enum import Enum, auto
+import math
 from pycaret.internal.meta_estimators import (
     PowerTransformedTargetRegressor,
     get_estimator_from_meta_estimator,
@@ -46,6 +47,7 @@ import datetime
 import time
 import random
 import gc
+import multiprocessing
 from copy import deepcopy
 from sklearn.base import clone
 from sklearn.exceptions import NotFittedError
@@ -3368,6 +3370,8 @@ def tune_model(
             if not do_early_stop:
                 # enable ray local mode
                 n_jobs = 1
+            elif n_jobs == -1:
+                n_jobs = int(math.ceil(multiprocessing.cpu_count()/2))
 
             TuneSearchCV = get_tune_sklearn_tunesearchcv()
             TuneGridSearchCV = get_tune_sklearn_tunegridsearchcv()
