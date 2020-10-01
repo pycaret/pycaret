@@ -1,5 +1,5 @@
 tune-sklearn>=0.1.0
-ray[tune]
+ray[tune]>=1.0.0
 hyperopt
 hpbandster
 ConfigSpace

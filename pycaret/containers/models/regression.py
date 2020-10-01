@@ -986,7 +986,7 @@ class DecisionTreeRegressorContainer(RegressorContainer):
         args = {"random_state": globals_dict["seed"]}
         tune_args = {}
         tune_grid = {
-            "max_depth": [int(x) for x in np.linspace(1, 16, num=16)],
+            "max_depth": np_list_arange(1, 16, 1, inclusive=True),
             "max_features": [1.0, "sqrt", "log2"],
             "min_samples_leaf": [2, 3, 4, 5, 6],
             "min_samples_split": [2, 5, 7, 9, 10],
@@ -1068,8 +1068,8 @@ class RandomForestRegressorContainer(RegressorContainer):
         )
         tune_args = {}
         tune_grid = {
-            "n_estimators": [int(x) for x in np.linspace(10, 1000, num=100)],
-            "max_depth": [int(x) for x in np.linspace(1, 11, num=11)],
+            "n_estimators": np_list_arange(10, 300, 10, inclusive=True),
+            "max_depth": np_list_arange(1, 11, 1, inclusive=True),
             "min_impurity_decrease": [
                 0,
                 0.0001,
@@ -1091,7 +1091,7 @@ class RandomForestRegressorContainer(RegressorContainer):
             "bootstrap": [True, False],
         }
         tune_distributions = {
-            "n_estimators": IntUniformDistribution(10, 1000),
+            "n_estimators": IntUniformDistribution(10, 300),
             "max_depth": IntUniformDistribution(1, 11),
             "min_impurity_decrease": UniformDistribution(0.000000001, 0.5, log=True),
             "max_features": UniformDistribution(0.001, 1),
@@ -1135,9 +1135,9 @@ class ExtraTreesRegressorContainer(RegressorContainer):
         }
         tune_args = {}
         tune_grid = {
-            "n_estimators": [int(x) for x in np.linspace(10, 1000, num=100)],
+            "n_estimators": np_list_arange(10, 300, 10, inclusive=True),
             "criterion": ["mse", "mae"],
-            "max_depth": [int(x) for x in np.linspace(1, 11, num=11)],
+            "max_depth": np_list_arange(1, 11, 1, inclusive=True),
             "min_impurity_decrease": [
                 0,
                 0.0001,
@@ -1161,7 +1161,7 @@ class ExtraTreesRegressorContainer(RegressorContainer):
             "min_samples_leaf": [2, 3, 4, 5, 6],
         }
         tune_distributions = {
-            "n_estimators": IntUniformDistribution(10, 200),
+            "n_estimators": IntUniformDistribution(10, 300),
             "max_depth": IntUniformDistribution(1, 11),
             "min_samples_split": IntUniformDistribution(2, 10),
             "min_samples_leaf": IntUniformDistribution(1, 5),
@@ -1192,13 +1192,13 @@ class AdaBoostRegressorContainer(RegressorContainer):
         args = {"random_state": globals_dict["seed"]}
         tune_args = {}
         tune_grid = {
-            "n_estimators": np_list_arange(10, 1000, 10, inclusive=True),
+            "n_estimators": np_list_arange(10, 300, 10, inclusive=True),
             "learning_rate": np_list_arange(0.001, 0.5, 0.001, inclusive=True),
             "loss": ["linear", "square", "exponential"],
         }
         tune_distributions = {
             "learning_rate": UniformDistribution(0.000001, 0.5, log=True),
-            "n_estimators": IntUniformDistribution(10, 1000),
+            "n_estimators": IntUniformDistribution(10, 300),
         }
 
         leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
@@ -1225,12 +1225,12 @@ class GradientBoostingRegressorContainer(RegressorContainer):
         args = {"random_state": globals_dict["seed"]}
         tune_args = {}
         tune_grid = {
-            "n_estimators": np_list_arange(10, 1000, 10, inclusive=True),
+            "n_estimators": np_list_arange(10, 300, 10, inclusive=True),
             "learning_rate": np_list_arange(0.001, 0.5, 0.001, inclusive=True),
             "subsample": np_list_arange(0.2, 1, 0.05, inclusive=True),
             "min_samples_split": [2, 4, 5, 7, 9, 10],
             "min_samples_leaf": [1, 2, 3, 4, 5],
-            "max_depth": [int(x) for x in np.linspace(1, 11, num=11)],
+            "max_depth": np_list_arange(1, 11, 1, inclusive=True),
             "min_impurity_decrease": [
                 0,
                 0.0001,
@@ -1251,7 +1251,7 @@ class GradientBoostingRegressorContainer(RegressorContainer):
             "max_features": [1.0, "sqrt", "log2"],
         }
         tune_distributions = {
-            "n_estimators": IntUniformDistribution(10, 1000),
+            "n_estimators": IntUniformDistribution(10, 300),
             "learning_rate": UniformDistribution(0.000001, 0.5, log=True),
             "subsample": UniformDistribution(0.2, 1),
             "min_samples_split": IntUniformDistribution(2, 10),
@@ -1331,9 +1331,9 @@ class XGBRegressorContainer(RegressorContainer):
         tune_args = {}
         tune_grid = {
             "learning_rate": np_list_arange(0.001, 0.5, 0.001, inclusive=True),
-            "n_estimators": np_list_arange(10, 1000, 10, inclusive=True),
+            "n_estimators": np_list_arange(10, 300, 10, inclusive=True),
             "subsample": [0.2, 0.3, 0.5, 0.7, 0.9, 1],
-            "max_depth": [int(x) for x in np.linspace(1, 11, num=11)],
+            "max_depth": np_list_arange(1, 11, 1, inclusive=True),
             "colsample_bytree": [0.5, 0.7, 0.9, 1],
             "min_child_weight": [1, 2, 3, 4],
             "reg_alpha": np_list_arange(0, 10, 0.01, inclusive=True),
@@ -1342,7 +1342,7 @@ class XGBRegressorContainer(RegressorContainer):
         }
         tune_distributions = {
             "learning_rate": UniformDistribution(0.000001, 0.5, log=True),
-            "n_estimators": IntUniformDistribution(10, 1000),
+            "n_estimators": IntUniformDistribution(10, 300),
             "subsample": UniformDistribution(0.2, 1),
             "max_depth": IntUniformDistribution(1, 11),
             "colsample_bytree": UniformDistribution(0.5, 1),
@@ -1382,7 +1382,7 @@ class LGBMRegressorContainer(RegressorContainer):
         tune_grid = {
             "num_leaves": [10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 150, 200],
             "learning_rate": np_list_arange(0.001, 0.5, 0.001, inclusive=True),
-            "n_estimators": np_list_arange(10, 1000, 10, inclusive=True),
+            "n_estimators": np_list_arange(10, 300, 10, inclusive=True),
             "min_split_gain": [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9],
             "reg_alpha": np_list_arange(0, 10, 0.01, inclusive=True),
             "reg_lambda": np_list_arange(0, 10, 0.01, inclusive=True),
@@ -1391,7 +1391,7 @@ class LGBMRegressorContainer(RegressorContainer):
         tune_distributions = {
             "num_leaves": IntUniformDistribution(10, 200),
             "learning_rate": UniformDistribution(0.000001, 0.5, log=True),
-            "n_estimators": IntUniformDistribution(10, 1000),
+            "n_estimators": IntUniformDistribution(10, 300),
             "min_split_gain": UniformDistribution(0, 1),
             "reg_alpha": UniformDistribution(0, 10),
             "reg_lambda": UniformDistribution(0, 10),
@@ -1453,13 +1453,13 @@ class CatBoostRegressorContainer(RegressorContainer):
         tune_args = {}
         tune_grid = {
             "depth": list(range(1, 12)),
-            "n_estimators": np_list_arange(10, 1000, 10, inclusive=True),
+            "n_estimators": np_list_arange(10, 300, 10, inclusive=True),
             "learning_rate": np_list_arange(0.001, 0.5, 0.001, inclusive=True),
             "l2_leaf_reg": [3, 1, 5, 10, 20, 50, 100, 200],
         }
         tune_distributions = {
             "depth": IntUniformDistribution(1, 11),
-            "n_estimators": IntUniformDistribution(10, 1000, log=False),
+            "n_estimators": IntUniformDistribution(10, 300, log=False),
             "learning_rate": UniformDistribution(0.000001, 0.5, log=True),
             "l2_leaf_reg": IntUniformDistribution(1, 200, log=True),
         }

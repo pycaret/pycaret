@@ -172,7 +172,7 @@ class CategoricalDistribution(Distrubution):
     def get_CS(self, label):
         import ConfigSpace.hyperparameters as CSH
 
-        return CSH.CategoricalHyperparameter(name=label, choices=self.values)
+        return CSH.CategoricalHyperparameter(name=label, choices=[x for x in self.values if isinstance(x, Hashable)])
 
     def __repr__(self):
         return f"CategoricalDistribution(values={self.values})"

@@ -5,6 +5,7 @@ import pandas as pd
 import pytest
 import pycaret.regression
 import pycaret.datasets
+from pycaret.internal.utils import can_early_stop
 
 def test():
     # loading dataset
@@ -12,7 +13,7 @@ def test():
     assert isinstance(data, pd.core.frame.DataFrame)
 
     # init setup
-    reg = pycaret.regression.setup(data, target='medv', train_size=0.99, fold=2, silent=True, html=False, session_id=123)
+    reg = pycaret.regression.setup(data, target='medv', train_size=0.99, fold=2, silent=True, html=False, session_id=123, n_jobs=1)
     
     models = pycaret.regression.compare_models(turbo=False, n_select=100)
 
@@ -28,9 +29,9 @@ def test():
         pycaret.regression.tune_model(model, fold=2, n_iter=2, search_library='optuna', search_algorithm='tpe')
         pycaret.regression.tune_model(model, fold=2, n_iter=2, search_library='tune-sklearn', search_algorithm='hyperopt')
         pycaret.regression.tune_model(model, fold=2, n_iter=2, search_library='tune-sklearn', search_algorithm='bayesian')
+        if can_early_stop(model, True, True, True, {}):
+            pycaret.regression.tune_model(model, fold=2, n_iter=2, search_library='tune-sklearn', search_algorithm='bohb')
 
-    # bohb is broken in current ray[tune] release
-    #pycaret.regression.tune_model(model, fold=2, n_iter=2, search_library='tune-sklearn', search_algorithm='bohb')
 
     assert 1 == 1
     

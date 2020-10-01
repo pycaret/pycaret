@@ -5,6 +5,7 @@ import pandas as pd
 import pytest
 import pycaret.classification
 import pycaret.datasets
+from pycaret.internal.utils import can_early_stop
 
 def test():
     # loading dataset
@@ -12,7 +13,7 @@ def test():
     assert isinstance(data, pd.core.frame.DataFrame)
 
     # init setup
-    clf1 = pycaret.classification.setup(data, target='Purchase',train_size=0.99, fold=2, silent=True, html=False, session_id=123)
+    clf1 = pycaret.classification.setup(data, target='Purchase',train_size=0.99, fold=2, silent=True, html=False, session_id=123, n_jobs=1)
     
     models = pycaret.classification.compare_models(turbo=False, n_select=100)
 
@@ -28,9 +29,8 @@ def test():
         pycaret.classification.tune_model(model, fold=2, n_iter=2, search_library='optuna', search_algorithm='tpe')
         pycaret.classification.tune_model(model, fold=2, n_iter=2, search_library='tune-sklearn', search_algorithm='hyperopt')
         pycaret.classification.tune_model(model, fold=2, n_iter=2, search_library='tune-sklearn', search_algorithm='bayesian')
-
-    # bohb is broken in current ray[tune] release
-    #pycaret.classification.tune_model(model, fold=2, n_iter=2, search_library='tune-sklearn', search_algorithm='bohb')
+        if can_early_stop(model, True, True, True, {}):
+            pycaret.classification.tune_model(model, fold=2, n_iter=2, search_library='tune-sklearn', search_algorithm='bohb')
 
     assert 1 == 1
     
