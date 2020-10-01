@@ -86,7 +86,6 @@ def get_tune_trainable():
                 if self._is_xgb():
                     self.saved_models = [None for _ in range(n_splits)]
             else:
-                get_logger().info(self.estimator_config)
                 self.main_estimator.set_params(**self.estimator_config)
 
         def _is_xgb(self):
