@@ -13,7 +13,7 @@ def test():
     assert isinstance(data, pd.core.frame.DataFrame)
 
     # init setup
-    clf1 = pycaret.classification.setup(data, target='Purchase',train_size=0.99, fold=2, silent=True, html=False, session_id=123)
+    clf1 = pycaret.classification.setup(data, target='Purchase',train_size=0.99, fold=2, silent=True, html=False, session_id=123, n_jobs=1)
     
     models = pycaret.classification.compare_models(turbo=False, n_select=100)
 

@@ -13,7 +13,7 @@ def test():
     assert isinstance(data, pd.core.frame.DataFrame)
 
     # init setup
-    reg = pycaret.regression.setup(data, target='medv', train_size=0.99, fold=2, silent=True, html=False, session_id=123)
+    reg = pycaret.regression.setup(data, target='medv', train_size=0.99, fold=2, silent=True, html=False, session_id=123, n_jobs=1)
     
     models = pycaret.regression.compare_models(turbo=False, n_select=100)
 
