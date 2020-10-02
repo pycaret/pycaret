@@ -26,11 +26,11 @@ def test():
         pycaret.regression.tune_model(model, fold=2, n_iter=2, search_library='scikit-optimize', search_algorithm='bayesian', early_stopping=False)
         pycaret.regression.tune_model(model, fold=2, n_iter=2, search_library='optuna', search_algorithm='tpe', early_stopping=False)
         pycaret.regression.tune_model(model, fold=2, n_iter=2, search_library='tune-sklearn', search_algorithm='random', early_stopping=False)
-        pycaret.regression.tune_model(model, fold=2, n_iter=2, search_library='optuna', search_algorithm='tpe')
-        pycaret.regression.tune_model(model, fold=2, n_iter=2, search_library='tune-sklearn', search_algorithm='hyperopt')
-        pycaret.regression.tune_model(model, fold=2, n_iter=2, search_library='tune-sklearn', search_algorithm='bayesian')
+        pycaret.regression.tune_model(model, fold=2, n_iter=2, search_library='optuna', search_algorithm='tpe', early_stopping="asha")
+        pycaret.regression.tune_model(model, fold=2, n_iter=2, search_library='tune-sklearn', search_algorithm='hyperopt', early_stopping="asha")
+        pycaret.regression.tune_model(model, fold=2, n_iter=2, search_library='tune-sklearn', search_algorithm='bayesian', early_stopping="asha")
         if can_early_stop(model, True, True, True, {}):
-            pycaret.regression.tune_model(model, fold=2, n_iter=2, search_library='tune-sklearn', search_algorithm='bohb')
+            pycaret.regression.tune_model(model, fold=2, n_iter=2, search_library='tune-sklearn', search_algorithm='bohb', early_stopping=True)
 
 
     assert 1 == 1
