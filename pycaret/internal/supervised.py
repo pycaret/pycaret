@@ -3336,30 +3336,14 @@ def tune_model(
             ):
                 if "actual_estimator__n_estimators" in param_grid:
                     if custom_grid is None:
-                        _, early_stopping_max_iters = get_min_max(
-                            param_grid.pop("actual_estimator__n_estimators")
-                        )
-                        early_stopping_max_iters = early_stopping_max_iters // 20
-                        early_stopping_max_iters = (
-                            early_stopping_max_iters
-                            if early_stopping_max_iters > 10
-                            else 10
-                        )
+                        param_grid.pop("actual_estimator__n_estimators")
                     else:
                         raise ValueError(
                             "Param grid cannot contain n_estimators or max_iter if early_stopping is True and the model is warm started. Use early_stopping_max_iters params to set the upper bound of n_estimators or max_iter."
                         )
                 if "actual_estimator__max_iter" in param_grid:
                     if custom_grid is None:
-                        _, early_stopping_max_iters = get_min_max(
-                            param_grid.pop("actual_estimator__max_iter")
-                        )
-                        early_stopping_max_iters = early_stopping_max_iters // 20
-                        early_stopping_max_iters = (
-                            early_stopping_max_iters
-                            if early_stopping_max_iters > 10
-                            else 10
-                        )
+                        param_grid.pop("actual_estimator__max_iter")
                     else:
                         raise ValueError(
                             "Param grid cannot contain n_estimators or max_iter if early_stopping is True and the model is warm started. Use early_stopping_max_iters params to set the upper bound of n_estimators or max_iter."
