@@ -20,7 +20,7 @@ from pycaret.internal.pipeline import (
     make_internal_pipeline,
     estimator_pipeline,
     merge_pipelines,
-    Pipeline as InternalPipeline
+    Pipeline as InternalPipeline,
 )
 from pycaret.internal.utils import (
     color_df,
@@ -2662,9 +2662,7 @@ def create_model(
                 display=display,
             )
         except:
-            logger.error(
-                f"_mlflow_log_model() for {model} raised an exception:"
-            )
+            logger.error(f"_mlflow_log_model() for {model} raised an exception:")
             logger.error(traceback.format_exc())
 
     display.move_progress()
@@ -2707,7 +2705,7 @@ def tune_model(
     custom_scorer=None,  # added in pycaret==2.1 - depreciated
     search_library: str = "scikit-learn",
     search_algorithm: Optional[str] = None,
-    early_stopping: Any = "asha",
+    early_stopping: Any = False,
     early_stopping_max_iters: int = 10,
     choose_better: bool = False,
     fit_kwargs: Optional[dict] = None,
@@ -2807,7 +2805,7 @@ def tune_model(
         - 'random' - randomized search
         - 'tpe' - Tree-structured Parzen Estimator search (default)
 
-    early_stopping: bool or str or object, default = 'asha'
+    early_stopping: bool or str or object, default = False
         Use early stopping to stop fitting to a hyperparameter configuration 
         if it performs poorly. Ignored if search_library is ``scikit-learn``, or
         if the estimator doesn't have partial_fit attribute.
@@ -3238,6 +3236,8 @@ def tune_model(
     gc.collect()
 
     with estimator_pipeline(_internal_pipeline, model) as pipeline_with_model:
+        extra_params = {}
+
         fit_kwargs = _get_pipeline_fit_kwargs(pipeline_with_model, fit_kwargs)
 
         actual_estimator_label = get_pipeline_estimator_label(pipeline_with_model)
@@ -3337,6 +3337,11 @@ def tune_model(
             ):
                 if "actual_estimator__n_estimators" in param_grid:
                     if custom_grid is None:
+                        extra_params[
+                            "actual_estimator__n_estimators"
+                        ] = pipeline_with_model.get_params()[
+                            "actual_estimator__n_estimators"
+                        ]
                         param_grid.pop("actual_estimator__n_estimators")
                     else:
                         raise ValueError(
@@ -3527,6 +3532,7 @@ def tune_model(
             model_grid.fit(X_train, y_train, groups=groups, **fit_kwargs)
         best_params = model_grid.best_params_
         logger.info(f"best_params: {best_params}")
+        best_params = {**best_params, **extra_params}
         best_params = {
             k.replace(f"{actual_estimator_label}__", ""): v
             for k, v in best_params.items()
