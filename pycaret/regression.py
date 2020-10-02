@@ -880,7 +880,7 @@ def tune_model(
     custom_scorer=None,  # added in pycaret==2.1 - depreciated
     search_library: str = "scikit-learn",
     search_algorithm: Optional[str] = None,
-    early_stopping: Any = "asha",
+    early_stopping: Any = False,
     early_stopping_max_iters: int = 10,
     choose_better: bool = False,
     fit_kwargs: Optional[dict] = None,
@@ -980,7 +980,7 @@ def tune_model(
         - 'random' - randomized search
         - 'tpe' - Tree-structured Parzen Estimator search (default)
 
-    early_stopping: bool or str or object, default = 'asha'
+    early_stopping: bool or str or object, default = False
         Use early stopping to stop fitting to a hyperparameter configuration 
         if it performs poorly. Ignored if search_library is ``scikit-learn``, or
         if the estimator doesn't have partial_fit attribute.
