@@ -53,7 +53,7 @@ class Pipeline(imblearn.pipeline.Pipeline):
 
     def _carry_over_final_estimator_fit_vars(self):
         self._clear_final_estimator_fit_vars()
-        if hasattr(self._final_estimator, "fit") and is_fitted(self._final_estimator):
+        if hasattr(self._final_estimator, "fit"):
             for k, v in get_all_object_vars_and_properties(
                 self._final_estimator
             ).items():

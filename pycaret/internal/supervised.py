@@ -20,6 +20,7 @@ from pycaret.internal.pipeline import (
     make_internal_pipeline,
     estimator_pipeline,
     merge_pipelines,
+    Pipeline as InternalPipeline,
 )
 from pycaret.internal.utils import (
     color_df,
@@ -2642,31 +2643,29 @@ def create_model(
         runtime_end = time.time()
         runtime = np.array(runtime_end - runtime_start).round(2)
 
-        # mlflow logging
-        if logging_param and system and refit:
+    # mlflow logging
+    if logging_param and system and refit:
 
-            avgs_dict_log = avgs_dict.copy()
-            avgs_dict_log = {k: v[0] for k, v in avgs_dict_log.items()}
+        avgs_dict_log = avgs_dict.copy()
+        avgs_dict_log = {k: v[0] for k, v in avgs_dict_log.items()}
 
-            try:
-                _mlflow_log_model(
-                    model=pipeline_with_model,
-                    model_results=model_results,
-                    score_dict=avgs_dict_log,
-                    source="create_model",
-                    runtime=runtime,
-                    model_fit_time=model_fit_time,
-                    _prep_pipe=prep_pipe,
-                    log_plots=log_plots_param,
-                    display=display,
-                )
-            except:
-                logger.error(
-                    f"_mlflow_log_model() for {pipeline_with_model} raised an exception:"
-                )
-                logger.error(traceback.format_exc())
+        try:
+            _mlflow_log_model(
+                model=model,
+                model_results=model_results,
+                score_dict=avgs_dict_log,
+                source="create_model",
+                runtime=runtime,
+                model_fit_time=model_fit_time,
+                _prep_pipe=prep_pipe,
+                log_plots=log_plots_param,
+                display=display,
+            )
+        except:
+            logger.error(f"_mlflow_log_model() for {model} raised an exception:")
+            logger.error(traceback.format_exc())
 
-        display.move_progress()
+    display.move_progress()
 
     logger.info("Uploading results into container")
 
@@ -2706,7 +2705,7 @@ def tune_model(
     custom_scorer=None,  # added in pycaret==2.1 - depreciated
     search_library: str = "scikit-learn",
     search_algorithm: Optional[str] = None,
-    early_stopping: Any = "asha",
+    early_stopping: Any = False,
     early_stopping_max_iters: int = 10,
     choose_better: bool = False,
     fit_kwargs: Optional[dict] = None,
@@ -2806,7 +2805,7 @@ def tune_model(
         - 'random' - randomized search
         - 'tpe' - Tree-structured Parzen Estimator search (default)
 
-    early_stopping: bool or str or object, default = 'asha'
+    early_stopping: bool or str or object, default = False
         Use early stopping to stop fitting to a hyperparameter configuration 
         if it performs poorly. Ignored if search_library is ``scikit-learn``, or
         if the estimator doesn't have partial_fit attribute.
@@ -3237,6 +3236,8 @@ def tune_model(
     gc.collect()
 
     with estimator_pipeline(_internal_pipeline, model) as pipeline_with_model:
+        extra_params = {}
+
         fit_kwargs = _get_pipeline_fit_kwargs(pipeline_with_model, fit_kwargs)
 
         actual_estimator_label = get_pipeline_estimator_label(pipeline_with_model)
@@ -3336,30 +3337,19 @@ def tune_model(
             ):
                 if "actual_estimator__n_estimators" in param_grid:
                     if custom_grid is None:
-                        _, early_stopping_max_iters = get_min_max(
-                            param_grid.pop("actual_estimator__n_estimators")
-                        )
-                        early_stopping_max_iters = early_stopping_max_iters // 20
-                        early_stopping_max_iters = (
-                            early_stopping_max_iters
-                            if early_stopping_max_iters > 10
-                            else 10
-                        )
+                        extra_params[
+                            "actual_estimator__n_estimators"
+                        ] = pipeline_with_model.get_params()[
+                            "actual_estimator__n_estimators"
+                        ]
+                        param_grid.pop("actual_estimator__n_estimators")
                     else:
                         raise ValueError(
                             "Param grid cannot contain n_estimators or max_iter if early_stopping is True and the model is warm started. Use early_stopping_max_iters params to set the upper bound of n_estimators or max_iter."
                         )
                 if "actual_estimator__max_iter" in param_grid:
                     if custom_grid is None:
-                        _, early_stopping_max_iters = get_min_max(
-                            param_grid.pop("actual_estimator__max_iter")
-                        )
-                        early_stopping_max_iters = early_stopping_max_iters // 20
-                        early_stopping_max_iters = (
-                            early_stopping_max_iters
-                            if early_stopping_max_iters > 10
-                            else 10
-                        )
+                        param_grid.pop("actual_estimator__max_iter")
                     else:
                         raise ValueError(
                             "Param grid cannot contain n_estimators or max_iter if early_stopping is True and the model is warm started. Use early_stopping_max_iters params to set the upper bound of n_estimators or max_iter."
@@ -3542,6 +3532,7 @@ def tune_model(
             model_grid.fit(X_train, y_train, groups=groups, **fit_kwargs)
         best_params = model_grid.best_params_
         logger.info(f"best_params: {best_params}")
+        best_params = {**best_params, **extra_params}
         best_params = {
             k.replace(f"{actual_estimator_label}__", ""): v
             for k, v in best_params.items()
@@ -4855,6 +4846,8 @@ def plot_model(
 
     # defining estimator as model locally
     # deepcopy instead of clone so we have a fitted estimator
+    if isinstance(estimator, InternalPipeline):
+        estimator = estimator.steps[-1][1]
     estimator = deepcopy(estimator)
     model = estimator
 

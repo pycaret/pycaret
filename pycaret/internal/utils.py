@@ -266,6 +266,11 @@ def np_list_arange(
     Numpy arange returned as list with floating point conversion
     failsafes.
     """
+    convert_to_float = isinstance(start, float) or isinstance(stop, float) or isinstance(step, float)
+    if convert_to_float:
+        stop = float(stop)
+        start = float(start)
+        step = float(step)
     stop = stop + (step if inclusive else 0)
     range = list(np.arange(start, stop, step))
     range = [
