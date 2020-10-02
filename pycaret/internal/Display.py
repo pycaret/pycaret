@@ -88,7 +88,7 @@ class Display:
     def display(self, df, clear=False, override=None):
         if (self.verbose and self.html_param and override != False) or override == True:
             if clear:
-                self.clear_output()
+                self.clear_output(override=True)
             self._display(df)
         elif (
             self.verbose and not self.html_param and override != False
@@ -98,8 +98,9 @@ class Display:
             except:
                 print(df)
 
-    def clear_output(self):
-        clear_output()
+    def clear_output(self, override: bool = False):
+        if self.verbose or override:
+            clear_output()
 
     def _display(self, df, *args, **kwargs):
         if self.enviroment == "google.colab":

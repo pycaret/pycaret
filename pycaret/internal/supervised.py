@@ -20,6 +20,7 @@ from pycaret.internal.pipeline import (
     make_internal_pipeline,
     estimator_pipeline,
     merge_pipelines,
+    Pipeline as InternalPipeline
 )
 from pycaret.internal.utils import (
     color_df,
@@ -2642,31 +2643,31 @@ def create_model(
         runtime_end = time.time()
         runtime = np.array(runtime_end - runtime_start).round(2)
 
-        # mlflow logging
-        if logging_param and system and refit:
+    # mlflow logging
+    if logging_param and system and refit:
 
-            avgs_dict_log = avgs_dict.copy()
-            avgs_dict_log = {k: v[0] for k, v in avgs_dict_log.items()}
+        avgs_dict_log = avgs_dict.copy()
+        avgs_dict_log = {k: v[0] for k, v in avgs_dict_log.items()}
 
-            try:
-                _mlflow_log_model(
-                    model=pipeline_with_model,
-                    model_results=model_results,
-                    score_dict=avgs_dict_log,
-                    source="create_model",
-                    runtime=runtime,
-                    model_fit_time=model_fit_time,
-                    _prep_pipe=prep_pipe,
-                    log_plots=log_plots_param,
-                    display=display,
-                )
-            except:
-                logger.error(
-                    f"_mlflow_log_model() for {pipeline_with_model} raised an exception:"
-                )
-                logger.error(traceback.format_exc())
+        try:
+            _mlflow_log_model(
+                model=model,
+                model_results=model_results,
+                score_dict=avgs_dict_log,
+                source="create_model",
+                runtime=runtime,
+                model_fit_time=model_fit_time,
+                _prep_pipe=prep_pipe,
+                log_plots=log_plots_param,
+                display=display,
+            )
+        except:
+            logger.error(
+                f"_mlflow_log_model() for {model} raised an exception:"
+            )
+            logger.error(traceback.format_exc())
 
-        display.move_progress()
+    display.move_progress()
 
     logger.info("Uploading results into container")
 
@@ -4839,6 +4840,8 @@ def plot_model(
 
     # defining estimator as model locally
     # deepcopy instead of clone so we have a fitted estimator
+    if isinstance(estimator, InternalPipeline):
+        estimator = estimator.steps[-1][1]
     estimator = deepcopy(estimator)
     model = estimator
 
