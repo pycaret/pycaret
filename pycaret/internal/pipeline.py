@@ -15,7 +15,6 @@ from sklearn.base import BaseEstimator, TransformerMixin, clone
 from sklearn.utils.metaestimators import if_delegate_has_method
 import sklearn.pipeline
 from pycaret.internal.validation import is_fitted
-from pycaret.internal.logging import get_logger
 
 
 class Pipeline(imblearn.pipeline.Pipeline):
@@ -54,12 +53,10 @@ class Pipeline(imblearn.pipeline.Pipeline):
 
     def _carry_over_final_estimator_fit_vars(self):
         self._clear_final_estimator_fit_vars()
-        get_logger().info(hasattr(self._final_estimator, "fit"))
         if hasattr(self._final_estimator, "fit"):
             for k, v in get_all_object_vars_and_properties(
                 self._final_estimator
             ).items():
-                get_logger().info(k)
                 if k and k.endswith("_") and not k.startswith("_"):
                     try:
                         setattr(self, k, v)
