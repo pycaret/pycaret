@@ -16,10 +16,6 @@ def test():
     X = pipe.fit_transform(data)
     assert isinstance(X, pd.core.frame.DataFrame)
 
-    # preprocess all in one unsupervised
-    X = pycaret.preprocess.Preprocess_Path_Two(train_data=data, display_types=False)
-    assert isinstance(X, pd.core.frame.DataFrame)
-
     assert 1 == 1
     
 if __name__ == "__main__":
