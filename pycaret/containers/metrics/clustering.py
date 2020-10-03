@@ -1,11 +1,11 @@
-# Module: containers.metrics.regression
+# Module: containers.metrics.clustering
 # Author: Antoni Baum (Yard1) <antoni.baum@protonmail.com>
 # License: MIT
 
-# The purpose of this module is to serve as a central repository of classification metrics. The `classification` module will
-# call `get_all_metrics_containers()`, which will return instances of all classes in this module that have `ClassificationMetricContainer`
-# as a base (but not `RegressionMetricContainer` itself). In order to add a new model, you only need to create a new class that has
-# `RegressionMetricContainer` as a base, set all of the required parameters in the `__init__` and then call `super().__init__`
+# The purpose of this module is to serve as a central repository of clustering metrics. The `clustering` module will
+# call `get_all_metrics_containers()`, which will return instances of all classes in this module that have `ClusterMetricContainer`
+# as a base (but not `ClusterMetricContainer` itself). In order to add a new model, you only need to create a new class that has
+# `ClusterMetricContainer` as a base, set all of the required parameters in the `__init__` and then call `super().__init__`
 # to complete the process. Refer to the existing classes for examples.
 
 from typing import Optional, Union, Dict, Any
@@ -15,13 +15,11 @@ import pycaret.containers.base_container
 import pycaret.internal.metrics
 import numpy as np
 from sklearn import metrics
-from sklearn.utils.validation import check_consistent_length
-from sklearn.metrics._regression import _check_reg_targets
 
 
-class RegressionMetricContainer(MetricContainer):
+class ClusterMetricContainer(MetricContainer):
     """
-    Base regression metric container class, for easier definition of containers. Ensures consistent format
+    Base clustering metric container class, for easier definition of containers. Ensures consistent format
     before being turned into a dataframe row.
 
     Parameters
@@ -37,7 +35,10 @@ class RegressionMetricContainer(MetricContainer):
         a sklearn Scorer object, or None, in which case a Scorer object will be created from
         score_func and args.
     target : str, default = 'pred'
-        The target of the score function. Only 'pred' is supported for regression.
+        The target of the score function.
+        - 'pred' for the prediction table
+        - 'pred_proba' for pred_proba
+        - 'threshold' for decision_function or predict_proba
     args : dict, default = {}
         The arguments to always pass to constructor when initializing score_func of class_def class.
     display_name : str, default = None
@@ -46,6 +47,8 @@ class RegressionMetricContainer(MetricContainer):
         Whether score_func is a score function (default), meaning high is good,
         or a loss function, meaning low is good. In the latter case, the
         scorer object will sign-flip the outcome of the score_func.
+    needs_ground_truth: bool, default = False
+        Whether the metric needs ground truth to be calculated.
     is_custom : bool, default = False
         Is the metric custom. Should be False for all metrics defined in PyCaret.
 
@@ -61,9 +64,8 @@ class RegressionMetricContainer(MetricContainer):
         The scorer passed to models. Can be a string representing a built-in sklearn scorer,
         a sklearn Scorer object, or None, in which case a Scorer object will be created from
         score_func and args.
-    target : str
-        The target of the score function.
-        - 'pred' for the prediction table
+    target : str, default = 'pred'
+        The target of the score function. Only 'pred' is supported for clustering.
     args : dict
         The arguments to always pass to constructor when initializing score_func of class_def class.
     display_name : str
@@ -72,6 +74,8 @@ class RegressionMetricContainer(MetricContainer):
         Whether score_func is a score function (default), meaning high is good,
         or a loss function, meaning low is good. In the latter case, the
         scorer object will sign-flip the outcome of the score_func.
+    needs_ground_truth: bool
+        Whether the metric needs ground truth to be calculated.
     is_custom : bool
         Is the metric custom. Should be False for all metrics defined in PyCaret.
 
@@ -87,6 +91,7 @@ class RegressionMetricContainer(MetricContainer):
         args: Dict[str, Any] = None,
         display_name: Optional[str] = None,
         greater_is_better: bool = True,
+        needs_ground_truth: bool = False,
         is_custom: bool = False,
     ) -> None:
 
@@ -108,12 +113,15 @@ class RegressionMetricContainer(MetricContainer):
             scorer
             if scorer
             else metrics.make_scorer(
-                score_func, greater_is_better=greater_is_better, **args,
+                score_func,
+                greater_is_better=greater_is_better,
+                **args,
             )
         )
         self.display_name = display_name if display_name else name
         self.args = args
         self.greater_is_better = greater_is_better
+        self.needs_ground_truth = needs_ground_truth
         self.is_custom = is_custom
 
     def get_dict(self, internal: bool = True) -> Dict[str, Any]:
@@ -141,117 +149,70 @@ class RegressionMetricContainer(MetricContainer):
             "Target": self.target,
             "Args": self.args,
             "Greater is Better": self.greater_is_better,
+            "Needs Ground Truth": self.needs_ground_truth,
             "Custom": self.is_custom,
         }
 
         return d
 
 
-class MAEMetricContainer(RegressionMetricContainer):
+class SilhouetteMetricContainer(ClusterMetricContainer):
     def __init__(self, globals_dict: dict) -> None:
         super().__init__(
-            id="mae",
-            name="MAE",
-            score_func=metrics.mean_absolute_error,
-            greater_is_better=False,
-            scorer="neg_mean_absolute_error",
+            id="silhouette",
+            name="Silhouette",
+            score_func=metrics.silhouette_score,
         )
 
-
-class MSEMetricContainer(RegressionMetricContainer):
+class CHSMetricContainer(ClusterMetricContainer):
     def __init__(self, globals_dict: dict) -> None:
         super().__init__(
-            id="mse",
-            name="MSE",
-            score_func=metrics.mean_squared_error,
-            greater_is_better=False,
-            scorer="neg_mean_squared_error",
+            id="chs",
+            name="Calinski-Harabasz",
+            score_func=metrics.calinski_harabasz_score,
         )
 
-
-class RMSEMetricContainer(RegressionMetricContainer):
+class DBMetricContainer(ClusterMetricContainer):
     def __init__(self, globals_dict: dict) -> None:
-
         super().__init__(
-            id="rmse",
-            name="RMSE",
-            score_func=metrics.mean_squared_error,
-            greater_is_better=False,
-            args={"squared": False},
-            scorer="neg_root_mean_squared_error",
+            id="db",
+            name="Davies-Bouldin",
+            score_func=metrics.davies_bouldin_score,
         )
 
-
-class R2MetricContainer(RegressionMetricContainer):
+class HSMetricContainer(ClusterMetricContainer):
     def __init__(self, globals_dict: dict) -> None:
-
         super().__init__(
-            id="r2",
-            name="R2",
-            score_func=metrics.r2_score,
-            greater_is_better=True,
-            scorer="r2",
+            id="hs",
+            name="Homogeneity Score",
+            display_name="Homogeneity",
+            score_func=metrics.homogeneity_score,
+            needs_ground_truth=True
         )
 
-
-class RMSLEMetricContainer(RegressionMetricContainer):
+class ARIMetricContainer(ClusterMetricContainer):
     def __init__(self, globals_dict: dict) -> None:
-        def root_mean_squared_log_error(
-            y_true, y_pred, *, sample_weight=None, multioutput="uniform_average"
-        ):
-            return np.sqrt(
-                metrics.mean_squared_log_error(
-                    np.abs(y_true),
-                    np.abs(y_pred),
-                    sample_weight=sample_weight,
-                    multioutput=multioutput,
-                )
-            )
-
         super().__init__(
-            id="rmsle",
-            name="RMSLE",
-            score_func=root_mean_squared_log_error,
-            scorer=pycaret.internal.metrics.make_scorer_with_error_score(
-                root_mean_squared_log_error, error_score=0.0, greater_is_better=False
-            ),
-            greater_is_better=False,
+            id="ari",
+            name="Rand Index",
+            score_func=metrics.adjusted_rand_score,
+            needs_ground_truth=True
         )
 
-
-class MAPEMetricContainer(RegressionMetricContainer):
+class CSMetricContainer(ClusterMetricContainer):
     def __init__(self, globals_dict: dict) -> None:
-        def mean_absolute_percentage_error(
-            y_true, y_pred, sample_weight=None, multioutput="uniform_average"
-        ):
-            y_type, y_true, y_pred, multioutput = _check_reg_targets(
-                y_true, y_pred, multioutput
-            )
-            check_consistent_length(y_true, y_pred, sample_weight)
-            epsilon = np.finfo(np.float64).eps
-            mape = np.abs(y_pred - y_true) / np.maximum(np.abs(y_true), epsilon)
-            output_errors = np.average(mape, weights=sample_weight, axis=0)
-            if isinstance(multioutput, str):
-                if multioutput == "raw_values":
-                    return output_errors
-                elif multioutput == "uniform_average":
-                    # pass None as weights to np.average: uniform mean
-                    multioutput = None
-
-            return np.average(output_errors, weights=multioutput)
-
         super().__init__(
-            id="mape",
-            name="MAPE",
-            score_func=mean_absolute_percentage_error,
-            greater_is_better=False,
+            id="cs",
+            name="Completeness Score",
+            display_name="Completeness",
+            score_func=metrics.completeness_score,
+            needs_ground_truth=True
         )
-
 
 def get_all_metric_containers(
     globals_dict: dict, raise_errors: bool = True
-) -> Dict[str, RegressionMetricContainer]:
+) -> Dict[str, ClusterMetricContainer]:
     return pycaret.containers.base_container.get_all_containers(
-        globals(), globals_dict, RegressionMetricContainer, raise_errors
+        globals(), globals_dict, ClusterMetricContainer, raise_errors
     )
 

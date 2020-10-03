@@ -118,7 +118,6 @@ class DataTypes_Auto_infer(BaseEstimator,TransformerMixin):
 
     # drop any columns that were asked to drop
     data.drop(columns=self.features_todrop,errors='ignore',inplace=True)
-
     # remove sepcial char from column names
     #data.columns= data.columns.str.replace('[,]','')
 
@@ -2645,7 +2644,7 @@ def Preprocess_Path_One(train_data,target_variable,ml_usecase=None,test_data =No
                                 imputation_classifier = None,
                                 imputation_regressor = None,
                                 imputation_max_iter = 10,
-                                imputation_warm_start = True,
+                                imputation_warm_start = False,
                                 imputation_order = "ascending",
                                 apply_zero_nearZero_variance = False,
                                 club_rare_levels = False, rara_level_threshold_percentage =0.05,
@@ -2658,6 +2657,7 @@ def Preprocess_Path_One(train_data,target_variable,ml_usecase=None,test_data =No
                                 scale_data= False, scaling_method='zscore',
                                 Power_transform_data = False, Power_transform_method ='quantile',
                                 remove_outliers = False, outlier_contamination_percentage= 0.01,outlier_methods=['pca','iso','knn'],
+                                dummify_categoricals=True,
                                 apply_feature_selection = False, feature_selection_top_features_percentage=.80,
                                 feature_selection_method = 'classic',
                                 remove_multicollinearity = False, maximum_correlation_between_features= 0.90,
@@ -2701,24 +2701,25 @@ def Preprocess_Path_One(train_data,target_variable,ml_usecase=None,test_data =No
   if test_data is not None:
     test_data.columns = [str(i) for i in test_data.columns]
   
-
-
-  # WE NEED TO AUTO INFER the ml use case
-  c1 = train_data[target_variable].dtype == 'int64'
-  c2 = train_data[target_variable].nunique() <= 20
-  c3 = train_data[target_variable].dtype.name in ['object', 'bool', 'category']
-  
-  if ml_usecase is None:
-    if ( ( (c1) & (c2) ) | (c3)   ):
-      ml_usecase ='classification'
-    else:
-      ml_usecase ='regression'
-  
-  if ((train_data[target_variable].nunique() > 2) and (ml_usecase != 'regression')):
-    subcase = 'multi'
+  if target_variable is None:
+    ml_usecase ='regression'
   else:
-    subcase = 'binary'
-  
+    # WE NEED TO AUTO INFER the ml use case
+    c1 = train_data[target_variable].dtype == 'int64'
+    c2 = train_data[target_variable].nunique() <= 20
+    c3 = train_data[target_variable].dtype.name in ['object', 'bool', 'category']
+    
+    if ml_usecase is None:
+      if ( ( (c1) & (c2) ) | (c3)   ):
+        ml_usecase ='classification'
+      else:
+        ml_usecase ='regression'
+    
+    if ((train_data[target_variable].nunique() > 2) and (ml_usecase != 'regression')):
+      subcase = 'multi'
+    else:
+      subcase = 'binary'
+
   dtypes = DataTypes_Auto_infer(target=target_variable,ml_usecase=ml_usecase,categorical_features=categorical_features,numerical_features=numerical_features,time_features=time_features,features_todrop=features_todrop,display_types=display_types,id_columns=find_id_columns(train_data, numerical_features=numerical_features))
 
   
@@ -2808,7 +2809,11 @@ def Preprocess_Path_One(train_data,target_variable,ml_usecase=None,test_data =No
 
   # for Time Variables
   feature_time = Make_Time_Features()
-  dummy = Dummify(target_variable)
+  
+  if dummify_categoricals == True:
+    dummy = Dummify(target_variable)
+  else:
+    dummy = SKLEARN_EMPTY_STEP
 
   # remove putliers
   if remove_outliers == True:
@@ -2898,6 +2903,10 @@ def Preprocess_Path_One(train_data,target_variable,ml_usecase=None,test_data =No
 # preprocess_all_in_one_unsupervised
 def Preprocess_Path_Two(train_data,ml_usecase=None,test_data =None,categorical_features=[],numerical_features=[],time_features=[],features_todrop=[],display_types=False,
                                 imputation_type = "simple" ,numeric_imputation_strategy='mean',categorical_imputation_strategy='not_available',
+                                imputation_classifier = None,
+                                imputation_regressor = None,
+                                imputation_max_iter = 10,
+                                imputation_warm_start = False, imputation_order = "ascending",
                                 apply_zero_nearZero_variance = False,
                                 club_rare_levels = False, rara_level_threshold_percentage =0.05,
                                 apply_untrained_levels_treatment= False,untrained_levels_treatment_method = 'least frequent',
@@ -2911,8 +2920,8 @@ def Preprocess_Path_Two(train_data,ml_usecase=None,test_data =None,categorical_f
                                 remove_multicollinearity = False, maximum_correlation_between_features= 0.90,
                                 remove_perfect_collinearity= False,  
                                 apply_pca = False , pca_method = 'pca_liner',pca_variance_retained_or_number_of_components =.99 , 
-                                random_state=42
-
+                                random_state=42,
+                                n_jobs=-1
                                ):
   
   '''
@@ -2936,169 +2945,11 @@ def Preprocess_Path_Two(train_data,ml_usecase=None,test_data =None,categorical_f
       -16) Apply diamension reduction techniques such as pca_liner, pca_kernal, incremental, tsne 
           - except for pca_liner, all other method only takes number of component (as integer) i.e no variance explaination metohd available 
   '''
-  
-  
-  # also make sure that all the column names are string 
-  train_data.columns = [str(i) for i in train_data.columns]
-  if test_data is not None:
-    test_data.columns = [str(i) for i in test_data.columns]
-  
-  # just make a dummy target variable
-  target_variable = 'dummy_target'
-  train_data[target_variable] = 2
-  # just to add diversified values to target
-  train_data.loc[0:3,target_variable] = 3
- 
-  # WE NEED TO AUTO INFER the ml use case
-  #c1 = train_data[target_variable].dtype == 'int64'
-  #c2 = len(train_data[target_variable].unique()) <= 20
-  #c3 = train_data[target_variable].dtype.name in ['object', 'bool', 'category']
-  
-  # dummy usecase
-  ml_usecase ='regression'
-  
-
-  dtypes = DataTypes_Auto_infer(target=target_variable,ml_usecase=ml_usecase,categorical_features=categorical_features,numerical_features=numerical_features,time_features=time_features,features_todrop=features_todrop,display_types=display_types)
-
-  
-  # for imputation
-  if imputation_type == "simple":
-    imputer = Simple_Imputer(numeric_strategy=numeric_imputation_strategy, target_variable= target_variable,categorical_strategy=categorical_imputation_strategy)
-  else:
-    imputer = Surrogate_Imputer(numeric_strategy=numeric_imputation_strategy,categorical_strategy=categorical_imputation_strategy,target_variable=target_variable)
-  
-  # for zero_near_zero
-  if apply_zero_nearZero_variance == True:
-    znz = Zroe_NearZero_Variance(target=target_variable)
-  else:
-    znz = SKLEARN_EMPTY_STEP
- 
-  # for rare levels clubbing:
-  if club_rare_levels == True:
-    club_R_L = Catagorical_variables_With_Rare_levels(target=target_variable,threshold=rara_level_threshold_percentage)
-  else:
-    club_R_L= SKLEARN_EMPTY_STEP
-  
-  # untrained levels in test
-  if apply_untrained_levels_treatment ==  True:
-    new_levels = New_Catagorical_Levels_in_TestData(target=target_variable,replacement_strategy=untrained_levels_treatment_method)
-  else:
-    new_levels= SKLEARN_EMPTY_STEP
-
-  # untrained levels in test(ordinal specific)
-  if apply_untrained_levels_treatment ==  True:
-    new_levels1 = New_Catagorical_Levels_in_TestData(target=target_variable,replacement_strategy=untrained_levels_treatment_method)
-  else:
-    new_levels1= SKLEARN_EMPTY_STEP
-
-  # cardinality:
-  if apply_cardinality_reduction==True and cardinal_method =='cluster':
-    # cardinality = Reduce_Cardinality_with_Clustering(target_variable=target_variable, catagorical_feature=cardinal_features, check_clusters_upto=50,random_state=random_state)
-    cardinality= SKLEARN_EMPTY_STEP
-  elif apply_cardinality_reduction==True and cardinal_method =='count':
-    cardinality = Reduce_Cardinality_with_Counts(catagorical_feature=cardinal_features)
-  else:
-    cardinality= SKLEARN_EMPTY_STEP
-  
- # ordinal coding
-  if apply_ordinal_encoding == True:
-    # we need to make sure that if the columns chosen by user have NA & imputer strategy is not_availablle then we add that to the categories first
-    for i in ordinal_columns_and_categories.keys():
-      if sum(train_data[i].isnull()) > 0:
-        if categorical_imputation_strategy=='not_available':
-          lis = ['not_available'] + ordinal_columns_and_categories[i]
-          ordinal_columns_and_categories.update({i:lis})
-    
-    ordinal = Ordinal(info_as_dict=ordinal_columns_and_categories)
-  else:
-    ordinal = SKLEARN_EMPTY_STEP
-  
-  # grouping
-  if apply_grouping == True:
-    group = Group_Similar_Features(group_name=group_name,list_of_grouped_features=features_to_group_ListofList)
-  else:
-    group = SKLEARN_EMPTY_STEP
-  
-
-  # binning 
-
-  if apply_binning == True:
-    binn = Binning(features_to_discretize=features_to_binn)
-  else:
-    binn = SKLEARN_EMPTY_STEP
-  
-  # for scaling
-  if scale_data == True:
-    scaling = Scaling_and_Power_transformation(target=target_variable,function_to_apply=scaling_method,random_state_quantile=random_state)
-  else: 
-    scaling = SKLEARN_EMPTY_STEP
-  
-  if Power_transform_data== True:
-    P_transform = Scaling_and_Power_transformation(target=target_variable,function_to_apply=Power_transform_method,random_state_quantile=random_state)
-  else:
-    P_transform= SKLEARN_EMPTY_STEP
-
-  # for Time Variables
-  feature_time = Make_Time_Features()
-  dummy = Dummify(target_variable)
-  
-  # remove putliers
-  if remove_outliers == True:
-    rem_outliers= Outlier(target=target_variable,contamination=outlier_contamination_percentage,random_state=random_state,methods=outlier_methods )
-  else:
-    rem_outliers = SKLEARN_EMPTY_STEP
-
-  # clean column names for special char
-  clean_names =Clean_Colum_Names()
-
-  # removing multicollinearity
-  if remove_multicollinearity == True: 
-    fix_multi = Fix_multicollinearity(target_variable=target_variable,threshold=maximum_correlation_between_features,correlation_with_target_preference=0.0)
-  else:
-    fix_multi = SKLEARN_EMPTY_STEP
-
-  # remove 100% collinearity
-  if remove_perfect_collinearity == True:
-    fix_perfect = Remove_100(target=target_variable)
-  else:
-    fix_perfect = SKLEARN_EMPTY_STEP
-  
-  # apply pca
-  if apply_pca == True:
-    pca = Reduce_Dimensions_For_Supervised_Path(target=target_variable,method = pca_method ,variance_retained_or_number_of_components=pca_variance_retained_or_number_of_components, random_state=random_state)
-  
-  else:
-    pca= SKLEARN_EMPTY_STEP
-
-  pipe = Pipeline([
-                 ('dtypes',dtypes),
-                 ('imputer',imputer),
-                 ('new_levels1',new_levels1), # specifically used for ordinal, so that if a new level comes in a feature that was marked ordinal can be handled 
-                 ('ordinal',ordinal),
-                 ('cardinality',cardinality),
-                 ('znz',znz),
-                 ('club_R_L',club_R_L),
-                 ('new_levels',new_levels),
-                 ('feature_time',feature_time),
-                 ('group',group),
-                 ('scaling',scaling),
-                 ('P_transform',P_transform),
-                 ('binn',binn),
-                 ('fix_perfect',fix_perfect),
-                 ('rem_outliers',rem_outliers),
-                 ('dummy',dummy),
-                 ('clean_names',clean_names),
-                 ('fix_multi',fix_multi),
-                 ('pca',pca)
-                 ])
-  
-  if test_data is not None:
-    train_t = pipe.fit_transform(train_data)
-    test_t = pipe.transform(test_data)
-    return(train_t.drop(target_variable,axis=1),test_t)
-  else:
-    train_t = pipe.fit_transform(train_data)
-    return(train_t.drop(target_variable,axis=1))
+  return Preprocess_Path_One(
+    train_data=train_data, ml_usecase=ml_usecase,target_variable=None,test_data=test_data,categorical_features=categorical_features,numerical_features=numerical_features,time_features=time_features,features_todrop=features_todrop,display_types=display_types,imputation_type=imputation_type,numeric_imputation_strategy=numeric_imputation_strategy,categorical_imputation_strategy=categorical_imputation_strategy,imputation_classifier=imputation_classifier,imputation_regressor=imputation_regressor,imputation_max_iter=imputation_max_iter,imputation_warm_start=imputation_warm_start,imputation_order=imputation_order,apply_zero_nearZero_variance=apply_zero_nearZero_variance,club_rare_levels=club_rare_levels,rara_level_threshold_percentage=rara_level_threshold_percentage,apply_untrained_levels_treatment=apply_untrained_levels_treatment,untrained_levels_treatment_method=untrained_levels_treatment_method,apply_ordinal_encoding=apply_ordinal_encoding,ordinal_columns_and_categories=ordinal_columns_and_categories,apply_cardinality_reduction=apply_cardinality_reduction,cardinal_method=cardinal_method,cardinal_features=cardinal_features,apply_binning=apply_binning,features_to_binn=features_to_binn,apply_grouping=apply_grouping,group_name=group_name,features_to_group_ListofList=features_to_group_ListofList,scale_data=scale_data,scaling_method=scaling_method,
+    Power_transform_data=Power_transform_data,Power_transform_method=Power_transform_method,remove_outliers=remove_outliers,outlier_contamination_percentage=outlier_contamination_percentage,outlier_methods=outlier_methods,
+    dummify_categoricals=False,remove_multicollinearity=remove_multicollinearity,maximum_correlation_between_features=maximum_correlation_between_features,remove_perfect_collinearity=remove_perfect_collinearity,apply_pca=apply_pca,pca_method=pca_method,pca_variance_retained_or_number_of_components=pca_variance_retained_or_number_of_components,random_state=random_state,n_jobs=n_jobs,
+  )
 
 def _get_labelencoder_reverse_dict(le: LabelEncoder) -> dict:
   # now get the replacement dict

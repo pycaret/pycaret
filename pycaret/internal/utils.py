@@ -288,6 +288,45 @@ def np_list_arange(
     return range
 
 
+def calculate_unsupervised_metrics(
+    metrics: Dict[str, MetricContainer],
+    X,
+    labels,
+    ground_truth: Optional[Any] = None,
+    score_dict: Optional[Dict[str, np.array]] = None,
+) -> Dict[str, np.array]:
+
+    score_dict = []
+
+    for k, v in metrics.items():
+        score_dict.append(
+            _calculate_unsupervised_metric(
+                v, v.score_func, v.display_name, X, labels, ground_truth
+            )
+        )
+
+    score_dict = dict([x for x in score_dict if x is not None])
+    return score_dict
+
+
+def _calculate_unsupervised_metric(
+    container, score_func, display_name, X, labels, ground_truth,
+):
+    if not score_func:
+        return None
+    target = ground_truth if container.needs_ground_truth else X
+    try:
+        calculated_metric = score_func(
+            target, labels, **container.args
+        )
+    except:
+        try:
+            calculated_metric = score_func(target, labels, **container.args)
+        except:
+            calculated_metric = 0
+
+    return (display_name, calculated_metric)
+
 def calculate_metrics(
     metrics: Dict[str, MetricContainer],
     y_test,

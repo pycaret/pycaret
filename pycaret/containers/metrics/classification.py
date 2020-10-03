@@ -43,7 +43,7 @@ class ClassificationMetricContainer(MetricContainer):
         The arguments to always pass to constructor when initializing score_func of class_def class.
     display_name : str, default = None
         Display name (shorter than name). Used in display dataframe header. If None or empty, will use name.
-    greater_is_better: bool
+    greater_is_better: bool, default = True
         Whether score_func is a score function (default), meaning high is good,
         or a loss function, meaning low is good. In the latter case, the
         scorer object will sign-flip the outcome of the score_func.

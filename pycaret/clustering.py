@@ -4,45 +4,62 @@
 # Release: PyCaret 2.1.1
 # Last modified : 29/08/2020
 
+import sys
+import datetime, time
+import warnings
+from pycaret.internal.logging import get_logger
+from pycaret.internal.Display import Display
+import pandas as pd
+import numpy as np
+import ipywidgets as ipw
+from typing import List, Tuple, Any, Union, Optional, Dict
+import pycaret.internal.tabular
+
 def setup(data, 
-        categorical_features = None,
-        categorical_imputation = 'constant',
-        ordinal_features = None,
-        high_cardinality_features = None,
-        numeric_features = None,
-        numeric_imputation = 'mean',
-        date_features = None,
-        ignore_features = None,
-        normalize = False,
-        normalize_method = 'zscore',
-        transformation = False,
-        transformation_method = 'yeo-johnson',
-        handle_unknown_categorical = True,             
-        unknown_categorical_method = 'least_frequent', 
-        pca = False,
-        pca_method = 'linear',
-        pca_components = None,
-        ignore_low_variance = False, 
-        combine_rare_levels = False, 
-        rare_level_threshold = 0.10, 
-        bin_numeric_features = None, 
-        remove_multicollinearity = False,
-        multicollinearity_threshold = 0.9,
-        group_features = None, 
-        group_names = None, 
-        supervised = False,
-        supervised_target = None,
-        n_jobs = -1, 
-        html = True,
-        session_id = None,
-        log_experiment = False, 
-        experiment_name = None, 
-        log_plots = False,
-        log_profile = False, 
-        log_data = False,
-        silent = False,
-        verbose = True,
-        profile = False,):
+        preprocess: bool = True,
+        imputation_type: str = "simple",
+        iterative_imputation_iters: int = 10,
+        categorical_features: Optional[List[str]] = None,
+        categorical_imputation: str = "mode",
+        categorical_iterative_imputer: Union[str, Any] = "lightgbm",
+        ordinal_features: Optional[Dict[str, list]] = None,
+        high_cardinality_features: Optional[List[str]] = None,
+        high_cardinality_method: str = "frequency",
+        numeric_features: Optional[List[str]] = None,
+        numeric_imputation: str = "mean",  # method 'zero' added in pycaret==2.1
+        numeric_iterative_imputer: Union[str, Any] = "lightgbm",
+        date_features: Optional[List[str]] = None,
+        ignore_features: Optional[List[str]] = None,
+        normalize: bool = False,
+        normalize_method: str = "zscore",
+        transformation: bool = False,
+        transformation_method: str = "yeo-johnson",
+        handle_unknown_categorical: bool = True,
+        unknown_categorical_method: str = "least_frequent",
+        pca: bool = False,
+        pca_method: str = "linear",
+        pca_components: Optional[float] = None,
+        ignore_low_variance: bool = False,
+        combine_rare_levels: bool = False,
+        rare_level_threshold: float = 0.10,
+        bin_numeric_features: Optional[List[str]] = None,
+        remove_multicollinearity: bool = False,
+        multicollinearity_threshold: float = 0.9,
+        remove_perfect_collinearity: bool = False,
+        group_features: Optional[List[str]] = None,
+        group_names: Optional[List[str]] = None,
+        n_jobs: Optional[int] = -1,
+        html: bool = True,
+        session_id: Optional[int] = None,
+        log_experiment: bool = False,
+        experiment_name: Optional[str] = None,
+        log_plots: Union[bool, list] = False,
+        log_profile: bool = False,
+        log_data: bool = False,
+        silent: bool = False,
+        verbose: bool = True,
+        profile: bool = False,
+        display: Optional[Display] = None,):
     
     """
     This function initializes the environment in pycaret. setup() must called before
@@ -229,14 +246,6 @@ def setup(data,
         to the length of group_features. When the length doesn't match or the name is 
         not passed, new features are sequentially named such as group_1, group_2 etc.
     
-    supervised: bool, default = False
-        When set to True, supervised_target column is ignored for transformation. This
-        param is only for internal use. 
-    
-    supervised_target: string, default = None
-        Name of supervised_target column that will be ignored for transformation. Only
-        applciable when tune_model function is used. This param is only for internal use.
-
     n_jobs: int, default = -1
         The number of jobs to run in parallel (for functions that supports parallel 
         processing) -1 means using all processors. To run all functions on single 
@@ -292,922 +301,74 @@ def setup(data,
 
     """
     
-    #exception checking   
-    import sys
-    
-    from pycaret.utils import __version__
-    ver = __version__
-
-    import logging
-
-    # create logger
-    global logger
-    
-    logger = logging.getLogger('logs')
-    logger.setLevel(logging.DEBUG)
-    
-    # create console handler and set level to debug
-    if logger.hasHandlers():
-        logger.handlers.clear()
-    
-    ch = logging.FileHandler('logs.log')
-    ch.setLevel(logging.DEBUG)
-
-    # create formatter
-    formatter = logging.Formatter('%(asctime)s:%(levelname)s:%(message)s')
-
-    # add formatter to ch
-    ch.setFormatter(formatter)
-
-    # add ch to logger
-    logger.addHandler(ch)
-
-    logger.info("PyCaret Clustering Module")
-    logger.info('version ' + str(ver))
-    logger.info("Initializing setup()")
-
-    #generate USI for mlflow tracking
-    import secrets
-    global USI
-    USI = secrets.token_hex(nbytes=2)
-    logger.info('USI: ' + str(USI))
-
-    logger.info("""setup(data={}, categorical_features={}, categorical_imputation={}, ordinal_features={}, high_cardinality_features={}, 
-                    numeric_features={}, numeric_imputation={}, date_features={}, ignore_features={}, normalize={},
-                    normalize_method={}, transformation={}, transformation_method={}, handle_unknown_categorical={}, unknown_categorical_method={}, pca={}, pca_method={},
-                    pca_components={}, ignore_low_variance={}, combine_rare_levels={}, rare_level_threshold={}, bin_numeric_features={},
-                    remove_multicollinearity={}, multicollinearity_threshold={}, group_features={},
-                    group_names={}, supervised={}, supervised_target={}, n_jobs={}, html={}, session_id={}, log_experiment={},
-                    experiment_name={}, log_plots={}, log_profile={}, log_data={}, silent={}, verbose={}, profile={})""".format(\
-            str(data.shape), str(categorical_features), str(categorical_imputation), str(ordinal_features),\
-            str(high_cardinality_features), str(numeric_features), str(numeric_imputation), str(date_features), str(ignore_features),\
-            str(normalize), str(normalize_method), str(transformation), str(transformation_method), str(handle_unknown_categorical), str(unknown_categorical_method), str(pca),\
-            str(pca_method), str(pca_components), str(ignore_low_variance), str(combine_rare_levels), str(rare_level_threshold), str(bin_numeric_features),\
-            str(remove_multicollinearity), str(multicollinearity_threshold), str(group_features),str(group_names),str(supervised), str(supervised_target), str(n_jobs), str(html),\
-            str(session_id),str(log_experiment), str(experiment_name), str(log_plots),str(log_profile), str(log_data), str(silent), str(verbose), str(profile)))
-
-    #logging environment and libraries
-    logger.info("Checking environment")
-    
-    from platform import python_version, platform, python_build, machine
-
-    try:
-        logger.info("python_version: " + str(python_version()))
-    except:
-        logger.warning("cannot find platform.python_version")
-
-    try:
-        logger.info("python_build: " + str(python_build()))
-    except:
-        logger.warning("cannot find platform.python_build")
-
-    try:
-        logger.info("machine: " + str(machine()))
-    except:
-        logger.warning("cannot find platform.machine")
-
-    try:
-        logger.info("platform: " + str(platform()))
-    except:
-        logger.warning("cannot find platform.platform")
-
-    try:
-        import psutil
-        logger.info("Memory: " + str(psutil.virtual_memory()))
-        logger.info("Physical Core: " + str(psutil.cpu_count(logical=False)))
-        logger.info("Logical Core: " + str(psutil.cpu_count(logical=True)))
-    except:
-        logger.warning("cannot find psutil installation. memory not traceable. Install psutil using pip to enable memory logging. ")
-
-    logger.info("Checking libraries")
-
-    try:
-        from pandas import __version__
-        logger.info("pd==" + str(__version__))
-    except:
-        logger.warning("pandas not found")
-
-    try:
-        from numpy import __version__
-        logger.info("numpy==" + str(__version__))
-    except:
-        logger.warning("numpy not found")
-
-    try:
-        from sklearn import __version__
-        logger.info("sklearn==" + str(__version__))
-    except:
-        logger.warning("sklearn not found")
-
-    try:
-        from kmodes import __version__
-        logger.info("kmodes==" + str(__version__))
-    except:
-        logger.warning("kmodes not found")
-
-    try:
-        from mlflow.version import VERSION
-        import warnings
-        warnings.filterwarnings('ignore') 
-        logger.info("mlflow==" + str(VERSION))
-    except:
-        logger.warning("mlflow not found")
-
-
-    logger.info("Checking Exceptions")
-
-    #run_time
-    import datetime, time
-    runtime_start = time.time()
-
-    """
-    error handling starts here
-    """
-    
-    #checking data type
-    if hasattr(data,'shape') is False:
-        sys.exit('(Type Error): data passed must be of type pandas.DataFrame')  
-
-    #checking session_id
-    if session_id is not None:
-        if type(session_id) is not int:
-            sys.exit('(Type Error): session_id parameter must be an integer.')  
-            
-    #checking normalize parameter
-    if type(normalize) is not bool:
-        sys.exit('(Type Error): normalize parameter only accepts True or False.')
-        
-    #checking transformation parameter
-    if type(transformation) is not bool:
-        sys.exit('(Type Error): transformation parameter only accepts True or False.')
-        
-    #checking categorical imputation
-    allowed_categorical_imputation = ['constant', 'mode']
-    if categorical_imputation not in allowed_categorical_imputation:
-        sys.exit("(Value Error): categorical_imputation param only accepts 'constant' or 'mode' ")
-    
-    #ordinal_features
-    if ordinal_features is not None:
-        if type(ordinal_features) is not dict:
-            sys.exit("(Type Error): ordinal_features must be of type dictionary with column name as key and ordered values as list. ")
-    
-    #ordinal features check
-    if ordinal_features is not None:
-        data_cols = data.columns
-        #data_cols = data_cols.drop(target)
-        ord_keys = ordinal_features.keys()
-
-        for i in ord_keys:
-            if i not in data_cols:
-                sys.exit("(Value Error) Column name passed as a key in ordinal_features param doesnt exist. ")
-                
-        for k in ord_keys:
-            if data[k].nunique() != len(ordinal_features.get(k)):
-                sys.exit("(Value Error) Levels passed in ordinal_features param doesnt match with levels in data. ")
-                
-        for i in ord_keys:
-            value_in_keys = ordinal_features.get(i)
-            value_in_data = list(data[i].unique().astype(str))
-            for j in value_in_keys:
-                if j not in value_in_data:
-                    text =  "Column name '" + str(i) + "' doesnt contain any level named '" + str(j) + "'."
-                    sys.exit(text)
-    
-    #high_cardinality_features
-    if high_cardinality_features is not None:
-        if type(high_cardinality_features) is not list:
-            sys.exit("(Type Error): high_cardinality_features param only accepts name of columns as a list. ")
-        
-    if high_cardinality_features is not None:
-        data_cols = data.columns
-        #data_cols = data_cols.drop(target)
-        for i in high_cardinality_features:
-            if i not in data_cols:
-                sys.exit("(Value Error): Column type forced is either target column or doesn't exist in the dataset.")
-        
-    #checking numeric imputation
-    allowed_numeric_imputation = ['mean', 'median', 'zero']
-    if numeric_imputation not in allowed_numeric_imputation:
-        sys.exit("(Value Error): numeric_imputation param only accepts 'mean', 'median' or 'zero'.")
-        
-    #checking normalize method
-    allowed_normalize_method = ['zscore', 'minmax', 'maxabs', 'robust']
-    if normalize_method not in allowed_normalize_method:
-        sys.exit("(Value Error): normalize_method param only accepts 'zscore', 'minxmax', 'maxabs' or 'robust'. ")    
-    
-    #checking transformation method
-    allowed_transformation_method = ['yeo-johnson', 'quantile']
-    if transformation_method not in allowed_transformation_method:
-        sys.exit("(Value Error): transformation_method param only accepts 'yeo-johnson' or 'quantile' ")        
-    
-    #handle unknown categorical
-    if type(handle_unknown_categorical) is not bool:
-        sys.exit('(Type Error): handle_unknown_categorical parameter only accepts True or False.')
-        
-    #unknown categorical method
-    unknown_categorical_method_available = ['least_frequent', 'most_frequent']
-    
-    #forced type check
-    all_cols = list(data.columns)
-    
-    #categorical
-    if categorical_features is not None:
-        for i in categorical_features:
-            if i not in all_cols:
-                sys.exit("(Value Error): Column type forced is either target column or doesn't exist in the dataset.") 
-    #numeric
-    if numeric_features is not None:
-        for i in numeric_features:
-            if i not in all_cols:
-                sys.exit("(Value Error): Column type forced is either target column or doesn't exist in the dataset.")    
-    
-    #date features
-    if date_features is not None:
-        for i in date_features:
-            if i not in all_cols:
-                sys.exit("(Value Error): Column type forced is either target column or doesn't exist in the dataset.")      
-    
-    #drop features
-    if ignore_features is not None:
-        for i in ignore_features:
-            if i not in all_cols:
-                sys.exit("(Value Error): Feature ignored is either target column or doesn't exist in the dataset.")     
-    
-    #check pca
-    if type(pca) is not bool:
-        sys.exit('(Type Error): PCA parameter only accepts True or False.')
-        
-    #pca method check
-    allowed_pca_methods = ['linear', 'kernel', 'incremental']
-    if pca_method not in allowed_pca_methods:
-        sys.exit("(Value Error): pca method param only accepts 'linear', 'kernel', or 'incremental'. ")    
-    
-    #pca components check
-    if pca is True:
-        if pca_method is not 'linear':
-            if pca_components is not None:
-                if(type(pca_components)) is not int:
-                    sys.exit("(Type Error): pca_components parameter must be integer when pca_method is not 'linear'. ")
-
-    #pca components check 2
-    if pca is True:
-        if pca_method is not 'linear':
-            if pca_components is not None:
-                if pca_components > len(data.columns):
-                    sys.exit("(Type Error): pca_components parameter cannot be greater than original features space.")                
- 
-    #pca components check 3
-    if pca is True:
-        if pca_method is 'linear':
-            if pca_components is not None:
-                if type(pca_components) is not float:
-                    if pca_components > len(data.columns): 
-                        sys.exit("(Type Error): pca_components parameter cannot be greater than original features space or float between 0 - 1.")      
-        
-    #check ignore_low_variance
-    if type(ignore_low_variance) is not bool:
-        sys.exit('(Type Error): ignore_low_variance parameter only accepts True or False.')
-        
-    #check ignore_low_variance
-    if type(combine_rare_levels) is not bool:
-        sys.exit('(Type Error): combine_rare_levels parameter only accepts True or False.')
-        
-    #check rare_level_threshold
-    if type(rare_level_threshold) is not float:
-        sys.exit('(Type Error): rare_level_threshold must be a float between 0 and 1. ')
-    
-    #bin numeric features
-    if bin_numeric_features is not None:
-        all_cols = list(data.columns)
-        
-        for i in bin_numeric_features:
-            if i not in all_cols:
-                sys.exit("(Value Error): Column type forced is either target column or doesn't exist in the dataset.")
-    
-    #remove_multicollinearity
-    if type(remove_multicollinearity) is not bool:
-        sys.exit('(Type Error): remove_multicollinearity parameter only accepts True or False.')
-        
-    #multicollinearity_threshold
-    if type(multicollinearity_threshold) is not float:
-        sys.exit('(Type Error): multicollinearity_threshold must be a float between 0 and 1. ')  
-    
-    #group features
-    if group_features is not None:
-        if type(group_features) is not list:
-            sys.exit('(Type Error): group_features must be of type list. ')     
-    
-    if group_names is not None:
-        if type(group_names) is not list:
-            sys.exit('(Type Error): group_names must be of type list. ')        
-
-    #silent
-    if type(silent) is not bool:
-        sys.exit("(Type Error): silent parameter only accepts True or False. ")
-        
-    #html
-    if type(html) is not bool:
-        sys.exit('(Type Error): html parameter only accepts True or False.')
-
-    #log_experiment
-    if type(log_experiment) is not bool:
-        sys.exit('(Type Error): log_experiment parameter only accepts True or False.')
-
-    #log_plots
-    if type(log_plots) is not bool:
-        sys.exit('(Type Error): log_plots parameter only accepts True or False.')
-
-    #log_data
-    if type(log_data) is not bool:
-        sys.exit('(Type Error): log_data parameter only accepts True or False.')
-
-    #log_profile
-    if type(log_profile) is not bool:
-        sys.exit('(Type Error): log_profile parameter only accepts True or False.')
-
-    """
-    error handling ends here
-    """
-    
-    logger.info("Preloading libraries")
-
-    #pre-load libraries
-    import pandas as pd
-    import ipywidgets as ipw
-    from IPython.display import display, HTML, clear_output, update_display
-    import datetime, time
-    import secrets
-    import os
-    
-    #pandas option
-    pd.set_option('display.max_columns', 500)
-    pd.set_option('display.max_rows', 500)
-    
-    #global html_param
-    global html_param
-    
-    #create html_param
-    html_param = html
-
-    logger.info("Preparing display monitor")
-
-    #progress bar
-    max_steps = 4
-        
-    progress = ipw.IntProgress(value=0, min=0, max=max_steps, step=1 , description='Processing: ')
-    
-        
-    timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
-    monitor = pd.DataFrame( [ ['Initiated' , '. . . . . . . . . . . . . . . . . .', timestampStr ], 
-                             ['Status' , '. . . . . . . . . . . . . . . . . .' , 'Loading Dependencies' ] ],
-                             #['Step' , '. . . . . . . . . . . . . . . . . .',  'Step 0 of ' + str(total_steps)] ],
-                              columns=['', ' ', '   ']).set_index('')
-    
-    if verbose:
-        if html_param:
-            display(progress)
-            display(monitor, display_id = 'monitor')
-    
-    logger.info("Importing libraries")
-    #general dependencies
-    import numpy as np
-    import pandas as pd
-    import random
-    
-    #setting sklearn config to print all parameters including default
-    import sklearn
-    sklearn.set_config(print_changed_only=False)
-    
-    #define highlight function for function grid to display
-    def highlight_max(s):
-        is_max = s == True
-        return ['background-color: lightgreen' if v else '' for v in is_max]
-    
-    #ignore warnings
-    import warnings
-    warnings.filterwarnings('ignore') 
-    
-    logger.info("Declaring global variables")
-    #defining global variables
-    global data_, X, seed, prep_pipe, prep_param, experiment__,\
-        n_jobs_param, exp_name_log, logging_param, log_plots_param
-    
-    logger.info("Copying data for preprocessing")
-    #copy original data for pandas profiler
-    data_before_preprocess = data.copy()
-    
-    #copying data
-    data_ = data.copy()
-    
-    #data without target
-    if supervised:
-        data_without_target = data.copy()
-        data_without_target.drop(supervised_target, axis=1, inplace=True)
-    
-    if supervised:
-        data_for_preprocess = data_without_target.copy()
-    else:
-        data_for_preprocess = data_.copy()
-        
-    #generate seed to be used globally
-    if session_id is None:
-        seed = random.randint(150,9000)
-    else:
-        seed = session_id    
-
-    """
-    preprocessing starts here
-    """
-    
-    pd.set_option('display.max_columns', 500)
-    pd.set_option('display.max_rows', 500)
-
-    monitor.iloc[1,1:] = 'Preparing Data for Modeling'
-    if verbose:
-        if html_param:
-            update_display(monitor, display_id = 'monitor')
-            
-    #define parameters for preprocessor
-    
-    logger.info("Declaring preprocessing parameters")
-
-    #categorical features
-    if categorical_features is None:
-        cat_features_pass = []
-    else:
-        cat_features_pass = categorical_features
-    
-    #numeric features
-    if numeric_features is None:
-        numeric_features_pass = []
-    else:
-        numeric_features_pass = numeric_features
-     
-    #drop features
-    if ignore_features is None:
-        ignore_features_pass = []
-    else:
-        ignore_features_pass = ignore_features
-     
-    #date features
-    if date_features is None:
-        date_features_pass = []
-    else:
-        date_features_pass = date_features
-        
-    #categorical imputation strategy
-    if categorical_imputation == 'constant':
-        categorical_imputation_pass = 'not_available'
-    elif categorical_imputation == 'mode':
-        categorical_imputation_pass = 'most frequent'
-    
-    #transformation method strategy
-    if transformation_method == 'yeo-johnson':
-        trans_method_pass = 'yj'
-    elif transformation_method == 'quantile':
-        trans_method_pass = 'quantile'
-    
-    #pass method
-    if pca_method == 'linear':
-        pca_method_pass = 'pca_liner'
-            
-    elif pca_method == 'kernel':
-        pca_method_pass = 'pca_kernal'
-            
-    elif pca_method == 'incremental':
-        pca_method_pass = 'incremental'
-            
-    elif pca_method == 'pls':
-        pca_method_pass = 'pls'
-        
-    #pca components
-    if pca is True:
-        if pca_components is None:
-            if pca_method == 'linear':
-                pca_components_pass = 0.99
-            else:
-                pca_components_pass = int((len(data.columns))*0.5)
-                
-        else:
-            pca_components_pass = pca_components
-            
-    else:
-        pca_components_pass = 0.99
-        
-    if bin_numeric_features is None:
-        apply_binning_pass = False
-        features_to_bin_pass = []
-    
-    else:
-        apply_binning_pass = True
-        features_to_bin_pass = bin_numeric_features
-    
-    #group features
-    #=============#
-    
-    #apply grouping
-    if group_features is not None:
-        apply_grouping_pass = True
-    else:
-        apply_grouping_pass = False
-    
-    #group features listing
-    if apply_grouping_pass is True:
-        
-        if type(group_features[0]) is str:
-            group_features_pass = []
-            group_features_pass.append(group_features)
-        else:
-            group_features_pass = group_features
-            
-    else:
-        
-        group_features_pass = [[]]
-    
-    #group names
-    if apply_grouping_pass is True:
-
-        if (group_names is None) or (len(group_names) != len(group_features_pass)):
-            group_names_pass = list(np.arange(len(group_features_pass)))
-            group_names_pass = ['group_' + str(i) for i in group_names_pass]
-
-        else:
-            group_names_pass = group_names
-            
-    else:
-        group_names_pass = []
-        
-
-    #unknown categorical
-    if unknown_categorical_method == 'least_frequent':
-        unknown_categorical_method_pass = 'least frequent'
-    elif unknown_categorical_method == 'most_frequent':
-        unknown_categorical_method_pass = 'most frequent'
-    
-    #ordinal_features
-    if ordinal_features is not None:
-        apply_ordinal_encoding_pass = True
-    else:
-        apply_ordinal_encoding_pass = False
-     
-    #high cardinality
-    if apply_ordinal_encoding_pass is True:
-        ordinal_columns_and_categories_pass = ordinal_features
-    else:
-        ordinal_columns_and_categories_pass = {}
-        
-    if high_cardinality_features is not None:
-        apply_cardinality_reduction_pass = True
-    else:
-        apply_cardinality_reduction_pass = False
-        
-    cardinal_method_pass = 'count'
-        
-    if apply_cardinality_reduction_pass:
-        cardinal_features_pass = high_cardinality_features
-    else:
-        cardinal_features_pass = []
-    
-    #display dtypes
-    if supervised is False:
-        display_types_pass = True
-    else:
-        display_types_pass = False
-    
-    if silent:
-        display_types_pass = False
-
-    logger.info("Importing preprocessing module")
-
-    #import library
-    from pycaret import preprocess
-    
-    logger.info("Creating preprocessing pipeline")
-
-    X = preprocess.Preprocess_Path_Two(train_data = data_for_preprocess, 
-                                       categorical_features = cat_features_pass,
-                                       apply_ordinal_encoding = apply_ordinal_encoding_pass,
-                                       ordinal_columns_and_categories = ordinal_columns_and_categories_pass,
-                                       apply_cardinality_reduction = apply_cardinality_reduction_pass,
-                                       cardinal_method = cardinal_method_pass,
-                                       cardinal_features = cardinal_features_pass,
-                                       numerical_features = numeric_features_pass,
-                                       time_features = date_features_pass,
-                                       features_todrop = ignore_features_pass,
-                                       display_types = display_types_pass,
-                                       numeric_imputation_strategy = numeric_imputation,
-                                       categorical_imputation_strategy = categorical_imputation_pass,
-                                       scale_data = normalize,
-                                       scaling_method = normalize_method,
-                                       Power_transform_data = transformation,
-                                       Power_transform_method = trans_method_pass,
-                                       apply_untrained_levels_treatment= handle_unknown_categorical, 
-                                       untrained_levels_treatment_method = unknown_categorical_method_pass,
-                                       apply_pca = pca,
-                                       pca_method = pca_method_pass, 
-                                       pca_variance_retained_or_number_of_components = pca_components_pass,
-                                       apply_zero_nearZero_variance = ignore_low_variance, 
-                                       club_rare_levels = combine_rare_levels, 
-                                       rara_level_threshold_percentage = rare_level_threshold,
-                                       apply_binning = apply_binning_pass, 
-                                       features_to_binn = features_to_bin_pass,
-                                       remove_multicollinearity = remove_multicollinearity,
-                                       maximum_correlation_between_features = multicollinearity_threshold,
-                                       apply_grouping = apply_grouping_pass, 
-                                       features_to_group_ListofList = group_features_pass,
-                                       group_name = group_names_pass,
-                                       random_state = seed)
-        
-    progress.value += 1
-    logger.info("Preprocessing pipeline created successfully")
-
-    try:
-        res_type = ['quit','Quit','exit','EXIT','q','Q','e','E','QUIT','Exit']
-        res = preprocess.dtypes.response
-        if res in res_type:
-            sys.exit("(Process Exit): setup has been interupted with user command 'quit'. setup must rerun." )
-    except:
-        pass
-    
-
-    #save prep pipe
-    prep_pipe = preprocess.pipe
-    prep_param = preprocess
-    
-    logger.info("Creating grid variables")
-
-    #generate values for grid show
-    missing_values = data_before_preprocess.isna().sum().sum()
-    if missing_values > 0:
-        missing_flag = True
-    else:
-        missing_flag = False
-    
-    if normalize is True:
-        normalize_grid = normalize_method
-    else:
-        normalize_grid = 'None'
-        
-    if transformation is True:
-        transformation_grid = transformation_method
-    else:
-        transformation_grid = 'None'
-    
-    if pca is True:
-        pca_method_grid = pca_method
-    else:
-        pca_method_grid = 'None'
-   
-    if pca is True:
-        pca_components_grid = pca_components_pass
-    else:
-        pca_components_grid = 'None'
-        
-    if combine_rare_levels:
-        rare_level_threshold_grid = rare_level_threshold
-    else:
-        rare_level_threshold_grid = 'None'
-    
-    if bin_numeric_features is None:
-        numeric_bin_grid = False
-    else:
-        numeric_bin_grid = True
-
-    if ordinal_features is not None:
-        ordinal_features_grid = True
-    else:
-        ordinal_features_grid = False
-    
-    if remove_multicollinearity is False:
-        multicollinearity_threshold_grid = None
-    else:
-        multicollinearity_threshold_grid = multicollinearity_threshold
-     
-    if group_features is not None:
-        group_features_grid = True
-    else:
-        group_features_grid = False
-     
-    if high_cardinality_features is not None:
-        high_cardinality_features_grid = True
-    else:
-        high_cardinality_features_grid = False
-        
-    learned_types = preprocess.dtypes.learent_dtypes
-    #learned_types.drop(target, inplace=True)
-
-    float_type = 0 
-    cat_type = 0
-
-    for i in preprocess.dtypes.learent_dtypes:
-        if 'float' in str(i):
-            float_type += 1
-        elif 'object' in str(i):
-            cat_type += 1
-        elif 'int' in str(i):
-            float_type += 1
-       
-    
-    """
-    preprocessing ends here
-    """
-    
-    #reset pandas option
-    pd.reset_option("display.max_rows") 
-    pd.reset_option("display.max_columns")
-    
-    logger.info("Creating global containers")
-
-    #create an empty list for pickling later.
-    if supervised is False:
-        experiment__ = []
-    else:
-        try:
-            experiment__.append('dummy')
-            experiment__.remove('dummy')
-        except:
-            experiment__ = []
-    
-    #create n_jobs_param
-    n_jobs_param = n_jobs
-
-    #create logging parameter
-    logging_param = log_experiment
-
-    #create exp_name_log param incase logging is False
-    exp_name_log = 'no_logging'
-
-    #create an empty log_plots_param
-    if log_plots:
-        log_plots_param = True
-    else:
-        log_plots_param = False
-
-    progress.value += 1
-    
-    #monitor update
-    monitor.iloc[1,1:] = 'Compiling Results'
-    if verbose:
-        if html_param:
-            update_display(monitor, display_id = 'monitor')
-        
-    '''
-    Final display Starts
-    '''
-    
-    shape = data.shape
-    shape_transformed = X.shape
-    
-    if profile:
-        if verbose:
-            print('Setup Succesfully Completed! Loading Profile Now... Please Wait!')
-    else:
-        if verbose:
-            print('Setup Succesfully Completed!')
-
-    functions = pd.DataFrame ( [ ['session_id ', seed ],
-                                 ['Original Data ', shape ],
-                                 ['Missing Values ', missing_flag],
-                                 ['Numeric Features ', str(float_type-1) ],
-                                 ['Categorical Features ', str(cat_type) ],
-                                 ['Ordinal Features ', ordinal_features_grid],
-                                 ['High Cardinality Features ', high_cardinality_features_grid],
-                                 ['Transformed Data ', shape_transformed ],
-                                 ['Numeric Imputer ', numeric_imputation],
-                                 ['Categorical Imputer ', categorical_imputation],
-                                 ['Normalize ', normalize ],
-                                 ['Normalize Method ', normalize_grid ],
-                                 ['Transformation ', transformation ],
-                                 ['Transformation Method ', transformation_grid ],
-                                 ['PCA ', pca],
-                                 ['PCA Method ', pca_method_grid],
-                                 ['PCA components ', pca_components_grid],
-                                 ['Ignore Low Variance ', ignore_low_variance],
-                                 ['Combine Rare Levels ', combine_rare_levels],
-                                 ['Rare Level Threshold ', rare_level_threshold_grid],
-                                 ['Numeric Binning ', numeric_bin_grid],
-                                 ['Remove Multicollinearity ', remove_multicollinearity],
-                                 ['Multicollinearity Threshold ', multicollinearity_threshold_grid],
-                                 ['Group Features ', group_features_grid],
-                               ], columns = ['Description', 'Value'] )
-
-    functions_ = functions.style.apply(highlight_max)
-    
-    progress.value += 1
-    
-    if verbose:
-        if html_param:
-            clear_output()
-            print('Setup Succesfully Completed!')
-            display(functions_)
-        else:
-            print('Setup Succesfully Completed!')
-            print(functions_.data)
-         
-    if profile:
-        try:
-            import pandas_profiling
-            pf = pandas_profiling.ProfileReport(data_before_preprocess)
-            clear_output()
-            display(pf)
-        except:
-            print('Data Profiler Failed. No output to show, please continue with Modeling.')
-
-    '''
-    Final display Ends
-    '''   
-    
-    #log into experiment
-    if logging:
-        experiment__.append(('Clustering Setup Config', functions))
-        experiment__.append(('Orignal Dataset', data_))
-        experiment__.append(('Transformed Dataset', X))
-        experiment__.append(('Transformation Pipeline', prep_pipe))
-    
-    #end runtime
-    runtime_end = time.time()
-    runtime = np.array(runtime_end - runtime_start).round(2)
-
-    if logging_param:
-        
-        logger.info("Logging experiment in MLFlow")
-
-        import mlflow
-        from pathlib import Path
-        import os
-
-        if experiment_name is None:
-            exp_name_ = 'clu-default-name'
-        else:
-            exp_name_ = experiment_name
-
-        URI = secrets.token_hex(nbytes=4)    
-        exp_name_log = exp_name_
-        
-        try:
-            mlflow.create_experiment(exp_name_log)
-        except:
-            pass
-
-        #mlflow logging
-        mlflow.set_experiment(exp_name_log)
-
-        run_name_ = 'Session Initialized ' + str(USI)
-        with mlflow.start_run(run_name=run_name_) as run:
-
-            # Get active run to log as tag
-            RunID = mlflow.active_run().info.run_id
-            
-            k = functions.copy()
-            k.set_index('Description',drop=True,inplace=True)
-            kdict = k.to_dict()
-            params = kdict.get('Value')
-            mlflow.log_params(params)
-
-            #set tag of compare_models
-            mlflow.set_tag("Source", "setup")
-            
-            import secrets
-            URI = secrets.token_hex(nbytes=4)
-            mlflow.set_tag("URI", URI)
-            mlflow.set_tag("USI", USI) 
-            mlflow.set_tag("Run Time", runtime)
-            mlflow.set_tag("Run ID", RunID)
-
-            # Log the transformation pipeline
-            logger.info("SubProcess save_model() called ==================================")
-            save_model(prep_pipe, 'Transformation Pipeline', verbose=False)
-            logger.info("SubProcess save_model() end ==================================")
-            mlflow.log_artifact('Transformation Pipeline' + '.pkl')
-            os.remove('Transformation Pipeline.pkl')
-
-            # Log pandas profile
-            if log_profile:
-                import pandas_profiling
-                pf = pandas_profiling.ProfileReport(data_before_preprocess)
-                pf.to_file("Data Profile.html")
-                mlflow.log_artifact("Data Profile.html")
-                os.remove("Data Profile.html")
-                clear_output()
-                display(functions_)
-
-            # Log training and testing set
-            if log_data:
-                data_before_preprocess.to_csv('data.csv')
-                mlflow.log_artifact('data.csv')
-                os.remove('data.csv')
-
-    logger.info(str(prep_pipe))
-    logger.info("setup() succesfully completed......................................")
-    
-    return X, data_, seed, prep_pipe, prep_param, experiment__,\
-        n_jobs_param, html_param, exp_name_log, logging_param, log_plots_param, USI
-
-def create_model(model = None, 
-                 num_clusters = None,
-                 ground_truth=None,
-                 verbose=True,
-                 system=True,
+    return pycaret.internal.tabular.setup(
+        ml_usecase="clustering",
+        available_plots={},
+        data=data,
+        target=None,
+        preprocess=preprocess,
+        imputation_type=imputation_type,
+        iterative_imputation_iters=iterative_imputation_iters,
+        categorical_features=categorical_features,
+        categorical_imputation=categorical_imputation,
+        categorical_iterative_imputer=categorical_iterative_imputer,
+        ordinal_features=ordinal_features,
+        high_cardinality_features=high_cardinality_features,
+        high_cardinality_method=high_cardinality_method,
+        numeric_features=numeric_features,
+        numeric_imputation=numeric_imputation,
+        numeric_iterative_imputer=numeric_iterative_imputer,
+        date_features=date_features,
+        ignore_features=ignore_features,
+        normalize=normalize,
+        normalize_method=normalize_method,
+        transformation=transformation,
+        transformation_method=transformation_method,
+        handle_unknown_categorical=handle_unknown_categorical,
+        unknown_categorical_method=unknown_categorical_method,
+        pca=pca,
+        pca_method=pca_method,
+        pca_components=pca_components,
+        ignore_low_variance=ignore_low_variance,
+        combine_rare_levels=combine_rare_levels,
+        rare_level_threshold=rare_level_threshold,
+        bin_numeric_features=bin_numeric_features,
+        remove_outliers=False,
+        remove_multicollinearity=remove_multicollinearity,
+        multicollinearity_threshold=multicollinearity_threshold,
+        remove_perfect_collinearity=remove_perfect_collinearity,
+        create_clusters=False,
+        polynomial_features=False,
+        trigonometry_features=False,
+        group_features=group_features,
+        group_names=group_names,
+        feature_selection=False,
+        feature_interaction=False,
+        feature_ratio=False,
+        fix_imbalance=False,
+        data_split_shuffle=False,
+        data_split_stratify=False,
+        n_jobs=n_jobs,
+        use_gpu=False,
+        custom_pipeline=None,
+        html=html,
+        session_id=session_id,
+        log_experiment=log_experiment,
+        experiment_name=experiment_name,
+        log_plots=log_plots,
+        log_profile=log_profile,
+        log_data=log_data,
+        silent=silent,
+        verbose=verbose,
+        profile=profile,
+    )
+
+def create_model(estimator, 
+                 num_clusters:int = 4,
+                 ground_truth:Optional[str]=None,
+                 round: int = 4,
+                 fit_kwargs: Optional[dict] = None,
+                 verbose:bool=True,
                  **kwargs):
     
     """
@@ -1227,10 +388,10 @@ def create_model(model = None,
 
     Parameters
     ----------
-    model : string / object, default = None
+    estimator : str / object, default = None
         Enter ID of the models available in model library or pass an untrained model 
         object consistent with fit / predict API to train and evaluate model. List of 
-        models available in model library (ID - Model):
+        models available in model library (ID - Name):
 
         * 'kmeans' - K-Means Clustering
         * 'ap' - Affinity Propagation
@@ -1250,11 +411,14 @@ def create_model(model = None,
         When ground_truth is provided, Homogeneity Score, Rand Index, and 
         Completeness Score is evaluated and printer along with other metrics.
 
+    round: integer, default = 4
+        Number of decimal places the metrics in the score grid will be rounded to. 
+
+    fit_kwargs: dict, default = {} (empty dict)
+        Dictionary of arguments passed to the fit method of the model.
+
     verbose: Boolean, default = True
         Status update is not printed when verbose is set to False.
-
-    system: Boolean, default = True
-        Must remain True all times. Only to be changed by internal functions.
 
     **kwargs: 
         Additional keyword arguments to pass to the estimator.
@@ -1288,394 +452,16 @@ def create_model(model = None,
     
        
     """
-    
-    import logging
 
-    try:
-        hasattr(logger, 'name')
-    except:
-        logger = logging.getLogger('logs')
-        logger.setLevel(logging.DEBUG)
-        
-        # create console handler and set level to debug
-        if logger.hasHandlers():
-            logger.handlers.clear()
-        
-        ch = logging.FileHandler('logs.log')
-        ch.setLevel(logging.DEBUG)
-
-        # create formatter
-        formatter = logging.Formatter('%(asctime)s:%(levelname)s:%(message)s')
-
-        # add formatter to ch
-        ch.setFormatter(formatter)
-
-        # add ch to logger
-        logger.addHandler(ch)
-
-    logger.info("Initializing create_model()")
-    logger.info("""create_model(model={}, num_clusters={}, ground_truth={}, verbose={}, system={})""".\
-        format(str(model), str(num_clusters), str(ground_truth), str(verbose), str(system)))
-
-    logger.info("Checking exceptions")
-    
-    #exception checking   
-    import sys        
-    
-    #run_time
-    import datetime, time
-    runtime_start = time.time()
-
-    #ignore warings
-    import warnings
-    warnings.filterwarnings('ignore') 
-    
-    """
-    error handling starts here
-    """
-    
-    #checking for model parameter
-    if model is None:
-        sys.exit('(Value Error): Model parameter Missing. Please see docstring for list of available models.')
-        
-    #checking for allowed models
-    allowed_models = ['kmeans', 'ap', 'meanshift', 'sc', 'hclust', 'dbscan', 'optics', 'birch', 'kmodes']
-    
-    if type(model) is str:
-        if model not in allowed_models:
-            sys.exit('(Value Error): Model Not Available. Please see docstring for list of available models.')
-
-    #check num_clusters parameter:
-    if num_clusters is not None:
-        no_num_required = ['ap', 'meanshift', 'dbscan', 'optics']
-        if model in no_num_required: 
-            sys.exit('(Value Error): num_clusters parameter not required for specified model. Remove num_clusters to run this model.')
-        
-    #checking num_clusters type:
-    if num_clusters is not None:
-        if num_clusters <= 1:
-            sys.exit('(Type Error): num_clusters parameter can only take value integer value greater than 1.')
-
-    #check ground truth exist in data_
-    if ground_truth is not None:
-        if ground_truth not in data_.columns:
-            sys.exit('(Value Error): ground_truth defined doesnt exist in the dataset.')
-
-    #checking verbose parameter
-    if type(verbose) is not bool:
-        sys.exit('(Type Error): Verbose parameter can only take argument as True or False.') 
-        
-    """
-    error handling ends here
-    """
-    
-    logger.info("Preloading libraries")
-
-    #pre-load libraries
-    import pandas as pd
-    import numpy as np
-    import ipywidgets as ipw
-    from IPython.display import display, HTML, clear_output, update_display
-    import datetime, time
-    
-    logger.info("Setting num_cluster param")
-
-    #determine num_clusters
-    if num_clusters is None:
-        num_clusters = 4
-    else:
-        num_clusters = num_clusters
-        
-    """
-    monitor starts
-    """
-    
-    logger.info("Preparing display monitor")
-
-    #progress bar and monitor control    
-    timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
-    progress = ipw.IntProgress(value=0, min=0, max=3, step=1 , description='Processing: ')
-    monitor = pd.DataFrame( [ ['Initiated' , '. . . . . . . . . . . . . . . . . .', timestampStr ], 
-                              ['Status' , '. . . . . . . . . . . . . . . . . .' , 'Initializing'] ],
-                              columns=['', ' ', '  ']).set_index('')
-    if verbose:
-        if html_param:
-            display(progress)
-            display(monitor, display_id = 'monitor')
-        
-    progress.value += 1
-    
-    """
-    monitor ends
-    """
-    
-    logger.info("Importing untrained model")
-
-    if model == 'kmeans':
-        from sklearn.cluster import KMeans
-        model = KMeans(n_clusters = num_clusters, random_state=seed, n_jobs=n_jobs_param, **kwargs)
-        full_name = 'K-Means Clustering'
-
-    elif model == 'ap':
-        from sklearn.cluster import AffinityPropagation
-        model = AffinityPropagation(**kwargs)
-        full_name = 'Affinity Propagation'
-
-    elif model == 'meanshift':
-        from sklearn.cluster import MeanShift
-        model = MeanShift(n_jobs=n_jobs_param, **kwargs)
-        full_name = 'Mean Shift Clustering'
-
-    elif model == 'sc':
-        from sklearn.cluster import SpectralClustering
-        model = SpectralClustering(n_clusters=num_clusters, random_state=seed, n_jobs=n_jobs_param, **kwargs)
-        full_name = 'Spectral Clustering'
-
-    elif model == 'hclust':
-        from sklearn.cluster import AgglomerativeClustering
-        model = AgglomerativeClustering(n_clusters=num_clusters, **kwargs)
-        full_name = 'Agglomerative Clustering'
-
-    elif model == 'dbscan':
-        from sklearn.cluster import DBSCAN
-        model = DBSCAN(n_jobs=n_jobs_param, **kwargs)
-        full_name = 'Density-Based Spatial Clustering'
-
-    elif model == 'optics':
-        from sklearn.cluster import OPTICS
-        model = OPTICS(n_jobs=n_jobs_param, **kwargs)
-        full_name = 'OPTICS Clustering'
-
-    elif model == 'birch':
-        from sklearn.cluster import Birch
-        model = Birch(n_clusters=num_clusters, **kwargs)
-        full_name = 'Birch Clustering'
-        
-    elif model == 'kmodes':
-        from kmodes.kmodes import KModes
-        model = KModes(n_clusters=num_clusters, n_jobs=n_jobs_param, random_state=seed, **kwargs)
-        full_name = 'K-Modes Clustering'
-        
-    else:    
-        def get_model_name(e):
-            return str(e).split("(")[0]
-
-        model == model
-        full_name = get_model_name(model)
-
-    logger.info(str(full_name) + ' Imported succesfully')
-
-    #monitor update
-    monitor.iloc[1,1:] = 'Fitting ' + str(full_name) + ' Model'
-    progress.value += 1
-    if verbose:
-        if html_param:
-            update_display(monitor, display_id = 'monitor')
-        
-    #fitting the model
-    model_fit_start = time.time()
-    logger.info("Fitting Model")
-    model.fit(X)
-    model_fit_end = time.time()
-
-    model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
-    
-    #Calculate unsupervised metrics
-    logger.info("Evaluating Metrics")
-
-    from sklearn import metrics
-
-    metric = []
-    metric_value = []
-    
-    try:
-        silhouette = metrics.silhouette_score(X,model.labels_)
-        silhouette = round(silhouette, 4)
-        metric.append('Silhouette')
-        metric_value.append(silhouette)
-        
-    except:
-        logger.warning('Cannot calculate Silhouette')
-
-    try:
-        chs = metrics.calinski_harabasz_score(X,model.labels_)
-        chs = round(chs, 4)
-        metric.append('Calinski-Harabasz')
-        metric_value.append(chs)
-    except:
-        logger.warning('Cannot calculate Calinski-Harabasz')
-
-    try:
-        db = metrics.davies_bouldin_score(X,model.labels_)
-        db = round(db, 4)
-        metric.append('Davies-Bouldin')
-        metric_value.append(db)
-
-    except:
-        logger.warning('Cannot calculate Davies-Bouldin')
-
-    if ground_truth is not None:
-
-        logger.info("ground_truth parameter set to " + str(ground_truth))
-
-        gt = np.array(data_[ground_truth])
-
-        try:
-            hs = metrics.homogeneity_score(gt,model.labels_)
-            hs = round(hs, 4)
-            metric.append('Homogeneity Score')
-            metric_value.append(hs)
-
-        except:
-            logger.warning('No ground_truth parameter found. Cannot calculate Homogeneity Score')
-
-        try:
-            ari = metrics.adjusted_rand_score(gt,model.labels_)
-            ari = round(ari,4)
-            metric.append('Rand Index')
-            metric_value.append(ari)
-
-        except:
-            logger.warning('No ground_truth parameter found. Cannot calculate Rand Index')
-        
-        try:
-            cs = metrics.completeness_score(gt,model.labels_)
-            cs = round(cs, 4)
-            metric.append('Completeness Score')
-            metric_value.append(cs)
-        except:
-            palogger.warning('No ground_truth parameter found. Cannot calculate Completeness Score')
-    
-    try:
-        logger.info("Creating Metrics dataframe")
-        model_results = pd.DataFrame(metric_value)
-        model_results.columns = ['Metric']
-        model_results.set_index([metric], inplace=True)
-    except:
-        logger.warning('No metric dataframe found.')
-    
-    #end runtime
-    runtime_end = time.time()
-    runtime = np.array(runtime_end - runtime_start).round(2)
-
-    #mlflow logging
-    if logging_param and system:
-
-        logger.info("Creating MLFlow logs")
-
-        #Creating Logs message monitor
-        monitor.iloc[1,1:] = 'Creating Logs'
-        if verbose:
-            if html_param:
-                update_display(monitor, display_id = 'monitor')
-
-        #import mlflow
-        import mlflow
-        from pathlib import Path
-        import os
-
-        mlflow.set_experiment(exp_name_log)
-
-        with mlflow.start_run(run_name=full_name) as run:
-
-            # Get active run to log as tag
-            RunID = mlflow.active_run().info.run_id
-
-            # Log model parameters
-            params = model.get_params()
-
-            for i in list(params):
-                v = params.get(i)
-                if len(str(v)) > 250:
-                    params.pop(i)
-
-            mlflow.log_params(params)
-            
-            #set tag of compare_models
-            mlflow.set_tag("Source", "create_model")
-            
-            import secrets
-            URI = secrets.token_hex(nbytes=4)
-            mlflow.set_tag("URI", URI)   
-            mlflow.set_tag("USI", USI)
-            mlflow.set_tag("Run Time", runtime)
-            mlflow.set_tag("Run ID", RunID)
-
-            # Log training time in seconds
-            mlflow.log_metric("TT", model_fit_time)
-            try:
-                mlflow.log_metrics(model_results.to_dict().get('Metric'))
-            except:
-                pass
-        
-            # Log Cluster, Distribution Plot and Elbow Plot
-            if log_plots_param:
-
-                logger.info("SubProcess plot_model() called ==================================")
-
-                try:
-                    plot_model(model, plot = 'cluster', save=True, system=False)
-                    mlflow.log_artifact('Cluster.html')
-                    os.remove("Cluster.html")
-                except:
-                    pass
-
-                try:
-                    plot_model(model, plot = 'distribution', save=True, system=False)
-                    mlflow.log_artifact('Distribution.html')
-                    os.remove("Distribution.html")
-                except:
-                    pass
-
-                try:
-                    plot_model(model, plot = 'elbow', save=True, system=False)
-                    mlflow.log_artifact('Elbow.png')
-                    os.remove("Elbow.png")
-                except:
-                    pass
-
-                logger.info("SubProcess plot_model() end ==================================")
-
-            # Log model and transformation pipeline
-            from copy import deepcopy
-
-            # get default conda env
-            from mlflow.sklearn import get_default_conda_env
-            default_conda_env = get_default_conda_env()
-            default_conda_env['name'] = str(exp_name_log) + '-env'
-            default_conda_env.get('dependencies').pop(-3)
-            dependencies = default_conda_env.get('dependencies')[-1]
-            from pycaret.utils import __version__
-            dep = 'pycaret==' + str(__version__)
-            dependencies['pip'] = [dep]
-            
-            # define model signature
-            from mlflow.models.signature import infer_signature
-            try:
-                signature = infer_signature(data_)
-            except:
-                signature = None
-            input_example = data_.iloc[0].to_dict()
-
-            # log model as sklearn flavor
-            prep_pipe_temp = deepcopy(prep_pipe)
-            prep_pipe_temp.steps.append(['trained model', model])
-            mlflow.sklearn.log_model(prep_pipe_temp, "model", conda_env = default_conda_env, signature = signature, input_example = input_example)
-            del(prep_pipe_temp)
-
-    progress.value += 1
-    
-    if verbose:
-        clear_output()
-        try:
-            display(model_results)
-        except:
-            pass
-
-    logger.info(str(model))
-    logger.info("create_models() succesfully completed......................................")
-
-    return model
+    return pycaret.internal.tabular.create_model_unsupervised(
+        estimator=estimator,
+        num_clusters=num_clusters,
+        ground_truth=ground_truth,
+        round=round,
+        fit_kwargs=fit_kwargs,
+        verbose=verbose,
+        **kwargs
+    )
 
 def assign_model(model, 
                  transformation=False,
@@ -1763,15 +549,15 @@ def assign_model(model,
     
     #checking for allowed models
     if 'sklearn' not in mod_type and 'KModes' not in mod_type and 'SphericalKMeans' not in mod_type:
-        sys.exit('(Value Error): Model Not Recognized. Please see docstring for list of available models.') 
+        raise ValueError('Model Not Recognized. Please see docstring for list of available models.') 
         
     #checking transformation parameter
     if type(transformation) is not bool:
-        sys.exit('(Type Error): Transformation parameter can only take argument as True or False.')    
+        raise TypeError('Transformation parameter can only take argument as True or False.')    
         
     #checking verbose parameter
     if type(verbose) is not bool:
-        sys.exit('(Type Error): Verbose parameter can only take argument as True or False.')     
+        raise TypeError('Verbose parameter can only take argument as True or False.')     
     
     
     """
@@ -1977,14 +763,14 @@ def plot_model(model,
     #plot checking
     allowed_plots = ['cluster', 'tsne', 'elbow', 'silhouette', 'distance', 'distribution']  
     if plot not in allowed_plots:
-        sys.exit('(Value Error): Plot Not Available. Please see docstring for list of available plots.')
+        raise ValueError('Plot Not Available. Please see docstring for list of available plots.')
         
     if type(label) is not bool:
-        sys.exit('(Type Error): Label param only accepts True or False. ')
+        raise TypeError('Label param only accepts True or False. ')
         
     if feature is not None:
         if type(feature) is not str:
-            sys.exit('(Type Error): feature parameter must be string containing column name of dataset. ') 
+            raise TypeError('feature parameter must be string containing column name of dataset. ') 
     
     
     
@@ -2227,7 +1013,7 @@ def plot_model(model,
 
         except: 
             logger.warning("Elbow plot failed")
-            sys.exit('(Type Error): Plot Type not supported for this model.')
+            raise TypeError('Plot Type not supported for this model.')
         
     elif plot == 'silhouette':
         
@@ -2251,7 +1037,7 @@ def plot_model(model,
 
         except:
             logger.warning("Solhouette Plot failed") 
-            sys.exit('(Type Error): Plot Type not supported for this model.')
+            raise TypeError('Plot Type not supported for this model.')
             
     elif plot == 'distance':  
         
@@ -2275,7 +1061,7 @@ def plot_model(model,
 
         except:
             logger.warning("Distance Plot failed")
-            sys.exit('(Type Error): Plot Type not supported for this model.')
+            raise TypeError('Plot Type not supported for this model.')
 
     logger.info("plot_model() succesfully completed......................................")
 
@@ -2464,23 +1250,23 @@ def tune_model(model=None,
 
     #checking for model parameter
     if model is None:
-        sys.exit('(Value Error): Model parameter Missing. Please see docstring for list of available models.')
+        raise ValueError('Model parameter Missing. Please see docstring for list of available models.')
         
     #checking for allowed models
     allowed_models = ['kmeans', 'sc', 'hclust', 'birch', 'kmodes']
     
     if model not in allowed_models:
-        sys.exit('(Value Error): Model Not Available for Tuning. Please see docstring for list of available models.')
+        raise ValueError('Model Not Available for Tuning. Please see docstring for list of available models.')
     
     #check if supervised target is None:
     if supervised_target is None:
-        sys.exit('(Value Error): supervised_target cannot be None. A column name must be given for estimator.')
+        raise ValueError('supervised_target cannot be None. A column name must be given for estimator.')
     
     #check supervised target
     if supervised_target is not None:
         all_col = list(data_.columns)
         if supervised_target not in all_col:
-            sys.exit('(Value Error): supervised_target not recognized. It can only be one of the following: ' + str(all_col))
+            raise ValueError('supervised_target not recognized. It can only be one of the following: ' + str(all_col))
     
     #checking estimator:
     if estimator is not None:
@@ -2491,7 +1277,7 @@ def tune_model(model=None,
                             'mlp', 'xgboost', 'lightgbm', 'catboost']
                 
         if estimator not in available_estimators:
-            sys.exit('(Value Error): Estimator Not Available. Please see docstring for list of available estimators.')
+            raise ValueError('Estimator Not Available. Please see docstring for list of available estimators.')
     
     
     #checking optimize parameter
@@ -2500,11 +1286,11 @@ def tune_model(model=None,
         available_optimizers = ['MAE', 'MSE', 'RMSE', 'R2', 'RMSLE', 'MAPE', 'Accuracy', 'AUC', 'Recall', 'Precision', 'F1', 'Kappa']
         
         if optimize not in available_optimizers:
-            sys.exit('(Value Error): optimize parameter Not Available. Please see docstring for list of available parameters.')
+            raise ValueError('optimize parameter Not Available. Please see docstring for list of available parameters.')
     
     #checking fold parameter
     if type(fold) is not int:
-        sys.exit('(Type Error): Fold parameter only accepts integer value.')
+        raise TypeError('Fold parameter only accepts integer value.')
     
     
     """
@@ -2882,7 +1668,7 @@ def tune_model(model=None,
         #create and assign the model to dataset d
         model_fit_start = time.time()
         logger.info("SubProcess create_model() called==================================")
-        m = create_model(model=model, num_clusters=i, verbose=False, system=False)
+        m = create_model(estimator=model, num_clusters=i, verbose=False, system=False)
         logger.info("SubProcess create_model() end==================================")
         model_fit_end = time.time()
         model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
@@ -3706,7 +2492,7 @@ def predict_model(model,
     if hasattr(model, 'predict'):
         pass
     else:
-        sys.exit("(Type Error): Model doesn't support predict parameter.")
+        raise TypeError("Model doesn't support predict parameter.")
     
     #predictions start here
     if 'Pipeline' in str(type(model)):
@@ -3725,761 +2511,57 @@ def predict_model(model,
     
     return data__
 
-def deploy_model(model, 
-                 model_name, 
-                 platform,
-                 authentication):
-    
-    """
-    This function deploys the transformation pipeline and trained model object for
-    production use. The platform of deployment can be defined under the platform
-    param along with the applicable authentication tokens which are passed as a
-    dictionary to the authentication param.
-        
-    Platform: AWS
-    -------------
-    Before deploying a model to an AWS S3 ('aws'), environment variables must be 
-    configured using the command line interface. To configure AWS env. variables, 
-    type aws configure in your python command line. The following information is
-    required which can be generated using the Identity and Access Management (IAM) 
-    portal of your AWS console account:
 
-    - AWS Access Key ID
-    - AWS Secret Key Access
-    - Default Region Name (can be seen under Global settings on your AWS console)
-    - Default output format (must be left blank)
-
-    >>> from pycaret.datasets import get_data
-    >>> jewellery = get_data('jewellery')
-    >>> experiment_name = setup(data = jewellery)
-    >>> kmeans = create_model('kmeans')
-    >>> deploy_model(model = kmeans, model_name = 'deploy_kmeans', platform = 'aws', authentication = {'bucket' : 'bucket-name'})
-
-    Platform: GCP
-    --------------
-    Before deploying a model to Google Cloud Platform (GCP), project must be created 
-    either using command line or GCP console. Once project is created, you must create 
-    a service account and download the service account key as a JSON file, which is 
-    then used to set environment variable. 
-
-    Learn more : https://cloud.google.com/docs/authentication/production
-
-    >>> from pycaret.datasets import get_data
-    >>> jewellery = get_data('jewellery')
-    >>> experiment_name = setup(data = jewellery)
-    >>> kmeans = create_model('kmeans')
-    >>> os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = 'c:/path-to-json-file.json' 
-    >>> deploy_model(model = kmeans, model_name = 'deploy_kmeans', platform = 'gcp', authentication = {'project' : 'project-name', 'bucket' : 'bucket-name'})
-
-    Platform: Azure
-    ---------------
-    Before deploying a model to Microsoft Azure, environment variables for 
-    connection string must be set. Connection string can be obtained from 
-    'Access Keys' of your storage account in Azure.
-
-    >>> from pycaret.datasets import get_data
-    >>> jewellery = get_data('jewellery')
-    >>> experiment_name = setup(data = jewellery)
-    >>> kmeans = create_model('kmeans')
-    >>> os.environ['AZURE_STORAGE_CONNECTION_STRING'] = 'connection-string-here' 
-    >>> deploy_model(model = kmeans, model_name = 'deploy_kmeans', platform = 'azure', authentication = {'container' : 'container-name'})
-
-    Parameters
-    ----------
-    model : object
-        A trained model object should be passed as an estimator. 
-    
-    model_name : string
-        Name of model to be passed as a string.
-    
-    platform: string
-        Name of platform for deployment. 
-        Currently accepts: 'aws', 'gcp', 'azure'
-
-    authentication : dict
-        Dictionary of applicable authentication tokens.
-
-        When platform = 'aws':
-        {'bucket' : 'name of bucket'}
-
-        When platform = 'gcp':
-        {'project': 'name of project', 'bucket' : 'name of bucket'}
-
-        When platform = 'azure':
-        {'container': 'name of container'}
-
-    Returns
-    -------
-    Success_Message
-    
-    Warnings
-    --------
-    - This function uses file storage services to deploy the model on cloud platform. 
-      As such, this is efficient for batch-use. Where the production objective is to 
-      obtain prediction at an instance level, this may not be the efficient choice as 
-      it transmits the binary pickle file between your local python environment and
-      the platform. 
-    
-    """
-    
-    import sys
-    import logging
-
-    try:
-        hasattr(logger, 'name')
-    except:
-        logger = logging.getLogger('logs')
-        logger.setLevel(logging.DEBUG)
-        
-        # create console handler and set level to debug
-        if logger.hasHandlers():
-            logger.handlers.clear()
-        
-        ch = logging.FileHandler('logs.log')
-        ch.setLevel(logging.DEBUG)
-
-        # create formatter
-        formatter = logging.Formatter('%(asctime)s:%(levelname)s:%(message)s')
-
-        # add formatter to ch
-        ch.setFormatter(formatter)
-
-        # add ch to logger
-        logger.addHandler(ch)
-
-    logger.info("Initializing deploy_model()")
-    logger.info("""deploy_model(model={}, model_name={}, authentication={}, platform={})""".\
-        format(str(model), str(model_name), str(authentication), str(platform)))
-
-    #ignore warnings
-    import warnings
-    warnings.filterwarnings('ignore') 
-    
-    #general dependencies
-    import ipywidgets as ipw
-    import pandas as pd
-    from IPython.display import clear_output, update_display
-    import os
-
-    if platform == 'aws':
-        
-        logger.info("Platform : AWS S3")
-
-        #checking if awscli available
-        try:
-            import awscli
-        except:
-            logger.error("awscli library not found. pip install awscli to use deploy_model function.")
-            sys.exit("awscli library not found. pip install awscli to use deploy_model function.")  
-        
-        import boto3
-        
-        logger.info("Saving model in active working directory")
-        logger.info("SubProcess save_model() called ==================================")
-        save_model(model, model_name = model_name, verbose=False)
-        logger.info("SubProcess save_model() end ==================================")
-        
-        #initiaze s3
-        logger.info("Initializing S3 client")
-        s3 = boto3.client('s3')
-        filename = str(model_name)+'.pkl'
-        key = str(model_name)+'.pkl'
-        bucket_name = authentication.get('bucket')
-        s3.upload_file(filename,bucket_name,key)
-        clear_output()
-        
-        os.remove(filename)
-        
-        print("Model Succesfully Deployed on AWS S3")
-        logger.info("Model Succesfully Deployed on AWS S3")
-        logger.info(str(model))
-
-    elif platform == 'gcp':
-
-        logger.info("Platform : GCP")
-
-        try:
-            import google.cloud
-        except:
-            logger.error("google-cloud-storage library not found. pip install google-cloud-storage to use deploy_model function with GCP.")
-            sys.exit("google-cloud-storage library not found. pip install google-cloud-storage to use deploy_model function with GCP.")
-
-        logger.info("Saving model in active working directory")
-        logger.info("SubProcess save_model() called ==================================")
-        save_model(model, model_name=model_name, verbose=False)
-        logger.info("SubProcess save_model() end ==================================")
-
-        # initialize deployment
-        filename = str(model_name) + '.pkl'
-        key = str(model_name) + '.pkl'
-        bucket_name = authentication.get('bucket')
-        project_name = authentication.get('project')
-        try:
-            _create_bucket_gcp(project_name, bucket_name)
-            _upload_blob_gcp(project_name, bucket_name, filename, key)
-        except:
-            _upload_blob_gcp(project_name, bucket_name, filename, key)
-        
-        os.remove(filename)
-        
-        print("Model Succesfully Deployed on GCP")
-        logger.info("Model Succesfully Deployed on GCP")
-        logger.info(str(model))
-
-    elif platform == 'azure':
-
-        try:
-            import azure.storage.blob
-        except:
-            logger.error("azure-storage-blob library not found. pip install azure-storage-blob to use deploy_model function with Azure.")
-            sys.exit("azure-storage-blob library not found. pip install azure-storage-blob to use deploy_model function with Azure.")
-
-        logger.info("Platform : Azure Blob Storage")
-
-        logger.info("Saving model in active working directory")
-        logger.info("SubProcess save_model() called ==================================")
-        save_model(model, model_name=model_name, verbose=False)
-        logger.info("SubProcess save_model() end ==================================")
-
-        # initialize deployment
-        filename = str(model_name) + '.pkl'
-        key = str(model_name) + '.pkl'
-        container_name = authentication.get('container')
-        try:
-            container_client = _create_container_azure(container_name)
-            _upload_blob_azure(container_name, filename, key)
-            del(container_client)
-        except:
-            _upload_blob_azure(container_name, filename, key)
-
-        os.remove(filename)
-
-        print("Model Succesfully Deployed on Azure Storage Blob")
-        logger.info("Model Succesfully Deployed on Azure Storage Blob")
-        logger.info(str(model))
-
-    else:
-        logger.error('Platform {} is not supported by pycaret or illegal option'.format(platform))
-        sys.exit('Platform {} is not supported by pycaret or illegal option'.format(platform))
-        
-    logger.info("deploy_model() succesfully completed......................................")
-
-def save_model(model, model_name, model_only=False, verbose=True):
-    
-    """
-    This function saves the transformation pipeline and trained model object 
-    into the current active directory as a pickle file for later use. 
-    
-    Example
-    -------
-    >>> from pycaret.datasets import get_data
-    >>> jewellery = get_data('jewellery')
-    >>> experiment_name = setup(data = jewellery, normalize = True)
-    >>> kmeans = create_model('kmeans')
-    >>> save_model(kmeans, 'kmeans_model_23122019')
-    
-    This will save the transformation pipeline and model as a binary pickle
-    file in the current directory. 
-
-    Parameters
-    ----------
-    model : object, default = none
-        A trained model object should be passed.
-    
-    model_name : string, default = none
-        Name of pickle file to be passed as a string.
-    
-    model_only : bool, default = False
-        When set to True, only trained model object is saved and all the 
-        transformations are ignored.
-    
-    verbose : bool, default = True
-        When set to False, success message is not printed.
-
-    Returns
-    -------    
-    Success_Message
-         
-    """
-    
-    import logging
-    from copy import deepcopy
-
-    try:
-        hasattr(logger, 'name')
-    except:
-        logger = logging.getLogger('logs')
-        logger.setLevel(logging.DEBUG)
-        
-        # create console handler and set level to debug
-        if logger.hasHandlers():
-            logger.handlers.clear()
-        
-        ch = logging.FileHandler('logs.log')
-        ch.setLevel(logging.DEBUG)
-
-        # create formatter
-        formatter = logging.Formatter('%(asctime)s:%(levelname)s:%(message)s')
-
-        # add formatter to ch
-        ch.setFormatter(formatter)
-
-        # add ch to logger
-        logger.addHandler(ch)
-
-    logger.info("Initializing save_model()")
-    logger.info("""save_model(model={}, model_name={}, verbose={})""".\
-        format(str(model), str(model_name), str(verbose)))
-
-    #ignore warnings
-    import warnings
-    warnings.filterwarnings('ignore') 
-    
-    logger.info("Adding model into prep_pipe")
-
-    if model_only:
-        model_ = deepcopy(model)
-        logger.warning("Only Model saved. Transformations in prep_pipe are ignored.")
-    else:
-        model_ = deepcopy(prep_pipe)
-        model_.steps.append(['trained model',model]) 
-    
-    import joblib
-    model_name = model_name + '.pkl'
-    joblib.dump(model_, model_name)
-    if verbose:
-        print('Transformation Pipeline and Model Succesfully Saved')
-
-    logger.info(str(model_name) + ' saved in current working directory')
-    logger.info(str(model_))
-    logger.info("save_model() succesfully completed......................................")
-
-def load_model(model_name, 
-               platform = None, 
-               authentication = None,
-               verbose=True):
-    
-    """
-    This function loads a previously saved transformation pipeline and model 
-    from the current active directory into the current python environment. 
-    Load object must be a pickle file.
-    
-    Example
-    -------
-    >>> saved_lr = load_model('kmeans_model_23122019')
-    
-    This will load the previously saved model in saved_lr variable. The file 
-    must be in the current directory.
-
-    Parameters
-    ----------
-    model_name : string, default = none
-        Name of pickle file to be passed as a string.
-      
-    platform: string, default = None
-        Name of platform, if loading model from cloud. 
-        Currently available options are: 'aws', 'gcp', 'azure'.
-    
-    authentication : dict
-        dictionary of applicable authentication tokens.
-
-        When platform = 'aws':
-        {'bucket' : 'name of bucket'}
-
-        When platform = 'gcp':
-        {'project': 'name of project', 'bucket' : 'name of bucket'}
-
-        When platform = 'azure':
-        {'container': 'name of container'}
-    
-    verbose: Boolean, default = True
-        Success message is not printed when verbose is set to False.
-
-    Returns
-    -------
-    Model Object
-
-    """
-    
-    #ignore warnings
-    import warnings
-    warnings.filterwarnings('ignore') 
-    
-    #exception checking
-    import sys
-    
-    if platform is not None:
-        if authentication is None:
-            sys.exit("(Value Error): Authentication is missing.")
-
-    if platform is None:
-
-        import joblib
-        model_name = model_name + '.pkl'
-        if verbose:
-            print('Transformation Pipeline and Model Successfully Loaded')
-        return joblib.load(model_name)
-    
-    # cloud providers
-    elif platform == 'aws':
-
-        import boto3
-        bucketname = authentication.get('bucket')
-        filename = str(model_name) + '.pkl'
-        s3 = boto3.resource('s3')
-        s3.Bucket(bucketname).download_file(filename, filename)
-        filename = str(model_name)
-        model = load_model(filename, verbose=False)
-        model = load_model(filename, verbose=False)
-
-        if verbose:
-            print('Transformation Pipeline and Model Successfully Loaded')
-
-        return model
-
-    elif platform == 'gcp':
-
-        bucket_name = authentication.get('bucket')
-        project_name = authentication.get('project')
-        filename = str(model_name) + '.pkl'
-
-        model_downloaded = _download_blob_gcp(project_name,
-                                              bucket_name, filename, filename)
-
-        model = load_model(model_name, verbose=False)
-
-        if verbose:
-            print('Transformation Pipeline and Model Successfully Loaded')
-        return model
-
-    elif platform == 'azure':
-
-        container_name = authentication.get('container')
-        filename = str(model_name) + '.pkl'
-
-        model_downloaded = _download_blob_azure(container_name, filename, filename)
-
-        model = load_model(model_name, verbose=False)
-
-        if verbose:
-            print('Transformation Pipeline and Model Successfully Loaded')
-        return model
-    else:
-        print('Platform { } is not supported by pycaret or illegal option'.format(platform))
-        
-def models():
+def models(
+    internal: bool = False, raise_errors: bool = True,
+) -> pd.DataFrame:
 
     """
     Returns table of models available in model library.
 
     Example
     -------
-    >>> all_models = models()
+    >>> _all_models = models()
 
-    This will return pandas.DataFrame with all available
+    This will return pandas dataframe with all available 
     models and their metadata.
-    
-    Returns
-    -------
-    pandas.DataFrame
-
-    """
-
-    import pandas as pd
-
-    model_id = ['kmeans', 'ap', 'meanshift', 'sc', 'hclust', 'dbscan', 'optics', 'birch', 'kmodes']
-
-    model_name = ['K-Means Clustering',
-                  'Affinity Propagation',
-                  'Mean shift Clustering',
-                  'Spectral Clustering',
-                  'Agglomerative Clustering',
-                  'Density-Based Spatial Clustering',
-                  'OPTICS Clustering',
-                  'Birch Clustering',
-                  'K-Modes Clustering']
-
-    model_ref = ['sklearn.cluster.KMeans',
-                  'sklearn.cluster.AffinityPropagation',
-                  'sklearn.cluster.MeanShift',
-                  'sklearn.cluster.SpectralClustering',
-                  'sklearn.cluster.AgglomerativeClustering',
-                  'sklearn.cluster.DBSCAN',
-                  'sklearn.cluster.OPTICS',
-                  'sklearn.cluster.Birch',
-                  'git/nicodv/kmodes']
-
-    df = pd.DataFrame({'ID' : model_id, 
-                        'Name' : model_name,
-                        'Reference' : model_ref})
-
-    df.set_index('ID', inplace=True)
-
-    return df
-
-def get_logs(experiment_name = None, save = False):
-
-    """
-    Returns a table with experiment logs consisting
-    run details, parameter, metrics and tags. 
-
-    Example
-    -------
-    >>> logs = get_logs()
-
-    This will return pandas.DataFrame.
 
     Parameters
     ----------
-    experiment_name : string, default = None
-        When set to None current active run is used.
+    internal: bool, default = False
+        If True, will return extra columns and rows used internally.
 
-    save : bool, default = False
-        When set to True, csv file is saved in current directory.
-      
+    raise_errors: bool, default = True
+        If False, will suppress all exceptions, ignoring models
+        that couldn't be created.
+
     Returns
     -------
     pandas.DataFrame
 
     """
 
-    import sys
+    # if _ml_usecase == MLUsecase.CLASSIFICATION:
+    #     model_containers = pycaret.containers.models.classification.get_all_model_containers(
+    #         globals(), raise_errors
+    #     )
+    # elif _ml_usecase == MLUsecase.REGRESSION:
+    #     model_containers = pycaret.containers.models.regression.get_all_model_containers(
+    #         globals(), raise_errors
+    #     )
+    model_containers = pycaret.containers.models.clustering.get_all_model_containers(
+        globals(), raise_errors
+    )
+    rows = [
+        v.get_dict(internal)
+        for k, v in model_containers.items()
+        if (internal or not v.is_special)
+    ]
 
-    if experiment_name is None:
-        exp_name_log_ = exp_name_log
-    else:
-        exp_name_log_ = experiment_name
+    df = pd.DataFrame(rows)
+    df.set_index("ID", inplace=True, drop=True)
 
-    import mlflow
-    from mlflow.tracking import MlflowClient
-    
-    client = MlflowClient()
-
-    if client.get_experiment_by_name(exp_name_log_) is None:
-        sys.exit('No active run found. Check logging parameter in setup or to get logs for inactive run pass experiment_name.')
-    
-    exp_id = client.get_experiment_by_name(exp_name_log_).experiment_id    
-    runs = mlflow.search_runs(exp_id)
-
-    if save:
-        file_name = str(exp_name_log_) + '_logs.csv'
-        runs.to_csv(file_name, index=False)
-
-    return runs
-
-def get_config(variable):
-
-    """
-    This function is used to access global environment variables.
-    Following variables can be accessed:
-
-    - X: Transformed dataset
-    - data_: Original dataset  
-    - seed: random state set through session_id
-    - prep_pipe: Transformation pipeline configured through setup
-    - prep_param: prep_param configured through setup
-    - n_jobs_param: n_jobs parameter used in model training
-    - html_param: html_param configured through setup
-    - exp_name_log: Name of experiment set through setup
-    - logging_param: log_experiment param set through setup
-    - log_plots_param: log_plots param set through setup
-    - USI: Unique session ID parameter set through setup
-
-    Example
-    -------
-    >>> X = get_config('X') 
-
-    This will return transformed dataset.
-          
-    Returns
-    -------
-    variable
-
-    """
-
-    import logging
-
-    try:
-        hasattr(logger, 'name')
-    except:
-        logger = logging.getLogger('logs')
-        logger.setLevel(logging.DEBUG)
-        
-        # create console handler and set level to debug
-        if logger.hasHandlers():
-            logger.handlers.clear()
-        
-        ch = logging.FileHandler('logs.log')
-        ch.setLevel(logging.DEBUG)
-
-        # create formatter
-        formatter = logging.Formatter('%(asctime)s:%(levelname)s:%(message)s')
-
-        # add formatter to ch
-        ch.setFormatter(formatter)
-
-        # add ch to logger
-        logger.addHandler(ch)
-
-    logger.info("Initializing get_config()")
-    logger.info("""get_config(variable={})""".\
-        format(str(variable)))
-
-    if variable == 'X':
-        global_var = X
-    
-    if variable == 'data_':
-        global_var = data_
-
-    if variable == 'seed':
-        global_var = seed
-
-    if variable == 'prep_pipe':
-        global_var = prep_pipe
-
-    if variable == 'prep_param':
-        global_var = prep_param
-        
-    if variable == 'n_jobs_param':
-        global_var = n_jobs_param
-
-    if variable == 'html_param':
-        global_var = html_param
-
-    if variable == 'exp_name_log':
-        global_var = exp_name_log
-
-    if variable == 'logging_param':
-        global_var = logging_param
-
-    if variable == 'log_plots_param':
-        global_var = log_plots_param
-
-    if variable == 'USI':
-        global_var = USI
-
-    logger.info("Global variable: " + str(variable) + ' returned')
-    logger.info("get_config() succesfully completed......................................")
-
-    return global_var
-
-def set_config(variable,value):
-
-    """
-    This function is used to reset global environment variables.
-    Following variables can be accessed:
-
-    - X: Transformed dataset
-    - data_: Original dataset  
-    - seed: random state set through session_id
-    - prep_pipe: Transformation pipeline configured through setup
-    - prep_param: prep_param configured through setup
-    - n_jobs_param: n_jobs parameter used in model training
-    - html_param: html_param configured through setup
-    - exp_name_log: Name of experiment set through setup
-    - logging_param: log_experiment param set through setup
-    - log_plots_param: log_plots param set through setup
-    - USI: Unique session ID parameter set through setup
-
-    Example
-    -------
-    >>> set_config('seed', 123) 
-
-    This will set the global seed to '123'.
-
-    """
-
-    import logging
-
-    try:
-        hasattr(logger, 'name')
-    except:
-        logger = logging.getLogger('logs')
-        logger.setLevel(logging.DEBUG)
-        
-        # create console handler and set level to debug
-        if logger.hasHandlers():
-            logger.handlers.clear()
-        
-        ch = logging.FileHandler('logs.log')
-        ch.setLevel(logging.DEBUG)
-
-        # create formatter
-        formatter = logging.Formatter('%(asctime)s:%(levelname)s:%(message)s')
-
-        # add formatter to ch
-        ch.setFormatter(formatter)
-
-        # add ch to logger
-        logger.addHandler(ch)
-
-    logger.info("Initializing set_config()")
-    logger.info("""set_config(variable={}, value={})""".\
-        format(str(variable), str(value)))
-        
-    if variable == 'X':
-        global X
-        X = value
-
-    if variable == 'data_':
-        global data_
-        data_ = value
-
-    if variable == 'seed':
-        global seed
-        seed = value
-
-    if variable == 'prep_pipe':
-        global prep_pipe
-        prep_pipe = value
-
-    if variable == 'prep_param':
-        global prep_param
-        prep_param = value
-
-    if variable == 'n_jobs_param':
-        global n_jobs_param
-        n_jobs_param = value
-
-    if variable == 'html_param':
-        global html_param
-        html_param = value
-
-    if variable == 'exp_name_log':
-        global exp_name_log
-        exp_name_log = value
-
-    if variable == 'logging_param':
-        global logging_param
-        logging_param = value
-
-    if variable == 'log_plots_param':
-        global log_plots_param
-        log_plots_param = value
-
-    if variable == 'USI':
-        global USI
-        USI = value
-
-    logger.info("Global variable:  " + str(variable) + ' updated')
-    logger.info("set_config() succesfully completed......................................")
-
-def get_system_logs():
-
-    """
-    Read and print 'logs.log' file from current active directory
-    """
-
-    file = open('logs.log', 'r')
-    lines = file.read().splitlines()
-    file.close()
-
-    for line in lines:
-        if not line:
-            continue
-
-        columns = [col.strip() for col in line.split(':') if col]
-        print(columns)
+    return df
 
 def get_clusters(data, 
                  model = None, 
@@ -4558,240 +2640,527 @@ def get_clusters(data,
                                        random_state = seed)
       
     try:
-        c = create_model(model=model, num_clusters=num_clusters, verbose=False, system=False)
+        c = create_model(estimator=model, num_clusters=num_clusters, verbose=False, system=False)
     except:
-        c = create_model(model=model, verbose=False, system=False)
+        c = create_model(estimator=model, verbose=False, system=False)
     dataset = assign_model(c, verbose=False)
     return dataset
 
-def _create_bucket_gcp(project_name, bucket_name):
+def pull(pop=False) -> pd.DataFrame:  # added in pycaret==2.2.0
     """
-    (Internal)
-    Creates a bucket on Google Cloud Platform if it does not exists already
-
-    Example
-    -------
-    >>> _create_bucket_gcp(project_name='GCP-Essentials', bucket_name='test-pycaret-gcp')
+    Returns latest displayed table.
 
     Parameters
     ----------
-    project_name : string
-        A Project name on GCP Platform (Must have been created from console).
-
-    bucket_name : string
-        Name of the storage bucket to be created if does not exists already.
+    pop : bool, default = False
+        If true, will pop (remove) the returned dataframe from the
+        display container.
 
     Returns
     -------
-    None
-    """
-
-    # bucket_name = "your-new-bucket-name"
-    from google.cloud import storage
-    storage_client = storage.Client(project_name)
-
-    buckets = storage_client.list_buckets()
-
-    if bucket_name not in buckets:
-        bucket = storage_client.create_bucket(bucket_name)
-        logger.info("Bucket {} created".format(bucket.name))
-    else:
-        raise FileExistsError('{} already exists'.format(bucket_name))
-
-def _upload_blob_gcp(project_name, bucket_name, source_file_name, destination_blob_name):
+    pandas.DataFrame
+        Equivalent to get_config('display_container')[-1]
 
     """
-    (Internal)
-    Upload blob to GCP storage bucket
+    return pycaret.internal.tabular.pull(pop=pop)
 
+
+def deploy_model(
+    model,
+    model_name: str,
+    authentication: dict,
+    platform: str = "aws",  # added gcp and azure support in pycaret==2.1
+):
+
+    """
+    (In Preview)
+
+    This function deploys the transformation pipeline and trained model object for
+    production use. The platform of deployment can be defined under the platform
+    param along with the applicable authentication tokens which are passed as a
+    dictionary to the authentication param.
+    
     Example
     -------
-    >>> _upload_blob_gcp(project_name='GCP-Essentials', bucket_name='test-pycaret-gcp', \
-                        source_file_name='model-101.pkl', destination_blob_name='model-101.pkl')
+    >>> from pycaret.datasets import get_data
+    >>> juice = get_data('juice')
+    >>> experiment_name = setup(data = juice,  target = 'Purchase')
+    >>> lr = create_model('lr')
+    >>> deploy_model(model = lr, model_name = 'deploy_lr', platform = 'aws', authentication = {'bucket' : 'pycaret-test'})
+    
+    This will deploy the model on an AWS S3 account under bucket 'pycaret-test'
+    
+    Notes
+    -----
+    For AWS users:
+    Before deploying a model to an AWS S3 ('aws'), environment variables must be 
+    configured using the command line interface. To configure AWS env. variables, 
+    type aws configure in your python command line. The following information is
+    required which can be generated using the Identity and Access Management (IAM) 
+    portal of your amazon console account:
+
+    - AWS Access Key ID
+    - AWS Secret Key Access
+    - Default Region Name (can be seen under Global settings on your AWS console)
+    - Default output format (must be left blank)
+
+    For GCP users:
+    --------------
+    Before deploying a model to Google Cloud Platform (GCP), project must be created 
+    either using command line or GCP console. Once project is created, you must create 
+    a service account and download the service account key as a JSON file, which is 
+    then used to set environment variable. 
+
+    https://cloud.google.com/docs/authentication/production
+
+    - Google Cloud Project
+    - Service Account Authetication
+
+    For Azure users:
+    ---------------
+    Before deploying a model to Microsoft's Azure (Azure), environment variables
+    for connection string must be set. In order to get connection string, user has
+    to create account of Azure. Once it is done, create a Storage account. In the settings
+    section of storage account, user can get the connection string.
+
+    Read below link for more details.
+    https://docs.microsoft.com/en-us/azure/storage/blobs/storage-quickstart-blobs-python?toc=%2Fpython%2Fazure%2FTOC.json
+
+    - Azure Storage Account
 
     Parameters
     ----------
-    project_name : string
-        A Project name on GCP Platform (Must have been created from console).
+    model : object
+        A trained model object should be passed as an estimator. 
+    
+    model_name : str
+        Name of model to be passed as a str.
+    
+    authentication : dict
+        Dictionary of applicable authentication tokens.
 
-    bucket_name : string
-        Name of the storage bucket to be created if does not exists already.
+        When platform = 'aws':
+        {'bucket' : 'Name of Bucket on S3'}
 
-    source_file_name : string
-        A blob/file name to copy to GCP
+        When platform = 'gcp':
+        {'project': 'gcp_pycaret', 'bucket' : 'pycaret-test'}
 
-    destination_blob_name : string
-        Name of the destination file to be stored on GCP
+        When platform = 'azure':
+        {'container': 'pycaret-test'}
+    
+    platform: str, default = 'aws'
+        Name of platform for deployment. Current available options are: 'aws', 'gcp' and 'azure'
 
     Returns
     -------
-    None
+    Success_Message
+    
+    Warnings
+    --------
+    - This function uses file storage services to deploy the model on cloud platform. 
+      As such, this is efficient for batch-use. Where the production objective is to 
+      obtain prediction at an instance level, this may not be the efficient choice as 
+      it transmits the binary pickle file between your local python environment and
+      the platform. 
+    
     """
 
-    # bucket_name = "your-bucket-name"
-    # source_file_name = "local/path/to/file"
-    # destination_blob_name = "storage-object-name"
-    from google.cloud import storage
-    storage_client = storage.Client(project_name)
-    bucket = storage_client.bucket(bucket_name)
-    blob = bucket.blob(destination_blob_name)
-
-    blob.upload_from_filename(source_file_name)
-
-    logger.info(
-        "File {} uploaded to {}.".format(
-            source_file_name, destination_blob_name
-        )
+    return pycaret.internal.tabular.deploy_model(
+        model=model,
+        model_name=model_name,
+        authentication=authentication,
+        platform=platform,
     )
 
-def _download_blob_gcp(project_name, bucket_name, source_blob_name, destination_file_name):
-    """
-    (Internal)
-    Download a blob from GCP storage bucket
+def save_model(model, model_name: str, model_only: bool = False, verbose: bool = True):
 
+    """
+    This function saves the transformation pipeline and trained model object 
+    into the current active directory as a pickle file for later use. 
+    
     Example
     -------
-    >>> _download_blob_gcp(project_name='GCP-Essentials', bucket_name='test-pycaret-gcp', \
-                          source_blob_name='model-101.pkl', destination_file_name='model-101.pkl')
+    >>> from pycaret.datasets import get_data
+    >>> juice = get_data('juice')
+    >>> experiment_name = setup(data = juice,  target = 'Purchase')
+    >>> lr = create_model('lr')
+    >>> save_model(lr, 'lr_model_23122019')
+    
+    This will save the transformation pipeline and model as a binary pickle
+    file in the current active directory. 
 
     Parameters
     ----------
-    project_name : string
-        A Project name on GCP Platform (Must have been created from console).
+    model : object, default = none
+        A trained model object should be passed as an estimator. 
+    
+    model_name : str, default = none
+        Name of pickle file to be passed as a string.
+    
+    model_only : bool, default = False
+        When set to True, only trained model object is saved and all the 
+        transformations are ignored.
 
-    bucket_name : string
-        Name of the storage bucket to be created if does not exists already.
+    verbose: bool, default = True
+        Success message is not printed when verbose is set to False.
 
-    source_blob_name : string
-        A blob/file name to download from GCP bucket
+    Returns
+    -------
+    Success_Message
+    
+         
+    """
 
-    destination_file_name : string
-        Name of the destination file to be stored locally
+    return pycaret.internal.tabular.save_model(
+        model=model, model_name=model_name, model_only=model_only, verbose=verbose
+    )
+
+
+def load_model(
+    model_name,
+    platform: Optional[str] = None,
+    authentication: Optional[Dict[str, str]] = None,
+    verbose: bool = True,
+):
+
+    """
+    This function loads a previously saved transformation pipeline and model 
+    from the current active directory into the current python environment. 
+    Load object must be a pickle file.
+    
+    Example
+    -------
+    >>> saved_lr = load_model('lr_model_23122019')
+    
+    This will load the previously saved model in saved_lr variable. The file 
+    must be in the current directory.
+
+    Parameters
+    ----------
+    model_name : str, default = none
+        Name of pickle file to be passed as a string.
+      
+    platform: str, default = None
+        Name of platform, if loading model from cloud. Current available options are:
+        'aws', 'gcp' and 'azure'.
+    
+    authentication : dict
+        dictionary of applicable authentication tokens.
+
+        When platform = 'aws':
+        {'bucket' : 'Name of Bucket on S3'}
+
+        When platform = 'gcp':
+        {'project': 'gcp_pycaret', 'bucket' : 'pycaret-test'}
+
+        When platform = 'azure':
+        {'container': 'pycaret-test'}
+    
+    verbose: bool, default = True
+        Success message is not printed when verbose is set to False.
 
     Returns
     -------
     Model Object
+
     """
 
-    # bucket_name = "your-bucket-name"
-    # source_blob_name = "storage-object-name"
-    # destination_file_name = "local/path/to/file"
-    from google.cloud import storage
-    storage_client = storage.Client(project_name)
+    return pycaret.internal.tabular.load_model(
+        model_name=model_name,
+        platform=platform,
+        authentication=authentication,
+        verbose=verbose,
+    )
 
-    bucket = storage_client.bucket(bucket_name)
-    blob = bucket.blob(source_blob_name)
 
-    if destination_file_name is not None:
-        blob.download_to_filename(destination_file_name)
+def models(
+    type: Optional[str] = None, internal: bool = False, raise_errors: bool = True,
+) -> pd.DataFrame:
 
-        logger.info(
-            "Blob {} downloaded to {}.".format(
-                source_blob_name, destination_file_name
-            )
-        )
-
-    return blob
-
-def _create_container_azure(container_name):
     """
-    (Internal)
-    Creates a storage container on Azure Platform. gets the connection string from the environment variables.
+    Returns table of models available in model library.
 
     Example
     -------
-    >>>  container_client = _create_container_azure(container_name='test-pycaret-azure')
+    >>> _all_models = models()
+
+    This will return pandas dataframe with all available 
+    models and their metadata.
 
     Parameters
     ----------
-    container_name : string
-        Name of the storage container to be created if does not exists already.
+    type : str, default = None
+        - linear : filters and only return linear models
+        - tree : filters and only return tree based models
+        - ensemble : filters and only return ensemble models
+    
+    internal: bool, default = False
+        If True, will return extra columns and rows used internally.
+
+    raise_errors: bool, default = True
+        If False, will suppress all exceptions, ignoring models
+        that couldn't be created.
 
     Returns
     -------
-    cotainer_client
-    """
+    pandas.DataFrame
 
-    # Create the container
-    import os, uuid
-    from azure.storage.blob import BlobServiceClient, BlobClient, ContainerClient
-    connect_str = os.getenv('AZURE_STORAGE_CONNECTION_STRING')
-    blob_service_client = BlobServiceClient.from_connection_string(connect_str)
-    container_client = blob_service_client.create_container(container_name)
-    return container_client
-
-def _upload_blob_azure(container_name, source_file_name, destination_blob_name):
     """
-    (Internal)
-    Upload blob to Azure storage  container
+    return pycaret.internal.tabular.models(
+        type=type, internal=internal, raise_errors=raise_errors
+    )
+
+
+def get_metrics(
+    reset: bool = False, include_custom: bool = True, raise_errors: bool = True,
+) -> pd.DataFrame:
+    """
+    Returns table of metrics available.
 
     Example
     -------
-    >>>  _upload_blob_azure(container_name='test-pycaret-azure', source_file_name='model-101.pkl', \
-                           destination_blob_name='model-101.pkl')
+    >>> metrics = get_metrics()
+
+    This will return pandas dataframe with all available 
+    metrics and their metadata.
 
     Parameters
     ----------
-    container_name : string
-        Name of the storage bucket to be created if does not exists already.
-
-    source_file_name : string
-        A blob/file name to copy to Azure
-
-    destination_blob_name : string
-        Name of the destination file to be stored on Azure
+    reset: bool, default = False
+        If True, will reset all changes made using add_metric() and get_metric().
+    include_custom: bool, default = True
+        Whether to include user added (custom) metrics or not.
+    raise_errors: bool, default = True
+        If False, will suppress all exceptions, ignoring models
+        that couldn't be created.
 
     Returns
     -------
-    None
+    pandas.DataFrame
+
     """
 
-    import os, uuid
-    from azure.storage.blob import BlobServiceClient, BlobClient, ContainerClient
-    connect_str = os.getenv('AZURE_STORAGE_CONNECTION_STRING')
+    return pycaret.internal.tabular.get_metrics(
+        reset=reset, include_custom=include_custom, raise_errors=raise_errors,
+    )
 
-    blob_service_client = BlobServiceClient.from_connection_string(connect_str)
-    # Create a blob client using the local file name as the name for the blob
-    blob_client = blob_service_client.get_blob_client(container=container_name, blob=destination_blob_name)
 
-    # Upload the created file
-    with open(source_file_name, "rb") as data:
-      blob_client.upload_blob(data, overwrite=True)
-
-def _download_blob_azure(container_name, source_blob_name, destination_file_name):
+def add_metric(
+    id: str,
+    name: str,
+    score_func: type,
+    target: str = "pred",
+    greater_is_better: bool = True,
+    multiclass: bool = True,
+    **kwargs
+) -> pd.Series:
     """
-    (Internal)
-    Download blob from Azure storage  container
+    Adds a custom metric to be used in all functions.
+
+    Parameters
+    ----------
+    id: str
+        Unique id for the metric.
+
+    name: str
+        Display name of the metric.
+
+    score_func: type
+        Score function (or loss function) with signature score_func(y, y_pred, **kwargs).
+
+    target: str, default = 'pred'
+        The target of the score function.
+        - 'pred' for the prediction table
+        - 'pred_proba' for pred_proba
+        - 'threshold' for decision_function or predict_proba
+
+    greater_is_better: bool, default = True
+        Whether score_func is a score function (default), meaning high is good,
+        or a loss function, meaning low is good. In the latter case, the
+        scorer object will sign-flip the outcome of the score_func.
+
+    multiclass: bool, default = True
+        Whether the metric supports multiclass problems.
+
+    **kwargs:
+        Arguments to be passed to score function.
+
+    Returns
+    -------
+    pandas.Series
+        The created row as Series.
+
+    """
+
+    return pycaret.internal.tabular.add_metric(
+        id=id,
+        name=name,
+        score_func=score_func,
+        target=target,
+        greater_is_better=greater_is_better,
+        multiclass=multiclass,
+        **kwargs,
+    )
+
+
+def remove_metric(name_or_id: str):
+    """
+    Removes a metric used in all functions.
+
+    Parameters
+    ----------
+    name_or_id: str
+        Display name or ID of the metric.
+
+    """
+    return pycaret.internal.tabular.remove_metric(name_or_id=name_or_id)
+
+
+def get_logs(experiment_name: Optional[str] = None, save: bool = False) -> pd.DataFrame:
+
+    """
+    Returns a table with experiment logs consisting
+    run details, parameter, metrics and tags. 
 
     Example
     -------
-    >>>  _download_blob_azure(container_name='test-pycaret-azure', source_blob_name='model-101.pkl', \
-                             destination_file_name='model-101.pkl')
+    >>> logs = get_logs()
+
+    This will return pandas dataframe.
 
     Parameters
     ----------
-    container_name : string
-        Name of the storage bucket to be created if does not exists already.
+    experiment_name : str, default = None
+        When set to None current active run is used.
 
-    source_blob_name : string
-        A blob/file name to download from Azure storage container
-
-    destination_file_name : string
-        Name of the destination file to be stored locally
+    save : bool, default = False
+        When set to True, csv file is saved in current directory.
 
     Returns
     -------
-    None
+    pandas.DataFrame
+
     """
 
-    import os, uuid
-    from azure.storage.blob import BlobServiceClient, BlobClient, ContainerClient
+    return pycaret.internal.tabular.get_logs(
+        experiment_name=experiment_name, save=save
+    )
 
-    connect_str = os.getenv('AZURE_STORAGE_CONNECTION_STRING')
-    blob_service_client = BlobServiceClient.from_connection_string(connect_str)
-    # Create a blob client using the local file name as the name for the blob
-    blob_client = blob_service_client.get_blob_client(container=container_name, blob=source_blob_name)
 
-    if destination_file_name is not None:
-        with open(destination_file_name, "wb") as download_file:
-          download_file.write(blob_client.download_blob().readall())
+def get_config(variable: str):
+
+    """
+    This function is used to access global environment variables.
+    Following variables can be accessed:
+
+    - X: Transformed dataset (X)
+    - y: Transformed dataset (y)  
+    - X_train: Transformed train dataset (X)
+    - X_test: Transformed test/holdout dataset (X)
+    - y_train: Transformed train dataset (y)
+    - y_test: Transformed test/holdout dataset (y)
+    - seed: random state set through session_id
+    - prep_pipe: Transformation pipeline configured through setup
+    - fold_shuffle_param: shuffle parameter used in Kfolds
+    - n_jobs_param: n_jobs parameter used in model training
+    - html_param: html_param configured through setup
+    - create_model_container: results grid storage container
+    - master_model_container: model storage container
+    - display_container: results display container
+    - exp_name_log: Name of experiment set through setup
+    - logging_param: log_experiment param set through setup
+    - log_plots_param: log_plots param set through setup
+    - USI: Unique session ID parameter set through setup
+    - fix_imbalance_param: fix_imbalance param set through setup
+    - fix_imbalance_method_param: fix_imbalance_method param set through setup
+    - data_before_preprocess: data before preprocessing
+    - target_param: name of target variable
+    - gpu_param: use_gpu param configured through setup
+
+    Example
+    -------
+    >>> X_train = get_config('X_train') 
+
+    This will return X_train transformed dataset.
+
+    Returns
+    -------
+    variable
+
+    """
+
+    return pycaret.internal.tabular.get_config(variable=variable)
+
+
+def set_config(variable: str, value):
+
+    """
+    This function is used to reset global environment variables.
+    Following variables can be accessed:
+
+    - X: Transformed dataset (X)
+    - y: Transformed dataset (y)  
+    - X_train: Transformed train dataset (X)
+    - X_test: Transformed test/holdout dataset (X)
+    - y_train: Transformed train dataset (y)
+    - y_test: Transformed test/holdout dataset (y)
+    - seed: random state set through session_id
+    - prep_pipe: Transformation pipeline configured through setup
+    - fold_shuffle_param: shuffle parameter used in Kfolds
+    - n_jobs_param: n_jobs parameter used in model training
+    - html_param: html_param configured through setup
+    - create_model_container: results grid storage container
+    - master_model_container: model storage container
+    - display_container: results display container
+    - exp_name_log: Name of experiment set through setup
+    - logging_param: log_experiment param set through setup
+    - log_plots_param: log_plots param set through setup
+    - USI: Unique session ID parameter set through setup
+    - fix_imbalance_param: fix_imbalance param set through setup
+    - fix_imbalance_method_param: fix_imbalance_method param set through setup
+    - data_before_preprocess: data before preprocessing
+
+    Example
+    -------
+    >>> set_config('seed', 123) 
+
+    This will set the global seed to '123'.
+
+    """
+
+    return pycaret.internal.tabular.set_config(variable=variable, value=value)
+
+
+def save_config(file_name: str):
+
+    """
+    This function is used to save all enviroment variables to file,
+    allowing to later resume modeling without rerunning setup().
+
+    Example
+    -------
+    >>> save_config('myvars.pkl') 
+
+    This will save all enviroment variables to 'myvars.pkl'.
+
+    """
+
+    return pycaret.internal.tabular.save_config(file_name=file_name)
+
+
+def load_config(file_name: str):
+
+    """
+    This function is used to load enviroment variables from file created with save_config(),
+    allowing to later resume modeling without rerunning setup().
+
+
+    Example
+    -------
+    >>> load_config('myvars.pkl') 
+
+    This will load all enviroment variables from 'myvars.pkl'.
+
+    """
+
+    return pycaret.internal.tabular.load_config(file_name=file_name)

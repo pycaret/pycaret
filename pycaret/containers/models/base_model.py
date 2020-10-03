@@ -3,7 +3,6 @@
 # License: MIT
 
 from pycaret.internal.distributions import CategoricalDistribution
-import pycaret.internal.utils
 from pycaret.containers.base_container import BaseContainer
 from typing import Dict, Any, Optional
 
