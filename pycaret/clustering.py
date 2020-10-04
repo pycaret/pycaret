@@ -61,7 +61,6 @@ def setup(
     silent: bool = False,
     verbose: bool = True,
     profile: bool = False,
-    display: Optional[Display] = None,
 ):
 
     """
@@ -482,7 +481,9 @@ def create_model(
     )
 
 
-def assign_model(model, transformation: bool = False, verbose: bool = True):
+def assign_model(
+    model, transformation: bool = False, verbose: bool = True
+) -> pd.DataFrame:
 
     """
     This function assigns each of the data point in the dataset passed during setup
@@ -2181,7 +2182,7 @@ def tune_model(
     return best_model
 
 
-def predict_model(model, data):
+def predict_model(model, data: pd.DataFrame) -> pd.DataFrame:
 
     """
     This function is used to predict new data using a trained model. It requires a
@@ -2260,90 +2261,111 @@ def models(internal: bool = False, raise_errors: bool = True,) -> pd.DataFrame:
 
 def get_clusters(
     data,
-    model=None,
-    num_clusters=4,
-    ignore_features=None,
-    normalize=True,
-    transformation=False,
-    pca=False,
-    pca_components=0.99,
-    ignore_low_variance=False,
-    combine_rare_levels=False,
-    rare_level_threshold=0.1,
-    remove_multicollinearity=False,
-    multicollinearity_threshold=0.9,
-    n_jobs=None,
-):
+    model: Union[str, Any] = "kmeans",
+    num_clusters: int = 4,
+    ground_truth: Optional[str] = None,
+    round: int = 4,
+    fit_kwargs: Optional[dict] = None,
+    preprocess: bool = True,
+    imputation_type: str = "simple",
+    iterative_imputation_iters: int = 10,
+    categorical_features: Optional[List[str]] = None,
+    categorical_imputation: str = "mode",
+    categorical_iterative_imputer: Union[str, Any] = "lightgbm",
+    ordinal_features: Optional[Dict[str, list]] = None,
+    high_cardinality_features: Optional[List[str]] = None,
+    high_cardinality_method: str = "frequency",
+    numeric_features: Optional[List[str]] = None,
+    numeric_imputation: str = "mean",  # method 'zero' added in pycaret==2.1
+    numeric_iterative_imputer: Union[str, Any] = "lightgbm",
+    date_features: Optional[List[str]] = None,
+    ignore_features: Optional[List[str]] = None,
+    normalize: bool = False,
+    normalize_method: str = "zscore",
+    transformation: bool = False,
+    transformation_method: str = "yeo-johnson",
+    handle_unknown_categorical: bool = True,
+    unknown_categorical_method: str = "least_frequent",
+    pca: bool = False,
+    pca_method: str = "linear",
+    pca_components: Optional[float] = None,
+    ignore_low_variance: bool = False,
+    combine_rare_levels: bool = False,
+    rare_level_threshold: float = 0.10,
+    bin_numeric_features: Optional[List[str]] = None,
+    remove_multicollinearity: bool = False,
+    multicollinearity_threshold: float = 0.9,
+    remove_perfect_collinearity: bool = False,
+    group_features: Optional[List[str]] = None,
+    group_names: Optional[List[str]] = None,
+    n_jobs: Optional[int] = -1,
+    session_id: Optional[int] = None,
+    log_experiment: bool = False,
+    experiment_name: Optional[str] = None,
+    log_plots: Union[bool, list] = False,
+    log_profile: bool = False,
+    log_data: bool = False,
+    profile: bool = False,
+) -> pd.DataFrame:
 
     """
     Callable from any external environment without requiring setup initialization.
     """
-
-    if model is None:
-        model = "kmeans"
-
-    if ignore_features is None:
-        ignore_features_pass = []
-    else:
-        ignore_features_pass = ignore_features
-
-    global X, data_, seed, n_jobs_param, logging_param, logger
-
-    data_ = data.copy()
-
-    seed = 99
-
-    n_jobs_param = n_jobs
-
-    logging_param = False
-
-    import logging
-
-    logger = logging.getLogger("logs")
-    logger.setLevel(logging.DEBUG)
-
-    # create console handler and set level to debug
-    if logger.hasHandlers():
-        logger.handlers.clear()
-
-    ch = logging.FileHandler("logs.log")
-    ch.setLevel(logging.DEBUG)
-
-    # create formatter
-    formatter = logging.Formatter("%(asctime)s:%(levelname)s:%(message)s")
-
-    # add formatter to ch
-    ch.setFormatter(formatter)
-
-    # add ch to logger
-    logger.addHandler(ch)
-
-    from pycaret import preprocess
-
-    X = preprocess.Preprocess_Path_Two(
-        train_data=data,
-        features_todrop=ignore_features_pass,
-        display_types=False,
-        scale_data=normalize,
-        scaling_method="zscore",
-        Power_transform_data=transformation,
-        Power_transform_method="yj",
-        apply_pca=pca,
-        pca_variance_retained_or_number_of_components=pca_components,
-        apply_zero_nearZero_variance=ignore_low_variance,
-        club_rare_levels=combine_rare_levels,
-        rara_level_threshold_percentage=rare_level_threshold,
+    setup(
+        data=data,
+        preprocess=preprocess,
+        imputation_type=imputation_type,
+        iterative_imputation_iters=iterative_imputation_iters,
+        categorical_features=categorical_features,
+        categorical_imputation=categorical_imputation,
+        categorical_iterative_imputer=categorical_iterative_imputer,
+        ordinal_features=ordinal_features,
+        high_cardinality_features=high_cardinality_features,
+        high_cardinality_method=high_cardinality_method,
+        numeric_features=numeric_features,
+        numeric_imputation=numeric_imputation,
+        numeric_iterative_imputer=numeric_iterative_imputer,
+        date_features=date_features,
+        ignore_features=ignore_features,
+        normalize=normalize,
+        normalize_method=normalize_method,
+        transformation=transformation,
+        transformation_method=transformation_method,
+        handle_unknown_categorical=handle_unknown_categorical,
+        unknown_categorical_method=unknown_categorical_method,
+        pca=pca,
+        pca_method=pca_method,
+        pca_components=pca_components,
+        ignore_low_variance=ignore_low_variance,
+        combine_rare_levels=combine_rare_levels,
+        rare_level_threshold=rare_level_threshold,
+        bin_numeric_features=bin_numeric_features,
         remove_multicollinearity=remove_multicollinearity,
-        maximum_correlation_between_features=multicollinearity_threshold,
-        random_state=seed,
+        multicollinearity_threshold=multicollinearity_threshold,
+        remove_perfect_collinearity=remove_perfect_collinearity,
+        group_features=group_features,
+        group_names=group_names,
+        n_jobs=n_jobs,
+        html=False,
+        session_id=session_id,
+        log_experiment=log_experiment,
+        experiment_name=experiment_name,
+        log_plots=log_plots,
+        log_profile=log_profile,
+        log_data=log_data,
+        silent=True,
+        verbose=False,
+        profile=profile,
     )
 
-    try:
-        c = create_model(
-            estimator=model, num_clusters=num_clusters, verbose=False, system=False
-        )
-    except:
-        c = create_model(estimator=model, verbose=False, system=False)
+    c = create_model(
+        model=model,
+        num_clusters=num_clusters,
+        ground_truth=ground_truth,
+        round=round,
+        fit_kwargs=fit_kwargs,
+        verbose=False,
+    )
     dataset = assign_model(c, verbose=False)
     return dataset
 
