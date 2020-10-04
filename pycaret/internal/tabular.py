@@ -5019,6 +5019,8 @@ def plot_model(
     fold: Optional[Union[int, Any]] = None,
     fit_kwargs: Optional[dict] = None,
     groups: Optional[Union[str, Any]] = None,
+    feature_name: Optional[str] = None,
+    label: bool = False,
     verbose: bool = True,
     system: bool = True,
     display: Optional[Display] = None,  # added in pycaret==2.2.0
@@ -5178,6 +5180,14 @@ def plot_model(
             "fold parameter must be either None, an integer or a scikit-learn compatible CV generator object."
         )
 
+    if type(label) is not bool:
+        raise TypeError("Label param only accepts True or False.")
+
+    if feature_name is not None and type(feature_name) is not str:
+        raise TypeError(
+            "feature parameter must be string containing column name of dataset."
+        )
+
     """
     
     ERROR HANDLING ENDS HERE
@@ -5219,27 +5229,30 @@ def plot_model(
 
     # Storing X_train and y_train in data_X and data_y parameter
     data_X = X_train.copy()
-    data_y = y_train.copy()
+    if not _is_unsupervised(_ml_usecase):
+        data_y = y_train.copy()
 
     # reset index
     data_X.reset_index(drop=True, inplace=True)
-    data_y.reset_index(drop=True, inplace=True)
+    if not _is_unsupervised(_ml_usecase):
+        data_y.reset_index(drop=True, inplace=True)
 
-    logger.info("Copying test dataset")
+        logger.info("Copying test dataset")
 
-    # Storing X_train and y_train in data_X and data_y parameter
-    test_X = X_test.copy()
-    test_y = y_test.copy()
+        # Storing X_train and y_train in data_X and data_y parameter
+        test_X = X_test.copy()
+        test_y = y_test.copy()
 
-    # reset index
-    test_X.reset_index(drop=True, inplace=True)
-    test_y.reset_index(drop=True, inplace=True)
+        # reset index
+        test_X.reset_index(drop=True, inplace=True)
+        test_y.reset_index(drop=True, inplace=True)
 
     logger.info(f"Plot type: {plot}")
     plot_name = _available_plots[plot]
     display.move_progress()
 
     import scikitplot as skplt
+    import plotly.express as px
 
     # yellowbrick workaround start
     import yellowbrick.utils.types
@@ -5281,6 +5294,308 @@ def plot_model(
                     skplt.metrics.plt.rcParams["figure.dpi"] = self.default_skplt_dpit
                 except:
                     pass
+
+        def cluster():
+            logger.info(
+                "SubProcess assign_model() called =================================="
+            )
+            b = assign_model(pipeline_with_model, verbose=False, transformation=True)
+            logger.info(
+                "SubProcess assign_model() end =================================="
+            )
+            cluster = b["Cluster"]
+            b.drop(["Cluster"], axis=1, inplace=True)
+            b = pd.get_dummies(b)  # casting categorical variable
+            c = b.copy()
+
+            from sklearn.decomposition import PCA
+
+            pca = PCA(n_components=2, random_state=seed)
+            logger.info("Fitting PCA()")
+            pca_ = pca.fit_transform(b)
+            pca_ = pd.DataFrame(pca_)
+            pca_ = pca_.rename(columns={0: "PCA1", 1: "PCA2"})
+            pca_["Cluster"] = cluster
+
+            if feature_name is not None:
+                pca_["Feature"] = data_X[feature_name]
+            else:
+                pca_["Feature"] = data_X[data_X.columns[0]]
+
+            if label:
+                pca_["Label"] = pca_["Feature"]
+
+            """
+            sorting
+            """
+
+            logger.info("Sorting dataframe")
+
+            clus_num = []
+
+            for i in pca_.Cluster:
+                a = int(i.split()[1])
+                clus_num.append(a)
+
+            pca_["cnum"] = clus_num
+            pca_.sort_values(by="cnum", inplace=True)
+
+            """
+            sorting ends
+            """
+
+            logger.info("Rendering Visual")
+
+            if label:
+                fig = px.scatter(
+                    pca_, x="PCA1", y="PCA2", text="Label", color="Cluster", opacity=0.5
+                )
+            else:
+                fig = px.scatter(
+                    pca_,
+                    x="PCA1",
+                    y="PCA2",
+                    hover_data=["Feature"],
+                    color="Cluster",
+                    opacity=0.5,
+                )
+
+            fig.update_traces(textposition="top center")
+            fig.update_layout(plot_bgcolor="rgb(240,240,240)")
+
+            fig.update_layout(height=600 * scale, title_text="2D Cluster PCA Plot")
+
+            if system:
+                fig.show()
+
+            if save:
+                fig.write_html(plot_name)
+                logger.info(f"Saving {plot_name} in current active directory")
+
+            logger.info("Visual Rendered Successfully")
+
+        def tsne():
+            logger.info(
+                "SubProcess assign_model() called =================================="
+            )
+            b = assign_model(pipeline_with_model, verbose=False, transformation=True)
+            logger.info(
+                "SubProcess assign_model() end =================================="
+            )
+
+            cluster = b["Cluster"]
+            b.drop(["Cluster"], axis=1, inplace=True)
+
+            from sklearn.manifold import TSNE
+
+            logger.info("Fitting TSNE()")
+            X_embedded = TSNE(n_components=3, random_state=seed).fit_transform(b)
+            X_embedded = pd.DataFrame(X_embedded)
+            X_embedded["Cluster"] = cluster
+
+            if feature_name is not None:
+                X_embedded["Feature"] = data_X[feature_name]
+            else:
+                X_embedded["Feature"] = data_X[data_X.columns[0]]
+
+            if label:
+                X_embedded["Label"] = X_embedded["Feature"]
+
+            """
+            sorting
+            """
+            logger.info("Sorting dataframe")
+
+            clus_num = []
+            for i in X_embedded.Cluster:
+                a = int(i.split()[1])
+                clus_num.append(a)
+
+            X_embedded["cnum"] = clus_num
+            X_embedded.sort_values(by="cnum", inplace=True)
+
+            """
+            sorting ends
+            """
+
+            df = X_embedded
+
+            logger.info("Rendering Visual")
+
+            if label:
+
+                fig = px.scatter_3d(
+                    df,
+                    x=0,
+                    y=1,
+                    z=2,
+                    color="Cluster",
+                    title="3d TSNE Plot for Clusters",
+                    text="Label",
+                    opacity=0.7,
+                    width=900 * scale,
+                    height=800 * scale,
+                )
+
+            else:
+                fig = px.scatter_3d(
+                    df,
+                    x=0,
+                    y=1,
+                    z=2,
+                    color="Cluster",
+                    title="3d TSNE Plot for Clusters",
+                    hover_data=["Feature"],
+                    opacity=0.7,
+                    width=900 * scale,
+                    height=800 * scale,
+                )
+
+            if system:
+                fig.show()
+
+            if save:
+                fig.write_html(f"{plot_name}.html")
+                logger.info(f"Saving '{plot_name}.html' in current active directory")
+
+            logger.info("Visual Rendered Successfully")
+
+        def distribution():
+            logger.info(
+                "SubProcess assign_model() called =================================="
+            )
+            d = assign_model(pipeline_with_model, verbose=False)
+            logger.info(
+                "SubProcess assign_model() end =================================="
+            )
+
+            """
+            sorting
+            """
+            logger.info("Sorting dataframe")
+
+            clus_num = []
+            for i in d.Cluster:
+                a = int(i.split()[1])
+                clus_num.append(a)
+
+            d["cnum"] = clus_num
+            d.sort_values(by="cnum", inplace=True)
+            d.reset_index(inplace=True, drop=True)
+
+            clus_label = []
+            for i in d.cnum:
+                a = "Cluster " + str(i)
+                clus_label.append(a)
+
+            d.drop(["Cluster", "cnum"], inplace=True, axis=1)
+            d["Cluster"] = clus_label
+
+            """
+            sorting ends
+            """
+
+            if feature_name is None:
+                x_col = "Cluster"
+            else:
+                x_col = feature_name
+
+            logger.info("Rendering Visual")
+
+            fig = px.histogram(
+                d,
+                x=x_col,
+                color="Cluster",
+                marginal="box",
+                opacity=0.7,
+                hover_data=d.columns,
+            )
+
+            fig.update_layout(height=600 * scale,)
+
+            if system:
+                fig.show()
+
+            if save:
+                fig.write_html(f"{plot_name}.html")
+                logger.info(f"Saving '{plot_name}.html' in current active directory")
+
+            logger.info("Visual Rendered Successfully")
+
+        def elbow():
+            try:
+                from yellowbrick.cluster import KElbowVisualizer
+
+                visualizer = KElbowVisualizer(pipeline_with_model, timings=False)
+                show_yellowbrick_plot(
+                    visualizer=visualizer,
+                    X_train=data_X,
+                    y_train=None,
+                    X_test=None,
+                    y_test=None,
+                    name=plot_name,
+                    handle_test="",
+                    scale=scale,
+                    save=save,
+                    fit_kwargs=fit_kwargs,
+                    groups=groups,
+                    system=system,
+                    display=display,
+                )
+
+            except:
+                logger.warning("Elbow plot failed")
+                raise TypeError("Plot Type not supported for this model.")
+
+        def silhouette():
+            from yellowbrick.cluster import SilhouetteVisualizer
+
+            try:
+                visualizer = SilhouetteVisualizer(
+                    pipeline_with_model, colors="yellowbrick"
+                )
+                show_yellowbrick_plot(
+                    visualizer=visualizer,
+                    X_train=data_X,
+                    y_train=None,
+                    X_test=None,
+                    y_test=None,
+                    name=plot_name,
+                    handle_test="",
+                    scale=scale,
+                    save=save,
+                    fit_kwargs=fit_kwargs,
+                    groups=groups,
+                    system=system,
+                    display=display,
+                )
+            except:
+                logger.warning("Elbow plot failed")
+                raise TypeError("Plot Type not supported for this model.")
+
+        def distance():
+            from yellowbrick.cluster import InterclusterDistance
+
+            try:
+                visualizer = InterclusterDistance(pipeline_with_model)
+                show_yellowbrick_plot(
+                    visualizer=visualizer,
+                    X_train=data_X,
+                    y_train=None,
+                    X_test=None,
+                    y_test=None,
+                    name=plot_name,
+                    handle_test="",
+                    scale=scale,
+                    save=save,
+                    fit_kwargs=fit_kwargs,
+                    groups=groups,
+                    system=system,
+                    display=display,
+                )
+            except:
+                logger.warning("Elbow plot failed")
+                raise TypeError("Plot Type not supported for this model.")
 
         def residuals():
 
@@ -6759,6 +7074,130 @@ def optimize_threshold(
     )
 
 
+def assign_model(
+    model, transformation: bool = False, verbose: bool = True
+) -> pd.DataFrame:
+
+    """
+    This function assigns each of the data point in the dataset passed during setup
+    stage to one of the clusters using trained model object passed as model param.
+    create_model() function must be called before using assign_model().
+    
+    This function returns a pandas.DataFrame.
+
+    Example
+    -------
+    >>> from pycaret.datasets import get_data
+    >>> jewellery = get_data('jewellery')
+    >>> experiment_name = setup(data = jewellery, normalize = True)
+    >>> kmeans = create_model('kmeans')
+    >>> kmeans_df = assign_model(kmeans)
+
+    This will return a pandas.DataFrame with inferred clusters using trained model.
+
+    Parameters
+    ----------
+    model: trained model object, default = None
+    
+    transformation: bool, default = False
+        When set to True, assigned clusters are returned on transformed dataset instead 
+        of original dataset passed during setup().
+    
+    verbose: Boolean, default = True
+        Status update is not printed when verbose is set to False.
+
+    Returns
+    -------
+    pandas.DataFrame
+        Returns a DataFrame with assigned clusters using a trained model.
+  
+    """
+
+    function_params_str = ", ".join([f"{k}={v}" for k, v in locals().items()])
+
+    logger = get_logger()
+
+    logger.info("Initializing assign_model()")
+    logger.info(f"assign_model({function_params_str})")
+
+    logger.info("Checking exceptions")
+
+    # checking transformation parameter
+    if type(transformation) is not bool:
+        raise TypeError(
+            "Transformation parameter can only take argument as True or False."
+        )
+
+    # checking verbose parameter
+    if type(verbose) is not bool:
+        raise TypeError("Verbose parameter can only take argument as True or False.")
+
+    """
+    error handling ends here
+    """
+
+    logger.info("Copying data")
+    # copy data_
+    if transformation:
+        data = X.copy()
+        logger.info(
+            "Transformation param set to True. Assigned clusters are attached on transformed dataset."
+        )
+    else:
+        data = data_before_preprocess.copy()
+
+    # calculation labels and attaching to dataframe
+
+    labels = [f"Cluster {i}" for i in model.labels_]
+
+    data["Cluster"] = labels
+
+    logger.info("Determining Trained Model")
+
+    name = _get_model_name(model)
+
+    logger.info(f"Trained Model : {name}")
+
+    logger.info(data.shape)
+    logger.info(
+        "assign_model() succesfully completed......................................"
+    )
+
+    return data
+
+
+def predict_model_unsupervised(estimator, data: pd.DataFrame) -> pd.DataFrame:
+    function_params_str = ", ".join([f"{k}={v}" for k, v in locals().items()])
+
+    logger = get_logger()
+
+    logger.info("Initializing predict_model()")
+    logger.info(f"predict_model({function_params_str})")
+
+    logger.info("Checking exceptions")
+
+    # copy data and model
+    data_transformed = data.copy()
+
+    # exception checking for predict param
+    if hasattr(estimator, "predict"):
+        pass
+    else:
+        raise TypeError("Model doesn't support predict parameter.")
+
+    # predictions start here
+    if is_sklearn_pipeline(estimator):
+        pred = estimator.predict(data)
+    else:
+        pred = estimator.predict(prep_pipe.transform(data_transformed))
+
+    pred_list = [f"Cluster {i}" for i in pred]
+
+    data_transformed["Cluster"] = pred_list
+
+    return data_transformed
+
+
 def predict_model(
     estimator,
     data: Optional[pd.DataFrame] = None,
@@ -7686,6 +8125,8 @@ def models(
     """
 
     def filter_model_df_by_type(df):
+        if not type:
+            return df
         model_type = {
             "linear": [
                 "lr",
@@ -7716,6 +8157,7 @@ def models(
                 "ada",
             ],
         }
+        return df.loc[model_type[type]]
 
         # Check if type is valid
         if type not in list(model_type) + [None]:
@@ -7732,6 +8174,10 @@ def models(
         )
     elif _ml_usecase == MLUsecase.REGRESSION:
         model_containers = pycaret.containers.models.regression.get_all_model_containers(
+            globals(), raise_errors
+        )
+    elif _ml_usecase == MLUsecase.CLUSTERING:
+        model_containers = pycaret.containers.models.clustering.get_all_model_containers(
             globals(), raise_errors
         )
     rows = [

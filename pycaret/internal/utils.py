@@ -266,7 +266,9 @@ def np_list_arange(
     Numpy arange returned as list with floating point conversion
     failsafes.
     """
-    convert_to_float = isinstance(start, float) or isinstance(stop, float) or isinstance(step, float)
+    convert_to_float = (
+        isinstance(start, float) or isinstance(stop, float) or isinstance(step, float)
+    )
     if convert_to_float:
         stop = float(stop)
         start = float(start)
@@ -316,9 +318,7 @@ def _calculate_unsupervised_metric(
         return None
     target = ground_truth if container.needs_ground_truth else X
     try:
-        calculated_metric = score_func(
-            target, labels, **container.args
-        )
+        calculated_metric = score_func(target, labels, **container.args)
     except:
         try:
             calculated_metric = score_func(target, labels, **container.args)
@@ -326,6 +326,7 @@ def _calculate_unsupervised_metric(
             calculated_metric = 0
 
     return (display_name, calculated_metric)
+
 
 def calculate_metrics(
     metrics: Dict[str, MetricContainer],
@@ -538,6 +539,12 @@ def get_all_object_vars_and_properties(object):
         for k in object.__dir__()
         if k[:2] != "__" and type(getattr(object, k, "")).__name__ != "method"
     }
+
+
+def is_fit_var(key):
+    return key and (
+        (key.endswith("_") and not key.startswith("_")) or (key in ["n_clusters"])
+    )
 
 
 def can_early_stop(
