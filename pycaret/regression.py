@@ -7,14 +7,14 @@
 import pandas as pd
 import numpy as np
 
-import pycaret.internal.supervised
+import pycaret.internal.tabular
 from pycaret.internal.Display import Display, is_in_colab, enable_colab
 from typing import List, Tuple, Any, Union, Optional, Dict
 import warnings
 from IPython.utils import io
 import traceback
 
-from pycaret.internal.supervised import MLUsecase
+from pycaret.internal.tabular import MLUsecase
 
 warnings.filterwarnings("ignore")
 
@@ -528,7 +528,7 @@ def setup(
     if log_plots == True:
         log_plots = ["residuals", "error", "feature"]
 
-    return pycaret.internal.supervised.setup(
+    return pycaret.internal.tabular.setup(
         ml_usecase="regression",
         available_plots=available_plots,
         data=data,
@@ -737,7 +737,7 @@ def compare_models(
 
     """
 
-    return pycaret.internal.supervised.compare_models(
+    return pycaret.internal.tabular.compare_models(
         include=include,
         exclude=exclude,
         fold=fold,
@@ -858,7 +858,7 @@ def create_model(
   
     """
 
-    return pycaret.internal.supervised.create_model(
+    return pycaret.internal.tabular.create_model_supervised(
         estimator=estimator,
         fold=fold,
         round=round,
@@ -1053,7 +1053,7 @@ def tune_model(
     ERROR HANDLING STARTS HERE
     
     """
-    return pycaret.internal.supervised.tune_model(
+    return pycaret.internal.tabular.tune_model_supervised(
         estimator=estimator,
         fold=fold,
         round=round,
@@ -1166,7 +1166,7 @@ def ensemble_model(
     
     """
 
-    return pycaret.internal.supervised.ensemble_model(
+    return pycaret.internal.tabular.ensemble_model(
         estimator=estimator,
         method=method,
         fold=fold,
@@ -1276,7 +1276,7 @@ def blend_models(
   
     """
 
-    return pycaret.internal.supervised.blend_models(
+    return pycaret.internal.tabular.blend_models(
         estimator_list=estimator_list,
         fold=fold,
         round=round,
@@ -1389,7 +1389,7 @@ def stack_models(
 
     """
 
-    return pycaret.internal.supervised.stack_models(
+    return pycaret.internal.tabular.stack_models(
         estimator_list=estimator_list,
         meta_model=meta_model,
         fold=fold,
@@ -1482,7 +1482,7 @@ def plot_model(
 
     """
 
-    return pycaret.internal.supervised.plot_model(
+    return pycaret.internal.tabular.plot_model(
         estimator=estimator,
         plot=plot,
         scale=scale,
@@ -1543,7 +1543,7 @@ def evaluate_model(
 
     """
 
-    return pycaret.internal.supervised.evaluate_model(
+    return pycaret.internal.tabular.evaluate_model(
         estimator=estimator, fold=fold, fit_kwargs=fit_kwargs, groups=groups,
     )
 
@@ -1612,7 +1612,7 @@ def interpret_model(
     
     """
 
-    return pycaret.internal.supervised.interpret_model(
+    return pycaret.internal.tabular.interpret_model(
         estimator=estimator,
         plot=plot,
         feature=feature,
@@ -1677,7 +1677,7 @@ def predict_model(
     
     """
 
-    return pycaret.internal.supervised.predict_model(
+    return pycaret.internal.tabular.predict_model(
         estimator=estimator,
         data=data,
         probability_threshold=None,
@@ -1739,7 +1739,7 @@ def finalize_model(
          
     """
 
-    return pycaret.internal.supervised.finalize_model(
+    return pycaret.internal.tabular.finalize_model(
         estimator=estimator, fit_kwargs=fit_kwargs, groups=groups,
     )
 
@@ -1844,7 +1844,7 @@ def deploy_model(
     
     """
 
-    return pycaret.internal.supervised.deploy_model(
+    return pycaret.internal.tabular.deploy_model(
         model=model,
         model_name=model_name,
         authentication=authentication,
@@ -1883,7 +1883,7 @@ def create_webservice(model, model_endopoint, api_key=True, pydantic_payload=Non
 
     """
 
-    return pycaret.internal.supervised.create_webservice(
+    return pycaret.internal.tabular.create_webservice(
         model=model,
         model_endopoint=model_endopoint,
         api_key=api_key,
@@ -1930,7 +1930,7 @@ def save_model(model, model_name: str, model_only: bool = False, verbose: bool =
          
     """
 
-    return pycaret.internal.supervised.save_model(
+    return pycaret.internal.tabular.save_model(
         model=model, model_name=model_name, model_only=model_only, verbose=verbose
     )
 
@@ -1984,7 +1984,7 @@ def load_model(
 
     """
 
-    return pycaret.internal.supervised.load_model(
+    return pycaret.internal.tabular.load_model(
         model_name=model_name,
         platform=platform,
         authentication=authentication,
@@ -2009,7 +2009,7 @@ def automl(optimize: str = "R2", use_holdout: bool = False) -> Any:
 
     """
 
-    return pycaret.internal.supervised.automl(
+    return pycaret.internal.tabular.automl(
         optimize=optimize, use_holdout=use_holdout
     )
 
@@ -2030,7 +2030,7 @@ def pull(pop=False) -> pd.DataFrame:  # added in pycaret==2.2.0
         Equivalent to get_config('display_container')[-1]
 
     """
-    return pycaret.internal.supervised.pull(pop=pop)
+    return pycaret.internal.tabular.pull(pop=pop)
 
 
 def models(
@@ -2066,7 +2066,7 @@ def models(
     pandas.DataFrame
 
     """
-    return pycaret.internal.supervised.models(
+    return pycaret.internal.tabular.models(
         type=type, internal=internal, raise_errors=raise_errors
     )
 
@@ -2100,7 +2100,7 @@ def get_metrics(
 
     """
 
-    return pycaret.internal.supervised.get_metrics(
+    return pycaret.internal.tabular.get_metrics(
         reset=reset, include_custom=include_custom, raise_errors=raise_errors,
     )
 
@@ -2141,7 +2141,7 @@ def add_metric(
 
     """
 
-    return pycaret.internal.supervised.add_metric(
+    return pycaret.internal.tabular.add_metric(
         id=id,
         name=name,
         score_func=score_func,
@@ -2161,7 +2161,7 @@ def remove_metric(name_or_id: str):
         Display name or ID of the metric.
 
     """
-    return pycaret.internal.supervised.remove_metric(name_or_id=name_or_id)
+    return pycaret.internal.tabular.remove_metric(name_or_id=name_or_id)
 
 
 def get_logs(experiment_name: Optional[str] = None, save: bool = False) -> pd.DataFrame:
@@ -2190,7 +2190,7 @@ def get_logs(experiment_name: Optional[str] = None, save: bool = False) -> pd.Da
 
     """
 
-    return pycaret.internal.supervised.get_logs(
+    return pycaret.internal.tabular.get_logs(
         experiment_name=experiment_name, save=save
     )
 
@@ -2237,7 +2237,7 @@ def get_config(variable: str):
 
     """
 
-    return pycaret.internal.supervised.get_config(variable=variable)
+    return pycaret.internal.tabular.get_config(variable=variable)
 
 
 def set_config(variable: str, value):
@@ -2276,7 +2276,7 @@ def set_config(variable: str, value):
 
     """
 
-    return pycaret.internal.supervised.set_config(variable=variable, value=value)
+    return pycaret.internal.tabular.set_config(variable=variable, value=value)
 
 
 def save_config(file_name: str):
@@ -2293,7 +2293,7 @@ def save_config(file_name: str):
 
     """
 
-    return pycaret.internal.supervised.save_config(file_name=file_name)
+    return pycaret.internal.tabular.save_config(file_name=file_name)
 
 
 def load_config(file_name: str):
@@ -2311,4 +2311,4 @@ def load_config(file_name: str):
 
     """
 
-    return pycaret.internal.supervised.load_config(file_name=file_name)
+    return pycaret.internal.tabular.load_config(file_name=file_name)

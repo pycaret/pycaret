@@ -1,7 +1,7 @@
 import sklearn.compose
 from sklearn.preprocessing import PowerTransformer
 
-from pycaret.internal.utils import get_all_object_vars_and_properties
+from pycaret.internal.utils import get_all_object_vars_and_properties, is_fit_var
 
 class PowerTransformedTargetRegressor(sklearn.compose.TransformedTargetRegressor):
     def __init__(
@@ -28,7 +28,7 @@ class PowerTransformedTargetRegressor(sklearn.compose.TransformedTargetRegressor
     def _carry_over_regressor_fit_vars(self):
         self._clear_regressor_fit_vars()
         for k, v in get_all_object_vars_and_properties(self.regressor_).items():
-            if k and k.endswith("_") and not k.startswith("_"):
+            if is_fit_var(k):
                 try:
                     setattr(self, k, v)
                     self._fit_vars.add(k)

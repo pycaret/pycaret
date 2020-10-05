@@ -8,7 +8,7 @@
 
 # This pipeline is only to be used internally.
 
-from pycaret.internal.utils import get_all_object_vars_and_properties
+from pycaret.internal.utils import get_all_object_vars_and_properties, is_fit_var
 import imblearn.pipeline
 from sklearn.utils import _print_elapsed_time
 from sklearn.base import BaseEstimator, TransformerMixin, clone
@@ -57,7 +57,7 @@ class Pipeline(imblearn.pipeline.Pipeline):
             for k, v in get_all_object_vars_and_properties(
                 self._final_estimator
             ).items():
-                if k and k.endswith("_") and not k.startswith("_"):
+                if is_fit_var(k):
                     try:
                         setattr(self, k, v)
                         self._fit_vars.add(k)
@@ -96,11 +96,14 @@ class Pipeline(imblearn.pipeline.Pipeline):
                 new_final_estimator,
             )
         else:
-            self.steps.append(name if name else "actual_estimator", new_final_estimator)
+            self.steps.append((name if name else "actual_estimator", new_final_estimator))
         self._carry_over_final_estimator_fit_vars()
 
     def set_params(self, **kwargs):
-        result = super().set_params(**kwargs)
+        try:
+            result = super().set_params(**kwargs)
+        except:
+            result = self._final_estimator.set_params(**kwargs)
 
         self._carry_over_final_estimator_fit_vars()
         return result

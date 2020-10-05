@@ -13,17 +13,6 @@ def test():
 
     # init setup
     clu1 = pycaret.clustering.setup(data, normalize = True, log_experiment=True, silent=True, html=False, session_id=123)
-    assert isinstance(clu1, tuple)
-    assert isinstance(clu1[0], pd.core.frame.DataFrame)
-    assert isinstance(clu1[1], pd.core.frame.DataFrame)
-    assert isinstance(clu1[2], int)
-    assert isinstance(clu1[5], list)
-    assert isinstance(clu1[6], int)
-    assert isinstance(clu1[7], bool)
-    assert isinstance(clu1[8], str)
-    assert isinstance(clu1[9], bool)
-    assert isinstance(clu1[10], bool)
-    assert isinstance(clu1[11], str)
     
     # create model
     kmeans = pycaret.clustering.create_model('kmeans')

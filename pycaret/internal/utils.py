@@ -266,7 +266,9 @@ def np_list_arange(
     Numpy arange returned as list with floating point conversion
     failsafes.
     """
-    convert_to_float = isinstance(start, float) or isinstance(stop, float) or isinstance(step, float)
+    convert_to_float = (
+        isinstance(start, float) or isinstance(stop, float) or isinstance(step, float)
+    )
     if convert_to_float:
         stop = float(stop)
         start = float(start)
@@ -286,6 +288,44 @@ def np_list_arange(
     range[0] = start
     range[-1] = stop - step
     return range
+
+
+def calculate_unsupervised_metrics(
+    metrics: Dict[str, MetricContainer],
+    X,
+    labels,
+    ground_truth: Optional[Any] = None,
+    score_dict: Optional[Dict[str, np.array]] = None,
+) -> Dict[str, np.array]:
+
+    score_dict = []
+
+    for k, v in metrics.items():
+        score_dict.append(
+            _calculate_unsupervised_metric(
+                v, v.score_func, v.display_name, X, labels, ground_truth
+            )
+        )
+
+    score_dict = dict([x for x in score_dict if x is not None])
+    return score_dict
+
+
+def _calculate_unsupervised_metric(
+    container, score_func, display_name, X, labels, ground_truth,
+):
+    if not score_func:
+        return None
+    target = ground_truth if container.needs_ground_truth else X
+    try:
+        calculated_metric = score_func(target, labels, **container.args)
+    except:
+        try:
+            calculated_metric = score_func(target, labels, **container.args)
+        except:
+            calculated_metric = 0
+
+    return (display_name, calculated_metric)
 
 
 def calculate_metrics(
@@ -499,6 +539,12 @@ def get_all_object_vars_and_properties(object):
         for k in object.__dir__()
         if k[:2] != "__" and type(getattr(object, k, "")).__name__ != "method"
     }
+
+
+def is_fit_var(key):
+    return key and (
+        (key.endswith("_") and not key.startswith("_")) or (key in ["n_clusters"])
+    )
 
 
 def can_early_stop(

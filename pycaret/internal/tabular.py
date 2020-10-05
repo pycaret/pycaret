@@ -37,8 +37,10 @@ from pycaret.internal.distributions import *
 from pycaret.internal.validation import *
 import pycaret.containers.metrics.classification
 import pycaret.containers.metrics.regression
+import pycaret.containers.metrics.clustering
 import pycaret.containers.models.classification
 import pycaret.containers.models.regression
+import pycaret.containers.models.clustering
 import pycaret.preprocess
 import pandas as pd
 import numpy as np
@@ -53,7 +55,8 @@ from copy import deepcopy
 from sklearn.base import clone
 from sklearn.exceptions import NotFittedError
 from sklearn.compose import TransformedTargetRegressor
-from typing import List, Tuple, Any, Union
+from sklearn.preprocessing import LabelEncoder
+from typing import List, Tuple, Any, Union, Optional, Dict
 import warnings
 from IPython.utils import io
 import traceback
@@ -67,6 +70,12 @@ _available_plots = {}
 class MLUsecase(Enum):
     CLASSIFICATION = auto()
     REGRESSION = auto()
+    CLUSTERING = auto()
+    ANOMALY = auto()
+
+
+def _is_unsupervised(ml_usecase: MLUsecase) -> bool:
+    return ml_usecase == MLUsecase.CLUSTERING or ml_usecase == MLUsecase.ANOMALY
 
 
 def setup(
@@ -273,15 +282,17 @@ def setup(
     if type(train_size) is not float:
         raise TypeError("train_size parameter only accepts float value.")
 
-    # checking target parameter
-    if target not in data.columns:
-        raise ValueError("Target parameter doesnt exist in the data provided.")
-
-    possible_ml_usecases = ["classification", "regression"]
+    possible_ml_usecases = ["classification", "regression", "clustering", "anomaly"]
     if ml_usecase not in possible_ml_usecases:
         raise ValueError(
             f"ml_usecase must be one of {', '.join(possible_ml_usecases)}."
         )
+
+    ml_usecase = MLUsecase[ml_usecase.upper()]
+
+    # checking target parameter
+    if not _is_unsupervised(ml_usecase) and target not in data.columns:
+        raise ValueError("Target parameter doesnt exist in the data provided.")
 
     # checking session_id
     if session_id is not None:
@@ -301,7 +312,8 @@ def setup(
         raise TypeError("transformation parameter only accepts True or False.")
 
     all_cols = list(data.columns)
-    all_cols.remove(target)
+    if not _is_unsupervised(ml_usecase):
+        all_cols.remove(target)
 
     # checking imputation type
     allowed_imputation_type = ["simple", "iterative"]
@@ -717,24 +729,32 @@ def setup(
     USI = secrets.token_hex(nbytes=2)
     logger.info(f"USI: {USI}")
 
-    _ml_usecase = MLUsecase[ml_usecase.upper()]
+    _ml_usecase = ml_usecase
 
     global pycaret_globals
-    pycaret_globals = {
-        "_ml_usecase",
-        "pycaret_globals",
-        "USI",
-        "html_param",
-        "X",
+    supervised_globals = {
         "y",
         "X_train",
         "X_test",
         "y_train",
         "y_test",
+        "fold_shuffle_param",
+        "fix_imbalance_param",
+        "fix_imbalance_method_param",
+        "stratify_param",
+        "fold_generator",
+        "fold_param",
+        "fold_groups_param",
+    }
+    common_globals = {
+        "_ml_usecase",
+        "pycaret_globals",
+        "USI",
+        "html_param",
+        "X",
         "seed",
         "prep_pipe",
         "experiment__",
-        "fold_shuffle_param",
         "n_jobs_param",
         "_gpu_n_jobs_param",
         "create_model_container",
@@ -743,8 +763,6 @@ def setup(
         "exp_name_log",
         "logging_param",
         "log_plots_param",
-        "fix_imbalance_param",
-        "fix_imbalance_method_param",
         "transform_target_param",
         "transform_target_method_param",
         "data_before_preprocess",
@@ -754,14 +772,14 @@ def setup(
         "_all_models_internal",
         "_all_metrics",
         "_internal_pipeline",
-        "stratify_param",
-        "fold_generator",
-        "fold_param",
-        "fold_groups_param",
         "imputation_regressor",
         "imputation_classifier",
         "iterative_imputation_iters_param",
     }
+    if not _is_unsupervised(_ml_usecase):
+        pycaret_globals = common_globals.union(supervised_globals)
+    else:
+        pycaret_globals = common_globals
 
     logger.info(f"pycaret_globals: {pycaret_globals}")
 
@@ -991,8 +1009,14 @@ def setup(
 
     # creating variables to be used later in the function
     train_data = data_before_preprocess.copy()
-    X_before_preprocess = train_data.drop(target, axis=1)
-    y_before_preprocess = train_data[target]
+    if not _is_unsupervised(_ml_usecase):
+        X_before_preprocess = train_data.drop(target, axis=1)
+        y_before_preprocess = train_data[target]
+    else:
+        target = "UNSUPERVISED_DUMMY_TARGET"
+        train_data[target] = 2
+        # just to add diversified values to target
+        train_data.loc[0:3, target] = 3
 
     imputation_regressor = numeric_iterative_imputer
     imputation_classifier = categorical_iterative_imputer
@@ -1254,43 +1278,47 @@ def setup(
     display.update_monitor(1, "Preprocessing Data")
     display.display_monitor()
 
-    _stratify_columns = _get_columns_to_stratify_by(
-        X_before_preprocess, y_before_preprocess, stratify_param, target
-    )
-
-    if test_data is None:
-        X_train, X_test, y_train, y_test = train_test_split(
-            X_before_preprocess,
-            y_before_preprocess,
-            test_size=1 - train_size,
-            stratify=_stratify_columns,
-            random_state=seed,
-            shuffle=data_split_shuffle,
+    if not _is_unsupervised(_ml_usecase):
+        _stratify_columns = _get_columns_to_stratify_by(
+            X_before_preprocess, y_before_preprocess, stratify_param, target
         )
-        train_data = pd.concat([X_train, y_train], axis=1)
-        test_data = pd.concat([X_test, y_test], axis=1)
+        if test_data is None:
+            X_train, X_test, y_train, y_test = train_test_split(
+                X_before_preprocess,
+                y_before_preprocess,
+                test_size=1 - train_size,
+                stratify=_stratify_columns,
+                random_state=seed,
+                shuffle=data_split_shuffle,
+            )
+            train_data = pd.concat([X_train, y_train], axis=1)
+            test_data = pd.concat([X_test, y_test], axis=1)
 
-    train_data = prep_pipe.fit_transform(train_data)
-    # workaround to also transform target
-    dtypes.final_training_columns.append(target)
-    test_data = prep_pipe.transform(test_data)
+        train_data = prep_pipe.fit_transform(train_data)
+        # workaround to also transform target
+        dtypes.final_training_columns.append(target)
+        test_data = prep_pipe.transform(test_data)
 
-    X_train = train_data.drop(target, axis=1)
-    y_train = train_data[target]
+        X_train = train_data.drop(target, axis=1)
+        y_train = train_data[target]
 
-    X_test = test_data.drop(target, axis=1)
-    y_test = test_data[target]
+        X_test = test_data.drop(target, axis=1)
+        y_test = test_data[target]
 
-    if fold_groups_param is not None:
-        fold_groups_param = fold_groups_param[
-            fold_groups_param.index.isin(X_train.index)
-        ]
+        if fold_groups_param is not None:
+            fold_groups_param = fold_groups_param[
+                fold_groups_param.index.isin(X_train.index)
+            ]
 
     display.move_progress()
+    if not _is_unsupervised(_ml_usecase):
+        data = prep_pipe.transform(data_before_preprocess.copy())
+        X = data.drop(target, axis=1)
+        y = data[target]
+    else:
+        X = prep_pipe.fit_transform(train_data).drop(target, axis=1)
+        X_train = X
 
-    data = prep_pipe.transform(data_before_preprocess.copy())
-    X = data.drop(target, axis=1)
-    y = data[target]
     try:
         dtypes.final_training_columns.remove(target)
     except:
@@ -1328,6 +1356,20 @@ def setup(
             globals(), raise_errors=True
         )
         _all_metrics = pycaret.containers.metrics.regression.get_all_metric_containers(
+            globals(), raise_errors=True
+        )
+    elif _ml_usecase == MLUsecase.CLUSTERING:
+        _all_models = {
+            k: v
+            for k, v in pycaret.containers.models.clustering.get_all_model_containers(
+                globals(), raise_errors=True
+            ).items()
+            if not v.is_special
+        }
+        _all_models_internal = pycaret.containers.models.clustering.get_all_model_containers(
+            globals(), raise_errors=True
+        )
+        _all_metrics = pycaret.containers.metrics.clustering.get_all_metric_containers(
             globals(), raise_errors=True
         )
 
@@ -1422,6 +1464,8 @@ def setup(
     exp_name_dict = {
         MLUsecase.CLASSIFICATION: "clf-default-name",
         MLUsecase.REGRESSION: "reg-default-name",
+        MLUsecase.CLUSTERING: "cluster-default-name",
+        MLUsecase.ANOMALY: "anomaly-default-name",
     }
     if experiment_name is None:
         exp_name_ = exp_name_dict[_ml_usecase]
@@ -1432,7 +1476,8 @@ def setup(
     exp_name_log = exp_name_
 
     functions = pd.DataFrame(
-        [["session_id", seed], ["Target", target],]
+        [["session_id", seed],]
+        + ([["Target", target]] if not _is_unsupervised(_ml_usecase) else [])
         + (
             [["Target Type", target_type], ["Label Encoded", label_encoded],]
             if _ml_usecase == MLUsecase.CLASSIFICATION
@@ -1453,13 +1498,19 @@ def setup(
             if preprocess
             else []
         )
+        + (
+            [
+                ["Transformed Train Set", X_train.shape],
+                ["Transformed Test Set", X_test.shape],
+                ["Shuffle Train-Test", str(data_split_shuffle)],
+                ["Stratify Train-Test", str(data_split_stratify)],
+                ["Fold Generator", type(fold_generator).__name__],
+                ["Fold Number", fold_param],
+            ]
+            if not _is_unsupervised(_ml_usecase)
+            else [["Transformed Data", X.shape]]
+        )
         + [
-            ["Transformed Train Set", X_train.shape],
-            ["Transformed Test Set", X_test.shape],
-            ["Shuffle Train-Test", str(data_split_shuffle)],
-            ["Stratify Train-Test", str(data_split_stratify)],
-            ["Fold Generator", type(fold_generator).__name__],
-            ["Fold Number", fold_param],
             ["CPU Jobs", n_jobs_param],
             ["Use GPU", gpu_param],
             ["Log Experiment", logging_param],
@@ -1562,11 +1613,14 @@ def setup(
     """
 
     # log into experiment
-    experiment__.append(("Classification Setup Config", functions))
-    experiment__.append(("X_training Set", X_train))
-    experiment__.append(("y_training Set", y_train))
-    experiment__.append(("X_test Set", X_test))
-    experiment__.append(("y_test Set", y_test))
+    experiment__.append(("Setup Config", functions))
+    if not _is_unsupervised(_ml_usecase):
+        experiment__.append(("X_training Set", X_train))
+        experiment__.append(("y_training Set", y_train))
+        experiment__.append(("X_test Set", X_test))
+        experiment__.append(("y_test Set", y_test))
+    else:
+        experiment__.append(("Transformed Data", X))
     experiment__.append(("Transformation Pipeline", prep_pipe))
 
     # end runtime
@@ -1916,10 +1970,10 @@ def compare_models(
         display.display_monitor()
         display.display_master_display()
 
-    greater_is_worse_columns = set(
-        [v.display_name for k, v in _all_metrics.items() if not v.greater_is_better]
-        + ["TT (Sec)"]
-    )
+    greater_is_worse_columns = {
+        v.display_name for k, v in _all_metrics.items() if not v.greater_is_better
+    }
+    greater_is_worse_columns.add("TT (Sec)")
 
     np.random.seed(seed)
 
@@ -2020,7 +2074,7 @@ def compare_models(
             "SubProcess create_model() called =================================="
         )
         if errors == "raise":
-            model, model_fit_time = create_model(
+            model, model_fit_time = create_model_supervised(
                 estimator=model,
                 system=False,
                 verbose=False,
@@ -2035,7 +2089,7 @@ def compare_models(
             model_results = pull(pop=True)
         else:
             try:
-                model, model_fit_time = create_model(
+                model, model_fit_time = create_model_supervised(
                     estimator=model,
                     system=False,
                     verbose=False,
@@ -2055,7 +2109,7 @@ def compare_models(
                 )
                 logger.warning(traceback.format_exc())
                 try:
-                    model, model_fit_time = create_model(
+                    model, model_fit_time = create_model_supervised(
                         estimator=model,
                         system=False,
                         verbose=False,
@@ -2171,7 +2225,7 @@ def compare_models(
         if index in n_select_range:
             display.update_monitor(2, _get_model_name(model))
             display.display_monitor()
-            model, model_fit_time = create_model(
+            model, model_fit_time = create_model_supervised(
                 estimator=model,
                 system=False,
                 verbose=False,
@@ -2227,7 +2281,328 @@ def compare_models(
     return sorted_models
 
 
-def create_model(
+def create_model_unsupervised(
+    estimator,
+    num_clusters: int = 4,
+    ground_truth: Optional[str] = None,
+    round: int = 4,
+    fit_kwargs: Optional[dict] = None,
+    verbose: bool = True,
+    system: bool = True,
+    raise_num_clusters: bool = False,
+    X_data: Optional[pd.DataFrame] = None,  # added in pycaret==2.2.0
+    display: Optional[Display] = None,  # added in pycaret==2.2.0
+    **kwargs,
+) -> Any:
+
+    """  
+    This is an internal version of the create_model function.
+
+    This function creates a model and scores it using Cross Validation. 
+    The output prints a score grid that shows Accuracy, AUC, Recall, Precision, 
+    F1, Kappa and MCC by fold (default = 10 Fold). 
+
+    This function returns a trained model object. 
+
+    setup() function must be called before using create_model()
+
+    Example
+    -------
+    >>> from pycaret.datasets import get_data
+    >>> juice = get_data('juice')
+    >>> experiment_name = setup(data = juice,  target = 'Purchase')
+    >>> lr = create_model('lr')
+
+    This will create a trained Logistic Regression model.
+
+    Parameters
+    ----------
+    model : string / object, default = None
+        Enter ID of the models available in model library or pass an untrained model 
+        object consistent with fit / predict API to train and evaluate model. List of 
+        models available in model library (ID - Model):
+
+        * 'kmeans' - K-Means Clustering
+        * 'ap' - Affinity Propagation
+        * 'meanshift' - Mean shift Clustering
+        * 'sc' - Spectral Clustering
+        * 'hclust' - Agglomerative Clustering
+        * 'dbscan' - Density-Based Spatial Clustering
+        * 'optics' - OPTICS Clustering                               
+        * 'birch' - Birch Clustering                                 
+        * 'kmodes' - K-Modes Clustering                              
+    
+    num_clusters: int, default = 4
+        Number of clusters to be generated with the dataset.
+
+    ground_truth: string, default = None
+        When ground_truth is provided, Homogeneity Score, Rand Index, and 
+        Completeness Score is evaluated and printer along with other metrics.
+
+    round: integer, default = 4
+        Number of decimal places the metrics in the score grid will be rounded to. 
+
+    fit_kwargs: dict, default = {} (empty dict)
+        Dictionary of arguments passed to the fit method of the model.
+
+    verbose: bool, default = True
+        Score grid is not printed when verbose is set to False.
+
+    system: bool, default = True
+        Must remain True all times. Only to be changed by internal functions.
+        If False, method will return a tuple of model and the model fit time.
+
+    **kwargs: 
+        Additional keyword arguments to pass to the estimator.
+
+    Returns
+    -------
+    score_grid
+        A table containing the Silhouette, Calinski-Harabasz,  
+        Davies-Bouldin, Homogeneity Score, Rand Index, and 
+        Completeness Score. Last 3 are only evaluated when
+        ground_truth param is provided.
+
+    model
+        trained model object
+
+    Warnings
+    --------
+    - num_clusters not required for Affinity Propagation ('ap'), Mean shift 
+      clustering ('meanshift'), Density-Based Spatial Clustering ('dbscan')
+      and OPTICS Clustering ('optics'). num_clusters param for these models 
+      are automatically determined.
+      
+    - When fit doesn't converge in Affinity Propagation ('ap') model, all 
+      datapoints are labelled as -1.
+      
+    - Noisy samples are given the label -1, when using Density-Based Spatial 
+      ('dbscan') or OPTICS Clustering ('optics'). 
+      
+    - OPTICS ('optics') clustering may take longer training times on large 
+      datasets.
+
+    """
+
+    function_params_str = ", ".join([f"{k}={v}" for k, v in locals().items()])
+
+    logger = get_logger()
+
+    logger.info("Initializing create_model()")
+    logger.info(f"create_model({function_params_str})")
+
+    logger.info("Checking exceptions")
+
+    # run_time
+    runtime_start = time.time()
+
+    available_estimators = set(_all_models_internal.keys())
+
+    if not fit_kwargs:
+        fit_kwargs = {}
+
+    # only raise exception of estimator is of type string.
+    if isinstance(estimator, str):
+        if estimator not in available_estimators:
+            raise ValueError(
+                f"Estimator {estimator} not available. Please see docstring for list of available estimators."
+            )
+    elif not hasattr(estimator, "fit"):
+        raise ValueError(
+            f"Estimator {estimator} does not have the required fit() method."
+        )
+
+    # checking round parameter
+    if type(round) is not int:
+        raise TypeError("Round parameter only accepts integer value.")
+
+    # checking verbose parameter
+    if type(verbose) is not bool:
+        raise TypeError("Verbose parameter can only take argument as True or False.")
+
+    # checking system parameter
+    if type(system) is not bool:
+        raise TypeError("System parameter can only take argument as True or False.")
+
+    # checking num_clusters type:
+    if num_clusters is not None:
+        if num_clusters <= 1:
+            raise TypeError(
+                "num_clusters parameter can only take value integer value greater than 1."
+            )
+
+    # check ground truth exist in data_
+    if ground_truth is not None:
+        if ground_truth not in data_before_preprocess.columns:
+            raise ValueError(
+                f"ground_truth {ground_truth} doesn't exist in the dataset."
+            )
+
+    """
+    
+    ERROR HANDLING ENDS HERE
+    
+    """
+
+    if not display:
+        progress_args = {"max": 3}
+        master_display_columns = [v.display_name for k, v in _all_metrics.items()]
+        timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
+        monitor_rows = [
+            ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
+            ["Status", ". . . . . . . . . . . . . . . . . .", "Loading Dependencies"],
+        ]
+        display = Display(
+            verbose=verbose,
+            html_param=html_param,
+            progress_args=progress_args,
+            master_display_columns=master_display_columns,
+            monitor_rows=monitor_rows,
+        )
+        display.display_progress()
+        display.display_monitor()
+        display.display_master_display()
+
+    logger.info("Importing libraries")
+
+    # general dependencies
+
+    np.random.seed(seed)
+
+    # Storing X_train and y_train in data_X and data_y parameter
+    data_X = X if X_data is None else X_data
+
+    """
+    MONITOR UPDATE STARTS
+    """
+    display.update_monitor(1, "Selecting Estimator")
+    display.display_monitor()
+    """
+    MONITOR UPDATE ENDS
+    """
+
+    logger.info("Importing untrained model")
+
+    if isinstance(estimator, str) and estimator in available_estimators:
+        model_definition = _all_models_internal[estimator]
+        model_args = model_definition.args
+        model_args = {**model_args, **kwargs}
+        model = model_definition.class_def(**model_args)
+        full_name = model_definition.name
+    else:
+        logger.info("Declaring custom model")
+
+        model = clone(estimator)
+        model.set_params(**kwargs)
+
+        full_name = _get_model_name(model)
+
+    if raise_num_clusters:
+        model.set_params(n_clusters=num_clusters)
+    else:
+        try:
+            model.set_params(n_clusters=num_clusters)
+        except:
+            pass
+
+    logger.info(f"{full_name} Imported succesfully")
+
+    display.move_progress()
+
+    """
+    MONITOR UPDATE STARTS
+    """
+    display.update_monitor(1, f"Fitting {full_name} with {num_clusters} Clusters")
+    display.display_monitor()
+    """
+    MONITOR UPDATE ENDS
+    """
+
+    with estimator_pipeline(_internal_pipeline, model) as pipeline_with_model:
+        fit_kwargs = _get_pipeline_fit_kwargs(pipeline_with_model, fit_kwargs)
+
+        logger.info("Fitting Model")
+        model_fit_start = time.time()
+        with io.capture_output():
+            pipeline_with_model.fit(data_X, **fit_kwargs)
+        model_fit_end = time.time()
+
+        model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
+
+    display.move_progress()
+
+    if ground_truth is not None:
+
+        logger.info(f"ground_truth parameter set to {ground_truth}")
+
+        gt = np.array(data_before_preprocess[ground_truth])
+    else:
+        gt = None
+
+    metrics = _calculate_metrics_unsupervised(X, model.labels_, ground_truth=gt)
+
+    logger.info(str(model))
+    logger.info(
+        "create_models() succesfully completed......................................"
+    )
+
+    runtime = time.time() - runtime_start
+
+    # mlflow logging
+    if logging_param and system:
+
+        metrics_log = {k: v for k, v in metrics.items()}
+
+        try:
+            _mlflow_log_model(
+                model=model,
+                model_results=None,
+                score_dict=metrics_log,
+                source="create_model",
+                runtime=runtime,
+                model_fit_time=model_fit_time,
+                _prep_pipe=prep_pipe,
+                log_plots=log_plots_param,
+                display=display,
+            )
+        except:
+            logger.error(f"_mlflow_log_model() for {model} raised an exception:")
+            logger.error(traceback.format_exc())
+
+    display.move_progress()
+
+    logger.info("Uploading results into container")
+
+    model_results = pd.DataFrame(metrics, index=[0])
+    model_results = model_results.round(round)
+
+    # storing results in create_model_container
+    create_model_container.append(model_results)
+    display_container.append(model_results)
+
+    # storing results in master_model_container
+    logger.info("Uploading model into container now")
+    master_model_container.append(model)
+
+    display.display(model_results, clear=system, override=False if not system else None)
+
+    logger.info(f"create_model_container: {len(create_model_container)}")
+    logger.info(f"master_model_container: {len(master_model_container)}")
+    logger.info(f"display_container: {len(display_container)}")
+
+    logger.info(str(model))
+    logger.info(
+        "create_model() succesfully completed......................................"
+    )
+    gc.collect()
+
+    if not system:
+        return (model, model_fit_time)
+
+    return model
+
+
+def create_model_supervised(
     estimator,
     fold: Optional[Union[int, Any]] = None,
     round: int = 4,
@@ -2240,6 +2615,7 @@ def create_model(
     system: bool = True,
     X_train_data: Optional[pd.DataFrame] = None,  # added in pycaret==2.2.0
     y_train_data: Optional[pd.DataFrame] = None,  # added in pycaret==2.2.0
+    metrics=None,
     display: Optional[Display] = None,  # added in pycaret==2.2.0
     **kwargs,
 ) -> Any:
@@ -2458,6 +2834,9 @@ def create_model(
     data_X.reset_index(drop=True, inplace=True)
     data_y.reset_index(drop=True, inplace=True)
 
+    if metrics is None:
+        metrics = _all_metrics
+
     display.move_progress()
 
     logger.info("Defining folds")
@@ -2559,7 +2938,7 @@ def create_model(
     MONITOR UPDATE STARTS
     """
     display.update_monitor(
-        1, f"Fitting {_get_cv_n_folds(fold, X_train, y=y_train, groups=groups)} Folds"
+        1, f"Fitting {_get_cv_n_folds(fold, data_X, y=data_y, groups=groups)} Folds"
     )
     display.display_monitor()
     """
@@ -2568,7 +2947,7 @@ def create_model(
 
     from sklearn.model_selection import cross_validate
 
-    metrics_dict = dict([(k, v.scorer) for k, v in _all_metrics.items()])
+    metrics_dict = dict([(k, v.scorer) for k, v in metrics.items()])
 
     logger.info("Starting cross validation")
 
@@ -2604,7 +2983,7 @@ def create_model(
 
         score_dict = {
             v.display_name: scores[f"test_{k}"] * (1 if v.greater_is_better else -1)
-            for k, v in _all_metrics.items()
+            for k, v in metrics.items()
         }
 
         logger.info("Calculating mean and std")
@@ -2637,7 +3016,7 @@ def create_model(
 
             model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
         else:
-            model_fit_time /= _get_cv_n_folds(cv, X_train, y=y_train, groups=groups)
+            model_fit_time /= _get_cv_n_folds(cv, data_X, y=data_y, groups=groups)
 
         # end runtime
         runtime_end = time.time()
@@ -2695,7 +3074,324 @@ def create_model(
     return model
 
 
-def tune_model(
+def tune_model_unsupervised(
+    model,
+    supervised_target: str,
+    supervised_type,
+    supervised_estimator: Union[str, Any] = "lr",
+    optimize: Optional[str] = None,
+    custom_grid: Optional[List[int]] = None,
+    fold: Optional[Union[int, Any]] = None,
+    groups: Optional[Union[str, Any]] = None,
+    ground_truth: Optional[str] = None,
+    fit_kwargs: Optional[dict] = None,
+    round: int = 4,
+    verbose: bool = True,
+    display: Optional[Display] = None,
+    **kwargs,
+):
+
+    function_params_str = ", ".join([f"{k}={v}" for k, v in locals().items()])
+
+    logger = get_logger()
+
+    logger.info("Initializing tune_model()")
+    logger.info(f"tune_model({function_params_str})")
+
+    logger.info("Checking exceptions")
+
+    # run_time
+    runtime_start = time.time()
+
+    if not fit_kwargs:
+        fit_kwargs = {}
+
+    if supervised_target not in data_before_preprocess.columns:
+        raise ValueError(
+            f"{supervised_target} is not present as a column in the dataset."
+        )
+
+    warnings.filterwarnings("ignore")
+
+    np.random.seed(seed)
+
+    cols_to_drop = [x for x in X.columns if x.startswith(supervised_target)]
+    data_X = X.drop(cols_to_drop, axis=1)
+    data_y = data_before_preprocess[[supervised_target]]
+    if data_y.dtypes[0] not in [int, float, bool]:
+        data_y[supervised_target] = LabelEncoder().fit_transform(
+            data_y[supervised_target]
+        )
+        data_y = data_y[supervised_target]
+
+    temp_globals = globals()
+    temp_globals["y_train"] = data_y
+
+    if supervised_type == "classification":
+        metrics = pycaret.containers.metrics.classification.get_all_metric_containers(
+            temp_globals, raise_errors=True
+        )
+        available_estimators = pycaret.containers.models.classification.get_all_model_containers(
+            temp_globals, raise_errors=True
+        )
+        ml_usecase = MLUsecase.CLASSIFICATION
+    elif supervised_type == "regression":
+        metrics = pycaret.containers.metrics.regression.get_all_metric_containers(
+            temp_globals, raise_errors=True
+        )
+        available_estimators = pycaret.containers.models.regression.get_all_model_containers(
+            temp_globals, raise_errors=True
+        )
+        ml_usecase = MLUsecase.REGRESSION
+    else:
+        raise ValueError(
+            f"supervised_type param must be either 'classification' or 'regression'."
+        )
+
+    if fold is None:
+        fold = _get_cv_splitter(fold, ml_usecase)
+
+    if isinstance(supervised_estimator, str):
+        if supervised_estimator in available_estimators:
+            estimator_definition = available_estimators[supervised_estimator]
+            estimator_args = estimator_definition.args
+            estimator_args = {**estimator_args}
+            supervised_estimator = estimator_definition.class_def(**estimator_args)
+        else:
+            raise ValueError(f"Unknown supervised_estimator {supervised_estimator}.")
+    else:
+        logger.info("Declaring custom model")
+
+        supervised_estimator = clone(supervised_estimator)
+
+    supervised_estimator_name = _get_model_name(
+        supervised_estimator, models=available_estimators
+    )
+
+    if optimize is None:
+        optimize = "Accuracy" if supervised_type == "classification" else "R2"
+    optimize = _get_metric(optimize, metrics=metrics)
+    if optimize is None:
+        raise ValueError(
+            "Optimize method not supported. See docstring for list of available parameters."
+        )
+
+    if custom_grid is not None and not isinstance(custom_grid, list):
+        raise ValueError(f"custom_grid param must be a list.")
+
+    # checking round parameter
+    if type(round) is not int:
+        raise TypeError("Round parameter only accepts integer value.")
+
+    # checking verbose parameter
+    if type(verbose) is not bool:
+        raise TypeError("Verbose parameter can only take argument as True or False.")
+
+    if custom_grid is None:
+        param_grid = [2, 4, 5, 6, 8, 10, 14, 18, 25, 30, 40]
+    else:
+        param_grid = custom_grid
+        try:
+            param_grid.remove(0)
+        except:
+            pass
+    param_grid.sort()
+
+    if not display:
+        progress_args = {"max": len(param_grid) * 3 + (len(param_grid) + 1) * 4}
+        master_display_columns = None
+        timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
+        monitor_rows = [
+            ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
+            ["Status", ". . . . . . . . . . . . . . . . . .", "Loading Dependencies"],
+        ]
+        display = Display(
+            verbose=verbose,
+            html_param=html_param,
+            progress_args=progress_args,
+            master_display_columns=master_display_columns,
+            monitor_rows=monitor_rows,
+        )
+
+        display.display_progress()
+        display.display_monitor()
+        display.display_master_display()
+
+    clusterer_models = {}
+    clusterer_models_results = {}
+    clusterer_grids = {0: data_X}
+
+    logger.info("Fitting clusterers")
+
+    for k in param_grid:
+        try:
+            new_model, _ = create_model_unsupervised(
+                model,
+                num_clusters=k,
+                X_data=data_X,
+                display=display,
+                system=False,
+                ground_truth=ground_truth,
+                round=round,
+                fit_kwargs=fit_kwargs,
+                raise_num_clusters=True,
+                **kwargs,
+            )
+        except ValueError:
+            raise ValueError(f"Model {model} cannot be used in this function as its number of clusters cannot be set (n_clusters param required).")
+        clusterer_models_results[k] = pull(pop=True)
+        clusterer_models[k] = new_model
+        clusterer_grids[k] = pd.get_dummies(
+            assign_model(new_model, verbose=False, transformation=True).drop(
+                cols_to_drop, axis=1
+            ),
+            columns=["Cluster"],
+        )
+
+    results = {}
+
+    logger.info("Fitting supervised estimator")
+
+    for k, v in clusterer_grids.items():
+        create_model_supervised(
+            supervised_estimator,
+            fold=fold,
+            display=display,
+            system=False,
+            X_train_data=v,
+            y_train_data=data_y,
+            metrics=metrics,
+            groups=groups,
+            round=round,
+            refit=False,
+        )
+        results[k] = pull(pop=True).loc["Mean"]
+        display.move_progress()
+
+    logger.info("Compiling results")
+
+    results = pd.DataFrame(results).T
+
+    greater_is_worse_columns = {
+        v.display_name for k, v in metrics.items() if not v.greater_is_better
+    }
+
+    best_model_idx = (
+        results.drop(0)
+        .sort_values(
+            by=optimize.display_name, ascending=optimize in greater_is_worse_columns
+        )
+        .index[0]
+    )
+
+    def highlight_max(s):
+        to_highlight = s == s.max()
+        return ["background-color: yellow" if v else "" for v in to_highlight]
+
+    def highlight_min(s):
+        to_highlight = s == s.min()
+        return ["background-color: yellow" if v else "" for v in to_highlight]
+
+    results = results.style.apply(
+        highlight_max,
+        subset=[x for x in results.columns if x not in greater_is_worse_columns],
+    ).apply(
+        highlight_min,
+        subset=[x for x in results.columns if x in greater_is_worse_columns],
+    )
+
+    # end runtime
+    runtime_end = time.time()
+    runtime = np.array(runtime_end - runtime_start).round(2)
+
+    best_model, best_model_fit_time = create_model_unsupervised(
+        clusterer_models[best_model_idx],
+        num_clusters=best_model_idx,
+        system=False,
+        round=round,
+        ground_truth=ground_truth,
+        fit_kwargs=fit_kwargs,
+        display=display,
+        **kwargs,
+    )
+    best_model_results = pull(pop=True)
+
+    if logging_param:
+
+        metrics_log = {k: v[0] for k, v in best_model_results.items()}
+
+        try:
+            _mlflow_log_model(
+                model=model,
+                model_results=None,
+                score_dict=metrics_log,
+                source="tune_model",
+                runtime=runtime,
+                model_fit_time=best_model_fit_time,
+                _prep_pipe=prep_pipe,
+                log_plots=log_plots_param,
+                display=display,
+            )
+        except:
+            logger.error(f"_mlflow_log_model() for {model} raised an exception:")
+            logger.error(traceback.format_exc())
+
+    results = results.set_precision(round)
+    display_container.append(results)
+
+    display.display(results, clear=True)
+
+    if html_param and verbose:
+        import plotly.graph_objects as go
+
+        logger.info("Rendering Visual")
+        plot_df = results.data.drop(
+            [x for x in results.columns if x != optimize.display_name], axis=1
+        )
+
+        fig = go.Figure()
+        fig.add_trace(
+            go.Scatter(
+                x=plot_df.index,
+                y=plot_df[optimize.display_name],
+                mode="lines+markers",
+                name=optimize.display_name,
+            )
+        )
+
+        title = f"{supervised_estimator_name} Metrics and Number of Clusters by {_get_model_name(best_model)}"
+        fig.update_layout(
+            plot_bgcolor="rgb(245,245,245)",
+            title={
+                "text": title,
+                "y": 0.95,
+                "x": 0.45,
+                "xanchor": "center",
+                "yanchor": "top",
+            },
+            xaxis_title="Number of Clusters",
+            yaxis_title=optimize.display_name,
+            legend_title="Legend",
+        )
+
+        fig.show()
+        logger.info("Visual Rendered Successfully")
+
+    logger.info(f"create_model_container: {len(create_model_container)}")
+    logger.info(f"master_model_container: {len(master_model_container)}")
+    logger.info(f"display_container: {len(display_container)}")
+
+    logger.info(str(best_model))
+    logger.info(
+        "tune_model() succesfully completed......................................"
+    )
+
+    gc.collect()
+
+    return best_model
+
+
+def tune_model_supervised(
     estimator,
     fold: Optional[Union[int, Any]] = None,
     round: int = 4,
@@ -3091,10 +3787,6 @@ def tune_model(
     # ignore warnings
 
     warnings.filterwarnings("ignore")
-
-    logger.info("Importing libraries")
-
-    # general dependencies
 
     import logging
 
@@ -3548,7 +4240,7 @@ def tune_model(
     logger.info("Random search completed")
 
     logger.info("SubProcess create_model() called ==================================")
-    best_model, model_fit_time = create_model(
+    best_model, model_fit_time = create_model_supervised(
         estimator=model,
         system=False,
         display=display,
@@ -3893,7 +4585,7 @@ def ensemble_model(
     display.move_progress()
 
     logger.info("SubProcess create_model() called ==================================")
-    model, model_fit_time = create_model(
+    model, model_fit_time = create_model_supervised(
         estimator=model,
         system=False,
         display=display,
@@ -4238,7 +4930,7 @@ def blend_models(
     display.move_progress()
 
     logger.info("SubProcess create_model() called ==================================")
-    model, model_fit_time = create_model(
+    model, model_fit_time = create_model_supervised(
         estimator=model,
         system=False,
         display=display,
@@ -4586,7 +5278,7 @@ def stack_models(
     display.move_progress()
 
     logger.info("SubProcess create_model() called ==================================")
-    model, model_fit_time = create_model(
+    model, model_fit_time = create_model_supervised(
         estimator=model,
         system=False,
         display=display,
@@ -4660,6 +5352,8 @@ def plot_model(
     fold: Optional[Union[int, Any]] = None,
     fit_kwargs: Optional[dict] = None,
     groups: Optional[Union[str, Any]] = None,
+    feature_name: Optional[str] = None,
+    label: bool = False,
     verbose: bool = True,
     system: bool = True,
     display: Optional[Display] = None,  # added in pycaret==2.2.0
@@ -4819,6 +5513,14 @@ def plot_model(
             "fold parameter must be either None, an integer or a scikit-learn compatible CV generator object."
         )
 
+    if type(label) is not bool:
+        raise TypeError("Label param only accepts True or False.")
+
+    if feature_name is not None and type(feature_name) is not str:
+        raise TypeError(
+            "feature parameter must be string containing column name of dataset."
+        )
+
     """
     
     ERROR HANDLING ENDS HERE
@@ -4860,27 +5562,30 @@ def plot_model(
 
     # Storing X_train and y_train in data_X and data_y parameter
     data_X = X_train.copy()
-    data_y = y_train.copy()
+    if not _is_unsupervised(_ml_usecase):
+        data_y = y_train.copy()
 
     # reset index
     data_X.reset_index(drop=True, inplace=True)
-    data_y.reset_index(drop=True, inplace=True)
+    if not _is_unsupervised(_ml_usecase):
+        data_y.reset_index(drop=True, inplace=True)
 
-    logger.info("Copying test dataset")
+        logger.info("Copying test dataset")
 
-    # Storing X_train and y_train in data_X and data_y parameter
-    test_X = X_test.copy()
-    test_y = y_test.copy()
+        # Storing X_train and y_train in data_X and data_y parameter
+        test_X = X_test.copy()
+        test_y = y_test.copy()
 
-    # reset index
-    test_X.reset_index(drop=True, inplace=True)
-    test_y.reset_index(drop=True, inplace=True)
+        # reset index
+        test_X.reset_index(drop=True, inplace=True)
+        test_y.reset_index(drop=True, inplace=True)
 
     logger.info(f"Plot type: {plot}")
     plot_name = _available_plots[plot]
     display.move_progress()
 
     import scikitplot as skplt
+    import plotly.express as px
 
     # yellowbrick workaround start
     import yellowbrick.utils.types
@@ -4922,6 +5627,308 @@ def plot_model(
                     skplt.metrics.plt.rcParams["figure.dpi"] = self.default_skplt_dpit
                 except:
                     pass
+
+        def cluster():
+            logger.info(
+                "SubProcess assign_model() called =================================="
+            )
+            b = assign_model(pipeline_with_model, verbose=False, transformation=True)
+            logger.info(
+                "SubProcess assign_model() end =================================="
+            )
+            cluster = b["Cluster"]
+            b.drop(["Cluster"], axis=1, inplace=True)
+            b = pd.get_dummies(b)  # casting categorical variable
+            c = b.copy()
+
+            from sklearn.decomposition import PCA
+
+            pca = PCA(n_components=2, random_state=seed)
+            logger.info("Fitting PCA()")
+            pca_ = pca.fit_transform(b)
+            pca_ = pd.DataFrame(pca_)
+            pca_ = pca_.rename(columns={0: "PCA1", 1: "PCA2"})
+            pca_["Cluster"] = cluster
+
+            if feature_name is not None:
+                pca_["Feature"] = data_X[feature_name]
+            else:
+                pca_["Feature"] = data_X[data_X.columns[0]]
+
+            if label:
+                pca_["Label"] = pca_["Feature"]
+
+            """
+            sorting
+            """
+
+            logger.info("Sorting dataframe")
+
+            clus_num = []
+
+            for i in pca_.Cluster:
+                a = int(i.split()[1])
+                clus_num.append(a)
+
+            pca_["cnum"] = clus_num
+            pca_.sort_values(by="cnum", inplace=True)
+
+            """
+            sorting ends
+            """
+
+            logger.info("Rendering Visual")
+
+            if label:
+                fig = px.scatter(
+                    pca_, x="PCA1", y="PCA2", text="Label", color="Cluster", opacity=0.5
+                )
+            else:
+                fig = px.scatter(
+                    pca_,
+                    x="PCA1",
+                    y="PCA2",
+                    hover_data=["Feature"],
+                    color="Cluster",
+                    opacity=0.5,
+                )
+
+            fig.update_traces(textposition="top center")
+            fig.update_layout(plot_bgcolor="rgb(240,240,240)")
+
+            fig.update_layout(height=600 * scale, title_text="2D Cluster PCA Plot")
+
+            if system:
+                fig.show()
+
+            if save:
+                fig.write_html(plot_name)
+                logger.info(f"Saving {plot_name} in current active directory")
+
+            logger.info("Visual Rendered Successfully")
+
+        def tsne():
+            logger.info(
+                "SubProcess assign_model() called =================================="
+            )
+            b = assign_model(pipeline_with_model, verbose=False, transformation=True)
+            logger.info(
+                "SubProcess assign_model() end =================================="
+            )
+
+            cluster = b["Cluster"]
+            b.drop(["Cluster"], axis=1, inplace=True)
+
+            from sklearn.manifold import TSNE
+
+            logger.info("Fitting TSNE()")
+            X_embedded = TSNE(n_components=3, random_state=seed).fit_transform(b)
+            X_embedded = pd.DataFrame(X_embedded)
+            X_embedded["Cluster"] = cluster
+
+            if feature_name is not None:
+                X_embedded["Feature"] = data_X[feature_name]
+            else:
+                X_embedded["Feature"] = data_X[data_X.columns[0]]
+
+            if label:
+                X_embedded["Label"] = X_embedded["Feature"]
+
+            """
+            sorting
+            """
+            logger.info("Sorting dataframe")
+
+            clus_num = []
+            for i in X_embedded.Cluster:
+                a = int(i.split()[1])
+                clus_num.append(a)
+
+            X_embedded["cnum"] = clus_num
+            X_embedded.sort_values(by="cnum", inplace=True)
+
+            """
+            sorting ends
+            """
+
+            df = X_embedded
+
+            logger.info("Rendering Visual")
+
+            if label:
+
+                fig = px.scatter_3d(
+                    df,
+                    x=0,
+                    y=1,
+                    z=2,
+                    color="Cluster",
+                    title="3d TSNE Plot for Clusters",
+                    text="Label",
+                    opacity=0.7,
+                    width=900 * scale,
+                    height=800 * scale,
+                )
+
+            else:
+                fig = px.scatter_3d(
+                    df,
+                    x=0,
+                    y=1,
+                    z=2,
+                    color="Cluster",
+                    title="3d TSNE Plot for Clusters",
+                    hover_data=["Feature"],
+                    opacity=0.7,
+                    width=900 * scale,
+                    height=800 * scale,
+                )
+
+            if system:
+                fig.show()
+
+            if save:
+                fig.write_html(f"{plot_name}.html")
+                logger.info(f"Saving '{plot_name}.html' in current active directory")
+
+            logger.info("Visual Rendered Successfully")
+
+        def distribution():
+            logger.info(
+                "SubProcess assign_model() called =================================="
+            )
+            d = assign_model(pipeline_with_model, verbose=False)
+            logger.info(
+                "SubProcess assign_model() end =================================="
+            )
+
+            """
+            sorting
+            """
+            logger.info("Sorting dataframe")
+
+            clus_num = []
+            for i in d.Cluster:
+                a = int(i.split()[1])
+                clus_num.append(a)
+
+            d["cnum"] = clus_num
+            d.sort_values(by="cnum", inplace=True)
+            d.reset_index(inplace=True, drop=True)
+
+            clus_label = []
+            for i in d.cnum:
+                a = "Cluster " + str(i)
+                clus_label.append(a)
+
+            d.drop(["Cluster", "cnum"], inplace=True, axis=1)
+            d["Cluster"] = clus_label
+
+            """
+            sorting ends
+            """
+
+            if feature_name is None:
+                x_col = "Cluster"
+            else:
+                x_col = feature_name
+
+            logger.info("Rendering Visual")
+
+            fig = px.histogram(
+                d,
+                x=x_col,
+                color="Cluster",
+                marginal="box",
+                opacity=0.7,
+                hover_data=d.columns,
+            )
+
+            fig.update_layout(height=600 * scale,)
+
+            if system:
+                fig.show()
+
+            if save:
+                fig.write_html(f"{plot_name}.html")
+                logger.info(f"Saving '{plot_name}.html' in current active directory")
+
+            logger.info("Visual Rendered Successfully")
+
+        def elbow():
+            try:
+                from yellowbrick.cluster import KElbowVisualizer
+
+                visualizer = KElbowVisualizer(pipeline_with_model, timings=False)
+                show_yellowbrick_plot(
+                    visualizer=visualizer,
+                    X_train=data_X,
+                    y_train=None,
+                    X_test=None,
+                    y_test=None,
+                    name=plot_name,
+                    handle_test="",
+                    scale=scale,
+                    save=save,
+                    fit_kwargs=fit_kwargs,
+                    groups=groups,
+                    system=system,
+                    display=display,
+                )
+
+            except:
+                logger.warning("Elbow plot failed")
+                raise TypeError("Plot Type not supported for this model.")
+
+        def silhouette():
+            from yellowbrick.cluster import SilhouetteVisualizer
+
+            try:
+                visualizer = SilhouetteVisualizer(
+                    pipeline_with_model, colors="yellowbrick"
+                )
+                show_yellowbrick_plot(
+                    visualizer=visualizer,
+                    X_train=data_X,
+                    y_train=None,
+                    X_test=None,
+                    y_test=None,
+                    name=plot_name,
+                    handle_test="",
+                    scale=scale,
+                    save=save,
+                    fit_kwargs=fit_kwargs,
+                    groups=groups,
+                    system=system,
+                    display=display,
+                )
+            except:
+                logger.warning("Elbow plot failed")
+                raise TypeError("Plot Type not supported for this model.")
+
+        def distance():
+            from yellowbrick.cluster import InterclusterDistance
+
+            try:
+                visualizer = InterclusterDistance(pipeline_with_model)
+                show_yellowbrick_plot(
+                    visualizer=visualizer,
+                    X_train=data_X,
+                    y_train=None,
+                    X_test=None,
+                    y_test=None,
+                    name=plot_name,
+                    handle_test="",
+                    scale=scale,
+                    save=save,
+                    fit_kwargs=fit_kwargs,
+                    groups=groups,
+                    system=system,
+                    display=display,
+                )
+            except:
+                logger.warning("Elbow plot failed")
+                raise TypeError("Plot Type not supported for this model.")
 
         def residuals():
 
@@ -6118,7 +7125,7 @@ def calibrate_model(
     display.move_progress()
 
     logger.info("SubProcess create_model() called ==================================")
-    model, model_fit_time = create_model(
+    model, model_fit_time = create_model_supervised(
         estimator=model,
         system=False,
         display=display,
@@ -6400,6 +7407,130 @@ def optimize_threshold(
     )
 
 
+def assign_model(
+    model, transformation: bool = False, verbose: bool = True
+) -> pd.DataFrame:
+
+    """
+    This function assigns each of the data point in the dataset passed during setup
+    stage to one of the clusters using trained model object passed as model param.
+    create_model() function must be called before using assign_model().
+    
+    This function returns a pandas.DataFrame.
+
+    Example
+    -------
+    >>> from pycaret.datasets import get_data
+    >>> jewellery = get_data('jewellery')
+    >>> experiment_name = setup(data = jewellery, normalize = True)
+    >>> kmeans = create_model('kmeans')
+    >>> kmeans_df = assign_model(kmeans)
+
+    This will return a pandas.DataFrame with inferred clusters using trained model.
+
+    Parameters
+    ----------
+    model: trained model object, default = None
+    
+    transformation: bool, default = False
+        When set to True, assigned clusters are returned on transformed dataset instead 
+        of original dataset passed during setup().
+    
+    verbose: Boolean, default = True
+        Status update is not printed when verbose is set to False.
+
+    Returns
+    -------
+    pandas.DataFrame
+        Returns a DataFrame with assigned clusters using a trained model.
+  
+    """
+
+    function_params_str = ", ".join([f"{k}={v}" for k, v in locals().items()])
+
+    logger = get_logger()
+
+    logger.info("Initializing assign_model()")
+    logger.info(f"assign_model({function_params_str})")
+
+    logger.info("Checking exceptions")
+
+    # checking transformation parameter
+    if type(transformation) is not bool:
+        raise TypeError(
+            "Transformation parameter can only take argument as True or False."
+        )
+
+    # checking verbose parameter
+    if type(verbose) is not bool:
+        raise TypeError("Verbose parameter can only take argument as True or False.")
+
+    """
+    error handling ends here
+    """
+
+    logger.info("Copying data")
+    # copy data_
+    if transformation:
+        data = X.copy()
+        logger.info(
+            "Transformation param set to True. Assigned clusters are attached on transformed dataset."
+        )
+    else:
+        data = data_before_preprocess.copy()
+
+    # calculation labels and attaching to dataframe
+
+    labels = [f"Cluster {i}" for i in model.labels_]
+
+    data["Cluster"] = labels
+
+    logger.info("Determining Trained Model")
+
+    name = _get_model_name(model)
+
+    logger.info(f"Trained Model : {name}")
+
+    logger.info(data.shape)
+    logger.info(
+        "assign_model() succesfully completed......................................"
+    )
+
+    return data
+
+
+def predict_model_unsupervised(estimator, data: pd.DataFrame) -> pd.DataFrame:
+    function_params_str = ", ".join([f"{k}={v}" for k, v in locals().items()])
+
+    logger = get_logger()
+
+    logger.info("Initializing predict_model()")
+    logger.info(f"predict_model({function_params_str})")
+
+    logger.info("Checking exceptions")
+
+    # copy data and model
+    data_transformed = data.copy()
+
+    # exception checking for predict param
+    if hasattr(estimator, "predict"):
+        pass
+    else:
+        raise TypeError("Model doesn't support predict parameter.")
+
+    # predictions start here
+    if is_sklearn_pipeline(estimator):
+        pred = estimator.predict(data)
+    else:
+        pred = estimator.predict(prep_pipe.transform(data_transformed))
+
+    pred_list = [f"Cluster {i}" for i in pred]
+
+    data_transformed["Cluster"] = pred_list
+
+    return data_transformed
+
+
 def predict_model(
     estimator,
     data: Optional[pd.DataFrame] = None,
@@ -6599,7 +7730,7 @@ def predict_model(
     if data is None:
         # model name
         full_name = _get_model_name(estimator)
-        metrics = _calculate_metrics(y_test_, pred, pred_prob)
+        metrics = _calculate_metrics_supervised(y_test_, pred, pred_prob)
         df_score = pd.DataFrame(metrics, index=[0])
         df_score.insert(0, "Model", full_name)
         df_score = df_score.round(round)
@@ -6715,7 +7846,7 @@ def finalize_model(
 
     logger.info(f"Finalizing {estimator}")
     display.clear_output()
-    model_final, model_fit_time = create_model(
+    model_final, model_fit_time = create_model_supervised(
         estimator=estimator,
         verbose=False,
         system=False,
@@ -7232,7 +8363,7 @@ def automl(optimize: str = "Accuracy", use_holdout: bool = False) -> Any:
                 pred_holdout = predict_model(i, verbose=False)
             except:
                 logger.warning(f"Model {i} is not fitted, running create_model")
-                i, _ = create_model(
+                i, _ = create_model_supervised(
                     estimator=i,
                     system=False,
                     verbose=False,
@@ -7327,6 +8458,8 @@ def models(
     """
 
     def filter_model_df_by_type(df):
+        if not type:
+            return df
         model_type = {
             "linear": [
                 "lr",
@@ -7357,6 +8490,7 @@ def models(
                 "ada",
             ],
         }
+        return df.loc[model_type[type]]
 
         # Check if type is valid
         if type not in list(model_type) + [None]:
@@ -7373,6 +8507,10 @@ def models(
         )
     elif _ml_usecase == MLUsecase.REGRESSION:
         model_containers = pycaret.containers.models.regression.get_all_model_containers(
+            globals(), raise_errors
+        )
+    elif _ml_usecase == MLUsecase.CLUSTERING:
+        model_containers = pycaret.containers.models.clustering.get_all_model_containers(
             globals(), raise_errors
         )
     rows = [
@@ -7445,11 +8583,12 @@ def get_metrics(
     return df
 
 
-def _get_metric(name_or_id: str):
+def _get_metric(name_or_id: str, metrics: Optional[Any] = None):
     """
     Gets a metric from get_metrics() by name or index.
     """
-    metrics = _all_metrics
+    if metrics is None:
+        metrics = _all_metrics
     metric = None
     try:
         metric = metrics[name_or_id]
@@ -7799,7 +8938,7 @@ def _choose_better(
         logger.info(
             "SubProcess create_model() called =================================="
         )
-        create_model(
+        create_model_supervised(
             model,
             verbose=False,
             system=False,
@@ -7829,7 +8968,7 @@ def _choose_better(
             logger.info(
                 "SubProcess create_model() called =================================="
             )
-            m, _ = create_model(
+            m, _ = create_model_supervised(
                 new_estimator,
                 verbose=False,
                 system=False,
@@ -7865,35 +9004,44 @@ def _is_multiclass() -> bool:
         return False
 
 
-def _get_model_id(e) -> str:
+def _get_model_id(e, models=None) -> str:
     """
     Get model id.
     """
+    if models is None:
+        models = _all_models_internal
+
     import pycaret.internal.utils
 
-    return pycaret.internal.utils.get_model_id(e, _all_models_internal)
+    return pycaret.internal.utils.get_model_id(e, models)
 
 
-def _get_model_name(e, deep: bool = True) -> str:
+def _get_model_name(e, deep: bool = True, models=None) -> str:
     """
     Get model name.
     """
+    if models is None:
+        models = _all_models_internal
+
     import pycaret.internal.utils
 
-    return pycaret.internal.utils.get_model_name(e, _all_models_internal, deep=deep)
+    return pycaret.internal.utils.get_model_name(e, models, deep=deep)
 
 
-def _is_special_model(e) -> bool:
+def _is_special_model(e, models=None) -> bool:
     """
     Is the model special (eg. VotingClassifier).
     """
+    if models is None:
+        models = _all_models_internal
+
     import pycaret.internal.utils
 
-    return pycaret.internal.utils.is_special_model(e, _all_models_internal)
+    return pycaret.internal.utils.is_special_model(e, models)
 
 
-def _calculate_metrics(
-    y_test, pred, pred_prob: float, weights: Optional[list] = None,
+def _calculate_metrics_supervised(
+    y_test, pred, pred_prob, weights: Optional[list] = None,
 ) -> dict:
     """
     Calculate all metrics in _all_metrics.
@@ -7924,6 +9072,31 @@ def _calculate_metrics(
             pred=pred,
             pred_proba=pred_prob,
             weights=weights,
+        )
+
+
+def _calculate_metrics_unsupervised(
+    X, labels, ground_truth=None, ml_usecase=None
+) -> dict:
+    """
+    Calculate all metrics in _all_metrics.
+    """
+    from pycaret.internal.utils import calculate_unsupervised_metrics
+
+    if ml_usecase is None:
+        ml_usecase = _ml_usecase
+
+    try:
+        return calculate_unsupervised_metrics(
+            metrics=_all_metrics, X=X, labels=labels, ground_truth=ground_truth
+        )
+    except:
+        if ml_usecase == MLUsecase.CLUSTERING:
+            metrics = pycaret.containers.metrics.clustering.get_all_metric_containers(
+                globals(), True
+            )
+        return calculate_unsupervised_metrics(
+            metrics=metrics, X=X, labels=labels, ground_truth=ground_truth
         )
 
 
@@ -8021,27 +9194,28 @@ def _mlflow_log_model(
         mlflow.log_metric("TT", model_fit_time)
 
         # Log the CV results as model_results.html artifact
-        try:
-            model_results.data.to_html("Results.html", col_space=65, justify="left")
-        except:
-            model_results.to_html("Results.html", col_space=65, justify="left")
-        mlflow.log_artifact("Results.html")
-        os.remove("Results.html")
-
-        if log_holdout:
-            # Generate hold-out predictions and save as html
+        if not _is_unsupervised(_ml_usecase):
             try:
-                holdout = predict_model(model, verbose=False)
-                holdout_score = pull(pop=True)
-                del holdout
-                holdout_score.to_html("Holdout.html", col_space=65, justify="left")
-                mlflow.log_artifact("Holdout.html")
-                os.remove("Holdout.html")
+                model_results.data.to_html("Results.html", col_space=65, justify="left")
             except:
-                logger.warning(
-                    "Couldn't create holdout prediction for model, exception below:"
-                )
-                logger.warning(traceback.format_exc())
+                model_results.to_html("Results.html", col_space=65, justify="left")
+            mlflow.log_artifact("Results.html")
+            os.remove("Results.html")
+
+            if log_holdout:
+                # Generate hold-out predictions and save as html
+                try:
+                    holdout = predict_model(model, verbose=False)
+                    holdout_score = pull(pop=True)
+                    del holdout
+                    holdout_score.to_html("Holdout.html", col_space=65, justify="left")
+                    mlflow.log_artifact("Holdout.html")
+                    os.remove("Holdout.html")
+                except:
+                    logger.warning(
+                        "Couldn't create holdout prediction for model, exception below:"
+                    )
+                    logger.warning(traceback.format_exc())
 
         # Log AUC and Confusion Matrix plot
 
@@ -8099,9 +9273,12 @@ def _mlflow_log_model(
         except:
             logger.warning("Couldn't infer MLFlow signature.")
             signature = None
-        input_example = (
-            data_before_preprocess.drop([target_param], axis=1).iloc[0].to_dict()
-        )
+        if not _is_unsupervised(_ml_usecase):
+            input_example = (
+                data_before_preprocess.drop([target_param], axis=1).iloc[0].to_dict()
+            )
+        else:
+            input_example = data_before_preprocess.iloc[0].to_dict()
 
         # log model as sklearn flavor
         prep_pipe_temp = deepcopy(_prep_pipe)
@@ -8133,7 +9310,10 @@ def _get_columns_to_stratify_by(
     return stratify
 
 
-def _get_cv_splitter(fold):
+def _get_cv_splitter(fold, ml_usecase: Optional[MLUsecase] = None):
+    if not ml_usecase:
+        ml_usecase = _ml_usecase
+
     import pycaret.internal.utils
 
     return pycaret.internal.utils.get_cv_splitter(
@@ -8142,7 +9322,7 @@ def _get_cv_splitter(fold):
         seed=seed,
         shuffle=fold_shuffle_param,
         int_default="stratifiedkfold"
-        if _ml_usecase == MLUsecase.CLASSIFICATION
+        if ml_usecase == MLUsecase.CLASSIFICATION
         else "kfold",
     )
 
