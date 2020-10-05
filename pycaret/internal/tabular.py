@@ -55,6 +55,7 @@ from copy import deepcopy
 from sklearn.base import clone
 from sklearn.exceptions import NotFittedError
 from sklearn.compose import TransformedTargetRegressor
+from sklearn.preprocessing import LabelEncoder
 from typing import List, Tuple, Any, Union, Optional, Dict
 import warnings
 from IPython.utils import io
@@ -1969,10 +1970,10 @@ def compare_models(
         display.display_monitor()
         display.display_master_display()
 
-    greater_is_worse_columns = set(
-        [v.display_name for k, v in _all_metrics.items() if not v.greater_is_better]
-        + ["TT (Sec)"]
-    )
+    greater_is_worse_columns = {
+        v.display_name for k, v in _all_metrics.items() if not v.greater_is_better
+    }
+    greater_is_worse_columns.add("TT (Sec)")
 
     np.random.seed(seed)
 
@@ -2288,6 +2289,8 @@ def create_model_unsupervised(
     fit_kwargs: Optional[dict] = None,
     verbose: bool = True,
     system: bool = True,
+    raise_num_clusters: bool = False,
+    X_data: Optional[pd.DataFrame] = None,  # added in pycaret==2.2.0
     display: Optional[Display] = None,  # added in pycaret==2.2.0
     **kwargs,
 ) -> Any:
@@ -2466,6 +2469,9 @@ def create_model_unsupervised(
 
     np.random.seed(seed)
 
+    # Storing X_train and y_train in data_X and data_y parameter
+    data_X = X if X_data is None else X_data
+
     """
     MONITOR UPDATE STARTS
     """
@@ -2491,6 +2497,14 @@ def create_model_unsupervised(
 
         full_name = _get_model_name(model)
 
+    if raise_num_clusters:
+        model.set_params(n_clusters=num_clusters)
+    else:
+        try:
+            model.set_params(n_clusters=num_clusters)
+        except:
+            pass
+
     logger.info(f"{full_name} Imported succesfully")
 
     display.move_progress()
@@ -2498,7 +2512,7 @@ def create_model_unsupervised(
     """
     MONITOR UPDATE STARTS
     """
-    display.update_monitor(1, f"Fitting {str(full_name)}")
+    display.update_monitor(1, f"Fitting {full_name} with {num_clusters} Clusters")
     display.display_monitor()
     """
     MONITOR UPDATE ENDS
@@ -2510,7 +2524,7 @@ def create_model_unsupervised(
         logger.info("Fitting Model")
         model_fit_start = time.time()
         with io.capture_output():
-            pipeline_with_model.fit(X, **fit_kwargs)
+            pipeline_with_model.fit(data_X, **fit_kwargs)
         model_fit_end = time.time()
 
         model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
@@ -2583,6 +2597,9 @@ def create_model_unsupervised(
     )
     gc.collect()
 
+    if not system:
+        return (model, model_fit_time)
+
     return model
 
 
@@ -2599,6 +2616,7 @@ def create_model_supervised(
     system: bool = True,
     X_train_data: Optional[pd.DataFrame] = None,  # added in pycaret==2.2.0
     y_train_data: Optional[pd.DataFrame] = None,  # added in pycaret==2.2.0
+    metrics=None,
     display: Optional[Display] = None,  # added in pycaret==2.2.0
     **kwargs,
 ) -> Any:
@@ -2817,6 +2835,9 @@ def create_model_supervised(
     data_X.reset_index(drop=True, inplace=True)
     data_y.reset_index(drop=True, inplace=True)
 
+    if metrics is None:
+        metrics = _all_metrics
+
     display.move_progress()
 
     logger.info("Defining folds")
@@ -2918,7 +2939,7 @@ def create_model_supervised(
     MONITOR UPDATE STARTS
     """
     display.update_monitor(
-        1, f"Fitting {_get_cv_n_folds(fold, X_train, y=y_train, groups=groups)} Folds"
+        1, f"Fitting {_get_cv_n_folds(fold, data_X, y=data_y, groups=groups)} Folds"
     )
     display.display_monitor()
     """
@@ -2927,7 +2948,7 @@ def create_model_supervised(
 
     from sklearn.model_selection import cross_validate
 
-    metrics_dict = dict([(k, v.scorer) for k, v in _all_metrics.items()])
+    metrics_dict = dict([(k, v.scorer) for k, v in metrics.items()])
 
     logger.info("Starting cross validation")
 
@@ -2963,7 +2984,7 @@ def create_model_supervised(
 
         score_dict = {
             v.display_name: scores[f"test_{k}"] * (1 if v.greater_is_better else -1)
-            for k, v in _all_metrics.items()
+            for k, v in metrics.items()
         }
 
         logger.info("Calculating mean and std")
@@ -2996,7 +3017,7 @@ def create_model_supervised(
 
             model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
         else:
-            model_fit_time /= _get_cv_n_folds(cv, X_train, y=y_train, groups=groups)
+            model_fit_time /= _get_cv_n_folds(cv, data_X, y=data_y, groups=groups)
 
         # end runtime
         runtime_end = time.time()
@@ -3052,6 +3073,323 @@ def create_model_supervised(
         return (model, model_fit_time)
 
     return model
+
+
+def tune_model_unsupervised(
+    model,
+    supervised_target: str,
+    supervised_type,
+    supervised_estimator: Union[str, Any] = "lr",
+    optimize: Optional[str] = None,
+    custom_grid: Optional[List[int]] = None,
+    fold: Optional[Union[int, Any]] = None,
+    groups: Optional[Union[str, Any]] = None,
+    ground_truth: Optional[str] = None,
+    fit_kwargs: Optional[dict] = None,
+    round: int = 4,
+    verbose: bool = True,
+    display: Optional[Display] = None,
+    **kwargs,
+):
+
+    function_params_str = ", ".join([f"{k}={v}" for k, v in locals().items()])
+
+    logger = get_logger()
+
+    logger.info("Initializing tune_model()")
+    logger.info(f"tune_model({function_params_str})")
+
+    logger.info("Checking exceptions")
+
+    # run_time
+    runtime_start = time.time()
+
+    if not fit_kwargs:
+        fit_kwargs = {}
+
+    if supervised_target not in data_before_preprocess.columns:
+        raise ValueError(
+            f"{supervised_target} is not present as a column in the dataset."
+        )
+
+    warnings.filterwarnings("ignore")
+
+    np.random.seed(seed)
+
+    cols_to_drop = [x for x in X.columns if x.startswith(supervised_target)]
+    data_X = X.drop(cols_to_drop, axis=1)
+    data_y = data_before_preprocess[[supervised_target]]
+    if data_y.dtypes[0] not in [int, float, bool]:
+        data_y[supervised_target] = LabelEncoder().fit_transform(
+            data_y[supervised_target]
+        )
+        data_y = data_y[supervised_target]
+
+    temp_globals = globals()
+    temp_globals["y_train"] = data_y
+
+    if supervised_type == "classification":
+        metrics = pycaret.containers.metrics.classification.get_all_metric_containers(
+            temp_globals, raise_errors=True
+        )
+        available_estimators = pycaret.containers.models.classification.get_all_model_containers(
+            temp_globals, raise_errors=True
+        )
+        ml_usecase = MLUsecase.CLASSIFICATION
+    elif supervised_type == "regression":
+        metrics = pycaret.containers.metrics.regression.get_all_metric_containers(
+            temp_globals, raise_errors=True
+        )
+        available_estimators = pycaret.containers.models.regression.get_all_model_containers(
+            temp_globals, raise_errors=True
+        )
+        ml_usecase = MLUsecase.REGRESSION
+    else:
+        raise ValueError(
+            f"supervised_type param must be either 'classification' or 'regression'."
+        )
+
+    if fold is None:
+        fold = _get_cv_splitter(fold, ml_usecase)
+
+    if isinstance(supervised_estimator, str):
+        if supervised_estimator in available_estimators:
+            estimator_definition = available_estimators[supervised_estimator]
+            estimator_args = estimator_definition.args
+            estimator_args = {**estimator_args}
+            supervised_estimator = estimator_definition.class_def(**estimator_args)
+        else:
+            raise ValueError(f"Unknown supervised_estimator {supervised_estimator}.")
+    else:
+        logger.info("Declaring custom model")
+
+        supervised_estimator = clone(supervised_estimator)
+
+    supervised_estimator_name = _get_model_name(
+        supervised_estimator, models=available_estimators
+    )
+
+    if optimize is None:
+        optimize = "Accuracy" if supervised_type == "classification" else "R2"
+    optimize = _get_metric(optimize, metrics=metrics)
+    if optimize is None:
+        raise ValueError(
+            "Optimize method not supported. See docstring for list of available parameters."
+        )
+
+    if custom_grid is not None and not isinstance(custom_grid, list):
+        raise ValueError(f"custom_grid param must be a list.")
+
+    # checking round parameter
+    if type(round) is not int:
+        raise TypeError("Round parameter only accepts integer value.")
+
+    # checking verbose parameter
+    if type(verbose) is not bool:
+        raise TypeError("Verbose parameter can only take argument as True or False.")
+
+    if custom_grid is None:
+        param_grid = [2, 4, 5, 6, 8, 10, 14, 18, 25, 30, 40]
+    else:
+        param_grid = custom_grid
+        try:
+            param_grid.remove(0)
+        except:
+            pass
+    param_grid.sort()
+
+    if not display:
+        progress_args = {"max": len(param_grid) * 3 + (len(param_grid) + 1) * 4}
+        master_display_columns = None
+        timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
+        monitor_rows = [
+            ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
+            ["Status", ". . . . . . . . . . . . . . . . . .", "Loading Dependencies"],
+        ]
+        display = Display(
+            verbose=verbose,
+            html_param=html_param,
+            progress_args=progress_args,
+            master_display_columns=master_display_columns,
+            monitor_rows=monitor_rows,
+        )
+
+        display.display_progress()
+        display.display_monitor()
+        display.display_master_display()
+
+    clusterer_models = {}
+    clusterer_models_results = {}
+    clusterer_grids = {0: data_X}
+
+    logger.info("Fitting clusterers")
+
+    for k in param_grid:
+        try:
+            new_model, _ = create_model_unsupervised(
+                model,
+                num_clusters=k,
+                X_data=data_X,
+                display=display,
+                system=False,
+                ground_truth=ground_truth,
+                round=round,
+                fit_kwargs=fit_kwargs,
+                raise_num_clusters=True,
+                **kwargs,
+            )
+        except ValueError:
+            raise ValueError(f"Model {model} cannot be used in this function as its number of clusters cannot be set (n_clusters param required).")
+        clusterer_models_results[k] = pull(pop=True)
+        clusterer_models[k] = new_model
+        clusterer_grids[k] = pd.get_dummies(
+            assign_model(new_model, verbose=False, transformation=True).drop(
+                cols_to_drop, axis=1
+            ),
+            columns=["Cluster"],
+        )
+
+    results = {}
+
+    logger.info("Fitting supervised estimator")
+
+    for k, v in clusterer_grids.items():
+        create_model_supervised(
+            supervised_estimator,
+            fold=fold,
+            display=display,
+            system=False,
+            X_train_data=v,
+            y_train_data=data_y,
+            metrics=metrics,
+            groups=groups,
+            round=round,
+            refit=False,
+        )
+        results[k] = pull(pop=True).loc["Mean"]
+        display.move_progress()
+
+    logger.info("Compiling results")
+
+    results = pd.DataFrame(results).T
+
+    greater_is_worse_columns = {
+        v.display_name for k, v in metrics.items() if not v.greater_is_better
+    }
+
+    best_model_idx = (
+        results.drop(0)
+        .sort_values(
+            by=optimize.display_name, ascending=optimize in greater_is_worse_columns
+        )
+        .index[0]
+    )
+
+    def highlight_max(s):
+        to_highlight = s == s.max()
+        return ["background-color: yellow" if v else "" for v in to_highlight]
+
+    def highlight_min(s):
+        to_highlight = s == s.min()
+        return ["background-color: yellow" if v else "" for v in to_highlight]
+
+    results = results.style.apply(
+        highlight_max,
+        subset=[x for x in results.columns if x not in greater_is_worse_columns],
+    ).apply(
+        highlight_min,
+        subset=[x for x in results.columns if x in greater_is_worse_columns],
+    )
+
+    # end runtime
+    runtime_end = time.time()
+    runtime = np.array(runtime_end - runtime_start).round(2)
+
+    best_model, best_model_fit_time = create_model_unsupervised(
+        clusterer_models[best_model_idx],
+        num_clusters=best_model_idx,
+        system=False,
+        round=round,
+        ground_truth=ground_truth,
+        fit_kwargs=fit_kwargs,
+        display=display,
+        **kwargs,
+    )
+    best_model_results = pull(pop=True)
+
+    if logging_param:
+
+        metrics_log = {k: v[0] for k, v in best_model_results.items()}
+
+        try:
+            _mlflow_log_model(
+                model=model,
+                model_results=None,
+                score_dict=metrics_log,
+                source="tune_model",
+                runtime=runtime,
+                model_fit_time=best_model_fit_time,
+                _prep_pipe=prep_pipe,
+                log_plots=log_plots_param,
+                display=display,
+            )
+        except:
+            logger.error(f"_mlflow_log_model() for {model} raised an exception:")
+            logger.error(traceback.format_exc())
+
+    results = results.set_precision(round)
+    display_container.append(results)
+
+    display.display(results, clear=True)
+
+    if html_param and verbose:
+        import plotly.graph_objects as go
+
+        logger.info("Rendering Visual")
+        plot_df = results.data.drop(
+            [x for x in results.columns if x != optimize.display_name], axis=1
+        )
+
+        fig = go.Figure()
+        fig.add_trace(
+            go.Scatter(
+                x=plot_df.index,
+                y=plot_df[optimize.display_name],
+                mode="lines+markers",
+                name=optimize.display_name,
+            )
+        )
+
+        title = f"{supervised_estimator_name} Metrics and Number of Clusters by {_get_model_name(best_model)}"
+        fig.update_layout(
+            plot_bgcolor="rgb(245,245,245)",
+            title={
+                "text": title,
+                "y": 0.95,
+                "x": 0.45,
+                "xanchor": "center",
+                "yanchor": "top",
+            },
+            xaxis_title="Number of Clusters",
+            yaxis_title=optimize.display_name,
+            legend_title="Legend",
+        )
+
+        fig.show()
+        logger.info("Visual Rendered Successfully")
+
+    logger.info(f"create_model_container: {len(create_model_container)}")
+    logger.info(f"master_model_container: {len(master_model_container)}")
+    logger.info(f"display_container: {len(display_container)}")
+
+    logger.info(str(best_model))
+    logger.info(
+        "tune_model() succesfully completed......................................"
+    )
+
+    gc.collect()
+
+    return best_model
 
 
 def tune_model_supervised(
@@ -3450,10 +3788,6 @@ def tune_model_supervised(
     # ignore warnings
 
     warnings.filterwarnings("ignore")
-
-    logger.info("Importing libraries")
-
-    # general dependencies
 
     import logging
 
@@ -8250,11 +8584,12 @@ def get_metrics(
     return df
 
 
-def _get_metric(name_or_id: str):
+def _get_metric(name_or_id: str, metrics: Optional[Any] = None):
     """
     Gets a metric from get_metrics() by name or index.
     """
-    metrics = _all_metrics
+    if metrics is None:
+        metrics = _all_metrics
     metric = None
     try:
         metric = metrics[name_or_id]
@@ -8670,31 +9005,40 @@ def _is_multiclass() -> bool:
         return False
 
 
-def _get_model_id(e) -> str:
+def _get_model_id(e, models=None) -> str:
     """
     Get model id.
     """
+    if models is None:
+        models = _all_models_internal
+
     import pycaret.internal.utils
 
-    return pycaret.internal.utils.get_model_id(e, _all_models_internal)
+    return pycaret.internal.utils.get_model_id(e, models)
 
 
-def _get_model_name(e, deep: bool = True) -> str:
+def _get_model_name(e, deep: bool = True, models=None) -> str:
     """
     Get model name.
     """
+    if models is None:
+        models = _all_models_internal
+
     import pycaret.internal.utils
 
-    return pycaret.internal.utils.get_model_name(e, _all_models_internal, deep=deep)
+    return pycaret.internal.utils.get_model_name(e, models, deep=deep)
 
 
-def _is_special_model(e) -> bool:
+def _is_special_model(e, models=None) -> bool:
     """
     Is the model special (eg. VotingClassifier).
     """
+    if models is None:
+        models = _all_models_internal
+
     import pycaret.internal.utils
 
-    return pycaret.internal.utils.is_special_model(e, _all_models_internal)
+    return pycaret.internal.utils.is_special_model(e, models)
 
 
 def _calculate_metrics_supervised(
@@ -8967,7 +9311,10 @@ def _get_columns_to_stratify_by(
     return stratify
 
 
-def _get_cv_splitter(fold):
+def _get_cv_splitter(fold, ml_usecase: Optional[MLUsecase] = None):
+    if not ml_usecase:
+        ml_usecase = _ml_usecase
+
     import pycaret.internal.utils
 
     return pycaret.internal.utils.get_cv_splitter(
@@ -8976,7 +9323,7 @@ def _get_cv_splitter(fold):
         seed=seed,
         shuffle=fold_shuffle_param,
         int_default="stratifiedkfold"
-        if _ml_usecase == MLUsecase.CLASSIFICATION
+        if ml_usecase == MLUsecase.CLASSIFICATION
         else "kfold",
     )
 
