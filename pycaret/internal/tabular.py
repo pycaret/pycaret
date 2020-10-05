@@ -2551,8 +2551,7 @@ def create_model_unsupervised(
     # mlflow logging
     if logging_param and system:
 
-        metrics_log = metrics.copy()
-        metrics_log = {k: v[0] for k, v in metrics_log.items()}
+        metrics_log = {k: v for k, v in metrics.items()}
 
         try:
             _mlflow_log_model(
