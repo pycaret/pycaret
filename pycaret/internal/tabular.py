@@ -1688,12 +1688,17 @@ def setup(
 
             # Log training and testing set
             if log_data:
-                X_train.join(y_train).to_csv("Train.csv")
-                X_test.join(y_test).to_csv("Test.csv")
-                mlflow.log_artifact("Train.csv")
-                mlflow.log_artifact("Test.csv")
-                os.remove("Train.csv")
-                os.remove("Test.csv")
+                if not _is_unsupervised(_ml_usecase):
+                    X_train.join(y_train).to_csv("Train.csv")
+                    X_test.join(y_test).to_csv("Test.csv")
+                    mlflow.log_artifact("Train.csv")
+                    mlflow.log_artifact("Test.csv")
+                    os.remove("Train.csv")
+                    os.remove("Test.csv")
+                else:
+                    X.to_csv("Dataset.csv")
+                    mlflow.log_artifact("Dataset.csv")
+                    os.remove("Dataset.csv")
 
     logger.info(f"create_model_container: {len(create_model_container)}")
     logger.info(f"master_model_container: {len(master_model_container)}")
@@ -5592,9 +5597,7 @@ def plot_model(
 
     def is_estimator(model):
         try:
-            return callable(getattr(model, "fit")) and callable(
-                getattr(model, "predict")
-            )
+            return callable(getattr(model, "fit"))
         except:
             return False
 
@@ -5606,6 +5609,7 @@ def plot_model(
     # yellowbrick workaround end
 
     model_name = _get_model_name(model)
+    plot_filename = f"{plot_name}.png"
     with estimator_pipeline(_internal_pipeline, model) as pipeline_with_model:
         fit_kwargs = _get_pipeline_fit_kwargs(pipeline_with_model, fit_kwargs)
 
@@ -5698,12 +5702,16 @@ def plot_model(
 
             fig.update_layout(height=600 * scale, title_text="2D Cluster PCA Plot")
 
+            display.clear_output()
+        
+            plot_filename = f"{plot_name}.html"
+
             if system:
                 fig.show()
 
             if save:
-                fig.write_html(plot_name)
-                logger.info(f"Saving {plot_name} in current active directory")
+                fig.write_html(plot_filename)
+                logger.info(f"Saving '{plot_filename}' in current active directory")
 
             logger.info("Visual Rendered Successfully")
 
@@ -5784,12 +5792,16 @@ def plot_model(
                     height=800 * scale,
                 )
 
+            display.clear_output()
+
+            plot_filename = f"{plot_name}.html"
+
             if system:
                 fig.show()
 
             if save:
-                fig.write_html(f"{plot_name}.html")
-                logger.info(f"Saving '{plot_name}.html' in current active directory")
+                fig.write_html(f"{plot_filename}")
+                logger.info(f"Saving '{plot_filename}' in current active directory")
 
             logger.info("Visual Rendered Successfully")
 
@@ -5846,12 +5858,16 @@ def plot_model(
 
             fig.update_layout(height=600 * scale,)
 
+            display.clear_output()
+
+            plot_filename = f"{plot_name}.html"
+
             if system:
                 fig.show()
 
             if save:
-                fig.write_html(f"{plot_name}.html")
-                logger.info(f"Saving '{plot_name}.html' in current active directory")
+                fig.write_html(f"{plot_filename}")
+                logger.info(f"Saving '{plot_filename}' in current active directory")
 
             logger.info("Visual Rendered Successfully")
 
@@ -5903,7 +5919,7 @@ def plot_model(
                     display=display,
                 )
             except:
-                logger.warning("Elbow plot failed")
+                logger.warning("Silhouette plot failed")
                 raise TypeError("Plot Type not supported for this model.")
 
         def distance():
@@ -5927,7 +5943,7 @@ def plot_model(
                     display=display,
                 )
             except:
-                logger.warning("Elbow plot failed")
+                logger.warning("Distance plot failed")
                 raise TypeError("Plot Type not supported for this model.")
 
         def residuals():
@@ -6601,7 +6617,7 @@ def plot_model(
     )
 
     if save:
-        return f"{plot_name}.png"
+        return plot_filename
 
 
 def evaluate_model(

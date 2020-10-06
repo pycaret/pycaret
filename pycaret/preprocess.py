@@ -267,7 +267,7 @@ class DataTypes_Auto_infer(BaseEstimator,TransformerMixin):
             dt_print_out.loc[i,'Data Type'] = 'Date'
           #elif dt_print_out.loc[i,'Feature_Type'] == 'int64':
           #  dt_print_out.loc[i,'Data Type'] = 'Categorical'
-        else:
+        elif self.target != "UNSUPERVISED_DUMMY_TARGET":
           dt_print_out.loc[i,'Data Type'] = 'Label'
       
       # if we added the dummy  target column , then drop it 

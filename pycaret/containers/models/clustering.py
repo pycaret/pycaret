@@ -218,7 +218,6 @@ class MeanShiftClusterContainer(ClusterContainer):
         from sklearn.cluster import MeanShift
 
         args = {
-            "random_state": globals_dict["seed"],
             "n_jobs": globals_dict["n_jobs_param"],
         }
         tune_args = {}
