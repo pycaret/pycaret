@@ -8392,14 +8392,10 @@ def automl(optimize: str = "Accuracy", use_holdout: bool = False) -> Any:
 
     automl_result = master_model_container[index_scorer]
 
-    logger.info("SubProcess finalize_model() called ==================================")
-    automl_finalized = finalize_model(automl_result)
-    logger.info("SubProcess finalize_model() end ==================================")
-
-    logger.info(str(automl_finalized))
+    logger.info(str(automl_result))
     logger.info("automl() succesfully completed......................................")
 
-    return automl_finalized
+    return automl_result
 
 
 def pull(pop=False) -> pd.DataFrame:  # added in pycaret==2.2.0
