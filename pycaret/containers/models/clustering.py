@@ -167,16 +167,33 @@ class KMeansClusterContainer(ClusterContainer):
     def __init__(self, globals_dict: dict) -> None:
         logger = get_logger()
         np.random.seed(globals_dict["seed"])
+        gpu_imported = False
         from sklearn.cluster import KMeans
+
+        if globals_dict["gpu_param"] == "force":
+            from cuml.cluster import KMeans
+
+            logger.info("Imported cuml.cluster.KMeans")
+            gpu_imported = True
+        elif globals_dict["gpu_param"]:
+            try:
+                from cuml.cluster import KMeans
+
+                logger.info("Imported cuml.cluster.KMeans")
+                gpu_imported = True
+            except ImportError:
+                logger.warning("Couldn't import cuml.cluster.KMeans")
 
         args = {
             "n_clusters": _DEFAULT_N_CLUSTERS,
             "random_state": globals_dict["seed"],
-            "n_jobs": globals_dict["n_jobs_param"],
         }
         tune_args = {}
         tune_grid = {}
         tune_distributions = {}
+
+        if not gpu_imported:
+            args["n_jobs"] = globals_dict["n_jobs_param"]
 
         super().__init__(
             id="kmeans",
@@ -186,6 +203,7 @@ class KMeansClusterContainer(ClusterContainer):
             tune_grid=tune_grid,
             tune_distribution=tune_distributions,
             tune_args=tune_args,
+            is_gpu_enabled=gpu_imported,
         )
 
 
@@ -289,12 +307,30 @@ class DBSCANClusterContainer(ClusterContainer):
     def __init__(self, globals_dict: dict) -> None:
         logger = get_logger()
         np.random.seed(globals_dict["seed"])
+        gpu_imported = False
         from sklearn.cluster import DBSCAN
 
-        args = {"n_jobs": globals_dict["n_jobs_param"]}
+        if globals_dict["gpu_param"] == "force":
+            from cuml.cluster import DBSCAN
+
+            logger.info("Imported cuml.cluster.DBSCAN")
+            gpu_imported = True
+        elif globals_dict["gpu_param"]:
+            try:
+                from cuml.cluster import DBSCAN
+
+                logger.info("Imported cuml.cluster.DBSCAN")
+                gpu_imported = True
+            except ImportError:
+                logger.warning("Couldn't import cuml.cluster.DBSCAN")
+
+        args = {}
         tune_args = {}
         tune_grid = {}
         tune_distributions = {}
+
+        if not gpu_imported:
+            args["n_jobs"] = globals_dict["n_jobs_param"]
 
         super().__init__(
             id="dbscan",
@@ -304,6 +340,7 @@ class DBSCANClusterContainer(ClusterContainer):
             tune_grid=tune_grid,
             tune_distribution=tune_distributions,
             tune_args=tune_args,
+            is_gpu_enabled=gpu_imported,
         )
 
 

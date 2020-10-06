@@ -262,11 +262,8 @@ def setup(
         If set to False, will only use CPU.
 
         GPU enabled algorithms:
-        
-        - CatBoost
-        - XGBoost
-        - LightGBM - requires https://lightgbm.readthedocs.io/en/latest/GPU-Tutorial.html
-        - Logistic Regression, Ridge, Random Forest, KNN, SVM, SVC - requires cuML >= 0.15 to be installed.
+
+        - KMeans, DBSCAN - requires cuML >= 0.15 to be installed.
           https://github.com/rapidsai/cuml
 
     html: bool, default = True
