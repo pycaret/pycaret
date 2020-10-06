@@ -3243,7 +3243,9 @@ def tune_model_unsupervised(
                 **kwargs,
             )
         except ValueError:
-            raise ValueError(f"Model {model} cannot be used in this function as its number of clusters cannot be set (n_clusters param required).")
+            raise ValueError(
+                f"Model {model} cannot be used in this function as its number of clusters cannot be set (n_clusters param required)."
+            )
         clusterer_models_results[k] = pull(pop=True)
         clusterer_models[k] = new_model
         clusterer_grids[k] = pd.get_dummies(
@@ -3412,6 +3414,7 @@ def tune_model_supervised(
     fit_kwargs: Optional[dict] = None,
     groups: Optional[Union[str, Any]] = None,
     verbose: bool = True,
+    tuner_verbose: Union[int, bool] = True,
     display: Optional[Display] = None,
     **kwargs,
 ) -> Any:
@@ -3543,6 +3546,10 @@ def tune_model_supervised(
 
     verbose: bool, default = True
         Score grid is not printed when verbose is set to False.
+
+    tuner_verbose: bool or in, default = True
+        If True or above 0, will print messages from the tuner. Higher values
+        print more messages. Ignored if verbose param is False.
 
     **kwargs: 
         Additional keyword arguments to pass to the optimizer.
@@ -3758,6 +3765,19 @@ def tune_model_supervised(
     # checking verbose parameter
     if type(verbose) is not bool:
         raise TypeError("Verbose parameter can only take argument as True or False.")
+
+    if not verbose:
+        tuner_verbose = 0
+
+    if type(tuner_verbose) not in (bool, int):
+        raise TypeError("tuner_verbose parameter must be a bool or an int.")
+
+    tuner_verbose = int(tuner_verbose)
+
+    if tuner_verbose < 0:
+        tuner_verbose = 0
+    elif tuner_verbose > 2:
+        tuner_verbose = 2
 
     """
     
@@ -4005,7 +4025,7 @@ def tune_model_supervised(
                 scoring=optimize,
                 study=study,
                 refit=False,
-                verbose=1,
+                verbose=tuner_verbose,
                 error_score="raise",
                 **search_kwargs,
             )
@@ -4077,7 +4097,7 @@ def tune_model_supervised(
                         n_jobs=n_jobs,
                         use_gpu=gpu_param,
                         refit=True,
-                        verbose=1,
+                        verbose=tuner_verbose,
                         # pipeline_detection=False,
                         **search_kwargs,
                     )
@@ -4098,7 +4118,7 @@ def tune_model_supervised(
                         n_jobs=n_jobs,
                         use_gpu=gpu_param,
                         refit=True,
-                        verbose=1,
+                        verbose=tuner_verbose,
                         # pipeline_detection=False,
                         **search_kwargs,
                     )
@@ -4119,7 +4139,7 @@ def tune_model_supervised(
                         n_jobs=n_jobs,
                         use_gpu=gpu_param,
                         refit=True,
-                        verbose=1,
+                        verbose=tuner_verbose,
                         # pipeline_detection=False,
                         **search_kwargs,
                     )
@@ -4140,7 +4160,7 @@ def tune_model_supervised(
                         n_jobs=n_jobs,
                         use_gpu=gpu_param,
                         refit=True,
-                        verbose=1,
+                        verbose=tuner_verbose,
                         # pipeline_detection=False,
                         **search_kwargs,
                     )
@@ -4158,7 +4178,7 @@ def tune_model_supervised(
                         n_jobs=n_jobs,
                         use_gpu=gpu_param,
                         refit=True,
-                        verbose=1,
+                        verbose=tuner_verbose,
                         # pipeline_detection=False,
                         **search_kwargs,
                     )
@@ -4179,7 +4199,7 @@ def tune_model_supervised(
                 random_state=seed,
                 refit=False,
                 n_jobs=n_jobs,
-                verbose=1,
+                verbose=tuner_verbose,
                 **search_kwargs,
             )
         else:
@@ -4195,7 +4215,7 @@ def tune_model_supervised(
                     cv=fold,
                     refit=False,
                     n_jobs=n_jobs,
-                    verbose=1,
+                    verbose=tuner_verbose,
                     **search_kwargs,
                 )
             else:
@@ -4209,7 +4229,7 @@ def tune_model_supervised(
                     random_state=seed,
                     refit=False,
                     n_jobs=n_jobs,
-                    verbose=1,
+                    verbose=tuner_verbose,
                     **search_kwargs,
                 )
 
@@ -5703,7 +5723,7 @@ def plot_model(
             fig.update_layout(height=600 * scale, title_text="2D Cluster PCA Plot")
 
             display.clear_output()
-        
+
             plot_filename = f"{plot_name}.html"
 
             if system:
