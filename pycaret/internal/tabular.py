@@ -1688,12 +1688,17 @@ def setup(
 
             # Log training and testing set
             if log_data:
-                X_train.join(y_train).to_csv("Train.csv")
-                X_test.join(y_test).to_csv("Test.csv")
-                mlflow.log_artifact("Train.csv")
-                mlflow.log_artifact("Test.csv")
-                os.remove("Train.csv")
-                os.remove("Test.csv")
+                if not _is_unsupervised(_ml_usecase):
+                    X_train.join(y_train).to_csv("Train.csv")
+                    X_test.join(y_test).to_csv("Test.csv")
+                    mlflow.log_artifact("Train.csv")
+                    mlflow.log_artifact("Test.csv")
+                    os.remove("Train.csv")
+                    os.remove("Test.csv")
+                else:
+                    X.to_csv("Dataset.csv")
+                    mlflow.log_artifact("Dataset.csv")
+                    os.remove("Dataset.csv")
 
     logger.info(f"create_model_container: {len(create_model_container)}")
     logger.info(f"master_model_container: {len(master_model_container)}")
@@ -3238,7 +3243,9 @@ def tune_model_unsupervised(
                 **kwargs,
             )
         except ValueError:
-            raise ValueError(f"Model {model} cannot be used in this function as its number of clusters cannot be set (n_clusters param required).")
+            raise ValueError(
+                f"Model {model} cannot be used in this function as its number of clusters cannot be set (n_clusters param required)."
+            )
         clusterer_models_results[k] = pull(pop=True)
         clusterer_models[k] = new_model
         clusterer_grids[k] = pd.get_dummies(
@@ -3407,6 +3414,7 @@ def tune_model_supervised(
     fit_kwargs: Optional[dict] = None,
     groups: Optional[Union[str, Any]] = None,
     verbose: bool = True,
+    tuner_verbose: Union[int, bool] = True,
     display: Optional[Display] = None,
     **kwargs,
 ) -> Any:
@@ -3538,6 +3546,10 @@ def tune_model_supervised(
 
     verbose: bool, default = True
         Score grid is not printed when verbose is set to False.
+
+    tuner_verbose: bool or in, default = True
+        If True or above 0, will print messages from the tuner. Higher values
+        print more messages. Ignored if verbose param is False.
 
     **kwargs: 
         Additional keyword arguments to pass to the optimizer.
@@ -3753,6 +3765,19 @@ def tune_model_supervised(
     # checking verbose parameter
     if type(verbose) is not bool:
         raise TypeError("Verbose parameter can only take argument as True or False.")
+
+    if not verbose:
+        tuner_verbose = 0
+
+    if type(tuner_verbose) not in (bool, int):
+        raise TypeError("tuner_verbose parameter must be a bool or an int.")
+
+    tuner_verbose = int(tuner_verbose)
+
+    if tuner_verbose < 0:
+        tuner_verbose = 0
+    elif tuner_verbose > 2:
+        tuner_verbose = 2
 
     """
     
@@ -4000,7 +4025,7 @@ def tune_model_supervised(
                 scoring=optimize,
                 study=study,
                 refit=False,
-                verbose=1,
+                verbose=tuner_verbose,
                 error_score="raise",
                 **search_kwargs,
             )
@@ -4072,7 +4097,7 @@ def tune_model_supervised(
                         n_jobs=n_jobs,
                         use_gpu=gpu_param,
                         refit=True,
-                        verbose=1,
+                        verbose=tuner_verbose,
                         # pipeline_detection=False,
                         **search_kwargs,
                     )
@@ -4093,7 +4118,7 @@ def tune_model_supervised(
                         n_jobs=n_jobs,
                         use_gpu=gpu_param,
                         refit=True,
-                        verbose=1,
+                        verbose=tuner_verbose,
                         # pipeline_detection=False,
                         **search_kwargs,
                     )
@@ -4114,7 +4139,7 @@ def tune_model_supervised(
                         n_jobs=n_jobs,
                         use_gpu=gpu_param,
                         refit=True,
-                        verbose=1,
+                        verbose=tuner_verbose,
                         # pipeline_detection=False,
                         **search_kwargs,
                     )
@@ -4135,7 +4160,7 @@ def tune_model_supervised(
                         n_jobs=n_jobs,
                         use_gpu=gpu_param,
                         refit=True,
-                        verbose=1,
+                        verbose=tuner_verbose,
                         # pipeline_detection=False,
                         **search_kwargs,
                     )
@@ -4153,7 +4178,7 @@ def tune_model_supervised(
                         n_jobs=n_jobs,
                         use_gpu=gpu_param,
                         refit=True,
-                        verbose=1,
+                        verbose=tuner_verbose,
                         # pipeline_detection=False,
                         **search_kwargs,
                     )
@@ -4174,7 +4199,7 @@ def tune_model_supervised(
                 random_state=seed,
                 refit=False,
                 n_jobs=n_jobs,
-                verbose=1,
+                verbose=tuner_verbose,
                 **search_kwargs,
             )
         else:
@@ -4190,7 +4215,7 @@ def tune_model_supervised(
                     cv=fold,
                     refit=False,
                     n_jobs=n_jobs,
-                    verbose=1,
+                    verbose=tuner_verbose,
                     **search_kwargs,
                 )
             else:
@@ -4204,7 +4229,7 @@ def tune_model_supervised(
                     random_state=seed,
                     refit=False,
                     n_jobs=n_jobs,
-                    verbose=1,
+                    verbose=tuner_verbose,
                     **search_kwargs,
                 )
 
@@ -5592,9 +5617,7 @@ def plot_model(
 
     def is_estimator(model):
         try:
-            return callable(getattr(model, "fit")) and callable(
-                getattr(model, "predict")
-            )
+            return callable(getattr(model, "fit"))
         except:
             return False
 
@@ -5606,6 +5629,7 @@ def plot_model(
     # yellowbrick workaround end
 
     model_name = _get_model_name(model)
+    plot_filename = f"{plot_name}.png"
     with estimator_pipeline(_internal_pipeline, model) as pipeline_with_model:
         fit_kwargs = _get_pipeline_fit_kwargs(pipeline_with_model, fit_kwargs)
 
@@ -5698,12 +5722,16 @@ def plot_model(
 
             fig.update_layout(height=600 * scale, title_text="2D Cluster PCA Plot")
 
+            display.clear_output()
+
+            plot_filename = f"{plot_name}.html"
+
             if system:
                 fig.show()
 
             if save:
-                fig.write_html(plot_name)
-                logger.info(f"Saving {plot_name} in current active directory")
+                fig.write_html(plot_filename)
+                logger.info(f"Saving '{plot_filename}' in current active directory")
 
             logger.info("Visual Rendered Successfully")
 
@@ -5784,12 +5812,16 @@ def plot_model(
                     height=800 * scale,
                 )
 
+            display.clear_output()
+
+            plot_filename = f"{plot_name}.html"
+
             if system:
                 fig.show()
 
             if save:
-                fig.write_html(f"{plot_name}.html")
-                logger.info(f"Saving '{plot_name}.html' in current active directory")
+                fig.write_html(f"{plot_filename}")
+                logger.info(f"Saving '{plot_filename}' in current active directory")
 
             logger.info("Visual Rendered Successfully")
 
@@ -5846,12 +5878,16 @@ def plot_model(
 
             fig.update_layout(height=600 * scale,)
 
+            display.clear_output()
+
+            plot_filename = f"{plot_name}.html"
+
             if system:
                 fig.show()
 
             if save:
-                fig.write_html(f"{plot_name}.html")
-                logger.info(f"Saving '{plot_name}.html' in current active directory")
+                fig.write_html(f"{plot_filename}")
+                logger.info(f"Saving '{plot_filename}' in current active directory")
 
             logger.info("Visual Rendered Successfully")
 
@@ -5903,7 +5939,7 @@ def plot_model(
                     display=display,
                 )
             except:
-                logger.warning("Elbow plot failed")
+                logger.warning("Silhouette plot failed")
                 raise TypeError("Plot Type not supported for this model.")
 
         def distance():
@@ -5927,7 +5963,7 @@ def plot_model(
                     display=display,
                 )
             except:
-                logger.warning("Elbow plot failed")
+                logger.warning("Distance plot failed")
                 raise TypeError("Plot Type not supported for this model.")
 
         def residuals():
@@ -6601,7 +6637,7 @@ def plot_model(
     )
 
     if save:
-        return f"{plot_name}.png"
+        return plot_filename
 
 
 def evaluate_model(
@@ -8392,14 +8428,19 @@ def automl(optimize: str = "Accuracy", use_holdout: bool = False) -> Any:
 
     automl_result = master_model_container[index_scorer]
 
-    logger.info("SubProcess finalize_model() called ==================================")
-    automl_finalized = finalize_model(automl_result)
-    logger.info("SubProcess finalize_model() end ==================================")
+    automl_model, _ = create_model_supervised(
+        estimator=automl_result,
+        system=False,
+        verbose=False,
+        cross_validation=False,
+        predict=False,
+        groups=fold_groups_param,
+    )
 
-    logger.info(str(automl_finalized))
+    logger.info(str(automl_model))
     logger.info("automl() succesfully completed......................................")
 
-    return automl_finalized
+    return automl_model
 
 
 def pull(pop=False) -> pd.DataFrame:  # added in pycaret==2.2.0

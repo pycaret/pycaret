@@ -886,6 +886,7 @@ def tune_model(
     fit_kwargs: Optional[dict] = None,
     groups: Optional[Union[str, Any]] = None,
     verbose: bool = True,
+    tuner_verbose: Union[int, bool] = True,
     **kwargs,
 ):
 
@@ -1018,6 +1019,10 @@ def tune_model(
     verbose: bool, default = True
         Score grid is not printed when verbose is set to False.
 
+    tuner_verbose: bool or in, default = True
+        If True or above 0, will print messages from the tuner. Higher values
+        print more messages. Ignored if verbose param is False.
+
     **kwargs: 
         Additional keyword arguments to pass to the optimizer.
 
@@ -1069,6 +1074,7 @@ def tune_model(
         fit_kwargs=fit_kwargs,
         groups=groups,
         verbose=verbose,
+        tuner_verbose=tuner_verbose,
         **kwargs,
     )
 
