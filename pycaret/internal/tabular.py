@@ -8428,10 +8428,19 @@ def automl(optimize: str = "Accuracy", use_holdout: bool = False) -> Any:
 
     automl_result = master_model_container[index_scorer]
 
-    logger.info(str(automl_result))
+    automl_model, _ = create_model_supervised(
+        estimator=automl_result,
+        system=False,
+        verbose=False,
+        cross_validation=False,
+        predict=False,
+        groups=fold_groups_param,
+    )
+
+    logger.info(str(automl_model))
     logger.info("automl() succesfully completed......................................")
 
-    return automl_result
+    return automl_model
 
 
 def pull(pop=False) -> pd.DataFrame:  # added in pycaret==2.2.0
