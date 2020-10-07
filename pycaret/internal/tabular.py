@@ -6649,6 +6649,7 @@ def evaluate_model(
     estimator,
     fold: Optional[Union[int, Any]] = None,
     fit_kwargs: Optional[dict] = None,
+    feature_name: Optional[str] = None,
     groups: Optional[Union[str, Any]] = None,
 ):
 
@@ -6727,6 +6728,7 @@ def evaluate_model(
         scale=fixed(1),
         fold=fixed(fold),
         fit_kwargs=fixed(fit_kwargs),
+        feature_name=fixed(feature_name),
         groups=fixed(groups),
         system=fixed(True),
         display=fixed(None),
