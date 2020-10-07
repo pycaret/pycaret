@@ -6725,7 +6725,7 @@ def evaluate_model(
         fold=fixed(fold),
         fit_kwargs=fixed(fit_kwargs),
         feature_name=fixed(feature_name),
-        label=fixed(True),
+        label=fixed(False),
         groups=fixed(groups),
         system=fixed(True),
         display=fixed(None),
