@@ -5701,6 +5701,8 @@ def plot_model(
             sorting ends
             """
 
+            display.clear_output()
+
             logger.info("Rendering Visual")
 
             if label:
@@ -5721,8 +5723,6 @@ def plot_model(
             fig.update_layout(plot_bgcolor="rgb(240,240,240)")
 
             fig.update_layout(height=600 * scale, title_text="2D Cluster PCA Plot")
-
-            display.clear_output()
 
             plot_filename = f"{plot_name}.html"
 
@@ -5782,6 +5782,8 @@ def plot_model(
 
             df = X_embedded
 
+            display.clear_output()
+
             logger.info("Rendering Visual")
 
             if label:
@@ -5812,8 +5814,6 @@ def plot_model(
                     width=900 * scale,
                     height=800 * scale,
                 )
-
-            display.clear_output()
 
             plot_filename = f"{plot_name}.html"
 
@@ -5867,6 +5867,8 @@ def plot_model(
             else:
                 x_col = feature_name
 
+            display.clear_output()
+
             logger.info("Rendering Visual")
 
             fig = px.histogram(
@@ -5879,8 +5881,6 @@ def plot_model(
             )
 
             fig.update_layout(height=600 * scale,)
-
-            display.clear_output()
 
             plot_filename = f"{plot_name}.html"
 
