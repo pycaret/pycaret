@@ -660,7 +660,7 @@ def evaluate_model(
 def tune_model(
     model,
     supervised_target: str,
-    supervised_type,
+    supervised_type: Optional[str] = None,
     supervised_estimator: Union[str, Any] = "lr",
     optimize: Optional[str] = None,
     custom_grid: Optional[List[int]] = None,

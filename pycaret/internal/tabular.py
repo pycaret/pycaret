@@ -3082,7 +3082,7 @@ def create_model_supervised(
 def tune_model_unsupervised(
     model,
     supervised_target: str,
-    supervised_type,
+    supervised_type: Optional[str] = None,
     supervised_estimator: Union[str, Any] = "lr",
     optimize: Optional[str] = None,
     custom_grid: Optional[List[int]] = None,
@@ -3131,6 +3131,17 @@ def tune_model_unsupervised(
 
     temp_globals = globals()
     temp_globals["y_train"] = data_y
+
+    if supervised_type is None:
+        c1 = data_y.dtype == "int64"
+        c2 = data_y.nunique() <= 20
+        c3 = data_y.dtype.name in ["object", "bool", "category"]
+
+        if ((c1) and (c2)) or (c3):
+            supervised_type = "classification"
+        else:
+            supervised_type = "regression"
+        logger.info(f"supervised_type inferred as {supervised_type}")
 
     if supervised_type == "classification":
         metrics = pycaret.containers.metrics.classification.get_all_metric_containers(
