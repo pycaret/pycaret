@@ -607,7 +607,7 @@ def can_early_stop(
     return can_partial_fit or can_warm_start or is_xgboost
 
 
-def infer_ml_usecase(y: pd.Series) -> str:
+def infer_ml_usecase(y: pd.Series) -> Tuple[str, str]:
     c1 = y.dtype == "int64"
     c2 = y.nunique() <= 20
     c3 = y.dtype.name in ["object", "bool", "category"]
