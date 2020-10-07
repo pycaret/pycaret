@@ -9,7 +9,7 @@ ipywidgets
 yellowbrick>=1.0.1
 xgboost>=1.1.0
 lightgbm>=2.3.1
-plotly>=4.10.0
+plotly>=4.4.1
 wordcloud
 textblob
 cufflinks>=0.17.0

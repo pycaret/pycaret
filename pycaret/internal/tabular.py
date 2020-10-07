@@ -828,8 +828,8 @@ def setup(
     # cufflinks
     import cufflinks as cf
 
-    cf.go_offline()
-    cf.set_config_file(offline=False, world_readable=True)
+    #cf.go_offline()
+    #cf.set_config_file(offline=False, world_readable=True)
 
     logger.info("Copying data for preprocessing")
 
@@ -3383,7 +3383,6 @@ def tune_model_unsupervised(
             },
             xaxis_title="Number of Clusters",
             yaxis_title=optimize.display_name,
-            legend_title="Legend",
         )
 
         fig.show()
