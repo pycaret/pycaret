@@ -1,4 +1,128 @@
 import numpy as np
+from sklearn.utils.metaestimators import if_delegate_has_method
+from pycaret.internal.utils import get_all_object_vars_and_properties, is_fit_var
+from sklearn.multiclass import OneVsRestClassifier
+
+
+def get_dbscan():
+    from cuml.cluster import DBSCAN as cuMLDBSCAN
+
+    class DBSCAN(cuMLDBSCAN):
+        def fit(self, X, y=None, out_dtype="int32"):
+            return super().fit(X, out_dtype=out_dtype)
+
+        def fit_predict(self, X, y=None, out_dtype="int32"):
+            return super().fit_predict(X, out_dtype=out_dtype)
+
+    return DBSCAN
+
+
+def get_kmeans():
+    from cuml.cluster import KMeans as cuMLKMeans
+
+    class KMeans(cuMLKMeans):
+        def fit(self, X, y=None, sample_weight=None):
+            return super().fit(X, sample_weight=sample_weight)
+
+        def fit_predict(self, X, y=None, sample_weight=None):
+            return super().fit_predict(X, sample_weight=sample_weight)
+
+    return KMeans
+
+
+def get_svc_classifier():
+    from scipy import sparse
+
+    from sklearn.linear_model._base import LinearClassifierMixin
+    from sklearn.utils import check_array
+    from sklearn.utils import column_or_1d
+    from sklearn.utils.validation import check_X_y
+    from sklearn.utils.validation import _deprecate_positional_args
+    from sklearn.preprocessing import LabelBinarizer
+
+    from cuml.svm import SVC as cuMLSVC
+
+    class SVC(OneVsRestClassifier):
+        def __init__(
+            self,
+            *,
+            C=1.0,
+            kernel="rbf",
+            degree=3,
+            gamma="scale",
+            coef0=0.0,
+            probability=False,
+            tol=1e-3,
+            cache_size=200,
+            class_weight=None,
+            verbose=False,
+            max_iter=-1,
+            nochange_steps=1000,
+            random_state=None,
+            n_jobs=1,
+        ):
+
+            self.kernel = kernel
+            self.degree = degree
+            self.gamma = gamma
+            self.coef0 = coef0
+            self.tol = tol
+            self.C = C
+            self.probability = probability
+            self.cache_size = cache_size
+            self.class_weight = class_weight
+            self.verbose = verbose
+            self.max_iter = max_iter
+            self.nochange_steps = nochange_steps
+            self.random_state = random_state
+
+            self.estimator = cuMLSVC(
+                kernel=kernel,
+                degree=degree,
+                gamma=gamma,
+                coef0=coef0,
+                tol=tol,
+                C=C,
+                probability=probability,
+                cache_size=cache_size,
+                class_weight=class_weight,
+                verbose=verbose,
+                max_iter=max_iter,
+                nochange_steps=nochange_steps,
+                random_state=random_state,
+            )
+            self.n_jobs = 1
+
+        def set_params(self, **params):
+            """
+            Set the parameters of this estimator.
+
+            The method works on simple estimators as well as on nested objects
+            (such as pipelines). The latter have parameters of the form
+            ``<component>__<parameter>`` so that it's possible to update each
+            component of a nested object.
+
+            Parameters
+            ----------
+            **params : dict
+                Estimator parameters.
+
+            Returns
+            -------
+            self : object
+                Estimator instance.
+            """
+            if "n_jobs" in params:
+                params.pop("n_jobs")
+            super().set_params(**params)
+            estimator_params = self.estimator.get_params()
+            self.estimator.set_params(
+                **{k: v for k, v in params.items() if k in estimator_params}
+            )
+
+            return self
+
+    return SVC
 
 
 def get_ridge_classifier():
@@ -87,7 +211,7 @@ def get_ridge_classifier():
             copy_X=True,
             class_weight=None,
             solver="auto",
-            n_jobs=-1,
+            n_jobs=1,
         ):
 
             if solver not in ("auto", "eig", "cd", "svd"):
