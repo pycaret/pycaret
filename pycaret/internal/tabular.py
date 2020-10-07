@@ -5734,6 +5734,7 @@ def plot_model(
                 logger.info(f"Saving '{plot_filename}' in current active directory")
 
             logger.info("Visual Rendered Successfully")
+            return plot_filename
 
         def tsne():
             logger.info(
@@ -5824,6 +5825,7 @@ def plot_model(
                 logger.info(f"Saving '{plot_filename}' in current active directory")
 
             logger.info("Visual Rendered Successfully")
+            return plot_filename
 
         def distribution():
             logger.info(
@@ -5890,6 +5892,7 @@ def plot_model(
                 logger.info(f"Saving '{plot_filename}' in current active directory")
 
             logger.info("Visual Rendered Successfully")
+            return plot_filename
 
         def elbow():
             try:
@@ -6623,7 +6626,9 @@ def plot_model(
             logger.info("Visual Rendered Successfully")
 
         # execute the plot method
-        locals()[plot]()
+        ret = locals()[plot]()
+        if ret:
+            plot_filename = ret
 
         try:
             plt.close()
