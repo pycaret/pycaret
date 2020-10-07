@@ -28,6 +28,7 @@ from pycaret.internal.utils import (
     nullcontext,
     true_warm_start,
     can_early_stop,
+    infer_ml_usecase
 )
 import pycaret.internal.patches.sklearn
 from pycaret.internal.logging import get_logger
@@ -61,6 +62,9 @@ import warnings
 from IPython.utils import io
 import traceback
 from unittest.mock import patch
+import plotly.express as px
+import plotly.graph_objects as go
+import scikitplot as skplt
 
 warnings.filterwarnings("ignore")
 
@@ -823,12 +827,6 @@ def setup(
     def highlight_max(s):
         is_max = s == True
         return ["background-color: lightgreen" if v else "" for v in is_max]
-
-    # cufflinks
-    import cufflinks as cf
-
-    cf.go_offline()
-    cf.set_config_file(offline=False, world_readable=True)
 
     logger.info("Copying data for preprocessing")
 
@@ -3127,20 +3125,13 @@ def tune_model_unsupervised(
         data_y[supervised_target] = LabelEncoder().fit_transform(
             data_y[supervised_target]
         )
-        data_y = data_y[supervised_target]
+    data_y = data_y[supervised_target]
 
     temp_globals = globals()
     temp_globals["y_train"] = data_y
 
     if supervised_type is None:
-        c1 = data_y.dtype == "int64"
-        c2 = data_y.nunique() <= 20
-        c3 = data_y.dtype.name in ["object", "bool", "category"]
-
-        if ((c1) and (c2)) or (c3):
-            supervised_type = "classification"
-        else:
-            supervised_type = "regression"
+        supervised_type, _ = infer_ml_usecase(data_y)
         logger.info(f"supervised_type inferred as {supervised_type}")
 
     if supervised_type == "classification":
@@ -3360,8 +3351,6 @@ def tune_model_unsupervised(
     display.display(results, clear=True)
 
     if html_param and verbose:
-        import plotly.graph_objects as go
-
         logger.info("Rendering Visual")
         plot_df = results.data.drop(
             [x for x in results.columns if x != optimize.display_name], axis=1
@@ -3389,7 +3378,6 @@ def tune_model_unsupervised(
             },
             xaxis_title="Number of Clusters",
             yaxis_title=optimize.display_name,
-            legend_title="Legend",
         )
 
         fig.show()
@@ -5620,9 +5608,6 @@ def plot_model(
     plot_name = _available_plots[plot]
     display.move_progress()
 
-    import scikitplot as skplt
-    import plotly.express as px
-
     # yellowbrick workaround start
     import yellowbrick.utils.types
 
@@ -6740,7 +6725,7 @@ def evaluate_model(
         fold=fixed(fold),
         fit_kwargs=fixed(fit_kwargs),
         feature_name=fixed(feature_name),
-        label=fixed(True),
+        label=fixed(False),
         groups=fixed(groups),
         system=fixed(True),
         display=fixed(None),
@@ -7305,16 +7290,7 @@ def optimize_threshold(
 
     # import libraries
 
-    import plotly.express as px
-    from IPython.display import clear_output
-
     np.random.seed(seed)
-
-    # cufflinks
-    import cufflinks as cf
-
-    cf.go_offline()
-    cf.set_config_file(offline=False, world_readable=True)
 
     """
     ERROR HANDLING STARTS HERE

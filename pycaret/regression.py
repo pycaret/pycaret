@@ -18,12 +18,6 @@ from pycaret.internal.tabular import MLUsecase
 
 warnings.filterwarnings("ignore")
 
-try:
-    if is_in_colab():
-        enable_colab()
-except:
-    pass
-
 
 def setup(
     data: pd.DataFrame,

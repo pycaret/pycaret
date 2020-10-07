@@ -605,3 +605,20 @@ def can_early_stop(
     )
 
     return can_partial_fit or can_warm_start or is_xgboost
+
+
+def infer_ml_usecase(y: pd.Series) -> Tuple[str, str]:
+    c1 = y.dtype == "int64"
+    c2 = y.nunique() <= 20
+    c3 = y.dtype.name in ["object", "bool", "category"]
+
+    if (c1 and c2) or c3:
+        ml_usecase = "classification"
+    else:
+        ml_usecase = "regression"
+
+    if y.nunique() > 2 and ml_usecase != "regression":
+        subcase = "multi"
+    else:
+        subcase = "binary"
+    return ml_usecase, subcase
