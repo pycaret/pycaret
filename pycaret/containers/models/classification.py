@@ -15,6 +15,7 @@ from pycaret.containers.models.base_model import (
     ModelContainer,
     leftover_parameters_to_categorical_distributions,
 )
+from pycaret.internal.cuml_wrappers import get_svc_classifier
 from pycaret.internal.utils import (
     param_grid_to_lists,
     get_logger,
@@ -504,25 +505,23 @@ class SVCClassifierContainer(ClassifierContainer):
 
         from sklearn.svm import SVC
 
-        # known limitation - cuML SVC only supports binary problems
-        if globals_dict["y_train"].value_counts().count() <= 2:
-            if globals_dict["gpu_param"] == "force":
+        if globals_dict["gpu_param"] == "force":
+            from cuml.svm import SVC
+
+            logger.info("Imported cuml.svm.SVC")
+            gpu_imported = True
+        elif globals_dict["gpu_param"]:
+            try:
                 from cuml.svm import SVC
 
                 logger.info("Imported cuml.svm.SVC")
                 gpu_imported = True
-            elif globals_dict["gpu_param"]:
-                try:
-                    from cuml.svm import SVC
-
-                    logger.info("Imported cuml.svm.SVC")
-                    gpu_imported = True
-                except ImportError:
-                    logger.warning("Couldn't import cuml.svm.SVC")
+            except ImportError:
+                logger.warning("Couldn't import cuml.svm.SVC")
 
         args = {
             "gamma": "auto",
-            "C": 1,
+            "C": 1.0,
             "probability": True,
             "kernel": "rbf",
             "random_state": globals_dict["seed"],
@@ -537,6 +536,9 @@ class SVCClassifierContainer(ClassifierContainer):
         }
 
         leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+
+        if gpu_imported:
+            SVC = get_svc_classifier()
 
         super().__init__(
             id="rbfsvm",
@@ -1087,6 +1089,7 @@ class LGBMClassifierContainer(ClassifierContainer):
                 lgb = LGBMClassifier(device="gpu")
                 lgb.fit(np.zeros((2, 2)), [0, 1])
                 is_gpu_enabled = True
+                del lgb
             except LightGBMError:
                 is_gpu_enabled = False
                 if globals_dict["gpu_param"] == "force":

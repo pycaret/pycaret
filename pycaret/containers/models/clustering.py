@@ -15,6 +15,7 @@ from pycaret.containers.models.base_model import (
     ModelContainer,
     leftover_parameters_to_categorical_distributions,
 )
+from pycaret.internal.cuml_wrappers import get_dbscan, get_kmeans
 from pycaret.internal.utils import (
     param_grid_to_lists,
     get_logger,
@@ -194,6 +195,8 @@ class KMeansClusterContainer(ClusterContainer):
 
         if not gpu_imported:
             args["n_jobs"] = globals_dict["n_jobs_param"]
+        else:
+            KMeans = get_kmeans()
 
         super().__init__(
             id="kmeans",
@@ -331,6 +334,8 @@ class DBSCANClusterContainer(ClusterContainer):
 
         if not gpu_imported:
             args["n_jobs"] = globals_dict["n_jobs_param"]
+        else:
+            DBSCAN = get_dbscan()
 
         super().__init__(
             id="dbscan",
