@@ -3082,7 +3082,7 @@ def create_model_supervised(
 def tune_model_unsupervised(
     model,
     supervised_target: str,
-    supervised_type,
+    supervised_type: Optional[str] = None,
     supervised_estimator: Union[str, Any] = "lr",
     optimize: Optional[str] = None,
     custom_grid: Optional[List[int]] = None,
@@ -3131,6 +3131,17 @@ def tune_model_unsupervised(
 
     temp_globals = globals()
     temp_globals["y_train"] = data_y
+
+    if supervised_type is None:
+        c1 = data_y.dtype == "int64"
+        c2 = data_y.nunique() <= 20
+        c3 = data_y.dtype.name in ["object", "bool", "category"]
+
+        if ((c1) and (c2)) or (c3):
+            supervised_type = "classification"
+        else:
+            supervised_type = "regression"
+        logger.info(f"supervised_type inferred as {supervised_type}")
 
     if supervised_type == "classification":
         metrics = pycaret.containers.metrics.classification.get_all_metric_containers(
@@ -5701,6 +5712,8 @@ def plot_model(
             sorting ends
             """
 
+            display.clear_output()
+
             logger.info("Rendering Visual")
 
             if label:
@@ -5721,8 +5734,6 @@ def plot_model(
             fig.update_layout(plot_bgcolor="rgb(240,240,240)")
 
             fig.update_layout(height=600 * scale, title_text="2D Cluster PCA Plot")
-
-            display.clear_output()
 
             plot_filename = f"{plot_name}.html"
 
@@ -5782,6 +5793,8 @@ def plot_model(
 
             df = X_embedded
 
+            display.clear_output()
+
             logger.info("Rendering Visual")
 
             if label:
@@ -5812,8 +5825,6 @@ def plot_model(
                     width=900 * scale,
                     height=800 * scale,
                 )
-
-            display.clear_output()
 
             plot_filename = f"{plot_name}.html"
 
@@ -5867,6 +5878,8 @@ def plot_model(
             else:
                 x_col = feature_name
 
+            display.clear_output()
+
             logger.info("Rendering Visual")
 
             fig = px.histogram(
@@ -5879,8 +5892,6 @@ def plot_model(
             )
 
             fig.update_layout(height=600 * scale,)
-
-            display.clear_output()
 
             plot_filename = f"{plot_name}.html"
 
@@ -6649,6 +6660,7 @@ def evaluate_model(
     estimator,
     fold: Optional[Union[int, Any]] = None,
     fit_kwargs: Optional[dict] = None,
+    feature_name: Optional[str] = None,
     groups: Optional[Union[str, Any]] = None,
 ):
 
@@ -6727,6 +6739,8 @@ def evaluate_model(
         scale=fixed(1),
         fold=fixed(fold),
         fit_kwargs=fixed(fit_kwargs),
+        feature_name=fixed(feature_name),
+        label=fixed(True),
         groups=fixed(groups),
         system=fixed(True),
         display=fixed(None),

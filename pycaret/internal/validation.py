@@ -1,3 +1,4 @@
+from copy import deepcopy
 from typing import Any, Optional, Union
 
 import pandas as pd
@@ -40,7 +41,7 @@ class fit_if_not_fitted(object):
         **fit_kwargs,
     ):
         logger = get_logger()
-        self.estimator = clone(estimator)
+        self.estimator = deepcopy(estimator)
         if not is_fitted(self.estimator):
             try:
                 self.estimator._carry_over_final_estimator_fit_vars()

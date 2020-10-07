@@ -252,7 +252,7 @@ class DataTypes_Auto_infer(BaseEstimator,TransformerMixin):
     if self.display_types == True:
       display(wg.Text(value="Following data types have been inferred automatically, if they are correct press enter to continue or type 'quit' otherwise.",layout =Layout(width='100%')),display_id='m1')
       
-      dt_print_out = pd.DataFrame(self.learent_dtypes, columns=['Feature_Type']).drop("UNSUPERVISED_DUMMY_TARGET", axis=1, errors="ignore")
+      dt_print_out = pd.DataFrame(self.learent_dtypes, columns=['Feature_Type']).drop("UNSUPERVISED_DUMMY_TARGET", errors="ignore")
       dt_print_out['Data Type'] = ""
       
       for i in dt_print_out.index:

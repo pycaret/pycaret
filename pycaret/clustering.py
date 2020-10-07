@@ -8,12 +8,20 @@ import sys
 import datetime, time
 import warnings
 from pycaret.internal.logging import get_logger
-from pycaret.internal.Display import Display
+from pycaret.internal.Display import Display, is_in_colab, enable_colab
 import pandas as pd
 import numpy as np
 import ipywidgets as ipw
 from typing import List, Tuple, Any, Union, Optional, Dict
 import pycaret.internal.tabular
+
+warnings.filterwarnings("ignore")
+
+# try:
+#     if is_in_colab():
+#         enable_colab()
+# except:
+#     pass
 
 
 def setup(
@@ -604,10 +612,55 @@ def plot_model(
     )
 
 
+def evaluate_model(
+    estimator, feature: Optional[str] = None, fit_kwargs: Optional[dict] = None,
+):
+
+    """
+    This function displays a user interface for all of the available plots for 
+    a given estimator. It internally uses the plot_model() function. 
+    
+    Example
+    --------
+    >>> from pycaret.datasets import get_data
+    >>> jewellery = get_data('jewellery')
+    >>> experiment_name = setup(data = jewellery, normalize = True)
+    >>> kmeans = create_model('kmeans')
+    >>> evaluate_model(kmeans)
+    
+    This will display the User Interface for all of the plots for a given
+    estimator.
+
+    Parameters
+    ----------
+    estimator : object, default = none
+        A trained model object should be passed as an estimator. 
+
+    feature : string, default = None
+        Name of feature column for x-axis of when plot = 'distribution'. When plot is
+        'cluster' or 'tsne' feature column is used as a hoverover tooltip and/or label
+        when label is set to True. If no feature name is passed in 'cluster' or 'tsne'
+        by default the first of column of dataset is chosen as hoverover tooltip.
+
+    fit_kwargs: dict, default = {} (empty dict)
+        Dictionary of arguments passed to the fit method of the model.
+
+    Returns
+    -------
+    User_Interface
+        Displays the user interface for plotting.
+
+    """
+
+    return pycaret.internal.tabular.evaluate_model(
+        estimator=estimator, feature_name=feature, fit_kwargs=fit_kwargs
+    )
+
+
 def tune_model(
     model,
     supervised_target: str,
-    supervised_type,
+    supervised_type: Optional[str] = None,
     supervised_estimator: Union[str, Any] = "lr",
     optimize: Optional[str] = None,
     custom_grid: Optional[List[int]] = None,
