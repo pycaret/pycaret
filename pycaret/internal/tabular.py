@@ -28,6 +28,7 @@ from pycaret.internal.utils import (
     nullcontext,
     true_warm_start,
     can_early_stop,
+    infer_ml_usecase
 )
 import pycaret.internal.patches.sklearn
 from pycaret.internal.logging import get_logger
@@ -3133,14 +3134,7 @@ def tune_model_unsupervised(
     temp_globals["y_train"] = data_y
 
     if supervised_type is None:
-        c1 = data_y.dtype == "int64"
-        c2 = data_y.nunique() <= 20
-        c3 = data_y.dtype.name in ["object", "bool", "category"]
-
-        if ((c1) and (c2)) or (c3):
-            supervised_type = "classification"
-        else:
-            supervised_type = "regression"
+        supervised_type, _ = infer_ml_usecase(data_y)
         logger.info(f"supervised_type inferred as {supervised_type}")
 
     if supervised_type == "classification":

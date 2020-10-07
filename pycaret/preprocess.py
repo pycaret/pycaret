@@ -42,6 +42,7 @@ from sklearn.preprocessing import LabelEncoder
 from collections import defaultdict
 from typing import Optional, Union
 from pycaret.internal.logging import get_logger
+from pycaret.internal.utils import infer_ml_usecase
 
 from sklearn.utils.validation import check_is_fitted, check_random_state
 
@@ -2705,20 +2706,7 @@ def Preprocess_Path_One(train_data,target_variable,ml_usecase=None,test_data =No
     ml_usecase ='regression'
   else:
     # WE NEED TO AUTO INFER the ml use case
-    c1 = train_data[target_variable].dtype == 'int64'
-    c2 = train_data[target_variable].nunique() <= 20
-    c3 = train_data[target_variable].dtype.name in ['object', 'bool', 'category']
-    
-    if ml_usecase is None:
-      if ( ( (c1) & (c2) ) | (c3)   ):
-        ml_usecase ='classification'
-      else:
-        ml_usecase ='regression'
-    
-    if ((train_data[target_variable].nunique() > 2) and (ml_usecase != 'regression')):
-      subcase = 'multi'
-    else:
-      subcase = 'binary'
+    ml_usecase, subcase = infer_ml_usecase(train_data[target_variable])
 
   dtypes = DataTypes_Auto_infer(target=target_variable,ml_usecase=ml_usecase,categorical_features=categorical_features,numerical_features=numerical_features,time_features=time_features,features_todrop=features_todrop,display_types=display_types,id_columns=find_id_columns(train_data, numerical_features=numerical_features))
 
