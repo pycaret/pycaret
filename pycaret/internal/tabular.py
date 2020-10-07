@@ -3125,7 +3125,7 @@ def tune_model_unsupervised(
         data_y[supervised_target] = LabelEncoder().fit_transform(
             data_y[supervised_target]
         )
-        data_y = data_y[supervised_target]
+    data_y = data_y[supervised_target]
 
     temp_globals = globals()
     temp_globals["y_train"] = data_y
