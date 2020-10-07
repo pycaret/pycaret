@@ -17,11 +17,11 @@ import pycaret.internal.tabular
 
 warnings.filterwarnings("ignore")
 
-try:
-    if is_in_colab():
-        enable_colab()
-except:
-    pass
+# try:
+#     if is_in_colab():
+#         enable_colab()
+# except:
+#     pass
 
 
 def setup(
