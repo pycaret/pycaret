@@ -28,7 +28,7 @@ from pycaret.internal.utils import (
     nullcontext,
     true_warm_start,
     can_early_stop,
-    infer_ml_usecase
+    infer_ml_usecase,
 )
 import pycaret.internal.patches.sklearn
 from pycaret.internal.logging import get_logger
@@ -2454,6 +2454,7 @@ def create_model_unsupervised(
         monitor_rows = [
             ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
             ["Status", ". . . . . . . . . . . . . . . . . .", "Loading Dependencies"],
+            ["Estimator", ". . . . . . . . . . . . . . . . . .", "Compiling Library"],
         ]
         display = Display(
             verbose=verbose,
@@ -2500,6 +2501,9 @@ def create_model_unsupervised(
 
         full_name = _get_model_name(model)
 
+    display.update_monitor(2, full_name)
+    display.display_monitor()
+
     if raise_num_clusters:
         model.set_params(n_clusters=num_clusters)
     else:
@@ -2515,7 +2519,7 @@ def create_model_unsupervised(
     """
     MONITOR UPDATE STARTS
     """
-    display.update_monitor(1, f"Fitting {full_name} with {num_clusters} Clusters")
+    display.update_monitor(1, f"Fitting {num_clusters} Clusters")
     display.display_monitor()
     """
     MONITOR UPDATE ENDS
@@ -2809,6 +2813,7 @@ def create_model_supervised(
         monitor_rows = [
             ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
             ["Status", ". . . . . . . . . . . . . . . . . .", "Loading Dependencies"],
+            ["Estimator", ". . . . . . . . . . . . . . . . . .", "Compiling Library"],
         ]
         display = Display(
             verbose=verbose,
@@ -2873,6 +2878,9 @@ def create_model_supervised(
         model.set_params(**kwargs)
 
         full_name = _get_model_name(model)
+
+    display.update_monitor(2, full_name)
+    display.display_monitor()
 
     if transform_target_param and not isinstance(model, TransformedTargetRegressor):
         model = PowerTransformedTargetRegressor(
@@ -3211,6 +3219,7 @@ def tune_model_unsupervised(
         monitor_rows = [
             ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
             ["Status", ". . . . . . . . . . . . . . . . . .", "Loading Dependencies"],
+            ["Estimator", ". . . . . . . . . . . . . . . . . .", "Compiling Library"],
         ]
         display = Display(
             verbose=verbose,
@@ -3795,6 +3804,7 @@ def tune_model_supervised(
         monitor_rows = [
             ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
             ["Status", ". . . . . . . . . . . . . . . . . .", "Loading Dependencies"],
+            ["Estimator", ". . . . . . . . . . . . . . . . . .", "Compiling Library"],
         ]
         display = Display(
             verbose=verbose,
@@ -3852,6 +3862,9 @@ def tune_model_supervised(
     estimator_name = estimator_definition.name
     logger.info(f"Base model : {estimator_name}")
 
+    display.update_monitor(2, estimator_name)
+    display.display_monitor()
+
     display.move_progress()
 
     logger.info("Declaring metric variables")
@@ -3869,7 +3882,7 @@ def tune_model_supervised(
 
     logger.info("Defining Hyperparameters")
 
-    from pycaret.internal.Tunable import VotingClassifier, VotingRegressor
+    from pycaret.internal.tunable import VotingClassifier, VotingRegressor
 
     def total_combintaions_in_grid(grid):
         nc = 1
@@ -4529,6 +4542,7 @@ def ensemble_model(
         monitor_rows = [
             ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
             ["Status", ". . . . . . . . . . . . . . . . . .", "Loading Dependencies"],
+            ["Estimator", ". . . . . . . . . . . . . . . . . .", "Compiling Library"],
         ]
         display = Display(
             verbose=verbose,
@@ -4572,6 +4586,9 @@ def ensemble_model(
     estimator_definition = _all_models_internal[estimator_id]
     estimator_name = estimator_definition.name
     logger.info(f"Base model : {estimator_name}")
+
+    display.update_monitor(2, estimator_name)
+    display.display_monitor()
 
     """
     MONITOR UPDATE STARTS
@@ -4884,6 +4901,7 @@ def blend_models(
         monitor_rows = [
             ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
             ["Status", ". . . . . . . . . . . . . . . . . .", "Loading Dependencies"],
+            ["Estimator", ". . . . . . . . . . . . . . . . . .", "Compiling Library"],
         ]
         display = Display(
             verbose=verbose,
@@ -4950,6 +4968,9 @@ def blend_models(
         model = voting_model_definition.class_def(
             estimators=estimator_list, n_jobs=_gpu_n_jobs_param
         )
+
+    display.update_monitor(2, voting_model_definition.name)
+    display.display_monitor()
 
     display.move_progress()
 
@@ -5224,6 +5245,7 @@ def stack_models(
         monitor_rows = [
             ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
             ["Status", ". . . . . . . . . . . . . . . . . .", "Loading Dependencies"],
+            ["Estimator", ". . . . . . . . . . . . . . . . . .", "Compiling Library"],
         ]
         display = Display(
             verbose=verbose,
@@ -5298,6 +5320,9 @@ def stack_models(
             n_jobs=_gpu_n_jobs_param,
             passthrough=restack,
         )
+
+    display.update_monitor(2, stacking_model_definition.name)
+    display.display_monitor()
 
     display.move_progress()
 
@@ -7118,6 +7143,7 @@ def calibrate_model(
         monitor_rows = [
             ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
             ["Status", ". . . . . . . . . . . . . . . . . .", "Loading Dependencies"],
+            ["Estimator", ". . . . . . . . . . . . . . . . . .", "Compiling Library"],
         ]
         display = Display(
             verbose=verbose,
@@ -7138,6 +7164,9 @@ def calibrate_model(
     full_name = _get_model_name(estimator)
 
     logger.info(f"Base model : {full_name}")
+
+    display.update_monitor(2, full_name)
+    display.display_monitor()
 
     """
     MONITOR UPDATE STARTS
@@ -7334,6 +7363,9 @@ def optimize_threshold(
     model = estimator
 
     model_name = _get_model_name(model)
+
+    display.update_monitor(2, model_name)
+    display.display_monitor()
 
     # generate predictions and store actual on y_test in numpy array
     actual = np.array(y_test)

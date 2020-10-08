@@ -1,4 +1,4 @@
-# Module: internal.Tunable
+# Module: internal.tunable
 # Author: Antoni Baum (Yard1) <antoni.baum@protonmail.com>
 # License: MIT
 
