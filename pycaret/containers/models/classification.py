@@ -587,7 +587,7 @@ class MLPClassifierContainer(ClassifierContainer):
     def __init__(self, globals_dict: dict) -> None:
         logger = get_logger()
         np.random.seed(globals_dict["seed"])
-        from pycaret.internal.Tunable import TunableMLPClassifier as MLPClassifier
+        from pycaret.internal.tunable import TunableMLPClassifier as MLPClassifier
 
         args = {"random_state": globals_dict["seed"], "max_iter": 500}
         tune_args = {}
@@ -1235,7 +1235,7 @@ class VotingClassifierContainer(ClassifierContainer):
     def __init__(self, globals_dict: dict) -> None:
         logger = get_logger()
         np.random.seed(globals_dict["seed"])
-        from pycaret.internal.Tunable import TunableVotingClassifier as VotingClassifier
+        from pycaret.internal.tunable import TunableVotingClassifier as VotingClassifier
 
         args = {}
         tune_args = {}

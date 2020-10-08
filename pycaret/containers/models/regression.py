@@ -1280,7 +1280,7 @@ class MLPRegressorContainer(RegressorContainer):
         logger = get_logger()
         np.random.seed(globals_dict["seed"])
 
-        from pycaret.internal.Tunable import TunableMLPRegressor as MLPRegressor
+        from pycaret.internal.tunable import TunableMLPRegressor as MLPRegressor
 
         args = {"random_state": globals_dict["seed"], "max_iter": 500}
         tune_args = {}
@@ -1553,7 +1553,7 @@ class VotingRegressorContainer(RegressorContainer):
     def __init__(self, globals_dict: dict) -> None:
         logger = get_logger()
         np.random.seed(globals_dict["seed"])
-        from pycaret.internal.Tunable import TunableVotingRegressor as VotingRegressor
+        from pycaret.internal.tunable import TunableVotingRegressor as VotingRegressor
 
         args = {}
         tune_args = {}
