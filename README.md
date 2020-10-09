@@ -16,16 +16,17 @@ For more information on PyCaret, please visit our official website https://www.p
 
 ![alt text](https://github.com/pycaret/pycaret/blob/master/pycaret2-features.png)
 
-## Current Release
+## Current Minor Release
 PyCaret `2.1` is now available. See `2.1` release notes. The easiest way to install pycaret is using pip. 
 
 ```python
 pip install pycaret
 ```
-Subsequent to the release of PyCaret `2.1`, we have been notified of a bug causing issues in model logging. A patch has been released under `2.1.1` release to fix the issue. Please see release notes for more details.
+### Subsequent bug-fix releases
+- Issue caused in model logging when `log_experiment` is `True`. Bug fixed in `2.1.1` patch released on 8/30/2020.
+- Issue caused in `predict_model` functionality for `pycaret.regression`. Bug fixed in `2.1.2` patch released on 8/31/2020.
 
 Docs: https://pycaret.readthedocs.io/en/latest/
-
 
 ## Optional dependencies
 Following libraries are not hard dependencies and are not automatically installed when you install PyCaret. To use all functionalities of PyCaret, these optional dependencies must be installed.

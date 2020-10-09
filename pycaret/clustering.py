@@ -3676,9 +3676,14 @@ def predict_model(model,
 
     Warnings
     --------
-    - Models that donot support 'predict' function cannot be used in predict_model(). 
-       
+    - Models that do not support 'predict' function cannot be used in predict_model(). 
+
+    - The behavior of the predict_model is changed in version 2.1 without backward compatibility.
+    As such, the pipelines trained using the version (<= 2.0), may not work for inference 
+    with version >= 2.1. You can either retrain your models with a newer version or downgrade
+    the version for inference.
     
+
     """
     
     #ignore warnings

@@ -12,7 +12,7 @@ def test():
     assert isinstance(data, pd.core.frame.DataFrame)
 
     # init setup
-    clf1 = pycaret.classification.setup(data, target='species', log_experiment=True, silent=True, html=False, session_id=123)
+    clf1 = pycaret.classification.setup(data, target='species', log_experiment=True, silent=True, html=False, session_id=123, n_jobs=1)
     assert isinstance(clf1, tuple)
     assert isinstance(clf1[0], pd.core.frame.DataFrame)
     assert isinstance(clf1[1], pd.core.series.Series)

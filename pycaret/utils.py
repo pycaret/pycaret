@@ -2,7 +2,7 @@
 # Author: Moez Ali <moez.ali@queensu.ca>
 # License: MIT
 
-version_ = "2.1.1"
+version_ = "2.1.2"
 nightly_version_ = "2.2"
 
 def version():
