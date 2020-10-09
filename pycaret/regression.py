@@ -517,6 +517,7 @@ def setup(
         "vc": "Validation Curve",
         "feature": "Feature Importance",
         "feature_all": "Feature Importance (All)",
+        "tree": "Decision Tree",
     }
 
     if log_plots == True:
