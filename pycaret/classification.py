@@ -545,6 +545,7 @@ def setup(
         "boundary": "Decision Boundary",
         "lift": "Lift Chart",
         "gain": "Gain Chart",
+        "tree": "Decision Tree",
     }
 
     if log_plots == True:

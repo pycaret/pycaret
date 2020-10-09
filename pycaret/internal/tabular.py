@@ -1378,9 +1378,9 @@ def setup(
 
     if hasattr(dtypes, "replacement"):
         label_encoded = dtypes.replacement
-        label_encoded = str(label_encoded).replace("'", "")
-        label_encoded = str(label_encoded).replace("{", "")
-        label_encoded = str(label_encoded).replace("}", "")
+        label_encoded = (
+            str(label_encoded).replace("'", "").replace("{", "").replace("}", "")
+        )
 
     else:
         label_encoded = "None"
@@ -5548,6 +5548,23 @@ def plot_model(
             "Calibration plot not available for estimators with no predict_proba attribute."
         )
 
+    def is_tree(e):
+        from sklearn.tree import BaseDecisionTree
+        from sklearn.ensemble._forest import BaseForest
+
+        if "final_estimator" in e.get_params():
+            e = e.final_estimator
+        if "base_estimator" in e.get_params():
+            e = e.base_estimator
+        if isinstance(e, BaseForest) or isinstance(e, BaseDecisionTree):
+            return True
+
+    # checking for calibration plot
+    if plot == "tree" and not is_tree(estimator):
+        raise TypeError(
+            "Decision Tree plot is only available for scikit-learn Decision Trees and Forests, Ensemble models using those or Stacked models using those as meta (final) estimators."
+        )
+
     # checking for feature plot
     if not (
         hasattr(estimator, "coef_") or hasattr(estimator, "feature_importances_")
@@ -6326,6 +6343,115 @@ def plot_model(
                 display=display,
             )
 
+        def tree():
+
+            from sklearn.tree import plot_tree
+            from sklearn.base import is_classifier
+            from sklearn.model_selection import check_cv
+
+            is_stacked_model = False
+            is_ensemble_of_forests = False
+
+            tree_estimator = pipeline_with_model.steps[-1][1]
+
+            if "final_estimator" in tree_estimator.get_params():
+                tree_estimator = tree_estimator.final_estimator
+                is_stacked_model = True
+
+            if (
+                "base_estimator" in tree_estimator.get_params()
+                and "n_estimators" in tree_estimator.base_estimator.get_params()
+            ):
+                n_estimators = (
+                    tree_estimator.get_params()["n_estimators"]
+                    * tree_estimator.base_estimator.get_params()["n_estimators"]
+                )
+                is_ensemble_of_forests = True
+            elif "n_estimators" in tree_estimator.get_params():
+                n_estimators = tree_estimator.get_params()["n_estimators"]
+            else:
+                n_estimators = 1
+            if n_estimators > 10:
+                rows = (n_estimators // 10) + 1
+                cols = 10
+            else:
+                rows = 1
+                cols = n_estimators
+            figsize = (cols * 10, rows * 8)
+            fig, axes = plt.subplots(
+                nrows=rows,
+                ncols=cols,
+                figsize=figsize,
+                dpi=_base_dpi * scale,
+                squeeze=False,
+            )
+            axes = list(axes.flatten())
+
+            fig.suptitle("Decision Trees")
+
+            display.move_progress()
+            logger.info("Plotting decision trees")
+            with fit_if_not_fitted(
+                pipeline_with_model, data_X, data_y, groups=groups, **fit_kwargs
+            ) as fitted_pipeline_with_model:
+                trees = []
+                feature_names = list(data_X.columns)
+                class_names = {
+                    v: k for k, v in prep_pipe.named_steps["dtypes"].replacement.items()
+                }
+                fitted_tree_estimator = fitted_pipeline_with_model.steps[-1][1]
+                if is_stacked_model:
+                    stacked_feature_names = []
+                    classes = list(data_y.unique())
+                    if len(classes) == 2:
+                        classes.pop()
+                    for c in classes:
+                        stacked_feature_names.extend(
+                            [
+                                f"{k}_{class_names[c]}"
+                                for k, v in fitted_tree_estimator.estimators
+                            ]
+                        )
+                    if not fitted_tree_estimator.passthrough:
+                        feature_names = stacked_feature_names
+                    else:
+                        feature_names = stacked_feature_names + feature_names
+                    fitted_tree_estimator = fitted_tree_estimator.final_estimator_
+                if is_ensemble_of_forests:
+                    for estimator in fitted_tree_estimator.estimators_:
+                        trees.extend(estimator.estimators_)
+                else:
+                    try:
+                        trees = fitted_tree_estimator.estimators_
+                    except:
+                        trees = [fitted_tree_estimator]
+                for i, tree in enumerate(trees):
+                    plot_tree(
+                        tree,
+                        feature_names=feature_names,
+                        class_names=list(class_names.values()),
+                        filled=True,
+                        rounded=True,
+                        precision=4,
+                        ax=axes[i],
+                    )
+                    axes[i].set_title(f"Tree {i}")
+            for i in range(len(trees), len(axes)):
+                axes[i].set_visible(False)
+            display.move_progress()
+
+            display.move_progress()
+            display.clear_output()
+            if save:
+                logger.info(f"Saving '{plot_name}.png' in current active directory")
+                plt.savefig(f"{plot_name}.png", bbox_inches="tight")
+                if not system:
+                    plt.close()
+            else:
+                plt.show()
+
+            logger.info("Visual Rendered Successfully")
+
         def calibration():
 
             from sklearn.calibration import calibration_curve
@@ -6356,7 +6482,7 @@ def plot_model(
             ax1.set_ylim([0, 1])
             ax1.set_xlim([0, 1])
             ax1.legend(loc="lower right")
-            ax1.set_title("Calibration plots  (reliability curve)")
+            ax1.set_title("Calibration plots (reliability curve)")
             ax1.set_facecolor("white")
             ax1.grid(b=True, color="grey", linewidth=0.5, linestyle="-")
             plt.tight_layout()
