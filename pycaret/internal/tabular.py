@@ -4016,9 +4016,9 @@ def tune_model_supervised(
                 k: CategoricalDistribution(v) if not isinstance(v, Distribution) else v
                 for k, v in param_grid.items()
             }
-        elif any(not isinstance(v, list) for k, v in param_grid.items()):
+        elif any(isinstance(v, Distribution) for k, v in param_grid.items()):
             raise TypeError(
-                f"For the combination of search_library {search_library} and search_algorithm {search_algorithm}, all dictionary values must of list type."
+                f"For the combination of search_library {search_library} and search_algorithm {search_algorithm}, PyCaret Distribution objects are not supported. Pass a list or other object supported by the search library (in most cases, an object with a 'rvs' function)."
             )
     elif search_library == "scikit-learn" or (
         search_library == "tune-sklearn"
