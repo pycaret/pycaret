@@ -13,17 +13,6 @@ def test():
 
     # init setup
     ano1 = pycaret.anomaly.setup(data, normalize=True, log_experiment=True, silent=True, html=False, session_id=123)
-    assert isinstance(ano1, tuple)
-    assert isinstance(ano1[0], pd.core.frame.DataFrame)
-    assert isinstance(ano1[1], pd.core.frame.DataFrame)
-    assert isinstance(ano1[2], int)
-    assert isinstance(ano1[5], list)
-    assert isinstance(ano1[6], int)
-    assert isinstance(ano1[7], bool)
-    assert isinstance(ano1[8], str)
-    assert isinstance(ano1[9], bool)
-    assert isinstance(ano1[10], bool)
-    assert isinstance(ano1[11], str)
 
     # create model
     iforest = pycaret.anomaly.create_model('iforest')

@@ -12,7 +12,7 @@ except:
 import numpy as np
 
 
-class Distrubution:
+class Distribution:
     def __init__(self):
         raise NotImplementedError("This is an abstract class.")
 
@@ -29,7 +29,19 @@ class Distrubution:
         raise NotImplementedError("This is an abstract class.")
 
 
-class UniformDistribution(Distrubution):
+class UniformDistribution(Distribution):
+    """
+    Uniform float distribution.
+
+    Parameters
+    ----------
+    lower: float
+        Inclusive lower bound of distribution.
+    upper: float
+        Inclusive upper bound of distribution.
+    log: bool, default = False:
+        If True, the distribution will be log-uniform.
+    """
     def __init__(self, lower: float, upper: float, log: bool = False):
         self.lower = lower
         self.upper = upper
@@ -70,7 +82,19 @@ class UniformDistribution(Distrubution):
         return f"UniformDistribution(lower={self.lower}, upper={self.upper}, log={self.log})"
 
 
-class IntUniformDistribution(Distrubution):
+class IntUniformDistribution(Distribution):
+    """
+    Uniform integer distribution.
+
+    Parameters
+    ----------
+    lower: int
+        Inclusive lower bound of distribution.
+    upper: int
+        Inclusive upper bound of distribution.
+    log: bool, default = False:
+        If True, the distribution will be log-uniform.
+    """
     def __init__(self, lower: int, upper: int, log: bool = False):
         self.lower = lower
         self.upper = upper
@@ -116,7 +140,24 @@ class IntUniformDistribution(Distrubution):
         return f"IntUniformDistribution(lower={self.lower}, upper={self.upper}, log={self.log})"
 
 
-class DiscreteUniformDistribution(Distrubution):
+class DiscreteUniformDistribution(Distribution):
+    """
+    Discrete (with step) uniform float distribution.
+
+    Parameters
+    ----------
+    lower: float
+        Inclusive lower bound of distribution.
+    upper: float
+        Inclusive upper bound of distribution.
+    q: float = None:
+        Step. If None, will be equal to UniformDistribution.
+
+    Warnings
+    --------
+    - Due to scikit-optimize not supporting discrete distributions,
+    `get_skopt()` will return a standard uniform distribution.
+    """
     def __init__(self, lower: int, upper: int, q: Optional[float] = None):
         self.lower = lower
         self.upper = upper
@@ -151,9 +192,21 @@ class DiscreteUniformDistribution(Distrubution):
         return f"DiscreteUniformDistribution(lower={self.lower}, upper={self.upper}, q={self.q})"
 
 
-class CategoricalDistribution(Distrubution):
+class CategoricalDistribution(Distribution):
+    """
+    Categorical distribution.
+
+    Parameters
+    ----------
+    values: list or other iterable
+        Possible values.
+
+    Warnings
+    --------
+    - `None` is not supported  as a value for ConfigSpace.
+    """
     def __init__(self, values):
-        self.values = values
+        self.values = list(values)
 
     def get_skopt(self):
         import skopt.space
@@ -184,26 +237,26 @@ class CategoricalDistribution(Distrubution):
         return f"CategoricalDistribution(values={self.values})"
 
 
-def get_skopt_distributions(distributions: Dict[str, Distrubution]) -> dict:
+def get_skopt_distributions(distributions: Dict[str, Distribution]) -> dict:
     return {k: v.get_skopt() for k, v in distributions.items()}
 
 
-def get_optuna_distributions(distributions: Dict[str, Distrubution]) -> dict:
+def get_optuna_distributions(distributions: Dict[str, Distribution]) -> dict:
     return {k: v.get_optuna() for k, v in distributions.items()}
 
 
-def get_hyperopt_distributions(distributions: Dict[str, Distrubution]) -> dict:
+def get_hyperopt_distributions(distributions: Dict[str, Distribution]) -> dict:
     return {k: v.get_hyperopt(k) for k, v in distributions.items()}
 
 
-def get_CS_distributions(distributions: Dict[str, Distrubution]) -> dict:
+def get_CS_distributions(distributions: Dict[str, Distribution]) -> dict:
     return {k: v.get_CS(k) for k, v in distributions.items()}
 
 
 def get_min_max(o):
     if isinstance(o, CategoricalDistribution):
         o = o.values
-    elif isinstance(o, Distrubution):
+    elif isinstance(o, Distribution):
         return (o.lower, o.upper)
 
     o = sorted(o)

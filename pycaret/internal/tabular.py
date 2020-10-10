@@ -39,9 +39,11 @@ from pycaret.internal.validation import *
 import pycaret.containers.metrics.classification
 import pycaret.containers.metrics.regression
 import pycaret.containers.metrics.clustering
+import pycaret.containers.metrics.anomaly
 import pycaret.containers.models.classification
 import pycaret.containers.models.regression
 import pycaret.containers.models.clustering
+import pycaret.containers.models.anomaly
 import pycaret.preprocess
 import pandas as pd
 import numpy as np
@@ -1370,6 +1372,20 @@ def setup(
         _all_metrics = pycaret.containers.metrics.clustering.get_all_metric_containers(
             globals(), raise_errors=True
         )
+    elif _ml_usecase == MLUsecase.ANOMALY:
+        _all_models = {
+            k: v
+            for k, v in pycaret.containers.models.anomaly.get_all_model_containers(
+                globals(), raise_errors=True
+            ).items()
+            if not v.is_special
+        }
+        _all_models_internal = pycaret.containers.models.anomaly.get_all_model_containers(
+            globals(), raise_errors=True
+        )
+        _all_metrics = pycaret.containers.metrics.anomaly.get_all_metric_containers(
+            globals(), raise_errors=True
+        )
 
     """
     Final display Starts
@@ -2287,6 +2303,7 @@ def compare_models(
 def create_model_unsupervised(
     estimator,
     num_clusters: int = 4,
+    fraction: float = 0.05,
     ground_truth: Optional[str] = None,
     round: int = 4,
     fit_kwargs: Optional[dict] = None,
@@ -2387,7 +2404,9 @@ def create_model_unsupervised(
 
     """
 
-    function_params_str = ", ".join([f"{k}={v}" for k, v in locals().items()])
+    function_params_str = ", ".join(
+        [f"{k}={v}" for k, v in locals().items() if k not in ("X_data")]
+    )
 
     logger = get_logger()
 
@@ -2427,12 +2446,17 @@ def create_model_unsupervised(
     if type(system) is not bool:
         raise TypeError("System parameter can only take argument as True or False.")
 
+    # checking fraction type:
+    if fraction <= 0 or fraction >= 1:
+        raise TypeError(
+            "Fraction parameter can only take value as float between 0 to 1."
+        )
+
     # checking num_clusters type:
-    if num_clusters is not None:
-        if num_clusters <= 1:
-            raise TypeError(
-                "num_clusters parameter can only take value integer value greater than 1."
-            )
+    if num_clusters <= 1:
+        raise TypeError(
+            "num_clusters parameter can only take value integer value greater than 1."
+        )
 
     # check ground truth exist in data_
     if ground_truth is not None:
@@ -2487,7 +2511,10 @@ def create_model_unsupervised(
 
     logger.info("Importing untrained model")
 
+    is_cblof = False
+
     if isinstance(estimator, str) and estimator in available_estimators:
+        is_cblof = estimator == "cluster"
         model_definition = _all_models_internal[estimator]
         model_args = model_definition.args
         model_args = {**model_args, **kwargs}
@@ -2504,13 +2531,16 @@ def create_model_unsupervised(
     display.update_monitor(2, full_name)
     display.display_monitor()
 
-    if raise_num_clusters:
-        model.set_params(n_clusters=num_clusters)
-    else:
-        try:
+    if _ml_usecase == MLUsecase.CLUSTERING:
+        if raise_num_clusters:
             model.set_params(n_clusters=num_clusters)
-        except:
-            pass
+        else:
+            try:
+                model.set_params(n_clusters=num_clusters)
+            except:
+                pass
+    else:
+        model.set_params(contamination=fraction)
 
     logger.info(f"{full_name} Imported succesfully")
 
@@ -2519,7 +2549,10 @@ def create_model_unsupervised(
     """
     MONITOR UPDATE STARTS
     """
-    display.update_monitor(1, f"Fitting {num_clusters} Clusters")
+    if _ml_usecase == MLUsecase.CLUSTERING:
+        display.update_monitor(1, f"Fitting {num_clusters} Clusters")
+    else:
+        display.update_monitor(1, f"Fitting {fraction} Fraction")
     display.display_monitor()
     """
     MONITOR UPDATE ENDS
@@ -2531,7 +2564,20 @@ def create_model_unsupervised(
         logger.info("Fitting Model")
         model_fit_start = time.time()
         with io.capture_output():
-            pipeline_with_model.fit(data_X, **fit_kwargs)
+            if is_cblof and "n_clusters" not in kwargs:
+                try:
+                    pipeline_with_model.fit(data_X, **fit_kwargs)
+                except:
+                    try:
+                        pipeline_with_model.set_params(actual_estimator__n_clusters=12)
+                        model_fit_start = time.time()
+                        pipeline_with_model.fit(data_X, **fit_kwargs)
+                    except:
+                        raise RuntimeError(
+                            "Could not form valid cluster separation. Try a different dataset or model."
+                        )
+            else:
+                pipeline_with_model.fit(data_X, **fit_kwargs)
         model_fit_end = time.time()
 
         model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
@@ -2546,7 +2592,10 @@ def create_model_unsupervised(
     else:
         gt = None
 
-    metrics = _calculate_metrics_unsupervised(X, model.labels_, ground_truth=gt)
+    if _ml_usecase == MLUsecase.CLUSTERING:
+        metrics = _calculate_metrics_unsupervised(X, model.labels_, ground_truth=gt)
+    else:
+        metrics = {}
 
     logger.info(str(model))
     logger.info(
@@ -2591,7 +2640,12 @@ def create_model_unsupervised(
     logger.info("Uploading model into container now")
     master_model_container.append(model)
 
-    display.display(model_results, clear=system, override=False if not system else None)
+    if _ml_usecase == MLUsecase.CLUSTERING:
+        display.display(
+            model_results, clear=system, override=False if not system else None
+        )
+    elif system:
+        display.clear_output()
 
     logger.info(f"create_model_container: {len(create_model_container)}")
     logger.info(f"master_model_container: {len(master_model_container)}")
@@ -2746,7 +2800,13 @@ def create_model_supervised(
 
     """
 
-    function_params_str = ", ".join([f"{k}={v}" for k, v in locals().items()])
+    function_params_str = ", ".join(
+        [
+            f"{k}={v}"
+            for k, v in locals().items()
+            if k not in ("X_train_data", "y_train_data")
+        ]
+    )
 
     logger = get_logger()
 
@@ -3095,6 +3155,7 @@ def tune_model_unsupervised(
     fold: Optional[Union[int, Any]] = None,
     groups: Optional[Union[str, Any]] = None,
     ground_truth: Optional[str] = None,
+    method: str = "drop",
     fit_kwargs: Optional[dict] = None,
     round: int = 4,
     verbose: bool = True,
@@ -3163,8 +3224,7 @@ def tune_model_unsupervised(
             f"supervised_type param must be either 'classification' or 'regression'."
         )
 
-    if fold is None:
-        fold = _get_cv_splitter(fold, ml_usecase)
+    fold = _get_cv_splitter(fold, ml_usecase)
 
     if isinstance(supervised_estimator, str):
         if supervised_estimator in available_estimators:
@@ -3203,7 +3263,10 @@ def tune_model_unsupervised(
         raise TypeError("Verbose parameter can only take argument as True or False.")
 
     if custom_grid is None:
-        param_grid = [2, 4, 5, 6, 8, 10, 14, 18, 25, 30, 40]
+        if _ml_usecase == MLUsecase.CLUSTERING:
+            param_grid = [2, 4, 5, 6, 8, 10, 14, 18, 25, 30, 40]
+        else:
+            param_grid = [0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09, 0.10]
     else:
         param_grid = custom_grid
         try:
@@ -3233,51 +3296,69 @@ def tune_model_unsupervised(
         display.display_monitor()
         display.display_master_display()
 
-    clusterer_models = {}
-    clusterer_models_results = {}
-    clusterer_grids = {0: data_X}
+    unsupervised_models = {}
+    unsupervised_models_results = {}
+    unsupervised_grids = {0: data_X}
 
-    logger.info("Fitting clusterers")
+    logger.info("Fitting unsupervised models")
 
     for k in param_grid:
-        try:
+        if _ml_usecase == MLUsecase.CLUSTERING:
+            try:
+                new_model, _ = create_model_unsupervised(
+                    model,
+                    num_clusters=k,
+                    X_data=data_X,
+                    display=display,
+                    system=False,
+                    ground_truth=ground_truth,
+                    round=round,
+                    fit_kwargs=fit_kwargs,
+                    raise_num_clusters=True,
+                    **kwargs,
+                )
+            except ValueError:
+                raise ValueError(
+                    f"Model {model} cannot be used in this function as its number of clusters cannot be set (n_clusters param required)."
+                )
+        else:
             new_model, _ = create_model_unsupervised(
                 model,
-                num_clusters=k,
+                fraction=k,
                 X_data=data_X,
                 display=display,
                 system=False,
                 ground_truth=ground_truth,
                 round=round,
                 fit_kwargs=fit_kwargs,
-                raise_num_clusters=True,
                 **kwargs,
             )
-        except ValueError:
-            raise ValueError(
-                f"Model {model} cannot be used in this function as its number of clusters cannot be set (n_clusters param required)."
+        unsupervised_models_results[k] = pull(pop=True)
+        unsupervised_models[k] = new_model
+        unsupervised_grids[k] = assign_model(
+            new_model, verbose=False, transformation=True
+        ).drop(cols_to_drop, axis=1)
+        if _ml_usecase == MLUsecase.CLUSTERING:
+            unsupervised_grids[k] = pd.get_dummies(
+                unsupervised_grids[k], columns=["Cluster"],
             )
-        clusterer_models_results[k] = pull(pop=True)
-        clusterer_models[k] = new_model
-        clusterer_grids[k] = pd.get_dummies(
-            assign_model(new_model, verbose=False, transformation=True).drop(
-                cols_to_drop, axis=1
-            ),
-            columns=["Cluster"],
-        )
+        elif method == "drop":
+            unsupervised_grids[k] = unsupervised_grids[k][
+                unsupervised_grids[k]["Anomaly"] == 0
+            ].drop(["Anomaly", "Anomaly_Score"], axis=1)
 
     results = {}
 
     logger.info("Fitting supervised estimator")
 
-    for k, v in clusterer_grids.items():
+    for k, v in unsupervised_grids.items():
         create_model_supervised(
             supervised_estimator,
             fold=fold,
             display=display,
             system=False,
             X_train_data=v,
-            y_train_data=data_y,
+            y_train_data=data_y[data_y.index.isin(v.index)],
             metrics=metrics,
             groups=groups,
             round=round,
@@ -3322,16 +3403,27 @@ def tune_model_unsupervised(
     runtime_end = time.time()
     runtime = np.array(runtime_end - runtime_start).round(2)
 
-    best_model, best_model_fit_time = create_model_unsupervised(
-        clusterer_models[best_model_idx],
-        num_clusters=best_model_idx,
-        system=False,
-        round=round,
-        ground_truth=ground_truth,
-        fit_kwargs=fit_kwargs,
-        display=display,
-        **kwargs,
-    )
+    if _ml_usecase == MLUsecase.CLUSTERING:
+        best_model, best_model_fit_time = create_model_unsupervised(
+            unsupervised_models[best_model_idx],
+            num_clusters=best_model_idx,
+            system=False,
+            round=round,
+            ground_truth=ground_truth,
+            fit_kwargs=fit_kwargs,
+            display=display,
+            **kwargs,
+        )
+    else:
+        best_model, best_model_fit_time = create_model_unsupervised(
+            unsupervised_models[best_model_idx],
+            fraction=best_model_idx,
+            system=False,
+            round=round,
+            fit_kwargs=fit_kwargs,
+            display=display,
+            **kwargs,
+        )
     best_model_results = pull(pop=True)
 
     if logging_param:
@@ -3374,8 +3466,12 @@ def tune_model_unsupervised(
                 name=optimize.display_name,
             )
         )
-
-        title = f"{supervised_estimator_name} Metrics and Number of Clusters by {_get_model_name(best_model)}"
+        msg = (
+            "Number of Clusters"
+            if _ml_usecase == MLUsecase.CLUSTERING
+            else "Anomaly Fraction"
+        )
+        title = f"{supervised_estimator_name} Metrics and {msg} by {_get_model_name(best_model)}"
         fig.update_layout(
             plot_bgcolor="rgb(245,245,245)",
             title={
@@ -3385,7 +3481,7 @@ def tune_model_unsupervised(
                 "xanchor": "center",
                 "yanchor": "top",
             },
-            xaxis_title="Number of Clusters",
+            xaxis_title=msg,
             yaxis_title=optimize.display_name,
         )
 
@@ -3906,8 +4002,24 @@ def tune_model_supervised(
         return list(ccp_alphas[:-1])
 
     if custom_grid is not None:
+        if not isinstance(custom_grid, dict):
+            raise TypeError(f"custom_grid must be a dict, got {type(custom_grid)}.")
         param_grid = custom_grid
-
+        if not (
+            search_library == "scikit-learn"
+            or (
+                search_library == "tune-sklearn"
+                and (search_algorithm == "grid" or search_algorithm == "random")
+            )
+        ):
+            param_grid = {
+                k: CategoricalDistribution(v) if not isinstance(v, Distribution) else v
+                for k, v in param_grid.items()
+            }
+        elif any(isinstance(v, Distribution) for k, v in param_grid.items()):
+            raise TypeError(
+                f"For the combination of search_library {search_library} and search_algorithm {search_algorithm}, PyCaret Distribution objects are not supported. Pass a list or other object supported by the search library (in most cases, an object with a 'rvs' function)."
+            )
     elif search_library == "scikit-learn" or (
         search_library == "tune-sklearn"
         and (search_algorithm == "grid" or search_algorithm == "random")
@@ -3993,7 +4105,6 @@ def tune_model_supervised(
             n_jobs = 1
 
         logger.info(f"Tuning with n_jobs={n_jobs}")
-        unpatched_sample_without_replacement = None
 
         if search_library == "optuna":
             # suppress output
@@ -4016,8 +4127,12 @@ def tune_model_supervised(
             }
             sampler = sampler_translator[search_algorithm]
 
-            if custom_grid is None:
+            try:
                 param_grid = get_optuna_distributions(param_grid)
+            except:
+                logger.warning(
+                    "Couldn't convert param_grid to specific library distributions"
+                )
 
             study = optuna.create_study(
                 direction="maximize", sampler=sampler, pruner=pruner
@@ -4114,8 +4229,12 @@ def tune_model_supervised(
                         **search_kwargs,
                     )
                 elif search_algorithm == "hyperopt":
-                    if custom_grid is None:
+                    try:
                         param_grid = get_hyperopt_distributions(param_grid)
+                    except:
+                        logger.warning(
+                            "Couldn't convert param_grid to specific library distributions"
+                        )
                     logger.info("Initializing tune_sklearn.TuneSearchCV, hyperopt")
                     model_grid = TuneSearchCV(
                         estimator=pipeline_with_model,
@@ -4135,8 +4254,12 @@ def tune_model_supervised(
                         **search_kwargs,
                     )
                 elif search_algorithm == "bayesian":
-                    if custom_grid is None:
+                    try:
                         param_grid = get_skopt_distributions(param_grid)
+                    except:
+                        logger.warning(
+                            "Couldn't convert param_grid to specific library distributions"
+                        )
                     logger.info("Initializing tune_sklearn.TuneSearchCV, bayesian")
                     model_grid = TuneSearchCV(
                         estimator=pipeline_with_model,
@@ -4156,8 +4279,12 @@ def tune_model_supervised(
                         **search_kwargs,
                     )
                 elif search_algorithm == "bohb":
-                    if custom_grid is None:
+                    try:
                         param_grid = get_CS_distributions(param_grid)
+                    except:
+                        logger.warning(
+                            "Couldn't convert param_grid to specific library distributions"
+                        )
                     logger.info("Initializing tune_sklearn.TuneSearchCV, bohb")
                     model_grid = TuneSearchCV(
                         estimator=pipeline_with_model,
@@ -4198,8 +4325,12 @@ def tune_model_supervised(
         elif search_library == "scikit-optimize":
             import skopt
 
-            if custom_grid is None:
+            try:
                 param_grid = get_skopt_distributions(param_grid)
+            except:
+                logger.warning(
+                    "Couldn't convert param_grid to specific library distributions"
+                )
 
             logger.info("Initializing skopt.BayesSearchCV")
             model_grid = skopt.BayesSearchCV(
@@ -5774,16 +5905,138 @@ def plot_model(
             logger.info("Visual Rendered Successfully")
             return plot_filename
 
-        def tsne():
+        def umap():
             logger.info(
                 "SubProcess assign_model() called =================================="
             )
-            b = assign_model(pipeline_with_model, verbose=False, transformation=True)
+            b = assign_model(model, verbose=False, transformation=True, score=False)
             logger.info(
                 "SubProcess assign_model() end =================================="
             )
 
-            cluster = b["Cluster"]
+            label = pd.DataFrame(b["Anomaly"])
+            b.dropna(axis=0, inplace=True)  # droping rows with NA's
+            b.drop(["Anomaly"], axis=1, inplace=True)
+
+            import umap
+
+            reducer = umap.UMAP()
+            logger.info("Fitting UMAP()")
+            embedding = reducer.fit_transform(b)
+            X = pd.DataFrame(embedding)
+
+            import plotly.express as px
+
+            df = X
+            df["Anomaly"] = label
+
+            if feature_name is not None:
+                df["Feature"] = data_X[feature_name]
+            else:
+                df["Feature"] = data_X[data_X.columns[0]]
+
+            display.clear_output()
+
+            logger.info("Rendering Visual")
+
+            fig = px.scatter(
+                df,
+                x=0,
+                y=1,
+                color="Anomaly",
+                title="uMAP Plot for Outliers",
+                hover_data=["Feature"],
+                opacity=0.7,
+                width=900 * scale,
+                height=800 * scale,
+            )
+            plot_filename = f"{plot_name}.html"
+
+            if system:
+                fig.show()
+
+            if save:
+                fig.write_html(f"{plot_filename}")
+                logger.info(f"Saving '{plot_filename}' in current active directory")
+
+            logger.info("Visual Rendered Successfully")
+            return plot_filename
+
+        def tsne():
+            if _ml_usecase == MLUsecase.CLUSTERING:
+                return _tsne_clustering()
+            else:
+                return _tsne_anomaly()
+
+        def _tsne_anomaly():
+            logger.info(
+                "SubProcess assign_model() called =================================="
+            )
+            b = assign_model(model, verbose=False, transformation=True, score=False)
+            logger.info(
+                "SubProcess assign_model() end =================================="
+            )
+            label = pd.DataFrame(b["Anomaly"])
+            b.dropna(axis=0, inplace=True)  # droping rows with NA's
+            b.drop(["Anomaly"], axis=1, inplace=True)
+
+            logger.info("Getting dummies to cast categorical variables")
+
+            from sklearn.manifold import TSNE
+
+            logger.info("Fitting TSNE()")
+            X_embedded = TSNE(n_components=3).fit_transform(b)
+
+            X = pd.DataFrame(X_embedded)
+            X["Anomaly"] = label
+            if feature_name is not None:
+                X["Feature"] = data_X[feature_name]
+            else:
+                X["Feature"] = data_X[data_X.columns[0]]
+
+            df = X
+
+            display.clear_output()
+
+            logger.info("Rendering Visual")
+
+            fig = px.scatter_3d(
+                df,
+                x=0,
+                y=1,
+                z=2,
+                hover_data=["Feature"],
+                color="Anomaly",
+                title="3d TSNE Plot for Outliers",
+                opacity=0.7,
+                width=900 * scale,
+                height=800 * scale,
+            )
+
+            plot_filename = f"{plot_name}.html"
+
+            if system:
+                fig.show()
+
+            if save:
+                fig.write_html(f"{plot_filename}")
+                logger.info(f"Saving '{plot_filename}' in current active directory")
+
+            logger.info("Visual Rendered Successfully")
+            return plot_filename
+
+        def _tsne_clustering():
+            logger.info(
+                "SubProcess assign_model() called =================================="
+            )
+            b = assign_model(
+                pipeline_with_model, verbose=False, score=False, transformation=True
+            )
+            logger.info(
+                "SubProcess assign_model() end =================================="
+            )
+
+            label = b["Cluster"]
             b.drop(["Cluster"], axis=1, inplace=True)
 
             from sklearn.manifold import TSNE
@@ -5791,7 +6044,7 @@ def plot_model(
             logger.info("Fitting TSNE()")
             X_embedded = TSNE(n_components=3, random_state=seed).fit_transform(b)
             X_embedded = pd.DataFrame(X_embedded)
-            X_embedded["Cluster"] = cluster
+            X_embedded["Cluster"] = label
 
             if feature_name is not None:
                 X_embedded["Feature"] = data_X[feature_name]
@@ -7597,7 +7850,7 @@ def optimize_threshold(
 
 
 def assign_model(
-    model, transformation: bool = False, verbose: bool = True
+    model, transformation: bool = False, score: bool = True, verbose: bool = True
 ) -> pd.DataFrame:
 
     """
@@ -7658,6 +7911,12 @@ def assign_model(
     error handling ends here
     """
 
+    logger.info("Determining Trained Model")
+
+    name = _get_model_name(model)
+
+    logger.info(f"Trained Model : {name}")
+
     logger.info("Copying data")
     # copy data_
     if transformation:
@@ -7670,15 +7929,13 @@ def assign_model(
 
     # calculation labels and attaching to dataframe
 
-    labels = [f"Cluster {i}" for i in model.labels_]
-
-    data["Cluster"] = labels
-
-    logger.info("Determining Trained Model")
-
-    name = _get_model_name(model)
-
-    logger.info(f"Trained Model : {name}")
+    if _ml_usecase == MLUsecase.CLUSTERING:
+        labels = [f"Cluster {i}" for i in model.labels_]
+        data["Cluster"] = labels
+    else:
+        data["Anomaly"] = model.labels_
+        if score:
+            data["Anomaly_Score"] = model.decision_scores_
 
     logger.info(data.shape)
     logger.info(
@@ -7689,7 +7946,9 @@ def assign_model(
 
 
 def predict_model_unsupervised(estimator, data: pd.DataFrame) -> pd.DataFrame:
-    function_params_str = ", ".join([f"{k}={v}" for k, v in locals().items()])
+    function_params_str = ", ".join(
+        [f"{k}={v}" for k, v in locals().items() if k != "data"]
+    )
 
     logger = get_logger()
 
@@ -7707,15 +7966,27 @@ def predict_model_unsupervised(estimator, data: pd.DataFrame) -> pd.DataFrame:
     else:
         raise TypeError("Model doesn't support predict parameter.")
 
+    pred_score = None
+
     # predictions start here
     if is_sklearn_pipeline(estimator):
-        pred = estimator.predict(data)
+        pred = estimator.predict(data_transformed)
+        if _ml_usecase == MLUsecase.ANOMALY:
+            pred_score = estimator.decision_function(data_transformed)
     else:
         pred = estimator.predict(prep_pipe.transform(data_transformed))
+        if _ml_usecase == MLUsecase.ANOMALY:
+            pred_score = estimator.decision_function(
+                prep_pipe.transform(data_transformed)
+            )
 
-    pred_list = [f"Cluster {i}" for i in pred]
+    if _ml_usecase == MLUsecase.CLUSTERING:
+        pred_list = [f"Cluster {i}" for i in pred]
 
-    data_transformed["Cluster"] = pred_list
+        data_transformed["Cluster"] = pred_list
+    else:
+        data_transformed["Anomaly"] = pred
+        data_transformed["Anomaly_Score"] = pred_score
 
     return data_transformed
 
@@ -7788,7 +8059,9 @@ def predict_model(
     
     """
 
-    function_params_str = ", ".join([f"{k}={v}" for k, v in locals().items()])
+    function_params_str = ", ".join(
+        [f"{k}={v}" for k, v in locals().items() if k != "data"]
+    )
 
     logger = get_logger()
 
@@ -8705,6 +8978,10 @@ def models(
         )
     elif _ml_usecase == MLUsecase.CLUSTERING:
         model_containers = pycaret.containers.models.clustering.get_all_model_containers(
+            globals(), raise_errors
+        )
+    elif _ml_usecase == MLUsecase.ANOMALY:
+        model_containers = pycaret.containers.models.anomaly.get_all_model_containers(
             globals(), raise_errors
         )
     rows = [
