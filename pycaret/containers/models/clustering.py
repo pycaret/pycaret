@@ -93,7 +93,7 @@ class ClusterContainer(ModelContainer):
         args: Dict[str, Any] = None,
         is_special: bool = False,
         tune_grid: Dict[str, list] = None,
-        tune_distribution: Dict[str, Distrubution] = None,
+        tune_distribution: Dict[str, Distribution] = None,
         tune_args: Dict[str, Any] = None,
         is_gpu_enabled: Optional[bool] = None,
     ) -> None:

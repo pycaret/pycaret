@@ -4002,8 +4002,24 @@ def tune_model_supervised(
         return list(ccp_alphas[:-1])
 
     if custom_grid is not None:
+        if not isinstance(custom_grid, dict):
+            raise TypeError(f"custom_grid must be a dict, got {type(custom_grid)}.")
         param_grid = custom_grid
-
+        if not (
+            search_library == "scikit-learn"
+            or (
+                search_library == "tune-sklearn"
+                and (search_algorithm == "grid" or search_algorithm == "random")
+            )
+        ):
+            param_grid = {
+                k: CategoricalDistribution(v) if not isinstance(v, Distribution) else v
+                for k, v in param_grid.items()
+            }
+        elif any(not isinstance(v, list) for k, v in param_grid.items()):
+            raise TypeError(
+                f"For the combination of search_library {search_library} and search_algorithm {search_algorithm}, all dictionary values must of list type."
+            )
     elif search_library == "scikit-learn" or (
         search_library == "tune-sklearn"
         and (search_algorithm == "grid" or search_algorithm == "random")
@@ -4089,7 +4105,6 @@ def tune_model_supervised(
             n_jobs = 1
 
         logger.info(f"Tuning with n_jobs={n_jobs}")
-        unpatched_sample_without_replacement = None
 
         if search_library == "optuna":
             # suppress output
@@ -4112,8 +4127,12 @@ def tune_model_supervised(
             }
             sampler = sampler_translator[search_algorithm]
 
-            if custom_grid is None:
+            try:
                 param_grid = get_optuna_distributions(param_grid)
+            except:
+                logger.warning(
+                    "Couldn't convert param_grid to specific library distributions"
+                )
 
             study = optuna.create_study(
                 direction="maximize", sampler=sampler, pruner=pruner
@@ -4210,8 +4229,12 @@ def tune_model_supervised(
                         **search_kwargs,
                     )
                 elif search_algorithm == "hyperopt":
-                    if custom_grid is None:
+                    try:
                         param_grid = get_hyperopt_distributions(param_grid)
+                    except:
+                        logger.warning(
+                            "Couldn't convert param_grid to specific library distributions"
+                        )
                     logger.info("Initializing tune_sklearn.TuneSearchCV, hyperopt")
                     model_grid = TuneSearchCV(
                         estimator=pipeline_with_model,
@@ -4231,8 +4254,12 @@ def tune_model_supervised(
                         **search_kwargs,
                     )
                 elif search_algorithm == "bayesian":
-                    if custom_grid is None:
+                    try:
                         param_grid = get_skopt_distributions(param_grid)
+                    except:
+                        logger.warning(
+                            "Couldn't convert param_grid to specific library distributions"
+                        )
                     logger.info("Initializing tune_sklearn.TuneSearchCV, bayesian")
                     model_grid = TuneSearchCV(
                         estimator=pipeline_with_model,
@@ -4252,8 +4279,12 @@ def tune_model_supervised(
                         **search_kwargs,
                     )
                 elif search_algorithm == "bohb":
-                    if custom_grid is None:
+                    try:
                         param_grid = get_CS_distributions(param_grid)
+                    except:
+                        logger.warning(
+                            "Couldn't convert param_grid to specific library distributions"
+                        )
                     logger.info("Initializing tune_sklearn.TuneSearchCV, bohb")
                     model_grid = TuneSearchCV(
                         estimator=pipeline_with_model,
@@ -4294,8 +4325,12 @@ def tune_model_supervised(
         elif search_library == "scikit-optimize":
             import skopt
 
-            if custom_grid is None:
+            try:
                 param_grid = get_skopt_distributions(param_grid)
+            except:
+                logger.warning(
+                    "Couldn't convert param_grid to specific library distributions"
+                )
 
             logger.info("Initializing skopt.BayesSearchCV")
             model_grid = skopt.BayesSearchCV(
