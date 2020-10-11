@@ -253,11 +253,11 @@ class LassoRegressionContainer(RegressorContainer):
         args = {}
         tune_args = {}
         tune_grid = {
-            "alpha": np_list_arange(0.001, 1, 0.001, inclusive=True),
+            "alpha": np_list_arange(0.01, 10, 0.01, inclusive=True),
             "fit_intercept": [True, False],
             "normalize": [True, False],
         }
-        tune_distributions = {"alpha": UniformDistribution(0.000000001, 1)}
+        tune_distributions = {"alpha": UniformDistribution(0.001, 10)}
 
         if not gpu_imported:
             args["random_state"] = globals_dict["seed"]
@@ -302,11 +302,11 @@ class RidgeRegressionContainer(RegressorContainer):
         args = {}
         tune_args = {}
         tune_grid = {
-            "alpha": np_list_arange(0.001, 1, 0.001, inclusive=True),
+            "alpha": np_list_arange(0.01, 10, 0.01, inclusive=True),
             "fit_intercept": [True, False],
             "normalize": [True, False],
         }
-        tune_distributions = {"alpha": UniformDistribution(0.000000001, 1)}
+        tune_distributions = {"alpha": UniformDistribution(0.001, 10)}
 
         if not gpu_imported:
             args["random_state"] = globals_dict["seed"]
@@ -351,14 +351,14 @@ class ElasticNetContainer(RegressorContainer):
         args = {}
         tune_args = {}
         tune_grid = {
-            "alpha": np_list_arange(0.0000000001, 1, 0.01, inclusive=False),
-            "l1_ratio": np_list_arange(0.0000000001, 1, 0.01, inclusive=False),
+            "alpha": np_list_arange(0.01, 10, 0.01, inclusive=True),
+            "l1_ratio": np_list_arange(0.01, 1, 0.001, inclusive=False),
             "fit_intercept": [True, False],
             "normalize": [True, False],
         }
         tune_distributions = {
-            "l1_ratio": UniformDistribution(0.0000000001, 0.9999999999),
-            "alpha": UniformDistribution(0.0000000001, 0.9999999999),
+            "alpha": UniformDistribution(0, 1),
+            "l1_ratio": UniformDistribution(0.01, 0.9999999999),
         }
 
         if not gpu_imported:
@@ -435,7 +435,24 @@ class LassoLarsContainer(RegressorContainer):
         tune_grid = {
             "fit_intercept": [True, False],
             "normalize": [True, False],
-            "alpha": np_list_arange(0.001, 1, 0.001, inclusive=True),
+            "alpha": [
+                0.0000001,
+                0.000001,
+                0.0001,
+                0.001,
+                0.01,
+                0.0005,
+                0.005,
+                0.05,
+                0.1,
+                0.15,
+                0.2,
+                0.3,
+                0.4,
+                0.5,
+                0.7,
+                0.9,
+            ],
             "eps": [
                 0.00001,
                 0.0001,
@@ -820,7 +837,24 @@ class HuberRegressorContainer(RegressorContainer):
         tune_args = {}
         tune_grid = {
             "epsilon": [1, 1.1, 1.2, 1.3, 1.35, 1.4, 1.5, 1.55, 1.6, 1.7, 1.8, 1.9],
-            "alpha": np_list_arange(0, 1, 0.00001, inclusive=True),
+            "alpha": [
+                0.0000001,
+                0.000001,
+                0.0001,
+                0.001,
+                0.01,
+                0.0005,
+                0.005,
+                0.05,
+                0.1,
+                0.15,
+                0.2,
+                0.3,
+                0.4,
+                0.5,
+                0.7,
+                0.9,
+            ],
             "fit_intercept": [True, False],
         }
         tune_distributions = {
@@ -851,9 +885,28 @@ class KernelRidgeContainer(RegressorContainer):
 
         args = {}
         tune_args = {}
-        tune_grid = {"alpha": np_list_arange(0, 1, 0.00001, inclusive=True)}
+        tune_grid = {
+            "alpha": [
+                0.0000001,
+                0.000001,
+                0.0001,
+                0.001,
+                0.01,
+                0.0005,
+                0.005,
+                0.05,
+                0.1,
+                0.15,
+                0.2,
+                0.3,
+                0.4,
+                0.5,
+                0.7,
+                0.9,
+            ],
+        }
         tune_distributions = {
-            "alpha": UniformDistribution(0.0000000001, 0.9999999999),
+            "alpha": UniformDistribution(0.0000000001, 0.9999999999, log=True),
         }
 
         leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
@@ -1011,7 +1064,7 @@ class DecisionTreeRegressorContainer(RegressorContainer):
         }
         tune_distributions = {
             "max_depth": IntUniformDistribution(1, 16),
-            "max_features": UniformDistribution(0.001, 1),
+            "max_features": UniformDistribution(0.4, 1),
             "min_samples_leaf": IntUniformDistribution(2, 6),
             "min_samples_split": IntUniformDistribution(2, 10),
             "min_impurity_decrease": UniformDistribution(0.000000001, 0.5, log=True),
@@ -1094,7 +1147,7 @@ class RandomForestRegressorContainer(RegressorContainer):
             "n_estimators": IntUniformDistribution(10, 300),
             "max_depth": IntUniformDistribution(1, 11),
             "min_impurity_decrease": UniformDistribution(0.000000001, 0.5, log=True),
-            "max_features": UniformDistribution(0.001, 1),
+            "max_features": UniformDistribution(0.4, 1),
         }
 
         if gpu_imported:
@@ -1165,7 +1218,7 @@ class ExtraTreesRegressorContainer(RegressorContainer):
             "max_depth": IntUniformDistribution(1, 11),
             "min_samples_split": IntUniformDistribution(2, 10),
             "min_samples_leaf": IntUniformDistribution(1, 5),
-            "max_features": UniformDistribution(0.001, 1),
+            "max_features": UniformDistribution(0.4, 1),
             "min_impurity_decrease": UniformDistribution(0.000000001, 0.5, log=True),
         }
 
@@ -1257,7 +1310,7 @@ class GradientBoostingRegressorContainer(RegressorContainer):
             "min_samples_split": IntUniformDistribution(2, 10),
             "min_samples_leaf": IntUniformDistribution(1, 5),
             "max_depth": IntUniformDistribution(1, 11),
-            "max_features": UniformDistribution(0.001, 1),
+            "max_features": UniformDistribution(0.4, 1),
             "min_impurity_decrease": UniformDistribution(0.000000001, 0.5, log=True),
         }
 
@@ -1286,14 +1339,31 @@ class MLPRegressorContainer(RegressorContainer):
         tune_args = {}
         tune_grid = {
             "learning_rate": ["constant", "invscaling", "adaptive"],
-            "alpha": np_list_arange(0, 1, 0.0001, inclusive=True),
+            "alpha": [
+                0.0000001,
+                0.000001,
+                0.0001,
+                0.001,
+                0.01,
+                0.0005,
+                0.005,
+                0.05,
+                0.1,
+                0.15,
+                0.2,
+                0.3,
+                0.4,
+                0.5,
+                0.7,
+                0.9,
+            ],
             "hidden_layer_size_0": [50, 100],
             "hidden_layer_size_1": [0, 50, 100],
             "hidden_layer_size_2": [0, 50, 100],
             "activation": ["tanh", "identity", "logistic", "relu"],
         }
         tune_distributions = {
-            "alpha": UniformDistribution(0, 1),
+            "alpha": UniformDistribution(0.0000000001, 0.9999999999, log=True),
             "hidden_layer_size_0": IntUniformDistribution(50, 100),
             "hidden_layer_size_1": IntUniformDistribution(0, 100),
             "hidden_layer_size_2": IntUniformDistribution(0, 100),
@@ -1336,8 +1406,52 @@ class XGBRegressorContainer(RegressorContainer):
             "max_depth": np_list_arange(1, 11, 1, inclusive=True),
             "colsample_bytree": [0.5, 0.7, 0.9, 1],
             "min_child_weight": [1, 2, 3, 4],
-            "reg_alpha": np_list_arange(0, 10, 0.01, inclusive=True),
-            "reg_lambda": np_list_arange(0, 10, 0.01, inclusive=True),
+            "reg_alpha": [
+                0.0000001,
+                0.000001,
+                0.0001,
+                0.001,
+                0.01,
+                0.0005,
+                0.005,
+                0.05,
+                0.1,
+                0.15,
+                0.2,
+                0.3,
+                0.4,
+                0.5,
+                0.7,
+                1,
+                2,
+                3,
+                4,
+                5,
+                10,
+            ],
+            "reg_lambda": [
+                0.0000001,
+                0.000001,
+                0.0001,
+                0.001,
+                0.01,
+                0.0005,
+                0.005,
+                0.05,
+                0.1,
+                0.15,
+                0.2,
+                0.3,
+                0.4,
+                0.5,
+                0.7,
+                1,
+                2,
+                3,
+                4,
+                5,
+                10,
+            ],
             "scale_pos_weight": np_list_arange(0, 50, 0.1, inclusive=True),
         }
         tune_distributions = {
@@ -1347,8 +1461,8 @@ class XGBRegressorContainer(RegressorContainer):
             "max_depth": IntUniformDistribution(1, 11),
             "colsample_bytree": UniformDistribution(0.5, 1),
             "min_child_weight": IntUniformDistribution(1, 4),
-            "reg_alpha": UniformDistribution(0, 10),
-            "reg_lambda": UniformDistribution(0, 10),
+            "reg_alpha": UniformDistribution(0.0000000001, 10, log=True),
+            "reg_lambda": UniformDistribution(0.0000000001, 10, log=True),
             "scale_pos_weight": UniformDistribution(1, 50),
         }
 
@@ -1384,19 +1498,69 @@ class LGBMRegressorContainer(RegressorContainer):
             "learning_rate": np_list_arange(0.001, 0.5, 0.001, inclusive=True),
             "n_estimators": np_list_arange(10, 300, 10, inclusive=True),
             "min_split_gain": [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9],
-            "reg_alpha": np_list_arange(0, 10, 0.01, inclusive=True),
-            "reg_lambda": np_list_arange(0, 10, 0.01, inclusive=True),
-            "feature_fraction": np_list_arange(0.01, 1, 0.01, inclusive=True),
+            "reg_alpha": [
+                0.0000001,
+                0.000001,
+                0.0001,
+                0.001,
+                0.01,
+                0.0005,
+                0.005,
+                0.05,
+                0.1,
+                0.15,
+                0.2,
+                0.3,
+                0.4,
+                0.5,
+                0.7,
+                1,
+                2,
+                3,
+                4,
+                5,
+                10,
+            ],
+            "reg_lambda": [
+                0.0000001,
+                0.000001,
+                0.0001,
+                0.001,
+                0.01,
+                0.0005,
+                0.005,
+                0.05,
+                0.1,
+                0.15,
+                0.2,
+                0.3,
+                0.4,
+                0.5,
+                0.7,
+                1,
+                2,
+                3,
+                4,
+                5,
+                10,
+            ],
+            "feature_fraction": np_list_arange(0.4, 1, 0.1, inclusive=True),
+            "bagging_fraction": np_list_arange(0.4, 1, 0.1, inclusive=True),
+            "bagging_freq": [1, 2, 3, 4, 5, 6, 7],
+            "min_child_samples": np_list_arange(5, 100, 5, inclusive=True),
         }
         tune_distributions = {
             "num_leaves": IntUniformDistribution(10, 200),
             "learning_rate": UniformDistribution(0.000001, 0.5, log=True),
             "n_estimators": IntUniformDistribution(10, 300),
             "min_split_gain": UniformDistribution(0, 1),
-            "reg_alpha": UniformDistribution(0, 10),
-            "reg_lambda": UniformDistribution(0, 10),
+            "reg_alpha": UniformDistribution(0.0000000001, 10, log=True),
+            "reg_lambda": UniformDistribution(0.0000000001, 10, log=True),
             "min_data_in_leaf": IntUniformDistribution(10, 10000),
-            "feature_fraction": UniformDistribution(0.01, 1),
+            "feature_fraction": UniformDistribution(0.4, 1),
+            "bagging_fraction": UniformDistribution(0.4, 1),
+            "bagging_freq": IntUniformDistribution(1, 7),
+            "min_child_samples": IntUniformDistribution(5, 100),
         }
 
         leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
@@ -1455,13 +1619,13 @@ class CatBoostRegressorContainer(RegressorContainer):
         tune_grid = {
             "depth": list(range(1, 12)),
             "n_estimators": np_list_arange(10, 300, 10, inclusive=True),
-            "learning_rate": np_list_arange(0.001, 0.5, 0.001, inclusive=True),
-            "l2_leaf_reg": [3, 1, 5, 10, 20, 50, 100, 200],
+            "random_strength": np_list_arange(0, 0.8, 0.1, inclusive=True),
+            "l2_leaf_reg": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 20, 30, 50, 100, 200],
         }
         tune_distributions = {
             "depth": IntUniformDistribution(1, 11),
-            "n_estimators": IntUniformDistribution(10, 300, log=False),
-            "learning_rate": UniformDistribution(0.000001, 0.5, log=True),
+            "n_estimators": IntUniformDistribution(10, 300),
+            "random_strength": UniformDistribution(0, 0.8),
             "l2_leaf_reg": IntUniformDistribution(1, 200, log=True),
         }
 
@@ -1498,11 +1662,11 @@ class BaggingRegressorContainer(RegressorContainer):
         tune_grid = {
             "bootstrap": [True, False],
             "bootstrap_features": [True, False],
-            "max_features": np_list_arange(0.1, 1, 0.1, inclusive=True),
+            "max_features": np_list_arange(0.4, 1, 0.1, inclusive=True),
             "max_samples": np_list_arange(0.4, 1, 0.1, inclusive=True),
         }
         tune_distributions = {
-            "max_features": UniformDistribution(0.01, 1),
+            "max_features": UniformDistribution(0.4, 1),
             "max_samples": UniformDistribution(0.4, 1),
         }
 

@@ -28,7 +28,7 @@ def setup(
     data,
     preprocess: bool = True,
     imputation_type: str = "simple",
-    iterative_imputation_iters: int = 10,
+    iterative_imputation_iters: int = 5,
     categorical_features: Optional[List[str]] = None,
     categorical_imputation: str = "mode",
     categorical_iterative_imputer: Union[str, Any] = "lightgbm",
@@ -400,7 +400,7 @@ def setup(
 
 
 def create_model(
-    model,
+    model: Union[str, Any],
     num_clusters: int = 4,
     ground_truth: Optional[str] = None,
     round: int = 4,
@@ -548,11 +548,11 @@ def assign_model(
 
 def plot_model(
     model,
-    plot="cluster",
-    feature=None,
-    label=False,
-    scale=1,  # added in pycaret==2.1
-    save=False,
+    plot: str = "cluster",
+    feature: Optional[str] = None,
+    label: bool = False,
+    scale: float = 1,  # added in pycaret==2.1
+    save: bool = False,
 ):
 
     """
@@ -896,7 +896,7 @@ def get_clusters(
     fit_kwargs: Optional[dict] = None,
     preprocess: bool = True,
     imputation_type: str = "simple",
-    iterative_imputation_iters: int = 10,
+    iterative_imputation_iters: int = 5,
     categorical_features: Optional[List[str]] = None,
     categorical_imputation: str = "mode",
     categorical_iterative_imputer: Union[str, Any] = "lightgbm",
@@ -1000,7 +1000,7 @@ def get_clusters(
     return dataset
 
 
-def pull(pop=False) -> pd.DataFrame:  # added in pycaret==2.2.0
+def pull(pop: bool = False) -> pd.DataFrame:  # added in pycaret==2.2.0
     """
     Returns latest displayed table.
 

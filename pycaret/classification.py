@@ -26,16 +26,16 @@ def setup(
     test_data: Optional[pd.DataFrame] = None,
     preprocess: bool = True,
     imputation_type: str = "simple",
-    iterative_imputation_iters: int = 10,
+    iterative_imputation_iters: int = 5,
     categorical_features: Optional[List[str]] = None,
     categorical_imputation: str = "constant",
-    categorical_iterative_imputer: Union[str, Any] = "rf",
+    categorical_iterative_imputer: Union[str, Any] = "lightgbm",
     ordinal_features: Optional[Dict[str, list]] = None,
     high_cardinality_features: Optional[List[str]] = None,
     high_cardinality_method: str = "frequency",
     numeric_features: Optional[List[str]] = None,
     numeric_imputation: str = "mean",  # method 'zero' added in pycaret==2.1
-    numeric_iterative_imputer: Union[str, Any] = "br",  # todo change
+    numeric_iterative_imputer: Union[str, Any] = "lightgbm",
     date_features: Optional[List[str]] = None,
     ignore_features: Optional[List[str]] = None,
     normalize: bool = False,
@@ -787,7 +787,7 @@ def compare_models(
 
 
 def create_model(
-    estimator,
+    estimator: Union[str, Any],
     fold: Optional[Union[int, Any]] = None,
     round: int = 4,
     cross_validation: bool = True,
@@ -2248,12 +2248,10 @@ def automl(optimize: str = "Accuracy", use_holdout: bool = False) -> Any:
 
     """
 
-    return pycaret.internal.tabular.automl(
-        optimize=optimize, use_holdout=use_holdout
-    )
+    return pycaret.internal.tabular.automl(optimize=optimize, use_holdout=use_holdout)
 
 
-def pull(pop=False) -> pd.DataFrame:  # added in pycaret==2.2.0
+def pull(pop: bool = False) -> pd.DataFrame:  # added in pycaret==2.2.0
     """
     Returns latest displayed table.
 
@@ -2351,7 +2349,7 @@ def add_metric(
     target: str = "pred",
     greater_is_better: bool = True,
     multiclass: bool = True,
-    **kwargs
+    **kwargs,
 ) -> pd.Series:
     """
     Adds a custom metric to be used in all functions.
@@ -2441,9 +2439,7 @@ def get_logs(experiment_name: Optional[str] = None, save: bool = False) -> pd.Da
 
     """
 
-    return pycaret.internal.tabular.get_logs(
-        experiment_name=experiment_name, save=save
-    )
+    return pycaret.internal.tabular.get_logs(experiment_name=experiment_name, save=save)
 
 
 def get_config(variable: str):
