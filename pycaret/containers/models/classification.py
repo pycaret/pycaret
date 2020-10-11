@@ -460,6 +460,9 @@ class SGDClassifierContainer(ClassifierContainer):
                 0.0001,
                 0.001,
                 0.01,
+                0.0002,
+                0.002,
+                0.02,
                 0.0005,
                 0.005,
                 0.05,
@@ -469,8 +472,6 @@ class SGDClassifierContainer(ClassifierContainer):
                 0.3,
                 0.4,
                 0.5,
-                0.7,
-                0.9,
             ],
             "fit_intercept": [True, False],
             "learning_rate": ["constant", "invscaling", "adaptive", "optimal"],
@@ -691,30 +692,9 @@ class RidgeClassifierContainer(ClassifierContainer):
             "normalize": [True, False],
         }
 
-        tune_grid["alpha"] = (
-            [
-                0.0000001,
-                0.000001,
-                0.0001,
-                0.001,
-                0.01,
-                0.0005,
-                0.005,
-                0.05,
-                0.1,
-                0.15,
-                0.2,
-                0.3,
-                0.4,
-                0.5,
-                0.7,
-                0.9,
-            ],
-        )
+        tune_grid["alpha"] = np_list_arange(0.01, 10, 0.01, inclusive=False)
         tune_grid["fit_intercept"] = [True, False]
-        tune_distributions["alpha"] = UniformDistribution(
-            0.0000000001, 0.9999999999, log=True
-        )
+        tune_distributions["alpha"] = UniformDistribution(0.001, 10)
 
         leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 

@@ -253,11 +253,11 @@ class LassoRegressionContainer(RegressorContainer):
         args = {}
         tune_args = {}
         tune_grid = {
-            "alpha": np_list_arange(0.001, 1, 0.001, inclusive=True),
+            "alpha": np_list_arange(0.01, 10, 0.01, inclusive=True),
             "fit_intercept": [True, False],
             "normalize": [True, False],
         }
-        tune_distributions = {"alpha": UniformDistribution(0.000000001, 1)}
+        tune_distributions = {"alpha": UniformDistribution(0.001, 10)}
 
         if not gpu_imported:
             args["random_state"] = globals_dict["seed"]
@@ -302,11 +302,11 @@ class RidgeRegressionContainer(RegressorContainer):
         args = {}
         tune_args = {}
         tune_grid = {
-            "alpha": np_list_arange(0.001, 1, 0.001, inclusive=True),
+            "alpha": np_list_arange(0.01, 10, 0.01, inclusive=True),
             "fit_intercept": [True, False],
             "normalize": [True, False],
         }
-        tune_distributions = {"alpha": UniformDistribution(0.000000001, 1)}
+        tune_distributions = {"alpha": UniformDistribution(0.001, 10)}
 
         if not gpu_imported:
             args["random_state"] = globals_dict["seed"]
@@ -351,14 +351,14 @@ class ElasticNetContainer(RegressorContainer):
         args = {}
         tune_args = {}
         tune_grid = {
-            "alpha": np_list_arange(0.0000000001, 1, 0.01, inclusive=False),
-            "l1_ratio": np_list_arange(0.0000000001, 1, 0.01, inclusive=False),
+            "alpha": np_list_arange(0.01, 10, 0.01, inclusive=False),
+            "l1_ratio": np_list_arange(0.001, 1, 0.001, inclusive=False),
             "fit_intercept": [True, False],
             "normalize": [True, False],
         }
         tune_distributions = {
+            "alpha": UniformDistribution(0, 1),
             "l1_ratio": UniformDistribution(0.0000000001, 0.9999999999),
-            "alpha": UniformDistribution(0.0000000001, 0.9999999999),
         }
 
         if not gpu_imported:
