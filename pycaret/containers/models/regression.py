@@ -1064,7 +1064,7 @@ class DecisionTreeRegressorContainer(RegressorContainer):
         }
         tune_distributions = {
             "max_depth": IntUniformDistribution(1, 16),
-            "max_features": UniformDistribution(0.001, 1),
+            "max_features": UniformDistribution(0.4, 1),
             "min_samples_leaf": IntUniformDistribution(2, 6),
             "min_samples_split": IntUniformDistribution(2, 10),
             "min_impurity_decrease": UniformDistribution(0.000000001, 0.5, log=True),
@@ -1147,7 +1147,7 @@ class RandomForestRegressorContainer(RegressorContainer):
             "n_estimators": IntUniformDistribution(10, 300),
             "max_depth": IntUniformDistribution(1, 11),
             "min_impurity_decrease": UniformDistribution(0.000000001, 0.5, log=True),
-            "max_features": UniformDistribution(0.001, 1),
+            "max_features": UniformDistribution(0.4, 1),
         }
 
         if gpu_imported:
@@ -1218,7 +1218,7 @@ class ExtraTreesRegressorContainer(RegressorContainer):
             "max_depth": IntUniformDistribution(1, 11),
             "min_samples_split": IntUniformDistribution(2, 10),
             "min_samples_leaf": IntUniformDistribution(1, 5),
-            "max_features": UniformDistribution(0.001, 1),
+            "max_features": UniformDistribution(0.4, 1),
             "min_impurity_decrease": UniformDistribution(0.000000001, 0.5, log=True),
         }
 
@@ -1310,7 +1310,7 @@ class GradientBoostingRegressorContainer(RegressorContainer):
             "min_samples_split": IntUniformDistribution(2, 10),
             "min_samples_leaf": IntUniformDistribution(1, 5),
             "max_depth": IntUniformDistribution(1, 11),
-            "max_features": UniformDistribution(0.001, 1),
+            "max_features": UniformDistribution(0.4, 1),
             "min_impurity_decrease": UniformDistribution(0.000000001, 0.5, log=True),
         }
 
@@ -1675,11 +1675,11 @@ class BaggingRegressorContainer(RegressorContainer):
         tune_grid = {
             "bootstrap": [True, False],
             "bootstrap_features": [True, False],
-            "max_features": np_list_arange(0.1, 1, 0.1, inclusive=True),
+            "max_features": np_list_arange(0.4, 1, 0.1, inclusive=True),
             "max_samples": np_list_arange(0.4, 1, 0.1, inclusive=True),
         }
         tune_distributions = {
-            "max_features": UniformDistribution(0.01, 1),
+            "max_features": UniformDistribution(0.4, 1),
             "max_samples": UniformDistribution(0.4, 1),
         }
 
