@@ -389,7 +389,13 @@ def setup(
     )
 
 
-def create_model(model=None, fraction=0.05, verbose=True, fit_kwargs=None, **kwargs):
+def create_model(
+    model: Union[str, Any],
+    fraction: float = 0.05,
+    verbose: bool = True,
+    fit_kwargs: Optional[dict] = None,
+    **kwargs
+):
 
     """
     This function creates a model on the dataset passed as a data param during 
@@ -408,7 +414,7 @@ def create_model(model=None, fraction=0.05, verbose=True, fit_kwargs=None, **kwa
 
     Parameters
     ----------
-    model : string / object, default = None
+    model : string / object
         Enter ID of the models available in model library or pass an untrained model 
         object consistent with fit / predict API to train and evaluate model. List of 
         models available in model library (ID - Model):
@@ -453,7 +459,9 @@ def create_model(model=None, fraction=0.05, verbose=True, fit_kwargs=None, **kwa
     )
 
 
-def assign_model(model, transformation=False, score=True, verbose=True):
+def assign_model(
+    model, transformation: bool = False, score: bool = True, verbose: bool = True
+) -> pd.DataFrame:
 
     """
     This function flags each of the data point in the dataset passed during setup
@@ -504,11 +512,11 @@ def assign_model(model, transformation=False, score=True, verbose=True):
 
 def plot_model(
     model,
-    plot="tsne",
-    feature=None,
-    label=False,
-    scale=1,  # added in pycaret==2.1
-    save=False,
+    plot: str = "tsne",
+    feature: Optional[str] = None,
+    label: bool = False,
+    scale: float = 1,  # added in pycaret==2.1
+    save: bool = False,
 ):
 
     """
@@ -771,7 +779,7 @@ def tune_model(
     )
 
 
-def predict_model(model, data):
+def predict_model(model, data: pd.DataFrame) -> pd.DataFrame:
 
     """
     This function is used to predict new data using a trained model. It requires a
@@ -817,7 +825,7 @@ def predict_model(model, data):
     )
 
 
-def pull(pop=False) -> pd.DataFrame:  # added in pycaret==2.2.0
+def pull(pop: bool = False) -> pd.DataFrame:  # added in pycaret==2.2.0
     """
     Returns latest displayed table.
 
@@ -1081,6 +1089,7 @@ def models(
     return pycaret.internal.tabular.models(
         type=type, internal=internal, raise_errors=raise_errors
     )
+
 
 def get_logs(experiment_name: Optional[str] = None, save: bool = False) -> pd.DataFrame:
 
