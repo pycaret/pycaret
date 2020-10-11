@@ -93,7 +93,7 @@ def setup(
     test_data: Optional[pd.DataFrame] = None,
     preprocess: bool = True,
     imputation_type: str = "simple",
-    iterative_imputation_iters: int = 10,
+    iterative_imputation_iters: int = 5,
     categorical_features: Optional[List[str]] = None,
     categorical_imputation: str = "mode",
     categorical_iterative_imputer: Union[str, Any] = "lightgbm",
@@ -345,6 +345,7 @@ def setup(
 
     # ordinal features check
     if ordinal_features is not None:
+        ordinal_features = ordinal_features.copy()
         data_cols = data.columns.drop(target)
         ord_keys = ordinal_features.keys()
 

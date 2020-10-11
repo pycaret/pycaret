@@ -22,7 +22,7 @@ def setup(
     data,
     preprocess: bool = True,
     imputation_type: str = "simple",
-    iterative_imputation_iters: int = 10,
+    iterative_imputation_iters: int = 5,
     categorical_features: Optional[List[str]] = None,
     categorical_imputation: str = "mode",
     categorical_iterative_imputer: Union[str, Any] = "lightgbm",
