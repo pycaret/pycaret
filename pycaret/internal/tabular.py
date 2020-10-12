@@ -1322,7 +1322,7 @@ def setup(
 
     try:
         dtypes.final_training_columns.remove(target)
-    except:
+    except ValueError:
         pass
 
     # determining target type
@@ -1651,7 +1651,8 @@ def setup(
         try:
             mlflow.create_experiment(exp_name_log)
         except:
-            pass
+            logger.warning("Couldn't create mlflow experiment. Exception:")
+            logger.warning(traceback.format_exc())
 
         # mlflow logging
         mlflow.set_experiment(exp_name_log)
@@ -3272,7 +3273,7 @@ def tune_model_unsupervised(
         param_grid = custom_grid
         try:
             param_grid.remove(0)
-        except:
+        except ValueError:
             pass
     param_grid.sort()
 
@@ -4132,8 +4133,9 @@ def tune_model_supervised(
                 param_grid = get_optuna_distributions(param_grid)
             except:
                 logger.warning(
-                    "Couldn't convert param_grid to specific library distributions"
+                    "Couldn't convert param_grid to specific library distributions. Exception:"
                 )
+                logger.warning(traceback.format_exc())
 
             study = optuna.create_study(
                 direction="maximize", sampler=sampler, pruner=pruner
@@ -4234,8 +4236,9 @@ def tune_model_supervised(
                         param_grid = get_hyperopt_distributions(param_grid)
                     except:
                         logger.warning(
-                            "Couldn't convert param_grid to specific library distributions"
+                            "Couldn't convert param_grid to specific library distributions. Exception:"
                         )
+                        logger.warning(traceback.format_exc())
                     logger.info("Initializing tune_sklearn.TuneSearchCV, hyperopt")
                     model_grid = TuneSearchCV(
                         estimator=pipeline_with_model,
@@ -4259,8 +4262,9 @@ def tune_model_supervised(
                         param_grid = get_skopt_distributions(param_grid)
                     except:
                         logger.warning(
-                            "Couldn't convert param_grid to specific library distributions"
+                            "Couldn't convert param_grid to specific library distributions. Exception:"
                         )
+                        logger.warning(traceback.format_exc())
                     logger.info("Initializing tune_sklearn.TuneSearchCV, bayesian")
                     model_grid = TuneSearchCV(
                         estimator=pipeline_with_model,
@@ -4284,8 +4288,9 @@ def tune_model_supervised(
                         param_grid = get_CS_distributions(param_grid)
                     except:
                         logger.warning(
-                            "Couldn't convert param_grid to specific library distributions"
+                            "Couldn't convert param_grid to specific library distributions. Exception:"
                         )
+                        logger.warning(traceback.format_exc())
                     logger.info("Initializing tune_sklearn.TuneSearchCV, bohb")
                     model_grid = TuneSearchCV(
                         estimator=pipeline_with_model,
@@ -4330,8 +4335,9 @@ def tune_model_supervised(
                 param_grid = get_skopt_distributions(param_grid)
             except:
                 logger.warning(
-                    "Couldn't convert param_grid to specific library distributions"
+                    "Couldn't convert param_grid to specific library distributions. Exception:"
                 )
+                logger.warning(traceback.format_exc())
 
             logger.info("Initializing skopt.BayesSearchCV")
             model_grid = skopt.BayesSearchCV(
@@ -4402,7 +4408,8 @@ def tune_model_supervised(
         try:
             cv_results = model_grid.cv_results_
         except:
-            logger.warning("Couldn't get cv_results from model_grid.")
+            logger.warning("Couldn't get cv_results from model_grid. Exception:")
+            logger.warning(traceback.format_exc())
 
     display.move_progress()
 
@@ -6208,7 +6215,8 @@ def plot_model(
                 )
 
             except:
-                logger.warning("Elbow plot failed")
+                logger.error("Elbow plot failed. Exception:")
+                logger.error(traceback.format_exc())
                 raise TypeError("Plot Type not supported for this model.")
 
         def silhouette():
@@ -6234,7 +6242,8 @@ def plot_model(
                     display=display,
                 )
             except:
-                logger.warning("Silhouette plot failed")
+                logger.error("Silhouette plot failed. Exception:")
+                logger.error(traceback.format_exc())
                 raise TypeError("Plot Type not supported for this model.")
 
         def distance():
@@ -6258,7 +6267,8 @@ def plot_model(
                     display=display,
                 )
             except:
-                logger.warning("Distance plot failed")
+                logger.error("Distance plot failed. Exception:")
+                logger.error(traceback.format_exc())
                 raise TypeError("Plot Type not supported for this model.")
 
         def residuals():
@@ -6541,10 +6551,11 @@ def plot_model(
                 if save:
                     logger.info(f"Saving '{plot_name}.png' in current active directory")
                     plt.savefig(f"{plot_name}.png")
-                    if not system:
-                        plt.close()
+                if not system:
+                    plt.close()
                 else:
                     plt.show()
+                    plt.close()
 
             logger.info("Visual Rendered Successfully")
 
@@ -6567,10 +6578,11 @@ def plot_model(
                 if save:
                     logger.info(f"Saving '{plot_name}.png' in current active directory")
                     plt.savefig(f"{plot_name}.png")
-                    if not system:
-                        plt.close()
+                if not system:
+                    plt.close()
                 else:
                     plt.show()
+                    plt.close()
 
             logger.info("Visual Rendered Successfully")
 
@@ -6699,10 +6711,11 @@ def plot_model(
             if save:
                 logger.info(f"Saving '{plot_name}.png' in current active directory")
                 plt.savefig(f"{plot_name}.png", bbox_inches="tight")
-                if not system:
-                    plt.close()
+            if not system:
+                plt.close()
             else:
                 plt.show()
+                plt.close()
 
             logger.info("Visual Rendered Successfully")
 
@@ -6745,10 +6758,11 @@ def plot_model(
             if save:
                 logger.info(f"Saving '{plot_name}.png' in current active directory")
                 plt.savefig(f"{plot_name}.png")
-                if not system:
-                    plt.close()
+            if not system:
+                plt.close()
             else:
                 plt.show()
+                plt.close()
 
             logger.info("Visual Rendered Successfully")
 
@@ -6767,6 +6781,8 @@ def plot_model(
                     model_params = pipeline_with_model.get_params()
             except:
                 display.clear_output()
+                logger.error("VC plot failed. Exception:")
+                logger.error(traceback.format_exc())
                 raise TypeError(
                     "Plot not supported for this estimator. Try different estimator."
                 )
@@ -7004,10 +7020,11 @@ def plot_model(
             if save:
                 logger.info(f"Saving '{plot_name}.png' in current active directory")
                 plt.savefig(f"{plot_name}.png")
-                if not system:
-                    plt.close()
+            if not system:
+                plt.close()
             else:
                 plt.show()
+                plt.close()
 
             logger.info("Visual Rendered Successfully")
 
@@ -7212,7 +7229,7 @@ def interpret_model(
     # checking if shap available
     try:
         import shap
-    except:
+    except ImportError:
         logger.error(
             "shap library not found. pip install shap to use interpret_model function."
         )
@@ -8152,6 +8169,8 @@ def predict_model(
                 estimator = estimator_
 
             except:
+                logger.error("Pipeline not found. Exception:")
+                logger.error(traceback.format_exc())
                 raise ValueError("Pipeline not found")
 
         X_test_ = data.copy()
@@ -9636,7 +9655,8 @@ def _mlflow_log_model(
             except:
                 params = params.get_params()
         except:
-            logger.warning("Couldn't get params for model")
+            logger.warning("Couldn't get params for model. Exception:")
+            logger.warning(traceback.format_exc())
             params = {}
 
         for i in list(params):
