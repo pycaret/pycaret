@@ -3487,7 +3487,7 @@ def tune_model_unsupervised(
             yaxis_title=optimize.display_name,
         )
 
-        fig.show()
+        fig.show(block=False)
         logger.info("Visual Rendered Successfully")
 
     logger.info(f"create_model_container: {len(create_model_container)}")
@@ -5904,7 +5904,7 @@ def plot_model(
             plot_filename = f"{plot_name}.html"
 
             if system:
-                fig.show()
+                fig.show(block=False)
 
             if save:
                 fig.write_html(plot_filename)
@@ -5961,7 +5961,7 @@ def plot_model(
             plot_filename = f"{plot_name}.html"
 
             if system:
-                fig.show()
+                fig.show(block=False)
 
             if save:
                 fig.write_html(f"{plot_filename}")
@@ -6024,7 +6024,7 @@ def plot_model(
             plot_filename = f"{plot_name}.html"
 
             if system:
-                fig.show()
+                fig.show(block=False)
 
             if save:
                 fig.write_html(f"{plot_filename}")
@@ -6117,7 +6117,7 @@ def plot_model(
             plot_filename = f"{plot_name}.html"
 
             if system:
-                fig.show()
+                fig.show(block=False)
 
             if save:
                 fig.write_html(f"{plot_filename}")
@@ -6184,7 +6184,7 @@ def plot_model(
             plot_filename = f"{plot_name}.html"
 
             if system:
-                fig.show()
+                fig.show(block=False)
 
             if save:
                 fig.write_html(f"{plot_filename}")
@@ -6554,7 +6554,7 @@ def plot_model(
                 if not system:
                     plt.close()
                 else:
-                    plt.show()
+                    plt.show(block=False)
                     plt.close()
 
             logger.info("Visual Rendered Successfully")
@@ -6581,7 +6581,7 @@ def plot_model(
                 if not system:
                     plt.close()
                 else:
-                    plt.show()
+                    plt.show(block=False)
                     plt.close()
 
             logger.info("Visual Rendered Successfully")
@@ -6714,7 +6714,7 @@ def plot_model(
             if not system:
                 plt.close()
             else:
-                plt.show()
+                plt.show(block=False)
                 plt.close()
 
             logger.info("Visual Rendered Successfully")
@@ -6761,7 +6761,7 @@ def plot_model(
             if not system:
                 plt.close()
             else:
-                plt.show()
+                plt.show(block=False)
                 plt.close()
 
             logger.info("Visual Rendered Successfully")
@@ -7023,7 +7023,7 @@ def plot_model(
             if not system:
                 plt.close()
             else:
-                plt.show()
+                plt.show(block=False)
                 plt.close()
 
             logger.info("Visual Rendered Successfully")
@@ -7860,7 +7860,7 @@ def optimize_threshold(
         }
     )
     logger.info("Figure ready for render")
-    fig.show()
+    fig.show(block=False)
     print(f"Optimized Probability Threshold: {t} | Optimized Cost Function: {y1}")
     logger.info(
         "optimize_threshold() succesfully completed......................................"
