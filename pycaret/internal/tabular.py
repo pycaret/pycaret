@@ -1320,12 +1320,16 @@ def setup(
     else:
         X = prep_pipe.fit_transform(train_data).drop(target, axis=1)
         X_train = X
-    
+
     # we do just the fitting so that it will be fitted when saved/deployed,
     # but we don't want to modify the data
     _internal_pipeline.fit(X, y=y if not _is_unsupervised(_ml_usecase) else None)
 
-    prep_pipe.steps = prep_pipe.steps + [(step[0], deepcopy(step[1])) for step in _internal_pipeline.steps if hasattr(step[1], "transform")]
+    prep_pipe.steps = prep_pipe.steps + [
+        (step[0], deepcopy(step[1]))
+        for step in _internal_pipeline.steps
+        if hasattr(step[1], "transform")
+    ]
 
     try:
         dtypes.final_training_columns.remove(target)
@@ -2452,7 +2456,7 @@ def create_model_unsupervised(
         raise TypeError("Verbose parameter can only take argument as True or False.")
 
     # checking system parameter
-    if type(system) is not bool:
+    if typesystem is not bool:
         raise TypeError("System parameter can only take argument as True or False.")
 
     # checking fraction type:
@@ -2858,7 +2862,7 @@ def create_model_supervised(
         raise TypeError("Verbose parameter can only take argument as True or False.")
 
     # checking system parameter
-    if type(system) is not bool:
+    if typesystem is not bool:
         raise TypeError("System parameter can only take argument as True or False.")
 
     # checking cross_validation parameter
@@ -3888,7 +3892,9 @@ def tune_model_supervised(
 
     # checking verbose parameter
     if type(return_tuner) is not bool:
-        raise TypeError("return_tuner parameter can only take argument as True or False.")
+        raise TypeError(
+            "return_tuner parameter can only take argument as True or False."
+        )
 
     if not verbose:
         tuner_verbose = 0
@@ -5923,12 +5929,12 @@ def plot_model(
 
             plot_filename = f"{plot_name}.html"
 
-            if system and html_param:
-                fig.show()
-
             if save:
                 fig.write_html(plot_filename)
                 logger.info(f"Saving '{plot_filename}' in current active directory")
+
+            elif system:
+                fig.show()
 
             logger.info("Visual Rendered Successfully")
             return plot_filename
@@ -5980,12 +5986,11 @@ def plot_model(
             )
             plot_filename = f"{plot_name}.html"
 
-            if system and html_param:
-                fig.show()
-
             if save:
                 fig.write_html(f"{plot_filename}")
                 logger.info(f"Saving '{plot_filename}' in current active directory")
+            elif system:
+                fig.show()
 
             logger.info("Visual Rendered Successfully")
             return plot_filename
@@ -6043,12 +6048,11 @@ def plot_model(
 
             plot_filename = f"{plot_name}.html"
 
-            if system and html_param:
-                fig.show()
-
             if save:
                 fig.write_html(f"{plot_filename}")
                 logger.info(f"Saving '{plot_filename}' in current active directory")
+            elif system:
+                fig.show()
 
             logger.info("Visual Rendered Successfully")
             return plot_filename
@@ -6136,12 +6140,11 @@ def plot_model(
 
             plot_filename = f"{plot_name}.html"
 
-            if system and html_param:
-                fig.show()
-
             if save:
                 fig.write_html(f"{plot_filename}")
                 logger.info(f"Saving '{plot_filename}' in current active directory")
+            elif system:
+                fig.show()
 
             logger.info("Visual Rendered Successfully")
             return plot_filename
@@ -6203,12 +6206,11 @@ def plot_model(
 
             plot_filename = f"{plot_name}.html"
 
-            if system and html_param:
-                fig.show()
-
             if save:
                 fig.write_html(f"{plot_filename}")
                 logger.info(f"Saving '{plot_filename}' in current active directory")
+            elif system:
+                fig.show()
 
             logger.info("Visual Rendered Successfully")
             return plot_filename
@@ -6230,7 +6232,6 @@ def plot_model(
                     save=save,
                     fit_kwargs=fit_kwargs,
                     groups=groups,
-                    show_plot=(system and html_param),
                     display=display,
                 )
 
@@ -6258,7 +6259,6 @@ def plot_model(
                     save=save,
                     fit_kwargs=fit_kwargs,
                     groups=groups,
-                    show_plot=(system and html_param),
                     display=display,
                 )
             except:
@@ -6283,7 +6283,6 @@ def plot_model(
                     save=save,
                     fit_kwargs=fit_kwargs,
                     groups=groups,
-                    show_plot=(system and html_param),
                     display=display,
                 )
             except:
@@ -6307,7 +6306,6 @@ def plot_model(
                 save=save,
                 fit_kwargs=fit_kwargs,
                 groups=groups,
-                show_plot=(system and html_param),
                 display=display,
             )
 
@@ -6327,7 +6325,6 @@ def plot_model(
                 save=save,
                 fit_kwargs=fit_kwargs,
                 groups=groups,
-                show_plot=(system and html_param),
                 display=display,
             )
 
@@ -6347,7 +6344,6 @@ def plot_model(
                 save=save,
                 fit_kwargs=fit_kwargs,
                 groups=groups,
-                show_plot=(system and html_param),
                 display=display,
             )
 
@@ -6367,7 +6363,6 @@ def plot_model(
                 save=save,
                 fit_kwargs=fit_kwargs,
                 groups=groups,
-                show_plot=(system and html_param),
                 display=display,
             )
 
@@ -6389,7 +6384,6 @@ def plot_model(
                 save=save,
                 fit_kwargs=fit_kwargs,
                 groups=groups,
-                show_plot=(system and html_param),
                 display=display,
             )
 
@@ -6418,7 +6412,6 @@ def plot_model(
                 save=save,
                 fit_kwargs=fit_kwargs,
                 groups=groups,
-                show_plot=(system and html_param),
                 display=display,
             )
 
@@ -6439,7 +6432,6 @@ def plot_model(
                 fit_kwargs=fit_kwargs,
                 handle_test="",
                 groups=groups,
-                show_plot=(system and html_param),
                 display=display,
             )
 
@@ -6461,7 +6453,6 @@ def plot_model(
                 save=save,
                 fit_kwargs=fit_kwargs,
                 groups=groups,
-                show_plot=(system and html_param),
                 display=display,
             )
 
@@ -6497,7 +6488,6 @@ def plot_model(
                 save=save,
                 fit_kwargs=fit_kwargs,
                 groups=groups,
-                show_plot=(system and html_param),
                 display=display,
                 features=["Feature One", "Feature Two"],
                 classes=["A", "B"],
@@ -6520,7 +6510,6 @@ def plot_model(
                 save=save,
                 fit_kwargs=fit_kwargs,
                 groups=groups,
-                show_plot=(system and html_param),
                 display=display,
             )
 
@@ -6548,7 +6537,6 @@ def plot_model(
                 save=save,
                 fit_kwargs=fit_kwargs,
                 groups=groups,
-                show_plot=(system and html_param),
                 display=display,
             )
 
@@ -6571,11 +6559,9 @@ def plot_model(
                 if save:
                     logger.info(f"Saving '{plot_name}.png' in current active directory")
                     plt.savefig(f"{plot_name}.png")
-                if not (system and html_param):
-                    plt.close()
-                else:
+                elif system:
                     plt.show()
-                    plt.close()
+                plt.close()
 
             logger.info("Visual Rendered Successfully")
 
@@ -6598,11 +6584,9 @@ def plot_model(
                 if save:
                     logger.info(f"Saving '{plot_name}.png' in current active directory")
                     plt.savefig(f"{plot_name}.png")
-                if not (system and html_param):
-                    plt.close()
-                else:
+                elif system:
                     plt.show()
-                    plt.close()
+                plt.close()
 
             logger.info("Visual Rendered Successfully")
 
@@ -6625,7 +6609,6 @@ def plot_model(
                 save=save,
                 fit_kwargs=fit_kwargs,
                 groups=groups,
-                show_plot=(system and html_param),
                 display=display,
             )
 
@@ -6731,11 +6714,9 @@ def plot_model(
             if save:
                 logger.info(f"Saving '{plot_name}.png' in current active directory")
                 plt.savefig(f"{plot_name}.png", bbox_inches="tight")
-            if not (system and html_param):
-                plt.close()
-            else:
+            elif system:
                 plt.show()
-                plt.close()
+            plt.close()
 
             logger.info("Visual Rendered Successfully")
 
@@ -6778,11 +6759,9 @@ def plot_model(
             if save:
                 logger.info(f"Saving '{plot_name}.png' in current active directory")
                 plt.savefig(f"{plot_name}.png")
-            if not (system and html_param):
-                plt.close()
-            else:
+            elif system:
                 plt.show()
-                plt.close()
+            plt.close()
 
             logger.info("Visual Rendered Successfully")
 
@@ -6955,7 +6934,6 @@ def plot_model(
                 save=save,
                 fit_kwargs=fit_kwargs,
                 groups=groups,
-                show_plot=(system and html_param),
                 display=display,
             )
 
@@ -6993,7 +6971,6 @@ def plot_model(
                 save=save,
                 fit_kwargs=fit_kwargs,
                 groups=groups,
-                show_plot=(system and html_param),
                 display=display,
             )
 
@@ -7040,11 +7017,9 @@ def plot_model(
             if save:
                 logger.info(f"Saving '{plot_name}.png' in current active directory")
                 plt.savefig(f"{plot_name}.png")
-            if not (system and html_param):
-                plt.close()
-            else:
+            elif system:
                 plt.show()
-                plt.close()
+            plt.close()
 
             logger.info("Visual Rendered Successfully")
 
@@ -7869,7 +7844,9 @@ def optimize_threshold(
     if html_param:
 
         fig.add_shape(
-            dict(type="line", x0=x0, y0=y0, x1=x1, y1=y1, line=dict(color="red", width=2))
+            dict(
+                type="line", x0=x0, y0=y0, x1=x1, y1=y1, line=dict(color="red", width=2)
+            )
         )
         fig.update_layout(
             title={
@@ -8405,8 +8382,10 @@ def finalize_model(
 
     gc.collect()
     if not model_only:
-        model_final = deepcopy(prep_pipe)
-        model_final.steps.append(["trained_model", model])
+        pipeline_final = deepcopy(prep_pipe)
+        pipeline_final.steps.append(["trained_model", model_final])
+        return pipeline_final
+
     return model_final
 
 
