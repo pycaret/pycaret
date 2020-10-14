@@ -996,9 +996,9 @@ def save_model(model, model_name: str, model_only: bool = False, verbose: bool =
 
     Returns
     -------
-    Success_Message
-    
-         
+    (model, model_filename):
+        Tuple of the model object and the filename it was saved under.
+
     """
 
     return pycaret.internal.tabular.save_model(
