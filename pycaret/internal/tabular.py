@@ -3486,8 +3486,7 @@ def tune_model_unsupervised(
             xaxis_title=msg,
             yaxis_title=optimize.display_name,
         )
-
-        fig.show(block=False)
+        fig.show()
         logger.info("Visual Rendered Successfully")
 
     logger.info(f"create_model_container: {len(create_model_container)}")
@@ -5903,8 +5902,8 @@ def plot_model(
 
             plot_filename = f"{plot_name}.html"
 
-            if system:
-                fig.show(block=False)
+            if system and html_param:
+                fig.show()
 
             if save:
                 fig.write_html(plot_filename)
@@ -5960,8 +5959,8 @@ def plot_model(
             )
             plot_filename = f"{plot_name}.html"
 
-            if system:
-                fig.show(block=False)
+            if system and html_param:
+                fig.show()
 
             if save:
                 fig.write_html(f"{plot_filename}")
@@ -6023,8 +6022,8 @@ def plot_model(
 
             plot_filename = f"{plot_name}.html"
 
-            if system:
-                fig.show(block=False)
+            if system and html_param:
+                fig.show()
 
             if save:
                 fig.write_html(f"{plot_filename}")
@@ -6116,8 +6115,8 @@ def plot_model(
 
             plot_filename = f"{plot_name}.html"
 
-            if system:
-                fig.show(block=False)
+            if system and html_param:
+                fig.show()
 
             if save:
                 fig.write_html(f"{plot_filename}")
@@ -6183,8 +6182,8 @@ def plot_model(
 
             plot_filename = f"{plot_name}.html"
 
-            if system:
-                fig.show(block=False)
+            if system and html_param:
+                fig.show()
 
             if save:
                 fig.write_html(f"{plot_filename}")
@@ -6210,7 +6209,7 @@ def plot_model(
                     save=save,
                     fit_kwargs=fit_kwargs,
                     groups=groups,
-                    system=system,
+                    show_plot=(system and html_param),
                     display=display,
                 )
 
@@ -6238,7 +6237,7 @@ def plot_model(
                     save=save,
                     fit_kwargs=fit_kwargs,
                     groups=groups,
-                    system=system,
+                    show_plot=(system and html_param),
                     display=display,
                 )
             except:
@@ -6263,7 +6262,7 @@ def plot_model(
                     save=save,
                     fit_kwargs=fit_kwargs,
                     groups=groups,
-                    system=system,
+                    show_plot=(system and html_param),
                     display=display,
                 )
             except:
@@ -6287,7 +6286,7 @@ def plot_model(
                 save=save,
                 fit_kwargs=fit_kwargs,
                 groups=groups,
-                system=system,
+                show_plot=(system and html_param),
                 display=display,
             )
 
@@ -6307,7 +6306,7 @@ def plot_model(
                 save=save,
                 fit_kwargs=fit_kwargs,
                 groups=groups,
-                system=system,
+                show_plot=(system and html_param),
                 display=display,
             )
 
@@ -6327,7 +6326,7 @@ def plot_model(
                 save=save,
                 fit_kwargs=fit_kwargs,
                 groups=groups,
-                system=system,
+                show_plot=(system and html_param),
                 display=display,
             )
 
@@ -6347,7 +6346,7 @@ def plot_model(
                 save=save,
                 fit_kwargs=fit_kwargs,
                 groups=groups,
-                system=system,
+                show_plot=(system and html_param),
                 display=display,
             )
 
@@ -6369,7 +6368,7 @@ def plot_model(
                 save=save,
                 fit_kwargs=fit_kwargs,
                 groups=groups,
-                system=system,
+                show_plot=(system and html_param),
                 display=display,
             )
 
@@ -6398,7 +6397,7 @@ def plot_model(
                 save=save,
                 fit_kwargs=fit_kwargs,
                 groups=groups,
-                system=system,
+                show_plot=(system and html_param),
                 display=display,
             )
 
@@ -6419,7 +6418,7 @@ def plot_model(
                 fit_kwargs=fit_kwargs,
                 handle_test="",
                 groups=groups,
-                system=system,
+                show_plot=(system and html_param),
                 display=display,
             )
 
@@ -6441,7 +6440,7 @@ def plot_model(
                 save=save,
                 fit_kwargs=fit_kwargs,
                 groups=groups,
-                system=system,
+                show_plot=(system and html_param),
                 display=display,
             )
 
@@ -6477,7 +6476,7 @@ def plot_model(
                 save=save,
                 fit_kwargs=fit_kwargs,
                 groups=groups,
-                system=system,
+                show_plot=(system and html_param),
                 display=display,
                 features=["Feature One", "Feature Two"],
                 classes=["A", "B"],
@@ -6500,7 +6499,7 @@ def plot_model(
                 save=save,
                 fit_kwargs=fit_kwargs,
                 groups=groups,
-                system=system,
+                show_plot=(system and html_param),
                 display=display,
             )
 
@@ -6528,7 +6527,7 @@ def plot_model(
                 save=save,
                 fit_kwargs=fit_kwargs,
                 groups=groups,
-                system=system,
+                show_plot=(system and html_param),
                 display=display,
             )
 
@@ -6551,10 +6550,10 @@ def plot_model(
                 if save:
                     logger.info(f"Saving '{plot_name}.png' in current active directory")
                     plt.savefig(f"{plot_name}.png")
-                if not system:
+                if not (system and html_param):
                     plt.close()
                 else:
-                    plt.show(block=False)
+                    plt.show()
                     plt.close()
 
             logger.info("Visual Rendered Successfully")
@@ -6578,10 +6577,10 @@ def plot_model(
                 if save:
                     logger.info(f"Saving '{plot_name}.png' in current active directory")
                     plt.savefig(f"{plot_name}.png")
-                if not system:
+                if not (system and html_param):
                     plt.close()
                 else:
-                    plt.show(block=False)
+                    plt.show()
                     plt.close()
 
             logger.info("Visual Rendered Successfully")
@@ -6605,7 +6604,7 @@ def plot_model(
                 save=save,
                 fit_kwargs=fit_kwargs,
                 groups=groups,
-                system=system,
+                show_plot=(system and html_param),
                 display=display,
             )
 
@@ -6711,10 +6710,10 @@ def plot_model(
             if save:
                 logger.info(f"Saving '{plot_name}.png' in current active directory")
                 plt.savefig(f"{plot_name}.png", bbox_inches="tight")
-            if not system:
+            if not (system and html_param):
                 plt.close()
             else:
-                plt.show(block=False)
+                plt.show()
                 plt.close()
 
             logger.info("Visual Rendered Successfully")
@@ -6758,10 +6757,10 @@ def plot_model(
             if save:
                 logger.info(f"Saving '{plot_name}.png' in current active directory")
                 plt.savefig(f"{plot_name}.png")
-            if not system:
+            if not (system and html_param):
                 plt.close()
             else:
-                plt.show(block=False)
+                plt.show()
                 plt.close()
 
             logger.info("Visual Rendered Successfully")
@@ -6935,7 +6934,7 @@ def plot_model(
                 save=save,
                 fit_kwargs=fit_kwargs,
                 groups=groups,
-                system=system,
+                show_plot=(system and html_param),
                 display=display,
             )
 
@@ -6973,7 +6972,7 @@ def plot_model(
                 save=save,
                 fit_kwargs=fit_kwargs,
                 groups=groups,
-                system=system,
+                show_plot=(system and html_param),
                 display=display,
             )
 
@@ -7020,10 +7019,10 @@ def plot_model(
             if save:
                 logger.info(f"Saving '{plot_name}.png' in current active directory")
                 plt.savefig(f"{plot_name}.png")
-            if not system:
+            if not (system and html_param):
                 plt.close()
             else:
-                plt.show(block=False)
+                plt.show()
                 plt.close()
 
             logger.info("Visual Rendered Successfully")
@@ -7846,21 +7845,22 @@ def optimize_threshold(
     x1 = x0
 
     t = x0.round(2)
+    if html_param:
 
-    fig.add_shape(
-        dict(type="line", x0=x0, y0=y0, x1=x1, y1=y1, line=dict(color="red", width=2))
-    )
-    fig.update_layout(
-        title={
-            "text": title,
-            "y": 0.95,
-            "x": 0.45,
-            "xanchor": "center",
-            "yanchor": "top",
-        }
-    )
-    logger.info("Figure ready for render")
-    fig.show(block=False)
+        fig.add_shape(
+            dict(type="line", x0=x0, y0=y0, x1=x1, y1=y1, line=dict(color="red", width=2))
+        )
+        fig.update_layout(
+            title={
+                "text": title,
+                "y": 0.95,
+                "x": 0.45,
+                "xanchor": "center",
+                "yanchor": "top",
+            }
+        )
+        logger.info("Figure ready for render")
+        fig.show()
     print(f"Optimized Probability Threshold: {t} | Optimized Cost Function: {y1}")
     logger.info(
         "optimize_threshold() succesfully completed......................................"
