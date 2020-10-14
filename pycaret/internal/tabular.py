@@ -2456,7 +2456,7 @@ def create_model_unsupervised(
         raise TypeError("Verbose parameter can only take argument as True or False.")
 
     # checking system parameter
-    if typesystem is not bool:
+    if type(system) is not bool:
         raise TypeError("System parameter can only take argument as True or False.")
 
     # checking fraction type:
@@ -2862,7 +2862,7 @@ def create_model_supervised(
         raise TypeError("Verbose parameter can only take argument as True or False.")
 
     # checking system parameter
-    if typesystem is not bool:
+    if type(system) is not bool:
         raise TypeError("System parameter can only take argument as True or False.")
 
     # checking cross_validation parameter
