@@ -1321,9 +1321,11 @@ def setup(
         X = prep_pipe.fit_transform(train_data).drop(target, axis=1)
         X_train = X
     
-    _internal_pipeline.fit(X_train, y=y_train if not _is_unsupervised(_ml_usecase) else None)
+    # we do just the fitting so that it will be fitted when saved/deployed,
+    # but we don't want to modify the data
+    _internal_pipeline.fit(X, y=y if not _is_unsupervised(_ml_usecase) else None)
 
-    prep_pipe.steps = prep_pipe.steps + [step for step in _internal_pipeline.steps if hasattr(step[1], "transform")]
+    prep_pipe.steps = prep_pipe.steps + [(step[0], deepcopy(step[1])) for step in _internal_pipeline.steps if hasattr(step[1], "transform")]
 
     try:
         dtypes.final_training_columns.remove(target)
@@ -8277,6 +8279,7 @@ def finalize_model(
     estimator,
     fit_kwargs: Optional[dict] = None,
     groups: Optional[Union[str, Any]] = None,
+    model_only: bool = True,
     display: Optional[Display] = None,
 ) -> Any:  # added in pycaret==2.2.0
 
@@ -8308,6 +8311,10 @@ def finalize_model(
         If string is passed, will use the data column with that name as the groups.
         Only used if a group based cross-validation generator is used (eg. GroupKFold).
         If None, will use the value set in fold_groups param in setup().
+
+    model_only : bool, default = True
+        When set to True, only trained model object is saved and all the 
+        transformations are ignored.
 
     Returns
     -------
@@ -8397,6 +8404,9 @@ def finalize_model(
     )
 
     gc.collect()
+    if not model_only:
+        model_final = deepcopy(prep_pipe)
+        model_final.steps.append(["trained_model", model])
     return model_final
 
 

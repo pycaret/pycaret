@@ -1940,6 +1940,7 @@ def finalize_model(
     estimator,
     fit_kwargs: Optional[dict] = None,
     groups: Optional[Union[str, Any]] = None,
+    model_only: bool = True,
 ) -> Any:  # added in pycaret==2.2.0
 
     """
@@ -1971,6 +1972,10 @@ def finalize_model(
         Only used if a group based cross-validation generator is used (eg. GroupKFold).
         If None, will use the value set in fold_groups param in setup().
 
+    model_only : bool, default = True
+        When set to True, only trained model object is saved and all the 
+        transformations are ignored.
+
     Returns
     -------
     model
@@ -1988,7 +1993,7 @@ def finalize_model(
     """
 
     return pycaret.internal.tabular.finalize_model(
-        estimator=estimator, fit_kwargs=fit_kwargs, groups=groups,
+        estimator=estimator, fit_kwargs=fit_kwargs, groups=groups, model_only=model_only,
     )
 
 
