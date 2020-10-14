@@ -1260,9 +1260,9 @@ def setup(
             fix_imbalance_resampler = fix_imbalance_method_param
         _internal_pipeline.append(("fix_imbalance", fix_imbalance_resampler))
 
-    prep_pipe.steps.extend(
-        [step for step in _internal_pipeline if hasattr(step, "transform")]
-    )
+    for x in _internal_pipeline:
+        if x[0] in prep_pipe.named_steps:
+            raise ValueError(f"Step named {x[0]} already present in pipeline.")
 
     _internal_pipeline = make_internal_pipeline(_internal_pipeline)
 
@@ -1313,12 +1313,17 @@ def setup(
 
     display.move_progress()
     if not _is_unsupervised(_ml_usecase):
+        _internal_pipeline.fit(train_data.drop(target, axis=1), train_data[target])
         data = prep_pipe.transform(data_before_preprocess.copy())
         X = data.drop(target, axis=1)
         y = data[target]
     else:
         X = prep_pipe.fit_transform(train_data).drop(target, axis=1)
         X_train = X
+    
+    _internal_pipeline.fit(X_train, y=y_train if not _is_unsupervised(_ml_usecase) else None)
+
+    prep_pipe.steps = prep_pipe.steps + [step for step in _internal_pipeline.steps if hasattr(step[1], "transform")]
 
     try:
         dtypes.final_training_columns.remove(target)
