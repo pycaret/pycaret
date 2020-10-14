@@ -398,12 +398,18 @@ def _check_custom_transformer(transformer):
             raise TypeError("First element of transformer tuple must be a str.")
         actual_transformer = transformer[1]
     if not (
-        hasattr(actual_transformer, "fit")
-        and hasattr(actual_transformer, "transform")
-        and hasattr(actual_transformer, "fit_transform")
+        (
+            hasattr(actual_transformer, "fit")
+            and hasattr(actual_transformer, "transform")
+            and hasattr(actual_transformer, "fit_transform")
+        )
+        or (
+            hasattr(actual_transformer, "fit")
+            and hasattr(actual_transformer, "fit_resample")
+        )
     ):
         raise TypeError(
-            "Transformer must be an object implementing methods 'fit', 'transform' and 'fit_transform'."
+            "Transformer must be an object implementing methods 'fit', 'transform' and 'fit_transform'/'fit_resample'."
         )
 
 

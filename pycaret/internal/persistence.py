@@ -5,6 +5,7 @@
 from typing import Dict, Optional
 from pycaret.internal.utils import get_logger
 from pycaret.internal.Display import Display
+from sklearn.pipeline import Pipeline
 
 
 def deploy_model(
@@ -64,7 +65,7 @@ def deploy_model(
     model : object
         A trained model object should be passed as an estimator. 
     
-    model_name : string
+    model_name : str
         Name of model to be passed as a string.
     
     authentication : dict
@@ -79,7 +80,7 @@ def deploy_model(
         When platform = 'azure':
         {'container': 'pycaret-test'}
     
-    platform: string, default = 'aws'
+    platform: str, default = 'aws'
         Name of platform for deployment. Current available options are: 'aws', 'gcp' and 'azure'
 
     Returns
@@ -241,20 +242,20 @@ def save_model(model, model_name: str, prep_pipe_=None, verbose: bool = True):
     model : object
         A trained model object should be passed as an estimator. 
     
-    model_name : string
+    model_name : str
         Name of pickle file to be passed as a string.
     
     prep_pipe_ : Pipeline, default = None
         If not None, will save the entire Pipeline in addition to model.
 
-    verbose: Boolean, default = True
+    verbose: bool, default = True
         Success message is not printed when verbose is set to False.
 
     Returns
     -------
-    Success_Message
-    
-         
+    (model, model_filename):
+        Tuple of the model object and the filename it was saved under.
+
     """
 
     function_params_str = ", ".join([f"{k}={v}" for k, v in locals().items()])
@@ -273,7 +274,10 @@ def save_model(model, model_name: str, prep_pipe_=None, verbose: bool = True):
 
     logger.info("Adding model into prep_pipe")
 
-    if not prep_pipe_:
+    if isinstance(model, Pipeline):
+        model_ = deepcopy(model)
+        logger.warning("Only Model saved as it was a pipeline.")
+    elif not prep_pipe_:
         model_ = deepcopy(model)
         logger.warning("Only Model saved. Transformations in prep_pipe are ignored.")
     else:
@@ -292,6 +296,7 @@ def save_model(model, model_name: str, prep_pipe_=None, verbose: bool = True):
     logger.info(
         "save_model() succesfully completed......................................"
     )
+    return (model_, model_name)
 
 
 def load_model(
@@ -308,10 +313,10 @@ def load_model(
 
     Parameters
     ----------
-    model_name : string, default = none
+    model_name : str, default = none
         Name of pickle file to be passed as a string.
       
-    platform: string, default = None
+    platform: str, default = None
         Name of platform, if loading model from cloud. Current available options are:
         'aws', 'gcp' and 'azure'.
     
@@ -327,7 +332,7 @@ def load_model(
         When platform = 'azure':
         {'container': 'pycaret-test'}
     
-    verbose: Boolean, default = True
+    verbose: bool, default = True
         Success message is not printed when verbose is set to False.
 
     Returns
@@ -424,10 +429,10 @@ def _create_bucket_gcp(project_name: str, bucket_name: str):
 
     Parameters
     ----------
-    project_name : string
+    project_name : str
         A Project name on GCP Platform (Must have been created from console).
 
-    bucket_name : string
+    bucket_name : str
         Name of the storage bucket to be created if does not exists already.
 
     Returns
@@ -468,16 +473,16 @@ def _upload_blob_gcp(
 
     Parameters
     ----------
-    project_name : string
+    project_name : str
         A Project name on GCP Platform (Must have been created from console).
 
-    bucket_name : string
+    bucket_name : str
         Name of the storage bucket to be created if does not exists already.
 
-    source_file_name : string
+    source_file_name : str
         A blob/file name to copy to GCP
 
-    destination_blob_name : string
+    destination_blob_name : str
         Name of the destination file to be stored on GCP
 
     Returns
@@ -519,16 +524,16 @@ def _download_blob_gcp(
 
     Parameters
     ----------
-    project_name : string
+    project_name : str
         A Project name on GCP Platform (Must have been created from console).
 
-    bucket_name : string
+    bucket_name : str
         Name of the storage bucket to be created if does not exists already.
 
-    source_blob_name : string
+    source_blob_name : str
         A blob/file name to download from GCP bucket
 
-    destination_file_name : string
+    destination_file_name : str
         Name of the destination file to be stored locally
 
     Returns
@@ -568,7 +573,7 @@ def _create_container_azure(container_name: str):
 
     Parameters
     ----------
-    container_name : string
+    container_name : str
         Name of the storage container to be created if does not exists already.
 
     Returns
@@ -602,13 +607,13 @@ def _upload_blob_azure(
 
     Parameters
     ----------
-    container_name : string
+    container_name : str
         Name of the storage bucket to be created if does not exists already.
 
-    source_file_name : string
+    source_file_name : str
         A blob/file name to copy to Azure
 
-    destination_blob_name : string
+    destination_blob_name : str
         Name of the destination file to be stored on Azure
 
     """
@@ -644,13 +649,13 @@ def _download_blob_azure(
 
     Parameters
     ----------
-    container_name : string
+    container_name : str
         Name of the storage bucket to be created if does not exists already.
 
-    source_blob_name : string
+    source_blob_name : str
         A blob/file name to download from Azure storage container
 
-    destination_file_name : string
+    destination_file_name : str
         Name of the destination file to be stored locally
 
     """

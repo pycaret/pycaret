@@ -228,8 +228,10 @@ class MAPEMetricContainer(RegressionMetricContainer):
                 y_true, y_pred, multioutput
             )
             check_consistent_length(y_true, y_pred, sample_weight)
-            epsilon = np.finfo(np.float64).eps
-            mape = np.abs(y_pred - y_true) / np.maximum(np.abs(y_true), epsilon)
+            mask = y_true != 0
+            y_true = y_true[mask]
+            y_pred = y_pred[mask]
+            mape = np.abs(y_pred - y_true) / np.abs(y_true)
             output_errors = np.average(mape, weights=sample_weight, axis=0)
             if isinstance(multioutput, str):
                 if multioutput == "raw_values":

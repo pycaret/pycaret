@@ -880,6 +880,7 @@ def tune_model(
     choose_better: bool = False,
     fit_kwargs: Optional[dict] = None,
     groups: Optional[Union[str, Any]] = None,
+    return_tuner: bool = False,
     verbose: bool = True,
     tuner_verbose: Union[int, bool] = True,
     **kwargs,
@@ -1011,6 +1012,10 @@ def tune_model(
         Only used if a group based cross-validation generator is used (eg. GroupKFold).
         If None, will use the value set in fold_groups param in setup().
 
+    return_tuner: bool, default = False
+        If True, will reutrn a tuple of (model, tuner_object). Otherwise,
+        will return just the best model.
+
     verbose: bool, default = True
         Score grid is not printed when verbose is set to False.
 
@@ -1032,6 +1037,9 @@ def tune_model(
     model
         Trained and tuned model object. 
 
+    tuner_object
+        Only if return_tuner param is True. The object used for tuning.
+
     Notes
     -----
 
@@ -1048,11 +1056,6 @@ def tune_model(
 
     """
 
-    """
-    
-    ERROR HANDLING STARTS HERE
-    
-    """
     return pycaret.internal.tabular.tune_model_supervised(
         estimator=estimator,
         fold=fold,
@@ -1068,6 +1071,7 @@ def tune_model(
         choose_better=choose_better,
         fit_kwargs=fit_kwargs,
         groups=groups,
+        return_tuner=return_tuner,
         verbose=verbose,
         tuner_verbose=tuner_verbose,
         **kwargs,
@@ -1694,6 +1698,7 @@ def finalize_model(
     estimator,
     fit_kwargs: Optional[dict] = None,
     groups: Optional[Union[str, Any]] = None,
+    model_only: bool = True,
 ) -> Any:  # added in pycaret==2.2.0
 
     """
@@ -1725,6 +1730,10 @@ def finalize_model(
         Only used if a group based cross-validation generator is used (eg. GroupKFold).
         If None, will use the value set in fold_groups param in setup().
 
+    model_only : bool, default = True
+        When set to True, only trained model object is saved and all the 
+        transformations are ignored.
+
     Returns
     -------
     model
@@ -1742,7 +1751,7 @@ def finalize_model(
     """
 
     return pycaret.internal.tabular.finalize_model(
-        estimator=estimator, fit_kwargs=fit_kwargs, groups=groups,
+        estimator=estimator, fit_kwargs=fit_kwargs, groups=groups, model_only=model_only,
     )
 
 
@@ -1927,9 +1936,9 @@ def save_model(model, model_name: str, model_only: bool = False, verbose: bool =
 
     Returns
     -------
-    Success_Message
-    
-         
+    (model, model_filename):
+        Tuple of the model object and the filename it was saved under.
+
     """
 
     return pycaret.internal.tabular.save_model(

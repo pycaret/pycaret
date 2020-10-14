@@ -1260,9 +1260,9 @@ def setup(
             fix_imbalance_resampler = fix_imbalance_method_param
         _internal_pipeline.append(("fix_imbalance", fix_imbalance_resampler))
 
-    prep_pipe.steps.extend(
-        [step for step in _internal_pipeline if hasattr(step, "transform")]
-    )
+    for x in _internal_pipeline:
+        if x[0] in prep_pipe.named_steps:
+            raise ValueError(f"Step named {x[0]} already present in pipeline.")
 
     _internal_pipeline = make_internal_pipeline(_internal_pipeline)
 
@@ -1313,16 +1313,23 @@ def setup(
 
     display.move_progress()
     if not _is_unsupervised(_ml_usecase):
+        _internal_pipeline.fit(train_data.drop(target, axis=1), train_data[target])
         data = prep_pipe.transform(data_before_preprocess.copy())
         X = data.drop(target, axis=1)
         y = data[target]
     else:
         X = prep_pipe.fit_transform(train_data).drop(target, axis=1)
         X_train = X
+    
+    # we do just the fitting so that it will be fitted when saved/deployed,
+    # but we don't want to modify the data
+    _internal_pipeline.fit(X, y=y if not _is_unsupervised(_ml_usecase) else None)
+
+    prep_pipe.steps = prep_pipe.steps + [(step[0], deepcopy(step[1])) for step in _internal_pipeline.steps if hasattr(step[1], "transform")]
 
     try:
         dtypes.final_training_columns.remove(target)
-    except:
+    except ValueError:
         pass
 
     # determining target type
@@ -1651,7 +1658,8 @@ def setup(
         try:
             mlflow.create_experiment(exp_name_log)
         except:
-            pass
+            logger.warning("Couldn't create mlflow experiment. Exception:")
+            logger.warning(traceback.format_exc())
 
         # mlflow logging
         mlflow.set_experiment(exp_name_log)
@@ -3272,7 +3280,7 @@ def tune_model_unsupervised(
         param_grid = custom_grid
         try:
             param_grid.remove(0)
-        except:
+        except ValueError:
             pass
     param_grid.sort()
 
@@ -3485,7 +3493,6 @@ def tune_model_unsupervised(
             xaxis_title=msg,
             yaxis_title=optimize.display_name,
         )
-
         fig.show()
         logger.info("Visual Rendered Successfully")
 
@@ -3518,6 +3525,7 @@ def tune_model_supervised(
     choose_better: bool = False,
     fit_kwargs: Optional[dict] = None,
     groups: Optional[Union[str, Any]] = None,
+    return_tuner: bool = False,
     verbose: bool = True,
     tuner_verbose: Union[int, bool] = True,
     display: Optional[Display] = None,
@@ -3649,6 +3657,10 @@ def tune_model_supervised(
         Only used if a group based cross-validation generator is used (eg. GroupKFold).
         If None, will use the value set in fold_groups param in setup().
 
+    return_tuner: bool, default = False
+        If True, will reutrn a tuple of (model, tuner_object). Otherwise,
+        will return just the best model.
+
     verbose: bool, default = True
         Score grid is not printed when verbose is set to False.
 
@@ -3668,7 +3680,10 @@ def tune_model_supervised(
         the folds are also returned.
 
     model
-        Trained and tuned model object. 
+        Trained and tuned model object.
+
+    tuner_object
+        Only if return_tuner param is True. The object used for tuning.
 
     Notes
     -----
@@ -3869,7 +3884,11 @@ def tune_model_supervised(
 
     # checking verbose parameter
     if type(verbose) is not bool:
-        raise TypeError("Verbose parameter can only take argument as True or False.")
+        raise TypeError("verbose parameter can only take argument as True or False.")
+
+    # checking verbose parameter
+    if type(return_tuner) is not bool:
+        raise TypeError("return_tuner parameter can only take argument as True or False.")
 
     if not verbose:
         tuner_verbose = 0
@@ -4132,8 +4151,9 @@ def tune_model_supervised(
                 param_grid = get_optuna_distributions(param_grid)
             except:
                 logger.warning(
-                    "Couldn't convert param_grid to specific library distributions"
+                    "Couldn't convert param_grid to specific library distributions. Exception:"
                 )
+                logger.warning(traceback.format_exc())
 
             study = optuna.create_study(
                 direction="maximize", sampler=sampler, pruner=pruner
@@ -4234,8 +4254,9 @@ def tune_model_supervised(
                         param_grid = get_hyperopt_distributions(param_grid)
                     except:
                         logger.warning(
-                            "Couldn't convert param_grid to specific library distributions"
+                            "Couldn't convert param_grid to specific library distributions. Exception:"
                         )
+                        logger.warning(traceback.format_exc())
                     logger.info("Initializing tune_sklearn.TuneSearchCV, hyperopt")
                     model_grid = TuneSearchCV(
                         estimator=pipeline_with_model,
@@ -4259,8 +4280,9 @@ def tune_model_supervised(
                         param_grid = get_skopt_distributions(param_grid)
                     except:
                         logger.warning(
-                            "Couldn't convert param_grid to specific library distributions"
+                            "Couldn't convert param_grid to specific library distributions. Exception:"
                         )
+                        logger.warning(traceback.format_exc())
                     logger.info("Initializing tune_sklearn.TuneSearchCV, bayesian")
                     model_grid = TuneSearchCV(
                         estimator=pipeline_with_model,
@@ -4284,8 +4306,9 @@ def tune_model_supervised(
                         param_grid = get_CS_distributions(param_grid)
                     except:
                         logger.warning(
-                            "Couldn't convert param_grid to specific library distributions"
+                            "Couldn't convert param_grid to specific library distributions. Exception:"
                         )
+                        logger.warning(traceback.format_exc())
                     logger.info("Initializing tune_sklearn.TuneSearchCV, bohb")
                     model_grid = TuneSearchCV(
                         estimator=pipeline_with_model,
@@ -4330,8 +4353,9 @@ def tune_model_supervised(
                 param_grid = get_skopt_distributions(param_grid)
             except:
                 logger.warning(
-                    "Couldn't convert param_grid to specific library distributions"
+                    "Couldn't convert param_grid to specific library distributions. Exception:"
                 )
+                logger.warning(traceback.format_exc())
 
             logger.info("Initializing skopt.BayesSearchCV")
             model_grid = skopt.BayesSearchCV(
@@ -4402,7 +4426,8 @@ def tune_model_supervised(
         try:
             cv_results = model_grid.cv_results_
         except:
-            logger.warning("Couldn't get cv_results from model_grid.")
+            logger.warning("Couldn't get cv_results from model_grid. Exception:")
+            logger.warning(traceback.format_exc())
 
     display.move_progress()
 
@@ -4474,6 +4499,8 @@ def tune_model_supervised(
     )
 
     gc.collect()
+    if return_tuner:
+        return (best_model, model_grid)
     return best_model
 
 
@@ -5896,7 +5923,7 @@ def plot_model(
 
             plot_filename = f"{plot_name}.html"
 
-            if system:
+            if system and html_param:
                 fig.show()
 
             if save:
@@ -5953,7 +5980,7 @@ def plot_model(
             )
             plot_filename = f"{plot_name}.html"
 
-            if system:
+            if system and html_param:
                 fig.show()
 
             if save:
@@ -6016,7 +6043,7 @@ def plot_model(
 
             plot_filename = f"{plot_name}.html"
 
-            if system:
+            if system and html_param:
                 fig.show()
 
             if save:
@@ -6109,7 +6136,7 @@ def plot_model(
 
             plot_filename = f"{plot_name}.html"
 
-            if system:
+            if system and html_param:
                 fig.show()
 
             if save:
@@ -6176,7 +6203,7 @@ def plot_model(
 
             plot_filename = f"{plot_name}.html"
 
-            if system:
+            if system and html_param:
                 fig.show()
 
             if save:
@@ -6203,12 +6230,13 @@ def plot_model(
                     save=save,
                     fit_kwargs=fit_kwargs,
                     groups=groups,
-                    system=system,
+                    show_plot=(system and html_param),
                     display=display,
                 )
 
             except:
-                logger.warning("Elbow plot failed")
+                logger.error("Elbow plot failed. Exception:")
+                logger.error(traceback.format_exc())
                 raise TypeError("Plot Type not supported for this model.")
 
         def silhouette():
@@ -6230,11 +6258,12 @@ def plot_model(
                     save=save,
                     fit_kwargs=fit_kwargs,
                     groups=groups,
-                    system=system,
+                    show_plot=(system and html_param),
                     display=display,
                 )
             except:
-                logger.warning("Silhouette plot failed")
+                logger.error("Silhouette plot failed. Exception:")
+                logger.error(traceback.format_exc())
                 raise TypeError("Plot Type not supported for this model.")
 
         def distance():
@@ -6254,11 +6283,12 @@ def plot_model(
                     save=save,
                     fit_kwargs=fit_kwargs,
                     groups=groups,
-                    system=system,
+                    show_plot=(system and html_param),
                     display=display,
                 )
             except:
-                logger.warning("Distance plot failed")
+                logger.error("Distance plot failed. Exception:")
+                logger.error(traceback.format_exc())
                 raise TypeError("Plot Type not supported for this model.")
 
         def residuals():
@@ -6277,7 +6307,7 @@ def plot_model(
                 save=save,
                 fit_kwargs=fit_kwargs,
                 groups=groups,
-                system=system,
+                show_plot=(system and html_param),
                 display=display,
             )
 
@@ -6297,7 +6327,7 @@ def plot_model(
                 save=save,
                 fit_kwargs=fit_kwargs,
                 groups=groups,
-                system=system,
+                show_plot=(system and html_param),
                 display=display,
             )
 
@@ -6317,7 +6347,7 @@ def plot_model(
                 save=save,
                 fit_kwargs=fit_kwargs,
                 groups=groups,
-                system=system,
+                show_plot=(system and html_param),
                 display=display,
             )
 
@@ -6337,7 +6367,7 @@ def plot_model(
                 save=save,
                 fit_kwargs=fit_kwargs,
                 groups=groups,
-                system=system,
+                show_plot=(system and html_param),
                 display=display,
             )
 
@@ -6359,7 +6389,7 @@ def plot_model(
                 save=save,
                 fit_kwargs=fit_kwargs,
                 groups=groups,
-                system=system,
+                show_plot=(system and html_param),
                 display=display,
             )
 
@@ -6388,7 +6418,7 @@ def plot_model(
                 save=save,
                 fit_kwargs=fit_kwargs,
                 groups=groups,
-                system=system,
+                show_plot=(system and html_param),
                 display=display,
             )
 
@@ -6409,7 +6439,7 @@ def plot_model(
                 fit_kwargs=fit_kwargs,
                 handle_test="",
                 groups=groups,
-                system=system,
+                show_plot=(system and html_param),
                 display=display,
             )
 
@@ -6431,7 +6461,7 @@ def plot_model(
                 save=save,
                 fit_kwargs=fit_kwargs,
                 groups=groups,
-                system=system,
+                show_plot=(system and html_param),
                 display=display,
             )
 
@@ -6467,7 +6497,7 @@ def plot_model(
                 save=save,
                 fit_kwargs=fit_kwargs,
                 groups=groups,
-                system=system,
+                show_plot=(system and html_param),
                 display=display,
                 features=["Feature One", "Feature Two"],
                 classes=["A", "B"],
@@ -6490,7 +6520,7 @@ def plot_model(
                 save=save,
                 fit_kwargs=fit_kwargs,
                 groups=groups,
-                system=system,
+                show_plot=(system and html_param),
                 display=display,
             )
 
@@ -6518,7 +6548,7 @@ def plot_model(
                 save=save,
                 fit_kwargs=fit_kwargs,
                 groups=groups,
-                system=system,
+                show_plot=(system and html_param),
                 display=display,
             )
 
@@ -6541,10 +6571,11 @@ def plot_model(
                 if save:
                     logger.info(f"Saving '{plot_name}.png' in current active directory")
                     plt.savefig(f"{plot_name}.png")
-                    if not system:
-                        plt.close()
+                if not (system and html_param):
+                    plt.close()
                 else:
                     plt.show()
+                    plt.close()
 
             logger.info("Visual Rendered Successfully")
 
@@ -6567,10 +6598,11 @@ def plot_model(
                 if save:
                     logger.info(f"Saving '{plot_name}.png' in current active directory")
                     plt.savefig(f"{plot_name}.png")
-                    if not system:
-                        plt.close()
+                if not (system and html_param):
+                    plt.close()
                 else:
                     plt.show()
+                    plt.close()
 
             logger.info("Visual Rendered Successfully")
 
@@ -6593,7 +6625,7 @@ def plot_model(
                 save=save,
                 fit_kwargs=fit_kwargs,
                 groups=groups,
-                system=system,
+                show_plot=(system and html_param),
                 display=display,
             )
 
@@ -6699,10 +6731,11 @@ def plot_model(
             if save:
                 logger.info(f"Saving '{plot_name}.png' in current active directory")
                 plt.savefig(f"{plot_name}.png", bbox_inches="tight")
-                if not system:
-                    plt.close()
+            if not (system and html_param):
+                plt.close()
             else:
                 plt.show()
+                plt.close()
 
             logger.info("Visual Rendered Successfully")
 
@@ -6745,10 +6778,11 @@ def plot_model(
             if save:
                 logger.info(f"Saving '{plot_name}.png' in current active directory")
                 plt.savefig(f"{plot_name}.png")
-                if not system:
-                    plt.close()
+            if not (system and html_param):
+                plt.close()
             else:
                 plt.show()
+                plt.close()
 
             logger.info("Visual Rendered Successfully")
 
@@ -6767,6 +6801,8 @@ def plot_model(
                     model_params = pipeline_with_model.get_params()
             except:
                 display.clear_output()
+                logger.error("VC plot failed. Exception:")
+                logger.error(traceback.format_exc())
                 raise TypeError(
                     "Plot not supported for this estimator. Try different estimator."
                 )
@@ -6919,7 +6955,7 @@ def plot_model(
                 save=save,
                 fit_kwargs=fit_kwargs,
                 groups=groups,
-                system=system,
+                show_plot=(system and html_param),
                 display=display,
             )
 
@@ -6957,7 +6993,7 @@ def plot_model(
                 save=save,
                 fit_kwargs=fit_kwargs,
                 groups=groups,
-                system=system,
+                show_plot=(system and html_param),
                 display=display,
             )
 
@@ -7004,10 +7040,11 @@ def plot_model(
             if save:
                 logger.info(f"Saving '{plot_name}.png' in current active directory")
                 plt.savefig(f"{plot_name}.png")
-                if not system:
-                    plt.close()
+            if not (system and html_param):
+                plt.close()
             else:
                 plt.show()
+                plt.close()
 
             logger.info("Visual Rendered Successfully")
 
@@ -7212,7 +7249,7 @@ def interpret_model(
     # checking if shap available
     try:
         import shap
-    except:
+    except ImportError:
         logger.error(
             "shap library not found. pip install shap to use interpret_model function."
         )
@@ -7829,21 +7866,22 @@ def optimize_threshold(
     x1 = x0
 
     t = x0.round(2)
+    if html_param:
 
-    fig.add_shape(
-        dict(type="line", x0=x0, y0=y0, x1=x1, y1=y1, line=dict(color="red", width=2))
-    )
-    fig.update_layout(
-        title={
-            "text": title,
-            "y": 0.95,
-            "x": 0.45,
-            "xanchor": "center",
-            "yanchor": "top",
-        }
-    )
-    logger.info("Figure ready for render")
-    fig.show()
+        fig.add_shape(
+            dict(type="line", x0=x0, y0=y0, x1=x1, y1=y1, line=dict(color="red", width=2))
+        )
+        fig.update_layout(
+            title={
+                "text": title,
+                "y": 0.95,
+                "x": 0.45,
+                "xanchor": "center",
+                "yanchor": "top",
+            }
+        )
+        logger.info("Figure ready for render")
+        fig.show()
     print(f"Optimized Probability Threshold: {t} | Optimized Cost Function: {y1}")
     logger.info(
         "optimize_threshold() succesfully completed......................................"
@@ -8152,6 +8190,8 @@ def predict_model(
                 estimator = estimator_
 
             except:
+                logger.error("Pipeline not found. Exception:")
+                logger.error(traceback.format_exc())
                 raise ValueError("Pipeline not found")
 
         X_test_ = data.copy()
@@ -8239,6 +8279,7 @@ def finalize_model(
     estimator,
     fit_kwargs: Optional[dict] = None,
     groups: Optional[Union[str, Any]] = None,
+    model_only: bool = True,
     display: Optional[Display] = None,
 ) -> Any:  # added in pycaret==2.2.0
 
@@ -8270,6 +8311,10 @@ def finalize_model(
         If string is passed, will use the data column with that name as the groups.
         Only used if a group based cross-validation generator is used (eg. GroupKFold).
         If None, will use the value set in fold_groups param in setup().
+
+    model_only : bool, default = True
+        When set to True, only trained model object is saved and all the 
+        transformations are ignored.
 
     Returns
     -------
@@ -8359,6 +8404,9 @@ def finalize_model(
     )
 
     gc.collect()
+    if not model_only:
+        model_final = deepcopy(prep_pipe)
+        model_final.steps.append(["trained_model", model])
     return model_final
 
 
@@ -9636,7 +9684,8 @@ def _mlflow_log_model(
             except:
                 params = params.get_params()
         except:
-            logger.warning("Couldn't get params for model")
+            logger.warning("Couldn't get params for model. Exception:")
+            logger.warning(traceback.format_exc())
             params = {}
 
         for i in list(params):

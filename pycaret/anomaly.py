@@ -54,6 +54,9 @@ def setup(
     group_names: Optional[List[str]] = None,
     n_jobs: Optional[int] = -1,
     use_gpu: bool = False,  # added in pycaret==2.1
+    custom_pipeline: Union[
+        Any, Tuple[str, Any], List[Any], List[Tuple[str, Any]]
+    ] = None,
     html: bool = True,
     session_id: Optional[int] = None,
     log_experiment: bool = False,
@@ -268,6 +271,13 @@ def setup(
         - KMeans, DBSCAN - requires cuML >= 0.15 to be installed.
           https://github.com/rapidsai/cuml
 
+    custom_pipeline: transformer or list of transformers or tuple
+    (str, transformer) or list of tuples (str, transformer), default = None
+        If set, will append the passed transformers (including Pipelines) to the PyCaret
+        preprocessing Pipeline applied after train-test split during model fitting.
+        This Pipeline is applied on each CV fold separately and on the final fit.
+        The transformers will be applied before PyCaret transformers (eg. SMOTE).
+
     html: bool, default = True
         If set to False, prevents runtime display of monitor. This must be set to False
         when using environment that doesnt support HTML.
@@ -375,7 +385,7 @@ def setup(
         data_split_stratify=False,
         n_jobs=n_jobs,
         use_gpu=use_gpu,
-        custom_pipeline=None,
+        custom_pipeline=custom_pipeline,
         html=html,
         session_id=session_id,
         log_experiment=log_experiment,
@@ -986,9 +996,9 @@ def save_model(model, model_name: str, model_only: bool = False, verbose: bool =
 
     Returns
     -------
-    Success_Message
-    
-         
+    (model, model_filename):
+        Tuple of the model object and the filename it was saved under.
+
     """
 
     return pycaret.internal.tabular.save_model(
