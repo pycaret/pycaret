@@ -20,7 +20,6 @@ def show_yellowbrick_plot(
     save: bool = False,
     fit_kwargs: Optional[dict] = None,
     groups: Optional[Any] = None,
-    show_plot: bool = True,
     display: Optional[Display] = None,
     **kwargs,
 ):
@@ -67,9 +66,8 @@ def show_yellowbrick_plot(
 
     if save:
         logger.info(f"Saving '{name}.png' in current active directory")
-        visualizer.show(outpath=f"{name}.png", clear_figure=(not show_plot))
-    
-    if show_plot:
+        visualizer.show(outpath=f"{name}.png", clear_figure=True)
+    else:
         visualizer.show(clear_figure=True)
 
     logger.info("Visual Rendered Successfully")
