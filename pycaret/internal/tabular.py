@@ -3518,6 +3518,7 @@ def tune_model_supervised(
     choose_better: bool = False,
     fit_kwargs: Optional[dict] = None,
     groups: Optional[Union[str, Any]] = None,
+    return_tuner: bool = False,
     verbose: bool = True,
     tuner_verbose: Union[int, bool] = True,
     display: Optional[Display] = None,
@@ -3649,6 +3650,10 @@ def tune_model_supervised(
         Only used if a group based cross-validation generator is used (eg. GroupKFold).
         If None, will use the value set in fold_groups param in setup().
 
+    return_tuner: bool, default = False
+        If True, will reutrn a tuple of (model, tuner_object). Otherwise,
+        will return just the best model.
+
     verbose: bool, default = True
         Score grid is not printed when verbose is set to False.
 
@@ -3668,7 +3673,10 @@ def tune_model_supervised(
         the folds are also returned.
 
     model
-        Trained and tuned model object. 
+        Trained and tuned model object.
+
+    tuner_object
+        Only if return_tuner param is True. The object used for tuning.
 
     Notes
     -----
@@ -3869,7 +3877,11 @@ def tune_model_supervised(
 
     # checking verbose parameter
     if type(verbose) is not bool:
-        raise TypeError("Verbose parameter can only take argument as True or False.")
+        raise TypeError("verbose parameter can only take argument as True or False.")
+
+    # checking verbose parameter
+    if type(return_tuner) is not bool:
+        raise TypeError("return_tuner parameter can only take argument as True or False.")
 
     if not verbose:
         tuner_verbose = 0
@@ -4480,6 +4492,8 @@ def tune_model_supervised(
     )
 
     gc.collect()
+    if return_tuner:
+        return (best_model, model_grid)
     return best_model
 
 

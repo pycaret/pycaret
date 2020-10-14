@@ -201,8 +201,8 @@ class CBLOFAnomalyContainer(AnomalyContainer):
         tune_distributions = {}
 
         super().__init__(
-            id="anomaly",
-            name="Anomalying-Based Local Outlier",
+            id="cluster",
+            name="Clustering-Based Local Outlier",
             class_def=CBLOF,
             args=args,
             tune_grid=tune_grid,
@@ -224,7 +224,7 @@ class COFAnomalyContainer(AnomalyContainer):
 
         super().__init__(
             id="cof",
-            name="Anomalying-Based Local Outlier",
+            name="Connectivity-Based Local Outlier",
             class_def=COF,
             args=args,
             tune_grid=tune_grid,
