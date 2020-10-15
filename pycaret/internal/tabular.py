@@ -6009,7 +6009,7 @@ def plot_model(
             logger.info(
                 "SubProcess assign_model() end =================================="
             )
-            label = pd.DataFrame(b["Anomaly"])
+            cluster = pd.DataFrame(b["Anomaly"])
             b.dropna(axis=0, inplace=True)  # droping rows with NA's
             b.drop(["Anomaly"], axis=1, inplace=True)
 
@@ -6021,7 +6021,7 @@ def plot_model(
             X_embedded = TSNE(n_components=3).fit_transform(b)
 
             X = pd.DataFrame(X_embedded)
-            X["Anomaly"] = label
+            X["Anomaly"] = cluster
             if feature_name is not None:
                 X["Feature"] = data_X[feature_name]
             else:
@@ -6068,7 +6068,7 @@ def plot_model(
                 "SubProcess assign_model() end =================================="
             )
 
-            label = b["Cluster"]
+            cluster = b["Cluster"]
             b.drop(["Cluster"], axis=1, inplace=True)
 
             from sklearn.manifold import TSNE
@@ -6076,7 +6076,7 @@ def plot_model(
             logger.info("Fitting TSNE()")
             X_embedded = TSNE(n_components=3, random_state=seed).fit_transform(b)
             X_embedded = pd.DataFrame(X_embedded)
-            X_embedded["Cluster"] = label
+            X_embedded["Cluster"] = cluster
 
             if feature_name is not None:
                 X_embedded["Feature"] = data_X[feature_name]
