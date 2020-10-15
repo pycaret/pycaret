@@ -12,7 +12,7 @@ def test():
     assert isinstance(data, pd.core.frame.DataFrame)
 
     # init setup
-    reg1 = pycaret.regression.setup(data, target='medv',silent=True, log_experiment=True, html=False, session_id=123)
+    reg1 = pycaret.regression.setup(data, target='medv',silent=True, log_experiment=True, html=False, session_id=123, transform_target=True)
 
     # compare models
     top3 = pycaret.regression.compare_models(n_select=100, exclude=["catboost"])[:3]

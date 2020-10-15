@@ -2,7 +2,7 @@
 # License: MIT, moez.ali@queensu.ca
 
 from pycaret.utils import version
-from setuptools import setup
+from setuptools import setup, find_packages
 
 def readme():
     with open('README.md') as f:
@@ -14,7 +14,7 @@ with open('requirements.txt') as f:
 
 setup(
     name="pycaret",
-    version=f"{version()}",
+    version=str(version()),
     description="PyCaret - An open source, low-code machine learning library in Python.",
     long_description=readme(),
     long_description_content_type="text/markdown",
@@ -28,7 +28,7 @@ setup(
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
     ],
-    packages=["pycaret"],
+    packages=find_packages(exclude=["*.tests", "*.tests.*", "tests.*", "tests"]),
     include_package_data=True,
     install_requires=required
 )

@@ -14,18 +14,18 @@ def test():
 
     # normalize_method = 'minmax'
     clf1 = pycaret.classification.setup(data, target = 'Class', silent = True, html = False, normalize = True, normalize_method = 'minmax')
-    assert np.array(pycaret.classification.get_config('X_train')).min() >= 0
-    assert np.array(pycaret.classification.get_config('X_train')).max() <= 1
+    assert np.array(pycaret.classification.get_config('X_train')).min().round(2) >= 0
+    assert np.array(pycaret.classification.get_config('X_train')).max().round(2) <= 1
 
     # normalize_method = 'maxabs'
     clf1 = pycaret.classification.setup(data, target = 'Class', silent = True, html = False, normalize = True, normalize_method = 'maxabs')
-    assert np.array(pycaret.classification.get_config('X_train')).min() >= 0
-    assert np.array(pycaret.classification.get_config('X_train')).max() <= 1
+    assert np.array(pycaret.classification.get_config('X_train')).min().round(2) >= 0
+    assert np.array(pycaret.classification.get_config('X_train')).max().round(2) <= 1
 
     # normalize_method = 'zscore'
     clf1 = pycaret.classification.setup(data, target = 'Class', silent = True, html = False, normalize = True, normalize_method = 'zscore')
-    assert np.array(pycaret.classification.get_config('X_train')).min() >= -10
-    assert np.array(pycaret.classification.get_config('X_train')).max() <= 10
+    assert np.array(pycaret.classification.get_config('X_train')).min().round(2) >= -10
+    assert np.array(pycaret.classification.get_config('X_train')).max().round(2) <= 10
 
     # normalize_method = 'robust'
     clf1 = pycaret.classification.setup(data, target = 'Class', silent = True, html = False, normalize = True, normalize_method = 'robust')

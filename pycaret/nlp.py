@@ -99,7 +99,7 @@ def setup(data,
     import sys
     
     from pycaret.utils import __version__
-    ver = __version__()
+    ver = __version__
 
     import logging
 
@@ -3475,9 +3475,9 @@ def save_model(model, model_name,
 
     Returns
     -------
-    Success_Message
-       
-         
+    (model, model_filename):
+        Tuple of the model object and the filename it was saved under.
+
     """
     import logging
 
@@ -3515,6 +3515,8 @@ def save_model(model, model_name,
 
     logger.info(str(model))
     logger.info("save_model() succesfully completed......................................")
+
+    return (model, model_name)
 
 def load_model(model_name, 
                verbose=True):

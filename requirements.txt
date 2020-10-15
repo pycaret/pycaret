@@ -4,10 +4,10 @@ seaborn
 matplotlib
 IPython
 joblib
-scikit-learn>=0.23 
+scikit-learn>=0.23.2
 ipywidgets
 yellowbrick>=1.0.1
-xgboost>=0.90
+xgboost>=1.1.0
 lightgbm>=2.3.1
 plotly>=4.4.1
 wordcloud
@@ -23,16 +23,6 @@ pyod
 catboost>=0.23.2
 pandas-profiling>=2.8.0
 kmodes>=0.10.1
-datefinder>=0.7.0
 mlflow
-imbalanced-learn>=0.6.2
-#psutil - removing it as causing problem in Dockerfile
-#awscli - only required in deploy_model for AWS
-#azure-storage-blob - only required in deploy_model for Azure
-#google-cloud-storage - only required in deploy_model for GCP
-#shap - removing shap as it's causing issues building Docker image.
-#sckit-plot for lift and gain charts
-#statsmodels - for future timeseries module
-#pmdarima - for future timeseries module
-#fastapi>=0.61.1 # only required in create_webservice for api
-#pydantic # only required in create_webservice for api
+imbalanced-learn>=0.7.0
+scikit-plot #for lift and gain charts
