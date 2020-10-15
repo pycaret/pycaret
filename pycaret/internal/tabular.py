@@ -44,7 +44,7 @@ import pycaret.containers.models.classification
 import pycaret.containers.models.regression
 import pycaret.containers.models.clustering
 import pycaret.containers.models.anomaly
-import pycaret.preprocess
+import pycaret.internal.preprocess
 import pandas as pd
 import numpy as np
 import os
@@ -1091,7 +1091,7 @@ def setup(
 
     logger.info("Creating preprocessing pipeline")
 
-    prep_pipe = pycaret.preprocess.Preprocess_Path_One(
+    prep_pipe = pycaret.internal.preprocess.Preprocess_Path_One(
         train_data=train_data,
         imputation_type=imputation_type,
         target_variable=target,
@@ -1467,13 +1467,13 @@ def setup(
         high_cardinality_method if high_cardinality_features_grid else None
     )
 
-    learned_types = dtypes.learent_dtypes
+    learned_types = dtypes.learned_dtypes
     learned_types.drop(target, inplace=True)
 
     float_type = 0
     cat_type = 0
 
-    for i in dtypes.learent_dtypes:
+    for i in dtypes.learned_dtypes:
         if "float" in str(i):
             float_type += 1
         elif "object" in str(i):
