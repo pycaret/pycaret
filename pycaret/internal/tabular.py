@@ -9451,7 +9451,9 @@ def _choose_better(
     model_results = model_results.loc["Mean"][compare_dimension]
     logger.info(f"Base model {model} result for {compare_dimension} is {model_results}")
 
-    if not _all_metrics[compare_dimension].greater_is_better:
+    metric = _get_metric(compare_dimension)
+
+    if not metric.greater_is_better:
         model_results *= -1
 
     scorer.append(model_results)

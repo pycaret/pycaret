@@ -22,6 +22,8 @@ def test():
     tuned_top3 = [pycaret.regression.tune_model(i, n_iter=3) for i in top3]
     assert isinstance(tuned_top3, list)
 
+    pycaret.regression.tune_model(top3[0], n_iter=3, choose_better=True)
+
     # ensemble model
     bagged_top3 = [pycaret.regression.ensemble_model(i) for i in tuned_top3]
     assert isinstance(bagged_top3, list)
