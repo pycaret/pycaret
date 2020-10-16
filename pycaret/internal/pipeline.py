@@ -212,6 +212,7 @@ def make_internal_pipeline(internal_pipeline_steps: list, memory=None) -> Pipeli
 
 def add_estimator_to_pipeline(pipeline: Pipeline, estimator, name="actual_estimator"):
     try:
+        assert hasattr(pipeline._final_estimator, "predict")
         pipeline.replace_final_estimator(estimator, name=name)
     except:
         pipeline.steps.append((name, estimator))
