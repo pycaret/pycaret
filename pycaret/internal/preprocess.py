@@ -34,6 +34,7 @@ from sklearn.ensemble import RandomForestRegressor as rfr
 from lightgbm import LGBMClassifier as lgbmc
 from lightgbm import LGBMRegressor as lgbmr
 import sys
+import gc
 from sklearn.pipeline import Pipeline
 from sklearn import metrics
 from datetime import datetime
@@ -757,6 +758,7 @@ class Iterative_Imputer(_BaseImputer):
         if ordinal_columns is None:
             ordinal_columns = []
         self.ordinal_columns = ordinal_columns
+        self._column_cleaner = Clean_Colum_Names()
 
     def _initial_imputation(self, X):
         if self.initial_imputer_ is None:
@@ -771,7 +773,7 @@ class Iterative_Imputer(_BaseImputer):
 
         return X_filled
 
-    def _impute_one_feature(self, X, column, X_na_mask, fit):
+    def _impute_one_feature(self, X, column, X_na_mask, fit):        
         if not fit:
             check_is_fitted(self)
         is_classification = (
@@ -799,7 +801,7 @@ class Iterative_Imputer(_BaseImputer):
         if fit:
             fit_kwargs = {}
             X_train = X[~X_na_mask[column]]
-            y_train = X[~X_na_mask[column]][column]
+            y_train = X_train[column]
             # catboost handles categoricals itself
             if "catboost" not in str(type(estimator)).lower():
                 X_train = dummy.fit_transform(X_train)
@@ -816,6 +818,7 @@ class Iterative_Imputer(_BaseImputer):
                 fit_kwargs["cat_features"] = np.array(
                     fit_kwargs["cat_features"], dtype=int
                 )
+            X_train = self._column_cleaner.fit_transform(X_train)
 
             if le:
                 y_train = le.fit_transform(y_train)
@@ -835,6 +838,7 @@ class Iterative_Imputer(_BaseImputer):
                 X_test[col] = pd.Categorical(
                     X_test[col], ordered=column in self.ordinal_columns
                 )
+        X_test = self._column_cleaner.fit_transform(X_test)
         result = estimator.predict(X_test)
         if le:
             result = le.inverse_transform(result)
@@ -846,6 +850,8 @@ class Iterative_Imputer(_BaseImputer):
 
         X_test[column] = result
         X.update(X_test[column])
+
+        gc.collect()
 
         return X
 
