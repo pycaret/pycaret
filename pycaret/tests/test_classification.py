@@ -19,8 +19,10 @@ def test():
     assert isinstance(top3, list)
 
     # tune model
-    tuned_top3 = [pycaret.classification.tune_model(i) for i in top3]
+    tuned_top3 = [pycaret.classification.tune_model(i, n_iter=3) for i in top3]
     assert isinstance(tuned_top3, list)
+
+    pycaret.classification.tune_model(top3[0], n_iter=3, choose_better=True)
 
     # ensemble model
     bagged_top3 = [pycaret.classification.ensemble_model(i) for i in tuned_top3]
