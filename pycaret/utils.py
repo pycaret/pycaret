@@ -46,11 +46,16 @@ def check_metric(actual: pd.Series, prediction: pd.Series, metric: str, round: i
     """
 
     # general dependencies
-    import sklearn.metrics
-    from pycaret.containers.metrics.classification import get_all_metric_containers
+    import pycaret.containers.metrics.classification
+    import pycaret.containers.metrics.regression
 
     globals_dict = {"y": prediction}
-    metric_containers = get_all_metric_containers(globals_dict)
+    metric_containers = {
+        **pycaret.containers.metrics.classification.get_all_metric_containers(
+            globals_dict
+        ),
+        **pycaret.containers.metrics.regression.get_all_metric_containers(globals_dict),
+    }
     metrics = {v.name: v.score_func for k, v in metric_containers.items()}
 
     # metric calculation starts here
@@ -60,49 +65,17 @@ def check_metric(actual: pd.Series, prediction: pd.Series, metric: str, round: i
             result = metrics[metric](actual, prediction)
         except:
             from sklearn.preprocessing import LabelEncoder
+
             le = LabelEncoder()
             actual = le.fit_transform(actual)
             prediction = le.transform(prediction)
             result = metrics[metric](actual, prediction)
-
-    elif metric == "MAE":
-
-        result = sklearn.metrics.mean_absolute_error(actual, prediction)
-
-    elif metric == "MSE":
-
-        result = sklearn.metrics.mean_squared_error(actual, prediction)
-
-    elif metric == "RMSE":
-
-        result = sklearn.metrics.mean_squared_error(actual, prediction)
-        result = np.sqrt(result)
-
-    elif metric == "R2":
-
-        result = sklearn.metrics.r2_score(actual, prediction)
-
-    elif metric == "RMSLE":
-
-        result = np.sqrt(
-            np.mean(
-                np.power(
-                    np.log(np.array(abs(prediction)) + 1)
-                    - np.log(np.array(abs(actual)) + 1),
-                    2,
-                )
-            )
+        result = result.round(round)
+        return float(result)
+    else:
+        raise ValueError(
+            f"Couldn't find metric '{metric}' Possible metrics are: {', '.join(metrics.keys())}."
         )
-
-    elif metric == "MAPE":
-
-        mask = actual.iloc[:, 0] != 0
-        result = (
-            np.fabs(actual.iloc[:, 0] - prediction.iloc[:, 0]) / actual.iloc[:, 0]
-        )[mask].mean()
-
-    result = result.round(round)
-    return float(result)
 
 
 def enable_colab():
