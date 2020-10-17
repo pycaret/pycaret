@@ -5,7 +5,7 @@
 from typing import Any, Optional
 from pycaret.internal.logging import get_logger
 from pycaret.internal.Display import Display
-
+import scikitplot as skplt
 
 def show_yellowbrick_plot(
     visualizer,
@@ -42,9 +42,7 @@ def show_yellowbrick_plot(
         visualizer.fit(X_train, y_train, **fit_kwargs_and_kwargs)
     elif handle_train == "fit_transform":
         logger.info("Fitting & Transforming Model")
-        visualizer.fit_transform(
-            X_train, y_train, **fit_kwargs_and_kwargs
-        )
+        visualizer.fit_transform(X_train, y_train, **fit_kwargs_and_kwargs)
     elif handle_train == "score":
         logger.info("Scoring train set")
         visualizer.score(X_train, y_train, **kwargs)
@@ -71,3 +69,21 @@ def show_yellowbrick_plot(
         visualizer.show(clear_figure=True)
 
     logger.info("Visual Rendered Successfully")
+
+
+class MatplotlibDefaultDPI(object):
+    def __init__(self, base_dpi: float = 100, scale_to_set: float = 1):
+        try:
+            self.default_skplt_dpit = skplt.metrics.plt.rcParams["figure.dpi"]
+            skplt.metrics.plt.rcParams["figure.dpi"] = base_dpi * scale_to_set
+        except:
+            pass
+
+    def __enter__(self) -> None:
+        return None
+
+    def __exit__(self, type, value, traceback):
+        try:
+            skplt.metrics.plt.rcParams["figure.dpi"] = self.default_skplt_dpit
+        except:
+            pass
