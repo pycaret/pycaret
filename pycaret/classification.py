@@ -2,7 +2,7 @@
 # Author: Moez Ali <moez.ali@queensu.ca>
 # License: MIT
 # Release: PyCaret 2.2
-# Last modified : 26/08/2020
+# Last modified : 19/10/2020
 
 import pandas as pd
 import numpy as np
@@ -34,7 +34,7 @@ def setup(
     high_cardinality_features: Optional[List[str]] = None,
     high_cardinality_method: str = "frequency",
     numeric_features: Optional[List[str]] = None,
-    numeric_imputation: str = "mean",  # method 'zero' added in pycaret==2.1
+    numeric_imputation: str = "mean",
     numeric_iterative_imputer: Union[str, Any] = "lightgbm",
     date_features: Optional[List[str]] = None,
     ignore_features: Optional[List[str]] = None,
@@ -66,20 +66,20 @@ def setup(
     group_names: Optional[List[str]] = None,
     feature_selection: bool = False,
     feature_selection_threshold: float = 0.8,
-    feature_selection_method: str = "classic",  # boruta algorithm added in pycaret==2.1
+    feature_selection_method: str = "classic", 
     feature_interaction: bool = False,
     feature_ratio: bool = False,
     interaction_threshold: float = 0.01,
     fix_imbalance: bool = False,
     fix_imbalance_method: Optional[Any] = None,
     data_split_shuffle: bool = True,
-    data_split_stratify: Union[bool, List[str]] = False,  # added in pycaret==2.2
-    fold_strategy: Union[str, Any] = "stratifiedkfold",  # added in pycaret==2.2
-    fold: int = 10,  # added in pycaret==2.2
+    data_split_stratify: Union[bool, List[str]] = False, 
+    fold_strategy: Union[str, Any] = "stratifiedkfold", 
+    fold: int = 10,
     fold_shuffle: bool = False,
     fold_groups: Optional[Union[str, pd.DataFrame]] = None,
     n_jobs: Optional[int] = -1,
-    use_gpu: bool = False,  # added in pycaret==2.1
+    use_gpu: bool = False, 
     custom_pipeline: Union[
         Any, Tuple[str, Any], List[Any], List[Tuple[str, Any]]
     ] = None,
@@ -96,25 +96,22 @@ def setup(
 ):
 
     """
-    This function initializes the environment in pycaret and creates the transformation
-    pipeline to prepare the data for modeling and deployment. setup() must called before
-    executing any other function in pycaret. It takes two mandatory parameters:
-    data and name of the target column.
-    
-    All other parameters are optional.
+    This function initializes the training environment and creates the transformation 
+    pipeline. Setup function must called before executing any other function. It takes 
+    two mandatory parameters: ``data`` and ``target``. All the other parameters are
+    optional.
 
     Example
     -------
     >>> from pycaret.datasets import get_data
     >>> juice = get_data('juice')
-    >>> experiment_name = setup(data = juice,  target = 'Purchase')
-
-    'juice' is a pandas.DataFrame  and 'Purchase' is the name of target column.
+    >>> from pycaret.classification import *
+    >>> exp_name = setup(data = juice,  target = 'Purchase')
 
     Parameters
     ----------
     data : pandas.DataFrame
-        Shape (n_samples, n_features) where n_samples is the number of samples and 
+        Shape (n_samples, n_features), where n_samples is the number of samples and 
         n_features is the number of features.
 
     target: str
@@ -122,87 +119,87 @@ def setup(
         be either binary or multiclass.
 
     train_size: float, default = 0.7
-        Size of the training set. By default, 70% of the data will be used for training 
-        and validation. The remaining data will be used for a test / hold-out set.
+        Proportion of the dataset to be used for training and validation. Should be 
+        between 0.0 and 1.0.
 
     test_data: pandas.DataFrame, default = None
-        When a dataframe is passed to this parameter it will be used as the test set, instead
-        of using a portion of the data to create one.
+        If not None, test_data is used as a hold-out set and ``train_size`` parameter is 
+        ignored. test_data must be labelled and the shape of data and test_data must 
+        match. 
 
     preprocess: bool, default = True
-        If False, will not do any preprocessing on the data aside from mandatory steps, and
-        ignore all other parameters related to preprocessing (including 'ordinal_features' and 
-        'high_cardinality_features' params), aside from 'custom_pipeline'.
+        When set to False, no transformations are applied except for train_test_split 
+        and custom transformations passed in ``custom_pipeline`` param. Data must be 
+        ready for modeling (no missing values, no dates, categorical data encoding), 
+        when preprocess is set to False. 
 
     imputation_type: str, default = 'simple'
         The type of imputation to use. Can be either 'simple' or 'iterative'.
 
-    categorical_features: list, default = None
-        If the inferred data types are not correct, categorical_features can be used to
-        overwrite the inferred type. If when running setup the type of 'column1' is
-        inferred as numeric instead of categorical, then this parameter can be used 
-        to overwrite the type by passing categorical_features = ['column1'].
-    
+    iterative_imputation_iters: int, default = 5
+        Number of iterations. Ignored when ``imputation_type`` is not 'iterative'.	
+
+    categorical_features: list of str, default = None
+        If the inferred data types are not correct or the silent param is set to True,
+        categorical_features param can be used to overwrite or define the data types. 
+        It takes a list of strings with column names that are categorical.
+
     categorical_imputation: str, default = 'constant'
-        If missing values are found in categorical features, they will be imputed with
-        a constant 'not_available' value. The other available option is 'mode' which 
-        imputes the missing value using most frequent value in the training dataset. 
+        Missing values in categorical features are imputed with a constant 'not_available'
+        value. The other available option is 'mode'.
     
-    ordinal_features: dictionary, default = None
-        When the data contains ordinal features, they must be encoded differently using 
-        the ordinal_features param. If the data has a categorical variable with values
-        of 'low', 'medium', 'high' and it is known that low < medium < high, then it can 
-        be passed as ordinal_features = { 'column_name' : ['low', 'medium', 'high'] }. 
-        The list sequence must be in increasing order from lowest to highest.
+    categorical_iterative_imputer: str, default = 'lightgbm'
+        Estimator for iterative imputation of missing values in categorical features.
+        Ignored when ``imputation_type`` is not 'iterative'. 
+
+    ordinal_features: dict, default = None
+        Encode categorical features as ordinal. For example, a categorical feature with 
+        'low', 'medium', 'high' values where low < medium < high can be passed as  
+        ordinal_features = { 'column_name' : ['low', 'medium', 'high'] }. 
     
-    high_cardinality_features: list, default = None
-        When the data containts features with high cardinality, they can be compressed
-        into fewer levels by passing them as a list of column names with high cardinality.
-        Features are compressed using method defined in high_cardinality_method param.
+    high_cardinality_features: list of str, default = None
+        When categorical features contains many levels, it can be compressed into fewer
+        levels using this parameter. It takes a list of strings with column names that 
+        are categorical.
     
     high_cardinality_method: str, default = 'frequency'
-        When method set to 'frequency' it will replace the original value of feature
-        with the frequency distribution and convert the feature into numeric. Other
-        available method is 'clustering' which performs the clustering on statistical
-        attribute of data and replaces the original value of feature with cluster label.
-        The number of clusters is determined using a combination of Calinski-Harabasz and 
-        Silhouette criterion. 
+        Categorical features with high cardinality are replaced with the frequency of
+        values in each level occurring in the training dataset. Other available method
+        is 'clustering' which trains the K-Means clustering algorithm on the statistical
+        attribute of the training data and replaces the original value of feature with the 
+        cluster label. The number of clusters is determined by optimizing Calinski-Harabasz 
+        and Silhouette criterion. 
           
-    numeric_features: list, default = None
-        If the inferred data types are not correct, numeric_features can be used to
-        overwrite the inferred type. If when running setup the type of 'column1' is 
-        inferred as a categorical instead of numeric, then this parameter can be used 
-        to overwrite by passing numeric_features = ['column1'].    
+    numeric_features: list of str, default = None
+        If the inferred data types are not correct or the silent param is set to True,
+        numeric_features param can be used to overwrite or define the data types. 
+        It takes a list of strings with column names that are numeric.
 
     numeric_imputation: str, default = 'mean'
-        If missing values are found in numeric features, they will be imputed with the 
-        mean value of the feature. The other available options are 'median' which imputes 
-        the value using the median value in the training dataset and 'zero' which
-        replaces missing values with zeroes.
+        Missing values in numeric features are imputed with 'mean' value of the feature 
+        in the training dataset. The other available option is 'median' or 'zero'.
 
-    date_features: str, default = None
-        If the data has a DateTime column that is not automatically detected when running
-        setup, this parameter can be used by passing date_features = 'date_column_name'. 
-        It can work with multiple date columns. Date columns are not used in modeling. 
-        Instead, feature extraction is performed and date columns are dropped from the 
-        dataset. If the date column includes a time stamp, features related to time will 
-        also be extracted.
+    numeric_iterative_imputer: str, default = 'lightgbm'
+        Estimator for iterative imputation of missing values in numeric features.
+        Ignored when ``imputation_type`` is set to 'simple'. 
 
-    ignore_features: str, default = None
-        If any feature should be ignored for modeling, it can be passed to the param
-        ignore_features. The ID and DateTime columns when inferred, are automatically 
-        set to ignore for modeling. 
+    date_features: list of str, default = None
+        If the inferred data types are not correct or the silent param is set to True,
+        date_features param can be used to overwrite or define the data types. It takes 
+        a list of strings with column names that are DateTime.
+
+    ignore_features: list of str, default = None
+        ignore_features param can be used to ignore features during model training.
+        It takes a list of strings with column names that are to be ignored.
 
     normalize: bool, default = False
-        When set to True, the feature space is transformed using the normalized_method
-        param. Generally, linear algorithms perform better with normalized data however, 
-        the results may vary and it is advised to run multiple experiments to evaluate
-        the benefit of normalization.
+        When set to True, it transforms the numeric features by scaling them to a given
+        range. Type of scaling is defined by the ``normalize_method`` parameter.
 
     normalize_method: str, default = 'zscore'
-        Defines the method to be used for normalization. By default, normalize method
-        is set to 'zscore'. The standard zscore is calculated as z = (x - u) / s. The
-        other available options are:
+        Defines the method for scaling. By default, normalize method is set to 'zscore'
+        The standard zscore is calculated as z = (x - u) / s. Ignored when ``normalize`` 
+        is not True. The other options are:
 
         'minmax'    : scales and translates each feature individually such that it is in 
                     the range of 0 - 1.
@@ -216,22 +213,17 @@ def setup(
                     better results.
     
     transformation: bool, default = False
-        When set to True, a power transformation is applied to make the data more normal /
-        Gaussian-like. This is useful for modeling issues related to heteroscedasticity or 
-        other situations where normality is desired. The optimal parameter for stabilizing 
-        variance and minimizing skewness is estimated through maximum likelihood.
+        When set to True, it applies the power transform to make data more Gaussian-like.
+        Type of transformation is defined by the ``transformation_method`` parameter.
 
     transformation_method: str, default = 'yeo-johnson'
         Defines the method for transformation. By default, the transformation method is set
-        to 'yeo-johnson'. The other available option is 'quantile' transformation. Both 
-        the transformation transforms the feature set to follow a Gaussian-like or normal
-        distribution. Note that the quantile transformer is non-linear and may distort 
-        linear correlations between variables measured at the same scale.
+        to 'yeo-johnson'. The other available option for transformation is 'quantile'. 
+        Ignored when ``transformation`` is not True.
     
     handle_unknown_categorical: bool, default = True
-        When set to True, unknown categorical levels in new / unseen data are replaced by
-        the most or least frequent level as learned in the training data. The method is 
-        defined under the unknown_categorical_method param.
+        When set to True, unknown categorical levels in unseen data are replaced by the
+        most or least frequent level as learned in the training dataset. 
 
     unknown_categorical_method: str, default = 'least_frequent'
         Method used to replace unknown categorical levels in unseen data. Method can be
@@ -239,121 +231,102 @@ def setup(
 
     pca: bool, default = False
         When set to True, dimensionality reduction is applied to project the data into 
-        a lower dimensional space using the method defined in pca_method param. In 
-        supervised learning pca is generally performed when dealing with high feature
-        space and memory is a constraint. Note that not all datasets can be decomposed
-        efficiently using a linear PCA technique and that applying PCA may result in loss 
-        of information. As such, it is advised to run multiple experiments with different 
-        pca_methods to evaluate the impact. 
+        a lower dimensional space using the method defined in ``pca_method`` parameter. 
 
     pca_method: str, default = 'linear'
-        The 'linear' method performs Linear dimensionality reduction using Singular Value 
-        Decomposition. The other available options are:
+        The 'linear' method performs uses Singular Value  Decomposition. Other options are:
         
         kernel      : dimensionality reduction through the use of RVF kernel.  
         
-        incremental : replacement for 'linear' pca when the dataset to be decomposed is 
-                    too large to fit in memory
+        incremental : replacement for 'linear' pca when the dataset is too large.
 
-    pca_components: int/float, default = 0.99
+    pca_components: int or float, default = None
         Number of components to keep. if pca_components is a float, it is treated as a 
         target percentage for information retention. When pca_components is an integer
-        it is treated as the number of features to be kept. pca_components must be strictly
-        less than the original number of features in the dataset.
+        it is treated as the number of features to be kept. pca_components must be less
+        than the original number of features. Ignored when ``pca`` is not True.
 
     ignore_low_variance: bool, default = False
         When set to True, all categorical features with insignificant variances are 
-        removed from the dataset. The variance is calculated using the ratio of unique 
+        removed from the data. The variance is calculated using the ratio of unique 
         values to the number of samples, and the ratio of the most common value to the 
         frequency of the second most common value.
     
     combine_rare_levels: bool, default = False
-        When set to True, all levels in categorical features below the threshold defined 
-        in rare_level_threshold param are combined together as a single level. There must 
-        be atleast two levels under the threshold for this to take effect. 
-        rare_level_threshold represents the percentile distribution of level frequency. 
-        Generally, this technique is applied to limit a sparse matrix caused by high 
-        numbers of levels in categorical features. 
+        When set to True, frequency percentile for levels in categorical features below 
+        a certain threshold is combined into a single level.
     
     rare_level_threshold: float, default = 0.1
-        Percentile distribution below which rare categories are combined. Only comes into
-        effect when combine_rare_levels is set to True.
+        Percentile distribution below which rare categories are combined. Ignored when
+        ``combine_rare_levels`` is not True.
     
-    bin_numeric_features: list, default = None
-        When a list of numeric features is passed they are transformed into categorical
-        features using KMeans, where values in each bin have the same nearest center of a 
-        1D k-means cluster. The number of clusters are determined based on the 'sturges' 
-        method. It is only optimal for gaussian data and underestimates the number of bins 
-        for large non-gaussian datasets.
+    bin_numeric_features: list of str, default = None
+        To convert numeric features into categorical, bin_numeric_features parameter can 
+        be used. It takes a list of strings with column names to be discretized. It does
+        so by using 'sturges' rule to determine the number of clusters and then apply
+        ``KMeans`` algorithm. Original values of the feature are then replaced by the
+        cluster label.
 
     remove_outliers: bool, default = False
-        When set to True, outliers from the training data are removed using PCA linear
-        dimensionality reduction using the Singular Value Decomposition technique.
+        When set to True, outliers from the training data are removed using the Singular 
+        Value Decomposition.
 
     outliers_threshold: float, default = 0.05
-        The percentage / proportion of outliers in the dataset can be defined using
-        the outliers_threshold param. By default, 0.05 is used which means 0.025 of the 
-        values on each side of the distribution's tail are dropped from training data.
+        The percentage outliers to be removed from the training dataset. Ignored when 
+        ``remove_outliers`` is not True.
 
     remove_multicollinearity: bool, default = False
-        When set to True, the variables with inter-correlations higher than the threshold
-        defined under the multicollinearity_threshold param are dropped. When two features
-        are highly correlated with each other, the feature that is less correlated with 
-        the target variable is dropped. 
+        When set to True, features with the inter-correlations higher than the defined 
+        threshold are removed. When two features are highly correlated with each other, 
+        the feature that is less correlated with the target variable is removed. 
 
     multicollinearity_threshold: float, default = 0.9
-        Threshold used for dropping the correlated features. Only comes into effect when 
-        remove_multicollinearity is set to True.
+        Threshold for correlated features. Ignored when ``remove_multicollinearity``
+        is not True.
     
     remove_perfect_collinearity: bool, default = True
         When set to True, perfect collinearity (features with correlation = 1) is removed
-        from the dataset, When two features are 100% correlated, one of it is randomly 
-        dropped from the dataset.
+        from the dataset, when two features are 100% correlated, one of it is randomly 
+        removed from the dataset.
 
     create_clusters: bool, default = False
-        When set to True, an additional feature is created where each instance is assigned
-        to a cluster. The number of clusters is determined using a combination of 
-        Calinski-Harabasz and Silhouette criterion. 
+        When set to True, an additional feature is created in training dataset where each 
+        instance is assigned to a cluster. The number of clusters is determined by 
+        optimizing Calinski-Harabasz and Silhouette criterion. 
 
     cluster_iter: int, default = 20
-        Number of iterations used to create a cluster. Each iteration represents cluster 
-        size. Only comes into effect when create_clusters param is set to True.
+        Number of iterations for creating cluster. Each iteration represents cluster 
+        size. Ignored when ``create_clusters`` is not True. 
 
     polynomial_features: bool, default = False
-        When set to True, new features are created based on all polynomial combinations 
-        that exist within the numeric features in a dataset to the degree defined in 
-        polynomial_degree param. 
+        When set to True, new features are derived using existing numeric features. 
 
-    polynomial_degree: int, default = 2pca_method_pass
+    polynomial_degree: int, default = 2
         Degree of polynomial features. For example, if an input sample is two dimensional 
         and of the form [a, b], the polynomial features with degree = 2 are: 
-        [1, a, b, a^2, ab, b^2].
+        [1, a, b, a^2, ab, b^2]. Ignored when ``polynomial_features`` is not True.
 
     trigonometry_features: bool, default = False
-        When set to True, new features are created based on all trigonometric combinations 
-        that exist within the numeric features in a dataset to the degree defined in the
-        polynomial_degree param.
+        When set to True, new features are derived using existing numeric features.
 
     polynomial_threshold: float, default = 0.1
-        This is used to compress a sparse matrix of polynomial and trigonometric features.
-        Polynomial and trigonometric features whose feature importance based on the 
-        combination of Random Forest, AdaBoost and Linear correlation falls within the 
-        percentile of the defined threshold are kept in the dataset. Remaining features 
-        are dropped before further processing.
+        When ``polynomial_features`` or ``trigonometry_features`` is True, new features
+        are derived from the existing numeric features. This may sometimes result in too 
+        large feature space. polynomial_threshold parameter can be used to deal with this  
+        problem. It does so by using combination of Random Forest, AdaBoost and Linear 
+        correlation. All derived features that falls within the percentile distribution 
+        are kept and rest of the features are removed.
 
     group_features: list or list of list, default = None
-        When a dataset contains features that have related characteristics, group_features
-        param can be used for statistical feature extraction. For example, if a dataset has 
-        numeric features that are related with each other (i.e 'Col1', 'Col2', 'Col3'), a 
-        list containing the column names can be passed under group_features to extract 
-        statistical information such as the mean, median, mode and standard deviation.
-    
+        When the dataset contains features with related characteristics, group_features
+        parameter can be used for feature extraction. It takes a list of strings with 
+        column names that are related.
+        
     group_names: list, default = None
-        When group_features is passed, a name of the group can be passed into the 
-        group_names param as a list containing strings. The length of a group_names 
-        list must equal to the length  of group_features. When the length doesn't 
-        match or the name is not passed, new features are sequentially named such as 
-        group_1, group_2 etc.
+        Group names to be used in naming new features. When the length of group_names 
+        does not match with the length of ``group_features``, new features are named 
+        sequentially group_1, group_2, etc. It is ignored when ``group_features`` is
+        None.
     
     feature_selection: bool, default = False
         When set to True, a subset of features are selected using a combination of various
@@ -418,7 +391,7 @@ def setup(
         If list is passed, will stratify by the columns with the names in the list.
         Requires data_split_shuffle to be set to True.
 
-    fold_strategy: str or scikit-learn compatible CV generator object, default = 'stratifiedkfold'
+    fold_strategy: str or sklearn CV generator object, default = 'stratifiedkfold'
         Choice of cross validation strategy. Possible values are:
 
         * 'kfold' for KFold CV,
@@ -432,13 +405,14 @@ def setup(
         Ignored if fold_strategy is an object.
 
     fold_shuffle: bool, default = False
-        If set to False, prevents shuffling of rows when using cross validation. Only applicable for
-        'kfold' and 'stratifiedkfold' fold_strategy. Ignored if fold_strategy is an object.
+        If set to False, prevents shuffling of rows when using cross validation. 
+        Only applicable for 'kfold' and 'stratifiedkfold' fold_strategy. Ignored 
+        when fold_strategy is an object.
     
     fold_groups: str or array-like, with shape (n_samples,), default = None
-        Optional Group labels for the samples used while splitting the dataset into train/test set.
-        If string is passed, will use the data column with that name as the groups.
-        Only used if a group based cross-validation generator is used (eg. GroupKFold).
+        Optional Group labels for the samples used while splitting the dataset into 
+        train/test set. If string is passed, will use the data column with that name 
+        as the groups. Only used if a group based cross-validation generator is used.
 
     n_jobs: int, default = -1
         The number of jobs to run in parallel (for functions that supports parallel 
@@ -447,9 +421,8 @@ def setup(
 
     use_gpu: str or bool, default = False
         If set to 'force', will try to use GPU with all algorithms that support it,
-        and raise exceptions if they are unavailable.
-        If set to True, will use GPU with algorithms that support it, and fall
-        back to CPU if they are unavailable.
+        and raise exceptions if they are unavailable. If set to True, will use GPU 
+        with algorithms that support it, and fall back to CPU if they are unavailable.
         If set to False, will only use CPU.
 
         GPU enabled algorithms:
@@ -457,8 +430,8 @@ def setup(
         - CatBoost
         - XGBoost
         - LightGBM - requires https://lightgbm.readthedocs.io/en/latest/GPU-Tutorial.html
-        - Logistic Regression, Ridge, Random Forest, KNN, SVM, SVC - requires cuML >= 0.15 to be installed.
-          https://github.com/rapidsai/cuml
+        - Logistic Regression, Ridge, Random Forest, KNN, SVM, SVC - requires cuML >= 0.15 
+        to be installed. https://github.com/rapidsai/cuml
 
     custom_pipeline: transformer or list of transformers or tuple
     (str, transformer) or list of tuples (str, transformer), default = None
@@ -469,7 +442,7 @@ def setup(
 
     html: bool, default = True
         If set to False, prevents runtime display of monitor. This must be set to False
-        when using environment that doesnt support HTML.
+        when using environment that does not support ``html``.
 
     session_id: int, default = None
         If None, a random seed is generated and returned in the Information grid. The 
@@ -477,23 +450,21 @@ def setup(
         experiment. This can be used for later reproducibility of the entire experiment.
 
     log_experiment: bool, default = False
-        When set to True, all metrics and parameters are logged on MLFlow server.
+        When set to True, all metrics and parameters are logged on ``MLFlow`` server.
 
     experiment_name: str, default = None
-        Name of experiment for logging. When set to None, 'clf' is by default used as 
-        alias for the experiment name.
+        Name of the experiment for logging. Ignored when ``log_experiment`` is not True.
 
     log_plots: bool or list, default = False
-        When set to True, AUC, Confusion Matrix and Feature Importance plots will be logged.
-        When set to a list of plot IDs (consult ``plot_model``), will log those plots.
-        If False, will log no plots. 
+        When set to True, AUC, Confusion Matrix and Feature Importance plots will be 
+        logged. When set to a list of plot IDs (consult ``plot_model``), will log those 
+        plots. If False, will log no plots. 
 
     log_profile: bool, default = False
-        When set to True, data profile is also logged on MLflow as a html file. 
-        By default, it is set to False. 
+        When set to True, data profile is logged on ``MLflow`` server as a html file. 
 
     log_data: bool, default = False
-        When set to True, train and test dataset are logged as csv. 
+        When set to True, dataset is logged on ``MLflow`` as a csv file.
 
     silent: bool, default = False
         When set to True, confirmation of data types is not required. All preprocessing 
@@ -501,19 +472,10 @@ def setup(
         for direct use except for established pipelines.
     
     verbose: bool, default = True
-        Information grid is not printed when verbose is set to False.
+        When set to False, Information grid is not printed.
 
     profile: bool, default = False
-        If set to true, a data profile for Exploratory Data Analysis will be displayed 
-        in an interactive HTML report. 
-
-    Warnings
-    --------
-    - Some GPU models require conversion from float64 to float32,
-      which may result in loss of precision. It should not be an issue in majority of cases.
-      Models impacted:
-
-        * cuml.ensemble.RandomForestClassifier
+        When set to true, an interactive EDA report is displayed. 
 
     Returns
     -------
@@ -648,10 +610,11 @@ def compare_models(
 
     """
     This function train all the models available in the model library and scores them 
-    using Cross Validation. The output prints a score grid with Accuracy, 
-    AUC, Recall, Precision, F1, Kappa and MCC (averaged across folds).
+    using Cross Validation. The output prints a score grid with Accuracy, AUC, Recall, 
+    Precision, F1, Kappa and MCC (averaged across folds).
     
-    This function returns all of the models compared, sorted by the value of the selected metric.
+    This function returns all of the models compared, sorted by the value of the selected 
+    metric.
 
     To select top N models, use n_select parameter that is set to 1 by default.
     Where n_select parameter > 1, it will return a list of trained model objects.
@@ -663,7 +626,8 @@ def compare_models(
     -------
     >>> from pycaret.datasets import get_data
     >>> juice = get_data('juice')
-    >>> experiment_name = setup(data = juice,  target = 'Purchase')
+    >>> from pycaret.classification import *
+    >>> exp_name = setup(data = juice,  target = 'Purchase')
     >>> best_model = compare_models() 
 
     This will return the averaged score grid of all the models except 'rbfsvm', 'gpc' 
@@ -689,14 +653,14 @@ def compare_models(
 
     Parameters
     ----------
-    exclude: list of strings, default = None
-        In order to omit certain models from the comparison model ID's can be passed as 
-        a list of strings in exclude param. 
-
     include: list of strings or objects, default = None
         In order to run only certain models for the comparison, the model ID's can be 
         passed as a list of strings in include param. The list can also include estimator
         objects to be compared.
+
+    exclude: list of strings, default = None
+        In order to omit certain models from the comparison model ID's can be passed as 
+        a list of strings in exclude param. 
 
     fold: int or scikit-learn compatible CV generator, default = None
         Controls cross-validation. If None, will use the CV generator defined in setup().
@@ -707,8 +671,9 @@ def compare_models(
         Number of decimal places the metrics in the score grid will be rounded to.
   
     cross_validation: bool, default = True
-        When cross_validation set to False fold parameter is ignored and models are trained
-        on entire training dataset, returning metrics calculated using the train (holdout) set.
+        When cross_validation set to False fold parameter is ignored and models are 
+        trained on entire training dataset, returning metrics calculated using the train 
+        (holdout) set.
 
     sort: str, default = 'Accuracy'
         The scoring measure specified is used for sorting the average score grid
@@ -731,14 +696,15 @@ def compare_models(
         If 'raise', will allow exceptions to be raised.
 
     fit_kwargs: dict, default = {} (empty dict)
-        Dictionary of arguments passed to the fit method of the model. The parameters will be applied to all models,
-        therefore it is recommended to set errors parameter to 'ignore'.
+        Dictionary of arguments passed to the fit method of the model. The parameters 
+        will be applied to all models, therefore it is recommended to set errors 
+        parameter to 'ignore'.
 
     groups: str or array-like, with shape (n_samples,), default = None
-        Optional Group labels for the samples used while splitting the dataset into train/test set.
-        If string is passed, will use the data column with that name as the groups.
-        Only used if a group based cross-validation generator is used (eg. GroupKFold).
-        If None, will use the value set in fold_groups param in setup().
+        Optional Group labels for the samples used while splitting the dataset into 
+        train/test set. If string is passed, will use the data column with that name 
+        as the groups. Only used if a group based cross-validation generator is used 
+        (eg. GroupKFold). If None, will use the value set in fold_groups param in setup().
 
     verbose: bool, default = True
         Score grid is not printed when verbose is set to False.
@@ -809,7 +775,8 @@ def create_model(
     -------
     >>> from pycaret.datasets import get_data
     >>> juice = get_data('juice')
-    >>> experiment_name = setup(data = juice,  target = 'Purchase')
+    >>> from pycaret.classification import *
+    >>> exp_name = setup(data = juice,  target = 'Purchase')
     >>> lr = create_model('lr')
 
     This will create a trained Logistic Regression model.
@@ -817,10 +784,10 @@ def create_model(
     Parameters
     ----------
     estimator : str / object, default = None
-        Enter ID of the estimators available in model library or pass an untrained model 
-        object consistent with fit / predict API to train and evaluate model. All 
-        estimators support binary or multiclass problem. List of estimators in model 
-        library (ID - Name):
+        Enter ID of the estimators available in model library or pass an untrained 
+        model object consistent with fit / predict API to train and evaluate model. 
+        All estimators support binary or multiclass problem. List of estimators in 
+        model library (ID - Name):
 
         * 'lr' - Logistic Regression             
         * 'knn' - K Nearest Neighbour            
@@ -842,25 +809,27 @@ def create_model(
         * 'catboost' - CatBoost Classifier             
 
     fold: int or scikit-learn compatible CV generator, default = None
-        Controls cross-validation. If None, will use the CV generator defined in setup().
-        If integer, will use StratifiedKFold CV with that many folds.
+        Controls cross-validation. If None, will use the CV generator defined in 
+        setup(). If integer, will use StratifiedKFold CV with that many folds.
         When cross_validation is False, this parameter is ignored.
 
     round: int, default = 4
         Number of decimal places the metrics in the score grid will be rounded to. 
 
     cross_validation: bool, default = True
-        When cross_validation set to False fold parameter is ignored and model is trained
-        on entire training dataset, returning metrics calculated using the train (holdout) set.
+        When cross_validation set to False fold parameter is ignored and model is 
+        trained on entire training dataset, returning metrics calculated using the 
+        train (holdout) set.
 
     fit_kwargs: dict, default = {} (empty dict)
         Dictionary of arguments passed to the fit method of the model.
 
     groups: str or array-like, with shape (n_samples,), default = None
-        Optional Group labels for the samples used while splitting the dataset into train/test set.
-        If string is passed, will use the data column with that name as the groups.
-        Only used if a group based cross-validation generator is used (eg. GroupKFold).
-        If None, will use the value set in fold_groups param in setup().
+        Optional Group labels for the samples used while splitting the dataset into 
+        train/test set. If string is passed, will use the data column with that name 
+        as the groups. Only used if a group based cross-validation generator is used 
+        (eg. GroupKFold). If None, will use the value set in fold_groups param in 
+        setup().
 
     verbose: bool, default = True
         Score grid is not printed when verbose is set to False.
@@ -939,7 +908,8 @@ def tune_model(
     -------
     >>> from pycaret.datasets import get_data
     >>> juice = get_data('juice')
-    >>> experiment_name = setup(data = juice,  target = 'Purchase')
+    >>> from pycaret.classification import *
+    >>> exp_name = setup(data = juice,  target = 'Purchase')
     >>> xgboost = create_model('xgboost')
     >>> tuned_xgboost = tune_model(xgboost) 
 
@@ -1144,7 +1114,8 @@ def ensemble_model(
     -------
     >>> from pycaret.datasets import get_data
     >>> juice = get_data('juice')
-    >>> experiment_name = setup(data = juice,  target = 'Purchase')
+    >>> from pycaret.classification import *
+    >>> exp_name = setup(data = juice,  target = 'Purchase')
     >>> dt = create_model('dt')
     >>> ensembled_dt = ensemble_model(dt)
 
@@ -1257,6 +1228,10 @@ def blend_models(
 
     Example
     -------
+    >>> from pycaret.datasets import get_data
+    >>> juice = get_data('juice')
+    >>> from pycaret.classification import *
+    >>> exp_name = setup(data = juice,  target = 'Purchase')
     >>> lr = create_model('lr')
     >>> rf = create_model('rf')
     >>> knn = create_model('knn')
@@ -1373,7 +1348,8 @@ def stack_models(
     -------
     >>> from pycaret.datasets import get_data
     >>> juice = get_data('juice')
-    >>> experiment_name = setup(data = juice,  target = 'Purchase')
+    >>> from pycaret.classification import *
+    >>> exp_name = setup(data = juice,  target = 'Purchase')
     >>> dt = create_model('dt')
     >>> rf = create_model('rf')
     >>> ada = create_model('ada')
@@ -1488,7 +1464,8 @@ def plot_model(
     -------
     >>> from pycaret.datasets import get_data
     >>> juice = get_data('juice')
-    >>> experiment_name = setup(data = juice,  target = 'Purchase')
+    >>> from pycaret.classification import *
+    >>> exp_name = setup(data = juice,  target = 'Purchase')
     >>> lr = create_model('lr')
     >>> plot_model(lr)
 
@@ -1592,7 +1569,8 @@ def evaluate_model(
     -------
     >>> from pycaret.datasets import get_data
     >>> juice = get_data('juice')
-    >>> experiment_name = setup(data = juice,  target = 'Purchase')
+    >>> from pycaret.classification import *
+    >>> exp_name = setup(data = juice,  target = 'Purchase')
     >>> lr = create_model('lr')
     >>> evaluate_model(lr)
     
@@ -1652,7 +1630,8 @@ def interpret_model(
     -------
     >>> from pycaret.datasets import get_data
     >>> juice = get_data('juice')
-    >>> experiment_name = setup(data = juice,  target = 'Purchase')
+    >>> from pycaret.classification import *
+    >>> exp_name = setup(data = juice,  target = 'Purchase')
     >>> dt = create_model('dt')
     >>> interpret_model(dt)
 
@@ -1727,7 +1706,8 @@ def calibrate_model(
     -------
     >>> from pycaret.datasets import get_data
     >>> juice = get_data('juice')
-    >>> experiment_name = setup(data = juice,  target = 'Purchase')
+    >>> from pycaret.classification import *
+    >>> exp_name = setup(data = juice,  target = 'Purchase')
     >>> dt_boosted = create_model('dt', ensemble = True, method = 'Boosting')
     >>> calibrated_dt = calibrate_model(dt_boosted)
 
@@ -1814,7 +1794,8 @@ def optimize_threshold(
     -------
     >>> from pycaret.datasets import get_data
     >>> juice = get_data('juice')
-    >>> experiment_name = setup(data = juice,  target = 'Purchase')
+    >>> from pycaret.classification import *
+    >>> exp_name = setup(data = juice,  target = 'Purchase')
     >>> lr = create_model('lr')
     >>> optimize_threshold(lr, true_negative = 10, false_negative = -100)
 
@@ -1878,7 +1859,8 @@ def predict_model(
     -------
     >>> from pycaret.datasets import get_data
     >>> juice = get_data('juice')
-    >>> experiment_name = setup(data = juice,  target = 'Purchase')
+    >>> from pycaret.classification import *
+    >>> exp_name = setup(data = juice,  target = 'Purchase')
     >>> lr = create_model('lr')
     >>> lr_predictions_holdout = predict_model(lr)
         
@@ -1952,7 +1934,8 @@ def finalize_model(
     -------
     >>> from pycaret.datasets import get_data
     >>> juice = get_data('juice')
-    >>> experiment_name = setup(data = juice,  target = 'Purchase')
+    >>> from pycaret.classification import *
+    >>> exp_name = setup(data = juice,  target = 'Purchase')
     >>> lr = create_model('lr')
     >>> final_lr = finalize_model(lr)
     
@@ -2016,7 +1999,8 @@ def deploy_model(
     -------
     >>> from pycaret.datasets import get_data
     >>> juice = get_data('juice')
-    >>> experiment_name = setup(data = juice,  target = 'Purchase')
+    >>> from pycaret.classification import *
+    >>> exp_name = setup(data = juice,  target = 'Purchase')
     >>> lr = create_model('lr')
     >>> deploy_model(model = lr, model_name = 'deploy_lr', platform = 'aws', authentication = {'bucket' : 'pycaret-test'})
     
@@ -2115,7 +2099,8 @@ def save_model(model, model_name: str, model_only: bool = False, verbose: bool =
     -------
     >>> from pycaret.datasets import get_data
     >>> juice = get_data('juice')
-    >>> experiment_name = setup(data = juice,  target = 'Purchase')
+    >>> from pycaret.classification import *
+    >>> exp_name = setup(data = juice,  target = 'Purchase')
     >>> lr = create_model('lr')
     >>> save_model(lr, 'lr_model_23122019')
     
