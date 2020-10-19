@@ -882,6 +882,7 @@ def deploy_model(
     Notes
     -----
     For AWS users:
+
     Before deploying a model to an AWS S3 ('aws'), environment variables must be 
     configured using the command line interface. To configure AWS env. variables, 
     type aws configure in your python command line. The following information is
@@ -894,7 +895,7 @@ def deploy_model(
     - Default output format (must be left blank)
 
     For GCP users:
-    --------------
+
     Before deploying a model to Google Cloud Platform (GCP), project must be created 
     either using command line or GCP console. Once project is created, you must create 
     a service account and download the service account key as a JSON file, which is 
@@ -906,7 +907,7 @@ def deploy_model(
     - Service Account Authetication
 
     For Azure users:
-    ---------------
+
     Before deploying a model to Microsoft's Azure (Azure), environment variables
     for connection string must be set. In order to get connection string, user has
     to create account of Azure. Once it is done, create a Storage account. In the settings

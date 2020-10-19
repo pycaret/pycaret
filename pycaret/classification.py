@@ -1401,9 +1401,11 @@ def stack_models(
         Number of decimal places the metrics in the score grid will be rounded to.
 
     method: str, default = 'auto'
-        - if ‘auto’, it will try to invoke, for each estimator, 'predict_proba', 
+
+        - if ‘auto’, it will try to invoke, for each estimator, 'predict_proba',
         'decision_function' or 'predict' in that order.
-        - otherwise, one of 'predict_proba', 'decision_function' or 'predict'. 
+        - otherwise, one of 'predict_proba', 'decision_function' or 'predict'.
+
         If the method is not implemented by the estimator, it will raise an error.
 
     restack: bool, default = True
@@ -2025,6 +2027,7 @@ def deploy_model(
     Notes
     -----
     For AWS users:
+
     Before deploying a model to an AWS S3 ('aws'), environment variables must be 
     configured using the command line interface. To configure AWS env. variables, 
     type aws configure in your python command line. The following information is
@@ -2037,7 +2040,7 @@ def deploy_model(
     - Default output format (must be left blank)
 
     For GCP users:
-    --------------
+
     Before deploying a model to Google Cloud Platform (GCP), project must be created 
     either using command line or GCP console. Once project is created, you must create 
     a service account and download the service account key as a JSON file, which is 
@@ -2049,7 +2052,7 @@ def deploy_model(
     - Service Account Authetication
 
     For Azure users:
-    ---------------
+
     Before deploying a model to Microsoft's Azure (Azure), environment variables
     for connection string must be set. In order to get connection string, user has
     to create account of Azure. Once it is done, create a Storage account. In the settings
@@ -2338,10 +2341,11 @@ def add_metric(
         Display name of the metric.
 
     score_func: type
-        Score function (or loss function) with signature score_func(y, y_pred, **kwargs).
+        Score function (or loss function) with signature ``score_func(y, y_pred, **kwargs)``.
 
     target: str, default = 'pred'
         The target of the score function.
+
         - 'pred' for the prediction table
         - 'pred_proba' for pred_proba
         - 'threshold' for decision_function or predict_proba
