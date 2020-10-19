@@ -30,10 +30,10 @@ jobs:
         REF_TO_CHECKOUT=$(python check_latest_commit_for_nightly.py "$GITHUB_REPOSITORY" "${GITHUB_REF##*/}")
         if [[ $? -eq 0 ]] ; then
             echo "Proceeding with build and publish of commit $REF_TO_CHECKOUT"
-            echo "::set-env name=REF_TO_CHECKOUT::$REF_TO_CHECKOUT"
+            echo "REF_TO_CHECKOUT=$REF_TO_CHECKOUT" >> $GITHUB_ENV
         else
             echo "No need for build and publish, exiting..."
-            echo "::set-env name=REF_TO_CHECKOUT::0"
+            echo "REF_TO_CHECKOUT=0" >> $GITHUB_ENV
             exit 0
         fi
     - name: Checkout last passing commit
