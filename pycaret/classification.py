@@ -625,24 +625,24 @@ def compare_models(
 
     Parameters
     ----------
-    `include:` list of strings or objects, default = None
+    include: list of strings or objects, default = None
         In order to run only certain models for the comparison, the model ID's can be 
         passed as a list of strings in include param. The list can also include estimator
         objects to be compared.
 
-    `exclude:` list of strings, default = None
+    exclude: list of strings, default = None
         In order to omit certain models from the comparison model ID's can be passed as 
         a list of strings in exclude param. 
 
-    'fold:' int or scikit-learn compatible CV generator, default = None
+    fold: int or scikit-learn compatible CV generator, default = None
         Controls cross-validation. If None, will use the CV generator defined in setup().
         If integer, will use StratifiedKFold CV with that many folds.
         When cross_validation is False, this parameter is ignored.
 
-    ``round:`` int, default = 4
+    round: int, default = 4
         Number of decimal places the metrics in the score grid will be rounded to.
 
-    ``cross_validation:`` bool, default = True
+    cross_validation: bool, default = True
         When cross_validation set to False fold parameter is ignored and models are 
         trained on entire training dataset, returning metrics calculated using the train 
         (holdout) set.
