@@ -609,18 +609,11 @@ def compare_models(
 ) -> Union[Any, List[Any]]:
 
     """
-    This function train all the models available in the model library and scores them 
-    using Cross Validation. The output prints a score grid with Accuracy, AUC, Recall, 
-    Precision, F1, Kappa and MCC (averaged across folds).
-    
-    This function returns all of the models compared, sorted by the value of the selected 
-    metric.
-
-    To select top N models, use n_select parameter that is set to 1 by default.
-    Where n_select parameter > 1, it will return a list of trained model objects.
-
-    When turbo is set to True ('rbfsvm', 'gpc' and 'mlp') are excluded due to longer
-    training time. By default turbo param is set to True.
+    This function trains and evaluates performance of estimators available in the model
+    library using ``cross validation``. The output of this function is a score grid with 
+    average cross validated score. Default metrics evaluated during CV can be accessed
+    using ``get_metrics()``. Custom metrics can be added or removed using ``add_metric``
+    and ``remove_metric`` function.    
 
     Example
     -------
@@ -630,51 +623,30 @@ def compare_models(
     >>> exp_name = setup(data = juice,  target = 'Purchase')
     >>> best_model = compare_models() 
 
-    This will return the averaged score grid of all the models except 'rbfsvm', 'gpc' 
-    and 'mlp'. When turbo param is set to False, all models including 'rbfsvm', 'gpc' 
-    and 'mlp' are used but this may result in longer training time.
-    
-    >>> best_model = compare_models( exclude = [ 'knn', 'gbc' ] , turbo = False) 
-
-    This will return a comparison of all models except K Nearest Neighbour and
-    Gradient Boosting Classifier.
-    
-    >>> best_model = compare_models( exclude = [ 'knn', 'gbc' ] , turbo = True) 
-
-    This will return comparison of all models except K Nearest Neighbour, 
-    Gradient Boosting Classifier, SVM (RBF), Gaussian Process Classifier and
-    Multi Level Perceptron.
-        
-
-    >>> tuned_model = tune_model(create_model('lr'))
-    >>> best_model = compare_models( include = [ 'lr', tuned_model ]) 
-
-    This will compare a tuned Linear Regression model with an untuned one.
-
     Parameters
     ----------
     include: list of strings or objects, default = None
         In order to run only certain models for the comparison, the model ID's can be 
         passed as a list of strings in include param. The list can also include estimator
         objects to be compared.
-
+          
     exclude: list of strings, default = None
         In order to omit certain models from the comparison model ID's can be passed as 
         a list of strings in exclude param. 
-
+          
     fold: int or scikit-learn compatible CV generator, default = None
         Controls cross-validation. If None, will use the CV generator defined in setup().
         If integer, will use StratifiedKFold CV with that many folds.
         When cross_validation is False, this parameter is ignored.
-
+          
     round: int, default = 4
         Number of decimal places the metrics in the score grid will be rounded to.
-  
+          
     cross_validation: bool, default = True
         When cross_validation set to False fold parameter is ignored and models are 
         trained on entire training dataset, returning metrics calculated using the train 
         (holdout) set.
-
+          
     sort: str, default = 'Accuracy'
         The scoring measure specified is used for sorting the average score grid
         Other options are 'AUC', 'Recall', 'Precision', 'F1', 'Kappa' and 'MCC'.
@@ -684,7 +656,7 @@ def compare_models(
         for example, n_select = -3 means bottom 3 models.
 
     budget_time: int or float, default = None
-        If not 0 or None, will terminate execution of the function after budget_time 
+        If not None, will terminate execution of the function after budget_time 
         minutes have passed and return results up to that point.
 
     turbo: bool, default = True
