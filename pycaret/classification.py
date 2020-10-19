@@ -201,14 +201,14 @@ def setup(
         The standard zscore is calculated as z = (x - u) / s. Ignored when ``normalize`` 
         is not True. The other options are:
 
-        'minmax'    : scales and translates each feature individually such that it is in 
+        minmax  :   scales and translates each feature individually such that it is in 
                     the range of 0 - 1.
         
-        'maxabs'    : scales and translates each feature individually such that the maximal 
+        maxabs  :   scales and translates each feature individually such that the maximal 
                     absolute value of each feature will be 1.0. It does not shift/center 
                     the data, and thus does not destroy any sparsity.
         
-        'robust'    : scales and translates each feature according to the Interquartile 
+        robust  :   scales and translates each feature according to the Interquartile 
                     range. When the dataset contains outliers, robust scaler often gives 
                     better results.
     
@@ -610,9 +610,9 @@ def compare_models(
 
     """
     This function trains and evaluates performance of estimators available in the model
-    library using ``cross validation``. The output of this function is a score grid with 
-    average cross validated score. Default metrics evaluated during CV can be accessed
-    using ``get_metrics()``. Custom metrics can be added or removed using ``add_metric``
+    library using cross validation. The output of this function is a score grid with 
+    average cross validated score. Metrics evaluated during CV can be accessed using
+    the ``get_metrics`` function. Custom metrics can be added or removed using ``add_metric``
     and ``remove_metric`` function.    
 
     Example
@@ -625,28 +625,28 @@ def compare_models(
 
     Parameters
     ----------
-    include: list of strings or objects, default = None
+    `include:` list of strings or objects, default = None
         In order to run only certain models for the comparison, the model ID's can be 
         passed as a list of strings in include param. The list can also include estimator
         objects to be compared.
-          
-    exclude: list of strings, default = None
+
+    `exclude:` list of strings, default = None
         In order to omit certain models from the comparison model ID's can be passed as 
         a list of strings in exclude param. 
-          
-    fold: int or scikit-learn compatible CV generator, default = None
+
+    'fold:' int or scikit-learn compatible CV generator, default = None
         Controls cross-validation. If None, will use the CV generator defined in setup().
         If integer, will use StratifiedKFold CV with that many folds.
         When cross_validation is False, this parameter is ignored.
-          
-    round: int, default = 4
+
+    ``round:`` int, default = 4
         Number of decimal places the metrics in the score grid will be rounded to.
-          
-    cross_validation: bool, default = True
+
+    ``cross_validation:`` bool, default = True
         When cross_validation set to False fold parameter is ignored and models are 
         trained on entire training dataset, returning metrics calculated using the train 
         (holdout) set.
-          
+
     sort: str, default = 'Accuracy'
         The scoring measure specified is used for sorting the average score grid
         Other options are 'AUC', 'Recall', 'Precision', 'F1', 'Kappa' and 'MCC'.
