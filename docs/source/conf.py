@@ -22,7 +22,7 @@ copyright = '2020, Moez Ali'
 author = 'Moez Ali'
 
 # The full version, including alpha/beta/rc tags
-release = '2.0.0'
+release = '2.2.0'
 
 
 # -- General configuration ---------------------------------------------------
@@ -66,7 +66,7 @@ html_theme = 'sphinx_rtd_theme'
 html_static_path = ['_static']
 
 html_css_files = [
-    'custom.css'
+    'css/custom.css'
 ]
 
 master_doc = 'index'
