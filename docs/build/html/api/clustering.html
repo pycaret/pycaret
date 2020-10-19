@@ -1,0 +1,1172 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Clustering &mdash; pycaret 2.0.0 documentation</title>
+  
+
+  
+  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/css/custom.css" type="text/css" />
+
+  
+  
+  
+  
+
+  
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/doctools.js"></script>
+        <script src="../_static/language_data.js"></script>
+    
+    <script type="text/javascript" src="../_static/js/theme.js"></script>
+
+    
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Anomaly" href="anomaly.html" />
+    <link rel="prev" title="Regression" href="regression.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="../index.html" class="icon icon-home" alt="Documentation Home"> pycaret
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../index.html">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="classification.html">Classification</a></li>
+<li class="toctree-l1"><a class="reference internal" href="regression.html">Regression</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Clustering</a></li>
+<li class="toctree-l1"><a class="reference internal" href="anomaly.html">Anomaly</a></li>
+<li class="toctree-l1"><a class="reference internal" href="nlp.html">NLP</a></li>
+<li class="toctree-l1"><a class="reference internal" href="arules.html">Arules</a></li>
+<li class="toctree-l1"><a class="reference internal" href="datasets.html">Datasets</a></li>
+</ul>
+
+            
+          
+        </div>
+        
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">pycaret</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
+        
+      <li>Clustering</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="../_sources/api/clustering.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="module-pycaret.clustering">
+<span id="clustering"></span><h1>Clustering<a class="headerlink" href="#module-pycaret.clustering" title="Permalink to this headline">¶</a></h1>
+<dl class="py function">
+<dt id="pycaret.clustering.setup">
+<code class="sig-prename descclassname">pycaret.clustering.</code><code class="sig-name descname">setup</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">data</span></em>, <em class="sig-param"><span class="n">preprocess</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">True</span></em>, <em class="sig-param"><span class="n">imputation_type</span><span class="p">:</span> <span class="n">str</span> <span class="o">=</span> <span class="default_value">'simple'</span></em>, <em class="sig-param"><span class="n">iterative_imputation_iters</span><span class="p">:</span> <span class="n">int</span> <span class="o">=</span> <span class="default_value">5</span></em>, <em class="sig-param"><span class="n">categorical_features</span><span class="p">:</span> <span class="n">Optional<span class="p">[</span>List<span class="p">[</span>str<span class="p">]</span><span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">categorical_imputation</span><span class="p">:</span> <span class="n">str</span> <span class="o">=</span> <span class="default_value">'mode'</span></em>, <em class="sig-param"><span class="n">categorical_iterative_imputer</span><span class="p">:</span> <span class="n">Union<span class="p">[</span>str<span class="p">, </span>Any<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">'lightgbm'</span></em>, <em class="sig-param"><span class="n">ordinal_features</span><span class="p">:</span> <span class="n">Optional<span class="p">[</span>Dict<span class="p">[</span>str<span class="p">, </span>list<span class="p">]</span><span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">high_cardinality_features</span><span class="p">:</span> <span class="n">Optional<span class="p">[</span>List<span class="p">[</span>str<span class="p">]</span><span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">high_cardinality_method</span><span class="p">:</span> <span class="n">str</span> <span class="o">=</span> <span class="default_value">'frequency'</span></em>, <em class="sig-param"><span class="n">numeric_features</span><span class="p">:</span> <span class="n">Optional<span class="p">[</span>List<span class="p">[</span>str<span class="p">]</span><span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">numeric_imputation</span><span class="p">:</span> <span class="n">str</span> <span class="o">=</span> <span class="default_value">'mean'</span></em>, <em class="sig-param"><span class="n">numeric_iterative_imputer</span><span class="p">:</span> <span class="n">Union<span class="p">[</span>str<span class="p">, </span>Any<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">'lightgbm'</span></em>, <em class="sig-param"><span class="n">date_features</span><span class="p">:</span> <span class="n">Optional<span class="p">[</span>List<span class="p">[</span>str<span class="p">]</span><span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">ignore_features</span><span class="p">:</span> <span class="n">Optional<span class="p">[</span>List<span class="p">[</span>str<span class="p">]</span><span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">normalize</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">False</span></em>, <em class="sig-param"><span class="n">normalize_method</span><span class="p">:</span> <span class="n">str</span> <span class="o">=</span> <span class="default_value">'zscore'</span></em>, <em class="sig-param"><span class="n">transformation</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">False</span></em>, <em class="sig-param"><span class="n">transformation_method</span><span class="p">:</span> <span class="n">str</span> <span class="o">=</span> <span class="default_value">'yeo-johnson'</span></em>, <em class="sig-param"><span class="n">handle_unknown_categorical</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">True</span></em>, <em class="sig-param"><span class="n">unknown_categorical_method</span><span class="p">:</span> <span class="n">str</span> <span class="o">=</span> <span class="default_value">'least_frequent'</span></em>, <em class="sig-param"><span class="n">pca</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">False</span></em>, <em class="sig-param"><span class="n">pca_method</span><span class="p">:</span> <span class="n">str</span> <span class="o">=</span> <span class="default_value">'linear'</span></em>, <em class="sig-param"><span class="n">pca_components</span><span class="p">:</span> <span class="n">Optional<span class="p">[</span>float<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">ignore_low_variance</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">False</span></em>, <em class="sig-param"><span class="n">combine_rare_levels</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">False</span></em>, <em class="sig-param"><span class="n">rare_level_threshold</span><span class="p">:</span> <span class="n">float</span> <span class="o">=</span> <span class="default_value">0.1</span></em>, <em class="sig-param"><span class="n">bin_numeric_features</span><span class="p">:</span> <span class="n">Optional<span class="p">[</span>List<span class="p">[</span>str<span class="p">]</span><span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">remove_multicollinearity</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">False</span></em>, <em class="sig-param"><span class="n">multicollinearity_threshold</span><span class="p">:</span> <span class="n">float</span> <span class="o">=</span> <span class="default_value">0.9</span></em>, <em class="sig-param"><span class="n">remove_perfect_collinearity</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">False</span></em>, <em class="sig-param"><span class="n">group_features</span><span class="p">:</span> <span class="n">Optional<span class="p">[</span>List<span class="p">[</span>str<span class="p">]</span><span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">group_names</span><span class="p">:</span> <span class="n">Optional<span class="p">[</span>List<span class="p">[</span>str<span class="p">]</span><span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">n_jobs</span><span class="p">:</span> <span class="n">Optional<span class="p">[</span>int<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">- 1</span></em>, <em class="sig-param"><span class="n">use_gpu</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">False</span></em>, <em class="sig-param"><span class="n">custom_pipeline</span><span class="p">:</span> <span class="n">Union<span class="p">[</span>Any<span class="p">, </span>Tuple<span class="p">[</span>str<span class="p">, </span>Any<span class="p">]</span><span class="p">, </span>List<span class="p">[</span>Any<span class="p">]</span><span class="p">, </span>List<span class="p">[</span>Tuple<span class="p">[</span>str<span class="p">, </span>Any<span class="p">]</span><span class="p">]</span><span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">html</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">True</span></em>, <em class="sig-param"><span class="n">session_id</span><span class="p">:</span> <span class="n">Optional<span class="p">[</span>int<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">log_experiment</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">False</span></em>, <em class="sig-param"><span class="n">experiment_name</span><span class="p">:</span> <span class="n">Optional<span class="p">[</span>str<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">log_plots</span><span class="p">:</span> <span class="n">Union<span class="p">[</span>bool<span class="p">, </span>list<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">False</span></em>, <em class="sig-param"><span class="n">log_profile</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">False</span></em>, <em class="sig-param"><span class="n">log_data</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">False</span></em>, <em class="sig-param"><span class="n">silent</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">False</span></em>, <em class="sig-param"><span class="n">verbose</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">True</span></em>, <em class="sig-param"><span class="n">profile</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">False</span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycaret.clustering.setup" title="Permalink to this definition">¶</a></dt>
+<dd><p>This function initializes the environment in pycaret. setup() must called before
+executing any other function in pycaret. It takes one mandatory parameter:
+data.</p>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">pycaret.datasets</span> <span class="kn">import</span> <span class="n">get_data</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">jewellery</span> <span class="o">=</span> <span class="n">get_data</span><span class="p">(</span><span class="s1">&#39;jewellery&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">experiment_name</span> <span class="o">=</span> <span class="n">setup</span><span class="p">(</span><span class="n">data</span> <span class="o">=</span> <span class="n">jewellery</span><span class="p">,</span> <span class="n">normalize</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>‘jewellery’ is a pandas.DataFrame.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>data</strong> (<em>pandas.DataFrame</em>) – Shape (n_samples, n_features) where n_samples is the number of samples
+and n_features is the number of features.</p></li>
+<li><p><strong>categorical_features</strong> (<em>string</em><em>, </em><em>default = None</em>) – If the inferred data types are not correct, categorical_features can be used to
+overwrite the inferred type. If when running setup the type of ‘column1’ is
+inferred as numeric instead of categorical, then this parameter can be used
+to overwrite the type by passing categorical_features = [‘column1’].</p></li>
+<li><p><strong>categorical_imputation</strong> (<em>string</em><em>, </em><em>default = 'constant'</em>) – If missing values are found in categorical features, they will be imputed with
+a constant ‘not_available’ value. The other available option is ‘mode’ which
+imputes the missing value using most frequent value in the training dataset.</p></li>
+<li><p><strong>ordinal_features</strong> (<em>dictionary</em><em>, </em><em>default = None</em>) – When the data contains ordinal features, they must be encoded differently using
+the ordinal_features param. If the data has a categorical variable with values
+of ‘low’, ‘medium’, ‘high’ and it is known that low &lt; medium &lt; high, then it can
+be passed as ordinal_features = { ‘column_name’ : [‘low’, ‘medium’, ‘high’] }.
+The list sequence must be in increasing order from lowest to highest.</p></li>
+<li><p><strong>high_cardinality_features</strong> (<em>string</em><em>, </em><em>default = None</em>) – When the data containts features with high cardinality, they can be compressed
+into fewer levels by passing them as a list of column names with high cardinality.
+Features are compressed using frequency distribution. As such original features
+are replaced with the frequency distribution and converted into numeric variable.</p></li>
+<li><p><strong>numeric_features</strong> (<em>string</em><em>, </em><em>default = None</em>) – If the inferred data types are not correct, numeric_features can be used to
+overwrite the inferred type. If when running setup the type of ‘column1’ is
+inferred as a categorical instead of numeric, then this parameter can be used
+to overwrite by passing numeric_features = [‘column1’].</p></li>
+<li><p><strong>numeric_imputation</strong> (<em>string</em><em>, </em><em>default = 'mean'</em>) – If missing values are found in numeric features, they will be imputed with the
+mean value of the feature. The other available options are ‘median’ which imputes
+the value using the median value in the training dataset and ‘zero’ which
+replaces missing values with zeroes.</p></li>
+<li><p><strong>date_features</strong> (<em>string</em><em>, </em><em>default = None</em>) – If the data has a DateTime column that is not automatically detected when running
+setup, this parameter can be used by passing date_features = ‘date_column_name’.
+It can work with multiple date columns. Date columns are not used in modeling.
+Instead, feature extraction is performed and date columns are dropped from the
+dataset. If the date column includes a time stamp, features related to time will
+also be extracted.</p></li>
+<li><p><strong>ignore_features</strong> (<em>string</em><em>, </em><em>default = None</em>) – If any feature should be ignored for modeling, it can be passed to the param
+ignore_features. The ID and DateTime columns when inferred, are automatically
+set to ignore for modeling.</p></li>
+<li><p><strong>normalize</strong> (<em>bool</em><em>, </em><em>default = False</em>) – When set to True, the feature space is transformed using the normalized_method
+param. Generally, linear algorithms perform better with normalized data however,
+the results may vary and it is advised to run multiple experiments to evaluate
+the benefit of normalization.</p></li>
+<li><p><strong>normalize_method</strong> (<em>string</em><em>, </em><em>default = 'zscore'</em>) – <p>Defines the method to be used for normalization. By default, normalize method
+is set to ‘zscore’. The standard zscore is calculated as z = (x - u) / s. The
+other available options are:</p>
+<dl class="simple">
+<dt>’minmax’<span class="classifier">scales and translates each feature individually such that it is in</span></dt><dd><p>the range of 0 - 1.</p>
+</dd>
+<dt>’maxabs’<span class="classifier">scales and translates each feature individually such that the</span></dt><dd><p>maximal absolute value of each feature will be 1.0. It does not
+shift/center the data, and thus does not destroy any sparsity.</p>
+</dd>
+<dt>’robust’<span class="classifier">scales and translates each feature according to the Interquartile</span></dt><dd><p>range. When the dataset contains outliers, robust scaler often gives
+better results.</p>
+</dd>
+</dl>
+</p></li>
+<li><p><strong>transformation</strong> (<em>bool</em><em>, </em><em>default = False</em>) – When set to True, a power transformation is applied to make the data more normal /
+Gaussian-like. This is useful for modeling issues related to heteroscedasticity or
+other situations where normality is desired. The optimal parameter for stabilizing
+variance and minimizing skewness is estimated through maximum likelihood.</p></li>
+<li><p><strong>transformation_method</strong> (<em>string</em><em>, </em><em>default = 'yeo-johnson'</em>) – Defines the method for transformation. By default, the transformation method is
+set to ‘yeo-johnson’. The other available option is ‘quantile’ transformation.
+Both the transformation transforms the feature set to follow a Gaussian-like or
+normal distribution. Note that the quantile transformer is non-linear and may
+distort linear correlations between variables measured at the same scale.</p></li>
+<li><p><strong>handle_unknown_categorical</strong> (<em>bool</em><em>, </em><em>default = True</em>) – When set to True, unknown categorical levels in new / unseen data are replaced by
+the most or least frequent level as learned in the training data. The method is
+defined under the unknown_categorical_method param.</p></li>
+<li><p><strong>unknown_categorical_method</strong> (<em>string</em><em>, </em><em>default = 'least_frequent'</em>) – Method used to replace unknown categorical levels in unseen data. Method can be
+set to ‘least_frequent’ or ‘most_frequent’.</p></li>
+<li><p><strong>pca</strong> (<em>bool</em><em>, </em><em>default = False</em>) – When set to True, dimensionality reduction is applied to project the data into
+a lower dimensional space using the method defined in pca_method param. In
+supervised learning pca is generally performed when dealing with high feature
+space and memory is a constraint. Note that not all datasets can be decomposed
+efficiently using a linear PCA technique and that applying PCA may result in loss
+of information. As such, it is advised to run multiple experiments with different
+pca_methods to evaluate the impact.</p></li>
+<li><p><strong>pca_method</strong> (<em>string</em><em>, </em><em>default = 'linear'</em>) – <p>The ‘linear’ method performs Linear dimensionality reduction using Singular Value
+Decomposition. The other available options are:</p>
+<p>kernel      : dimensionality reduction through the use of RVF kernel.</p>
+<dl class="simple">
+<dt>incremental<span class="classifier">replacement for ‘linear’ pca when the dataset to be decomposed is</span></dt><dd><p>too large to fit in memory</p>
+</dd>
+</dl>
+</p></li>
+<li><p><strong>pca_components</strong> (<em>int/float</em><em>, </em><em>default = 0.99</em>) – Number of components to keep. if pca_components is a float, it is treated as a
+target percentage for information retention. When pca_components is an integer
+it is treated as the number of features to be kept. pca_components must be
+strictly less than the original number of features in the dataset.</p></li>
+<li><p><strong>ignore_low_variance</strong> (<em>bool</em><em>, </em><em>default = False</em>) – When set to True, all categorical features with statistically insignificant
+variances are removed from the dataset. The variance is calculated using the
+ratio of unique values to the number of samples, and the ratio of the most
+common value to the frequency of the second most common value.</p></li>
+<li><p><strong>combine_rare_levels</strong> (<em>bool</em><em>, </em><em>default = False</em>) – When set to True, all levels in categorical features below the threshold
+defined in rare_level_threshold param are combined together as a single level.
+There must be atleast two levels under the threshold for this to take effect.
+rare_level_threshold represents the percentile distribution of level frequency.
+Generally, this technique is applied to limit a sparse matrix caused by high
+numbers of levels in categorical features.</p></li>
+<li><p><strong>rare_level_threshold</strong> (<em>float</em><em>, </em><em>default = 0.1</em>) – Percentile distribution below which rare categories are combined. Only comes
+into effect when combine_rare_levels is set to True.</p></li>
+<li><p><strong>bin_numeric_features</strong> (<em>list</em><em>, </em><em>default = None</em>) – When a list of numeric features is passed they are transformed into categorical
+features using KMeans, where values in each bin have the same nearest center of
+a 1D k-means cluster. The number of clusters are determined based on the ‘sturges’
+method. It is only optimal for gaussian data and underestimates the number of bins
+for large non-gaussian datasets.</p></li>
+<li><p><strong>remove_multicollinearity</strong> (<em>bool</em><em>, </em><em>default = False</em>) – When set to True, the variables with inter-correlations higher than the threshold
+defined under the multicollinearity_threshold param are dropped. When two features
+are highly correlated with each other, the feature with higher average correlation
+in the feature space is dropped.</p></li>
+<li><p><strong>multicollinearity_threshold</strong> (<em>float</em><em>, </em><em>default = 0.9</em>) – Threshold used for dropping the correlated features. Only comes into effect when
+remove_multicollinearity is set to True.</p></li>
+<li><p><strong>group_features</strong> (<em>list</em><em> or </em><em>list of list</em><em>, </em><em>default = None</em>) – When a dataset contains features that have related characteristics, the
+group_features param can be used for statistical feature extraction. For example,
+if a dataset has numeric features that are related with each other
+(i.e ‘Col1’, ‘Col2’, ‘Col3’), a list containing the column names can be passed
+under group_features to extract statistical information such as the mean, median,
+mode and standard deviation.</p></li>
+<li><p><strong>group_names</strong> (<em>list</em><em>, </em><em>default = None</em>) – When group_features is passed, a name of the group can be passed into group_names
+param as a list containing strings. The length of a group_names list must equal
+to the length of group_features. When the length doesn’t match or the name is
+not passed, new features are sequentially named such as group_1, group_2 etc.</p></li>
+<li><p><strong>n_jobs</strong> (<em>int</em><em>, </em><em>default = -1</em>) – The number of jobs to run in parallel (for functions that supports parallel
+processing) -1 means using all processors. To run all functions on single
+processor set n_jobs to None.</p></li>
+<li><p><strong>use_gpu</strong> (<em>str</em><em> or </em><em>bool</em><em>, </em><em>default = False</em>) – <p>If set to ‘force’, will try to use GPU with all algorithms that support it,
+and raise exceptions if they are unavailable.
+If set to True, will use GPU with algorithms that support it, and fall
+back to CPU if they are unavailable.
+If set to False, will only use CPU.</p>
+<p>GPU enabled algorithms:</p>
+<ul>
+<li><p>KMeans, DBSCAN - requires cuML &gt;= 0.15 to be installed.
+<a class="reference external" href="https://github.com/rapidsai/cuml">https://github.com/rapidsai/cuml</a></p></li>
+</ul>
+</p></li>
+<li><p><strong>custom_pipeline</strong> (<em>transformer</em><em> or </em><em>list of transformers</em><em> or </em><em>tuple</em>) – (str, transformer) or list of tuples (str, transformer), default = None
+If set, will append the passed transformers (including Pipelines) to the PyCaret
+preprocessing Pipeline applied after train-test split during model fitting.
+This Pipeline is applied on each CV fold separately and on the final fit.
+The transformers will be applied before PyCaret transformers (eg. SMOTE).</p></li>
+<li><p><strong>html</strong> (<em>bool</em><em>, </em><em>default = True</em>) – If set to False, prevents runtime display of monitor. This must be set to False
+when using environment that doesnt support HTML.</p></li>
+<li><p><strong>session_id</strong> (<em>int</em><em>, </em><em>default = None</em>) – If None, a random seed is generated and returned in the Information grid. The
+unique number is then distributed as a seed in all functions used during the
+experiment. This can be used for later reproducibility of the entire experiment.</p></li>
+<li><p><strong>log_experiment</strong> (<em>bool</em><em>, </em><em>default = True</em>) – When set to True, all metrics and parameters are logged on MLFlow server.</p></li>
+<li><p><strong>experiment_name</strong> (<em>str</em><em>, </em><em>default = None</em>) – Name of experiment for logging. When set to None, ‘clu’ is by default used as
+alias for the experiment name.</p></li>
+<li><p><strong>log_plots</strong> (<em>bool</em><em>, </em><em>default = False</em>) – When set to True, specific plots are logged in MLflow as a png file.
+By default, it is set to False.</p></li>
+<li><p><strong>log_profile</strong> (<em>bool</em><em>, </em><em>default = False</em>) – When set to True, data profile is also logged on MLflow as a html file.
+By default, it is set to False.</p></li>
+<li><p><strong>log_data</strong> (<em>bool</em><em>, </em><em>default = False</em>) – When set to True, train and test dataset are logged as csv.</p></li>
+<li><p><strong>silent</strong> (<em>bool</em><em>, </em><em>default = False</em>) – When set to True, confirmation of data types is not required. All preprocessing
+will be performed assuming automatically inferred data types. Not recommended for
+direct use except for established pipelines.</p></li>
+<li><p><strong>verbose</strong> (<em>Boolean</em><em>, </em><em>default = True</em>) – Information grid is not printed when verbose is set to False.</p></li>
+<li><p><strong>profile</strong> (<em>bool</em><em>, </em><em>default = False</em>) – If set to true, a data profile for Exploratory Data Analysis will be displayed
+in an interactive HTML report.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p><em>info_grid</em> – Information grid is printed.</p></li>
+<li><p><em>environment</em> – This function returns various outputs that are stored in variable
+as tuple. They are used by other functions in pycaret.</p></li>
+</ul>
+</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="pycaret.clustering.create_model">
+<code class="sig-prename descclassname">pycaret.clustering.</code><code class="sig-name descname">create_model</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">model</span><span class="p">:</span> <span class="n">Union<span class="p">[</span>str<span class="p">, </span>Any<span class="p">]</span></span></em>, <em class="sig-param"><span class="n">num_clusters</span><span class="p">:</span> <span class="n">int</span> <span class="o">=</span> <span class="default_value">4</span></em>, <em class="sig-param"><span class="n">ground_truth</span><span class="p">:</span> <span class="n">Optional<span class="p">[</span>str<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">round</span><span class="p">:</span> <span class="n">int</span> <span class="o">=</span> <span class="default_value">4</span></em>, <em class="sig-param"><span class="n">fit_kwargs</span><span class="p">:</span> <span class="n">Optional<span class="p">[</span>dict<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">verbose</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">True</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycaret.clustering.create_model" title="Permalink to this definition">¶</a></dt>
+<dd><p>This function creates a model on the dataset passed as a data param during
+the setup stage. setup() function must be called before using create_model().</p>
+<p>This function returns a trained model object.</p>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">pycaret.datasets</span> <span class="kn">import</span> <span class="n">get_data</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">jewellery</span> <span class="o">=</span> <span class="n">get_data</span><span class="p">(</span><span class="s1">&#39;jewellery&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">experiment_name</span> <span class="o">=</span> <span class="n">setup</span><span class="p">(</span><span class="n">data</span> <span class="o">=</span> <span class="n">jewellery</span><span class="p">,</span> <span class="n">normalize</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">kmeans</span> <span class="o">=</span> <span class="n">create_model</span><span class="p">(</span><span class="s1">&#39;kmeans&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>This will return a trained K-Means clustering model.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>model</strong> (<em>str / object</em><em>, </em><em>default = None</em>) – <p>Enter ID of the models available in model library or pass an untrained model
+object consistent with fit / predict API to train and evaluate model. List of
+models available in model library (ID - Name):</p>
+<ul>
+<li><p>’kmeans’ - K-Means Clustering</p></li>
+<li><p>’ap’ - Affinity Propagation</p></li>
+<li><p>’meanshift’ - Mean shift Clustering</p></li>
+<li><p>’sc’ - Spectral Clustering</p></li>
+<li><p>’hclust’ - Agglomerative Clustering</p></li>
+<li><p>’dbscan’ - Density-Based Spatial Clustering</p></li>
+<li><p>’optics’ - OPTICS Clustering</p></li>
+<li><p>’birch’ - Birch Clustering</p></li>
+<li><p>’kmodes’ - K-Modes Clustering</p></li>
+</ul>
+</p></li>
+<li><p><strong>num_clusters</strong> (<em>int</em><em>, </em><em>default = None</em>) – Number of clusters to be generated with the dataset. If None, num_clusters
+is set to 4.</p></li>
+<li><p><strong>ground_truth</strong> (<em>string</em><em>, </em><em>default = None</em>) – When ground_truth is provided, Homogeneity Score, Rand Index, and
+Completeness Score is evaluated and printer along with other metrics.</p></li>
+<li><p><strong>round</strong> (<em>integer</em><em>, </em><em>default = 4</em>) – Number of decimal places the metrics in the score grid will be rounded to.</p></li>
+<li><p><strong>fit_kwargs</strong> (<em>dict</em><em>, </em><em>default = {}</em><em> (</em><em>empty dict</em><em>)</em>) – Dictionary of arguments passed to the fit method of the model.</p></li>
+<li><p><strong>verbose</strong> (<em>Boolean</em><em>, </em><em>default = True</em>) – Status update is not printed when verbose is set to False.</p></li>
+<li><p><strong>**kwargs</strong> – Additional keyword arguments to pass to the estimator.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p><em>score_grid</em> – A table containing the Silhouette, Calinski-Harabasz,
+Davies-Bouldin, Homogeneity Score, Rand Index, and
+Completeness Score. Last 3 are only evaluated when
+ground_truth param is provided.</p></li>
+<li><p><em>model</em> – trained model object</p></li>
+</ul>
+</p>
+</dd>
+</dl>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<ul class="simple">
+<li><p>num_clusters not required for Affinity Propagation (‘ap’), Mean shift
+clustering (‘meanshift’), Density-Based Spatial Clustering (‘dbscan’)
+and OPTICS Clustering (‘optics’). num_clusters param for these models
+are automatically determined.</p></li>
+<li><p>When fit doesn’t converge in Affinity Propagation (‘ap’) model, all
+datapoints are labelled as -1.</p></li>
+<li><p>Noisy samples are given the label -1, when using Density-Based Spatial
+(‘dbscan’) or OPTICS Clustering (‘optics’).</p></li>
+<li><p>OPTICS (‘optics’) clustering may take longer training times on large
+datasets.</p></li>
+</ul>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt id="pycaret.clustering.assign_model">
+<code class="sig-prename descclassname">pycaret.clustering.</code><code class="sig-name descname">assign_model</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">model</span></em>, <em class="sig-param"><span class="n">transformation</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">False</span></em>, <em class="sig-param"><span class="n">verbose</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">True</span></em><span class="sig-paren">)</span> &#x2192; pandas.core.frame.DataFrame<a class="headerlink" href="#pycaret.clustering.assign_model" title="Permalink to this definition">¶</a></dt>
+<dd><p>This function assigns each of the data point in the dataset passed during setup
+stage to one of the clusters using trained model object passed as model param.
+create_model() function must be called before using assign_model().</p>
+<p>This function returns a pandas.DataFrame.</p>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">pycaret.datasets</span> <span class="kn">import</span> <span class="n">get_data</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">jewellery</span> <span class="o">=</span> <span class="n">get_data</span><span class="p">(</span><span class="s1">&#39;jewellery&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">experiment_name</span> <span class="o">=</span> <span class="n">setup</span><span class="p">(</span><span class="n">data</span> <span class="o">=</span> <span class="n">jewellery</span><span class="p">,</span> <span class="n">normalize</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">kmeans</span> <span class="o">=</span> <span class="n">create_model</span><span class="p">(</span><span class="s1">&#39;kmeans&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">kmeans_df</span> <span class="o">=</span> <span class="n">assign_model</span><span class="p">(</span><span class="n">kmeans</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>This will return a pandas.DataFrame with inferred clusters using trained model.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>model</strong> (<em>trained model object</em><em>, </em><em>default = None</em>) – </p></li>
+<li><p><strong>transformation</strong> (<em>bool</em><em>, </em><em>default = False</em>) – When set to True, assigned clusters are returned on transformed dataset instead
+of original dataset passed during setup().</p></li>
+<li><p><strong>verbose</strong> (<em>Boolean</em><em>, </em><em>default = True</em>) – Status update is not printed when verbose is set to False.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Returns a DataFrame with assigned clusters using a trained model.</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>pandas.DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="pycaret.clustering.plot_model">
+<code class="sig-prename descclassname">pycaret.clustering.</code><code class="sig-name descname">plot_model</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">model</span></em>, <em class="sig-param"><span class="n">plot</span><span class="p">:</span> <span class="n">str</span> <span class="o">=</span> <span class="default_value">'cluster'</span></em>, <em class="sig-param"><span class="n">feature</span><span class="p">:</span> <span class="n">Optional<span class="p">[</span>str<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">label</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">False</span></em>, <em class="sig-param"><span class="n">scale</span><span class="p">:</span> <span class="n">float</span> <span class="o">=</span> <span class="default_value">1</span></em>, <em class="sig-param"><span class="n">save</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">False</span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycaret.clustering.plot_model" title="Permalink to this definition">¶</a></dt>
+<dd><p>This function takes a trained model object and returns a plot on the dataset
+passed during setup stage. This function internally calls assign_model before
+generating a plot.</p>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">pycaret.datasets</span> <span class="kn">import</span> <span class="n">get_data</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">jewellery</span> <span class="o">=</span> <span class="n">get_data</span><span class="p">(</span><span class="s1">&#39;jewellery&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">experiment_name</span> <span class="o">=</span> <span class="n">setup</span><span class="p">(</span><span class="n">data</span> <span class="o">=</span> <span class="n">jewellery</span><span class="p">,</span> <span class="n">normalize</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">kmeans</span> <span class="o">=</span> <span class="n">create_model</span><span class="p">(</span><span class="s1">&#39;kmeans&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">plot_model</span><span class="p">(</span><span class="n">kmeans</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>This will return a cluster scatter plot (by default).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>model</strong> (<em>object</em><em>, </em><em>default = none</em>) – A trained model object can be passed. Model must be created using create_model().</p></li>
+<li><p><strong>plot</strong> (<em>string</em><em>, </em><em>default = 'cluster'</em>) – <p>Enter abbreviation for type of plot. The current list of plots supported are
+(Plot - Name):</p>
+<ul>
+<li><p>’cluster’ - Cluster PCA Plot (2d)</p></li>
+<li><p>’tsne’ - Cluster TSnE (3d)</p></li>
+<li><p>’elbow’ - Elbow Plot</p></li>
+<li><p>’silhouette’ - Silhouette Plot</p></li>
+<li><p>’distance’ - Distance Plot</p></li>
+<li><p>’distribution’ - Distribution Plot</p></li>
+</ul>
+</p></li>
+<li><p><strong>feature</strong> (<em>string</em><em>, </em><em>default = None</em>) – Name of feature column for x-axis of when plot = ‘distribution’. When plot is
+‘cluster’ or ‘tsne’ feature column is used as a hoverover tooltip and/or label
+when label is set to True. If no feature name is passed in ‘cluster’ or ‘tsne’
+by default the first of column of dataset is chosen as hoverover tooltip.</p></li>
+<li><p><strong>label</strong> (<em>bool</em><em>, </em><em>default = False</em>) – When set to True, data labels are shown in ‘cluster’ and ‘tsne’ plot.</p></li>
+<li><p><strong>scale</strong> (<em>float</em><em>, </em><em>default = 1</em>) – The resolution scale of the figure.</p></li>
+<li><p><strong>save</strong> (<em>Boolean</em><em>, </em><em>default = False</em>) – Plot is saved as png file in local directory when save parameter set to True.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Prints the visual plot.</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>Visual_Plot</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="pycaret.clustering.evaluate_model">
+<code class="sig-prename descclassname">pycaret.clustering.</code><code class="sig-name descname">evaluate_model</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">estimator</span></em>, <em class="sig-param"><span class="n">feature</span><span class="p">:</span> <span class="n">Optional<span class="p">[</span>str<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">fit_kwargs</span><span class="p">:</span> <span class="n">Optional<span class="p">[</span>dict<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycaret.clustering.evaluate_model" title="Permalink to this definition">¶</a></dt>
+<dd><p>This function displays a user interface for all of the available plots for
+a given estimator. It internally uses the plot_model() function.</p>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">pycaret.datasets</span> <span class="kn">import</span> <span class="n">get_data</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">jewellery</span> <span class="o">=</span> <span class="n">get_data</span><span class="p">(</span><span class="s1">&#39;jewellery&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">experiment_name</span> <span class="o">=</span> <span class="n">setup</span><span class="p">(</span><span class="n">data</span> <span class="o">=</span> <span class="n">jewellery</span><span class="p">,</span> <span class="n">normalize</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">kmeans</span> <span class="o">=</span> <span class="n">create_model</span><span class="p">(</span><span class="s1">&#39;kmeans&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">evaluate_model</span><span class="p">(</span><span class="n">kmeans</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>This will display the User Interface for all of the plots for a given
+estimator.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>estimator</strong> (<em>object</em><em>, </em><em>default = none</em>) – A trained model object should be passed as an estimator.</p></li>
+<li><p><strong>feature</strong> (<em>string</em><em>, </em><em>default = None</em>) – Name of feature column for x-axis of when plot = ‘distribution’. When plot is
+‘cluster’ or ‘tsne’ feature column is used as a hoverover tooltip and/or label
+when label is set to True. If no feature name is passed in ‘cluster’ or ‘tsne’
+by default the first of column of dataset is chosen as hoverover tooltip.</p></li>
+<li><p><strong>fit_kwargs</strong> (<em>dict</em><em>, </em><em>default = {}</em><em> (</em><em>empty dict</em><em>)</em>) – Dictionary of arguments passed to the fit method of the model.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Displays the user interface for plotting.</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>User_Interface</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="pycaret.clustering.tune_model">
+<code class="sig-prename descclassname">pycaret.clustering.</code><code class="sig-name descname">tune_model</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">model</span></em>, <em class="sig-param"><span class="n">supervised_target</span><span class="p">:</span> <span class="n">str</span></em>, <em class="sig-param"><span class="n">supervised_type</span><span class="p">:</span> <span class="n">Optional<span class="p">[</span>str<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">supervised_estimator</span><span class="p">:</span> <span class="n">Union<span class="p">[</span>str<span class="p">, </span>Any<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">'lr'</span></em>, <em class="sig-param"><span class="n">optimize</span><span class="p">:</span> <span class="n">Optional<span class="p">[</span>str<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">custom_grid</span><span class="p">:</span> <span class="n">Optional<span class="p">[</span>List<span class="p">[</span>int<span class="p">]</span><span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">fold</span><span class="p">:</span> <span class="n">int</span> <span class="o">=</span> <span class="default_value">10</span></em>, <em class="sig-param"><span class="n">fit_kwargs</span><span class="p">:</span> <span class="n">Optional<span class="p">[</span>dict<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">groups</span><span class="p">:</span> <span class="n">Optional<span class="p">[</span>Union<span class="p">[</span>str<span class="p">, </span>Any<span class="p">]</span><span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">round</span><span class="p">:</span> <span class="n">int</span> <span class="o">=</span> <span class="default_value">4</span></em>, <em class="sig-param"><span class="n">verbose</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">True</span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycaret.clustering.tune_model" title="Permalink to this definition">¶</a></dt>
+<dd><p>This function tunes the num_clusters model parameter using a predefined grid with
+the objective of optimizing a supervised learning metric as defined in the optimize
+param. You can choose the supervised estimator from a large library available in
+pycaret. By default, supervised estimator is Linear.</p>
+<p>This function returns the tuned model object.</p>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">pycaret.datasets</span> <span class="kn">import</span> <span class="n">get_data</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">boston</span> <span class="o">=</span> <span class="n">get_data</span><span class="p">(</span><span class="s1">&#39;boston&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">experiment_name</span> <span class="o">=</span> <span class="n">setup</span><span class="p">(</span><span class="n">data</span> <span class="o">=</span> <span class="n">boston</span><span class="p">,</span> <span class="n">normalize</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">tuned_kmeans</span> <span class="o">=</span> <span class="n">tune_model</span><span class="p">(</span><span class="n">model</span> <span class="o">=</span> <span class="s1">&#39;kmeans&#39;</span><span class="p">,</span> <span class="n">supervised_target</span> <span class="o">=</span> <span class="s1">&#39;medv&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>This will return tuned K-Means Clustering Model.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>model</strong> (<em>string</em><em>, </em><em>default = None</em>) – <p>Enter ID of the models available in model library (ID - Name):</p>
+<ul>
+<li><p>’kmeans’ - K-Means Clustering</p></li>
+<li><p>’ap’ - Affinity Propagation</p></li>
+<li><p>’meanshift’ - Mean shift Clustering</p></li>
+<li><p>’sc’ - Spectral Clustering</p></li>
+<li><p>’hclust’ - Agglomerative Clustering</p></li>
+<li><p>’dbscan’ - Density-Based Spatial Clustering</p></li>
+<li><p>’optics’ - OPTICS Clustering</p></li>
+<li><p>’birch’ - Birch Clustering</p></li>
+<li><p>’kmodes’ - K-Modes Clustering</p></li>
+</ul>
+</p></li>
+<li><p><strong>supervised_target</strong> (<em>string</em>) – Name of the target column for supervised learning.</p></li>
+<li><p><strong>estimator</strong> (<em>string</em><em>, </em><em>default = None</em>) – <p>For Classification (ID - Name):</p>
+<ul>
+<li><p>’lr’ - Logistic Regression</p></li>
+<li><p>’knn’ - K Nearest Neighbour</p></li>
+<li><p>’nb’ - Naive Bayes</p></li>
+<li><p>’dt’ - Decision Tree Classifier</p></li>
+<li><p>’svm’ - SVM - Linear Kernel</p></li>
+<li><p>’rbfsvm’ - SVM - Radial Kernel</p></li>
+<li><p>’gpc’ - Gaussian Process Classifier</p></li>
+<li><p>’mlp’ - Multi Level Perceptron</p></li>
+<li><p>’ridge’ - Ridge Classifier</p></li>
+<li><p>’rf’ - Random Forest Classifier</p></li>
+<li><p>’qda’ - Quadratic Discriminant Analysis</p></li>
+<li><p>’ada’ - Ada Boost Classifier</p></li>
+<li><p>’gbc’ - Gradient Boosting Classifier</p></li>
+<li><p>’lda’ - Linear Discriminant Analysis</p></li>
+<li><p>’et’ - Extra Trees Classifier</p></li>
+<li><p>’xgboost’ - Extreme Gradient Boosting</p></li>
+<li><p>’lightgbm’ - Light Gradient Boosting</p></li>
+<li><p>’catboost’ - CatBoost Classifier</p></li>
+</ul>
+<p>For Regression (ID - Name):</p>
+<ul>
+<li><p>’lr’ - Linear Regression</p></li>
+<li><p>’lasso’ - Lasso Regression</p></li>
+<li><p>’ridge’ - Ridge Regression</p></li>
+<li><p>’en’ - Elastic Net</p></li>
+<li><p>’lar’ - Least Angle Regression</p></li>
+<li><p>’llar’ - Lasso Least Angle Regression</p></li>
+<li><p>’omp’ - Orthogonal Matching Pursuit</p></li>
+<li><p>’br’ - Bayesian Ridge</p></li>
+<li><p>’ard’ - Automatic Relevance Determ.</p></li>
+<li><p>’par’ - Passive Aggressive Regressor</p></li>
+<li><p>’ransac’ - Random Sample Consensus</p></li>
+<li><p>’tr’ - TheilSen Regressor</p></li>
+<li><p>’huber’ - Huber Regressor</p></li>
+<li><p>’kr’ - Kernel Ridge</p></li>
+<li><p>’svm’ - Support Vector Machine</p></li>
+<li><p>’knn’ - K Neighbors Regressor</p></li>
+<li><p>’dt’ - Decision Tree</p></li>
+<li><p>’rf’ - Random Forest</p></li>
+<li><p>’et’ - Extra Trees Regressor</p></li>
+<li><p>’ada’ - AdaBoost Regressor</p></li>
+<li><p>’gbr’ - Gradient Boosting</p></li>
+<li><p>’mlp’ - Multi Level Perceptron</p></li>
+<li><p>’xgboost’ - Extreme Gradient Boosting</p></li>
+<li><p>’lightgbm’ - Light Gradient Boosting</p></li>
+<li><p>’catboost’ - CatBoost Regressor</p></li>
+</ul>
+<p>If set to None, Linear / Logistic model is used by default.</p>
+</p></li>
+<li><p><strong>optimize</strong> (<em>string</em><em>, </em><em>default = None</em>) – <dl class="simple">
+<dt>For Classification tasks:</dt><dd><p>Accuracy, AUC, Recall, Precision, F1, Kappa</p>
+</dd>
+<dt>For Regression tasks:</dt><dd><p>MAE, MSE, RMSE, R2, RMSLE, MAPE</p>
+</dd>
+</dl>
+</p></li>
+<li><p><strong>set to None</strong> (<em>If</em>) – </p></li>
+<li><p><strong>is 'Accuracy' for classification and 'R2' for</strong> (<em>default</em>) – </p></li>
+<li><p><strong>tasks.</strong> (<em>regression</em>) – </p></li>
+<li><p><strong>custom_grid</strong> (<em>list</em><em>, </em><em>default = None</em>) – By default, a pre-defined number of clusters is iterated over to
+optimize the supervised objective. To overwrite default iteration,
+pass a list of num_clusters to iterate over in custom_grid param.</p></li>
+<li><p><strong>fold</strong> (<em>integer</em><em>, </em><em>default = 10</em>) – Number of folds to be used in Kfold CV. Must be at least 2.</p></li>
+<li><p><strong>verbose</strong> (<em>Boolean</em><em>, </em><em>default = True</em>) – Status update is not printed when verbose is set to False.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p><em>Visual_Plot</em> – Visual plot with num_clusters param on x-axis with metric to
+optimize on y-axis. Also, prints the best model metric.</p></li>
+<li><p><em>model</em> – trained model object with best num_clusters param.</p></li>
+</ul>
+</p>
+</dd>
+</dl>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<ul class="simple">
+<li><p>Affinity Propagation, Mean shift clustering, Density-Based Spatial Clustering
+and OPTICS Clustering cannot be used in this function since they donot support
+num_clusters param.</p></li>
+</ul>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt id="pycaret.clustering.predict_model">
+<code class="sig-prename descclassname">pycaret.clustering.</code><code class="sig-name descname">predict_model</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">model</span></em>, <em class="sig-param"><span class="n">data</span><span class="p">:</span> <span class="n">pandas.core.frame.DataFrame</span></em><span class="sig-paren">)</span> &#x2192; pandas.core.frame.DataFrame<a class="headerlink" href="#pycaret.clustering.predict_model" title="Permalink to this definition">¶</a></dt>
+<dd><p>This function is used to predict new data using a trained model. It requires a
+trained model object created using one of the function in pycaret that returns
+a trained model object. New data must be passed to data param as a DataFrame.</p>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">pycaret.datasets</span> <span class="kn">import</span> <span class="n">get_data</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">jewellery</span> <span class="o">=</span> <span class="n">get_data</span><span class="p">(</span><span class="s1">&#39;jewellery&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">experiment_name</span> <span class="o">=</span> <span class="n">setup</span><span class="p">(</span><span class="n">data</span> <span class="o">=</span> <span class="n">jewellery</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">kmeans</span> <span class="o">=</span> <span class="n">create_model</span><span class="p">(</span><span class="s1">&#39;kmeans&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">kmeans_predictions</span> <span class="o">=</span> <span class="n">predict_model</span><span class="p">(</span><span class="n">model</span> <span class="o">=</span> <span class="n">kmeans</span><span class="p">,</span> <span class="n">data</span> <span class="o">=</span> <span class="n">jewellery</span><span class="p">)</span>
+</pre></div>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>model</strong> (<em>object</em><em>,  </em><em>default = None</em>) – A trained model object / pipeline should be passed as an estimator.</p></li>
+<li><p><strong>data</strong> (<em>pandas.DataFrame</em>) – Shape (n_samples, n_features) where n_samples is the number of samples and
+n_features is the number of features. All features used during training must
+be present in the new dataset.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Information grid is printed when data is None.</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>info_grid</p>
+</dd>
+</dl>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<ul class="simple">
+<li><p>Models that do not support ‘predict’ function cannot be used in predict_model().</p></li>
+<li><p>The behavior of the predict_model is changed in version 2.1 without backward compatibility.</p></li>
+</ul>
+<p>As such, the pipelines trained using the version (&lt;= 2.0), may not work for inference
+with version &gt;= 2.1. You can either retrain your models with a newer version or downgrade
+the version for inference.</p>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt id="pycaret.clustering.get_clusters">
+<code class="sig-prename descclassname">pycaret.clustering.</code><code class="sig-name descname">get_clusters</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">data</span></em>, <em class="sig-param"><span class="n">model</span><span class="p">:</span> <span class="n">Union<span class="p">[</span>str<span class="p">, </span>Any<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">'kmeans'</span></em>, <em class="sig-param"><span class="n">num_clusters</span><span class="p">:</span> <span class="n">int</span> <span class="o">=</span> <span class="default_value">4</span></em>, <em class="sig-param"><span class="n">ground_truth</span><span class="p">:</span> <span class="n">Optional<span class="p">[</span>str<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">round</span><span class="p">:</span> <span class="n">int</span> <span class="o">=</span> <span class="default_value">4</span></em>, <em class="sig-param"><span class="n">fit_kwargs</span><span class="p">:</span> <span class="n">Optional<span class="p">[</span>dict<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">preprocess</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">True</span></em>, <em class="sig-param"><span class="n">imputation_type</span><span class="p">:</span> <span class="n">str</span> <span class="o">=</span> <span class="default_value">'simple'</span></em>, <em class="sig-param"><span class="n">iterative_imputation_iters</span><span class="p">:</span> <span class="n">int</span> <span class="o">=</span> <span class="default_value">5</span></em>, <em class="sig-param"><span class="n">categorical_features</span><span class="p">:</span> <span class="n">Optional<span class="p">[</span>List<span class="p">[</span>str<span class="p">]</span><span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">categorical_imputation</span><span class="p">:</span> <span class="n">str</span> <span class="o">=</span> <span class="default_value">'mode'</span></em>, <em class="sig-param"><span class="n">categorical_iterative_imputer</span><span class="p">:</span> <span class="n">Union<span class="p">[</span>str<span class="p">, </span>Any<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">'lightgbm'</span></em>, <em class="sig-param"><span class="n">ordinal_features</span><span class="p">:</span> <span class="n">Optional<span class="p">[</span>Dict<span class="p">[</span>str<span class="p">, </span>list<span class="p">]</span><span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">high_cardinality_features</span><span class="p">:</span> <span class="n">Optional<span class="p">[</span>List<span class="p">[</span>str<span class="p">]</span><span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">high_cardinality_method</span><span class="p">:</span> <span class="n">str</span> <span class="o">=</span> <span class="default_value">'frequency'</span></em>, <em class="sig-param"><span class="n">numeric_features</span><span class="p">:</span> <span class="n">Optional<span class="p">[</span>List<span class="p">[</span>str<span class="p">]</span><span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">numeric_imputation</span><span class="p">:</span> <span class="n">str</span> <span class="o">=</span> <span class="default_value">'mean'</span></em>, <em class="sig-param"><span class="n">numeric_iterative_imputer</span><span class="p">:</span> <span class="n">Union<span class="p">[</span>str<span class="p">, </span>Any<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">'lightgbm'</span></em>, <em class="sig-param"><span class="n">date_features</span><span class="p">:</span> <span class="n">Optional<span class="p">[</span>List<span class="p">[</span>str<span class="p">]</span><span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">ignore_features</span><span class="p">:</span> <span class="n">Optional<span class="p">[</span>List<span class="p">[</span>str<span class="p">]</span><span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">normalize</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">False</span></em>, <em class="sig-param"><span class="n">normalize_method</span><span class="p">:</span> <span class="n">str</span> <span class="o">=</span> <span class="default_value">'zscore'</span></em>, <em class="sig-param"><span class="n">transformation</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">False</span></em>, <em class="sig-param"><span class="n">transformation_method</span><span class="p">:</span> <span class="n">str</span> <span class="o">=</span> <span class="default_value">'yeo-johnson'</span></em>, <em class="sig-param"><span class="n">handle_unknown_categorical</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">True</span></em>, <em class="sig-param"><span class="n">unknown_categorical_method</span><span class="p">:</span> <span class="n">str</span> <span class="o">=</span> <span class="default_value">'least_frequent'</span></em>, <em class="sig-param"><span class="n">pca</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">False</span></em>, <em class="sig-param"><span class="n">pca_method</span><span class="p">:</span> <span class="n">str</span> <span class="o">=</span> <span class="default_value">'linear'</span></em>, <em class="sig-param"><span class="n">pca_components</span><span class="p">:</span> <span class="n">Optional<span class="p">[</span>float<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">ignore_low_variance</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">False</span></em>, <em class="sig-param"><span class="n">combine_rare_levels</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">False</span></em>, <em class="sig-param"><span class="n">rare_level_threshold</span><span class="p">:</span> <span class="n">float</span> <span class="o">=</span> <span class="default_value">0.1</span></em>, <em class="sig-param"><span class="n">bin_numeric_features</span><span class="p">:</span> <span class="n">Optional<span class="p">[</span>List<span class="p">[</span>str<span class="p">]</span><span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">remove_multicollinearity</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">False</span></em>, <em class="sig-param"><span class="n">multicollinearity_threshold</span><span class="p">:</span> <span class="n">float</span> <span class="o">=</span> <span class="default_value">0.9</span></em>, <em class="sig-param"><span class="n">remove_perfect_collinearity</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">False</span></em>, <em class="sig-param"><span class="n">group_features</span><span class="p">:</span> <span class="n">Optional<span class="p">[</span>List<span class="p">[</span>str<span class="p">]</span><span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">group_names</span><span class="p">:</span> <span class="n">Optional<span class="p">[</span>List<span class="p">[</span>str<span class="p">]</span><span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">n_jobs</span><span class="p">:</span> <span class="n">Optional<span class="p">[</span>int<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">- 1</span></em>, <em class="sig-param"><span class="n">session_id</span><span class="p">:</span> <span class="n">Optional<span class="p">[</span>int<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">log_experiment</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">False</span></em>, <em class="sig-param"><span class="n">experiment_name</span><span class="p">:</span> <span class="n">Optional<span class="p">[</span>str<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">log_plots</span><span class="p">:</span> <span class="n">Union<span class="p">[</span>bool<span class="p">, </span>list<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">False</span></em>, <em class="sig-param"><span class="n">log_profile</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">False</span></em>, <em class="sig-param"><span class="n">log_data</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">False</span></em>, <em class="sig-param"><span class="n">profile</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">False</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span> &#x2192; pandas.core.frame.DataFrame<a class="headerlink" href="#pycaret.clustering.get_clusters" title="Permalink to this definition">¶</a></dt>
+<dd><p>Callable from any external environment without requiring setup initialization.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="pycaret.clustering.pull">
+<code class="sig-prename descclassname">pycaret.clustering.</code><code class="sig-name descname">pull</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">pop</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">False</span></em><span class="sig-paren">)</span> &#x2192; pandas.core.frame.DataFrame<a class="headerlink" href="#pycaret.clustering.pull" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns latest displayed table.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>pop</strong> (<em>bool</em><em>, </em><em>default = False</em>) – If true, will pop (remove) the returned dataframe from the
+display container.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Equivalent to get_config(‘display_container’)[-1]</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>pandas.DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="pycaret.clustering.deploy_model">
+<code class="sig-prename descclassname">pycaret.clustering.</code><code class="sig-name descname">deploy_model</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">model</span></em>, <em class="sig-param"><span class="n">model_name</span><span class="p">:</span> <span class="n">str</span></em>, <em class="sig-param"><span class="n">authentication</span><span class="p">:</span> <span class="n">dict</span></em>, <em class="sig-param"><span class="n">platform</span><span class="p">:</span> <span class="n">str</span> <span class="o">=</span> <span class="default_value">'aws'</span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycaret.clustering.deploy_model" title="Permalink to this definition">¶</a></dt>
+<dd><p>(In Preview)</p>
+<p>This function deploys the transformation pipeline and trained model object for
+production use. The platform of deployment can be defined under the platform
+param along with the applicable authentication tokens which are passed as a
+dictionary to the authentication param.</p>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">pycaret.datasets</span> <span class="kn">import</span> <span class="n">get_data</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">juice</span> <span class="o">=</span> <span class="n">get_data</span><span class="p">(</span><span class="s1">&#39;juice&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">experiment_name</span> <span class="o">=</span> <span class="n">setup</span><span class="p">(</span><span class="n">data</span> <span class="o">=</span> <span class="n">juice</span><span class="p">,</span>  <span class="n">target</span> <span class="o">=</span> <span class="s1">&#39;Purchase&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">lr</span> <span class="o">=</span> <span class="n">create_model</span><span class="p">(</span><span class="s1">&#39;lr&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">deploy_model</span><span class="p">(</span><span class="n">model</span> <span class="o">=</span> <span class="n">lr</span><span class="p">,</span> <span class="n">model_name</span> <span class="o">=</span> <span class="s1">&#39;deploy_lr&#39;</span><span class="p">,</span> <span class="n">platform</span> <span class="o">=</span> <span class="s1">&#39;aws&#39;</span><span class="p">,</span> <span class="n">authentication</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;bucket&#39;</span> <span class="p">:</span> <span class="s1">&#39;pycaret-test&#39;</span><span class="p">})</span>
+</pre></div>
+</div>
+<p>This will deploy the model on an AWS S3 account under bucket ‘pycaret-test’</p>
+<p class="rubric">Notes</p>
+<p>For AWS users:</p>
+<p>Before deploying a model to an AWS S3 (‘aws’), environment variables must be
+configured using the command line interface. To configure AWS env. variables,
+type aws configure in your python command line. The following information is
+required which can be generated using the Identity and Access Management (IAM)
+portal of your amazon console account:</p>
+<ul class="simple">
+<li><p>AWS Access Key ID</p></li>
+<li><p>AWS Secret Key Access</p></li>
+<li><p>Default Region Name (can be seen under Global settings on your AWS console)</p></li>
+<li><p>Default output format (must be left blank)</p></li>
+</ul>
+<p>For GCP users:</p>
+<p>Before deploying a model to Google Cloud Platform (GCP), project must be created
+either using command line or GCP console. Once project is created, you must create
+a service account and download the service account key as a JSON file, which is
+then used to set environment variable.</p>
+<p><a class="reference external" href="https://cloud.google.com/docs/authentication/production">https://cloud.google.com/docs/authentication/production</a></p>
+<ul class="simple">
+<li><p>Google Cloud Project</p></li>
+<li><p>Service Account Authetication</p></li>
+</ul>
+<p>For Azure users:</p>
+<p>Before deploying a model to Microsoft’s Azure (Azure), environment variables
+for connection string must be set. In order to get connection string, user has
+to create account of Azure. Once it is done, create a Storage account. In the settings
+section of storage account, user can get the connection string.</p>
+<p>Read below link for more details.
+<a class="reference external" href="https://docs.microsoft.com/en-us/azure/storage/blobs/storage-quickstart-blobs-python?toc=%2Fpython%2Fazure%2FTOC.json">https://docs.microsoft.com/en-us/azure/storage/blobs/storage-quickstart-blobs-python?toc=%2Fpython%2Fazure%2FTOC.json</a></p>
+<ul class="simple">
+<li><p>Azure Storage Account</p></li>
+</ul>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>model</strong> (<em>object</em>) – A trained model object should be passed as an estimator.</p></li>
+<li><p><strong>model_name</strong> (<em>str</em>) – Name of model to be passed as a str.</p></li>
+<li><p><strong>authentication</strong> (<em>dict</em>) – <p>Dictionary of applicable authentication tokens.</p>
+<p>When platform = ‘aws’:
+{‘bucket’ : ‘Name of Bucket on S3’}</p>
+<p>When platform = ‘gcp’:
+{‘project’: ‘gcp_pycaret’, ‘bucket’ : ‘pycaret-test’}</p>
+<p>When platform = ‘azure’:
+{‘container’: ‘pycaret-test’}</p>
+</p></li>
+<li><p><strong>platform</strong> (<em>str</em><em>, </em><em>default = 'aws'</em>) – Name of platform for deployment. Current available options are: ‘aws’, ‘gcp’ and ‘azure’</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p></p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>Success_Message</p>
+</dd>
+</dl>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<ul class="simple">
+<li><p>This function uses file storage services to deploy the model on cloud platform.
+As such, this is efficient for batch-use. Where the production objective is to
+obtain prediction at an instance level, this may not be the efficient choice as
+it transmits the binary pickle file between your local python environment and
+the platform.</p></li>
+</ul>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt id="pycaret.clustering.save_model">
+<code class="sig-prename descclassname">pycaret.clustering.</code><code class="sig-name descname">save_model</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">model</span></em>, <em class="sig-param"><span class="n">model_name</span><span class="p">:</span> <span class="n">str</span></em>, <em class="sig-param"><span class="n">model_only</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">False</span></em>, <em class="sig-param"><span class="n">verbose</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">True</span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycaret.clustering.save_model" title="Permalink to this definition">¶</a></dt>
+<dd><p>This function saves the transformation pipeline and trained model object
+into the current active directory as a pickle file for later use.</p>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">pycaret.datasets</span> <span class="kn">import</span> <span class="n">get_data</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">juice</span> <span class="o">=</span> <span class="n">get_data</span><span class="p">(</span><span class="s1">&#39;juice&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">experiment_name</span> <span class="o">=</span> <span class="n">setup</span><span class="p">(</span><span class="n">data</span> <span class="o">=</span> <span class="n">juice</span><span class="p">,</span>  <span class="n">target</span> <span class="o">=</span> <span class="s1">&#39;Purchase&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">lr</span> <span class="o">=</span> <span class="n">create_model</span><span class="p">(</span><span class="s1">&#39;lr&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">save_model</span><span class="p">(</span><span class="n">lr</span><span class="p">,</span> <span class="s1">&#39;lr_model_23122019&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>This will save the transformation pipeline and model as a binary pickle
+file in the current active directory.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>model</strong> (<em>object</em><em>, </em><em>default = none</em>) – A trained model object should be passed as an estimator.</p></li>
+<li><p><strong>model_name</strong> (<em>str</em><em>, </em><em>default = none</em>) – Name of pickle file to be passed as a string.</p></li>
+<li><p><strong>model_only</strong> (<em>bool</em><em>, </em><em>default = False</em>) – When set to True, only trained model object is saved and all the
+transformations are ignored.</p></li>
+<li><p><strong>verbose</strong> (<em>bool</em><em>, </em><em>default = True</em>) – Success message is not printed when verbose is set to False.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Tuple of the model object and the filename it was saved under.</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>(model, model_filename)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="pycaret.clustering.load_model">
+<code class="sig-prename descclassname">pycaret.clustering.</code><code class="sig-name descname">load_model</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">model_name</span></em>, <em class="sig-param"><span class="n">platform</span><span class="p">:</span> <span class="n">Optional<span class="p">[</span>str<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">authentication</span><span class="p">:</span> <span class="n">Optional<span class="p">[</span>Dict<span class="p">[</span>str<span class="p">, </span>str<span class="p">]</span><span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">verbose</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">True</span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycaret.clustering.load_model" title="Permalink to this definition">¶</a></dt>
+<dd><p>This function loads a previously saved transformation pipeline and model
+from the current active directory into the current python environment.
+Load object must be a pickle file.</p>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">saved_lr</span> <span class="o">=</span> <span class="n">load_model</span><span class="p">(</span><span class="s1">&#39;lr_model_23122019&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>This will load the previously saved model in saved_lr variable. The file
+must be in the current directory.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>model_name</strong> (<em>str</em><em>, </em><em>default = none</em>) – Name of pickle file to be passed as a string.</p></li>
+<li><p><strong>platform</strong> (<em>str</em><em>, </em><em>default = None</em>) – Name of platform, if loading model from cloud. Current available options are:
+‘aws’, ‘gcp’ and ‘azure’.</p></li>
+<li><p><strong>authentication</strong> (<em>dict</em>) – <p>dictionary of applicable authentication tokens.</p>
+<p>When platform = ‘aws’:
+{‘bucket’ : ‘Name of Bucket on S3’}</p>
+<p>When platform = ‘gcp’:
+{‘project’: ‘gcp_pycaret’, ‘bucket’ : ‘pycaret-test’}</p>
+<p>When platform = ‘azure’:
+{‘container’: ‘pycaret-test’}</p>
+</p></li>
+<li><p><strong>verbose</strong> (<em>bool</em><em>, </em><em>default = True</em>) – Success message is not printed when verbose is set to False.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p></p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>Model Object</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="pycaret.clustering.models">
+<code class="sig-prename descclassname">pycaret.clustering.</code><code class="sig-name descname">models</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">type</span><span class="p">:</span> <span class="n">Optional<span class="p">[</span>str<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">internal</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">False</span></em>, <em class="sig-param"><span class="n">raise_errors</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">True</span></em><span class="sig-paren">)</span> &#x2192; pandas.core.frame.DataFrame<a class="headerlink" href="#pycaret.clustering.models" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns table of models available in model library.</p>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">_all_models</span> <span class="o">=</span> <span class="n">models</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>This will return pandas dataframe with all available
+models and their metadata.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>type</strong> (<em>str</em><em>, </em><em>default = None</em>) – <ul>
+<li><p>linear : filters and only return linear models</p></li>
+<li><p>tree : filters and only return tree based models</p></li>
+<li><p>ensemble : filters and only return ensemble models</p></li>
+</ul>
+</p></li>
+<li><p><strong>internal</strong> (<em>bool</em><em>, </em><em>default = False</em>) – If True, will return extra columns and rows used internally.</p></li>
+<li><p><strong>raise_errors</strong> (<em>bool</em><em>, </em><em>default = True</em>) – If False, will suppress all exceptions, ignoring models
+that couldn’t be created.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p></p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>pandas.DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="pycaret.clustering.get_metrics">
+<code class="sig-prename descclassname">pycaret.clustering.</code><code class="sig-name descname">get_metrics</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">reset</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">False</span></em>, <em class="sig-param"><span class="n">include_custom</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">True</span></em>, <em class="sig-param"><span class="n">raise_errors</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">True</span></em><span class="sig-paren">)</span> &#x2192; pandas.core.frame.DataFrame<a class="headerlink" href="#pycaret.clustering.get_metrics" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns table of metrics available.</p>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">metrics</span> <span class="o">=</span> <span class="n">get_metrics</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>This will return pandas dataframe with all available
+metrics and their metadata.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>reset</strong> (<em>bool</em><em>, </em><em>default = False</em>) – If True, will reset all changes made using add_metric() and get_metric().</p></li>
+<li><p><strong>include_custom</strong> (<em>bool</em><em>, </em><em>default = True</em>) – Whether to include user added (custom) metrics or not.</p></li>
+<li><p><strong>raise_errors</strong> (<em>bool</em><em>, </em><em>default = True</em>) – If False, will suppress all exceptions, ignoring models
+that couldn’t be created.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p></p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>pandas.DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="pycaret.clustering.add_metric">
+<code class="sig-prename descclassname">pycaret.clustering.</code><code class="sig-name descname">add_metric</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">id</span><span class="p">:</span> <span class="n">str</span></em>, <em class="sig-param"><span class="n">name</span><span class="p">:</span> <span class="n">str</span></em>, <em class="sig-param"><span class="n">score_func</span><span class="p">:</span> <span class="n">type</span></em>, <em class="sig-param"><span class="n">target</span><span class="p">:</span> <span class="n">str</span> <span class="o">=</span> <span class="default_value">'pred'</span></em>, <em class="sig-param"><span class="n">greater_is_better</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">True</span></em>, <em class="sig-param"><span class="n">multiclass</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">True</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span> &#x2192; pandas.core.series.Series<a class="headerlink" href="#pycaret.clustering.add_metric" title="Permalink to this definition">¶</a></dt>
+<dd><p>Adds a custom metric to be used in all functions.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>id</strong> (<em>str</em>) – Unique id for the metric.</p></li>
+<li><p><strong>name</strong> (<em>str</em>) – Display name of the metric.</p></li>
+<li><p><strong>score_func</strong> (<em>type</em>) – Score function (or loss function) with signature <code class="docutils literal notranslate"><span class="pre">score_func(y,</span> <span class="pre">y_pred,</span> <span class="pre">**kwargs)</span></code>.</p></li>
+<li><p><strong>target</strong> (<em>str</em><em>, </em><em>default = 'pred'</em>) – <p>The target of the score function.</p>
+<ul>
+<li><p>’pred’ for the prediction table</p></li>
+<li><p>’pred_proba’ for pred_proba</p></li>
+<li><p>’threshold’ for decision_function or predict_proba</p></li>
+</ul>
+</p></li>
+<li><p><strong>greater_is_better</strong> (<em>bool</em><em>, </em><em>default = True</em>) – Whether score_func is a score function (default), meaning high is good,
+or a loss function, meaning low is good. In the latter case, the
+scorer object will sign-flip the outcome of the score_func.</p></li>
+<li><p><strong>multiclass</strong> (<em>bool</em><em>, </em><em>default = True</em>) – Whether the metric supports multiclass problems.</p></li>
+<li><p><strong>**kwargs</strong> – Arguments to be passed to score function.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>The created row as Series.</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>pandas.Series</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="pycaret.clustering.remove_metric">
+<code class="sig-prename descclassname">pycaret.clustering.</code><code class="sig-name descname">remove_metric</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">name_or_id</span><span class="p">:</span> <span class="n">str</span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycaret.clustering.remove_metric" title="Permalink to this definition">¶</a></dt>
+<dd><p>Removes a metric used in all functions.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>name_or_id</strong> (<em>str</em>) – Display name or ID of the metric.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="pycaret.clustering.get_logs">
+<code class="sig-prename descclassname">pycaret.clustering.</code><code class="sig-name descname">get_logs</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">experiment_name</span><span class="p">:</span> <span class="n">Optional<span class="p">[</span>str<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">save</span><span class="p">:</span> <span class="n">bool</span> <span class="o">=</span> <span class="default_value">False</span></em><span class="sig-paren">)</span> &#x2192; pandas.core.frame.DataFrame<a class="headerlink" href="#pycaret.clustering.get_logs" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns a table with experiment logs consisting
+run details, parameter, metrics and tags.</p>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">logs</span> <span class="o">=</span> <span class="n">get_logs</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>This will return pandas dataframe.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>experiment_name</strong> (<em>str</em><em>, </em><em>default = None</em>) – When set to None current active run is used.</p></li>
+<li><p><strong>save</strong> (<em>bool</em><em>, </em><em>default = False</em>) – When set to True, csv file is saved in current directory.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p></p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>pandas.DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="pycaret.clustering.get_config">
+<code class="sig-prename descclassname">pycaret.clustering.</code><code class="sig-name descname">get_config</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">variable</span><span class="p">:</span> <span class="n">str</span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycaret.clustering.get_config" title="Permalink to this definition">¶</a></dt>
+<dd><p>This function is used to access global environment variables.
+Following variables can be accessed:</p>
+<ul class="simple">
+<li><p>X: Transformed dataset (X)</p></li>
+<li><p>y: Transformed dataset (y)</p></li>
+<li><p>X_train: Transformed train dataset (X)</p></li>
+<li><p>X_test: Transformed test/holdout dataset (X)</p></li>
+<li><p>y_train: Transformed train dataset (y)</p></li>
+<li><p>y_test: Transformed test/holdout dataset (y)</p></li>
+<li><p>seed: random state set through session_id</p></li>
+<li><p>prep_pipe: Transformation pipeline configured through setup</p></li>
+<li><p>fold_shuffle_param: shuffle parameter used in Kfolds</p></li>
+<li><p>n_jobs_param: n_jobs parameter used in model training</p></li>
+<li><p>html_param: html_param configured through setup</p></li>
+<li><p>create_model_container: results grid storage container</p></li>
+<li><p>master_model_container: model storage container</p></li>
+<li><p>display_container: results display container</p></li>
+<li><p>exp_name_log: Name of experiment set through setup</p></li>
+<li><p>logging_param: log_experiment param set through setup</p></li>
+<li><p>log_plots_param: log_plots param set through setup</p></li>
+<li><p>USI: Unique session ID parameter set through setup</p></li>
+<li><p>fix_imbalance_param: fix_imbalance param set through setup</p></li>
+<li><p>fix_imbalance_method_param: fix_imbalance_method param set through setup</p></li>
+<li><p>data_before_preprocess: data before preprocessing</p></li>
+<li><p>target_param: name of target variable</p></li>
+<li><p>gpu_param: use_gpu param configured through setup</p></li>
+</ul>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">X_train</span> <span class="o">=</span> <span class="n">get_config</span><span class="p">(</span><span class="s1">&#39;X_train&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>This will return X_train transformed dataset.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p></p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>variable</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="pycaret.clustering.set_config">
+<code class="sig-prename descclassname">pycaret.clustering.</code><code class="sig-name descname">set_config</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">variable</span><span class="p">:</span> <span class="n">str</span></em>, <em class="sig-param"><span class="n">value</span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycaret.clustering.set_config" title="Permalink to this definition">¶</a></dt>
+<dd><p>This function is used to reset global environment variables.
+Following variables can be accessed:</p>
+<ul class="simple">
+<li><p>X: Transformed dataset (X)</p></li>
+<li><p>y: Transformed dataset (y)</p></li>
+<li><p>X_train: Transformed train dataset (X)</p></li>
+<li><p>X_test: Transformed test/holdout dataset (X)</p></li>
+<li><p>y_train: Transformed train dataset (y)</p></li>
+<li><p>y_test: Transformed test/holdout dataset (y)</p></li>
+<li><p>seed: random state set through session_id</p></li>
+<li><p>prep_pipe: Transformation pipeline configured through setup</p></li>
+<li><p>fold_shuffle_param: shuffle parameter used in Kfolds</p></li>
+<li><p>n_jobs_param: n_jobs parameter used in model training</p></li>
+<li><p>html_param: html_param configured through setup</p></li>
+<li><p>create_model_container: results grid storage container</p></li>
+<li><p>master_model_container: model storage container</p></li>
+<li><p>display_container: results display container</p></li>
+<li><p>exp_name_log: Name of experiment set through setup</p></li>
+<li><p>logging_param: log_experiment param set through setup</p></li>
+<li><p>log_plots_param: log_plots param set through setup</p></li>
+<li><p>USI: Unique session ID parameter set through setup</p></li>
+<li><p>fix_imbalance_param: fix_imbalance param set through setup</p></li>
+<li><p>fix_imbalance_method_param: fix_imbalance_method param set through setup</p></li>
+<li><p>data_before_preprocess: data before preprocessing</p></li>
+</ul>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">set_config</span><span class="p">(</span><span class="s1">&#39;seed&#39;</span><span class="p">,</span> <span class="mi">123</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>This will set the global seed to ‘123’.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="pycaret.clustering.save_config">
+<code class="sig-prename descclassname">pycaret.clustering.</code><code class="sig-name descname">save_config</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">file_name</span><span class="p">:</span> <span class="n">str</span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycaret.clustering.save_config" title="Permalink to this definition">¶</a></dt>
+<dd><p>This function is used to save all enviroment variables to file,
+allowing to later resume modeling without rerunning setup().</p>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">save_config</span><span class="p">(</span><span class="s1">&#39;myvars.pkl&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>This will save all enviroment variables to ‘myvars.pkl’.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="pycaret.clustering.load_config">
+<code class="sig-prename descclassname">pycaret.clustering.</code><code class="sig-name descname">load_config</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">file_name</span><span class="p">:</span> <span class="n">str</span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycaret.clustering.load_config" title="Permalink to this definition">¶</a></dt>
+<dd><p>This function is used to load enviroment variables from file created with save_config(),
+allowing to later resume modeling without rerunning setup().</p>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">load_config</span><span class="p">(</span><span class="s1">&#39;myvars.pkl&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>This will load all enviroment variables from ‘myvars.pkl’.</p>
+</dd></dl>
+
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="anomaly.html" class="btn btn-neutral float-right" title="Anomaly" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="regression.html" class="btn btn-neutral float-left" title="Regression" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        
+        &copy; Copyright 2020, Moez Ali
+
+    </p>
+  </div>
+    
+    
+    
+    Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

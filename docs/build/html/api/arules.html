@@ -1,0 +1,355 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Arules &mdash; pycaret 2.0.0 documentation</title>
+  
+
+  
+  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/css/custom.css" type="text/css" />
+
+  
+  
+  
+  
+
+  
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/doctools.js"></script>
+        <script src="../_static/language_data.js"></script>
+    
+    <script type="text/javascript" src="../_static/js/theme.js"></script>
+
+    
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Datasets" href="datasets.html" />
+    <link rel="prev" title="NLP" href="nlp.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="../index.html" class="icon icon-home" alt="Documentation Home"> pycaret
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../index.html">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="classification.html">Classification</a></li>
+<li class="toctree-l1"><a class="reference internal" href="regression.html">Regression</a></li>
+<li class="toctree-l1"><a class="reference internal" href="clustering.html">Clustering</a></li>
+<li class="toctree-l1"><a class="reference internal" href="anomaly.html">Anomaly</a></li>
+<li class="toctree-l1"><a class="reference internal" href="nlp.html">NLP</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Arules</a></li>
+<li class="toctree-l1"><a class="reference internal" href="datasets.html">Datasets</a></li>
+</ul>
+
+            
+          
+        </div>
+        
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">pycaret</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
+        
+      <li>Arules</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="../_sources/api/arules.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="module-pycaret.arules">
+<span id="arules"></span><h1>Arules<a class="headerlink" href="#module-pycaret.arules" title="Permalink to this headline">¶</a></h1>
+<dl class="py function">
+<dt id="pycaret.arules.setup">
+<code class="sig-prename descclassname">pycaret.arules.</code><code class="sig-name descname">setup</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">data</span></em>, <em class="sig-param"><span class="n">transaction_id</span></em>, <em class="sig-param"><span class="n">item_id</span></em>, <em class="sig-param"><span class="n">ignore_items</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">session_id</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycaret.arules.setup" title="Permalink to this definition">¶</a></dt>
+<dd><p>This function initializes the environment in pycaret. setup() must called before
+executing any other function in pycaret. It takes three mandatory parameters:
+(i) data, (ii) transaction_id param identifying basket and (iii) item_id param
+used to create rules. These three params are normally found in any transactional
+dataset. pycaret will internally convert the pandas.DataFrame into a sparse matrix
+which is required for association rules mining.</p>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">pycaret.datasets</span> <span class="kn">import</span> <span class="n">get_data</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">france</span> <span class="o">=</span> <span class="n">get_data</span><span class="p">(</span><span class="s1">&#39;france&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">experiment_name</span> <span class="o">=</span> <span class="n">setup</span><span class="p">(</span><span class="n">data</span> <span class="o">=</span> <span class="n">data</span><span class="p">,</span> <span class="n">transaction_id</span> <span class="o">=</span> <span class="s1">&#39;InvoiceNo&#39;</span><span class="p">,</span> <span class="n">item_id</span> <span class="o">=</span> <span class="s1">&#39;ProductName&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>data</strong> (<em>pandas.DataFrame</em>) – Shape (n_samples, n_features) where n_samples is the number of samples and
+n_features is the number of features.</p></li>
+<li><p><strong>transaction_id</strong> (<em>string</em>) – Name of column representing transaction id. This will be used to pivot the matrix.</p></li>
+<li><p><strong>item_id</strong> (<em>string</em>) – Name of column used for creation of rules. Normally, this will be the variable of
+interest.</p></li>
+<li><p><strong>ignore_items</strong> (<em>list</em><em>, </em><em>default = None</em>) – List of strings to be ignored when considering rule mining.</p></li>
+<li><p><strong>session_id</strong> (<em>int</em><em>, </em><em>default = None</em>) – If None, a random seed is generated and returned in the Information grid. The
+unique number is then distributed as a seed in all functions used during the
+experiment. This can be used for later reproducibility of the entire experiment.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p><em>info_grid</em> – Information grid is printed.</p></li>
+<li><p><em>environment</em> – This function returns various outputs that are stored in variable
+as tuple. They are used by other functions in pycaret.</p></li>
+</ul>
+</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="pycaret.arules.create_model">
+<code class="sig-prename descclassname">pycaret.arules.</code><code class="sig-name descname">create_model</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">metric</span><span class="o">=</span><span class="default_value">'confidence'</span></em>, <em class="sig-param"><span class="n">threshold</span><span class="o">=</span><span class="default_value">0.5</span></em>, <em class="sig-param"><span class="n">min_support</span><span class="o">=</span><span class="default_value">0.05</span></em>, <em class="sig-param"><span class="n">round</span><span class="o">=</span><span class="default_value">4</span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycaret.arules.create_model" title="Permalink to this definition">¶</a></dt>
+<dd><p>This function creates an association rules model using data and identifiers
+passed at setup stage. This function internally transforms the data for
+association rule mining.</p>
+<p>setup() function must be called before using create_model()</p>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">pycaret.datasets</span> <span class="kn">import</span> <span class="n">get_data</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">france</span> <span class="o">=</span> <span class="n">get_data</span><span class="p">(</span><span class="s1">&#39;france&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">experiment_name</span> <span class="o">=</span> <span class="n">setup</span><span class="p">(</span><span class="n">data</span> <span class="o">=</span> <span class="n">data</span><span class="p">,</span> <span class="n">transaction_id</span> <span class="o">=</span> <span class="s1">&#39;InvoiceNo&#39;</span><span class="p">,</span> <span class="n">item_id</span> <span class="o">=</span> <span class="s1">&#39;ProductName&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>This will return pandas.DataFrame containing rules sorted by metric param.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>metric</strong> (<em>string</em><em>, </em><em>default = 'confidence'</em>) – <p>Metric to evaluate if a rule is of interest. Default is set to confidence.
+Other available metrics include ‘support’, ‘lift’, ‘leverage’, ‘conviction’.
+These metrics are computed as follows:</p>
+<ul>
+<li><p>support(A-&gt;C) = support(A+C) [aka ‘support’], range: [0, 1]</p></li>
+<li><p>confidence(A-&gt;C) = support(A+C) / support(A), range: [0, 1]</p></li>
+<li><p>lift(A-&gt;C) = confidence(A-&gt;C) / support(C), range: [0, inf]</p></li>
+<li><p>leverage(A-&gt;C) = support(A-&gt;C) - support(A)*support(C), range: [-1, 1]</p></li>
+<li><p>conviction = [1 - support(C)] / [1 - confidence(A-&gt;C)], range: [0, inf]</p></li>
+</ul>
+</p></li>
+<li><p><strong>threshold</strong> (<em>float</em><em>, </em><em>default = 0.5</em>) – Minimal threshold for the evaluation metric, via the <cite>metric</cite> parameter,
+to decide whether a candidate rule is of interest.</p></li>
+<li><p><strong>min_support</strong> (<em>float</em><em>, </em><em>default = 0.05</em>) – A float between 0 and 1 for minumum support of the itemsets returned.
+The support is computed as the fraction <cite>transactions_where_item(s)_occur /
+total_transactions</cite>.</p></li>
+<li><p><strong>round</strong> (<em>integer</em><em>, </em><em>default = 4</em>) – Number of decimal places metrics in score grid will be rounded to.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Dataframe containing rules of interest with all metrics
+including antecedents, consequents, antecedent support,
+consequent support, support, confidence, lift, leverage,
+conviction.</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>pandas.DataFrame</p>
+</dd>
+</dl>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<ul class="simple">
+<li><p>Setting low values for min_support may increase training time.</p></li>
+</ul>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt id="pycaret.arules.plot_model">
+<code class="sig-prename descclassname">pycaret.arules.</code><code class="sig-name descname">plot_model</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">model</span></em>, <em class="sig-param"><span class="n">plot</span><span class="o">=</span><span class="default_value">'2d'</span></em>, <em class="sig-param"><span class="n">scale</span><span class="o">=</span><span class="default_value">1</span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycaret.arules.plot_model" title="Permalink to this definition">¶</a></dt>
+<dd><p>This function takes a model dataframe returned by create_model() function.
+‘2d’ and ‘3d’ plots are available.</p>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">rule1</span> <span class="o">=</span> <span class="n">create_model</span><span class="p">(</span><span class="n">metric</span><span class="o">=</span><span class="s1">&#39;confidence&#39;</span><span class="p">,</span> <span class="n">threshold</span><span class="o">=</span><span class="mf">0.7</span><span class="p">,</span> <span class="n">min_support</span><span class="o">=</span><span class="mf">0.05</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">plot_model</span><span class="p">(</span><span class="n">rule1</span><span class="p">,</span> <span class="n">plot</span><span class="o">=</span><span class="s1">&#39;2d&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">plot_model</span><span class="p">(</span><span class="n">rule1</span><span class="p">,</span> <span class="n">plot</span><span class="o">=</span><span class="s1">&#39;3d&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>model</strong> (<em>pandas.DataFrame</em><em>, </em><em>default = none</em>) – pandas.DataFrame returned by trained model using create_model().</p></li>
+<li><p><strong>plot</strong> (<em>string</em><em>, </em><em>default = '2d'</em>) – <p>Enter abbreviation of type of plot. The current list of plots supported are
+(Name - Abbreviated String):</p>
+<ul>
+<li><p>Support, Confidence and Lift (2d) - ‘2d’</p></li>
+<li><p>Support, Confidence and Lift (3d) - ‘3d’</p></li>
+</ul>
+</p></li>
+<li><p><strong>scale</strong> (<em>float</em><em>, </em><em>default = 1</em>) – The resolution scale of the figure.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Prints the visual plot.</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>Visual_Plot</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="pycaret.arules.get_rules">
+<code class="sig-prename descclassname">pycaret.arules.</code><code class="sig-name descname">get_rules</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">data</span></em>, <em class="sig-param"><span class="n">transaction_id</span></em>, <em class="sig-param"><span class="n">item_id</span></em>, <em class="sig-param"><span class="n">ignore_items</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">metric</span><span class="o">=</span><span class="default_value">'confidence'</span></em>, <em class="sig-param"><span class="n">threshold</span><span class="o">=</span><span class="default_value">0.5</span></em>, <em class="sig-param"><span class="n">min_support</span><span class="o">=</span><span class="default_value">0.05</span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycaret.arules.get_rules" title="Permalink to this definition">¶</a></dt>
+<dd><p>Magic function to get Association Rules in Power Query / Power BI.</p>
+</dd></dl>
+
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="datasets.html" class="btn btn-neutral float-right" title="Datasets" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="nlp.html" class="btn btn-neutral float-left" title="NLP" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        
+        &copy; Copyright 2020, Moez Ali
+
+    </p>
+  </div>
+    
+    
+    
+    Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>
