@@ -200,18 +200,17 @@ def setup(
         Defines the method for scaling. By default, normalize method is set to 'zscore'
         The standard zscore is calculated as z = (x - u) / s. Ignored when ``normalize`` 
         is not True. The other options are:
-
-        minmax  :   scales and translates each feature individually such that it is in 
-                    the range of 0 - 1.
-        
-        maxabs  :   scales and translates each feature individually such that the maximal 
-                    absolute value of each feature will be 1.0. It does not shift/center 
-                    the data, and thus does not destroy any sparsity.
-        
-        robust  :   scales and translates each feature according to the Interquartile 
-                    range. When the dataset contains outliers, robust scaler often gives 
-                    better results.
     
+        - 'minmax': scales and translates each feature individually such that it is in 
+        the range of 0 - 1.
+        - 'maxabs': scales and translates each feature individually such that the 
+        maximal absolute value of each feature will be 1.0. It does not 
+        shift/center the data, and thus does not destroy any sparsity.
+        - 'robust' : scales and translates each feature according to the Interquartile 
+        range. When the dataset contains outliers, robust scaler often gives 
+        better results.
+
+
     transformation: bool, default = False
         When set to True, it applies the power transform to make data more Gaussian-like.
         Type of transformation is defined by the ``transformation_method`` parameter.
@@ -236,9 +235,9 @@ def setup(
     pca_method: str, default = 'linear'
         The 'linear' method performs uses Singular Value  Decomposition. Other options are:
         
-        kernel      : dimensionality reduction through the use of RVF kernel.  
-        
-        incremental : replacement for 'linear' pca when the dataset is too large.
+        - kernel: dimensionality reduction through the use of RVF kernel.
+        - incremental: replacement for 'linear' pca when the dataset is too large.
+
 
     pca_components: int or float, default = None
         Number of components to keep. if pca_components is a float, it is treated as a 
