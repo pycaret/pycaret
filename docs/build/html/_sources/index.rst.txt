@@ -1,4 +1,4 @@
-Welcome to pycaret's documentation!
+Quickstart
 ===================================
 
 PyCaret is an open source low-code machine learning library in Python that aims to reduce the hypothesis to insights cycle time in a ML experiment. It enables data scientists to perform end-to-end experiments quickly and efficiently. In comparison with the other open source machine learning libraries, PyCaret is an alternate low-code library that can be used to perform complex machine learning tasks with only few lines of code. PyCaret is essentially a Python wrapper around several machine learning libraries and frameworks such as scikit-learn, XGBoost, Microsoft LightGBM, spaCy and many more.
@@ -12,43 +12,16 @@ For more information on PyCaret, please visit our official website https://www.p
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
-   
 
+   self
+   api/classification
+   api/regression
+   api/clustering
+   api/anomaly
+   api/nlp
+   api/arules
+   api/datasets
 
-Classification
-===================
-.. automodule:: pycaret.classification
-   :members:
-
-Regression
-===================
-.. automodule:: pycaret.regression
-   :members:
-
-Clustering
-===================
-.. automodule:: pycaret.clustering
-   :members:
-
-Anomaly
-===================
-.. automodule:: pycaret.anomaly
-   :members:
-
-NLP
-===================
-.. automodule:: pycaret.nlp
-   :members:
-
-Arules
-===================
-.. automodule:: pycaret.arules
-   :members:
-
-Datasets
-===================
-.. automodule:: pycaret.datasets
-   :members:
 
 Indices and tables
 ==================

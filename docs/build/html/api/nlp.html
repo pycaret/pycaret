@@ -1,0 +1,767 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>NLP &mdash; pycaret 2.0.0 documentation</title>
+  
+
+  
+  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+
+  
+  
+  
+  
+
+  
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/doctools.js"></script>
+        <script src="../_static/language_data.js"></script>
+    
+    <script type="text/javascript" src="../_static/js/theme.js"></script>
+
+    
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Arules" href="arules.html" />
+    <link rel="prev" title="Anomaly" href="anomaly.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="../index.html" class="icon icon-home" alt="Documentation Home"> pycaret
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../index.html">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="classification.html">Classification</a></li>
+<li class="toctree-l1"><a class="reference internal" href="regression.html">Regression</a></li>
+<li class="toctree-l1"><a class="reference internal" href="clustering.html">Clustering</a></li>
+<li class="toctree-l1"><a class="reference internal" href="anomaly.html">Anomaly</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">NLP</a></li>
+<li class="toctree-l1"><a class="reference internal" href="arules.html">Arules</a></li>
+<li class="toctree-l1"><a class="reference internal" href="datasets.html">Datasets</a></li>
+</ul>
+
+            
+          
+        </div>
+        
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">pycaret</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
+        
+      <li>NLP</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="../_sources/api/nlp.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="module-pycaret.nlp">
+<span id="nlp"></span><h1>NLP<a class="headerlink" href="#module-pycaret.nlp" title="Permalink to this headline">¶</a></h1>
+<dl class="py function">
+<dt id="pycaret.nlp.setup">
+<code class="sig-prename descclassname">pycaret.nlp.</code><code class="sig-name descname">setup</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">data</span></em>, <em class="sig-param"><span class="n">target</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">custom_stopwords</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">html</span><span class="o">=</span><span class="default_value">True</span></em>, <em class="sig-param"><span class="n">session_id</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">log_experiment</span><span class="o">=</span><span class="default_value">False</span></em>, <em class="sig-param"><span class="n">experiment_name</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">log_plots</span><span class="o">=</span><span class="default_value">False</span></em>, <em class="sig-param"><span class="n">log_data</span><span class="o">=</span><span class="default_value">False</span></em>, <em class="sig-param"><span class="n">verbose</span><span class="o">=</span><span class="default_value">True</span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycaret.nlp.setup" title="Permalink to this definition">¶</a></dt>
+<dd><p>This function initializes the environment in pycaret. setup() must called before
+executing any other function in pycaret. It takes one mandatory parameter:
+data, a pandas.Dataframe or object of type list. If a pandas.Dataframe is
+passed, target column containing text must be specified. When data passed is of
+type list, no target parameter is required. All other parameters are optional.
+This module only supports English Language at this time.</p>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">pycaret.datasets</span> <span class="kn">import</span> <span class="n">get_data</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">kiva</span> <span class="o">=</span> <span class="n">get_data</span><span class="p">(</span><span class="s1">&#39;kiva&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">experiment_name</span> <span class="o">=</span> <span class="n">setup</span><span class="p">(</span><span class="n">data</span> <span class="o">=</span> <span class="n">kiva</span><span class="p">,</span> <span class="n">target</span> <span class="o">=</span> <span class="s1">&#39;en&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>‘kiva’ is a pandas.Dataframe.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>data</strong> (<em>pandas.Dataframe</em><em> or </em><em>list</em>) – pandas.Dataframe with shape (n_samples, n_features) where n_samples is
+the number of samples and n_features is the number of features, or object
+of type list with n length.</p></li>
+<li><p><strong>target</strong> (<em>string</em>) – If data is of type pandas.Dataframe, name of column containing text values
+must be passed as string.</p></li>
+<li><p><strong>custom_stopwords</strong> (<em>list</em><em>, </em><em>default = None</em>) – List containing custom stopwords.</p></li>
+<li><p><strong>html</strong> (<em>bool</em><em>, </em><em>default = True</em>) – If set to False, prevents runtime display of monitor. This must be set to False
+when using environment that doesnt support HTML.</p></li>
+<li><p><strong>session_id</strong> (<em>int</em><em>, </em><em>default = None</em>) – If None, a random seed is generated and returned in the Information grid. The
+unique number is then distributed as a seed in all functions used during the
+experiment. This can be used for later reproducibility of the entire experiment.</p></li>
+<li><p><strong>log_experiment</strong> (<em>bool</em><em>, </em><em>default = True</em>) – When set to True, all metrics and parameters are logged on MLFlow server.</p></li>
+<li><p><strong>experiment_name</strong> (<em>str</em><em>, </em><em>default = None</em>) – Name of experiment for logging. When set to None, ‘nlp’ is by default used as
+alias for the experiment name.</p></li>
+<li><p><strong>log_plots</strong> (<em>bool</em><em>, </em><em>default = False</em>) – When set to True, specific plots are logged in MLflow as a png file. By default,
+it is set to False.</p></li>
+<li><p><strong>log_data</strong> (<em>bool</em><em>, </em><em>default = False</em>) – When set to True, train and test dataset are logged as csv.</p></li>
+<li><p><strong>verbose</strong> (<em>Boolean</em><em>, </em><em>default = True</em>) – Information grid is not printed when verbose is set to False.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p><em>info_grid</em> – Information grid is printed.</p></li>
+<li><p><em>environment</em> – This function returns various outputs that are stored in variable
+as tuple. They are used by other functions in pycaret.</p></li>
+</ul>
+</p>
+</dd>
+</dl>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<ul>
+<li><p>Some functionalities in pycaret.nlp requires you to have english language model.
+The language model is not downloaded automatically when you install pycaret.
+You will have to download two models using your Anaconda Prompt or python
+command line interface. To download the model, please type the following in
+your command line:</p>
+<blockquote>
+<div><p>python -m spacy download en_core_web_sm
+python -m textblob.download_corpora</p>
+</div></blockquote>
+<p>Once downloaded, please restart your kernel and re-run the setup.</p>
+</li>
+</ul>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt id="pycaret.nlp.create_model">
+<code class="sig-prename descclassname">pycaret.nlp.</code><code class="sig-name descname">create_model</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">model</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">multi_core</span><span class="o">=</span><span class="default_value">False</span></em>, <em class="sig-param"><span class="n">num_topics</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">verbose</span><span class="o">=</span><span class="default_value">True</span></em>, <em class="sig-param"><span class="n">system</span><span class="o">=</span><span class="default_value">True</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycaret.nlp.create_model" title="Permalink to this definition">¶</a></dt>
+<dd><p>This function creates a model on the dataset passed as a data param during
+the setup stage. setup() function must be called before using create_model().</p>
+<p>This function returns a trained model object.</p>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">pycaret.datasets</span> <span class="kn">import</span> <span class="n">get_data</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">kiva</span> <span class="o">=</span> <span class="n">get_data</span><span class="p">(</span><span class="s1">&#39;kiva&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">experiment_name</span> <span class="o">=</span> <span class="n">setup</span><span class="p">(</span><span class="n">data</span> <span class="o">=</span> <span class="n">kiva</span><span class="p">,</span> <span class="n">target</span> <span class="o">=</span> <span class="s1">&#39;en&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">lda</span> <span class="o">=</span> <span class="n">create_model</span><span class="p">(</span><span class="s1">&#39;lda&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>This will return trained Latent Dirichlet Allocation model.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>model</strong> (<em>string</em><em>, </em><em>default = None</em>) – <p>Enter ID of the model available in model library (ID - Model):</p>
+<ul>
+<li><p>’lda’ - Latent Dirichlet Allocation</p></li>
+<li><p>’lsi’ - Latent Semantic Indexing</p></li>
+<li><p>’hdp’ - Hierarchical Dirichlet Process</p></li>
+<li><p>’rp’ - Random Projections</p></li>
+<li><p>’nmf’ - Non-Negative Matrix Factorization</p></li>
+</ul>
+</p></li>
+<li><p><strong>multi_core</strong> (<em>Boolean</em><em>, </em><em>default = False</em>) – True would utilize all CPU cores to parallelize and speed up model training. Only
+available for ‘lda’. For all other models, the multi_core parameter is ignored.</p></li>
+<li><p><strong>num_topics</strong> (<em>integer</em><em>, </em><em>default = 4</em>) – Number of topics to be created. If None, default is set to 4.</p></li>
+<li><p><strong>verbose</strong> (<em>Boolean</em><em>, </em><em>default = True</em>) – Status update is not printed when verbose is set to False.</p></li>
+<li><p><strong>system</strong> (<em>Boolean</em><em>, </em><em>default = True</em>) – Must remain True all times. Only to be changed by internal functions.</p></li>
+<li><p><strong>**kwargs</strong> – Additional keyword arguments to pass to the estimator.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Trained model object.</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>model</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="pycaret.nlp.assign_model">
+<code class="sig-prename descclassname">pycaret.nlp.</code><code class="sig-name descname">assign_model</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">model</span></em>, <em class="sig-param"><span class="n">verbose</span><span class="o">=</span><span class="default_value">True</span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycaret.nlp.assign_model" title="Permalink to this definition">¶</a></dt>
+<dd><p>This function assigns each of the data point in the dataset passed during setup
+stage to one of the topic using trained model object passed as model param.
+create_model() function must be called before using assign_model().</p>
+<p>This function returns a pandas.Dataframe with topic weights, dominant topic and
+% of the dominant topic (where applicable).</p>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">pycaret.datasets</span> <span class="kn">import</span> <span class="n">get_data</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">kiva</span> <span class="o">=</span> <span class="n">get_data</span><span class="p">(</span><span class="s1">&#39;kiva&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">experiment_name</span> <span class="o">=</span> <span class="n">setup</span><span class="p">(</span><span class="n">data</span> <span class="o">=</span> <span class="n">kiva</span><span class="p">,</span> <span class="n">target</span> <span class="o">=</span> <span class="s1">&#39;en&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">lda</span> <span class="o">=</span> <span class="n">create_model</span><span class="p">(</span><span class="s1">&#39;lda&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">lda_df</span> <span class="o">=</span> <span class="n">assign_model</span><span class="p">(</span><span class="n">lda</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>This will return a pandas.Dataframe with inferred topics using trained model.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>model</strong> (<em>trained model object</em><em>, </em><em>default = None</em>) – </p></li>
+<li><p><strong>verbose</strong> (<em>Boolean</em><em>, </em><em>default = True</em>) – Status update is not printed when verbose is set to False.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Returns a DataFrame with inferred topics using trained model object.</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>pandas.DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="pycaret.nlp.plot_model">
+<code class="sig-prename descclassname">pycaret.nlp.</code><code class="sig-name descname">plot_model</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">model</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">plot</span><span class="o">=</span><span class="default_value">'frequency'</span></em>, <em class="sig-param"><span class="n">topic_num</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">save</span><span class="o">=</span><span class="default_value">False</span></em>, <em class="sig-param"><span class="n">system</span><span class="o">=</span><span class="default_value">True</span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycaret.nlp.plot_model" title="Permalink to this definition">¶</a></dt>
+<dd><p>This function takes a trained model object (optional) and returns a plot based
+on the inferred dataset by internally calling assign_model before generating a
+plot. Where a model parameter is not passed, a plot on the entire dataset will
+be returned instead of one at the topic level. As such, plot_model can be used
+with or without model. All plots with a model parameter passed as a trained
+model object will return a plot based on the first topic i.e.  ‘Topic 0’. This
+can be changed using the topic_num param.</p>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">pycaret.datasets</span> <span class="kn">import</span> <span class="n">get_data</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">kiva</span> <span class="o">=</span> <span class="n">get_data</span><span class="p">(</span><span class="s1">&#39;kiva&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">experiment_name</span> <span class="o">=</span> <span class="n">setup</span><span class="p">(</span><span class="n">data</span> <span class="o">=</span> <span class="n">kiva</span><span class="p">,</span> <span class="n">target</span> <span class="o">=</span> <span class="s1">&#39;en&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">lda</span> <span class="o">=</span> <span class="n">create_model</span><span class="p">(</span><span class="s1">&#39;lda&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">plot_model</span><span class="p">(</span><span class="n">lda</span><span class="p">,</span> <span class="n">plot</span> <span class="o">=</span> <span class="s1">&#39;frequency&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>This will return a frequency plot on a trained Latent Dirichlet Allocation
+model for all documents in ‘Topic 0’. The topic number can be changed as
+follows:</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">plot_model</span><span class="p">(</span><span class="n">lda</span><span class="p">,</span> <span class="n">plot</span> <span class="o">=</span> <span class="s1">&#39;frequency&#39;</span><span class="p">,</span> <span class="n">topic_num</span> <span class="o">=</span> <span class="s1">&#39;Topic 1&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>This will now return a frequency plot on a trained LDA model for all
+documents inferred in ‘Topic 1’.</p>
+<p>Alternatively, if following is used:</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">plot_model</span><span class="p">(</span><span class="n">plot</span> <span class="o">=</span> <span class="s1">&#39;frequency&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>This will return frequency plot on the entire training corpus compiled
+during setup stage.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>model</strong> (<em>object</em><em>, </em><em>default = none</em>) – A trained model object can be passed. Model must be created using create_model().</p></li>
+<li><p><strong>plot</strong> (<em>string</em><em>, </em><em>default = 'frequency'</em>) – Enter abbreviation for type of plot. The current list of plots supported are
+(Name - Abbreviated String):
+* Word Token Frequency - ‘frequency’
+* Word Distribution Plot - ‘distribution’
+* Bigram Frequency Plot - ‘bigram’
+* Trigram Frequency Plot - ‘trigram’
+* Sentiment Polarity Plot - ‘sentiment’
+* Part of Speech Frequency - ‘pos’
+* t-SNE (3d) Dimension Plot - ‘tsne’
+* Topic Model (pyLDAvis) - ‘topic_model’
+* Topic Infer Distribution - ‘topic_distribution’
+* Wordcloud - ‘wordcloud’
+* UMAP Dimensionality Plot - ‘umap’</p></li>
+<li><p><strong>topic_num</strong> (<em>string</em><em>, </em><em>default = None</em>) – Topic number to be passed as a string. If set to None, default generation will
+be on ‘Topic 0’</p></li>
+<li><p><strong>save</strong> (<em>Boolean</em><em>, </em><em>default = False</em>) – Plot is saved as png file in local directory when save parameter set to True.</p></li>
+<li><p><strong>system</strong> (<em>Boolean</em><em>, </em><em>default = True</em>) – Must remain True all times. Only to be changed by internal functions.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Prints the visual plot.</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>Visual_Plot</p>
+</dd>
+</dl>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<ul class="simple">
+<li><p>‘pos’ and ‘umap’ plot not available at model level. Hence the model parameter is
+ignored. The result will always be based on the entire training corpus.</p></li>
+<li><p>‘topic_model’ plot is based on pyLDAVis implementation. Hence its not available
+for model = ‘lsi’, ‘rp’ and ‘nmf’.</p></li>
+</ul>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt id="pycaret.nlp.tune_model">
+<code class="sig-prename descclassname">pycaret.nlp.</code><code class="sig-name descname">tune_model</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">model</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">multi_core</span><span class="o">=</span><span class="default_value">False</span></em>, <em class="sig-param"><span class="n">supervised_target</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">estimator</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">optimize</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">custom_grid</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">auto_fe</span><span class="o">=</span><span class="default_value">True</span></em>, <em class="sig-param"><span class="n">fold</span><span class="o">=</span><span class="default_value">10</span></em>, <em class="sig-param"><span class="n">verbose</span><span class="o">=</span><span class="default_value">True</span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycaret.nlp.tune_model" title="Permalink to this definition">¶</a></dt>
+<dd><p>This function tunes the num_topics model parameter using a predefined grid with
+the objective of optimizing a supervised learning metric as defined in the optimize
+param. You can choose the supervised estimator from a large library available in
+pycaret. By default, supervised estimator is Linear.</p>
+<p>This function returns the tuned model object.</p>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">pycaret.datasets</span> <span class="kn">import</span> <span class="n">get_data</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">kiva</span> <span class="o">=</span> <span class="n">get_data</span><span class="p">(</span><span class="s1">&#39;kiva&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">experiment_name</span> <span class="o">=</span> <span class="n">setup</span><span class="p">(</span><span class="n">data</span> <span class="o">=</span> <span class="n">kiva</span><span class="p">,</span> <span class="n">target</span> <span class="o">=</span> <span class="s1">&#39;en&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">tuned_lda</span> <span class="o">=</span> <span class="n">tune_model</span><span class="p">(</span><span class="n">model</span> <span class="o">=</span> <span class="s1">&#39;lda&#39;</span><span class="p">,</span> <span class="n">supervised_target</span> <span class="o">=</span> <span class="s1">&#39;status&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>This will return trained Latent Dirichlet Allocation model.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>model</strong> (<em>string</em><em>, </em><em>default = None</em>) – <p>Enter ID of the models available in model library (ID - Model):</p>
+<ul>
+<li><p>’lda’ - Latent Dirichlet Allocation</p></li>
+<li><p>’lsi’ - Latent Semantic Indexing</p></li>
+<li><p>’hdp’ - Hierarchical Dirichlet Process</p></li>
+<li><p>’rp’ - Random Projections</p></li>
+<li><p>’nmf’ - Non-Negative Matrix Factorization</p></li>
+</ul>
+</p></li>
+<li><p><strong>multi_core</strong> (<em>Boolean</em><em>, </em><em>default = False</em>) – True would utilize all CPU cores to parallelize and speed up model
+training. Only available for ‘lda’. For all other models, multi_core
+parameter is ignored.</p></li>
+<li><p><strong>supervised_target</strong> (<em>string</em>) – Name of the target column for supervised learning. If None, the model
+coherence value is used as the objective function.</p></li>
+<li><p><strong>estimator</strong> (<em>string</em><em>, </em><em>default = None</em>) – <p>For Classification (ID - Name):</p>
+<ul>
+<li><p>’lr’ - Logistic Regression</p></li>
+<li><p>’knn’ - K Nearest Neighbour</p></li>
+<li><p>’nb’ - Naive Bayes</p></li>
+<li><p>’dt’ - Decision Tree Classifier</p></li>
+<li><p>’svm’ - SVM - Linear Kernel</p></li>
+<li><p>’rbfsvm’ - SVM - Radial Kernel</p></li>
+<li><p>’gpc’ - Gaussian Process Classifier</p></li>
+<li><p>’mlp’ - Multi Level Perceptron</p></li>
+<li><p>’ridge’ - Ridge Classifier</p></li>
+<li><p>’rf’ - Random Forest Classifier</p></li>
+<li><p>’qda’ - Quadratic Discriminant Analysis</p></li>
+<li><p>’ada’ - Ada Boost Classifier</p></li>
+<li><p>’gbc’ - Gradient Boosting Classifier</p></li>
+<li><p>’lda’ - Linear Discriminant Analysis</p></li>
+<li><p>’et’ - Extra Trees Classifier</p></li>
+<li><p>’xgboost’ - Extreme Gradient Boosting</p></li>
+<li><p>’lightgbm’ - Light Gradient Boosting</p></li>
+<li><p>’catboost’ - CatBoost Classifier</p></li>
+</ul>
+<p>For Regression (ID - Name):</p>
+<ul>
+<li><p>’lr’ - Linear Regression</p></li>
+<li><p>’lasso’ - Lasso Regression</p></li>
+<li><p>’ridge’ - Ridge Regression</p></li>
+<li><p>’en’ - Elastic Net</p></li>
+<li><p>’lar’ - Least Angle Regression</p></li>
+<li><p>’llar’ - Lasso Least Angle Regression</p></li>
+<li><p>’omp’ - Orthogonal Matching Pursuit</p></li>
+<li><p>’br’ - Bayesian Ridge</p></li>
+<li><p>’ard’ - Automatic Relevance Determ.</p></li>
+<li><p>’par’ - Passive Aggressive Regressor</p></li>
+<li><p>’ransac’ - Random Sample Consensus</p></li>
+<li><p>’tr’ - TheilSen Regressor</p></li>
+<li><p>’huber’ - Huber Regressor</p></li>
+<li><p>’kr’ - Kernel Ridge</p></li>
+<li><p>’svm’ - Support Vector Machine</p></li>
+<li><p>’knn’ - K Neighbors Regressor</p></li>
+<li><p>’dt’ - Decision Tree</p></li>
+<li><p>’rf’ - Random Forest</p></li>
+<li><p>’et’ - Extra Trees Regressor</p></li>
+<li><p>’ada’ - AdaBoost Regressor</p></li>
+<li><p>’gbr’ - Gradient Boosting</p></li>
+<li><p>’mlp’ - Multi Level Perceptron</p></li>
+<li><p>’xgboost’ - Extreme Gradient Boosting</p></li>
+<li><p>’lightgbm’ - Light Gradient Boosting</p></li>
+<li><p>’catboost’ - CatBoost Regressor</p></li>
+</ul>
+<p>If set to None, Linear / Logistic model is used by default.</p>
+</p></li>
+<li><p><strong>optimize</strong> (<em>string</em><em>, </em><em>default = None</em>) – <dl class="simple">
+<dt>For Classification tasks:</dt><dd><p>Accuracy, AUC, Recall, Precision, F1, Kappa</p>
+</dd>
+<dt>For Regression tasks:</dt><dd><p>MAE, MSE, RMSE, R2, RMSLE, MAPE</p>
+</dd>
+</dl>
+<p>If set to None, default is ‘Accuracy’ for classification and ‘R2’ for
+regression tasks.</p>
+</p></li>
+<li><p><strong>custom_grid</strong> (<em>list</em><em>, </em><em>default = None</em>) – By default, a pre-defined number of topics is iterated over to
+optimize the supervised objective. To overwrite default iteration,
+pass a list of num_topics to iterate over in custom_grid param.</p></li>
+<li><p><strong>auto_fe</strong> (<em>boolean</em><em>, </em><em>default = True</em>) – Automatic text feature engineering. Only used when supervised_target is
+passed. When set to true, it will generate text based features such as
+polarity, subjectivity, wordcounts to be used in supervised learning.
+Ignored when supervised_target is set to None.</p></li>
+<li><p><strong>fold</strong> (<em>integer</em><em>, </em><em>default = 10</em>) – Number of folds to be used in Kfold CV. Must be at least 2.</p></li>
+<li><p><strong>verbose</strong> (<em>Boolean</em><em>, </em><em>default = True</em>) – Status update is not printed when verbose is set to False.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p><em>Visual_Plot</em> – Visual plot with k number of topics on x-axis with metric to
+optimize on y-axis. Coherence is used when learning is
+unsupervised. Also, prints the best model metric.</p></li>
+<li><p><em>model</em> – trained model object with best K number of topics.</p></li>
+</ul>
+</p>
+</dd>
+</dl>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<ul class="simple">
+<li><p>Random Projections (‘rp’) and Non Negative Matrix Factorization (‘nmf’)
+is not available for unsupervised learning. Error is raised when ‘rp’ or
+‘nmf’ is passed without supervised_target.</p></li>
+<li><p>Estimators using kernel based methods such as Kernel Ridge Regressor,
+Automatic Relevance Determinant, Gaussian Process Classifier, Radial Basis
+Support Vector Machine and Multi Level Perceptron may have longer training
+times.</p></li>
+</ul>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt id="pycaret.nlp.evaluate_model">
+<code class="sig-prename descclassname">pycaret.nlp.</code><code class="sig-name descname">evaluate_model</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">model</span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycaret.nlp.evaluate_model" title="Permalink to this definition">¶</a></dt>
+<dd><p>This function displays the user interface for all the available plots
+for a given model. It internally uses the plot_model() function.</p>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">pycaret.datasets</span> <span class="kn">import</span> <span class="n">get_data</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">kiva</span> <span class="o">=</span> <span class="n">get_data</span><span class="p">(</span><span class="s1">&#39;kiva&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">experiment_name</span> <span class="o">=</span> <span class="n">setup</span><span class="p">(</span><span class="n">data</span> <span class="o">=</span> <span class="n">kiva</span><span class="p">,</span> <span class="n">target</span> <span class="o">=</span> <span class="s1">&#39;en&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">lda</span> <span class="o">=</span> <span class="n">create_model</span><span class="p">(</span><span class="s1">&#39;lda&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">evaluate_model</span><span class="p">(</span><span class="n">lda</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>This will display the User Interface for all of the plots for
+given model.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>model</strong> (<em>object</em><em>, </em><em>default = none</em>) – A trained model object should be passed.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Displays the user interface for plotting.</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>User_Interface</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="pycaret.nlp.save_model">
+<code class="sig-prename descclassname">pycaret.nlp.</code><code class="sig-name descname">save_model</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">model</span></em>, <em class="sig-param"><span class="n">model_name</span></em>, <em class="sig-param"><span class="n">verbose</span><span class="o">=</span><span class="default_value">True</span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycaret.nlp.save_model" title="Permalink to this definition">¶</a></dt>
+<dd><p>This function saves the trained model object into the current active
+directory as a pickle file for later use.</p>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">pycaret.datasets</span> <span class="kn">import</span> <span class="n">get_data</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">kiva</span> <span class="o">=</span> <span class="n">get_data</span><span class="p">(</span><span class="s1">&#39;kiva&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">experiment_name</span> <span class="o">=</span> <span class="n">setup</span><span class="p">(</span><span class="n">data</span> <span class="o">=</span> <span class="n">kiva</span><span class="p">,</span> <span class="n">target</span> <span class="o">=</span> <span class="s1">&#39;en&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">lda</span> <span class="o">=</span> <span class="n">create_model</span><span class="p">(</span><span class="s1">&#39;lda&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">save_model</span><span class="p">(</span><span class="n">lda</span><span class="p">,</span> <span class="s1">&#39;lda_model_23122019&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>This will save the model as a binary pickle file in the current
+directory.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>model</strong> (<em>object</em><em>, </em><em>default = none</em>) – A trained model object should be passed.</p></li>
+<li><p><strong>model_name</strong> (<em>string</em><em>, </em><em>default = none</em>) – Name of pickle file to be passed as a string.</p></li>
+<li><p><strong>verbose</strong> (<em>bool</em><em>, </em><em>default = True</em>) – When set to False, success message is not printed.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Tuple of the model object and the filename it was saved under.</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>(model, model_filename)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="pycaret.nlp.load_model">
+<code class="sig-prename descclassname">pycaret.nlp.</code><code class="sig-name descname">load_model</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">model_name</span></em>, <em class="sig-param"><span class="n">verbose</span><span class="o">=</span><span class="default_value">True</span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycaret.nlp.load_model" title="Permalink to this definition">¶</a></dt>
+<dd><p>This function loads a previously saved model from the current active directory
+into the current python environment. Load object must be a pickle file.</p>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">saved_lda</span> <span class="o">=</span> <span class="n">load_model</span><span class="p">(</span><span class="s1">&#39;lda_model_23122019&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>This will call the trained model in saved_lr variable using model_name param.
+The file must be in current directory.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>model_name</strong> (<em>string</em><em>, </em><em>default = none</em>) – Name of pickle file to be passed as a string.</p></li>
+<li><p><strong>verbose</strong> (<em>bool</em><em>, </em><em>default = True</em>) – When set to False, success message is not printed.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p></p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>Success_Message</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="pycaret.nlp.models">
+<code class="sig-prename descclassname">pycaret.nlp.</code><code class="sig-name descname">models</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#pycaret.nlp.models" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns table of models available in model library.</p>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">all_models</span> <span class="o">=</span> <span class="n">models</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>This will return pandas.DataFrame with all available
+models and their metadata.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p></p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>pandas.DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="pycaret.nlp.get_logs">
+<code class="sig-prename descclassname">pycaret.nlp.</code><code class="sig-name descname">get_logs</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">experiment_name</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">save</span><span class="o">=</span><span class="default_value">False</span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycaret.nlp.get_logs" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns a table with experiment logs consisting
+run details, parameter, metrics and tags.</p>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">logs</span> <span class="o">=</span> <span class="n">get_logs</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>This will return pandas.DataFrame.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>experiment_name</strong> (<em>string</em><em>, </em><em>default = None</em>) – When set to None current active run is used.</p></li>
+<li><p><strong>save</strong> (<em>bool</em><em>, </em><em>default = False</em>) – When set to True, csv file is saved in current directory.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p></p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>pandas.DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="pycaret.nlp.get_config">
+<code class="sig-prename descclassname">pycaret.nlp.</code><code class="sig-name descname">get_config</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">variable</span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycaret.nlp.get_config" title="Permalink to this definition">¶</a></dt>
+<dd><p>This function is used to access global environment variables.
+Following variables can be accessed:</p>
+<ul class="simple">
+<li><p>text: Tokenized words as a list with length = # documents</p></li>
+<li><p><a href="#id1"><span class="problematic" id="id2">data_</span></a>: pandas.DataFrame containing text after all processing</p></li>
+<li><p>corpus: List containing tuples of id to word mapping</p></li>
+<li><p>id2word: gensim.corpora.dictionary.Dictionary</p></li>
+<li><p>seed: random state set through session_id</p></li>
+<li><p><a href="#id3"><span class="problematic" id="id4">target_</span></a>: Name of column containing text. ‘en’ by default.</p></li>
+<li><p>html_param: html_param configured through setup</p></li>
+<li><p>exp_name_log: Name of experiment set through setup</p></li>
+<li><p>logging_param: log_experiment param set through setup</p></li>
+<li><p>log_plots_param: log_plots param set through setup</p></li>
+<li><p>USI: Unique session ID parameter set through setup</p></li>
+</ul>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">text</span> <span class="o">=</span> <span class="n">get_config</span><span class="p">(</span><span class="s1">&#39;text&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>This will return transformed dataset.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p></p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>variable</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="pycaret.nlp.set_config">
+<code class="sig-prename descclassname">pycaret.nlp.</code><code class="sig-name descname">set_config</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">variable</span></em>, <em class="sig-param"><span class="n">value</span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycaret.nlp.set_config" title="Permalink to this definition">¶</a></dt>
+<dd><p>This function is used to reset global environment variables.
+Following variables can be accessed:</p>
+<ul class="simple">
+<li><p>text: Tokenized words as a list with length = # documents</p></li>
+<li><p><a href="#id5"><span class="problematic" id="id6">data_</span></a>: pandas.DataFrame containing text after all processing</p></li>
+<li><p>corpus: List containing tuples of id to word mapping</p></li>
+<li><p>id2word: gensim.corpora.dictionary.Dictionary</p></li>
+<li><p>seed: random state set through session_id</p></li>
+<li><p><a href="#id7"><span class="problematic" id="id8">target_</span></a>: Name of column containing text. ‘en’ by default.</p></li>
+<li><p>html_param: html_param configured through setup</p></li>
+<li><p>exp_name_log: Name of experiment set through setup</p></li>
+<li><p>logging_param: log_experiment param set through setup</p></li>
+<li><p>log_plots_param: log_plots param set through setup</p></li>
+<li><p>USI: Unique session ID parameter set through setup</p></li>
+</ul>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">set_config</span><span class="p">(</span><span class="s1">&#39;seed&#39;</span><span class="p">,</span> <span class="mi">123</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>This will set the global seed to ‘123’.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="pycaret.nlp.get_system_logs">
+<code class="sig-prename descclassname">pycaret.nlp.</code><code class="sig-name descname">get_system_logs</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#pycaret.nlp.get_system_logs" title="Permalink to this definition">¶</a></dt>
+<dd><p>Read and print ‘logs.log’ file from current active directory</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="pycaret.nlp.get_topics">
+<code class="sig-prename descclassname">pycaret.nlp.</code><code class="sig-name descname">get_topics</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">data</span></em>, <em class="sig-param"><span class="n">text</span></em>, <em class="sig-param"><span class="n">model</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">num_topics</span><span class="o">=</span><span class="default_value">4</span></em><span class="sig-paren">)</span><a class="headerlink" href="#pycaret.nlp.get_topics" title="Permalink to this definition">¶</a></dt>
+<dd><p>Callable from any external environment without requiring setup initialization.</p>
+</dd></dl>
+
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="arules.html" class="btn btn-neutral float-right" title="Arules" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="anomaly.html" class="btn btn-neutral float-left" title="Anomaly" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        
+        &copy; Copyright 2020, Moez Ali
+
+    </p>
+  </div>
+    
+    
+    
+    Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

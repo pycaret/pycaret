@@ -450,7 +450,7 @@ def setup(
           https://github.com/rapidsai/cuml
 
     custom_pipeline: transformer or list of transformers or tuple
-    (str, transformer) or list of tuples (str, transformer), default = None
+        (str, transformer) or list of tuples (str, transformer), default = None
         If set, will append the passed transformers (including Pipelines) to the PyCaret
         preprocessing Pipeline applied after train-test split during model fitting.
         This Pipeline is applied on each CV fold separately and on the final fit.
