@@ -4201,7 +4201,7 @@ def tune_model_supervised(
 
             if not do_early_stop and search_algorithm == "bohb":
                 raise ValueError(
-                    "'bohb' requires early_stopping = True and the estimator to support early stopping (has partial_fit, warm_start or is an XGBoost, LightGBM or Catboost model)."
+                    "'bohb' requires early_stopping = True and the estimator to support early stopping (has partial_fit, warm_start or is an XGBoost model)."
                 )
 
             elif early_stopping and can_early_stop(
