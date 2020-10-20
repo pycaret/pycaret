@@ -96,6 +96,7 @@ def setup(
 ):
 
     """
+      
     This function initializes the training environment and creates the transformation 
     pipeline. Setup function must called before executing any other function. It takes 
     two mandatory parameters: ``data`` and ``target``. All the other parameters are
@@ -290,7 +291,7 @@ def setup(
         To convert numeric features into categorical, bin_numeric_features parameter can 
         be used. It takes a list of strings with column names to be discretized. It does
         so by using 'sturges' rule to determine the number of clusters and then apply
-        ``KMeans`` algorithm. Original values of the feature are then replaced by the
+        KMeans algorithm. Original values of the feature are then replaced by the
         cluster label.
 
 
@@ -499,7 +500,7 @@ def setup(
 
     html: bool, default = True
         If set to False, prevents runtime display of monitor. This must be set to False
-        when using environment that does not support ``html``.
+        when using environment that does not support html.
 
 
     session_id: int, default = None
@@ -661,14 +662,14 @@ def setup(
 def compare_models(
     include: Optional[
         List[Union[str, Any]]
-    ] = None,  # changed whitelist to include in pycaret==2.1
-    exclude: Optional[List[str]] = None,  # changed blacklist to exclude in pycaret==2.1
+    ] = None, 
+    exclude: Optional[List[str]] = None,
     fold: Optional[Union[int, Any]] = None,
     round: int = 4,
     cross_validation: bool = True,
     sort: str = "Accuracy",
     n_select: int = 1,
-    budget_time: Optional[float] = None,  # added in pycaret==2.1.0
+    budget_time: Optional[float] = None,
     turbo: bool = True,
     errors: str = "ignore",
     fit_kwargs: Optional[dict] = None,
@@ -677,12 +678,12 @@ def compare_models(
 ) -> Union[Any, List[Any]]:
 
     """
-
-    This function trains and evaluates performance of estimators available in the model
-    library using cross validation. The output of this function is a score grid with 
-    average cross validated score. Metrics evaluated during CV can be accessed using
-    the ``get_metrics`` function. Custom metrics can be added or removed using ``add_metric``
-    and ``remove_metric`` function.    
+      
+    This function trains and evaluates performance of all estimators available in the 
+    model library using cross validation. The output of this function is a score grid 
+    with average cross validated scores. Metrics evaluated during CV can be accessed 
+    using the ``get_metrics`` function. Custom metrics can be added or removed using 
+    ``add_metric`` and ``remove_metric`` function.
 
     Example
     -------
@@ -694,20 +695,23 @@ def compare_models(
 
 
     include: list of strings or objects, default = None
-        In order to run only certain models for the comparison, the model ID's can be 
-        passed as a list of strings in include param. The list can also include estimator
-        objects to be compared.
+        To train and evaluate select models, list containing model id or untrained 
+        model objects can be passed in include parameter. Untrained model object
+        must be compatible with scikit-learn API. To see list of available models 
+        in the model library use ``models`` function. 
 
 
     exclude: list of strings, default = None
-        In order to omit certain models from the comparison model ID's can be passed as 
-        a list of strings in exclude param. 
+        To omit certain models from training and evaluation, list containing model
+        id can be passed in exclude parameter. To see list of available models in 
+        the model library use ``models`` function.
 
 
     fold: int or scikit-learn compatible CV generator, default = None
-        Controls cross-validation. If None, will use the CV generator defined in setup().
-        If integer, will use StratifiedKFold CV with that many folds.
-        When cross_validation is False, this parameter is ignored.
+        Controls cross-validation. If None, the CV generator in the ``fold_strategy`` 
+        parameter of the ``setup`` function is used. When an integer is passed, 
+        it is interpreted as the 'n_splits' parameter of the CV generator in the 
+        ``setup`` function.
 
 
     round: int, default = 4
@@ -715,19 +719,18 @@ def compare_models(
 
 
     cross_validation: bool, default = True
-        When cross_validation set to False fold parameter is ignored and models are 
-        trained on entire training dataset, returning metrics calculated using the train 
-        (holdout) set.
+        When set to False, metrics are evaluated on holdout set. ``fold`` param
+        is ignored when cross_validation is set to False.
 
 
     sort: str, default = 'Accuracy'
-        The scoring measure specified is used for sorting the average score grid
-        Other options are 'AUC', 'Recall', 'Precision', 'F1', 'Kappa' and 'MCC'.
+        The sort order of the score grid. It also accepts custom metrics that are
+        added through ``add_metric`` function.
 
 
     n_select: int, default = 1
-        Number of top_n models to return. use negative argument for bottom selection.
-        for example, n_select = -3 means bottom 3 models.
+        Number of top_n models to return. For example, to select top 3 models use
+        n_select = 3.
 
 
     budget_time: int or float, default = None
@@ -736,8 +739,8 @@ def compare_models(
 
 
     turbo: bool, default = True
-        When turbo is set to True, it excludes estimators that have longer
-        training time.
+        When set to True, it excludes estimators with longer training times. To
+        see which algorithms are excluded use ``models`` function.
 
 
     errors: str, default = 'ignore'
@@ -761,29 +764,24 @@ def compare_models(
     verbose: bool, default = True
         Score grid is not printed when verbose is set to False.
     
+    
     Returns
     -------
-    score_grid
-        A table containing the scores of the model across the kfolds. 
-        Scoring metrics used are Accuracy, AUC, Recall, Precision, F1, 
-        Kappa and MCC. Mean and standard deviation of the scores across 
-        the folds are also returned.
+    Score Grid
+        Average cross validated scores for all estimators.
 
-    list or model
-        List or one fitted model objects that were compared.
+    Trained Model
+        Trained model or list of trained models, depending on the ``n_select`` param.
 
     Warnings
     --------
-    - compare_models() though attractive, might be time consuming with large 
-      datasets. By default turbo is set to True, which excludes models that
-      have longer training times. Changing turbo parameter to False may result 
-      in very high training times with datasets where number of samples exceed 
-      10,000.
+    - Changing turbo parameter to False may result in very high training times with 
+      datasets exceeding 10,000 rows.
 
-    - If target variable is multiclass (more than 2 classes), AUC will be 
-      returned as zero (0.0)
+    - AUC for estimators that does not support 'predict_proba' is shown as 0. 
 
-    - If cross_validation param is set to False, no models will be logged with MLFlow.
+    - No models are logged in ``MLFlow` when ``cross_validation`` parameter is False.
+       
 
     """
 
