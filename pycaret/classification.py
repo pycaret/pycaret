@@ -219,12 +219,12 @@ def setup(
         The standard zscore is calculated as z = (x - u) / s. Ignored when ``normalize`` 
         is not True. The other options are:
     
-        - 'minmax': scales and translates each feature individually such that it is in 
+        - minmax: scales and translates each feature individually such that it is in 
           the range of 0 - 1.
-        - 'maxabs': scales and translates each feature individually such that the 
+        - maxabs: scales and translates each feature individually such that the 
           maximal absolute value of each feature will be 1.0. It does not 
           shift/center the data, and thus does not destroy any sparsity.
-        - 'robust' : scales and translates each feature according to the Interquartile 
+        - robust: scales and translates each feature according to the Interquartile 
           range. When the dataset contains outliers, robust scaler often gives 
           better results.
 
@@ -546,13 +546,14 @@ def setup(
 
     Returns
     -------
-    info_grid
-        Information grid is printed.
+    Information Grid
+        Important information about experiment setup is printed.
 
-    environment
-        This function returns various outputs that are stored in variables
-        as tuples. They are used by other functions in pycaret.
-      
+    Globals
+        This function intializes and return all global variables that are required by 
+        other functions in pycaret. Global variables can be accessed using ``get_config``
+        and ``set_config`` function.
+        
        
     """
     available_plots = {
