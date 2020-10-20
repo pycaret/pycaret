@@ -190,18 +190,16 @@ def setup(
         Defines the method to be used for normalization. By default, normalize method
         is set to 'zscore'. The standard zscore is calculated as z = (x - u) / s. The
         other available options are:
-        
-        'minmax'    : scales and translates each feature individually such that it is 
-                    in the range of 0 - 1.
-        
-        'maxabs'    : scales and translates each feature individually such that the 
-                    maximal absolute value of each feature will be 1.0. It does not 
-                    shift/center the data, and thus does not destroy any sparsity.
-        
-        'robust'    : scales and translates each feature according to the Interquartile 
-                    range. When the dataset contains outliers, robust scaler often gives 
-                    better results.
     
+        - 'minmax': scales and translates each feature individually such that it is in 
+          the range of 0 - 1.
+        - 'maxabs': scales and translates each feature individually such that the 
+          maximal absolute value of each feature will be 1.0. It does not 
+          shift/center the data, and thus does not destroy any sparsity.
+        - 'robust' : scales and translates each feature according to the Interquartile 
+          range. When the dataset contains outliers, robust scaler often gives 
+          better results.
+
     transformation: bool, default = False
         When set to True, a power transformation is applied to make the data more normal /
         Gaussian-like. This is useful for modeling issues related to heteroscedasticity or 
@@ -237,10 +235,9 @@ def setup(
         The 'linear' method performs Linear dimensionality reduction using Singular Value 
         Decomposition. The other available options are:
         
-        kernel      : dimensionality reduction through the use of RVF kernel.  
-        
-        incremental : replacement for 'linear' pca when the dataset to be decomposed is 
-                    too large to fit in memory
+        - kernel: dimensionality reduction through the use of RVF kernel.
+        - incremental: replacement for 'linear' pca when the dataset to be decomposed is 
+          too large to fit in memory
 
     pca_components: int/float, default = 0.99
         Number of components to keep. if pca_components is a float, it is treated as a 
@@ -1676,9 +1673,9 @@ def predict_model(
     Warnings
     --------
     - The behavior of the predict_model is changed in version 2.1 without backward compatibility.
-    As such, the pipelines trained using the version (<= 2.0), may not work for inference 
-    with version >= 2.1. You can either retrain your models with a newer version or downgrade
-    the version for inference.
+      As such, the pipelines trained using the version (<= 2.0), may not work for inference 
+      with version >= 2.1. You can either retrain your models with a newer version or downgrade
+      the version for inference.
     
     
     """

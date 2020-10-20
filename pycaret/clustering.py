@@ -94,13 +94,13 @@ def setup(
         Shape (n_samples, n_features) where n_samples is the number of samples 
         and n_features is the number of features.
     
-    categorical_features: string, default = None
+    categorical_features: str, default = None
         If the inferred data types are not correct, categorical_features can be used to
         overwrite the inferred type. If when running setup the type of 'column1' is
         inferred as numeric instead of categorical, then this parameter can be used 
         to overwrite the type by passing categorical_features = ['column1'].
     
-    categorical_imputation: string, default = 'constant'
+    categorical_imputation: str, default = 'constant'
         If missing values are found in categorical features, they will be imputed with
         a constant 'not_available' value. The other available option is 'mode' which 
         imputes the missing value using most frequent value in the training dataset. 
@@ -112,25 +112,25 @@ def setup(
         be passed as ordinal_features = { 'column_name' : ['low', 'medium', 'high'] }. 
         The list sequence must be in increasing order from lowest to highest.
     
-    high_cardinality_features: string, default = None
+    high_cardinality_features: str, default = None
         When the data containts features with high cardinality, they can be compressed
         into fewer levels by passing them as a list of column names with high cardinality.
         Features are compressed using frequency distribution. As such original features
         are replaced with the frequency distribution and converted into numeric variable. 
     
-    numeric_features: string, default = None
+    numeric_features: str, default = None
         If the inferred data types are not correct, numeric_features can be used to
         overwrite the inferred type. If when running setup the type of 'column1' is 
         inferred as a categorical instead of numeric, then this parameter can be used 
         to overwrite by passing numeric_features = ['column1'].    
 
-    numeric_imputation: string, default = 'mean'
+    numeric_imputation: str, default = 'mean'
         If missing values are found in numeric features, they will be imputed with the 
         mean value of the feature. The other available options are 'median' which imputes 
         the value using the median value in the training dataset and 'zero' which
         replaces missing values with zeroes.
     
-    date_features: string, default = None
+    date_features: str, default = None
         If the data has a DateTime column that is not automatically detected when running
         setup, this parameter can be used by passing date_features = 'date_column_name'. 
         It can work with multiple date columns. Date columns are not used in modeling. 
@@ -138,7 +138,7 @@ def setup(
         dataset. If the date column includes a time stamp, features related to time will 
         also be extracted.
     
-    ignore_features: string, default = None
+    ignore_features: str, default = None
         If any feature should be ignored for modeling, it can be passed to the param
         ignore_features. The ID and DateTime columns when inferred, are automatically 
         set to ignore for modeling. 
@@ -149,29 +149,27 @@ def setup(
         the results may vary and it is advised to run multiple experiments to evaluate
         the benefit of normalization.
     
-    normalize_method: string, default = 'zscore'
+    normalize_method: str, default = 'zscore'
         Defines the method to be used for normalization. By default, normalize method
         is set to 'zscore'. The standard zscore is calculated as z = (x - u) / s. The
         other available options are:
     
-        'minmax'    : scales and translates each feature individually such that it is in 
-                    the range of 0 - 1.
-        
-        'maxabs'    : scales and translates each feature individually such that the 
-                    maximal absolute value of each feature will be 1.0. It does not 
-                    shift/center the data, and thus does not destroy any sparsity.
-        
-        'robust'    : scales and translates each feature according to the Interquartile 
-                    range. When the dataset contains outliers, robust scaler often gives 
-                    better results.
-    
+        - 'minmax': scales and translates each feature individually such that it is in 
+          the range of 0 - 1.
+        - 'maxabs': scales and translates each feature individually such that the 
+          maximal absolute value of each feature will be 1.0. It does not 
+          shift/center the data, and thus does not destroy any sparsity.
+        - 'robust' : scales and translates each feature according to the Interquartile 
+          range. When the dataset contains outliers, robust scaler often gives 
+          better results.
+
     transformation: bool, default = False
         When set to True, a power transformation is applied to make the data more normal /
         Gaussian-like. This is useful for modeling issues related to heteroscedasticity or 
         other situations where normality is desired. The optimal parameter for stabilizing 
         variance and minimizing skewness is estimated through maximum likelihood.
     
-    transformation_method: string, default = 'yeo-johnson'
+    transformation_method: str, default = 'yeo-johnson'
         Defines the method for transformation. By default, the transformation method is 
         set to 'yeo-johnson'. The other available option is 'quantile' transformation. 
         Both the transformation transforms the feature set to follow a Gaussian-like or 
@@ -183,7 +181,7 @@ def setup(
         the most or least frequent level as learned in the training data. The method is 
         defined under the unknown_categorical_method param.
     
-    unknown_categorical_method: string, default = 'least_frequent'
+    unknown_categorical_method: str, default = 'least_frequent'
         Method used to replace unknown categorical levels in unseen data. Method can be
         set to 'least_frequent' or 'most_frequent'.
     
@@ -196,15 +194,14 @@ def setup(
         of information. As such, it is advised to run multiple experiments with different 
         pca_methods to evaluate the impact. 
 
-    pca_method: string, default = 'linear'
+    pca_method: str, default = 'linear'
         The 'linear' method performs Linear dimensionality reduction using Singular Value 
         Decomposition. The other available options are:
         
-        kernel      : dimensionality reduction through the use of RVF kernel.  
-        
-        incremental : replacement for 'linear' pca when the dataset to be decomposed is 
-                    too large to fit in memory
-    
+        - kernel: dimensionality reduction through the use of RVF kernel.
+        - incremental: replacement for 'linear' pca when the dataset to be decomposed is 
+          too large to fit in memory
+
     pca_components: int/float, default = 0.99
         Number of components to keep. if pca_components is a float, it is treated as a 
         target percentage for information retention. When pca_components is an integer
@@ -455,7 +452,7 @@ def create_model(
         Number of clusters to be generated with the dataset. If None, num_clusters 
         is set to 4. 
 
-    ground_truth: string, default = None
+    ground_truth: str, default = None
         When ground_truth is provided, Homogeneity Score, Rand Index, and 
         Completeness Score is evaluated and printer along with other metrics.
 
@@ -585,7 +582,7 @@ def plot_model(
     model : object, default = none
         A trained model object can be passed. Model must be created using create_model().
 
-    plot : string, default = 'cluster'
+    plot : str, default = 'cluster'
         Enter abbreviation for type of plot. The current list of plots supported are 
         (Plot - Name):
 
@@ -596,7 +593,7 @@ def plot_model(
         * 'distance' - Distance Plot   
         * 'distribution' - Distribution Plot
     
-    feature : string, default = None
+    feature : str, default = None
         Name of feature column for x-axis of when plot = 'distribution'. When plot is
         'cluster' or 'tsne' feature column is used as a hoverover tooltip and/or label
         when label is set to True. If no feature name is passed in 'cluster' or 'tsne'
@@ -646,7 +643,7 @@ def evaluate_model(
     estimator : object, default = none
         A trained model object should be passed as an estimator. 
 
-    feature : string, default = None
+    feature : str, default = None
         Name of feature column for x-axis of when plot = 'distribution'. When plot is
         'cluster' or 'tsne' feature column is used as a hoverover tooltip and/or label
         when label is set to True. If no feature name is passed in 'cluster' or 'tsne'
@@ -699,7 +696,7 @@ def tune_model(
 
     Parameters
     ----------
-    model : string, default = None
+    model : str, default = None
         Enter ID of the models available in model library (ID - Name):
         
         * 'kmeans' - K-Means Clustering
@@ -715,7 +712,7 @@ def tune_model(
     supervised_target: string
         Name of the target column for supervised learning.
         
-    estimator: string, default = None
+    estimator: str, default = None
         For Classification (ID - Name):
 
         * 'lr' - Logistic Regression             
@@ -767,7 +764,7 @@ def tune_model(
         
         If set to None, Linear / Logistic model is used by default.
     
-    optimize: string, default = None
+    optimize: str, default = None
         For Classification tasks:
             Accuracy, AUC, Recall, Precision, F1, Kappa
         
@@ -853,11 +850,10 @@ def predict_model(model, data: pd.DataFrame) -> pd.DataFrame:
     Warnings
     --------
     - Models that do not support 'predict' function cannot be used in predict_model(). 
-
     - The behavior of the predict_model is changed in version 2.1 without backward compatibility.
-    As such, the pipelines trained using the version (<= 2.0), may not work for inference 
-    with version >= 2.1. You can either retrain your models with a newer version or downgrade
-    the version for inference.
+      As such, the pipelines trained using the version (<= 2.0), may not work for inference 
+      with version >= 2.1. You can either retrain your models with a newer version or downgrade
+      the version for inference.
     
 
     """

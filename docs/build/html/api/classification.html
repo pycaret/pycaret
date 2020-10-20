@@ -7,7 +7,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Classification &mdash; pycaret 2.0.0 documentation</title>
+  <title>Classification &mdash; pycaret 2.2.0 documentation</title>
   
 
   
@@ -235,16 +235,16 @@ the benefit of normalization.</p></li>
 <li><p><strong>normalize_method</strong> (<em>str</em><em>, </em><em>default = 'zscore'</em>) – <p>Defines the method to be used for normalization. By default, normalize method
 is set to ‘zscore’. The standard zscore is calculated as z = (x - u) / s. The
 other available options are:</p>
-<dl class="simple">
-<dt>’minmax’<span class="classifier">scales and translates each feature individually such that it is in</span></dt><dd><p>the range of 0 - 1.</p>
-</dd>
-<dt>’maxabs’<span class="classifier">scales and translates each feature individually such that the maximal</span></dt><dd><p>absolute value of each feature will be 1.0. It does not shift/center
-the data, and thus does not destroy any sparsity.</p>
-</dd>
-<dt>’robust’<span class="classifier">scales and translates each feature according to the Interquartile</span></dt><dd><p>range. When the dataset contains outliers, robust scaler often gives
-better results.</p>
-</dd>
-</dl>
+<ul>
+<li><p>’minmax’: scales and translates each feature individually such that it is in
+the range of 0 - 1.</p></li>
+<li><p>’maxabs’: scales and translates each feature individually such that the
+maximal absolute value of each feature will be 1.0. It does not
+shift/center the data, and thus does not destroy any sparsity.</p></li>
+<li><p>’robust’ : scales and translates each feature according to the Interquartile
+range. When the dataset contains outliers, robust scaler often gives
+better results.</p></li>
+</ul>
 </p></li>
 <li><p><strong>transformation</strong> (<em>bool</em><em>, </em><em>default = False</em>) – When set to True, a power transformation is applied to make the data more normal /
 Gaussian-like. This is useful for modeling issues related to heteroscedasticity or
@@ -269,11 +269,11 @@ of information. As such, it is advised to run multiple experiments with differen
 pca_methods to evaluate the impact.</p></li>
 <li><p><strong>pca_method</strong> (<em>str</em><em>, </em><em>default = 'linear'</em>) – <p>The ‘linear’ method performs Linear dimensionality reduction using Singular Value
 Decomposition. The other available options are:</p>
-<p>kernel      : dimensionality reduction through the use of RVF kernel.</p>
-<dl class="simple">
-<dt>incremental<span class="classifier">replacement for ‘linear’ pca when the dataset to be decomposed is</span></dt><dd><p>too large to fit in memory</p>
-</dd>
-</dl>
+<ul>
+<li><p>kernel: dimensionality reduction through the use of RVF kernel.</p></li>
+<li><p>incremental: replacement for ‘linear’ pca when the dataset to be decomposed is
+too large to fit in memory</p></li>
+</ul>
 </p></li>
 <li><p><strong>pca_components</strong> (<em>int/float</em><em>, </em><em>default = 0.99</em>) – Number of components to keep. if pca_components is a float, it is treated as a
 target percentage for information retention. When pca_components is an integer
@@ -962,10 +962,10 @@ If integer, will use StratifiedKFold CV with that many folds.
 When cross_validation is False, this parameter is ignored.</p></li>
 <li><p><strong>round</strong> (<em>int</em><em>, </em><em>default = 4</em>) – Number of decimal places the metrics in the score grid will be rounded to.</p></li>
 <li><p><strong>method</strong> (<em>str</em><em>, </em><em>default = 'auto'</em>) – <ul>
-<li><p>if ‘auto’, it will try to invoke, for each estimator, ‘predict_proba’,</p></li>
+<li><p>if ‘auto’, it will try to invoke, for each estimator, ‘predict_proba’,
+‘decision_function’ or ‘predict’ in that order.</p></li>
+<li><p>otherwise, one of ‘predict_proba’, ‘decision_function’ or ‘predict’.</p></li>
 </ul>
-<p>’decision_function’ or ‘predict’ in that order.
-- otherwise, one of ‘predict_proba’, ‘decision_function’ or ‘predict’.</p>
 <p>If the method is not implemented by the estimator, it will raise an error.</p>
 </p></li>
 <li><p><strong>restack</strong> (<em>bool</em><em>, </em><em>default = True</em>) – When restack is set to True, raw data will be exposed to meta model when
@@ -1320,11 +1320,11 @@ and returned as pandas dataframe.</p></li>
 <div class="admonition warning">
 <p class="admonition-title">Warning</p>
 <ul class="simple">
-<li><p>The behavior of the predict_model is changed in version 2.1 without backward compatibility.</p></li>
-</ul>
-<p>As such, the pipelines trained using the version (&lt;= 2.0), may not work for inference
+<li><p>The behavior of the predict_model is changed in version 2.1 without backward compatibility.
+As such, the pipelines trained using the version (&lt;= 2.0), may not work for inference
 with version &gt;= 2.1. You can either retrain your models with a newer version or downgrade
-the version for inference.</p>
+the version for inference.</p></li>
+</ul>
 </div>
 </dd></dl>
 
