@@ -219,154 +219,124 @@ the benefit of normalization.</p></li>
 is set to ‘zscore’. The standard zscore is calculated as z = (x - u) / s. The
 other available options are:</p>
 <ul>
-<li><p>’minmax’: scales and translates each feature individually such that it is in</p></li>
-</ul>
-<p>the range of 0 - 1.
-- ‘maxabs’: scales and translates each feature individually such that the
+<li><p>’minmax’: scales and translates each feature individually such that it is in
+the range of 0 - 1.</p></li>
+<li><p>’maxabs’: scales and translates each feature individually such that the
 maximal absolute value of each feature will be 1.0. It does not
-shift/center the data, and thus does not destroy any sparsity.
-- ‘robust’ : scales and translates each feature according to the Interquartile
+shift/center the data, and thus does not destroy any sparsity.</p></li>
+<li><p>’robust’ : scales and translates each feature according to the Interquartile
 range. When the dataset contains outliers, robust scaler often gives
-better results.</p>
-</p></li>
+better results.</p></li>
 </ul>
-</dd>
-</dl>
-<dl>
-<dt>transformation: bool, default = False</dt><dd><p>When set to True, a power transformation is applied to make the data more normal /
+</p></li>
+<li><p><strong>transformation</strong> (<em>bool</em><em>, </em><em>default = False</em>) – When set to True, a power transformation is applied to make the data more normal /
 Gaussian-like. This is useful for modeling issues related to heteroscedasticity or
 other situations where normality is desired. The optimal parameter for stabilizing
-variance and minimizing skewness is estimated through maximum likelihood.</p>
-</dd>
-<dt>transformation_method: str, default = ‘yeo-johnson’</dt><dd><p>Defines the method for transformation. By default, the transformation method is
+variance and minimizing skewness is estimated through maximum likelihood.</p></li>
+<li><p><strong>transformation_method</strong> (<em>str</em><em>, </em><em>default = 'yeo-johnson'</em>) – Defines the method for transformation. By default, the transformation method is
 set to ‘yeo-johnson’. The other available option is ‘quantile’ transformation.
 Both the transformation transforms the feature set to follow a Gaussian-like or
 normal distribution. Note that the quantile transformer is non-linear and may
-distort linear correlations between variables measured at the same scale.</p>
-</dd>
-<dt>handle_unknown_categorical: bool, default = True</dt><dd><p>When set to True, unknown categorical levels in new / unseen data are replaced by
+distort linear correlations between variables measured at the same scale.</p></li>
+<li><p><strong>handle_unknown_categorical</strong> (<em>bool</em><em>, </em><em>default = True</em>) – When set to True, unknown categorical levels in new / unseen data are replaced by
 the most or least frequent level as learned in the training data. The method is
-defined under the unknown_categorical_method param.</p>
-</dd>
-<dt>unknown_categorical_method: str, default = ‘least_frequent’</dt><dd><p>Method used to replace unknown categorical levels in unseen data. Method can be
-set to ‘least_frequent’ or ‘most_frequent’.</p>
-</dd>
-<dt>pca: bool, default = False</dt><dd><p>When set to True, dimensionality reduction is applied to project the data into
+defined under the unknown_categorical_method param.</p></li>
+<li><p><strong>unknown_categorical_method</strong> (<em>str</em><em>, </em><em>default = 'least_frequent'</em>) – Method used to replace unknown categorical levels in unseen data. Method can be
+set to ‘least_frequent’ or ‘most_frequent’.</p></li>
+<li><p><strong>pca</strong> (<em>bool</em><em>, </em><em>default = False</em>) – When set to True, dimensionality reduction is applied to project the data into
 a lower dimensional space using the method defined in pca_method param. In
 supervised learning pca is generally performed when dealing with high feature
 space and memory is a constraint. Note that not all datasets can be decomposed
 efficiently using a linear PCA technique and that applying PCA may result in loss
 of information. As such, it is advised to run multiple experiments with different
-pca_methods to evaluate the impact.</p>
-</dd>
-<dt>pca_method: str, default = ‘linear’</dt><dd><p>The ‘linear’ method performs Linear dimensionality reduction using Singular Value
+pca_methods to evaluate the impact.</p></li>
+<li><p><strong>pca_method</strong> (<em>str</em><em>, </em><em>default = 'linear'</em>) – <p>The ‘linear’ method performs Linear dimensionality reduction using Singular Value
 Decomposition. The other available options are:</p>
-<ul class="simple">
+<ul>
 <li><p>kernel: dimensionality reduction through the use of RVF kernel.</p></li>
-<li><p>incremental: replacement for ‘linear’ pca when the dataset to be decomposed is</p></li>
+<li><p>incremental: replacement for ‘linear’ pca when the dataset to be decomposed is
+too large to fit in memory</p></li>
 </ul>
-<p>too large to fit in memory</p>
-</dd>
-<dt>pca_components: int/float, default = 0.99</dt><dd><p>Number of components to keep. if pca_components is a float, it is treated as a
+</p></li>
+<li><p><strong>pca_components</strong> (<em>int/float</em><em>, </em><em>default = 0.99</em>) – Number of components to keep. if pca_components is a float, it is treated as a
 target percentage for information retention. When pca_components is an integer
 it is treated as the number of features to be kept. pca_components must be
-strictly less than the original number of features in the dataset.</p>
-</dd>
-<dt>ignore_low_variance: bool, default = False</dt><dd><p>When set to True, all categorical features with statistically insignificant
+strictly less than the original number of features in the dataset.</p></li>
+<li><p><strong>ignore_low_variance</strong> (<em>bool</em><em>, </em><em>default = False</em>) – When set to True, all categorical features with statistically insignificant
 variances are removed from the dataset. The variance is calculated using the
 ratio of unique values to the number of samples, and the ratio of the most
-common value to the frequency of the second most common value.</p>
-</dd>
-<dt>combine_rare_levels: bool, default = False</dt><dd><p>When set to True, all levels in categorical features below the threshold
+common value to the frequency of the second most common value.</p></li>
+<li><p><strong>combine_rare_levels</strong> (<em>bool</em><em>, </em><em>default = False</em>) – When set to True, all levels in categorical features below the threshold
 defined in rare_level_threshold param are combined together as a single level.
 There must be atleast two levels under the threshold for this to take effect.
 rare_level_threshold represents the percentile distribution of level frequency.
 Generally, this technique is applied to limit a sparse matrix caused by high
-numbers of levels in categorical features.</p>
-</dd>
-<dt>rare_level_threshold: float, default = 0.1</dt><dd><p>Percentile distribution below which rare categories are combined. Only comes
-into effect when combine_rare_levels is set to True.</p>
-</dd>
-<dt>bin_numeric_features: list, default = None</dt><dd><p>When a list of numeric features is passed they are transformed into categorical
+numbers of levels in categorical features.</p></li>
+<li><p><strong>rare_level_threshold</strong> (<em>float</em><em>, </em><em>default = 0.1</em>) – Percentile distribution below which rare categories are combined. Only comes
+into effect when combine_rare_levels is set to True.</p></li>
+<li><p><strong>bin_numeric_features</strong> (<em>list</em><em>, </em><em>default = None</em>) – When a list of numeric features is passed they are transformed into categorical
 features using KMeans, where values in each bin have the same nearest center of
 a 1D k-means cluster. The number of clusters are determined based on the ‘sturges’
 method. It is only optimal for gaussian data and underestimates the number of bins
-for large non-gaussian datasets.</p>
-</dd>
-<dt>remove_multicollinearity: bool, default = False</dt><dd><p>When set to True, the variables with inter-correlations higher than the threshold
+for large non-gaussian datasets.</p></li>
+<li><p><strong>remove_multicollinearity</strong> (<em>bool</em><em>, </em><em>default = False</em>) – When set to True, the variables with inter-correlations higher than the threshold
 defined under the multicollinearity_threshold param are dropped. When two features
 are highly correlated with each other, the feature with higher average correlation
-in the feature space is dropped.</p>
-</dd>
-<dt>multicollinearity_threshold: float, default = 0.9</dt><dd><p>Threshold used for dropping the correlated features. Only comes into effect when
-remove_multicollinearity is set to True.</p>
-</dd>
-<dt>group_features: list or list of list, default = None</dt><dd><p>When a dataset contains features that have related characteristics, the
+in the feature space is dropped.</p></li>
+<li><p><strong>multicollinearity_threshold</strong> (<em>float</em><em>, </em><em>default = 0.9</em>) – Threshold used for dropping the correlated features. Only comes into effect when
+remove_multicollinearity is set to True.</p></li>
+<li><p><strong>group_features</strong> (<em>list</em><em> or </em><em>list of list</em><em>, </em><em>default = None</em>) – When a dataset contains features that have related characteristics, the
 group_features param can be used for statistical feature extraction. For example,
 if a dataset has numeric features that are related with each other
 (i.e ‘Col1’, ‘Col2’, ‘Col3’), a list containing the column names can be passed
 under group_features to extract statistical information such as the mean, median,
-mode and standard deviation.</p>
-</dd>
-<dt>group_names: list, default = None</dt><dd><p>When group_features is passed, a name of the group can be passed into group_names
+mode and standard deviation.</p></li>
+<li><p><strong>group_names</strong> (<em>list</em><em>, </em><em>default = None</em>) – When group_features is passed, a name of the group can be passed into group_names
 param as a list containing strings. The length of a group_names list must equal
 to the length of group_features. When the length doesn’t match or the name is
-not passed, new features are sequentially named such as group_1, group_2 etc.</p>
-</dd>
-<dt>n_jobs: int, default = -1</dt><dd><p>The number of jobs to run in parallel (for functions that supports parallel
+not passed, new features are sequentially named such as group_1, group_2 etc.</p></li>
+<li><p><strong>n_jobs</strong> (<em>int</em><em>, </em><em>default = -1</em>) – The number of jobs to run in parallel (for functions that supports parallel
 processing) -1 means using all processors. To run all functions on single
-processor set n_jobs to None.</p>
-</dd>
-<dt>use_gpu: str or bool, default = False</dt><dd><p>If set to ‘force’, will try to use GPU with all algorithms that support it,
+processor set n_jobs to None.</p></li>
+<li><p><strong>use_gpu</strong> (<em>str</em><em> or </em><em>bool</em><em>, </em><em>default = False</em>) – <p>If set to ‘force’, will try to use GPU with all algorithms that support it,
 and raise exceptions if they are unavailable.
 If set to True, will use GPU with algorithms that support it, and fall
 back to CPU if they are unavailable.
 If set to False, will only use CPU.</p>
 <p>GPU enabled algorithms:</p>
-<ul class="simple">
+<ul>
 <li><p>KMeans, DBSCAN - requires cuML &gt;= 0.15 to be installed.
 <a class="reference external" href="https://github.com/rapidsai/cuml">https://github.com/rapidsai/cuml</a></p></li>
 </ul>
-</dd>
-<dt>custom_pipeline: transformer or list of transformers or tuple</dt><dd><p>(str, transformer) or list of tuples (str, transformer), default = None
+</p></li>
+<li><p><strong>custom_pipeline</strong> (<em>transformer</em><em> or </em><em>list of transformers</em><em> or </em><em>tuple</em>) – (str, transformer) or list of tuples (str, transformer), default = None
 If set, will append the passed transformers (including Pipelines) to the PyCaret
 preprocessing Pipeline applied after train-test split during model fitting.
 This Pipeline is applied on each CV fold separately and on the final fit.
-The transformers will be applied before PyCaret transformers (eg. SMOTE).</p>
-</dd>
-<dt>html: bool, default = True</dt><dd><p>If set to False, prevents runtime display of monitor. This must be set to False
-when using environment that doesnt support HTML.</p>
-</dd>
-<dt>session_id: int, default = None</dt><dd><p>If None, a random seed is generated and returned in the Information grid. The
+The transformers will be applied before PyCaret transformers (eg. SMOTE).</p></li>
+<li><p><strong>html</strong> (<em>bool</em><em>, </em><em>default = True</em>) – If set to False, prevents runtime display of monitor. This must be set to False
+when using environment that doesnt support HTML.</p></li>
+<li><p><strong>session_id</strong> (<em>int</em><em>, </em><em>default = None</em>) – If None, a random seed is generated and returned in the Information grid. The
 unique number is then distributed as a seed in all functions used during the
-experiment. This can be used for later reproducibility of the entire experiment.</p>
-</dd>
-<dt>log_experiment: bool, default = True</dt><dd><p>When set to True, all metrics and parameters are logged on MLFlow server.</p>
-</dd>
-<dt>experiment_name: str, default = None</dt><dd><p>Name of experiment for logging. When set to None, ‘clu’ is by default used as
-alias for the experiment name.</p>
-</dd>
-<dt>log_plots: bool, default = False</dt><dd><p>When set to True, specific plots are logged in MLflow as a png file.
-By default, it is set to False.</p>
-</dd>
-<dt>log_profile: bool, default = False</dt><dd><p>When set to True, data profile is also logged on MLflow as a html file.
-By default, it is set to False.</p>
-</dd>
-<dt>log_data: bool, default = False</dt><dd><p>When set to True, train and test dataset are logged as csv.</p>
-</dd>
-<dt>silent: bool, default = False</dt><dd><p>When set to True, confirmation of data types is not required. All preprocessing
+experiment. This can be used for later reproducibility of the entire experiment.</p></li>
+<li><p><strong>log_experiment</strong> (<em>bool</em><em>, </em><em>default = True</em>) – When set to True, all metrics and parameters are logged on MLFlow server.</p></li>
+<li><p><strong>experiment_name</strong> (<em>str</em><em>, </em><em>default = None</em>) – Name of experiment for logging. When set to None, ‘clu’ is by default used as
+alias for the experiment name.</p></li>
+<li><p><strong>log_plots</strong> (<em>bool</em><em>, </em><em>default = False</em>) – When set to True, specific plots are logged in MLflow as a png file.
+By default, it is set to False.</p></li>
+<li><p><strong>log_profile</strong> (<em>bool</em><em>, </em><em>default = False</em>) – When set to True, data profile is also logged on MLflow as a html file.
+By default, it is set to False.</p></li>
+<li><p><strong>log_data</strong> (<em>bool</em><em>, </em><em>default = False</em>) – When set to True, train and test dataset are logged as csv.</p></li>
+<li><p><strong>silent</strong> (<em>bool</em><em>, </em><em>default = False</em>) – When set to True, confirmation of data types is not required. All preprocessing
 will be performed assuming automatically inferred data types. Not recommended for
-direct use except for established pipelines.</p>
+direct use except for established pipelines.</p></li>
+<li><p><strong>verbose</strong> (<em>Boolean</em><em>, </em><em>default = True</em>) – Information grid is not printed when verbose is set to False.</p></li>
+<li><p><strong>profile</strong> (<em>bool</em><em>, </em><em>default = False</em>) – If set to true, a data profile for Exploratory Data Analysis will be displayed
+in an interactive HTML report.</p></li>
+</ul>
 </dd>
-<dt>verbose: Boolean, default = True</dt><dd><p>Information grid is not printed when verbose is set to False.</p>
-</dd>
-<dt>profile: bool, default = False</dt><dd><p>If set to true, a data profile for Exploratory Data Analysis will be displayed
-in an interactive HTML report.</p>
-</dd>
-</dl>
-<dl class="field-list simple">
-<dt class="field-odd">Returns</dt>
-<dd class="field-odd"><p><ul class="simple">
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><ul class="simple">
 <li><p><em>info_grid</em> – Information grid is printed.</p></li>
 <li><p><em>environment</em> – This function returns various outputs that are stored in variable
 as tuple. They are used by other functions in pycaret.</p></li>
@@ -696,11 +666,11 @@ present in the new dataset.</p></li>
 <div class="admonition warning">
 <p class="admonition-title">Warning</p>
 <ul class="simple">
-<li><p>The behavior of the predict_model is changed in version 2.1 without backward compatibility.</p></li>
-</ul>
-<p>As such, the pipelines trained using the version (&lt;= 2.0), may not work for inference
+<li><p>The behavior of the predict_model is changed in version 2.1 without backward compatibility.
+As such, the pipelines trained using the version (&lt;= 2.0), may not work for inference
 with version &gt;= 2.1. You can either retrain your models with a newer version or downgrade
-the version for inference.</p>
+the version for inference.</p></li>
+</ul>
 </div>
 </dd></dl>
 
