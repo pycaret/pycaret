@@ -623,60 +623,71 @@ def compare_models(
     >>> exp_name = setup(data = juice,  target = 'Purchase')
     >>> best_model = compare_models() 
 
-    Parameters
-    ----------
+
     include: list of strings or objects, default = None
         In order to run only certain models for the comparison, the model ID's can be 
         passed as a list of strings in include param. The list can also include estimator
         objects to be compared.
 
+
     exclude: list of strings, default = None
         In order to omit certain models from the comparison model ID's can be passed as 
         a list of strings in exclude param. 
+
 
     fold: int or scikit-learn compatible CV generator, default = None
         Controls cross-validation. If None, will use the CV generator defined in setup().
         If integer, will use StratifiedKFold CV with that many folds.
         When cross_validation is False, this parameter is ignored.
 
+
     round: int, default = 4
         Number of decimal places the metrics in the score grid will be rounded to.
+
 
     cross_validation: bool, default = True
         When cross_validation set to False fold parameter is ignored and models are 
         trained on entire training dataset, returning metrics calculated using the train 
         (holdout) set.
 
+
     sort: str, default = 'Accuracy'
         The scoring measure specified is used for sorting the average score grid
         Other options are 'AUC', 'Recall', 'Precision', 'F1', 'Kappa' and 'MCC'.
+
 
     n_select: int, default = 1
         Number of top_n models to return. use negative argument for bottom selection.
         for example, n_select = -3 means bottom 3 models.
 
+
     budget_time: int or float, default = None
         If not None, will terminate execution of the function after budget_time 
         minutes have passed and return results up to that point.
+
 
     turbo: bool, default = True
         When turbo is set to True, it excludes estimators that have longer
         training time.
 
+
     errors: str, default = 'ignore'
         If 'ignore', will suppress model exceptions and continue.
         If 'raise', will allow exceptions to be raised.
+
 
     fit_kwargs: dict, default = {} (empty dict)
         Dictionary of arguments passed to the fit method of the model. The parameters 
         will be applied to all models, therefore it is recommended to set errors 
         parameter to 'ignore'.
 
+
     groups: str or array-like, with shape (n_samples,), default = None
         Optional Group labels for the samples used while splitting the dataset into 
         train/test set. If string is passed, will use the data column with that name 
         as the groups. Only used if a group based cross-validation generator is used 
         (eg. GroupKFold). If None, will use the value set in fold_groups param in setup().
+
 
     verbose: bool, default = True
         Score grid is not printed when verbose is set to False.
