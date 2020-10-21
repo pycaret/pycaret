@@ -749,9 +749,7 @@ def compare_models(
 
 
     fit_kwargs: dict, default = {} (empty dict)
-        Dictionary of arguments passed to the fit method of the model. The parameters 
-        will be applied to all models, therefore it is recommended to set errors 
-        parameter to 'ignore'.
+        Dictionary of arguments passed to the fit method of the model.
 
 
     groups: str or array-like, with shape (n_samples,), default = None
@@ -780,7 +778,7 @@ def compare_models(
 
     - AUC for estimators that does not support 'predict_proba' is shown as 0. 
 
-    - No models are logged in ``MLFlow` when ``cross_validation`` parameter is False.
+    - No models are logged in ``MLFlow`` when ``cross_validation`` parameter is False.
        
 
     """
@@ -812,14 +810,15 @@ def create_model(
     verbose: bool = True,
     **kwargs,
 ) -> Any:
+
     """  
-    This function creates a model and scores it using Cross Validation. 
-    The output prints a score grid that shows Accuracy, AUC, Recall, Precision, 
-    F1, Kappa and MCC by fold (default = 10 Fold). 
-
-    This function returns a trained model object. 
-
-    setup() function must be called before using create_model()
+      
+    This function trains and evaluates performance of an estimator using 
+    cross validation. The output of this function is a score grid with CV 
+    scores by fold. Metrics evaluated during CV can be accessed using the 
+    ``get_metrics`` function. Custom metrics can be added or removed using 
+    ``add_metric`` and ``remove_metric`` function. All the available models
+    can be accessed using the ``models`` function.
 
     Example
     -------
@@ -829,50 +828,32 @@ def create_model(
     >>> exp_name = setup(data = juice,  target = 'Purchase')
     >>> lr = create_model('lr')
 
-    This will create a trained Logistic Regression model.
 
-    Parameters
-    ----------
-    estimator : str / object, default = None
-        Enter ID of the estimators available in model library or pass an untrained 
-        model object consistent with fit / predict API to train and evaluate model. 
-        All estimators support binary or multiclass problem. List of estimators in 
-        model library (ID - Name):
+    estimator : str or scikit-learn compatible object
+        ID of an estimator available in model library or pass an untrained 
+        model object consistent with scikit-learn API. List of estimators 
+        available in the model library can be accessed using ``models``.
 
-        * 'lr' - Logistic Regression             
-        * 'knn' - K Nearest Neighbour            
-        * 'nb' - Naive Bayes             
-        * 'dt' - Decision Tree Classifier                   
-        * 'svm' - SVM - Linear Kernel	            
-        * 'rbfsvm' - SVM - Radial Kernel               
-        * 'gpc' - Gaussian Process Classifier                  
-        * 'mlp' - Multi Level Perceptron                  
-        * 'ridge' - Ridge Classifier                
-        * 'rf' - Random Forest Classifier                   
-        * 'qda' - Quadratic Discriminant Analysis                  
-        * 'ada' - Ada Boost Classifier                 
-        * 'gbc' - Gradient Boosting Classifier                  
-        * 'lda' - Linear Discriminant Analysis                  
-        * 'et' - Extra Trees Classifier                   
-        * 'xgboost' - Extreme Gradient Boosting              
-        * 'lightgbm' - Light Gradient Boosting              
-        * 'catboost' - CatBoost Classifier             
 
     fold: int or scikit-learn compatible CV generator, default = None
-        Controls cross-validation. If None, will use the CV generator defined in 
-        setup(). If integer, will use StratifiedKFold CV with that many folds.
-        When cross_validation is False, this parameter is ignored.
+        Controls cross-validation. If None, the CV generator in the ``fold_strategy`` 
+        parameter of the ``setup`` function is used. When an integer is passed, 
+        it is interpreted as the 'n_splits' parameter of the CV generator in the 
+        ``setup`` function.
+        
 
     round: int, default = 4
         Number of decimal places the metrics in the score grid will be rounded to. 
 
+
     cross_validation: bool, default = True
-        When cross_validation set to False fold parameter is ignored and model is 
-        trained on entire training dataset, returning metrics calculated using the 
-        train (holdout) set.
+        When set to False, metrics are evaluated on holdout set. ``fold`` param
+        is ignored when cross_validation is set to False.
+
 
     fit_kwargs: dict, default = {} (empty dict)
         Dictionary of arguments passed to the fit method of the model.
+
 
     groups: str or array-like, with shape (n_samples,), default = None
         Optional Group labels for the samples used while splitting the dataset into 
@@ -881,36 +862,29 @@ def create_model(
         (eg. GroupKFold). If None, will use the value set in fold_groups param in 
         setup().
 
+
     verbose: bool, default = True
         Score grid is not printed when verbose is set to False.
+
 
     **kwargs: 
         Additional keyword arguments to pass to the estimator.
 
+
     Returns
     -------
-    score_grid
-        A table containing the scores of the model across the kfolds. 
-        Scoring metrics used are Accuracy, AUC, Recall, Precision, F1, 
-        Kappa and MCC. Mean and standard deviation of the scores across 
-        the folds are highlighted in yellow.
+    Score Grid
+        Average cross validated scores for all estimators.
 
-    model
-        trained model object
+    Trained Model
+
 
     Warnings
     --------
-    - 'svm' and 'ridge' doesn't support predict_proba method. As such, AUC will be
-      returned as zero (0.0)
-     
-    - If target variable is multiclass (more than 2 classes), AUC will be returned 
-      as zero (0.0)
+    - AUC for estimators that does not support 'predict_proba' is shown as 0. 
 
-    - 'rbfsvm' and 'gpc' uses non-linear kernel and hence the fit time complexity is 
-      more than quadratic. These estimators are hard to scale on datasets with more 
-      than 10,000 samples.
-
-    - If cross_validation param is set to False, model will not be logged with MLFlow.
+    - No models are logged in ``MLFlow`` when ``cross_validation`` parameter is False.
+      
 
     """
 
