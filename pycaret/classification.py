@@ -874,7 +874,7 @@ def create_model(
     Returns
     -------
     Score Grid
-        Average cross validated scores for all estimators.
+        Cross validated scores by fold.
 
     Trained Model
 
@@ -922,11 +922,12 @@ def tune_model(
 ) -> Any:
 
     """
-    This function tunes the hyperparameters of a model and scores it using Cross Validation.
-    The output prints a score grid that shows Accuracy, AUC, Recall
-    Precision, F1, Kappa and MCC by fold (by default = 10 Folds).
-
-    This function returns a trained model object.
+        
+    This function tunes the hyperparameters of a trained model. The output of
+    this function is a score grid with CV scores by fold of the best selected 
+    model based on ``optimize`` parameter. Metrics evaluated during CV can be 
+    accessed using the ``get_metrics`` function. Custom metrics can be added
+    or removed using ``add_metric`` and ``remove_metric`` function. 
 
     Example
     -------
@@ -934,160 +935,156 @@ def tune_model(
     >>> juice = get_data('juice')
     >>> from pycaret.classification import *
     >>> exp_name = setup(data = juice,  target = 'Purchase')
-    >>> xgboost = create_model('xgboost')
-    >>> tuned_xgboost = tune_model(xgboost) 
-
-    This will tune the hyperparameters of Extreme Gradient Boosting Classifier.
+    >>> lr = create_model('lr')
+    >>> tuned_lr = tune_model(lr) 
 
 
-    Parameters
-    ----------
-    estimator : object, default = None
+    estimator : scikit-learn compatible object
+
 
     fold: int or scikit-learn compatible CV generator, default = None
-        Controls cross-validation. If None, will use the CV generator defined in setup().
-        If integer, will use StratifiedKFold CV with that many folds.
-        When cross_validation is False, this parameter is ignored.
+        Controls cross-validation. If None, the CV generator in the ``fold_strategy`` 
+        parameter of the ``setup`` function is used. When an integer is passed, 
+        it is interpreted as the 'n_splits' parameter of the CV generator in the 
+        ``setup`` function.
+        
 
     round: int, default = 4
         Number of decimal places the metrics in the score grid will be rounded to. 
 
+
     n_iter: int, default = 10
-        Number of iterations within the Random Grid Search. For every iteration, 
-        the model randomly selects one value from the pre-defined grid of 
-        hyperparameters.
+        Number of iterations in grid search. Increasing 'n_iter' may improve results.
+
 
     custom_grid: dictionary, default = None
-        To use custom hyperparameters for tuning pass a dictionary with parameter name
-        and values to be iterated. When set to None it uses pre-defined tuning grid.
-        Custom grids must be in a format supported by the chosen search library.
+        To define custom search space for hyperparameters, pass a dictionary with 
+        parameter name and values to be iterated. Custom grids must be in a format 
+        supported by the defined ``search_library``.
+
 
     optimize: str, default = 'Accuracy'
-        Measure used to select the best model through hyperparameter tuning.
-        Can be either a string representing a metric or a custom scorer object
-        created using sklearn.make_scorer. 
+        Metric name to be evaluated for hyperparameter tuning. It also accepts custom 
+        metrics that are added through ``add_metric`` function.
+
 
     custom_scorer: object, default = None
-        Will be eventually depreciated.
-        custom_scorer can be passed to tune hyperparameters of the model. It must be
-        created using sklearn.make_scorer. 
+        custom scoring strategy can be passed to tune hyperparameters of the model. 
+        It must be created using ``sklearn.make_scorer``. It is equivalent of adding
+        custom metric using the ``add_metric`` function and passing the name of the
+        custom metric in the ``optimize`` parameter. 
+        Will be deprecated in future.
+
 
     search_library: str, default = 'scikit-learn'
-        The search library used to tune hyperparameters.
-        Possible values:
+        The search library used for tuning hyperparameters. Possible values:
 
         - 'scikit-learn' - default, requires no further installation
-        - 'scikit-optimize' - scikit-optimize. ``pip install scikit-optimize`` https://scikit-optimize.github.io/stable/
-        - 'tune-sklearn' - Ray Tune scikit API. Does not support GPU models.
-          ``pip install tune-sklearn ray[tune]`` https://github.com/ray-project/tune-sklearn
-        - 'optuna' - Optuna. ``pip install optuna`` https://optuna.org/
+
+        - 'scikit-optimize' - ``pip install scikit-optimize`` 
+            https://scikit-optimize.github.io/stable/
+
+        - 'tune-sklearn' - ``pip install tune-sklearn ray[tune]`` 
+            https://github.com/ray-project/tune-sklearn
+
+        - 'optuna' - ``pip install optuna`` 
+            https://optuna.org/
+
 
     search_algorithm: str, default = None
-        The search algorithm to be used for finding the best hyperparameters.
-        Selection of search algorithms depends on the search_library parameter.
+        The search algorithm depends on the ``search_library`` parameter.
         Some search algorithms require additional libraries to be installed.
-        If None, will use search library-specific default algorith.
-        'scikit-learn' possible values:
+        If None, will use search library-specific default algorithm.
 
+        'scikit-learn' possible values:
         - 'random' - random grid search (default)
         - 'grid' - grid search
 
         'scikit-optimize' possible values:
-
         - 'bayesian' - Bayesian search (default)
 
         'tune-sklearn' possible values:
-
         - 'random' - random grid search (default)
         - 'grid' - grid search
-        - 'bayesian' - Bayesian search using scikit-optimize
-          ``pip install scikit-optimize``
-        - 'hyperopt' - Tree-structured Parzen Estimator search using Hyperopt 
-          ``pip install hyperopt``
-        - 'bohb' - Bayesian search using HpBandSter 
-          ``pip install hpbandster ConfigSpace``
+        - 'bayesian' - ``pip install scikit-optimize``
+        - 'hyperopt' - ``pip install hyperopt``
+        - 'bohb' - ``pip install hpbandster ConfigSpace``
 
         'optuna' possible values:
-
         - 'random' - randomized search
         - 'tpe' - Tree-structured Parzen Estimator search (default)
+
 
     early_stopping: bool or str or object, default = False
         Use early stopping to stop fitting to a hyperparameter configuration 
         if it performs poorly. Ignored if search_library is ``scikit-learn``, or
-        if the estimator doesn't have partial_fit attribute.
-        If False or None, early stopping will not be used.
-        Can be either an object accepted by the search library or one of the
-        following:
+        if the estimator does not have partial_fit attribute. If False or None, 
+        early stopping will not be used. Can be either an object accepted by the 
+        search library or one of the following:
 
         - 'asha' for Asynchronous Successive Halving Algorithm
         - 'hyperband' for Hyperband
         - 'median' for median stopping rule
         - If False or None, early stopping will not be used.
 
-        More info for Optuna - https://optuna.readthedocs.io/en/stable/reference/pruners.html
-        More info for Ray Tune (tune-sklearn) - https://docs.ray.io/en/master/tune/api_docs/schedulers.html
 
     early_stopping_max_iters: int, default = 10
         Maximum number of epochs to run for each sampled configuration.
-        Ignored if early_stopping is False or None.
+        Ignored if ``early_stopping`` is False or None.
+
 
     choose_better: bool, default = False
-        When set to set to True, base estimator is returned when the performance doesn't 
-        improve by tune_model. This gurantees the returned object would perform atleast 
-        equivalent to base estimator created using create_model or model returned by 
-        compare_models.
+        When set to True, the returned object is always better performing. The
+        metric used for comparison is defined by the ``optimize`` parameter.  
+
 
     fit_kwargs: dict, default = {} (empty dict)
         Dictionary of arguments passed to the fit method of the tuner.
 
+
     groups: str or array-like, with shape (n_samples,), default = None
-        Optional Group labels for the samples used while splitting the dataset into train/test set.
-        If string is passed, will use the data column with that name as the groups.
-        Only used if a group based cross-validation generator is used (eg. GroupKFold).
-        If None, will use the value set in fold_groups param in setup().
+        Optional Group labels for the samples used while splitting the dataset into 
+        train/test set. If string is passed, will use the data column with that name 
+        as the groups. Only used if a group based cross-validation generator is used 
+        (eg. GroupKFold). If None, will use the value set in fold_groups param in the
+        ``setup`` function.
+
 
     return_tuner: bool, default = False
-        If True, will reutrn a tuple of (model, tuner_object). Otherwise,
-        will return just the best model.
+        When set to True, will return a tuple of (model, tuner_object). 
+
 
     verbose: bool, default = True
         Score grid is not printed when verbose is set to False.
 
+
     tuner_verbose: bool or in, default = True
         If True or above 0, will print messages from the tuner. Higher values
-        print more messages. Ignored if verbose param is False.
+        print more messages. Ignored when ``verbose`` param is False.
+
 
     **kwargs: 
         Additional keyword arguments to pass to the optimizer.
 
+
     Returns
     -------
-    score_grid
-        A table containing the scores of the model across the kfolds. 
-        Scoring metrics used are Accuracy, AUC, Recall, Precision, F1, 
-        Kappa and MCC. Mean and standard deviation of the scores across 
-        the folds are also returned.
+    Score Grid
+        Cross validated scores of best model by fold.
 
-    model
-        Trained and tuned model object.
+    Trained Model
 
-    tuner_object
-        Only if return_tuner param is True. The object used for tuning.
+    Tuner Object
+        Only if ``return_tuner`` parameter is True.
 
-    Notes
-    -----
-
-    - If a StackingClassifier is passed, the hyperparameters of the meta model (final_estimator)
-      will be tuned.
-    
-    - If a VotingClassifier is passed, the weights will be tuned.
 
     Warnings
     --------
 
-    - Using 'Grid' search algorithm with default parameter grids may result in very
-      long computation.
+    - Using 'grid' as ``search_algorithm`` may result in very long computation.
+      Only recommended with smaller search spaces that can be defined in the
+      ``custom_grid`` parameter.
+      
 
     """
 
