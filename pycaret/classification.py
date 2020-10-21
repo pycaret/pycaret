@@ -940,6 +940,7 @@ def tune_model(
 
 
     estimator : scikit-learn compatible object
+        Trained model object
 
 
     fold: int or scikit-learn compatible CV generator, default = None
@@ -1146,6 +1147,7 @@ def ensemble_model(
     
 
     estimator : scikit-learn compatible object
+        Trained model object
 
 
     method: str, default = 'Bagging'
@@ -1255,7 +1257,9 @@ def blend_models(
     >>> blender = blend_models(top3)
 
 
+
     estimator_list : list of scikit-learn compatible objects
+        List of trained model objects
 
 
     fold: int or scikit-learn compatible CV generator, default = None
@@ -1368,6 +1372,7 @@ def stack_models(
 
 
     estimator_list : list of scikit-learn compatible objects
+        List of trained model objects
 
 
     meta_model : scikit-learn compatible object, default = None
@@ -1432,8 +1437,8 @@ def stack_models(
     Warnings
     --------
     - When ``method`` is not set to 'auto', it will check if the defined method
-    is available for all estimators passed in ``estimator_list``. If the method is 
-    not implemented by any estimator, it will raise an error.
+     is available for all estimators passed in ``estimator_list``. If the method is 
+     not implemented by any estimator, it will raise an error.
 
     """
 
