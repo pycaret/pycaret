@@ -980,6 +980,7 @@ def tune_model(
         The search library used for tuning hyperparameters. Possible values:
 
         - 'scikit-learn' - default, requires no further installation
+            https://github.com/scikit-learn/scikit-learn
 
         - 'scikit-optimize' - ``pip install scikit-optimize`` 
             https://scikit-optimize.github.io/stable/
@@ -1043,11 +1044,11 @@ def tune_model(
 
 
     groups: str or array-like, with shape (n_samples,), default = None
-        Optional Group labels for the samples used while splitting the dataset into 
-        train/test set. If string is passed, will use the data column with that name 
-        as the groups. Only used if a group based cross-validation generator is used 
-        (eg. GroupKFold). If None, will use the value set in fold_groups param in the
-        ``setup`` function.
+        Optional Group labels for the samples used while splitting the dataset 
+        into  train/test set. If string is passed, will use the data column with 
+        that name as the groups. Only used if a group based cross-validation generator 
+        is used (eg. GroupKFold). If None, will use the value set in fold_groups param 
+        in the ``setup`` function.
 
 
     return_tuner: bool, default = False
@@ -1084,7 +1085,10 @@ def tune_model(
     - Using 'grid' as ``search_algorithm`` may result in very long computation.
       Only recommended with smaller search spaces that can be defined in the
       ``custom_grid`` parameter.
-      
+
+    - When ``choose_better`` is set to True, the score grid printed and the  
+      returned object may not be in sync. 
+        
 
     """
 
@@ -1122,14 +1126,14 @@ def ensemble_model(
     groups: Optional[Union[str, Any]] = None,
     verbose: bool = True,
 ) -> Any:
+
     """
-    This function ensembles the trained base estimator using the method defined in 
-    'method' param (default = 'Bagging'). The output prints a score grid that shows 
-    Accuracy, AUC, Recall, Precision, F1, Kappa and MCC by fold (default = 10 Fold). 
+          
+    This function ensembles a trained model. The output of this function is a 
+    score grid with CV scores by fold. Metrics evaluated during CV can be 
+    accessed using the ``get_metrics`` function. Custom metrics can be added
+    or removed using ``add_metric`` and ``remove_metric`` function. 
 
-    This function returns a trained model object.  
-
-    Model must be created using create_model() or tune_model().
 
     Example
     -------
@@ -1138,74 +1142,69 @@ def ensemble_model(
     >>> from pycaret.classification import *
     >>> exp_name = setup(data = juice,  target = 'Purchase')
     >>> dt = create_model('dt')
-    >>> ensembled_dt = ensemble_model(dt)
-
-    This will return an ensembled Decision Tree model using 'Bagging'.
+    >>> bagged_dt = ensemble_model(dt, method = 'Bagging')
     
-    Parameters
-    ----------
-    estimator : object, default = None
+
+    estimator : scikit-learn compatible object
+
 
     method: str, default = 'Bagging'
-        Bagging method will create an ensemble meta-estimator that fits base 
-        classifiers each on random subsets of the original dataset. The other
-        available method is 'Boosting' which will create a meta-estimators by
-        fitting a classifier on the original dataset and then fits additional 
-        copies of the classifier on the same dataset but where the weights of 
-        incorrectly classified instances are adjusted such that subsequent 
-        classifiers focus more on difficult cases.
-    
-    fold: int or scikit-learn compatible CV generator, default = None
-        Controls cross-validation. If None, will use the CV generator defined in setup().
-        If integer, will use StratifiedKFold CV with that many folds.
-        When cross_validation is False, this parameter is ignored.
-    
-    n_estimators: int, default = 10
-        The number of base estimators in the ensemble.
-        In case of perfect fit, the learning procedure is stopped early.
+        Method for ensembling base estimator. It can be 'Bagging' or 'Boosting'. 
 
+
+    fold: int or scikit-learn compatible CV generator, default = None
+        Controls cross-validation. If None, the CV generator in the ``fold_strategy`` 
+        parameter of the ``setup`` function is used. When an integer is passed, 
+        it is interpreted as the 'n_splits' parameter of the CV generator in the 
+        ``setup`` function.
+        
+
+    n_estimators: int, default = 10
+        The number of base estimators in the ensemble. In case of perfect fit, the 
+        learning procedure is stopped early.
+
+        
     round: int, default = 4
-        Number of decimal places the metrics in the score grid will be rounded to.
+        Number of decimal places the metrics in the score grid will be rounded to. 
+
 
     choose_better: bool, default = False
-        When set to set to True, base estimator is returned when the metric doesn't 
-        improve by ensemble_model. This gurantees the returned object would perform 
-        atleast equivalent to base estimator created using create_model or model 
-        returned by compare_models.
+        When set to True, the returned object is always better performing. The
+        metric used for comparison is defined by the ``optimize`` parameter. 
+
 
     optimize: str, default = 'Accuracy'
-        Only used when choose_better is set to True. optimize parameter is used
-        to compare emsembled model with base estimator. Values accepted in 
-        optimize parameter are 'Accuracy', 'AUC', 'Recall', 'Precision', 'F1', 
-        'Kappa', 'MCC'.
+        Metric to compare for model selection when ``choose_better` is True.
+
 
     fit_kwargs: dict, default = {} (empty dict)
         Dictionary of arguments passed to the fit method of the model.
 
+
     groups: str or array-like, with shape (n_samples,), default = None
-        Optional Group labels for the samples used while splitting the dataset into train/test set.
-        If string is passed, will use the data column with that name as the groups.
-        Only used if a group based cross-validation generator is used (eg. GroupKFold).
-        If None, will use the value set in fold_groups param in setup().
+        Optional Group labels for the samples used while splitting the dataset 
+        into  train/test set. If string is passed, will use the data column with 
+        that name as the groups. Only used if a group based cross-validation generator 
+        is used (eg. GroupKFold). If None, will use the value set in fold_groups param 
+        in the ``setup`` function.
+
 
     verbose: bool, default = True
         Score grid is not printed when verbose is set to False.
 
+
     Returns
     -------
-    score_grid
-        A table containing the scores of the model across the kfolds. 
-        Scoring metrics used are Accuracy, AUC, Recall, Precision, F1, 
-        Kappa and MCC. Mean and standard deviation of the scores across 
-        the folds are also returned.
+    Score Grid
+        Cross validated scores by fold.
 
-    model
-        Trained ensembled model object.
+    Trained Model
+
 
     Warnings
-    --------  
-    - If target variable is multiclass (more than 2 classes), AUC will be returned 
-      as zero (0.0).
+    --------
+    - Method 'Boosting' is not supported for estimators that do not have 'class_weights' or
+     'predict_proba' attributes. 
         
     
     """
