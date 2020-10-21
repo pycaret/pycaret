@@ -997,23 +997,23 @@ def tune_model(
         Some search algorithms require additional libraries to be installed.
         If None, will use search library-specific default algorithm.
 
-        'scikit-learn' possible values:
-        - 'random' - random grid search (default)
-        - 'grid' - grid search
+        - 'scikit-learn' possible values:
+            'random' - random grid search (default)
+            'grid' - grid search
 
-        'scikit-optimize' possible values:
-        - 'bayesian' - Bayesian search (default)
+        - 'scikit-optimize' possible values:
+            'bayesian' - Bayesian search (default)
 
-        'tune-sklearn' possible values:
-        - 'random' - random grid search (default)
-        - 'grid' - grid search
-        - 'bayesian' - ``pip install scikit-optimize``
-        - 'hyperopt' - ``pip install hyperopt``
-        - 'bohb' - ``pip install hpbandster ConfigSpace``
+        - 'tune-sklearn' possible values:
+            'random' - random grid search (default)
+            'grid' - grid search
+            'bayesian' - ``pip install scikit-optimize``
+            'hyperopt' - ``pip install hyperopt``
+            'bohb' - ``pip install hpbandster ConfigSpace``
 
-        'optuna' possible values:
-        - 'random' - randomized search
-        - 'tpe' - Tree-structured Parzen Estimator search (default)
+        - 'optuna' possible values:
+            'random' - randomized search
+            'tpe' - Tree-structured Parzen Estimator search (default)
 
 
     early_stopping: bool or str or object, default = False
