@@ -96,7 +96,6 @@ def setup(
 ):
 
     """
-      
     This function initializes the training environment and creates the transformation 
     pipeline. Setup function must called before executing any other function. It takes 
     two mandatory parameters: ``data`` and ``target``. All the other parameters are
@@ -554,9 +553,8 @@ def setup(
         This function intializes and return all global variables that are required by 
         other functions in pycaret. Global variables can be accessed using ``get_config``
         and ``set_config`` function.
-        
-       
     """
+
     available_plots = {
         "parameter": "Hyperparameters",
         "auc": "AUC",
@@ -678,7 +676,6 @@ def compare_models(
 ) -> Union[Any, List[Any]]:
 
     """
-      
     This function trains and evaluates performance of all estimators available in the 
     model library using cross validation. The output of this function is a score grid 
     with average cross validated scores. Metrics evaluated during CV can be accessed 
@@ -779,8 +776,6 @@ def compare_models(
     - AUC for estimators that does not support 'predict_proba' is shown as 0. 
 
     - No models are logged in ``MLFlow`` when ``cross_validation`` parameter is False.
-       
-
     """
 
     return pycaret.internal.tabular.compare_models(
@@ -812,7 +807,6 @@ def create_model(
 ) -> Any:
 
     """  
-      
     This function trains and evaluates performance of an estimator using 
     cross validation. The output of this function is a score grid with CV 
     scores by fold. Metrics evaluated during CV can be accessed using the 
@@ -884,8 +878,6 @@ def create_model(
     - AUC for estimators that does not support 'predict_proba' is shown as 0. 
 
     - No models are logged in ``MLFlow`` when ``cross_validation`` parameter is False.
-      
-
     """
 
     return pycaret.internal.tabular.create_model_supervised(
@@ -922,7 +914,6 @@ def tune_model(
 ) -> Any:
 
     """
-        
     This function tunes the hyperparameters of a trained model. The output of
     this function is a score grid with CV scores by fold of the best selected 
     model based on ``optimize`` parameter. Metrics evaluated during CV can be 
@@ -1087,9 +1078,7 @@ def tune_model(
       Only recommended with smaller search spaces that can be defined in the
       ``custom_grid`` parameter.
 
-    - ``search_library`` 'tune-sklearn' does not support GPU models.
-        
-
+    - ``search_library`` 'tune-sklearn' does not support GPU models.    
     """
 
     return pycaret.internal.tabular.tune_model_supervised(
@@ -1127,8 +1116,7 @@ def ensemble_model(
     verbose: bool = True,
 ) -> Any:
 
-    """
-          
+    """  
     This function ensembles a trained model. The output of this function is a 
     score grid with CV scores by fold. Metrics evaluated during CV can be 
     accessed using the ``get_metrics`` function. Custom metrics can be added
@@ -1206,8 +1194,6 @@ def ensemble_model(
     --------
     - Method 'Boosting' is not supported for estimators that do not have 'class_weights' or
      'predict_proba' attributes. 
-        
-    
     """
 
     return pycaret.internal.tabular.ensemble_model(
@@ -1238,7 +1224,6 @@ def blend_models(
 ) -> Any:
 
     """
-      
     This function trains a Soft Voting / Majority Rule classifier for select
     models passed in the ``estimator_list`` param. The output of this function 
     is a score grid with CV scores by fold. Metrics evaluated during CV can be 
@@ -1317,8 +1302,6 @@ def blend_models(
         Cross validated scores by fold.
 
     Trained Model
-
-
     """
 
     return pycaret.internal.tabular.blend_models(
@@ -1351,7 +1334,6 @@ def stack_models(
 ) -> Any:
 
     """
-      
     This function trains a meta model with the stack of base estimators 
     passed in the ``estimator_list`` param. The output of this function 
     is a score grid with CV scores by fold. Metrics evaluated during CV 
@@ -1436,9 +1418,8 @@ def stack_models(
     Warnings
     --------
     - When ``method`` is not set to 'auto', it will check if the defined method
-     is available for all estimators passed in ``estimator_list``. If the method is 
-     not implemented by any estimator, it will raise an error.
-
+      is available for all estimators passed in ``estimator_list``. If the method is 
+      not implemented by any estimator, it will raise an error.
     """
 
     return pycaret.internal.tabular.stack_models(
@@ -1468,7 +1449,6 @@ def plot_model(
 ) -> str:
 
     """
-      
     This function takes a trained model object and returns a plot based on the
     test / hold-out set. The process may require the model to be re-trained in
     certain cases. See list of plots supported below. 
@@ -1550,13 +1530,11 @@ def plot_model(
     -   Estimators that does not support 'predict_proba' attribute cannot be used for
         'AUC' and 'calibration' plots. 
               
-    -   'calibration', 'threshold', 'manifold' and 'rfe' plots are not available when
-         target is multiclass.
+    -   When the target is multiclass, 'calibration', 'threshold', 'manifold' and 'rfe' 
+        plots are not available.
 
     -   When the 'max_features' parameter of a trained model object is not equal to 
-        the number of samples in training set, the 'rfe' plot is not available.
-      
-      
+        the number of samples in training set, the 'rfe' plot is not available. 
     """
 
     return pycaret.internal.tabular.plot_model(
@@ -1580,7 +1558,6 @@ def evaluate_model(
 ):
 
     """
-      
     This function displays a user interface for all of the available plots for 
     a given estimator. It internally uses the plot_model() function. 
     
@@ -1619,9 +1596,7 @@ def evaluate_model(
     Returns
     -------
     User Interface
-        Displays the user interface for plotting.
-
-      
+        Displays the user interface for plotting.      
     """
 
     return pycaret.internal.tabular.evaluate_model(
@@ -1637,8 +1612,7 @@ def interpret_model(
     **kwargs,  # added in pycaret==2.1
 ):
 
-    """
-      
+    """ 
     This function takes a trained model object and returns an interpretation plot 
     based on the test / hold-out set. It only supports tree based algorithms. 
 
@@ -1688,8 +1662,6 @@ def interpret_model(
     -------
     Visual Plot
         Prints the visual plot.
-      
-
     """
 
     return pycaret.internal.tabular.interpret_model(
@@ -1711,8 +1683,7 @@ def calibrate_model(
     verbose: bool = True,
 ) -> Any:
 
-    """
-      
+    """  
     This function takes the input of trained estimator and performs probability 
     calibration with sigmoid or isotonic regression. The output prints a score 
     grid that shows Accuracy, AUC, Recall, Precision, F1, Kappa and MCC by fold 
@@ -1780,8 +1751,6 @@ def calibrate_model(
     --------
     - Avoid isotonic calibration with too few calibration samples (<1000) since it 
       tends to overfit.
-              
-  
     """
 
     return pycaret.internal.tabular.calibrate_model(
@@ -1811,6 +1780,7 @@ def optimize_threshold(
     This function returns a plot of optimized cost as a function of probability 
     threshold between 0 to 100. 
 
+
     Example
     -------
     >>> from pycaret.datasets import get_data
@@ -1820,22 +1790,23 @@ def optimize_threshold(
     >>> lr = create_model('lr')
     >>> optimize_threshold(lr, true_negative = 10, false_negative = -100)
 
-    This will return a plot of optimized cost as a function of probability threshold.
 
-    Parameters
-    ----------
     estimator : object
         A trained model object should be passed as an estimator. 
     
+
     true_positive : int, default = 0
         Cost function or returns when prediction is true positive.  
     
+
     true_negative : int, default = 0
         Cost function or returns when prediction is true negative.
     
+
     false_positive : int, default = 0
         Cost function or returns when prediction is false positive.    
     
+
     false_negative : int, default = 0
         Cost function or returns when prediction is false negative.       
     
@@ -1847,9 +1818,7 @@ def optimize_threshold(
 
     Warnings
     --------
-    - This function is not supported for multiclass problems.
-      
-       
+    - This function is not supported when target is multiclass. 
     """
 
     return pycaret.internal.tabular.optimize_threshold(
@@ -1885,29 +1854,34 @@ def predict_model(
     >>> lr = create_model('lr')
     >>> lr_predictions_holdout = predict_model(lr)
         
-    Parameters
-    ----------
+
     estimator : object, default = none
         A trained model object / pipeline should be passed as an estimator. 
-     
+
+
     data : pandas.DataFrame
         Shape (n_samples, n_features) where n_samples is the number of samples 
         and n_features is the number of features. All features used during training 
         must be present in the new dataset.
     
+
     probability_threshold : float, default = None
         Threshold used to convert probability values into binary outcome. By default 
         the probability threshold for all binary classifiers is 0.5 (50%). This can be 
         changed using probability_threshold param.
 
+
     encoded_labels: bool, default = False
         If True, will return labels encoded as an integer.
+
 
     round: int, default = 4
         Number of decimal places the metrics in the score grid will be rounded to. 
 
+
     verbose: bool, default = True
         Holdout score grid is not printed when verbose is set to False.
+
 
     Returns
     -------
@@ -1918,13 +1892,13 @@ def predict_model(
     score_grid
         A table containing the scoring metrics on hold-out / test set.
 
+
     Warnings
     --------
     - The behavior of the predict_model is changed in version 2.1 without backward compatibility.
       As such, the pipelines trained using the version (<= 2.0), may not work for inference 
       with version >= 2.1. You can either retrain your models with a newer version or downgrade
       the version for inference.
-    
     """
 
     return pycaret.internal.tabular.predict_model(
@@ -1943,7 +1917,7 @@ def finalize_model(
     fit_kwargs: Optional[dict] = None,
     groups: Optional[Union[str, Any]] = None,
     model_only: bool = True,
-) -> Any:  # added in pycaret==2.2.0
+) -> Any:
 
     """
     This function fits the estimator onto the complete dataset passed during the
@@ -1959,15 +1933,14 @@ def finalize_model(
     >>> lr = create_model('lr')
     >>> final_lr = finalize_model(lr)
     
-    This will return the final model object fitted to complete dataset. 
 
-    Parameters
-    ----------
     estimator : object, default = none
         A trained model object should be passed as an estimator. 
 
+
     fit_kwargs: dict, default = {} (empty dict)
         Dictionary of arguments passed to the fit method of the model.
+
 
     groups: str or array-like, with shape (n_samples,), default = None
         Optional Group labels for the samples used while splitting the dataset into train/test set.
@@ -1975,14 +1948,17 @@ def finalize_model(
         Only used if a group based cross-validation generator is used (eg. GroupKFold).
         If None, will use the value set in fold_groups param in setup().
 
+
     model_only : bool, default = True
         When set to True, only trained model object is saved and all the 
         transformations are ignored.
+
 
     Returns
     -------
     model
         Trained model object fitted on complete dataset.
+
 
     Warnings
     --------
@@ -1991,8 +1967,6 @@ def finalize_model(
       as the model is trained on the complete dataset including test / hold-out sample. 
       Once finalize_model() is used, the model is considered ready for deployment and
       should be used on new unseens dataset only.
-       
-         
     """
 
     return pycaret.internal.tabular.finalize_model(
@@ -2008,8 +1982,6 @@ def deploy_model(
 ):
 
     """
-    (In Preview)
-
     This function deploys the transformation pipeline and trained model object for
     production use. The platform of deployment can be defined under the platform
     param along with the applicable authentication tokens which are passed as a
@@ -2023,9 +1995,7 @@ def deploy_model(
     >>> exp_name = setup(data = juice,  target = 'Purchase')
     >>> lr = create_model('lr')
     >>> deploy_model(model = lr, model_name = 'deploy_lr', platform = 'aws', authentication = {'bucket' : 'pycaret-test'})
-    
-    This will deploy the model on an AWS S3 account under bucket 'pycaret-test'
-    
+        
     Notes
     -----
     For AWS users:
@@ -2065,14 +2035,14 @@ def deploy_model(
 
     - Azure Storage Account
 
-    Parameters
-    ----------
     model : object
         A trained model object should be passed as an estimator. 
     
+
     model_name : str
         Name of model to be passed as a str.
     
+
     authentication : dict
         Dictionary of applicable authentication tokens.
 
@@ -2085,13 +2055,16 @@ def deploy_model(
         When platform = 'azure':
         {'container': 'pycaret-test'}
     
+
     platform: str, default = 'aws'
         Name of platform for deployment. Current available options are: 'aws', 'gcp' and 'azure'
+
 
     Returns
     -------
     Success_Message
     
+
     Warnings
     --------
     - This function uses file storage services to deploy the model on cloud platform. 
@@ -2099,7 +2072,6 @@ def deploy_model(
       obtain prediction at an instance level, this may not be the efficient choice as 
       it transmits the binary pickle file between your local python environment and
       the platform. 
-    
     """
 
     return pycaret.internal.tabular.deploy_model(
@@ -2125,29 +2097,28 @@ def save_model(model, model_name: str, model_only: bool = False, verbose: bool =
     >>> lr = create_model('lr')
     >>> save_model(lr, 'lr_model_23122019')
     
-    This will save the transformation pipeline and model as a binary pickle
-    file in the current active directory. 
 
-    Parameters
-    ----------
     model : object, default = none
         A trained model object should be passed as an estimator. 
     
+
     model_name : str, default = none
         Name of pickle file to be passed as a string.
     
+
     model_only : bool, default = False
         When set to True, only trained model object is saved and all the 
         transformations are ignored.
 
+
     verbose: bool, default = True
         Success message is not printed when verbose is set to False.
+
 
     Returns
     -------
     (model, model_filename):
-        Tuple of the model object and the filename it was saved under.
-
+        Tuple of the model object and the filename it was saved under.s
     """
 
     return pycaret.internal.tabular.save_model(
@@ -2174,15 +2145,16 @@ def load_model(
     This will load the previously saved model in saved_lr variable. The file 
     must be in the current directory.
 
-    Parameters
-    ----------
+
     model_name : str, default = none
         Name of pickle file to be passed as a string.
       
+
     platform: str, default = None
         Name of platform, if loading model from cloud. Current available options are:
         'aws', 'gcp' and 'azure'.
     
+
     authentication : dict
         dictionary of applicable authentication tokens.
 
@@ -2195,13 +2167,14 @@ def load_model(
         When platform = 'azure':
         {'container': 'pycaret-test'}
     
+
     verbose: bool, default = True
         Success message is not printed when verbose is set to False.
+
 
     Returns
     -------
     Model Object
-
     """
 
     return pycaret.internal.tabular.load_model(
@@ -2214,39 +2187,38 @@ def load_model(
 
 def automl(optimize: str = "Accuracy", use_holdout: bool = False) -> Any:
 
-    """
+    """ 
     This function returns the best model out of all models created in 
     current active environment based on metric defined in optimize parameter. 
 
-    Parameters
-    ----------
+
     optimize : str, default = 'Accuracy'
         Other values you can pass in optimize param are 'AUC', 'Recall', 'Precision',
         'F1', 'Kappa', and 'MCC'.
 
+
     use_holdout: bool, default = False
         When set to True, metrics are evaluated on holdout set instead of CV.
-
+      
     """
-
     return pycaret.internal.tabular.automl(optimize=optimize, use_holdout=use_holdout)
 
 
 def pull(pop: bool = False) -> pd.DataFrame:  # added in pycaret==2.2.0
-    """
+    
+    """  
     Returns latest displayed table.
 
-    Parameters
-    ----------
+
     pop : bool, default = False
         If true, will pop (remove) the returned dataframe from the
         display container.
+
 
     Returns
     -------
     pandas.DataFrame
         Equivalent to get_config('display_container')[-1]
-
     """
     return pycaret.internal.tabular.pull(pop=pop)
 
@@ -2260,29 +2232,27 @@ def models(
 
     Example
     -------
-    >>> _all_models = models()
+    >>> all_models = models()
 
-    This will return pandas dataframe with all available 
-    models and their metadata.
 
-    Parameters
-    ----------
     type : str, default = None
         - linear : filters and only return linear models
         - tree : filters and only return tree based models
         - ensemble : filters and only return ensemble models
     
+
     internal: bool, default = False
         If True, will return extra columns and rows used internally.
+
 
     raise_errors: bool, default = True
         If False, will suppress all exceptions, ignoring models
         that couldn't be created.
 
+
     Returns
     -------
     pandas.DataFrame
-
     """
     return pycaret.internal.tabular.models(
         type=type, internal=internal, raise_errors=raise_errors
@@ -2292,6 +2262,7 @@ def models(
 def get_metrics(
     reset: bool = False, include_custom: bool = True, raise_errors: bool = True,
 ) -> pd.DataFrame:
+
     """
     Returns table of metrics available.
 
@@ -2302,12 +2273,15 @@ def get_metrics(
     This will return pandas dataframe with all available 
     metrics and their metadata.
 
-    Parameters
-    ----------
+
     reset: bool, default = False
         If True, will reset all changes made using add_metric() and get_metric().
+
+
     include_custom: bool, default = True
         Whether to include user added (custom) metrics or not.
+
+
     raise_errors: bool, default = True
         If False, will suppress all exceptions, ignoring models
         that couldn't be created.
@@ -2315,7 +2289,6 @@ def get_metrics(
     Returns
     -------
     pandas.DataFrame
-
     """
 
     return pycaret.internal.tabular.get_metrics(
@@ -2332,19 +2305,22 @@ def add_metric(
     multiclass: bool = True,
     **kwargs,
 ) -> pd.Series:
-    """
+
+    """ 
     Adds a custom metric to be used in all functions.
 
-    Parameters
-    ----------
+
     id: str
         Unique id for the metric.
+
 
     name: str
         Display name of the metric.
 
+
     score_func: type
         Score function (or loss function) with signature ``score_func(y, y_pred, **kwargs)``.
+
 
     target: str, default = 'pred'
         The target of the score function.
@@ -2353,13 +2329,16 @@ def add_metric(
         - 'pred_proba' for pred_proba
         - 'threshold' for decision_function or predict_proba
 
+
     greater_is_better: bool, default = True
         Whether score_func is a score function (default), meaning high is good,
         or a loss function, meaning low is good. In the latter case, the
         scorer object will sign-flip the outcome of the score_func.
 
+
     multiclass: bool, default = True
         Whether the metric supports multiclass problems.
+
 
     **kwargs:
         Arguments to be passed to score function.
@@ -2368,7 +2347,6 @@ def add_metric(
     -------
     pandas.Series
         The created row as Series.
-
     """
 
     return pycaret.internal.tabular.add_metric(
@@ -2383,11 +2361,11 @@ def add_metric(
 
 
 def remove_metric(name_or_id: str):
-    """
+    
+    """  
     Removes a metric used in all functions.
 
-    Parameters
-    ----------
+
     name_or_id: str
         Display name or ID of the metric.
 
@@ -2407,13 +2385,14 @@ def get_logs(experiment_name: Optional[str] = None, save: bool = False) -> pd.Da
 
     This will return pandas dataframe.
 
-    Parameters
-    ----------
+
     experiment_name : str, default = None
         When set to None current active run is used.
 
+
     save : bool, default = False
         When set to True, csv file is saved in current directory.
+
 
     Returns
     -------
