@@ -1018,8 +1018,8 @@ def tune_model(
 
     early_stopping: bool or str or object, default = False
         Use early stopping to stop fitting to a hyperparameter configuration 
-        if it performs poorly. Ignored if search_library is ``scikit-learn``, or
-        if the estimator does not have partial_fit attribute. If False or None, 
+        if it performs poorly. Ignored when ``search_library`` is scikit-learn, 
+        or if the estimator does not have partial_fit attribute. If False or None, 
         early stopping will not be used. Can be either an object accepted by the 
         search library or one of the following:
 
@@ -1174,7 +1174,7 @@ def ensemble_model(
 
 
     optimize: str, default = 'Accuracy'
-        Metric to compare for model selection when ``choose_better` is True.
+        Metric to compare for model selection when ``choose_better`` is True.
 
 
     fit_kwargs: dict, default = {} (empty dict)
@@ -1230,21 +1230,20 @@ def blend_models(
     choose_better: bool = False,
     optimize: str = "Accuracy",
     method: str = "auto",
-    weights: Optional[List[float]] = None,  # added in pycaret==2.2.0
+    weights: Optional[List[float]] = None, 
     fit_kwargs: Optional[dict] = None,
     groups: Optional[Union[str, Any]] = None,
     verbose: bool = True,
 ) -> Any:
 
     """
-    This function creates a Soft Voting / Majority Rule classifier for all the 
-    estimators in the model library (excluding the few when turbo is True) or 
-    for specific trained estimators passed as a list in estimator_list param.
-    It scores it using Cross Validation. The output prints a score
-    grid that shows Accuracy, AUC, Recall, Precision, F1, Kappa and MCC by 
-    fold (default CV = 10 Folds).
+      
+    This function trains a Soft Voting / Majority Rule classifier for select
+    models passed in the ``estimator_list`` param. The output of this function 
+    is a score grid with CV scores by fold. Metrics evaluated during CV can be 
+    accessed using the ``get_metrics`` function. Custom metrics can be added
+    or removed using ``add_metric`` and ``remove_metric`` function.
 
-    This function returns a trained model object.
 
     Example
     -------
@@ -1252,75 +1251,70 @@ def blend_models(
     >>> juice = get_data('juice')
     >>> from pycaret.classification import *
     >>> exp_name = setup(data = juice,  target = 'Purchase')
-    >>> lr = create_model('lr')
-    >>> rf = create_model('rf')
-    >>> knn = create_model('knn')
-    >>> blend_three = blend_models(estimator_list = [lr,rf,knn])
+    >>> top3 = compare_models(n_select = 3)
+    >>> blender = blend_models(top3)
 
-    This will create a VotingClassifier of lr, rf and knn.
 
-    Parameters
-    ----------
-    estimator_list : list of objects
+    estimator_list : list of scikit-learn compatible objects
+
 
     fold: int or scikit-learn compatible CV generator, default = None
-        Controls cross-validation. If None, will use the CV generator defined in setup().
-        If integer, will use StratifiedKFold CV with that many folds.
-        When cross_validation is False, this parameter is ignored.
+        Controls cross-validation. If None, the CV generator in the ``fold_strategy`` 
+        parameter of the ``setup`` function is used. When an integer is passed, 
+        it is interpreted as the 'n_splits' parameter of the CV generator in the 
+        ``setup`` function.
+
 
     round: int, default = 4
         Number of decimal places the metrics in the score grid will be rounded to.
 
+
     choose_better: bool, default = False
-        When set to set to True, base estimator is returned when the metric doesn't 
-        improve by ensemble_model. This gurantees the returned object would perform 
-        atleast equivalent to base estimator created using create_model or model 
-        returned by compare_models.
+        When set to True, the returned object is always better performing. The
+        metric used for comparison is defined by the ``optimize`` parameter. 
+
 
     optimize: str, default = 'Accuracy'
-        Only used when choose_better is set to True. optimize parameter is used
-        to compare emsembled model with base estimator. Values accepted in 
-        optimize parameter are 'Accuracy', 'AUC', 'Recall', 'Precision', 'F1', 
-        'Kappa', 'MCC'.
+        Metric to compare for model selection when ``choose_better`` is True.
+
 
     method: str, default = 'auto'
         'hard' uses predicted class labels for majority rule voting. 'soft', predicts 
         the class label based on the argmax of the sums of the predicted probabilities, 
-        which is recommended for an ensemble of well-calibrated classifiers. Default value,
-        'auto', will try to use 'soft' and fall back to 'hard' if the former is not supported.
+        which is recommended for an ensemble of well-calibrated classifiers. Default 
+        value, 'auto', will try to use 'soft' and fall back to 'hard' if the former is 
+        not supported.
+
 
     weights: list, default = None
-        Sequence of weights (float or int) to weight the occurrences of predicted class labels (hard voting)
-        or class probabilities before averaging (soft voting). Uses uniform weights if None.
+        Sequence of weights (float or int) to weight the occurrences of predicted class 
+        labels (hard voting) or class probabilities before averaging (soft voting). Uses 
+        uniform weights when None.
+
 
     fit_kwargs: dict, default = {} (empty dict)
         Dictionary of arguments passed to the fit method of the model.
 
+
     groups: str or array-like, with shape (n_samples,), default = None
-        Optional Group labels for the samples used while splitting the dataset into train/test set.
-        If string is passed, will use the data column with that name as the groups.
-        Only used if a group based cross-validation generator is used (eg. GroupKFold).
-        If None, will use the value set in fold_groups param in setup().
+        Optional Group labels for the samples used while splitting the dataset 
+        into  train/test set. If string is passed, will use the data column with 
+        that name as the groups. Only used if a group based cross-validation generator 
+        is used (eg. GroupKFold). If None, will use the value set in fold_groups param 
+        in the ``setup`` function.
+
 
     verbose: bool, default = True
         Score grid is not printed when verbose is set to False.
 
+
     Returns
     -------
-    score_grid
-        A table containing the scores of the model across the kfolds. 
-        Scoring metrics used are Accuracy, AUC, Recall, Precision, F1, 
-        Kappa and MCC. Mean and standard deviation of the scores across 
-        the folds are also returned.
+    Score Grid
+        Cross validated scores by fold.
 
-    model
-        Trained Voting Classifier model object. 
+    Trained Model
 
-    Warnings
-    --------
-    - When passing estimator_list with method set to 'soft'. All the models in the
-      estimator_list must support predict_proba function. 'svm' and 'ridge' doesnt
-      support the predict_proba and hence an exception will be raised.
 
     """
 
@@ -1350,104 +1344,96 @@ def stack_models(
     fit_kwargs: Optional[dict] = None,
     groups: Optional[Union[str, Any]] = None,
     verbose: bool = True,
+
 ) -> Any:
 
     """
-    This function trains a meta model and scores it using Cross Validation.
-    The predictions from the base level models as passed in the estimator_list param 
-    are used as input features for the meta model. The restacking parameter controls
-    the ability to expose raw features to the meta model when set to True
-    (default = False).
+      
+    This function trains a meta model with the stack of base estimators 
+    passed in the ``estimator_list`` param. The output of this function 
+    is a score grid with CV scores by fold. Metrics evaluated during CV 
+    can be accessed using the ``get_metrics`` function. Custom metrics 
+    can be added or removed using ``add_metric`` and ``remove_metric`` 
+    function.
 
-    The output prints the score grid that shows Accuracy, AUC, Recall, Precision, 
-    F1, Kappa and MCC by fold (default = 10 Folds). 
     
-    This function returns a trained model object. 
-
     Example
     -------
     >>> from pycaret.datasets import get_data
     >>> juice = get_data('juice')
     >>> from pycaret.classification import *
     >>> exp_name = setup(data = juice,  target = 'Purchase')
-    >>> dt = create_model('dt')
-    >>> rf = create_model('rf')
-    >>> ada = create_model('ada')
-    >>> ridge = create_model('ridge')
-    >>> knn = create_model('knn')
-    >>> stacked_models = stack_models(estimator_list=[dt,rf,ada,ridge,knn])
+    >>> top3 = compare_models(n_select = 3)
+    >>> stacker = stack_models(top3)
 
-    This will create a meta model that will use the predictions of all the 
-    models provided in estimator_list param. By default, the meta model is 
-    Logistic Regression but can be changed with meta_model param.
 
-    Parameters
-    ----------
-    estimator_list : list of objects
+    estimator_list : list of scikit-learn compatible objects
 
-    meta_model : object, default = None
-        If set to None, Logistic Regression is used as a meta model.
+
+    meta_model : scikit-learn compatible object, default = None
+        If set to None, Logistic Regression is trained as a meta model.
+
 
     fold: int or scikit-learn compatible CV generator, default = None
-        Controls cross-validation. If None, will use the CV generator defined in setup().
-        If integer, will use StratifiedKFold CV with that many folds.
-        When cross_validation is False, this parameter is ignored.
+        Controls cross-validation. If None, the CV generator in the ``fold_strategy`` 
+        parameter of the ``setup`` function is used. When an integer is passed, 
+        it is interpreted as the 'n_splits' parameter of the CV generator in the 
+        ``setup`` function.
+
 
     round: int, default = 4
         Number of decimal places the metrics in the score grid will be rounded to.
 
+
     method: str, default = 'auto'
-
-        - if 'auto', it will try to invoke, for each estimator, 'predict_proba',
-          'decision_function' or 'predict' in that order.
-        - otherwise, one of 'predict_proba', 'decision_function' or 'predict'.
-
-        If the method is not implemented by the estimator, it will raise an error.
-
+        When set to 'auto', it will invoke, for each estimator, 'predict_proba',
+        'decision_function' or 'predict' in that order. Other, manually pass one
+        of the value from 'predict_proba', 'decision_function' or 'predict'. 
+        
+        
     restack: bool, default = True
-        When restack is set to True, raw data will be exposed to meta model when
-        making predictions, otherwise when False, only the predicted label or
-        probabilities is passed to meta model when making final predictions.
+        When set to False, only the predictions of estimators will be used as 
+        training data for the ``meta_model``.
+
 
     choose_better: bool, default = False
-        When set to set to True, base estimator is returned when the metric doesn't 
-        improve by ensemble_model. This gurantees the returned object would perform 
-        atleast equivalent to base estimator created using create_model or model 
-        returned by compare_models.
+        When set to True, the returned object is always better performing. The
+        metric used for comparison is defined by the ``optimize`` parameter. 
+
 
     optimize: str, default = 'Accuracy'
-        Only used when choose_better is set to True. optimize parameter is used
-        to compare emsembled model with base estimator. Values accepted in 
-        optimize parameter are 'Accuracy', 'AUC', 'Recall', 'Precision', 'F1', 
-        'Kappa', 'MCC'.
+        Metric to compare for model selection when ``choose_better`` is True.
+
 
     fit_kwargs: dict, default = {} (empty dict)
         Dictionary of arguments passed to the fit method of the model.
 
+
     groups: str or array-like, with shape (n_samples,), default = None
-        Optional Group labels for the samples used while splitting the dataset into train/test set.
-        If string is passed, will use the data column with that name as the groups.
-        Only used if a group based cross-validation generator is used (eg. GroupKFold).
-        If None, will use the value set in fold_groups param in setup().
+        Optional Group labels for the samples used while splitting the dataset 
+        into  train/test set. If string is passed, will use the data column with 
+        that name as the groups. Only used if a group based cross-validation generator 
+        is used (eg. GroupKFold). If None, will use the value set in fold_groups param 
+        in the ``setup`` function.
+
 
     verbose: bool, default = True
         Score grid is not printed when verbose is set to False.
 
+
     Returns
     -------
-    score_grid
-        A table containing the scores of the model across the kfolds. 
-        Scoring metrics used are Accuracy, AUC, Recall, Precision, F1, 
-        Kappa and MCC. Mean and standard deviation of the scores across 
-        the folds are also returned.
+    Score Grid
+        Cross validated scores by fold.
 
-    model
-        Trained model object.
+    Trained Model
+
 
     Warnings
     --------
-    - If target variable is multiclass (more than 2 classes), AUC will be returned 
-      as zero (0.0).
+    - When ``method`` is not set to 'auto', it will check if the defined method
+    is available for all estimators passed in ``estimator_list``. If the method is 
+    not implemented by any estimator, it will raise an error.
 
     """
 
