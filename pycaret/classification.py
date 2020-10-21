@@ -694,14 +694,14 @@ def compare_models(
     include: list of strings or objects, default = None
         To train and evaluate select models, list containing model id or untrained 
         model objects can be passed in include parameter. Untrained model object
-        must be compatible with scikit-learn API. To see list of available models 
-        in the model library use ``models`` function. 
+        must be compatible with scikit-learn API. To see a list of all models 
+        available in the model library use the ``models`` function. 
 
 
     exclude: list of strings, default = None
-        To omit certain models from training and evaluation, list containing model
-        id can be passed in exclude parameter. To see list of available models in 
-        the model library use ``models`` function.
+        To omit certain models from training and evaluation, pass a list containing 
+        model id in the exclude parameter. To see a list of all models available
+        in the model library use the ``models`` function. 
 
 
     fold: int or scikit-learn compatible CV generator, default = None
@@ -737,12 +737,12 @@ def compare_models(
 
     turbo: bool, default = True
         When set to True, it excludes estimators with longer training times. To
-        see which algorithms are excluded use ``models`` function.
+        see which algorithms are excluded use the ``models`` function.
 
 
     errors: str, default = 'ignore'
-        If 'ignore', will suppress model exceptions and continue.
-        If 'raise', will allow exceptions to be raised.
+        When set to 'ignore', will skip the model with exceptions and continue.
+        If 'raise', will stop the function when exceptions are raised.
 
 
     fit_kwargs: dict, default = {} (empty dict)
@@ -750,10 +750,10 @@ def compare_models(
 
 
     groups: str or array-like, with shape (n_samples,), default = None
-        Optional Group labels for the samples used while splitting the dataset into 
-        train/test set. If string is passed, will use the data column with that name 
-        as the groups. Only used if a group based cross-validation generator is used 
-        (eg. GroupKFold). If None, will use the value set in fold_groups param in setup().
+        Optional group labels when GroupKFold is used for the cross validation.
+        It takes an array with shape (n_samples, ) where n_samples is the number
+        of rows in training dataset. When string is passed, it is interpreted as 
+        the column name in the dataset containing group labels.
 
 
     verbose: bool, default = True
@@ -850,11 +850,10 @@ def create_model(
 
 
     groups: str or array-like, with shape (n_samples,), default = None
-        Optional Group labels for the samples used while splitting the dataset into 
-        train/test set. If string is passed, will use the data column with that name 
-        as the groups. Only used if a group based cross-validation generator is used 
-        (eg. GroupKFold). If None, will use the value set in fold_groups param in 
-        setup().
+        Optional group labels when GroupKFold is used for the cross validation.
+        It takes an array with shape (n_samples, ) where n_samples is the number
+        of rows in training dataset. When string is passed, it is interpreted as 
+        the column name in the dataset containing group labels.
 
 
     verbose: bool, default = True
@@ -1036,11 +1035,10 @@ def tune_model(
 
 
     groups: str or array-like, with shape (n_samples,), default = None
-        Optional Group labels for the samples used while splitting the dataset 
-        into  train/test set. If string is passed, will use the data column with 
-        that name as the groups. Only used if a group based cross-validation generator 
-        is used (eg. GroupKFold). If None, will use the value set in fold_groups param 
-        in the ``setup`` function.
+        Optional group labels when GroupKFold is used for the cross validation.
+        It takes an array with shape (n_samples, ) where n_samples is the number
+        of rows in training dataset. When string is passed, it is interpreted as 
+        the column name in the dataset containing group labels.
 
 
     return_tuner: bool, default = False
@@ -1171,11 +1169,10 @@ def ensemble_model(
 
 
     groups: str or array-like, with shape (n_samples,), default = None
-        Optional Group labels for the samples used while splitting the dataset 
-        into  train/test set. If string is passed, will use the data column with 
-        that name as the groups. Only used if a group based cross-validation generator 
-        is used (eg. GroupKFold). If None, will use the value set in fold_groups param 
-        in the ``setup`` function.
+        Optional group labels when GroupKFold is used for the cross validation.
+        It takes an array with shape (n_samples, ) where n_samples is the number
+        of rows in training dataset. When string is passed, it is interpreted as 
+        the column name in the dataset containing group labels.
 
 
     verbose: bool, default = True
@@ -1285,11 +1282,10 @@ def blend_models(
 
 
     groups: str or array-like, with shape (n_samples,), default = None
-        Optional Group labels for the samples used while splitting the dataset 
-        into  train/test set. If string is passed, will use the data column with 
-        that name as the groups. Only used if a group based cross-validation generator 
-        is used (eg. GroupKFold). If None, will use the value set in fold_groups param 
-        in the ``setup`` function.
+        Optional group labels when GroupKFold is used for the cross validation.
+        It takes an array with shape (n_samples, ) where n_samples is the number
+        of rows in training dataset. When string is passed, it is interpreted as 
+        the column name in the dataset containing group labels.
 
 
     verbose: bool, default = True
@@ -1396,11 +1392,10 @@ def stack_models(
 
 
     groups: str or array-like, with shape (n_samples,), default = None
-        Optional Group labels for the samples used while splitting the dataset 
-        into  train/test set. If string is passed, will use the data column with 
-        that name as the groups. Only used if a group based cross-validation generator 
-        is used (eg. GroupKFold). If None, will use the value set in fold_groups param 
-        in the ``setup`` function.
+        Optional group labels when GroupKFold is used for the cross validation.
+        It takes an array with shape (n_samples, ) where n_samples is the number
+        of rows in training dataset. When string is passed, it is interpreted as 
+        the column name in the dataset containing group labels.
 
 
     verbose: bool, default = True
@@ -1449,9 +1444,9 @@ def plot_model(
 ) -> str:
 
     """
-    This function takes a trained model object and returns a plot based on the
-    test / hold-out set. The process may require the model to be re-trained in
-    certain cases. See list of plots supported below. 
+    This function analyzes the performance of a trained model on holdout dataset. 
+    It may require re-training the model in certain cases. See the list of all
+    available plots below.
 
     Example
     -------
@@ -1463,8 +1458,8 @@ def plot_model(
     >>> plot_model(lr, plot = 'auc')
 
 
-    estimator : object, default = none
-        A trained model object should be passed as an estimator. 
+    estimator : scikit-learn compatible object
+        Trained model object
 
 
     plot : str, default = 'auc'
@@ -1495,13 +1490,14 @@ def plot_model(
 
 
     save: bool, default = False
-        When set to True, Plot is saved as a 'png' file in current working directory.
+        When set to True, plot is saved in the current working directory.
 
 
     fold: int or scikit-learn compatible CV generator, default = None
-        Controls cross-validation used in certain plots. If None, will use the CV generator
-        defined in setup(). If integer, will use StratifiedKFold CV with that many folds.
-        When cross_validation is False, this parameter is ignored.
+        Controls cross-validation. If None, the CV generator in the ``fold_strategy`` 
+        parameter of the ``setup`` function is used. When an integer is passed, 
+        it is interpreted as the 'n_splits' parameter of the CV generator in the 
+        ``setup`` function.
 
 
     fit_kwargs: dict, default = {} (empty dict)
@@ -1509,14 +1505,14 @@ def plot_model(
 
 
     groups: str or array-like, with shape (n_samples,), default = None
-        Optional Group labels for the samples used while splitting the dataset into train/test set.
-        If string is passed, will use the data column with that name as the groups.
-        Only used if a group based cross-validation generator is used (eg. GroupKFold).
-        If None, will use the value set in fold_groups param in setup().
+        Optional group labels when GroupKFold is used for the cross validation.
+        It takes an array with shape (n_samples, ) where n_samples is the number
+        of rows in training dataset. When string is passed, it is interpreted as 
+        the column name in the dataset containing group labels.
 
 
     verbose: bool, default = True
-        Progress bar not shown when verbose set to False.
+        When set to False, progress bar is not displayed.
 
 
     Returns
@@ -1558,8 +1554,8 @@ def evaluate_model(
 ):
 
     """
-    This function displays a user interface for all of the available plots for 
-    a given estimator. It internally uses the plot_model() function. 
+    This function displays a user interface for analyzing model performance of a
+    given estimator. It uses the ``plot_model`` function internally. 
     
 
     Example
@@ -1572,14 +1568,15 @@ def evaluate_model(
     >>> evaluate_model(lr)
     
 
-    estimator : object, default = none
-        A trained model object should be passed as an estimator. 
+    estimator : scikit-learn compatible object
+        Trained model object
 
 
     fold: int or scikit-learn compatible CV generator, default = None
-        Controls cross-validation. If None, will use the CV generator defined in setup().
-        If integer, will use StratifiedKFold CV with that many folds.
-        When cross_validation is False, this parameter is ignored.
+        Controls cross-validation. If None, the CV generator in the ``fold_strategy`` 
+        parameter of the ``setup`` function is used. When an integer is passed, 
+        it is interpreted as the 'n_splits' parameter of the CV generator in the 
+        ``setup`` function.
 
 
     fit_kwargs: dict, default = {} (empty dict)
@@ -1587,10 +1584,10 @@ def evaluate_model(
 
 
     groups: str or array-like, with shape (n_samples,), default = None
-        Optional Group labels for the samples used while splitting the dataset into train/test set.
-        If string is passed, will use the data column with that name as the groups.
-        Only used if a group based cross-validation generator is used (eg. GroupKFold).
-        If None, will use the value set in fold_groups param in setup().
+        Optional group labels when GroupKFold is used for the cross validation.
+        It takes an array with shape (n_samples, ) where n_samples is the number
+        of rows in training dataset. When string is passed, it is interpreted as 
+        the column name in the dataset containing group labels.
 
 
     Returns
@@ -1609,7 +1606,7 @@ def interpret_model(
     plot: str = "summary",
     feature: Optional[str] = None,
     observation: Optional[int] = None,
-    **kwargs,  # added in pycaret==2.1
+    **kwargs, 
 ):
 
     """ 
@@ -1632,12 +1629,12 @@ def interpret_model(
     >>> interpret_model(xgboost)
 
 
-    estimator : object, default = none
-        A trained tree based model object should be passed as an estimator. 
+    estimator : scikit-learn compatible object
+        Trained model object
 
 
     plot : str, default = 'summary'
-        Other available options are 'correlation' and 'reason'.
+        Type of plot. Available options are: 'summary', 'correlation', and 'reason'.
 
 
     feature: str, default = None
@@ -1703,7 +1700,7 @@ def calibrate_model(
     >>> calibrated_dt = calibrate_model(dt)
 
 
-    estimator : str or scikit-learn compatible object
+    estimator : scikit-learn compatible object
         Trained model object
     
 
@@ -1728,11 +1725,10 @@ def calibrate_model(
 
 
     groups: str or array-like, with shape (n_samples,), default = None
-        Optional Group labels for the samples used while splitting the dataset 
-        into  train/test set. If string is passed, will use the data column with 
-        that name as the groups. Only used if a group based cross-validation generator 
-        is used (eg. GroupKFold). If None, will use the value set in fold_groups param 
-        in the ``setup`` function.
+        Optional group labels when GroupKFold is used for the cross validation.
+        It takes an array with shape (n_samples, ) where n_samples is the number
+        of rows in training dataset. When string is passed, it is interpreted as 
+        the column name in the dataset containing group labels.
 
 
     verbose: bool, default = True
@@ -1791,8 +1787,8 @@ def optimize_threshold(
     >>> optimize_threshold(lr, true_negative = 10, false_negative = -100)
 
 
-    estimator : object
-        A trained model object should be passed as an estimator. 
+    estimator : scikit-learn compatible object
+        Trained model object
     
 
     true_positive : int, default = 0
@@ -1855,14 +1851,14 @@ def predict_model(
     >>> lr_predictions_holdout = predict_model(lr)
         
 
-    estimator : object, default = none
-        A trained model object / pipeline should be passed as an estimator. 
+    estimator : scikit-learn compatible object
+        Trained model object
 
 
     data : pandas.DataFrame
         Shape (n_samples, n_features) where n_samples is the number of samples 
         and n_features is the number of features. All features used during training 
-        must be present in the new dataset.
+        must be available in the new dataset.
     
 
     probability_threshold : float, default = None
@@ -1872,7 +1868,7 @@ def predict_model(
 
 
     encoded_labels: bool, default = False
-        If True, will return labels encoded as an integer.
+        When set ti True, will return labels encoded as an integer.
 
 
     round: int, default = 4
@@ -1880,25 +1876,25 @@ def predict_model(
 
 
     verbose: bool, default = True
-        Holdout score grid is not printed when verbose is set to False.
+        When set to False, holdout score grid is not printed.
 
 
     Returns
     -------
-    Predictions
-        Predictions (Label and Score) column attached to the original dataset
-        and returned as pandas dataframe.
+    Score Grid
+        A table containing the scoring metrics on holdout dataset.
 
-    score_grid
-        A table containing the scoring metrics on hold-out / test set.
+    Predictions
+        Label and Score column added to the input dataset and returned as dataframe. 
 
 
     Warnings
     --------
-    - The behavior of the predict_model is changed in version 2.1 without backward compatibility.
-      As such, the pipelines trained using the version (<= 2.0), may not work for inference 
-      with version >= 2.1. You can either retrain your models with a newer version or downgrade
-      the version for inference.
+    - The behavior of the ``predict_model`` is changed in version 2.1 without backward 
+      compatibility. As such, the pipelines trained using the version (<= 2.0), may not work 
+      for inference with version >= 2.1. You can either retrain your models with a newer version 
+      or downgrade the version for inference.
+
     """
 
     return pycaret.internal.tabular.predict_model(
@@ -1934,8 +1930,8 @@ def finalize_model(
     >>> final_lr = finalize_model(lr)
     
 
-    estimator : object, default = none
-        A trained model object should be passed as an estimator. 
+    estimator : scikit-learn compatible object
+        Trained model object
 
 
     fit_kwargs: dict, default = {} (empty dict)
@@ -1943,10 +1939,10 @@ def finalize_model(
 
 
     groups: str or array-like, with shape (n_samples,), default = None
-        Optional Group labels for the samples used while splitting the dataset into train/test set.
-        If string is passed, will use the data column with that name as the groups.
-        Only used if a group based cross-validation generator is used (eg. GroupKFold).
-        If None, will use the value set in fold_groups param in setup().
+        Optional group labels when GroupKFold is used for the cross validation.
+        It takes an array with shape (n_samples, ) where n_samples is the number
+        of rows in training dataset. When string is passed, it is interpreted as 
+        the column name in the dataset containing group labels.
 
 
     model_only : bool, default = True
@@ -1956,8 +1952,7 @@ def finalize_model(
 
     Returns
     -------
-    model
-        Trained model object fitted on complete dataset.
+    Trained Model
 
 
     Warnings
@@ -1967,6 +1962,7 @@ def finalize_model(
       as the model is trained on the complete dataset including test / hold-out sample. 
       Once finalize_model() is used, the model is considered ready for deployment and
       should be used on new unseens dataset only.
+      
     """
 
     return pycaret.internal.tabular.finalize_model(
