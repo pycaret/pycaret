@@ -425,14 +425,22 @@ def get_cv_splitter(
     if is_sklearn_cv_generator(fold):
         return fold
     if type(fold) is int:
-        if int_default == "kfold":
-            return KFold(fold, random_state=seed, shuffle=shuffle)
-        elif int_default == "stratifiedkfold":
-            return StratifiedKFold(fold, random_state=seed, shuffle=shuffle)
+        if default is not None:
+            try:
+                default_copy = deepcopy(default)
+                default_copy.n_splits = fold
+                return default_copy
+            except:
+                raise ValueError(f"Couldn't set 'n_splits' to {fold} for {default}.")
         else:
-            raise ValueError(
-                "Wrong value for int_default param. Needs to be either 'kfold' or 'stratifiedkfold'."
-            )
+            if int_default == "kfold":
+                return KFold(fold, random_state=seed, shuffle=shuffle)
+            elif int_default == "stratifiedkfold":
+                return StratifiedKFold(fold, random_state=seed, shuffle=shuffle)
+            else:
+                raise ValueError(
+                    "Wrong value for int_default param. Needs to be either 'kfold' or 'stratifiedkfold'."
+                )
     raise TypeError(
         f"{fold} is of type {type(fold)} while it needs to be either a CV generator or int."
     )
