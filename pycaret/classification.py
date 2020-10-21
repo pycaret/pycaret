@@ -1087,8 +1087,7 @@ def tune_model(
       Only recommended with smaller search spaces that can be defined in the
       ``custom_grid`` parameter.
 
-    - When ``choose_better`` is set to True, the score grid printed and the  
-      returned object may not be in sync. 
+    - ``search_library`` 'tune-sklearn' does not support GPU models.
         
 
     """
@@ -1469,6 +1468,7 @@ def plot_model(
 ) -> str:
 
     """
+      
     This function takes a trained model object and returns a plot based on the
     test / hold-out set. The process may require the model to be re-trained in
     certain cases. See list of plots supported below. 
@@ -1480,14 +1480,12 @@ def plot_model(
     >>> from pycaret.classification import *
     >>> exp_name = setup(data = juice,  target = 'Purchase')
     >>> lr = create_model('lr')
-    >>> plot_model(lr)
+    >>> plot_model(lr, plot = 'auc')
 
-    This will return an AUC plot of a trained Logistic Regression model.
 
-    Parameters
-    ----------
     estimator : object, default = none
         A trained model object should be passed as an estimator. 
+
 
     plot : str, default = 'auc'
         Enter abbreviation of type of plot. The current list of plots supported are (Plot - Name):
@@ -1511,19 +1509,24 @@ def plot_model(
         * 'lift' - Lift Curve
         * 'gain' - Gain Chart
 
+
     scale: float, default = 1
         The resolution scale of the figure.
 
+
     save: bool, default = False
         When set to True, Plot is saved as a 'png' file in current working directory.
+
 
     fold: int or scikit-learn compatible CV generator, default = None
         Controls cross-validation used in certain plots. If None, will use the CV generator
         defined in setup(). If integer, will use StratifiedKFold CV with that many folds.
         When cross_validation is False, this parameter is ignored.
 
+
     fit_kwargs: dict, default = {} (empty dict)
         Dictionary of arguments passed to the fit method of the model.
+
 
     groups: str or array-like, with shape (n_samples,), default = None
         Optional Group labels for the samples used while splitting the dataset into train/test set.
@@ -1531,27 +1534,29 @@ def plot_model(
         Only used if a group based cross-validation generator is used (eg. GroupKFold).
         If None, will use the value set in fold_groups param in setup().
 
+
     verbose: bool, default = True
         Progress bar not shown when verbose set to False.
 
+
     Returns
     -------
-    Visual_Plot
+    Visual Plot
         Prints the visual plot. 
-    str:
-        If save param is True, will return the name of the saved file.
+
 
     Warnings
     --------
-    -  'svm' and 'ridge' doesn't support the predict_proba method. As such, AUC and 
-        calibration plots are not available for these estimators.
-       
+    -   Estimators that does not support 'predict_proba' attribute cannot be used for
+        'AUC' and 'calibration' plots. 
+              
+    -   'calibration', 'threshold', 'manifold' and 'rfe' plots are not available when
+         target is multiclass.
+
     -   When the 'max_features' parameter of a trained model object is not equal to 
         the number of samples in training set, the 'rfe' plot is not available.
-              
-    -   'calibration', 'threshold', 'manifold' and 'rfe' plots are not available for
-         multiclass problems.
-
+      
+      
     """
 
     return pycaret.internal.tabular.plot_model(
@@ -1575,9 +1580,11 @@ def evaluate_model(
 ):
 
     """
+      
     This function displays a user interface for all of the available plots for 
     a given estimator. It internally uses the plot_model() function. 
     
+
     Example
     -------
     >>> from pycaret.datasets import get_data
@@ -1587,21 +1594,20 @@ def evaluate_model(
     >>> lr = create_model('lr')
     >>> evaluate_model(lr)
     
-    This will display the User Interface for all of the plots for a given
-    estimator.
 
-    Parameters
-    ----------
     estimator : object, default = none
         A trained model object should be passed as an estimator. 
+
 
     fold: int or scikit-learn compatible CV generator, default = None
         Controls cross-validation. If None, will use the CV generator defined in setup().
         If integer, will use StratifiedKFold CV with that many folds.
         When cross_validation is False, this parameter is ignored.
 
+
     fit_kwargs: dict, default = {} (empty dict)
         Dictionary of arguments passed to the fit method of the model.
+
 
     groups: str or array-like, with shape (n_samples,), default = None
         Optional Group labels for the samples used while splitting the dataset into train/test set.
@@ -1609,11 +1615,13 @@ def evaluate_model(
         Only used if a group based cross-validation generator is used (eg. GroupKFold).
         If None, will use the value set in fold_groups param in setup().
 
+
     Returns
     -------
-    User_Interface
+    User Interface
         Displays the user interface for plotting.
 
+      
     """
 
     return pycaret.internal.tabular.evaluate_model(
@@ -1630,6 +1638,7 @@ def interpret_model(
 ):
 
     """
+      
     This function takes a trained model object and returns an interpretation plot 
     based on the test / hold-out set. It only supports tree based algorithms. 
 
@@ -1645,23 +1654,23 @@ def interpret_model(
     >>> juice = get_data('juice')
     >>> from pycaret.classification import *
     >>> exp_name = setup(data = juice,  target = 'Purchase')
-    >>> dt = create_model('dt')
-    >>> interpret_model(dt)
+    >>> xgboost = create_model('xgboost')
+    >>> interpret_model(xgboost)
 
-    This will return a summary interpretation plot of Decision Tree model.
 
-    Parameters
-    ----------
     estimator : object, default = none
         A trained tree based model object should be passed as an estimator. 
 
+
     plot : str, default = 'summary'
         Other available options are 'correlation' and 'reason'.
+
 
     feature: str, default = None
         This parameter is only needed when plot = 'correlation'. By default feature is 
         set to None which means the first column of the dataset will be used as a 
         variable. A feature parameter must be passed to change this.
+
 
     observation: int, default = None
         This parameter only comes into effect when plot is set to 'reason'. If no 
@@ -1670,18 +1679,16 @@ def interpret_model(
         interactivity. For analysis at the sample level, an observation parameter must
         be passed with the index value of the observation in test / hold-out set. 
 
+
     **kwargs: 
         Additional keyword arguments to pass to the plot.
 
+
     Returns
     -------
-    Visual_Plot
-        Returns the visual plot.
-        Returns the interactive JS plot when plot = 'reason'.
-
-    Warnings
-    -------- 
-    - interpret_model doesn't support multiclass problems.
+    Visual Plot
+        Prints the visual plot.
+      
 
     """
 
@@ -1705,6 +1712,7 @@ def calibrate_model(
 ) -> Any:
 
     """
+      
     This function takes the input of trained estimator and performs probability 
     calibration with sigmoid or isotonic regression. The output prints a score 
     grid that shows Accuracy, AUC, Recall, Precision, F1, Kappa and MCC by fold 
@@ -1713,7 +1721,6 @@ def calibrate_model(
     to see the calibration differences, use 'calibration' plot in plot_model to 
     see the difference before and after.
 
-    This function returns a trained model object. 
 
     Example
     -------
@@ -1721,58 +1728,59 @@ def calibrate_model(
     >>> juice = get_data('juice')
     >>> from pycaret.classification import *
     >>> exp_name = setup(data = juice,  target = 'Purchase')
-    >>> dt_boosted = create_model('dt', ensemble = True, method = 'Boosting')
-    >>> calibrated_dt = calibrate_model(dt_boosted)
+    >>> dt = create_model('dt')
+    >>> calibrated_dt = calibrate_model(dt)
 
-    This will return Calibrated Boosted Decision Tree Model.
 
-    Parameters
-    ----------
-    estimator : object
+    estimator : str or scikit-learn compatible object
+        Trained model object
     
+
     method : str, default = 'sigmoid'
-        The method to use for calibration. Can be 'sigmoid' which corresponds to Platt's 
-        method or 'isotonic' which is a non-parametric approach. It is not advised to use
-        isotonic calibration with too few calibration samples
+        The method to use for calibration. Can be 'sigmoid' which corresponds to 
+        Platt's method or 'isotonic' which is a non-parametric approach. 
+
 
     fold: int or scikit-learn compatible CV generator, default = None
-        Controls cross-validation. If None, will use the CV generator defined in setup().
-        If integer, will use StratifiedKFold CV with that many folds.
-        When cross_validation is False, this parameter is ignored.
+        Controls cross-validation. If None, the CV generator in the ``fold_strategy`` 
+        parameter of the ``setup`` function is used. When an integer is passed, 
+        it is interpreted as the 'n_splits' parameter of the CV generator in the 
+        ``setup`` function.
+
 
     round: int, default = 4
         Number of decimal places the metrics in the score grid will be rounded to. 
 
+
     fit_kwargs: dict, default = {} (empty dict)
         Dictionary of arguments passed to the fit method of the model.
 
+
     groups: str or array-like, with shape (n_samples,), default = None
-        Optional Group labels for the samples used while splitting the dataset into train/test set.
-        If string is passed, will use the data column with that name as the groups.
-        Only used if a group based cross-validation generator is used (eg. GroupKFold).
-        If None, will use the value set in fold_groups param in setup().
+        Optional Group labels for the samples used while splitting the dataset 
+        into  train/test set. If string is passed, will use the data column with 
+        that name as the groups. Only used if a group based cross-validation generator 
+        is used (eg. GroupKFold). If None, will use the value set in fold_groups param 
+        in the ``setup`` function.
+
 
     verbose: bool, default = True
         Score grid is not printed when verbose is set to False.
 
+
     Returns
     -------
-    score_grid
-        A table containing the scores of the model across the kfolds. 
-        Scoring metrics used are Accuracy, AUC, Recall, Precision, F1, 
-        Kappa and MCC. Mean and standard deviation of the scores across 
-        the folds are also returned.
+    Score Grid
+        Cross validated scores by fold.
 
-    model
-        trained and calibrated model object.
+    Trained Model
+
 
     Warnings
     --------
     - Avoid isotonic calibration with too few calibration samples (<1000) since it 
       tends to overfit.
-      
-    - calibration plot not available for multiclass problems.
-      
+              
   
     """
 
