@@ -1522,8 +1522,7 @@ def plot_model(
 
     Returns
     -------
-    Score Grid
-        Cross validated scores by fold.
+        Visual Plot
 
         
     Warnings
@@ -1598,7 +1597,7 @@ def evaluate_model(
 
     Returns
     -------
-    User Interface
+        User Interface
      
     """
 
@@ -1663,7 +1662,7 @@ def interpret_model(
 
     Returns
     -------
-    Visual Plot
+        Visual Plot
 
     """
 
