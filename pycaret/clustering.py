@@ -84,12 +84,10 @@ def setup(
     -------
     >>> from pycaret.datasets import get_data
     >>> jewellery = get_data('jewellery')
-    >>> experiment_name = setup(data = jewellery, normalize = True)
+    >>> from pycaret.clustering import *
+    >>> exp_name = setup(data = jewellery, normalize = True)
     
-    'jewellery' is a pandas.DataFrame.
 
-    Parameters
-    ----------
     data : pandas.DataFrame
         Shape (n_samples, n_features) where n_samples is the number of samples 
         and n_features is the number of features.
@@ -420,19 +418,16 @@ def create_model(
     This function creates a model on the dataset passed as a data param during 
     the setup stage. setup() function must be called before using create_model().
 
-    This function returns a trained model object. 
 
     Example
     -------
     >>> from pycaret.datasets import get_data
     >>> jewellery = get_data('jewellery')
-    >>> experiment_name = setup(data = jewellery, normalize = True)
+    >>> from pycaret.clustering import *
+    >>> exp_name = setup(data = jewellery, normalize = True)
     >>> kmeans = create_model('kmeans')
 
-    This will return a trained K-Means clustering model.
 
-    Parameters
-    ----------
     model : str / object, default = None
         Enter ID of the models available in model library or pass an untrained model 
         object consistent with fit / predict API to train and evaluate model. List of 
@@ -447,26 +442,33 @@ def create_model(
         * 'optics' - OPTICS Clustering                               
         * 'birch' - Birch Clustering                                 
         * 'kmodes' - K-Modes Clustering                              
-    
+
+
     num_clusters: int, default = None
         Number of clusters to be generated with the dataset. If None, num_clusters 
         is set to 4. 
+
 
     ground_truth: str, default = None
         When ground_truth is provided, Homogeneity Score, Rand Index, and 
         Completeness Score is evaluated and printer along with other metrics.
 
+
     round: integer, default = 4
         Number of decimal places the metrics in the score grid will be rounded to. 
+
 
     fit_kwargs: dict, default = {} (empty dict)
         Dictionary of arguments passed to the fit method of the model.
 
+
     verbose: Boolean, default = True
         Status update is not printed when verbose is set to False.
 
+
     **kwargs: 
         Additional keyword arguments to pass to the estimator.
+
 
     Returns
     -------
@@ -524,7 +526,8 @@ def assign_model(
     -------
     >>> from pycaret.datasets import get_data
     >>> jewellery = get_data('jewellery')
-    >>> experiment_name = setup(data = jewellery, normalize = True)
+    >>> from pycaret.clustering import *
+    >>> exp_name = setup(data = jewellery, normalize = True)
     >>> kmeans = create_model('kmeans')
     >>> kmeans_df = assign_model(kmeans)
 
@@ -571,7 +574,8 @@ def plot_model(
     -------
     >>> from pycaret.datasets import get_data
     >>> jewellery = get_data('jewellery')
-    >>> experiment_name = setup(data = jewellery, normalize = True)
+    >>> from pycaret.clustering import *
+    >>> exp_name = setup(data = jewellery, normalize = True)
     >>> kmeans = create_model('kmeans')
     >>> plot_model(kmeans)
 
@@ -631,7 +635,8 @@ def evaluate_model(
     --------
     >>> from pycaret.datasets import get_data
     >>> jewellery = get_data('jewellery')
-    >>> experiment_name = setup(data = jewellery, normalize = True)
+    >>> from pycaret.clustering import *
+    >>> exp_name = setup(data = jewellery, normalize = True)
     >>> kmeans = create_model('kmeans')
     >>> evaluate_model(kmeans)
     
@@ -689,7 +694,8 @@ def tune_model(
     -------
     >>> from pycaret.datasets import get_data
     >>> boston = get_data('boston')
-    >>> experiment_name = setup(data = boston, normalize = True)
+    >>> from pycaret.clustering import *
+    >>> exp_name = setup(data = boston, normalize = True)
     >>> tuned_kmeans = tune_model(model = 'kmeans', supervised_target = 'medv') 
 
     This will return tuned K-Means Clustering Model.
@@ -828,7 +834,8 @@ def predict_model(model, data: pd.DataFrame) -> pd.DataFrame:
     -------
     >>> from pycaret.datasets import get_data
     >>> jewellery = get_data('jewellery')
-    >>> experiment_name = setup(data = jewellery)
+    >>> from pycaret.clustering import *
+    >>> exp_name = setup(data = jewellery)
     >>> kmeans = create_model('kmeans')
     >>> kmeans_predictions = predict_model(model = kmeans, data = jewellery)
         
@@ -870,19 +877,20 @@ def models(internal: bool = False, raise_errors: bool = True,) -> pd.DataFrame:
 
     Example
     -------
-    >>> _all_models = models()
+    >>> all_models = models()
 
     This will return pandas dataframe with all available 
     models and their metadata.
 
-    Parameters
-    ----------
+
     internal: bool, default = False
         If True, will return extra columns and rows used internally.
+
 
     raise_errors: bool, default = True
         If False, will suppress all exceptions, ignoring models
         that couldn't be created.
+
 
     Returns
     -------
@@ -1044,7 +1052,7 @@ def deploy_model(
     -------
     >>> from pycaret.datasets import get_data
     >>> juice = get_data('juice')
-    >>> experiment_name = setup(data = juice,  target = 'Purchase')
+    >>> exp_name = setup(data = juice,  target = 'Purchase')
     >>> lr = create_model('lr')
     >>> deploy_model(model = lr, model_name = 'deploy_lr', platform = 'aws', authentication = {'bucket' : 'pycaret-test'})
     
@@ -1144,7 +1152,7 @@ def save_model(model, model_name: str, model_only: bool = False, verbose: bool =
     -------
     >>> from pycaret.datasets import get_data
     >>> juice = get_data('juice')
-    >>> experiment_name = setup(data = juice,  target = 'Purchase')
+    >>> exp_name = setup(data = juice,  target = 'Purchase')
     >>> lr = create_model('lr')
     >>> save_model(lr, 'lr_model_23122019')
     

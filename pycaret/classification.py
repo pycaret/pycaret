@@ -549,15 +549,11 @@ def setup(
         When set to true, an interactive EDA report is displayed. 
         
 
-    Returns
-    -------
-    Information Grid
-        Important information about experiment setup is printed.
-
-    Globals
+    Returns:
         This function intializes and return all global variables that are required by 
         other functions in pycaret. Global variables can be accessed using ``get_config``
         and ``set_config`` function.
+        
     """
 
     available_plots = {
@@ -765,9 +761,7 @@ def compare_models(
         Score grid is not printed when verbose is set to False.
     
     
-    Returns
-    -------
-    Trained Model
+    Returns:
         Trained model or list of trained models, depending on the ``n_select`` param.
 
     Warnings
@@ -1056,12 +1050,8 @@ def tune_model(
         Additional keyword arguments to pass to the optimizer.
 
 
-    Returns
-    -------
-    Trained Model
-
-    Tuner Object
-        Only if ``return_tuner`` parameter is True.
+    Returns:
+        Trained Model or optional Tuner Object when ``return_tuner`` is True. 
 
 
     Warnings
@@ -1174,15 +1164,15 @@ def ensemble_model(
         Score grid is not printed when verbose is set to False.
 
 
-    Returns
-    -------
-    Trained Model
+    Returns:
+        Trained Model
 
 
     Warnings
     --------
     - Method 'Boosting' is not supported for estimators that do not have 'class_weights' or
      'predict_proba' attributes. 
+
     """
 
     return pycaret.internal.tabular.ensemble_model(
@@ -1284,9 +1274,8 @@ def blend_models(
         Score grid is not printed when verbose is set to False.
 
 
-    Returns
-    -------
-    Trained Model
+    Returns:
+        Trained Model
 
     """
 
@@ -1392,9 +1381,8 @@ def stack_models(
         Score grid is not printed when verbose is set to False.
 
 
-    Returns
-    -------
-    Trained Model
+    Returns:
+        Trained Model
 
 
     Warnings
@@ -1697,9 +1685,8 @@ def calibrate_model(
         Score grid is not printed when verbose is set to False.
 
 
-    Returns
-    -------
-    Trained Model
+    Returns:
+        Trained Model
 
 
     Warnings
@@ -1832,10 +1819,8 @@ def predict_model(
         When set to False, holdout score grid is not printed.
 
 
-    Returns
-    -------
-    pandas.DataFrame
-        Label and Score column added to the input dataset and returned as dataframe. 
+    Returns:
+        pandas.DataFrame.
 
 
     Warnings
@@ -1899,9 +1884,8 @@ def finalize_model(
         transformations in Pipeline are ignored.
 
 
-    Returns
-    -------
-    Trained Model
+    Returns:
+        Trained Model
       
     """
 
@@ -1994,11 +1978,6 @@ def deploy_model(
 
     platform: str, default = 'aws'
         Name of platform for deployment. Current available options are: 'aws', 'gcp' and 'azure'
-
-
-    Returns
-    -------
-    Success_Message
     
 
     Warnings
@@ -2052,10 +2031,8 @@ def save_model(model, model_name: str, model_only: bool = False, verbose: bool =
         Success message is not printed when verbose is set to False.
 
 
-    Returns
-    -------
-    (model, model_filename)
-        Tuple of the model object and the filename it was saved under.
+    Returns:
+        Tuple of the model object and the filename.
 
     """
 
@@ -2106,9 +2083,8 @@ def load_model(
         Success message is not printed when verbose is set to False.
 
 
-    Returns
-    -------
-    Trained Model
+    Returns:
+        Trained Model
 
     """
 
@@ -2150,9 +2126,8 @@ def pull(pop: bool = False) -> pd.DataFrame:  # added in pycaret==2.2.0
         display container.
 
 
-    Returns
-    -------
-    pandas.DataFrame
+    Returns:
+        pandas.DataFrame
 
     """
     return pycaret.internal.tabular.pull(pop=pop)
@@ -2185,9 +2160,8 @@ def models(
         that couldn't be created.
 
 
-    Returns
-    -------
-    pandas.DataFrame
+    Returns:
+        pandas.DataFrame
 
     """
     return pycaret.internal.tabular.models(
@@ -2222,9 +2196,10 @@ def get_metrics(
         If False, will suppress all exceptions, ignoring models
         that couldn't be created.
 
-    Returns
-    -------
-    pandas.DataFrame
+
+    Returns:
+        pandas.DataFrame
+
     """
 
     return pycaret.internal.tabular.get_metrics(
@@ -2279,10 +2254,10 @@ def add_metric(
     **kwargs:
         Arguments to be passed to score function.
 
-    Returns
-    -------
-    pandas.Series
-        The created row as Series.
+
+    Returns:
+        pandas.Series
+
     """
 
     return pycaret.internal.tabular.add_metric(
@@ -2330,9 +2305,8 @@ def get_logs(experiment_name: Optional[str] = None, save: bool = False) -> pd.Da
         When set to True, csv file is saved in current directory.
 
 
-    Returns
-    -------
-    pandas.DataFrame
+    Returns:
+        pandas.DataFrame
 
     """
 
@@ -2375,9 +2349,8 @@ def get_config(variable: str):
 
     This will return X_train transformed dataset.
 
-    Returns
-    -------
-    variable
+    Returns:
+        Variable
 
     """
 
