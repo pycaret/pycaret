@@ -1523,6 +1523,7 @@ def plot_model(
     Returns
     -------
     Visual Plot
+        Prints the visual plot.
 
         
     Warnings
