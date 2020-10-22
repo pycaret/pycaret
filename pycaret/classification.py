@@ -1522,8 +1522,8 @@ def plot_model(
 
     Returns
     -------
-    Visual Plot
-        Prints the visual plot.
+    Score Grid
+        Cross validated scores by fold.
 
         
     Warnings
