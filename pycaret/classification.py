@@ -866,9 +866,8 @@ def create_model(
         Additional keyword arguments to pass to the estimator.
 
 
-    Returns
-    -------
-    Trained Model
+    Returns:
+        Trained Model
 
 
     Warnings
@@ -2189,7 +2188,7 @@ def models(
     Returns
     -------
     pandas.DataFrame
-    
+
     """
     return pycaret.internal.tabular.models(
         type=type, internal=internal, raise_errors=raise_errors
