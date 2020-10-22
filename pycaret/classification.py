@@ -1519,11 +1519,6 @@ def plot_model(
     verbose: bool, default = True
         When set to False, progress bar is not displayed.
 
-
-    Returns
-    -------
-        Visual Plot
-
         
     Warnings
     --------
