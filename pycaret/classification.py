@@ -97,7 +97,7 @@ def setup(
 
     """
     This function initializes the training environment and creates the transformation 
-    pipeline. Setup function must called before executing any other function. It takes 
+    pipeline. Setup function must be called before executing any other function. It takes 
     two mandatory parameters: ``data`` and ``target``. All the other parameters are
     optional.
 
@@ -482,11 +482,16 @@ def setup(
 
         GPU enabled algorithms:
         
-        - CatBoost
-        - XGBoost
-        - LightGBM - requires https://lightgbm.readthedocs.io/en/latest/GPU-Tutorial.html
-        - Logistic Regression, Ridge, Random Forest, KNN, SVM, SVC - requires cuML >= 0.15 
-        to be installed. https://github.com/rapidsai/cuml
+        - Extreme Gradient Boosting, requires no further installation
+
+        - CatBoost Classifier, requires no further installation
+        
+        - Light Gradient Boosting Machine, requires GPU installation
+          https://lightgbm.readthedocs.io/en/latest/GPU-Tutorial.html
+
+        - Logistic Regression,  Ridge Classifier, Random Forest, K Neighbors Classifier,
+          Support Vector Machine, requires cuML >= 0.15 
+          https://github.com/rapidsai/cuml
 
 
     custom_pipeline: transformer or list of transformers or tuple
