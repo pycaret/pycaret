@@ -767,9 +767,6 @@ def compare_models(
     
     Returns
     -------
-    Score Grid
-        Average cross validated scores for all estimators.
-
     Trained Model
         Trained model or list of trained models, depending on the ``n_select`` param.
 
@@ -871,9 +868,6 @@ def create_model(
 
     Returns
     -------
-    Score Grid
-        Cross validated scores by fold.
-
     Trained Model
 
 
@@ -1065,9 +1059,6 @@ def tune_model(
 
     Returns
     -------
-    Score Grid
-        Cross validated scores of best model by fold.
-
     Trained Model
 
     Tuner Object
@@ -1186,9 +1177,6 @@ def ensemble_model(
 
     Returns
     -------
-    Score Grid
-        Cross validated scores by fold.
-
     Trained Model
 
 
@@ -1299,10 +1287,8 @@ def blend_models(
 
     Returns
     -------
-    Score Grid
-        Cross validated scores by fold.
-
     Trained Model
+
     """
 
     return pycaret.internal.tabular.blend_models(
@@ -1409,9 +1395,6 @@ def stack_models(
 
     Returns
     -------
-    Score Grid
-        Cross validated scores by fold.
-
     Trained Model
 
 
@@ -1555,7 +1538,7 @@ def evaluate_model(
 
     """
     This function displays a user interface for analyzing model performance of a
-    given estimator. It uses the ``plot_model`` function internally. 
+    given estimator. It calls the ``plot_model`` function internally. 
     
 
     Example
@@ -1588,11 +1571,6 @@ def evaluate_model(
         It takes an array with shape (n_samples, ) where n_samples is the number
         of rows in training dataset. When string is passed, it is interpreted as 
         the column name in the dataset containing group labels.
-
-
-    Returns
-    -------
-        User Interface
      
     """
 
@@ -1610,14 +1588,9 @@ def interpret_model(
 ):
 
     """ 
-    This function takes a trained model object and returns an interpretation plot 
-    based on the test / hold-out set. It only supports tree based algorithms. 
-
-    This function is implemented based on the SHAP (SHapley Additive exPlanations),
-    which is a unified approach to explain the output of any machine learning model. 
-    SHAP connects game theory with local explanations.
-
-    For more information : https://shap.readthedocs.io/en/latest/
+    This function analyzes the predictions generated from a tree-based model. It is
+    implemented based on the SHAP (SHapley Additive exPlanations). For more information
+    please see https://shap.readthedocs.io/en/latest/
 
     Example
     -------
@@ -1638,26 +1611,18 @@ def interpret_model(
 
 
     feature: str, default = None
-        This parameter is only needed when plot = 'correlation'. By default feature is 
-        set to None which means the first column of the dataset will be used as a 
-        variable. A feature parameter must be passed to change this.
+        Feature to check correlation with. This parameter is only required when ``plot``
+        type is 'correlation'. When set to None, it uses the first column in the train
+        dataset.
 
 
     observation: int, default = None
-        This parameter only comes into effect when plot is set to 'reason'. If no 
-        observation number is provided, it will return an analysis of all observations 
-        with the option to select the feature on x and y axes through drop down 
-        interactivity. For analysis at the sample level, an observation parameter must
-        be passed with the index value of the observation in test / hold-out set. 
-
+        Observation index number in holdout set to explain. When ``plot`` is not
+        'reason', this parameter is ignored. 
+        
 
     **kwargs: 
         Additional keyword arguments to pass to the plot.
-
-
-    Returns
-    -------
-        Visual Plot
 
     """
 
@@ -1681,13 +1646,11 @@ def calibrate_model(
 ) -> Any:
 
     """  
-    This function takes the input of trained estimator and performs probability 
-    calibration with sigmoid or isotonic regression. The output prints a score 
-    grid that shows Accuracy, AUC, Recall, Precision, F1, Kappa and MCC by fold 
-    (default = 10 Fold). The ouput of the original estimator and the calibrated 
-    estimator (created using this function) might not differ much. In order 
-    to see the calibration differences, use 'calibration' plot in plot_model to 
-    see the difference before and after.
+    This function calibrates the probability of a given estimator using isotonic
+    or logistic regression. The output of this function is a score grid with CV 
+    scores by fold. Metrics evaluated during CV can be accessed using the 
+    ``get_metrics`` function. Custom metrics can be added or removed using 
+    ``add_metric`` and ``remove_metric`` function. 
 
 
     Example
@@ -1737,9 +1700,6 @@ def calibrate_model(
 
     Returns
     -------
-    Score Grid
-        Cross validated scores by fold.
-
     Trained Model
 
 
@@ -1747,6 +1707,7 @@ def calibrate_model(
     --------
     - Avoid isotonic calibration with too few calibration samples (<1000) since it 
       tends to overfit.
+
     """
 
     return pycaret.internal.tabular.calibrate_model(
@@ -1769,12 +1730,9 @@ def optimize_threshold(
 ):
 
     """
-    This function optimizes probability threshold for a trained model using custom cost
-    function that can be defined using combination of True Positives, True Negatives,
-    False Positives (also known as Type I error), and False Negatives (Type II error).
-    
-    This function returns a plot of optimized cost as a function of probability 
-    threshold between 0 to 100. 
+    This function optimizes probability threshold for a trained model using custom 
+    cost function. The output of this function is a plot of optimized cost as a 
+    function of probability threshold between 0.0 to 1.0. 
 
 
     Example
@@ -1792,29 +1750,25 @@ def optimize_threshold(
     
 
     true_positive : int, default = 0
-        Cost function or returns when prediction is true positive.  
+        Cost function or returns for true positive.  
     
 
     true_negative : int, default = 0
-        Cost function or returns when prediction is true negative.
+        Cost function or returns for true negative.
     
 
     false_positive : int, default = 0
-        Cost function or returns when prediction is false positive.    
+        Cost function or returns for false positive.    
     
 
     false_negative : int, default = 0
-        Cost function or returns when prediction is false negative.       
+        Cost function or returns for false negative.       
     
-    
-    Returns
-    -------
-    Visual_Plot
-        Prints the visual plot. 
 
     Warnings
     --------
     - This function is not supported when target is multiclass. 
+
     """
 
     return pycaret.internal.tabular.optimize_threshold(
@@ -1836,10 +1790,10 @@ def predict_model(
 ) -> pd.DataFrame:
 
     """
-    This function is used to predict label and probability score on the new dataset
-    using a trained estimator. New unseen data can be passed to data param as pandas 
-    Dataframe. If data is not passed, the test / hold-out set separated at the time of 
-    setup() is used to generate predictions. 
+    This function generates predicted label and probability on unseen dataset
+    using a trained model. If ``data`` is None, labels and probabilities are
+    generated on holdout set. 
+    
     
     Example
     -------
@@ -1848,7 +1802,8 @@ def predict_model(
     >>> from pycaret.classification import *
     >>> exp_name = setup(data = juice,  target = 'Purchase')
     >>> lr = create_model('lr')
-    >>> lr_predictions_holdout = predict_model(lr)
+    >>> pred_holdout = predict_model(lr)
+    >>> pred_unseen = predict_model(lr, data = unseen_dataframe)
         
 
     estimator : scikit-learn compatible object
@@ -1856,19 +1811,18 @@ def predict_model(
 
 
     data : pandas.DataFrame
-        Shape (n_samples, n_features) where n_samples is the number of samples 
-        and n_features is the number of features. All features used during training 
-        must be available in the new dataset.
+        Shape (n_samples, n_features). All features used during training 
+        must be available in the unseen dataset.
     
 
     probability_threshold : float, default = None
-        Threshold used to convert probability values into binary outcome. By default 
-        the probability threshold for all binary classifiers is 0.5 (50%). This can be 
-        changed using probability_threshold param.
+        Threshold for converting predicted probability to class label.
+        It defaults to 0.5 for all classifiers unless explicitly defined 
+        in this parameter. 
 
 
     encoded_labels: bool, default = False
-        When set ti True, will return labels encoded as an integer.
+        When set to True, will return labels encoded as an integer.
 
 
     round: int, default = 4
@@ -1881,19 +1835,16 @@ def predict_model(
 
     Returns
     -------
-    Score Grid
-        A table containing the scoring metrics on holdout dataset.
-
-    Predictions
+    pandas.DataFrame
         Label and Score column added to the input dataset and returned as dataframe. 
 
 
     Warnings
     --------
     - The behavior of the ``predict_model`` is changed in version 2.1 without backward 
-      compatibility. As such, the pipelines trained using the version (<= 2.0), may not work 
-      for inference with version >= 2.1. You can either retrain your models with a newer version 
-      or downgrade the version for inference.
+      compatibility. As such, the pipelines trained using the version (<= 2.0), may not 
+      work for inference with version >= 2.1. You can either retrain your models with a 
+      newer version or downgrade the version for inference.
 
     """
 
@@ -1916,9 +1867,8 @@ def finalize_model(
 ) -> Any:
 
     """
-    This function fits the estimator onto the complete dataset passed during the
-    setup() stage. The purpose of this function is to prepare for final model
-    deployment after experimentation. 
+    This function trains an estimator on the entire dataset including the holdout set. 
+    
     
     Example
     -------
@@ -1946,22 +1896,13 @@ def finalize_model(
 
 
     model_only : bool, default = True
-        When set to True, only trained model object is saved and all the 
-        transformations are ignored.
+        When set to False, only model object is re-trained and all the 
+        transformations in Pipeline are ignored.
 
 
     Returns
     -------
     Trained Model
-
-
-    Warnings
-    --------
-    - If the model returned by finalize_model(), is used on predict_model() without 
-      passing a new unseen dataset, then the information grid printed is misleading 
-      as the model is trained on the complete dataset including test / hold-out sample. 
-      Once finalize_model() is used, the model is considered ready for deployment and
-      should be used on new unseens dataset only.
       
     """
 
@@ -1974,7 +1915,7 @@ def deploy_model(
     model,
     model_name: str,
     authentication: dict,
-    platform: str = "aws",  # added gcp and azure support in pycaret==2.1
+    platform: str = "aws", 
 ):
 
     """
@@ -2068,6 +2009,7 @@ def deploy_model(
       obtain prediction at an instance level, this may not be the efficient choice as 
       it transmits the binary pickle file between your local python environment and
       the platform. 
+
     """
 
     return pycaret.internal.tabular.deploy_model(
@@ -2082,7 +2024,7 @@ def save_model(model, model_name: str, model_only: bool = False, verbose: bool =
 
     """
     This function saves the transformation pipeline and trained model object 
-    into the current active directory as a pickle file for later use. 
+    into the current working directory as a pickle file for later use. 
     
     Example
     -------
@@ -2091,20 +2033,20 @@ def save_model(model, model_name: str, model_only: bool = False, verbose: bool =
     >>> from pycaret.classification import *
     >>> exp_name = setup(data = juice,  target = 'Purchase')
     >>> lr = create_model('lr')
-    >>> save_model(lr, 'lr_model_23122019')
+    >>> save_model(lr, 'saved_lr_model')
     
 
-    model : object, default = none
-        A trained model object should be passed as an estimator. 
+    estimator : scikit-learn compatible object
+        Trained model object
     
 
     model_name : str, default = none
-        Name of pickle file to be passed as a string.
+        Name of the model.
     
 
     model_only : bool, default = False
-        When set to True, only trained model object is saved and all the 
-        transformations are ignored.
+        When set to True, only trained model object is saved instead of the 
+        entire pipeline.
 
 
     verbose: bool, default = True
@@ -2113,8 +2055,9 @@ def save_model(model, model_name: str, model_only: bool = False, verbose: bool =
 
     Returns
     -------
-    (model, model_filename):
-        Tuple of the model object and the filename it was saved under.s
+    (model, model_filename)
+        Tuple of the model object and the filename it was saved under.
+
     """
 
     return pycaret.internal.tabular.save_model(
@@ -2130,37 +2073,33 @@ def load_model(
 ):
 
     """
-    This function loads a previously saved transformation pipeline and model 
-    from the current active directory into the current python environment. 
-    Load object must be a pickle file.
+    This function loads a previously saved pipeline.
     
+
     Example
     -------
-    >>> saved_lr = load_model('lr_model_23122019')
-    
-    This will load the previously saved model in saved_lr variable. The file 
-    must be in the current directory.
+    >>> saved_lr = load_model('saved_lr_model')
 
 
     model_name : str, default = none
-        Name of pickle file to be passed as a string.
+        Name of the model.
       
 
     platform: str, default = None
-        Name of platform, if loading model from cloud. Current available options are:
+        Name of the platform when loading from cloud. Current available options are:
         'aws', 'gcp' and 'azure'.
     
 
     authentication : dict
         dictionary of applicable authentication tokens.
 
-        When platform = 'aws':
+        when platform = 'aws':
         {'bucket' : 'Name of Bucket on S3'}
 
-        When platform = 'gcp':
+        when platform = 'gcp':
         {'project': 'gcp_pycaret', 'bucket' : 'pycaret-test'}
 
-        When platform = 'azure':
+        when platform = 'azure':
         {'container': 'pycaret-test'}
     
 
@@ -2170,7 +2109,8 @@ def load_model(
 
     Returns
     -------
-    Model Object
+    Trained Model
+
     """
 
     return pycaret.internal.tabular.load_model(
@@ -2203,7 +2143,7 @@ def automl(optimize: str = "Accuracy", use_holdout: bool = False) -> Any:
 def pull(pop: bool = False) -> pd.DataFrame:  # added in pycaret==2.2.0
     
     """  
-    Returns latest displayed table.
+    Returns last displayed grid.
 
 
     pop : bool, default = False
@@ -2214,7 +2154,7 @@ def pull(pop: bool = False) -> pd.DataFrame:  # added in pycaret==2.2.0
     Returns
     -------
     pandas.DataFrame
-        Equivalent to get_config('display_container')[-1]
+
     """
     return pycaret.internal.tabular.pull(pop=pop)
 
@@ -2249,6 +2189,7 @@ def models(
     Returns
     -------
     pandas.DataFrame
+    
     """
     return pycaret.internal.tabular.models(
         type=type, internal=internal, raise_errors=raise_errors
