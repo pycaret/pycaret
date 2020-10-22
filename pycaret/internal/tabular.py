@@ -1186,13 +1186,14 @@ def setup(
 
     # CV params
     fold_param = fold
-
-    if fold_groups is not None and isinstance(fold_groups, str):
-        fold_groups_param = X_before_preprocess[fold_groups]
-    else:
-        fold_groups_param = fold_groups
-    if pd.isnull(fold_groups_param).any():
-        raise ValueError(f"fold_groups cannot contain NaNs.")
+    fold_groups_param = None
+    if fold_groups is not None:
+        if isinstance(fold_groups, str):
+            fold_groups_param = X_before_preprocess[fold_groups]
+        else:
+            fold_groups_param = fold_groups
+        if pd.isnull(fold_groups_param).any():
+            raise ValueError(f"fold_groups cannot contain NaNs.")
     fold_shuffle_param = fold_shuffle
 
     from sklearn.model_selection import (
