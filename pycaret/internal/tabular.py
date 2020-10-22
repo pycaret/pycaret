@@ -1186,7 +1186,7 @@ def setup(
 
     # CV params
     fold_param = fold
-
+    fold_groups_param = None
     if fold_groups is not None:
         if isinstance(fold_groups, str):
             fold_groups_param = X_before_preprocess[fold_groups]
