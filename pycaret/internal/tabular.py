@@ -1191,6 +1191,8 @@ def setup(
         fold_groups_param = X_before_preprocess[fold_groups]
     else:
         fold_groups_param = fold_groups
+    if np.isnan(fold_groups_param).any():
+        raise ValueError(f"fold_groups cannot contain NaNs.")
     fold_shuffle_param = fold_shuffle
 
     from sklearn.model_selection import (
@@ -3048,7 +3050,7 @@ def create_model_supervised(
 
     with estimator_pipeline(_internal_pipeline, model) as pipeline_with_model:
         fit_kwargs = _get_pipeline_fit_kwargs(pipeline_with_model, fit_kwargs)
-        logger.info(f"Cross validating with n_jobs={n_jobs}")
+        logger.info(f"Cross validating with {cv}, n_jobs={n_jobs}")
 
         model_fit_start = time.time()
         scores = cross_validate(
