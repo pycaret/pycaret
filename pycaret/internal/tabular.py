@@ -1191,7 +1191,7 @@ def setup(
         fold_groups_param = X_before_preprocess[fold_groups]
     else:
         fold_groups_param = fold_groups
-    if np.isnan(fold_groups_param).any():
+    if pd.isnull(fold_groups_param).any():
         raise ValueError(f"fold_groups cannot contain NaNs.")
     fold_shuffle_param = fold_shuffle
 
