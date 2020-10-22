@@ -931,7 +931,7 @@ def tune_model(
     >>> from pycaret.classification import *
     >>> exp_name = setup(data = juice,  target = 'Purchase')
     >>> lr = create_model('lr')
-    >>> tuned_lr = tune_model(lr) 
+    >>> tuned_lr = tune_model(lr, search_library = 'scikit-learn') 
 
 
     estimator : scikit-learn compatible object
@@ -1468,7 +1468,7 @@ def plot_model(
 
 
     plot : str, default = 'auc'
-        Enter abbreviation of type of plot. The current list of plots supported are (Plot - Name):
+        List of available plots (ID - Name):
 
         * 'auc' - Area Under the Curve
         * 'threshold' - Discrimination Threshold
@@ -1523,9 +1523,8 @@ def plot_model(
     Returns
     -------
     Visual Plot
-        Prints the visual plot. 
 
-
+        
     Warnings
     --------
     -   Estimators that does not support 'predict_proba' attribute cannot be used for
@@ -1535,7 +1534,8 @@ def plot_model(
         plots are not available.
 
     -   When the 'max_features' parameter of a trained model object is not equal to 
-        the number of samples in training set, the 'rfe' plot is not available. 
+        the number of samples in training set, the 'rfe' plot is not available.
+
     """
 
     return pycaret.internal.tabular.plot_model(
@@ -1598,7 +1598,7 @@ def evaluate_model(
     Returns
     -------
     User Interface
-        Displays the user interface for plotting.      
+     
     """
 
     return pycaret.internal.tabular.evaluate_model(
@@ -1663,7 +1663,7 @@ def interpret_model(
     Returns
     -------
     Visual Plot
-        Prints the visual plot.
+
     """
 
     return pycaret.internal.tabular.interpret_model(
