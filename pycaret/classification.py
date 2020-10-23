@@ -2,7 +2,7 @@
 # Author: Moez Ali <moez.ali@queensu.ca>
 # License: MIT
 # Release: PyCaret 2.2
-# Last modified : 19/10/2020
+# Last modified : 23/10/2020
 
 import pandas as pd
 import numpy as np
@@ -2079,6 +2079,7 @@ def load_model(
 
     Example
     -------
+    >>> from pycaret.classification import load_model
     >>> saved_lr = load_model('saved_lr_model')
 
 
@@ -2124,26 +2125,44 @@ def load_model(
 def automl(optimize: str = "Accuracy", use_holdout: bool = False) -> Any:
 
     """ 
-    This function returns the best model out of all models created in 
-    current active environment based on metric defined in optimize parameter. 
+    This function returns the best model out of all trained models in
+    current session based on the ``optimize`` parameter defined. Metrics
+    evaluated can be accessed using the ``get_metrics`` function. 
+
+    
+    Example
+    -------
+    >>> from pycaret.datasets import get_data
+    >>> juice = get_data('juice')
+    >>> from pycaret.classification import *
+    >>> exp_name = setup(data = juice,  target = 'Purchase')
+    >>> top3 = compare_models(n_select = 3)
+    >>> tuned_top3 = [tune_model(i) for i in top3]
+    >>> blender = blend_models(tuned_top3)
+    >>> stacker = stack_models(tuned_top3)
+    >>> best_auc_model = automl(optimize = 'AUC')
 
 
     optimize : str, default = 'Accuracy'
-        Other values you can pass in optimize param are 'AUC', 'Recall', 'Precision',
-        'F1', 'Kappa', and 'MCC'.
+        Metric to use for model selection. It also accepts custom metrics
+        added using the ``add_metric`` function. 
 
 
     use_holdout: bool, default = False
         When set to True, metrics are evaluated on holdout set instead of CV.
       
+
+    Returns:
+        Trained Model
+
     """
     return pycaret.internal.tabular.automl(optimize=optimize, use_holdout=use_holdout)
 
 
-def pull(pop: bool = False) -> pd.DataFrame:  # added in pycaret==2.2.0
+def pull(pop: bool = False) -> pd.DataFrame:
     
     """  
-    Returns last displayed grid.
+    Returns last grid.
 
 
     pop : bool, default = False
@@ -2163,10 +2182,14 @@ def models(
 ) -> pd.DataFrame:
 
     """
-    Returns table of models available in model library.
+    Returns table of models available in the model library.
 
     Example
     -------
+    >>> from pycaret.datasets import get_data
+    >>> juice = get_data('juice')
+    >>> from pycaret.classification import *
+    >>> exp_name = setup(data = juice,  target = 'Purchase')    
     >>> all_models = models()
 
 
@@ -2177,11 +2200,11 @@ def models(
     
 
     internal: bool, default = False
-        If True, will return extra columns and rows used internally.
+        When True, will return extra columns and rows used internally.
 
 
     raise_errors: bool, default = True
-        If False, will suppress all exceptions, ignoring models
+        When False, will suppress all exceptions, ignoring models
         that couldn't be created.
 
 
@@ -2199,18 +2222,21 @@ def get_metrics(
 ) -> pd.DataFrame:
 
     """
-    Returns table of metrics available.
+    Returns table of available metrics used for CV.
+
 
     Example
     -------
-    >>> metrics = get_metrics()
-
-    This will return pandas dataframe with all available 
-    metrics and their metadata.
+    >>> from pycaret.datasets import get_data
+    >>> juice = get_data('juice')
+    >>> from pycaret.classification import *
+    >>> exp_name = setup(data = juice,  target = 'Purchase')    
+    >>> all_metrics = get_metrics()
 
 
     reset: bool, default = False
-        If True, will reset all changes made using add_metric() and get_metric().
+        When True, will reset all changes made using the ``add_metric`` 
+        and ``remove_metric`` function.
 
 
     include_custom: bool, default = True
@@ -2218,8 +2244,8 @@ def get_metrics(
 
 
     raise_errors: bool, default = True
-        If False, will suppress all exceptions, ignoring models
-        that couldn't be created.
+        If False, will suppress all exceptions, ignoring models that
+        couldn't be created.
 
 
     Returns:
@@ -2243,7 +2269,17 @@ def add_metric(
 ) -> pd.Series:
 
     """ 
-    Adds a custom metric to be used in all functions.
+    Adds a custom metric to be used for CV.
+
+
+    Example
+    -------
+    >>> from pycaret.datasets import get_data
+    >>> juice = get_data('juice')
+    >>> from pycaret.classification import *
+    >>> exp_name = setup(data = juice,  target = 'Purchase') 
+    >>> from sklearn.metrics import log_loss
+    >>> add_metric('logloss', 'Log Loss', log_loss, greater_is_better = False)
 
 
     id: str
@@ -2267,13 +2303,11 @@ def add_metric(
 
 
     greater_is_better: bool, default = True
-        Whether score_func is a score function (default), meaning high is good,
-        or a loss function, meaning low is good. In the latter case, the
-        scorer object will sign-flip the outcome of the score_func.
+        Whether ``score_func`` is higher the better or not.
 
 
     multiclass: bool, default = True
-        Whether the metric supports multiclass problems.
+        Whether the metric supports multiclass target.
 
 
     **kwargs:
@@ -2299,11 +2333,23 @@ def add_metric(
 def remove_metric(name_or_id: str):
     
     """  
-    Removes a metric used in all functions.
+    Removes a metric from CV.
 
+
+    Example
+    -------
+    >>> from pycaret.datasets import get_data
+    >>> juice = get_data('juice')
+    >>> from pycaret.classification import *
+    >>> exp_name = setup(data = juice,  target = 'Purchase') 
+    >>> remove_metric('MCC')
 
     name_or_id: str
         Display name or ID of the metric.
+
+    
+    Returns:
+        None
 
     """
     return pycaret.internal.tabular.remove_metric(name_or_id=name_or_id)
@@ -2312,22 +2358,26 @@ def remove_metric(name_or_id: str):
 def get_logs(experiment_name: Optional[str] = None, save: bool = False) -> pd.DataFrame:
 
     """
-    Returns a table with experiment logs consisting
-    run details, parameter, metrics and tags. 
+    Returns a table of experiment logs. Only works when ``log_experiment``
+    is True when initializing the ``setup`` function.
+
 
     Example
     -------
-    >>> logs = get_logs()
-
-    This will return pandas dataframe.
+    >>> from pycaret.datasets import get_data
+    >>> juice = get_data('juice')
+    >>> from pycaret.classification import *
+    >>> exp_name = setup(data = juice,  target = 'Purchase') 
+    >>> best = compare_models()
+    >>> exp_logs = get_logs()
 
 
     experiment_name : str, default = None
-        When set to None current active run is used.
+        When None current active run is used.
 
 
     save : bool, default = False
-        When set to True, csv file is saved in current directory.
+        When set to True, csv file is saved in current working directory.
 
 
     Returns:
@@ -2341,8 +2391,8 @@ def get_logs(experiment_name: Optional[str] = None, save: bool = False) -> pd.Da
 def get_config(variable: str):
 
     """
-    This function is used to access global environment variables.
-    Following variables can be accessed:
+    This function retrieves the global variables created when initializing the 
+    ``setup`` function. Following variables are accessible:
 
     - X: Transformed dataset (X)
     - y: Transformed dataset (y)  
@@ -2351,31 +2401,39 @@ def get_config(variable: str):
     - y_train: Transformed train dataset (y)
     - y_test: Transformed test/holdout dataset (y)
     - seed: random state set through session_id
-    - prep_pipe: Transformation pipeline configured through setup
+    - prep_pipe: Transformation pipeline
     - fold_shuffle_param: shuffle parameter used in Kfolds
     - n_jobs_param: n_jobs parameter used in model training
     - html_param: html_param configured through setup
     - create_model_container: results grid storage container
     - master_model_container: model storage container
     - display_container: results display container
-    - exp_name_log: Name of experiment set through setup
-    - logging_param: log_experiment param set through setup
-    - log_plots_param: log_plots param set through setup
-    - USI: Unique session ID parameter set through setup
-    - fix_imbalance_param: fix_imbalance param set through setup
-    - fix_imbalance_method_param: fix_imbalance_method param set through setup
+    - exp_name_log: Name of experiment
+    - logging_param: log_experiment param
+    - log_plots_param: log_plots param
+    - USI: Unique session ID parameter
+    - fix_imbalance_param: fix_imbalance param
+    - fix_imbalance_method_param: fix_imbalance_method param
     - data_before_preprocess: data before preprocessing
     - target_param: name of target variable
     - gpu_param: use_gpu param configured through setup
+    - fold_generator: CV splitter configured in fold_strategy
+    - fold_param: fold params defined in the setup
+    - fold_groups_param: fold groups defined in the setup
+    - stratify_param: stratify parameter defined in the setup
+
 
     Example
     -------
+    >>> from pycaret.datasets import get_data
+    >>> juice = get_data('juice')
+    >>> from pycaret.classification import *
+    >>> exp_name = setup(data = juice,  target = 'Purchase') 
     >>> X_train = get_config('X_train') 
 
-    This will return X_train transformed dataset.
 
     Returns:
-        Variable
+        Global variable
 
     """
 
@@ -2385,8 +2443,8 @@ def get_config(variable: str):
 def set_config(variable: str, value):
 
     """
-    This function is used to reset global environment variables.
-    Following variables can be accessed:
+    This function resets the global variables. Following variables are 
+    accessible:
 
     - X: Transformed dataset (X)
     - y: Transformed dataset (y)  
@@ -2395,26 +2453,38 @@ def set_config(variable: str, value):
     - y_train: Transformed train dataset (y)
     - y_test: Transformed test/holdout dataset (y)
     - seed: random state set through session_id
-    - prep_pipe: Transformation pipeline configured through setup
+    - prep_pipe: Transformation pipeline
     - fold_shuffle_param: shuffle parameter used in Kfolds
     - n_jobs_param: n_jobs parameter used in model training
     - html_param: html_param configured through setup
     - create_model_container: results grid storage container
     - master_model_container: model storage container
     - display_container: results display container
-    - exp_name_log: Name of experiment set through setup
-    - logging_param: log_experiment param set through setup
-    - log_plots_param: log_plots param set through setup
-    - USI: Unique session ID parameter set through setup
-    - fix_imbalance_param: fix_imbalance param set through setup
-    - fix_imbalance_method_param: fix_imbalance_method param set through setup
+    - exp_name_log: Name of experiment
+    - logging_param: log_experiment param
+    - log_plots_param: log_plots param
+    - USI: Unique session ID parameter
+    - fix_imbalance_param: fix_imbalance param
+    - fix_imbalance_method_param: fix_imbalance_method param
     - data_before_preprocess: data before preprocessing
+    - target_param: name of target variable
+    - gpu_param: use_gpu param configured through setup
+    - fold_generator: CV splitter configured in fold_strategy
+    - fold_param: fold params defined in the setup
+    - fold_groups_param: fold groups defined in the setup
+    - stratify_param: stratify parameter defined in the setup
 
     Example
     -------
+    >>> from pycaret.datasets import get_data
+    >>> juice = get_data('juice')
+    >>> from pycaret.classification import *
+    >>> exp_name = setup(data = juice,  target = 'Purchase', log_experiment = True) 
     >>> set_config('seed', 123) 
 
-    This will set the global seed to '123'.
+
+    Returns:
+        None
 
     """
 
@@ -2424,14 +2494,21 @@ def set_config(variable: str, value):
 def save_config(file_name: str):
 
     """
-    This function is used to save all enviroment variables to file,
-    allowing to later resume modeling without rerunning setup().
+    This function save all global variables to a pickle file, allowing to
+    later resume without rerunning the ``setup``.
+
 
     Example
     -------
+    >>> from pycaret.datasets import get_data
+    >>> juice = get_data('juice')
+    >>> from pycaret.classification import *
+    >>> exp_name = setup(data = juice,  target = 'Purchase', log_experiment = True) 
     >>> save_config('myvars.pkl') 
 
-    This will save all enviroment variables to 'myvars.pkl'.
+
+    Returns:
+        None
 
     """
 
@@ -2441,15 +2518,17 @@ def save_config(file_name: str):
 def load_config(file_name: str):
 
     """
-    This function is used to load enviroment variables from file created with save_config(),
-    allowing to later resume modeling without rerunning setup().
+    This function loads global variables from a pickle file into Python
+    environment.
 
 
     Example
     -------
+    >>> from pycaret.classification import load_config
     >>> load_config('myvars.pkl') 
 
-    This will load all enviroment variables from 'myvars.pkl'.
+    Returns:
+        Global variables
 
     """
 
