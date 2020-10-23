@@ -122,8 +122,12 @@ def save_config(file_name: str, globals_d: dict):
     logger.info("Initializing save_config()")
     logger.info(f"save_config({function_params_str})")
 
+    globals_to_ignore = {"_all_models", "_all_models_internal", "_all_metrics"}
+
     globals_to_dump = {
-        k: v for k, v in globals_d.items() if k in globals_d["pycaret_globals"]
+        k: v
+        for k, v in globals_d.items()
+        if k in globals_d["pycaret_globals"] and k not in globals_to_ignore
     }
 
     import joblib
