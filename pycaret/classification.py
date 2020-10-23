@@ -479,7 +479,7 @@ def setup(
         - Light Gradient Boosting Machine, requires GPU installation
           https://lightgbm.readthedocs.io/en/latest/GPU-Tutorial.html
 
-        - Logistic Regression,  Ridge Classifier, Random Forest, K Neighbors Classifier,
+        - Logistic Regression, Ridge Classifier, Random Forest, K Neighbors Classifier,
           Support Vector Machine, requires cuML >= 0.15 
           https://github.com/rapidsai/cuml
 
@@ -1068,7 +1068,6 @@ def tune_model(
 
     Warnings
     --------
-
     - Using 'grid' as ``search_algorithm`` may result in very long computation.
       Only recommended with smaller search spaces that can be defined in the
       ``custom_grid`` parameter.
@@ -2039,15 +2038,15 @@ def save_model(model, model_name: str, model_only: bool = False, verbose: bool =
     >>> save_model(lr, 'saved_lr_model')
     
 
-    estimator : scikit-learn compatible object
+    model: scikit-learn compatible object
         Trained model object
     
 
-    model_name : str, default = none
+    model_name: str, default = none
         Name of the model.
     
 
-    model_only : bool, default = False
+    model_only: bool, default = False
         When set to True, only trained model object is saved instead of the 
         entire pipeline.
 
@@ -2344,6 +2343,7 @@ def remove_metric(name_or_id: str):
     >>> exp_name = setup(data = juice,  target = 'Purchase') 
     >>> remove_metric('MCC')
 
+
     name_or_id: str
         Display name or ID of the metric.
 
@@ -2479,7 +2479,7 @@ def set_config(variable: str, value):
     >>> from pycaret.datasets import get_data
     >>> juice = get_data('juice')
     >>> from pycaret.classification import *
-    >>> exp_name = setup(data = juice,  target = 'Purchase', log_experiment = True) 
+    >>> exp_name = setup(data = juice,  target = 'Purchase') 
     >>> set_config('seed', 123) 
 
 
@@ -2503,7 +2503,7 @@ def save_config(file_name: str):
     >>> from pycaret.datasets import get_data
     >>> juice = get_data('juice')
     >>> from pycaret.classification import *
-    >>> exp_name = setup(data = juice,  target = 'Purchase', log_experiment = True) 
+    >>> exp_name = setup(data = juice,  target = 'Purchase') 
     >>> save_config('myvars.pkl') 
 
 
@@ -2526,6 +2526,7 @@ def load_config(file_name: str):
     -------
     >>> from pycaret.classification import load_config
     >>> load_config('myvars.pkl') 
+
 
     Returns:
         Global variables
