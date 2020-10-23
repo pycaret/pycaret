@@ -542,7 +542,7 @@ def setup(
         
 
     Returns:
-        Global variables that can be changed using the ``set_config`` parameter.
+        Global variables that can be changed using the ``set_config`` function.
         
     """
 
@@ -713,7 +713,7 @@ def compare_models(
 
     sort: str, default = 'Accuracy'
         The sort order of the score grid. It also accepts custom metrics that are
-        added through ``add_metric`` function.
+        added through the ``add_metric`` function.
 
 
     n_select: int, default = 1
@@ -793,9 +793,9 @@ def create_model(
 ) -> Any:
 
     """  
-    This function trains and evaluates performance of an estimator using 
-    cross validation. The output of this function is a score grid with CV 
-    scores by fold. Metrics evaluated during CV can be accessed using the 
+    This function trains and evaluates the performance of a given estimator 
+    using cross validation. The output of this function is a score grid with 
+    CV scores by fold. Metrics evaluated during CV can be accessed using the 
     ``get_metrics`` function. Custom metrics can be added or removed using 
     ``add_metric`` and ``remove_metric`` function. All the available models
     can be accessed using the ``models`` function.
@@ -811,8 +811,27 @@ def create_model(
 
     estimator : str or scikit-learn compatible object
         ID of an estimator available in model library or pass an untrained 
-        model object consistent with scikit-learn API. List of estimators 
-        available in the model library can be accessed using ``models``.
+        model object consistent with scikit-learn API. Estimators available  
+        in the model library (ID - Name):
+
+        * 'lr' - Logistic Regression             
+        * 'knn' - K Neighbors Classifier          
+        * 'nb' - Naive Bayes             
+        * 'dt' - Decision Tree Classifier                   
+        * 'svm' - SVM - Linear Kernel	            
+        * 'rbfsvm' - SVM - Radial Kernel               
+        * 'gpc' - Gaussian Process Classifier                  
+        * 'mlp' - MLP Classifier                  
+        * 'ridge' - Ridge Classifier                
+        * 'rf' - Random Forest Classifier                   
+        * 'qda' - Quadratic Discriminant Analysis                  
+        * 'ada' - Ada Boost Classifier                 
+        * 'gbc' - Gradient Boosting Classifier                  
+        * 'lda' - Linear Discriminant Analysis                  
+        * 'et' - Extra Trees Classifier                   
+        * 'xgboost' - Extreme Gradient Boosting              
+        * 'lightgbm' - Light Gradient Boosting Machine             
+        * 'catboost' - CatBoost Classifier       
 
 
     fold: int or scikit-learn compatible CV generator, default = None
@@ -856,9 +875,11 @@ def create_model(
 
     Warnings
     --------
-    - AUC for estimators that does not support 'predict_proba' is shown as 0. 
+    - AUC for estimators that does not support 'predict_proba' is shown as 0.0000.
 
-    - No models are logged in ``MLFlow`` when ``cross_validation`` parameter is False.
+    - Models are not logged on the ``MLFlow`` server when ``cross_validation`` param
+      is set to False.
+
     """
 
     return pycaret.internal.tabular.create_model_supervised(
@@ -895,7 +916,7 @@ def tune_model(
 ) -> Any:
 
     """
-    This function tunes the hyperparameters of a trained model. The output of
+    This function tunes the hyperparameters of a given estimator. The output of
     this function is a score grid with CV scores by fold of the best selected 
     model based on ``optimize`` parameter. Metrics evaluated during CV can be 
     accessed using the ``get_metrics`` function. Custom metrics can be added
@@ -908,7 +929,7 @@ def tune_model(
     >>> from pycaret.classification import *
     >>> exp_name = setup(data = juice,  target = 'Purchase')
     >>> lr = create_model('lr')
-    >>> tuned_lr = tune_model(lr, search_library = 'scikit-learn') 
+    >>> tuned_lr = tune_model(lr) 
 
 
     estimator : scikit-learn compatible object
@@ -927,7 +948,8 @@ def tune_model(
 
 
     n_iter: int, default = 10
-        Number of iterations in grid search. Increasing 'n_iter' may improve results.
+        Number of iterations in the grid search. Increasing 'n_iter' may improve 
+        model performance but also increases the training time.
 
 
     custom_grid: dictionary, default = None
@@ -938,7 +960,7 @@ def tune_model(
 
     optimize: str, default = 'Accuracy'
         Metric name to be evaluated for hyperparameter tuning. It also accepts custom 
-        metrics that are added through ``add_metric`` function.
+        metrics that are added through the ``add_metric`` function.
 
 
     custom_scorer: object, default = None
@@ -992,13 +1014,13 @@ def tune_model(
     early_stopping: bool or str or object, default = False
         Use early stopping to stop fitting to a hyperparameter configuration 
         if it performs poorly. Ignored when ``search_library`` is scikit-learn, 
-        or if the estimator does not have partial_fit attribute. If False or None, 
-        early stopping will not be used. Can be either an object accepted by the 
-        search library or one of the following:
+        or if the estimator does not have 'partial_fit' attribute. If False or 
+        None, early stopping will not be used. Can be either an object accepted 
+        by the search library or one of the following:
 
         - 'asha' for Asynchronous Successive Halving Algorithm
         - 'hyperband' for Hyperband
-        - 'median' for median stopping rule
+        - 'median' for Median Stopping Rule
         - If False or None, early stopping will not be used.
 
 
@@ -1041,7 +1063,7 @@ def tune_model(
 
 
     Returns:
-        Trained Model or optional Tuner Object when ``return_tuner`` is True. 
+        Trained Model and Optional Tuner Object when ``return_tuner`` is True. 
 
 
     Warnings
@@ -1051,7 +1073,8 @@ def tune_model(
       Only recommended with smaller search spaces that can be defined in the
       ``custom_grid`` parameter.
 
-    - ``search_library`` 'tune-sklearn' does not support GPU models.    
+    - ``search_library`` 'tune-sklearn' does not support GPU models.
+
     """
 
     return pycaret.internal.tabular.tune_model_supervised(
@@ -1090,8 +1113,8 @@ def ensemble_model(
 ) -> Any:
 
     """  
-    This function ensembles a trained model. The output of this function is a 
-    score grid with CV scores by fold. Metrics evaluated during CV can be 
+    This function ensembles a given estimator. The output of this function is 
+    a score grid with CV scores by fold. Metrics evaluated during CV can be 
     accessed using the ``get_metrics`` function. Custom metrics can be added
     or removed using ``add_metric`` and ``remove_metric`` function. 
 
@@ -1160,8 +1183,8 @@ def ensemble_model(
 
     Warnings
     --------
-    - Method 'Boosting' is not supported for estimators that do not have 'class_weights' or
-     'predict_proba' attributes. 
+    - Method 'Boosting' is not supported for estimators that do not have 'class_weights' 
+      or 'predict_proba' attributes. 
 
     """
 
@@ -1299,10 +1322,10 @@ def stack_models(
 ) -> Any:
 
     """
-    This function trains a meta model with the stack of base estimators 
-    passed in the ``estimator_list`` param. The output of this function 
-    is a score grid with CV scores by fold. Metrics evaluated during CV 
-    can be accessed using the ``get_metrics`` function. Custom metrics 
+    This function trains a meta model over select estimators passed in 
+    the ``estimator_list`` parameter. The output of this function is a 
+    score grid with CV scores by fold. Metrics evaluated during CV can 
+    be accessed using the ``get_metrics`` function. Custom metrics 
     can be added or removed using ``add_metric`` and ``remove_metric`` 
     function.
 
@@ -1380,6 +1403,7 @@ def stack_models(
     - When ``method`` is not set to 'auto', it will check if the defined method
       is available for all estimators passed in ``estimator_list``. If the method is 
       not implemented by any estimator, it will raise an error.
+
     """
 
     return pycaret.internal.tabular.stack_models(
@@ -1409,9 +1433,8 @@ def plot_model(
 ) -> str:
 
     """
-    This function analyzes the performance of a trained model on holdout dataset. 
-    It may require re-training the model in certain cases. See the list of all
-    available plots below.
+    This function analyzes the performance of a trained model on holdout set. 
+    It may require re-training the model in certain cases.
 
     Example
     -------
@@ -1479,7 +1502,11 @@ def plot_model(
     verbose: bool, default = True
         When set to False, progress bar is not displayed.
 
+
+    Returns:
+        None
         
+
     Warnings
     --------
     -   Estimators that does not support 'predict_proba' attribute cannot be used for
@@ -1548,7 +1575,16 @@ def evaluate_model(
         It takes an array with shape (n_samples, ) where n_samples is the number
         of rows in training dataset. When string is passed, it is interpreted as 
         the column name in the dataset containing group labels.
-     
+
+
+    Returns:
+        None
+
+
+    Warnings
+    --------
+    -   This function only works in IPython enabled Notebook. 
+
     """
 
     return pycaret.internal.tabular.evaluate_model(
@@ -1566,8 +1602,8 @@ def interpret_model(
 
     """ 
     This function analyzes the predictions generated from a tree-based model. It is
-    implemented based on the SHAP (SHapley Additive exPlanations). For more information
-    please see https://shap.readthedocs.io/en/latest/
+    implemented based on the SHAP (SHapley Additive exPlanations). For more info on
+    this, please see https://shap.readthedocs.io/en/latest/
 
     Example
     -------
@@ -1600,6 +1636,10 @@ def interpret_model(
 
     **kwargs: 
         Additional keyword arguments to pass to the plot.
+
+
+    Returns:
+        None
 
     """
 
@@ -1681,7 +1721,7 @@ def calibrate_model(
 
     Warnings
     --------
-    - Avoid isotonic calibration with too few calibration samples (<1000) since it 
+    - Avoid isotonic calibration with too few calibration samples (< 1000) since it 
       tends to overfit.
 
     """
@@ -1706,9 +1746,9 @@ def optimize_threshold(
 ):
 
     """
-    This function optimizes probability threshold for a trained model using custom 
-    cost function. The output of this function is a plot of optimized cost as a 
-    function of probability threshold between 0.0 to 1.0. 
+    This function optimizes probability threshold for a given estimator using 
+    custom cost function. The output of this function is a plot of optimized cost 
+    as a function of probability threshold between 0.0 to 1.0. 
 
 
     Example
@@ -1741,6 +1781,10 @@ def optimize_threshold(
         Cost function or returns for false negative.       
     
 
+    Returns:
+        None
+
+
     Warnings
     --------
     - This function is not supported when target is multiclass. 
@@ -1766,9 +1810,9 @@ def predict_model(
 ) -> pd.DataFrame:
 
     """
-    This function generates predicted label and probability on unseen dataset
-    using a trained model. If ``data`` is None, labels and probabilities are
-    generated on holdout set. 
+    This function generates predicted label and probability on unseen data.
+    When ``data`` is None, labels and probabilities are prediction on the 
+    holdout set.
     
     
     Example
@@ -1810,7 +1854,7 @@ def predict_model(
 
 
     Returns:
-        pandas.DataFrame.
+        pandas.DataFrame
 
 
     Warnings
@@ -1841,7 +1885,8 @@ def finalize_model(
 ) -> Any:
 
     """
-    This function trains an estimator on the entire dataset including the holdout set. 
+    This function trains a given estimator on the entire dataset including the 
+    holdout set. 
     
     
     Example
@@ -1893,9 +1938,7 @@ def deploy_model(
 
     """
     This function deploys the transformation pipeline and trained model object for
-    production use. The platform of deployment can be defined under the platform
-    param along with the applicable authentication tokens which are passed as a
-    dictionary to the authentication param.
+    production use.
     
     Example
     -------
@@ -1904,11 +1947,10 @@ def deploy_model(
     >>> from pycaret.classification import *
     >>> exp_name = setup(data = juice,  target = 'Purchase')
     >>> lr = create_model('lr')
-    >>> deploy_model(model = lr, model_name = 'deploy_lr', platform = 'aws', authentication = {'bucket' : 'pycaret-test'})
+    >>> deploy_model(model = lr, model_name = 'lr-for-deployment', platform = 'aws', authentication = {'bucket' : 'S3-bucket-name'})
         
-    Notes
-    -----
-    For AWS users:
+
+    AWS users:
 
     Before deploying a model to an AWS S3 ('aws'), environment variables must be 
     configured using the command line interface. To configure AWS env. variables, 
@@ -1921,7 +1963,8 @@ def deploy_model(
     - Default Region Name (can be seen under Global settings on your AWS console)
     - Default output format (must be left blank)
 
-    For GCP users:
+    
+    GCP users:
 
     Before deploying a model to Google Cloud Platform (GCP), project must be created 
     either using command line or GCP console. Once project is created, you must create 
@@ -1930,53 +1973,45 @@ def deploy_model(
 
     https://cloud.google.com/docs/authentication/production
 
-    - Google Cloud Project
-    - Service Account Authetication
-
-    For Azure users:
+    
+    Azure users:
 
     Before deploying a model to Microsoft's Azure (Azure), environment variables
     for connection string must be set. In order to get connection string, user has
-    to create account of Azure. Once it is done, create a Storage account. In the settings
-    section of storage account, user can get the connection string.
+    to create account of Azure. Once it is done, create a Storage account. In the 
+    settings section of storage account, user can get the connection string.
 
     Read below link for more details.
     https://docs.microsoft.com/en-us/azure/storage/blobs/storage-quickstart-blobs-python?toc=%2Fpython%2Fazure%2FTOC.json
 
-    - Azure Storage Account
 
-    model : object
-        A trained model object should be passed as an estimator. 
+    model : scikit-learn compatible object
+        Trained model object
     
 
     model_name : str
-        Name of model to be passed as a str.
+        Name of model.
     
 
     authentication : dict
         Dictionary of applicable authentication tokens.
 
         When platform = 'aws':
-        {'bucket' : 'Name of Bucket on S3'}
+        {'bucket' : 'S3-bucket-name'}
 
         When platform = 'gcp':
-        {'project': 'gcp_pycaret', 'bucket' : 'pycaret-test'}
+        {'project': 'project-name', 'bucket' : 'bucket-name'}
 
         When platform = 'azure':
-        {'container': 'pycaret-test'}
+        {'container': 'container-name'}
     
 
     platform: str, default = 'aws'
-        Name of platform for deployment. Current available options are: 'aws', 'gcp' and 'azure'
+        Name of the platform. Current available options are: 'aws', 'gcp' and 'azure'.
     
 
-    Warnings
-    --------
-    - This function uses file storage services to deploy the model on cloud platform. 
-      As such, this is efficient for batch-use. Where the production objective is to 
-      obtain prediction at an instance level, this may not be the efficient choice as 
-      it transmits the binary pickle file between your local python environment and
-      the platform. 
+    Returns:
+        None
 
     """
 
@@ -2052,7 +2087,7 @@ def load_model(
       
 
     platform: str, default = None
-        Name of the platform when loading from cloud. Current available options are:
+        Name of the platform. Available options are:
         'aws', 'gcp' and 'azure'.
     
 
