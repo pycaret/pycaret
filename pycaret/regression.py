@@ -1295,7 +1295,6 @@ def stack_models(
     meta_model=None,
     fold: Optional[Union[int, Any]] = None,
     round: int = 4,
-    method: str = "auto",
     restack: bool = True,
     choose_better: bool = False,
     optimize: str = "R2",

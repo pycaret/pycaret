@@ -9472,7 +9472,65 @@ def load_config(file_name: str):
 
     import pycaret.internal.utils
 
-    return pycaret.internal.utils.load_config(file_name, globals())
+    r = pycaret.internal.utils.load_config(file_name, globals())
+
+    if _ml_usecase == MLUsecase.CLASSIFICATION:
+        _all_models = {
+            k: v
+            for k, v in pycaret.containers.models.classification.get_all_model_containers(
+                globals(), raise_errors=True
+            ).items()
+            if not v.is_special
+        }
+        _all_models_internal = pycaret.containers.models.classification.get_all_model_containers(
+            globals(), raise_errors=True
+        )
+        _all_metrics = pycaret.containers.metrics.classification.get_all_metric_containers(
+            globals(), raise_errors=True
+        )
+    elif _ml_usecase == MLUsecase.REGRESSION:
+        _all_models = {
+            k: v
+            for k, v in pycaret.containers.models.regression.get_all_model_containers(
+                globals(), raise_errors=True
+            ).items()
+            if not v.is_special
+        }
+        _all_models_internal = pycaret.containers.models.regression.get_all_model_containers(
+            globals(), raise_errors=True
+        )
+        _all_metrics = pycaret.containers.metrics.regression.get_all_metric_containers(
+            globals(), raise_errors=True
+        )
+    elif _ml_usecase == MLUsecase.CLUSTERING:
+        _all_models = {
+            k: v
+            for k, v in pycaret.containers.models.clustering.get_all_model_containers(
+                globals(), raise_errors=True
+            ).items()
+            if not v.is_special
+        }
+        _all_models_internal = pycaret.containers.models.clustering.get_all_model_containers(
+            globals(), raise_errors=True
+        )
+        _all_metrics = pycaret.containers.metrics.clustering.get_all_metric_containers(
+            globals(), raise_errors=True
+        )
+    elif _ml_usecase == MLUsecase.ANOMALY:
+        _all_models = {
+            k: v
+            for k, v in pycaret.containers.models.anomaly.get_all_model_containers(
+                globals(), raise_errors=True
+            ).items()
+            if not v.is_special
+        }
+        _all_models_internal = pycaret.containers.models.anomaly.get_all_model_containers(
+            globals(), raise_errors=True
+        )
+        _all_metrics = pycaret.containers.metrics.anomaly.get_all_metric_containers(
+            globals(), raise_errors=True
+        )
+    return r
 
 
 def _choose_better(

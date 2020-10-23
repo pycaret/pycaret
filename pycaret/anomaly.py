@@ -832,6 +832,115 @@ def predict_model(model, data: pd.DataFrame) -> pd.DataFrame:
     )
 
 
+def get_anomaly(
+    data,
+    model: Union[str, Any] = "kmeans",
+    fraction: float = 0.05,
+    fit_kwargs: Optional[dict] = None,
+    preprocess: bool = True,
+    imputation_type: str = "simple",
+    iterative_imputation_iters: int = 5,
+    categorical_features: Optional[List[str]] = None,
+    categorical_imputation: str = "mode",
+    categorical_iterative_imputer: Union[str, Any] = "lightgbm",
+    ordinal_features: Optional[Dict[str, list]] = None,
+    high_cardinality_features: Optional[List[str]] = None,
+    high_cardinality_method: str = "frequency",
+    numeric_features: Optional[List[str]] = None,
+    numeric_imputation: str = "mean",  # method 'zero' added in pycaret==2.1
+    numeric_iterative_imputer: Union[str, Any] = "lightgbm",
+    date_features: Optional[List[str]] = None,
+    ignore_features: Optional[List[str]] = None,
+    normalize: bool = False,
+    normalize_method: str = "zscore",
+    transformation: bool = False,
+    transformation_method: str = "yeo-johnson",
+    handle_unknown_categorical: bool = True,
+    unknown_categorical_method: str = "least_frequent",
+    pca: bool = False,
+    pca_method: str = "linear",
+    pca_components: Optional[float] = None,
+    ignore_low_variance: bool = False,
+    combine_rare_levels: bool = False,
+    rare_level_threshold: float = 0.10,
+    bin_numeric_features: Optional[List[str]] = None,
+    remove_multicollinearity: bool = False,
+    multicollinearity_threshold: float = 0.9,
+    remove_perfect_collinearity: bool = False,
+    group_features: Optional[List[str]] = None,
+    group_names: Optional[List[str]] = None,
+    n_jobs: Optional[int] = -1,
+    session_id: Optional[int] = None,
+    log_experiment: bool = False,
+    experiment_name: Optional[str] = None,
+    log_plots: Union[bool, list] = False,
+    log_profile: bool = False,
+    log_data: bool = False,
+    profile: bool = False,
+    **kwargs
+) -> pd.DataFrame:
+
+    """
+    Callable from any external environment without requiring setup initialization.
+    """
+    setup(
+        data=data,
+        preprocess=preprocess,
+        imputation_type=imputation_type,
+        iterative_imputation_iters=iterative_imputation_iters,
+        categorical_features=categorical_features,
+        categorical_imputation=categorical_imputation,
+        categorical_iterative_imputer=categorical_iterative_imputer,
+        ordinal_features=ordinal_features,
+        high_cardinality_features=high_cardinality_features,
+        high_cardinality_method=high_cardinality_method,
+        numeric_features=numeric_features,
+        numeric_imputation=numeric_imputation,
+        numeric_iterative_imputer=numeric_iterative_imputer,
+        date_features=date_features,
+        ignore_features=ignore_features,
+        normalize=normalize,
+        normalize_method=normalize_method,
+        transformation=transformation,
+        transformation_method=transformation_method,
+        handle_unknown_categorical=handle_unknown_categorical,
+        unknown_categorical_method=unknown_categorical_method,
+        pca=pca,
+        pca_method=pca_method,
+        pca_components=pca_components,
+        ignore_low_variance=ignore_low_variance,
+        combine_rare_levels=combine_rare_levels,
+        rare_level_threshold=rare_level_threshold,
+        bin_numeric_features=bin_numeric_features,
+        remove_multicollinearity=remove_multicollinearity,
+        multicollinearity_threshold=multicollinearity_threshold,
+        remove_perfect_collinearity=remove_perfect_collinearity,
+        group_features=group_features,
+        group_names=group_names,
+        n_jobs=n_jobs,
+        html=False,
+        session_id=session_id,
+        log_experiment=log_experiment,
+        experiment_name=experiment_name,
+        log_plots=log_plots,
+        log_profile=log_profile,
+        log_data=log_data,
+        silent=True,
+        verbose=False,
+        profile=profile,
+    )
+
+    c = create_model(
+        model=model,
+        fraction=fraction,
+        fit_kwargs=fit_kwargs,
+        verbose=False,
+        **kwargs,
+    )
+    dataset = assign_model(c, verbose=False)
+    return dataset
+
+
 def pull(pop: bool = False) -> pd.DataFrame:  # added in pycaret==2.2.0
     """
     Returns latest displayed table.
