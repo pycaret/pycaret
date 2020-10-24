@@ -1171,7 +1171,7 @@ def load_model(
 
 
 def models(
-    type: Optional[str] = None, internal: bool = False, raise_errors: bool = True,
+    internal: bool = False, raise_errors: bool = True,
 ) -> pd.DataFrame:
 
     """
@@ -1186,11 +1186,6 @@ def models(
 
     Parameters
     ----------
-    type : str, default = None
-        - linear : filters and only return linear models
-        - tree : filters and only return tree based models
-        - ensemble : filters and only return ensemble models
-    
     internal: bool, default = False
         If True, will return extra columns and rows used internally.
 
@@ -1204,7 +1199,7 @@ def models(
 
     """
     return pycaret.internal.tabular.models(
-        type=type, internal=internal, raise_errors=raise_errors
+        internal=internal, raise_errors=raise_errors
     )
 
 
