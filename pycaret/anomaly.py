@@ -580,7 +580,7 @@ def plot_model(
 
 
 def evaluate_model(
-    estimator, feature: Optional[str] = None, fit_kwargs: Optional[dict] = None,
+    model, feature: Optional[str] = None, fit_kwargs: Optional[dict] = None,
 ):
 
     """
@@ -600,8 +600,8 @@ def evaluate_model(
 
     Parameters
     ----------
-    estimator : object, default = none
-        A trained model object should be passed as an estimator. 
+    model : object, default = none
+        A fitted model object should be passed. 
 
     feature : str, default = None
         Name of feature column for x-axis of when plot = 'distribution'. When plot is
@@ -620,7 +620,7 @@ def evaluate_model(
     """
 
     return pycaret.internal.tabular.evaluate_model(
-        estimator=estimator, feature_name=feature, fit_kwargs=fit_kwargs
+        estimator=model, feature_name=feature, fit_kwargs=fit_kwargs
     )
 
 
@@ -832,9 +832,9 @@ def predict_model(model, data: pd.DataFrame) -> pd.DataFrame:
     )
 
 
-def get_anomaly(
+def get_outliers(
     data,
-    model: Union[str, Any] = "kmeans",
+    model: Union[str, Any] = "knn",
     fraction: float = 0.05,
     fit_kwargs: Optional[dict] = None,
     preprocess: bool = True,
