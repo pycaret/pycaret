@@ -2141,7 +2141,7 @@ def get_logs(experiment_name: Optional[str] = None, save: bool = False) -> pd.Da
     >>> from pycaret.datasets import get_data
     >>> boston = get_data('boston')
     >>> from pycaret.regression import *
-    >>> exp_name = setup(data = boston,  target = 'medv') 
+    >>> exp_name = setup(data = boston,  target = 'medv', log_experiment = True) 
     >>> best = compare_models()
     >>> exp_logs = get_logs()
 

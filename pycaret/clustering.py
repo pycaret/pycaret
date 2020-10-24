@@ -470,16 +470,8 @@ def create_model(
         Additional keyword arguments to pass to the estimator.
 
 
-    Returns
-    -------
-    score_grid
-        A table containing the Silhouette, Calinski-Harabasz,  
-        Davies-Bouldin, Homogeneity Score, Rand Index, and 
-        Completeness Score. Last 3 are only evaluated when
-        ground_truth param is provided.
-
-    model
-        trained model object
+    Returns:
+        Trained Model
 
     Warnings
     --------
@@ -520,7 +512,6 @@ def assign_model(
     stage to one of the clusters using trained model object passed as model param.
     create_model() function must be called before using assign_model().
     
-    This function returns a pandas.DataFrame.
 
     Example
     -------
@@ -531,23 +522,21 @@ def assign_model(
     >>> kmeans = create_model('kmeans')
     >>> kmeans_df = assign_model(kmeans)
 
-    This will return a pandas.DataFrame with inferred clusters using trained model.
 
-    Parameters
-    ----------
+
     model: trained model object, default = None
     
+
     transformation: bool, default = False
         When set to True, assigned clusters are returned on transformed dataset instead 
         of original dataset passed during setup().
     
+    
     verbose: Boolean, default = True
         Status update is not printed when verbose is set to False.
 
-    Returns
-    -------
-    pandas.DataFrame
-        Returns a DataFrame with assigned clusters using a trained model.
+    Returns:
+        pandas.DataFrame
   
     """
 
@@ -579,13 +568,11 @@ def plot_model(
     >>> kmeans = create_model('kmeans')
     >>> plot_model(kmeans)
 
-    This will return a cluster scatter plot (by default). 
 
-    Parameters
-    ----------
     model : object, default = none
         A trained model object can be passed. Model must be created using create_model().
 
+    
     plot : str, default = 'cluster'
         Enter abbreviation for type of plot. The current list of plots supported are 
         (Plot - Name):
@@ -597,25 +584,28 @@ def plot_model(
         * 'distance' - Distance Plot   
         * 'distribution' - Distribution Plot
     
+    
     feature : str, default = None
         Name of feature column for x-axis of when plot = 'distribution'. When plot is
         'cluster' or 'tsne' feature column is used as a hoverover tooltip and/or label
         when label is set to True. If no feature name is passed in 'cluster' or 'tsne'
         by default the first of column of dataset is chosen as hoverover tooltip.
     
+
     label : bool, default = False
         When set to True, data labels are shown in 'cluster' and 'tsne' plot.
+
 
     scale: float, default = 1
         The resolution scale of the figure.
 
+
     save: Boolean, default = False
         Plot is saved as png file in local directory when save parameter set to True.
 
-    Returns
-    -------
-    Visual_Plot
-        Prints the visual plot. 
+
+    Returns:
+        None
 
     """
     return pycaret.internal.tabular.plot_model(
@@ -640,13 +630,10 @@ def evaluate_model(
     >>> kmeans = create_model('kmeans')
     >>> evaluate_model(kmeans)
     
-    This will display the User Interface for all of the plots for a given
-    estimator.
 
-    Parameters
-    ----------
     estimator : object, default = none
         A trained model object should be passed as an estimator. 
+
 
     feature : str, default = None
         Name of feature column for x-axis of when plot = 'distribution'. When plot is
@@ -654,13 +641,13 @@ def evaluate_model(
         when label is set to True. If no feature name is passed in 'cluster' or 'tsne'
         by default the first of column of dataset is chosen as hoverover tooltip.
 
+
     fit_kwargs: dict, default = {} (empty dict)
         Dictionary of arguments passed to the fit method of the model.
 
-    Returns
-    -------
-    User_Interface
-        Displays the user interface for plotting.
+
+    Returns:
+        None
 
     """
 
@@ -688,7 +675,6 @@ def tune_model(
     param. You can choose the supervised estimator from a large library available in 
     pycaret. By default, supervised estimator is Linear. 
     
-    This function returns the tuned model object.
     
     Example
     -------
@@ -698,10 +684,7 @@ def tune_model(
     >>> exp_name = setup(data = boston, normalize = True)
     >>> tuned_kmeans = tune_model(model = 'kmeans', supervised_target = 'medv') 
 
-    This will return tuned K-Means Clustering Model.
 
-    Parameters
-    ----------
     model : str, default = None
         Enter ID of the models available in model library (ID - Name):
         
@@ -715,10 +698,13 @@ def tune_model(
         * 'birch' - Birch Clustering                                 
         * 'kmodes' - K-Modes Clustering    
     
+
     supervised_target: string
         Name of the target column for supervised learning.
         
+
     estimator: str, default = None
+
         For Classification (ID - Name):
 
         * 'lr' - Logistic Regression             
@@ -767,9 +753,8 @@ def tune_model(
         * 'xgboost' - Extreme Gradient Boosting                                   
         * 'lightgbm' - Light Gradient Boosting                           
         * 'catboost' - CatBoost Regressor                       
-        
-        If set to None, Linear / Logistic model is used by default.
-    
+            
+
     optimize: str, default = None
         For Classification tasks:
             Accuracy, AUC, Recall, Precision, F1, Kappa
@@ -780,32 +765,31 @@ def tune_model(
     If set to None, default is 'Accuracy' for classification and 'R2' for 
     regression tasks.
     
+
     custom_grid: list, default = None
         By default, a pre-defined number of clusters is iterated over to 
         optimize the supervised objective. To overwrite default iteration,
         pass a list of num_clusters to iterate over in custom_grid param.
     
+
     fold: integer, default = 10
         Number of folds to be used in Kfold CV. Must be at least 2. 
+
 
     verbose: Boolean, default = True
         Status update is not printed when verbose is set to False.
 
-    Returns
-    -------
-    Visual_Plot
-        Visual plot with num_clusters param on x-axis with metric to
-        optimize on y-axis. Also, prints the best model metric.
+
+    Returns:
+        Trained Model Object with best ``num_clusters`` param.
     
-    model
-        trained model object with best num_clusters param. 
 
     Warnings
     --------
     - Affinity Propagation, Mean shift clustering, Density-Based Spatial Clustering
       and OPTICS Clustering cannot be used in this function since they donot support
       num_clusters param.
-           
+
           
     """
     return pycaret.internal.tabular.tune_model_unsupervised(
@@ -839,20 +823,20 @@ def predict_model(model, data: pd.DataFrame) -> pd.DataFrame:
     >>> kmeans = create_model('kmeans')
     >>> kmeans_predictions = predict_model(model = kmeans, data = jewellery)
         
-    Parameters
-    ----------
+
     model : object,  default = None
         A trained model object / pipeline should be passed as an estimator. 
     
+
     data : pandas.DataFrame
         Shape (n_samples, n_features) where n_samples is the number of samples and 
         n_features is the number of features. All features used during training must 
         be present in the new dataset.
-     
-    Returns
-    -------
-    info_grid
-        Information grid is printed when data is None.
+
+
+    Returns:
+        pandas.DataFrame
+
 
     Warnings
     --------
@@ -875,12 +859,10 @@ def models(internal: bool = False, raise_errors: bool = True,) -> pd.DataFrame:
     """
     Returns table of models available in model library.
 
+
     Example
     -------
     >>> all_models = models()
-
-    This will return pandas dataframe with all available 
-    models and their metadata.
 
 
     internal: bool, default = False
@@ -892,9 +874,8 @@ def models(internal: bool = False, raise_errors: bool = True,) -> pd.DataFrame:
         that couldn't be created.
 
 
-    Returns
-    -------
-    pandas.DataFrame
+    Returns:
+        pandas.DataFrame
 
     """
 
@@ -1018,16 +999,14 @@ def pull(pop: bool = False) -> pd.DataFrame:  # added in pycaret==2.2.0
     """
     Returns latest displayed table.
 
-    Parameters
-    ----------
+
     pop : bool, default = False
         If true, will pop (remove) the returned dataframe from the
         display container.
 
-    Returns
-    -------
-    pandas.DataFrame
-        Equivalent to get_config('display_container')[-1]
+    Returns:
+        pandas.DataFrame
+        
 
     """
     return pycaret.internal.tabular.pull(pop=pop)
@@ -1041,26 +1020,20 @@ def deploy_model(
 ):
 
     """
-    (In Preview)
-
     This function deploys the transformation pipeline and trained model object for
-    production use. The platform of deployment can be defined under the platform
-    param along with the applicable authentication tokens which are passed as a
-    dictionary to the authentication param.
+    production use.
     
     Example
     -------
     >>> from pycaret.datasets import get_data
-    >>> juice = get_data('juice')
-    >>> exp_name = setup(data = juice,  target = 'Purchase')
-    >>> lr = create_model('lr')
-    >>> deploy_model(model = lr, model_name = 'deploy_lr', platform = 'aws', authentication = {'bucket' : 'pycaret-test'})
-    
-    This will deploy the model on an AWS S3 account under bucket 'pycaret-test'
-    
-    Notes
-    -----
-    For AWS users:
+    >>> jewellery = get_data('jewellery')
+    >>> from pycaret.clustering import *
+    >>> exp_name = setup(data = jewellery)
+    >>> kmeans = create_model('kmeans')
+    >>> deploy_model(model = kmeans, model_name = 'kmeans-for-deployment', platform = 'aws', authentication = {'bucket' : 'S3-bucket-name'})
+        
+
+    AWS users:
 
     Before deploying a model to an AWS S3 ('aws'), environment variables must be 
     configured using the command line interface. To configure AWS env. variables, 
@@ -1073,7 +1046,8 @@ def deploy_model(
     - Default Region Name (can be seen under Global settings on your AWS console)
     - Default output format (must be left blank)
 
-    For GCP users:
+    
+    GCP users:
 
     Before deploying a model to Google Cloud Platform (GCP), project must be created 
     either using command line or GCP console. Once project is created, you must create 
@@ -1082,55 +1056,45 @@ def deploy_model(
 
     https://cloud.google.com/docs/authentication/production
 
-    - Google Cloud Project
-    - Service Account Authetication
-
-    For Azure users:
+    
+    Azure users:
 
     Before deploying a model to Microsoft's Azure (Azure), environment variables
     for connection string must be set. In order to get connection string, user has
-    to create account of Azure. Once it is done, create a Storage account. In the settings
-    section of storage account, user can get the connection string.
+    to create account of Azure. Once it is done, create a Storage account. In the 
+    settings section of storage account, user can get the connection string.
 
     Read below link for more details.
     https://docs.microsoft.com/en-us/azure/storage/blobs/storage-quickstart-blobs-python?toc=%2Fpython%2Fazure%2FTOC.json
 
-    - Azure Storage Account
 
-    Parameters
-    ----------
-    model : object
-        A trained model object should be passed as an estimator. 
+    model : scikit-learn compatible object
+        Trained model object
     
+
     model_name : str
-        Name of model to be passed as a str.
+        Name of model.
     
+
     authentication : dict
         Dictionary of applicable authentication tokens.
 
         When platform = 'aws':
-        {'bucket' : 'Name of Bucket on S3'}
+        {'bucket' : 'S3-bucket-name'}
 
         When platform = 'gcp':
-        {'project': 'gcp_pycaret', 'bucket' : 'pycaret-test'}
+        {'project': 'project-name', 'bucket' : 'bucket-name'}
 
         When platform = 'azure':
-        {'container': 'pycaret-test'}
+        {'container': 'container-name'}
     
-    platform: str, default = 'aws'
-        Name of platform for deployment. Current available options are: 'aws', 'gcp' and 'azure'
 
-    Returns
-    -------
-    Success_Message
+    platform: str, default = 'aws'
+        Name of the platform. Current available options are: 'aws', 'gcp' and 'azure'.
     
-    Warnings
-    --------
-    - This function uses file storage services to deploy the model on cloud platform. 
-      As such, this is efficient for batch-use. Where the production objective is to 
-      obtain prediction at an instance level, this may not be the efficient choice as 
-      it transmits the binary pickle file between your local python environment and
-      the platform. 
+
+    Returns:
+        None
     
     """
 
@@ -1148,6 +1112,7 @@ def save_model(model, model_name: str, model_only: bool = False, verbose: bool =
     This function saves the transformation pipeline and trained model object 
     into the current active directory as a pickle file for later use. 
     
+
     Example
     -------
     >>> from pycaret.datasets import get_data
@@ -1156,28 +1121,26 @@ def save_model(model, model_name: str, model_only: bool = False, verbose: bool =
     >>> lr = create_model('lr')
     >>> save_model(lr, 'lr_model_23122019')
     
-    This will save the transformation pipeline and model as a binary pickle
-    file in the current active directory. 
 
-    Parameters
-    ----------
     model : object, default = none
         A trained model object should be passed as an estimator. 
     
+
     model_name : str, default = none
         Name of pickle file to be passed as a string.
     
+
     model_only : bool, default = False
         When set to True, only trained model object is saved and all the 
         transformations are ignored.
 
+
     verbose: bool, default = True
         Success message is not printed when verbose is set to False.
 
-    Returns
-    -------
-    (model, model_filename):
-        Tuple of the model object and the filename it was saved under.
+
+    Returns:
+        Tuple of the model object and the filename.
 
     """
 
@@ -1202,18 +1165,16 @@ def load_model(
     -------
     >>> saved_lr = load_model('lr_model_23122019')
     
-    This will load the previously saved model in saved_lr variable. The file 
-    must be in the current directory.
 
-    Parameters
-    ----------
     model_name : str, default = none
         Name of pickle file to be passed as a string.
       
+
     platform: str, default = None
         Name of platform, if loading model from cloud. Current available options are:
         'aws', 'gcp' and 'azure'.
     
+
     authentication : dict
         dictionary of applicable authentication tokens.
 
@@ -1226,12 +1187,13 @@ def load_model(
         When platform = 'azure':
         {'container': 'pycaret-test'}
     
+
     verbose: bool, default = True
         Success message is not printed when verbose is set to False.
 
-    Returns
-    -------
-    Model Object
+
+    Returns:
+        Trained Model
 
     """
 
@@ -1250,30 +1212,29 @@ def models(
     """
     Returns table of models available in model library.
 
+
     Example
     -------
     >>> _all_models = models()
 
-    This will return pandas dataframe with all available 
-    models and their metadata.
 
-    Parameters
-    ----------
     type : str, default = None
         - linear : filters and only return linear models
         - tree : filters and only return tree based models
         - ensemble : filters and only return ensemble models
     
+
     internal: bool, default = False
         If True, will return extra columns and rows used internally.
+
 
     raise_errors: bool, default = True
         If False, will suppress all exceptions, ignoring models
         that couldn't be created.
 
-    Returns
-    -------
-    pandas.DataFrame
+
+    Returns:
+        pandas.DataFrame
 
     """
     return pycaret.internal.tabular.models(
@@ -1284,29 +1245,31 @@ def models(
 def get_metrics(
     reset: bool = False, include_custom: bool = True, raise_errors: bool = True,
 ) -> pd.DataFrame:
+
     """
     Returns table of metrics available.
+
 
     Example
     -------
     >>> metrics = get_metrics()
 
-    This will return pandas dataframe with all available 
-    metrics and their metadata.
 
-    Parameters
-    ----------
     reset: bool, default = False
         If True, will reset all changes made using add_metric() and get_metric().
+
+
     include_custom: bool, default = True
         Whether to include user added (custom) metrics or not.
+
+
     raise_errors: bool, default = True
         If False, will suppress all exceptions, ignoring models
         that couldn't be created.
 
-    Returns
-    -------
-    pandas.DataFrame
+
+    Returns:
+        pandas.DataFrame
 
     """
 
@@ -1327,16 +1290,18 @@ def add_metric(
     """
     Adds a custom metric to be used in all functions.
 
-    Parameters
-    ----------
+
     id: str
         Unique id for the metric.
+
 
     name: str
         Display name of the metric.
 
+
     score_func: type
         Score function (or loss function) with signature ``score_func(y, y_pred, **kwargs)``.
+
 
     target: str, default = 'pred'
         The target of the score function.
@@ -1345,21 +1310,22 @@ def add_metric(
         - 'pred_proba' for pred_proba
         - 'threshold' for decision_function or predict_proba
 
+
     greater_is_better: bool, default = True
         Whether score_func is a score function (default), meaning high is good,
         or a loss function, meaning low is good. In the latter case, the
         scorer object will sign-flip the outcome of the score_func.
 
+
     multiclass: bool, default = True
         Whether the metric supports multiclass problems.
+
 
     **kwargs:
         Arguments to be passed to score function.
 
-    Returns
-    -------
-    pandas.Series
-        The created row as Series.
+    Returns:
+        pandas.Series
 
     """
 
@@ -1378,10 +1344,13 @@ def remove_metric(name_or_id: str):
     """
     Removes a metric used in all functions.
 
-    Parameters
-    ----------
+
     name_or_id: str
         Display name or ID of the metric.
+
+
+    Returns:
+        None
 
     """
     return pycaret.internal.tabular.remove_metric(name_or_id=name_or_id)
@@ -1390,26 +1359,30 @@ def remove_metric(name_or_id: str):
 def get_logs(experiment_name: Optional[str] = None, save: bool = False) -> pd.DataFrame:
 
     """
-    Returns a table with experiment logs consisting
-    run details, parameter, metrics and tags. 
+    Returns a table of experiment logs. Only works when ``log_experiment``
+    is True when initializing the ``setup`` function.
+
 
     Example
     -------
-    >>> logs = get_logs()
+    >>> from pycaret.datasets import get_data
+    >>> jewellery = get_data('jewellery')
+    >>> from pycaret.clustering import *
+    >>> exp_name = setup(data = jewellery,  log_experiment = True) 
+    >>> kmeans = create_model('kmeans')
+    >>> exp_logs = get_logs()
 
-    This will return pandas dataframe.
 
-    Parameters
-    ----------
     experiment_name : str, default = None
-        When set to None current active run is used.
+        When None current active run is used.
+
 
     save : bool, default = False
-        When set to True, csv file is saved in current directory.
+        When set to True, csv file is saved in current working directory.
 
-    Returns
-    -------
-    pandas.DataFrame
+
+    Returns:
+        pandas.DataFrame
 
     """
 
