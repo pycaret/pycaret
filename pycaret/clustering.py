@@ -1244,43 +1244,6 @@ def load_model(
     )
 
 
-def models(
-    type: Optional[str] = None, internal: bool = False, raise_errors: bool = True,
-) -> pd.DataFrame:
-
-    """
-    Returns table of models available in model library.
-
-
-    Example
-    -------
-    >>> _all_models = models()
-
-
-    type : str, default = None
-        - linear : filters and only return linear models
-        - tree : filters and only return tree based models
-        - ensemble : filters and only return ensemble models
-    
-
-    internal: bool, default = False
-        If True, will return extra columns and rows used internally.
-
-
-    raise_errors: bool, default = True
-        If False, will suppress all exceptions, ignoring models
-        that couldn't be created.
-
-
-    Returns:
-        pandas.DataFrame
-
-    """
-    return pycaret.internal.tabular.models(
-        type=type, internal=internal, raise_errors=raise_errors
-    )
-
-
 def get_metrics(
     reset: bool = False, include_custom: bool = True, raise_errors: bool = True,
 ) -> pd.DataFrame:
