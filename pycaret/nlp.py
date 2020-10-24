@@ -861,19 +861,16 @@ def create_model(model=None,
     This function creates a model on the dataset passed as a data param during 
     the setup stage. setup() function must be called before using create_model().
 
-    This function returns a trained model object. 
 
     Example
     -------
     >>> from pycaret.datasets import get_data
     >>> kiva = get_data('kiva')
-    >>> experiment_name = setup(data = kiva, target = 'en')
+    >>> from pycaret.nlp import *
+    >>> expe_name = setup(data = kiva, target = 'en')
     >>> lda = create_model('lda')
 
-    This will return trained Latent Dirichlet Allocation model.
 
-    Parameters
-    ----------
     model : string, default = None
         Enter ID of the model available in model library (ID - Model):
 
@@ -883,26 +880,29 @@ def create_model(model=None,
         * 'rp' - Random Projections
         * 'nmf' - Non-Negative Matrix Factorization
    
+
     multi_core: Boolean, default = False
         True would utilize all CPU cores to parallelize and speed up model training. Only
         available for 'lda'. For all other models, the multi_core parameter is ignored.
 
+
     num_topics: integer, default = 4
         Number of topics to be created. If None, default is set to 4.
+
 
     verbose: Boolean, default = True
         Status update is not printed when verbose is set to False.
 
+
     system: Boolean, default = True
         Must remain True all times. Only to be changed by internal functions.
+
 
     **kwargs: 
         Additional keyword arguments to pass to the estimator.
 
-    Returns
-    -------
-    model
-        Trained model object.
+    Returns:
+        Trained Model
      
     """
     
@@ -1288,32 +1288,27 @@ def assign_model(model,
     stage to one of the topic using trained model object passed as model param.
     create_model() function must be called before using assign_model().
     
-    This function returns a pandas.Dataframe with topic weights, dominant topic and 
-    % of the dominant topic (where applicable).
 
     Example
     -------
     >>> from pycaret.datasets import get_data
     >>> kiva = get_data('kiva')
-    >>> experiment_name = setup(data = kiva, target = 'en')        
+    >>> from pycaret.nlp import *
+    >>> exp_name = setup(data = kiva, target = 'en')        
     >>> lda = create_model('lda')
     >>> lda_df = assign_model(lda)
     
-    This will return a pandas.Dataframe with inferred topics using trained model.
 
-    Parameters
-    ----------
     model : trained model object, default = None
+
 
     verbose: Boolean, default = True
         Status update is not printed when verbose is set to False.
 
-    Returns
-    -------
-    pandas.DataFrame
-        Returns a DataFrame with inferred topics using trained model object.
+
+    Returns:
+        pandas.DataFrame
       
-    
     """
     
     #exception checking   
@@ -1640,34 +1635,20 @@ def plot_model(model = None,
     model object will return a plot based on the first topic i.e.  'Topic 0'. This 
     can be changed using the topic_num param. 
 
+
     Example
     -------
     >>> from pycaret.datasets import get_data
     >>> kiva = get_data('kiva')
-    >>> experiment_name = setup(data = kiva, target = 'en')        
+    >>> from pycaret.nlp import *
+    >>> exp = setup(data = kiva, target = 'en')        
     >>> lda = create_model('lda')
     >>> plot_model(lda, plot = 'frequency')
 
-    This will return a frequency plot on a trained Latent Dirichlet Allocation 
-    model for all documents in 'Topic 0'. The topic number can be changed as 
-    follows:
-    
-    >>> plot_model(lda, plot = 'frequency', topic_num = 'Topic 1')
-    
-    This will now return a frequency plot on a trained LDA model for all 
-    documents inferred in 'Topic 1'.
-    
-    Alternatively, if following is used:
-    
-    >>> plot_model(plot = 'frequency')
-    
-    This will return frequency plot on the entire training corpus compiled 
-    during setup stage.
 
-    Parameters
-    ----------
     model : object, default = none
         A trained model object can be passed. Model must be created using create_model().
+
 
     plot : string, default = 'frequency'
         Enter abbreviation for type of plot. The current list of plots supported are 
@@ -1684,20 +1665,23 @@ def plot_model(model = None,
         * Wordcloud - 'wordcloud'
         * UMAP Dimensionality Plot - 'umap'
 
+
     topic_num : string, default = None
         Topic number to be passed as a string. If set to None, default generation will 
         be on 'Topic 0'
     
+
     save: Boolean, default = False
         Plot is saved as png file in local directory when save parameter set to True.
+
 
     system: Boolean, default = True
         Must remain True all times. Only to be changed by internal functions.
 
-    Returns
-    -------
-    Visual_Plot
-        Prints the visual plot. 
+
+    Returns:
+        None
+
 
     Warnings
     --------
@@ -1707,8 +1691,7 @@ def plot_model(model = None,
     -  'topic_model' plot is based on pyLDAVis implementation. Hence its not available
        for model = 'lsi', 'rp' and 'nmf'.
          
-                
-
+    
     """  
     
     #exception checking   
@@ -2362,13 +2345,11 @@ def tune_model(model=None,
     -------
     >>> from pycaret.datasets import get_data
     >>> kiva = get_data('kiva')
-    >>> experiment_name = setup(data = kiva, target = 'en')        
+    >>> from pycaret.nlp import *
+    >>> exp_name = setup(data = kiva, target = 'en')        
     >>> tuned_lda = tune_model(model = 'lda', supervised_target = 'status') 
 
-    This will return trained Latent Dirichlet Allocation model. 
 
-    Parameters
-    ----------
     model : string, default = None
         Enter ID of the models available in model library (ID - Model):
 
@@ -2378,14 +2359,17 @@ def tune_model(model=None,
         * 'rp' - Random Projections
         * 'nmf' - Non-Negative Matrix Factorization
 
+
     multi_core: Boolean, default = False
         True would utilize all CPU cores to parallelize and speed up model 
         training. Only available for 'lda'. For all other models, multi_core 
         parameter is ignored.
 
+
     supervised_target: string
         Name of the target column for supervised learning. If None, the model 
         coherence value is used as the objective function.
+
 
     estimator: string, default = None
         For Classification (ID - Name):
@@ -2449,10 +2433,12 @@ def tune_model(model=None,
         If set to None, default is 'Accuracy' for classification and 'R2' for 
         regression tasks.
 
+
     custom_grid: list, default = None
         By default, a pre-defined number of topics is iterated over to 
         optimize the supervised objective. To overwrite default iteration,
         pass a list of num_topics to iterate over in custom_grid param.
+
 
     auto_fe: boolean, default = True
         Automatic text feature engineering. Only used when supervised_target is
@@ -2460,21 +2446,18 @@ def tune_model(model=None,
         polarity, subjectivity, wordcounts to be used in supervised learning.
         Ignored when supervised_target is set to None.
 
+
     fold: integer, default = 10
         Number of folds to be used in Kfold CV. Must be at least 2. 
+
 
     verbose: Boolean, default = True
         Status update is not printed when verbose is set to False.
     
-    Returns
-    -------
-    Visual_Plot
-        Visual plot with k number of topics on x-axis with metric to
-        optimize on y-axis. Coherence is used when learning is 
-        unsupervised. Also, prints the best model metric.
 
-    model
-        trained model object with best K number of topics.
+    Returns:
+        Trained Model with best k number of topics.
+
 
     Warnings
     --------
@@ -2488,12 +2471,6 @@ def tune_model(model=None,
       times.
      
     
-    """
-
-
-
-    """
-    exception handling starts here
     """
 
     import logging
