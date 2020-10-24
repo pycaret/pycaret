@@ -17,43 +17,43 @@ def setup(data,
     used to create rules. These three params are normally found in any transactional 
     dataset. pycaret will internally convert the pandas.DataFrame into a sparse matrix 
     which is required for association rules mining.
+
     
     Example
     -------
     >>> from pycaret.datasets import get_data
     >>> france = get_data('france')
-    >>> experiment_name = setup(data = data, transaction_id = 'InvoiceNo', item_id = 'ProductName')
+    >>> from pycaret.arules import *
+    >>> exp = setup(data = data, transaction_id = 'InvoiceNo', item_id = 'ProductName')
         
-    Parameters
-    ----------
+
     data : pandas.DataFrame
         Shape (n_samples, n_features) where n_samples is the number of samples and 
         n_features is the number of features.
 
+
     transaction_id: string
         Name of column representing transaction id. This will be used to pivot the matrix.
+
 
     item_id: string
         Name of column used for creation of rules. Normally, this will be the variable of
         interest.
     
+
     ignore_items: list, default = None
         List of strings to be ignored when considering rule mining.
+
 
     session_id: int, default = None
         If None, a random seed is generated and returned in the Information grid. The 
         unique number is then distributed as a seed in all functions used during the 
         experiment. This can be used for later reproducibility of the entire experiment.
 
-    Returns
-    -------
-    info_grid
-        Information grid is printed.
 
-    environment
-        This function returns various outputs that are stored in variable
-        as tuple. They are used by other functions in pycaret.
-    
+    Returns:
+        Global variables. 
+
     """
    
     #exception checking   
@@ -122,18 +122,16 @@ def create_model(metric='confidence',
     passed at setup stage. This function internally transforms the data for 
     association rule mining.
 
-    setup() function must be called before using create_model()
 
     Example
     -------
     >>> from pycaret.datasets import get_data
-    >>> france = get_data('france')        
-    >>> experiment_name = setup(data = data, transaction_id = 'InvoiceNo', item_id = 'ProductName')
+    >>> france = get_data('france')
+    >>> from pycaret.arules import *
+    >>> exp_name = setup(data = data, transaction_id = 'InvoiceNo', item_id = 'ProductName')
+    >>> model1 = create_model(metric = 'confidence')
 
-    This will return pandas.DataFrame containing rules sorted by metric param.
 
-    Parameters
-    ----------
     metric : string, default = 'confidence'
         Metric to evaluate if a rule is of interest. Default is set to confidence. 
         Other available metrics include 'support', 'lift', 'leverage', 'conviction'. 
@@ -145,25 +143,25 @@ def create_model(metric='confidence',
         * leverage(A->C) = support(A->C) - support(A)*support(C), range: [-1, 1]
         * conviction = [1 - support(C)] / [1 - confidence(A->C)], range: [0, inf]
     
+
     threshold : float, default = 0.5
         Minimal threshold for the evaluation metric, via the `metric` parameter,
         to decide whether a candidate rule is of interest.
     
+
     min_support : float, default = 0.05
         A float between 0 and 1 for minumum support of the itemsets returned.
         The support is computed as the fraction `transactions_where_item(s)_occur /
         total_transactions`.
     
+
     round: integer, default = 4
         Number of decimal places metrics in score grid will be rounded to. 
 
-    Returns
-    -------
-    pandas.DataFrame
-        Dataframe containing rules of interest with all metrics
-        including antecedents, consequents, antecedent support,
-        consequent support, support, confidence, lift, leverage,
-        conviction.
+
+    Returns:
+        pandas.DataFrame
+        
 
     Warnings
     --------
@@ -212,23 +210,26 @@ def create_model(metric='confidence',
 
 def plot_model(model,
                plot = '2d',
-               scale = 1, #added in pycaret 2.1.0
+               scale = 1,
                ):
     
     """
     This function takes a model dataframe returned by create_model() function. 
     '2d' and '3d' plots are available.
 
+
     Example
     -------
+    >>> from pycaret.datasets import get_data
+    >>> france = get_data('france')
+    >>> from pycaret.arules import *
     >>> rule1 = create_model(metric='confidence', threshold=0.7, min_support=0.05)
     >>> plot_model(rule1, plot='2d')
-    >>> plot_model(rule1, plot='3d')
 
-    Parameters
-    ----------
+
     model : pandas.DataFrame, default = none
         pandas.DataFrame returned by trained model using create_model().
+
 
     plot : string, default = '2d'
         Enter abbreviation of type of plot. The current list of plots supported are 
@@ -237,14 +238,13 @@ def plot_model(model,
         * Support, Confidence and Lift (2d) - '2d'
         * Support, Confidence and Lift (3d) - '3d'
 
+
     scale: float, default = 1
         The resolution scale of the figure.
 
-    Returns
-    -------
-    Visual_Plot
-        Prints the visual plot.
-    
+    Returns:
+        None
+        
     """
     
     #loading libraries

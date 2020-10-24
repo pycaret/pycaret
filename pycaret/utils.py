@@ -24,24 +24,25 @@ def check_metric(actual: pd.Series, prediction: pd.Series, metric: str, round: i
     """
     Function to evaluate classification and regression metrics.
 
-    Parameters
-    ----------
+
     actual : pandas.Series
         Actual values of the target variable.
     
+
     prediction : pandas.Series
         Predicted values of the target variable.
+
 
     metric : str
         Metric to use.
 
+
     round: integer, default = 4
         Number of decimal places the metrics will be rounded to.
 
-    Returns
-    -------
-    float
-        The value of the metric.
+
+    Returns:
+        float
 
     """
 
