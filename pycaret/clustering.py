@@ -90,8 +90,8 @@ def setup(
 
 
     preprocess: bool, default = True
-        When set to False, no transformations are applied except for train_test_split 
-        and custom transformations passed in ``custom_pipeline`` param. Data must be 
+        When set to False, no transformations are applied except for custom 
+        transformations passed in ``custom_pipeline`` param. Data must be 
         ready for modeling (no missing values, no dates, categorical data encoding), 
         when preprocess is set to False. 
 
@@ -305,8 +305,7 @@ def setup(
         (str, transformer) or list of tuples (str, transformer), default = None
         When passed, will append the custom transformers in the preprocessing pipeline
         and are applied on each CV fold separately and on the final fit. All the custom
-        transformations are applied after 'train_test_split' and before pycaret's internal 
-        transformations. 
+        transformations are applied before pycaret's internal transformations. 
 
 
     html: bool, default = True
@@ -467,7 +466,7 @@ def create_model(
 
     model: str or scikit-learn compatible object
         ID of an model available in the model library or pass an untrained 
-        model object consistent with scikit-learn API. Estimators available  
+        model object consistent with scikit-learn API. Models available  
         in the model library (ID - Name):
 
         * 'kmeans' - K-Means Clustering
@@ -655,7 +654,7 @@ def evaluate_model(
 
     """
     This function displays a user interface for analyzing model performance of a
-    given estimator. It calls the ``plot_model`` function internally. 
+    given model. It calls the ``plot_model`` function internally. 
     
     Example
     --------
@@ -707,89 +706,85 @@ def tune_model(
     verbose: bool = True,
 ):
     """
-    This function tunes the num_clusters model parameter using a predefined grid with
-    the objective of optimizing a supervised learning metric as defined in the optimize
-    param. You can choose the supervised estimator from a large library available in 
-    pycaret. By default, supervised estimator is Linear. 
+    This function tunes the ``num_clusters`` parameter of a given model. 
     
     
     Example
     -------
     >>> from pycaret.datasets import get_data
-    >>> boston = get_data('boston')
+    >>> juice = get_data('juice')
     >>> from pycaret.clustering import *
-    >>> exp_name = setup(data = boston, normalize = True)
-    >>> tuned_kmeans = tune_model(model = 'kmeans', supervised_target = 'medv') 
+    >>> exp_name = setup(data = juice)
+    >>> tuned_kmeans = tune_model(model = 'kmeans', supervised_target = 'Purchase') 
 
 
-    model: str, default = None
-        Enter ID of the models available in model library (ID - Name):
+    model: str or scikit-learn compatible object
+        ID of an model available in the model library. Models that can be
+        tuned in this function (ID - Model):
         
         * 'kmeans' - K-Means Clustering
-        * 'ap' - Affinity Propagation
-        * 'meanshift' - Mean shift Clustering
         * 'sc' - Spectral Clustering
-        * 'hclust' - Agglomerative Clustering
-        * 'dbscan' - Density-Based Spatial Clustering
-        * 'optics' - OPTICS Clustering                               
+        * 'hclust' - Agglomerative Clustering                        
         * 'birch' - Birch Clustering                                 
         * 'kmodes' - K-Modes Clustering    
     
 
-    supervised_target: string
-        Name of the target column for supervised learning.
+    supervised_target: str
+        Name of the target column containing labels.
+
+
+    supervised_type: str, default = None
+        Type of task. 'classification' or 'regression'. Automatically inferred
+        by default.
         
 
     estimator: str, default = None
-
-        For Classification (ID - Name):
-
-        * 'lr' - Logistic Regression             
-        * 'knn' - K Nearest Neighbour             
-        * 'nb' - Naive Bayes                                 
-        * 'dt' - Decision Tree Classifier                           
-        * 'svm' - SVM - Linear Kernel             	            
-        * 'rbfsvm' - SVM - Radial Kernel                            
-        * 'gpc' - Gaussian Process Classifier                       
-        * 'mlp' - Multi Level Perceptron                            
-        * 'ridge' - Ridge Classifier                
-        * 'rf' - Random Forest Classifier                           
-        * 'qda' - Quadratic Discriminant Analysis                   
-        * 'ada' - Ada Boost Classifier                             
-        * 'gbc' - Gradient Boosting Classifier                              
-        * 'lda' - Linear Discriminant Analysis                      
-        * 'et' - Extra Trees Classifier                             
-        * 'xgboost' - Extreme Gradient Boosting                     
-        * 'lightgbm' - Light Gradient Boosting                       
-        * 'catboost' - CatBoost Classifier             
+        Classification (ID - Name):
+            * 'lr' - Logistic Regression             
+            * 'knn' - K Nearest Neighbour             
+            * 'nb' - Naive Bayes                                 
+            * 'dt' - Decision Tree Classifier                           
+            * 'svm' - SVM - Linear Kernel             	            
+            * 'rbfsvm' - SVM - Radial Kernel                            
+            * 'gpc' - Gaussian Process Classifier                       
+            * 'mlp' - Multi Level Perceptron                            
+            * 'ridge' - Ridge Classifier                
+            * 'rf' - Random Forest Classifier                           
+            * 'qda' - Quadratic Discriminant Analysis                   
+            * 'ada' - Ada Boost Classifier                             
+            * 'gbc' - Gradient Boosting Classifier                              
+            * 'lda' - Linear Discriminant Analysis                      
+            * 'et' - Extra Trees Classifier                             
+            * 'xgboost' - Extreme Gradient Boosting                     
+            * 'lightgbm' - Light Gradient Boosting                       
+            * 'catboost' - CatBoost Classifier             
         
-        For Regression (ID - Name):
-
-        * 'lr' - Linear Regression                                
-        * 'lasso' - Lasso Regression              
-        * 'ridge' - Ridge Regression              
-        * 'en' - Elastic Net                   
-        * 'lar' - Least Angle Regression                
-        * 'llar' - Lasso Least Angle Regression                     
-        * 'omp' - Orthogonal Matching Pursuit                        
-        * 'br' - Bayesian Ridge                                   
-        * 'ard' - Automatic Relevance Determ.                     
-        * 'par' - Passive Aggressive Regressor                      
-        * 'ransac' - Random Sample Consensus              
-        * 'tr' - TheilSen Regressor                               
-        * 'huber' - Huber Regressor                                              
-        * 'kr' - Kernel Ridge                                                       
-        * 'svm' - Support Vector Machine                                   
-        * 'knn' - K Neighbors Regressor                                    
-        * 'dt' - Decision Tree                                                     
-        * 'rf' - Random Forest                                                     
-        * 'et' - Extra Trees Regressor                                     
-        * 'ada' - AdaBoost Regressor                                               
-        * 'gbr' - Gradient Boosting                                            
-        * 'mlp' - Multi Level Perceptron                                  
-        * 'xgboost' - Extreme Gradient Boosting                                   
-        * 'lightgbm' - Light Gradient Boosting                           
-        * 'catboost' - CatBoost Regressor                       
+        Regression (ID - Name):
+            * 'lr' - Linear Regression                                
+            * 'lasso' - Lasso Regression              
+            * 'ridge' - Ridge Regression              
+            * 'en' - Elastic Net                   
+            * 'lar' - Least Angle Regression                
+            * 'llar' - Lasso Least Angle Regression                     
+            * 'omp' - Orthogonal Matching Pursuit                        
+            * 'br' - Bayesian Ridge                                   
+            * 'ard' - Automatic Relevance Determ.                     
+            * 'par' - Passive Aggressive Regressor                      
+            * 'ransac' - Random Sample Consensus              
+            * 'tr' - TheilSen Regressor                               
+            * 'huber' - Huber Regressor                                              
+            * 'kr' - Kernel Ridge                                                       
+            * 'svm' - Support Vector Machine                                   
+            * 'knn' - K Neighbors Regressor                                    
+            * 'dt' - Decision Tree                                                     
+            * 'rf' - Random Forest                                                     
+            * 'et' - Extra Trees Regressor                                     
+            * 'ada' - AdaBoost Regressor                                               
+            * 'gbr' - Gradient Boosting                                            
+            * 'mlp' - Multi Level Perceptron                                  
+            * 'xgboost' - Extreme Gradient Boosting                                   
+            * 'lightgbm' - Light Gradient Boosting                           
+            * 'catboost' - CatBoost Regressor                       
             
 
     optimize: str, default = None
@@ -799,7 +794,7 @@ def tune_model(
         For Regression tasks:
             MAE, MSE, RMSE, R2, RMSLE, MAPE
             
-    If set to None, default is 'Accuracy' for classification and 'R2' for 
+    When set to None, default is 'Accuracy' for classification and 'R2' for 
     regression tasks.
     
 
@@ -818,14 +813,14 @@ def tune_model(
 
 
     Returns:
-        Trained Model Object with best ``num_clusters`` param.
+        Trained Model.
     
 
     Warnings
     --------
-    - Affinity Propagation, Mean shift clustering, Density-Based Spatial Clustering
-      and OPTICS Clustering cannot be used in this function since they donot support
-      num_clusters param.
+    - Affinity Propagation, Mean shift, Density-Based Spatial Clustering
+      and OPTICS Clustering cannot be used in this function since they donot 
+      support the ``num_clusters`` param.
 
           
     """
