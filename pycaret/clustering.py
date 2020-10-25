@@ -498,7 +498,7 @@ def create_model(
         Dictionary of arguments passed to the fit method of the model.
 
 
-    verbose: Boolean, default = True
+    verbose: bool, default = True
         Status update is not printed when verbose is set to False.
 
 
@@ -566,7 +566,7 @@ def assign_model(
         Whether to apply cluster labels on the transformed dataset. 
     
     
-    verbose: Boolean, default = True
+    verbose: bool, default = True
         Status update is not printed when verbose is set to False.
 
 
@@ -607,7 +607,7 @@ def plot_model(
         Trained Model Object
 
     
-    plot : str, default = 'cluster'
+    plot: str, default = 'cluster'
         List of available plots (ID - Name):
 
         * 'cluster' - Cluster PCA Plot (2d)              
@@ -618,7 +618,7 @@ def plot_model(
         * 'distribution' - Distribution Plot
     
     
-    feature : str, default = None
+    feature: str, default = None
         Feature to be evaluated when plot = 'distribution'. When ``plot`` type is 
         'cluster' or 'tsne' feature column is used as a hoverover tooltip and/or 
         label when the ``label`` param is set to True. When the ``plot`` type is 
@@ -626,7 +626,7 @@ def plot_model(
         used.
     
 
-    label : bool, default = False
+    label: bool, default = False
         Name of column to be used as data labels. Ignored when ``plot`` is not 
         'cluster' or 'tsne'. 
 
@@ -635,7 +635,7 @@ def plot_model(
         The resolution scale of the figure.
 
 
-    save: Boolean, default = False
+    save: bool, default = False
         When set to True, plot is saved in the current working directory.
 
 
@@ -670,7 +670,7 @@ def evaluate_model(
         Trained model object
 
 
-    feature : str, default = None
+    feature: str, default = None
         Feature to be evaluated when plot = 'distribution'. When ``plot`` type is 
         'cluster' or 'tsne' feature column is used as a hoverover tooltip and/or 
         label when the ``label`` param is set to True. When the ``plot`` type is 
@@ -684,6 +684,11 @@ def evaluate_model(
 
     Returns:
         None
+
+
+    Warnings
+    --------
+    -   This function only works in IPython enabled Notebook. 
 
     """
 
@@ -719,7 +724,7 @@ def tune_model(
     >>> tuned_kmeans = tune_model(model = 'kmeans', supervised_target = 'Purchase') 
 
 
-    model: str or scikit-learn compatible object
+    model: str
         ID of an model available in the model library. Models that can be
         tuned in this function (ID - Model):
         
@@ -806,7 +811,7 @@ def tune_model(
         Number of folds to be used in Kfold CV. Must be at least 2. 
 
 
-    verbose: Boolean, default = True
+    verbose: bool, default = True
         Status update is not printed when verbose is set to False.
 
 
@@ -1075,7 +1080,7 @@ def load_model(
     )
 
 
-def pull(pop: bool = False) -> pd.DataFrame:  # added in pycaret==2.2.0
+def pull(pop: bool = False) -> pd.DataFrame: 
     """
     Returns last grid.
 

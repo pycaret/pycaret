@@ -453,7 +453,7 @@ def create_model(
     >>> knn = create_model('knn')
 
 
-    model: string / object
+    model: str or scikit-learn compatible object
         ID of an model available in the model library or pass an untrained 
         model object consistent with scikit-learn API. Estimators available  
         in the model library (ID - Name):
@@ -477,7 +477,7 @@ def create_model(
         the decision function.
 
 
-    verbose: Boolean, default = True
+    verbose: bool, default = True
         Status update is not printed when verbose is set to False.
 
 
@@ -530,11 +530,11 @@ def assign_model(
         Whether to apply anomaly labels on the transformed dataset. 
     
     
-    score: Boolean, default = True
+    score: bool, default = True
         Whether to show outlier score or not. 
 
 
-    verbose: Boolean, default = True
+    verbose: bool, default = True
         Status update is not printed when verbose is set to False.
         
 
@@ -574,20 +574,20 @@ def plot_model(
         Trained Model Object
 
 
-    plot : str, default = 'tsne'
+    plot: str, default = 'tsne'
         List of available plots (ID - Name):
         
         * 'tsne' - t-SNE (3d) Dimension Plot
         * 'umap' - UMAP Dimensionality Plot
 
 
-    feature : str, default = None
+    feature: str, default = None
         Feature to be used as a hoverover tooltip and/or label when the ``label`` 
         param is set to True. When feature is None, first column of the dataset 
-        is used by default.
+        is used.
         
 
-    label : bool, default = False
+    label: bool, default = False
         Name of column to be used as data labels. 
 
 
@@ -595,7 +595,7 @@ def plot_model(
         The resolution scale of the figure.
 
 
-    save: Boolean, default = False
+    save: bool, default = False
         When set to True, plot is saved in the current working directory.
         
 
@@ -631,7 +631,7 @@ def evaluate_model(
         Trained model object
 
 
-    feature : str, default = None
+    feature: str, default = None
         Feature to be used as a hoverover tooltip and/or label when the ``label`` 
         param is set to True. When feature is None, first column of the dataset 
         is used by default.
@@ -642,6 +642,11 @@ def evaluate_model(
 
     Returns:
         None
+
+
+    Warnings
+    --------
+    -   This function only works in IPython enabled Notebook. 
 
     """
 
@@ -678,7 +683,7 @@ def tune_model(
     >>> tuned_knn = tune_model(model = 'knn', supervised_target = 'Purchase') 
     
     
-    model: str, default = None
+    model: str
         ID of an model available in the model library. Models that can be
         tuned in this function (ID - Model):
 
@@ -755,8 +760,8 @@ def tune_model(
 
     method: str, default = 'drop'
         When method set to drop, it will drop the outliers from training dataset. 
-        When 'surrogate', it uses decision functoin and label as a feature for 
-        during training.
+        When 'surrogate', it uses decision function and label as a feature during 
+        training.
     
     
     optimize: str, default = None
@@ -777,7 +782,7 @@ def tune_model(
         Number of folds to be used in Kfold CV. Must be at least 2. 
 
 
-    verbose: Boolean, default = True
+    verbose: bool, default = True
         Status update is not printed when verbose is set to False.
 
 
@@ -805,9 +810,7 @@ def tune_model(
 def predict_model(model, data: pd.DataFrame) -> pd.DataFrame:
 
     """
-    This function is used to predict new data using a trained model. It requires a
-    trained model object created using one of the function in pycaret that returns 
-    a trained model object. New data must be passed to data param as pandas Dataframe. 
+    This function generates anomaly labels on unseen data.
     
 
     Example
@@ -852,7 +855,7 @@ def deploy_model(
     model,
     model_name: str,
     authentication: dict,
-    platform: str = "aws",  # added gcp and azure support in pycaret==2.1
+    platform: str = "aws", 
 ):
 
     """
@@ -996,6 +999,7 @@ def load_model(
     """
     This function loads a previously saved pipeline.
     
+
     Example
     -------
     >>> from pycaret.anomaly import load_model
@@ -1041,7 +1045,7 @@ def load_model(
     )
 
 
-def pull(pop: bool = False) -> pd.DataFrame:  # added in pycaret==2.2.0
+def pull(pop: bool = False) -> pd.DataFrame: 
     """
     Returns last grid.
 
