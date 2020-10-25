@@ -15,6 +15,8 @@ import ipywidgets as ipw
 from typing import List, Tuple, Any, Union, Optional, Dict
 import pycaret.internal.tabular
 
+from pycaret.internal.tabular import MLUsecase
+
 warnings.filterwarnings("ignore")
 
 
@@ -847,7 +849,7 @@ def predict_model(model, data: pd.DataFrame) -> pd.DataFrame:
     """
 
     return pycaret.internal.tabular.predict_model_unsupervised(
-        estimator=model, data=data
+        estimator=model, data=data, ml_usecase=MLUsecase.ANOMALY,
     )
 
 
@@ -1061,9 +1063,7 @@ def pull(pop: bool = False) -> pd.DataFrame:
     return pycaret.internal.tabular.pull(pop=pop)
 
 
-def models(
-    internal: bool = False, raise_errors: bool = True,
-) -> pd.DataFrame:
+def models(internal: bool = False, raise_errors: bool = True,) -> pd.DataFrame:
 
     """
     Returns table of models available in the model library.
@@ -1091,9 +1091,7 @@ def models(
         pandas.DataFrame
 
     """
-    return pycaret.internal.tabular.models(
-        internal=internal, raise_errors=raise_errors
-    )
+    return pycaret.internal.tabular.models(internal=internal, raise_errors=raise_errors)
 
 
 def get_logs(experiment_name: Optional[str] = None, save: bool = False) -> pd.DataFrame:
@@ -1351,11 +1349,7 @@ def get_outliers(
     )
 
     c = create_model(
-        model=model,
-        fraction=fraction,
-        fit_kwargs=fit_kwargs,
-        verbose=False,
-        **kwargs,
+        model=model, fraction=fraction, fit_kwargs=fit_kwargs, verbose=False, **kwargs,
     )
     dataset = assign_model(c, verbose=False)
     return dataset

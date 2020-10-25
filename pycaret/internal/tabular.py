@@ -8033,7 +8033,9 @@ def assign_model(
     return data
 
 
-def predict_model_unsupervised(estimator, data: pd.DataFrame) -> pd.DataFrame:
+def predict_model_unsupervised(
+    estimator, data: pd.DataFrame, ml_usecase: Optional[MLUsecase] = None,
+) -> pd.DataFrame:
     function_params_str = ", ".join(
         [f"{k}={v}" for k, v in locals().items() if k != "data"]
     )
@@ -8043,7 +8045,8 @@ def predict_model_unsupervised(estimator, data: pd.DataFrame) -> pd.DataFrame:
     logger.info("Initializing predict_model()")
     logger.info(f"predict_model({function_params_str})")
 
-    logger.info("Checking exceptions")
+    if ml_usecase is None:
+        ml_usecase = _ml_usecase
 
     # copy data and model
     data_transformed = data.copy()
@@ -8059,16 +8062,16 @@ def predict_model_unsupervised(estimator, data: pd.DataFrame) -> pd.DataFrame:
     # predictions start here
     if is_sklearn_pipeline(estimator):
         pred = estimator.predict(data_transformed)
-        if _ml_usecase == MLUsecase.ANOMALY:
+        if ml_usecase == MLUsecase.ANOMALY:
             pred_score = estimator.decision_function(data_transformed)
     else:
         pred = estimator.predict(prep_pipe.transform(data_transformed))
-        if _ml_usecase == MLUsecase.ANOMALY:
+        if ml_usecase == MLUsecase.ANOMALY:
             pred_score = estimator.decision_function(
                 prep_pipe.transform(data_transformed)
             )
 
-    if _ml_usecase == MLUsecase.CLUSTERING:
+    if ml_usecase == MLUsecase.CLUSTERING:
         pred_list = [f"Cluster {i}" for i in pred]
 
         data_transformed["Cluster"] = pred_list
