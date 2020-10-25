@@ -53,7 +53,7 @@ def setup(
     group_features: Optional[List[str]] = None,
     group_names: Optional[List[str]] = None,
     n_jobs: Optional[int] = -1,
-    use_gpu: bool = False,  # added in pycaret==2.1
+    use_gpu: bool = False,
     custom_pipeline: Union[
         Any, Tuple[str, Any], List[Any], List[Tuple[str, Any]]
     ] = None,
@@ -70,258 +70,294 @@ def setup(
 ):
 
     """
-    This function initializes the environment in pycaret. setup() must called before
-    executing any other function in pycaret. It takes one mandatory parameter:
-    data.
+    This function initializes the training environment and creates the transformation 
+    pipeline. Setup function must be called before executing any other function. It
+    takes one mandatory parameter: ``data``. All the other parameters are optional.
+
 
     Example
     -------
     >>> from pycaret.datasets import get_data
-    >>> jewellery = get_data('jewellery')
-    >>> experiment_name = setup(data = jewellery, normalize = True)
-    
-    'jewellery' is a pandas.DataFrame.
+    >>> anomaly = get_data('anomaly')
+    >>> from pycaret.anomaly import *
+    >>> exp_name = setup(data = anomaly)
 
-    Parameters
-    ----------
-    data : pandas.DataFrame
-        Shape (n_samples, n_features) where n_samples is the number of samples 
-        and n_features is the number of features.
-    
-    categorical_features: str, default = None
-        If the inferred data types are not correct, categorical_features can be used to
-        overwrite the inferred type. If when running setup the type of 'column1' is
-        inferred as numeric instead of categorical, then this parameter can be used 
-        to overwrite the type by passing categorical_features = ['column1'].
-    
+
+    data: pandas.DataFrame
+        Shape (n_samples, n_features), where n_samples is the number of samples and 
+        n_features is the number of features.
+
+
+    preprocess: bool, default = True
+        When set to False, no transformations are applied except for train_test_split 
+        and custom transformations passed in ``custom_pipeline`` param. Data must be 
+        ready for modeling (no missing values, no dates, categorical data encoding), 
+        when preprocess is set to False. 
+
+
+    imputation_type: str, default = 'simple'
+        The type of imputation to use. Can be either 'simple' or 'iterative'.
+
+
+    iterative_imputation_iters: int, default = 5
+        Number of iterations. Ignored when ``imputation_type`` is not 'iterative'.	
+
+
+    categorical_features: list of str, default = None
+        If the inferred data types are not correct or the silent param is set to True,
+        categorical_features param can be used to overwrite or define the data types. 
+        It takes a list of strings with column names that are categorical.
+
+
     categorical_imputation: str, default = 'constant'
-        If missing values are found in categorical features, they will be imputed with
-        a constant 'not_available' value. The other available option is 'mode' which 
-        imputes the missing value using most frequent value in the training dataset. 
-    
-    ordinal_features: dictionary, default = None
-        When the data contains ordinal features, they must be encoded differently using 
-        the ordinal_features param. If the data has a categorical variable with values
-        of 'low', 'medium', 'high' and it is known that low < medium < high, then it can 
-        be passed as ordinal_features = { 'column_name' : ['low', 'medium', 'high'] }. 
-        The list sequence must be in increasing order from lowest to highest.
-    
-    high_cardinality_features: str, default = None
-        When the data containts features with high cardinality, they can be compressed
-        into fewer levels by passing them as a list of column names with high cardinality.
-        Features are compressed using frequency distribution. As such original features
-        are replaced with the frequency distribution and converted into numeric variable. 
-    
-    numeric_features: str, default = None
-        If the inferred data types are not correct, numeric_features can be used to
-        overwrite the inferred type. If when running setup the type of 'column1' is 
-        inferred as a categorical instead of numeric, then this parameter can be used 
-        to overwrite by passing numeric_features = ['column1'].    
+        Missing values in categorical features are imputed with a constant 'not_available'
+        value. The other available option is 'mode'.
+
+
+    categorical_iterative_imputer: str, default = 'lightgbm'
+        Estimator for iterative imputation of missing values in categorical features.
+        Ignored when ``imputation_type`` is not 'iterative'. 
+
+
+    ordinal_features: dict, default = None
+        Encode categorical features as ordinal. For example, a categorical feature with 
+        'low', 'medium', 'high' values where low < medium < high can be passed as  
+        ordinal_features = { 'column_name' : ['low', 'medium', 'high'] }. 
+
+
+    high_cardinality_features: list of str, default = None
+        When categorical features contains many levels, it can be compressed into fewer
+        levels using this parameter. It takes a list of strings with column names that 
+        are categorical.
+
+
+    high_cardinality_method: str, default = 'frequency'
+        Categorical features with high cardinality are replaced with the frequency of
+        values in each level occurring in the training dataset. Other available method
+        is 'clustering' which trains the K-Means clustering algorithm on the statistical
+        attribute of the training data and replaces the original value of feature with the 
+        cluster label. The number of clusters is determined by optimizing Calinski-Harabasz 
+        and Silhouette criterion. 
+
+
+    numeric_features: list of str, default = None
+        If the inferred data types are not correct or the silent param is set to True,
+        numeric_features param can be used to overwrite or define the data types. 
+        It takes a list of strings with column names that are numeric.
+
 
     numeric_imputation: str, default = 'mean'
-        If missing values are found in numeric features, they will be imputed with the 
-        mean value of the feature. The other available options are 'median' which imputes 
-        the value using the median value in the training dataset and 'zero' which
-        replaces missing values with zeroes.
-    
-    date_features: str, default = None
-        If the data has a DateTime column that is not automatically detected when running
-        setup, this parameter can be used by passing date_features = 'date_column_name'. 
-        It can work with multiple date columns. Date columns are not used in modeling. 
-        Instead, feature extraction is performed and date columns are dropped from the 
-        dataset. If the date column includes a time stamp, features related to time will 
-        also be extracted.
-    
-    ignore_features: str, default = None
-        If any feature should be ignored for modeling, it can be passed to the param
-        ignore_features. The ID and DateTime columns when inferred, are automatically 
-        set to ignore for modeling. 
-    
+        Missing values in numeric features are imputed with 'mean' value of the feature 
+        in the training dataset. The other available option is 'median' or 'zero'.
+
+
+    numeric_iterative_imputer: str, default = 'lightgbm'
+        Estimator for iterative imputation of missing values in numeric features.
+        Ignored when ``imputation_type`` is set to 'simple'. 
+
+
+    date_features: list of str, default = None
+        If the inferred data types are not correct or the silent param is set to True,
+        date_features param can be used to overwrite or define the data types. It takes 
+        a list of strings with column names that are DateTime.
+
+
+    ignore_features: list of str, default = None
+        ignore_features param can be used to ignore features during model training.
+        It takes a list of strings with column names that are to be ignored.
+
+
     normalize: bool, default = False
-        When set to True, the feature space is transformed using the normalized_method
-        param. Generally, linear algorithms perform better with normalized data however, 
-        the results may vary and it is advised to run multiple experiments to evaluate
-        the benefit of normalization.
-    
+        When set to True, it transforms the numeric features by scaling them to a given
+        range. Type of scaling is defined by the ``normalize_method`` parameter.
+
+
     normalize_method: str, default = 'zscore'
-        Defines the method to be used for normalization. By default, normalize method
-        is set to 'zscore'. The standard zscore is calculated as z = (x - u) / s. The
-        other available options are:
+        Defines the method for scaling. By default, normalize method is set to 'zscore'
+        The standard zscore is calculated as z = (x - u) / s. Ignored when ``normalize`` 
+        is not True. The other options are:
     
-        - 'minmax': scales and translates each feature individually such that it is in 
+        - minmax: scales and translates each feature individually such that it is in 
           the range of 0 - 1.
-        - 'maxabs': scales and translates each feature individually such that the 
+        - maxabs: scales and translates each feature individually such that the 
           maximal absolute value of each feature will be 1.0. It does not 
           shift/center the data, and thus does not destroy any sparsity.
-        - 'robust' : scales and translates each feature according to the Interquartile 
+        - robust: scales and translates each feature according to the Interquartile 
           range. When the dataset contains outliers, robust scaler often gives 
           better results.
 
+
     transformation: bool, default = False
-        When set to True, a power transformation is applied to make the data more normal /
-        Gaussian-like. This is useful for modeling issues related to heteroscedasticity or 
-        other situations where normality is desired. The optimal parameter for stabilizing 
-        variance and minimizing skewness is estimated through maximum likelihood.
-    
+        When set to True, it applies the power transform to make data more Gaussian-like.
+        Type of transformation is defined by the ``transformation_method`` parameter.
+
+
     transformation_method: str, default = 'yeo-johnson'
         Defines the method for transformation. By default, the transformation method is 
-        set to 'yeo-johnson'. The other available option is 'quantile' transformation. 
-        Both the transformation transforms the feature set to follow a Gaussian-like or 
-        normal distribution. Note that the quantile transformer is non-linear and may 
-        distort linear correlations between variables measured at the same scale.
+        set to 'yeo-johnson'. The other available option for transformation is 'quantile'. 
+        Ignored when ``transformation`` is not True.
+
     
     handle_unknown_categorical: bool, default = True
-        When set to True, unknown categorical levels in new / unseen data are replaced by
-        the most or least frequent level as learned in the training data. The method is 
-        defined under the unknown_categorical_method param.
-    
+        When set to True, unknown categorical levels in unseen data are replaced by the
+        most or least frequent level as learned in the training dataset. 
+
+
     unknown_categorical_method: str, default = 'least_frequent'
         Method used to replace unknown categorical levels in unseen data. Method can be
         set to 'least_frequent' or 'most_frequent'.
-    
+
+
     pca: bool, default = False
         When set to True, dimensionality reduction is applied to project the data into 
-        a lower dimensional space using the method defined in pca_method param. In 
-        supervised learning pca is generally performed when dealing with high feature
-        space and memory is a constraint. Note that not all datasets can be decomposed
-        efficiently using a linear PCA technique and that applying PCA may result in loss 
-        of information. As such, it is advised to run multiple experiments with different 
-        pca_methods to evaluate the impact. 
+        a lower dimensional space using the method defined in ``pca_method`` parameter. 
+        
 
     pca_method: str, default = 'linear'
-        The 'linear' method performs Linear dimensionality reduction using Singular Value 
-        Decomposition. The other available options are:
+        The 'linear' method performs uses Singular Value  Decomposition. Other options are:
         
         - kernel: dimensionality reduction through the use of RVF kernel.
-        - incremental: replacement for 'linear' pca when the dataset to be decomposed is 
-          too large to fit in memory
+        - incremental: replacement for 'linear' pca when the dataset is too large.
 
-    pca_components: int/float, default = 0.99
+
+    pca_components: int or float, default = None
         Number of components to keep. if pca_components is a float, it is treated as a 
         target percentage for information retention. When pca_components is an integer
-        it is treated as the number of features to be kept. pca_components must be 
-        strictly less than the original number of features in the dataset.
-    
+        it is treated as the number of features to be kept. pca_components must be less
+        than the original number of features. Ignored when ``pca`` is not True.
+
+
     ignore_low_variance: bool, default = False
-        When set to True, all categorical features with statistically insignificant 
-        variances are removed from the dataset. The variance is calculated using the 
-        ratio of unique values to the number of samples, and the ratio of the most 
-        common value to the frequency of the second most common value.
+        When set to True, all categorical features with insignificant variances are 
+        removed from the data. The variance is calculated using the ratio of unique 
+        values to the number of samples, and the ratio of the most common value to the 
+        frequency of the second most common value.
+
     
     combine_rare_levels: bool, default = False
-        When set to True, all levels in categorical features below the threshold 
-        defined in rare_level_threshold param are combined together as a single level. 
-        There must be atleast two levels under the threshold for this to take effect. 
-        rare_level_threshold represents the percentile distribution of level frequency. 
-        Generally, this technique is applied to limit a sparse matrix caused by high 
-        numbers of levels in categorical features. 
+        When set to True, frequency percentile for levels in categorical features below 
+        a certain threshold is combined into a single level.
+
     
     rare_level_threshold: float, default = 0.1
-        Percentile distribution below which rare categories are combined. Only comes 
-        into effect when combine_rare_levels is set to True.
+        Percentile distribution below which rare categories are combined. Ignored when
+        ``combine_rare_levels`` is not True.
+
     
-    bin_numeric_features: list, default = None
-        When a list of numeric features is passed they are transformed into categorical
-        features using KMeans, where values in each bin have the same nearest center of 
-        a 1D k-means cluster. The number of clusters are determined based on the 'sturges' 
-        method. It is only optimal for gaussian data and underestimates the number of bins 
-        for large non-gaussian datasets.
-    
+    bin_numeric_features: list of str, default = None
+        To convert numeric features into categorical, bin_numeric_features parameter can 
+        be used. It takes a list of strings with column names to be discretized. It does
+        so by using 'sturges' rule to determine the number of clusters and then apply
+        KMeans algorithm. Original values of the feature are then replaced by the
+        cluster label.
+
+
     remove_multicollinearity: bool, default = False
-        When set to True, the variables with inter-correlations higher than the threshold
-        defined under the multicollinearity_threshold param are dropped. When two features
-        are highly correlated with each other, the feature with higher average correlation 
-        in the feature space is dropped. 
-    
+        When set to True, features with the inter-correlations higher than the defined 
+        threshold are removed. When two features are highly correlated with each other, 
+        the feature that is less correlated with the target variable is removed. 
+
+
     multicollinearity_threshold: float, default = 0.9
-        Threshold used for dropping the correlated features. Only comes into effect when 
-        remove_multicollinearity is set to True.
+        Threshold for correlated features. Ignored when ``remove_multicollinearity``
+        is not True.
+
     
+    remove_perfect_collinearity: bool, default = True
+        When set to True, perfect collinearity (features with correlation = 1) is removed
+        from the dataset, when two features are 100% correlated, one of it is randomly 
+        removed from the dataset.
+
+
     group_features: list or list of list, default = None
-        When a dataset contains features that have related characteristics, the 
-        group_features param can be used for statistical feature extraction. For example, 
-        if a dataset has numeric features that are related with each other 
-        (i.e 'Col1', 'Col2', 'Col3'), a list containing the column names can be passed 
-        under group_features to extract statistical information such as the mean, median, 
-        mode and standard deviation.
-    
+        When the dataset contains features with related characteristics, group_features
+        parameter can be used for feature extraction. It takes a list of strings with 
+        column names that are related.
+
+        
     group_names: list, default = None
-        When group_features is passed, a name of the group can be passed into group_names 
-        param as a list containing strings. The length of a group_names list must equal 
-        to the length of group_features. When the length doesn't match or the name is 
-        not passed, new features are sequentially named such as group_1, group_2 etc.
-    
+        Group names to be used in naming new features. When the length of group_names 
+        does not match with the length of ``group_features``, new features are named 
+        sequentially group_1, group_2, etc. It is ignored when ``group_features`` is
+        None.
+
+
     n_jobs: int, default = -1
         The number of jobs to run in parallel (for functions that supports parallel 
         processing) -1 means using all processors. To run all functions on single 
         processor set n_jobs to None.
 
+
     use_gpu: str or bool, default = False
-        If set to 'force', will try to use GPU with all algorithms that support it,
-        and raise exceptions if they are unavailable.
-        If set to True, will use GPU with algorithms that support it, and fall
-        back to CPU if they are unavailable.
-        If set to False, will only use CPU.
+        When set to 'force', will try to use GPU with all algorithms that support it,
+        and raise exceptions if they are unavailable. When set to True, will use GPU 
+        with algorithms that support it, and fall back to CPU if they are unavailable.
+        When False, all algorithms are trained using CPU only.
 
         GPU enabled algorithms:
 
-        - KMeans, DBSCAN - requires cuML >= 0.15 to be installed.
-          https://github.com/rapidsai/cuml
+        - None at this moment. 
+
 
     custom_pipeline: transformer or list of transformers or tuple
         (str, transformer) or list of tuples (str, transformer), default = None
-        If set, will append the passed transformers (including Pipelines) to the PyCaret
-        preprocessing Pipeline applied after train-test split during model fitting.
-        This Pipeline is applied on each CV fold separately and on the final fit.
-        The transformers will be applied before PyCaret transformers (eg. SMOTE).
+        When passed, will append the custom transformers in the preprocessing pipeline
+        and are applied on each CV fold separately and on the final fit. All the custom
+        transformations are applied after 'train_test_split' and before pycaret's internal 
+        transformations. 
+
 
     html: bool, default = True
-        If set to False, prevents runtime display of monitor. This must be set to False
-        when using environment that doesnt support HTML.
+        When set to False, prevents runtime display of monitor. This must be set to False
+        when the environment does not support IPython. For example, command line terminal,
+        Databricks Notebook, Spyder and other similar IDEs. 
+
 
     session_id: int, default = None
-        If None, a random seed is generated and returned in the Information grid. The 
-        unique number is then distributed as a seed in all functions used during the 
-        experiment. This can be used for later reproducibility of the entire experiment.
+        Controls the randomness of experiment. It is equivalent to 'random_state' in
+        scikit-learn. When None, a pseudo random number is generated. This can be used 
+        for later reproducibility of the entire experiment.
 
-    log_experiment: bool, default = True
-        When set to True, all metrics and parameters are logged on MLFlow server.
+
+    log_experiment: bool, default = False
+        When set to True, all metrics and parameters are logged on the ``MLFlow`` server.
+
 
     experiment_name: str, default = None
-        Name of experiment for logging. When set to None, 'clu' is by default used as 
-        alias for the experiment name.
+        Name of the experiment for logging. Ignored when ``log_experiment`` is not True.
 
-    log_plots: bool, default = False
-        When set to True, specific plots are logged in MLflow as a png file. 
-        By default, it is set to False. 
+
+    log_plots: bool or list, default = False
+        When set to True, certain plots are logged automatically in the ``MLFlow`` server. 
+        To change the type of plots to be logged, pass a list containing plot IDs. Refer
+        to documentation of ``plot_model``. Ignored when ``log_experiment`` is not True.
+
 
     log_profile: bool, default = False
-        When set to True, data profile is also logged on MLflow as a html file. 
-        By default, it is set to False. 
+        When set to True, data profile is logged on the ``MLflow`` server as a html file.
+        Ignored when ``log_experiment`` is not True. 
+
 
     log_data: bool, default = False
-        When set to True, train and test dataset are logged as csv. 
+        When set to True, dataset is logged on the ``MLflow`` server as a csv file.
+        Ignored when ``log_experiment`` is not True.
+        
 
     silent: bool, default = False
-        When set to True, confirmation of data types is not required. All preprocessing 
-        will be performed assuming automatically inferred data types. Not recommended for 
-        direct use except for established pipelines.
+        Controls the confirmation input of data types when ``setup`` is executed. When
+        executing in completely automated mode or on a remote kernel, this must be True.
 
-    verbose: Boolean, default = True
-        Information grid is not printed when verbose is set to False.
     
+    verbose: bool, default = True
+        When set to False, Information grid is not printed.
+
+
     profile: bool, default = False
-        If set to true, a data profile for Exploratory Data Analysis will be displayed 
-        in an interactive HTML report. 
+        When set to true, an interactive EDA report is displayed. 
+        
 
-    Returns
-    -------
-    info_grid
-        Information grid is printed.
-
-    environment
-        This function returns various outputs that are stored in variable
-        as tuple. They are used by other functions in pycaret.
+    Returns:
+        Global variables that can be changed using the ``set_config`` function.
 
     """
 
@@ -405,26 +441,23 @@ def create_model(
 ):
 
     """
-    This function creates a model on the dataset passed as a data param during 
-    the setup stage. setup() function must be called before using create_model().
-
-    This function returns a trained model object. 
+    This function trains a given model from the model library. All available
+    models can be accessed using the ``models`` function. 
     
+
     Example
     -------
     >>> from pycaret.datasets import get_data
     >>> anomaly = get_data('anomaly')
-    >>> experiment_name = setup(data = anomaly, normalize = True)
+    >>> from pycaret.anomaly import *
+    >>> exp_name = setup(data = anomaly)
     >>> knn = create_model('knn')
 
-    This will return trained k-Nearest Neighbors model.
 
-    Parameters
-    ----------
     model : string / object
-        Enter ID of the models available in model library or pass an untrained model 
-        object consistent with fit / predict API to train and evaluate model. List of 
-        models available in model library (ID - Model):
+        ID of an model available in the model library or pass an untrained 
+        model object consistent with scikit-learn API. Estimators available  
+        in the model library (ID - Name):
 
         * 'abod' - Angle-base Outlier Detection       
         * 'cluster' - Clustering-Based Local Outlier            
@@ -438,22 +471,25 @@ def create_model(
         * 'sod' - Subspace Outlier Detection                       
         * 'sos' - Stochastic Outlier Selection                       
 
+
     fraction: float, default = 0.05
-        The percentage / proportion of outliers in the dataset.
+        The percentage of outliers in the dataset.
+
 
     verbose: Boolean, default = True
         Status update is not printed when verbose is set to False.
 
-    system: Boolean, default = True
-        Must remain True all times. Only to be changed by internal functions.
+
+    fit_kwargs: dict, default = {} (empty dict)
+        Dictionary of arguments passed to the fit method of the model.
+
 
     **kwargs: 
         Additional keyword arguments to pass to the estimator.
 
-    Returns
-    -------
-    model
-        Trained model object.
+
+    Returns:
+        Trained Model 
 
     """
 
@@ -471,45 +507,36 @@ def assign_model(
 ) -> pd.DataFrame:
 
     """
-    This function flags each of the data point in the dataset passed during setup
-    stage as either outlier or inlier (1 = outlier, 0 = inlier) using trained model
-    object passed as model param. create_model() function must be called before using 
-    assign_model().
-    
-    This function returns dataframe with Outlier flag (1 = outlier, 0 = inlier) and 
-    decision score, when score is set to True.
+    This function assigns anomaly labels to the dataset (1 = outlier, 0 = inlier).
+
 
     Example
     -------
     >>> from pycaret.datasets import get_data
     >>> anomaly = get_data('anomaly')
-    >>> experiment_name = setup(data = anomaly, normalize = True)
+    >>> from pycaret.anomaly import *
+    >>> exp_name = setup(data = anomaly)
     >>> knn = create_model('knn')
     >>> knn_df = assign_model(knn)
 
-    This will return a dataframe with inferred outliers using trained model.
 
-    Parameters
-    ----------
-    model : trained model object, default = None
-    
+    model: scikit-learn compatible object
+        Trained model object
+
+
     transformation: bool, default = False
-        When set to True, assigned outliers are returned on transformed dataset instead 
-        of original dataset passed during setup().
+        Whether to apply cluster labels on transformed dataset. 
+    
     
     score: Boolean, default = True
-        The outlier scores of the training data. The higher, the more abnormal. 
-        Outliers tend to have higher scores. This value is available once the model 
-        is fitted. If set to False, it will only return the flag 
-        (1 = outlier, 0 = inlier).
+        Whether to show outlier score or not. 
+
 
     verbose: Boolean, default = True
         Status update is not printed when verbose is set to False.
-
-    Returns
-    -------
-    pandas.DataFrame
-        Returns a dataframe with inferred outliers using a trained model.
+        
+    Returns:
+        pandas.DataFrame
   
     """
     return pycaret.internal.tabular.assign_model(
@@ -522,56 +549,57 @@ def plot_model(
     plot: str = "tsne",
     feature: Optional[str] = None,
     label: bool = False,
-    scale: float = 1,  # added in pycaret==2.1
+    scale: float = 1,
     save: bool = False,
 ):
 
     """
-    This function takes a trained model object and returns a plot on the dataset 
-    passed during setup stage. This function internally calls assign_model before 
-    generating a plot.  
+    This function analyzes the performance of a trained model.
+
 
     Example
     -------
     >>> from pycaret.datasets import get_data
-    >>> jewellery = get_data('jewellery')
-    >>> experiment_name = setup(data = jewellery, normalize = True)
-    >>> kmeans = create_model('kmeans')
-    >>> plot_model(kmeans)
+    >>> anomaly = get_data('anomaly')
+    >>> from pycaret.anomaly import *
+    >>> exp_name = setup(data = anomaly)
+    >>> knn = create_model('knn')
+    >>> plot_model(knn, plot = 'tsne')
 
-    This will return a cluster scatter plot (by default). 
 
-    Parameters
-    ----------
-    model : object, default = none
-        A trained model object can be passed. Model must be created using create_model().
+    model: scikit-learn compatible object
+        Trained Model Object
+
 
     plot : str, default = 'cluster'
-        Enter abbreviation for type of plot. The current list of plots supported are 
-        (Plot - Name):
-
+        List of available plots (ID - Name):
+        
         * 'tsne' - t-SNE (3d) Dimension Plot
         * 'umap' - UMAP Dimensionality Plot
 
+
     feature : str, default = None
-        Name of feature column for x-axis of when plot = 'distribution'. When plot is
-        'cluster' or 'tsne' feature column is used as a hoverover tooltip and/or label
-        when label is set to True. If no feature name is passed in 'cluster' or 'tsne'
-        by default the first of column of dataset is chosen as hoverover tooltip.
-    
+        Feature to be evaluated when plot = 'distribution'. When ``plot`` type is 
+        'cluster' or 'tsne' feature column is used as a hoverover tooltip and/or 
+        label when the ``label`` param is set to True. When the ``plot`` type is 
+        'cluster' or 'tsne' and feature is None, first column of the dataset is
+        used.
+        
+
     label : bool, default = False
-        When set to True, data labels are shown in 'cluster' and 'tsne' plot.
+        Name of column to be used as data labels. 
+
 
     scale: float, default = 1
         The resolution scale of the figure.
 
-    save: Boolean, default = False
-        Plot is saved as png file in local directory when save parameter set to True.
 
-    Returns
-    -------
-    Visual_Plot
-        Prints the visual plot. 
+    save: Boolean, default = False
+        When set to True, plot is saved in the current working directory.
+        
+
+    Returns:
+        None
 
     """
     return pycaret.internal.tabular.plot_model(
@@ -584,38 +612,37 @@ def evaluate_model(
 ):
 
     """
-    This function displays a user interface for all of the available plots for 
-    a given estimator. It internally uses the plot_model() function. 
+    This function displays a user interface for analyzing model performance of a
+    given estimator. It calls the ``plot_model`` function internally. 
     
-    Example
-    --------
-    >>> from pycaret.datasets import get_data
-    >>> jewellery = get_data('jewellery')
-    >>> experiment_name = setup(data = jewellery, normalize = True)
-    >>> kmeans = create_model('kmeans')
-    >>> evaluate_model(kmeans)
-    
-    This will display the User Interface for all of the plots for a given
-    estimator.
 
-    Parameters
-    ----------
-    model : object, default = none
-        A fitted model object should be passed. 
+    Example
+    -------
+    >>> from pycaret.datasets import get_data
+    >>> anomaly = get_data('anomaly')
+    >>> from pycaret.anomaly import *
+    >>> exp_name = setup(data = anomaly)
+    >>> knn = create_model('knn')
+    >>> evaluate_model(knn)
+    
+
+    model: scikit-learn compatible object
+        Trained model object
+
 
     feature : str, default = None
-        Name of feature column for x-axis of when plot = 'distribution'. When plot is
-        'cluster' or 'tsne' feature column is used as a hoverover tooltip and/or label
-        when label is set to True. If no feature name is passed in 'cluster' or 'tsne'
-        by default the first of column of dataset is chosen as hoverover tooltip.
+        Feature to be evaluated when plot = 'distribution'. When ``plot`` type is 
+        'cluster' or 'tsne' feature column is used as a hoverover tooltip and/or 
+        label when the ``label`` param is set to True. When the ``plot`` type is 
+        'cluster' or 'tsne' and feature is None, first column of the dataset is
+        used.
+
 
     fit_kwargs: dict, default = {} (empty dict)
         Dictionary of arguments passed to the fit method of the model.
 
-    Returns
-    -------
-    User_Interface
-        Displays the user interface for plotting.
+    Returns:
+        None
 
     """
 
