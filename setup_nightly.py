@@ -16,6 +16,9 @@ def readme():
 with open('requirements.txt') as f:
     required = f.read().splitlines()
 
+with open('requirements-optional.txt') as f:
+    optional_required = f.read().splitlines()
+
 setup(
     name="pycaret-nightly",
     version=str(nightly_version) + ".dev" + str(int(time.time())),
@@ -34,5 +37,8 @@ setup(
     ],
     packages=find_packages(exclude=["*.tests", "*.tests.*", "tests.*", "tests"]),
     include_package_data=True,
-    install_requires=required
+    install_requires=required,
+    extras_require = {
+        "full": optional_required,
+    }
 )
