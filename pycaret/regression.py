@@ -33,7 +33,7 @@ def setup(
     high_cardinality_features: Optional[List[str]] = None,
     high_cardinality_method: str = "frequency",
     numeric_features: Optional[List[str]] = None,
-    numeric_imputation: str = "mean",  # method 'zero' added in pycaret==2.1
+    numeric_imputation: str = "mean",
     numeric_iterative_imputer: Union[str, Any] = "lightgbm",
     date_features: Optional[List[str]] = None,
     ignore_features: Optional[List[str]] = None,
@@ -1198,7 +1198,7 @@ def blend_models(
     round: int = 4,
     choose_better: bool = False,
     optimize: str = "R2",
-    weights: Optional[List[float]] = None,  # added in pycaret==2.2.0
+    weights: Optional[List[float]] = None,
     fit_kwargs: Optional[dict] = None,
     groups: Optional[Union[str, Any]] = None,
     verbose: bool = True,
@@ -1725,7 +1725,7 @@ def deploy_model(
     model,
     model_name: str,
     authentication: dict,
-    platform: str = "aws",  # added gcp and azure support in pycaret==2.1
+    platform: str = "aws",
 ):
 
     """

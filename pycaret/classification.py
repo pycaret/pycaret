@@ -899,7 +899,7 @@ def tune_model(
     n_iter: int = 10,
     custom_grid: Optional[Union[Dict[str, list], Any]] = None,
     optimize: str = "Accuracy",
-    custom_scorer=None,  # added in pycaret==2.1 - depreciated
+    custom_scorer=None,
     search_library: str = "scikit-learn",
     search_algorithm: Optional[str] = None,
     early_stopping: Any = False,
@@ -1420,7 +1420,7 @@ def stack_models(
 def plot_model(
     estimator,
     plot: str = "auc",
-    scale: float = 1,  # added in pycaret==2.1.0
+    scale: float = 1,
     save: bool = False,
     fold: Optional[Union[int, Any]] = None,
     fit_kwargs: Optional[dict] = None,
@@ -1800,8 +1800,8 @@ def predict_model(
     estimator,
     data: Optional[pd.DataFrame] = None,
     probability_threshold: Optional[float] = None,
-    encoded_labels: bool = False,  # added in pycaret==2.1.0
-    round: int = 4,  # added in pycaret==2.2.0
+    encoded_labels: bool = False,
+    round: int = 4,
     verbose: bool = True,
 ) -> pd.DataFrame:
 
