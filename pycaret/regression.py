@@ -2,7 +2,7 @@
 # Author: Moez Ali <moez.ali@queensu.ca>
 # License: MIT
 # Release: PyCaret 2.2
-# Last modified : 23/10/2020
+# Last modified : 25/10/2020
 
 import pandas as pd
 import numpy as np
@@ -803,7 +803,7 @@ def create_model(
     >>> lr = create_model('lr')
     
 
-    estimator : str or scikit-learn compatible object
+    estimator: str or scikit-learn compatible object
         ID of an estimator available in model library or pass an untrained 
         model object consistent with scikit-learn API. Estimators available  
         in the model library (ID - Name):
@@ -932,7 +932,7 @@ def tune_model(
     >>> tuned_lr = tune_model(lr) 
 
 
-    estimator : scikit-learn compatible object
+    estimator: scikit-learn compatible object
         Trained model object
 
 
@@ -1128,7 +1128,7 @@ def ensemble_model(
     >>> bagged_dt = ensemble_model(dt, method = 'Bagging')
 
 
-   estimator : scikit-learn compatible object
+   estimator: scikit-learn compatible object
         Trained model object
 
 
@@ -1225,7 +1225,7 @@ def blend_models(
     >>> blender = blend_models(top3)
 
 
-    estimator_list : list of scikit-learn compatible objects
+    estimator_list: list of scikit-learn compatible objects
         List of trained model objects
 
 
@@ -1322,11 +1322,11 @@ def stack_models(
     >>> stacker = stack_models(top3)
 
 
-    estimator_list : list of scikit-learn compatible objects
+    estimator_list: list of scikit-learn compatible objects
         List of trained model objects
 
 
-    meta_model : scikit-learn compatible object, default = None
+    meta_model: scikit-learn compatible object, default = None
         If set to None, Linear Regression is trained as a meta model.
 
 
@@ -1416,11 +1416,11 @@ def plot_model(
     >>> plot_model(lr, plot = 'residual')
 
 
-    estimator : scikit-learn compatible object
+    estimator: scikit-learn compatible object
         Trained model object
    
 
-    plot : str, default = 'residual'
+    plot: str, default = 'residual'
         List of available plots (ID - Name):
 
         * 'residuals' - Residuals Plot
@@ -1504,7 +1504,7 @@ def evaluate_model(
     >>> evaluate_model(lr)
     
 
-    estimator : scikit-learn compatible object
+    estimator: scikit-learn compatible object
         Trained model object
 
 
@@ -1565,11 +1565,11 @@ def interpret_model(
     >>> interpret_model(xgboost)
 
  
-    estimator : scikit-learn compatible object
+    estimator: scikit-learn compatible object
         Trained model object
 
 
-    plot : str, default = 'summary'
+    plot: str, default = 'summary'
         Type of plot. Available options are: 'summary', 'correlation', and 'reason'.
 
 
@@ -1626,7 +1626,7 @@ def predict_model(
     >>> pred_unseen = predict_model(lr, data = unseen_dataframe)
 
 
-    estimator : scikit-learn compatible object
+    estimator: scikit-learn compatible object
         Trained model object
 
 
@@ -1690,7 +1690,7 @@ def finalize_model(
     >>> final_lr = finalize_model(lr)
 
 
-    estimator : scikit-learn compatible object
+    estimator: scikit-learn compatible object
         Trained model object
 
 
@@ -1705,7 +1705,7 @@ def finalize_model(
         the column name in the dataset containing group labels.
 
 
-    model_only : bool, default = True
+    model_only: bool, default = True
         When set to False, only model object is re-trained and all the 
         transformations in Pipeline are ignored.
 
@@ -1777,15 +1777,15 @@ def deploy_model(
     https://docs.microsoft.com/en-us/azure/storage/blobs/storage-quickstart-blobs-python?toc=%2Fpython%2Fazure%2FTOC.json
 
 
-    model : scikit-learn compatible object
+    model: scikit-learn compatible object
         Trained model object
     
 
-    model_name : str
+    model_name: str
         Name of model.
     
 
-    authentication : dict
+    authentication: dict
         Dictionary of applicable authentication tokens.
 
         When platform = 'aws':
@@ -1934,7 +1934,7 @@ def automl(optimize: str = "R2", use_holdout: bool = False) -> Any:
     >>> best_mae_model = automl(optimize = 'MAE')
 
 
-    optimize : str, default = 'R2'
+    optimize: str, default = 'R2'
         Metric to use for model selection. It also accepts custom metrics
         added using the ``add_metric`` function. 
 
@@ -1957,7 +1957,7 @@ def pull(pop: bool = False) -> pd.DataFrame:
     Returns last grid.
 
 
-    pop : bool, default = False
+    pop: bool, default = False
         If true, will pop (remove) the returned dataframe from the
         display container.
 
@@ -1985,7 +1985,7 @@ def models(
     >>> all_models = models()
 
 
-    type : str, default = None
+    type: str, default = None
         - linear : filters and only return linear models
         - tree : filters and only return tree based models
         - ensemble : filters and only return ensemble models
@@ -2146,11 +2146,11 @@ def get_logs(experiment_name: Optional[str] = None, save: bool = False) -> pd.Da
     >>> exp_logs = get_logs()
 
 
-    experiment_name : str, default = None
+    experiment_name: str, default = None
         When None current active run is used.
 
 
-    save : bool, default = False
+    save: bool, default = False
         When set to True, csv file is saved in current working directory.
 
 

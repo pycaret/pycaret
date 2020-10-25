@@ -1,8 +1,8 @@
 # Module: Clustering
 # Author: Moez Ali <moez.ali@queensu.ca>
 # License: MIT
-# Release: PyCaret 2.1.1
-# Last modified : 24/10/2020
+# Release: PyCaret 2.2
+# Last modified : 25/10/2020
 
 import sys
 import datetime, time
@@ -84,7 +84,7 @@ def setup(
     >>> exp_name = setup(data = jewellery)
 
 
-    data : pandas.DataFrame
+    data: pandas.DataFrame
         Shape (n_samples, n_features), where n_samples is the number of samples and 
         n_features is the number of features.
 
@@ -465,7 +465,7 @@ def create_model(
     >>> kmeans = create_model('kmeans')
 
 
-    model : str or scikit-learn compatible object
+    model: str or scikit-learn compatible object
         ID of an model available in the model library or pass an untrained 
         model object consistent with scikit-learn API. Estimators available  
         in the model library (ID - Name):
@@ -604,7 +604,7 @@ def plot_model(
     >>> plot_model(kmeans, plot = 'cluster')
 
 
-    model : scikit-learn compatible object
+    model: scikit-learn compatible object
         Trained Model Object
 
     
@@ -722,7 +722,7 @@ def tune_model(
     >>> tuned_kmeans = tune_model(model = 'kmeans', supervised_target = 'medv') 
 
 
-    model : str, default = None
+    model: str, default = None
         Enter ID of the models available in model library (ID - Name):
         
         * 'kmeans' - K-Means Clustering
@@ -859,7 +859,7 @@ def predict_model(model, data: pd.DataFrame) -> pd.DataFrame:
     >>> kmeans_predictions = predict_model(model = kmeans, data = unseen_data)
         
 
-    model : scikit-learn compatible object
+    model: scikit-learn compatible object
         Trained Model Object.
     
 
@@ -887,168 +887,6 @@ def predict_model(model, data: pd.DataFrame) -> pd.DataFrame:
     return pycaret.internal.tabular.predict_model_unsupervised(
         estimator=model, data=data
     )
-
-
-def models(internal: bool = False, raise_errors: bool = True) -> pd.DataFrame:
-
-    """
-    Returns table of models available in the model library.
-
-
-    Example
-    -------
-    >>> from pycaret.datasets import get_data
-    >>> jewellery = get_data('jewellery')
-    >>> from pycaret.clustering import *
-    >>> exp_name = setup(data = jewellery)
-    >>> all_models = models()
-
-
-    internal: bool, default = False
-        If True, will return extra columns and rows used internally.
-
-
-    raise_errors: bool, default = True
-        If False, will suppress all exceptions, ignoring models
-        that couldn't be created.
-
-
-    Returns:
-        pandas.DataFrame
-
-    """
-
-    return pycaret.internal.tabular.models(internal=internal, raise_errors=raise_errors)
-
-
-def get_clusters(
-    data,
-    model: Union[str, Any] = "kmeans",
-    num_clusters: int = 4,
-    ground_truth: Optional[str] = None,
-    round: int = 4,
-    fit_kwargs: Optional[dict] = None,
-    preprocess: bool = True,
-    imputation_type: str = "simple",
-    iterative_imputation_iters: int = 5,
-    categorical_features: Optional[List[str]] = None,
-    categorical_imputation: str = "mode",
-    categorical_iterative_imputer: Union[str, Any] = "lightgbm",
-    ordinal_features: Optional[Dict[str, list]] = None,
-    high_cardinality_features: Optional[List[str]] = None,
-    high_cardinality_method: str = "frequency",
-    numeric_features: Optional[List[str]] = None,
-    numeric_imputation: str = "mean",  # method 'zero' added in pycaret==2.1
-    numeric_iterative_imputer: Union[str, Any] = "lightgbm",
-    date_features: Optional[List[str]] = None,
-    ignore_features: Optional[List[str]] = None,
-    normalize: bool = False,
-    normalize_method: str = "zscore",
-    transformation: bool = False,
-    transformation_method: str = "yeo-johnson",
-    handle_unknown_categorical: bool = True,
-    unknown_categorical_method: str = "least_frequent",
-    pca: bool = False,
-    pca_method: str = "linear",
-    pca_components: Optional[float] = None,
-    ignore_low_variance: bool = False,
-    combine_rare_levels: bool = False,
-    rare_level_threshold: float = 0.10,
-    bin_numeric_features: Optional[List[str]] = None,
-    remove_multicollinearity: bool = False,
-    multicollinearity_threshold: float = 0.9,
-    remove_perfect_collinearity: bool = False,
-    group_features: Optional[List[str]] = None,
-    group_names: Optional[List[str]] = None,
-    n_jobs: Optional[int] = -1,
-    session_id: Optional[int] = None,
-    log_experiment: bool = False,
-    experiment_name: Optional[str] = None,
-    log_plots: Union[bool, list] = False,
-    log_profile: bool = False,
-    log_data: bool = False,
-    profile: bool = False,
-    **kwargs
-) -> pd.DataFrame:
-
-    """
-    Callable from any external environment without requiring setup initialization.
-    """
-    setup(
-        data=data,
-        preprocess=preprocess,
-        imputation_type=imputation_type,
-        iterative_imputation_iters=iterative_imputation_iters,
-        categorical_features=categorical_features,
-        categorical_imputation=categorical_imputation,
-        categorical_iterative_imputer=categorical_iterative_imputer,
-        ordinal_features=ordinal_features,
-        high_cardinality_features=high_cardinality_features,
-        high_cardinality_method=high_cardinality_method,
-        numeric_features=numeric_features,
-        numeric_imputation=numeric_imputation,
-        numeric_iterative_imputer=numeric_iterative_imputer,
-        date_features=date_features,
-        ignore_features=ignore_features,
-        normalize=normalize,
-        normalize_method=normalize_method,
-        transformation=transformation,
-        transformation_method=transformation_method,
-        handle_unknown_categorical=handle_unknown_categorical,
-        unknown_categorical_method=unknown_categorical_method,
-        pca=pca,
-        pca_method=pca_method,
-        pca_components=pca_components,
-        ignore_low_variance=ignore_low_variance,
-        combine_rare_levels=combine_rare_levels,
-        rare_level_threshold=rare_level_threshold,
-        bin_numeric_features=bin_numeric_features,
-        remove_multicollinearity=remove_multicollinearity,
-        multicollinearity_threshold=multicollinearity_threshold,
-        remove_perfect_collinearity=remove_perfect_collinearity,
-        group_features=group_features,
-        group_names=group_names,
-        n_jobs=n_jobs,
-        html=False,
-        session_id=session_id,
-        log_experiment=log_experiment,
-        experiment_name=experiment_name,
-        log_plots=log_plots,
-        log_profile=log_profile,
-        log_data=log_data,
-        silent=True,
-        verbose=False,
-        profile=profile,
-    )
-
-    c = create_model(
-        model=model,
-        num_clusters=num_clusters,
-        ground_truth=ground_truth,
-        round=round,
-        fit_kwargs=fit_kwargs,
-        verbose=False,
-        **kwargs,
-    )
-    dataset = assign_model(c, verbose=False)
-    return dataset
-
-
-def pull(pop: bool = False) -> pd.DataFrame:  # added in pycaret==2.2.0
-    """
-    Returns last grid.
-
-
-    pop : bool, default = False
-        If true, will pop (remove) the returned dataframe from the
-        display container.
-
-    Returns:
-        pandas.DataFrame
-        
-
-    """
-    return pycaret.internal.tabular.pull(pop=pop)
 
 
 def deploy_model(
@@ -1107,15 +945,15 @@ def deploy_model(
     https://docs.microsoft.com/en-us/azure/storage/blobs/storage-quickstart-blobs-python?toc=%2Fpython%2Fazure%2FTOC.json
 
 
-    model : scikit-learn compatible object
+    model: scikit-learn compatible object
         Trained model object
     
 
-    model_name : str
+    model_name: str
         Name of model.
     
 
-    authentication : dict
+    authentication: dict
         Dictionary of applicable authentication tokens.
 
         When platform = 'aws':
@@ -1162,7 +1000,7 @@ def save_model(model, model_name: str, model_only: bool = False, verbose: bool =
     >>> save_model(lr, 'saved_kmeans_model')
     
 
-    model : scikit-learn compatible object
+    model: scikit-learn compatible object
         Trained model object
     
 
@@ -1205,7 +1043,7 @@ def load_model(
     >>> saved_kmeans = load_model('saved_kmeans_model')
     
 
-    model_name : str, default = none
+    model_name: str, default = none
         Name of the model.
       
 
@@ -1214,7 +1052,7 @@ def load_model(
         'aws', 'gcp' and 'azure'.
     
 
-    authentication : dict
+    authentication: dict
         dictionary of applicable authentication tokens.
 
         when platform = 'aws':
@@ -1242,6 +1080,55 @@ def load_model(
         authentication=authentication,
         verbose=verbose,
     )
+
+
+def pull(pop: bool = False) -> pd.DataFrame:  # added in pycaret==2.2.0
+    """
+    Returns last grid.
+
+
+    pop : bool, default = False
+        If true, will pop (remove) the returned dataframe from the
+        display container.
+
+    Returns:
+        pandas.DataFrame
+        
+
+    """
+    return pycaret.internal.tabular.pull(pop=pop)
+
+
+def models(internal: bool = False, raise_errors: bool = True) -> pd.DataFrame:
+
+    """
+    Returns table of models available in the model library.
+
+
+    Example
+    -------
+    >>> from pycaret.datasets import get_data
+    >>> jewellery = get_data('jewellery')
+    >>> from pycaret.clustering import *
+    >>> exp_name = setup(data = jewellery)
+    >>> all_models = models()
+
+
+    internal: bool, default = False
+        If True, will return extra columns and rows used internally.
+
+
+    raise_errors: bool, default = True
+        If False, will suppress all exceptions, ignoring models
+        that couldn't be created.
+
+
+    Returns:
+        pandas.DataFrame
+
+    """
+
+    return pycaret.internal.tabular.models(internal=internal, raise_errors=raise_errors)
 
 
 def get_metrics(
@@ -1388,11 +1275,11 @@ def get_logs(experiment_name: Optional[str] = None, save: bool = False) -> pd.Da
     >>> exp_logs = get_logs()
 
 
-    experiment_name : str, default = None
+    experiment_name: str, default = None
         When None current active run is used.
 
 
-    save : bool, default = False
+    save: bool, default = False
         When set to True, csv file is saved in current working directory.
 
 
@@ -1407,18 +1294,13 @@ def get_logs(experiment_name: Optional[str] = None, save: bool = False) -> pd.Da
 def get_config(variable: str):
 
     """
-    This function is used to access global environment variables.
-    Following variables can be accessed:
+    This function retrieves the global variables created when initializing the 
+    ``setup`` function. Following variables are accessible:
 
     - X: Transformed dataset (X)
-    - y: Transformed dataset (y)  
-    - X_train: Transformed train dataset (X)
-    - X_test: Transformed test/holdout dataset (X)
-    - y_train: Transformed train dataset (y)
-    - y_test: Transformed test/holdout dataset (y)
+    - data_before_preprocess: data before preprocessing
     - seed: random state set through session_id
     - prep_pipe: Transformation pipeline configured through setup
-    - fold_shuffle_param: shuffle parameter used in Kfolds
     - n_jobs_param: n_jobs parameter used in model training
     - html_param: html_param configured through setup
     - create_model_container: results grid storage container
@@ -1428,21 +1310,21 @@ def get_config(variable: str):
     - logging_param: log_experiment param set through setup
     - log_plots_param: log_plots param set through setup
     - USI: Unique session ID parameter set through setup
-    - fix_imbalance_param: fix_imbalance param set through setup
-    - fix_imbalance_method_param: fix_imbalance_method param set through setup
-    - data_before_preprocess: data before preprocessing
-    - target_param: name of target variable
     - gpu_param: use_gpu param configured through setup
+
 
     Example
     -------
-    >>> X_train = get_config('X_train') 
+    >>> from pycaret.datasets import get_data
+    >>> jewellery = get_data('jewellery')
+    >>> from pycaret.clustering import *
+    >>> exp_name = setup(data = jewellery)
+    >>> X = get_config('X') 
 
-    This will return X_train transformed dataset.
 
-    Returns
-    -------
-    variable
+    Returns:
+        Global variable
+    
 
     """
 
@@ -1452,18 +1334,13 @@ def get_config(variable: str):
 def set_config(variable: str, value):
 
     """
-    This function is used to reset global environment variables.
-    Following variables can be accessed:
+    This function resets the global variables. Following variables are 
+    accessible:
 
     - X: Transformed dataset (X)
-    - y: Transformed dataset (y)  
-    - X_train: Transformed train dataset (X)
-    - X_test: Transformed test/holdout dataset (X)
-    - y_train: Transformed train dataset (y)
-    - y_test: Transformed test/holdout dataset (y)
+    - data_before_preprocess: data before preprocessing
     - seed: random state set through session_id
     - prep_pipe: Transformation pipeline configured through setup
-    - fold_shuffle_param: shuffle parameter used in Kfolds
     - n_jobs_param: n_jobs parameter used in model training
     - html_param: html_param configured through setup
     - create_model_container: results grid storage container
@@ -1473,15 +1350,20 @@ def set_config(variable: str, value):
     - logging_param: log_experiment param set through setup
     - log_plots_param: log_plots param set through setup
     - USI: Unique session ID parameter set through setup
-    - fix_imbalance_param: fix_imbalance param set through setup
-    - fix_imbalance_method_param: fix_imbalance_method param set through setup
-    - data_before_preprocess: data before preprocessing
+    - gpu_param: use_gpu param configured through setup
+
 
     Example
     -------
+    >>> from pycaret.datasets import get_data
+    >>> jewellery = get_data('jewellery')
+    >>> from pycaret.clustering import *
+    >>> exp_name = setup(data = jewellery)
     >>> set_config('seed', 123) 
 
-    This will set the global seed to '123'.
+
+    Returns:
+        None
 
     """
 
@@ -1493,6 +1375,7 @@ def save_config(file_name: str):
     """
     This function save all global variables to a pickle file, allowing to
     later resume without rerunning the ``setup``.
+
 
     Example
     -------
@@ -1530,3 +1413,115 @@ def load_config(file_name: str):
     """
 
     return pycaret.internal.tabular.load_config(file_name=file_name)
+
+def get_clusters(
+    data,
+    model: Union[str, Any] = "kmeans",
+    num_clusters: int = 4,
+    ground_truth: Optional[str] = None,
+    round: int = 4,
+    fit_kwargs: Optional[dict] = None,
+    preprocess: bool = True,
+    imputation_type: str = "simple",
+    iterative_imputation_iters: int = 5,
+    categorical_features: Optional[List[str]] = None,
+    categorical_imputation: str = "mode",
+    categorical_iterative_imputer: Union[str, Any] = "lightgbm",
+    ordinal_features: Optional[Dict[str, list]] = None,
+    high_cardinality_features: Optional[List[str]] = None,
+    high_cardinality_method: str = "frequency",
+    numeric_features: Optional[List[str]] = None,
+    numeric_imputation: str = "mean",  # method 'zero' added in pycaret==2.1
+    numeric_iterative_imputer: Union[str, Any] = "lightgbm",
+    date_features: Optional[List[str]] = None,
+    ignore_features: Optional[List[str]] = None,
+    normalize: bool = False,
+    normalize_method: str = "zscore",
+    transformation: bool = False,
+    transformation_method: str = "yeo-johnson",
+    handle_unknown_categorical: bool = True,
+    unknown_categorical_method: str = "least_frequent",
+    pca: bool = False,
+    pca_method: str = "linear",
+    pca_components: Optional[float] = None,
+    ignore_low_variance: bool = False,
+    combine_rare_levels: bool = False,
+    rare_level_threshold: float = 0.10,
+    bin_numeric_features: Optional[List[str]] = None,
+    remove_multicollinearity: bool = False,
+    multicollinearity_threshold: float = 0.9,
+    remove_perfect_collinearity: bool = False,
+    group_features: Optional[List[str]] = None,
+    group_names: Optional[List[str]] = None,
+    n_jobs: Optional[int] = -1,
+    session_id: Optional[int] = None,
+    log_experiment: bool = False,
+    experiment_name: Optional[str] = None,
+    log_plots: Union[bool, list] = False,
+    log_profile: bool = False,
+    log_data: bool = False,
+    profile: bool = False,
+    **kwargs
+) -> pd.DataFrame:
+
+    """
+    Callable from any external environment without requiring setup initialization.
+    """
+    setup(
+        data=data,
+        preprocess=preprocess,
+        imputation_type=imputation_type,
+        iterative_imputation_iters=iterative_imputation_iters,
+        categorical_features=categorical_features,
+        categorical_imputation=categorical_imputation,
+        categorical_iterative_imputer=categorical_iterative_imputer,
+        ordinal_features=ordinal_features,
+        high_cardinality_features=high_cardinality_features,
+        high_cardinality_method=high_cardinality_method,
+        numeric_features=numeric_features,
+        numeric_imputation=numeric_imputation,
+        numeric_iterative_imputer=numeric_iterative_imputer,
+        date_features=date_features,
+        ignore_features=ignore_features,
+        normalize=normalize,
+        normalize_method=normalize_method,
+        transformation=transformation,
+        transformation_method=transformation_method,
+        handle_unknown_categorical=handle_unknown_categorical,
+        unknown_categorical_method=unknown_categorical_method,
+        pca=pca,
+        pca_method=pca_method,
+        pca_components=pca_components,
+        ignore_low_variance=ignore_low_variance,
+        combine_rare_levels=combine_rare_levels,
+        rare_level_threshold=rare_level_threshold,
+        bin_numeric_features=bin_numeric_features,
+        remove_multicollinearity=remove_multicollinearity,
+        multicollinearity_threshold=multicollinearity_threshold,
+        remove_perfect_collinearity=remove_perfect_collinearity,
+        group_features=group_features,
+        group_names=group_names,
+        n_jobs=n_jobs,
+        html=False,
+        session_id=session_id,
+        log_experiment=log_experiment,
+        experiment_name=experiment_name,
+        log_plots=log_plots,
+        log_profile=log_profile,
+        log_data=log_data,
+        silent=True,
+        verbose=False,
+        profile=profile,
+    )
+
+    c = create_model(
+        model=model,
+        num_clusters=num_clusters,
+        ground_truth=ground_truth,
+        round=round,
+        fit_kwargs=fit_kwargs,
+        verbose=False,
+        **kwargs,
+    )
+    dataset = assign_model(c, verbose=False)
+    return dataset

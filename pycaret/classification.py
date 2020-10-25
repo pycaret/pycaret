@@ -2,7 +2,7 @@
 # Author: Moez Ali <moez.ali@queensu.ca>
 # License: MIT
 # Release: PyCaret 2.2
-# Last modified : 23/10/2020
+# Last modified : 25/10/2020
 
 import pandas as pd
 import numpy as np
@@ -109,7 +109,7 @@ def setup(
     >>> exp_name = setup(data = juice,  target = 'Purchase')
 
 
-    data : pandas.DataFrame
+    data: pandas.DataFrame
         Shape (n_samples, n_features), where n_samples is the number of samples and 
         n_features is the number of features.
 
@@ -809,7 +809,7 @@ def create_model(
     >>> lr = create_model('lr')
 
 
-    estimator : str or scikit-learn compatible object
+    estimator: str or scikit-learn compatible object
         ID of an estimator available in model library or pass an untrained 
         model object consistent with scikit-learn API. Estimators available  
         in the model library (ID - Name):
@@ -932,7 +932,7 @@ def tune_model(
     >>> tuned_lr = tune_model(lr) 
 
 
-    estimator : scikit-learn compatible object
+    estimator: scikit-learn compatible object
         Trained model object
 
 
@@ -1128,7 +1128,7 @@ def ensemble_model(
     >>> bagged_dt = ensemble_model(dt, method = 'Bagging')
     
 
-    estimator : scikit-learn compatible object
+    estimator: scikit-learn compatible object
         Trained model object
 
 
@@ -1233,7 +1233,7 @@ def blend_models(
 
 
 
-    estimator_list : list of scikit-learn compatible objects
+    estimator_list: list of scikit-learn compatible objects
         List of trained model objects
 
 
@@ -1339,11 +1339,11 @@ def stack_models(
     >>> stacker = stack_models(top3)
 
 
-    estimator_list : list of scikit-learn compatible objects
+    estimator_list: list of scikit-learn compatible objects
         List of trained model objects
 
 
-    meta_model : scikit-learn compatible object, default = None
+    meta_model: scikit-learn compatible object, default = None
         If set to None, Logistic Regression is trained as a meta model.
 
 
@@ -1445,11 +1445,11 @@ def plot_model(
     >>> plot_model(lr, plot = 'auc')
 
 
-    estimator : scikit-learn compatible object
+    estimator: scikit-learn compatible object
         Trained model object
 
 
-    plot : str, default = 'auc'
+    plot: str, default = 'auc'
         List of available plots (ID - Name):
 
         * 'auc' - Area Under the Curve
@@ -1554,7 +1554,7 @@ def evaluate_model(
     >>> evaluate_model(lr)
     
 
-    estimator : scikit-learn compatible object
+    estimator: scikit-learn compatible object
         Trained model object
 
 
@@ -1614,11 +1614,11 @@ def interpret_model(
     >>> interpret_model(xgboost)
 
 
-    estimator : scikit-learn compatible object
+    estimator: scikit-learn compatible object
         Trained model object
 
 
-    plot : str, default = 'summary'
+    plot: str, default = 'summary'
         Type of plot. Available options are: 'summary', 'correlation', and 'reason'.
 
 
@@ -1679,11 +1679,11 @@ def calibrate_model(
     >>> calibrated_dt = calibrate_model(dt)
 
 
-    estimator : scikit-learn compatible object
+    estimator: scikit-learn compatible object
         Trained model object
     
 
-    method : str, default = 'sigmoid'
+    method: str, default = 'sigmoid'
         The method to use for calibration. Can be 'sigmoid' which corresponds to 
         Platt's method or 'isotonic' which is a non-parametric approach. 
 
@@ -1760,23 +1760,23 @@ def optimize_threshold(
     >>> optimize_threshold(lr, true_negative = 10, false_negative = -100)
 
 
-    estimator : scikit-learn compatible object
+    estimator: scikit-learn compatible object
         Trained model object
     
 
-    true_positive : int, default = 0
+    true_positive: int, default = 0
         Cost function or returns for true positive.  
     
 
-    true_negative : int, default = 0
+    true_negative: int, default = 0
         Cost function or returns for true negative.
     
 
-    false_positive : int, default = 0
+    false_positive: int, default = 0
         Cost function or returns for false positive.    
     
 
-    false_negative : int, default = 0
+    false_negative: int, default = 0
         Cost function or returns for false negative.       
     
 
@@ -1825,16 +1825,16 @@ def predict_model(
     >>> pred_unseen = predict_model(lr, data = unseen_dataframe)
         
 
-    estimator : scikit-learn compatible object
+    estimator: scikit-learn compatible object
         Trained model object
 
 
-    data : pandas.DataFrame
+    data: pandas.DataFrame
         Shape (n_samples, n_features). All features used during training 
         must be available in the unseen dataset.
     
 
-    probability_threshold : float, default = None
+    probability_threshold: float, default = None
         Threshold for converting predicted probability to class label.
         It defaults to 0.5 for all classifiers unless explicitly defined 
         in this parameter. 
@@ -1898,7 +1898,7 @@ def finalize_model(
     >>> final_lr = finalize_model(lr)
     
 
-    estimator : scikit-learn compatible object
+    estimator: scikit-learn compatible object
         Trained model object
 
 
@@ -1913,7 +1913,7 @@ def finalize_model(
         the column name in the dataset containing group labels.
 
 
-    model_only : bool, default = True
+    model_only: bool, default = True
         When set to False, only model object is re-trained and all the 
         transformations in Pipeline are ignored.
 
@@ -1984,15 +1984,15 @@ def deploy_model(
     https://docs.microsoft.com/en-us/azure/storage/blobs/storage-quickstart-blobs-python?toc=%2Fpython%2Fazure%2FTOC.json
 
 
-    model : scikit-learn compatible object
+    model: scikit-learn compatible object
         Trained model object
     
 
-    model_name : str
+    model_name: str
         Name of model.
     
 
-    authentication : dict
+    authentication: dict
         Dictionary of applicable authentication tokens.
 
         When platform = 'aws':
@@ -2082,7 +2082,7 @@ def load_model(
     >>> saved_lr = load_model('saved_lr_model')
 
 
-    model_name : str, default = none
+    model_name: str, default = none
         Name of the model.
       
 
@@ -2142,7 +2142,7 @@ def automl(optimize: str = "Accuracy", use_holdout: bool = False) -> Any:
     >>> best_auc_model = automl(optimize = 'AUC')
 
 
-    optimize : str, default = 'Accuracy'
+    optimize: str, default = 'Accuracy'
         Metric to use for model selection. It also accepts custom metrics
         added using the ``add_metric`` function. 
 
@@ -2164,7 +2164,7 @@ def pull(pop: bool = False) -> pd.DataFrame:
     Returns last grid.
 
 
-    pop : bool, default = False
+    pop: bool, default = False
         If true, will pop (remove) the returned dataframe from the
         display container.
 
@@ -2192,7 +2192,7 @@ def models(
     >>> all_models = models()
 
 
-    type : str, default = None
+    type: str, default = None
         - linear : filters and only return linear models
         - tree : filters and only return tree based models
         - ensemble : filters and only return ensemble models
@@ -2372,11 +2372,11 @@ def get_logs(experiment_name: Optional[str] = None, save: bool = False) -> pd.Da
     >>> exp_logs = get_logs()
 
 
-    experiment_name : str, default = None
+    experiment_name: str, default = None
         When None current active run is used.
 
 
-    save : bool, default = False
+    save: bool, default = False
         When set to True, csv file is saved in current working directory.
 
 
