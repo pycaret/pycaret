@@ -66,20 +66,20 @@ def setup(
     group_names: Optional[List[str]] = None,
     feature_selection: bool = False,
     feature_selection_threshold: float = 0.8,
-    feature_selection_method: str = "classic", 
+    feature_selection_method: str = "classic",
     feature_interaction: bool = False,
     feature_ratio: bool = False,
     interaction_threshold: float = 0.01,
     fix_imbalance: bool = False,
     fix_imbalance_method: Optional[Any] = None,
     data_split_shuffle: bool = True,
-    data_split_stratify: Union[bool, List[str]] = False, 
-    fold_strategy: Union[str, Any] = "stratifiedkfold", 
+    data_split_stratify: Union[bool, List[str]] = False,
+    fold_strategy: Union[str, Any] = "stratifiedkfold",
     fold: int = 10,
     fold_shuffle: bool = False,
     fold_groups: Optional[Union[str, pd.DataFrame]] = None,
     n_jobs: Optional[int] = -1,
-    use_gpu: bool = False, 
+    use_gpu: bool = False,
     custom_pipeline: Union[
         Any, Tuple[str, Any], List[Any], List[Tuple[str, Any]]
     ] = None,
@@ -649,9 +649,7 @@ def setup(
 
 
 def compare_models(
-    include: Optional[
-        List[Union[str, Any]]
-    ] = None, 
+    include: Optional[List[Union[str, Any]]] = None,
     exclude: Optional[List[str]] = None,
     fold: Optional[Union[int, Any]] = None,
     round: int = 4,
@@ -1208,7 +1206,7 @@ def blend_models(
     choose_better: bool = False,
     optimize: str = "Accuracy",
     method: str = "auto",
-    weights: Optional[List[float]] = None, 
+    weights: Optional[List[float]] = None,
     fit_kwargs: Optional[dict] = None,
     groups: Optional[Union[str, Any]] = None,
     verbose: bool = True,
@@ -1317,7 +1315,6 @@ def stack_models(
     fit_kwargs: Optional[dict] = None,
     groups: Optional[Union[str, Any]] = None,
     verbose: bool = True,
-
 ) -> Any:
 
     """
@@ -1596,7 +1593,7 @@ def interpret_model(
     plot: str = "summary",
     feature: Optional[str] = None,
     observation: Optional[int] = None,
-    **kwargs, 
+    **kwargs,
 ):
 
     """ 
@@ -1924,15 +1921,15 @@ def finalize_model(
     """
 
     return pycaret.internal.tabular.finalize_model(
-        estimator=estimator, fit_kwargs=fit_kwargs, groups=groups, model_only=model_only,
+        estimator=estimator,
+        fit_kwargs=fit_kwargs,
+        groups=groups,
+        model_only=model_only,
     )
 
 
 def deploy_model(
-    model,
-    model_name: str,
-    authentication: dict,
-    platform: str = "aws", 
+    model, model_name: str, authentication: dict, platform: str = "aws",
 ):
 
     """
@@ -2159,7 +2156,7 @@ def automl(optimize: str = "Accuracy", use_holdout: bool = False) -> Any:
 
 
 def pull(pop: bool = False) -> pd.DataFrame:
-    
+
     """  
     Returns last grid.
 
@@ -2330,7 +2327,7 @@ def add_metric(
 
 
 def remove_metric(name_or_id: str):
-    
+
     """  
     Removes a metric from CV.
 

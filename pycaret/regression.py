@@ -12,7 +12,6 @@ from pycaret.internal.Display import Display, is_in_colab, enable_colab
 from typing import List, Tuple, Any, Union, Optional, Dict
 import warnings
 from IPython.utils import io
-import traceback
 
 from pycaret.internal.tabular import MLUsecase
 
@@ -641,16 +640,14 @@ def setup(
 
 
 def compare_models(
-    include: Optional[
-        List[Union[str, Any]]
-    ] = None, 
-    exclude: Optional[List[str]] = None, 
+    include: Optional[List[Union[str, Any]]] = None,
+    exclude: Optional[List[str]] = None,
     fold: Optional[Union[int, Any]] = None,
     round: int = 4,
     cross_validation: bool = True,
     sort: str = "R2",
     n_select: int = 1,
-    budget_time: Optional[float] = None, 
+    budget_time: Optional[float] = None,
     turbo: bool = True,
     errors: str = "ignore",
     fit_kwargs: Optional[dict] = None,
@@ -1546,7 +1543,7 @@ def interpret_model(
     plot: str = "summary",
     feature: Optional[str] = None,
     observation: Optional[int] = None,
-    **kwargs, 
+    **kwargs,
 ):
 
     """
@@ -1605,7 +1602,7 @@ def interpret_model(
 def predict_model(
     estimator,
     data: Optional[pd.DataFrame] = None,
-    round: int = 4, 
+    round: int = 4,
     verbose: bool = True,
 ) -> pd.DataFrame:
 
@@ -1717,7 +1714,10 @@ def finalize_model(
     """
 
     return pycaret.internal.tabular.finalize_model(
-        estimator=estimator, fit_kwargs=fit_kwargs, groups=groups, model_only=model_only,
+        estimator=estimator,
+        fit_kwargs=fit_kwargs,
+        groups=groups,
+        model_only=model_only,
     )
 
 
@@ -1952,7 +1952,7 @@ def automl(optimize: str = "R2", use_holdout: bool = False) -> Any:
     return pycaret.internal.tabular.automl(optimize=optimize, use_holdout=use_holdout)
 
 
-def pull(pop: bool = False) -> pd.DataFrame: 
+def pull(pop: bool = False) -> pd.DataFrame:
     """
     Returns last grid.
 

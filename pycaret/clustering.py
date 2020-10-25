@@ -15,6 +15,8 @@ import ipywidgets as ipw
 from typing import List, Tuple, Any, Union, Optional, Dict
 import pycaret.internal.tabular
 
+from pycaret.internal.tabular import MLUsecase
+
 warnings.filterwarnings("ignore")
 
 
@@ -585,7 +587,7 @@ def plot_model(
     plot: str = "cluster",
     feature: Optional[str] = None,
     label: bool = False,
-    scale: float = 1, 
+    scale: float = 1,
     save: bool = False,
 ):
 
@@ -878,15 +880,12 @@ def predict_model(model, data: pd.DataFrame) -> pd.DataFrame:
     """
 
     return pycaret.internal.tabular.predict_model_unsupervised(
-        estimator=model, data=data
+        estimator=model, data=data, ml_usecase=MLUsecase.CLUSTERING,
     )
 
 
 def deploy_model(
-    model,
-    model_name: str,
-    authentication: dict,
-    platform: str = "aws",
+    model, model_name: str, authentication: dict, platform: str = "aws",
 ):
 
     """
@@ -1406,6 +1405,7 @@ def load_config(file_name: str):
     """
 
     return pycaret.internal.tabular.load_config(file_name=file_name)
+
 
 def get_clusters(
     data,
