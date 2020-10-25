@@ -1492,7 +1492,7 @@ def evaluate_model(
 
     """
     This function displays a user interface for analyzing model performance of a
-    given estimator. It calls the ``plot_model`` function internally. 
+    trained estimator. It calls the ``plot_model`` function internally. 
     
     Example
     --------

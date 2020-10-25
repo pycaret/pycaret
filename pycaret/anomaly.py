@@ -1,8 +1,8 @@
 # Module: Anomaly Detection
 # Author: Moez Ali <moez.ali@queensu.ca>
 # License: MIT
-# Release: PyCaret 2.1.1
-# Last modified : 29/08/2020
+# Release: PyCaret 2.2
+# Last modified : 25/10/2020
 
 import sys
 import datetime, time
@@ -30,7 +30,7 @@ def setup(
     high_cardinality_features: Optional[List[str]] = None,
     high_cardinality_method: str = "frequency",
     numeric_features: Optional[List[str]] = None,
-    numeric_imputation: str = "mean",  # method 'zero' added in pycaret==2.1
+    numeric_imputation: str = "mean",
     numeric_iterative_imputer: Union[str, Any] = "lightgbm",
     date_features: Optional[List[str]] = None,
     ignore_features: Optional[List[str]] = None,
@@ -453,7 +453,7 @@ def create_model(
     >>> knn = create_model('knn')
 
 
-    model : string / object
+    model: string / object
         ID of an model available in the model library or pass an untrained 
         model object consistent with scikit-learn API. Estimators available  
         in the model library (ID - Name):
@@ -472,7 +472,9 @@ def create_model(
 
 
     fraction: float, default = 0.05
-        The percentage of outliers in the dataset.
+        The amount of contamination of the data set, i.e. the proportion of 
+        outliers in the data set. Used when fitting to define the threshold on 
+        the decision function.
 
 
     verbose: Boolean, default = True
@@ -506,7 +508,8 @@ def assign_model(
 ) -> pd.DataFrame:
 
     """
-    This function assigns anomaly labels to the dataset (1 = outlier, 0 = inlier).
+    This function assigns anomaly labels to the dataset for a given model. 
+    (1 = outlier, 0 = inlier).
 
 
     Example
@@ -524,7 +527,7 @@ def assign_model(
 
 
     transformation: bool, default = False
-        Whether to apply cluster labels on transformed dataset. 
+        Whether to apply anomaly labels on the transformed dataset. 
     
     
     score: Boolean, default = True
@@ -534,6 +537,7 @@ def assign_model(
     verbose: Boolean, default = True
         Status update is not printed when verbose is set to False.
         
+
     Returns:
         pandas.DataFrame
   
@@ -570,7 +574,7 @@ def plot_model(
         Trained Model Object
 
 
-    plot : str, default = 'cluster'
+    plot : str, default = 'tsne'
         List of available plots (ID - Name):
         
         * 'tsne' - t-SNE (3d) Dimension Plot
@@ -578,11 +582,9 @@ def plot_model(
 
 
     feature : str, default = None
-        Feature to be evaluated when plot = 'distribution'. When ``plot`` type is 
-        'cluster' or 'tsne' feature column is used as a hoverover tooltip and/or 
-        label when the ``label`` param is set to True. When the ``plot`` type is 
-        'cluster' or 'tsne' and feature is None, first column of the dataset is
-        used.
+        Feature to be used as a hoverover tooltip and/or label when the ``label`` 
+        param is set to True. When feature is None, first column of the dataset 
+        is used by default.
         
 
     label : bool, default = False
@@ -612,7 +614,7 @@ def evaluate_model(
 
     """
     This function displays a user interface for analyzing model performance of a
-    given estimator. It calls the ``plot_model`` function internally. 
+    trained model. It calls the ``plot_model`` function internally. 
     
 
     Example
@@ -630,11 +632,9 @@ def evaluate_model(
 
 
     feature : str, default = None
-        Feature to be evaluated when plot = 'distribution'. When ``plot`` type is 
-        'cluster' or 'tsne' feature column is used as a hoverover tooltip and/or 
-        label when the ``label`` param is set to True. When the ``plot`` type is 
-        'cluster' or 'tsne' and feature is None, first column of the dataset is
-        used.
+        Feature to be used as a hoverover tooltip and/or label when the ``label`` 
+        param is set to True. When feature is None, first column of the dataset 
+        is used by default.
 
 
     fit_kwargs: dict, default = {} (empty dict)
@@ -666,26 +666,21 @@ def tune_model(
 ):
 
     """
-    This function tunes the fraction parameter using a predefined grid with
-    the objective of optimizing a supervised learning metric as defined in 
-    the optimize param. You can choose the supervised estimator from a large 
-    library available in pycaret. By default, supervised estimator is Linear. 
-    
-    This function returns the tuned model object.
+    This function tunes the ``fraction`` parameter of a given model.
+
     
     Example
     -------
     >>> from pycaret.datasets import get_data
-    >>> boston = get_data('boston')
-    >>> experiment_name = setup(data = boston, normalize = True)
-    >>> tuned_knn = tune_model(model = 'knn', supervised_target = 'medv') 
+    >>> juice = get_data('juice')
+    >>> from pycaret.anomaly import *
+    >>> exp_name = setup(data = juice)
+    >>> tuned_knn = tune_model(model = 'knn', supervised_target = 'Purchase') 
     
-    This will return tuned k-Nearest Neighbors model.
-
-    Parameters
-    ----------
-    model : str, default = None
-        Enter ID of the models available in model library (ID - Model):
+    
+    model: str, default = None
+        ID of an model available in the model library. Models that can be
+        tuned in this function (ID - Model):
 
         * 'abod' - Angle-base Outlier Detection       
         * 'cluster' - Clustering-Based Local Outlier            
@@ -699,103 +694,98 @@ def tune_model(
         * 'sod' - Subspace Outlier Detection                       
         * 'sos' - Stochastic Outlier Selection    
     
-    supervised_target: string
-        Name of the target column for supervised learning.
-    
-    method: str, default = 'drop'
-        When method set to drop, it will drop the outlier rows from training dataset 
-        of supervised estimator, when method set to 'surrogate', it will use the
-        decision function and label as a feature without dropping the outliers from
-        training dataset.
-    
-    estimator: str, default = None
-        For Classification (ID - Name):
 
-        * 'lr' - Logistic Regression             
-        * 'knn' - K Nearest Neighbour             
-        * 'nb' - Naive Bayes                                 
-        * 'dt' - Decision Tree Classifier                           
-        * 'svm' - SVM - Linear Kernel             	            
-        * 'rbfsvm' - SVM - Radial Kernel                            
-        * 'gpc' - Gaussian Process Classifier                       
-        * 'mlp' - Multi Level Perceptron                            
-        * 'ridge' - Ridge Classifier                
-        * 'rf' - Random Forest Classifier                           
-        * 'qda' - Quadratic Discriminant Analysis                   
-        * 'ada' - Ada Boost Classifier                             
-        * 'gbc' - Gradient Boosting Classifier                              
-        * 'lda' - Linear Discriminant Analysis                      
-        * 'et' - Extra Trees Classifier                             
-        * 'xgboost' - Extreme Gradient Boosting                     
-        * 'lightgbm' - Light Gradient Boosting                       
-        * 'catboost' - CatBoost Classifier             
+    supervised_target: str
+        Name of the target column containing labels.
 
-        For Regression (ID - Name):
 
-        * 'lr' - Linear Regression                                  
-        * 'lasso' - Lasso Regression              
-        * 'ridge' - Ridge Regression              
-        * 'en' - Elastic Net                   
-        * 'lar' - Least Angle Regression                
-        * 'llar' - Lasso Least Angle Regression                     
-        * 'omp' - Orthogonal Matching Pursuit                        
-        * 'br' - Bayesian Ridge                                   
-        * 'ard' - Automatic Relevance Determ.                     
-        * 'par' - Passive Aggressive Regressor                      
-        * 'ransac' - Random Sample Consensus              
-        * 'tr' - TheilSen Regressor                               
-        * 'huber' - Huber Regressor                                              
-        * 'kr' - Kernel Ridge                                                       
-        * 'svm' - Support Vector Machine                                   
-        * 'knn' - K Neighbors Regressor                                    
-        * 'dt' - Decision Tree                                                     
-        * 'rf' - Random Forest                                                     
-        * 'et' - Extra Trees Regressor                                     
-        * 'ada' - AdaBoost Regressor                                               
-        * 'gbr' - Gradient Boosting                                            
-        * 'mlp' - Multi Level Perceptron                                  
-        * 'xgboost' - Extreme Gradient Boosting                                   
-        * 'lightgbm' - Light Gradient Boosting                           
-        * 'catboost' - CatBoost Regressor                 
+    supervised_type: str, default = None
+        Type of task. 'classification' or 'regression'. Automatically inferred
+        when None.
+
+
+    supervised_estimator: str, default = None
+        Classification (ID - Name):
+            * 'lr' - Logistic Regression             
+            * 'knn' - K Nearest Neighbour             
+            * 'nb' - Naive Bayes                                 
+            * 'dt' - Decision Tree Classifier                           
+            * 'svm' - SVM - Linear Kernel             	            
+            * 'rbfsvm' - SVM - Radial Kernel                            
+            * 'gpc' - Gaussian Process Classifier                       
+            * 'mlp' - Multi Level Perceptron                            
+            * 'ridge' - Ridge Classifier                
+            * 'rf' - Random Forest Classifier                           
+            * 'qda' - Quadratic Discriminant Analysis                   
+            * 'ada' - Ada Boost Classifier                             
+            * 'gbc' - Gradient Boosting Classifier                              
+            * 'lda' - Linear Discriminant Analysis                      
+            * 'et' - Extra Trees Classifier                             
+            * 'xgboost' - Extreme Gradient Boosting                     
+            * 'lightgbm' - Light Gradient Boosting                       
+            * 'catboost' - CatBoost Classifier             
         
-        If set to None, Linear model is used by default for both classification
-        and regression tasks.
+        Regression (ID - Name):
+            * 'lr' - Linear Regression                                
+            * 'lasso' - Lasso Regression              
+            * 'ridge' - Ridge Regression              
+            * 'en' - Elastic Net                   
+            * 'lar' - Least Angle Regression                
+            * 'llar' - Lasso Least Angle Regression                     
+            * 'omp' - Orthogonal Matching Pursuit                        
+            * 'br' - Bayesian Ridge                                   
+            * 'ard' - Automatic Relevance Determ.                     
+            * 'par' - Passive Aggressive Regressor                      
+            * 'ransac' - Random Sample Consensus              
+            * 'tr' - TheilSen Regressor                               
+            * 'huber' - Huber Regressor                                              
+            * 'kr' - Kernel Ridge                                                       
+            * 'svm' - Support Vector Machine                                   
+            * 'knn' - K Neighbors Regressor                                    
+            * 'dt' - Decision Tree                                                     
+            * 'rf' - Random Forest                                                     
+            * 'et' - Extra Trees Regressor                                     
+            * 'ada' - AdaBoost Regressor                                               
+            * 'gbr' - Gradient Boosting                                            
+            * 'mlp' - Multi Level Perceptron                                  
+            * 'xgboost' - Extreme Gradient Boosting                                   
+            * 'lightgbm' - Light Gradient Boosting                           
+            * 'catboost' - CatBoost Regressor                   
+
+
+    method: str, default = 'drop'
+        When method set to drop, it will drop the outliers from training dataset. 
+        When 'surrogate', it uses decision functoin and label as a feature for 
+        during training.
+    
     
     optimize: str, default = None
         For Classification tasks:
-            Accuracy, AUC, Recall, Precision, F1, Kappa
+            Accuracy, AUC, Recall, Precision, F1, Kappa (default = 'Accuracy')
         
         For Regression tasks:
-            MAE, MSE, RMSE, R2, RMSLE, MAPE
-        
-        If set to None, default is 'Accuracy' for classification and 'R2' for 
-        regression tasks.
+            MAE, MSE, RMSE, R2, RMSLE, MAPE (default = 'R2')
+
     
     custom_grid: list, default = None
         By default, a pre-defined list of fraction values is iterated over to 
         optimize the supervised objective. To overwrite default iteration,
         pass a list of fraction value to iterate over in custom_grid param.
     
+
     fold: integer, default = 10
         Number of folds to be used in Kfold CV. Must be at least 2. 
+
 
     verbose: Boolean, default = True
         Status update is not printed when verbose is set to False.
 
-    Returns
-    -------
-    Visual_Plot
-        Visual plot with fraction param on x-axis with metric to
-        optimize on y-axis. Also, prints the best model metric.
-    
-    model
-        trained model object with best fraction param. 
+
+    Returns:
+        Trained Model with optimized ``fraction`` parameter.
           
     """
 
-    """
-    exception handling starts here
-    """
     return pycaret.internal.tabular.tune_model_unsupervised(
         model=model,
         supervised_target=supervised_target,
@@ -819,29 +809,29 @@ def predict_model(model, data: pd.DataFrame) -> pd.DataFrame:
     trained model object created using one of the function in pycaret that returns 
     a trained model object. New data must be passed to data param as pandas Dataframe. 
     
+
     Example
     -------
     >>> from pycaret.datasets import get_data
     >>> anomaly = get_data('anomaly')
-    >>> experiment_name = setup(data = anomaly)
+    >>> from pycaret.anomaly import *
+    >>> exp_name = setup(data = anomaly)
     >>> knn = create_model('knn')
-    >>> knn_predictions = predict_model(model = knn, data = anomaly)
+    >>> knn_predictions = predict_model(model = knn, data = unseen_data)
         
-    Parameters
-    ----------
-    model : object / string,  default = None
-        When model is passed as string, load_model() is called internally to load the
-        pickle file from active directory or cloud platform when platform param is passed.
+
+    model: scikit-learn compatible object
+        Trained Model Object.
     
+
     data : pandas.DataFrame
         Shape (n_samples, n_features) where n_samples is the number of samples and 
-        n_features is the number of features. All features used during training must be 
-        present in the new dataset.
-     
-    Returns
-    -------
-    info_grid
-        Information grid is printed when data is None.             
+        n_features is the number of features.
+
+
+    Returns:
+        pandas.DataFrame
+              
     
     Warnings
     --------
@@ -866,26 +856,20 @@ def deploy_model(
 ):
 
     """
-    (In Preview)
-
-    This function deploys the transformation pipeline and trained model object for
-    production use. The platform of deployment can be defined under the platform
-    param along with the applicable authentication tokens which are passed as a
-    dictionary to the authentication param.
+     This function deploys the transformation pipeline and trained model object for
+    production use.
     
     Example
     -------
     >>> from pycaret.datasets import get_data
     >>> anomaly = get_data('anomaly')
-    >>> experiment_name = setup(data = juice,  target = 'Purchase')
-    >>> lr = create_model('lr')
-    >>> deploy_model(model = lr, model_name = 'deploy_lr', platform = 'aws', authentication = {'bucket' : 'pycaret-test'})
-    
-    This will deploy the model on an AWS S3 account under bucket 'pycaret-test'
-    
-    Notes
-    -----
-    For AWS users:
+    >>> from pycaret.anomaly import *
+    >>> exp_name = setup(data = anomaly)
+    >>> knn = create_model('knn')
+    >>> deploy_model(model = knn, model_name = 'knn-for-deployment', platform = 'aws', authentication = {'bucket' : 'S3-bucket-name'})
+        
+
+    AWS users:
 
     Before deploying a model to an AWS S3 ('aws'), environment variables must be 
     configured using the command line interface. To configure AWS env. variables, 
@@ -898,7 +882,8 @@ def deploy_model(
     - Default Region Name (can be seen under Global settings on your AWS console)
     - Default output format (must be left blank)
 
-    For GCP users:
+    
+    GCP users:
 
     Before deploying a model to Google Cloud Platform (GCP), project must be created 
     either using command line or GCP console. Once project is created, you must create 
@@ -907,55 +892,45 @@ def deploy_model(
 
     https://cloud.google.com/docs/authentication/production
 
-    - Google Cloud Project
-    - Service Account Authetication
-
-    For Azure users:
+    
+    Azure users:
 
     Before deploying a model to Microsoft's Azure (Azure), environment variables
     for connection string must be set. In order to get connection string, user has
-    to create account of Azure. Once it is done, create a Storage account. In the settings
-    section of storage account, user can get the connection string.
+    to create account of Azure. Once it is done, create a Storage account. In the 
+    settings section of storage account, user can get the connection string.
 
     Read below link for more details.
     https://docs.microsoft.com/en-us/azure/storage/blobs/storage-quickstart-blobs-python?toc=%2Fpython%2Fazure%2FTOC.json
 
-    - Azure Storage Account
 
-    Parameters
-    ----------
-    model : object
-        A trained model object should be passed as an estimator. 
+    model: scikit-learn compatible object
+        Trained model object
     
-    model_name : str
-        Name of model to be passed as a str.
+
+    model_name: str
+        Name of model.
     
-    authentication : dict
+
+    authentication: dict
         Dictionary of applicable authentication tokens.
 
         When platform = 'aws':
-        {'bucket' : 'Name of Bucket on S3'}
+        {'bucket' : 'S3-bucket-name'}
 
         When platform = 'gcp':
-        {'project': 'gcp_pycaret', 'bucket' : 'pycaret-test'}
+        {'project': 'project-name', 'bucket' : 'bucket-name'}
 
         When platform = 'azure':
-        {'container': 'pycaret-test'}
+        {'container': 'container-name'}
     
-    platform: str, default = 'aws'
-        Name of platform for deployment. Current available options are: 'aws', 'gcp' and 'azure'
 
-    Returns
-    -------
-    Success_Message
+    platform: str, default = 'aws'
+        Name of the platform. Current available options are: 'aws', 'gcp' and 'azure'.
     
-    Warnings
-    --------
-    - This function uses file storage services to deploy the model on cloud platform. 
-      As such, this is efficient for batch-use. Where the production objective is to 
-      obtain prediction at an instance level, this may not be the efficient choice as 
-      it transmits the binary pickle file between your local python environment and
-      the platform. 
+
+    Returns:
+        None
     
     """
 
@@ -971,38 +946,38 @@ def save_model(model, model_name: str, model_only: bool = False, verbose: bool =
 
     """
     This function saves the transformation pipeline and trained model object 
-    into the current active directory as a pickle file for later use. 
+    into the current working directory as a pickle file for later use. 
     
+
     Example
     -------
     >>> from pycaret.datasets import get_data
-    >>> juice = get_data('juice')
-    >>> experiment_name = setup(data = juice,  target = 'Purchase')
-    >>> lr = create_model('lr')
-    >>> save_model(lr, 'lr_model_23122019')
+    >>> anomaly = get_data('anomaly')
+    >>> from pycaret.anomaly import *
+    >>> exp_name = setup(data = anomaly)
+    >>> knn = create_model('knn')
+    >>> save_model(knn, 'saved_knn_model')
     
-    This will save the transformation pipeline and model as a binary pickle
-    file in the current active directory. 
 
-    Parameters
-    ----------
-    model : object, default = none
-        A trained model object should be passed as an estimator. 
+    model: scikit-learn compatible object
+        Trained model object
     
-    model_name : str, default = none
-        Name of pickle file to be passed as a string.
+
+    model_name: str, default = none
+        Name of the model.
     
-    model_only : bool, default = False
-        When set to True, only trained model object is saved and all the 
-        transformations are ignored.
+
+    model_only: bool, default = False
+        When set to True, only trained model object is saved instead of the 
+        entire pipeline.
+
 
     verbose: bool, default = True
         Success message is not printed when verbose is set to False.
 
-    Returns
-    -------
-    (model, model_filename):
-        Tuple of the model object and the filename it was saved under.
+
+    Returns:
+        Tuple of the model object and the filename.
 
     """
 
@@ -1019,44 +994,42 @@ def load_model(
 ):
 
     """
-    This function loads a previously saved transformation pipeline and model 
-    from the current active directory into the current python environment. 
-    Load object must be a pickle file.
+    This function loads a previously saved pipeline.
     
     Example
     -------
-    >>> saved_lr = load_model('lr_model_23122019')
+    >>> from pycaret.anomaly import load_model
+    >>> saved_knn = load_model('saved_knn_model')
     
-    This will load the previously saved model in saved_lr variable. The file 
-    must be in the current directory.
 
-    Parameters
-    ----------
-    model_name : str, default = none
-        Name of pickle file to be passed as a string.
+    model_name: str, default = none
+        Name of the model.
       
+
     platform: str, default = None
-        Name of platform, if loading model from cloud. Current available options are:
+        Name of the platform. Available options are:
         'aws', 'gcp' and 'azure'.
     
-    authentication : dict
+
+    authentication: dict
         dictionary of applicable authentication tokens.
 
-        When platform = 'aws':
+        when platform = 'aws':
         {'bucket' : 'Name of Bucket on S3'}
 
-        When platform = 'gcp':
+        when platform = 'gcp':
         {'project': 'gcp_pycaret', 'bucket' : 'pycaret-test'}
 
-        When platform = 'azure':
+        when platform = 'azure':
         {'container': 'pycaret-test'}
     
+
     verbose: bool, default = True
         Success message is not printed when verbose is set to False.
 
-    Returns
-    -------
-    Model Object
+
+    Returns:
+        Trained Model
 
     """
 
@@ -1070,18 +1043,15 @@ def load_model(
 
 def pull(pop: bool = False) -> pd.DataFrame:  # added in pycaret==2.2.0
     """
-    Returns latest displayed table.
+    Returns last grid.
 
-    Parameters
-    ----------
+
     pop : bool, default = False
         If true, will pop (remove) the returned dataframe from the
         display container.
 
-    Returns
-    -------
-    pandas.DataFrame
-        Equivalent to get_config('display_container')[-1]
+    Returns:
+        pandas.DataFrame
 
     """
     return pycaret.internal.tabular.pull(pop=pop)
@@ -1092,27 +1062,29 @@ def models(
 ) -> pd.DataFrame:
 
     """
-    Returns table of models available in model library.
+    Returns table of models available in the model library.
+
 
     Example
     -------
-    >>> _all_models = models()
+    >>> from pycaret.datasets import get_data
+    >>> anomaly = get_data('anomaly')
+    >>> from pycaret.anomaly import *
+    >>> exp_name = setup(data = anomaly)
+    >>> all_models = models()
 
-    This will return pandas dataframe with all available 
-    models and their metadata.
 
-    Parameters
-    ----------
     internal: bool, default = False
         If True, will return extra columns and rows used internally.
+
 
     raise_errors: bool, default = True
         If False, will suppress all exceptions, ignoring models
         that couldn't be created.
 
-    Returns
-    -------
-    pandas.DataFrame
+
+    Returns:
+        pandas.DataFrame
 
     """
     return pycaret.internal.tabular.models(
@@ -1123,26 +1095,30 @@ def models(
 def get_logs(experiment_name: Optional[str] = None, save: bool = False) -> pd.DataFrame:
 
     """
-    Returns a table with experiment logs consisting
-    run details, parameter, metrics and tags. 
+    Returns a table of experiment logs. Only works when ``log_experiment``
+    is True when initializing the ``setup`` function.
+
 
     Example
     -------
-    >>> logs = get_logs()
+    >>> from pycaret.datasets import get_data
+    >>> anomaly = get_data('anomaly')
+    >>> from pycaret.anomaly import *
+    >>> exp_name = setup(data = anomaly,  log_experiment = True) 
+    >>> knn = create_model('knn')
+    >>> exp_logs = get_logs()
 
-    This will return pandas dataframe.
 
-    Parameters
-    ----------
-    experiment_name : str, default = None
-        When set to None current active run is used.
+    experiment_name: str, default = None
+        When None current active run is used.
 
-    save : bool, default = False
-        When set to True, csv file is saved in current directory.
 
-    Returns
-    -------
-    pandas.DataFrame
+    save: bool, default = False
+        When set to True, csv file is saved in current working directory.
+
+
+    Returns:
+        pandas.DataFrame
 
     """
 
@@ -1152,18 +1128,13 @@ def get_logs(experiment_name: Optional[str] = None, save: bool = False) -> pd.Da
 def get_config(variable: str):
 
     """
-    This function is used to access global environment variables.
-    Following variables can be accessed:
+    This function retrieves the global variables created when initializing the 
+    ``setup`` function. Following variables are accessible:
 
     - X: Transformed dataset (X)
-    - y: Transformed dataset (y)  
-    - X_train: Transformed train dataset (X)
-    - X_test: Transformed test/holdout dataset (X)
-    - y_train: Transformed train dataset (y)
-    - y_test: Transformed test/holdout dataset (y)
+    - data_before_preprocess: data before preprocessing
     - seed: random state set through session_id
     - prep_pipe: Transformation pipeline configured through setup
-    - fold_shuffle_param: shuffle parameter used in Kfolds
     - n_jobs_param: n_jobs parameter used in model training
     - html_param: html_param configured through setup
     - create_model_container: results grid storage container
@@ -1173,21 +1144,20 @@ def get_config(variable: str):
     - logging_param: log_experiment param set through setup
     - log_plots_param: log_plots param set through setup
     - USI: Unique session ID parameter set through setup
-    - fix_imbalance_param: fix_imbalance param set through setup
-    - fix_imbalance_method_param: fix_imbalance_method param set through setup
-    - data_before_preprocess: data before preprocessing
-    - target_param: name of target variable
     - gpu_param: use_gpu param configured through setup
+
 
     Example
     -------
-    >>> X_train = get_config('X_train') 
+    >>> from pycaret.datasets import get_data
+    >>> anomaly = get_data('anomaly')
+    >>> from pycaret.anomaly import *
+    >>> exp_name = setup(data = anomaly)
+    >>> X = get_config('X') 
 
-    This will return X_train transformed dataset.
 
-    Returns
-    -------
-    variable
+    Returns:
+        Global variable
 
     """
 
@@ -1197,18 +1167,13 @@ def get_config(variable: str):
 def set_config(variable: str, value):
 
     """
-    This function is used to reset global environment variables.
-    Following variables can be accessed:
+    This function resets the global variables. Following variables are 
+    accessible:
 
     - X: Transformed dataset (X)
-    - y: Transformed dataset (y)  
-    - X_train: Transformed train dataset (X)
-    - X_test: Transformed test/holdout dataset (X)
-    - y_train: Transformed train dataset (y)
-    - y_test: Transformed test/holdout dataset (y)
+    - data_before_preprocess: data before preprocessing
     - seed: random state set through session_id
     - prep_pipe: Transformation pipeline configured through setup
-    - fold_shuffle_param: shuffle parameter used in Kfolds
     - n_jobs_param: n_jobs parameter used in model training
     - html_param: html_param configured through setup
     - create_model_container: results grid storage container
@@ -1218,15 +1183,20 @@ def set_config(variable: str, value):
     - logging_param: log_experiment param set through setup
     - log_plots_param: log_plots param set through setup
     - USI: Unique session ID parameter set through setup
-    - fix_imbalance_param: fix_imbalance param set through setup
-    - fix_imbalance_method_param: fix_imbalance_method param set through setup
-    - data_before_preprocess: data before preprocessing
+    - gpu_param: use_gpu param configured through setup
+
 
     Example
     -------
+    >>> from pycaret.datasets import get_data
+    >>> anomaly = get_data('anomaly')
+    >>> from pycaret.anomaly import *
+    >>> exp_name = setup(data = anomaly)
     >>> set_config('seed', 123) 
 
-    This will set the global seed to '123'.
+
+    Returns:
+        None
 
     """
 
@@ -1236,14 +1206,21 @@ def set_config(variable: str, value):
 def save_config(file_name: str):
 
     """
-    This function is used to save all enviroment variables to file,
-    allowing to later resume modeling without rerunning setup().
+    This function save all global variables to a pickle file, allowing to
+    later resume without rerunning the ``setup``.
+
 
     Example
     -------
+    >>> from pycaret.datasets import get_data
+    >>> anomaly = get_data('anomaly')
+    >>> from pycaret.anomaly import *
+    >>> exp_name = setup(data = anomaly)
     >>> save_config('myvars.pkl') 
 
-    This will save all enviroment variables to 'myvars.pkl'.
+
+    Returns:
+        None    
 
     """
 
@@ -1253,15 +1230,18 @@ def save_config(file_name: str):
 def load_config(file_name: str):
 
     """
-    This function is used to load enviroment variables from file created with save_config(),
-    allowing to later resume modeling without rerunning setup().
+    This function loads global variables from a pickle file into Python
+    environment.
 
 
     Example
     -------
+    >>> from pycaret.anomaly import load_config
     >>> load_config('myvars.pkl') 
+    
 
-    This will load all enviroment variables from 'myvars.pkl'.
+    Returns:
+        Global variables
 
     """
 

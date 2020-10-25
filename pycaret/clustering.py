@@ -563,7 +563,7 @@ def assign_model(
     
 
     transformation: bool, default = False
-        Whether to apply cluster labels on transformed dataset. 
+        Whether to apply cluster labels on the transformed dataset. 
     
     
     verbose: Boolean, default = True
@@ -654,7 +654,7 @@ def evaluate_model(
 
     """
     This function displays a user interface for analyzing model performance of a
-    given model. It calls the ``plot_model`` function internally. 
+    trained model. It calls the ``plot_model`` function internally. 
     
     Example
     --------
@@ -705,6 +705,7 @@ def tune_model(
     round: int = 4,
     verbose: bool = True,
 ):
+
     """
     This function tunes the ``num_clusters`` parameter of a given model. 
     
@@ -735,10 +736,10 @@ def tune_model(
 
     supervised_type: str, default = None
         Type of task. 'classification' or 'regression'. Automatically inferred
-        by default.
+        when None.
         
 
-    estimator: str, default = None
+    supervised_estimator: str, default = None
         Classification (ID - Name):
             * 'lr' - Logistic Regression             
             * 'knn' - K Nearest Neighbour             
@@ -789,14 +790,11 @@ def tune_model(
 
     optimize: str, default = None
         For Classification tasks:
-            Accuracy, AUC, Recall, Precision, F1, Kappa
+            Accuracy, AUC, Recall, Precision, F1, Kappa (default = 'Accuracy')
         
         For Regression tasks:
-            MAE, MSE, RMSE, R2, RMSLE, MAPE
+            MAE, MSE, RMSE, R2, RMSLE, MAPE (default = 'R2')
             
-    When set to None, default is 'Accuracy' for classification and 'R2' for 
-    regression tasks.
-    
 
     custom_grid: list, default = None
         By default, a pre-defined number of clusters is iterated over to 
@@ -813,7 +811,7 @@ def tune_model(
 
 
     Returns:
-        Trained Model.
+        Trained Model with optimized ``num_clusters`` parameter.
     
 
     Warnings
@@ -869,7 +867,7 @@ def predict_model(model, data: pd.DataFrame) -> pd.DataFrame:
 
     Warnings
     --------
-    - Models that do not support 'predict' function cannot be used in predict_model(). 
+    - Models that do not support 'predict' method cannot be used in the ``predict_model``.
 
     - The behavior of the predict_model is changed in version 2.1 without backward compatibility.
       As such, the pipelines trained using the version (<= 2.0), may not work for inference 
@@ -888,7 +886,7 @@ def deploy_model(
     model,
     model_name: str,
     authentication: dict,
-    platform: str = "aws",  # added gcp and azure support in pycaret==2.1
+    platform: str = "aws",
 ):
 
     """
