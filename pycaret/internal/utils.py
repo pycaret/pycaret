@@ -626,9 +626,16 @@ def can_early_stop(
 
 
 def infer_ml_usecase(y: pd.Series) -> Tuple[str, str]:
+    logger = get_logger()
+    logger.info("AUTO INFER")
     c1 = y.dtype == "int64"
+    logger.info(f"{c1} : {y.dtype}")
     c2 = y.nunique() <= 20
+    logger.info(f"{c2} : {y.nunique()}")
     c3 = y.dtype.name in ["object", "bool", "category"]
+    logger.info(f"{c3} : {y.dtype.name}")
+
+    logger.info(f"{(c1 and c2) or c3}")
 
     if (c1 and c2) or c3:
         ml_usecase = "classification"
