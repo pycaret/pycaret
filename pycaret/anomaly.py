@@ -860,8 +860,8 @@ def deploy_model(
 ):
 
     """
-     This function deploys the transformation pipeline and trained model object for
-    production use.
+    This function deploys the transformation pipeline and trained model on cloud.
+    
     
     Example
     -------
@@ -873,39 +873,34 @@ def deploy_model(
     >>> deploy_model(model = knn, model_name = 'knn-for-deployment', platform = 'aws', authentication = {'bucket' : 'S3-bucket-name'})
         
 
-    AWS users:
+    Amazon Web Service (AWS) users:
+        To deploy a model on AWS S3 ('aws'), environment variables must be set in your
+        local environment. To configure AWS environment variables, type ``aws configure`` 
+        in the command line. Following information from the IAM portal of amazon console 
+        account is required:
 
-    Before deploying a model to an AWS S3 ('aws'), environment variables must be 
-    configured using the command line interface. To configure AWS env. variables, 
-    type aws configure in your python command line. The following information is
-    required which can be generated using the Identity and Access Management (IAM) 
-    portal of your amazon console account:
+        - AWS Access Key ID
+        - AWS Secret Key Access
+        - Default Region Name (can be seen under Global settings on your AWS console)
 
-    - AWS Access Key ID
-    - AWS Secret Key Access
-    - Default Region Name (can be seen under Global settings on your AWS console)
-    - Default output format (must be left blank)
+        More info: https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-envvars.html
 
-    
-    GCP users:
 
-    Before deploying a model to Google Cloud Platform (GCP), project must be created 
-    either using command line or GCP console. Once project is created, you must create 
-    a service account and download the service account key as a JSON file, which is 
-    then used to set environment variable. 
+    Google Cloud Platform (GCP) users:
+        To deploy a model on Google Cloud Platform ('gcp'), project must be created 
+        using command line or GCP console. Once project is created, you must create 
+        a service account and download the service account key as a JSON file to set 
+        environment variables in your local environment. 
 
-    https://cloud.google.com/docs/authentication/production
+        More info: https://cloud.google.com/docs/authentication/production
 
     
-    Azure users:
+    Microsoft Azure (Azure) users:
+        To deploy a model on Microsoft Azure ('azure'), environment variables for connection
+        string must be set in your local environment. Go to settings of storage account on
+        Azure portal to access the connection string required. 
 
-    Before deploying a model to Microsoft's Azure (Azure), environment variables
-    for connection string must be set. In order to get connection string, user has
-    to create account of Azure. Once it is done, create a Storage account. In the 
-    settings section of storage account, user can get the connection string.
-
-    Read below link for more details.
-    https://docs.microsoft.com/en-us/azure/storage/blobs/storage-quickstart-blobs-python?toc=%2Fpython%2Fazure%2FTOC.json
+        More info: https://docs.microsoft.com/en-us/azure/storage/blobs/storage-quickstart-blobs-python?toc=%2Fpython%2Fazure%2FTOC.json
 
 
     model: scikit-learn compatible object
@@ -923,14 +918,14 @@ def deploy_model(
         {'bucket' : 'S3-bucket-name'}
 
         When platform = 'gcp':
-        {'project': 'project-name', 'bucket' : 'bucket-name'}
+        {'project': 'gcp-project-name', 'bucket' : 'gcp-bucket-name'}
 
         When platform = 'azure':
-        {'container': 'container-name'}
+        {'container': 'azure-container-name'}
     
 
     platform: str, default = 'aws'
-        Name of the platform. Current available options are: 'aws', 'gcp' and 'azure'.
+        Name of the platform. Currently supported platforms: 'aws', 'gcp' and 'azure'.
     
 
     Returns:

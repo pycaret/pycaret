@@ -1931,8 +1931,8 @@ def deploy_model(
 ):
 
     """
-    This function deploys the transformation pipeline and trained model object for
-    production use.
+    This function deploys the transformation pipeline and trained model on cloud.
+    
     
     Example
     -------
@@ -1953,7 +1953,6 @@ def deploy_model(
         - AWS Access Key ID
         - AWS Secret Key Access
         - Default Region Name (can be seen under Global settings on your AWS console)
-        - Default output format (must be left blank)
 
         More info: https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-envvars.html
 
@@ -1990,10 +1989,10 @@ def deploy_model(
         {'bucket' : 'S3-bucket-name'}
 
         When platform = 'gcp':
-        {'project': 'project-name', 'bucket' : 'bucket-name'}
+        {'project': 'gcp-project-name', 'bucket' : 'gcp-bucket-name'}
 
         When platform = 'azure':
-        {'container': 'container-name'}
+        {'container': 'azure-container-name'}
     
 
     platform: str, default = 'aws'
