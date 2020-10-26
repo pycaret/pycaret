@@ -1292,6 +1292,7 @@ def assign_model(model,
     
 
     model: trained model object, default = None
+        Trained model object
 
 
     verbose: bool, default = True
@@ -2364,66 +2365,60 @@ def tune_model(model=None,
 
 
     estimator: str, default = None
-        For Classification (ID - Name):
+        Classification (ID - Name):
+            * 'lr' - Logistic Regression (Default)             
+            * 'knn' - K Nearest Neighbour             
+            * 'nb' - Naive Bayes                                 
+            * 'dt' - Decision Tree Classifier                           
+            * 'svm' - SVM - Linear Kernel             	            
+            * 'rbfsvm' - SVM - Radial Kernel                            
+            * 'gpc' - Gaussian Process Classifier                       
+            * 'mlp' - Multi Level Perceptron                            
+            * 'ridge' - Ridge Classifier                
+            * 'rf' - Random Forest Classifier                           
+            * 'qda' - Quadratic Discriminant Analysis                   
+            * 'ada' - Ada Boost Classifier                             
+            * 'gbc' - Gradient Boosting Classifier                              
+            * 'lda' - Linear Discriminant Analysis                      
+            * 'et' - Extra Trees Classifier                             
+            * 'xgboost' - Extreme Gradient Boosting                     
+            * 'lightgbm' - Light Gradient Boosting                       
+            * 'catboost' - CatBoost Classifier             
 
-        * 'lr' - Logistic Regression             
-        * 'knn' - K Nearest Neighbour             
-        * 'nb' - Naive Bayes                                 
-        * 'dt' - Decision Tree Classifier                           
-        * 'svm' - SVM - Linear Kernel             	            
-        * 'rbfsvm' - SVM - Radial Kernel                            
-        * 'gpc' - Gaussian Process Classifier                       
-        * 'mlp' - Multi Level Perceptron                            
-        * 'ridge' - Ridge Classifier                
-        * 'rf' - Random Forest Classifier                           
-        * 'qda' - Quadratic Discriminant Analysis                   
-        * 'ada' - Ada Boost Classifier                             
-        * 'gbc' - Gradient Boosting Classifier                              
-        * 'lda' - Linear Discriminant Analysis                      
-        * 'et' - Extra Trees Classifier                             
-        * 'xgboost' - Extreme Gradient Boosting                     
-        * 'lightgbm' - Light Gradient Boosting                       
-        * 'catboost' - CatBoost Classifier             
+        Regression (ID - Name):
+            * 'lr' - Linear Regression (Default)                                
+            * 'lasso' - Lasso Regression              
+            * 'ridge' - Ridge Regression              
+            * 'en' - Elastic Net                   
+            * 'lar' - Least Angle Regression                
+            * 'llar' - Lasso Least Angle Regression                     
+            * 'omp' - Orthogonal Matching Pursuit                        
+            * 'br' - Bayesian Ridge                                   
+            * 'ard' - Automatic Relevance Determ.                     
+            * 'par' - Passive Aggressive Regressor                      
+            * 'ransac' - Random Sample Consensus              
+            * 'tr' - TheilSen Regressor                               
+            * 'huber' - Huber Regressor                                              
+            * 'kr' - Kernel Ridge                                                       
+            * 'svm' - Support Vector Machine                                   
+            * 'knn' - K Neighbors Regressor                                    
+            * 'dt' - Decision Tree                                                     
+            * 'rf' - Random Forest                                                     
+            * 'et' - Extra Trees Regressor                                     
+            * 'ada' - AdaBoost Regressor                                               
+            * 'gbr' - Gradient Boosting                                            
+            * 'mlp' - Multi Level Perceptron                                  
+            * 'xgboost' - Extreme Gradient Boosting                                   
+            * 'lightgbm' - Light Gradient Boosting                           
+            * 'catboost' - CatBoost Regressor               
 
-        For Regression (ID - Name):
-
-        * 'lr' - Linear Regression                                
-        * 'lasso' - Lasso Regression              
-        * 'ridge' - Ridge Regression              
-        * 'en' - Elastic Net                   
-        * 'lar' - Least Angle Regression                
-        * 'llar' - Lasso Least Angle Regression                     
-        * 'omp' - Orthogonal Matching Pursuit                        
-        * 'br' - Bayesian Ridge                                   
-        * 'ard' - Automatic Relevance Determ.                     
-        * 'par' - Passive Aggressive Regressor                      
-        * 'ransac' - Random Sample Consensus              
-        * 'tr' - TheilSen Regressor                               
-        * 'huber' - Huber Regressor                                              
-        * 'kr' - Kernel Ridge                                                       
-        * 'svm' - Support Vector Machine                                   
-        * 'knn' - K Neighbors Regressor                                    
-        * 'dt' - Decision Tree                                                     
-        * 'rf' - Random Forest                                                     
-        * 'et' - Extra Trees Regressor                                     
-        * 'ada' - AdaBoost Regressor                                               
-        * 'gbr' - Gradient Boosting                                            
-        * 'mlp' - Multi Level Perceptron                                  
-        * 'xgboost' - Extreme Gradient Boosting                                   
-        * 'lightgbm' - Light Gradient Boosting                           
-        * 'catboost' - CatBoost Regressor               
-
-        If set to None, Linear / Logistic model is used by default.
 
     optimize: str, default = None
         For Classification tasks:
-            Accuracy, AUC, Recall, Precision, F1, Kappa
+            Accuracy, AUC, Recall, Precision, F1, Kappa (default = 'Accuracy')
         
         For Regression tasks:
-            MAE, MSE, RMSE, R2, RMSLE, MAPE
-            
-        If set to None, default is 'Accuracy' for classification and 'R2' for 
-        regression tasks.
+            MAE, MSE, RMSE, R2, RMSLE, MAPE (default = 'R2')
 
 
     custom_grid: list, default = None
@@ -3344,9 +3339,10 @@ def tune_model(model=None,
 def evaluate_model(model):
     
     """
-    This function displays the user interface for all the available plots 
-    for a given model. It internally uses the plot_model() function. 
+    This function displays a user interface for analyzing model performance. 
+    It calls the ``plot_model`` function internally. 
     
+
     Example
     -------
     >>> from pycaret.datasets import get_data
@@ -3355,18 +3351,13 @@ def evaluate_model(model):
     >>> lda = create_model('lda')
     >>> evaluate_model(lda)
     
-    This will display the User Interface for all of the plots for 
-    given model. 
 
-    Parameters
-    ----------
     model : object, default = none
         A trained model object should be passed. 
 
-    Returns
-    -------
-    User_Interface
-        Displays the user interface for plotting.
+
+    Returns:
+        None
            
     """
         

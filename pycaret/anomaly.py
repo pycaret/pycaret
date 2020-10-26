@@ -713,7 +713,7 @@ def tune_model(
 
     supervised_estimator: str, default = None
         Classification (ID - Name):
-            * 'lr' - Logistic Regression             
+            * 'lr' - Logistic Regression (Default)            
             * 'knn' - K Nearest Neighbour             
             * 'nb' - Naive Bayes                                 
             * 'dt' - Decision Tree Classifier                           
@@ -733,7 +733,7 @@ def tune_model(
             * 'catboost' - CatBoost Classifier             
         
         Regression (ID - Name):
-            * 'lr' - Linear Regression                                
+            * 'lr' - Linear Regression (Default)                               
             * 'lasso' - Lasso Regression              
             * 'ridge' - Ridge Regression              
             * 'en' - Elastic Net                   
