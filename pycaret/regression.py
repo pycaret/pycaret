@@ -1322,7 +1322,7 @@ def stack_models(
 
 
     meta_model: scikit-learn compatible object, default = None
-        If set to None, Linear Regression is trained as a meta model.
+        When None, Linear Regression is trained as a meta model.
 
 
     fold: int or scikit-learn compatible CV generator, default = None
@@ -1428,6 +1428,7 @@ def plot_model(
         * 'feature' - Feature Importance
         * 'feature_all' - Feature Importance (All)
         * 'parameter' - Model Hyperparameter
+        * 'tree' - Decision Tree
 
 
     scale: float, default = 1
@@ -1486,8 +1487,8 @@ def evaluate_model(
 ):
 
     """
-    This function displays a user interface for analyzing model performance of a
-    trained estimator. It calls the ``plot_model`` function internally. 
+    This function displays a user interface for analyzing performance of a trained
+    model. It calls the ``plot_model`` function internally. 
     
     Example
     --------

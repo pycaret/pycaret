@@ -1228,7 +1228,6 @@ def blend_models(
     >>> blender = blend_models(top3)
 
 
-
     estimator_list: list of scikit-learn compatible objects
         List of trained model objects
 
@@ -1339,7 +1338,7 @@ def stack_models(
 
 
     meta_model: scikit-learn compatible object, default = None
-        If set to None, Logistic Regression is trained as a meta model.
+        When None, Logistic Regression is trained as a meta model.
 
 
     fold: int or scikit-learn compatible CV generator, default = None
@@ -1465,6 +1464,7 @@ def plot_model(
         * 'parameter' - Model Hyperparameter
         * 'lift' - Lift Curve
         * 'gain' - Gain Chart
+        * 'tree' - Decision Tree
 
 
     scale: float, default = 1
@@ -1535,8 +1535,8 @@ def evaluate_model(
 ):
 
     """
-    This function displays a user interface for analyzing model performance of a
-    trained estimator. It calls the ``plot_model`` function internally. 
+    This function displays a user interface for analyzing performance of a trained
+    model. It calls the ``plot_model`` function internally. 
     
 
     Example

@@ -3339,8 +3339,8 @@ def tune_model(model=None,
 def evaluate_model(model):
     
     """
-    This function displays a user interface for analyzing model performance. 
-    It calls the ``plot_model`` function internally. 
+    This function displays a user interface for analyzing performance of a trained
+    model. It calls the ``plot_model`` function internally. 
     
 
     Example
