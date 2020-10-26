@@ -290,19 +290,18 @@ def setup(
         processor set n_jobs to None.
 
 
-    use_gpu: str or bool, default = False
-        When set to 'force', will try to use GPU with all algorithms that support it,
-        and raise exceptions if they are unavailable. When set to True, will use GPU 
-        with algorithms that support it, and fall back to CPU if they are unavailable.
-        When False, all algorithms are trained using CPU only.
+    use_gpu: bool or str, default = False
+        When set to True, it will use GPU for training with algorithms that support it, 
+        and fall back to CPU if they are unavailable. When set to 'force', it will only
+        use GPU-enabled algorithms and raise exceptions when they are unavailable. When 
+        False, all algorithms are trained using CPU only.
 
         GPU enabled algorithms:
 
         - None at this moment. 
 
 
-    custom_pipeline: transformer or list of transformers or tuple
-        (str, transformer) or list of tuples (str, transformer), default = None
+    custom_pipeline: (str, transformer) or list of (str, transformer), default = None
         When passed, will append the custom transformers in the preprocessing pipeline
         and are applied on each CV fold separately and on the final fit. All the custom
         transformations are applied before pycaret's internal transformations. 
@@ -354,7 +353,7 @@ def setup(
 
 
     profile: bool, default = False
-        When set to true, an interactive EDA report is displayed. 
+        When set to True, an interactive EDA report is displayed. 
         
 
     Returns:

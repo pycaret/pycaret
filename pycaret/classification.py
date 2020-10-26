@@ -464,11 +464,11 @@ def setup(
         processor set n_jobs to None.
 
 
-    use_gpu: str or bool, default = False
-        When set to 'force', will try to use GPU with all algorithms that support it,
-        and raise exceptions if they are unavailable. When set to True, will use GPU 
-        with algorithms that support it, and fall back to CPU if they are unavailable.
-        When False, all algorithms are trained using CPU only.
+    use_gpu: bool or str, default = False
+        When set to True, it will use GPU for training with algorithms that support it, 
+        and fall back to CPU if they are unavailable. When set to 'force', it will only
+        use GPU-enabled algorithms and raise exceptions when they are unavailable. When 
+        False, all algorithms are trained using CPU only.
 
         GPU enabled algorithms:
         
@@ -484,8 +484,7 @@ def setup(
           https://github.com/rapidsai/cuml
 
 
-    custom_pipeline: transformer or list of transformers or tuple
-        (str, transformer) or list of tuples (str, transformer), default = None
+    custom_pipeline: (str, transformer) or list of (str, transformer), default = None
         When passed, will append the custom transformers in the preprocessing pipeline
         and are applied on each CV fold separately and on the final fit. All the custom
         transformations are applied after 'train_test_split' and before pycaret's internal 
@@ -538,7 +537,7 @@ def setup(
 
 
     profile: bool, default = False
-        When set to true, an interactive EDA report is displayed. 
+        When set to True, an interactive EDA report is displayed. 
         
 
     Returns:
@@ -680,14 +679,13 @@ def compare_models(
     >>> best_model = compare_models() 
 
 
-    include: list of strings or objects, default = None
-        To train and evaluate select models, list containing model id or untrained 
-        model objects can be passed in include parameter. Untrained model object
-        must be compatible with scikit-learn API. To see a list of all models 
+    include: list of str or scikit-learn compatible object, default = None
+        To train and evaluate select models, list containing model ID or scikit-learn 
+        compatible object can be passed in include param. To see a list of all models 
         available in the model library use the ``models`` function. 
 
 
-    exclude: list of strings, default = None
+    exclude: list of str, default = None
         To omit certain models from training and evaluation, pass a list containing 
         model id in the exclude parameter. To see a list of all models available
         in the model library use the ``models`` function. 
@@ -731,7 +729,7 @@ def compare_models(
 
     errors: str, default = 'ignore'
         When set to 'ignore', will skip the model with exceptions and continue.
-        If 'raise', will stop the function when exceptions are raised.
+        If 'raise', will break the function when exceptions are raised.
 
 
     fit_kwargs: dict, default = {} (empty dict)
@@ -757,7 +755,7 @@ def compare_models(
     - Changing turbo parameter to False may result in very high training times with 
       datasets exceeding 10,000 rows.
 
-    - AUC for estimators that does not support 'predict_proba' is shown as 0. 
+    - AUC for estimators that does not support 'predict_proba' is shown as 0.0000. 
 
     - No models are logged in ``MLFlow`` when ``cross_validation`` parameter is False.
     """
