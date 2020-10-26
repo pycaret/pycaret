@@ -5865,9 +5865,9 @@ def plot_model(
                     pca_["Cluster"] = cluster
 
                     if feature_name is not None:
-                        pca_["Feature"] = data_X[feature_name]
+                        pca_["Feature"] = data_before_preprocess[feature_name]
                     else:
-                        pca_["Feature"] = data_X[data_X.columns[0]]
+                        pca_["Feature"] = data_before_preprocess[data_before_preprocess.columns[0]]
 
                     if label:
                         pca_["Label"] = pca_["Feature"]
@@ -5963,9 +5963,9 @@ def plot_model(
                     df["Anomaly"] = label
 
                     if feature_name is not None:
-                        df["Feature"] = data_X[feature_name]
+                        df["Feature"] = data_before_preprocess[feature_name]
                     else:
-                        df["Feature"] = data_X[data_X.columns[0]]
+                        df["Feature"] = data_before_preprocess[data_before_preprocess.columns[0]]
 
                     display.clear_output()
 
@@ -6025,9 +6025,9 @@ def plot_model(
                     X = pd.DataFrame(X_embedded)
                     X["Anomaly"] = cluster
                     if feature_name is not None:
-                        X["Feature"] = data_X[feature_name]
+                        X["Feature"] = data_before_preprocess[feature_name]
                     else:
-                        X["Feature"] = data_X[data_X.columns[0]]
+                        X["Feature"] = data_before_preprocess[data_before_preprocess.columns[0]]
 
                     df = X
 
@@ -6088,9 +6088,9 @@ def plot_model(
                     X_embedded["Cluster"] = cluster
 
                     if feature_name is not None:
-                        X_embedded["Feature"] = data_X[feature_name]
+                        X_embedded["Feature"] = data_before_preprocess[feature_name]
                     else:
-                        X_embedded["Feature"] = data_X[data_X.columns[0]]
+                        X_embedded["Feature"] = data_before_preprocess[data_X.columns[0]]
 
                     if label:
                         X_embedded["Label"] = X_embedded["Feature"]
