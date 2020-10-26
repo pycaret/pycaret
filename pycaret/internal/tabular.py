@@ -7840,9 +7840,6 @@ def optimize_threshold(
 
     model_name = _get_model_name(model)
 
-    display.update_monitor(2, model_name)
-    display.display_monitor()
-
     # generate predictions and store actual on y_test in numpy array
     actual = np.array(y_test)
 
