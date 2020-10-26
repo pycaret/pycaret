@@ -1804,9 +1804,9 @@ def predict_model(
 ) -> pd.DataFrame:
 
     """
-    This function generates predicted label and probability on unseen data.
-    When ``data`` is None, labels and probabilities are prediction on the 
-    holdout set.
+    This function predicts ``Label`` and ``Score`` (probability of predicted 
+    class) using a trained model passed in the ``estimator``. When ``data`` 
+    is None, it predicts label and score on holdout set.
     
     
     Example

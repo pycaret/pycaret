@@ -846,7 +846,7 @@ def tune_model(
 def predict_model(model, data: pd.DataFrame) -> pd.DataFrame:
 
     """
-    This function generates cluster labels on unseen data.
+    This function generates cluster labels using a trained model.
     
     Example
     -------

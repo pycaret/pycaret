@@ -811,7 +811,7 @@ def tune_model(
 def predict_model(model, data: pd.DataFrame) -> pd.DataFrame:
 
     """
-    This function generates anomaly labels on unseen data.
+    This function generates anomaly labels on using a trained model.
     
 
     Example
