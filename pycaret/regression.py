@@ -1606,8 +1606,8 @@ def predict_model(
 ) -> pd.DataFrame:
 
     """
-    This function predicts ``Label`` using a trained model passed in the 
-    ``estimator``. When ``data`` is None, it predicts label on holdout set.
+    This function predicts ``Label`` using a trained model. When ``data`` is 
+    None, it predicts label on the holdout set.
     
 
     Example

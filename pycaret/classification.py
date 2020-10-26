@@ -1805,8 +1805,8 @@ def predict_model(
 
     """
     This function predicts ``Label`` and ``Score`` (probability of predicted 
-    class) using a trained model passed in the ``estimator``. When ``data`` 
-    is None, it predicts label and score on holdout set.
+    class) using a trained model. When ``data`` is None, it predicts label and 
+    score on the holdout set.
     
     
     Example
