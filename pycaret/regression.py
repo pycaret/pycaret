@@ -1,7 +1,7 @@
 # Module: Regression
 # Author: Moez Ali <moez.ali@queensu.ca>
 # License: MIT
-# Release: PyCaret 2.2
+# Release: PyCaret 2.2.0
 # Last modified : 25/10/2020
 
 import pandas as pd
@@ -1947,7 +1947,8 @@ def automl(optimize: str = "R2", use_holdout: bool = False) -> Any:
 
 def pull(pop: bool = False) -> pd.DataFrame:
     """
-    Returns last grid.
+    Returns last printed score grid. Use ``pull`` function after
+    any training function to store the score grid in pandas.DataFrame.
 
 
     pop: bool, default = False

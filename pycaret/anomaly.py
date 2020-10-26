@@ -1,7 +1,7 @@
 # Module: Anomaly Detection
 # Author: Moez Ali <moez.ali@queensu.ca>
 # License: MIT
-# Release: PyCaret 2.2
+# Release: PyCaret 2.2.0
 # Last modified : 25/10/2020
 
 import sys

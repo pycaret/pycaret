@@ -1,7 +1,7 @@
 # Module: Natural Language Processing
 # Author: Moez Ali <moez.ali@queensu.ca>
 # License: MIT
-# Release: PyCaret 2.2
+# Release: PyCaret 2.2.0
 # Last modified : 25/10/2020
 
 def setup(data, 
@@ -851,7 +851,8 @@ def create_model(model=None,
     
     """
     
-    This function trains a given model.
+    This function trains a given topic model. All the available models
+    can be accessed using the ``models`` function.
 
 
     Example
@@ -859,7 +860,7 @@ def create_model(model=None,
     >>> from pycaret.datasets import get_data
     >>> kiva = get_data('kiva')
     >>> from pycaret.nlp import *
-    >>> expe_name = setup(data = kiva, target = 'en')
+    >>> exp_name = setup(data = kiva, target = 'en')
     >>> lda = create_model('lda')
 
 
@@ -1280,7 +1281,6 @@ def assign_model(model,
     This function assigns topic labels to the dataset for a given model. 
 
     
-
     Example
     -------
     >>> from pycaret.datasets import get_data
@@ -1643,7 +1643,7 @@ def plot_model(model = None,
         Trained Model Object
 
 
-    plot : str, default = 'frequency'
+    plot: str, default = 'frequency'
         List of available plots (ID - Name):
 
         * Word Token Frequency - 'frequency'              
@@ -2327,12 +2327,8 @@ def tune_model(model=None,
 
 
     """
-    This function tunes the num_topics model parameter using a predefined grid with
-    the objective of optimizing a supervised learning metric as defined in the optimize
-    param. You can choose the supervised estimator from a large library available in 
-    pycaret. By default, supervised estimator is Linear. 
+    This function tunes the ``num_topics`` parameter of a given model. 
 
-    This function returns the tuned model object.
 
     Example
     -------
@@ -2343,7 +2339,7 @@ def tune_model(model=None,
     >>> tuned_lda = tune_model(model = 'lda', supervised_target = 'status') 
 
 
-    model : str, default = None
+    model: str, default = None
         Enter ID of the models available in model library (ID - Model):
 
         * 'lda' - Latent Dirichlet Allocation         
@@ -2355,8 +2351,7 @@ def tune_model(model=None,
 
     multi_core: bool, default = False
         True would utilize all CPU cores to parallelize and speed up model 
-        training. Only available for 'lda'. For all other models, multi_core 
-        parameter is ignored.
+        training. Ignored when ``model`` is not 'lda'.
 
 
     supervised_target: str
@@ -2428,10 +2423,9 @@ def tune_model(model=None,
 
 
     auto_fe: bool, default = True
-        Automatic text feature engineering. Only used when supervised_target is
-        passed. When set to true, it will generate text based features such as 
-        polarity, subjectivity, wordcounts to be used in supervised learning.
-        Ignored when supervised_target is set to None.
+        Automatic text feature engineering. When set to True, it will generate 
+        text based features such as polarity, subjectivity, wordcounts. Ignored 
+        when ``supervised_target`` is None.
 
 
     fold: int, default = 10
@@ -2443,7 +2437,7 @@ def tune_model(model=None,
     
 
     Returns:
-        Trained Model with best k number of topics.
+        Trained Model with optimized ``num_topics`` parameter.
 
 
     Warnings
@@ -3352,7 +3346,7 @@ def evaluate_model(model):
     >>> evaluate_model(lda)
     
 
-    model : object, default = none
+    model: object, default = none
         A trained model object should be passed. 
 
 
@@ -3411,27 +3405,27 @@ def save_model(model, model_name,
     This function saves the trained model object into the current active 
     directory as a pickle file for later use. 
     
+
     Example
     -------
     >>> from pycaret.datasets import get_data
     >>> kiva = get_data('kiva')
     >>> experiment_name = setup(data = kiva, target = 'en')
     >>> lda = create_model('lda')
-    >>> save_model(lda, 'lda_model_23122019')
+    >>> save_model(lda, 'saved_lda_model')
     
-    This will save the model as a binary pickle file in the current 
-    directory. 
 
-    Parameters
-    ----------
-    model : object
+    model: object
         A trained model object should be passed.
     
-    model_name : str
+
+    model_name: str
         Name of pickle file to be passed as a string.
 
-    verbose : bool, default = True
+
+    verbose: bool, default = True
         When set to False, success message is not printed.
+
 
     Returns:
         Tuple of the model object and the filename.
@@ -3480,27 +3474,25 @@ def load_model(model_name,
                verbose=True):
     
     """
-    This function loads a previously saved model from the current active directory 
-    into the current python environment. Load object must be a pickle file.
+    This function loads a previously saved model.
+    
     
     Example
     -------
-    >>> saved_lda = load_model('lda_model_23122019')
+    >>> from pycaret.nlp import load_model
+    >>> saved_lda = load_model('saved_lda_model')
     
-    This will call the trained model in saved_lr variable using model_name param.
-    The file must be in current directory.
 
-    Parameters
-    ----------
     model_name: str
         Name of pickle file to be passed as a string.
+
 
     verbose: bool, default = True
         When set to False, success message is not printed.
 
-    Returns
-    -------    
-    Success_Message
+
+    Returns:
+        Trained Model
          
     """
         
@@ -3515,16 +3507,15 @@ def models():
     """
     Returns table of models available in model library.
 
+
     Example
     -------
+    >>> from pycaret.nlp import models
     >>> all_models = models()
 
-    This will return pandas.DataFrame with all available
-    models and their metadata.
 
-    Returns
-    -------
-    pandas.DataFrame
+    Returns:
+        pandas.DataFrame
 
     """
 
@@ -3555,26 +3546,30 @@ def models():
 def get_logs(experiment_name = None, save = False):
 
     """
-    Returns a table with experiment logs consisting
-    run details, parameter, metrics and tags. 
+    Returns a table of experiment logs. Only works when ``log_experiment``
+    is True when initializing the ``setup`` function.
+
 
     Example
     -------
-    >>> logs = get_logs()
+    >>> from pycaret.datasets import get_data
+    >>> kiva = get_data('kiva')
+    >>> from pycaret.nlp import *
+    >>> exp_name = setup(data = kiva, target = 'en', log_experiment = True) 
+    >>> lda = create_model('lda')
+    >>> exp_logs = get_logs()
 
-    This will return pandas.DataFrame.
 
-    Parameters
-    ----------
-    experiment_name : str, default = None
-        When set to None current active run is used.
+    experiment_name: str, default = None
+        When None current active run is used.
 
-    save : bool, default = False
-        When set to True, csv file is saved in current directory.
 
-    Returns
-    -------
-    pandas.DataFrame
+    save: bool, default = False
+        When set to True, csv file is saved in current working directory.
+
+
+    Returns:
+        pandas.DataFrame
 
     """
 
@@ -3604,8 +3599,8 @@ def get_logs(experiment_name = None, save = False):
 def get_config(variable):
 
     """
-    This function is used to access global environment variables.
-    Following variables can be accessed:
+    This function retrieves the global variables created when initializing the 
+    ``setup`` function. Following variables are accessible:
 
     - text: Tokenized words as a list with length = # documents
     - data_: pandas.DataFrame containing text after all processing
@@ -3619,15 +3614,18 @@ def get_config(variable):
     - log_plots_param: log_plots param set through setup
     - USI: Unique session ID parameter set through setup
 
+    
     Example
     -------
+    >>> from pycaret.datasets import get_data
+    >>> kiva = get_data('kiva')
+    >>> from pycaret.nlp import *
+    >>> exp_name = setup(data = kiva, target = 'en')
     >>> text = get_config('text') 
 
-    This will return transformed dataset.
 
-    Returns
-    -------
-    variable
+    Returns:
+        Global variable
 
     """
 
@@ -3700,8 +3698,8 @@ def get_config(variable):
 def set_config(variable,value):
 
     """
-    This function is used to reset global environment variables.
-    Following variables can be accessed:
+    This function resets the global variables. Following variables are 
+    accessible:
 
     - text: Tokenized words as a list with length = # documents
     - data_: pandas.DataFrame containing text after all processing
@@ -3715,11 +3713,18 @@ def set_config(variable,value):
     - log_plots_param: log_plots param set through setup
     - USI: Unique session ID parameter set through setup
 
+
     Example
     -------
-    >>> set_config('seed', 123) 
+    >>> from pycaret.datasets import get_data
+    >>> kiva = get_data('kiva')
+    >>> from pycaret.nlp import *
+    >>> exp_name = setup(data = kiva, target = 'en')
+    >>> set_config('seed', 123)
 
-    This will set the global seed to '123'.
+
+    Returns:
+        None
 
     """
 
@@ -3793,23 +3798,6 @@ def set_config(variable,value):
 
     logger.info("Global variable:  " + str(variable) + ' updated')
     logger.info("set_config() succesfully completed......................................")
-
-def get_system_logs():
-
-    """
-    Read and print 'logs.log' file from current active directory
-    """
-
-    file = open('logs.log', 'r')
-    lines = file.read().splitlines()
-    file.close()
-
-    for line in lines:
-        if not line:
-            continue
-
-        columns = [col.strip() for col in line.split(':') if col]
-        print(columns)
 
 def get_topics(data, text, model=None, num_topics=4):
     
