@@ -1,8 +1,8 @@
 # Module: Natural Language Processing
 # Author: Moez Ali <moez.ali@queensu.ca>
 # License: MIT
-# Release: PyCaret 2.1
-# Last modified : 24/08/2020
+# Release: PyCaret 2.2
+# Last modified : 25/10/2020
 
 def setup(data, 
           target=None,
@@ -16,83 +16,75 @@ def setup(data,
           verbose = True): 
     
     """
-    This function initializes the environment in pycaret. setup() must called before
-    executing any other function in pycaret. It takes one mandatory parameter:
-    data, a pandas.Dataframe or object of type list. If a pandas.Dataframe is
-    passed, target column containing text must be specified. When data passed is of 
-    type list, no target parameter is required. All other parameters are optional. 
-    This module only supports English Language at this time.
+    This function initializes the training environment and creates the transformation 
+    pipeline. Setup function must be called before executing any other function. It takes 
+    one mandatory parameter only: ``data``. All the other parameters are optional.
+
 
     Example
     -------
     >>> from pycaret.datasets import get_data
     >>> kiva = get_data('kiva')
-    >>> experiment_name = setup(data = kiva, target = 'en')
+    >>> from pycaret.nlp import *
+    >>> exp_name = setup(data = kiva, target = 'en')
 
-    'kiva' is a pandas.Dataframe.
-        
-    Parameters
-    ----------
-    data : pandas.Dataframe or list
-        pandas.Dataframe with shape (n_samples, n_features) where n_samples is 
-        the number of samples and n_features is the number of features, or object 
-        of type list with n length.
-
-    target: string
-        If data is of type pandas.Dataframe, name of column containing text values 
-        must be passed as string. 
     
+    data: pandas.Dataframe or list
+        pandas.Dataframe with shape (n_samples, n_features) or a list.
+
+
+    target: str
+        When ``data`` is pandas.Dataframe, name of column containing text. 
+    
+
     custom_stopwords: list, default = None
-        List containing custom stopwords.
+        List of stopwords.
+
 
     html: bool, default = True
-        If set to False, prevents runtime display of monitor. This must be set to False
-        when using environment that doesnt support HTML.
+        When set to False, prevents runtime display of monitor. This must be set to False
+        when the environment does not support IPython. For example, command line terminal,
+        Databricks Notebook, Spyder and other similar IDEs. 
+
 
     session_id: int, default = None
-        If None, a random seed is generated and returned in the Information grid. The 
-        unique number is then distributed as a seed in all functions used during the 
-        experiment. This can be used for later reproducibility of the entire experiment.
+        Controls the randomness of experiment. It is equivalent to 'random_state' in
+        scikit-learn. When None, a pseudo random number is generated. This can be used 
+        for later reproducibility of the entire experiment.
 
-    log_experiment: bool, default = True
-        When set to True, all metrics and parameters are logged on MLFlow server.
+
+    log_experiment: bool, default = False
+        When set to True, all metrics and parameters are logged on the ``MLFlow`` server.
+
 
     experiment_name: str, default = None
-        Name of experiment for logging. When set to None, 'nlp' is by default used as 
-        alias for the experiment name.
+        Name of the experiment for logging. Ignored when ``log_experiment`` is not True.
 
-    log_plots: bool, default = False
-        When set to True, specific plots are logged in MLflow as a png file. By default,
-        it is set to False. 
+
+    log_plots: bool or list, default = False
+        When set to True, certain plots are logged automatically in the ``MLFlow`` server.
+
 
     log_data: bool, default = False
-        When set to True, train and test dataset are logged as csv. 
+        When set to True, dataset is logged on the ``MLflow`` server as a csv file.
+        Ignored when ``log_experiment`` is not True.
 
-    verbose: Boolean, default = True
-        Information grid is not printed when verbose is set to False.
 
-    Returns
-    -------
-    info_grid
-        Information grid is printed.
+    verbose: bool, default = True
+        When set to False, Information grid is not printed.
 
-    environment
-        This function returns various outputs that are stored in variable
-        as tuple. They are used by other functions in pycaret.
+
+    Returns:
+        Global variables that can be changed using the ``set_config`` function.
+
 
     Warnings
     --------
-    - Some functionalities in pycaret.nlp requires you to have english language model. 
-      The language model is not downloaded automatically when you install pycaret. 
-      You will have to download two models using your Anaconda Prompt or python 
-      command line interface. To download the model, please type the following in 
-      your command line:
+    - pycaret.nlp requires following language models: 
       
-         python -m spacy download en_core_web_sm
-         python -m textblob.download_corpora
-    
-      Once downloaded, please restart your kernel and re-run the setup.
-    
+        ``python -m spacy download en_core_web_sm``
+        ``python -m textblob.download_corpora``
+        
     """
     
     #exception checking   
@@ -858,8 +850,8 @@ def create_model(model=None,
                  **kwargs):
     
     """
-    This function creates a model on the dataset passed as a data param during 
-    the setup stage. setup() function must be called before using create_model().
+    
+    This function trains a given model.
 
 
     Example
@@ -871,8 +863,8 @@ def create_model(model=None,
     >>> lda = create_model('lda')
 
 
-    model : string, default = None
-        Enter ID of the model available in model library (ID - Model):
+    model: str, default = None
+        Models available in the model library (ID - Name):
 
         * 'lda' - Latent Dirichlet Allocation         
         * 'lsi' - Latent Semantic Indexing           
@@ -881,25 +873,26 @@ def create_model(model=None,
         * 'nmf' - Non-Negative Matrix Factorization
    
 
-    multi_core: Boolean, default = False
-        True would utilize all CPU cores to parallelize and speed up model training. Only
-        available for 'lda'. For all other models, the multi_core parameter is ignored.
+    multi_core: bool, default = False
+        True would utilize all CPU cores to parallelize and speed up model training.
+        Ignored when ``model`` is not 'lda'.
 
 
     num_topics: integer, default = 4
         Number of topics to be created. If None, default is set to 4.
 
 
-    verbose: Boolean, default = True
+    verbose: bool, default = True
         Status update is not printed when verbose is set to False.
 
 
-    system: Boolean, default = True
+    system: bool, default = True
         Must remain True all times. Only to be changed by internal functions.
 
 
     **kwargs: 
         Additional keyword arguments to pass to the estimator.
+
 
     Returns:
         Trained Model
@@ -1284,9 +1277,8 @@ def assign_model(model,
     
     
     """
-    This function assigns each of the data point in the dataset passed during setup
-    stage to one of the topic using trained model object passed as model param.
-    create_model() function must be called before using assign_model().
+    This function assigns topic labels to the dataset for a given model. 
+
     
 
     Example
@@ -1299,10 +1291,10 @@ def assign_model(model,
     >>> lda_df = assign_model(lda)
     
 
-    model : trained model object, default = None
+    model: trained model object, default = None
 
 
-    verbose: Boolean, default = True
+    verbose: bool, default = True
         Status update is not printed when verbose is set to False.
 
 
@@ -1646,13 +1638,13 @@ def plot_model(model = None,
     >>> plot_model(lda, plot = 'frequency')
 
 
-    model : object, default = none
-        A trained model object can be passed. Model must be created using create_model().
+    model: object, default = none
+        Trained Model Object
 
 
-    plot : string, default = 'frequency'
-        Enter abbreviation for type of plot. The current list of plots supported are 
-        (Name - Abbreviated String):
+    plot : str, default = 'frequency'
+        List of available plots (ID - Name):
+
         * Word Token Frequency - 'frequency'              
         * Word Distribution Plot - 'distribution'
         * Bigram Frequency Plot - 'bigram' 
@@ -1666,16 +1658,16 @@ def plot_model(model = None,
         * UMAP Dimensionality Plot - 'umap'
 
 
-    topic_num : string, default = None
+    topic_num : str, default = None
         Topic number to be passed as a string. If set to None, default generation will 
         be on 'Topic 0'
     
 
-    save: Boolean, default = False
+    save: bool, default = False
         Plot is saved as png file in local directory when save parameter set to True.
 
 
-    system: Boolean, default = True
+    system: bool, default = True
         Must remain True all times. Only to be changed by internal functions.
 
 
@@ -2350,7 +2342,7 @@ def tune_model(model=None,
     >>> tuned_lda = tune_model(model = 'lda', supervised_target = 'status') 
 
 
-    model : string, default = None
+    model : str, default = None
         Enter ID of the models available in model library (ID - Model):
 
         * 'lda' - Latent Dirichlet Allocation         
@@ -2360,18 +2352,18 @@ def tune_model(model=None,
         * 'nmf' - Non-Negative Matrix Factorization
 
 
-    multi_core: Boolean, default = False
+    multi_core: bool, default = False
         True would utilize all CPU cores to parallelize and speed up model 
         training. Only available for 'lda'. For all other models, multi_core 
         parameter is ignored.
 
 
-    supervised_target: string
+    supervised_target: str
         Name of the target column for supervised learning. If None, the model 
         coherence value is used as the objective function.
 
 
-    estimator: string, default = None
+    estimator: str, default = None
         For Classification (ID - Name):
 
         * 'lr' - Logistic Regression             
@@ -2423,7 +2415,7 @@ def tune_model(model=None,
 
         If set to None, Linear / Logistic model is used by default.
 
-    optimize: string, default = None
+    optimize: str, default = None
         For Classification tasks:
             Accuracy, AUC, Recall, Precision, F1, Kappa
         
@@ -2440,7 +2432,7 @@ def tune_model(model=None,
         pass a list of num_topics to iterate over in custom_grid param.
 
 
-    auto_fe: boolean, default = True
+    auto_fe: bool, default = True
         Automatic text feature engineering. Only used when supervised_target is
         passed. When set to true, it will generate text based features such as 
         polarity, subjectivity, wordcounts to be used in supervised learning.
@@ -2451,7 +2443,7 @@ def tune_model(model=None,
         Number of folds to be used in Kfold CV. Must be at least 2. 
 
 
-    verbose: Boolean, default = True
+    verbose: bool, default = True
         Status update is not printed when verbose is set to False.
     
 
@@ -3444,7 +3436,7 @@ def save_model(model, model_name,
     model : object, default = none
         A trained model object should be passed.
     
-    model_name : string, default = none
+    model_name : str, default = none
         Name of pickle file to be passed as a string.
 
     verbose : bool, default = True
@@ -3511,7 +3503,7 @@ def load_model(model_name,
 
     Parameters
     ----------
-    model_name : string, default = none
+    model_name : str, default = none
         Name of pickle file to be passed as a string.
 
     verbose : bool, default = True
@@ -3585,7 +3577,7 @@ def get_logs(experiment_name = None, save = False):
 
     Parameters
     ----------
-    experiment_name : string, default = None
+    experiment_name : str, default = None
         When set to None current active run is used.
 
     save : bool, default = False
