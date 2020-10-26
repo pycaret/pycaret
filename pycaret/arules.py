@@ -27,16 +27,16 @@ def setup(data,
     >>> exp = setup(data = data, transaction_id = 'InvoiceNo', item_id = 'ProductName')
         
 
-    data : pandas.DataFrame
+    data: pandas.DataFrame
         Shape (n_samples, n_features) where n_samples is the number of samples and 
         n_features is the number of features.
 
 
-    transaction_id: string
+    transaction_id: str
         Name of column representing transaction id. This will be used to pivot the matrix.
 
 
-    item_id: string
+    item_id: str
         Name of column used for creation of rules. Normally, this will be the variable of
         interest.
     
@@ -132,7 +132,7 @@ def create_model(metric='confidence',
     >>> model1 = create_model(metric = 'confidence')
 
 
-    metric : string, default = 'confidence'
+    metric: str, default = 'confidence'
         Metric to evaluate if a rule is of interest. Default is set to confidence. 
         Other available metrics include 'support', 'lift', 'leverage', 'conviction'. 
         These metrics are computed as follows:
@@ -144,18 +144,18 @@ def create_model(metric='confidence',
         * conviction = [1 - support(C)] / [1 - confidence(A->C)], range: [0, inf]
     
 
-    threshold : float, default = 0.5
+    threshold: float, default = 0.5
         Minimal threshold for the evaluation metric, via the `metric` parameter,
         to decide whether a candidate rule is of interest.
     
 
-    min_support : float, default = 0.05
+    min_support: float, default = 0.05
         A float between 0 and 1 for minumum support of the itemsets returned.
         The support is computed as the fraction `transactions_where_item(s)_occur /
         total_transactions`.
     
 
-    round: integer, default = 4
+    round: int, default = 4
         Number of decimal places metrics in score grid will be rounded to. 
 
 
@@ -227,11 +227,11 @@ def plot_model(model,
     >>> plot_model(rule1, plot='2d')
 
 
-    model : pandas.DataFrame, default = none
+    model: pandas.DataFrame, default = none
         pandas.DataFrame returned by trained model using create_model().
 
 
-    plot : string, default = '2d'
+    plot: str, default = '2d'
         Enter abbreviation of type of plot. The current list of plots supported are 
         (Name - Abbreviated String):
 

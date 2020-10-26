@@ -780,7 +780,7 @@ def tune_model(
         pass a list of fraction value to iterate over in custom_grid param.
     
 
-    fold: integer, default = 10
+    fold: int, default = 10
         Number of folds to be used in Kfold CV. Must be at least 2. 
 
 

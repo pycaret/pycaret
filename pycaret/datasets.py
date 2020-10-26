@@ -16,11 +16,11 @@ def get_data(dataset, save_copy=False, profile=False, verbose=True):
     >>> juice = get_data('juice')
 
         
-    dataset : str
+    dataset: str
         Index value of dataset
     
 
-    save_copy : bool, default = False
+    save_copy: bool, default = False
         When set to true, it saves a copy in current working directory.
     
 

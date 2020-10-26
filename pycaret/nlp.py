@@ -878,7 +878,7 @@ def create_model(model=None,
         Ignored when ``model`` is not 'lda'.
 
 
-    num_topics: integer, default = 4
+    num_topics: int, default = 4
         Number of topics to be created. If None, default is set to 4.
 
 
@@ -2434,7 +2434,7 @@ def tune_model(model=None,
         Ignored when supervised_target is set to None.
 
 
-    fold: integer, default = 10
+    fold: int, default = 10
         Number of folds to be used in Kfold CV. Must be at least 2. 
 
 

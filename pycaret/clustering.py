@@ -492,7 +492,7 @@ def create_model(
         be accessed using ``get_metrics`` function.
 
 
-    round: integer, default = 4
+    round: int, default = 4
         Number of decimal places the metrics in the score grid will be rounded to. 
 
 
@@ -809,7 +809,7 @@ def tune_model(
         pass a list of num_clusters to iterate over in custom_grid param.
     
 
-    fold: integer, default = 10
+    fold: int, default = 10
         Number of folds to be used in Kfold CV. Must be at least 2. 
 
 
