@@ -6035,18 +6035,32 @@ def plot_model(
 
                     logger.info("Rendering Visual")
 
-                    fig = px.scatter_3d(
-                        df,
-                        x=0,
-                        y=1,
-                        z=2,
-                        hover_data=["Feature"],
-                        color="Anomaly",
-                        title="3d TSNE Plot for Outliers",
-                        opacity=0.7,
-                        width=900 * scale,
-                        height=800 * scale,
-                    )
+                    if label:
+                        fig = px.scatter_3d(
+                            df,
+                            x=0,
+                            y=1,
+                            z=2,
+                            text="Feature",
+                            color="Anomaly",
+                            title="3d TSNE Plot for Outliers",
+                            opacity=0.7,
+                            width=900 * scale,
+                            height=800 * scale,
+                        )
+                    else:
+                        fig = px.scatter_3d(
+                            df,
+                            x=0,
+                            y=1,
+                            z=2,
+                            hover_data=["Feature"],
+                            color="Anomaly",
+                            title="3d TSNE Plot for Outliers",
+                            opacity=0.7,
+                            width=900 * scale,
+                            height=800 * scale,
+                        )
 
                     plot_filename = f"{plot_name}.html"
 
