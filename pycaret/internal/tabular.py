@@ -9485,7 +9485,7 @@ def load_config(file_name: str):
 
     """
 
-    global _all_models, _all_models_internal, _all_metrics
+    global _all_models, _all_models_internal, _all_metrics, X_train
 
     import pycaret.internal.utils
 
@@ -9533,6 +9533,7 @@ def load_config(file_name: str):
         _all_metrics = pycaret.containers.metrics.clustering.get_all_metric_containers(
             globals(), raise_errors=True
         )
+        X_train = X
     elif _ml_usecase == MLUsecase.ANOMALY:
         _all_models = {
             k: v
@@ -9547,6 +9548,7 @@ def load_config(file_name: str):
         _all_metrics = pycaret.containers.metrics.anomaly.get_all_metric_containers(
             globals(), raise_errors=True
         )
+        X_train = X
     return r
 
 
@@ -9996,12 +9998,6 @@ def _get_pipeline_fit_kwargs(pipeline, fit_kwargs: dict) -> dict:
 
 
 def _get_groups(groups, ml_usecase: Optional[MLUsecase] = None):
-    if not ml_usecase:
-        ml_usecase = _ml_usecase
-
-    if _is_unsupervised(ml_usecase):
-        return None
-
     import pycaret.internal.utils
 
     return pycaret.internal.utils.get_groups(groups, X_train, fold_groups_param)
