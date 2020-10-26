@@ -626,7 +626,7 @@ def can_early_stop(
 
 
 def infer_ml_usecase(y: pd.Series) -> Tuple[str, str]:
-    c1 = y.dtype == "int64"
+    c1 = "int" in y.dtype.name
     c2 = y.nunique() <= 20
     c3 = y.dtype.name in ["object", "bool", "category"]
 
