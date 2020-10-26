@@ -3424,19 +3424,17 @@ def save_model(model, model_name,
 
     Parameters
     ----------
-    model : object, default = none
+    model : object
         A trained model object should be passed.
     
-    model_name : str, default = none
+    model_name : str
         Name of pickle file to be passed as a string.
 
     verbose : bool, default = True
         When set to False, success message is not printed.
 
-    Returns
-    -------
-    (model, model_filename):
-        Tuple of the model object and the filename it was saved under.
+    Returns:
+        Tuple of the model object and the filename.
 
     """
     import logging
@@ -3494,7 +3492,7 @@ def load_model(model_name,
 
     Parameters
     ----------
-    model_name : str, default = none
+    model_name : str
         Name of pickle file to be passed as a string.
 
     verbose : bool, default = True

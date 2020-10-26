@@ -1833,7 +1833,7 @@ def save_model(model, model_name: str, model_only: bool = False, verbose: bool =
         Trained model object
     
 
-    model_name: str, default = none
+    model_name: str
         Name of the model.
     
 
@@ -1872,7 +1872,7 @@ def load_model(
     >>> saved_lr = load_model('saved_lr_model')
     
 
-    model_name : str, default = none
+    model_name: str
         Name of the model.
       
 
@@ -1881,7 +1881,7 @@ def load_model(
         'aws', 'gcp' and 'azure'.
     
 
-    authentication : dict
+    authentication: dict, default = None
         dictionary of applicable authentication tokens.
 
         when platform = 'aws':
