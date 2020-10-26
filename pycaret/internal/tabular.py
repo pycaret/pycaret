@@ -9487,6 +9487,8 @@ def load_config(file_name: str):
 
     """
 
+    global _all_models, _all_models_internal, _all_metrics
+
     import pycaret.internal.utils
 
     r = pycaret.internal.utils.load_config(file_name, globals())
