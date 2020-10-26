@@ -9995,7 +9995,13 @@ def _get_pipeline_fit_kwargs(pipeline, fit_kwargs: dict) -> dict:
     return pycaret.internal.pipeline.get_pipeline_fit_kwargs(pipeline, fit_kwargs)
 
 
-def _get_groups(groups):
+def _get_groups(groups, ml_usecase: Optional[MLUsecase] = None):
+    if not ml_usecase:
+        ml_usecase = _ml_usecase
+
+    if _is_unsupervised(ml_usecase):
+        return None
+
     import pycaret.internal.utils
 
     return pycaret.internal.utils.get_groups(groups, X_train, fold_groups_param)
