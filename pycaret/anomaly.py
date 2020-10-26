@@ -1041,22 +1041,6 @@ def load_model(
     )
 
 
-def pull(pop: bool = False) -> pd.DataFrame: 
-    """
-    Returns last grid.
-
-
-    pop: bool, default = False
-        If True, will pop (remove) the returned dataframe from the
-        display container.
-
-    Returns:
-        pandas.DataFrame
-
-    """
-    return pycaret.internal.tabular.pull(pop=pop)
-
-
 def models(internal: bool = False, raise_errors: bool = True,) -> pd.DataFrame:
 
     """
