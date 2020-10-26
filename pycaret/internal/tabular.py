@@ -6035,18 +6035,32 @@ def plot_model(
 
                     logger.info("Rendering Visual")
 
-                    fig = px.scatter_3d(
-                        df,
-                        x=0,
-                        y=1,
-                        z=2,
-                        hover_data=["Feature"],
-                        color="Anomaly",
-                        title="3d TSNE Plot for Outliers",
-                        opacity=0.7,
-                        width=900 * scale,
-                        height=800 * scale,
-                    )
+                    if label:
+                        fig = px.scatter_3d(
+                            df,
+                            x=0,
+                            y=1,
+                            z=2,
+                            text="Feature",
+                            color="Anomaly",
+                            title="3d TSNE Plot for Outliers",
+                            opacity=0.7,
+                            width=900 * scale,
+                            height=800 * scale,
+                        )
+                    else:
+                        fig = px.scatter_3d(
+                            df,
+                            x=0,
+                            y=1,
+                            z=2,
+                            hover_data=["Feature"],
+                            color="Anomaly",
+                            title="3d TSNE Plot for Outliers",
+                            opacity=0.7,
+                            width=900 * scale,
+                            height=800 * scale,
+                        )
 
                     plot_filename = f"{plot_name}.html"
 
@@ -9174,7 +9188,7 @@ def _get_metric(name_or_id: str, metrics: Optional[Any] = None):
         pass
 
     try:
-        metric = next(v for k, v in metrics.items() if v.name == name_or_id)
+        metric = next(v for k, v in metrics.items() if name_or_id in (v.display_name, v.name))
         return metric
     except:
         pass
@@ -9618,6 +9632,8 @@ def _choose_better(
             )
             s = pull(pop=True).loc["Mean"][compare_dimension]
         logger.info(f"{new_estimator} result for {compare_dimension} is {s}")
+        if not metric.greater_is_better:
+            s *= -1
         scorer.append(s)
         base_models_.append(m)
 
