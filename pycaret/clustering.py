@@ -1039,7 +1039,7 @@ def load_model(
       
 
     platform: str, default = None
-        Name of the platform. Available options are:
+        Name of the cloud platform. Currently supported platforms: 
         'aws', 'gcp' and 'azure'.
     
 
@@ -1047,13 +1047,13 @@ def load_model(
         dictionary of applicable authentication tokens.
 
         when platform = 'aws':
-        {'bucket' : 'Name of Bucket on S3'}
+        {'bucket' : 'S3-bucket-name'}
 
         when platform = 'gcp':
-        {'project': 'gcp_pycaret', 'bucket' : 'pycaret-test'}
+        {'project': 'gcp-project-name', 'bucket' : 'gcp-bucket-name'}
 
         when platform = 'azure':
-        {'container': 'pycaret-test'}
+        {'container': 'azure-container-name'}
     
 
     verbose: bool, default = True

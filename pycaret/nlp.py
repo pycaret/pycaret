@@ -3492,10 +3492,10 @@ def load_model(model_name,
 
     Parameters
     ----------
-    model_name : str
+    model_name: str
         Name of pickle file to be passed as a string.
 
-    verbose : bool, default = True
+    verbose: bool, default = True
         When set to False, success message is not printed.
 
     Returns
