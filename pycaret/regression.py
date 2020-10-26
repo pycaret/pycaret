@@ -1910,7 +1910,7 @@ def automl(optimize: str = "R2", use_holdout: bool = False) -> Any:
 
     """
     This function returns the best model out of all trained models in
-    current session based on the ``optimize`` parameter defined. Metrics
+    current session based on the ``optimize`` parameter. Metrics
     evaluated can be accessed using the ``get_metrics`` function. 
 
 
@@ -1951,7 +1951,7 @@ def pull(pop: bool = False) -> pd.DataFrame:
 
 
     pop: bool, default = False
-        If true, will pop (remove) the returned dataframe from the
+        If True, will pop (remove) the returned dataframe from the
         display container.
 
 

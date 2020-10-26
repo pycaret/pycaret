@@ -1078,8 +1078,8 @@ def pull(pop: bool = False) -> pd.DataFrame:
     Returns last grid.
 
 
-    pop : bool, default = False
-        If true, will pop (remove) the returned dataframe from the
+    pop: bool, default = False
+        If True, will pop (remove) the returned dataframe from the
         display container.
 
     Returns:
