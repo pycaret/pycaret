@@ -9174,7 +9174,7 @@ def _get_metric(name_or_id: str, metrics: Optional[Any] = None):
         pass
 
     try:
-        metric = next(v for k, v in metrics.items() if v.name == name_or_id)
+        metric = next(v for k, v in metrics.items() if name_or_id in (v.display_name, v.name))
         return metric
     except:
         pass
@@ -9618,6 +9618,8 @@ def _choose_better(
             )
             s = pull(pop=True).loc["Mean"][compare_dimension]
         logger.info(f"{new_estimator} result for {compare_dimension} is {s}")
+        if not metric.greater_is_better:
+            s *= -1
         scorer.append(s)
         base_models_.append(m)
 
