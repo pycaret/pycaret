@@ -746,13 +746,6 @@ def setup(
         "X_test",
         "y_train",
         "y_test",
-        "fold_shuffle_param",
-        "fix_imbalance_param",
-        "fix_imbalance_method_param",
-        "stratify_param",
-        "fold_generator",
-        "fold_param",
-        "fold_groups_param",
     }
     common_globals = {
         "_ml_usecase",
@@ -784,6 +777,13 @@ def setup(
         "imputation_regressor",
         "imputation_classifier",
         "iterative_imputation_iters_param",
+        "fold_shuffle_param",
+        "fix_imbalance_param",
+        "fix_imbalance_method_param",
+        "stratify_param",
+        "fold_generator",
+        "fold_param",
+        "fold_groups_param",
     }
     if not _is_unsupervised(_ml_usecase):
         pycaret_globals = common_globals.union(supervised_globals)
