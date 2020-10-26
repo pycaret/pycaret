@@ -756,6 +756,7 @@ def setup(
     }
     common_globals = {
         "_ml_usecase",
+        "_available_plots",
         "pycaret_globals",
         "USI",
         "html_param",
