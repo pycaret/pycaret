@@ -475,6 +475,7 @@ def setup(
         - Extreme Gradient Boosting, requires no further installation
 
         - CatBoost Classifier, requires no further installation
+          (GPU is only enabled when data > 50,000 rows)  
         
         - Light Gradient Boosting Machine, requires GPU installation
           https://lightgbm.readthedocs.io/en/latest/GPU-Tutorial.html
