@@ -32,8 +32,8 @@ PyCaret's default installation is a slim version of pycaret which only installs 
     # install the full version of pycaret
     pip install pycaret[full]
 
-PyCaret Nightly Build
-*********************
+Installing the nightly build
+****************************
 
 PyCaret is a fast-evolving machine learning library. Often, you want to have access to the latest features but want to avoid compiling PyCaret from source or waiting for the next release. Fortunately, you can now install pycaret-nightly using pip.
 
@@ -42,7 +42,7 @@ PyCaret is a fast-evolving machine learning library. Often, you want to have acc
     # install the nightly build
     pip install pycaret-nightly
 
-Recommended Environment for Use
+Recommended environment for use
 *******************************
 
 You can use PyCaret in your choice of Integrated Development Environment (IDE) but since it uses html and several other interactive widgets, it is optimized for use within a notebook environment, be it `Jupyter Notebook <https://jupyter.org/>`_, `Jupyter Lab <https://jupyterlab.readthedocs.io/en/stable/>`_, `Azure Notebooks <https://notebooks.azure.com/>`_ or `Google Colab <https://colab.research.google.com/>`_.
@@ -53,8 +53,8 @@ You can use PyCaret in your choice of Integrated Development Environment (IDE) b
 - `Get Started with Google Colab <https://colab.research.google.com/>`_
 - `Get Started with Anaconda Distribution <https://www.anaconda.com/>`_
 
-Run PyCaret on Docker Container
-*******************************
+Run PyCaret on a Docker Container
+*********************************
 A Docker container runs in a virtual environment and is the easiest way to deploy applications using PyCaret. Dockerfile from base image python:3.7 and python:3.7-slim is tested for PyCaret >= 2.0.
 
 - `python:3.7 <https://github.com/pycaret/pycaret/blob/master/docker%20python37/Dockerfile>`_
