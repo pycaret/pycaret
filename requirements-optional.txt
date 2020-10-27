@@ -1,12 +1,12 @@
+shap
 tune-sklearn>=0.1.0
 ray[tune]>=1.0.0
 hyperopt
-hpbandster
-ConfigSpace
 optuna
 scikit-optimize>=0.8.1
 psutil
 awscli
 azure-storage-blob
 google-cloud-storage
-shap
+#hpbandster
+#ConfigSpace
