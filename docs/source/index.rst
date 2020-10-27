@@ -1,6 +1,8 @@
 PyCaret 
 ===================================
 
+.. image:: https://github.com/pycaret/pycaret/blob/master/pycaret2.2.png?raw=true
+
 PyCaret is an open-source, low-code machine learning library in Python that automates machine learning workflows. It is an end-to-end machine learning and model management tool that speeds up the experiment cycle exponentially and makes you more productive.
 
 In comparison with the other open-source machine learning libraries, PyCaret is an alternate low-code library that can be used to replace hundreds of lines of code with few words only. This makes experiments exponentially fast and efficient. PyCaret is essentially a Python wrapper around several machine learning libraries and frameworks such as `scikit-learn <https://scikit-learn.org/stable/>`_, `XGBoost <https://xgboost.readthedocs.io/en/latest/>`_, `LightGBM <https://github.com/microsoft/LightGBM>`_, `CatBoost <https://catboost.ai/>`_, `spaCy <https://spacy.io/>`_, `Optuna <https://github.com/optuna/optuna>`_, `Hyperopt <https://github.com/hyperopt/hyperopt>`_, `Ray <https://github.com/ray-project/ray/tree/master/python/ray/tune>`_, and many more. 
