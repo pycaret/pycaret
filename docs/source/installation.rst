@@ -42,8 +42,17 @@ PyCaret is a fast-evolving machine learning library. Often, you want to have acc
     # install the nightly build 
     pip install pycaret-nightly
 
-    # or install the full version of nightly build
+    # or install the full version of the nightly build
     pip install pycaret-nightly[full]
+
+PyCaret on GPU
+***************
+PyCaret >= 2.2 provides the option to use GPU for select model training and hyperparameter tuning. There is no change in the use of the API, however, in some cases, additional libraries have to be installed as they are not installed with the default slim version or the full version. The following estimators can be trained on GPU.
+
+* Extreme Gradient Boosting (requires no further installation)
+* CatBoost (requires no further installation)
+* Light Gradient Boosting Machine (requires GPU installation: https://lightgbm.readthedocs.io/en/latest/GPU-Tutorial.html)
+* Logistic Regression, Ridge Classifier, Random Forest, K Neighbors Classifier, K Neighbors Regressor, Support Vector Machine, Linear Regression, Ridge Regression, Lasso Regression (requires cuML >= 0.15 https://github.com/rapidsai/cuml)
 
 Recommended environment for use
 *******************************
