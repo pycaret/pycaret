@@ -25,7 +25,7 @@ In order to avoid potential conflicts with other packages, it is strongly recomm
 
 Installing the full version 
 ***************************
-PyCaret's default installation is a slim version of pycaret which only installs hard dependencies as `listed here <https://github.com/pycaret/pycaret/blob/master/requirements.txt>`_. To install the full version of pycaret, use the following command:
+PyCaret's default installation is a slim version of pycaret which only installs hard dependencies that are `listed here <https://github.com/pycaret/pycaret/blob/master/requirements.txt>`_. To install the full version of pycaret, use the following command:
 
 .. code-block:: python
 
@@ -39,8 +39,11 @@ PyCaret is a fast-evolving machine learning library. Often, you want to have acc
 
 .. code-block:: python
 
-    # install the nightly build
+    # install the nightly build 
     pip install pycaret-nightly
+
+    # or install the full version of nightly build
+    pip install pycaret-nightly[full]
 
 Recommended environment for use
 *******************************
