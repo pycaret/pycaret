@@ -5,15 +5,15 @@ All notable changes to this project will be documented in this file.
 
 ## Summary of Changes
 
-- **Major Changes:** `pycaret.classification` `pycaret.regression` `pycaret.clustering` `pycaret.anomaly` 
+- **Modules Impacted:** `pycaret.classification` `pycaret.regression` `pycaret.clustering` `pycaret.anomaly` 
 
-- **Separate Train and Test Set:** New parameter `test_data` has been added in the `setup` function of `pycaret.classification` and `pycaret.regression`. When a data frame is passed into `test_data`, it is used as a holdout set and the `train_size` parameter is ignored. `test_data` must be labeled and the shape of `test_data` must match with the shape of `data`. 
+- **Separate Train and Test Set:** New parameter `test_data` has been added in the `setup` function of `pycaret.classification` and `pycaret.regression`. When a DataFrame is passed into the `test_data`, it is used as a holdout set and the `train_size` parameter is ignored. `test_data` must be labeled and the shape of `test_data` must match with the shape of `data`. 
      
 - **Disable Default Preprocessing:** A new parameter `preprocess` has been added into the `setup` function. When `preprocess` is set to `False`, no transformations are applied except for `train_test_split` and custom transformations passed in the `custom_pipeline` param.  Data must be ready for modeling (no missing values, no dates, categorical data encoding) when preprocess is set to False.
 
 - **Custom Metrics:** New functions `get_metric`, `add_metric` and `remove_metric` is now added in `pycaret.classification`, `pycaret.regression`, and `pycaret.clustering`, that can be used to add / remove metrics used in model evaluation.
 
-- **Custom Transformations:** A new parameter `custom_pipeline` has been added into the `setup` function. It takes a tuple of `(str, transformer)` or a list of transformers. When passed, it will append the custom transformers in the preprocessing pipeline and are applied on each CV fold separately and on the final fit. All the custom transformations are applied after `train_test_split` and before pycaret's internal transformations. 
+- **Custom Transformations:** A new parameter `custom_pipeline` has been added into the `setup` function. It takes a tuple of `(str, transformer)` or a list of tuples. When passed, it will append the custom transformers in the preprocessing pipeline and are applied on each CV fold separately and on the final fit. All the custom transformations are applied after `train_test_split` and before pycaret's internal transformations. 
 
 - **GPU enabled Training:** To use GPU for training `use_gpu` parameter in the `setup` function can be set to `True` or `force`. When set to True, it will use GPU with algorithms that support it and fall back on CPU for remaining. When set to `force` it will only use GPU-enabled algorithms and raise exceptions if they are unavailable for use. The following algorithms are supported on GPU:
 
@@ -41,14 +41,14 @@ All notable changes to this project will be documented in this file.
 
   Except for `scikit-learn`, all the other search libraries are not hard dependencies of pycaret and must be installed separately. 
 
-- **Early Stopping:** Early stopping now supported for hyperparameter tuning. A new parameter `early_stopping` is added in the `tune_model` function for `pycaret.classification` and `pycaret.regression`. It is ignored when `search_library` is ``scikit-learn``, or if the estimator doesn't have a `partial_fit` attribute. It can be either an object accepted by the search library or one of the following:
+- **Early Stopping:** Early stopping now supported for hyperparameter tuning. A new parameter `early_stopping` is added in the `tune_model` function for `pycaret.classification` and `pycaret.regression`. It is ignored when `search_library` is ``scikit-learn``, or if the estimator doesn't have a 'partial_fit' attribute. It can be either an object accepted by the search library or one of the following:
 
   - `asha` for Asynchronous Successive Halving Algorithm
   - `hyperband` for Hyperband
   - `median` for median stopping rule
   - When `False` or `None`, early stopping will not be used.
 
-- **Iterative Imputation:** Iterative imputation type for numeric and categorical missing values is now implemented. New parameters `imputation_type`, `iterative_imptutation_iters`, `categorical_iterative_imputer`, and `numeric_iterative_imputer` added in the `setup` function. 
+- **Iterative Imputation:** Iterative imputation type for numeric and categorical missing values is now implemented. New parameters `imputation_type`, `iterative_imptutation_iters`, `categorical_iterative_imputer`, and `numeric_iterative_imputer` added in the `setup` function. Read the blog post for more details: https://www.linkedin.com/pulse/iterative-imputation-pycaret-22-antoni-baum/?trackingId=Shg1zF%2F%2FR5BE7XFpzfTHkA%3D%3D
 
 - **New Plots:** Following new plots have been added:
   - lift `pycaret.classification`
@@ -58,27 +58,27 @@ All notable changes to this project will be documented in this file.
 
 - **CatBoost Compatibility:** `CatBoostClassifier` and `CatBoostRegressor` is now compatible with `plot_model`. It requires `catboost>=0.23.2`. 
 
-- **Log Plots in MLFlow Server:** You can now log any plot in the `MLFlow` tracking server that is available in the `plot_model` function. To log specific plots, pass a list containing plot IDs in the `log_plots` parameter.
+- **Log Plots in MLFlow Server:** You can now log any plot in the `MLFlow` tracking server that is available in the `plot_model` function. To log specific plots, pass a list containing plot IDs in the `log_plots` parameter. Check the documentation of the `plot_model` to see all available plots.
 
 - **Data Split Stratification:** A new parameter `data_split_stratify` is added in the `setup` function of `pycaret.classification` and `pycaret.regression`. It controls stratification during `train_test_split`. When set to True, will stratify by target column. To stratify on any other columns, pass a list of column names.
 
 - **Fold Strategy:** A new parameter `fold_strategy` is added in the `setup` function for `pycaret.classification` and `pycaret.regression`. By default, it is 'stratifiedkfold' for `pycaret.classification` and 'kfold' for `pycaret.regression`. Possible values are:
 
   - `kfold` for KFold CV;
-  - 'stratifiedkfold' for Stratified KFold CV;
-  - 'groupkfold' for Group KFold CV;
-  - 'timeseries' for TimeSeriesSplit CV; or
+  - `stratifiedkfold` for Stratified KFold CV;
+  - `groupkfold` for Group KFold CV;
+  - `timeseries` for TimeSeriesSplit CV; or
   - a custom CV generator object compatible with scikit-learn.
 
-- **Global Fold Parameter:** A new parameter `fold` has been added in the `setup` function for `pycaret.classification` and `pycaret.regression`. It controls the number of folds across all the training functions centrally. `fold` parameter passed in the individual functions such as `create_model`, `tune_model`, `ensemble_model` overwrites the `fold` parameter set through the `setup` function. 
+- **Global Fold Parameter:** A new parameter `fold` has been added in the `setup` function for `pycaret.classification` and `pycaret.regression`. It controls the number of folds to be used in cross validation. This is a global setting that can be over-written at function level by using `fold` parameter within each function. Ignored when ``fold_strategy`` is a custom object.
 
 - **Fold Groups:** Optional Group labels when `fold_strategy` is `groupkfold`. It takes an array with shape (n_samples, ) where n_samples is the number of rows in the training dataset. When a string is passed, it is interpreted as the column name in the dataset containing the group label.
 
-- **Transformation Pipeline:** All transformations are now applied after `train_test_split` to avoid the risk of target leakage. 
+- **Transformation Pipeline:** All transformations are now applied after `train_test_split`. 
 
 - **Data Type Handling:** All data types handling internally has been changed from `int64` and `float64` to `int32` and `float32` respectively in order to improve memory usage and performance, as well as for better compatibility with GPU-based algorithms.
 
-- **AutoML Behavior Change:** `automl` function in `pycaret.classification` and `pycaret.regression` is not re-fitting the model on entire dataset. As such, if the model needs to be fitted on the entire dataset including the holdout set, `finalize_model` must be explicitly called.
+- **AutoML Behavior Change:** `automl` function in `pycaret.classification` and `pycaret.regression` is no more re-fitting the model on the entire dataset. As such, if the model needs to be fitted on the entire dataset including the holdout set, `finalize_model` must be explicitly used.
 
 - **Default Tuning Grid:** Default hyperparameter tuning grid for `RandomForest`, `XGBoost`, `CatBoost`, and `LightGBM` has been amended to remove extreme values for `max_depth` and other training intense parameters to speed up the tuning process.
 
@@ -91,6 +91,8 @@ All notable changes to this project will be documented in this file.
 - **Sampling Parameter Removed:** `sampling` parameter is now removed from the `setup` function of `pycaret.classification` and `pycaret.regression`. 
 
 - **Type Hinting:** In order to make both the usage and development easier, type hints have been added to all updated pycaret functions, in accordance with best practices. Users can leverage those by using an IDE with support for type hints.
+
+- **Documentation:** All Modules documentation on the website is now retired. Updated documentation is available here: https://pycaret.readthedocs.io/en/latest/
 
 ## Function Level Changes
 
