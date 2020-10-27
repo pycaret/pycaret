@@ -60,6 +60,7 @@ def get_svc_classifier():
             nochange_steps=1000,
             random_state=None,
             n_jobs=1,
+            handle=None
         ):
 
             self.kernel = kernel
@@ -75,6 +76,7 @@ def get_svc_classifier():
             self.max_iter = max_iter
             self.nochange_steps = nochange_steps
             self.random_state = random_state
+            self.handle = handle
 
             self.estimator = cuMLSVC(
                 kernel=kernel,
@@ -90,6 +92,7 @@ def get_svc_classifier():
                 max_iter=max_iter,
                 nochange_steps=nochange_steps,
                 random_state=random_state,
+                handle=handle
             )
             self.n_jobs = 1
 
@@ -212,6 +215,7 @@ def get_ridge_classifier():
             class_weight=None,
             solver="auto",
             n_jobs=1,
+            handle=None,
         ):
 
             if solver not in ("auto", "eig", "cd", "svd"):
@@ -226,12 +230,14 @@ def get_ridge_classifier():
             self.alpha = alpha
             self.fit_intercept = fit_intercept
             self.normalize = normalize
+            self.handle = handle
 
             self.estimator = _RidgeClassifierBase(
                 alpha=self.alpha,
                 fit_intercept=self.fit_intercept,
                 normalize=self.normalize,
                 solver=self.solver,
+                handle=handle,
             )
             self.n_jobs = 1
             self.n_iter_ = None
@@ -341,6 +347,7 @@ def get_ridge_classifier():
             copy_X=True,
             class_weight=None,
             solver="eig",
+            handle=None,
         ):
             if class_weight:
                 raise ValueError("`class_weight` not supported.")
@@ -350,6 +357,7 @@ def get_ridge_classifier():
                 fit_intercept=fit_intercept,
                 normalize=normalize,
                 solver=solver,
+                handle=handle,
             )
 
             self.n_iter_ = None
