@@ -24,6 +24,7 @@ iris,Multivariate,Classification (Multiclass),species,None,150,5,N
 poker,Multivariate,Classification (Multiclass),CLASS,None,100000,11,N
 questions,Multivariate,Classification (Multiclass),Next_Question,None,499,4,N
 satellite,Multivariate,Classification (Multiclass),Class,None,6435,37,N
+CTG,Multivariate,Classification (Multiclass),NSP,None,2129,40,Y
 asia_gdp,Multivariate,Clustering,None,None,40,11,N
 elections,Multivariate,Clustering,None,None,3195,54,Y
 facebook,Multivariate,Clustering,None,None,7050,12,N
@@ -54,4 +55,3 @@ house,Multivariate,Regression,SalePrice,None,1461,81,Y
 insurance,Multivariate,Regression,charges,None,1338,7,N
 parkinsons,Multivariate,Regression,PPE,None,5875,22,N
 traffic,Multivariate,Regression,traffic_volume,None,48204,8,N
-CTG,Multivariate,Classification (Multiclass),NSP,None,2129,40,Y
