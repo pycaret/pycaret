@@ -4460,11 +4460,9 @@ def tune_model_supervised(
 
     if choose_better:
         best_model = _choose_better(
-            model,
-            [best_model],
+            [estimator, (best_model, model_results)],
             compare_dimension,
             fold,
-            new_results_list=[model_results],
             groups=groups,
             fit_kwargs=fit_kwargs,
             display=display,
@@ -4836,11 +4834,9 @@ def ensemble_model(
 
     if choose_better:
         model = _choose_better(
-            _estimator_,
-            [best_model],
+            [_estimator_, (best_model, model_results)],
             compare_dimension,
             fold,
-            new_results_list=[model_results],
             groups=groups,
             fit_kwargs=fit_kwargs,
             display=display,
@@ -5184,11 +5180,9 @@ def blend_models(
 
     if choose_better:
         model = _choose_better(
-            model,
-            estimator_list,
+            [(model, model_results)] + estimator_list,
             compare_dimension,
             fold,
-            model_results=model_results,
             groups=groups,
             fit_kwargs=fit_kwargs,
             display=display,
@@ -5536,11 +5530,9 @@ def stack_models(
 
     if choose_better:
         model = _choose_better(
-            model,
-            estimator_list,
+            [(model, model_results)] + estimator_list,
             compare_dimension,
             fold,
-            model_results=model_results,
             groups=groups,
             fit_kwargs=fit_kwargs,
             display=display,
@@ -5868,7 +5860,9 @@ def plot_model(
                     if feature_name is not None:
                         pca_["Feature"] = data_before_preprocess[feature_name]
                     else:
-                        pca_["Feature"] = data_before_preprocess[data_before_preprocess.columns[0]]
+                        pca_["Feature"] = data_before_preprocess[
+                            data_before_preprocess.columns[0]
+                        ]
 
                     if label:
                         pca_["Label"] = pca_["Feature"]
@@ -5966,7 +5960,9 @@ def plot_model(
                     if feature_name is not None:
                         df["Feature"] = data_before_preprocess[feature_name]
                     else:
-                        df["Feature"] = data_before_preprocess[data_before_preprocess.columns[0]]
+                        df["Feature"] = data_before_preprocess[
+                            data_before_preprocess.columns[0]
+                        ]
 
                     display.clear_output()
 
@@ -6028,7 +6024,9 @@ def plot_model(
                     if feature_name is not None:
                         X["Feature"] = data_before_preprocess[feature_name]
                     else:
-                        X["Feature"] = data_before_preprocess[data_before_preprocess.columns[0]]
+                        X["Feature"] = data_before_preprocess[
+                            data_before_preprocess.columns[0]
+                        ]
 
                     df = X
 
@@ -6105,7 +6103,9 @@ def plot_model(
                     if feature_name is not None:
                         X_embedded["Feature"] = data_before_preprocess[feature_name]
                     else:
-                        X_embedded["Feature"] = data_before_preprocess[data_X.columns[0]]
+                        X_embedded["Feature"] = data_before_preprocess[
+                            data_X.columns[0]
+                        ]
 
                     if label:
                         X_embedded["Label"] = X_embedded["Feature"]
@@ -9186,7 +9186,9 @@ def _get_metric(name_or_id: str, metrics: Optional[Any] = None):
         pass
 
     try:
-        metric = next(v for k, v in metrics.items() if name_or_id in (v.display_name, v.name))
+        metric = next(
+            v for k, v in metrics.items() if name_or_id in (v.display_name, v.name)
+        )
         return metric
     except:
         pass
@@ -9553,12 +9555,9 @@ def load_config(file_name: str):
 
 
 def _choose_better(
-    model,
-    new_estimator_list: list,
+    models_and_results: list,
     compare_dimension: str,
     fold: int,
-    model_results=None,
-    new_results_list: Optional[list] = None,
     fit_kwargs: Optional[dict] = None,
     groups: Optional[Union[str, Any]] = None,
     display: Optional[Display] = None,
@@ -9570,59 +9569,35 @@ def _choose_better(
     model performance is at least equivalent to what is seen in compare_models 
     """
 
-    if new_results_list and len(new_results_list) != len(new_estimator_list):
-        raise ValueError(
-            "new_results_list and new_estimator_list must have the same length"
-        )
-
     logger = get_logger()
     logger.info("choose_better activated")
     display.update_monitor(1, "Compiling Final Results")
     display.display_monitor()
 
-    scorer = []
-
     if not fit_kwargs:
         fit_kwargs = {}
 
-    if model_results is None:
-        logger.info(
-            "SubProcess create_model() called =================================="
-        )
-        create_model_supervised(
-            model,
-            verbose=False,
-            system=False,
-            fold=fold,
-            fit_kwargs=fit_kwargs,
-            groups=groups,
-        )
-        logger.info("SubProcess create_model() end ==================================")
-        model_results = pull(pop=True)
-
-    model_results = model_results.loc["Mean"][compare_dimension]
-    logger.info(f"Base model {model} result for {compare_dimension} is {model_results}")
+    for i, x in enumerate(models_and_results):
+        if not isinstance(x, tuple):
+            models_and_results[i] = (x, None)
+        elif isinstance(x[0], str):
+            models_and_results[i] = (x[1], None)
+        elif len(x) != 2:
+            raise ValueError(f"{x} must have lenght 2 but has {len(x)}")
 
     metric = _get_metric(compare_dimension)
 
-    if not metric.greater_is_better:
-        model_results *= -1
-
-    scorer.append(model_results)
-
-    base_models_ = []
-    for i, new_estimator in enumerate(new_estimator_list):
-        if isinstance(new_estimator, tuple):
-            new_estimator = new_estimator[1]
-        if new_results_list:
-            m = new_estimator
-            s = new_results_list[i].loc["Mean"][compare_dimension]
+    best_result = None
+    best_model = None
+    for model, result in models_and_results:
+        if result is not None or not is_fitted(model):
+            result = result.loc["Mean"][compare_dimension]
         else:
             logger.info(
                 "SubProcess create_model() called =================================="
             )
-            m, _ = create_model_supervised(
-                new_estimator,
+            model, _ = create_model_supervised(
+                model,
                 verbose=False,
                 system=False,
                 fold=fold,
@@ -9632,21 +9607,18 @@ def _choose_better(
             logger.info(
                 "SubProcess create_model() end =================================="
             )
-            s = pull(pop=True).loc["Mean"][compare_dimension]
-        logger.info(f"{new_estimator} result for {compare_dimension} is {s}")
+            result = pull(pop=True).loc["Mean"][compare_dimension]
+        logger.info(f"{model} result for {compare_dimension} is {result}")
         if not metric.greater_is_better:
-            s *= -1
-        scorer.append(s)
-        base_models_.append(m)
+            result *= -1
+        if best_result is None or best_result < result:
+            best_result = result
+            best_model = model
 
-    index_scorer = scorer.index(max(scorer))
-
-    if index_scorer != 0:
-        model = base_models_[index_scorer - 1]
-    logger.info(f"{model} is best model")
+    logger.info(f"{best_model} is best model")
 
     logger.info("choose_better completed")
-    return model
+    return best_model
 
 
 def _is_multiclass() -> bool:
