@@ -48,6 +48,7 @@ We are appreciated that PyCaret has been increasingly referred and cited in scie
    installation
    tutorials
    contribute
+   modules
 
 .. toctree::
    :maxdepth: 2
