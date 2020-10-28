@@ -6,17 +6,16 @@
 ## What is PyCaret?
 PyCaret is an open-source, low-code machine learning library in Python that automates machine learning workflows. It is an end-to-end machine learning and model management tool that speeds up the experiment cycle exponentially and makes you more productive.
 
-In comparison with the other open-source machine learning libraries, PyCaret is an alternate low-code library that can be used to replace hundreds of lines of code with few words only. This makes experiments exponentially fast and efficient. PyCaret is essentially a Python wrapper around several machine learning libraries and frameworks such as `scikit-learn`, `XGBoost`, `LightGBM`, `CatBoost`, `spaCy`, `Optuna`, `Hyperopt`, `Ray`, and many more. 
+In comparison with the other open-source machine learning libraries, PyCaret is an alternate low-code library that can be used to replace hundreds of lines of code with few words only. This makes experiments exponentially fast and efficient. PyCaret is essentially a Python wrapper around several machine learning libraries and frameworks such as scikit-learn, XGBoost, LightGBM, CatBoost, spaCy, Optuna, Hyperopt, Ray, and many more. 
 
 The design and simplicity of PyCaret is inspired by the emerging role of citizen data scientists, a term first used by Gartner. Citizen Data Scientists are power users who can perform both simple and moderately sophisticated analytical tasks that would previously have required more expertise. Seasoned data scientists are often difficult to find and expensive to hire but citizen data scientists can be an effective way to mitigate this gap and address data-related challenges in the business setting.
 
 PyCaret is a great library which not only simplifies the machine learning tasks for citizen data scientists but also helps new startups to reduce the cost of investing in a team of data scientists. Therefore, this library has not only helped the citizen data scientists but has also helped individuals who want to start exploring the field of data science, having no prior knowledge in this field.
 
-For more information on PyCaret, please visit our official website https://www.pycaret.org
+- Official Website: https://www.pycaret.org
+- Documentation: https://pycaret.readthedocs.io/en/latest/
 
 ![alt text](https://github.com/pycaret/pycaret/blob/master/pycaret2-features.png)
-
-Docs: https://pycaret.readthedocs.io/en/latest/
 
 ## Current Release
 PyCaret `2.2` is now available. See `2.2` release notes. The easiest way to install pycaret is using pip. 
