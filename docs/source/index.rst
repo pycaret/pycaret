@@ -45,6 +45,7 @@ A formatted version of the citation would look like this::
    self
    installation
    tutorials
+   contribute
 
 .. toctree::
    :maxdepth: 2
