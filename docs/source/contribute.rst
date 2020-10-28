@@ -1,5 +1,5 @@
-Contribution Guidelines
-=======================
+Contribute
+===========
 
 Thank you for choosing to contribute to PyCaret. There are a ton of
 great open-source projects out there, so we appreciate your interest in

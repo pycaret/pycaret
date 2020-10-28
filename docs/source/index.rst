@@ -26,6 +26,8 @@ A formatted version of the citation would look like this::
       url     = {https://www.pycaret.org}
     }
 
+We are appreciated that PyCaret has been increasingly referred and cited in scientific works. See all citations here: https://scholar.google.com/scholar?hl=en&as_sdt=0%2C5&q=pycaret&btnG=
+
 **Key Links and Resources**\ :
 
 * `Release Notes <https://github.com/pycaret/pycaret/releases>`_
