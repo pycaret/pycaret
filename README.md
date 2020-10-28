@@ -12,8 +12,6 @@ The design and simplicity of PyCaret is inspired by the emerging role of citizen
 
 PyCaret is a great library which not only simplifies the machine learning tasks for citizen data scientists but also helps new startups to reduce the cost of investing in a team of data scientists. Therefore, this library has not only helped the citizen data scientists but has also helped individuals who want to start exploring the field of data science, having no prior knowledge in this field.
 
-PyCaret is `simple`, `easy to use` and `deployment ready`. All the steps performed in a ML experiment can be reproduced using a pipeline that is automatically developed and orchestrated in PyCaret. A `pipeline` can be saved in a binary file format that is transferable across environments.
-
 For more information on PyCaret, please visit our official website https://www.pycaret.org
 
 ![alt text](https://github.com/pycaret/pycaret/blob/master/pycaret2-features.png)
