@@ -54,6 +54,25 @@ PyCaret >= 2.2 provides the option to use GPU for select model training and hype
 * Light Gradient Boosting Machine (requires GPU installation: https://lightgbm.readthedocs.io/en/latest/GPU-Tutorial.html)
 * Logistic Regression, Ridge Classifier, Random Forest, K Neighbors Classifier, K Neighbors Regressor, Support Vector Machine, Linear Regression, Ridge Regression, Lasso Regression (requires cuML >= 0.15 https://github.com/rapidsai/cuml)
 
+If you are using Google Colab you can install Light Gradient Boosting Machine for GPU but first you have to uninstall LightGBM on CPU. Use the below command to do that:
+
+.. code-block:: python
+
+    # uninstall lightgbm CPU
+    pip uninstall lightgbm -y
+
+    # install lightgbm GPU
+    pip install lightgbm --install-option=--gpu --install-option="--opencl-include-dir=/usr/local/cuda/include/" --install-option="--opencl-library=/usr/local/cuda/lib64/libOpenCL.so"
+
+CatBoost is only enabled on GPU when dataset has > 50,000 rows.
+
+cuML >= 0.15 cannot be installed on Google Colab. Instead use `blazingSQL <https://blazingsql.com/>`_ which comes pre-installed with cuML 0.15. Use following command to install pycaret:
+
+.. code-block:: python
+
+    # install pycaret
+    !/opt/conda-environments/rapids-stable/bin/python -m pip install --upgrade pycaret
+
 Recommended environment for use
 *******************************
 
