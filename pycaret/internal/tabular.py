@@ -9590,7 +9590,7 @@ def _choose_better(
     best_result = None
     best_model = None
     for model, result in models_and_results:
-        if result is not None or not is_fitted(model):
+        if result is not None and is_fitted(model):
             result = result.loc["Mean"][compare_dimension]
         else:
             logger.info(
