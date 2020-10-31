@@ -2055,6 +2055,7 @@ def compare_models(
     URI = secrets.token_hex(nbytes=4)
 
     master_display = None
+    master_display_ = None
 
     total_runtime_start = time.time()
     total_runtime = 0
@@ -2217,23 +2218,28 @@ def compare_models(
         color = "lightgrey"
         return f"background-color: {color}"
 
-    compare_models_ = (
-        master_display_.apply(
-            highlight_max,
-            subset=[
-                x
-                for x in master_display_.columns[1:]
-                if x not in greater_is_worse_columns
-            ],
+    if master_display_ is not None:
+        compare_models_ = (
+            master_display_.apply(
+                highlight_max,
+                subset=[
+                    x
+                    for x in master_display_.columns[1:]
+                    if x not in greater_is_worse_columns
+                ],
+            )
+            .apply(
+                highlight_min,
+                subset=[
+                    x
+                    for x in master_display_.columns[1:]
+                    if x in greater_is_worse_columns
+                ],
+            )
+            .applymap(highlight_cols, subset=["TT (Sec)"])
         )
-        .apply(
-            highlight_min,
-            subset=[
-                x for x in master_display_.columns[1:] if x in greater_is_worse_columns
-            ],
-        )
-        .applymap(highlight_cols, subset=["TT (Sec)"])
-    )
+    else:
+        compare_models_ = pd.DataFrame().style
 
     display.update_monitor(1, "Compiling Final Models")
     display.display_monitor()
@@ -2304,7 +2310,7 @@ def compare_models(
     pd.reset_option("display.max_columns")
 
     # store in display container
-    display_container.append(compare_models_.data)
+    display_container.append(compare_modfels_.data)
 
     logger.info(f"create_model_container: {len(create_model_container)}")
     logger.info(f"master_model_container: {len(master_model_container)}")
