@@ -2310,7 +2310,7 @@ def compare_models(
     pd.reset_option("display.max_columns")
 
     # store in display container
-    display_container.append(compare_modfels_.data)
+    display_container.append(compare_models_.data)
 
     logger.info(f"create_model_container: {len(create_model_container)}")
     logger.info(f"master_model_container: {len(master_model_container)}")
