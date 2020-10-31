@@ -31,7 +31,8 @@ def test():
     ]
 
     for plot in available_plots:
-        pycaret.regression.plot_model(model, plot=plot)
+        pycaret.regression.plot_model(model, plot=plot, use_train_data=False)
+        pycaret.regression.plot_model(model, plot=plot, use_train_data=True)
 
     models = [pycaret.regression.create_model('et'), pycaret.regression.create_model('xgboost')]
 

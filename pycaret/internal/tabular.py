@@ -5571,6 +5571,7 @@ def plot_model(
     groups: Optional[Union[str, Any]] = None,
     feature_name: Optional[str] = None,
     label: bool = False,
+    use_train_data: bool = False,
     verbose: bool = True,
     system: bool = True,
     display: Optional[Display] = None,  # added in pycaret==2.2.0
@@ -5750,6 +5751,9 @@ def plot_model(
     if type(label) is not bool:
         raise TypeError("Label param only accepts True or False.")
 
+    if type(use_train_data) is not bool:
+        raise TypeError("use_train_data param only accepts True or False.")
+
     if feature_name is not None and type(feature_name) is not str:
         raise TypeError(
             "feature parameter must be string containing column name of dataset."
@@ -5807,8 +5811,8 @@ def plot_model(
         logger.info("Copying test dataset")
 
         # Storing X_train and y_train in data_X and data_y parameter
-        test_X = X_test.copy()
-        test_y = y_test.copy()
+        test_X = X_train.copy() if use_train_data else X_test.copy()
+        test_y = y_train.copy() if use_train_data else y_test.copy()
 
         # reset index
         test_X.reset_index(drop=True, inplace=True)
@@ -7168,6 +7172,7 @@ def evaluate_model(
     fit_kwargs: Optional[dict] = None,
     feature_name: Optional[str] = None,
     groups: Optional[Union[str, Any]] = None,
+    use_train_data: bool = False,
 ):
 
     """
@@ -7248,6 +7253,7 @@ def evaluate_model(
         feature_name=fixed(feature_name),
         label=fixed(False),
         groups=fixed(groups),
+        use_train_data=fixed(use_train_data),
         system=fixed(True),
         display=fixed(None),
     )
@@ -7258,6 +7264,7 @@ def interpret_model(
     plot: str = "summary",
     feature: Optional[str] = None,
     observation: Optional[int] = None,
+    use_train_data: bool = False,
     **kwargs,  # added in pycaret==2.1
 ):
 
@@ -7362,8 +7369,8 @@ def interpret_model(
     
     """
 
-    logger.info("Importing libraries")
-    # general dependencies
+    # Storing X_train and y_train in data_X and data_y parameter
+    test_X = X_train if use_train_data else X_test
 
     np.random.seed(seed)
 
@@ -7383,8 +7390,8 @@ def interpret_model(
         logger.info("Creating TreeExplainer")
         explainer = shap.TreeExplainer(model)
         logger.info("Compiling shap values")
-        shap_values = explainer.shap_values(X_test)
-        shap_plot = shap.summary_plot(shap_values, X_test, **kwargs)
+        shap_values = explainer.shap_values(test_X)
+        shap_plot = shap.summary_plot(shap_values, test_X, **kwargs)
         return shap_plot
 
     def correlation():
@@ -7392,28 +7399,28 @@ def interpret_model(
         if feature == None:
 
             logger.warning(
-                f"No feature passed. Default value of feature used for correlation plot: {X_test.columns[0]}"
+                f"No feature passed. Default value of feature used for correlation plot: {test_X.columns[0]}"
             )
-            dependence = X_test.columns[0]
+            dependence = test_X.columns[0]
 
         else:
 
             logger.warning(
-                f"feature value passed. Feature used for correlation plot: {X_test.columns[0]}"
+                f"feature value passed. Feature used for correlation plot: {test_X.columns[0]}"
             )
             dependence = feature
 
         logger.info("Creating TreeExplainer")
         explainer = shap.TreeExplainer(model)
         logger.info("Compiling shap values")
-        shap_values = explainer.shap_values(X_test)
+        shap_values = explainer.shap_values(test_X)
 
         if model_id in shap_models_type1:
             logger.info("model type detected: type 1")
-            shap.dependence_plot(dependence, shap_values[1], X_test, **kwargs)
+            shap.dependence_plot(dependence, shap_values[1], test_X, **kwargs)
         elif model_id in shap_models_type2:
             logger.info("model type detected: type 2")
-            shap.dependence_plot(dependence, shap_values, X_test, **kwargs)
+            shap.dependence_plot(dependence, shap_values, test_X, **kwargs)
         return None
 
     def reason():
@@ -7429,19 +7436,19 @@ def interpret_model(
                 logger.warning(
                     "Observation set to None. Model agnostic plot will be rendered."
                 )
-                shap_values = explainer.shap_values(X_test)
+                shap_values = explainer.shap_values(test_X)
                 shap.initjs()
                 shap_plot = shap.force_plot(
-                    explainer.expected_value[1], shap_values[1], X_test, **kwargs
+                    explainer.expected_value[1], shap_values[1], test_X, **kwargs
                 )
 
             else:
                 row_to_show = observation
-                data_for_prediction = X_test.iloc[row_to_show]
+                data_for_prediction = test_X.iloc[row_to_show]
 
                 if model_id == "lightgbm":
                     logger.info("model type detected: LGBMClassifier")
-                    shap_values = explainer.shap_values(X_test)
+                    shap_values = explainer.shap_values(test_X)
                     shap.initjs()
                     shap_plot = shap.force_plot(
                         explainer.expected_value[1],
@@ -7468,7 +7475,7 @@ def interpret_model(
             logger.info("Creating TreeExplainer")
             explainer = shap.TreeExplainer(model)
             logger.info("Compiling shap values")
-            shap_values = explainer.shap_values(X_test)
+            shap_values = explainer.shap_values(test_X)
             shap.initjs()
 
             if observation is None:
@@ -7477,18 +7484,18 @@ def interpret_model(
                 )
 
                 shap_plot = shap.force_plot(
-                    explainer.expected_value, shap_values, X_test, **kwargs
+                    explainer.expected_value, shap_values, test_X, **kwargs
                 )
 
             else:
 
                 row_to_show = observation
-                data_for_prediction = X_test.iloc[row_to_show]
+                data_for_prediction = test_X.iloc[row_to_show]
 
                 shap_plot = shap.force_plot(
                     explainer.expected_value,
                     shap_values[row_to_show, :],
-                    X_test.iloc[row_to_show, :],
+                    test_X.iloc[row_to_show, :],
                     **kwargs,
                 )
         return shap_plot
