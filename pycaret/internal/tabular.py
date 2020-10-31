@@ -6703,7 +6703,7 @@ def plot_model(
                     else:
                         rows = 1
                         cols = n_estimators
-                    figsize = (cols * 10, rows * 8)
+                    figsize = (cols * 20, rows * 16)
                     fig, axes = plt.subplots(
                         nrows=rows,
                         ncols=cols,
@@ -6722,22 +6722,33 @@ def plot_model(
                     ) as fitted_pipeline_with_model:
                         trees = []
                         feature_names = list(data_X.columns)
-                        class_names = {
-                            v: k
-                            for k, v in prep_pipe.named_steps[
-                                "dtypes"
-                            ].replacement.items()
-                        }
+                        if _ml_usecase == MLUsecase.CLASSIFICATION:
+                            class_names = {
+                                v: k
+                                for k, v in prep_pipe.named_steps[
+                                    "dtypes"
+                                ].replacement.items()
+                            }
+                        else:
+                            class_names = None
                         fitted_tree_estimator = fitted_pipeline_with_model.steps[-1][1]
                         if is_stacked_model:
                             stacked_feature_names = []
-                            classes = list(data_y.unique())
-                            if len(classes) == 2:
-                                classes.pop()
-                            for c in classes:
+                            if _ml_usecase == MLUsecase.CLASSIFICATION:
+                                classes = list(data_y.unique())
+                                if len(classes) == 2:
+                                    classes.pop()
+                                for c in classes:
+                                    stacked_feature_names.extend(
+                                        [
+                                            f"{k}_{class_names[c]}"
+                                            for k, v in fitted_tree_estimator.estimators
+                                        ]
+                                    )
+                            else:
                                 stacked_feature_names.extend(
                                     [
-                                        f"{k}_{class_names[c]}"
+                                        f"{k}"
                                         for k, v in fitted_tree_estimator.estimators
                                     ]
                                 )
@@ -6756,11 +6767,14 @@ def plot_model(
                                 trees = fitted_tree_estimator.estimators_
                             except:
                                 trees = [fitted_tree_estimator]
+                        if _ml_usecase == MLUsecase.CLASSIFICATION:
+                            class_names = list(class_names.values())
                         for i, tree in enumerate(trees):
+                            logger.info(f"Plotting tree {i}")
                             plot_tree(
                                 tree,
                                 feature_names=feature_names,
-                                class_names=list(class_names.values()),
+                                class_names=class_names,
                                 filled=True,
                                 rounded=True,
                                 precision=4,
