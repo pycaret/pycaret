@@ -38,7 +38,8 @@ def test():
     ]
 
     for plot in available_plots:
-        pycaret.classification.plot_model(model, plot=plot)
+        pycaret.classification.plot_model(model, plot=plot, use_train_data=False)
+        pycaret.classification.plot_model(model, plot=plot, use_train_data=True)
 
     models = [pycaret.classification.create_model('et'), pycaret.classification.create_model('xgboost')]
 

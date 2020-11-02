@@ -1423,6 +1423,7 @@ def plot_model(
     fold: Optional[Union[int, Any]] = None,
     fit_kwargs: Optional[dict] = None,
     groups: Optional[Union[str, Any]] = None,
+    use_train_data: bool = False,
     verbose: bool = True,
 ) -> str:
 
@@ -1494,6 +1495,11 @@ def plot_model(
         the column name in the dataset containing group labels.
 
 
+    use_train_data: bool, default = False
+        When set to true, train data will be used for plots, instead
+        of test data.
+
+
     verbose: bool, default = True
         When set to False, progress bar is not displayed.
 
@@ -1524,6 +1530,7 @@ def plot_model(
         fit_kwargs=fit_kwargs,
         groups=groups,
         verbose=verbose,
+        use_train_data=use_train_data,
         system=True,
     )
 
@@ -1533,6 +1540,7 @@ def evaluate_model(
     fold: Optional[Union[int, Any]] = None,
     fit_kwargs: Optional[dict] = None,
     groups: Optional[Union[str, Any]] = None,
+    use_train_data: bool = False,
 ):
 
     """
@@ -1572,18 +1580,27 @@ def evaluate_model(
         the column name in the dataset containing group labels.
 
 
+    use_train_data: bool, default = False
+        When set to true, train data will be used for plots, instead
+        of test data.
+
+
     Returns:
         None
 
 
     Warnings
     --------
-    -   This function only works in IPython enabled Notebook. 
+    -   This function only works in IPython enabled Notebook.
 
     """
 
     return pycaret.internal.tabular.evaluate_model(
-        estimator=estimator, fold=fold, fit_kwargs=fit_kwargs, groups=groups,
+        estimator=estimator,
+        fold=fold,
+        fit_kwargs=fit_kwargs,
+        groups=groups,
+        use_train_data=use_train_data,
     )
 
 
@@ -1592,6 +1609,7 @@ def interpret_model(
     plot: str = "summary",
     feature: Optional[str] = None,
     observation: Optional[int] = None,
+    use_train_data: bool = False,
     **kwargs,
 ):
 
@@ -1627,9 +1645,14 @@ def interpret_model(
     observation: int, default = None
         Observation index number in holdout set to explain. When ``plot`` is not
         'reason', this parameter is ignored. 
-        
 
-    **kwargs: 
+
+    use_train_data: bool, default = False
+        When set to true, train data will be used for plots, instead
+        of test data.
+
+
+    **kwargs:
         Additional keyword arguments to pass to the plot.
 
 
@@ -1643,6 +1666,7 @@ def interpret_model(
         plot=plot,
         feature=feature,
         observation=observation,
+        use_train_data=use_train_data,
         **kwargs,
     )
 
