@@ -2248,59 +2248,62 @@ def compare_models(
 
     sorted_models = []
 
-    if n_select < 0:
-        n_select_range = range(len(master_display) - n_select, len(master_display))
-    else:
-        n_select_range = range(0, n_select)
+    if master_display is not None:
+        if n_select < 0:
+            n_select_range = range(len(master_display) - n_select, len(master_display))
+        else:
+            n_select_range = range(0, n_select)
 
-    for index, row in enumerate(master_display.iterrows()):
-        loc, row = row
-        model = row["Object"]
+        for index, row in enumerate(master_display.iterrows()):
+            loc, row = row
+            model = row["Object"]
 
-        results = row.to_frame().T.drop(
-            ["Object", "Model", "runtime", "TT (Sec)"], errors="ignore", axis=1
-        )
-
-        avgs_dict_log = {k: v for k, v in results.iloc[0].items()}
-
-        full_logging = False
-
-        if index in n_select_range:
-            display.update_monitor(2, _get_model_name(model))
-            display.display_monitor()
-            model, model_fit_time = create_model_supervised(
-                estimator=model,
-                system=False,
-                verbose=False,
-                fold=fold,
-                round=round,
-                cross_validation=False,
-                predict=False,
-                fit_kwargs=fit_kwargs,
-                groups=groups,
+            results = row.to_frame().T.drop(
+                ["Object", "Model", "runtime", "TT (Sec)"], errors="ignore", axis=1
             )
-            sorted_models.append(model)
-            full_logging = True
 
-        if logging_param and cross_validation:
+            avgs_dict_log = {k: v for k, v in results.iloc[0].items()}
 
-            try:
-                _mlflow_log_model(
-                    model=model,
-                    model_results=results,
-                    score_dict=avgs_dict_log,
-                    source="compare_models",
-                    runtime=row["runtime"],
-                    model_fit_time=row["TT (Sec)"],
-                    _prep_pipe=prep_pipe,
-                    log_plots=log_plots_param if full_logging else False,
-                    log_holdout=full_logging,
-                    URI=URI,
-                    display=display,
+            full_logging = False
+
+            if index in n_select_range:
+                display.update_monitor(2, _get_model_name(model))
+                display.display_monitor()
+                model, model_fit_time = create_model_supervised(
+                    estimator=model,
+                    system=False,
+                    verbose=False,
+                    fold=fold,
+                    round=round,
+                    cross_validation=False,
+                    predict=False,
+                    fit_kwargs=fit_kwargs,
+                    groups=groups,
                 )
-            except:
-                logger.error(f"_mlflow_log_model() for {model} raised an exception:")
-                logger.error(traceback.format_exc())
+                sorted_models.append(model)
+                full_logging = True
+
+            if logging_param and cross_validation:
+
+                try:
+                    _mlflow_log_model(
+                        model=model,
+                        model_results=results,
+                        score_dict=avgs_dict_log,
+                        source="compare_models",
+                        runtime=row["runtime"],
+                        model_fit_time=row["TT (Sec)"],
+                        _prep_pipe=prep_pipe,
+                        log_plots=log_plots_param if full_logging else False,
+                        log_holdout=full_logging,
+                        URI=URI,
+                        display=display,
+                    )
+                except:
+                    logger.error(
+                        f"_mlflow_log_model() for {model} raised an exception:"
+                    )
+                    logger.error(traceback.format_exc())
 
     if len(sorted_models) == 1:
         sorted_models = sorted_models[0]
