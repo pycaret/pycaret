@@ -2,6 +2,16 @@ import numpy as np
 from sklearn.metrics._scorer import _ProbaScorer, _ThresholdScorer, _PredictScorer
 
 
+def binary_multiclass_score_func(score_func):
+    def wrapper(y_true, y_pred, **kwargs):
+        if "average" in kwargs:
+            if len(np.unique(y_true)) <= 2:
+                kwargs["average"] = "binary"
+        return score_func(y_true, y_pred, **kwargs)
+
+    return wrapper
+
+
 class _ThresholdScorerWithErrorScore(_ThresholdScorer):
     def __init__(self, score_func, sign, kwargs, error_score=np.nan):
         super().__init__(score_func=score_func, sign=sign, kwargs=kwargs)
