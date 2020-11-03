@@ -757,7 +757,7 @@ class Iterative_Imputer(_BaseImputer):
         self.target = target
         if ordinal_columns is None:
             ordinal_columns = []
-        self.ordinal_columns = ordinal_columns
+        self.ordinal_columns = list(ordinal_columns)
         self._column_cleaner = Clean_Colum_Names()
 
     def _initial_imputation(self, X):

@@ -6,6 +6,7 @@ from typing import Dict, Optional
 from pycaret.internal.utils import get_logger
 from pycaret.internal.Display import Display
 from sklearn.pipeline import Pipeline
+import gc
 
 
 def deploy_model(
@@ -229,6 +230,7 @@ def deploy_model(
     logger.info(
         "deploy_model() succesfully completed......................................"
     )
+    gc.collect()
 
 
 def save_model(model, model_name: str, prep_pipe_=None, verbose: bool = True):
@@ -296,6 +298,7 @@ def save_model(model, model_name: str, prep_pipe_=None, verbose: bool = True):
     logger.info(
         "save_model() succesfully completed......................................"
     )
+    gc.collect()
     return (model_, model_name)
 
 
@@ -417,6 +420,7 @@ def load_model(
         return model
     else:
         print(f"Platform {platform} is not supported by pycaret or illegal option")
+    gc.collect()
 
 
 def _create_bucket_gcp(project_name: str, bucket_name: str):
