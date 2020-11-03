@@ -8348,7 +8348,7 @@ def predict_model(
             replace_lables_in_column(y_test_)
         X_test_ = pd.concat([X_test_, y_test_, label], axis=1)
     else:
-        X_test_.insert(len(X_test_.columns), "Label", label["Label"].to_list())
+        X_test_["Label"] = label["Label"].values
 
     if score is not None:
         d = []
@@ -8360,7 +8360,7 @@ def predict_model(
             score = pd.DataFrame(score)
             score.columns = ["Score"]
             score = score.round(round)
-            X_test_ = pd.concat([X_test_, score], axis=1)
+            X_test_["Score"] = score["Score"].values
         except:
             pass
 
