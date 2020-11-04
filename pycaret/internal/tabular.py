@@ -7975,6 +7975,8 @@ def optimize_threshold(
         "optimize_threshold() succesfully completed......................................"
     )
 
+    return t
+
 
 def assign_model(
     model, transformation: bool = False, score: bool = True, verbose: bool = True
