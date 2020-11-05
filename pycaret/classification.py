@@ -1766,8 +1766,9 @@ def optimize_threshold(
 
     """
     This function optimizes probability threshold for a given estimator using 
-    custom cost function. The output of this function is a plot of optimized cost 
-    as a function of probability threshold between 0.0 to 1.0. 
+    custom cost function. The function displays a plot of optimized cost as a
+    function of probability threshold between 0.0 to 1.0 and returns the 
+    optimized threshold value as a numpy float. 
 
 
     Example
@@ -1801,7 +1802,7 @@ def optimize_threshold(
     
 
     Returns:
-        None
+        numpy.float64 
 
 
     Warnings
