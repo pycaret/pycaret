@@ -1012,14 +1012,13 @@ def setup(
 
     # creating variables to be used later in the function
     train_data = data_before_preprocess.copy()
-    if not _is_unsupervised(_ml_usecase):
-        X_before_preprocess = train_data.drop(target, axis=1)
-        y_before_preprocess = train_data[target]
-    else:
+    if _is_unsupervised(_ml_usecase):
         target = "UNSUPERVISED_DUMMY_TARGET"
         train_data[target] = 2
         # just to add diversified values to target
         train_data.loc[0:3, target] = 3
+    X_before_preprocess = train_data.drop(target, axis=1)
+    y_before_preprocess = train_data[target]
 
     imputation_regressor = numeric_iterative_imputer
     imputation_classifier = categorical_iterative_imputer
