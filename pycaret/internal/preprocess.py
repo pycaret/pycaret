@@ -116,10 +116,14 @@ class DataTypes_Auto_infer(BaseEstimator, TransformerMixin):
   """
         self.target = target
         self.ml_usecase = ml_usecase
-        self.categorical_features = categorical_features
-        self.numerical_features = numerical_features
-        self.time_features = time_features
         self.features_todrop = features_todrop
+        self.categorical_features = [
+            x for x in categorical_features if x not in self.features_todrop
+        ]
+        self.numerical_features = [
+            x for x in numerical_features if x not in self.features_todrop
+        ]
+        self.time_features = [x for x in time_features if x not in self.features_todrop]
         self.display_types = display_types
         self.id_columns = id_columns
 
@@ -348,6 +352,7 @@ class DataTypes_Auto_infer(BaseEstimator, TransformerMixin):
 
         # drop any columns that were asked to drop
         data.drop(columns=self.features_todrop, errors="ignore", inplace=True)
+        data = data[self.final_training_columns]
 
         # also make sure that all the column names are string
         data.columns = [str(i) for i in data.columns]
@@ -359,19 +364,12 @@ class DataTypes_Auto_infer(BaseEstimator, TransformerMixin):
         # data.columns= data.columns.str.replace('[,]','')
 
         # very first thing we need to so is to check if the training and test data hace same columns
-        # exception checking
-        import sys
 
         for i in self.final_training_columns:
             if i not in data.columns:
-                sys.exit(
-                    "(Type Error): test data does not have column "
-                    + str(i)
-                    + " which was used for training"
+                raise TypeError(
+                    f"test data does not have column {i} which was used for training."
                 )
-
-        ## we only need to take test columns that we used in ttaining (test in production may have a lot more columns)
-        data = data[self.final_training_columns]
 
         # just keep picking the data and keep applying to the test data set (be mindful of target variable)
         for (
@@ -773,7 +771,7 @@ class Iterative_Imputer(_BaseImputer):
 
         return X_filled
 
-    def _impute_one_feature(self, X, column, X_na_mask, fit):        
+    def _impute_one_feature(self, X, column, X_na_mask, fit):
         if not fit:
             check_is_fitted(self)
         is_classification = (
@@ -1561,7 +1559,7 @@ class Dummify(BaseEstimator, TransformerMixin):
         return self
 
     def transform(self, dataset, y=None):
-        data = dataset
+        data = dataset.copy()
         # will only do this if there are categorical variables
         if len(data.select_dtypes(include=("object")).columns) > 0:
             # only for test data
@@ -1588,7 +1586,7 @@ class Dummify(BaseEstimator, TransformerMixin):
             return data
 
     def fit_transform(self, dataset, y=None):
-        data = dataset
+        data = dataset.copy()
         # will only do this if there are categorical variables
         if len(data.select_dtypes(include=("object")).columns) > 0:
             self.fit(data)
@@ -1641,19 +1639,13 @@ class Outlier(BaseEstimator, TransformerMixin):
         else:
             data = dataset
 
-        # reduce data size for faster processing
-        # try:
-        #   data = data.astype('float16')
-        # except:
-        #   None
-
         data_without_target = data.drop(self.target, axis=1)
 
         if "knn" in self.methods:
             self.knn = KNN(contamination=self.contamination)
             self.knn.fit(data_without_target)
             knn_predict = self.knn.predict(data_without_target)
-            data["knn"] = knn_predict
+            data_without_target["knn"] = knn_predict
 
         if "iso" in self.methods:
             self.iso = IForest(
@@ -1663,7 +1655,7 @@ class Outlier(BaseEstimator, TransformerMixin):
             )
             self.iso.fit(data_without_target)
             iso_predict = self.iso.predict(data_without_target)
-            data["iso"] = iso_predict
+            data_without_target["iso"] = iso_predict
 
         if "pca" in self.methods:
             self.pca = PCA_od(
@@ -1671,20 +1663,17 @@ class Outlier(BaseEstimator, TransformerMixin):
             )
             self.pca.fit(data_without_target)
             pca_predict = self.pca.predict(data_without_target)
-            data["pca"] = pca_predict
+            data_without_target["pca"] = pca_predict
 
-        data["vote_outlier"] = 0
+        data_without_target["vote_outlier"] = data_without_target[self.methods].sum(
+            axis=1
+        )
 
-        for i in self.methods:
-            data["vote_outlier"] = data["vote_outlier"] + data[i]
+        self.outliers = data_without_target[
+            data_without_target["vote_outlier"] == len(self.methods)
+        ].index
 
-        # data['vote_outlier'] =  data['knn']  + data['iso'] + data['pca']
-        self.outliers = data[data["vote_outlier"] == len(self.methods)]
-        # self.outliers = data[data['vote_outlier']==3]
-
-        return dataset[
-            [True if i not in self.outliers.index else False for i in dataset.index]
-        ]
+        return dataset[~dataset.index.isin(self.outliers)]
 
 
 # ____________________________________________________________________________________________________________________________________________________________________
