@@ -165,6 +165,7 @@ def setup(
     silent: bool = False,
     verbose: bool = True,
     profile: bool = False,
+    profile_kwargs: Dict[str, Any] = None,
     display: Optional[Display] = None,
 ):
 
@@ -309,6 +310,12 @@ def setup(
     # checking profile parameter
     if type(profile) is not bool:
         raise TypeError("profile parameter only accepts True or False.")
+
+    if profile_kwargs is not None:
+        if type(profile_kwargs) is not dict:
+            raise TypeError("profile_kwargs can only be a dict.")
+    else:
+        profile_kwargs = {}
 
     # checking normalize parameter
     if type(normalize) is not bool:
@@ -693,10 +700,6 @@ def setup(
     # log_data
     if type(log_data) is not bool:
         raise TypeError("log_data parameter only accepts True or False.")
-
-    # log_profile
-    if type(log_profile) is not bool:
-        raise TypeError("log_profile parameter only accepts True or False.")
 
     # fix_imbalance
     if type(fix_imbalance) is not bool:
@@ -1628,7 +1631,9 @@ def setup(
         try:
             import pandas_profiling
 
-            pf = pandas_profiling.ProfileReport(data_before_preprocess)
+            pf = pandas_profiling.ProfileReport(
+                data_before_preprocess, **profile_kwargs
+            )
             display.display(pf, clear=True)
         except:
             print(
@@ -1711,7 +1716,9 @@ def setup(
             if log_profile:
                 import pandas_profiling
 
-                pf = pandas_profiling.ProfileReport(data_before_preprocess)
+                pf = pandas_profiling.ProfileReport(
+                    data_before_preprocess, **profile_kwargs
+                )
                 pf.to_file("Data Profile.html")
                 mlflow.log_artifact("Data Profile.html")
                 os.remove("Data Profile.html")
