@@ -2568,6 +2568,9 @@ def create_model_unsupervised(
     else:
         model.set_params(contamination=fraction)
 
+    # workaround for an issue with set_params in cuML
+    model = clone(model)
+
     logger.info(f"{full_name} Imported succesfully")
 
     display.move_progress()
@@ -2964,6 +2967,9 @@ def create_model_supervised(
         model.set_params(**kwargs)
 
         full_name = _get_model_name(model)
+
+    # workaround for an issue with set_params in cuML
+    model = clone(model)
 
     display.update_monitor(2, full_name)
     display.display_monitor()
@@ -5858,7 +5864,6 @@ def plot_model(
                     cluster = b["Cluster"]
                     b.drop(["Cluster"], axis=1, inplace=True)
                     b = pd.get_dummies(b)  # casting categorical variable
-                    c = b.copy()
 
                     from sklearn.decomposition import PCA
 
@@ -5885,11 +5890,7 @@ def plot_model(
 
                     logger.info("Sorting dataframe")
 
-                    clus_num = []
-
-                    for i in pca_.Cluster:
-                        a = int(i.split()[1])
-                        clus_num.append(a)
+                    clus_num = [int(i.split()[1]) for i in pca_["Cluster"]]
 
                     pca_["cnum"] = clus_num
                     pca_.sort_values(by="cnum", inplace=True)
@@ -6127,10 +6128,7 @@ def plot_model(
                     """
                     logger.info("Sorting dataframe")
 
-                    clus_num = []
-                    for i in X_embedded.Cluster:
-                        a = int(i.split()[1])
-                        clus_num.append(a)
+                    clus_num = [int(i.split()[1]) for i in X_embedded["Cluster"]]
 
                     X_embedded["cnum"] = clus_num
                     X_embedded.sort_values(by="cnum", inplace=True)

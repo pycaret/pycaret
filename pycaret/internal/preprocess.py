@@ -1216,7 +1216,7 @@ class Binning(BaseEstimator, TransformerMixin):
             self.binns = []
             for i in self.features_to_discretize:
                 # get numbr of binns
-                hist, bin_edg = np.histogram(data[i], bins="sturges")
+                hist, _ = np.histogram(data[i], bins="sturges")
                 self.binns.append(len(hist))
 
             # how many colums to deal with
