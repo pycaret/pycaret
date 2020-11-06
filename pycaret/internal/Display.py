@@ -102,10 +102,17 @@ class Display:
     def _display(self, df, *args, **kwargs):
         if not self.html_param:
             try:
+                display(df.data, *args, **kwargs)
+                return
+            except:
+                display(df, *args, **kwargs)
+                return
+            try:
                 print(df.data)
+                return
             except:
                 print(df)
-            return
+                return
         elif self.enviroment == "google.colab":
             try:
                 return display(df.data, *args, **kwargs)
