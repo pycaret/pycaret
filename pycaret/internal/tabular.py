@@ -3367,9 +3367,11 @@ def tune_model_unsupervised(
             )
         unsupervised_models_results[k] = pull(pop=True)
         unsupervised_models[k] = new_model
-        unsupervised_grids[k] = assign_model(
-            new_model, verbose=False, transformation=True
-        ).drop(cols_to_drop, axis=1)
+        unsupervised_grids[k] = (
+            assign_model(new_model, verbose=False, transformation=True)
+            .reset_index(drop=True)
+            .drop(cols_to_drop, axis=1)
+        )
         if _ml_usecase == MLUsecase.CLUSTERING:
             unsupervised_grids[k] = pd.get_dummies(
                 unsupervised_grids[k], columns=["Cluster"],
@@ -5857,12 +5859,12 @@ def plot_model(
                     )
                     b = assign_model(
                         pipeline_with_model, verbose=False, transformation=True
-                    )
+                    ).reset_index(drop=True)
                     logger.info(
                         "SubProcess assign_model() end =================================="
                     )
-                    cluster = b["Cluster"]
-                    b.drop(["Cluster"], axis=1, inplace=True)
+                    cluster = b["Cluster"].values
+                    b.drop("Cluster", axis=1, inplace=True)
                     b = pd.get_dummies(b)  # casting categorical variable
 
                     from sklearn.decomposition import PCA
@@ -5889,6 +5891,8 @@ def plot_model(
                     """
 
                     logger.info("Sorting dataframe")
+
+                    print(pca_["Cluster"])
 
                     clus_num = [int(i.split()[1]) for i in pca_["Cluster"]]
 
@@ -5949,7 +5953,7 @@ def plot_model(
                     )
                     b = assign_model(
                         model, verbose=False, transformation=True, score=False
-                    )
+                    ).reset_index(drop=True)
                     logger.info(
                         "SubProcess assign_model() end =================================="
                     )
@@ -6017,13 +6021,13 @@ def plot_model(
                     )
                     b = assign_model(
                         model, verbose=False, transformation=True, score=False
-                    )
+                    ).reset_index(drop=True)
                     logger.info(
                         "SubProcess assign_model() end =================================="
                     )
-                    cluster = pd.DataFrame(b["Anomaly"])
+                    cluster = b["Anomaly"].values
                     b.dropna(axis=0, inplace=True)  # droping rows with NA's
-                    b.drop(["Anomaly"], axis=1, inplace=True)
+                    b.drop("Anomaly", axis=1, inplace=True)
 
                     logger.info("Getting dummies to cast categorical variables")
 
@@ -6096,13 +6100,13 @@ def plot_model(
                         verbose=False,
                         score=False,
                         transformation=True,
-                    )
+                    ).reset_index(drop=True)
                     logger.info(
                         "SubProcess assign_model() end =================================="
                     )
 
-                    cluster = b["Cluster"]
-                    b.drop(["Cluster"], axis=1, inplace=True)
+                    cluster = b["Cluster"].values
+                    b.drop("Cluster", axis=1, inplace=True)
 
                     from sklearn.manifold import TSNE
 
@@ -6189,7 +6193,9 @@ def plot_model(
                     logger.info(
                         "SubProcess assign_model() called =================================="
                     )
-                    d = assign_model(pipeline_with_model, verbose=False)
+                    d = assign_model(pipeline_with_model, verbose=False).reset_index(
+                        drop=True
+                    )
                     logger.info(
                         "SubProcess assign_model() end =================================="
                     )
