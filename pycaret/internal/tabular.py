@@ -5845,6 +5845,22 @@ def plot_model(
 
                 _base_dpi = 100
 
+                def residuals_interactive():
+
+                    from pycaret.internal.plots.statsplots import Resplot
+                    Resplot(x=data_X, y=data_y, model=pipeline_with_model, show=system)
+
+                    plot_filename = f"{plot_name}.html"
+
+                    if save:
+                        # TODO: write to html -> would be easier if we would have all plotly plots seperate...
+                        # fig.write_html(f"{plot_filename}")
+                        logger.info(
+                            f"Saving '{plot_filename}' in current active directory"
+                        )
+
+                    return plot_filename
+
                 def cluster():
                     logger.info(
                         "SubProcess assign_model() called =================================="
