@@ -30,6 +30,9 @@ PyCaret's default installation is a slim version of pycaret which only installs 
 pip install pycaret[full]
 ```
 
+### Minor Release
+- [November 9, 2020] `2.2.1` released fixing several bugs. [Click here](https://github.com/pycaret/pycaret/releases) to see release notes.
+
 ## PyCaret on GPU
 PyCaret >= 2.2 provides the option to use GPU for select model training and hyperparameter tuning. There is no change in the use of the API, however, in some cases, additional libraries have to be installed as they are not installed with the default slim version or the full version. The following estimators can be trained on GPU.
 
