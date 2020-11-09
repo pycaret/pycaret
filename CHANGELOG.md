@@ -1,6 +1,22 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+#### Release: PyCaret 2.2.1 | Release Date: November 09, 2020 (SEVERAL BUGS FIX)
+Post-release `2.2`, Following issues have been fixed:
+- Fixed `plot_model = 'tree'` exceptions.
+- Fixed issue with `predict_model` causing errors with non-contiguous indices. 
+- Fixed issue with `remove_outliers` parameter in the `setup` function. It was introducing extra columns in training data. The issue has been fixed now. 
+- Fixed issue with `plot_model` in `pycaret.clustering` causing errors with non-contiguous indices. 
+- Fixed an exception when model was saved or logged when `imputation_type` is set to 'iterative' in the `setup` function.
+- `compare_models` now prints intermediate output when `html=False`.
+-  Metrics in `pycaret.classification` for binary classification are now calculated with `average='binary'`. Before, they were a weighted average of positive and negative class, now they are just calculated for positive class. For multiclass classification `average='weighted'`.
+- `optimize_threshold` now returns optimized probability threshold valud as numpy object.
+- Fixed issue with certain exceptions in `compare_models`.
+-
+- Added `profile_kwargs` argument in the `setup` function to pass keyword arguments to Pandas Profiler.
+- `plot_model`, `interpret_model`, and `evaluate_model` now accepts a new parameter `use_train_data` which when set to True, generates plot on train data instead of test data. 
+<br/><br/><br/>
+
 ### Release: PyCaret 2.2 | Release Date: October 28, 2020
 
 ## Summary of Changes
