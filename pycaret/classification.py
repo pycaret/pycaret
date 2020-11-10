@@ -93,6 +93,7 @@ def setup(
     silent: bool = False,
     verbose: bool = True,
     profile: bool = False,
+    profile_kwargs: Dict[str, Any] = None,
 ):
 
     """
@@ -539,7 +540,12 @@ def setup(
 
     profile: bool, default = False
         When set to True, an interactive EDA report is displayed. 
-        
+
+
+    profile_kwargs: dict, default = {} (empty dict)
+        Dictionary of arguments passed to the ProfileReport method used
+        to create the EDA report. Ignored if ``profile`` is False.
+
 
     Returns:
         Global variables that can be changed using the ``set_config`` function.
@@ -645,6 +651,7 @@ def setup(
         silent=silent,
         verbose=verbose,
         profile=profile,
+        profile_kwargs=profile_kwargs,
     )
 
 

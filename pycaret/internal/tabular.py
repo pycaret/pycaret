@@ -165,6 +165,7 @@ def setup(
     silent: bool = False,
     verbose: bool = True,
     profile: bool = False,
+    profile_kwargs: Dict[str, Any] = None,
     display: Optional[Display] = None,
 ):
 
@@ -309,6 +310,12 @@ def setup(
     # checking profile parameter
     if type(profile) is not bool:
         raise TypeError("profile parameter only accepts True or False.")
+
+    if profile_kwargs is not None:
+        if type(profile_kwargs) is not dict:
+            raise TypeError("profile_kwargs can only be a dict.")
+    else:
+        profile_kwargs = {}
 
     # checking normalize parameter
     if type(normalize) is not bool:
@@ -693,10 +700,6 @@ def setup(
     # log_data
     if type(log_data) is not bool:
         raise TypeError("log_data parameter only accepts True or False.")
-
-    # log_profile
-    if type(log_profile) is not bool:
-        raise TypeError("log_profile parameter only accepts True or False.")
 
     # fix_imbalance
     if type(fix_imbalance) is not bool:
@@ -1628,7 +1631,9 @@ def setup(
         try:
             import pandas_profiling
 
-            pf = pandas_profiling.ProfileReport(data_before_preprocess)
+            pf = pandas_profiling.ProfileReport(
+                data_before_preprocess, **profile_kwargs
+            )
             display.display(pf, clear=True)
         except:
             print(
@@ -1711,7 +1716,9 @@ def setup(
             if log_profile:
                 import pandas_profiling
 
-                pf = pandas_profiling.ProfileReport(data_before_preprocess)
+                pf = pandas_profiling.ProfileReport(
+                    data_before_preprocess, **profile_kwargs
+                )
                 pf.to_file("Data Profile.html")
                 mlflow.log_artifact("Data Profile.html")
                 os.remove("Data Profile.html")
@@ -2568,6 +2575,9 @@ def create_model_unsupervised(
     else:
         model.set_params(contamination=fraction)
 
+    # workaround for an issue with set_params in cuML
+    model = clone(model)
+
     logger.info(f"{full_name} Imported succesfully")
 
     display.move_progress()
@@ -2965,6 +2975,9 @@ def create_model_supervised(
 
         full_name = _get_model_name(model)
 
+    # workaround for an issue with set_params in cuML
+    model = clone(model)
+
     display.update_monitor(2, full_name)
     display.display_monitor()
 
@@ -3361,9 +3374,11 @@ def tune_model_unsupervised(
             )
         unsupervised_models_results[k] = pull(pop=True)
         unsupervised_models[k] = new_model
-        unsupervised_grids[k] = assign_model(
-            new_model, verbose=False, transformation=True
-        ).drop(cols_to_drop, axis=1)
+        unsupervised_grids[k] = (
+            assign_model(new_model, verbose=False, transformation=True)
+            .reset_index(drop=True)
+            .drop(cols_to_drop, axis=1)
+        )
         if _ml_usecase == MLUsecase.CLUSTERING:
             unsupervised_grids[k] = pd.get_dummies(
                 unsupervised_grids[k], columns=["Cluster"],
@@ -5867,14 +5882,13 @@ def plot_model(
                     )
                     b = assign_model(
                         pipeline_with_model, verbose=False, transformation=True
-                    )
+                    ).reset_index(drop=True)
                     logger.info(
                         "SubProcess assign_model() end =================================="
                     )
-                    cluster = b["Cluster"]
-                    b.drop(["Cluster"], axis=1, inplace=True)
+                    cluster = b["Cluster"].values
+                    b.drop("Cluster", axis=1, inplace=True)
                     b = pd.get_dummies(b)  # casting categorical variable
-                    c = b.copy()
 
                     from sklearn.decomposition import PCA
 
@@ -5901,11 +5915,9 @@ def plot_model(
 
                     logger.info("Sorting dataframe")
 
-                    clus_num = []
+                    print(pca_["Cluster"])
 
-                    for i in pca_.Cluster:
-                        a = int(i.split()[1])
-                        clus_num.append(a)
+                    clus_num = [int(i.split()[1]) for i in pca_["Cluster"]]
 
                     pca_["cnum"] = clus_num
                     pca_.sort_values(by="cnum", inplace=True)
@@ -5964,7 +5976,7 @@ def plot_model(
                     )
                     b = assign_model(
                         model, verbose=False, transformation=True, score=False
-                    )
+                    ).reset_index(drop=True)
                     logger.info(
                         "SubProcess assign_model() end =================================="
                     )
@@ -6032,13 +6044,13 @@ def plot_model(
                     )
                     b = assign_model(
                         model, verbose=False, transformation=True, score=False
-                    )
+                    ).reset_index(drop=True)
                     logger.info(
                         "SubProcess assign_model() end =================================="
                     )
-                    cluster = pd.DataFrame(b["Anomaly"])
+                    cluster = b["Anomaly"].values
                     b.dropna(axis=0, inplace=True)  # droping rows with NA's
-                    b.drop(["Anomaly"], axis=1, inplace=True)
+                    b.drop("Anomaly", axis=1, inplace=True)
 
                     logger.info("Getting dummies to cast categorical variables")
 
@@ -6111,13 +6123,13 @@ def plot_model(
                         verbose=False,
                         score=False,
                         transformation=True,
-                    )
+                    ).reset_index(drop=True)
                     logger.info(
                         "SubProcess assign_model() end =================================="
                     )
 
-                    cluster = b["Cluster"]
-                    b.drop(["Cluster"], axis=1, inplace=True)
+                    cluster = b["Cluster"].values
+                    b.drop("Cluster", axis=1, inplace=True)
 
                     from sklearn.manifold import TSNE
 
@@ -6143,10 +6155,7 @@ def plot_model(
                     """
                     logger.info("Sorting dataframe")
 
-                    clus_num = []
-                    for i in X_embedded.Cluster:
-                        a = int(i.split()[1])
-                        clus_num.append(a)
+                    clus_num = [int(i.split()[1]) for i in X_embedded["Cluster"]]
 
                     X_embedded["cnum"] = clus_num
                     X_embedded.sort_values(by="cnum", inplace=True)
@@ -6207,7 +6216,9 @@ def plot_model(
                     logger.info(
                         "SubProcess assign_model() called =================================="
                     )
-                    d = assign_model(pipeline_with_model, verbose=False)
+                    d = assign_model(pipeline_with_model, verbose=False).reset_index(
+                        drop=True
+                    )
                     logger.info(
                         "SubProcess assign_model() end =================================="
                     )
