@@ -270,13 +270,20 @@ class TukeyAnscombeWidget(BaseFigureWidget):
 class Resplot:
     def __init__(self, x: np.ndarray, y: np.ndarray, model, show=True, **kwargs):
         self.figures: [BaseFigureWidget] = []
-        self.plot = self._resplot(x, y, model)
-        if show:
-            display(self.plot)
+        self.plot = self.__create_resplots(x, y, model)
 
-        print(embed_snippet(self.plot))
+    def show(self):
+        display(self.plot)
 
-    def _resplot(self, x: np.ndarray, y: np.ndarray, model) -> widgets.VBox:
+    def write_html(self, plot_filename):
+        style = 'style="width: 50%; height: 50%; float:left;"'
+        html = f'<div {style}>{self.figures[0].to_html()}</div><div {style}>{self.figures[1].to_html()}</div>' \
+               f'<div {style}>{self.figures[2].to_html()}</div><div {style}>{self.figures[3].to_html()}</div>'
+
+        with open(plot_filename, "w") as f:
+            f.write(html)
+
+    def __create_resplots(self, x: np.ndarray, y: np.ndarray, model) -> widgets.VBox:
         model.fit(x, y)
         fitted = model.predict(x)
         residuals = fitted - y
@@ -295,7 +302,7 @@ class Resplot:
         leverage = helper.leverage_statistic(np.array(x))
         distance = helper.cooks_distance(standardized_residuals, leverage)
         n_model_params = len(model.get_params())
-        cooks_distance_widget = CooksDistanceWidget(leverage, distance,standardized_residuals,
+        cooks_distance_widget = CooksDistanceWidget(leverage, distance, standardized_residuals,
                                                     n_model_params)
 
         self.figures.append(cooks_distance_widget)
