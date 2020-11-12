@@ -290,7 +290,6 @@ class InteractiveResidualsPlot:
             f.write(html)
 
     def __create_resplots(self, x: np.ndarray, y: np.ndarray, model) -> widgets.VBox:
-        from pycaret.internal.logging import get_logger
         logger = get_logger()
 
         if not is_fitted(model):
