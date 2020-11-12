@@ -1,5 +1,5 @@
 """
-This module contains method that can be used in various plot modules and don't really belong to a specific module
+This module contains methods that can be used in various plot modules and don't really belong to a specific module
 """
 
 import numpy as np
