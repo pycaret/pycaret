@@ -39,7 +39,6 @@ from pycaret.internal.distributions import *
 from pycaret.internal.validation import *
 import pycaret.containers.metrics.classification
 import pycaret.containers.metrics.regression
-import pycaret.containers.metrics.regression
 import pycaret.containers.metrics.clustering
 import pycaret.containers.metrics.anomaly
 import pycaret.containers.models.classification
