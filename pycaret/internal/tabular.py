@@ -7929,7 +7929,7 @@ def optimize_threshold(
     internal function to calculate loss ends here
     """
 
-    grid = np.arange(0, 1, 0.01)
+    grid = np.arange(0, 1, 0.0001)
 
     # loop starts here
 
@@ -7961,7 +7961,7 @@ def optimize_threshold(
     x0 = optimize_results.sort_values(by="Cost Function", ascending=False).iloc[0][0]
     x1 = x0
 
-    t = x0.round(2)
+    t = x0
     if html_param:
 
         fig.add_shape(
@@ -7985,7 +7985,7 @@ def optimize_threshold(
         "optimize_threshold() succesfully completed......................................"
     )
 
-    return t
+    return float(t)
 
 
 def assign_model(
