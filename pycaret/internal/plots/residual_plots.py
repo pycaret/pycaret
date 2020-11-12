@@ -12,7 +12,11 @@ import statsmodels.regression.linear_model as linear_model
 from ipywidgets import widgets, Layout
 from ipywidgets.embed import embed_snippet
 from IPython.display import display
+
 import pycaret.internal.plots.helper as helper
+from pycaret.internal.validation import is_fitted
+from pycaret.internal.Display import Display
+from pycaret.internal.logging import get_logger
 
 
 def _calculate_standardized_residual(
@@ -148,6 +152,7 @@ class ScaleLocationWidget(BaseFigureWidget):
             {'Fitted Values': fitted, '$\sqrt{|Standardized Residuals|}$': sqrt_abs_standardized_residuals})
         fig = px.scatter(dataframe, x="Fitted Values", y="$\sqrt{|Standardized Residuals|}$", trendline="lowess",
                          title="Scale-Location Plot", opacity=0.3)
+
         abs_sq_norm_resid = sqrt_abs_standardized_residuals.sort_values(ascending=False)
         abs_sq_norm_resid_top_3 = abs_sq_norm_resid[:3]
         for i in abs_sq_norm_resid_top_3.index:
@@ -267,13 +272,14 @@ class TukeyAnscombeWidget(BaseFigureWidget):
         self.update_layout()
 
 
-class Resplot:
-    def __init__(self, x: np.ndarray, y: np.ndarray, model, show=True, **kwargs):
+class InteractiveResidualsPlot:
+    def __init__(self, x: np.ndarray, y: np.ndarray, model, display: Display):
         self.figures: [BaseFigureWidget] = []
+        self.display: Display = display
         self.plot = self.__create_resplots(x, y, model)
 
     def show(self):
-        display(self.plot)
+        self.display.display(self.plot)
 
     def write_html(self, plot_filename):
         style = 'style="width: 50%; height: 50%; float:left;"'
@@ -284,30 +290,45 @@ class Resplot:
             f.write(html)
 
     def __create_resplots(self, x: np.ndarray, y: np.ndarray, model) -> widgets.VBox:
-        model.fit(x, y)
+        from pycaret.internal.logging import get_logger
+        logger = get_logger()
+
+        if not is_fitted(model):
+            model.fit(x, y)
+
         fitted = model.predict(x)
         residuals = fitted - y
+        logger.info("Calculated model residuals")
+        self.display.move_progress()
+
         tukey_anscombe_widget = TukeyAnscombeWidget(fitted, residuals)
+        logger.info("Calculated Tunkey-Anscombe Plot")
         self.figures.append(tukey_anscombe_widget)
+        self.display.move_progress()
 
         qq_plot_widget = QQPlotWidget(fitted, y)
+        logger.info("Calculated Normal QQ Plot")
         self.figures.append(qq_plot_widget)
+        self.display.move_progress()
 
         standardized_residuals = \
             _calculate_standardized_residual(fitted, y, None)
         model_norm_residuals_abs_sqrt = np.sqrt(np.abs(standardized_residuals))
         scale_location_widget = ScaleLocationWidget(fitted, model_norm_residuals_abs_sqrt)
+        logger.info("Calculated Scale-Location Plot")
         self.figures.append(scale_location_widget)
+        self.display.move_progress()
 
         leverage = helper.leverage_statistic(np.array(x))
         distance = helper.cooks_distance(standardized_residuals, leverage)
         n_model_params = len(model.get_params())
         cooks_distance_widget = CooksDistanceWidget(leverage, distance, standardized_residuals,
                                                     n_model_params)
-
+        logger.info("Calculated Residual vs Leverage Plot inc. Cook's distance")
         self.figures.append(cooks_distance_widget)
+        self.display.move_progress()
+
         items_layout = Layout(width='1000px')
         h0 = widgets.HBox(self.figures[:2], layout=items_layout)
         h1 = widgets.HBox(self.figures[2:], layout=items_layout)
-        resplot = widgets.VBox([h0, h1])
-        return resplot
+        return widgets.VBox([h0, h1])
