@@ -5620,6 +5620,8 @@ def plot_model(
     plot : str, default = auc
         Enter abbreviation of type of plot. The current list of plots supported are (Plot - Name):
 
+
+        * 'residuals_interactive' - Interactive Residual plots
         * 'auc' - Area Under the Curve                 
         * 'threshold' - Discrimination Threshold           
         * 'pr' - Precision Recall Curve                  
