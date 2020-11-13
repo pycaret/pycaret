@@ -14,7 +14,9 @@ def test():
     data = pycaret.datasets.get_data("blood")
 
     # categorical_feature = Recency
-    clf1 = pycaret.classification.setup(data, target="Class", silent=True, html=False, ignore_features=["Time"])
+    clf1 = pycaret.classification.setup(
+        data, target="Class", silent=True, html=False, ignore_features=["Time"]
+    )
     assert "Time" not in list(pycaret.classification.get_config("X_train").columns)
 
 

@@ -100,7 +100,12 @@ def setup(data, transaction_id, item_id, ignore_items=None, session_id=None):
         ignore_flag = ignore_items
 
     functions = pd.DataFrame(
-        [["session_id", seed], ["# Transactions", tx_unique], ["# Items", item_unique], ["Ignore Items", ignore_flag],],
+        [
+            ["session_id", seed],
+            ["# Transactions", tx_unique],
+            ["# Items", item_unique],
+            ["Ignore Items", ignore_flag],
+        ],
         columns=["Description", "Value"],
     )
 
@@ -171,7 +176,14 @@ def create_model(metric="confidence", threshold=0.5, min_support=0.05, round=4):
     from mlxtend.frequent_patterns import association_rules
 
     # reshaping the dataframe
-    basket = X.groupby([txid, iid])[iid].count().unstack().reset_index().fillna(0).set_index(txid)
+    basket = (
+        X.groupby([txid, iid])[iid]
+        .count()
+        .unstack()
+        .reset_index()
+        .fillna(0)
+        .set_index(txid)
+    )
     if ignore_list is not None:
         basket = basket.drop(ignore_list, axis=1)
 
@@ -298,7 +310,9 @@ def plot_model(
         fig.update_traces(textposition="top center")
         fig.update_layout(plot_bgcolor="rgb(240,240,240)")
 
-        fig.update_layout(height=800 * scale, title_text="2D Plot of Support, Confidence and Lift")
+        fig.update_layout(
+            height=800 * scale, title_text="2D Plot of Support, Confidence and Lift"
+        )
 
         fig.show()
 
@@ -319,13 +333,28 @@ def plot_model(
         fig.show()
 
 
-def get_rules(data, transaction_id, item_id, ignore_items=None, metric="confidence", threshold=0.5, min_support=0.05):
+def get_rules(
+    data,
+    transaction_id,
+    item_id,
+    ignore_items=None,
+    metric="confidence",
+    threshold=0.5,
+    min_support=0.05,
+):
 
     """
     Magic function to get Association Rules in Power Query / Power BI.
     """
 
-    s = setup(data=data, transaction_id=transaction_id, item_id=item_id, ignore_items=ignore_items)
-    dataset = create_model(metric=metric, threshold=threshold, min_support=min_support, round=4)
+    s = setup(
+        data=data,
+        transaction_id=transaction_id,
+        item_id=item_id,
+        ignore_items=ignore_items,
+    )
+    dataset = create_model(
+        metric=metric, threshold=threshold, min_support=min_support, round=4
+    )
 
     return dataset

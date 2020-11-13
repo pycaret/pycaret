@@ -331,7 +331,9 @@ class TunableMLPClassifier(MLPClassifier):
             self.hidden_layer_sizes = list(self.hidden_layer_sizes)
         reset_layers = False
         for k, v in kwargs.items():
-            if k.startswith("hidden_layer_size_") and not (k in self.__dict__ and self.__dict__[k] == v):
+            if k.startswith("hidden_layer_size_") and not (
+                k in self.__dict__ and self.__dict__[k] == v
+            ):
                 try:
                     hidden_layer_size = k.split("_")
                     hidden_layer_size = int(hidden_layer_size[3])
@@ -342,7 +344,10 @@ class TunableMLPClassifier(MLPClassifier):
                             self.hidden_layer_sizes[hidden_layer_size] = v
                         else:
                             self.hidden_layer_sizes = (
-                                self.hidden_layer_sizes + [1] * (hidden_layer_size - len(self.hidden_layer_sizes)) + [v]
+                                self.hidden_layer_sizes
+                                + [1]
+                                * (hidden_layer_size - len(self.hidden_layer_sizes))
+                                + [v]
                             )
                     reset_layers = True
                 except:
@@ -353,12 +358,17 @@ class TunableMLPClassifier(MLPClassifier):
     def _hidden_layer_sizes_to_hidden_layer_size_kwargs(self):
         to_delete = []
         for k, v in self.__dict__.items():
-            if k.startswith("hidden_layer_size_") and int(k.split("_")[3]) >= len(self.hidden_layer_sizes):
+            if k.startswith("hidden_layer_size_") and int(k.split("_")[3]) >= len(
+                self.hidden_layer_sizes
+            ):
                 to_delete.append(k)
         for k in to_delete:
             delattr(self, k)
         for i, w in enumerate(self.hidden_layer_sizes):
-            if not (f"hidden_layer_size_{i}" in self.__dict__ and self.__dict__[f"hidden_layer_size_{i}"] == w):
+            if not (
+                f"hidden_layer_size_{i}" in self.__dict__
+                and self.__dict__[f"hidden_layer_size_{i}"] == w
+            ):
                 setattr(self, f"hidden_layer_size_{i}", w)
 
     def set_params(self, **params):
@@ -381,7 +391,13 @@ class TunableMLPClassifier(MLPClassifier):
             Estimator instance.
         """
         self._hidden_layer_size_kwargs_to_hidden_layer_sizes(params)
-        super().set_params(**{k: v for k, v in params.items() if not k.startswith("hidden_layer_size_")})
+        super().set_params(
+            **{
+                k: v
+                for k, v in params.items()
+                if not k.startswith("hidden_layer_size_")
+            }
+        )
         return self
 
     def get_params(self, deep=True):
@@ -733,7 +749,9 @@ class TunableMLPRegressor(MLPRegressor):
             self.hidden_layer_sizes = list(self.hidden_layer_sizes)
         reset_layers = False
         for k, v in kwargs.items():
-            if k.startswith("hidden_layer_size_") and not (k in self.__dict__ and self.__dict__[k] == v):
+            if k.startswith("hidden_layer_size_") and not (
+                k in self.__dict__ and self.__dict__[k] == v
+            ):
                 try:
                     hidden_layer_size = k.split("_")
                     hidden_layer_size = int(hidden_layer_size[3])
@@ -744,7 +762,10 @@ class TunableMLPRegressor(MLPRegressor):
                             self.hidden_layer_sizes[hidden_layer_size] = v
                         else:
                             self.hidden_layer_sizes = (
-                                self.hidden_layer_sizes + [1] * (hidden_layer_size - len(self.hidden_layer_sizes)) + [v]
+                                self.hidden_layer_sizes
+                                + [1]
+                                * (hidden_layer_size - len(self.hidden_layer_sizes))
+                                + [v]
                             )
                     reset_layers = True
                 except:
@@ -755,12 +776,17 @@ class TunableMLPRegressor(MLPRegressor):
     def _hidden_layer_sizes_to_hidden_layer_size_kwargs(self):
         to_delete = []
         for k, v in self.__dict__.items():
-            if k.startswith("hidden_layer_size_") and int(k.split("_")[3]) >= len(self.hidden_layer_sizes):
+            if k.startswith("hidden_layer_size_") and int(k.split("_")[3]) >= len(
+                self.hidden_layer_sizes
+            ):
                 to_delete.append(k)
         for k in to_delete:
             delattr(self, k)
         for i, w in enumerate(self.hidden_layer_sizes):
-            if not (f"hidden_layer_size_{i}" in self.__dict__ and self.__dict__[f"hidden_layer_size_{i}"] == w):
+            if not (
+                f"hidden_layer_size_{i}" in self.__dict__
+                and self.__dict__[f"hidden_layer_size_{i}"] == w
+            ):
                 setattr(self, f"hidden_layer_size_{i}", w)
 
     def set_params(self, **params):
@@ -783,7 +809,13 @@ class TunableMLPRegressor(MLPRegressor):
             Estimator instance.
         """
         self._hidden_layer_size_kwargs_to_hidden_layer_sizes(params)
-        super().set_params(**{k: v for k, v in params.items() if not k.startswith("hidden_layer_size_")})
+        super().set_params(
+            **{
+                k: v
+                for k, v in params.items()
+                if not k.startswith("hidden_layer_size_")
+            }
+        )
         return self
 
     def get_params(self, deep=True):
@@ -949,7 +981,15 @@ class TunableVotingClassifier(VotingClassifier):
     """
 
     def __init__(
-        self, estimators, *, voting="hard", weights=None, n_jobs=None, flatten_transform=True, verbose=False, **kwargs,
+        self,
+        estimators,
+        *,
+        voting="hard",
+        weights=None,
+        n_jobs=None,
+        flatten_transform=True,
+        verbose=False,
+        **kwargs,
     ):
         self.weights = weights
         self._weight_kwargs_to_weights(kwargs, estimators=estimators)
@@ -981,7 +1021,9 @@ class TunableVotingClassifier(VotingClassifier):
 
     def _weights_to_weight_kwargs(self):
         for i, w in enumerate(self.weights):
-            if not (f"weight_{i}" in self.__dict__ and self.__dict__[f"weight_{i}"] == w):
+            if not (
+                f"weight_{i}" in self.__dict__ and self.__dict__[f"weight_{i}"] == w
+            ):
                 setattr(self, f"weight_{i}", w)
 
     def set_params(self, **params):
@@ -1131,7 +1173,9 @@ class TunableVotingRegressor(VotingRegressor):
 
     def _weights_to_weight_kwargs(self):
         for i, w in enumerate(self.weights):
-            if not (f"weight_{i}" in self.__dict__ and self.__dict__[f"weight_{i}"] == w):
+            if not (
+                f"weight_{i}" in self.__dict__ and self.__dict__[f"weight_{i}"] == w
+            ):
                 setattr(self, f"weight_{i}", w)
 
     def set_params(self, **params):

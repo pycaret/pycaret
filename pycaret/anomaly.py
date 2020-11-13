@@ -56,7 +56,9 @@ def setup(
     group_names: Optional[List[str]] = None,
     n_jobs: Optional[int] = -1,
     use_gpu: bool = False,
-    custom_pipeline: Union[Any, Tuple[str, Any], List[Any], List[Tuple[str, Any]]] = None,
+    custom_pipeline: Union[
+        Any, Tuple[str, Any], List[Any], List[Tuple[str, Any]]
+    ] = None,
     html: bool = True,
     session_id: Optional[int] = None,
     log_experiment: bool = False,
@@ -438,7 +440,11 @@ def setup(
 
 
 def create_model(
-    model: Union[str, Any], fraction: float = 0.05, verbose: bool = True, fit_kwargs: Optional[dict] = None, **kwargs
+    model: Union[str, Any],
+    fraction: float = 0.05,
+    verbose: bool = True,
+    fit_kwargs: Optional[dict] = None,
+    **kwargs
 ):
 
     """
@@ -497,11 +503,17 @@ def create_model(
     """
 
     return pycaret.internal.tabular.create_model_unsupervised(
-        estimator=model, fraction=fraction, fit_kwargs=fit_kwargs, verbose=verbose, **kwargs,
+        estimator=model,
+        fraction=fraction,
+        fit_kwargs=fit_kwargs,
+        verbose=verbose,
+        **kwargs,
     )
 
 
-def assign_model(model, transformation: bool = False, score: bool = True, verbose: bool = True) -> pd.DataFrame:
+def assign_model(
+    model, transformation: bool = False, score: bool = True, verbose: bool = True
+) -> pd.DataFrame:
 
     """
     This function assigns anomaly labels to the dataset for a given model. 
@@ -538,11 +550,18 @@ def assign_model(model, transformation: bool = False, score: bool = True, verbos
         pandas.DataFrame
   
     """
-    return pycaret.internal.tabular.assign_model(model, transformation=transformation, score=score, verbose=verbose)
+    return pycaret.internal.tabular.assign_model(
+        model, transformation=transformation, score=score, verbose=verbose
+    )
 
 
 def plot_model(
-    model, plot: str = "tsne", feature: Optional[str] = None, label: bool = False, scale: float = 1, save: bool = False,
+    model,
+    plot: str = "tsne",
+    feature: Optional[str] = None,
+    label: bool = False,
+    scale: float = 1,
+    save: bool = False,
 ):
 
     """
@@ -639,7 +658,9 @@ def evaluate_model(
 
     """
 
-    return pycaret.internal.tabular.evaluate_model(estimator=model, feature_name=feature, fit_kwargs=fit_kwargs)
+    return pycaret.internal.tabular.evaluate_model(
+        estimator=model, feature_name=feature, fit_kwargs=fit_kwargs
+    )
 
 
 def tune_model(
@@ -917,7 +938,10 @@ def deploy_model(
     """
 
     return pycaret.internal.tabular.deploy_model(
-        model=model, model_name=model_name, authentication=authentication, platform=platform,
+        model=model,
+        model_name=model_name,
+        authentication=authentication,
+        platform=platform,
     )
 
 
@@ -966,7 +990,10 @@ def save_model(model, model_name: str, model_only: bool = False, verbose: bool =
 
 
 def load_model(
-    model_name, platform: Optional[str] = None, authentication: Optional[Dict[str, str]] = None, verbose: bool = True,
+    model_name,
+    platform: Optional[str] = None,
+    authentication: Optional[Dict[str, str]] = None,
+    verbose: bool = True,
 ):
 
     """
@@ -1011,7 +1038,10 @@ def load_model(
     """
 
     return pycaret.internal.tabular.load_model(
-        model_name=model_name, platform=platform, authentication=authentication, verbose=verbose,
+        model_name=model_name,
+        platform=platform,
+        authentication=authentication,
+        verbose=verbose,
     )
 
 
@@ -1300,6 +1330,8 @@ def get_outliers(
         profile=profile,
     )
 
-    c = create_model(model=model, fraction=fraction, fit_kwargs=fit_kwargs, verbose=False, **kwargs,)
+    c = create_model(
+        model=model, fraction=fraction, fit_kwargs=fit_kwargs, verbose=False, **kwargs,
+    )
     dataset = assign_model(c, verbose=False)
     return dataset

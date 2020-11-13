@@ -152,7 +152,9 @@ def setup(
     fold_groups: Optional[Union[str, pd.DataFrame]] = None,
     n_jobs: Optional[int] = -1,
     use_gpu: bool = False,  # added in pycaret==2.1
-    custom_pipeline: Union[Any, Tuple[str, Any], List[Any], List[Tuple[str, Any]]] = None,
+    custom_pipeline: Union[
+        Any, Tuple[str, Any], List[Any], List[Tuple[str, Any]]
+    ] = None,
     html: bool = True,
     session_id: Optional[int] = None,
     log_experiment: bool = False,
@@ -177,7 +179,9 @@ def setup(
 
     """
 
-    function_params_str = ", ".join([f"{k}={v}" for k, v in locals().items() if k != "data"])
+    function_params_str = ", ".join(
+        [f"{k}={v}" for k, v in locals().items() if k != "data"]
+    )
 
     global _available_plots
 
@@ -288,7 +292,9 @@ def setup(
 
     possible_ml_usecases = ["classification", "regression", "clustering", "anomaly"]
     if ml_usecase not in possible_ml_usecases:
-        raise ValueError(f"ml_usecase must be one of {', '.join(possible_ml_usecases)}.")
+        raise ValueError(
+            f"ml_usecase must be one of {', '.join(possible_ml_usecases)}."
+        )
 
     ml_usecase = MLUsecase[ml_usecase.upper()]
 
@@ -334,7 +340,9 @@ def setup(
     # checking categorical imputation
     allowed_categorical_imputation = ["constant", "mode"]
     if categorical_imputation not in allowed_categorical_imputation:
-        raise ValueError("categorical_imputation param only accepts 'constant' or 'mode'")
+        raise ValueError(
+            "categorical_imputation param only accepts 'constant' or 'mode'"
+        )
 
     # ordinal_features
     if ordinal_features is not None:
@@ -351,67 +359,96 @@ def setup(
 
         for i in ord_keys:
             if i not in data_cols:
-                raise ValueError("Column name passed as a key in ordinal_features param doesnt exist.")
+                raise ValueError(
+                    "Column name passed as a key in ordinal_features param doesnt exist."
+                )
 
         for k in ord_keys:
             if data[k].nunique() != len(ordinal_features[k]):
-                raise ValueError("Levels passed in ordinal_features param doesnt match with levels in data.")
+                raise ValueError(
+                    "Levels passed in ordinal_features param doesnt match with levels in data."
+                )
 
         for i in ord_keys:
             value_in_keys = ordinal_features.get(i)
             value_in_data = list(data[i].unique().astype(str))
             for j in value_in_keys:
                 if str(j) not in value_in_data:
-                    raise ValueError(f"Column name '{i}' doesn't contain any level named '{j}'.")
+                    raise ValueError(
+                        f"Column name '{i}' doesn't contain any level named '{j}'."
+                    )
 
     # high_cardinality_features
     if high_cardinality_features is not None:
         if type(high_cardinality_features) is not list:
-            raise TypeError("high_cardinality_features param only accepts name of columns as a list.")
+            raise TypeError(
+                "high_cardinality_features param only accepts name of columns as a list."
+            )
 
     if high_cardinality_features is not None:
         data_cols = data.columns.drop(target)
         for i in high_cardinality_features:
             if i not in data_cols:
-                raise ValueError("Column type forced is either target column or doesn't exist in the dataset.")
+                raise ValueError(
+                    "Column type forced is either target column or doesn't exist in the dataset."
+                )
 
     # stratify
     if data_split_stratify:
-        if type(data_split_stratify) is not list and type(data_split_stratify) is not bool:
-            raise TypeError("data_split_stratify param only accepts a bool or a list of strings.")
+        if (
+            type(data_split_stratify) is not list
+            and type(data_split_stratify) is not bool
+        ):
+            raise TypeError(
+                "data_split_stratify param only accepts a bool or a list of strings."
+            )
 
         if not data_split_shuffle:
-            raise TypeError("data_split_stratify param requires data_split_shuffle to be set to True.")
+            raise TypeError(
+                "data_split_stratify param requires data_split_shuffle to be set to True."
+            )
 
     # high_cardinality_methods
     high_cardinality_allowed_methods = ["frequency", "clustering"]
     if high_cardinality_method not in high_cardinality_allowed_methods:
-        raise ValueError("high_cardinality_method param only accepts 'frequency' or 'clustering'")
+        raise ValueError(
+            "high_cardinality_method param only accepts 'frequency' or 'clustering'"
+        )
 
     # checking numeric imputation
     allowed_numeric_imputation = ["mean", "median", "zero"]
     if numeric_imputation not in allowed_numeric_imputation:
-        raise ValueError(f"numeric_imputation param only accepts {', '.join(allowed_numeric_imputation)}.")
+        raise ValueError(
+            f"numeric_imputation param only accepts {', '.join(allowed_numeric_imputation)}."
+        )
 
     # checking normalize method
     allowed_normalize_method = ["zscore", "minmax", "maxabs", "robust"]
     if normalize_method not in allowed_normalize_method:
-        raise ValueError(f"normalize_method param only accepts {', '.join(allowed_normalize_method)}.")
+        raise ValueError(
+            f"normalize_method param only accepts {', '.join(allowed_normalize_method)}."
+        )
 
     # checking transformation method
     allowed_transformation_method = ["yeo-johnson", "quantile"]
     if transformation_method not in allowed_transformation_method:
-        raise ValueError(f"transformation_method param only accepts {', '.join(allowed_transformation_method)}.")
+        raise ValueError(
+            f"transformation_method param only accepts {', '.join(allowed_transformation_method)}."
+        )
 
     # handle unknown categorical
     if type(handle_unknown_categorical) is not bool:
-        raise TypeError("handle_unknown_categorical parameter only accepts True or False.")
+        raise TypeError(
+            "handle_unknown_categorical parameter only accepts True or False."
+        )
 
     # unknown categorical method
     unknown_categorical_method_available = ["least_frequent", "most_frequent"]
 
     if unknown_categorical_method not in unknown_categorical_method_available:
-        raise TypeError(f"unknown_categorical_method only accepts {', '.join(unknown_categorical_method_available)}.")
+        raise TypeError(
+            f"unknown_categorical_method only accepts {', '.join(unknown_categorical_method_available)}."
+        )
 
     # check pca
     if type(pca) is not bool:
@@ -420,21 +457,27 @@ def setup(
     # pca method check
     allowed_pca_methods = ["linear", "kernel", "incremental"]
     if pca_method not in allowed_pca_methods:
-        raise ValueError(f"pca method param only accepts {', '.join(allowed_pca_methods)}.")
+        raise ValueError(
+            f"pca method param only accepts {', '.join(allowed_pca_methods)}."
+        )
 
     # pca components check
     if pca is True:
         if pca_method != "linear":
             if pca_components is not None:
                 if (type(pca_components)) is not int:
-                    raise TypeError("pca_components parameter must be integer when pca_method is not 'linear'.")
+                    raise TypeError(
+                        "pca_components parameter must be integer when pca_method is not 'linear'."
+                    )
 
     # pca components check 2
     if pca is True:
         if pca_method != "linear":
             if pca_components is not None:
                 if pca_components > len(data.columns) - 1:
-                    raise TypeError("pca_components parameter cannot be greater than original features space.")
+                    raise TypeError(
+                        "pca_components parameter cannot be greater than original features space."
+                    )
 
     # pca components check 3
     if pca is True:
@@ -462,7 +505,9 @@ def setup(
     if bin_numeric_features is not None:
         for i in bin_numeric_features:
             if i not in all_cols:
-                raise ValueError("Column type forced is either target column or doesn't exist in the dataset.")
+                raise ValueError(
+                    "Column type forced is either target column or doesn't exist in the dataset."
+                )
 
     # remove_outliers
     if type(remove_outliers) is not bool:
@@ -474,7 +519,9 @@ def setup(
 
     # remove_multicollinearity
     if type(remove_multicollinearity) is not bool:
-        raise TypeError("remove_multicollinearity parameter only accepts True or False.")
+        raise TypeError(
+            "remove_multicollinearity parameter only accepts True or False."
+        )
 
     # multicollinearity_threshold
     if type(multicollinearity_threshold) is not float:
@@ -529,7 +576,9 @@ def setup(
     # feature_selection_method
     feature_selection_methods = ["boruta", "classic"]
     if feature_selection_method not in feature_selection_methods:
-        raise TypeError(f"feature_selection_method must be one of {', '.join(feature_selection_methods)}")
+        raise TypeError(
+            f"feature_selection_method must be one of {', '.join(feature_selection_methods)}"
+        )
 
     # feature_interaction
     if type(feature_interaction) is not bool:
@@ -547,25 +596,33 @@ def setup(
     if categorical_features is not None:
         for i in categorical_features:
             if i not in all_cols:
-                raise ValueError("Column type forced is either target column or doesn't exist in the dataset.")
+                raise ValueError(
+                    "Column type forced is either target column or doesn't exist in the dataset."
+                )
 
     # numeric
     if numeric_features is not None:
         for i in numeric_features:
             if i not in all_cols:
-                raise ValueError("Column type forced is either target column or doesn't exist in the dataset.")
+                raise ValueError(
+                    "Column type forced is either target column or doesn't exist in the dataset."
+                )
 
     # date features
     if date_features is not None:
         for i in date_features:
             if i not in all_cols:
-                raise ValueError("Column type forced is either target column or doesn't exist in the dataset.")
+                raise ValueError(
+                    "Column type forced is either target column or doesn't exist in the dataset."
+                )
 
     # drop features
     if ignore_features is not None:
         for i in ignore_features:
             if i not in all_cols:
-                raise ValueError("Feature ignored is either target column or doesn't exist in the dataset.")
+                raise ValueError(
+                    "Feature ignored is either target column or doesn't exist in the dataset."
+                )
 
     # log_experiment
     if type(log_experiment) is not bool:
@@ -586,7 +643,9 @@ def setup(
 
     # remove_perfect_collinearity
     if type(remove_perfect_collinearity) is not bool:
-        raise TypeError("remove_perfect_collinearity parameter only accepts True or False.")
+        raise TypeError(
+            "remove_perfect_collinearity parameter only accepts True or False."
+        )
 
     # html
     if type(html) is not bool:
@@ -601,17 +660,24 @@ def setup(
         raise TypeError("data_split_shuffle parameter only accepts True or False.")
 
     possible_fold_strategy = ["kfold", "stratifiedkfold", "groupkfold", "timeseries"]
-    if not (fold_strategy in possible_fold_strategy or is_sklearn_cv_generator(fold_strategy)):
+    if not (
+        fold_strategy in possible_fold_strategy
+        or is_sklearn_cv_generator(fold_strategy)
+    ):
         raise TypeError(
             f"fold_strategy parameter must be either a scikit-learn compatible CV generator object or one of {', '.join(possible_fold_strategy)}."
         )
 
     if fold_strategy == "groupkfold" and (fold_groups is None or len(fold_groups) == 0):
-        raise ValueError("'groupkfold' fold_strategy requires 'fold_groups' to be a non-empty array-like object.")
+        raise ValueError(
+            "'groupkfold' fold_strategy requires 'fold_groups' to be a non-empty array-like object."
+        )
 
     if isinstance(fold_groups, str):
         if fold_groups not in all_cols:
-            raise ValueError(f"Column {fold_groups} used for fold_groups is not present in the dataset.")
+            raise ValueError(
+                f"Column {fold_groups} used for fold_groups is not present in the dataset."
+            )
 
     # checking fold parameter
     if type(fold) is not int:
@@ -645,7 +711,9 @@ def setup(
             if hasattr(fix_imbalance_method, "fit_resample"):
                 pass
             else:
-                raise TypeError("fix_imbalance_method must contain resampler with fit_resample method.")
+                raise TypeError(
+                    "fix_imbalance_method must contain resampler with fit_resample method."
+                )
 
     # check transform_target
     if type(transform_target) is not bool:
@@ -654,7 +722,9 @@ def setup(
     # transform_target_method
     allowed_transform_target_method = ["box-cox", "yeo-johnson"]
     if transform_target_method not in allowed_transform_target_method:
-        raise ValueError(f"transform_target_method param only accepts {', '.join(allowed_transform_target_method)}.")
+        raise ValueError(
+            f"transform_target_method param only accepts {', '.join(allowed_transform_target_method)}."
+        )
 
     # pandas option
     pd.set_option("display.max_columns", 500)
@@ -741,7 +811,10 @@ def setup(
             ["Status", ". . . . . . . . . . . . . . . . . .", "Loading Dependencies"],
         ]
         display = Display(
-            verbose=verbose, html_param=html_param, progress_args=progress_args, monitor_rows=monitor_rows,
+            verbose=verbose,
+            html_param=html_param,
+            progress_args=progress_args,
+            monitor_rows=monitor_rows,
         )
 
         display.display_progress()
@@ -869,7 +942,9 @@ def setup(
 
     # feature interactions
 
-    apply_feature_interactions_pass = True if feature_interaction or feature_ratio else False
+    apply_feature_interactions_pass = (
+        True if feature_interaction or feature_ratio else False
+    )
 
     interactions_to_apply_pass = []
 
@@ -886,14 +961,20 @@ def setup(
     # ordinal_features
     apply_ordinal_encoding_pass = True if ordinal_features is not None else False
 
-    ordinal_columns_and_categories_pass = ordinal_features if apply_ordinal_encoding_pass else {}
+    ordinal_columns_and_categories_pass = (
+        ordinal_features if apply_ordinal_encoding_pass else {}
+    )
 
-    apply_cardinality_reduction_pass = True if high_cardinality_features is not None else False
+    apply_cardinality_reduction_pass = (
+        True if high_cardinality_features is not None else False
+    )
 
     hi_card_dict = {"frequency": "count", "clustering": "cluster"}
     cardinal_method_pass = hi_card_dict[high_cardinality_method]
 
-    cardinal_features_pass = high_cardinality_features if apply_cardinality_reduction_pass else []
+    cardinal_features_pass = (
+        high_cardinality_features if apply_cardinality_reduction_pass else []
+    )
 
     display_dtypes_pass = False if silent else True
 
@@ -969,7 +1050,10 @@ def setup(
         }
 
         if not (
-            (isinstance(imputation_regressor, str) and imputation_regressor in iterative_imputer_regression_models)
+            (
+                isinstance(imputation_regressor, str)
+                and imputation_regressor in iterative_imputer_regression_models
+            )
             or hasattr(imputation_regressor, "predict")
         ):
             raise ValueError(
@@ -988,16 +1072,24 @@ def setup(
             )
 
         if isinstance(imputation_regressor, str):
-            imputation_regressor = iterative_imputer_regression_models[imputation_regressor]
+            imputation_regressor = iterative_imputer_regression_models[
+                imputation_regressor
+            ]
             imputation_regressor_name = imputation_regressor.name
-            imputation_regressor = imputation_regressor.class_def(**imputation_regressor.args)
+            imputation_regressor = imputation_regressor.class_def(
+                **imputation_regressor.args
+            )
         else:
             imputation_regressor_name = type(imputation_regressor).__name__
 
         if isinstance(imputation_classifier, str):
-            imputation_classifier = iterative_imputer_classification_models[imputation_classifier]
+            imputation_classifier = iterative_imputer_classification_models[
+                imputation_classifier
+            ]
             imputation_classifier_name = imputation_classifier.name
-            imputation_classifier = imputation_classifier.class_def(**imputation_classifier.args)
+            imputation_classifier = imputation_classifier.class_def(
+                **imputation_classifier.args
+            )
         else:
             imputation_classifier_name = type(imputation_classifier).__name__
 
@@ -1070,10 +1162,14 @@ def setup(
         res = dtypes.response
 
         if res in res_type:
-            sys.exit("(Process Exit): setup has been interupted with user command 'quit'. setup must rerun.")
+            sys.exit(
+                "(Process Exit): setup has been interupted with user command 'quit'. setup must rerun."
+            )
 
     except:
-        logger.error("(Process Exit): setup has been interupted with user command 'quit'. setup must rerun.")
+        logger.error(
+            "(Process Exit): setup has been interupted with user command 'quit'. setup must rerun."
+        )
 
     if not preprocess:
         prep_pipe.steps = prep_pipe.steps[:1]
@@ -1111,9 +1207,13 @@ def setup(
     )
 
     if fold_strategy == "kfold":
-        fold_generator = KFold(fold_param, random_state=seed, shuffle=fold_shuffle_param)
+        fold_generator = KFold(
+            fold_param, random_state=seed, shuffle=fold_shuffle_param
+        )
     elif fold_strategy == "stratifiedkfold":
-        fold_generator = StratifiedKFold(fold_param, random_state=seed, shuffle=fold_shuffle_param)
+        fold_generator = StratifiedKFold(
+            fold_param, random_state=seed, shuffle=fold_shuffle_param
+        )
     elif fold_strategy == "groupkfold":
         fold_generator = GroupKFold(fold_param)
     elif fold_strategy == "timeseries":
@@ -1214,7 +1314,9 @@ def setup(
         y_test = test_data[target]
 
         if fold_groups_param is not None:
-            fold_groups_param = fold_groups_param[fold_groups_param.index.isin(X_train.index)]
+            fold_groups_param = fold_groups_param[
+                fold_groups_param.index.isin(X_train.index)
+            ]
 
     display.move_progress()
     if not _is_unsupervised(_ml_usecase):
@@ -1231,7 +1333,9 @@ def setup(
     _internal_pipeline.fit(X, y=y if not _is_unsupervised(_ml_usecase) else None)
 
     prep_pipe.steps = prep_pipe.steps + [
-        (step[0], deepcopy(step[1])) for step in _internal_pipeline.steps if hasattr(step[1], "transform")
+        (step[0], deepcopy(step[1]))
+        for step in _internal_pipeline.steps
+        if hasattr(step[1], "transform")
     ]
 
     try:
@@ -1256,7 +1360,9 @@ def setup(
         _all_models_internal = pycaret.containers.models.classification.get_all_model_containers(
             globals(), raise_errors=True
         )
-        _all_metrics = pycaret.containers.metrics.classification.get_all_metric_containers(globals(), raise_errors=True)
+        _all_metrics = pycaret.containers.metrics.classification.get_all_metric_containers(
+            globals(), raise_errors=True
+        )
     elif _ml_usecase == MLUsecase.REGRESSION:
         _all_models = {
             k: v
@@ -1268,7 +1374,9 @@ def setup(
         _all_models_internal = pycaret.containers.models.regression.get_all_model_containers(
             globals(), raise_errors=True
         )
-        _all_metrics = pycaret.containers.metrics.regression.get_all_metric_containers(globals(), raise_errors=True)
+        _all_metrics = pycaret.containers.metrics.regression.get_all_metric_containers(
+            globals(), raise_errors=True
+        )
     elif _ml_usecase == MLUsecase.CLUSTERING:
         _all_models = {
             k: v
@@ -1280,15 +1388,23 @@ def setup(
         _all_models_internal = pycaret.containers.models.clustering.get_all_model_containers(
             globals(), raise_errors=True
         )
-        _all_metrics = pycaret.containers.metrics.clustering.get_all_metric_containers(globals(), raise_errors=True)
+        _all_metrics = pycaret.containers.metrics.clustering.get_all_metric_containers(
+            globals(), raise_errors=True
+        )
     elif _ml_usecase == MLUsecase.ANOMALY:
         _all_models = {
             k: v
-            for k, v in pycaret.containers.models.anomaly.get_all_model_containers(globals(), raise_errors=True).items()
+            for k, v in pycaret.containers.models.anomaly.get_all_model_containers(
+                globals(), raise_errors=True
+            ).items()
             if not v.is_special
         }
-        _all_models_internal = pycaret.containers.models.anomaly.get_all_model_containers(globals(), raise_errors=True)
-        _all_metrics = pycaret.containers.metrics.anomaly.get_all_metric_containers(globals(), raise_errors=True)
+        _all_models_internal = pycaret.containers.models.anomaly.get_all_model_containers(
+            globals(), raise_errors=True
+        )
+        _all_metrics = pycaret.containers.metrics.anomaly.get_all_metric_containers(
+            globals(), raise_errors=True
+        )
 
     """
     Final display Starts
@@ -1297,7 +1413,9 @@ def setup(
 
     if hasattr(dtypes, "replacement"):
         label_encoded = dtypes.replacement
-        label_encoded = str(label_encoded).replace("'", "").replace("{", "").replace("}", "")
+        label_encoded = (
+            str(label_encoded).replace("'", "").replace("{", "").replace("}", "")
+        )
 
     else:
         label_encoded = "None"
@@ -1320,27 +1438,41 @@ def setup(
 
     outliers_threshold_grid = outliers_threshold if remove_outliers else None
 
-    multicollinearity_threshold_grid = multicollinearity_threshold if remove_multicollinearity else None
+    multicollinearity_threshold_grid = (
+        multicollinearity_threshold if remove_multicollinearity else None
+    )
 
     cluster_iter_grid = cluster_iter if create_clusters else None
 
     polynomial_degree_grid = polynomial_degree if polynomial_features else None
 
-    polynomial_threshold_grid = polynomial_threshold if polynomial_features or trigonometry_features else None
+    polynomial_threshold_grid = (
+        polynomial_threshold if polynomial_features or trigonometry_features else None
+    )
 
-    feature_selection_threshold_grid = feature_selection_threshold if feature_selection else None
+    feature_selection_threshold_grid = (
+        feature_selection_threshold if feature_selection else None
+    )
 
-    interaction_threshold_grid = interaction_threshold if feature_interaction or feature_ratio else None
+    interaction_threshold_grid = (
+        interaction_threshold if feature_interaction or feature_ratio else None
+    )
 
     ordinal_features_grid = False if ordinal_features is None else True
 
-    unknown_categorical_method_grid = unknown_categorical_method if handle_unknown_categorical else None
+    unknown_categorical_method_grid = (
+        unknown_categorical_method if handle_unknown_categorical else None
+    )
 
     group_features_grid = False if group_features is None else True
 
-    high_cardinality_features_grid = False if high_cardinality_features is None else True
+    high_cardinality_features_grid = (
+        False if high_cardinality_features is None else True
+    )
 
-    high_cardinality_method_grid = high_cardinality_method if high_cardinality_features_grid else None
+    high_cardinality_method_grid = (
+        high_cardinality_method if high_cardinality_features_grid else None
+    )
 
     learned_types = dtypes.learned_dtypes
     learned_types.drop(target, inplace=True)
@@ -1423,17 +1555,23 @@ def setup(
                 ["Imputation Type", imputation_type],
                 [
                     "Iterative Imputation Iteration",
-                    iterative_imputation_iters_param if imputation_type == "iterative" else "None",
+                    iterative_imputation_iters_param
+                    if imputation_type == "iterative"
+                    else "None",
                 ],
                 ["Numeric Imputer", numeric_imputation],
                 [
                     "Iterative Imputation Numeric Model",
-                    imputation_regressor_name if imputation_type == "iterative" else "None",
+                    imputation_regressor_name
+                    if imputation_type == "iterative"
+                    else "None",
                 ],
                 ["Categorical Imputer", categorical_imputation],
                 [
                     "Iterative Imputation Categorical Model",
-                    imputation_classifier_name if imputation_type == "iterative" else "None",
+                    imputation_classifier_name
+                    if imputation_type == "iterative"
+                    else "None",
                 ],
                 ["Unknown Categoricals Handling", unknown_categorical_method_grid],
                 ["Normalize", normalize],
@@ -1468,12 +1606,18 @@ def setup(
             else []
         )
         + (
-            [["Fix Imbalance", fix_imbalance_param], ["Fix Imbalance Method", fix_imbalance_model_name],]
+            [
+                ["Fix Imbalance", fix_imbalance_param],
+                ["Fix Imbalance Method", fix_imbalance_model_name],
+            ]
             if _ml_usecase == MLUsecase.CLASSIFICATION
             else []
         )
         + (
-            [["Transform Target", transform_target_param], ["Transform Target Method", transform_target_method_param],]
+            [
+                ["Transform Target", transform_target_param],
+                ["Transform Target Method", transform_target_method_param],
+            ]
             if _ml_usecase == MLUsecase.REGRESSION
             else []
         ),
@@ -1487,11 +1631,17 @@ def setup(
         try:
             import pandas_profiling
 
-            pf = pandas_profiling.ProfileReport(data_before_preprocess, **profile_kwargs)
+            pf = pandas_profiling.ProfileReport(
+                data_before_preprocess, **profile_kwargs
+            )
             display.display(pf, clear=True)
         except:
-            print("Data Profiler Failed. No output to show, please continue with Modeling.")
-            logger.error("Data Profiler Failed. No output to show, please continue with Modeling.")
+            print(
+                "Data Profiler Failed. No output to show, please continue with Modeling."
+            )
+            logger.error(
+                "Data Profiler Failed. No output to show, please continue with Modeling."
+            )
 
     """
     Final display Ends
@@ -1552,9 +1702,13 @@ def setup(
             mlflow.set_tag("Run ID", RunID)
 
             # Log the transformation pipeline
-            logger.info("SubProcess save_model() called ==================================")
+            logger.info(
+                "SubProcess save_model() called =================================="
+            )
             save_model(prep_pipe, "Transformation Pipeline", verbose=False)
-            logger.info("SubProcess save_model() end ==================================")
+            logger.info(
+                "SubProcess save_model() end =================================="
+            )
             mlflow.log_artifact("Transformation Pipeline.pkl")
             os.remove("Transformation Pipeline.pkl")
 
@@ -1562,7 +1716,9 @@ def setup(
             if log_profile:
                 import pandas_profiling
 
-                pf = pandas_profiling.ProfileReport(data_before_preprocess, **profile_kwargs)
+                pf = pandas_profiling.ProfileReport(
+                    data_before_preprocess, **profile_kwargs
+                )
                 pf.to_file("Data Profile.html")
                 mlflow.log_artifact("Data Profile.html")
                 os.remove("Data Profile.html")
@@ -1595,7 +1751,9 @@ def setup(
 
 
 def compare_models(
-    include: Optional[List[Union[str, Any]]] = None,  # changed whitelist to include in pycaret==2.1
+    include: Optional[
+        List[Union[str, Any]]
+    ] = None,  # changed whitelist to include in pycaret==2.1
     exclude: Optional[List[str]] = None,  # changed blacklist to exclude in pycaret==2.1
     fold: Optional[Union[int, Any]] = None,
     round: int = 4,
@@ -1749,7 +1907,9 @@ def compare_models(
     if exclude != None:
         for i in exclude:
             if i not in available_estimators:
-                raise ValueError(f"Estimator Not Available {i}. Please see docstring for list of available estimators.")
+                raise ValueError(
+                    f"Estimator Not Available {i}. Please see docstring for list of available estimators."
+                )
 
     if include != None:
         for i in include:
@@ -1759,11 +1919,15 @@ def compare_models(
                         f"Estimator {i} Not Available. Please see docstring for list of available estimators."
                     )
             elif not hasattr(i, "fit"):
-                raise ValueError(f"Estimator {i} does not have the required fit() method.")
+                raise ValueError(
+                    f"Estimator {i} does not have the required fit() method."
+                )
 
     # include and exclude together check
     if include is not None and exclude is not None:
-        raise TypeError("Cannot use exclude parameter when include is used to compare models.")
+        raise TypeError(
+            "Cannot use exclude parameter when include is used to compare models."
+        )
 
     # checking fold parameter
     if fold is not None and not (type(fold) is int or is_sklearn_cv_generator(fold)):
@@ -1783,12 +1947,16 @@ def compare_models(
     if not (isinstance(sort, str) and (sort == "TT" or sort == "TT (Sec)")):
         sort = _get_metric(sort)
         if sort is None:
-            raise ValueError(f"Sort method not supported. See docstring for list of available parameters.")
+            raise ValueError(
+                f"Sort method not supported. See docstring for list of available parameters."
+            )
 
     # checking errors parameter
     possible_errors = ["ignore", "raise"]
     if errors not in possible_errors:
-        raise ValueError(f"errors parameter must be one of: {', '.join(possible_errors)}.")
+        raise ValueError(
+            f"errors parameter must be one of: {', '.join(possible_errors)}."
+        )
 
     # checking optimize parameter for multiclass
     if _is_multiclass():
@@ -1811,7 +1979,11 @@ def compare_models(
 
     logger.info("Preparing display monitor")
 
-    len_mod = len({k: v for k, v in _all_models.items() if v.is_turbo}) if turbo else len(_all_models)
+    len_mod = (
+        len({k: v for k, v in _all_models.items() if v.is_turbo})
+        if turbo
+        else len(_all_models)
+    )
 
     if include:
         len_mod = len(include)
@@ -1820,7 +1992,9 @@ def compare_models(
 
     if not display:
         progress_args = {"max": (4 * len_mod) + 4 + len_mod}
-        master_display_columns = ["Model"] + [v.display_name for k, v in _all_metrics.items()] + ["TT (Sec)"]
+        master_display_columns = (
+            ["Model"] + [v.display_name for k, v in _all_metrics.items()] + ["TT (Sec)"]
+        )
         timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
         monitor_rows = [
             ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
@@ -1839,7 +2013,9 @@ def compare_models(
         display.display_monitor()
         display.display_master_display()
 
-    greater_is_worse_columns = {v.display_name for k, v in _all_metrics.items() if not v.greater_is_better}
+    greater_is_worse_columns = {
+        v.display_name for k, v in _all_metrics.items() if not v.greater_is_better
+    }
     greater_is_worse_columns.add("TT (Sec)")
 
     np.random.seed(seed)
@@ -1895,7 +2071,14 @@ def compare_models(
 
     for i, model in enumerate(model_library):
 
-        model_id = model if (isinstance(model, str) and all(isinstance(m, str) for m in model_library)) else str(i)
+        model_id = (
+            model
+            if (
+                isinstance(model, str)
+                and all(isinstance(m, str) for m in model_library)
+            )
+            else str(i)
+        )
         model_name = _get_model_name(model)
 
         if isinstance(model, str):
@@ -1907,7 +2090,9 @@ def compare_models(
         runtime_start = time.time()
         total_runtime += (runtime_start - total_runtime_start) / 60
         logger.info(f"Total runtime is {total_runtime} minutes")
-        over_time_budget = budget_time and budget_time > 0 and total_runtime > budget_time
+        over_time_budget = (
+            budget_time and budget_time > 0 and total_runtime > budget_time
+        )
         if over_time_budget:
             logger.info(
                 f"Total runtime {total_runtime} is over time budget by {total_runtime - budget_time}, breaking loop"
@@ -1929,7 +2114,9 @@ def compare_models(
         """
         display.replace_master_display(None)
 
-        logger.info("SubProcess create_model() called ==================================")
+        logger.info(
+            "SubProcess create_model() called =================================="
+        )
         if errors == "raise":
             model, model_fit_time = create_model_supervised(
                 estimator=model,
@@ -2005,13 +2192,19 @@ def compare_models(
         if master_display is None:
             master_display = compare_models_
         else:
-            master_display = pd.concat([master_display, compare_models_], ignore_index=False)
+            master_display = pd.concat(
+                [master_display, compare_models_], ignore_index=False
+            )
         master_display = master_display.round(round)
         master_display = master_display.sort_values(by=sort, ascending=sort_ascending)
 
-        master_display_ = master_display.drop(["Object", "runtime"], axis=1, errors="ignore").style.set_precision(round)
+        master_display_ = master_display.drop(
+            ["Object", "runtime"], axis=1, errors="ignore"
+        ).style.set_precision(round)
         master_display_ = master_display_.set_properties(**{"text-align": "left"})
-        master_display_ = master_display_.set_table_styles([dict(selector="th", props=[("text-align", "left")])])
+        master_display_ = master_display_.set_table_styles(
+            [dict(selector="th", props=[("text-align", "left")])]
+        )
 
         display.replace_master_display(master_display_)
 
@@ -2034,9 +2227,21 @@ def compare_models(
     if master_display_ is not None:
         compare_models_ = (
             master_display_.apply(
-                highlight_max, subset=[x for x in master_display_.columns[1:] if x not in greater_is_worse_columns],
+                highlight_max,
+                subset=[
+                    x
+                    for x in master_display_.columns[1:]
+                    if x not in greater_is_worse_columns
+                ],
             )
-            .apply(highlight_min, subset=[x for x in master_display_.columns[1:] if x in greater_is_worse_columns],)
+            .apply(
+                highlight_min,
+                subset=[
+                    x
+                    for x in master_display_.columns[1:]
+                    if x in greater_is_worse_columns
+                ],
+            )
             .applymap(highlight_cols, subset=["TT (Sec)"])
         )
     else:
@@ -2059,7 +2264,9 @@ def compare_models(
             loc, row = row
             model = row["Object"]
 
-            results = row.to_frame().T.drop(["Object", "Model", "runtime", "TT (Sec)"], errors="ignore", axis=1)
+            results = row.to_frame().T.drop(
+                ["Object", "Model", "runtime", "TT (Sec)"], errors="ignore", axis=1
+            )
 
             avgs_dict_log = {k: v for k, v in results.iloc[0].items()}
 
@@ -2099,7 +2306,9 @@ def compare_models(
                         display=display,
                     )
                 except:
-                    logger.error(f"_mlflow_log_model() for {model} raised an exception:")
+                    logger.error(
+                        f"_mlflow_log_model() for {model} raised an exception:"
+                    )
                     logger.error(traceback.format_exc())
 
     if len(sorted_models) == 1:
@@ -2117,7 +2326,9 @@ def compare_models(
     logger.info(f"display_container: {len(display_container)}")
 
     logger.info(str(sorted_models))
-    logger.info("compare_models() succesfully completed......................................")
+    logger.info(
+        "compare_models() succesfully completed......................................"
+    )
 
     return sorted_models
 
@@ -2226,7 +2437,9 @@ def create_model_unsupervised(
 
     """
 
-    function_params_str = ", ".join([f"{k}={v}" for k, v in locals().items() if k not in ("X_data")])
+    function_params_str = ", ".join(
+        [f"{k}={v}" for k, v in locals().items() if k not in ("X_data")]
+    )
 
     logger = get_logger()
 
@@ -2250,7 +2463,9 @@ def create_model_unsupervised(
                 f"Estimator {estimator} not available. Please see docstring for list of available estimators."
             )
     elif not hasattr(estimator, "fit"):
-        raise ValueError(f"Estimator {estimator} does not have the required fit() method.")
+        raise ValueError(
+            f"Estimator {estimator} does not have the required fit() method."
+        )
 
     # checking round parameter
     if type(round) is not int:
@@ -2266,16 +2481,22 @@ def create_model_unsupervised(
 
     # checking fraction type:
     if fraction <= 0 or fraction >= 1:
-        raise TypeError("Fraction parameter can only take value as float between 0 to 1.")
+        raise TypeError(
+            "Fraction parameter can only take value as float between 0 to 1."
+        )
 
     # checking num_clusters type:
     if num_clusters <= 1:
-        raise TypeError("num_clusters parameter can only take value integer value greater than 1.")
+        raise TypeError(
+            "num_clusters parameter can only take value integer value greater than 1."
+        )
 
     # check ground truth exist in data_
     if ground_truth is not None:
         if ground_truth not in data_before_preprocess.columns:
-            raise ValueError(f"ground_truth {ground_truth} doesn't exist in the dataset.")
+            raise ValueError(
+                f"ground_truth {ground_truth} doesn't exist in the dataset."
+            )
 
     """
     
@@ -2388,7 +2609,9 @@ def create_model_unsupervised(
                         model_fit_start = time.time()
                         pipeline_with_model.fit(data_X, **fit_kwargs)
                     except:
-                        raise RuntimeError("Could not form valid cluster separation. Try a different dataset or model.")
+                        raise RuntimeError(
+                            "Could not form valid cluster separation. Try a different dataset or model."
+                        )
             else:
                 pipeline_with_model.fit(data_X, **fit_kwargs)
         model_fit_end = time.time()
@@ -2411,7 +2634,9 @@ def create_model_unsupervised(
         metrics = {}
 
     logger.info(str(model))
-    logger.info("create_models() succesfully completed......................................")
+    logger.info(
+        "create_models() succesfully completed......................................"
+    )
 
     runtime = time.time() - runtime_start
 
@@ -2452,7 +2677,9 @@ def create_model_unsupervised(
     master_model_container.append(model)
 
     if _ml_usecase == MLUsecase.CLUSTERING:
-        display.display(model_results, clear=system, override=False if not system else None)
+        display.display(
+            model_results, clear=system, override=False if not system else None
+        )
     elif system:
         display.clear_output()
 
@@ -2461,7 +2688,9 @@ def create_model_unsupervised(
     logger.info(f"display_container: {len(display_container)}")
 
     logger.info(str(model))
-    logger.info("create_model() succesfully completed......................................")
+    logger.info(
+        "create_model() succesfully completed......................................"
+    )
     gc.collect()
 
     if not system:
@@ -2608,7 +2837,11 @@ def create_model_supervised(
     """
 
     function_params_str = ", ".join(
-        [f"{k}={v}" for k, v in locals().items() if k not in ("X_train_data", "y_train_data")]
+        [
+            f"{k}={v}"
+            for k, v in locals().items()
+            if k not in ("X_train_data", "y_train_data")
+        ]
     )
 
     logger = get_logger()
@@ -2633,7 +2866,9 @@ def create_model_supervised(
                 f"Estimator {estimator} not available. Please see docstring for list of available estimators."
             )
     elif not hasattr(estimator, "fit"):
-        raise ValueError(f"Estimator {estimator} does not have the required fit() method.")
+        raise ValueError(
+            f"Estimator {estimator} does not have the required fit() method."
+        )
 
     # checking fold parameter
     if fold is not None and not (type(fold) is int or is_sklearn_cv_generator(fold)):
@@ -2655,7 +2890,9 @@ def create_model_supervised(
 
     # checking cross_validation parameter
     if type(cross_validation) is not bool:
-        raise TypeError("cross_validation parameter can only take argument as True or False.")
+        raise TypeError(
+            "cross_validation parameter can only take argument as True or False."
+        )
 
     """
     
@@ -2745,7 +2982,9 @@ def create_model_supervised(
     display.display_monitor()
 
     if transform_target_param and not isinstance(model, TransformedTargetRegressor):
-        model = PowerTransformedTargetRegressor(regressor=model, power_transformer_method=transform_target_method_param)
+        model = PowerTransformedTargetRegressor(
+            regressor=model, power_transformer_method=transform_target_method_param
+        )
 
     logger.info(f"{full_name} Imported succesfully")
 
@@ -2786,14 +3025,18 @@ def create_model_supervised(
 
                 display_container.append(model_results)
 
-                display.display(model_results, clear=system, override=False if not system else None)
+                display.display(
+                    model_results, clear=system, override=False if not system else None
+                )
 
                 logger.info(f"display_container: {len(display_container)}")
 
         display.move_progress()
 
         logger.info(str(model))
-        logger.info("create_models() succesfully completed......................................")
+        logger.info(
+            "create_models() succesfully completed......................................"
+        )
 
         gc.collect()
 
@@ -2804,7 +3047,9 @@ def create_model_supervised(
     """
     MONITOR UPDATE STARTS
     """
-    display.update_monitor(1, f"Fitting {_get_cv_n_folds(fold, data_X, y=data_y, groups=groups)} Folds")
+    display.update_monitor(
+        1, f"Fitting {_get_cv_n_folds(fold, data_X, y=data_y, groups=groups)} Folds"
+    )
     display.display_monitor()
     """
     MONITOR UPDATE ENDS
@@ -2847,7 +3092,8 @@ def create_model_supervised(
         model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
 
         score_dict = {
-            v.display_name: scores[f"test_{k}"] * (1 if v.greater_is_better else -1) for k, v in metrics.items()
+            v.display_name: scores[f"test_{k}"] * (1 if v.greater_is_better else -1)
+            for k, v in metrics.items()
         }
 
         logger.info("Calculating mean and std")
@@ -2927,7 +3173,9 @@ def create_model_supervised(
     logger.info(f"display_container: {len(display_container)}")
 
     logger.info(str(model))
-    logger.info("create_model() succesfully completed......................................")
+    logger.info(
+        "create_model() succesfully completed......................................"
+    )
     gc.collect()
 
     if not system:
@@ -2970,7 +3218,9 @@ def tune_model_unsupervised(
         fit_kwargs = {}
 
     if supervised_target not in data_before_preprocess.columns:
-        raise ValueError(f"{supervised_target} is not present as a column in the dataset.")
+        raise ValueError(
+            f"{supervised_target} is not present as a column in the dataset."
+        )
 
     warnings.filterwarnings("ignore")
 
@@ -2980,7 +3230,9 @@ def tune_model_unsupervised(
     data_X = X.drop(cols_to_drop, axis=1)
     data_y = data_before_preprocess[[supervised_target]]
     if data_y.dtypes[0] not in [int, float, bool]:
-        data_y[supervised_target] = LabelEncoder().fit_transform(data_y[supervised_target])
+        data_y[supervised_target] = LabelEncoder().fit_transform(
+            data_y[supervised_target]
+        )
     data_y = data_y[supervised_target]
 
     temp_globals = globals()
@@ -2991,19 +3243,25 @@ def tune_model_unsupervised(
         logger.info(f"supervised_type inferred as {supervised_type}")
 
     if supervised_type == "classification":
-        metrics = pycaret.containers.metrics.classification.get_all_metric_containers(temp_globals, raise_errors=True)
+        metrics = pycaret.containers.metrics.classification.get_all_metric_containers(
+            temp_globals, raise_errors=True
+        )
         available_estimators = pycaret.containers.models.classification.get_all_model_containers(
             temp_globals, raise_errors=True
         )
         ml_usecase = MLUsecase.CLASSIFICATION
     elif supervised_type == "regression":
-        metrics = pycaret.containers.metrics.regression.get_all_metric_containers(temp_globals, raise_errors=True)
+        metrics = pycaret.containers.metrics.regression.get_all_metric_containers(
+            temp_globals, raise_errors=True
+        )
         available_estimators = pycaret.containers.models.regression.get_all_model_containers(
             temp_globals, raise_errors=True
         )
         ml_usecase = MLUsecase.REGRESSION
     else:
-        raise ValueError(f"supervised_type param must be either 'classification' or 'regression'.")
+        raise ValueError(
+            f"supervised_type param must be either 'classification' or 'regression'."
+        )
 
     fold = _get_cv_splitter(fold, ml_usecase)
 
@@ -3020,13 +3278,17 @@ def tune_model_unsupervised(
 
         supervised_estimator = clone(supervised_estimator)
 
-    supervised_estimator_name = _get_model_name(supervised_estimator, models=available_estimators)
+    supervised_estimator_name = _get_model_name(
+        supervised_estimator, models=available_estimators
+    )
 
     if optimize is None:
         optimize = "Accuracy" if supervised_type == "classification" else "R2"
     optimize = _get_metric(optimize, metrics=metrics)
     if optimize is None:
-        raise ValueError("Optimize method not supported. See docstring for list of available parameters.")
+        raise ValueError(
+            "Optimize method not supported. See docstring for list of available parameters."
+        )
 
     if custom_grid is not None and not isinstance(custom_grid, list):
         raise ValueError(f"custom_grid param must be a list.")
@@ -3118,11 +3380,13 @@ def tune_model_unsupervised(
             .drop(cols_to_drop, axis=1)
         )
         if _ml_usecase == MLUsecase.CLUSTERING:
-            unsupervised_grids[k] = pd.get_dummies(unsupervised_grids[k], columns=["Cluster"],)
-        elif method == "drop":
-            unsupervised_grids[k] = unsupervised_grids[k][unsupervised_grids[k]["Anomaly"] == 0].drop(
-                ["Anomaly", "Anomaly_Score"], axis=1
+            unsupervised_grids[k] = pd.get_dummies(
+                unsupervised_grids[k], columns=["Cluster"],
             )
+        elif method == "drop":
+            unsupervised_grids[k] = unsupervised_grids[k][
+                unsupervised_grids[k]["Anomaly"] == 0
+            ].drop(["Anomaly", "Anomaly_Score"], axis=1)
 
     results = {}
 
@@ -3148,10 +3412,16 @@ def tune_model_unsupervised(
 
     results = pd.DataFrame(results).T
 
-    greater_is_worse_columns = {v.display_name for k, v in metrics.items() if not v.greater_is_better}
+    greater_is_worse_columns = {
+        v.display_name for k, v in metrics.items() if not v.greater_is_better
+    }
 
     best_model_idx = (
-        results.drop(0).sort_values(by=optimize.display_name, ascending=optimize in greater_is_worse_columns).index[0]
+        results.drop(0)
+        .sort_values(
+            by=optimize.display_name, ascending=optimize in greater_is_worse_columns
+        )
+        .index[0]
     )
 
     def highlight_max(s):
@@ -3163,8 +3433,12 @@ def tune_model_unsupervised(
         return ["background-color: yellow" if v else "" for v in to_highlight]
 
     results = results.style.apply(
-        highlight_max, subset=[x for x in results.columns if x not in greater_is_worse_columns],
-    ).apply(highlight_min, subset=[x for x in results.columns if x in greater_is_worse_columns],)
+        highlight_max,
+        subset=[x for x in results.columns if x not in greater_is_worse_columns],
+    ).apply(
+        highlight_min,
+        subset=[x for x in results.columns if x in greater_is_worse_columns],
+    )
 
     # end runtime
     runtime_end = time.time()
@@ -3220,19 +3494,34 @@ def tune_model_unsupervised(
 
     if html_param and verbose:
         logger.info("Rendering Visual")
-        plot_df = results.data.drop([x for x in results.columns if x != optimize.display_name], axis=1)
+        plot_df = results.data.drop(
+            [x for x in results.columns if x != optimize.display_name], axis=1
+        )
 
         fig = go.Figure()
         fig.add_trace(
             go.Scatter(
-                x=plot_df.index, y=plot_df[optimize.display_name], mode="lines+markers", name=optimize.display_name,
+                x=plot_df.index,
+                y=plot_df[optimize.display_name],
+                mode="lines+markers",
+                name=optimize.display_name,
             )
         )
-        msg = "Number of Clusters" if _ml_usecase == MLUsecase.CLUSTERING else "Anomaly Fraction"
+        msg = (
+            "Number of Clusters"
+            if _ml_usecase == MLUsecase.CLUSTERING
+            else "Anomaly Fraction"
+        )
         title = f"{supervised_estimator_name} Metrics and {msg} by {_get_model_name(best_model)}"
         fig.update_layout(
             plot_bgcolor="rgb(245,245,245)",
-            title={"text": title, "y": 0.95, "x": 0.45, "xanchor": "center", "yanchor": "top",},
+            title={
+                "text": title,
+                "y": 0.95,
+                "x": 0.45,
+                "xanchor": "center",
+                "yanchor": "top",
+            },
             xaxis_title=msg,
             yaxis_title=optimize.display_name,
         )
@@ -3244,7 +3533,9 @@ def tune_model_unsupervised(
     logger.info(f"display_container: {len(display_container)}")
 
     logger.info(str(best_model))
-    logger.info("tune_model() succesfully completed......................................")
+    logger.info(
+        "tune_model() succesfully completed......................................"
+    )
 
     gc.collect()
 
@@ -3459,11 +3750,15 @@ def tune_model_supervised(
 
     # checking estimator if string
     if type(estimator) is str:
-        raise TypeError("The behavior of tune_model in version 1.0.1 is changed. Please pass trained model object.")
+        raise TypeError(
+            "The behavior of tune_model in version 1.0.1 is changed. Please pass trained model object."
+        )
 
     # Check for estimator
     if not hasattr(estimator, "fit"):
-        raise ValueError(f"Estimator {estimator} does not have the required fit() method.")
+        raise ValueError(
+            f"Estimator {estimator} does not have the required fit() method."
+        )
 
     # checking fold parameter
     if fold is not None and not (type(fold) is int or is_sklearn_cv_generator(fold)):
@@ -3481,12 +3776,19 @@ def tune_model_supervised(
 
     # checking early_stopping parameter
     possible_early_stopping = ["asha", "Hyperband", "Median"]
-    if isinstance(early_stopping, str) and early_stopping not in possible_early_stopping:
-        raise TypeError(f"early_stopping parameter must be one of {', '.join(possible_early_stopping)}")
+    if (
+        isinstance(early_stopping, str)
+        and early_stopping not in possible_early_stopping
+    ):
+        raise TypeError(
+            f"early_stopping parameter must be one of {', '.join(possible_early_stopping)}"
+        )
 
     # checking early_stopping_max_iters parameter
     if type(early_stopping_max_iters) is not int:
-        raise TypeError("early_stopping_max_iters parameter only accepts integer value.")
+        raise TypeError(
+            "early_stopping_max_iters parameter only accepts integer value."
+        )
 
     # checking search_library parameter
     possible_search_libraries = [
@@ -3497,7 +3799,9 @@ def tune_model_supervised(
     ]
     search_library = search_library.lower()
     if search_library not in possible_search_libraries:
-        raise ValueError(f"search_library parameter must be one of {', '.join(possible_search_libraries)}")
+        raise ValueError(
+            f"search_library parameter must be one of {', '.join(possible_search_libraries)}"
+        )
 
     if search_library == "scikit-optimize":
         try:
@@ -3548,18 +3852,24 @@ def tune_model_supervised(
                 from ray.tune.suggest.hyperopt import HyperOptSearch
                 from hyperopt import hp
             except ImportError:
-                raise ImportError("It appears that hyperopt is not installed. Do: pip install hyperopt")
+                raise ImportError(
+                    "It appears that hyperopt is not installed. Do: pip install hyperopt"
+                )
         elif search_algorithm == "bayesian":
             try:
                 import skopt
             except ImportError:
-                raise ImportError("It appears that scikit-optimize is not installed. Do: pip install scikit-optimize")
+                raise ImportError(
+                    "It appears that scikit-optimize is not installed. Do: pip install scikit-optimize"
+                )
 
     elif search_library == "optuna":
         try:
             import optuna
         except ImportError:
-            raise ImportError("'optuna' requires optuna package to be installed. Do: pip install optuna")
+            raise ImportError(
+                "'optuna' requires optuna package to be installed. Do: pip install optuna"
+            )
 
         if not search_algorithm:
             search_algorithm = "tpe"
@@ -3582,14 +3892,18 @@ def tune_model_supervised(
     if custom_scorer is not None:
         optimize = custom_scorer
         warnings.warn(
-            "custom_scorer parameter will be depreciated, use optimize instead", DeprecationWarning, stacklevel=2,
+            "custom_scorer parameter will be depreciated, use optimize instead",
+            DeprecationWarning,
+            stacklevel=2,
         )
 
     if isinstance(optimize, str):
         # checking optimize parameter
         optimize = _get_metric(optimize)
         if optimize is None:
-            raise ValueError("Optimize method not supported. See docstring for list of available parameters.")
+            raise ValueError(
+                "Optimize method not supported. See docstring for list of available parameters."
+            )
 
         # checking optimize parameter for multiclass
         if _is_multiclass():
@@ -3606,7 +3920,9 @@ def tune_model_supervised(
 
     # checking verbose parameter
     if type(return_tuner) is not bool:
-        raise TypeError("return_tuner parameter can only take argument as True or False.")
+        raise TypeError(
+            "return_tuner parameter can only take argument as True or False."
+        )
 
     if not verbose:
         tuner_verbose = 0
@@ -3745,23 +4061,31 @@ def tune_model_supervised(
         param_grid = custom_grid
         if not (
             search_library == "scikit-learn"
-            or (search_library == "tune-sklearn" and (search_algorithm == "grid" or search_algorithm == "random"))
+            or (
+                search_library == "tune-sklearn"
+                and (search_algorithm == "grid" or search_algorithm == "random")
+            )
         ):
             param_grid = {
-                k: CategoricalDistribution(v) if not isinstance(v, Distribution) else v for k, v in param_grid.items()
+                k: CategoricalDistribution(v) if not isinstance(v, Distribution) else v
+                for k, v in param_grid.items()
             }
         elif any(isinstance(v, Distribution) for k, v in param_grid.items()):
             raise TypeError(
                 f"For the combination of search_library {search_library} and search_algorithm {search_algorithm}, PyCaret Distribution objects are not supported. Pass a list or other object supported by the search library (in most cases, an object with a 'rvs' function)."
             )
     elif search_library == "scikit-learn" or (
-        search_library == "tune-sklearn" and (search_algorithm == "grid" or search_algorithm == "random")
+        search_library == "tune-sklearn"
+        and (search_algorithm == "grid" or search_algorithm == "random")
     ):
         param_grid = estimator_definition.tune_grid
         if isinstance(base_estimator, (VotingClassifier, VotingRegressor)):
             # special case to handle VotingClassifier, as weights need to be
             # generated dynamically
-            param_grid = {f"weight_{i}": np.arange(0.01, 1, 0.01) for i, e in enumerate(base_estimator.estimators)}
+            param_grid = {
+                f"weight_{i}": np.arange(0.01, 1, 0.01)
+                for i, e in enumerate(base_estimator.estimators)
+            }
         # if hasattr(base_estimator, "cost_complexity_pruning_path"):
         #     # special case for Tree-based models
         #     param_grid["ccp_alpha"] = get_ccp_alphas(base_estimator)
@@ -3771,7 +4095,9 @@ def tune_model_supervised(
         if search_algorithm != "grid":
             tc = total_combintaions_in_grid(param_grid)
             if tc <= n_iter:
-                logger.info(f"{n_iter} is bigger than total combinations {tc}, setting search algorithm to grid")
+                logger.info(
+                    f"{n_iter} is bigger than total combinations {tc}, setting search algorithm to grid"
+                )
                 search_algorithm = "grid"
     else:
         param_grid = estimator_definition.tune_distribution
@@ -3780,7 +4106,8 @@ def tune_model_supervised(
             # special case to handle VotingClassifier, as weights need to be
             # generated dynamically
             param_grid = {
-                f"weight_{i}": UniformDistribution(0.000000001, 1) for i, e in enumerate(base_estimator.estimators)
+                f"weight_{i}": UniformDistribution(0.000000001, 1)
+                for i, e in enumerate(base_estimator.estimators)
             }
         # if hasattr(base_estimator, "cost_complexity_pruning_path"):
         #     # special case for Tree-based models
@@ -3821,7 +4148,9 @@ def tune_model_supervised(
         if custom_grid is not None:
             logger.info(f"custom_grid: {param_grid}")
 
-        n_jobs = _gpu_n_jobs_param if estimator_definition.is_gpu_enabled else n_jobs_param
+        n_jobs = (
+            _gpu_n_jobs_param if estimator_definition.is_gpu_enabled else n_jobs_param
+        )
 
         from sklearn.gaussian_process import GaussianProcessClassifier
 
@@ -3855,17 +4184,22 @@ def tune_model_supervised(
             try:
                 param_grid = get_optuna_distributions(param_grid)
             except:
-                logger.warning("Couldn't convert param_grid to specific library distributions. Exception:")
+                logger.warning(
+                    "Couldn't convert param_grid to specific library distributions. Exception:"
+                )
                 logger.warning(traceback.format_exc())
 
-            study = optuna.create_study(direction="maximize", sampler=sampler, pruner=pruner)
+            study = optuna.create_study(
+                direction="maximize", sampler=sampler, pruner=pruner
+            )
 
             logger.info("Initializing optuna.integration.OptunaSearchCV")
             model_grid = optuna.integration.OptunaSearchCV(
                 estimator=pipeline_with_model,
                 param_distributions=param_grid,
                 cv=fold,
-                enable_pruning=early_stopping and can_early_stop(pipeline_with_model, True, False, False, param_grid),
+                enable_pruning=early_stopping
+                and can_early_stop(pipeline_with_model, True, False, False, param_grid),
                 max_iter=early_stopping_max_iters,
                 n_jobs=n_jobs,
                 n_trials=n_iter,
@@ -3888,17 +4222,23 @@ def tune_model_supervised(
             if early_stopping in early_stopping_translator:
                 early_stopping = early_stopping_translator[early_stopping]
 
-            do_early_stop = early_stopping and can_early_stop(pipeline_with_model, True, True, True, param_grid)
+            do_early_stop = early_stopping and can_early_stop(
+                pipeline_with_model, True, True, True, param_grid
+            )
 
             if not do_early_stop and search_algorithm == "bohb":
                 raise ValueError(
                     "'bohb' requires early_stopping = True and the estimator to support early stopping (has partial_fit, warm_start or is an XGBoost model)."
                 )
 
-            elif early_stopping and can_early_stop(pipeline_with_model, False, True, False, param_grid):
+            elif early_stopping and can_early_stop(
+                pipeline_with_model, False, True, False, param_grid
+            ):
                 if "actual_estimator__n_estimators" in param_grid:
                     if custom_grid is None:
-                        extra_params["actual_estimator__n_estimators"] = pipeline_with_model.get_params()[
+                        extra_params[
+                            "actual_estimator__n_estimators"
+                        ] = pipeline_with_model.get_params()[
                             "actual_estimator__n_estimators"
                         ]
                         param_grid.pop("actual_estimator__n_estimators")
@@ -3923,7 +4263,9 @@ def tune_model_supervised(
             TuneSearchCV = get_tune_sklearn_tunesearchcv()
             TuneGridSearchCV = get_tune_sklearn_tunegridsearchcv()
 
-            with true_warm_start(pipeline_with_model) if do_early_stop else nullcontext():
+            with true_warm_start(
+                pipeline_with_model
+            ) if do_early_stop else nullcontext():
                 if search_algorithm == "grid":
 
                     logger.info("Initializing tune_sklearn.TuneGridSearchCV")
@@ -3945,7 +4287,9 @@ def tune_model_supervised(
                     try:
                         param_grid = get_hyperopt_distributions(param_grid)
                     except:
-                        logger.warning("Couldn't convert param_grid to specific library distributions. Exception:")
+                        logger.warning(
+                            "Couldn't convert param_grid to specific library distributions. Exception:"
+                        )
                         logger.warning(traceback.format_exc())
                     logger.info("Initializing tune_sklearn.TuneSearchCV, hyperopt")
                     model_grid = TuneSearchCV(
@@ -3969,7 +4313,9 @@ def tune_model_supervised(
                     try:
                         param_grid = get_skopt_distributions(param_grid)
                     except:
-                        logger.warning("Couldn't convert param_grid to specific library distributions. Exception:")
+                        logger.warning(
+                            "Couldn't convert param_grid to specific library distributions. Exception:"
+                        )
                         logger.warning(traceback.format_exc())
                     logger.info("Initializing tune_sklearn.TuneSearchCV, bayesian")
                     model_grid = TuneSearchCV(
@@ -3993,7 +4339,9 @@ def tune_model_supervised(
                     try:
                         param_grid = get_CS_distributions(param_grid)
                     except:
-                        logger.warning("Couldn't convert param_grid to specific library distributions. Exception:")
+                        logger.warning(
+                            "Couldn't convert param_grid to specific library distributions. Exception:"
+                        )
                         logger.warning(traceback.format_exc())
                     logger.info("Initializing tune_sklearn.TuneSearchCV, bohb")
                     model_grid = TuneSearchCV(
@@ -4038,7 +4386,9 @@ def tune_model_supervised(
             try:
                 param_grid = get_skopt_distributions(param_grid)
             except:
-                logger.warning("Couldn't convert param_grid to specific library distributions. Exception:")
+                logger.warning(
+                    "Couldn't convert param_grid to specific library distributions. Exception:"
+                )
                 logger.warning(traceback.format_exc())
 
             logger.info("Initializing skopt.BayesSearchCV")
@@ -4102,7 +4452,10 @@ def tune_model_supervised(
         best_params = model_grid.best_params_
         logger.info(f"best_params: {best_params}")
         best_params = {**best_params, **extra_params}
-        best_params = {k.replace(f"{actual_estimator_label}__", ""): v for k, v in best_params.items()}
+        best_params = {
+            k.replace(f"{actual_estimator_label}__", ""): v
+            for k, v in best_params.items()
+        }
         cv_results = None
         try:
             cv_results = model_grid.cv_results_
@@ -4173,7 +4526,9 @@ def tune_model_supervised(
     logger.info(f"display_container: {len(display_container)}")
 
     logger.info(str(best_model))
-    logger.info("tune_model() succesfully completed......................................")
+    logger.info(
+        "tune_model() succesfully completed......................................"
+    )
 
     gc.collect()
     if return_tuner:
@@ -4298,12 +4653,16 @@ def ensemble_model(
 
     # Check for estimator
     if not hasattr(estimator, "fit"):
-        raise ValueError(f"Estimator {estimator} does not have the required fit() method.")
+        raise ValueError(
+            f"Estimator {estimator} does not have the required fit() method."
+        )
 
     # Check for allowed method
     available_method = ["Bagging", "Boosting"]
     if method not in available_method:
-        raise ValueError("Method parameter only accepts two values 'Bagging' or 'Boosting'.")
+        raise ValueError(
+            "Method parameter only accepts two values 'Bagging' or 'Boosting'."
+        )
 
     # check boosting conflict
     if method == "Boosting":
@@ -4314,7 +4673,9 @@ def ensemble_model(
 
         try:
             check_model = boosting_model_definition.class_def(
-                check_model, n_estimators=n_estimators, **boosting_model_definition.args,
+                check_model,
+                n_estimators=n_estimators,
+                **boosting_model_definition.args,
             )
             with io.capture_output():
                 check_model.fit(X_train, y_train)
@@ -4344,7 +4705,9 @@ def ensemble_model(
     # checking optimize parameter
     optimize = _get_metric(optimize)
     if optimize is None:
-        raise ValueError(f"Optimize method not supported. See docstring for list of available parameters.")
+        raise ValueError(
+            f"Optimize method not supported. See docstring for list of available parameters."
+        )
 
     # checking optimize parameter for multiclass
     if _is_multiclass():
@@ -4438,19 +4801,30 @@ def ensemble_model(
         bagging_model_definition = _all_models_internal["Bagging"]
 
         model = bagging_model_definition.class_def(
-            model, bootstrap=True, n_estimators=n_estimators, **bagging_model_definition.args,
+            model,
+            bootstrap=True,
+            n_estimators=n_estimators,
+            **bagging_model_definition.args,
         )
 
     else:
         logger.info("Ensemble method set to Boosting")
         boosting_model_definition = _all_models_internal["ada"]
-        model = boosting_model_definition.class_def(model, n_estimators=n_estimators, **boosting_model_definition.args)
+        model = boosting_model_definition.class_def(
+            model, n_estimators=n_estimators, **boosting_model_definition.args
+        )
 
     display.move_progress()
 
     logger.info("SubProcess create_model() called ==================================")
     model, model_fit_time = create_model_supervised(
-        estimator=model, system=False, display=display, fold=fold, round=round, fit_kwargs=fit_kwargs, groups=groups,
+        estimator=model,
+        system=False,
+        display=display,
+        fold=fold,
+        round=round,
+        fit_kwargs=fit_kwargs,
+        groups=groups,
     )
     best_model = model
     model_results = pull()
@@ -4500,7 +4874,9 @@ def ensemble_model(
     logger.info(f"display_container: {len(display_container)}")
 
     logger.info(str(model))
-    logger.info("ensemble_model() succesfully completed......................................")
+    logger.info(
+        "ensemble_model() succesfully completed......................................"
+    )
 
     gc.collect()
     return model
@@ -4650,7 +5026,9 @@ def blend_models(
                                 f"Estimator list contains estimator {i} that doesn't support probabilities and method is forced to 'soft'. Either change the method or drop the estimator."
                             )
                         else:
-                            logger.info(f"Estimator {i} doesn't support probabilities, falling back to 'hard'.")
+                            logger.info(
+                                f"Estimator {i} doesn't support probabilities, falling back to 'hard'."
+                            )
                             method = "hard"
                             break
 
@@ -4671,7 +5049,9 @@ def blend_models(
         num_estimators = len(estimator_list)
         # checking weights parameter
         if len(weights) != num_estimators:
-            raise ValueError("weights parameter must have the same length as the estimator_list.")
+            raise ValueError(
+                "weights parameter must have the same length as the estimator_list."
+            )
         if not all((isinstance(x, int) or isinstance(x, float)) for x in weights):
             raise TypeError("weights must contain only ints or floats.")
 
@@ -4682,7 +5062,9 @@ def blend_models(
     # checking optimize parameter
     optimize = _get_metric(optimize)
     if optimize is None:
-        raise ValueError(f"Optimize method not supported. See docstring for list of available parameters.")
+        raise ValueError(
+            f"Optimize method not supported. See docstring for list of available parameters."
+        )
 
     # checking optimize parameter for multiclass
     if _is_multiclass():
@@ -4768,9 +5150,13 @@ def blend_models(
 
     voting_model_definition = _all_models_internal["Voting"]
     if _ml_usecase == MLUsecase.CLASSIFICATION:
-        model = voting_model_definition.class_def(estimators=estimator_list, voting=method, n_jobs=_gpu_n_jobs_param)
+        model = voting_model_definition.class_def(
+            estimators=estimator_list, voting=method, n_jobs=_gpu_n_jobs_param
+        )
     else:
-        model = voting_model_definition.class_def(estimators=estimator_list, n_jobs=_gpu_n_jobs_param)
+        model = voting_model_definition.class_def(
+            estimators=estimator_list, n_jobs=_gpu_n_jobs_param
+        )
 
     display.update_monitor(2, voting_model_definition.name)
     display.display_monitor()
@@ -4779,7 +5165,13 @@ def blend_models(
 
     logger.info("SubProcess create_model() called ==================================")
     model, model_fit_time = create_model_supervised(
-        estimator=model, system=False, display=display, fold=fold, round=round, fit_kwargs=fit_kwargs, groups=groups,
+        estimator=model,
+        system=False,
+        display=display,
+        fold=fold,
+        round=round,
+        fit_kwargs=fit_kwargs,
+        groups=groups,
     )
     model_results = pull()
     logger.info("SubProcess create_model() end ==================================")
@@ -4828,7 +5220,9 @@ def blend_models(
     logger.info(f"display_container: {len(display_container)}")
 
     logger.info(str(model))
-    logger.info("blend_models() succesfully completed......................................")
+    logger.info(
+        "blend_models() succesfully completed......................................"
+    )
 
     gc.collect()
     return model
@@ -4968,7 +5362,9 @@ def stack_models(
     # checking meta model
     if meta_model is not None:
         if not hasattr(meta_model, "fit"):
-            raise ValueError(f"Meta Model {meta_model} does not have the required fit() method.")
+            raise ValueError(
+                f"Meta Model {meta_model} does not have the required fit() method."
+            )
 
     # checking fold parameter
     if fold is not None and not (type(fold) is int or is_sklearn_cv_generator(fold)):
@@ -4998,7 +5394,9 @@ def stack_models(
     # checking optimize parameter
     optimize = _get_metric(optimize)
     if optimize is None:
-        raise ValueError(f"Optimize method not supported. See docstring for list of available parameters.")
+        raise ValueError(
+            f"Optimize method not supported. See docstring for list of available parameters."
+        )
 
     # checking optimize parameter for multiclass
     if _is_multiclass():
@@ -5117,7 +5515,13 @@ def stack_models(
 
     logger.info("SubProcess create_model() called ==================================")
     model, model_fit_time = create_model_supervised(
-        estimator=model, system=False, display=display, fold=fold, round=round, fit_kwargs=fit_kwargs, groups=groups,
+        estimator=model,
+        system=False,
+        display=display,
+        fold=fold,
+        round=round,
+        fit_kwargs=fit_kwargs,
+        groups=groups,
     )
     model_results = pull()
     logger.info("SubProcess create_model() end ==================================")
@@ -5166,7 +5570,9 @@ def stack_models(
     logger.info(f"display_container: {len(display_container)}")
 
     logger.info(str(model))
-    logger.info("stack_models() succesfully completed......................................")
+    logger.info(
+        "stack_models() succesfully completed......................................"
+    )
 
     gc.collect()
     return model
@@ -5292,7 +5698,9 @@ def plot_model(
         fit_kwargs = {}
 
     if plot not in _available_plots:
-        raise ValueError("Plot Not Available. Please see docstring for list of available Plots.")
+        raise ValueError(
+            "Plot Not Available. Please see docstring for list of available Plots."
+        )
 
     # multiclass plot exceptions:
     multiclass_not_available = ["calibration", "threshold", "manifold", "rfe"]
@@ -5310,15 +5718,21 @@ def plot_model(
 
     # checking for auc plot
     if not hasattr(estimator, "predict_proba") and plot == "auc":
-        raise TypeError("AUC plot not available for estimators with no predict_proba attribute.")
+        raise TypeError(
+            "AUC plot not available for estimators with no predict_proba attribute."
+        )
 
     # checking for auc plot
     if not hasattr(estimator, "predict_proba") and plot == "auc":
-        raise TypeError("AUC plot not available for estimators with no predict_proba attribute.")
+        raise TypeError(
+            "AUC plot not available for estimators with no predict_proba attribute."
+        )
 
     # checking for calibration plot
     if not hasattr(estimator, "predict_proba") and plot == "calibration":
-        raise TypeError("Calibration plot not available for estimators with no predict_proba attribute.")
+        raise TypeError(
+            "Calibration plot not available for estimators with no predict_proba attribute."
+        )
 
     def is_tree(e):
         from sklearn.tree import BaseDecisionTree
@@ -5338,9 +5752,9 @@ def plot_model(
         )
 
     # checking for feature plot
-    if not (hasattr(estimator, "coef_") or hasattr(estimator, "feature_importances_")) and (
-        plot == "feature" or plot == "feature_all" or plot == "rfe"
-    ):
+    if not (
+        hasattr(estimator, "coef_") or hasattr(estimator, "feature_importances_")
+    ) and (plot == "feature" or plot == "feature_all" or plot == "rfe"):
         raise TypeError(
             "Feature Importance and RFE plots not available for estimators that doesnt support coef_ or feature_importances_ attribute."
         )
@@ -5358,7 +5772,9 @@ def plot_model(
         raise TypeError("use_train_data param only accepts True or False.")
 
     if feature_name is not None and type(feature_name) is not str:
-        raise TypeError("feature parameter must be string containing column name of dataset.")
+        raise TypeError(
+            "feature parameter must be string containing column name of dataset."
+        )
 
     """
     
@@ -5372,7 +5788,9 @@ def plot_model(
 
     if not display:
         progress_args = {"max": 5}
-        display = Display(verbose=verbose, html_param=html_param, progress_args=progress_args)
+        display = Display(
+            verbose=verbose, html_param=html_param, progress_args=progress_args
+        )
         display.display_progress()
 
     logger.info("Preloading libraries")
@@ -5430,10 +5848,12 @@ def plot_model(
     model_name = _get_model_name(model)
     plot_filename = f"{plot_name}.png"
     with patch(
-        "yellowbrick.utils.types.is_estimator", pycaret.internal.patches.yellowbrick.is_estimator,
+        "yellowbrick.utils.types.is_estimator",
+        pycaret.internal.patches.yellowbrick.is_estimator,
     ):
         with patch(
-            "yellowbrick.utils.helpers.is_estimator", pycaret.internal.patches.yellowbrick.is_estimator,
+            "yellowbrick.utils.helpers.is_estimator",
+            pycaret.internal.patches.yellowbrick.is_estimator,
         ):
             with estimator_pipeline(_internal_pipeline, model) as pipeline_with_model:
                 fit_kwargs = _get_pipeline_fit_kwargs(pipeline_with_model, fit_kwargs)
@@ -5441,9 +5861,15 @@ def plot_model(
                 _base_dpi = 100
 
                 def cluster():
-                    logger.info("SubProcess assign_model() called ==================================")
-                    b = assign_model(pipeline_with_model, verbose=False, transformation=True).reset_index(drop=True)
-                    logger.info("SubProcess assign_model() end ==================================")
+                    logger.info(
+                        "SubProcess assign_model() called =================================="
+                    )
+                    b = assign_model(
+                        pipeline_with_model, verbose=False, transformation=True
+                    ).reset_index(drop=True)
+                    logger.info(
+                        "SubProcess assign_model() end =================================="
+                    )
                     cluster = b["Cluster"].values
                     b.drop("Cluster", axis=1, inplace=True)
                     b = pd.get_dummies(b)  # casting categorical variable
@@ -5460,7 +5886,9 @@ def plot_model(
                     if feature_name is not None:
                         pca_["Feature"] = data_before_preprocess[feature_name]
                     else:
-                        pca_["Feature"] = data_before_preprocess[data_before_preprocess.columns[0]]
+                        pca_["Feature"] = data_before_preprocess[
+                            data_before_preprocess.columns[0]
+                        ]
 
                     if label:
                         pca_["Label"] = pca_["Feature"]
@@ -5487,22 +5915,38 @@ def plot_model(
                     logger.info("Rendering Visual")
 
                     if label:
-                        fig = px.scatter(pca_, x="PCA1", y="PCA2", text="Label", color="Cluster", opacity=0.5,)
+                        fig = px.scatter(
+                            pca_,
+                            x="PCA1",
+                            y="PCA2",
+                            text="Label",
+                            color="Cluster",
+                            opacity=0.5,
+                        )
                     else:
                         fig = px.scatter(
-                            pca_, x="PCA1", y="PCA2", hover_data=["Feature"], color="Cluster", opacity=0.5,
+                            pca_,
+                            x="PCA1",
+                            y="PCA2",
+                            hover_data=["Feature"],
+                            color="Cluster",
+                            opacity=0.5,
                         )
 
                     fig.update_traces(textposition="top center")
                     fig.update_layout(plot_bgcolor="rgb(240,240,240)")
 
-                    fig.update_layout(height=600 * scale, title_text="2D Cluster PCA Plot")
+                    fig.update_layout(
+                        height=600 * scale, title_text="2D Cluster PCA Plot"
+                    )
 
                     plot_filename = f"{plot_name}.html"
 
                     if save:
                         fig.write_html(plot_filename)
-                        logger.info(f"Saving '{plot_filename}' in current active directory")
+                        logger.info(
+                            f"Saving '{plot_filename}' in current active directory"
+                        )
 
                     elif system:
                         fig.show()
@@ -5511,9 +5955,15 @@ def plot_model(
                     return plot_filename
 
                 def umap():
-                    logger.info("SubProcess assign_model() called ==================================")
-                    b = assign_model(model, verbose=False, transformation=True, score=False).reset_index(drop=True)
-                    logger.info("SubProcess assign_model() end ==================================")
+                    logger.info(
+                        "SubProcess assign_model() called =================================="
+                    )
+                    b = assign_model(
+                        model, verbose=False, transformation=True, score=False
+                    ).reset_index(drop=True)
+                    logger.info(
+                        "SubProcess assign_model() end =================================="
+                    )
 
                     label = pd.DataFrame(b["Anomaly"])
                     b.dropna(axis=0, inplace=True)  # droping rows with NA's
@@ -5534,7 +5984,9 @@ def plot_model(
                     if feature_name is not None:
                         df["Feature"] = data_before_preprocess[feature_name]
                     else:
-                        df["Feature"] = data_before_preprocess[data_before_preprocess.columns[0]]
+                        df["Feature"] = data_before_preprocess[
+                            data_before_preprocess.columns[0]
+                        ]
 
                     display.clear_output()
 
@@ -5555,7 +6007,9 @@ def plot_model(
 
                     if save:
                         fig.write_html(f"{plot_filename}")
-                        logger.info(f"Saving '{plot_filename}' in current active directory")
+                        logger.info(
+                            f"Saving '{plot_filename}' in current active directory"
+                        )
                     elif system:
                         fig.show()
 
@@ -5569,9 +6023,15 @@ def plot_model(
                         return _tsne_anomaly()
 
                 def _tsne_anomaly():
-                    logger.info("SubProcess assign_model() called ==================================")
-                    b = assign_model(model, verbose=False, transformation=True, score=False).reset_index(drop=True)
-                    logger.info("SubProcess assign_model() end ==================================")
+                    logger.info(
+                        "SubProcess assign_model() called =================================="
+                    )
+                    b = assign_model(
+                        model, verbose=False, transformation=True, score=False
+                    ).reset_index(drop=True)
+                    logger.info(
+                        "SubProcess assign_model() end =================================="
+                    )
                     cluster = b["Anomaly"].values
                     b.dropna(axis=0, inplace=True)  # droping rows with NA's
                     b.drop("Anomaly", axis=1, inplace=True)
@@ -5588,7 +6048,9 @@ def plot_model(
                     if feature_name is not None:
                         X["Feature"] = data_before_preprocess[feature_name]
                     else:
-                        X["Feature"] = data_before_preprocess[data_before_preprocess.columns[0]]
+                        X["Feature"] = data_before_preprocess[
+                            data_before_preprocess.columns[0]
+                        ]
 
                     df = X
 
@@ -5627,7 +6089,9 @@ def plot_model(
 
                     if save:
                         fig.write_html(f"{plot_filename}")
-                        logger.info(f"Saving '{plot_filename}' in current active directory")
+                        logger.info(
+                            f"Saving '{plot_filename}' in current active directory"
+                        )
                     elif system:
                         fig.show()
 
@@ -5635,11 +6099,18 @@ def plot_model(
                     return plot_filename
 
                 def _tsne_clustering():
-                    logger.info("SubProcess assign_model() called ==================================")
-                    b = assign_model(pipeline_with_model, verbose=False, score=False, transformation=True,).reset_index(
-                        drop=True
+                    logger.info(
+                        "SubProcess assign_model() called =================================="
                     )
-                    logger.info("SubProcess assign_model() end ==================================")
+                    b = assign_model(
+                        pipeline_with_model,
+                        verbose=False,
+                        score=False,
+                        transformation=True,
+                    ).reset_index(drop=True)
+                    logger.info(
+                        "SubProcess assign_model() end =================================="
+                    )
 
                     cluster = b["Cluster"].values
                     b.drop("Cluster", axis=1, inplace=True)
@@ -5647,14 +6118,18 @@ def plot_model(
                     from sklearn.manifold import TSNE
 
                     logger.info("Fitting TSNE()")
-                    X_embedded = TSNE(n_components=3, random_state=seed).fit_transform(b)
+                    X_embedded = TSNE(n_components=3, random_state=seed).fit_transform(
+                        b
+                    )
                     X_embedded = pd.DataFrame(X_embedded)
                     X_embedded["Cluster"] = cluster
 
                     if feature_name is not None:
                         X_embedded["Feature"] = data_before_preprocess[feature_name]
                     else:
-                        X_embedded["Feature"] = data_before_preprocess[data_X.columns[0]]
+                        X_embedded["Feature"] = data_before_preprocess[
+                            data_X.columns[0]
+                        ]
 
                     if label:
                         X_embedded["Label"] = X_embedded["Feature"]
@@ -5712,7 +6187,9 @@ def plot_model(
 
                     if save:
                         fig.write_html(f"{plot_filename}")
-                        logger.info(f"Saving '{plot_filename}' in current active directory")
+                        logger.info(
+                            f"Saving '{plot_filename}' in current active directory"
+                        )
                     elif system:
                         fig.show()
 
@@ -5720,9 +6197,15 @@ def plot_model(
                     return plot_filename
 
                 def distribution():
-                    logger.info("SubProcess assign_model() called ==================================")
-                    d = assign_model(pipeline_with_model, verbose=False).reset_index(drop=True)
-                    logger.info("SubProcess assign_model() end ==================================")
+                    logger.info(
+                        "SubProcess assign_model() called =================================="
+                    )
+                    d = assign_model(pipeline_with_model, verbose=False).reset_index(
+                        drop=True
+                    )
+                    logger.info(
+                        "SubProcess assign_model() end =================================="
+                    )
 
                     """
                     sorting
@@ -5759,7 +6242,14 @@ def plot_model(
 
                     logger.info("Rendering Visual")
 
-                    fig = px.histogram(d, x=x_col, color="Cluster", marginal="box", opacity=0.7, hover_data=d.columns,)
+                    fig = px.histogram(
+                        d,
+                        x=x_col,
+                        color="Cluster",
+                        marginal="box",
+                        opacity=0.7,
+                        hover_data=d.columns,
+                    )
 
                     fig.update_layout(height=600 * scale,)
 
@@ -5767,7 +6257,9 @@ def plot_model(
 
                     if save:
                         fig.write_html(f"{plot_filename}")
-                        logger.info(f"Saving '{plot_filename}' in current active directory")
+                        logger.info(
+                            f"Saving '{plot_filename}' in current active directory"
+                        )
                     elif system:
                         fig.show()
 
@@ -5778,7 +6270,9 @@ def plot_model(
                     try:
                         from yellowbrick.cluster import KElbowVisualizer
 
-                        visualizer = KElbowVisualizer(pipeline_with_model, timings=False)
+                        visualizer = KElbowVisualizer(
+                            pipeline_with_model, timings=False
+                        )
                         show_yellowbrick_plot(
                             visualizer=visualizer,
                             X_train=data_X,
@@ -5803,7 +6297,9 @@ def plot_model(
                     from yellowbrick.cluster import SilhouetteVisualizer
 
                     try:
-                        visualizer = SilhouetteVisualizer(pipeline_with_model, colors="yellowbrick")
+                        visualizer = SilhouetteVisualizer(
+                            pipeline_with_model, colors="yellowbrick"
+                        )
                         show_yellowbrick_plot(
                             visualizer=visualizer,
                             X_train=data_X,
@@ -5889,7 +6385,9 @@ def plot_model(
 
                     from yellowbrick.classifier import DiscriminationThreshold
 
-                    visualizer = DiscriminationThreshold(pipeline_with_model, random_state=seed)
+                    visualizer = DiscriminationThreshold(
+                        pipeline_with_model, random_state=seed
+                    )
                     show_yellowbrick_plot(
                         visualizer=visualizer,
                         X_train=data_X,
@@ -5908,7 +6406,9 @@ def plot_model(
 
                     from yellowbrick.classifier import PrecisionRecallCurve
 
-                    visualizer = PrecisionRecallCurve(pipeline_with_model, random_state=seed)
+                    visualizer = PrecisionRecallCurve(
+                        pipeline_with_model, random_state=seed
+                    )
                     show_yellowbrick_plot(
                         visualizer=visualizer,
                         X_train=data_X,
@@ -5927,7 +6427,12 @@ def plot_model(
 
                     from yellowbrick.classifier import ConfusionMatrix
 
-                    visualizer = ConfusionMatrix(pipeline_with_model, random_state=seed, fontsize=15, cmap="Greens",)
+                    visualizer = ConfusionMatrix(
+                        pipeline_with_model,
+                        random_state=seed,
+                        fontsize=15,
+                        cmap="Greens",
+                    )
                     show_yellowbrick_plot(
                         visualizer=visualizer,
                         X_train=data_X,
@@ -5947,12 +6452,16 @@ def plot_model(
                     if _ml_usecase == MLUsecase.CLASSIFICATION:
                         from yellowbrick.classifier import ClassPredictionError
 
-                        visualizer = ClassPredictionError(pipeline_with_model, random_state=seed)
+                        visualizer = ClassPredictionError(
+                            pipeline_with_model, random_state=seed
+                        )
 
                     elif _ml_usecase == MLUsecase.REGRESSION:
                         from yellowbrick.regressor import PredictionError
 
-                        visualizer = PredictionError(pipeline_with_model, random_state=seed)
+                        visualizer = PredictionError(
+                            pipeline_with_model, random_state=seed
+                        )
 
                     show_yellowbrick_plot(
                         visualizer=visualizer,
@@ -5992,7 +6501,9 @@ def plot_model(
 
                     from yellowbrick.classifier import ClassificationReport
 
-                    visualizer = ClassificationReport(pipeline_with_model, random_state=seed, support=True)
+                    visualizer = ClassificationReport(
+                        pipeline_with_model, random_state=seed, support=True
+                    )
                     show_yellowbrick_plot(
                         visualizer=visualizer,
                         X_train=data_X,
@@ -6016,8 +6527,12 @@ def plot_model(
                     data_X_transformed = data_X.select_dtypes(include="float32")
                     test_X_transformed = test_X.select_dtypes(include="float32")
                     logger.info("Fitting StandardScaler()")
-                    data_X_transformed = StandardScaler().fit_transform(data_X_transformed)
-                    test_X_transformed = StandardScaler().fit_transform(test_X_transformed)
+                    data_X_transformed = StandardScaler().fit_transform(
+                        data_X_transformed
+                    )
+                    test_X_transformed = StandardScaler().fit_transform(
+                        test_X_transformed
+                    )
                     pca = PCA(n_components=2, random_state=seed)
                     logger.info("Fitting PCA()")
                     data_X_transformed = pca.fit_transform(data_X_transformed)
@@ -6070,7 +6585,11 @@ def plot_model(
 
                     sizes = np.linspace(0.3, 1.0, 10)
                     visualizer = LearningCurve(
-                        pipeline_with_model, cv=cv, train_sizes=sizes, n_jobs=_gpu_n_jobs_param, random_state=seed,
+                        pipeline_with_model,
+                        cv=cv,
+                        train_sizes=sizes,
+                        n_jobs=_gpu_n_jobs_param,
+                        random_state=seed,
                     )
                     show_yellowbrick_plot(
                         visualizer=visualizer,
@@ -6095,14 +6614,20 @@ def plot_model(
                         pipeline_with_model, data_X, data_y, groups=groups, **fit_kwargs
                     ) as fitted_pipeline_with_model:
                         y_test__ = fitted_pipeline_with_model.predict(X_test)
-                        predict_proba__ = fitted_pipeline_with_model.predict_proba(X_test)
+                        predict_proba__ = fitted_pipeline_with_model.predict_proba(
+                            X_test
+                        )
                     display.move_progress()
                     display.move_progress()
                     display.clear_output()
                     with MatplotlibDefaultDPI(base_dpi=_base_dpi, scale_to_set=scale):
-                        fig = skplt.metrics.plot_lift_curve(y_test__, predict_proba__, figsize=(10, 6))
+                        fig = skplt.metrics.plot_lift_curve(
+                            y_test__, predict_proba__, figsize=(10, 6)
+                        )
                         if save:
-                            logger.info(f"Saving '{plot_name}.png' in current active directory")
+                            logger.info(
+                                f"Saving '{plot_name}.png' in current active directory"
+                            )
                             plt.savefig(f"{plot_name}.png")
                         elif system:
                             plt.show()
@@ -6118,14 +6643,20 @@ def plot_model(
                         pipeline_with_model, data_X, data_y, groups=groups, **fit_kwargs
                     ) as fitted_pipeline_with_model:
                         y_test__ = fitted_pipeline_with_model.predict(X_test)
-                        predict_proba__ = fitted_pipeline_with_model.predict_proba(X_test)
+                        predict_proba__ = fitted_pipeline_with_model.predict_proba(
+                            X_test
+                        )
                     display.move_progress()
                     display.move_progress()
                     display.clear_output()
                     with MatplotlibDefaultDPI(base_dpi=_base_dpi, scale_to_set=scale):
-                        fig = skplt.metrics.plot_cumulative_gain(y_test__, predict_proba__, figsize=(10, 6))
+                        fig = skplt.metrics.plot_cumulative_gain(
+                            y_test__, predict_proba__, figsize=(10, 6)
+                        )
                         if save:
-                            logger.info(f"Saving '{plot_name}.png' in current active directory")
+                            logger.info(
+                                f"Saving '{plot_name}.png' in current active directory"
+                            )
                             plt.savefig(f"{plot_name}.png")
                         elif system:
                             plt.show()
@@ -6191,7 +6722,11 @@ def plot_model(
                         cols = n_estimators
                     figsize = (cols * 20, rows * 16)
                     fig, axes = plt.subplots(
-                        nrows=rows, ncols=cols, figsize=figsize, dpi=_base_dpi * scale, squeeze=False,
+                        nrows=rows,
+                        ncols=cols,
+                        figsize=figsize,
+                        dpi=_base_dpi * scale,
+                        squeeze=False,
                     )
                     axes = list(axes.flatten())
 
@@ -6205,7 +6740,12 @@ def plot_model(
                         trees = []
                         feature_names = list(data_X.columns)
                         if _ml_usecase == MLUsecase.CLASSIFICATION:
-                            class_names = {v: k for k, v in prep_pipe.named_steps["dtypes"].replacement.items()}
+                            class_names = {
+                                v: k
+                                for k, v in prep_pipe.named_steps[
+                                    "dtypes"
+                                ].replacement.items()
+                            }
                         else:
                             class_names = None
                         fitted_tree_estimator = fitted_pipeline_with_model.steps[-1][1]
@@ -6217,15 +6757,25 @@ def plot_model(
                                     classes.pop()
                                 for c in classes:
                                     stacked_feature_names.extend(
-                                        [f"{k}_{class_names[c]}" for k, v in fitted_tree_estimator.estimators]
+                                        [
+                                            f"{k}_{class_names[c]}"
+                                            for k, v in fitted_tree_estimator.estimators
+                                        ]
                                     )
                             else:
-                                stacked_feature_names.extend([f"{k}" for k, v in fitted_tree_estimator.estimators])
+                                stacked_feature_names.extend(
+                                    [
+                                        f"{k}"
+                                        for k, v in fitted_tree_estimator.estimators
+                                    ]
+                                )
                             if not fitted_tree_estimator.passthrough:
                                 feature_names = stacked_feature_names
                             else:
                                 feature_names = stacked_feature_names + feature_names
-                            fitted_tree_estimator = fitted_tree_estimator.final_estimator_
+                            fitted_tree_estimator = (
+                                fitted_tree_estimator.final_estimator_
+                            )
                         if is_ensemble_of_forests:
                             for estimator in fitted_tree_estimator.estimators_:
                                 trees.extend(estimator.estimators_)
@@ -6255,7 +6805,9 @@ def plot_model(
                     display.move_progress()
                     display.clear_output()
                     if save:
-                        logger.info(f"Saving '{plot_name}.png' in current active directory")
+                        logger.info(
+                            f"Saving '{plot_name}.png' in current active directory"
+                        )
                         plt.savefig(f"{plot_name}.png", bbox_inches="tight")
                     elif system:
                         plt.show()
@@ -6276,12 +6828,21 @@ def plot_model(
                     with fit_if_not_fitted(
                         pipeline_with_model, data_X, data_y, groups=groups, **fit_kwargs
                     ) as fitted_pipeline_with_model:
-                        prob_pos = fitted_pipeline_with_model.predict_proba(test_X)[:, 1]
-                    prob_pos = (prob_pos - prob_pos.min()) / (prob_pos.max() - prob_pos.min())
-                    fraction_of_positives, mean_predicted_value = calibration_curve(test_y, prob_pos, n_bins=10)
+                        prob_pos = fitted_pipeline_with_model.predict_proba(test_X)[
+                            :, 1
+                        ]
+                    prob_pos = (prob_pos - prob_pos.min()) / (
+                        prob_pos.max() - prob_pos.min()
+                    )
+                    fraction_of_positives, mean_predicted_value = calibration_curve(
+                        test_y, prob_pos, n_bins=10
+                    )
                     display.move_progress()
                     ax1.plot(
-                        mean_predicted_value, fraction_of_positives, "s-", label=f"{model_name}",
+                        mean_predicted_value,
+                        fraction_of_positives,
+                        "s-",
+                        label=f"{model_name}",
                     )
 
                     ax1.set_ylabel("Fraction of positives")
@@ -6295,7 +6856,9 @@ def plot_model(
                     display.move_progress()
                     display.clear_output()
                     if save:
-                        logger.info(f"Saving '{plot_name}.png' in current active directory")
+                        logger.info(
+                            f"Saving '{plot_name}.png' in current active directory"
+                        )
                         plt.savefig(f"{plot_name}.png")
                     elif system:
                         plt.show()
@@ -6307,8 +6870,12 @@ def plot_model(
 
                     logger.info("Determining param_name")
 
-                    actual_estimator_label = get_pipeline_estimator_label(pipeline_with_model)
-                    actual_estimator = pipeline_with_model.named_steps[actual_estimator_label]
+                    actual_estimator_label = get_pipeline_estimator_label(
+                        pipeline_with_model
+                    )
+                    actual_estimator = pipeline_with_model.named_steps[
+                        actual_estimator_label
+                    ]
 
                     try:
                         try:
@@ -6320,7 +6887,9 @@ def plot_model(
                         display.clear_output()
                         logger.error("VC plot failed. Exception:")
                         logger.error(traceback.format_exc())
-                        raise TypeError("Plot not supported for this estimator. Try different estimator.")
+                        raise TypeError(
+                            "Plot not supported for this estimator. Try different estimator."
+                        )
 
                     if _ml_usecase == MLUsecase.CLASSIFICATION:
 
@@ -6370,13 +6939,18 @@ def plot_model(
                             param_range = np.arange(0, 1, 0.1)
 
                         # GPC
-                        elif f"{actual_estimator_label}__max_iter_predict" in model_params:
+                        elif (
+                            f"{actual_estimator_label}__max_iter_predict"
+                            in model_params
+                        ):
                             param_name = f"{actual_estimator_label}__max_iter_predict"
                             param_range = np.arange(100, 1000, 100)
 
                         else:
                             display.clear_output()
-                            raise TypeError("Plot not supported for this estimator. Try different estimator.")
+                            raise TypeError(
+                                "Plot not supported for this estimator. Try different estimator."
+                            )
 
                     elif _ml_usecase == MLUsecase.REGRESSION:
 
@@ -6415,7 +6989,9 @@ def plot_model(
                             param_range = np.arange(1, 1000, 10)
 
                         # Bagging / Boosting (ada/gbr)
-                        elif f"{actual_estimator_label}__n_nonzero_coefs" in model_params:
+                        elif (
+                            f"{actual_estimator_label}__n_nonzero_coefs" in model_params
+                        ):
                             param_name = f"{actual_estimator_label}__n_nonzero_coefs"
                             if len(X_train.columns) >= 10:
                                 param_max = 11
@@ -6427,7 +7003,10 @@ def plot_model(
                             param_name = f"{actual_estimator_label}__eps"
                             param_range = np.arange(0, 1, 0.1)
 
-                        elif f"{actual_estimator_label}__max_subpopulation" in model_params:
+                        elif (
+                            f"{actual_estimator_label}__max_subpopulation"
+                            in model_params
+                        ):
                             param_name = f"{actual_estimator_label}__max_subpopulation"
                             param_range = np.arange(1000, 100000, 2000)
 
@@ -6437,7 +7016,9 @@ def plot_model(
 
                         else:
                             display.clear_output()
-                            raise TypeError("Plot not supported for this estimator. Try different estimator.")
+                            raise TypeError(
+                                "Plot not supported for this estimator. Try different estimator."
+                            )
 
                     logger.info(f"param_name: {param_name}")
 
@@ -6477,7 +7058,9 @@ def plot_model(
 
                     data_X_transformed = data_X.select_dtypes(include="float32")
                     logger.info("Fitting StandardScaler()")
-                    data_X_transformed = StandardScaler().fit_transform(data_X_transformed)
+                    data_X_transformed = StandardScaler().fit_transform(
+                        data_X_transformed
+                    )
                     data_y_transformed = np.array(data_y)
 
                     features = min(round(len(data_X.columns) * 0.3, 0), 5)
@@ -6528,12 +7111,20 @@ def plot_model(
                     if variables is None:
                         logger.warning("No coef_ found. Trying feature_importances_")
                         variables = abs(temp_model.feature_importances_)
-                    coef_df = pd.DataFrame({"Variable": data_X.columns, "Value": variables})
-                    sorted_df = coef_df.sort_values(by="Value", ascending=False).head(n).sort_values(by="Value")
+                    coef_df = pd.DataFrame(
+                        {"Variable": data_X.columns, "Value": variables}
+                    )
+                    sorted_df = (
+                        coef_df.sort_values(by="Value", ascending=False)
+                        .head(n)
+                        .sort_values(by="Value")
+                    )
                     my_range = range(1, len(sorted_df.index) + 1)
                     display.move_progress()
                     plt.figure(figsize=(8, 5 * (n // 10)), dpi=_base_dpi * scale)
-                    plt.hlines(y=my_range, xmin=0, xmax=sorted_df["Value"], color="skyblue")
+                    plt.hlines(
+                        y=my_range, xmin=0, xmax=sorted_df["Value"], color="skyblue"
+                    )
                     plt.plot(sorted_df["Value"], my_range, "o")
                     display.move_progress()
                     plt.yticks(my_range, sorted_df["Variable"])
@@ -6543,7 +7134,9 @@ def plot_model(
                     display.move_progress()
                     display.clear_output()
                     if save:
-                        logger.info(f"Saving '{plot_name}.png' in current active directory")
+                        logger.info(
+                            f"Saving '{plot_name}.png' in current active directory"
+                        )
                         plt.savefig(f"{plot_name}.png")
                     elif system:
                         plt.show()
@@ -6559,7 +7152,9 @@ def plot_model(
                         params = estimator.get_params(deep=False)
 
                     param_df = pd.DataFrame.from_dict(
-                        {str(k): str(v) for k, v in params.items()}, orient="index", columns=["Parameters"],
+                        {str(k): str(v) for k, v in params.items()},
+                        orient="index",
+                        columns=["Parameters"],
                     )
                     display.display(param_df, clear=True)
                     logger.info("Visual Rendered Successfully")
@@ -6576,7 +7171,9 @@ def plot_model(
 
     gc.collect()
 
-    logger.info("plot_model() succesfully completed......................................")
+    logger.info(
+        "plot_model() succesfully completed......................................"
+    )
 
     if save:
         return plot_filename
@@ -6752,8 +7349,12 @@ def interpret_model(
     try:
         import shap
     except ImportError:
-        logger.error("shap library not found. pip install shap to use interpret_model function.")
-        raise ImportError("shap library not found. pip install shap to use interpret_model function.")
+        logger.error(
+            "shap library not found. pip install shap to use interpret_model function."
+        )
+        raise ImportError(
+            "shap library not found. pip install shap to use interpret_model function."
+        )
 
     # get estimator from meta estimator
     estimator = get_estimator_from_meta_estimator(estimator)
@@ -6772,7 +7373,9 @@ def interpret_model(
     # plot type
     allowed_types = ["summary", "correlation", "reason"]
     if plot not in allowed_types:
-        raise ValueError("type parameter only accepts 'summary', 'correlation' or 'reason'.")
+        raise ValueError(
+            "type parameter only accepts 'summary', 'correlation' or 'reason'."
+        )
 
     """
     Error Checking Ends here
@@ -6815,7 +7418,9 @@ def interpret_model(
 
         else:
 
-            logger.warning(f"feature value passed. Feature used for correlation plot: {test_X.columns[0]}")
+            logger.warning(
+                f"feature value passed. Feature used for correlation plot: {test_X.columns[0]}"
+            )
             dependence = feature
 
         logger.info("Creating TreeExplainer")
@@ -6841,10 +7446,14 @@ def interpret_model(
             logger.info("Compiling shap values")
 
             if observation is None:
-                logger.warning("Observation set to None. Model agnostic plot will be rendered.")
+                logger.warning(
+                    "Observation set to None. Model agnostic plot will be rendered."
+                )
                 shap_values = explainer.shap_values(test_X)
                 shap.initjs()
-                shap_plot = shap.force_plot(explainer.expected_value[1], shap_values[1], test_X, **kwargs)
+                shap_plot = shap.force_plot(
+                    explainer.expected_value[1], shap_values[1], test_X, **kwargs
+                )
 
             else:
                 row_to_show = observation
@@ -6855,7 +7464,10 @@ def interpret_model(
                     shap_values = explainer.shap_values(test_X)
                     shap.initjs()
                     shap_plot = shap.force_plot(
-                        explainer.expected_value[1], shap_values[0][row_to_show], data_for_prediction, **kwargs,
+                        explainer.expected_value[1],
+                        shap_values[0][row_to_show],
+                        data_for_prediction,
+                        **kwargs,
                     )
 
                 else:
@@ -6864,7 +7476,10 @@ def interpret_model(
                     shap_values = explainer.shap_values(data_for_prediction)
                     shap.initjs()
                     shap_plot = shap.force_plot(
-                        explainer.expected_value[1], shap_values[1], data_for_prediction, **kwargs,
+                        explainer.expected_value[1],
+                        shap_values[1],
+                        data_for_prediction,
+                        **kwargs,
                     )
 
         elif model_id in shap_models_type2:
@@ -6877,9 +7492,13 @@ def interpret_model(
             shap.initjs()
 
             if observation is None:
-                logger.warning("Observation set to None. Model agnostic plot will be rendered.")
+                logger.warning(
+                    "Observation set to None. Model agnostic plot will be rendered."
+                )
 
-                shap_plot = shap.force_plot(explainer.expected_value, shap_values, test_X, **kwargs)
+                shap_plot = shap.force_plot(
+                    explainer.expected_value, shap_values, test_X, **kwargs
+                )
 
             else:
 
@@ -6887,7 +7506,10 @@ def interpret_model(
                 data_for_prediction = test_X.iloc[row_to_show]
 
                 shap_plot = shap.force_plot(
-                    explainer.expected_value, shap_values[row_to_show, :], test_X.iloc[row_to_show, :], **kwargs,
+                    explainer.expected_value,
+                    shap_values[row_to_show, :],
+                    test_X.iloc[row_to_show, :],
+                    **kwargs,
                 )
         return shap_plot
 
@@ -6895,7 +7517,9 @@ def interpret_model(
 
     logger.info("Visual Rendered Successfully")
 
-    logger.info("interpret_model() succesfully completed......................................")
+    logger.info(
+        "interpret_model() succesfully completed......................................"
+    )
 
     gc.collect()
     return shap_plot
@@ -7077,14 +7701,23 @@ def calibrate_model(
 
     calibrated_model_definition = _all_models_internal["CalibratedCV"]
     model = calibrated_model_definition.class_def(
-        base_estimator=estimator, method=method, cv=fold, **calibrated_model_definition.args,
+        base_estimator=estimator,
+        method=method,
+        cv=fold,
+        **calibrated_model_definition.args,
     )
 
     display.move_progress()
 
     logger.info("SubProcess create_model() called ==================================")
     model, model_fit_time = create_model_supervised(
-        estimator=model, system=False, display=display, fold=fold, round=round, fit_kwargs=fit_kwargs, groups=groups,
+        estimator=model,
+        system=False,
+        display=display,
+        fold=fold,
+        round=round,
+        fit_kwargs=fit_kwargs,
+        groups=groups,
     )
     model_results = pull()
     logger.info("SubProcess create_model() end ==================================")
@@ -7127,14 +7760,20 @@ def calibrate_model(
     logger.info(f"display_container: {len(display_container)}")
 
     logger.info(str(model))
-    logger.info("calibrate_model() succesfully completed......................................")
+    logger.info(
+        "calibrate_model() succesfully completed......................................"
+    )
 
     gc.collect()
     return model
 
 
 def optimize_threshold(
-    estimator, true_positive: int = 0, true_negative: int = 0, false_positive: int = 0, false_negative: int = 0,
+    estimator,
+    true_positive: int = 0,
+    true_negative: int = 0,
+    false_positive: int = 0,
+    false_negative: int = 0,
 ):
 
     """
@@ -7206,7 +7845,9 @@ def optimize_threshold(
 
     # exception 1 for multi-class
     if _is_multiclass():
-        raise TypeError("optimize_threshold() cannot be used when target is multi-class.")
+        raise TypeError(
+            "optimize_threshold() cannot be used when target is multi-class."
+        )
 
     # check predict_proba value
     if type(estimator) is not list:
@@ -7252,7 +7893,12 @@ def optimize_threshold(
     logger.info("Defining loss function")
 
     def calculate_loss(
-        actual, predicted, tp_cost=true_positive, tn_cost=true_negative, fp_cost=false_positive, fn_cost=false_negative,
+        actual,
+        predicted,
+        tp_cost=true_positive,
+        tn_cost=true_negative,
+        fp_cost=false_positive,
+        fn_cost=false_negative,
     ):
 
         # true positives
@@ -7297,8 +7943,15 @@ def optimize_threshold(
         pred_prob = (predicted >= i).astype(int)
         cost.append(calculate_loss(actual, pred_prob))
 
-    optimize_results = pd.DataFrame({"Probability Threshold": grid, "Cost Function": cost})
-    fig = px.line(optimize_results, x="Probability Threshold", y="Cost Function", line_shape="linear",)
+    optimize_results = pd.DataFrame(
+        {"Probability Threshold": grid, "Cost Function": cost}
+    )
+    fig = px.line(
+        optimize_results,
+        x="Probability Threshold",
+        y="Cost Function",
+        line_shape="linear",
+    )
     fig.update_layout(plot_bgcolor="rgb(245,245,245)")
     title = f"{model_name} Probability Threshold Optimization"
 
@@ -7311,19 +7964,33 @@ def optimize_threshold(
     t = x0
     if html_param:
 
-        fig.add_shape(dict(type="line", x0=x0, y0=y0, x1=x1, y1=y1, line=dict(color="red", width=2)))
+        fig.add_shape(
+            dict(
+                type="line", x0=x0, y0=y0, x1=x1, y1=y1, line=dict(color="red", width=2)
+            )
+        )
         fig.update_layout(
-            title={"text": title, "y": 0.95, "x": 0.45, "xanchor": "center", "yanchor": "top",}
+            title={
+                "text": title,
+                "y": 0.95,
+                "x": 0.45,
+                "xanchor": "center",
+                "yanchor": "top",
+            }
         )
         logger.info("Figure ready for render")
         fig.show()
     print(f"Optimized Probability Threshold: {t} | Optimized Cost Function: {y1}")
-    logger.info("optimize_threshold() succesfully completed......................................")
+    logger.info(
+        "optimize_threshold() succesfully completed......................................"
+    )
 
     return float(t)
 
 
-def assign_model(model, transformation: bool = False, score: bool = True, verbose: bool = True) -> pd.DataFrame:
+def assign_model(
+    model, transformation: bool = False, score: bool = True, verbose: bool = True
+) -> pd.DataFrame:
 
     """
     This function assigns each of the data point in the dataset passed during setup
@@ -7371,7 +8038,9 @@ def assign_model(model, transformation: bool = False, score: bool = True, verbos
 
     # checking transformation parameter
     if type(transformation) is not bool:
-        raise TypeError("Transformation parameter can only take argument as True or False.")
+        raise TypeError(
+            "Transformation parameter can only take argument as True or False."
+        )
 
     # checking verbose parameter
     if type(verbose) is not bool:
@@ -7394,7 +8063,9 @@ def assign_model(model, transformation: bool = False, score: bool = True, verbos
     # copy data_
     if transformation:
         data = X.copy()
-        logger.info("Transformation param set to True. Assigned clusters are attached on transformed dataset.")
+        logger.info(
+            "Transformation param set to True. Assigned clusters are attached on transformed dataset."
+        )
     else:
         data = data_before_preprocess.copy()
 
@@ -7409,13 +8080,19 @@ def assign_model(model, transformation: bool = False, score: bool = True, verbos
             data["Anomaly_Score"] = model.decision_scores_
 
     logger.info(data.shape)
-    logger.info("assign_model() succesfully completed......................................")
+    logger.info(
+        "assign_model() succesfully completed......................................"
+    )
 
     return data
 
 
-def predict_model_unsupervised(estimator, data: pd.DataFrame, ml_usecase: Optional[MLUsecase] = None,) -> pd.DataFrame:
-    function_params_str = ", ".join([f"{k}={v}" for k, v in locals().items() if k != "data"])
+def predict_model_unsupervised(
+    estimator, data: pd.DataFrame, ml_usecase: Optional[MLUsecase] = None,
+) -> pd.DataFrame:
+    function_params_str = ", ".join(
+        [f"{k}={v}" for k, v in locals().items() if k != "data"]
+    )
 
     logger = get_logger()
 
@@ -7444,7 +8121,9 @@ def predict_model_unsupervised(estimator, data: pd.DataFrame, ml_usecase: Option
     else:
         pred = estimator.predict(prep_pipe.transform(data_transformed))
         if ml_usecase == MLUsecase.ANOMALY:
-            pred_score = estimator.decision_function(prep_pipe.transform(data_transformed))
+            pred_score = estimator.decision_function(
+                prep_pipe.transform(data_transformed)
+            )
 
     if ml_usecase == MLUsecase.CLUSTERING:
         pred_list = [f"Cluster {i}" for i in pred]
@@ -7525,7 +8204,9 @@ def predict_model(
     
     """
 
-    function_params_str = ", ".join([f"{k}={v}" for k, v in locals().items() if k != "data"])
+    function_params_str = ", ".join(
+        [f"{k}={v}" for k, v in locals().items() if k != "data"]
+    )
 
     logger = get_logger()
 
@@ -7542,19 +8223,27 @@ def predict_model(
         ml_usecase = _ml_usecase
 
     if data is None and "pycaret_globals" not in globals():
-        raise ValueError("data parameter may not be None without running setup() first.")
+        raise ValueError(
+            "data parameter may not be None without running setup() first."
+        )
 
     if probability_threshold is not None:
         # probability_threshold allowed types
         allowed_types = [int, float]
         if type(probability_threshold) not in allowed_types:
-            raise TypeError("probability_threshold parameter only accepts value between 0 to 1.")
+            raise TypeError(
+                "probability_threshold parameter only accepts value between 0 to 1."
+            )
 
         if probability_threshold > 1:
-            raise TypeError("probability_threshold parameter only accepts value between 0 to 1.")
+            raise TypeError(
+                "probability_threshold parameter only accepts value between 0 to 1."
+            )
 
         if probability_threshold < 0:
-            raise TypeError("probability_threshold parameter only accepts value between 0 to 1.")
+            raise TypeError(
+                "probability_threshold parameter only accepts value between 0 to 1."
+            )
 
     """
     exception checking ends here
@@ -7601,7 +8290,9 @@ def predict_model(
                     merge_pipelines(estimator_, estimator)
                     estimator_.steps[-1] = ("trained_model", estimator_.steps[-1][1])
                 else:
-                    add_estimator_to_pipeline(estimator_, estimator, name="trained_model")
+                    add_estimator_to_pipeline(
+                        estimator_, estimator, name="trained_model"
+                    )
                 estimator = estimator_
 
             except:
@@ -7817,7 +8508,9 @@ def finalize_model(
     logger.info(f"display_container: {len(display_container)}")
 
     logger.info(str(model_final))
-    logger.info("finalize_model() succesfully completed......................................")
+    logger.info(
+        "finalize_model() succesfully completed......................................"
+    )
 
     gc.collect()
     if not model_only:
@@ -7829,7 +8522,10 @@ def finalize_model(
 
 
 def deploy_model(
-    model, model_name: str, authentication: dict, platform: str = "aws",  # added gcp and azure support in pycaret==2.1
+    model,
+    model_name: str,
+    authentication: dict,
+    platform: str = "aws",  # added gcp and azure support in pycaret==2.1
 ):
 
     """
@@ -7926,7 +8622,9 @@ def deploy_model(
     """
     import pycaret.internal.persistence
 
-    return pycaret.internal.persistence.deploy_model(model, model_name, authentication, platform, prep_pipe)
+    return pycaret.internal.persistence.deploy_model(
+        model, model_name, authentication, platform, prep_pipe
+    )
 
 
 def create_webservice(model, model_endopoint, api_key=True, pydantic_payload=None):
@@ -7970,39 +8668,60 @@ def create_webservice(model, model_endopoint, api_key=True, pydantic_payload=Non
     try:
         from fastapi import FastAPI
     except ImportError:
-        logger.error("fastapi library not found. pip install fastapi to use create_service function.")
-        raise ImportError("fastapi library not found. pip install fastapi to use create_service function.")
+        logger.error(
+            "fastapi library not found. pip install fastapi to use create_service function."
+        )
+        raise ImportError(
+            "fastapi library not found. pip install fastapi to use create_service function."
+        )
     # try initialize predict before add it to endpoint (cold start)
     try:
         _ = predict_model(estimator=model, verbose=False)
     except:
-        raise ValueError("Cannot predict on cold start check probability_threshold or model")
+        raise ValueError(
+            "Cannot predict on cold start check probability_threshold or model"
+        )
 
     # check pydantic style
     try:
         from pydantic import create_model, BaseModel, Json
         from pydantic.main import ModelMetaclass
     except ImportError:
-        logger.error("pydantic library not found. pip install fastapi to use create_service function.")
-        ImportError("pydantic library not found. pip install fastapi to use create_service function.")
+        logger.error(
+            "pydantic library not found. pip install fastapi to use create_service function."
+        )
+        ImportError(
+            "pydantic library not found. pip install fastapi to use create_service function."
+        )
     if pydantic_payload is not None:
-        assert isinstance(pydantic_payload, ModelMetaclass), "pydantic_payload must be ModelMetaClass type"
+        assert isinstance(
+            pydantic_payload, ModelMetaclass
+        ), "pydantic_payload must be ModelMetaClass type"
     else:
         # automatically create pydantic payload model
         import json
         from typing import Optional
 
-        print("You are using an automatic data validation model it could fail in some cases")
-        print("To be sure the model works properly create pydantic model in your own (pydantic_payload)")
+        print(
+            "You are using an automatic data validation model it could fail in some cases"
+        )
+        print(
+            "To be sure the model works properly create pydantic model in your own (pydantic_payload)"
+        )
         fields = {
             name: (Optional[type(t)], ...)
             for name, t in json.loads(
-                data_before_preprocess.drop(columns=[target_param]).convert_dtypes().sample(1).to_json(orient="records")
+                data_before_preprocess.drop(columns=[target_param])
+                .convert_dtypes()
+                .sample(1)
+                .to_json(orient="records")
             )[0].items()
         }
         print(fields)
         pydantic_payload = create_model("DefaultModel", __base__=BaseModel, **fields)
-        logger.info("Generated json schema: {}".format(pydantic_payload.schema_json(indent=2)))
+        logger.info(
+            "Generated json schema: {}".format(pydantic_payload.schema_json(indent=2))
+        )
 
     # generate apikey
     import secrets
@@ -8019,7 +8738,9 @@ def create_webservice(model, model_endopoint, api_key=True, pydantic_payload=Non
             if header is None:
                 raise HTTPException(status_code=400, detail="No api key", headers={})
             if not secrets.compare_digest(header, str(key)):
-                raise HTTPException(status_code=401, detail="Unauthorized request", headers={})
+                raise HTTPException(
+                    status_code=401, detail="Unauthorized request", headers={}
+                )
             return True
 
     else:
@@ -8076,11 +8797,17 @@ def create_webservice(model, model_endopoint, api_key=True, pydantic_payload=Non
 
     # enable CORS
     app.add_middleware(
-        CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"],
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
     )
 
     @app.post("/predict/{}".format(model_endopoint))
-    def post_predict(block_data: pydantic_payload, authenticated: bool = Depends(validation)):
+    def post_predict(
+        block_data: pydantic_payload, authenticated: bool = Depends(validation)
+    ):
         # encode input data
         try:
             encoded_data_df = pd.DataFrame(jsonable_encoder(block_data), index=[0])
@@ -8146,11 +8873,16 @@ def save_model(model, model_name: str, model_only: bool = False, verbose: bool =
 
     import pycaret.internal.persistence
 
-    return pycaret.internal.persistence.save_model(model, model_name, None if model_only else prep_pipe, verbose)
+    return pycaret.internal.persistence.save_model(
+        model, model_name, None if model_only else prep_pipe, verbose
+    )
 
 
 def load_model(
-    model_name, platform: Optional[str] = None, authentication: Optional[Dict[str, str]] = None, verbose: bool = True,
+    model_name,
+    platform: Optional[str] = None,
+    authentication: Optional[Dict[str, str]] = None,
+    verbose: bool = True,
 ):
 
     """
@@ -8197,7 +8929,9 @@ def load_model(
 
     import pycaret.internal.persistence
 
-    return pycaret.internal.persistence.load_model(model_name, platform, authentication, verbose)
+    return pycaret.internal.persistence.load_model(
+        model_name, platform, authentication, verbose
+    )
 
 
 def automl(optimize: str = "Accuracy", use_holdout: bool = False) -> Any:
@@ -8227,7 +8961,9 @@ def automl(optimize: str = "Accuracy", use_holdout: bool = False) -> Any:
     # checking optimize parameter
     optimize = _get_metric(optimize)
     if optimize is None:
-        raise ValueError(f"Optimize method not supported. See docstring for list of available parameters.")
+        raise ValueError(
+            f"Optimize method not supported. See docstring for list of available parameters."
+        )
 
     # checking optimize parameter for multiclass
     if _is_multiclass():
@@ -8314,7 +9050,9 @@ def pull(pop=False) -> pd.DataFrame:  # added in pycaret==2.2.0
     return display_container.pop(-1) if pop else display_container[-1]
 
 
-def models(type: Optional[str] = None, internal: bool = False, raise_errors: bool = True,) -> pd.DataFrame:
+def models(
+    type: Optional[str] = None, internal: bool = False, raise_errors: bool = True,
+) -> pd.DataFrame:
 
     """
     Returns table of models available in model library.
@@ -8368,26 +9106,49 @@ def models(type: Optional[str] = None, internal: bool = False, raise_errors: boo
                 "kr",
             ],
             "tree": ["dt"],
-            "ensemble": ["rf", "et", "gbc", "gbr", "xgboost", "lightgbm", "catboost", "ada",],
+            "ensemble": [
+                "rf",
+                "et",
+                "gbc",
+                "gbr",
+                "xgboost",
+                "lightgbm",
+                "catboost",
+                "ada",
+            ],
         }
         return df.loc[model_type[type]]
 
         # Check if type is valid
         if type not in list(model_type) + [None]:
-            raise ValueError(f"type param only accepts {', '.join(list(model_type) + str(None))}.")
+            raise ValueError(
+                f"type param only accepts {', '.join(list(model_type) + str(None))}."
+            )
         return df[df.index.isin(model_type.get(type, df.index))]
 
     logger.info(f"gpu_param set to {gpu_param}")
 
     if _ml_usecase == MLUsecase.CLASSIFICATION:
-        model_containers = pycaret.containers.models.classification.get_all_model_containers(globals(), raise_errors)
+        model_containers = pycaret.containers.models.classification.get_all_model_containers(
+            globals(), raise_errors
+        )
     elif _ml_usecase == MLUsecase.REGRESSION:
-        model_containers = pycaret.containers.models.regression.get_all_model_containers(globals(), raise_errors)
+        model_containers = pycaret.containers.models.regression.get_all_model_containers(
+            globals(), raise_errors
+        )
     elif _ml_usecase == MLUsecase.CLUSTERING:
-        model_containers = pycaret.containers.models.clustering.get_all_model_containers(globals(), raise_errors)
+        model_containers = pycaret.containers.models.clustering.get_all_model_containers(
+            globals(), raise_errors
+        )
     elif _ml_usecase == MLUsecase.ANOMALY:
-        model_containers = pycaret.containers.models.anomaly.get_all_model_containers(globals(), raise_errors)
-    rows = [v.get_dict(internal) for k, v in model_containers.items() if (internal or not v.is_special)]
+        model_containers = pycaret.containers.models.anomaly.get_all_model_containers(
+            globals(), raise_errors
+        )
+    rows = [
+        v.get_dict(internal)
+        for k, v in model_containers.items()
+        if (internal or not v.is_special)
+    ]
 
     df = pd.DataFrame(rows)
     df.set_index("ID", inplace=True, drop=True)
@@ -8395,7 +9156,9 @@ def models(type: Optional[str] = None, internal: bool = False, raise_errors: boo
     return filter_model_df_by_type(df)
 
 
-def get_metrics(reset: bool = False, include_custom: bool = True, raise_errors: bool = True,) -> pd.DataFrame:
+def get_metrics(
+    reset: bool = False, include_custom: bool = True, raise_errors: bool = True,
+) -> pd.DataFrame:
     """
     Returns table of metrics available.
 
@@ -8431,9 +9194,13 @@ def get_metrics(reset: bool = False, include_custom: bool = True, raise_errors: 
 
     if reset:
         if _ml_usecase == MLUsecase.CLASSIFICATION:
-            _all_metrics = pycaret.containers.metrics.classification.get_all_metric_containers(globals(), raise_errors)
+            _all_metrics = pycaret.containers.metrics.classification.get_all_metric_containers(
+                globals(), raise_errors
+            )
         elif _ml_usecase == MLUsecase.REGRESSION:
-            _all_metrics = pycaret.containers.metrics.regression.get_all_metric_containers(globals(), raise_errors)
+            _all_metrics = pycaret.containers.metrics.regression.get_all_metric_containers(
+                globals(), raise_errors
+            )
 
     metric_containers = _all_metrics
     rows = [v.get_dict() for k, v in metric_containers.items()]
@@ -8461,7 +9228,9 @@ def _get_metric(name_or_id: str, metrics: Optional[Any] = None):
         pass
 
     try:
-        metric = next(v for k, v in metrics.items() if name_or_id in (v.display_name, v.name))
+        metric = next(
+            v for k, v in metrics.items() if name_or_id in (v.display_name, v.name)
+        )
         return metric
     except:
         pass
@@ -8582,7 +9351,9 @@ def remove_metric(name_or_id: str):
     except:
         pass
 
-    raise ValueError(f"No metric 'Display Name' or 'ID' (index) {name_or_id} present in the metrics repository.")
+    raise ValueError(
+        f"No metric 'Display Name' or 'ID' (index) {name_or_id} present in the metrics repository."
+    )
 
 
 def get_logs(experiment_name: Optional[str] = None, save: bool = False) -> pd.DataFrame:
@@ -8775,7 +9546,9 @@ def load_config(file_name: str):
         _all_models_internal = pycaret.containers.models.classification.get_all_model_containers(
             globals(), raise_errors=True
         )
-        _all_metrics = pycaret.containers.metrics.classification.get_all_metric_containers(globals(), raise_errors=True)
+        _all_metrics = pycaret.containers.metrics.classification.get_all_metric_containers(
+            globals(), raise_errors=True
+        )
     elif _ml_usecase == MLUsecase.REGRESSION:
         _all_models = {
             k: v
@@ -8787,7 +9560,9 @@ def load_config(file_name: str):
         _all_models_internal = pycaret.containers.models.regression.get_all_model_containers(
             globals(), raise_errors=True
         )
-        _all_metrics = pycaret.containers.metrics.regression.get_all_metric_containers(globals(), raise_errors=True)
+        _all_metrics = pycaret.containers.metrics.regression.get_all_metric_containers(
+            globals(), raise_errors=True
+        )
     elif _ml_usecase == MLUsecase.CLUSTERING:
         _all_models = {
             k: v
@@ -8799,16 +9574,24 @@ def load_config(file_name: str):
         _all_models_internal = pycaret.containers.models.clustering.get_all_model_containers(
             globals(), raise_errors=True
         )
-        _all_metrics = pycaret.containers.metrics.clustering.get_all_metric_containers(globals(), raise_errors=True)
+        _all_metrics = pycaret.containers.metrics.clustering.get_all_metric_containers(
+            globals(), raise_errors=True
+        )
         X_train = X
     elif _ml_usecase == MLUsecase.ANOMALY:
         _all_models = {
             k: v
-            for k, v in pycaret.containers.models.anomaly.get_all_model_containers(globals(), raise_errors=True).items()
+            for k, v in pycaret.containers.models.anomaly.get_all_model_containers(
+                globals(), raise_errors=True
+            ).items()
             if not v.is_special
         }
-        _all_models_internal = pycaret.containers.models.anomaly.get_all_model_containers(globals(), raise_errors=True)
-        _all_metrics = pycaret.containers.metrics.anomaly.get_all_metric_containers(globals(), raise_errors=True)
+        _all_models_internal = pycaret.containers.models.anomaly.get_all_model_containers(
+            globals(), raise_errors=True
+        )
+        _all_metrics = pycaret.containers.metrics.anomaly.get_all_metric_containers(
+            globals(), raise_errors=True
+        )
         X_train = X
     return r
 
@@ -8852,11 +9635,20 @@ def _choose_better(
         if result is not None and is_fitted(model):
             result = result.loc["Mean"][compare_dimension]
         else:
-            logger.info("SubProcess create_model() called ==================================")
-            model, _ = create_model_supervised(
-                model, verbose=False, system=False, fold=fold, fit_kwargs=fit_kwargs, groups=groups,
+            logger.info(
+                "SubProcess create_model() called =================================="
             )
-            logger.info("SubProcess create_model() end ==================================")
+            model, _ = create_model_supervised(
+                model,
+                verbose=False,
+                system=False,
+                fold=fold,
+                fit_kwargs=fit_kwargs,
+                groups=groups,
+            )
+            logger.info(
+                "SubProcess create_model() end =================================="
+            )
             result = pull(pop=True).loc["Mean"][compare_dimension]
         logger.info(f"{model} result for {compare_dimension} is {result}")
         if not metric.greater_is_better:
@@ -8917,24 +9709,44 @@ def _is_special_model(e, models=None) -> bool:
     return pycaret.internal.utils.is_special_model(e, models)
 
 
-def _calculate_metrics_supervised(y_test, pred, pred_prob, weights: Optional[list] = None,) -> dict:
+def _calculate_metrics_supervised(
+    y_test, pred, pred_prob, weights: Optional[list] = None,
+) -> dict:
     """
     Calculate all metrics in _all_metrics.
     """
     from pycaret.internal.utils import calculate_metrics
 
     try:
-        return calculate_metrics(metrics=_all_metrics, y_test=y_test, pred=pred, pred_proba=pred_prob, weights=weights,)
+        return calculate_metrics(
+            metrics=_all_metrics,
+            y_test=y_test,
+            pred=pred,
+            pred_proba=pred_prob,
+            weights=weights,
+        )
     except:
         ml_usecase = get_ml_task(y_test)
         if ml_usecase == MLUsecase.CLASSIFICATION:
-            metrics = pycaret.containers.metrics.classification.get_all_metric_containers(globals(), True)
+            metrics = pycaret.containers.metrics.classification.get_all_metric_containers(
+                globals(), True
+            )
         elif ml_usecase == MLUsecase.REGRESSION:
-            metrics = pycaret.containers.metrics.regression.get_all_metric_containers(globals(), True)
-        return calculate_metrics(metrics=metrics, y_test=y_test, pred=pred, pred_proba=pred_prob, weights=weights,)
+            metrics = pycaret.containers.metrics.regression.get_all_metric_containers(
+                globals(), True
+            )
+        return calculate_metrics(
+            metrics=metrics,
+            y_test=y_test,
+            pred=pred,
+            pred_proba=pred_prob,
+            weights=weights,
+        )
 
 
-def _calculate_metrics_unsupervised(X, labels, ground_truth=None, ml_usecase=None) -> dict:
+def _calculate_metrics_unsupervised(
+    X, labels, ground_truth=None, ml_usecase=None
+) -> dict:
     """
     Calculate all metrics in _all_metrics.
     """
@@ -8944,11 +9756,17 @@ def _calculate_metrics_unsupervised(X, labels, ground_truth=None, ml_usecase=Non
         ml_usecase = _ml_usecase
 
     try:
-        return calculate_unsupervised_metrics(metrics=_all_metrics, X=X, labels=labels, ground_truth=ground_truth)
+        return calculate_unsupervised_metrics(
+            metrics=_all_metrics, X=X, labels=labels, ground_truth=ground_truth
+        )
     except:
         if ml_usecase == MLUsecase.CLUSTERING:
-            metrics = pycaret.containers.metrics.clustering.get_all_metric_containers(globals(), True)
-        return calculate_unsupervised_metrics(metrics=metrics, X=X, labels=labels, ground_truth=ground_truth)
+            metrics = pycaret.containers.metrics.clustering.get_all_metric_containers(
+                globals(), True
+            )
+        return calculate_unsupervised_metrics(
+            metrics=metrics, X=X, labels=labels, ground_truth=ground_truth
+        )
 
 
 def get_ml_task(y):
@@ -9064,18 +9882,24 @@ def _mlflow_log_model(
                     mlflow.log_artifact("Holdout.html")
                     os.remove("Holdout.html")
                 except:
-                    logger.warning("Couldn't create holdout prediction for model, exception below:")
+                    logger.warning(
+                        "Couldn't create holdout prediction for model, exception below:"
+                    )
                     logger.warning(traceback.format_exc())
 
         # Log AUC and Confusion Matrix plot
 
         if log_plots:
 
-            logger.info("SubProcess plot_model() called ==================================")
+            logger.info(
+                "SubProcess plot_model() called =================================="
+            )
 
             def _log_plot(plot):
                 try:
-                    plot_name = plot_model(model, plot=plot, verbose=False, save=True, system=False)
+                    plot_name = plot_model(
+                        model, plot=plot, verbose=False, save=True, system=False
+                    )
                     mlflow.log_artifact(plot_name)
                     os.remove(plot_name)
                 except Exception as e:
@@ -9084,7 +9908,9 @@ def _mlflow_log_model(
             for plot in log_plots:
                 _log_plot(plot)
 
-            logger.info("SubProcess plot_model() end ==================================")
+            logger.info(
+                "SubProcess plot_model() end =================================="
+            )
 
         # Log hyperparameter tuning grid
         if tune_cv_results:
@@ -9111,12 +9937,16 @@ def _mlflow_log_model(
         from mlflow.models.signature import infer_signature
 
         try:
-            signature = infer_signature(data_before_preprocess.drop([target_param], axis=1))
+            signature = infer_signature(
+                data_before_preprocess.drop([target_param], axis=1)
+            )
         except:
             logger.warning("Couldn't infer MLFlow signature.")
             signature = None
         if not _is_unsupervised(_ml_usecase):
-            input_example = data_before_preprocess.drop([target_param], axis=1).iloc[0].to_dict()
+            input_example = (
+                data_before_preprocess.drop([target_param], axis=1).iloc[0].to_dict()
+            )
         else:
             input_example = data_before_preprocess.iloc[0].to_dict()
 
@@ -9124,7 +9954,11 @@ def _mlflow_log_model(
         prep_pipe_temp = deepcopy(_prep_pipe)
         prep_pipe_temp.steps.append(["trained_model", model])
         mlflow.sklearn.log_model(
-            prep_pipe_temp, "model", conda_env=default_conda_env, signature=signature, input_example=input_example,
+            prep_pipe_temp,
+            "model",
+            conda_env=default_conda_env,
+            signature=signature,
+            input_example=input_example,
         )
         del prep_pipe_temp
     gc.collect()
@@ -9157,14 +9991,18 @@ def _get_cv_splitter(fold, ml_usecase: Optional[MLUsecase] = None):
         default=fold_generator,
         seed=seed,
         shuffle=fold_shuffle_param,
-        int_default="stratifiedkfold" if ml_usecase == MLUsecase.CLASSIFICATION else "kfold",
+        int_default="stratifiedkfold"
+        if ml_usecase == MLUsecase.CLASSIFICATION
+        else "kfold",
     )
 
 
 def _get_cv_n_folds(fold, X, y=None, groups=None):
     import pycaret.internal.utils
 
-    return pycaret.internal.utils.get_cv_n_folds(fold, default=fold_generator, X=X, y=y, groups=groups)
+    return pycaret.internal.utils.get_cv_n_folds(
+        fold, default=fold_generator, X=X, y=y, groups=groups
+    )
 
 
 def _get_pipeline_fit_kwargs(pipeline, fit_kwargs: dict) -> dict:

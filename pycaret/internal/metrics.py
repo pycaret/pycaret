@@ -49,7 +49,13 @@ class _ThresholdScorerWithErrorScore(_ThresholdScorer):
         """
 
         try:
-            return super()._score(method_caller=method_caller, clf=clf, X=X, y=y, sample_weight=sample_weight,)
+            return super()._score(
+                method_caller=method_caller,
+                clf=clf,
+                X=X,
+                y=y,
+                sample_weight=sample_weight,
+            )
         except:
             return self.error_score
 
@@ -92,7 +98,13 @@ class _ProbaScorerWithErrorScore(_ProbaScorer):
         """
 
         try:
-            return super()._score(method_caller=method_caller, clf=clf, X=X, y=y, sample_weight=sample_weight,)
+            return super()._score(
+                method_caller=method_caller,
+                clf=clf,
+                X=X,
+                y=y,
+                sample_weight=sample_weight,
+            )
         except:
             return self.error_score
 
@@ -135,14 +147,24 @@ class _PredictScorerWithErrorScore(_PredictScorer):
 
         try:
             return super()._score(
-                method_caller=method_caller, estimator=estimator, X=X, y_true=y_true, sample_weight=sample_weight,
+                method_caller=method_caller,
+                estimator=estimator,
+                X=X,
+                y_true=y_true,
+                sample_weight=sample_weight,
             )
         except:
             return self.error_score
 
 
 def make_scorer_with_error_score(
-    score_func, *, greater_is_better=True, needs_proba=False, needs_threshold=False, error_score=np.nan, **kwargs,
+    score_func,
+    *,
+    greater_is_better=True,
+    needs_proba=False,
+    needs_threshold=False,
+    error_score=np.nan,
+    **kwargs,
 ):
     """Make a scorer from a performance metric or loss function.
 
@@ -215,7 +237,9 @@ def make_scorer_with_error_score(
     """
     sign = 1 if greater_is_better else -1
     if needs_proba and needs_threshold:
-        raise ValueError("Set either needs_proba or needs_threshold to True," " but not both.")
+        raise ValueError(
+            "Set either needs_proba or needs_threshold to True," " but not both."
+        )
     if needs_proba:
         cls = _ProbaScorerWithErrorScore
     elif needs_threshold:

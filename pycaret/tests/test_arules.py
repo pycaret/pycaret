@@ -17,7 +17,9 @@ def test():
     assert col == 8
 
     # init setup
-    arul101 = pycaret.arules.setup(data=data, transaction_id="InvoiceNo", item_id="Description", session_id=123)
+    arul101 = pycaret.arules.setup(
+        data=data, transaction_id="InvoiceNo", item_id="Description", session_id=123
+    )
     assert isinstance(arul101, tuple)
     assert isinstance(arul101[0], pd.core.frame.DataFrame)
     row, col = arul101[0].shape
@@ -36,7 +38,9 @@ def test():
     assert col == 9
 
     # get rules
-    rules = pycaret.arules.get_rules(data=data, transaction_id="InvoiceNo", item_id="Description")
+    rules = pycaret.arules.get_rules(
+        data=data, transaction_id="InvoiceNo", item_id="Description"
+    )
     assert isinstance(rules, pd.core.frame.DataFrame)
     row, col = rules.shape
     assert row == 141

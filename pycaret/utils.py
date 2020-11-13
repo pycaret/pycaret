@@ -52,7 +52,9 @@ def check_metric(actual: pd.Series, prediction: pd.Series, metric: str, round: i
 
     globals_dict = {"y": prediction}
     metric_containers = {
-        **pycaret.containers.metrics.classification.get_all_metric_containers(globals_dict),
+        **pycaret.containers.metrics.classification.get_all_metric_containers(
+            globals_dict
+        ),
         **pycaret.containers.metrics.regression.get_all_metric_containers(globals_dict),
     }
     metrics = {v.name: v.score_func for k, v in metric_containers.items()}
@@ -72,7 +74,9 @@ def check_metric(actual: pd.Series, prediction: pd.Series, metric: str, round: i
         result = result.round(round)
         return float(result)
     else:
-        raise ValueError(f"Couldn't find metric '{metric}' Possible metrics are: {', '.join(metrics.keys())}.")
+        raise ValueError(
+            f"Couldn't find metric '{metric}' Possible metrics are: {', '.join(metrics.keys())}."
+        )
 
 
 def enable_colab():
@@ -104,7 +108,9 @@ def enable_colab():
 
     import IPython
 
-    IPython.get_ipython().events.register("pre_run_cell", configure_plotly_browser_state)
+    IPython.get_ipython().events.register(
+        "pre_run_cell", configure_plotly_browser_state
+    )
     print("Colab mode enabled.")
 
 

@@ -75,7 +75,9 @@ class UniformDistribution(Distribution):
     def get_CS(self, label):
         import ConfigSpace.hyperparameters as CSH
 
-        return CSH.UniformFloatHyperparameter(name=label, lower=self.lower, upper=self.upper, log=self.log)
+        return CSH.UniformFloatHyperparameter(
+            name=label, lower=self.lower, upper=self.upper, log=self.log
+        )
 
     def __repr__(self):
         return f"UniformDistribution(lower={self.lower}, upper={self.upper}, log={self.log})"
@@ -112,7 +114,9 @@ class IntUniformDistribution(Distribution):
         import optuna
 
         if self.log:
-            return optuna.distributions.IntLogUniformDistribution(self.lower, self.upper)
+            return optuna.distributions.IntLogUniformDistribution(
+                self.lower, self.upper
+            )
         else:
             return optuna.distributions.IntUniformDistribution(self.lower, self.upper)
 
@@ -121,14 +125,18 @@ class IntUniformDistribution(Distribution):
         from hyperopt.pyll import scope
 
         if self.log:
-            return scope.int(hp.qloguniform(label, np.log(self.lower), np.log(self.upper), 1))
+            return scope.int(
+                hp.qloguniform(label, np.log(self.lower), np.log(self.upper), 1)
+            )
         else:
             return scope.int(hp.quniform(label, self.lower, self.upper, 1))
 
     def get_CS(self, label):
         import ConfigSpace.hyperparameters as CSH
 
-        return CSH.UniformIntegerHyperparameter(name=label, lower=self.lower, upper=self.upper, log=self.log)
+        return CSH.UniformIntegerHyperparameter(
+            name=label, lower=self.lower, upper=self.upper, log=self.log
+        )
 
     def __repr__(self):
         return f"IntUniformDistribution(lower={self.lower}, upper={self.upper}, log={self.log})"
@@ -167,7 +175,9 @@ class DiscreteUniformDistribution(Distribution):
     def get_optuna(self):
         import optuna
 
-        return optuna.distributions.DiscreteUniformDistribution(self.lower, self.upper, self.q)
+        return optuna.distributions.DiscreteUniformDistribution(
+            self.lower, self.upper, self.q
+        )
 
     def get_hyperopt(self, label):
         from hyperopt import hp
@@ -177,7 +187,9 @@ class DiscreteUniformDistribution(Distribution):
     def get_CS(self, label):
         import ConfigSpace.hyperparameters as CSH
 
-        return CSH.UniformFloatHyperparameter(name=label, lower=self.lower, upper=self.upper, q=self.q)
+        return CSH.UniformFloatHyperparameter(
+            name=label, lower=self.lower, upper=self.upper, q=self.q
+        )
 
     def __repr__(self):
         return f"DiscreteUniformDistribution(lower={self.lower}, upper={self.upper}, q={self.q})"
@@ -204,7 +216,8 @@ class CategoricalDistribution(Distribution):
         import skopt.space
 
         return skopt.space.Categorical(
-            [x if isinstance(x, Hashable) else None for x in self.values], transform="identity",
+            [x if isinstance(x, Hashable) else None for x in self.values],
+            transform="identity",
         )
 
     def get_optuna(self):
@@ -220,7 +233,9 @@ class CategoricalDistribution(Distribution):
     def get_CS(self, label):
         import ConfigSpace.hyperparameters as CSH
 
-        return CSH.CategoricalHyperparameter(name=label, choices=[x for x in self.values if isinstance(x, Hashable)])
+        return CSH.CategoricalHyperparameter(
+            name=label, choices=[x for x in self.values if isinstance(x, Hashable)]
+        )
 
     def __repr__(self):
         return f"CategoricalDistribution(values={self.values})"

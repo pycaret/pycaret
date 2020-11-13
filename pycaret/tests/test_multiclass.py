@@ -15,7 +15,13 @@ def test():
 
     # init setup
     clf1 = pycaret.classification.setup(
-        data, target="species", log_experiment=True, silent=True, html=False, session_id=123, n_jobs=1
+        data,
+        target="species",
+        log_experiment=True,
+        silent=True,
+        html=False,
+        session_id=123,
+        n_jobs=1,
     )
 
     # compare models

@@ -6,13 +6,19 @@ from pycaret.internal.utils import get_all_object_vars_and_properties, is_fit_va
 
 class PowerTransformedTargetRegressor(sklearn.compose.TransformedTargetRegressor):
     def __init__(
-        self, regressor=None, *, power_transformer_method="box-cox", power_transformer_standardize=True, **kwargs
+        self,
+        regressor=None,
+        *,
+        power_transformer_method="box-cox",
+        power_transformer_standardize=True,
+        **kwargs
     ):
         self.regressor = regressor
         self.power_transformer_method = power_transformer_method
         self.power_transformer_standardize = power_transformer_standardize
         self.transformer = PowerTransformer(
-            method=self.power_transformer_method, standardize=self.power_transformer_standardize,
+            method=self.power_transformer_method,
+            standardize=self.power_transformer_standardize,
         )
         self.func = None
         self.inverse_func = None
@@ -34,7 +40,9 @@ class PowerTransformedTargetRegressor(sklearn.compose.TransformedTargetRegressor
         vars_to_remove = []
         try:
             for var in self._fit_vars:
-                if all or var not in get_all_object_vars_and_properties(self.regressor_):
+                if all or var not in get_all_object_vars_and_properties(
+                    self.regressor_
+                ):
                     vars_to_remove.append(var)
             for var in vars_to_remove:
                 try:
@@ -97,7 +105,9 @@ class PowerTransformedTargetRegressor(sklearn.compose.TransformedTargetRegressor
         if "power_transformer_standardize" in params:
             self.power_transformer_standardize = params["power_transformer_standardize"]
             params.pop("power_transformer_standardize")
-            self.transformer.set_params(**{"standardize": self.power_transformer_standardize})
+            self.transformer.set_params(
+                **{"standardize": self.power_transformer_standardize}
+            )
         return self.regressor.set_params(**params)
 
     def get_params(self, deep=True):

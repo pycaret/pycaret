@@ -111,7 +111,12 @@ class AnomalyContainer(ModelContainer):
             tune_args = {}
 
         super().__init__(
-            id=id, name=name, class_def=class_def, eq_function=eq_function, args=args, is_special=is_special,
+            id=id,
+            name=name,
+            class_def=class_def,
+            eq_function=eq_function,
+            args=args,
+            is_special=is_special,
         )
         self.tune_grid = param_grid_to_lists(tune_grid)
         self.tune_distribution = tune_distribution
@@ -438,5 +443,9 @@ class SOSAnomalyContainer(AnomalyContainer):
         )
 
 
-def get_all_model_containers(globals_dict: dict, raise_errors: bool = True) -> Dict[str, AnomalyContainer]:
-    return pycaret.containers.base_container.get_all_containers(globals(), globals_dict, AnomalyContainer, raise_errors)
+def get_all_model_containers(
+    globals_dict: dict, raise_errors: bool = True
+) -> Dict[str, AnomalyContainer]:
+    return pycaret.containers.base_container.get_all_containers(
+        globals(), globals_dict, AnomalyContainer, raise_errors
+    )

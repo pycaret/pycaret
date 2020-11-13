@@ -28,8 +28,12 @@ def test():
     le = sklearn.preprocessing.LabelEncoder()
     le = le.fit(data[target])
     data[target] = le.transform(data[target])
-    train, test = sklearn.model_selection.train_test_split(data, train_size=0.8, random_state=1)
-    clf1 = pycaret.classification.setup(train, target=target, silent=True, html=False, session_id=123)
+    train, test = sklearn.model_selection.train_test_split(
+        data, train_size=0.8, random_state=1
+    )
+    clf1 = pycaret.classification.setup(
+        train, target=target, silent=True, html=False, session_id=123
+    )
     model = pycaret.classification.create_model("lightgbm")
     data_unseen = test.drop(columns=target)
     final_model = pycaret.classification.finalize_model(model)
@@ -78,8 +82,12 @@ def test():
     # preparation(regression)
     data = pycaret.datasets.get_data("boston")
     target = "medv"
-    train, test = sklearn.model_selection.train_test_split(data, train_size=0.8, random_state=1)
-    reg1 = pycaret.regression.setup(data, target="medv", silent=True, html=False, session_id=123)
+    train, test = sklearn.model_selection.train_test_split(
+        data, train_size=0.8, random_state=1
+    )
+    reg1 = pycaret.regression.setup(
+        data, target="medv", silent=True, html=False, session_id=123
+    )
     model = pycaret.regression.create_model("lightgbm")
     data_unseen = test.drop(columns=target)
     final_model = pycaret.regression.finalize_model(model)

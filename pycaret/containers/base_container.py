@@ -40,7 +40,9 @@ class BaseContainer:
 
     """
 
-    def __init__(self, id: str, name: str, class_def: type, args: Dict[str, Any] = None,) -> None:
+    def __init__(
+        self, id: str, name: str, class_def: type, args: Dict[str, Any] = None,
+    ) -> None:
         self.id = id
         self.name = name
         self.class_def = class_def
@@ -83,10 +85,15 @@ class BaseContainer:
 
 
 def get_all_containers(
-    container_globals: dict, globals_dict: dict, type_var: type, raise_errors: bool = True,
+    container_globals: dict,
+    globals_dict: dict,
+    type_var: type,
+    raise_errors: bool = True,
 ) -> Dict[str, BaseContainer]:
     model_container_classes = [
-        obj for name, obj in container_globals.items() if inspect.isclass(obj) and type_var in obj.__bases__
+        obj
+        for name, obj in container_globals.items()
+        if inspect.isclass(obj) and type_var in obj.__bases__
     ]
 
     model_containers = []

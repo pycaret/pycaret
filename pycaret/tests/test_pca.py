@@ -15,19 +15,37 @@ def test():
 
     # pca_method = 'linear', pca_components = 5
     clf1 = pycaret.classification.setup(
-        data, target="TARGET_5Yrs", silent=True, html=False, pca=True, pca_method="linear", pca_components=5
+        data,
+        target="TARGET_5Yrs",
+        silent=True,
+        html=False,
+        pca=True,
+        pca_method="linear",
+        pca_components=5,
     )
     assert len(pycaret.classification.get_config("X_train").columns) == 5
 
     # pca_method = 'kernel', pca_components = 6
     clf1 = pycaret.classification.setup(
-        data, target="TARGET_5Yrs", silent=True, html=False, pca=True, pca_method="kernel", pca_components=6
+        data,
+        target="TARGET_5Yrs",
+        silent=True,
+        html=False,
+        pca=True,
+        pca_method="kernel",
+        pca_components=6,
     )
     assert len(pycaret.classification.get_config("X_train").columns) == 6
 
     # pca_method = 'incremental', pca_components = 7
     clf1 = pycaret.classification.setup(
-        data, target="TARGET_5Yrs", silent=True, html=False, pca=True, pca_method="incremental", pca_components=7
+        data,
+        target="TARGET_5Yrs",
+        silent=True,
+        html=False,
+        pca=True,
+        pca_method="incremental",
+        pca_components=7,
     )
     assert len(pycaret.classification.get_config("X_train").columns) == 7
 

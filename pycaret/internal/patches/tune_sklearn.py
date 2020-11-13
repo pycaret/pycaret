@@ -52,7 +52,9 @@ def get_tune_trainable():
             self.return_train_score = config.pop("return_train_score")
             self.n_jobs = config.pop("n_jobs")
 
-            self.estimator_config = {k: numpy_types_to_python(v) for k, v in config.items()}
+            self.estimator_config = {
+                k: numpy_types_to_python(v) for k, v in config.items()
+            }
             self.train_accuracy = None
             self.test_accuracy = None
             self.saved_models = []  # XGBoost specific
@@ -106,7 +108,11 @@ def get_tune_trainable():
 
             is_ensemble_subclass = issubclass(type(estimator), BaseEnsemble)
 
-            return hasattr(estimator, "warm_start") and hasattr(estimator, "n_estimators") and is_ensemble_subclass
+            return (
+                hasattr(estimator, "warm_start")
+                and hasattr(estimator, "n_estimators")
+                and is_ensemble_subclass
+            )
 
         def _can_warm_start_iter(self):
             estimator = self.main_estimator.steps[-1][1]
@@ -128,21 +134,31 @@ def get_tune_trainable():
             """
             # User will not be able to fine tune the n_estimators
             # parameter using ensemble early stopping
-            updated_n_estimators = estimator.get_params()["actual_estimator__n_estimators"] + 1
-            estimator.set_params(**{"actual_estimator__n_estimators": updated_n_estimators})
+            updated_n_estimators = (
+                estimator.get_params()["actual_estimator__n_estimators"] + 1
+            )
+            estimator.set_params(
+                **{"actual_estimator__n_estimators": updated_n_estimators}
+            )
             estimator.fit(X_train, y_train)
 
         def _early_stopping_xgb(self, i, estimator, X_train, y_train):
             """Handles early stopping on XGBoost estimators.
 
             """
-            estimator.fit(X_train, y_train, actual_estimator__xgb_model=self.saved_models[i])
+            estimator.fit(
+                X_train, y_train, actual_estimator__xgb_model=self.saved_models[i]
+            )
             self.saved_models[i] = estimator.steps[-1][1].get_booster()
 
         def _can_partial_fit(self):
             from tune_sklearn.utils import check_partial_fit
 
-            return not self._is_xgb() and not self._can_warm_start_ensemble() and check_partial_fit(self.main_estimator)
+            return (
+                not self._is_xgb()
+                and not self._can_warm_start_ensemble()
+                and check_partial_fit(self.main_estimator)
+            )
 
     return _Trainable
 

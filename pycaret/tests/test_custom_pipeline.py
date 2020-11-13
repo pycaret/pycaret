@@ -42,7 +42,9 @@ def test():
         log_experiment=True,
         silent=True,
         html=False,
-        custom_pipeline=sklearn.pipeline.Pipeline([("CUSTOM_PCA", sklearn.decomposition.PCA())]),
+        custom_pipeline=sklearn.pipeline.Pipeline(
+            [("CUSTOM_PCA", sklearn.decomposition.PCA())]
+        ),
         session_id=123,
     )
 

@@ -15,7 +15,13 @@ def test():
 
     # init setup
     clf1 = pycaret.classification.setup(
-        data, target="Purchase", log_experiment=True, silent=True, html=False, session_id=123, fold=2
+        data,
+        target="Purchase",
+        log_experiment=True,
+        silent=True,
+        html=False,
+        session_id=123,
+        fold=2,
     )
 
     model = pycaret.classification.create_model("lr")
@@ -44,7 +50,10 @@ def test():
         pycaret.classification.plot_model(model, plot=plot, use_train_data=False)
         pycaret.classification.plot_model(model, plot=plot, use_train_data=True)
 
-    models = [pycaret.classification.create_model("et"), pycaret.classification.create_model("xgboost")]
+    models = [
+        pycaret.classification.create_model("et"),
+        pycaret.classification.create_model("xgboost"),
+    ]
 
     available_shap = ["summary", "correlation", "reason"]
 

@@ -16,7 +16,12 @@ def test():
 
     # numeric imputation = mean, categorical_imputation = constant
     clf1 = pycaret.classification.setup(
-        data, target="Class", silent=True, html=False, numeric_imputation="mean", categorical_imputation="constant"
+        data,
+        target="Class",
+        silent=True,
+        html=False,
+        numeric_imputation="mean",
+        categorical_imputation="constant",
     )
 
     X_train = pycaret.classification.get_config("X_train")
@@ -36,7 +41,12 @@ def test():
 
     # numeric imputation = median, categorical_imputation = mode
     clf1 = pycaret.classification.setup(
-        data, target="Class", silent=True, html=False, numeric_imputation="median", categorical_imputation="mode"
+        data,
+        target="Class",
+        silent=True,
+        html=False,
+        numeric_imputation="median",
+        categorical_imputation="mode",
     )
 
     X_train = pycaret.classification.get_config("X_train")
@@ -55,7 +65,9 @@ def test():
     pycaret.classification.predict_model(lr, data=data)
 
     # numeric imputation = zero
-    clf1 = pycaret.classification.setup(data, target="Class", silent=True, html=False, numeric_imputation="zero")
+    clf1 = pycaret.classification.setup(
+        data, target="Class", silent=True, html=False, numeric_imputation="zero"
+    )
 
     X_train = pycaret.classification.get_config("X_train")
     assert X_train.isnull().sum().sum() == 0

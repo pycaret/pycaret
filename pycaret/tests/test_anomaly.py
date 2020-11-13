@@ -14,7 +14,14 @@ def test():
     assert isinstance(data, pd.core.frame.DataFrame)
 
     # init setup
-    ano1 = pycaret.anomaly.setup(data, normalize=True, log_experiment=True, silent=True, html=False, session_id=123)
+    ano1 = pycaret.anomaly.setup(
+        data,
+        normalize=True,
+        log_experiment=True,
+        silent=True,
+        html=False,
+        session_id=123,
+    )
 
     # create model
     iforest = pycaret.anomaly.create_model("iforest")

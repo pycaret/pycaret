@@ -164,7 +164,10 @@ class ClassificationMetricContainer(MetricContainer):
 class AccuracyMetricContainer(ClassificationMetricContainer):
     def __init__(self, globals_dict: dict) -> None:
         super().__init__(
-            id="acc", name="Accuracy", score_func=metrics.accuracy_score, scorer="accuracy",
+            id="acc",
+            name="Accuracy",
+            score_func=metrics.accuracy_score,
+            scorer="accuracy",
         )
 
 
@@ -175,7 +178,11 @@ class ROCAUCMetricContainer(ClassificationMetricContainer):
             name="AUC",
             score_func=metrics.roc_auc_score,
             scorer=pycaret.internal.metrics.make_scorer_with_error_score(
-                metrics.roc_auc_score, needs_proba=True, error_score=0.0, average="weighted", multi_class="ovr",
+                metrics.roc_auc_score,
+                needs_proba=True,
+                error_score=0.0,
+                average="weighted",
+                multi_class="ovr",
             ),
             target="pred_proba",
             args={"average": "weighted", "multi_class": "ovr"},
@@ -187,9 +194,14 @@ class RecallMetricContainer(ClassificationMetricContainer):
         super().__init__(
             id="recall",
             name="Recall",
-            score_func=pycaret.internal.metrics.binary_multiclass_score_func(metrics.recall_score),
+            score_func=pycaret.internal.metrics.binary_multiclass_score_func(
+                metrics.recall_score
+            ),
             scorer=metrics.make_scorer(
-                pycaret.internal.metrics.binary_multiclass_score_func(metrics.recall_score), average="macro",
+                pycaret.internal.metrics.binary_multiclass_score_func(
+                    metrics.recall_score
+                ),
+                average="macro",
             ),
             args={"average": "macro"},
         )
@@ -201,9 +213,14 @@ class PrecisionMetricContainer(ClassificationMetricContainer):
             id="precision",
             name="Precision",
             display_name="Prec.",
-            score_func=pycaret.internal.metrics.binary_multiclass_score_func(metrics.precision_score),
+            score_func=pycaret.internal.metrics.binary_multiclass_score_func(
+                metrics.precision_score
+            ),
             scorer=metrics.make_scorer(
-                pycaret.internal.metrics.binary_multiclass_score_func(metrics.precision_score), average="weighted",
+                pycaret.internal.metrics.binary_multiclass_score_func(
+                    metrics.precision_score
+                ),
+                average="weighted",
             ),
             args={"average": "weighted"},
         )
@@ -214,9 +231,12 @@ class F1MetricContainer(ClassificationMetricContainer):
         super().__init__(
             id="f1",
             name="F1",
-            score_func=pycaret.internal.metrics.binary_multiclass_score_func(metrics.f1_score),
+            score_func=pycaret.internal.metrics.binary_multiclass_score_func(
+                metrics.f1_score
+            ),
             scorer=metrics.make_scorer(
-                pycaret.internal.metrics.binary_multiclass_score_func(metrics.f1_score), average="weighted",
+                pycaret.internal.metrics.binary_multiclass_score_func(metrics.f1_score),
+                average="weighted",
             ),
             args={"average": "weighted"},
         )

@@ -80,7 +80,9 @@ def setup(
     fold_groups: Optional[Union[str, pd.DataFrame]] = None,
     n_jobs: Optional[int] = -1,
     use_gpu: bool = False,
-    custom_pipeline: Union[Any, Tuple[str, Any], List[Any], List[Tuple[str, Any]]] = None,
+    custom_pipeline: Union[
+        Any, Tuple[str, Any], List[Any], List[Tuple[str, Any]]
+    ] = None,
     html: bool = True,
     session_id: Optional[int] = None,
     log_experiment: bool = False,
@@ -1601,7 +1603,11 @@ def evaluate_model(
     """
 
     return pycaret.internal.tabular.evaluate_model(
-        estimator=estimator, fold=fold, fit_kwargs=fit_kwargs, groups=groups, use_train_data=use_train_data,
+        estimator=estimator,
+        fold=fold,
+        fit_kwargs=fit_kwargs,
+        groups=groups,
+        use_train_data=use_train_data,
     )
 
 
@@ -1758,7 +1764,11 @@ def calibrate_model(
 
 
 def optimize_threshold(
-    estimator, true_positive: int = 0, true_negative: int = 0, false_positive: int = 0, false_negative: int = 0,
+    estimator,
+    true_positive: int = 0,
+    true_negative: int = 0,
+    false_positive: int = 0,
+    false_negative: int = 0,
 ):
 
     """
@@ -1895,7 +1905,10 @@ def predict_model(
 
 
 def finalize_model(
-    estimator, fit_kwargs: Optional[dict] = None, groups: Optional[Union[str, Any]] = None, model_only: bool = True,
+    estimator,
+    fit_kwargs: Optional[dict] = None,
+    groups: Optional[Union[str, Any]] = None,
+    model_only: bool = True,
 ) -> Any:
 
     """
@@ -1939,7 +1952,10 @@ def finalize_model(
     """
 
     return pycaret.internal.tabular.finalize_model(
-        estimator=estimator, fit_kwargs=fit_kwargs, groups=groups, model_only=model_only,
+        estimator=estimator,
+        fit_kwargs=fit_kwargs,
+        groups=groups,
+        model_only=model_only,
     )
 
 
@@ -2022,7 +2038,10 @@ def deploy_model(
     """
 
     return pycaret.internal.tabular.deploy_model(
-        model=model, model_name=model_name, authentication=authentication, platform=platform,
+        model=model,
+        model_name=model_name,
+        authentication=authentication,
+        platform=platform,
     )
 
 
@@ -2070,7 +2089,10 @@ def save_model(model, model_name: str, model_only: bool = False, verbose: bool =
 
 
 def load_model(
-    model_name, platform: Optional[str] = None, authentication: Optional[Dict[str, str]] = None, verbose: bool = True,
+    model_name,
+    platform: Optional[str] = None,
+    authentication: Optional[Dict[str, str]] = None,
+    verbose: bool = True,
 ):
 
     """
@@ -2115,7 +2137,10 @@ def load_model(
     """
 
     return pycaret.internal.tabular.load_model(
-        model_name=model_name, platform=platform, authentication=authentication, verbose=verbose,
+        model_name=model_name,
+        platform=platform,
+        authentication=authentication,
+        verbose=verbose,
     )
 
 
@@ -2175,7 +2200,9 @@ def pull(pop: bool = False) -> pd.DataFrame:
     return pycaret.internal.tabular.pull(pop=pop)
 
 
-def models(type: Optional[str] = None, internal: bool = False, raise_errors: bool = True,) -> pd.DataFrame:
+def models(
+    type: Optional[str] = None, internal: bool = False, raise_errors: bool = True,
+) -> pd.DataFrame:
 
     """
     Returns table of models available in the model library.
@@ -2208,10 +2235,14 @@ def models(type: Optional[str] = None, internal: bool = False, raise_errors: boo
         pandas.DataFrame
 
     """
-    return pycaret.internal.tabular.models(type=type, internal=internal, raise_errors=raise_errors)
+    return pycaret.internal.tabular.models(
+        type=type, internal=internal, raise_errors=raise_errors
+    )
 
 
-def get_metrics(reset: bool = False, include_custom: bool = True, raise_errors: bool = True,) -> pd.DataFrame:
+def get_metrics(
+    reset: bool = False, include_custom: bool = True, raise_errors: bool = True,
+) -> pd.DataFrame:
 
     """
     Returns table of available metrics used for CV.
@@ -2245,7 +2276,9 @@ def get_metrics(reset: bool = False, include_custom: bool = True, raise_errors: 
 
     """
 
-    return pycaret.internal.tabular.get_metrics(reset=reset, include_custom=include_custom, raise_errors=raise_errors,)
+    return pycaret.internal.tabular.get_metrics(
+        reset=reset, include_custom=include_custom, raise_errors=raise_errors,
+    )
 
 
 def add_metric(

@@ -12,17 +12,18 @@
 #
 import os
 import sys
-sys.path.insert(0, os.path.abspath('../..'))
+
+sys.path.insert(0, os.path.abspath("../.."))
 
 
 # -- Project information -----------------------------------------------------
 
-project = 'pycaret'
-copyright = '2020, Moez Ali'
-author = 'Moez Ali'
+project = "pycaret"
+copyright = "2020, Moez Ali"
+author = "Moez Ali"
 
 # The full version, including alpha/beta/rc tags
-release = '2.2.0'
+release = "2.2.0"
 
 
 # -- General configuration ---------------------------------------------------
@@ -32,9 +33,9 @@ release = '2.2.0'
 # ones.
 
 extensions = [
-    'sphinx_rtd_theme',
-    'sphinx.ext.autodoc',
-    'sphinx.ext.napoleon',
+    "sphinx_rtd_theme",
+    "sphinx.ext.autodoc",
+    "sphinx.ext.napoleon",
 ]
 
 napoleon_google_docstring = True
@@ -42,7 +43,7 @@ napoleon_numpy_docstring = True
 
 autodoc_mock_imports = ["setup"]
 # Add any paths that contain templates here, relative to this directory.
-templates_path = ['_templates']
+templates_path = ["_templates"]
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
@@ -50,7 +51,7 @@ templates_path = ['_templates']
 exclude_patterns = []
 
 # Sort methods by the order they are found in the source files
-autodoc_member_order = 'bysource'
+autodoc_member_order = "bysource"
 
 
 # -- Options for HTML output -------------------------------------------------
@@ -58,15 +59,13 @@ autodoc_member_order = 'bysource'
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_theme = 'sphinx_rtd_theme'
+html_theme = "sphinx_rtd_theme"
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = ['_static']
+html_static_path = ["_static"]
 
-html_css_files = [
-    'css/custom.css'
-]
+html_css_files = ["css/custom.css"]
 
-master_doc = 'index'
+master_doc = "index"

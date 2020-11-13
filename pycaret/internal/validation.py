@@ -33,7 +33,12 @@ class fit_if_not_fitted(object):
     """
 
     def __init__(
-        self, estimator, X_train: pd.DataFrame, y_train: pd.DataFrame, groups=None, **fit_kwargs,
+        self,
+        estimator,
+        X_train: pd.DataFrame,
+        y_train: pd.DataFrame,
+        groups=None,
+        **fit_kwargs,
     ):
         logger = get_logger()
         self.estimator = deepcopy(estimator)
@@ -62,7 +67,9 @@ def supports_partial_fit(estimator, params: dict = None) -> bool:
 
     if isinstance(estimator, MLPClassifier):
         try:
-            if (params and "solver" in params and "lbfgs" in list(params["solver"])) or estimator.solver == "lbfgs":
+            if (
+                params and "solver" in params and "lbfgs" in list(params["solver"])
+            ) or estimator.solver == "lbfgs":
                 return False
         except:
             return False

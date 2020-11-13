@@ -54,7 +54,9 @@ class Pipeline(imblearn.pipeline.Pipeline):
     def _carry_over_final_estimator_fit_vars(self):
         self._clear_final_estimator_fit_vars()
         if hasattr(self._final_estimator, "fit"):
-            for k, v in get_all_object_vars_and_properties(self._final_estimator).items():
+            for k, v in get_all_object_vars_and_properties(
+                self._final_estimator
+            ).items():
                 if is_fit_var(k):
                     try:
                         setattr(self, k, v)
@@ -66,7 +68,13 @@ class Pipeline(imblearn.pipeline.Pipeline):
         vars_to_remove = []
         try:
             for var in self._fit_vars:
-                if all or var not in get_all_object_vars_and_properties(self._final_estimator).items():
+                if (
+                    all
+                    or var
+                    not in get_all_object_vars_and_properties(
+                        self._final_estimator
+                    ).items()
+                ):
                     vars_to_remove.append(var)
             for var in vars_to_remove:
                 try:
@@ -88,7 +96,9 @@ class Pipeline(imblearn.pipeline.Pipeline):
                 new_final_estimator,
             )
         else:
-            self.steps.append((name if name else "actual_estimator", new_final_estimator))
+            self.steps.append(
+                (name if name else "actual_estimator", new_final_estimator)
+            )
         self._carry_over_final_estimator_fit_vars()
 
     def set_params(self, **kwargs):

@@ -32,7 +32,13 @@ def get_workflow_runs_from_repo(repo: str):
 
 
 def get_workflow_runs_for_id_branch(runs, workflow_id, branch):
-    return [x for x in runs if x["head_branch"] == branch and x["workflow_id"] == workflow_id and x["event"] == "push"]
+    return [
+        x
+        for x in runs
+        if x["head_branch"] == branch
+        and x["workflow_id"] == workflow_id
+        and x["event"] == "push"
+    ]
 
 
 def was_workflow_completed_in_last_day(run) -> bool:
@@ -41,7 +47,8 @@ def was_workflow_completed_in_last_day(run) -> bool:
     last_workflow_date = run["updated_at"]
     last_workflow_date = datetime.strptime(last_workflow_date, DATE_FORMAT)
     print(
-        f"Date of run {run['id']}: {last_workflow_date} - date 24h ago: {last_day}", file=sys.stderr,
+        f"Date of run {run['id']}: {last_workflow_date} - date 24h ago: {last_day}",
+        file=sys.stderr,
     )
     return last_workflow_date >= last_day
 
@@ -58,12 +65,15 @@ def main():
 
         for test_workflow in test_workflows:
             print(
-                f"\"{test_workflow['name']}\" determined as test workflow", file=sys.stderr,
+                f"\"{test_workflow['name']}\" determined as test workflow",
+                file=sys.stderr,
             )
             test_workflow_id = test_workflow["id"]
             latest_passing_run = next(
                 run
-                for run in get_workflow_runs_for_id_branch(runs, test_workflow_id, BRANCH)
+                for run in get_workflow_runs_for_id_branch(
+                    runs, test_workflow_id, BRANCH
+                )
                 if has_commit_passed_workflow(run)
             )
             print(

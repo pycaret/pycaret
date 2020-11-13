@@ -15,7 +15,13 @@ def test():
 
     # init setup
     reg1 = pycaret.regression.setup(
-        data, target="Purchase", log_experiment=True, silent=True, html=False, session_id=123, fold=2
+        data,
+        target="Purchase",
+        log_experiment=True,
+        silent=True,
+        html=False,
+        session_id=123,
+        fold=2,
     )
 
     model = pycaret.regression.create_model("rf")
@@ -37,7 +43,10 @@ def test():
         pycaret.regression.plot_model(model, plot=plot, use_train_data=False)
         pycaret.regression.plot_model(model, plot=plot, use_train_data=True)
 
-    models = [pycaret.regression.create_model("et"), pycaret.regression.create_model("xgboost")]
+    models = [
+        pycaret.regression.create_model("et"),
+        pycaret.regression.create_model("xgboost"),
+    ]
 
     available_shap = ["summary", "correlation", "reason"]
 

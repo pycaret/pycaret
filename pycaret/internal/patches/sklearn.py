@@ -6,7 +6,9 @@ import numpy as np
 # Monkey patching sklearn.model_selection._search to avoid overflows on windows.
 
 # adapted from https://github.com/scikit-learn/scikit-learn/blob/master/sklearn/utils/_random.pyx
-def _mp_sample_without_replacement(n_population: int, n_samples: int, method=None, random_state=None) -> Any:
+def _mp_sample_without_replacement(
+    n_population: int, n_samples: int, method=None, random_state=None
+) -> Any:
     """Sample integers without replacement.
 
     Select n_samples integers from the set [0, n_population) without
@@ -34,12 +36,15 @@ def _mp_sample_without_replacement(n_population: int, n_samples: int, method=Non
         not be randomized, see the method argument.
     """
     if n_population < 0:
-        raise ValueError("n_population should be greater than 0, got %s." % n_population)
+        raise ValueError(
+            "n_population should be greater than 0, got %s." % n_population
+        )
 
     if n_samples > n_population:
         raise ValueError(
             "n_population should be greater or equal than "
-            "n_samples, got n_samples > n_population (%s > %s)" % (n_samples, n_population)
+            "n_samples, got n_samples > n_population (%s > %s)"
+            % (n_samples, n_population)
         )
 
     rng = check_random_state(random_state)

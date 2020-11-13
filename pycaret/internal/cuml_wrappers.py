@@ -122,7 +122,9 @@ def get_svc_classifier():
                 params.pop("n_jobs")
             super().set_params(**params)
             estimator_params = self.estimator.get_params()
-            self.estimator.set_params(**{k: v for k, v in params.items() if k in estimator_params})
+            self.estimator.set_params(
+                **{k: v for k, v in params.items() if k in estimator_params}
+            )
 
             return self
 
@@ -222,7 +224,9 @@ def get_ridge_classifier():
         ):
 
             if solver not in ("auto", "eig", "cd", "svd"):
-                raise ValueError("Known solvers are 'eig', 'cd', 'svd'. Got %s." % solver)
+                raise ValueError(
+                    "Known solvers are 'eig', 'cd', 'svd'. Got %s." % solver
+                )
 
             if solver == "auto":
                 solver = "eig"
@@ -270,7 +274,9 @@ def get_ridge_classifier():
                 params.pop("n_jobs")
             super().set_params(**params)
             estimator_params = self.estimator.get_params()
-            self.estimator.set_params(**{k: v for k, v in params.items() if k in estimator_params})
+            self.estimator.set_params(
+                **{k: v for k, v in params.items() if k in estimator_params}
+            )
 
             return self
 
@@ -392,7 +398,9 @@ def get_ridge_classifier():
             self : object
                 Instance of the estimator.
             """
-            X, y = self._validate_data(X, y, accept_sparse=False, multi_output=True, y_numeric=False)
+            X, y = self._validate_data(
+                X, y, accept_sparse=False, multi_output=True, y_numeric=False
+            )
 
             self._label_binarizer = LabelBinarizer(pos_label=1, neg_label=-1)
             Y = self._label_binarizer.fit_transform(y)
@@ -400,7 +408,10 @@ def get_ridge_classifier():
                 y = column_or_1d(y, warn=True)
             else:
                 # we don't (yet) support multi-label classification in Ridge
-                raise ValueError("%s doesn't support multi-label classification" % (self.__class__.__name__))
+                raise ValueError(
+                    "%s doesn't support multi-label classification"
+                    % (self.__class__.__name__)
+                )
 
             super().fit(X, Y, convert_dtype=True)
             self.coef_ = np.expand_dims(self.coef_, axis=0)
@@ -431,10 +442,14 @@ def get_ridge_classifier():
                 if n_features != self.n_features_in_:
                     raise ValueError(
                         "X has {} features, but this {} is expecting {} features "
-                        "as input.".format(n_features, self.__class__.__name__, self.n_features_in_)
+                        "as input.".format(
+                            n_features, self.__class__.__name__, self.n_features_in_
+                        )
                     )
 
-        def _validate_data(self, X, y=None, reset=True, validate_separately=False, **check_params):
+        def _validate_data(
+            self, X, y=None, reset=True, validate_separately=False, **check_params
+        ):
             """Validate input data and set or check the `n_features_in_` attribute.
 
             Parameters
@@ -631,7 +646,12 @@ def get_random_forest_regressor():
             return super().fit(X, y, convert_dtype=convert_dtype)
 
         def predict(
-            self, X, predict_model="GPU", algo="auto", convert_dtype=True, fil_sparse_format="auto",
+            self,
+            X,
+            predict_model="GPU",
+            algo="auto",
+            convert_dtype=True,
+            fil_sparse_format="auto",
         ):
             X = X.astype(np.float32)
             return (
@@ -651,11 +671,20 @@ def get_random_forest_regressor():
         ):
             X = X.astype(np.float32)
             return super().predict_proba(
-                X, algo=algo, convert_dtype=convert_dtype, fil_sparse_format=fil_sparse_format,
+                X,
+                algo=algo,
+                convert_dtype=convert_dtype,
+                fil_sparse_format=fil_sparse_format,
             )
 
         def score(
-            self, X, y, algo="auto", predict_model="GPU", convert_dtype=True, fil_sparse_format="auto",
+            self,
+            X,
+            y,
+            algo="auto",
+            predict_model="GPU",
+            convert_dtype=True,
+            fil_sparse_format="auto",
         ):
             X = X.astype(np.float32)
             y = y.astype(np.float32)

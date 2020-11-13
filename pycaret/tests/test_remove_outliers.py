@@ -14,10 +14,20 @@ def test():
     data = pycaret.datasets.get_data("cancer")
 
     clf1 = pycaret.classification.setup(
-        data, target="Class", silent=True, html=False, remove_outliers=True, outliers_threshold=0.05
+        data,
+        target="Class",
+        silent=True,
+        html=False,
+        remove_outliers=True,
+        outliers_threshold=0.05,
     )
     assert (
-        pd.concat([pycaret.classification.get_config("X_train"), pycaret.classification.get_config("X_test")]).shape[0]
+        pd.concat(
+            [
+                pycaret.classification.get_config("X_train"),
+                pycaret.classification.get_config("X_test"),
+            ]
+        ).shape[0]
         < data.shape[0]
     )
 

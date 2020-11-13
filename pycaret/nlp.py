@@ -278,7 +278,9 @@ def setup(
     # checking data type
     if hasattr(data, "shape") is False:
         if type(data) is not list:
-            sys.exit("(Type Error): data passed must be of type pandas.DataFrame or list")
+            sys.exit(
+                "(Type Error): data passed must be of type pandas.DataFrame or list"
+            )
 
     # if dataframe is passed then target is mandatory
     if hasattr(data, "shape"):
@@ -290,7 +292,9 @@ def setup(
     # checking target parameter
     if target is not None:
         if target not in data.columns:
-            sys.exit("(Value Error): Target parameter doesnt exist in the data provided.")
+            sys.exit(
+                "(Value Error): Target parameter doesnt exist in the data provided."
+            )
 
     # custom stopwords checking
     if custom_stopwords is not None:
@@ -360,7 +364,9 @@ def setup(
     max_steps = 11
     total_steps = 9
 
-    progress = ipw.IntProgress(value=0, min=0, max=max_steps, step=1, description="Processing: ")
+    progress = ipw.IntProgress(
+        value=0, min=0, max=max_steps, step=1, description="Processing: "
+    )
     if verbose:
         if html_param:
             display(progress)
@@ -375,7 +381,11 @@ def setup(
         [
             ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
             ["Status", ". . . . . . . . . . . . . . . . . .", "Loading Dependencies"],
-            ["Step", ". . . . . . . . . . . . . . . . . .", "Step 0 of " + str(total_steps)],
+            [
+                "Step",
+                ". . . . . . . . . . . . . . . . . .",
+                "Step 0 of " + str(total_steps),
+            ],
         ],
         columns=["", " ", "   "],
     ).set_index("")
@@ -479,7 +489,9 @@ def setup(
         stop_words = stopwords.words("english")
 
     except:
-        logger.info("Importing stopwords from nltk failed .. loading pre-defined stopwords")
+        logger.info(
+            "Importing stopwords from nltk failed .. loading pre-defined stopwords"
+        )
 
         stop_words = [
             "ourselves",
@@ -786,14 +798,18 @@ def setup(
             update_display(monitor, display_id="monitor")
 
     nlp = spacy.load("en_core_web_sm", disable=["parser", "ner"])
-    nlp.max_length = 3000000  # increasing text length to 3000000 from default of 1000000
+    nlp.max_length = (
+        3000000  # increasing text length to 3000000 from default of 1000000
+    )
     allowed_postags = ["NOUN", "ADJ", "VERB", "ADV"]
 
     text_step7 = []
 
     for i in text:
         doc = nlp(" ".join(i))
-        text_step7.append([token.lemma_ for token in doc if token.pos_ in allowed_postags])
+        text_step7.append(
+            [token.lemma_ for token in doc if token.pos_ in allowed_postags]
+        )
 
     text = text_step7
     del text_step7
@@ -971,7 +987,9 @@ def setup(
             # Log plots
             if log_plots:
 
-                logger.info("SubProcess plot_model() called ==================================")
+                logger.info(
+                    "SubProcess plot_model() called =================================="
+                )
 
                 plot_model(plot="frequency", save=True, system=False)
                 mlflow.log_artifact("Word Frequency.html")
@@ -989,7 +1007,9 @@ def setup(
                 mlflow.log_artifact("POS.html")
                 os.remove("POS.html")
 
-                logger.info("SubProcess plot_model() end ==================================")
+                logger.info(
+                    "SubProcess plot_model() end =================================="
+                )
 
     if verbose:
         clear_output()
@@ -1016,7 +1036,9 @@ def setup(
     )
 
 
-def create_model(model=None, multi_core=False, num_topics=None, verbose=True, system=True, **kwargs):
+def create_model(
+    model=None, multi_core=False, num_topics=None, verbose=True, system=True, **kwargs
+):
 
     """
     
@@ -1121,17 +1143,23 @@ def create_model(model=None, multi_core=False, num_topics=None, verbose=True, sy
 
     # checking for model parameter
     if model is None:
-        sys.exit("(Value Error): Model parameter Missing. Please see docstring for list of available models.")
+        sys.exit(
+            "(Value Error): Model parameter Missing. Please see docstring for list of available models."
+        )
 
     # checking for allowed models
     allowed_models = ["lda", "lsi", "hdp", "rp", "nmf"]
 
     if model not in allowed_models:
-        sys.exit("(Value Error): Model Not Available. Please see docstring for list of available models.")
+        sys.exit(
+            "(Value Error): Model Not Available. Please see docstring for list of available models."
+        )
 
     # checking multicore type:
     if type(multi_core) is not bool:
-        sys.exit("(Type Error): multi_core parameter can only take argument as True or False.")
+        sys.exit(
+            "(Type Error): multi_core parameter can only take argument as True or False."
+        )
 
     # checking round parameter
     if num_topics is not None:
@@ -1140,7 +1168,9 @@ def create_model(model=None, multi_core=False, num_topics=None, verbose=True, sy
 
     # checking verbose parameter
     if type(verbose) is not bool:
-        sys.exit("(Type Error): Verbose parameter can only take argument as True or False.")
+        sys.exit(
+            "(Type Error): Verbose parameter can only take argument as True or False."
+        )
 
     """
     error handling ends here
@@ -1163,7 +1193,9 @@ def create_model(model=None, multi_core=False, num_topics=None, verbose=True, sy
 
     # progress bar and monitor control
     timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
-    progress = ipw.IntProgress(value=0, min=0, max=4, step=1, description="Processing: ")
+    progress = ipw.IntProgress(
+        value=0, min=0, max=4, step=1, description="Processing: "
+    )
     monitor = pd.DataFrame(
         [
             ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
@@ -1285,7 +1317,14 @@ def create_model(model=None, multi_core=False, num_topics=None, verbose=True, sy
 
         logger.info("HdpModel imported successfully")
 
-        model = HdpModel(corpus=corpus, id2word=id2word, random_state=seed, chunksize=100, T=n_topics, **kwargs)
+        model = HdpModel(
+            corpus=corpus,
+            id2word=id2word,
+            random_state=seed,
+            chunksize=100,
+            T=n_topics,
+            **kwargs
+        )
 
         logger.info("HdpModel trained successfully")
 
@@ -1309,7 +1348,9 @@ def create_model(model=None, multi_core=False, num_topics=None, verbose=True, sy
         from sklearn.decomposition import NMF
         from sklearn.preprocessing import normalize
 
-        logger.info("CountVectorizer, TfidfTransformer, NMF, normalize imported successfully")
+        logger.info(
+            "CountVectorizer, TfidfTransformer, NMF, normalize imported successfully"
+        )
 
         text_join = []
 
@@ -1394,9 +1435,13 @@ def create_model(model=None, multi_core=False, num_topics=None, verbose=True, sy
 
             # Log model and related artifacts
             if model_name_short == "nmf":
-                logger.info("SubProcess save_model() called ==================================")
+                logger.info(
+                    "SubProcess save_model() called =================================="
+                )
                 save_model(model, "model", verbose=False)
-                logger.info("SubProcess save_model() end ==================================")
+                logger.info(
+                    "SubProcess save_model() end =================================="
+                )
                 mlflow.log_artifact("model.pkl")
                 size_bytes = Path("model.pkl").stat().st_size
                 os.remove("model.pkl")
@@ -1421,7 +1466,10 @@ def create_model(model=None, multi_core=False, num_topics=None, verbose=True, sy
                 model.save("model")
                 mlflow.log_artifact("model")
                 mlflow.log_artifact("model.projection")
-                size_bytes = Path("model").stat().st_size + Path("model.projection").stat().st_size
+                size_bytes = (
+                    Path("model").stat().st_size
+                    + Path("model.projection").stat().st_size
+                )
                 os.remove("model")
                 os.remove("model.projection")
 
@@ -1452,7 +1500,9 @@ def create_model(model=None, multi_core=False, num_topics=None, verbose=True, sy
         clear_output()
 
     logger.info(str(model))
-    logger.info("create_model() succesfully completed......................................")
+    logger.info(
+        "create_model() succesfully completed......................................"
+    )
 
     return model
 
@@ -1514,7 +1564,9 @@ def assign_model(model, verbose=True):
         logger.addHandler(ch)
 
     logger.info("Initializing assign_model()")
-    logger.info("""assign_model(model={}, verbose={})""".format(str(model), str(verbose)))
+    logger.info(
+        """assign_model(model={}, verbose={})""".format(str(model), str(verbose))
+    )
 
     # ignore warnings
     import warnings
@@ -1557,11 +1609,15 @@ def assign_model(model, verbose=True):
     allowed_models = ["lda", "lsi", "hdp", "rp", "nmf"]
 
     if mod_type not in allowed_models:
-        sys.exit("(Value Error): Model Not Recognized. Please see docstring for list of available models.")
+        sys.exit(
+            "(Value Error): Model Not Recognized. Please see docstring for list of available models."
+        )
 
     # checking verbose parameter
     if type(verbose) is not bool:
-        sys.exit("(Type Error): Verbose parameter can only take argument as True or False.")
+        sys.exit(
+            "(Type Error): Verbose parameter can only take argument as True or False."
+        )
 
     """
     error handling ends here
@@ -1579,7 +1635,9 @@ def assign_model(model, verbose=True):
     # progress bar and monitor control
     max_progress = len(text) + 5
     timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
-    progress = ipw.IntProgress(value=0, min=0, max=max_progress, step=1, description="Processing: ")
+    progress = ipw.IntProgress(
+        value=0, min=0, max=max_progress, step=1, description="Processing: "
+    )
     monitor = pd.DataFrame(
         [
             ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
@@ -1706,10 +1764,12 @@ def assign_model(model, verbose=True):
                 doc_num.append(counter)
             counter += 1
         progress.value += 1
-        df = pd.DataFrame({"Document": doc_num, "Topic": topic_num, "Topic Weight": topic_weight}).sort_values(
-            by="Topic"
+        df = pd.DataFrame(
+            {"Document": doc_num, "Topic": topic_num, "Topic Weight": topic_weight}
+        ).sort_values(by="Topic")
+        df = df.pivot(index="Document", columns="Topic", values="Topic Weight").fillna(
+            0
         )
-        df = df.pivot(index="Document", columns="Topic", values="Topic Weight").fillna(0)
         df.columns = ["Topic_" + str(i) for i in df.columns]
 
         Dominant_Topic = []
@@ -1794,7 +1854,9 @@ def assign_model(model, verbose=True):
             clear_output()
 
     logger.info(str(bb_.shape))
-    logger.info("assign_model() succesfully completed......................................")
+    logger.info(
+        "assign_model() succesfully completed......................................"
+    )
 
     return bb_
 
@@ -1958,7 +2020,9 @@ def plot_model(model=None, plot="frequency", topic_num=None, save=False, system=
         "umap",
     ]
     if plot not in allowed_plots:
-        sys.exit("(Value Error): Plot Not Available. Please see docstring for list of available plots.")
+        sys.exit(
+            "(Value Error): Plot Not Available. Please see docstring for list of available plots."
+        )
 
     # plots without topic model
     if model is None:
@@ -2013,7 +2077,9 @@ def plot_model(model=None, plot="frequency", topic_num=None, save=False, system=
                 logger.info("Fitting CountVectorizer()")
                 bag_of_words = vec.fit_transform(corpus)
                 sum_words = bag_of_words.sum(axis=0)
-                words_freq = [(word, sum_words[0, idx]) for word, idx in vec.vocabulary_.items()]
+                words_freq = [
+                    (word, sum_words[0, idx]) for word, idx in vec.vocabulary_.items()
+                ]
                 words_freq = sorted(words_freq, key=lambda x: x[1], reverse=True)
                 return words_freq[:n]
 
@@ -2037,18 +2103,32 @@ def plot_model(model=None, plot="frequency", topic_num=None, save=False, system=
                 )
 
             else:
-                title = str(topic_num) + ": " + "Top 100 words after removing stop words"
-                logger.info("SubProcess assign_model() called ==================================")
+                title = (
+                    str(topic_num) + ": " + "Top 100 words after removing stop words"
+                )
+                logger.info(
+                    "SubProcess assign_model() called =================================="
+                )
                 assigned_df = assign_model(model, verbose=False)
-                logger.info("SubProcess assign_model() end ==================================")
-                filtered_df = assigned_df.loc[assigned_df["Dominant_Topic"] == topic_num]
+                logger.info(
+                    "SubProcess assign_model() end =================================="
+                )
+                filtered_df = assigned_df.loc[
+                    assigned_df["Dominant_Topic"] == topic_num
+                ]
                 common_words = get_top_n_words(filtered_df[target_], n=100)
                 df2 = pd.DataFrame(common_words, columns=["Text", "count"])
                 df3 = (
                     df2.groupby("Text")
                     .sum()["count"]
                     .sort_values(ascending=False)
-                    .iplot(kind="bar", yTitle="Count", linecolor="black", title=title, asFigure=save_param)
+                    .iplot(
+                        kind="bar",
+                        yTitle="Count",
+                        linecolor="black",
+                        title=title,
+                        asFigure=save_param,
+                    )
                 )
 
             logger.info("Visual Rendered Successfully")
@@ -2058,8 +2138,12 @@ def plot_model(model=None, plot="frequency", topic_num=None, save=False, system=
                 logger.info("Saving 'Word Frequency.html' in current active directory")
 
         except:
-            logger.warning("Invalid topic_num param or empty Vocab. Try changing Topic Number.")
-            sys.exit("(Value Error): Invalid topic_num param or empty Vocab. Try changing Topic Number.")
+            logger.warning(
+                "Invalid topic_num param or empty Vocab. Try changing Topic Number."
+            )
+            sys.exit(
+                "(Value Error): Invalid topic_num param or empty Vocab. Try changing Topic Number."
+            )
 
     elif plot == "distribution":
 
@@ -2082,10 +2166,16 @@ def plot_model(model=None, plot="frequency", topic_num=None, save=False, system=
 
             else:
                 title = str(topic_num) + ": " + "Word Count Distribution"
-                logger.info("SubProcess assign_model() called ==================================")
+                logger.info(
+                    "SubProcess assign_model() called =================================="
+                )
                 assigned_df = assign_model(model, verbose=False)
-                logger.info("SubProcess assign_model() end ==================================")
-                filtered_df = assigned_df.loc[assigned_df["Dominant_Topic"] == topic_num]
+                logger.info(
+                    "SubProcess assign_model() end =================================="
+                )
+                filtered_df = assigned_df.loc[
+                    assigned_df["Dominant_Topic"] == topic_num
+                ]
 
                 b = filtered_df[target_].apply(lambda x: len(str(x).split()))
                 b = pd.DataFrame(b)
@@ -2107,8 +2197,12 @@ def plot_model(model=None, plot="frequency", topic_num=None, save=False, system=
                 logger.info("Saving 'Distribution.html' in current active directory")
 
         except:
-            logger.warning("Invalid topic_num param or empty Vocab. Try changing Topic Number.")
-            sys.exit("(Value Error): Invalid topic_num param or empty Vocab. Try changing Topic Number.")
+            logger.warning(
+                "Invalid topic_num param or empty Vocab. Try changing Topic Number."
+            )
+            sys.exit(
+                "(Value Error): Invalid topic_num param or empty Vocab. Try changing Topic Number."
+            )
 
     elif plot == "bigram":
 
@@ -2121,7 +2215,9 @@ def plot_model(model=None, plot="frequency", topic_num=None, save=False, system=
                 vec = CountVectorizer(ngram_range=(2, 2)).fit(corpus)
                 bag_of_words = vec.transform(corpus)
                 sum_words = bag_of_words.sum(axis=0)
-                words_freq = [(word, sum_words[0, idx]) for word, idx in vec.vocabulary_.items()]
+                words_freq = [
+                    (word, sum_words[0, idx]) for word, idx in vec.vocabulary_.items()
+                ]
                 words_freq = sorted(words_freq, key=lambda x: x[1], reverse=True)
                 return words_freq[:n]
 
@@ -2144,11 +2240,19 @@ def plot_model(model=None, plot="frequency", topic_num=None, save=False, system=
                 )
 
             else:
-                title = str(topic_num) + ": " + "Top 100 bigrams after removing stop words"
-                logger.info("SubProcess assign_model() called ==================================")
+                title = (
+                    str(topic_num) + ": " + "Top 100 bigrams after removing stop words"
+                )
+                logger.info(
+                    "SubProcess assign_model() called =================================="
+                )
                 assigned_df = assign_model(model, verbose=False)
-                logger.info("SubProcess assign_model() end ==================================")
-                filtered_df = assigned_df.loc[assigned_df["Dominant_Topic"] == topic_num]
+                logger.info(
+                    "SubProcess assign_model() end =================================="
+                )
+                filtered_df = assigned_df.loc[
+                    assigned_df["Dominant_Topic"] == topic_num
+                ]
                 common_words = get_top_n_bigram(filtered_df[target_], 100)
                 df3 = pd.DataFrame(common_words, columns=["Text", "count"])
                 logger.info("Rendering Visual")
@@ -2156,7 +2260,13 @@ def plot_model(model=None, plot="frequency", topic_num=None, save=False, system=
                     df3.groupby("Text")
                     .sum()["count"]
                     .sort_values(ascending=False)
-                    .iplot(kind="bar", yTitle="Count", linecolor="black", title=title, asFigure=save_param)
+                    .iplot(
+                        kind="bar",
+                        yTitle="Count",
+                        linecolor="black",
+                        title=title,
+                        asFigure=save_param,
+                    )
                 )
 
             logger.info("Visual Rendered Successfully")
@@ -2166,8 +2276,12 @@ def plot_model(model=None, plot="frequency", topic_num=None, save=False, system=
                 logger.info("Saving 'Bigram.html' in current active directory")
 
         except:
-            logger.warning("Invalid topic_num param or empty Vocab. Try changing Topic Number.")
-            sys.exit("(Value Error): Invalid topic_num param or empty Vocab. Try changing Topic Number.")
+            logger.warning(
+                "Invalid topic_num param or empty Vocab. Try changing Topic Number."
+            )
+            sys.exit(
+                "(Value Error): Invalid topic_num param or empty Vocab. Try changing Topic Number."
+            )
 
     elif plot == "trigram":
 
@@ -2180,7 +2294,9 @@ def plot_model(model=None, plot="frequency", topic_num=None, save=False, system=
                 logger.info("Fitting CountVectorizer()")
                 bag_of_words = vec.transform(corpus)
                 sum_words = bag_of_words.sum(axis=0)
-                words_freq = [(word, sum_words[0, idx]) for word, idx in vec.vocabulary_.items()]
+                words_freq = [
+                    (word, sum_words[0, idx]) for word, idx in vec.vocabulary_.items()
+                ]
                 words_freq = sorted(words_freq, key=lambda x: x[1], reverse=True)
                 return words_freq[:n]
 
@@ -2203,11 +2319,19 @@ def plot_model(model=None, plot="frequency", topic_num=None, save=False, system=
                 )
 
             else:
-                title = str(topic_num) + ": " + "Top 100 trigrams after removing stop words"
-                logger.info("SubProcess assign_model() called ==================================")
+                title = (
+                    str(topic_num) + ": " + "Top 100 trigrams after removing stop words"
+                )
+                logger.info(
+                    "SubProcess assign_model() called =================================="
+                )
                 assigned_df = assign_model(model, verbose=False)
-                logger.info("SubProcess assign_model() end ==================================")
-                filtered_df = assigned_df.loc[assigned_df["Dominant_Topic"] == topic_num]
+                logger.info(
+                    "SubProcess assign_model() end =================================="
+                )
+                filtered_df = assigned_df.loc[
+                    assigned_df["Dominant_Topic"] == topic_num
+                ]
                 common_words = get_top_n_trigram(filtered_df[target_], 100)
                 df3 = pd.DataFrame(common_words, columns=["Text", "count"])
                 logger.info("Rendering Visual")
@@ -2215,7 +2339,13 @@ def plot_model(model=None, plot="frequency", topic_num=None, save=False, system=
                     df3.groupby("Text")
                     .sum()["count"]
                     .sort_values(ascending=False)
-                    .iplot(kind="bar", yTitle="Count", linecolor="black", title=title, asFigure=save_param)
+                    .iplot(
+                        kind="bar",
+                        yTitle="Count",
+                        linecolor="black",
+                        title=title,
+                        asFigure=save_param,
+                    )
                 )
 
             logger.info("Visual Rendered Successfully")
@@ -2225,8 +2355,12 @@ def plot_model(model=None, plot="frequency", topic_num=None, save=False, system=
                 logger.info("Saving 'Trigram.html' in current active directory")
 
         except:
-            logger.warning("Invalid topic_num param or empty Vocab. Try changing Topic Number.")
-            sys.exit("(Value Error): Invalid topic_num param or empty Vocab. Try changing Topic Number.")
+            logger.warning(
+                "Invalid topic_num param or empty Vocab. Try changing Topic Number."
+            )
+            sys.exit(
+                "(Value Error): Invalid topic_num param or empty Vocab. Try changing Topic Number."
+            )
 
     elif plot == "sentiment":
 
@@ -2238,7 +2372,9 @@ def plot_model(model=None, plot="frequency", topic_num=None, save=False, system=
 
             if topic_num is None:
                 logger.warning("topic_num set to None. Plot generated at corpus level.")
-                sentiments = data_[target_].map(lambda text: TextBlob(text).sentiment.polarity)
+                sentiments = data_[target_].map(
+                    lambda text: TextBlob(text).sentiment.polarity
+                )
                 sentiments = pd.DataFrame(sentiments)
                 logger.info("Rendering Visual")
                 sentiments = sentiments[target_].iplot(
@@ -2253,11 +2389,19 @@ def plot_model(model=None, plot="frequency", topic_num=None, save=False, system=
 
             else:
                 title = str(topic_num) + ": " + "Sentiment Polarity Distribution"
-                logger.info("SubProcess assign_model() called ==================================")
+                logger.info(
+                    "SubProcess assign_model() called =================================="
+                )
                 assigned_df = assign_model(model, verbose=False)
-                logger.info("SubProcess assign_model() end ==================================")
-                filtered_df = assigned_df.loc[assigned_df["Dominant_Topic"] == topic_num]
-                sentiments = filtered_df[target_].map(lambda text: TextBlob(text).sentiment.polarity)
+                logger.info(
+                    "SubProcess assign_model() end =================================="
+                )
+                filtered_df = assigned_df.loc[
+                    assigned_df["Dominant_Topic"] == topic_num
+                ]
+                sentiments = filtered_df[target_].map(
+                    lambda text: TextBlob(text).sentiment.polarity
+                )
                 sentiments = pd.DataFrame(sentiments)
                 logger.info("Rendering Visual")
                 sentiments = sentiments[target_].iplot(
@@ -2277,8 +2421,12 @@ def plot_model(model=None, plot="frequency", topic_num=None, save=False, system=
                 logger.info("Saving 'Sentiments.html' in current active directory")
 
         except:
-            logger.warning("Invalid topic_num param or empty Vocab. Try changing Topic Number.")
-            sys.exit("(Value Error): Invalid topic_num param or empty Vocab. Try changing Topic Number.")
+            logger.warning(
+                "Invalid topic_num param or empty Vocab. Try changing Topic Number."
+            )
+            sys.exit(
+                "(Value Error): Invalid topic_num param or empty Vocab. Try changing Topic Number."
+            )
 
     elif plot == "pos":
 
@@ -2307,7 +2455,9 @@ def plot_model(model=None, plot="frequency", topic_num=None, save=False, system=
 
     elif plot == "tsne":
 
-        logger.info("SubProcess assign_model() called ==================================")
+        logger.info(
+            "SubProcess assign_model() called =================================="
+        )
         b = assign_model(model, verbose=False)
         logger.info("SubProcess assign_model() end ==================================")
         b.dropna(axis=0, inplace=True)  # droping rows where Dominant_Topic is blank
@@ -2412,11 +2562,17 @@ def plot_model(model=None, plot="frequency", topic_num=None, save=False, system=
             b = ", ".join(i)
             keyword.append(b)
 
-        kw_df = pd.DataFrame({"Topic": topic_name, "Keyword": keyword}).set_index("Topic")
-        logger.info("SubProcess assign_model() called ==================================")
+        kw_df = pd.DataFrame({"Topic": topic_name, "Keyword": keyword}).set_index(
+            "Topic"
+        )
+        logger.info(
+            "SubProcess assign_model() called =================================="
+        )
         ass_df = assign_model(model, verbose=False)
         logger.info("SubProcess assign_model() end ==================================")
-        ass_df_pivot = ass_df.pivot_table(index="Dominant_Topic", values="Topic_0", aggfunc="count")
+        ass_df_pivot = ass_df.pivot_table(
+            index="Dominant_Topic", values="Topic_0", aggfunc="count"
+        )
         df2 = ass_df_pivot.join(kw_df)
         df2 = df2.reset_index()
         df2.columns = ["Topic", "Documents", "Keyword"]
@@ -2456,7 +2612,13 @@ def plot_model(model=None, plot="frequency", topic_num=None, save=False, system=
 
         import plotly.express as px
 
-        fig = px.bar(df2, x="Topic", y="Documents", hover_data=["Keyword"], title="Document Distribution by Topics")
+        fig = px.bar(
+            df2,
+            x="Topic",
+            y="Documents",
+            hover_data=["Keyword"],
+            title="Document Distribution by Topics",
+        )
 
         if system:
             fig.show()
@@ -2482,15 +2644,25 @@ def plot_model(model=None, plot="frequency", topic_num=None, save=False, system=
 
             else:
 
-                logger.info("SubProcess assign_model() called ==================================")
+                logger.info(
+                    "SubProcess assign_model() called =================================="
+                )
                 assigned_df = assign_model(model, verbose=False)
-                logger.info("SubProcess assign_model() end ==================================")
-                filtered_df = assigned_df.loc[assigned_df["Dominant_Topic"] == topic_num]
+                logger.info(
+                    "SubProcess assign_model() end =================================="
+                )
+                filtered_df = assigned_df.loc[
+                    assigned_df["Dominant_Topic"] == topic_num
+                ]
                 atext = " ".join(review for review in filtered_df[target_])
 
             logger.info("Fitting WordCloud()")
             wordcloud = WordCloud(
-                width=800, height=800, background_color="white", stopwords=stopwords, min_font_size=10
+                width=800,
+                height=800,
+                background_color="white",
+                stopwords=stopwords,
+                min_font_size=10,
             ).generate(atext)
 
             # plot the WordCloud image
@@ -2516,8 +2688,12 @@ def plot_model(model=None, plot="frequency", topic_num=None, save=False, system=
             logger.info("Visual Rendered Successfully")
 
         except:
-            logger.warning("Invalid topic_num param or empty Vocab. Try changing Topic Number.")
-            sys.exit("(Value Error): Invalid topic_num param or empty Vocab. Try changing Topic Number.")
+            logger.warning(
+                "Invalid topic_num param or empty Vocab. Try changing Topic Number."
+            )
+            sys.exit(
+                "(Value Error): Invalid topic_num param or empty Vocab. Try changing Topic Number."
+            )
 
     elif plot == "umap":
 
@@ -2562,7 +2738,9 @@ def plot_model(model=None, plot="frequency", topic_num=None, save=False, system=
 
         logger.info("Visual Rendered Successfully")
 
-    logger.info("plot_model() succesfully completed......................................")
+    logger.info(
+        "plot_model() succesfully completed......................................"
+    )
 
 
 def tune_model(
@@ -2755,17 +2933,23 @@ def tune_model(
 
     # checking for model parameter
     if model is None:
-        sys.exit("(Value Error): Model parameter Missing. Please see docstring for list of available models.")
+        sys.exit(
+            "(Value Error): Model parameter Missing. Please see docstring for list of available models."
+        )
 
     # checking for allowed models
     allowed_models = ["lda", "lsi", "hdp", "rp", "nmf"]
 
     if model not in allowed_models:
-        sys.exit("(Value Error): Model Not Available. Please see docstring for list of available models.")
+        sys.exit(
+            "(Value Error): Model Not Available. Please see docstring for list of available models."
+        )
 
     # checking multicore type:
     if type(multi_core) is not bool:
-        sys.exit("(Type Error): multi_core parameter can only take argument as True or False.")
+        sys.exit(
+            "(Type Error): multi_core parameter can only take argument as True or False."
+        )
 
     # check supervised target:
     if supervised_target is not None:
@@ -2774,7 +2958,8 @@ def tune_model(
         all_col.remove(target)
         if supervised_target not in all_col:
             sys.exit(
-                "(Value Error): supervised_target not recognized. It can only be one of the following: " + str(all_col)
+                "(Value Error): supervised_target not recognized. It can only be one of the following: "
+                + str(all_col)
             )
 
     # supervised target exception handling
@@ -2832,7 +3017,9 @@ def tune_model(
         ]
 
         if estimator not in available_estimators:
-            sys.exit("(Value Error): Estimator Not Available. Please see docstring for list of available estimators.")
+            sys.exit(
+                "(Value Error): Estimator Not Available. Please see docstring for list of available estimators."
+            )
 
     # checking optimize parameter
     if optimize is not None:
@@ -2858,7 +3045,9 @@ def tune_model(
 
     # checking auto_fe:
     if type(auto_fe) is not bool:
-        sys.exit("(Type Error): auto_fe parameter can only take argument as True or False.")
+        sys.exit(
+            "(Type Error): auto_fe parameter can only take argument as True or False."
+        )
 
     # checking fold parameter
     if type(fold) is not int:
@@ -2885,7 +3074,9 @@ def tune_model(
     else:
         max_steps = 10 + len(custom_grid)
 
-    progress = ipw.IntProgress(value=0, min=0, max=max_steps, step=1, description="Processing: ")
+    progress = ipw.IntProgress(
+        value=0, min=0, max=max_steps, step=1, description="Processing: "
+    )
     if verbose:
         if html_param:
             display(progress)
@@ -3003,7 +3194,9 @@ def tune_model(
                     update_display(monitor, display_id="monitor")
 
             logger.info("Extracting Polarity")
-            polarity = data_[target_].map(lambda text: TextBlob(text).sentiment.polarity)
+            polarity = data_[target_].map(
+                lambda text: TextBlob(text).sentiment.polarity
+            )
 
             monitor.iloc[2, 1:] = "Extracting Subjectivity"
             if verbose:
@@ -3011,7 +3204,9 @@ def tune_model(
                     update_display(monitor, display_id="monitor")
 
             logger.info("Extracting Subjectivity")
-            subjectivity = data_[target_].map(lambda text: TextBlob(text).sentiment.subjectivity)
+            subjectivity = data_[target_].map(
+                lambda text: TextBlob(text).sentiment.subjectivity
+            )
 
             monitor.iloc[2, 1:] = "Extracting Wordcount"
             if verbose:
@@ -3051,11 +3246,17 @@ def tune_model(
                 update_display(monitor, display_id="monitor")
 
         # create and assign the model to dataset d
-        logger.info("SubProcess create_model() called ==================================")
-        m = create_model(model=model, multi_core=multi_core, num_topics=i, verbose=False)
+        logger.info(
+            "SubProcess create_model() called =================================="
+        )
+        m = create_model(
+            model=model, multi_core=multi_core, num_topics=i, verbose=False
+        )
         logger.info("SubProcess create_model() end ==================================")
 
-        logger.info("SubProcess assign_model() called ==================================")
+        logger.info(
+            "SubProcess assign_model() called =================================="
+        )
         d = assign_model(m, verbose=False)
         logger.info("SubProcess assign_model() end ==================================")
 
@@ -3090,12 +3291,16 @@ def tune_model(
         for i in master:
             logger.info("Evaluating Coherence with num_topics: " + str(i))
             progress.value += 1
-            monitor.iloc[2, 1:] = "Evaluating Coherence With " + str(param_grid[counter]) + " Topics"
+            monitor.iloc[2, 1:] = (
+                "Evaluating Coherence With " + str(param_grid[counter]) + " Topics"
+            )
             if verbose:
                 if html_param:
                     update_display(monitor, display_id="monitor")
 
-            model = CoherenceModel(model=i, texts=text, dictionary=id2word, coherence="c_v")
+            model = CoherenceModel(
+                model=i, texts=text, dictionary=id2word, coherence="c_v"
+            )
             model_coherence = model.get_coherence()
             coherence.append(model_coherence)
             metric.append("Coherence")
@@ -3108,7 +3313,9 @@ def tune_model(
                 update_display(monitor, display_id="monitor")
 
         logger.info("Creating metrics dataframe")
-        df = pd.DataFrame({"# Topics": param_grid, "Score": coherence, "Metric": metric})
+        df = pd.DataFrame(
+            {"# Topics": param_grid, "Score": coherence, "Metric": metric}
+        )
         df.columns = ["# Topics", "Score", "Metric"]
 
         sorted_df = df.sort_values(by="Score", ascending=False)
@@ -3119,7 +3326,12 @@ def tune_model(
 
         logger.info("Rendering Visual")
         fig = px.line(
-            df, x="# Topics", y="Score", line_shape="linear", title="Coherence Value and # of Topics", color="Metric"
+            df,
+            x="# Topics",
+            y="Score",
+            line_shape="linear",
+            title="Coherence Value and # of Topics",
+            color="Metric",
         )
 
         fig.update_layout(plot_bgcolor="rgb(245,245,245)")
@@ -3138,7 +3350,16 @@ def tune_model(
 
         best_k = np.array(sorted_df.head(1)["# Topics"])[0]
         best_m = round(np.array(sorted_df.head(1)["Score"])[0], 4)
-        p = "Best Model: " + topic_model_name + " |" + " # Topics: " + str(best_k) + " | " + "Coherence: " + str(best_m)
+        p = (
+            "Best Model: "
+            + topic_model_name
+            + " |"
+            + " # Topics: "
+            + str(best_k)
+            + " | "
+            + "Coherence: "
+            + str(best_m)
+        )
         print(p)
 
     elif problem == "classification":
@@ -3195,7 +3416,9 @@ def tune_model(
 
             from sklearn.svm import SVC
 
-            model = SVC(gamma="auto", C=1, probability=True, kernel="rbf", random_state=seed)
+            model = SVC(
+                gamma="auto", C=1, probability=True, kernel="rbf", random_state=seed
+            )
             full_name = "RBF SVM"
 
         elif estimator == "gpc":
@@ -3303,9 +3526,13 @@ def tune_model(
             progress.value += 1
             param_grid_val = param_grid[i]
 
-            logger.info("Training supervised model with num_topics: " + str(param_grid_val))
+            logger.info(
+                "Training supervised model with num_topics: " + str(param_grid_val)
+            )
 
-            monitor.iloc[2, 1:] = "Evaluating Classifier With " + str(param_grid_val) + " Topics"
+            monitor.iloc[2, 1:] = (
+                "Evaluating Classifier With " + str(param_grid_val) + " Topics"
+            )
             if verbose:
                 if html_param:
                     update_display(monitor, display_id="monitor")
@@ -3387,10 +3614,25 @@ def tune_model(
             value_name="Score",
         )
 
-        fig = px.line(sd, x="# Topics", y="Score", color="Metric", line_shape="linear", range_y=[0, 1])
+        fig = px.line(
+            sd,
+            x="# Topics",
+            y="Score",
+            color="Metric",
+            line_shape="linear",
+            range_y=[0, 1],
+        )
         fig.update_layout(plot_bgcolor="rgb(245,245,245)")
         title = str(full_name) + " Metrics and # of Topics"
-        fig.update_layout(title={"text": title, "y": 0.95, "x": 0.45, "xanchor": "center", "yanchor": "top"})
+        fig.update_layout(
+            title={
+                "text": title,
+                "y": 0.95,
+                "x": 0.45,
+                "xanchor": "center",
+                "yanchor": "top",
+            }
+        )
 
         fig.show()
         logger.info("Visual Rendered Successfully")
@@ -3623,9 +3865,13 @@ def tune_model(
             progress.value += 1
             param_grid_val = param_grid[i]
 
-            logger.info("Training supervised model with num_topics: " + str(param_grid_val))
+            logger.info(
+                "Training supervised model with num_topics: " + str(param_grid_val)
+            )
 
-            monitor.iloc[2, 1:] = "Evaluating Regressor With " + str(param_grid_val) + " Topics"
+            monitor.iloc[2, 1:] = (
+                "Evaluating Regressor With " + str(param_grid_val) + " Topics"
+            )
             if verbose:
                 if html_param:
                     update_display(monitor, display_id="monitor")
@@ -3735,7 +3981,9 @@ def tune_model(
         print(p)
 
     logger.info(str(best_model))
-    logger.info("tune_model() succesfully completed......................................")
+    logger.info(
+        "tune_model() succesfully completed......................................"
+    )
 
     return best_model
 
@@ -3802,7 +4050,14 @@ def evaluate_model(model):
 
     b = widgets.Dropdown(options=final_list, description="Topic #:", disabled=False)
 
-    d = interact_manual(plot_model, model=fixed(model), plot=a, topic_num=b, save=fixed(False), system=fixed(True))
+    d = interact_manual(
+        plot_model,
+        model=fixed(model),
+        plot=a,
+        topic_num=b,
+        save=fixed(False),
+        system=fixed(True),
+    )
 
 
 def save_model(model, model_name, verbose=True):
@@ -3862,7 +4117,11 @@ def save_model(model, model_name, verbose=True):
         logger.addHandler(ch)
 
     logger.info("Initializing save_model()")
-    logger.info("""save_model(model={}, model_name={}, verbose={})""".format(str(model), str(model_name), str(verbose)))
+    logger.info(
+        """save_model(model={}, model_name={}, verbose={})""".format(
+            str(model), str(model_name), str(verbose)
+        )
+    )
 
     import joblib
 
@@ -3872,7 +4131,9 @@ def save_model(model, model_name, verbose=True):
         print("Model Succesfully Saved")
 
     logger.info(str(model))
-    logger.info("save_model() succesfully completed......................................")
+    logger.info(
+        "save_model() succesfully completed......................................"
+    )
 
     return (model, model_name)
 
@@ -4104,7 +4365,9 @@ def get_config(variable):
         global_var = USI
 
     logger.info("Global variable: " + str(variable) + " returned")
-    logger.info("get_config() succesfully completed......................................")
+    logger.info(
+        "get_config() succesfully completed......................................"
+    )
 
     return global_var
 
@@ -4167,7 +4430,9 @@ def set_config(variable, value):
         logger.addHandler(ch)
 
     logger.info("Initializing set_config()")
-    logger.info("""set_config(variable={}, value={})""".format(str(variable), str(value)))
+    logger.info(
+        """set_config(variable={}, value={})""".format(str(variable), str(value))
+    )
 
     if variable == "text":
         global text
@@ -4210,7 +4475,9 @@ def set_config(variable, value):
         USI = value
 
     logger.info("Global variable:  " + str(variable) + " updated")
-    logger.info("set_config() succesfully completed......................................")
+    logger.info(
+        "set_config() succesfully completed......................................"
+    )
 
 
 def get_topics(data, text, model=None, num_topics=4):

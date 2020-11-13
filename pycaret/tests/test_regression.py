@@ -14,7 +14,14 @@ def test():
     assert isinstance(data, pd.core.frame.DataFrame)
 
     # init setup
-    reg1 = pycaret.regression.setup(data, target="medv", silent=True, log_experiment=True, html=False, session_id=123)
+    reg1 = pycaret.regression.setup(
+        data,
+        target="medv",
+        silent=True,
+        log_experiment=True,
+        html=False,
+        session_id=123,
+    )
 
     # compare models
     top3 = pycaret.regression.compare_models(n_select=100, exclude=["catboost"])[:3]
@@ -34,11 +41,15 @@ def test():
     blender = pycaret.regression.blend_models(top3)
 
     # stack models
-    stacker = pycaret.regression.stack_models(estimator_list=top3[1:], meta_model=top3[0])
+    stacker = pycaret.regression.stack_models(
+        estimator_list=top3[1:], meta_model=top3[0]
+    )
 
     # plot model
     lr = pycaret.regression.create_model("lr")
-    pycaret.regression.plot_model(lr, save=True)  # scale removed because build failed due to large image size
+    pycaret.regression.plot_model(
+        lr, save=True
+    )  # scale removed because build failed due to large image size
 
     # select best model
     best = pycaret.regression.automl(optimize="MAPE")

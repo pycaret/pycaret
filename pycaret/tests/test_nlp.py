@@ -15,7 +15,9 @@ def test():
     assert isinstance(data, pd.core.frame.DataFrame)
 
     # init setup
-    nlp1 = pycaret.nlp.setup(data=data, target="en", log_experiment=True, html=False, session_id=123)
+    nlp1 = pycaret.nlp.setup(
+        data=data, target="en", log_experiment=True, html=False, session_id=123
+    )
     assert isinstance(nlp1, tuple)
     assert isinstance(nlp1[0], list)
     assert isinstance(nlp1[1], pd.core.frame.DataFrame)

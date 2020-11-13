@@ -56,7 +56,9 @@ def setup(
     group_names: Optional[List[str]] = None,
     n_jobs: Optional[int] = -1,
     use_gpu: bool = False,
-    custom_pipeline: Union[Any, Tuple[str, Any], List[Any], List[Tuple[str, Any]]] = None,
+    custom_pipeline: Union[
+        Any, Tuple[str, Any], List[Any], List[Tuple[str, Any]]
+    ] = None,
     html: bool = True,
     session_id: Optional[int] = None,
     log_experiment: bool = False,
@@ -545,7 +547,9 @@ def create_model(
     )
 
 
-def assign_model(model, transformation: bool = False, verbose: bool = True) -> pd.DataFrame:
+def assign_model(
+    model, transformation: bool = False, verbose: bool = True
+) -> pd.DataFrame:
 
     """
     This function assigns cluster labels to the dataset for a given model. 
@@ -579,7 +583,9 @@ def assign_model(model, transformation: bool = False, verbose: bool = True) -> p
   
     """
 
-    return pycaret.internal.tabular.assign_model(model, transformation=transformation, verbose=verbose)
+    return pycaret.internal.tabular.assign_model(
+        model, transformation=transformation, verbose=verbose
+    )
 
 
 def plot_model(
@@ -694,7 +700,9 @@ def evaluate_model(
 
     """
 
-    return pycaret.internal.tabular.evaluate_model(estimator=model, feature_name=feature, fit_kwargs=fit_kwargs)
+    return pycaret.internal.tabular.evaluate_model(
+        estimator=model, feature_name=feature, fit_kwargs=fit_kwargs
+    )
 
 
 def tune_model(
@@ -966,7 +974,10 @@ def deploy_model(
     """
 
     return pycaret.internal.tabular.deploy_model(
-        model=model, model_name=model_name, authentication=authentication, platform=platform,
+        model=model,
+        model_name=model_name,
+        authentication=authentication,
+        platform=platform,
     )
 
 
@@ -1015,7 +1026,10 @@ def save_model(model, model_name: str, model_only: bool = False, verbose: bool =
 
 
 def load_model(
-    model_name, platform: Optional[str] = None, authentication: Optional[Dict[str, str]] = None, verbose: bool = True,
+    model_name,
+    platform: Optional[str] = None,
+    authentication: Optional[Dict[str, str]] = None,
+    verbose: bool = True,
 ):
 
     """
@@ -1060,7 +1074,10 @@ def load_model(
     """
 
     return pycaret.internal.tabular.load_model(
-        model_name=model_name, platform=platform, authentication=authentication, verbose=verbose,
+        model_name=model_name,
+        platform=platform,
+        authentication=authentication,
+        verbose=verbose,
     )
 
 
@@ -1114,7 +1131,9 @@ def models(internal: bool = False, raise_errors: bool = True) -> pd.DataFrame:
     return pycaret.internal.tabular.models(internal=internal, raise_errors=raise_errors)
 
 
-def get_metrics(reset: bool = False, include_custom: bool = True, raise_errors: bool = True,) -> pd.DataFrame:
+def get_metrics(
+    reset: bool = False, include_custom: bool = True, raise_errors: bool = True,
+) -> pd.DataFrame:
 
     """
     Returns table of metrics available.
@@ -1147,7 +1166,9 @@ def get_metrics(reset: bool = False, include_custom: bool = True, raise_errors: 
 
     """
 
-    return pycaret.internal.tabular.get_metrics(reset=reset, include_custom=include_custom, raise_errors=raise_errors,)
+    return pycaret.internal.tabular.get_metrics(
+        reset=reset, include_custom=include_custom, raise_errors=raise_errors,
+    )
 
 
 def add_metric(
