@@ -1,0 +1,12 @@
+name: check-format
+# Support only when "pull request" is executed
+on: pull_request
+jobs:
+  check-format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: black
+        uses: lgeiger/black-action@v1.0.1
+        with:
+          args: ". --check"
