@@ -1081,7 +1081,7 @@ def load_model(
     )
 
 
-def pull(pop: bool = False) -> pd.DataFrame: 
+def pull(pop: bool = False) -> pd.DataFrame:
     """
     Returns last printed score grid. Use ``pull`` function after
     any training function to store the score grid in pandas.DataFrame.

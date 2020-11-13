@@ -1749,4 +1749,3 @@ def get_all_model_containers(
     return pycaret.containers.base_container.get_all_containers(
         globals(), globals_dict, RegressorContainer, raise_errors
     )
-

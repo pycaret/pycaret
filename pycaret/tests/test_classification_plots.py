@@ -7,15 +7,24 @@ import pytest
 import pycaret.classification
 import pycaret.datasets
 
+
 def test():
     # loading dataset
-    data = pycaret.datasets.get_data('juice')
+    data = pycaret.datasets.get_data("juice")
     assert isinstance(data, pd.core.frame.DataFrame)
 
     # init setup
-    clf1 = pycaret.classification.setup(data, target='Purchase', log_experiment=True, silent=True, html=False, session_id=123, fold=2)
-    
-    model = pycaret.classification.create_model('lr')
+    clf1 = pycaret.classification.setup(
+        data,
+        target="Purchase",
+        log_experiment=True,
+        silent=True,
+        html=False,
+        session_id=123,
+        fold=2,
+    )
+
+    model = pycaret.classification.create_model("lr")
 
     available_plots = [
         "parameter",
@@ -41,7 +50,10 @@ def test():
         pycaret.classification.plot_model(model, plot=plot, use_train_data=False)
         pycaret.classification.plot_model(model, plot=plot, use_train_data=True)
 
-    models = [pycaret.classification.create_model('et'), pycaret.classification.create_model('xgboost')]
+    models = [
+        pycaret.classification.create_model("et"),
+        pycaret.classification.create_model("xgboost"),
+    ]
 
     available_shap = ["summary", "correlation", "reason"]
 
@@ -50,6 +62,7 @@ def test():
             pycaret.classification.interpret_model(model, plot=plot)
 
     assert 1 == 1
-    
+
+
 if __name__ == "__main__":
     test()

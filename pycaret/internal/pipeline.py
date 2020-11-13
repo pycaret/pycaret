@@ -96,7 +96,9 @@ class Pipeline(imblearn.pipeline.Pipeline):
                 new_final_estimator,
             )
         else:
-            self.steps.append((name if name else "actual_estimator", new_final_estimator))
+            self.steps.append(
+                (name if name else "actual_estimator", new_final_estimator)
+            )
         self._carry_over_final_estimator_fit_vars()
 
     def set_params(self, **kwargs):

@@ -113,9 +113,7 @@ class ClusterMetricContainer(MetricContainer):
             scorer
             if scorer
             else metrics.make_scorer(
-                score_func,
-                greater_is_better=greater_is_better,
-                **args,
+                score_func, greater_is_better=greater_is_better, **args,
             )
         )
         self.display_name = display_name if display_name else name
@@ -159,10 +157,9 @@ class ClusterMetricContainer(MetricContainer):
 class SilhouetteMetricContainer(ClusterMetricContainer):
     def __init__(self, globals_dict: dict) -> None:
         super().__init__(
-            id="silhouette",
-            name="Silhouette",
-            score_func=metrics.silhouette_score,
+            id="silhouette", name="Silhouette", score_func=metrics.silhouette_score,
         )
+
 
 class CHSMetricContainer(ClusterMetricContainer):
     def __init__(self, globals_dict: dict) -> None:
@@ -172,13 +169,13 @@ class CHSMetricContainer(ClusterMetricContainer):
             score_func=metrics.calinski_harabasz_score,
         )
 
+
 class DBMetricContainer(ClusterMetricContainer):
     def __init__(self, globals_dict: dict) -> None:
         super().__init__(
-            id="db",
-            name="Davies-Bouldin",
-            score_func=metrics.davies_bouldin_score,
+            id="db", name="Davies-Bouldin", score_func=metrics.davies_bouldin_score,
         )
+
 
 class HSMetricContainer(ClusterMetricContainer):
     def __init__(self, globals_dict: dict) -> None:
@@ -187,8 +184,9 @@ class HSMetricContainer(ClusterMetricContainer):
             name="Homogeneity Score",
             display_name="Homogeneity",
             score_func=metrics.homogeneity_score,
-            needs_ground_truth=True
+            needs_ground_truth=True,
         )
+
 
 class ARIMetricContainer(ClusterMetricContainer):
     def __init__(self, globals_dict: dict) -> None:
@@ -196,8 +194,9 @@ class ARIMetricContainer(ClusterMetricContainer):
             id="ari",
             name="Rand Index",
             score_func=metrics.adjusted_rand_score,
-            needs_ground_truth=True
+            needs_ground_truth=True,
         )
+
 
 class CSMetricContainer(ClusterMetricContainer):
     def __init__(self, globals_dict: dict) -> None:
@@ -206,8 +205,9 @@ class CSMetricContainer(ClusterMetricContainer):
             name="Completeness Score",
             display_name="Completeness",
             score_func=metrics.completeness_score,
-            needs_ground_truth=True
+            needs_ground_truth=True,
         )
+
 
 def get_all_metric_containers(
     globals_dict: dict, raise_errors: bool = True
@@ -215,4 +215,3 @@ def get_all_metric_containers(
     return pycaret.containers.base_container.get_all_containers(
         globals(), globals_dict, ClusterMetricContainer, raise_errors
     )
-

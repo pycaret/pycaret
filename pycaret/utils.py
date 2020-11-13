@@ -129,4 +129,3 @@ def get_system_logs():
 
         columns = [col.strip() for col in line.split(":") if col]
         print(columns)
-
