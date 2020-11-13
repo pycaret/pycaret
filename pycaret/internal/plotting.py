@@ -7,6 +7,7 @@ from pycaret.internal.logging import get_logger
 from pycaret.internal.Display import Display
 import scikitplot as skplt
 
+
 def show_yellowbrick_plot(
     visualizer,
     X_train,

@@ -246,7 +246,7 @@ def get_ridge_classifier():
                 solver=self.solver,
                 handle=handle,
                 output_type=output_type,
-                verbose=verbose
+                verbose=verbose,
             )
             self.n_jobs = 1
             self.n_iter_ = None

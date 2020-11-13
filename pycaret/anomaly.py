@@ -860,10 +860,7 @@ def predict_model(model, data: pd.DataFrame) -> pd.DataFrame:
 
 
 def deploy_model(
-    model,
-    model_name: str,
-    authentication: dict,
-    platform: str = "aws", 
+    model, model_name: str, authentication: dict, platform: str = "aws",
 ):
 
     """

@@ -113,9 +113,7 @@ class AnomalyMetricContainer(MetricContainer):
             scorer
             if scorer
             else metrics.make_scorer(
-                score_func,
-                greater_is_better=greater_is_better,
-                **args,
+                score_func, greater_is_better=greater_is_better, **args,
             )
         )
         self.display_name = display_name if display_name else name
@@ -162,4 +160,3 @@ def get_all_metric_containers(
     return pycaret.containers.base_container.get_all_containers(
         globals(), globals_dict, AnomalyMetricContainer, raise_errors
     )
-
