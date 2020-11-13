@@ -34,9 +34,7 @@ def get_config(variable: str, globals_d: dict):
 
     """
 
-    function_params_str = ", ".join(
-        [f"{k}={v}" for k, v in locals().items() if not k == "globals_d"]
-    )
+    function_params_str = ", ".join([f"{k}={v}" for k, v in locals().items() if not k == "globals_d"])
 
     logger = get_logger()
 
@@ -44,16 +42,12 @@ def get_config(variable: str, globals_d: dict):
     logger.info(f"get_config({function_params_str})")
 
     if not variable in globals_d["pycaret_globals"]:
-        raise ValueError(
-            f"Variable {variable} not found. Possible variables are: {globals_d['pycaret_globals']}"
-        )
+        raise ValueError(f"Variable {variable} not found. Possible variables are: {globals_d['pycaret_globals']}")
 
     global_var = globals_d[variable]
 
     logger.info(f"Global variable: {variable} returned as {global_var}")
-    logger.info(
-        "get_config() succesfully completed......................................"
-    )
+    logger.info("get_config() succesfully completed......................................")
 
     return global_var
 
@@ -71,9 +65,7 @@ def set_config(variable: str, value, globals_d: dict):
 
     """
 
-    function_params_str = ", ".join(
-        [f"{k}={v}" for k, v in locals().items() if not k == "globals_d"]
-    )
+    function_params_str = ", ".join([f"{k}={v}" for k, v in locals().items() if not k == "globals_d"])
 
     logger = get_logger()
 
@@ -84,9 +76,7 @@ def set_config(variable: str, value, globals_d: dict):
         raise ValueError(f"Variable {variable} is read only ('_' prefix).")
 
     if not variable in globals_d["pycaret_globals"] or variable == "pycaret_globals":
-        raise ValueError(
-            f"Variable {variable} not found. Possible variables are: {globals_d['pycaret_globals']}"
-        )
+        raise ValueError(f"Variable {variable} not found. Possible variables are: {globals_d['pycaret_globals']}")
 
     globals_d[variable] = value
 
@@ -95,9 +85,7 @@ def set_config(variable: str, value, globals_d: dict):
         globals_d["_gpu_n_jobs_param"] = value
 
     logger.info(f"Global variable: {variable} updated to {value}")
-    logger.info(
-        "set_config() succesfully completed......................................"
-    )
+    logger.info("set_config() succesfully completed......................................")
 
 
 def save_config(file_name: str, globals_d: dict):
@@ -113,9 +101,7 @@ def save_config(file_name: str, globals_d: dict):
 
     """
 
-    function_params_str = ", ".join(
-        [f"{k}={v}" for k, v in locals().items() if not k == "globals_d"]
-    )
+    function_params_str = ", ".join([f"{k}={v}" for k, v in locals().items() if not k == "globals_d"])
 
     logger = get_logger()
 
@@ -125,9 +111,7 @@ def save_config(file_name: str, globals_d: dict):
     globals_to_ignore = {"_all_models", "_all_models_internal", "_all_metrics"}
 
     globals_to_dump = {
-        k: v
-        for k, v in globals_d.items()
-        if k in globals_d["pycaret_globals"] and k not in globals_to_ignore
+        k: v for k, v in globals_d.items() if k in globals_d["pycaret_globals"] and k not in globals_to_ignore
     }
 
     import joblib
@@ -135,9 +119,7 @@ def save_config(file_name: str, globals_d: dict):
     joblib.dump(globals_to_dump, file_name)
 
     logger.info(f"Global variables dumped to {file_name}")
-    logger.info(
-        "save_config() succesfully completed......................................"
-    )
+    logger.info("save_config() succesfully completed......................................")
 
 
 def load_config(file_name: str, globals_d: dict):
@@ -154,9 +136,7 @@ def load_config(file_name: str, globals_d: dict):
 
     """
 
-    function_params_str = ", ".join(
-        [f"{k}={v}" for k, v in locals().items() if not k == "globals_d"]
-    )
+    function_params_str = ", ".join([f"{k}={v}" for k, v in locals().items() if not k == "globals_d"])
 
     logger = get_logger()
 
@@ -176,31 +156,17 @@ def load_config(file_name: str, globals_d: dict):
 
     logger.info(f"Global variables set to match those in {file_name}")
 
-    logger.info(
-        "load_config() succesfully completed......................................"
-    )
+    logger.info("load_config() succesfully completed......................................")
 
 
-def color_df(
-    df: pd.DataFrame, color: str, names: list, axis: int = 1
-) -> pandas.io.formats.style.Styler:
-    return df.style.apply(
-        lambda x: [f"background: {color}" if (x.name in names) else "" for i in x],
-        axis=axis,
-    )
+def color_df(df: pd.DataFrame, color: str, names: list, axis: int = 1) -> pandas.io.formats.style.Styler:
+    return df.style.apply(lambda x: [f"background: {color}" if (x.name in names) else "" for i in x], axis=axis,)
 
 
 def get_model_id(e, all_models: Dict[str, ModelContainer]) -> str:
     from pycaret.internal.meta_estimators import get_estimator_from_meta_estimator
 
-    return next(
-        (
-            k
-            for k, v in all_models.items()
-            if v.is_estimator_equal(get_estimator_from_meta_estimator(e))
-        ),
-        None,
-    )
+    return next((k for k, v in all_models.items() if v.is_estimator_equal(get_estimator_from_meta_estimator(e))), None,)
 
 
 def get_model_name(e, all_models: Dict[str, ModelContainer], deep: bool = True) -> str:
@@ -263,16 +229,12 @@ def param_grid_to_lists(param_grid: dict) -> dict:
     return param_grid
 
 
-def np_list_arange(
-    start: float, stop: float, step: float, inclusive: bool = False
-) -> List[float]:
+def np_list_arange(start: float, stop: float, step: float, inclusive: bool = False) -> List[float]:
     """
     Numpy arange returned as list with floating point conversion
     failsafes.
     """
-    convert_to_float = (
-        isinstance(start, float) or isinstance(stop, float) or isinstance(step, float)
-    )
+    convert_to_float = isinstance(start, float) or isinstance(stop, float) or isinstance(step, float)
     if convert_to_float:
         stop = float(stop)
         start = float(start)
@@ -280,14 +242,7 @@ def np_list_arange(
     stop = stop + (step if inclusive else 0)
     range = list(np.arange(start, stop, step))
     range = [
-        start
-        if x < start
-        else stop
-        if x > stop
-        else float(round(x, 15))
-        if isinstance(x, float)
-        else x
-        for x in range
+        start if x < start else stop if x > stop else float(round(x, 15)) if isinstance(x, float) else x for x in range
     ]
     range[0] = start
     range[-1] = stop - step
@@ -305,11 +260,7 @@ def calculate_unsupervised_metrics(
     score_dict = []
 
     for k, v in metrics.items():
-        score_dict.append(
-            _calculate_unsupervised_metric(
-                v, v.score_func, v.display_name, X, labels, ground_truth
-            )
-        )
+        score_dict.append(_calculate_unsupervised_metric(v, v.score_func, v.display_name, X, labels, ground_truth))
 
     score_dict = dict([x for x in score_dict if x is not None])
     return score_dict
@@ -344,26 +295,18 @@ def calculate_metrics(
     score_dict = []
 
     for k, v in metrics.items():
-        score_dict.append(
-            _calculate_metric(
-                v, v.score_func, v.display_name, y_test, pred, pred_proba, weights,
-            )
-        )
+        score_dict.append(_calculate_metric(v, v.score_func, v.display_name, y_test, pred, pred_proba, weights,))
 
     score_dict = dict([x for x in score_dict if x is not None])
     return score_dict
 
 
-def _calculate_metric(
-    container, score_func, display_name, y_test, pred_, pred_proba, weights
-):
+def _calculate_metric(container, score_func, display_name, y_test, pred_, pred_proba, weights):
     if not score_func:
         return None
     target = pred_proba if container.target == "pred_proba" else pred_
     try:
-        calculated_metric = score_func(
-            y_test, target, sample_weight=weights, **container.args
-        )
+        calculated_metric = score_func(y_test, target, sample_weight=weights, **container.args)
     except:
         try:
             calculated_metric = score_func(y_test, target, **container.args)
@@ -373,9 +316,7 @@ def _calculate_metric(
     return (display_name, calculated_metric)
 
 
-def normalize_custom_transformers(
-    transformers: Union[Any, Tuple[str, Any], List[Any], List[Tuple[str, Any]]]
-) -> list:
+def normalize_custom_transformers(transformers: Union[Any, Tuple[str, Any], List[Any], List[Tuple[str, Any]]]) -> list:
     if isinstance(transformers, dict):
         transformers = list(transformers.items())
     if isinstance(transformers, list):
@@ -407,10 +348,7 @@ def _check_custom_transformer(transformer):
             and hasattr(actual_transformer, "transform")
             and hasattr(actual_transformer, "fit_transform")
         )
-        or (
-            hasattr(actual_transformer, "fit")
-            and hasattr(actual_transformer, "fit_resample")
-        )
+        or (hasattr(actual_transformer, "fit") and hasattr(actual_transformer, "fit_resample"))
     ):
         raise TypeError(
             "Transformer must be an object implementing methods 'fit', 'transform' and 'fit_transform'/'fit_resample'."
@@ -442,17 +380,11 @@ def get_cv_splitter(
             elif int_default == "stratifiedkfold":
                 return StratifiedKFold(fold, random_state=seed, shuffle=shuffle)
             else:
-                raise ValueError(
-                    "Wrong value for int_default param. Needs to be either 'kfold' or 'stratifiedkfold'."
-                )
-    raise TypeError(
-        f"{fold} is of type {type(fold)} while it needs to be either a CV generator or int."
-    )
+                raise ValueError("Wrong value for int_default param. Needs to be either 'kfold' or 'stratifiedkfold'.")
+    raise TypeError(f"{fold} is of type {type(fold)} while it needs to be either a CV generator or int.")
 
 
-def get_cv_n_folds(
-    fold: Optional[Union[int, BaseCrossValidator]], default, X, y=None, groups=None
-) -> int:
+def get_cv_n_folds(fold: Optional[Union[int, BaseCrossValidator]], default, X, y=None, groups=None) -> int:
     if not fold:
         fold = default
     if isinstance(fold, int):
@@ -471,9 +403,7 @@ class none_n_jobs(object):
         self.model = model
         try:
             self.params = {
-                k: v
-                for k, v in self.model.get_params().items()
-                if k.endswith("n_jobs") or k.endswith("thread_count")
+                k: v for k, v in self.model.get_params().items() if k.endswith("n_jobs") or k.endswith("thread_count")
             }
         except:
             pass
@@ -496,11 +426,7 @@ class true_warm_start(object):
         self.params = {}
         self.model = model
         try:
-            self.params = {
-                k: v
-                for k, v in self.model.get_params().items()
-                if k.endswith("warm_start")
-            }
+            self.params = {k: v for k, v in self.model.get_params().items() if k.endswith("warm_start")}
         except:
             pass
 
@@ -524,17 +450,13 @@ class nullcontext(object):
         pass
 
 
-def get_groups(
-    groups: Union[str, pd.DataFrame], X_train: pd.DataFrame, default: pd.DataFrame
-):
+def get_groups(groups: Union[str, pd.DataFrame], X_train: pd.DataFrame, default: pd.DataFrame):
     logger = get_logger()
     if groups is None:
         return default
     if isinstance(groups, str):
         if groups not in X_train.columns:
-            raise ValueError(
-                f"Column {groups} used for groups is not present in the dataset."
-            )
+            raise ValueError(f"Column {groups} used for groups is not present in the dataset.")
         groups = X_train[groups]
     else:
         if groups.shape[0] != X_train.shape[0]:
@@ -560,9 +482,7 @@ def get_all_object_vars_and_properties(object):
 
 
 def is_fit_var(key):
-    return key and (
-        (key.endswith("_") and not key.startswith("_")) or (key in ["n_clusters"])
-    )
+    return key and ((key.endswith("_") and not key.startswith("_")) or (key in ["n_clusters"]))
 
 
 def can_early_stop(
@@ -601,11 +521,7 @@ def can_early_stop(
         is_not_tree_subclass = not issubclass(type(base_estimator), BaseDecisionTree)
         is_ensemble_subclass = issubclass(type(base_estimator), BaseEnsemble)
         can_warm_start = hasattr(base_estimator, "warm_start") and (
-            (
-                hasattr(base_estimator, "max_iter")
-                and is_not_tree_subclass
-                and not is_ensemble_subclass
-            )
+            (hasattr(base_estimator, "max_iter") and is_not_tree_subclass and not is_ensemble_subclass)
             or (is_ensemble_subclass and hasattr(base_estimator, "n_estimators"))
         )
     else:
@@ -618,9 +534,7 @@ def can_early_stop(
     else:
         is_xgboost = False
 
-    logger.info(
-        f"can_partial_fit: {can_partial_fit}, can_warm_start: {can_warm_start}, is_xgboost: {is_xgboost}"
-    )
+    logger.info(f"can_partial_fit: {can_partial_fit}, can_warm_start: {can_warm_start}, is_xgboost: {is_xgboost}")
 
     return can_partial_fit or can_warm_start or is_xgboost
 

@@ -51,9 +51,7 @@ class Display:
                 if display_ is not None:
                     self.master_display_id = display_.display_id
             else:
-                self._update_display(
-                    self.master_display, display_id=self.master_display_id
-                )
+                self._update_display(self.master_display, display_id=self.master_display_id)
 
     def display_monitor(self, override=None):
         if self.monitor is None:
@@ -75,9 +73,7 @@ class Display:
         if self.master_display is None:
             return
         if self.can_display(override):
-            self.master_display = pd.concat(
-                [self.master_display, df_to_append], ignore_index=True
-            )
+            self.master_display = pd.concat([self.master_display, df_to_append], ignore_index=True)
 
     def replace_master_display(self, df):
         self.master_display = df

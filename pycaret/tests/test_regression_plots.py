@@ -7,15 +7,18 @@ import pytest
 import pycaret.regression
 import pycaret.datasets
 
+
 def test():
     # loading dataset
-    data = pycaret.datasets.get_data('juice')
+    data = pycaret.datasets.get_data("juice")
     assert isinstance(data, pd.core.frame.DataFrame)
 
     # init setup
-    reg1 = pycaret.regression.setup(data, target='Purchase', log_experiment=True, silent=True, html=False, session_id=123, fold=2)
-    
-    model = pycaret.regression.create_model('rf')
+    reg1 = pycaret.regression.setup(
+        data, target="Purchase", log_experiment=True, silent=True, html=False, session_id=123, fold=2
+    )
+
+    model = pycaret.regression.create_model("rf")
 
     available_plots = [
         "parameter",
@@ -34,7 +37,7 @@ def test():
         pycaret.regression.plot_model(model, plot=plot, use_train_data=False)
         pycaret.regression.plot_model(model, plot=plot, use_train_data=True)
 
-    models = [pycaret.regression.create_model('et'), pycaret.regression.create_model('xgboost')]
+    models = [pycaret.regression.create_model("et"), pycaret.regression.create_model("xgboost")]
 
     available_shap = ["summary", "correlation", "reason"]
 
@@ -43,6 +46,7 @@ def test():
             pycaret.regression.interpret_model(model, plot=plot)
 
     assert 1 == 1
-    
+
+
 if __name__ == "__main__":
     test()

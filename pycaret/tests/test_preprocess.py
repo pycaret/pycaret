@@ -1,10 +1,12 @@
 import os, sys
+
 sys.path.insert(0, os.path.abspath(".."))
 
 import pandas as pd
 import pytest
 import pycaret.datasets
 import pycaret.internal.preprocess
+
 
 def test():
     # loading dataset
@@ -17,6 +19,7 @@ def test():
     assert isinstance(X, pd.core.frame.DataFrame)
 
     assert 1 == 1
-    
+
+
 if __name__ == "__main__":
     test()

@@ -2,8 +2,9 @@
 # Author: Moez Ali <moez.ali@queensu.ca>
 # License: MIT
 
+
 def get_data(dataset, save_copy=False, profile=False, verbose=True):
-    
+
     """
     This function loads sample datasets from git repository. List of available
     datasets can be checked using ``get_data('index')``.
@@ -41,40 +42,41 @@ def get_data(dataset, save_copy=False, profile=False, verbose=True):
     - Use of ``get_data`` requires internet connection.
          
     """
-    
+
     import pandas as pd
     import os.path
     from IPython.display import display, HTML, clear_output, update_display
-    
-    address = 'https://raw.githubusercontent.com/pycaret/pycaret/master/datasets/'
-    extension = '.csv'
+
+    address = "https://raw.githubusercontent.com/pycaret/pycaret/master/datasets/"
+    extension = ".csv"
     filename = str(dataset) + extension
-    
+
     complete_address = address + filename
-    
+
     if os.path.isfile(filename):
         data = pd.read_csv(filename)
     else:
         data = pd.read_csv(complete_address)
-    
-    #create a copy for pandas profiler
+
+    # create a copy for pandas profiler
     data_for_profiling = data.copy()
-    
+
     if save_copy:
         save_name = filename
         data.to_csv(save_name, index=False)
-        
-    if dataset == 'index':
+
+    if dataset == "index":
         display(data)
-    
+
     else:
         if profile:
             import pandas_profiling
+
             pf = pandas_profiling.ProfileReport(data_for_profiling)
             display(pf)
-            
+
         else:
             if verbose:
                 display(data.head())
-        
+
     return data

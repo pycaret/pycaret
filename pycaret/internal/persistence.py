@@ -9,9 +9,7 @@ from sklearn.pipeline import Pipeline
 import gc
 
 
-def deploy_model(
-    model, model_name: str, authentication: dict, platform: str = "aws", prep_pipe_=None
-):
+def deploy_model(model, model_name: str, authentication: dict, platform: str = "aws", prep_pipe_=None):
 
     """
     (In Preview)
@@ -115,12 +113,8 @@ def deploy_model(
     allowed_platforms = ["aws", "gcp", "azure"]
 
     if platform not in allowed_platforms:
-        logger.error(
-            f"(Value Error): Platform {platform} is not supported by pycaret or illegal option"
-        )
-        raise ValueError(
-            f"Platform {platform} is not supported by pycaret or illegal option"
-        )
+        logger.error(f"(Value Error): Platform {platform} is not supported by pycaret or illegal option")
+        raise ValueError(f"Platform {platform} is not supported by pycaret or illegal option")
 
     if platform:
         if not authentication:
@@ -145,12 +139,8 @@ def deploy_model(
         try:
             import awscli
         except:
-            logger.error(
-                "awscli library not found. pip install awscli to use deploy_model function."
-            )
-            raise ImportError(
-                "awscli library not found. pip install awscli to use deploy_model function."
-            )
+            logger.error("awscli library not found. pip install awscli to use deploy_model function.")
+            raise ImportError("awscli library not found. pip install awscli to use deploy_model function.")
 
         import boto3
 
@@ -227,9 +217,7 @@ def deploy_model(
         logger.info("Model Succesfully Deployed on Azure Storage Blob")
         logger.info(str(model))
 
-    logger.info(
-        "deploy_model() succesfully completed......................................"
-    )
+    logger.info("deploy_model() succesfully completed......................................")
     gc.collect()
 
 
@@ -295,18 +283,13 @@ def save_model(model, model_name: str, prep_pipe_=None, verbose: bool = True):
 
     logger.info(f"{model_name} saved in current working directory")
     logger.info(str(model_))
-    logger.info(
-        "save_model() succesfully completed......................................"
-    )
+    logger.info("save_model() succesfully completed......................................")
     gc.collect()
     return (model_, model_name)
 
 
 def load_model(
-    model_name,
-    platform: Optional[str] = None,
-    authentication: Optional[Dict[str, str]] = None,
-    verbose: bool = True,
+    model_name, platform: Optional[str] = None, authentication: Optional[Dict[str, str]] = None, verbose: bool = True,
 ):
 
     """
@@ -396,9 +379,7 @@ def load_model(
         project_name = authentication.get("project")
         filename = f"{model_name}.pkl"
 
-        model_downloaded = _download_blob_gcp(
-            project_name, bucket_name, filename, filename
-        )
+        model_downloaded = _download_blob_gcp(project_name, bucket_name, filename, filename)
 
         model = load_model(model_name, verbose=False)
 
@@ -461,10 +442,7 @@ def _create_bucket_gcp(project_name: str, bucket_name: str):
 
 
 def _upload_blob_gcp(
-    project_name: str,
-    bucket_name: str,
-    source_file_name: str,
-    destination_blob_name: str,
+    project_name: str, bucket_name: str, source_file_name: str, destination_blob_name: str,
 ):
 
     """
@@ -507,16 +485,11 @@ def _upload_blob_gcp(
 
     blob.upload_from_filename(source_file_name)
 
-    logger.info(
-        "File {} uploaded to {}.".format(source_file_name, destination_blob_name)
-    )
+    logger.info("File {} uploaded to {}.".format(source_file_name, destination_blob_name))
 
 
 def _download_blob_gcp(
-    project_name: str,
-    bucket_name: str,
-    source_blob_name: str,
-    destination_file_name: str,
+    project_name: str, bucket_name: str, source_blob_name: str, destination_file_name: str,
 ):
     """
     Download a blob from GCP storage bucket
@@ -560,9 +533,7 @@ def _download_blob_gcp(
     if destination_file_name is not None:
         blob.download_to_filename(destination_file_name)
 
-        logger.info(
-            "Blob {} downloaded to {}.".format(source_blob_name, destination_file_name)
-        )
+        logger.info("Blob {} downloaded to {}.".format(source_blob_name, destination_file_name))
 
     return blob
 
@@ -598,9 +569,7 @@ def _create_container_azure(container_name: str):
     return container_client
 
 
-def _upload_blob_azure(
-    container_name: str, source_file_name: str, destination_blob_name: str
-):
+def _upload_blob_azure(container_name: str, source_file_name: str, destination_blob_name: str):
     """
     Upload blob to Azure storage  container
 
@@ -631,18 +600,14 @@ def _upload_blob_azure(
 
     blob_service_client = BlobServiceClient.from_connection_string(connect_str)
     # Create a blob client using the local file name as the name for the blob
-    blob_client = blob_service_client.get_blob_client(
-        container=container_name, blob=destination_blob_name
-    )
+    blob_client = blob_service_client.get_blob_client(container=container_name, blob=destination_blob_name)
 
     # Upload the created file
     with open(source_file_name, "rb") as data:
         blob_client.upload_blob(data, overwrite=True)
 
 
-def _download_blob_azure(
-    container_name: str, source_blob_name: str, destination_file_name: str
-):
+def _download_blob_azure(container_name: str, source_blob_name: str, destination_file_name: str):
     """
     Download blob from Azure storage  container
 
@@ -672,9 +637,7 @@ def _download_blob_azure(
     connect_str = os.getenv("AZURE_STORAGE_CONNECTION_STRING")
     blob_service_client = BlobServiceClient.from_connection_string(connect_str)
     # Create a blob client using the local file name as the name for the blob
-    blob_client = blob_service_client.get_blob_client(
-        container=container_name, blob=source_blob_name
-    )
+    blob_client = blob_service_client.get_blob_client(container=container_name, blob=source_blob_name)
 
     if destination_file_name is not None:
         with open(destination_file_name, "wb") as download_file:

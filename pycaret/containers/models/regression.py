@@ -124,12 +124,7 @@ class RegressorContainer(ModelContainer):
             tune_args = {}
 
         super().__init__(
-            id=id,
-            name=name,
-            class_def=class_def,
-            eq_function=eq_function,
-            args=args,
-            is_special=is_special,
+            id=id, name=name, class_def=class_def, eq_function=eq_function, args=args, is_special=is_special,
         )
         self.is_turbo = is_turbo
         self.tune_grid = param_grid_to_lists(tune_grid)
@@ -391,19 +386,7 @@ class LarsContainer(RegressorContainer):
         tune_grid = {
             "fit_intercept": [True, False],
             "normalize": [True, False],
-            "eps": [
-                0.00001,
-                0.0001,
-                0.001,
-                0.01,
-                0.05,
-                0.0005,
-                0.005,
-                0.00005,
-                0.02,
-                0.007,
-                0.1,
-            ],
+            "eps": [0.00001, 0.0001, 0.001, 0.01, 0.05, 0.0005, 0.005, 0.00005, 0.02, 0.007, 0.1,],
         }
         tune_distributions = {
             "eps": UniformDistribution(0.00001, 0.1),
@@ -453,19 +436,7 @@ class LassoLarsContainer(RegressorContainer):
                 0.7,
                 0.9,
             ],
-            "eps": [
-                0.00001,
-                0.0001,
-                0.001,
-                0.01,
-                0.05,
-                0.0005,
-                0.005,
-                0.00005,
-                0.02,
-                0.007,
-                0.1,
-            ],
+            "eps": [0.00001, 0.0001, 0.001, 0.01, 0.05, 0.0005, 0.005, 0.00005, 0.02, 0.007, 0.1,],
         }
         tune_distributions = {
             "eps": UniformDistribution(0.00001, 0.1),
@@ -500,11 +471,7 @@ class OrthogonalMatchingPursuitContainer(RegressorContainer):
             "fit_intercept": [True, False],
             "normalize": [True, False],
         }
-        tune_distributions = {
-            "n_nonzero_coefs": IntUniformDistribution(
-                1, len(globals_dict["X_train"].columns)
-            )
-        }
+        tune_distributions = {"n_nonzero_coefs": IntUniformDistribution(1, len(globals_dict["X_train"].columns))}
 
         leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 
@@ -530,62 +497,10 @@ class BayesianRidgeContainer(RegressorContainer):
         args = {}
         tune_args = {}
         tune_grid = {
-            "alpha_1": [
-                0.0000001,
-                0.000001,
-                0.0001,
-                0.001,
-                0.01,
-                0.0005,
-                0.005,
-                0.05,
-                0.1,
-                0.15,
-                0.2,
-                0.3,
-            ],
-            "alpha_2": [
-                0.0000001,
-                0.000001,
-                0.0001,
-                0.001,
-                0.01,
-                0.0005,
-                0.005,
-                0.05,
-                0.1,
-                0.15,
-                0.2,
-                0.3,
-            ],
-            "lambda_1": [
-                0.0000001,
-                0.000001,
-                0.0001,
-                0.001,
-                0.01,
-                0.0005,
-                0.005,
-                0.05,
-                0.1,
-                0.15,
-                0.2,
-                0.3,
-            ],
-            "lambda_2": [
-                0.0000001,
-                0.000001,
-                0.0001,
-                0.001,
-                0.01,
-                0.0005,
-                0.005,
-                0.05,
-                0.1,
-                0.15,
-                0.2,
-                0.3,
-            ],
+            "alpha_1": [0.0000001, 0.000001, 0.0001, 0.001, 0.01, 0.0005, 0.005, 0.05, 0.1, 0.15, 0.2, 0.3,],
+            "alpha_2": [0.0000001, 0.000001, 0.0001, 0.001, 0.01, 0.0005, 0.005, 0.05, 0.1, 0.15, 0.2, 0.3,],
+            "lambda_1": [0.0000001, 0.000001, 0.0001, 0.001, 0.01, 0.0005, 0.005, 0.05, 0.1, 0.15, 0.2, 0.3,],
+            "lambda_2": [0.0000001, 0.000001, 0.0001, 0.001, 0.01, 0.0005, 0.005, 0.05, 0.1, 0.15, 0.2, 0.3,],
             "compute_score": [True, False],
             "fit_intercept": [True, False],
             "normalize": [True, False],
@@ -621,76 +536,11 @@ class AutomaticRelevanceDeterminationContainer(RegressorContainer):
         args = {"n_iter": 1000}
         tune_args = {}
         tune_grid = {
-            "alpha_1": [
-                0.0000001,
-                0.000001,
-                0.0001,
-                0.001,
-                0.01,
-                0.0005,
-                0.005,
-                0.05,
-                0.1,
-                0.15,
-                0.2,
-                0.3,
-            ],
-            "alpha_2": [
-                0.0000001,
-                0.000001,
-                0.0001,
-                0.001,
-                0.01,
-                0.0005,
-                0.005,
-                0.05,
-                0.1,
-                0.15,
-                0.2,
-                0.3,
-            ],
-            "lambda_1": [
-                0.0000001,
-                0.000001,
-                0.0001,
-                0.001,
-                0.01,
-                0.0005,
-                0.005,
-                0.05,
-                0.1,
-                0.15,
-                0.2,
-                0.3,
-            ],
-            "lambda_2": [
-                0.0000001,
-                0.000001,
-                0.0001,
-                0.001,
-                0.01,
-                0.0005,
-                0.005,
-                0.05,
-                0.1,
-                0.15,
-                0.2,
-                0.3,
-            ],
-            "threshold_lambda": [
-                5000,
-                10000,
-                15000,
-                20000,
-                25000,
-                30000,
-                35000,
-                40000,
-                45000,
-                50000,
-                55000,
-                60000,
-            ],
+            "alpha_1": [0.0000001, 0.000001, 0.0001, 0.001, 0.01, 0.0005, 0.005, 0.05, 0.1, 0.15, 0.2, 0.3,],
+            "alpha_2": [0.0000001, 0.000001, 0.0001, 0.001, 0.01, 0.0005, 0.005, 0.05, 0.1, 0.15, 0.2, 0.3,],
+            "lambda_1": [0.0000001, 0.000001, 0.0001, 0.001, 0.01, 0.0005, 0.005, 0.05, 0.1, 0.15, 0.2, 0.3,],
+            "lambda_2": [0.0000001, 0.000001, 0.0001, 0.001, 0.01, 0.0005, 0.005, 0.05, 0.1, 0.15, 0.2, 0.3,],
+            "threshold_lambda": [5000, 10000, 15000, 20000, 25000, 30000, 35000, 40000, 45000, 50000, 55000, 60000,],
             "compute_score": [True, False],
             "fit_intercept": [True, False],
             "normalize": [True, False],
@@ -1107,15 +957,10 @@ class RandomForestRegressorContainer(RegressorContainer):
                 logger.warning("Couldn't import cuml.ensemble")
 
         if gpu_imported:
-            RandomForestRegressor = (
-                pycaret.internal.cuml_wrappers.get_random_forest_regressor()
-            )
+            RandomForestRegressor = pycaret.internal.cuml_wrappers.get_random_forest_regressor()
 
         args = (
-            {
-                "random_state": globals_dict["seed"],
-                "n_jobs": globals_dict["n_jobs_param"],
-            }
+            {"random_state": globals_dict["seed"], "n_jobs": globals_dict["n_jobs_param"],}
             if not gpu_imported
             else {"seed": globals_dict["seed"]}
         )
@@ -1743,10 +1588,7 @@ class VotingRegressorContainer(RegressorContainer):
         )
 
 
-def get_all_model_containers(
-    globals_dict: dict, raise_errors: bool = True
-) -> Dict[str, RegressorContainer]:
+def get_all_model_containers(globals_dict: dict, raise_errors: bool = True) -> Dict[str, RegressorContainer]:
     return pycaret.containers.base_container.get_all_containers(
         globals(), globals_dict, RegressorContainer, raise_errors
     )
-

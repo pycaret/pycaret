@@ -105,11 +105,7 @@ class RegressionMetricContainer(MetricContainer):
         self.score_func = score_func
         self.target = target
         self.scorer = (
-            scorer
-            if scorer
-            else metrics.make_scorer(
-                score_func, greater_is_better=greater_is_better, **args,
-            )
+            scorer if scorer else metrics.make_scorer(score_func, greater_is_better=greater_is_better, **args,)
         )
         self.display_name = display_name if display_name else name
         self.args = args
@@ -186,25 +182,16 @@ class R2MetricContainer(RegressionMetricContainer):
     def __init__(self, globals_dict: dict) -> None:
 
         super().__init__(
-            id="r2",
-            name="R2",
-            score_func=metrics.r2_score,
-            greater_is_better=True,
-            scorer="r2",
+            id="r2", name="R2", score_func=metrics.r2_score, greater_is_better=True, scorer="r2",
         )
 
 
 class RMSLEMetricContainer(RegressionMetricContainer):
     def __init__(self, globals_dict: dict) -> None:
-        def root_mean_squared_log_error(
-            y_true, y_pred, *, sample_weight=None, multioutput="uniform_average"
-        ):
+        def root_mean_squared_log_error(y_true, y_pred, *, sample_weight=None, multioutput="uniform_average"):
             return np.sqrt(
                 metrics.mean_squared_log_error(
-                    np.abs(y_true),
-                    np.abs(y_pred),
-                    sample_weight=sample_weight,
-                    multioutput=multioutput,
+                    np.abs(y_true), np.abs(y_pred), sample_weight=sample_weight, multioutput=multioutput,
                 )
             )
 
@@ -221,12 +208,8 @@ class RMSLEMetricContainer(RegressionMetricContainer):
 
 class MAPEMetricContainer(RegressionMetricContainer):
     def __init__(self, globals_dict: dict) -> None:
-        def mean_absolute_percentage_error(
-            y_true, y_pred, sample_weight=None, multioutput="uniform_average"
-        ):
-            y_type, y_true, y_pred, multioutput = _check_reg_targets(
-                y_true, y_pred, multioutput
-            )
+        def mean_absolute_percentage_error(y_true, y_pred, sample_weight=None, multioutput="uniform_average"):
+            y_type, y_true, y_pred, multioutput = _check_reg_targets(y_true, y_pred, multioutput)
             check_consistent_length(y_true, y_pred, sample_weight)
             mask = y_true != 0
             y_true = y_true[mask]
@@ -243,17 +226,11 @@ class MAPEMetricContainer(RegressionMetricContainer):
             return np.average(output_errors, weights=multioutput)
 
         super().__init__(
-            id="mape",
-            name="MAPE",
-            score_func=mean_absolute_percentage_error,
-            greater_is_better=False,
+            id="mape", name="MAPE", score_func=mean_absolute_percentage_error, greater_is_better=False,
         )
 
 
-def get_all_metric_containers(
-    globals_dict: dict, raise_errors: bool = True
-) -> Dict[str, RegressionMetricContainer]:
+def get_all_metric_containers(globals_dict: dict, raise_errors: bool = True) -> Dict[str, RegressionMetricContainer]:
     return pycaret.containers.base_container.get_all_containers(
         globals(), globals_dict, RegressionMetricContainer, raise_errors
     )
-

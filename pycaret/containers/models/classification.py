@@ -133,12 +133,7 @@ class ClassifierContainer(ModelContainer):
             tune_args = {}
 
         super().__init__(
-            id=id,
-            name=name,
-            class_def=class_def,
-            eq_function=eq_function,
-            args=args,
-            is_special=is_special,
+            id=id, name=name, class_def=class_def, eq_function=eq_function, args=args, is_special=is_special,
         )
         self.is_turbo = is_turbo
         self.tune_grid = param_grid_to_lists(tune_grid)
@@ -149,13 +144,10 @@ class ClassifierContainer(ModelContainer):
             model_instance = class_def()
 
             self.is_boosting_supported = bool(
-                hasattr(model_instance, "class_weights")
-                or hasattr(model_instance, "predict_proba")
+                hasattr(model_instance, "class_weights") or hasattr(model_instance, "predict_proba")
             )
 
-            self.is_soft_voting_supported = bool(
-                hasattr(model_instance, "predict_proba")
-            )
+            self.is_soft_voting_supported = bool(hasattr(model_instance, "predict_proba"))
 
             del model_instance
         except:
@@ -357,9 +349,7 @@ class GaussianNBClassifierContainer(ClassifierContainer):
                 1,
             ]
         }
-        tune_distributions = {
-            "var_smoothing": UniformDistribution(0.000000001, 1, log=True)
-        }
+        tune_distributions = {"var_smoothing": UniformDistribution(0.000000001, 1, log=True)}
 
         super().__init__(
             id="nb",
@@ -583,9 +573,7 @@ class GaussianProcessClassifierContainer(ClassifierContainer):
             "n_jobs": globals_dict["n_jobs_param"],
         }
         tune_args = {}
-        tune_grid = {
-            "max_iter_predict": [100, 200, 300, 400, 500, 600, 700, 800, 900, 1000,]
-        }
+        tune_grid = {"max_iter_predict": [100, 200, 300, 400, 500, 600, 700, 800, 900, 1000,]}
         tune_distributions = {"max_iter_predict": IntUniformDistribution(100, 1000)}
 
         super().__init__(
@@ -736,15 +724,10 @@ class RandomForestClassifierContainer(ClassifierContainer):
                 logger.warning("Couldn't import cuml.ensemble")
 
         if gpu_imported:
-            RandomForestClassifier = (
-                pycaret.internal.cuml_wrappers.get_random_forest_classifier()
-            )
+            RandomForestClassifier = pycaret.internal.cuml_wrappers.get_random_forest_classifier()
 
         args = (
-            {
-                "random_state": globals_dict["seed"],
-                "n_jobs": globals_dict["n_jobs_param"],
-            }
+            {"random_state": globals_dict["seed"], "n_jobs": globals_dict["n_jobs_param"],}
             if not gpu_imported
             else {"seed": globals_dict["seed"]}
         )
@@ -1417,10 +1400,7 @@ class CalibratedClassifierCVContainer(ClassifierContainer):
         )
 
 
-def get_all_model_containers(
-    globals_dict: dict, raise_errors: bool = True
-) -> Dict[str, ClassifierContainer]:
+def get_all_model_containers(globals_dict: dict, raise_errors: bool = True) -> Dict[str, ClassifierContainer]:
     return pycaret.containers.base_container.get_all_containers(
         globals(), globals_dict, ClassifierContainer, raise_errors
     )
-

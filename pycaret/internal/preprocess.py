@@ -65,9 +65,7 @@ def find_id_columns(data, numerical_features):
     # some times we have id column in the data set, we will try to find it and then  will drop it if found
     len_samples = len(data)
     id_columns = []
-    for i in data.select_dtypes(
-        include=["object", "int64", "float64", "float32"]
-    ).columns:
+    for i in data.select_dtypes(include=["object", "int64", "float64", "float32"]).columns:
         col = data[i]
         if i not in numerical_features:
             if sum(col.isnull()) == 0:
@@ -117,12 +115,8 @@ class DataTypes_Auto_infer(BaseEstimator, TransformerMixin):
         self.target = target
         self.ml_usecase = ml_usecase
         self.features_todrop = features_todrop
-        self.categorical_features = [
-            x for x in categorical_features if x not in self.features_todrop
-        ]
-        self.numerical_features = [
-            x for x in numerical_features if x not in self.features_todrop
-        ]
+        self.categorical_features = [x for x in categorical_features if x not in self.features_todrop]
+        self.numerical_features = [x for x in numerical_features if x not in self.features_todrop]
         self.time_features = [x for x in time_features if x not in self.features_todrop]
         self.display_types = display_types
         self.id_columns = id_columns
@@ -166,15 +160,9 @@ class DataTypes_Auto_infer(BaseEstimator, TransformerMixin):
             except:
                 None
 
-        for i in (
-            data.select_dtypes(include=["object"])
-            .drop(self.target, axis=1, errors="ignore")
-            .columns
-        ):
+        for i in data.select_dtypes(include=["object"]).drop(self.target, axis=1, errors="ignore").columns:
             try:
-                data[i] = pd.to_datetime(
-                    data[i], infer_datetime_format=True, utc=False, errors="raise"
-                )
+                data[i] = pd.to_datetime(data[i], infer_datetime_format=True, utc=False, errors="raise")
             except:
                 continue
 
@@ -189,13 +177,9 @@ class DataTypes_Auto_infer(BaseEstimator, TransformerMixin):
             # count how many Nas are there
             na_count = sum(data[i].isnull())
             # count how many digits are there that have decimiles
-            count_float = np.nansum(
-                [False if r.is_integer() else True for r in data[i]]
-            )
+            count_float = np.nansum([False if r.is_integer() else True for r in data[i]])
             # total decimiels digits
-            count_float = (
-                count_float - na_count
-            )  # reducing it because we know NaN is counted as a float digit
+            count_float = count_float - na_count  # reducing it because we know NaN is counted as a float digit
             # now if there isnt any float digit , & unique levales are less than 20 and there are Na's then convert it to object
             if (count_float == 0) & (data[i].nunique() <= 20) & (na_count > 0):
                 data[i] = data[i].astype("object")
@@ -244,13 +228,9 @@ class DataTypes_Auto_infer(BaseEstimator, TransformerMixin):
 
         for i in self.time_features:
             try:
-                data[i] = pd.to_datetime(
-                    data[i], infer_datetime_format=True, utc=False, errors="raise"
-                )
+                data[i] = pd.to_datetime(data[i], infer_datetime_format=True, utc=False, errors="raise")
             except:
-                data[i] = pd.to_datetime(
-                    dataset[i], infer_datetime_format=True, utc=False, errors="raise"
-                )
+                data[i] = pd.to_datetime(dataset[i], infer_datetime_format=True, utc=False, errors="raise")
 
         for i in data.select_dtypes(include=["datetime64"]).columns:
             data[i] = data[i].astype("datetime64[ns]")
@@ -290,9 +270,9 @@ class DataTypes_Auto_infer(BaseEstimator, TransformerMixin):
                 display_id="m1",
             )
 
-            dt_print_out = pd.DataFrame(
-                self.learned_dtypes, columns=["Feature_Type"]
-            ).drop("UNSUPERVISED_DUMMY_TARGET", errors="ignore")
+            dt_print_out = pd.DataFrame(self.learned_dtypes, columns=["Feature_Type"]).drop(
+                "UNSUPERVISED_DUMMY_TARGET", errors="ignore"
+            )
             dt_print_out["Data Type"] = ""
 
             for i in dt_print_out.index:
@@ -367,9 +347,7 @@ class DataTypes_Auto_infer(BaseEstimator, TransformerMixin):
 
         for i in self.final_training_columns:
             if i not in data.columns:
-                raise TypeError(
-                    f"test data does not have column {i} which was used for training."
-                )
+                raise TypeError(f"test data does not have column {i} which was used for training.")
 
         # just keep picking the data and keep applying to the test data set (be mindful of target variable)
         for (
@@ -378,16 +356,13 @@ class DataTypes_Auto_infer(BaseEstimator, TransformerMixin):
             data.columns
         ):  # we are taking all the columns in test , so we dot have to worry about droping target column
             if i == self.target and (
-                (self.ml_usecase == "classification")
-                and (self.learned_dtypes[self.target] == "object")
+                (self.ml_usecase == "classification") and (self.learned_dtypes[self.target] == "object")
             ):
                 data[i] = self.le.transform(data[i].apply(str).astype("object"))
                 data[i] = data[i].astype("int64")
             else:
                 if self.learned_dtypes[i].name == "datetime64[ns]":
-                    data[i] = pd.to_datetime(
-                        data[i], infer_datetime_format=True, utc=False, errors="coerce"
-                    )
+                    data[i] = pd.to_datetime(data[i], infer_datetime_format=True, utc=False, errors="coerce")
                 data[i] = data[i].astype(self.learned_dtypes[i])
 
         # drop time columns
@@ -411,13 +386,9 @@ class DataTypes_Auto_infer(BaseEstimator, TransformerMixin):
 
         # additionally we just need to treat the target variable
         # for ml use ase
-        if (self.ml_usecase == "classification") & (
-            data[self.target].dtype == "object"
-        ):
+        if (self.ml_usecase == "classification") & (data[self.target].dtype == "object"):
             self.le = LabelEncoder()
-            data[self.target] = self.le.fit_transform(
-                data[self.target].apply(str).astype("object")
-            )
+            data[self.target] = self.le.fit_transform(data[self.target].apply(str).astype("object"))
             self.replacement = _get_labelencoder_reverse_dict(self.le)
 
             # self.u = list(pd.unique(data[self.target]))
@@ -486,12 +457,10 @@ class Simple_Imputer(_BaseImputer):
             categorical_strategy = "most_frequent"
         self.categorical_strategy = categorical_strategy
         self.numeric_imputer = SimpleImputer(
-            strategy=self._numeric_strategies[self.numeric_strategy],
-            fill_value=fill_value_numerical,
+            strategy=self._numeric_strategies[self.numeric_strategy], fill_value=fill_value_numerical,
         )
         self.categorical_imputer = SimpleImputer(
-            strategy=self._categorical_strategies[self.categorical_strategy],
-            fill_value=fill_value_categorical,
+            strategy=self._categorical_strategies[self.categorical_strategy], fill_value=fill_value_categorical,
         )
         self.most_frequent_time = []
 
@@ -511,9 +480,7 @@ class Simple_Imputer(_BaseImputer):
             statistics.append((self.numeric_imputer.statistics_, self.numeric_columns))
         if not self.categorical_columns.empty:
             self.categorical_imputer.fit(data[self.categorical_columns])
-            statistics.append(
-                (self.categorical_imputer.statistics_, self.categorical_columns)
-            )
+            statistics.append((self.categorical_imputer.statistics_, self.categorical_columns))
         if not self.time_columns.empty:
             self.most_frequent_time = []
             for col in self.time_columns:
@@ -599,28 +566,16 @@ class Surrogate_Imputer(_BaseImputer):
         # make a table for numerical variable with strategy stats
         if self.numeric_strategy == "mean":
             self.numeric_stats = (
-                data.drop(self.target, axis=1)
-                .select_dtypes(include=["float32", "int64"])
-                .apply(np.nanmean)
+                data.drop(self.target, axis=1).select_dtypes(include=["float32", "int64"]).apply(np.nanmean)
             )
         elif self.numeric_strategy == "median":
             self.numeric_stats = (
-                data.drop(self.target, axis=1)
-                .select_dtypes(include=["float32", "int64"])
-                .apply(np.nanmedian)
+                data.drop(self.target, axis=1).select_dtypes(include=["float32", "int64"]).apply(np.nanmedian)
             )
         else:
-            self.numeric_stats = (
-                data.drop(self.target, axis=1)
-                .select_dtypes(include=["float32", "int64"])
-                .apply(zeros)
-            )
+            self.numeric_stats = data.drop(self.target, axis=1).select_dtypes(include=["float32", "int64"]).apply(zeros)
 
-        self.numeric_columns = (
-            data.drop(self.target, axis=1)
-            .select_dtypes(include=["float32", "int64"])
-            .columns
-        )
+        self.numeric_columns = data.drop(self.target, axis=1).select_dtypes(include=["float32", "int64"]).columns
         # also need to learn if any columns had NA in training
         self.numeric_na = pd.DataFrame(columns=self.numeric_columns)
         for i in self.numeric_columns:
@@ -631,12 +586,8 @@ class Surrogate_Imputer(_BaseImputer):
 
         # for Catgorical ,
         if self.categorical_strategy == "most frequent":
-            self.categorical_columns = (
-                data.drop(self.target, axis=1).select_dtypes(include=["object"]).columns
-            )
-            self.categorical_stats = pd.DataFrame(
-                columns=self.categorical_columns
-            )  # place holder
+            self.categorical_columns = data.drop(self.target, axis=1).select_dtypes(include=["object"]).columns
+            self.categorical_stats = pd.DataFrame(columns=self.categorical_columns)  # place holder
             for i in self.categorical_stats.columns:
                 self.categorical_stats.loc[0, i] = data[i].value_counts().index[0]
             # also need to learn if any columns had NA in training, but this is only valid if strategy is "most frequent"
@@ -647,20 +598,12 @@ class Surrogate_Imputer(_BaseImputer):
                 else:
                     self.categorical_na.loc[0, i] = False
         else:
-            self.categorical_columns = (
-                data.drop(self.target, axis=1).select_dtypes(include=["object"]).columns
-            )
+            self.categorical_columns = data.drop(self.target, axis=1).select_dtypes(include=["object"]).columns
             self.categorical_na = pd.DataFrame(columns=self.categorical_columns)
-            self.categorical_na.loc[
-                0, :
-            ] = False  # (in this situation we are not making any surrogate column)
+            self.categorical_na.loc[0, :] = False  # (in this situation we are not making any surrogate column)
 
         # for time, there is only one way, pick up the most frequent one
-        self.time_columns = (
-            data.drop(self.target, axis=1)
-            .select_dtypes(include=["datetime64[ns]"])
-            .columns
-        )
+        self.time_columns = data.drop(self.target, axis=1).select_dtypes(include=["datetime64[ns]"]).columns
         self.time_stats = pd.DataFrame(columns=self.time_columns)  # place holder
         self.time_na = pd.DataFrame(columns=self.time_columns)
         for i in self.time_columns:
@@ -774,9 +717,7 @@ class Iterative_Imputer(_BaseImputer):
     def _impute_one_feature(self, X, column, X_na_mask, fit):
         if not fit:
             check_is_fitted(self)
-        is_classification = (
-            X[column].dtype.name == "object" or column in self.ordinal_columns
-        )
+        is_classification = X[column].dtype.name == "object" or column in self.ordinal_columns
         if is_classification:
             if column in self.classifiers_:
                 dummy, le, estimator = self.classifiers_[column]
@@ -809,13 +750,9 @@ class Iterative_Imputer(_BaseImputer):
                 fit_kwargs["cat_features"] = []
                 for i, col in enumerate(X_train.columns):
                     if X_train[col].dtype.name == "object":
-                        X_train[col] = pd.Categorical(
-                            X_train[col], ordered=column in self.ordinal_columns
-                        )
+                        X_train[col] = pd.Categorical(X_train[col], ordered=column in self.ordinal_columns)
                         fit_kwargs["cat_features"].append(i)
-                fit_kwargs["cat_features"] = np.array(
-                    fit_kwargs["cat_features"], dtype=int
-                )
+                fit_kwargs["cat_features"] = np.array(fit_kwargs["cat_features"], dtype=int)
             X_train = self._column_cleaner.fit_transform(X_train)
 
             if le:
@@ -833,9 +770,7 @@ class Iterative_Imputer(_BaseImputer):
             X_test = dummy.transform(X_test)
         else:
             for col in X_test.select_dtypes("object").columns:
-                X_test[col] = pd.Categorical(
-                    X_test[col], ordered=column in self.ordinal_columns
-                )
+                X_test[col] = pd.Categorical(X_test[col], ordered=column in self.ordinal_columns)
         X_test = self._column_cleaner.fit_transform(X_test)
         result = estimator.predict(X_test)
         if le:
@@ -859,9 +794,7 @@ class Iterative_Imputer(_BaseImputer):
             X = X.drop(self.target, axis=1)
         else:
             target_column = None
-        self.imputation_sequence_ = (
-            X.isnull().sum().sort_values(ascending=self.imputation_order == "ascending")
-        )
+        self.imputation_sequence_ = X.isnull().sum().sort_values(ascending=self.imputation_order == "ascending")
         self.imputation_sequence_ = [
             col
             for col in self.imputation_sequence_[self.imputation_sequence_ > 0].index
@@ -885,9 +818,7 @@ class Iterative_Imputer(_BaseImputer):
         return self._impute(X, fit=False)
 
     def fit_transform(self, X, y=None, **fit_params):
-        self.random_state_ = getattr(
-            self, "random_state_", check_random_state(self.random_state)
-        )
+        self.random_state_ = getattr(self, "random_state_", check_random_state(self.random_state))
         if self.regressor is None:
             raise ValueError("No regressor provided")
         else:
@@ -942,17 +873,13 @@ class Zroe_NearZero_Variance(BaseEstimator, TransformerMixin):
         self.threshold_2 = threshold_2
         self.target = target
 
-    def fit(
-        self, dataset, y=None
-    ):  # from training data set we are going to learn what columns to drop
+    def fit(self, dataset, y=None):  # from training data set we are going to learn what columns to drop
         data = dataset
         self.to_drop = []
         self.sampl_len = len(data[self.target])
         for i in data.drop(self.target, axis=1).columns:
             # get the number of unique counts
-            u = pd.DataFrame(data[i].value_counts()).sort_values(
-                by=i, ascending=False, inplace=False
-            )
+            u = pd.DataFrame(data[i].value_counts()).sort_values(by=i, ascending=False, inplace=False)
             # take len of u and divided it by the total sample numbers, so this will check the 1st rule , has to be low say 10%
             # import pdb; pdb.set_trace()
             first = len(u) / self.sampl_len
@@ -970,9 +897,7 @@ class Zroe_NearZero_Variance(BaseEstimator, TransformerMixin):
             if (second == 100) and (i[-10:] != "_surrogate"):
                 self.to_drop.append(i)
 
-    def transform(
-        self, dataset, y=None
-    ):  # since it is only for training data set , nothing here
+    def transform(self, dataset, y=None):  # since it is only for training data set , nothing here
         data = dataset.drop(self.to_drop, axis=1)
         return data
 
@@ -1006,26 +931,18 @@ class Catagorical_variables_With_Rare_levels(BaseEstimator, TransformerMixin):
         self.target = target
         self.new_level_name = new_level_name
 
-    def fit(
-        self, dataset, y=None
-    ):  # we will learn for what columnns what are the level to merge as others
+    def fit(self, dataset, y=None):  # we will learn for what columnns what are the level to merge as others
         # every level of the catagorical feature has to be more than threshols, if not they will be clubed togather as "others"
         # in order to apply, there should be atleast two levels belwo the threshold !
         # creat a place holder
         data = dataset
-        self.ph = pd.DataFrame(
-            columns=data.drop(self.target, axis=1)
-            .select_dtypes(include="object")
-            .columns
-        )
+        self.ph = pd.DataFrame(columns=data.drop(self.target, axis=1).select_dtypes(include="object").columns)
         # ph.columns = df.columns# catagorical only
         for i in data[self.ph.columns].columns:
             # determine the infrequebt count
             v_c = data[i].value_counts()
             count_th = round(v_c.quantile(self.threshold))
-            a = np.sum(
-                pd.DataFrame(data[i].value_counts().sort_values())[i] <= count_th
-            )
+            a = np.sum(pd.DataFrame(data[i].value_counts().sort_values())[i] <= count_th)
             if a >= 2:  # rare levels has to be atleast two
                 count = pd.DataFrame(data[i].value_counts().sort_values())
                 count.columns = ["fre"]
@@ -1044,9 +961,7 @@ class Catagorical_variables_With_Rare_levels(BaseEstimator, TransformerMixin):
         data = dataset
         for i in data[self.ph.columns].columns:
             t_replace = self.ph.loc[0, i]
-            data[i].replace(
-                to_replace=t_replace, value=self.new_level_name, inplace=True
-            )
+            data[i].replace(to_replace=t_replace, value=self.new_level_name, inplace=True)
         return data
 
     def fit_transform(self, dataset, y=None):
@@ -1076,15 +991,11 @@ class New_Catagorical_Levels_in_TestData(BaseEstimator, TransformerMixin):
     def fit(self, data, y=None):
         # need to make a place holder that keep records of all the levels , and in case a new level appears in test we will change it to others
         self.ph_train_level = pd.DataFrame(
-            columns=data.drop(self.target, axis=1)
-            .select_dtypes(include="object")
-            .columns
+            columns=data.drop(self.target, axis=1).select_dtypes(include="object").columns
         )
         for i in self.ph_train_level.columns:
             if self.replacement_strategy == "least frequent":
-                self.ph_train_level.loc[0, i] = list(
-                    data[i].value_counts().sort_values().index
-                )
+                self.ph_train_level.loc[0, i] = list(data[i].value_counts().sort_values().index)
             else:
                 self.ph_train_level.loc[0, i] = list(data[i].value_counts().index)
 
@@ -1092,20 +1003,14 @@ class New_Catagorical_Levels_in_TestData(BaseEstimator, TransformerMixin):
         # transorm
         # we need to learn the same for test data , and then we will compare to check what levels are new in there
         self.ph_test_level = pd.DataFrame(
-            columns=data.drop(self.target, axis=1, errors="ignore")
-            .select_dtypes(include="object")
-            .columns
+            columns=data.drop(self.target, axis=1, errors="ignore").select_dtypes(include="object").columns
         )
         for i in self.ph_test_level.columns:
-            self.ph_test_level.loc[0, i] = list(
-                data[i].value_counts().sort_values().index
-            )
+            self.ph_test_level.loc[0, i] = list(data[i].value_counts().sort_values().index)
 
         # new we have levels for both test and train, we will start comparing and replacing levels in test set (Only if test set has new levels)
         for i in self.ph_test_level.columns:
-            new = list(
-                (set(self.ph_test_level.loc[0, i]) - set(self.ph_train_level.loc[0, i]))
-            )
+            new = list((set(self.ph_test_level.loc[0, i]) - set(self.ph_train_level.loc[0, i])))
             # now if there is a difference , only then replace it
             if len(new) > 0:
                 data[i].replace(new, self.ph_train_level.loc[0, i][0], inplace=True)
@@ -1138,9 +1043,7 @@ class Group_Similar_Features(BaseEstimator, TransformerMixin):
         try:
             np.array(self.list_of_similar_features).shape[0]
         except:
-            raise (
-                "Group_Similar_Features: list_of_grouped_features is not provided as list of list"
-            )
+            raise ("Group_Similar_Features: list_of_grouped_features is not provided as list of list")
 
     def fit(self, data, y=None):
         # nothing to learn
@@ -1189,15 +1092,9 @@ class Binning(BaseEstimator, TransformerMixin):
         data = dataset
         # only do if features are provided
         if len(self.features_to_discretize) > 0:
-            data_t = self.disc.transform(
-                np.array(data[self.features_to_discretize]).reshape(
-                    -1, self.len_columns
-                )
-            )
+            data_t = self.disc.transform(np.array(data[self.features_to_discretize]).reshape(-1, self.len_columns))
             # make pandas data frame
-            data_t = pd.DataFrame(
-                data_t, columns=self.features_to_discretize, index=data.index
-            )
+            data_t = pd.DataFrame(data_t, columns=self.features_to_discretize, index=data.index)
             # all these columns are catagorical
             data_t = data_t.astype(str)
             # drop original columns
@@ -1222,18 +1119,10 @@ class Binning(BaseEstimator, TransformerMixin):
             # how many colums to deal with
             self.len_columns = len(self.features_to_discretize)
             # now do fit transform
-            self.disc = KBinsDiscretizer(
-                n_bins=self.binns, encode="ordinal", strategy="kmeans"
-            )
-            data_t = self.disc.fit_transform(
-                np.array(data[self.features_to_discretize]).reshape(
-                    -1, self.len_columns
-                )
-            )
+            self.disc = KBinsDiscretizer(n_bins=self.binns, encode="ordinal", strategy="kmeans")
+            data_t = self.disc.fit_transform(np.array(data[self.features_to_discretize]).reshape(-1, self.len_columns))
             # make pandas data frame
-            data_t = pd.DataFrame(
-                data_t, columns=self.features_to_discretize, index=data.index
-            )
+            data_t = pd.DataFrame(data_t, columns=self.features_to_discretize, index=data.index)
             # all these columns are catagorical
             data_t = data_t.astype(str)
             # drop original columns
@@ -1269,9 +1158,7 @@ class Scaling_and_Power_transformation(BaseEstimator, TransformerMixin):
         data = dataset
         # we only want to apply if there are numeric columns
         self.numeric_features = (
-            data.drop(self.target, axis=1, errors="ignore")
-            .select_dtypes(include=["float32", "int64"])
-            .columns
+            data.drop(self.target, axis=1, errors="ignore").select_dtypes(include=["float32", "int64"]).columns
         )
         if len(self.numeric_features) > 0:
             if self.function_to_apply == "zscore":
@@ -1281,14 +1168,11 @@ class Scaling_and_Power_transformation(BaseEstimator, TransformerMixin):
                 self.scale_and_power = MinMaxScaler()
                 self.scale_and_power.fit(data[self.numeric_features])
             elif self.function_to_apply == "yj":
-                self.scale_and_power = PowerTransformer(
-                    method="yeo-johnson", standardize=True
-                )
+                self.scale_and_power = PowerTransformer(method="yeo-johnson", standardize=True)
                 self.scale_and_power.fit(data[self.numeric_features])
             elif self.function_to_apply == "quantile":
                 self.scale_and_power = QuantileTransformer(
-                    random_state=self.random_state_quantile,
-                    output_distribution="normal",
+                    random_state=self.random_state_quantile, output_distribution="normal",
                 )
                 self.scale_and_power.fit(data[self.numeric_features])
             elif self.function_to_apply == "robust":
@@ -1304,9 +1188,7 @@ class Scaling_and_Power_transformation(BaseEstimator, TransformerMixin):
         data = dataset
 
         if len(self.numeric_features) > 0:
-            self.data_t = pd.DataFrame(
-                self.scale_and_power.transform(data[self.numeric_features])
-            )
+            self.data_t = pd.DataFrame(self.scale_and_power.transform(data[self.numeric_features]))
             # we need to set the same index as original data
             self.data_t.index = data.index
             self.data_t.columns = self.numeric_features
@@ -1348,9 +1230,7 @@ class Target_Transformation(BaseEstimator, TransformerMixin):
         self.function_to_apply = function_to_apply
 
     def inverse_transform(self, dataset, y=None):
-        data = self.p_transform_target.inverse_transform(
-            np.array(dataset).reshape(-1, 1)
-        )
+        data = self.p_transform_target.inverse_transform(np.array(dataset).reshape(-1, 1))
         return data
 
     def fit(self, dataset, y=None):
@@ -1362,9 +1242,7 @@ class Target_Transformation(BaseEstimator, TransformerMixin):
         data = dataset
         if self.target in dataset.columns:
             # apply transformation
-            data[self.target] = self.p_transform_target.transform(
-                np.array(data[self.target]).reshape(-1, 1)
-            )
+            data[self.target] = self.p_transform_target.transform(np.array(data[self.target]).reshape(-1, 1))
         return data
 
     def fit_transform(self, dataset, y=None):
@@ -1374,9 +1252,7 @@ class Target_Transformation(BaseEstimator, TransformerMixin):
             self.function_to_apply = "yeo-johnson"
         # apply transformation
         self.p_transform_target = PowerTransformer(method=self.function_to_apply)
-        data[self.target] = self.p_transform_target.fit_transform(
-            np.array(data[self.target]).reshape(-1, 1)
-        )
+        data[self.target] = self.p_transform_target.fit_transform(np.array(data[self.target]).reshape(-1, 1))
 
         return data
 
@@ -1398,9 +1274,7 @@ class Make_Time_Features(BaseEstimator, TransformerMixin):
   """
 
     def __init__(
-        self,
-        time_feature=[],
-        list_of_features=["month", "weekday", "is_month_end", "is_month_start", "hour"],
+        self, time_feature=[], list_of_features=["month", "weekday", "is_month_end", "is_month_start", "hour"],
     ):
         self.time_feature = time_feature
         self.list_of_features_o = set(list_of_features)
@@ -1426,17 +1300,12 @@ class Make_Time_Features(BaseEstimator, TransformerMixin):
                     (
                         "_is_month_end",
                         "1"
-                        if calendar.monthrange(
-                            datetime.date(r).year, datetime.date(r).month
-                        )[1]
-                        == datetime.date(r).day
+                        if calendar.monthrange(datetime.date(r).year, datetime.date(r).month)[1] == datetime.date(r).day
                         else "0",
                     )
                 )
             if "is_month_start" in self.list_of_features_o:
-                features.append(
-                    ("_is_month_start", "1" if datetime.date(r).day == 1 else "0")
-                )
+                features.append(("_is_month_start", "1" if datetime.date(r).day == 1 else "0"))
             return tuple(features)
 
         # start making features for every column in the time list
@@ -1489,9 +1358,7 @@ class Ordinal(BaseEstimator, TransformerMixin):
     def transform(self, dataset, y=None):
         data = dataset
         new_data_test = pd.DataFrame(
-            self.enc.transform(data[self.info_as_dict.keys()]),
-            columns=self.info_as_dict.keys(),
-            index=data.index,
+            self.enc.transform(data[self.info_as_dict.keys()]), columns=self.info_as_dict.keys(), index=data.index,
         )
         for i in self.info_as_dict.keys():
             data[i] = new_data_test[i]
@@ -1508,9 +1375,7 @@ class Ordinal(BaseEstimator, TransformerMixin):
         # now do fit transform
         self.enc = OrdinalEncoder(categories=cat_list)
         new_data_train = pd.DataFrame(
-            self.enc.fit_transform(data.loc[:, self.info_as_dict.keys()]),
-            columns=self.info_as_dict,
-            index=data.index,
+            self.enc.fit_transform(data.loc[:, self.info_as_dict.keys()]), columns=self.info_as_dict, index=data.index,
         )
         # new_data = pd.DataFrame(self.enc.fit_transform(data.loc[:,self.info_as_dict.keys()]))
         for i in self.info_as_dict.keys():
@@ -1544,14 +1409,10 @@ class Dummify(BaseEstimator, TransformerMixin):
         if len(data.select_dtypes(include=("object")).columns) > 0:
             # we need to learn the column names once the training data set is dummify
             # save non categorical data
-            self.data_nonc = data.drop(
-                self.target, axis=1, errors="ignore"
-            ).select_dtypes(exclude=("object"))
+            self.data_nonc = data.drop(self.target, axis=1, errors="ignore").select_dtypes(exclude=("object"))
             self.target_column = data[[self.target]]
             # # plus we will only take object data types
-            categorical_data = data.drop(
-                self.target, axis=1, errors="ignore"
-            ).select_dtypes(include=("object"))
+            categorical_data = data.drop(self.target, axis=1, errors="ignore").select_dtypes(include=("object"))
             # # now fit the trainin column
             self.ohe.fit(categorical_data)
             self.data_columns = self.ohe.get_feature_names(categorical_data.columns)
@@ -1563,14 +1424,10 @@ class Dummify(BaseEstimator, TransformerMixin):
         # will only do this if there are categorical variables
         if len(data.select_dtypes(include=("object")).columns) > 0:
             # only for test data
-            self.data_nonc = data.drop(
-                self.target, axis=1, errors="ignore"
-            ).select_dtypes(exclude=("object"))
+            self.data_nonc = data.drop(self.target, axis=1, errors="ignore").select_dtypes(exclude=("object"))
             # fit without target and only categorical columns
             array = self.ohe.transform(
-                data.drop(self.target, axis=1, errors="ignore").select_dtypes(
-                    include=("object")
-                )
+                data.drop(self.target, axis=1, errors="ignore").select_dtypes(include=("object"))
             ).toarray()
             data_dummies = pd.DataFrame(array, columns=self.data_columns)
             data_dummies.index = self.data_nonc.index
@@ -1592,9 +1449,7 @@ class Dummify(BaseEstimator, TransformerMixin):
             self.fit(data)
             # fit without target and only categorical columns
             array = self.ohe.transform(
-                data.drop(self.target, axis=1, errors="ignore").select_dtypes(
-                    include=("object")
-                )
+                data.drop(self.target, axis=1, errors="ignore").select_dtypes(include=("object"))
             ).toarray()
             data_dummies = pd.DataFrame(array, columns=self.data_columns)
             data_dummies.index = self.data_nonc.index
@@ -1615,9 +1470,7 @@ class Outlier(BaseEstimator, TransformerMixin):
     - Only takes numerical / One Hot Encoded features
   """
 
-    def __init__(
-        self, target, contamination=0.20, random_state=42, methods=["knn", "iso", "pca"]
-    ):
+    def __init__(self, target, contamination=0.20, random_state=42, methods=["knn", "iso", "pca"]):
         self.target = target
         self.contamination = contamination
         self.random_state = random_state
@@ -1648,30 +1501,20 @@ class Outlier(BaseEstimator, TransformerMixin):
             data_without_target["knn"] = knn_predict
 
         if "iso" in self.methods:
-            self.iso = IForest(
-                contamination=self.contamination,
-                random_state=self.random_state,
-                behaviour="new",
-            )
+            self.iso = IForest(contamination=self.contamination, random_state=self.random_state, behaviour="new",)
             self.iso.fit(data_without_target)
             iso_predict = self.iso.predict(data_without_target)
             data_without_target["iso"] = iso_predict
 
         if "pca" in self.methods:
-            self.pca = PCA_od(
-                contamination=self.contamination, random_state=self.random_state
-            )
+            self.pca = PCA_od(contamination=self.contamination, random_state=self.random_state)
             self.pca.fit(data_without_target)
             pca_predict = self.pca.predict(data_without_target)
             data_without_target["pca"] = pca_predict
 
-        data_without_target["vote_outlier"] = data_without_target[self.methods].sum(
-            axis=1
-        )
+        data_without_target["vote_outlier"] = data_without_target[self.methods].sum(axis=1)
 
-        self.outliers = data_without_target[
-            data_without_target["vote_outlier"] == len(self.methods)
-        ].index
+        self.outliers = data_without_target[data_without_target["vote_outlier"] == len(self.methods)].index
 
         return dataset[~dataset.index.isin(self.outliers)]
 
@@ -1752,9 +1595,7 @@ class Cluster_Entire_Data(BaseEstimator, TransformerMixin):
         # data_t1 = self.pca.fit_transform(data_t1.drop(self.target,axis=1))
 
         # we are goign to make a place holder , for 2 to 20 clusters
-        self.ph = pd.DataFrame(
-            np.arange(2, self.check_clusters, 1), columns=["clusters"]
-        )
+        self.ph = pd.DataFrame(np.arange(2, self.check_clusters, 1), columns=["clusters"])
         self.ph["Silhouette"] = float(0)
         self.ph["calinski"] = float(0)
 
@@ -1762,38 +1603,22 @@ class Cluster_Entire_Data(BaseEstimator, TransformerMixin):
         for k in self.ph.index:
             c = self.ph["clusters"][k]
             self.k_object = cluster.KMeans(
-                n_clusters=c,
-                init="k-means++",
-                precompute_distances="auto",
-                n_init=10,
-                random_state=self.random_state,
+                n_clusters=c, init="k-means++", precompute_distances="auto", n_init=10, random_state=self.random_state,
             )
             self.k_object.fit(data_t1)
-            self.ph.iloc[k, 1] = metrics.silhouette_score(
-                data_t1, self.k_object.labels_
-            )
-            self.ph.iloc[k, 2] = metrics.calinski_harabasz_score(
-                data_t1, self.k_object.labels_
-            )
+            self.ph.iloc[k, 1] = metrics.silhouette_score(data_t1, self.k_object.labels_)
+            self.ph.iloc[k, 2] = metrics.calinski_harabasz_score(data_t1, self.k_object.labels_)
 
         # now standardize the scores and make a total column
         m = MinMaxScaler((-1, 1))
-        self.ph["calinski"] = m.fit_transform(
-            np.array(self.ph["calinski"]).reshape(-1, 1)
-        )
-        self.ph["Silhouette"] = m.fit_transform(
-            np.array(self.ph["Silhouette"]).reshape(-1, 1)
-        )
+        self.ph["calinski"] = m.fit_transform(np.array(self.ph["calinski"]).reshape(-1, 1))
+        self.ph["Silhouette"] = m.fit_transform(np.array(self.ph["Silhouette"]).reshape(-1, 1))
         self.ph["total"] = self.ph["Silhouette"] + self.ph["calinski"]
         # sort it by total column and take the first row column 0 , that would represent the optimal clusters
         try:
-            self.clusters = int(
-                self.ph[self.ph["total"] == max(self.ph["total"])]["clusters"]
-            )
+            self.clusters = int(self.ph[self.ph["total"] == max(self.ph["total"])]["clusters"])
         except:  # in case there isnt a decisive measure , take calinski as yeard stick
-            self.clusters = int(
-                self.ph[self.ph["calinski"] == max(self.ph["calinski"])]["clusters"]
-            )
+            self.clusters = int(self.ph[self.ph["calinski"] == max(self.ph["calinski"])]["clusters"])
         # Now make the final cluster object
         self.k_object = cluster.KMeans(
             n_clusters=self.clusters,
@@ -1826,11 +1651,7 @@ class Reduce_Cardinality_with_Clustering(BaseEstimator, TransformerMixin):
   """
 
     def __init__(
-        self,
-        target_variable,
-        catagorical_feature=[],
-        check_clusters_upto=30,
-        random_state=42,
+        self, target_variable, catagorical_feature=[], check_clusters_upto=30, random_state=42,
     ):
         self.target = target_variable
         self.feature = catagorical_feature
@@ -1862,18 +1683,13 @@ class Reduce_Cardinality_with_Clustering(BaseEstimator, TransformerMixin):
         self.pls = PLSRegression(
             n_components=2
         )  # since we are only using two componenets to group #PLSRegression(n_components=len(data_t1.columns)-1)
-        data_pls = self.pls.fit_transform(
-            data_t.drop(self.target, axis=1), data_t[self.target]
-        )[0]
+        data_pls = self.pls.fit_transform(data_t.drop(self.target, axis=1), data_t[self.target])[0]
 
         # # now we will take one component and then we calculate mean, median, min, max and sd of that one component grouped by the catagorical levels
         self.ph_data = []
         self.ph_clusters = []
         for i in self.feature:
-            data_t1 = pd.DataFrame(
-                dict(levels=data[i], comp1=data_pls[:, 0], comp2=data_pls[:, 1]),
-                index=data.index,
-            )
+            data_t1 = pd.DataFrame(dict(levels=data[i], comp1=data_pls[:, 0], comp2=data_pls[:, 1]), index=data.index,)
             # now group by feature
             data_t1 = data_t1.groupby("levels")
             data_t1 = data_t1[["comp1", "comp2"]].agg(
@@ -1886,9 +1702,7 @@ class Reduce_Cardinality_with_Clustering(BaseEstimator, TransformerMixin):
             self.check_clusters = min(self.check_clusters, len(data_t1))
 
             # # we are goign to make a place holder , for 2 to 20 clusters
-            self.ph = pd.DataFrame(
-                np.arange(2, self.check_clusters, 1), columns=["clusters"]
-            )
+            self.ph = pd.DataFrame(np.arange(2, self.check_clusters, 1), columns=["clusters"])
             self.ph["Silhouette"] = float(0)
             self.ph["calinski"] = float(0)
 
@@ -1896,38 +1710,22 @@ class Reduce_Cardinality_with_Clustering(BaseEstimator, TransformerMixin):
             for k in self.ph.index:
                 c = self.ph["clusters"][k]
                 self.k_object = cluster.KMeans(
-                    n_clusters=c,
-                    init="k-means++",
-                    precompute_distances="auto",
-                    n_init=10,
-                    random_state=self.random,
+                    n_clusters=c, init="k-means++", precompute_distances="auto", n_init=10, random_state=self.random,
                 )
                 self.k_object.fit(data_t1)
-                self.ph.iloc[k, 1] = metrics.silhouette_score(
-                    data_t1, self.k_object.labels_
-                )
-                self.ph.iloc[k, 2] = metrics.calinski_harabasz_score(
-                    data_t1, self.k_object.labels_
-                )
+                self.ph.iloc[k, 1] = metrics.silhouette_score(data_t1, self.k_object.labels_)
+                self.ph.iloc[k, 2] = metrics.calinski_harabasz_score(data_t1, self.k_object.labels_)
 
             # now standardize the scores and make a total column
             m = MinMaxScaler((-1, 1))
-            self.ph["calinski"] = m.fit_transform(
-                np.array(self.ph["calinski"]).reshape(-1, 1)
-            )
-            self.ph["Silhouette"] = m.fit_transform(
-                np.array(self.ph["Silhouette"]).reshape(-1, 1)
-            )
+            self.ph["calinski"] = m.fit_transform(np.array(self.ph["calinski"]).reshape(-1, 1))
+            self.ph["Silhouette"] = m.fit_transform(np.array(self.ph["Silhouette"]).reshape(-1, 1))
             self.ph["total"] = self.ph["Silhouette"] + self.ph["calinski"]
             # sort it by total column and take the first row column 0 , that would represent the optimal clusters
             try:
-                self.clusters = int(
-                    self.ph[self.ph["total"] == max(self.ph["total"])]["clusters"]
-                )
+                self.clusters = int(self.ph[self.ph["total"] == max(self.ph["total"])]["clusters"])
             except:  # in case there isnt a decisive measure , take calinski as yeard stick
-                self.clusters = int(
-                    self.ph[self.ph["calinski"] == max(self.ph["calinski"])]["clusters"]
-                )
+                self.clusters = int(self.ph[self.ph["calinski"] == max(self.ph["calinski"])]["clusters"])
             self.ph_clusters.append(self.ph)
             # Now make the final cluster object
             self.k_object = cluster.KMeans(
@@ -1945,9 +1743,7 @@ class Reduce_Cardinality_with_Clustering(BaseEstimator, TransformerMixin):
             # now we dont need all the columns, only the cluster column is required along with the index (index also has a name , we  groupy as "levels")
             data_t1 = data_t1[["cluster"]]
             # now convert index ot the column
-            data_t1.reset_index(
-                level=0, inplace=True
-            )  # this table now only contains every level and its cluster
+            data_t1.reset_index(level=0, inplace=True)  # this table now only contains every level and its cluster
             # self.data_t1= data_t1
             # we can now replace cluster with the original level in the original data frame
             data[i] = data[i].replace(list(data_t1["levels"]), data_t1["cluster"])
@@ -2045,11 +1841,7 @@ class Make_NonLiner_Features(BaseEstimator, TransformerMixin):
     def transform(self, dataset, y=None):  # same application for test and train
         data = dataset
 
-        self.numeric_columns = (
-            data.drop(self.target, axis=1, errors="ignore")
-            .select_dtypes(include="float32")
-            .columns
-        )
+        self.numeric_columns = data.drop(self.target, axis=1, errors="ignore").select_dtypes(include="float32").columns
         if self.Polynomial_degree >= 2:  # dont run anything if powr is les than 2
             # self.numeric_columns = data.drop(self.target,axis=1,errors='ignore').select_dtypes(include="float32").columns
             # start taking powers
@@ -2112,11 +1904,7 @@ class Make_NonLiner_Features(BaseEstimator, TransformerMixin):
 
         data = dataset
 
-        self.numeric_columns = (
-            data.drop(self.target, axis=1, errors="ignore")
-            .select_dtypes(include="float32")
-            .columns
-        )
+        self.numeric_columns = data.drop(self.target, axis=1, errors="ignore").select_dtypes(include="float32").columns
         if self.Polynomial_degree >= 2:  # dont run anything if powr is les than 2
             # self.numeric_columns = data.drop(self.target,axis=1,errors='ignore').select_dtypes(include="float32").columns
             # start taking powers
@@ -2165,9 +1953,7 @@ class Make_NonLiner_Features(BaseEstimator, TransformerMixin):
             ddc_tan = pd.DataFrame()
 
         # dummy_all
-        dummy_all = pd.concat(
-            (data[[self.target]], ddc_power, ddc_sin, ddc_cos, ddc_tan), axis=1
-        )
+        dummy_all = pd.concat((data[[self.target]], ddc_power, ddc_sin, ddc_cos, ddc_tan), axis=1)
         # we can select top features using our Feature Selection Classic transformer
         afs = Advanced_Feature_Selection_Classic(
             target=self.target,
@@ -2194,12 +1980,7 @@ class Advanced_Feature_Selection_Classic(BaseEstimator, TransformerMixin):
   """
 
     def __init__(
-        self,
-        target,
-        ml_usecase="classification",
-        top_features_to_pick=0.10,
-        random_state=42,
-        subclass="ignore",
+        self, target, ml_usecase="classification", top_features_to_pick=0.10, random_state=42, subclass="ignore",
     ):
         self.target = target
         self.ml_usecase = ml_usecase
@@ -2230,70 +2011,39 @@ class Advanced_Feature_Selection_Classic(BaseEstimator, TransformerMixin):
 
         if self.ml_usecase == "classification":
             m = rfc(
-                100,
-                max_depth=5,
-                max_features=max_fe,
-                n_jobs=-1,
-                max_samples=max_sa,
-                random_state=self.random_state,
+                100, max_depth=5, max_features=max_fe, n_jobs=-1, max_samples=max_sa, random_state=self.random_state,
             )
         else:
             m = rfr(
-                100,
-                max_depth=5,
-                max_features=max_fe,
-                n_jobs=-1,
-                max_samples=max_sa,
-                random_state=self.random_state,
+                100, max_depth=5, max_features=max_fe, n_jobs=-1, max_samples=max_sa, random_state=self.random_state,
             )
 
         m.fit(dummy_all.drop(self.target, axis=1), dummy_all[self.target])
         # self.fe_imp_table= pd.DataFrame(m.feature_importances_,columns=['Importance'],index=dummy_all.drop(self.target,axis=1).columns).sort_values(by='Importance',ascending= False)
         self.fe_imp_table = pd.DataFrame(
-            m.feature_importances_,
-            columns=["Importance"],
-            index=dummy_all.drop(self.target, axis=1).columns,
+            m.feature_importances_, columns=["Importance"], index=dummy_all.drop(self.target, axis=1).columns,
         )
         self.fe_imp_table = self.fe_imp_table[
-            self.fe_imp_table["Importance"]
-            >= self.fe_imp_table.quantile(self.top_features_to_pick)[0]
+            self.fe_imp_table["Importance"] >= self.fe_imp_table.quantile(self.top_features_to_pick)[0]
         ]
         top = self.fe_imp_table.index
         dummy_all_columns_RF = dummy_all[top].columns
 
         # LightGBM
         max_fe = min(70, int(np.sqrt(len(dummy_all.columns))))
-        max_sa = min(
-            float(1000 / len(dummy_all)),
-            float(np.sqrt(len(dummy_all) / len(dummy_all))),
-        )
+        max_sa = min(float(1000 / len(dummy_all)), float(np.sqrt(len(dummy_all) / len(dummy_all))),)
 
         if self.ml_usecase == "classification":
-            m = lgbmc(
-                n_estimators=100,
-                max_depth=5,
-                n_jobs=-1,
-                subsample=max_sa,
-                random_state=self.random_state,
-            )
+            m = lgbmc(n_estimators=100, max_depth=5, n_jobs=-1, subsample=max_sa, random_state=self.random_state,)
         else:
-            m = lgbmr(
-                n_estimators=100,
-                max_depth=5,
-                n_jobs=-1,
-                subsample=max_sa,
-                random_state=self.random_state,
-            )
+            m = lgbmr(n_estimators=100, max_depth=5, n_jobs=-1, subsample=max_sa, random_state=self.random_state,)
         m.fit(dummy_all.drop(self.target, axis=1), dummy_all[self.target])
         # self.fe_imp_table= pd.DataFrame(m.feature_importances_,columns=['Importance'],index=dummy_all.drop(self.target,axis=1).columns).sort_values(by='Importance',ascending= False)
         self.fe_imp_table = pd.DataFrame(
-            m.feature_importances_,
-            columns=["Importance"],
-            index=dummy_all.drop(self.target, axis=1).columns,
+            m.feature_importances_, columns=["Importance"], index=dummy_all.drop(self.target, axis=1).columns,
         )
         self.fe_imp_table = self.fe_imp_table[
-            self.fe_imp_table["Importance"]
-            >= self.fe_imp_table.quantile(self.top_features_to_pick)[0]
+            self.fe_imp_table["Importance"] >= self.fe_imp_table.quantile(self.top_features_to_pick)[0]
         ]
         top = self.fe_imp_table.index
         dummy_all_columns_LGBM = dummy_all[top].columns
@@ -2307,9 +2057,7 @@ class Advanced_Feature_Selection_Classic(BaseEstimator, TransformerMixin):
             corr = corr[self.target].abs()
             corr = corr[corr.index != self.target]  # drop the target column
             corr = corr[corr >= corr.quantile(self.top_features_to_pick)]
-            corr = pd.DataFrame(dict(features=corr.index, value=corr)).reset_index(
-                drop=True
-            )
+            corr = pd.DataFrame(dict(features=corr.index, value=corr)).reset_index(drop=True)
             corr = corr.drop_duplicates(subset="value")
             corr = corr["features"]
             # corr = pd.DataFrame(dict(features=corr.index,value=corr)).reset_index(drop=True)
@@ -2323,17 +2071,10 @@ class Advanced_Feature_Selection_Classic(BaseEstimator, TransformerMixin):
         self.corr = corr
 
         self.selected_columns = list(
-            set(
-                [self.target]
-                + list(dummy_all_columns_RF)
-                + list(corr)
-                + list(dummy_all_columns_LGBM)
-            )
+            set([self.target] + list(dummy_all_columns_RF) + list(corr) + list(dummy_all_columns_LGBM))
         )
 
-        self.selected_columns_test = (
-            dataset[self.selected_columns].drop(self.target, axis=1).columns
-        )
+        self.selected_columns_test = dataset[self.selected_columns].drop(self.target, axis=1).columns
         return dataset[self.selected_columns]
 
 
@@ -2448,9 +2189,7 @@ class Boruta_Feature_Selection(BaseEstimator, TransformerMixin):
         self.confirmed_cols = confirmed_cols.tolist()
         self.confirmed_cols.append(self.target)
 
-        self.selected_columns_test = (
-            dataset[self.confirmed_cols].drop(self.target, axis=1).columns
-        )
+        self.selected_columns_test = dataset[self.confirmed_cols].drop(self.target, axis=1).columns
 
         return dataset[self.confirmed_cols]
 
@@ -2460,9 +2199,7 @@ class Boruta_Feature_Selection(BaseEstimator, TransformerMixin):
         if len(x_ind) < 5 and X.shape[1] > 5:
             additional = [i for i in range(X.shape[1]) if i not in x_ind]
             length = 6 - len(x_ind)
-            x_ind = np.concatenate(
-                (x_ind, np.random.choice(additional, length, replace=False))
-            )
+            x_ind = np.concatenate((x_ind, np.random.choice(additional, length, replace=False)))
             return x_ind
         elif len(x_ind) < 5 and X.shape[1] < 5:
             return x_ind
@@ -2540,11 +2277,7 @@ class Fix_multicollinearity(BaseEstimator, TransformerMixin):
     # mamke a constructer
 
     def __init__(
-        self,
-        threshold,
-        target_variable,
-        correlation_with_target_threshold=0.0,
-        correlation_with_target_preference=1.0,
+        self, threshold, target_variable, correlation_with_target_threshold=0.0, correlation_with_target_preference=1.0,
     ):
         self.threshold = threshold
         self.target_variable = target_variable
@@ -2578,9 +2311,7 @@ class Fix_multicollinearity(BaseEstimator, TransformerMixin):
         self.corr_matrix = abs(corr)
 
         # for every diagonal value, make it Nan
-        self.corr_matrix.values[
-            tuple([np.arange(self.corr_matrix.shape[0])] * 2)
-        ] = np.NaN
+        self.corr_matrix.values[tuple([np.arange(self.corr_matrix.shape[0])] * 2)] = np.NaN
 
         # Now Calculate the average correlation of every feature with other, and get a pandas data frame
         self.avg_cor = pd.DataFrame(self.corr_matrix.mean())
@@ -2607,24 +2338,20 @@ class Fix_multicollinearity(BaseEstimator, TransformerMixin):
         )
 
         # now bring in the avg correlation for first of the pair
-        self.merge = pd.merge(
-            self.melt, self.avg_cor, left_on="column", right_on="features"
-        ).drop("features", axis=1)
+        self.merge = pd.merge(self.melt, self.avg_cor, left_on="column", right_on="features").drop("features", axis=1)
 
         # now bring in the avg correlation for second of the pair
-        self.merge = pd.merge(
-            self.merge, self.avg_cor, left_on="variable", right_on="features"
-        ).drop("features", axis=1)
+        self.merge = pd.merge(self.merge, self.avg_cor, left_on="variable", right_on="features").drop(
+            "features", axis=1
+        )
 
         # now bring in the target correlation for first of the pair
-        self.merge = pd.merge(
-            self.merge, self.targ_cor, left_on="column", right_on="features"
-        ).drop("features", axis=1)
+        self.merge = pd.merge(self.merge, self.targ_cor, left_on="column", right_on="features").drop("features", axis=1)
 
         # now bring in the avg correlation for second of the pair
-        self.merge = pd.merge(
-            self.merge, self.targ_cor, left_on="variable", right_on="features"
-        ).drop("features", axis=1)
+        self.merge = pd.merge(self.merge, self.targ_cor, left_on="variable", right_on="features").drop(
+            "features", axis=1
+        )
 
         # sort and save
         self.merge = self.merge.sort_values(by="value", ascending=False)
@@ -2644,8 +2371,7 @@ class Fix_multicollinearity(BaseEstimator, TransformerMixin):
         # make a ranking column to eliminate features
         self.merge["rank_x"] = round(
             self.multicol_weight * (self.merge["avg_cor_y"] - self.merge["avg_cor_x"])
-            + self.target_corr_weight
-            * (self.merge["target_variable_x"] - self.merge["target_variable_y"]),
+            + self.target_corr_weight * (self.merge["target_variable_x"] - self.merge["target_variable_y"]),
             6,
         )  # round it to 6 digits
         self.merge1 = self.merge  # delete here
@@ -2664,12 +2390,8 @@ class Fix_multicollinearity(BaseEstimator, TransformerMixin):
         # however one varibale can appear more than once on any of the sides , so we will run for loop to find all pairs...
         # here it goes
         # take a list of all (but unique ) variables that have correlation 1 for eachother, we will make two copies
-        self.u_all = list(
-            pd.unique(pd.concat((self.one["column"], self.one["variable"]), axis=0))
-        )
-        self.u_all_1 = list(
-            pd.unique(pd.concat((self.one["column"], self.one["variable"]), axis=0))
-        )
+        self.u_all = list(pd.unique(pd.concat((self.one["column"], self.one["variable"]), axis=0)))
+        self.u_all_1 = list(pd.unique(pd.concat((self.one["column"], self.one["variable"]), axis=0)))
         # take a list of features (unique) for the first side of the pair
         self.u_column = pd.unique(self.one["column"])
 
@@ -2692,17 +2414,11 @@ class Fix_multicollinearity(BaseEstimator, TransformerMixin):
         # self.to_drop = self.to_drop_a + self.to_drop_b
 
         ## now we are to treat where rank is not Zero and Value (correlation) is greater than a specific threshold
-        self.non_zero = self.merge[
-            (self.merge["rank_x"] != 0.0) & (self.merge["value"] >= self.threshold)
-        ]
+        self.non_zero = self.merge[(self.merge["rank_x"] != 0.0) & (self.merge["value"] >= self.threshold)]
 
         # pick the column to delete
         self.non_zero_list = list(
-            np.where(
-                self.non_zero["rank_x"] < 0,
-                self.non_zero["column"],
-                self.non_zero["variable"],
-            )
+            np.where(self.non_zero["rank_x"] < 0, self.non_zero["column"], self.non_zero["variable"],)
         )
 
         # add two list
@@ -2869,16 +2585,10 @@ class DFS_Classic(BaseEstimator, TransformerMixin):
         if "multiply" in self.interactions:
 
             data_multiply = pd.concat(
-                [
-                    data_without_target.mul(col[1], axis="index")
-                    for col in data_without_target.iteritems()
-                ],
-                axis=1,
+                [data_without_target.mul(col[1], axis="index") for col in data_without_target.iteritems()], axis=1,
             )
             data_multiply.columns = [
-                "_multiply_".join([i, j])
-                for j in data_without_target.columns
-                for i in data_without_target.columns
+                "_multiply_".join([i, j]) for j in data_without_target.columns for i in data_without_target.columns
             ]
             # we dont need to apply rest of conditions
             data_multiply.index = data.index
@@ -2945,9 +2655,7 @@ class DFS_Classic(BaseEstimator, TransformerMixin):
             data_substract = pd.DataFrame()
 
         # get all the dummy data combined
-        dummy_all = pd.concat(
-            (data, data_multiply, data_divide, data_add, data_substract), axis=1
-        )
+        dummy_all = pd.concat((data, data_multiply, data_divide, data_add, data_substract), axis=1)
         del data_multiply
         del data_divide
         del data_add
@@ -2969,14 +2677,10 @@ class DFS_Classic(BaseEstimator, TransformerMixin):
         self.ohe_columns = [
             i
             for i in data.columns
-            if data[i].nunique() == 2
-            and data[i].unique()[0] in [0, 1]
-            and data[i].unique()[1] in [0, 1]
+            if data[i].nunique() == 2 and data[i].unique()[0] in [0, 1] and data[i].unique()[1] in [0, 1]
         ]
         # self.ohe_columns = [i for i in self.ohe_columns if i is not None]
-        self.numeric_columns = [
-            i for i in data_without_target.columns if i not in self.ohe_columns
-        ]
+        self.numeric_columns = [i for i in data_without_target.columns if i not in self.ohe_columns]
         target_variable = data[[self.target]]
 
         # for multiplication:
@@ -2984,16 +2688,10 @@ class DFS_Classic(BaseEstimator, TransformerMixin):
 
         if "multiply" in self.interactions:
             data_multiply = pd.concat(
-                [
-                    data_without_target.mul(col[1], axis="index")
-                    for col in data_without_target.iteritems()
-                ],
-                axis=1,
+                [data_without_target.mul(col[1], axis="index") for col in data_without_target.iteritems()], axis=1,
             )
             data_multiply.columns = [
-                "_multiply_".join([i, j])
-                for j in data_without_target.columns
-                for i in data_without_target.columns
+                "_multiply_".join([i, j]) for j in data_without_target.columns for i in data_without_target.columns
             ]
             # we dont need columns that are self interacted
             col = [
@@ -3004,9 +2702,7 @@ class DFS_Classic(BaseEstimator, TransformerMixin):
             ]
             data_multiply = data_multiply[col]
             # we dont need columns where the sum of the total column is null (to catagorical variables never happening togather)
-            col1 = [
-                i for i in data_multiply.columns if np.nansum(data_multiply[i]) != 0
-            ]
+            col1 = [i for i in data_multiply.columns if np.nansum(data_multiply[i]) != 0]
             data_multiply = data_multiply[col1]
             data_multiply.index = data.index
         else:
@@ -3096,18 +2792,14 @@ class DFS_Classic(BaseEstimator, TransformerMixin):
             ]
             data_substract = data_substract[col]
             # we dont need columns where the sum of the total column is null (to catagorical variables never happening togather)
-            col1 = [
-                i for i in data_substract.columns if np.nansum(data_substract[i]) != 0
-            ]
+            col1 = [i for i in data_substract.columns if np.nansum(data_substract[i]) != 0]
             data_substract = data_substract[col1]
             data_substract.index = data.index
         else:
             data_substract = pd.DataFrame()
 
         # get all the dummy data combined
-        dummy_all = pd.concat(
-            (data_multiply, data_divide, data_add, data_substract), axis=1
-        )
+        dummy_all = pd.concat((data_multiply, data_divide, data_add, data_substract), axis=1)
         del data_multiply
         del data_divide
         del data_add
@@ -3126,13 +2818,9 @@ class DFS_Classic(BaseEstimator, TransformerMixin):
         )
         dummy_all_t = afs.fit_transform(dummy_all)
 
-        data_fe_final = pd.concat(
-            (data, dummy_all_t), axis=1
-        )  # self.data_fe[self.corr]
+        data_fe_final = pd.concat((data, dummy_all_t), axis=1)  # self.data_fe[self.corr]
         # # making sure no duplicated columns are there
-        data_fe_final = data_fe_final.loc[
-            :, ~data_fe_final.columns.duplicated()
-        ]  # new added
+        data_fe_final = data_fe_final.loc[:, ~data_fe_final.columns.duplicated()]  # new added
         # # remove thetarget column
         # # this is the final data we want that includes original , fe data plus impact of top n correlated
         self.columns_to_keep = data_fe_final.drop(self.target, axis=1).columns
@@ -3170,11 +2858,7 @@ class Reduce_Dimensions_For_Supervised_Path(BaseEstimator, TransformerMixin):
   """
 
     def __init__(
-        self,
-        target,
-        method="pca_liner",
-        variance_retained_or_number_of_components=0.99,
-        random_state=42,
+        self, target, method="pca_liner", variance_retained_or_number_of_components=0.99, random_state=42,
     ):
         self.target = target
         self.variance_retained = variance_retained_or_number_of_components
@@ -3196,9 +2880,7 @@ class Reduce_Dimensions_For_Supervised_Path(BaseEstimator, TransformerMixin):
             data = data.drop(self.target, axis=1, errors="ignore")
             data_pca = self.pca.transform(data)
             data_pca = pd.DataFrame(data_pca)
-            data_pca.columns = [
-                "Component_" + str(i) for i in np.arange(1, len(data_pca.columns) + 1)
-            ]
+            data_pca.columns = ["Component_" + str(i) for i in np.arange(1, len(data_pca.columns) + 1)]
             data_pca.index = data.index
             if self.target in dataset.columns:
                 data_pca[self.target] = dataset[self.target]
@@ -3213,25 +2895,16 @@ class Reduce_Dimensions_For_Supervised_Path(BaseEstimator, TransformerMixin):
             # fit transform
             data_pca = self.pca.fit_transform(data.drop(self.target, axis=1))
             data_pca = pd.DataFrame(data_pca)
-            data_pca.columns = [
-                "Component_" + str(i) for i in np.arange(1, len(data_pca.columns) + 1)
-            ]
+            data_pca.columns = ["Component_" + str(i) for i in np.arange(1, len(data_pca.columns) + 1)]
             data_pca.index = data.index
             data_pca[self.target] = data[self.target]
             return data_pca
         elif self.method == "pca_kernal":  # take number of components only
-            self.pca = KernelPCA(
-                self.variance_retained,
-                kernel="rbf",
-                random_state=self.random_state,
-                n_jobs=-1,
-            )
+            self.pca = KernelPCA(self.variance_retained, kernel="rbf", random_state=self.random_state, n_jobs=-1,)
             # fit transform
             data_pca = self.pca.fit_transform(data.drop(self.target, axis=1))
             data_pca = pd.DataFrame(data_pca)
-            data_pca.columns = [
-                "Component_" + str(i) for i in np.arange(1, len(data_pca.columns) + 1)
-            ]
+            data_pca.columns = ["Component_" + str(i) for i in np.arange(1, len(data_pca.columns) + 1)]
             data_pca.index = data.index
             data_pca[self.target] = data[self.target]
             return data_pca
@@ -3249,9 +2922,7 @@ class Reduce_Dimensions_For_Supervised_Path(BaseEstimator, TransformerMixin):
             # fit transform
             data_pca = self.pca.fit_transform(data.drop(self.target, axis=1))
             data_pca = pd.DataFrame(data_pca)
-            data_pca.columns = [
-                "Component_" + str(i) for i in np.arange(1, len(data_pca.columns) + 1)
-            ]
+            data_pca.columns = ["Component_" + str(i) for i in np.arange(1, len(data_pca.columns) + 1)]
             data_pca.index = data.index
             data_pca[self.target] = data[self.target]
             return data_pca
@@ -3260,9 +2931,7 @@ class Reduce_Dimensions_For_Supervised_Path(BaseEstimator, TransformerMixin):
             # fit transform
             data_pca = self.pca.fit_transform(data.drop(self.target, axis=1))
             data_pca = pd.DataFrame(data_pca)
-            data_pca.columns = [
-                "Component_" + str(i) for i in np.arange(1, len(data_pca.columns) + 1)
-            ]
+            data_pca.columns = ["Component_" + str(i) for i in np.arange(1, len(data_pca.columns) + 1)]
             data_pca.index = data.index
             data_pca[self.target] = data[self.target]
             return data_pca
@@ -3423,8 +3092,7 @@ def Preprocess_Path_One(
     # untrained levels in test
     if apply_untrained_levels_treatment == True:
         new_levels = New_Catagorical_Levels_in_TestData(
-            target=target_variable,
-            replacement_strategy=untrained_levels_treatment_method,
+            target=target_variable, replacement_strategy=untrained_levels_treatment_method,
         )
     else:
         new_levels = SKLEARN_EMPTY_STEP
@@ -3432,8 +3100,7 @@ def Preprocess_Path_One(
     # untrained levels in test(ordinal specific)
     if apply_untrained_levels_treatment == True:
         new_levels1 = New_Catagorical_Levels_in_TestData(
-            target=target_variable,
-            replacement_strategy=untrained_levels_treatment_method,
+            target=target_variable, replacement_strategy=untrained_levels_treatment_method,
         )
     else:
         new_levels1 = SKLEARN_EMPTY_STEP
@@ -3447,9 +3114,7 @@ def Preprocess_Path_One(
             random_state=random_state,
         )
     elif apply_cardinality_reduction == True and cardinal_method == "count":
-        cardinality = Reduce_Cardinality_with_Counts(
-            catagorical_feature=cardinal_features
-        )
+        cardinality = Reduce_Cardinality_with_Counts(catagorical_feature=cardinal_features)
     else:
         cardinality = SKLEARN_EMPTY_STEP
 
@@ -3468,9 +3133,7 @@ def Preprocess_Path_One(
 
     # grouping
     if apply_grouping == True:
-        group = Group_Similar_Features(
-            group_name=group_name, list_of_grouped_features=features_to_group_ListofList
-        )
+        group = Group_Similar_Features(group_name=group_name, list_of_grouped_features=features_to_group_ListofList)
     else:
         group = SKLEARN_EMPTY_STEP
 
@@ -3497,18 +3160,14 @@ def Preprocess_Path_One(
     # scaling & power transform
     if scale_data == True:
         scaling = Scaling_and_Power_transformation(
-            target=target_variable,
-            function_to_apply=scaling_method,
-            random_state_quantile=random_state,
+            target=target_variable, function_to_apply=scaling_method, random_state_quantile=random_state,
         )
     else:
         scaling = SKLEARN_EMPTY_STEP
 
     if Power_transform_data == True:
         P_transform = Scaling_and_Power_transformation(
-            target=target_variable,
-            function_to_apply=Power_transform_method,
-            random_state_quantile=random_state,
+            target=target_variable, function_to_apply=Power_transform_method, random_state_quantile=random_state,
         )
     else:
         P_transform = SKLEARN_EMPTY_STEP
@@ -3535,9 +3194,7 @@ def Preprocess_Path_One(
     # cluster all data:
     if cluster_entire_data == True:
         cluster_all = Cluster_Entire_Data(
-            target_variable=target_variable,
-            check_clusters_upto=range_of_clusters_to_try,
-            random_state=random_state,
+            target_variable=target_variable, check_clusters_upto=range_of_clusters_to_try, random_state=random_state,
         )
     else:
         cluster_all = SKLEARN_EMPTY_STEP
@@ -3570,8 +3227,7 @@ def Preprocess_Path_One(
     # removing multicollinearity
     if remove_multicollinearity == True and subcase != "multi":
         fix_multi = Fix_multicollinearity(
-            target_variable=target_variable,
-            threshold=maximum_correlation_between_features,
+            target_variable=target_variable, threshold=maximum_correlation_between_features,
         )
     elif remove_multicollinearity == True and subcase == "multi":
         fix_multi = Fix_multicollinearity(
@@ -3778,4 +3434,3 @@ def _get_labelencoder_reverse_dict(le: LabelEncoder) -> dict:
     for i, k in zip(rev, rep):
         replacement[i] = k
     return replacement
-
