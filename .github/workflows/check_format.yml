@@ -16,4 +16,4 @@ jobs:
           python -m pip install --user --upgrade black
       - name: Run black
         run: |
-          black --check pycaret
+          python -m black --check pycaret
