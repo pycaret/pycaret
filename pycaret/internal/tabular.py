@@ -8360,6 +8360,7 @@ def predict_model(
             replace_lables_in_column(y_test_)
         X_test_ = pd.concat([X_test_, y_test_, label], axis=1)
     else:
+        X_test_ = data.copy()
         X_test_["Label"] = label["Label"].values
 
     if score is not None:
