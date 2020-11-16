@@ -19,28 +19,7 @@ from pycaret.internal.Display import Display
 from pycaret.internal.logging import get_logger
 
 
-def _calculate_standardized_residual(
-        predicted: np.ndarray,
-        expected: np.ndarray = None,
-        featuresize: int = None
-) -> np.ndarray:
-    if expected is not None:
-        residuals = expected - predicted
-    else:
-        residuals = predicted
-        expected = predicted
 
-    if residuals.sum() == 0:
-        return residuals
-
-    n = residuals.shape[0]
-    m = featuresize
-    if m is None:
-        m = 1
-    s2_hat = 1 / (n - m) * np.sum(residuals ** 2)
-    leverage = 1 / n + (expected - np.mean(expected)) / np.sum((expected - np.mean(expected)) ** 2)
-    standardized_residuals = residuals / (np.sqrt(s2_hat) * (1 - leverage))
-    return standardized_residuals
 
 
 class CoefficientPlotWidget(BaseFigureWidget):
@@ -105,7 +84,7 @@ class QQPlotWidget(BaseFigureWidget):
 
     def __init__(self, predicted: np.ndarray, expected: np.ndarray = None, featuresize: int = None, **kwargs):
         if expected is not None:
-            std_res = _calculate_standardized_residual(
+            std_res = helper.calculate_standardized_residual(
                 predicted,
                 expected=expected,
                 featuresize=featuresize
@@ -135,7 +114,7 @@ class QQPlotWidget(BaseFigureWidget):
 
     def update_values(self, predicted: np.ndarray, expected: np.ndarray = None, featuresize: int = None):
         plot = self.qq_plot(
-            standardized_residuals=_calculate_standardized_residual(predicted, expected, featuresize)
+            standardized_residuals=helper.calculate_standardized_residual(predicted, expected, featuresize)
         )
         self.update({"data": plot.data}, overwrite=True)
         self.update_layout()
@@ -311,7 +290,7 @@ class InteractiveResidualsPlot:
         self.display.move_progress()
 
         standardized_residuals = \
-            _calculate_standardized_residual(fitted, y, None)
+            helper.calculate_standardized_residual(fitted, y, None)
         model_norm_residuals_abs_sqrt = np.sqrt(np.abs(standardized_residuals))
         scale_location_widget = ScaleLocationWidget(fitted, model_norm_residuals_abs_sqrt)
         logger.info("Calculated Scale-Location Plot")

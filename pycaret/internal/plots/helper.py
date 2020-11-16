@@ -24,3 +24,27 @@ def cooks_distance(standardized_residuals: np.ndarray, leverage_statistic: np.nd
     multiplier = [element / (2*(1-element)) for element in leverage_statistic]
     distance = np.multiply(np.power(standardized_residuals, 2), multiplier)
     return distance
+
+
+def calculate_standardized_residual(
+        predicted: np.ndarray,
+        expected: np.ndarray = None,
+        featuresize: int = None
+) -> np.ndarray:
+    if expected is not None:
+        residuals = expected - predicted
+    else:
+        residuals = predicted
+        expected = predicted
+
+    if residuals.sum() == 0:
+        return residuals
+
+    n = residuals.shape[0]
+    m = featuresize
+    if m is None:
+        m = 1
+    s2_hat = 1 / (n - m) * np.sum(residuals ** 2)
+    leverage = 1 / n + (expected - np.mean(expected)) / np.sum((expected - np.mean(expected)) ** 2)
+    standardized_residuals = residuals / (np.sqrt(s2_hat) * (1 - leverage))
+    return standardized_residuals
