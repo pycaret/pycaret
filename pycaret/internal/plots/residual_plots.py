@@ -19,9 +19,6 @@ from pycaret.internal.Display import Display
 from pycaret.internal.logging import get_logger
 
 
-
-
-
 class CoefficientPlotWidget(BaseFigureWidget):
     def __init__(
             self,
