@@ -2576,7 +2576,13 @@ def create_model_unsupervised(
         model.set_params(contamination=fraction)
 
     # workaround for an issue with set_params in cuML
-    model = clone(model)
+    try:
+        model = clone(model)
+    except:
+        logger.warning(
+            f"create_model_unsupervised() for {model} raised an exception when cloning:"
+        )
+        logger.warning(traceback.format_exc())
 
     logger.info(f"{full_name} Imported succesfully")
 
