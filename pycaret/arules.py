@@ -19,9 +19,9 @@ def setup(data, transaction_id, item_id, ignore_items=None, session_id=None):
     Example
     -------
     >>> from pycaret.datasets import get_data
-    >>> france = get_data('france')
+    >>> data = get_data('france')
     >>> from pycaret.arules import *
-    >>> exp = setup(data = data, transaction_id = 'InvoiceNo', item_id = 'ProductName')
+    >>> exp = setup(data = data, transaction_id = 'InvoiceNo', item_id = 'Description')
         
 
     data: pandas.DataFrame
@@ -126,9 +126,9 @@ def create_model(metric="confidence", threshold=0.5, min_support=0.05, round=4):
     Example
     -------
     >>> from pycaret.datasets import get_data
-    >>> france = get_data('france')
+    >>> data = get_data('france')
     >>> from pycaret.arules import *
-    >>> exp_name = setup(data = data, transaction_id = 'InvoiceNo', item_id = 'ProductName')
+    >>> exp_name = setup(data = data, transaction_id = 'InvoiceNo', item_id = 'Description')
     >>> model1 = create_model(metric = 'confidence')
 
 
@@ -226,8 +226,9 @@ def plot_model(
     Example
     -------
     >>> from pycaret.datasets import get_data
-    >>> france = get_data('france')
+    >>> data = get_data('france')
     >>> from pycaret.arules import *
+    >>> exp_name = setup(data = data, transaction_id = 'InvoiceNo', item_id = 'Description')
     >>> rule1 = create_model(metric='confidence', threshold=0.7, min_support=0.05)
     >>> plot_model(rule1, plot='2d')
 
