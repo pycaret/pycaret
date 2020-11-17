@@ -252,7 +252,9 @@ class DataTypes_Auto_infer(BaseEstimator, TransformerMixin):
                     dataset[i], infer_datetime_format=True, utc=False, errors="raise"
                 )
 
-        for i in data.select_dtypes(include=["datetime64"]).columns:
+        for i in data.select_dtypes(
+            include=["datetime64", "datetime64[ns, UTC]"]
+        ).columns:
             data[i] = data[i].astype("datetime64[ns]")
 
         # table of learent types
@@ -779,20 +781,22 @@ class Iterative_Imputer(_BaseImputer):
         )
         if is_classification:
             if column in self.classifiers_:
-                dummy, le, estimator = self.classifiers_[column]
+                time, dummy, le, estimator = self.classifiers_[column]
             elif not fit:
                 return X
             else:
                 estimator = clone(self._classifier)
+                time = Make_Time_Features()
                 dummy = Dummify(column)
                 le = LabelEncoder()
         else:
             if column in self.regressors_:
-                dummy, le, estimator = self.regressors_[column]
+                time, dummy, le, estimator = self.regressors_[column]
             elif not fit:
                 return X
             else:
                 estimator = clone(self._regressor)
+                time = Make_Time_Features()
                 dummy = Dummify(column)
                 le = None
 
@@ -802,6 +806,7 @@ class Iterative_Imputer(_BaseImputer):
             y_train = X_train[column]
             # catboost handles categoricals itself
             if "catboost" not in str(type(estimator)).lower():
+                X_train = time.fit_transform(X_train)
                 X_train = dummy.fit_transform(X_train)
                 X_train.drop(column, axis=1, inplace=True)
             else:
@@ -828,6 +833,7 @@ class Iterative_Imputer(_BaseImputer):
                 estimator.fit(X_train, y_train, **fit_kwargs)
 
         X_test = X.drop(column, axis=1)[X_na_mask[column]]
+        X_test = time.transform(X_test)
         # catboost handles categoricals itself
         if "catboost" not in str(type(estimator)).lower():
             X_test = dummy.transform(X_test)
@@ -842,9 +848,9 @@ class Iterative_Imputer(_BaseImputer):
             result = le.inverse_transform(result)
 
         if is_classification:
-            self.classifiers_[column] = (dummy, le, estimator)
+            self.classifiers_[column] = (time, dummy, le, estimator)
         else:
-            self.regressors_[column] = (dummy, le, estimator)
+            self.regressors_[column] = (time, dummy, le, estimator)
 
         X_test[column] = result
         X.update(X_test[column])
@@ -1399,19 +1405,19 @@ class Make_Time_Features(BaseEstimator, TransformerMixin):
 
     def __init__(
         self,
-        time_feature=[],
+        time_feature=None,
         list_of_features=["month", "weekday", "is_month_end", "is_month_start", "hour"],
     ):
         self.time_feature = time_feature
         self.list_of_features_o = set(list_of_features)
 
     def fit(self, data, y=None):
-        if not self.time_feature:
+        if self.time_feature is None:
             self.time_feature = data.select_dtypes(include=["datetime64[ns]"]).columns
         return self
 
     def transform(self, dataset, y=None):
-        data = dataset
+        data = dataset.copy()
 
         # run fit transform first
 
