@@ -79,7 +79,8 @@ class CoefficientPlotWidget(BaseFigureWidget):
 
 class QQPlotWidget(BaseFigureWidget):
 
-    def __init__(self, predicted: np.ndarray, expected: np.ndarray = None, featuresize: int = None, **kwargs):
+    def __init__(self, predicted: np.ndarray, expected: np.ndarray = None, featuresize: int = None,
+                 split_origin: np.array = None, **kwargs):
         if expected is not None:
             std_res = helper.calculate_standardized_residual(
                 predicted,
@@ -88,17 +89,26 @@ class QQPlotWidget(BaseFigureWidget):
             )
         else:
             std_res = predicted
-        plot = self.qq_plot(std_res)
+        plot = self.qq_plot(std_res, split_origin)
         super(QQPlotWidget, self).__init__(plot, **kwargs)
 
     def _get_qq(self, standardized_residuals: np.ndarray) -> np.ndarray:
         qq = stats.probplot(standardized_residuals, dist='norm', sparams=(1))
         return np.array([qq[0][0][0], qq[0][0][-1]]), qq
 
-    def qq_plot(self, standardized_residuals: np.ndarray) -> go.Figure:
+    def qq_plot(self, standardized_residuals: np.ndarray, split_origin: np.array = None) -> go.Figure:
+
+        sorted_split_origin = np.array(
+            [x[1] for x in sorted(enumerate(split_origin), key=lambda x: standardized_residuals[x[0]])])
+        colors = sorted_split_origin.copy()
+        colors[sorted_split_origin == "train"] = "blue"
+        colors[sorted_split_origin == "test"] = "green"
+
         x, qq = self._get_qq(standardized_residuals=standardized_residuals)
         fig = go.Figure()
-        fig.add_scatter(x=qq[0][0], y=qq[0][1], mode='markers')
+        fig.add_scatter(x=qq[0][0], y=qq[0][1], mode='markers',
+                        marker=dict(color=colors), customdata=sorted_split_origin, hovertemplate="%{x},%{y} (%{customdata})",
+                        opacity=0.7)
         fig.add_scatter(x=x, y=qq[1][1] + qq[1][0] * x, mode='lines')
         fig.layout.update(
             autosize=True,
@@ -216,46 +226,39 @@ class CooksDistanceWidget(BaseFigureWidget):
 
 
 class TukeyAnscombeWidget(BaseFigureWidget):
-    def __init__(self, fitted: np.ndarray, fitted_residuals: np.ndarray,
-                 predictions: np.ndarray = None, prediction_residuals: np.ndarray = None, **kwargs):
-        plot = self._tukey_anscombe_plot(fitted, fitted_residuals, predictions, prediction_residuals)
+    def __init__(self, predictions: np.ndarray, residuals: np.ndarray,
+                 split_origin: np.ndarray = None, **kwargs):
+        plot = self._tukey_anscombe_plot(predictions, residuals, split_origin)
         super(TukeyAnscombeWidget, self).__init__(plot, **kwargs)
 
-    def _tukey_anscombe_plot(self, fitted, fitted_residuals, predictions, prediction_residuals):
-        if predictions is not None and prediction_residuals is not None:
+    def _tukey_anscombe_plot(self, predictions, residuals, split_origin):
+        if split_origin is not None:
             dataframe = pd.DataFrame({
-                'Fitted Values': np.concatenate((fitted, predictions)),
-                'Fitted Residuals': np.concatenate((fitted_residuals, prediction_residuals)),
-                'Split': np.concatenate(
-                    (np.repeat("train", fitted.shape[0]),
-                     np.repeat("test", predictions.shape[0])))})
+                'Prediction': predictions,
+                'Residual': residuals,
+                'Split': split_origin})
 
-            fig = px.scatter(dataframe, x="Fitted Values", y="Fitted Residuals", trendline="lowess",
+            fig = px.scatter(dataframe, x="Prediction", y="Residual", trendline="lowess",
                              color="Split",
                              color_discrete_sequence=['blue', 'green'],
                              title="Tukey-Anscombe Plot",
                              opacity=0.3)
 
-            fig.update_layout(legend=dict(
-                yanchor="top",
-                y=0.99,
-                xanchor="right",
-                x=0.99
-            ))
+            fig.update_layout(showlegend=False)
         else:
-            dataframe = pd.DataFrame({'Fitted Values': fitted, 'Fitted Residuals': fitted_residuals})
+            dataframe = pd.DataFrame({'Fitted Values': predictions, 'Fitted Residuals': residuals})
 
             fig = px.scatter(dataframe, x="Fitted Values", y="Fitted Residuals", trendline="lowess",
                              title="Tukey-Anscombe Plot",
                              opacity=0.3)
 
-        model_abs_resid = pd.Series(np.abs(fitted_residuals))
+        model_abs_resid = pd.Series(np.abs(residuals))
         abs_resid = model_abs_resid.sort_values(ascending=False)
         abs_resid_top_3 = abs_resid[:3]
         for i in abs_resid_top_3.index:
             fig.add_annotation(
-                x=fitted[i],
-                y=fitted_residuals[i],
+                x=predictions[i],
+                y=residuals[i],
                 text=str(i + 1))
         fig.update_annotations(dict(
             xref="x",
@@ -292,8 +295,8 @@ class InteractiveResidualsPlot:
         with open(plot_filename, "w") as f:
             f.write(html)
 
-    def __create_resplots(self, model, x: np.ndarray, y: np.ndarray, x_test: np.ndarray = None,
-                          y_test: np.ndarray = None) -> widgets.VBox:
+    def __create_resplots(self, model, x: np.ndarray, y: np.ndarray,
+                          x_test: np.ndarray = None, y_test: np.ndarray = None) -> widgets.VBox:
         logger = get_logger()
 
         if not is_fitted(model):
@@ -303,29 +306,40 @@ class InteractiveResidualsPlot:
         fitted_residuals = fitted - y
 
         if x_test is not None and y_test is not None:
-            predictions = model.predict(x_test)
-            prediction_residuals = predictions - y_test
+            pred = model.predict(x_test)
+            prediction_residuals = pred - y_test
+
+            predictions = np.concatenate((fitted, pred))
+            residuals = np.concatenate((fitted_residuals, prediction_residuals))
+            split_origin = np.concatenate(
+                (np.repeat("train", fitted.shape[0]),
+                 np.repeat("test", pred.shape[0])))
+
+            x = np.concatenate((x, x_test))
+            y = np.concatenate((y, y_test))
+
         else:
-            predictions = None
-            prediction_residuals = None
+            predictions = fitted
+            residuals = fitted_residuals
+            split_origin = None
 
         logger.info("Calculated model residuals")
         self.display.move_progress()
 
-        tukey_anscombe_widget = TukeyAnscombeWidget(fitted, fitted_residuals, predictions, prediction_residuals)
+        tukey_anscombe_widget = TukeyAnscombeWidget(predictions, residuals, split_origin=split_origin)
         logger.info("Calculated Tunkey-Anscombe Plot")
         self.figures.append(tukey_anscombe_widget)
         self.display.move_progress()
 
-        qq_plot_widget = QQPlotWidget(fitted, y)
+        qq_plot_widget = QQPlotWidget(predictions, y, split_origin=split_origin)
         logger.info("Calculated Normal QQ Plot")
         self.figures.append(qq_plot_widget)
         self.display.move_progress()
 
         standardized_residuals = \
-            helper.calculate_standardized_residual(fitted, y, None)
+            helper.calculate_standardized_residual(predictions, y, None)
         model_norm_residuals_abs_sqrt = np.sqrt(np.abs(standardized_residuals))
-        scale_location_widget = ScaleLocationWidget(fitted, model_norm_residuals_abs_sqrt)
+        scale_location_widget = ScaleLocationWidget(predictions, model_norm_residuals_abs_sqrt)
         logger.info("Calculated Scale-Location Plot")
         self.figures.append(scale_location_widget)
         self.display.move_progress()
