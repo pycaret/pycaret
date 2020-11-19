@@ -40,7 +40,7 @@ class QQPlotWidget(BaseFigureWidget):
             TODO: ?
         split_origin: np.ndarray
             Optional, if the data used for the predictions incorporates unseen test data.
-            These residuals can be marked explicitly in the plot. To do this attribute must have the same dimensionality
+            These residuals can be marked explicitly in the plot. This attribute must have the same dimensionality
             as the predictions and residuals array. Each entry in this array must be one of the strings ['train', 'test']
             to denote from which split this data point originates.
         """
@@ -85,9 +85,11 @@ class QQPlotWidget(BaseFigureWidget):
         )
         return fig
 
-    def update_values(self, predicted: np.ndarray, expected: np.ndarray = None, featuresize: int = None):
+    def update_values(self, predicted: np.ndarray, expected: np.ndarray = None, featuresize: int = None,
+                      split_origin: np.ndarray = None):
         plot = self.__qq_plot(
-            standardized_residuals=helper.calculate_standardized_residual(predicted, expected, featuresize)
+            standardized_residuals=helper.calculate_standardized_residual(predicted, expected, featuresize),
+            split_origin=split_origin
         )
         self.update({"data": plot.data}, overwrite=True)
         self.update_layout()
@@ -112,7 +114,7 @@ class ScaleLocationWidget(BaseFigureWidget):
             The square root of the absolute value of the standardized residuals
         split_origin: np.ndarray
             Optional, if the data used for the predictions incorporates unseen test data.
-            These residuals can be marked explicitly in the plot. To do this attribute must have the same dimensionality
+            These residuals can be marked explicitly in the plot. This attribute must have the same dimensionality
             as the predictions and residuals array. Each entry in this array must be one of the strings ['train', 'test']
             to denote from which split this data point originates.
         """
@@ -155,8 +157,9 @@ class ScaleLocationWidget(BaseFigureWidget):
         ))
         return fig
 
-    def update_values(self, fitted: np.ndarray, sqrt_abs_standardized_residuals: np.ndarray):
-        plot = self.__scale_location_plot(fitted, sqrt_abs_standardized_residuals)
+    def update_values(self, predicted: np.ndarray, sqrt_abs_standardized_residuals: np.ndarray,
+                      split_origin: np.ndarray = None):
+        plot = self.__scale_location_plot(predicted, sqrt_abs_standardized_residuals, split_origin)
         self.update({"data": plot.data}, overwrite=True)
         self.update_layout()
 
@@ -255,9 +258,11 @@ class CooksDistanceWidget(BaseFigureWidget):
             model_leverage: np.ndarray,
             cooks_distances: np.ndarray,
             standardized_residuals: np.ndarray,
-            n_model_params: int
+            n_model_params: int,
+            split_origin: np.ndarray = None
     ):
-        plot = self.__cooks_distance_plot(model_leverage, cooks_distances, standardized_residuals, n_model_params)
+        plot = self.__cooks_distance_plot(model_leverage, cooks_distances, standardized_residuals, n_model_params,
+                                          split_origin=split_origin)
         self.update({"data": plot.data}, overwrite=True)
         self.update_layout()
 
@@ -329,17 +334,17 @@ class TukeyAnscombeWidget(BaseFigureWidget):
         ))
         return fig
 
-    def update_values(self, fitted: np.ndarray, residuals: np.ndarray,
-                      predictions: np.ndarray = None, prediction_residuals: np.ndarray = None):
-        plot = self.__tukey_anscombe_plot(fitted, residuals, predictions, prediction_residuals)
+    def update_values(self, predictions: np.ndarray, residuals: np.ndarray, split_origin: np.ndarray = None):
+        plot = self.__tukey_anscombe_plot(predictions, residuals, split_origin)
         self.update({"data": plot.data}, overwrite=True)
         self.update_layout()
 
 
 class InteractiveResidualsPlot:
     """
-    Assuming that $Y=f(X)+\epsilon$ for some unknown regression function $f(X)$ we further assume that
-    the error terms $\epsilon_i$ are i.i.d. random variables with $\epsilon_i~N(0,\sigma^2)$
+    To analyze the residuals of a given model, we are assuming that $Y=f(X)+\epsilon$ for some unknown
+    regression function $f(X)$ we further assume that the error terms $\epsilon_i$ are i.i.d. random variables
+    with $\epsilon_i~N(0,\sigma^2)$.
     More precisely we assume:
         1. Zero mean $E[e_i]=0$
         2. Constant variance $Var[e_i]=\sigma^2$
