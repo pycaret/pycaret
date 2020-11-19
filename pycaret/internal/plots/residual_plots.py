@@ -216,21 +216,46 @@ class CooksDistanceWidget(BaseFigureWidget):
 
 
 class TukeyAnscombeWidget(BaseFigureWidget):
-    def __init__(self, fitted: np.ndarray, residuals: np.ndarray, **kwargs):
-        plot = self._tukey_anscombe_plot(fitted, residuals)
+    def __init__(self, fitted: np.ndarray, fitted_residuals: np.ndarray,
+                 predictions: np.ndarray = None, prediction_residuals: np.ndarray = None, **kwargs):
+        plot = self._tukey_anscombe_plot(fitted, fitted_residuals, predictions, prediction_residuals)
         super(TukeyAnscombeWidget, self).__init__(plot, **kwargs)
 
-    def _tukey_anscombe_plot(self, fitted, residuals):
-        dataframe = pd.DataFrame({'Fitted Values': fitted, 'Residuals': residuals})
-        fig = px.scatter(dataframe, x="Fitted Values", y="Residuals", trendline="lowess", title="Tukey-Anscombe Plot",
-                         opacity=0.3)
-        model_abs_resid = pd.Series(np.abs(residuals))
+    def _tukey_anscombe_plot(self, fitted, fitted_residuals, predictions, prediction_residuals):
+        if predictions is not None and prediction_residuals is not None:
+            dataframe = pd.DataFrame({
+                'Fitted Values': np.concatenate((fitted, predictions)),
+                'Fitted Residuals': np.concatenate((fitted_residuals, prediction_residuals)),
+                'Split': np.concatenate(
+                    (np.repeat("train", fitted.shape[0]),
+                     np.repeat("test", predictions.shape[0])))})
+
+            fig = px.scatter(dataframe, x="Fitted Values", y="Fitted Residuals", trendline="lowess",
+                             color="Split",
+                             color_discrete_sequence=['blue', 'green'],
+                             title="Tukey-Anscombe Plot",
+                             opacity=0.3)
+
+            fig.update_layout(legend=dict(
+                yanchor="top",
+                y=0.99,
+                xanchor="right",
+                x=0.99
+            ))
+        else:
+            dataframe = pd.DataFrame({'Fitted Values': fitted, 'Fitted Residuals': fitted_residuals})
+
+            fig = px.scatter(dataframe, x="Fitted Values", y="Fitted Residuals", trendline="lowess",
+                             title="Tukey-Anscombe Plot",
+                             opacity=0.3)
+
+        model_abs_resid = pd.Series(np.abs(fitted_residuals))
         abs_resid = model_abs_resid.sort_values(ascending=False)
         abs_resid_top_3 = abs_resid[:3]
         for i in abs_resid_top_3.index:
             fig.add_annotation(
                 x=fitted[i],
-                y=residuals[i],
+                y=fitted_residuals[i],
                 text=str(i + 1))
         fig.update_annotations(dict(
             xref="x",
@@ -242,17 +267,19 @@ class TukeyAnscombeWidget(BaseFigureWidget):
         ))
         return fig
 
-    def update_values(self, fitted: np.ndarray, residuals: np.ndarray):
-        plot = self._tukey_anscombe_plot(fitted, residuals)
+    def update_values(self, fitted: np.ndarray, residuals: np.ndarray,
+                      predictions: np.ndarray = None, prediction_residuals: np.ndarray = None):
+        plot = self._tukey_anscombe_plot(fitted, residuals, predictions, prediction_residuals)
         self.update({"data": plot.data}, overwrite=True)
         self.update_layout()
 
 
 class InteractiveResidualsPlot:
-    def __init__(self, x: np.ndarray, y: np.ndarray, model, display: Display):
+    def __init__(self, display: Display, model, x: np.ndarray, y: np.ndarray, x_test: np.ndarray = None,
+                 y_test: np.ndarray = None):
         self.figures: [BaseFigureWidget] = []
         self.display: Display = display
-        self.plot = self.__create_resplots(x, y, model)
+        self.plot = self.__create_resplots(model, x, y, x_test, y_test)
 
     def show(self):
         self.display.display(self.plot)
@@ -265,18 +292,27 @@ class InteractiveResidualsPlot:
         with open(plot_filename, "w") as f:
             f.write(html)
 
-    def __create_resplots(self, x: np.ndarray, y: np.ndarray, model) -> widgets.VBox:
+    def __create_resplots(self, model, x: np.ndarray, y: np.ndarray, x_test: np.ndarray = None,
+                          y_test: np.ndarray = None) -> widgets.VBox:
         logger = get_logger()
 
         if not is_fitted(model):
             model.fit(x, y)
 
         fitted = model.predict(x)
-        residuals = fitted - y
+        fitted_residuals = fitted - y
+
+        if x_test is not None and y_test is not None:
+            predictions = model.predict(x_test)
+            prediction_residuals = predictions - y_test
+        else:
+            predictions = None
+            prediction_residuals = None
+
         logger.info("Calculated model residuals")
         self.display.move_progress()
 
-        tukey_anscombe_widget = TukeyAnscombeWidget(fitted, residuals)
+        tukey_anscombe_widget = TukeyAnscombeWidget(fitted, fitted_residuals, predictions, prediction_residuals)
         logger.info("Calculated Tunkey-Anscombe Plot")
         self.figures.append(tukey_anscombe_widget)
         self.display.move_progress()

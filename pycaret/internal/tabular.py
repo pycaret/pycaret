@@ -5864,7 +5864,8 @@ def plot_model(
 
                 def residuals_interactive():
                     from pycaret.internal.plots.residual_plots import InteractiveResidualsPlot
-                    resplots = InteractiveResidualsPlot(x=data_X, y=data_y, model=pipeline_with_model, display=display)
+                    resplots = InteractiveResidualsPlot(x=data_X, y=data_y, x_test=test_X, y_test=test_y,
+                                                        model=pipeline_with_model, display=display)
 
                     display.clear_output()
                     if system:
