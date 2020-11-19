@@ -116,7 +116,7 @@ class DataTypes_Auto_infer(BaseEstimator, TransformerMixin):
   """
         self.target = target
         self.ml_usecase = ml_usecase
-        self.features_todrop = features_todrop
+        self.features_todrop = [str(x) for x in features_todrop]
         self.categorical_features = [
             x for x in categorical_features if x not in self.features_todrop
         ]
@@ -135,10 +135,14 @@ class DataTypes_Auto_infer(BaseEstimator, TransformerMixin):
       Panda Data Frame
     """
 
-        data = dataset
+        data = dataset.copy()
+
+        # also make sure that all the column names are string
+        data.columns = [str(i) for i in data.columns]
 
         # drop any columns that were asked to drop
         data.drop(columns=self.features_todrop, errors="ignore", inplace=True)
+
         # remove sepcial char from column names
         # data.columns= data.columns.str.replace('[,]','')
 
@@ -155,9 +159,6 @@ class DataTypes_Auto_infer(BaseEstimator, TransformerMixin):
 
         # if there are inf or -inf then replace them with NaN
         data.replace([np.inf, -np.inf], np.NaN, inplace=True)
-
-        # also make sure that all the column names are string
-        data.columns = [str(i) for i in data.columns]
 
         # we canc check if somehow everything is object, we can try converting them in float
         for i in data.select_dtypes(include=["object"]).columns:
@@ -350,7 +351,10 @@ class DataTypes_Auto_infer(BaseEstimator, TransformerMixin):
         Panda Data Frame
     """
 
-        data = dataset
+        data = dataset.copy()
+
+        # also make sure that all the column names are string
+        data.columns = [str(i) for i in data.columns]
 
         # drop any columns that were asked to drop
         data.drop(columns=self.features_todrop, errors="ignore", inplace=True)
@@ -404,9 +408,6 @@ class DataTypes_Auto_infer(BaseEstimator, TransformerMixin):
     def fit_transform(self, dataset, y=None):
 
         data = dataset
-
-        # drop any columns that were asked to drop
-        data.drop(columns=self.features_todrop, errors="ignore", inplace=True)
 
         # since this is for training , we dont nees any transformation since it has already been transformed in fit
         data = self.fit(data)
