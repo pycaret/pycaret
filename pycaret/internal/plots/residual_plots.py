@@ -128,16 +128,27 @@ class QQPlotWidget(BaseFigureWidget):
 
 
 class ScaleLocationWidget(BaseFigureWidget):
-    def __init__(self, fitted: np.ndarray, sqrt_abs_standardized_residuals: np.ndarray, **kwargs):
-        plot = self._scale_location_plot(fitted, sqrt_abs_standardized_residuals)
+    def __init__(self, fitted: np.ndarray, sqrt_abs_standardized_residuals: np.ndarray, split_origin: np.ndarray = None, **kwargs):
+        plot = self._scale_location_plot(fitted, sqrt_abs_standardized_residuals, split_origin)
         super(ScaleLocationWidget, self).__init__(plot, **kwargs)
 
-    def _scale_location_plot(self, fitted, sqrt_abs_standardized_residuals):
+    def _scale_location_plot(self, fitted, sqrt_abs_standardized_residuals, split_origin):
         sqrt_abs_standardized_residuals = pd.Series(sqrt_abs_standardized_residuals)
-        dataframe = pd.DataFrame(
-            {'Fitted Values': fitted, '$\sqrt{|Standardized Residuals|}$': sqrt_abs_standardized_residuals})
-        fig = px.scatter(dataframe, x="Fitted Values", y="$\sqrt{|Standardized Residuals|}$", trendline="lowess",
-                         title="Scale-Location Plot", opacity=0.3)
+
+        if split_origin is not None:
+            dataframe = pd.DataFrame(
+                {'Fitted Values': fitted, 'Split': split_origin,
+                 '$\sqrt{|Standardized Residuals|}$': sqrt_abs_standardized_residuals})
+            fig = px.scatter(dataframe, x="Fitted Values", y="$\sqrt{|Standardized Residuals|}$", trendline="lowess",
+                             color="Split", color_discrete_sequence=['blue', 'green'],
+                             title="Scale-Location Plot", opacity=0.3)
+
+            fig.update_layout(showlegend=False)
+        else:
+            dataframe = pd.DataFrame(
+                {'Fitted Values': fitted, '$\sqrt{|Standardized Residuals|}$': sqrt_abs_standardized_residuals})
+            fig = px.scatter(dataframe, x="Fitted Values", y="$\sqrt{|Standardized Residuals|}$", trendline="lowess",
+                             title="Scale-Location Plot", opacity=0.3)
 
         abs_sq_norm_resid = sqrt_abs_standardized_residuals.sort_values(ascending=False)
         abs_sq_norm_resid_top_3 = abs_sq_norm_resid[:3]
@@ -339,7 +350,7 @@ class InteractiveResidualsPlot:
         standardized_residuals = \
             helper.calculate_standardized_residual(predictions, y, None)
         model_norm_residuals_abs_sqrt = np.sqrt(np.abs(standardized_residuals))
-        scale_location_widget = ScaleLocationWidget(predictions, model_norm_residuals_abs_sqrt)
+        scale_location_widget = ScaleLocationWidget(predictions, model_norm_residuals_abs_sqrt, split_origin)
         logger.info("Calculated Scale-Location Plot")
         self.figures.append(scale_location_widget)
         self.display.move_progress()
