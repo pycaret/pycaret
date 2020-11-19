@@ -19,9 +19,32 @@ from pycaret.internal.logging import get_logger
 
 
 class QQPlotWidget(BaseFigureWidget):
+    """
+    The QQ plot compares the quantiles of the empirical residuals to the theoretical quantiles of a standard normal distribution $N(0, 1)$.
+    Assuming that $Y=f(X)+\epsilon$ we can verify with this plot that $\epsilon ~ N(\mu, \sigma^2)$.
+    If the error terms actually originate from a normal distribution, then the data points will scatter just slightly around the straight line.
+    """
 
     def __init__(self, predicted: np.ndarray, expected: np.ndarray = None, featuresize: int = None,
                  split_origin: np.array = None, **kwargs):
+        """
+        Instantiates a QQ plot
+
+        Parameters
+        ----------
+        predicted: nd.array
+            The predicted values
+        expected: np.ndarray
+            The true values
+        featuresize: int
+            TODO: ?
+        split_origin: np.ndarray
+            Optional, if the data used for the predictions incorporates unseen test data.
+            These residuals can be marked explicitly in the plot. To do this attribute must have the same dimensionality
+            as the predictions and residuals array. Each entry in this array must be one of the strings ['train', 'test']
+            to denote from which split this data point originates.
+        """
+
         if expected is not None:
             std_res = helper.calculate_standardized_residual(
                 predicted,
@@ -49,7 +72,8 @@ class QQPlotWidget(BaseFigureWidget):
         x, qq = self.__get_qq(standardized_residuals=standardized_residuals)
         fig = go.Figure()
         fig.add_scatter(x=qq[0][0], y=qq[0][1], mode='markers', name='quantiles',
-                        marker=dict(color=colors), customdata=sorted_split_origin, hovertemplate="%{x},%{y} (%{customdata})",
+                        marker=dict(color=colors), customdata=sorted_split_origin,
+                        hovertemplate="%{x},%{y} (%{customdata})",
                         opacity=0.7)
         fig.add_scatter(x=x, y=qq[1][1] + qq[1][0] * x, mode='lines', name='OLS')
         fig.layout.update(
@@ -70,8 +94,29 @@ class QQPlotWidget(BaseFigureWidget):
 
 
 class ScaleLocationWidget(BaseFigureWidget):
-    def __init__(self, fitted: np.ndarray, sqrt_abs_standardized_residuals: np.ndarray, split_origin: np.ndarray = None, **kwargs):
-        plot = self.__scale_location_plot(fitted, sqrt_abs_standardized_residuals, split_origin)
+    """
+    The Scale Location plot compares the square root of the absolute standardized residuals $\sqrt{|\tilde r_i|}$ versus the predicted values $\hat y_i$.
+    Assuming that $Y=f(X)+\epsilon$ we can verify with this plot that $Var[\epsilon]=\sigma^2$.
+    """
+
+    def __init__(self, predictions: np.ndarray, sqrt_abs_standardized_residuals: np.ndarray, split_origin: np.ndarray = None,
+                 **kwargs):
+        """
+        Instantiates a Scale Location plot
+
+        Parameters
+        ----------
+        predictions: np.ndarray
+            The predictions on the data
+        sqrt_abs_standardized_residuals: np.ndarray
+            The square root of the absolute value of the standardized residuals
+        split_origin: np.ndarray
+            Optional, if the data used for the predictions incorporates unseen test data.
+            These residuals can be marked explicitly in the plot. To do this attribute must have the same dimensionality
+            as the predictions and residuals array. Each entry in this array must be one of the strings ['train', 'test']
+            to denote from which split this data point originates.
+        """
+        plot = self.__scale_location_plot(predictions, sqrt_abs_standardized_residuals, split_origin)
         super(ScaleLocationWidget, self).__init__(plot, **kwargs)
 
     @staticmethod
@@ -80,17 +125,17 @@ class ScaleLocationWidget(BaseFigureWidget):
 
         if split_origin is not None:
             dataframe = pd.DataFrame(
-                {'Fitted Values': fitted, 'Split': split_origin,
+                {'Predictions': fitted, 'Split': split_origin,
                  '$\sqrt{|Standardized Residuals|}$': sqrt_abs_standardized_residuals})
-            fig = px.scatter(dataframe, x="Fitted Values", y="$\sqrt{|Standardized Residuals|}$", trendline="lowess",
+            fig = px.scatter(dataframe, x="Predictions", y="$\sqrt{|Standardized Residuals|}$", trendline="lowess",
                              color="Split", color_discrete_sequence=['blue', 'green'],
                              title="Scale-Location Plot", opacity=0.3)
 
             fig.update_layout(showlegend=False)
         else:
             dataframe = pd.DataFrame(
-                {'Fitted Values': fitted, '$\sqrt{|Standardized Residuals|}$': sqrt_abs_standardized_residuals})
-            fig = px.scatter(dataframe, x="Fitted Values", y="$\sqrt{|Standardized Residuals|}$", trendline="lowess",
+                {'Predictions': fitted, '$\sqrt{|Standardized Residuals|}$': sqrt_abs_standardized_residuals})
+            fig = px.scatter(dataframe, x="Predictions", y="$\sqrt{|Standardized Residuals|}$", trendline="lowess",
                              title="Scale-Location Plot", opacity=0.3)
 
         abs_sq_norm_resid = sqrt_abs_standardized_residuals.sort_values(ascending=False)
@@ -117,6 +162,11 @@ class ScaleLocationWidget(BaseFigureWidget):
 
 
 class CooksDistanceWidget(BaseFigureWidget):
+    """
+    This widget compares the standardized residuals $\tilde r_i$ versus the leverage $h_i$ of the corresponding data point $x_i$.
+    Assuming that $Y=f(X)+\epsilon$ we can verify with this plot that the error terms $\epsilon_i$ are independent. TODO: IS THIS TRUE?
+    """
+
     def __init__(
             self,
             model_leverage: np.ndarray,
@@ -126,7 +176,27 @@ class CooksDistanceWidget(BaseFigureWidget):
             split_origin: np.ndarray = None,
             **kwargs
     ):
-        plot = self.__cooks_distance_plot(model_leverage, cooks_distances, standardized_residuals, n_model_params, split_origin)
+        """
+        Instantiates the Cooks Distance widget
+
+        Parameters
+        ----------
+        model_leverage: np.ndarray
+            The leverage of the data points
+        cooks_distances: np.ndarray
+            The cooks_distances of the data points
+        standardized_residuals: np.ndarray
+            The standartized residuals
+        n_model_params: int
+            The number of parameters of the used model
+        split_origin: np.ndarray
+            Optional, if the data used for the predictions incorporates unseen test data.
+            These residuals can be marked explicitly in the plot. To do this attribute must have the same dimensionality
+            as the predictions and residuals array. Each entry in this array must be one of the strings ['train', 'test']
+            to denote from which split this data point originates.
+        """
+        plot = self.__cooks_distance_plot(model_leverage, cooks_distances, standardized_residuals, n_model_params,
+                                          split_origin)
         super(CooksDistanceWidget, self).__init__(plot, **kwargs)
 
     @staticmethod
@@ -193,8 +263,29 @@ class CooksDistanceWidget(BaseFigureWidget):
 
 
 class TukeyAnscombeWidget(BaseFigureWidget):
+    """
+    The Tunkey Anscombe Plot compares the residuals $r_i=y_i-\hat y_i$ versus the predicted values $\hat y_i$.
+    Assuming that $Y=f(X)+\epsilon$ we can verify with this plot that $E[\epsilon]=0$
+    """
+
     def __init__(self, predictions: np.ndarray, residuals: np.ndarray,
                  split_origin: np.ndarray = None, **kwargs):
+        """
+        Instantiates the Tunkey Anscombe plot
+
+        Parameters
+        ----------
+        predictions: np.ndarray
+            The prediction of a model on some data
+        residuals: np.ndarray
+            The residuals / error of the predictions when compared to the true value
+        split_origin: np.ndarray
+            Optional, if the data used for the predictions incorporates unseen test data.
+            These residuals can be marked explicitly in the plot. To do this attribute must have the same dimensionality
+            as the predictions and residuals array. Each entry in this array must be one of the strings ['train', 'test']
+            to denote from which split this data point originates.
+        """
+
         plot = self.__tukey_anscombe_plot(predictions, residuals, split_origin)
         super(TukeyAnscombeWidget, self).__init__(plot, **kwargs)
 
@@ -202,11 +293,11 @@ class TukeyAnscombeWidget(BaseFigureWidget):
     def __tukey_anscombe_plot(predictions, residuals, split_origin):
         if split_origin is not None:
             dataframe = pd.DataFrame({
-                'Prediction': predictions,
-                'Residual': residuals,
+                'Predictions': predictions,
+                'Residuals': residuals,
                 'Split': split_origin})
 
-            fig = px.scatter(dataframe, x="Prediction", y="Residual", trendline="lowess",
+            fig = px.scatter(dataframe, x="Predictions", y="Residuals", trendline="lowess",
                              color="Split",
                              color_discrete_sequence=['blue', 'green'],
                              title="Tukey-Anscombe Plot",
@@ -214,9 +305,9 @@ class TukeyAnscombeWidget(BaseFigureWidget):
 
             fig.update_layout(showlegend=False)
         else:
-            dataframe = pd.DataFrame({'Fitted Values': predictions, 'Fitted Residuals': residuals})
+            dataframe = pd.DataFrame({'Predictions': predictions, 'Residuals': residuals})
 
-            fig = px.scatter(dataframe, x="Fitted Values", y="Fitted Residuals", trendline="lowess",
+            fig = px.scatter(dataframe, x="Predictions", y="Residuals", trendline="lowess",
                              title="Tukey-Anscombe Plot",
                              opacity=0.3)
 
@@ -246,8 +337,40 @@ class TukeyAnscombeWidget(BaseFigureWidget):
 
 
 class InteractiveResidualsPlot:
+    """
+    Assuming that $Y=f(X)+\epsilon$ for some unknown regression function $f(X)$ we further assume that
+    the error terms $\epsilon_i$ are i.i.d. random variables with $\epsilon_i~N(0,\sigma^2)$
+    More precisely we assume:
+        1. Zero mean $E[e_i]=0$
+        2. Constant variance $Var[e_i]=\sigma^2$
+        3. A normal distribution $\epsilon_i~N(0,\sigma^2)$
+        4. The error terms are independent
+
+    To verify those four assumptions four interactive residual plots will be created.
+    If those assumptions are not satisfied, the plausibility of the given model for the given data is to be questioned.
+    """
+
     def __init__(self, display: Display, model, x: np.ndarray, y: np.ndarray, x_test: np.ndarray = None,
                  y_test: np.ndarray = None):
+        """
+        Instantiates the interactive residual plots for the given data
+
+        Parameters
+        ----------
+        display:  Display
+            this object is required to show the plots and move the progressbar
+        model
+            describes the regression model which is to be evaluated
+        x: np.ndarray
+            the training data
+        y: np.ndarray
+            the training labels
+        x_test: np.ndarray
+            optional, some test data (requires y_test)
+        y_test: np.ndarray
+            optional, the labels to the provided test data (requires x_test)
+        """
+
         self.figures: [BaseFigureWidget] = []
         self.display: Display = display
         self.plot = self.__create_resplots(model, x, y, x_test, y_test)
@@ -307,7 +430,8 @@ class InteractiveResidualsPlot:
         standardized_residuals = \
             helper.calculate_standardized_residual(predictions, y, None)
         model_norm_residuals_abs_sqrt = np.sqrt(np.abs(standardized_residuals))
-        scale_location_widget = ScaleLocationWidget(predictions, model_norm_residuals_abs_sqrt, split_origin=split_origin)
+        scale_location_widget = ScaleLocationWidget(predictions, model_norm_residuals_abs_sqrt,
+                                                    split_origin=split_origin)
         logger.info("Calculated Scale-Location Plot")
         self.figures.append(scale_location_widget)
         self.display.move_progress()
