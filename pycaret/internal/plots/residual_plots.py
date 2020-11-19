@@ -180,17 +180,29 @@ class CooksDistanceWidget(BaseFigureWidget):
             cooks_distances: np.ndarray,
             standardized_residuals: np.ndarray,
             n_model_params: int,
+            split_origin: np.ndarray = None,
             **kwargs
     ):
-        plot = self._cooks_distance_plot(model_leverage, cooks_distances, standardized_residuals, n_model_params)
+        plot = self._cooks_distance_plot(model_leverage, cooks_distances, standardized_residuals, n_model_params, split_origin)
         super(CooksDistanceWidget, self).__init__(plot, **kwargs)
 
-    def _cooks_distance_plot(self, model_leverage, cooks_distances, standardized_residuals, n_model_params):
+    def _cooks_distance_plot(self, model_leverage, cooks_distances, standardized_residuals, n_model_params, split_origin):
         cooks_distances = pd.Series(cooks_distances)
-        dataframe = pd.DataFrame(
-            {'Leverage': model_leverage, 'Standardized Residuals': standardized_residuals})
-        fig = px.scatter(dataframe, x="Leverage", y="Standardized Residuals", trendline="lowess",
-                         title="Residuals vs Leverage", opacity=0.3)
+
+        if split_origin is not None:
+            dataframe = pd.DataFrame(
+                {'Leverage': model_leverage, 'Standardized Residuals': standardized_residuals, "Split": split_origin})
+            fig = px.scatter(dataframe, x="Leverage", y="Standardized Residuals", trendline="lowess",
+                             color="Split", color_discrete_sequence=['blue', 'green'],
+                             title="Residuals vs Leverage", opacity=0.3)
+
+            fig.update_layout(showlegend=False)
+        else:
+            dataframe = pd.DataFrame(
+                {'Leverage': model_leverage, 'Standardized Residuals': standardized_residuals})
+            fig = px.scatter(dataframe, x="Leverage", y="Standardized Residuals", trendline="lowess",
+                             title="Residuals vs Leverage", opacity=0.3)
+
         maxmo = max(model_leverage) + 0.003
         fig.update_xaxes(range=[0, maxmo])
         fig.update_yaxes(range=[-3, 5])
@@ -359,7 +371,7 @@ class InteractiveResidualsPlot:
         distance = helper.cooks_distance(standardized_residuals, leverage)
         n_model_params = len(model.get_params())
         cooks_distance_widget = CooksDistanceWidget(leverage, distance, standardized_residuals,
-                                                    n_model_params)
+                                                    n_model_params, split_origin)
         logger.info("Calculated Residual vs Leverage Plot inc. Cook's distance")
         self.figures.append(cooks_distance_widget)
         self.display.move_progress()
