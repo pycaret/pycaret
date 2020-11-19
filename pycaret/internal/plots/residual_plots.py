@@ -106,10 +106,10 @@ class QQPlotWidget(BaseFigureWidget):
 
         x, qq = self._get_qq(standardized_residuals=standardized_residuals)
         fig = go.Figure()
-        fig.add_scatter(x=qq[0][0], y=qq[0][1], mode='markers',
+        fig.add_scatter(x=qq[0][0], y=qq[0][1], mode='markers', name='quantiles',
                         marker=dict(color=colors), customdata=sorted_split_origin, hovertemplate="%{x},%{y} (%{customdata})",
                         opacity=0.7)
-        fig.add_scatter(x=x, y=qq[1][1] + qq[1][0] * x, mode='lines')
+        fig.add_scatter(x=x, y=qq[1][1] + qq[1][0] * x, mode='lines', name='OLS')
         fig.layout.update(
             autosize=True,
             showlegend=False,
