@@ -75,6 +75,10 @@ class PowerTransformedTargetRegressor(sklearn.compose.TransformedTargetRegressor
         self : object
         """
 
+        # workaround - for some reason, if data is in float32, super().fit() will return an array of 0s
+        # this also happens in pure scikit-learn
+        y = y.astype('float64')
+
         r = super().fit(X, y, **fit_params)
         self._carry_over_regressor_fit_vars()
         return r
