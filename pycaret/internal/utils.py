@@ -15,6 +15,7 @@ from pycaret.internal.validation import *
 from typing import Any, List, Optional, Dict, Tuple, Union
 from sklearn import clone
 from sklearn.model_selection import KFold, StratifiedKFold, BaseCrossValidator
+from sklearn.model_selection._split import _BaseKFold
 
 
 def get_config(variable: str, globals_d: dict):
@@ -430,6 +431,12 @@ def get_cv_splitter(
         return fold
     if type(fold) is int:
         if default is not None:
+            if isinstance(default, _BaseKFold) and fold <= 1:
+                raise ValueError(
+                    "k-fold cross-validation requires at least one"
+                    " train/test split by setting n_splits=2 or more,"
+                    f" got n_splits={fold}."
+                )
             try:
                 default_copy = deepcopy(default)
                 default_copy.n_splits = fold
