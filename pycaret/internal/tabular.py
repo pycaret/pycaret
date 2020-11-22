@@ -9124,7 +9124,7 @@ def models(
                 "ada",
             ],
         }
-        return df.loc[model_type[type]]
+        return df[df.index.isin(model_type[type])]
 
         # Check if type is valid
         if type not in list(model_type) + [None]:
