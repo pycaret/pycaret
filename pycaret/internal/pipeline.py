@@ -218,6 +218,8 @@ def add_estimator_to_pipeline(pipeline: Pipeline, estimator, name="actual_estima
         pipeline.replace_final_estimator(estimator, name=name)
     except:
         pipeline.steps.append((name, estimator))
+        if hasattr(pipeline, "_carry_over_final_estimator_fit_vars"):
+            pipeline._carry_over_final_estimator_fit_vars()
 
 
 def merge_pipelines(pipeline_to_merge_to: Pipeline, pipeline_to_be_merged: Pipeline):
