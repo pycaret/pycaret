@@ -31,6 +31,7 @@ pip install pycaret[full]
 ```
 
 ### Minor Release
+- [November 25, 2020] `2.2.2` released fixing several bugs. [Click here](https://github.com/pycaret/pycaret/releases) to see release notes.
 - [November 9, 2020] `2.2.1` released fixing several bugs. [Click here](https://github.com/pycaret/pycaret/releases) to see release notes.
 
 ## PyCaret on GPU
