@@ -22,7 +22,8 @@ class QQPlotWidget(BaseFigureWidget):
     """
     The QQ plot compares the quantiles of the empirical residuals to the theoretical quantiles of a standard normal distribution $N(0, 1)$.
     Assuming that $Y=f(X)+\epsilon$ we can verify with this plot that $\epsilon ~ N(\mu, \sigma^2)$.
-    If the error terms actually originate from a normal distribution, then the data points will scatter just slightly around the straight line.
+    If the error terms actually originate from a normal distribution, then the data points will scatter just slightly
+    around the red straight line.
     """
 
     def __init__(self, predicted: np.ndarray, expected: np.ndarray = None, featuresize: int = None,
@@ -35,13 +36,14 @@ class QQPlotWidget(BaseFigureWidget):
         predicted: nd.array
             The predicted values
         expected: np.ndarray
-            The true values
+            Optional, the true values. If this attribute is None, the predicted array is assumed to contain the already
+            standardized residuals.
         featuresize: int
-            TODO: ?
+            number of features
         split_origin: np.ndarray
-            Optional, if the data used for the predictions incorporates unseen test data.
+            Optional, if the data used for the predictions includes unseen test data.
             These residuals can be marked explicitly in the plot. This attribute must have the same dimensionality
-            as the predictions and residuals array. Each entry in this array must be one of the strings ['train', 'test']
+            as the predictions and expected array. Each entry in this array must be one of the strings ['train', 'test']
             to denote from which split this data point originates.
         """
 
@@ -62,19 +64,23 @@ class QQPlotWidget(BaseFigureWidget):
         return np.array([qq[0][0][0], qq[0][0][-1]]), qq
 
     def __qq_plot(self, standardized_residuals: np.ndarray, split_origin: np.array = None) -> go.Figure:
-
-        sorted_split_origin = np.array(
-            [x[1] for x in sorted(enumerate(split_origin), key=lambda x: standardized_residuals[x[0]])])
-        colors = sorted_split_origin.copy()
-        colors[sorted_split_origin == "train"] = "blue"
-        colors[sorted_split_origin == "test"] = "green"
-
         x, qq = self.__get_qq(standardized_residuals=standardized_residuals)
         fig = go.Figure()
-        fig.add_scatter(x=qq[0][0], y=qq[0][1], mode='markers', name='quantiles',
-                        marker=dict(color=colors), customdata=sorted_split_origin,
-                        hovertemplate="%{x},%{y} (%{customdata})",
-                        opacity=0.7)
+
+        if split_origin is not None:
+            sorted_split_origin = np.array(
+                [x[1] for x in sorted(enumerate(split_origin), key=lambda x: standardized_residuals[x[0]])])
+            colors = sorted_split_origin.copy()
+            colors[sorted_split_origin == "train"] = "blue"
+            colors[sorted_split_origin == "test"] = "green"
+            fig.add_scatter(x=qq[0][0], y=qq[0][1], mode='markers', name='quantiles',
+                            marker=dict(color=colors), customdata=sorted_split_origin,
+                            hovertemplate="%{x},%{y} (%{customdata})",
+                            opacity=0.7)
+        else:
+            fig.add_scatter(x=qq[0][0], y=qq[0][1], mode='markers', name='quantiles',
+                            opacity=0.7)
+
         fig.add_scatter(x=x, y=qq[1][1] + qq[1][0] * x, mode='lines', name='OLS')
         fig.layout.update(
             autosize=True,
@@ -97,8 +103,10 @@ class QQPlotWidget(BaseFigureWidget):
 
 class ScaleLocationWidget(BaseFigureWidget):
     """
-    The Scale Location plot compares the square root of the absolute standardized residuals $\sqrt{|\tilde r_i|}$ versus the predicted values $\hat y_i$.
+    The Scale Location plot compares the square root of the absolute standardized residuals $\sqrt{|\tilde r_i|}$
+    versus the predicted values $\hat y_i$.
     Assuming that $Y=f(X)+\epsilon$ we can verify with this plot that $Var[\epsilon]=\sigma^2$.
+    The fitted trend line should follow a straight line along the axis of predicted values.
     """
 
     def __init__(self, predictions: np.ndarray, sqrt_abs_standardized_residuals: np.ndarray, split_origin: np.ndarray = None,
@@ -113,9 +121,9 @@ class ScaleLocationWidget(BaseFigureWidget):
         sqrt_abs_standardized_residuals: np.ndarray
             The square root of the absolute value of the standardized residuals
         split_origin: np.ndarray
-            Optional, if the data used for the predictions incorporates unseen test data.
+            Optional, if the data used for the predictions includes unseen test data.
             These residuals can be marked explicitly in the plot. This attribute must have the same dimensionality
-            as the predictions and residuals array. Each entry in this array must be one of the strings ['train', 'test']
+            as the predictions and sqrt_abs_standardized_residuals array. Each entry in this array must be one of the strings ['train', 'test']
             to denote from which split this data point originates.
         """
         plot = self.__scale_location_plot(predictions, sqrt_abs_standardized_residuals, split_origin)
@@ -167,7 +175,11 @@ class ScaleLocationWidget(BaseFigureWidget):
 class CooksDistanceWidget(BaseFigureWidget):
     """
     This widget compares the standardized residuals $\tilde r_i$ versus the leverage $h_i$ of the corresponding data point $x_i$.
-    Assuming that $Y=f(X)+\epsilon$ we can verify with this plot that the error terms $\epsilon_i$ are independent. TODO: IS THIS TRUE?
+    Assuming that $Y=f(X)+\epsilon$ we can verify with this plot that the error terms $\epsilon_i$ are independent.
+    The cook's distance is a measure to which extent some points are high leverage points and/or outliers.
+    Cook's distance (function of leverage and residual) is a measure of how influential a data point is.
+    If a point lies beyond of contour lines corresponding to a Cook's distance larger than 1, then this point should be
+    considered as dangerously influential.
     """
 
     def __init__(
@@ -193,10 +205,10 @@ class CooksDistanceWidget(BaseFigureWidget):
         n_model_params: int
             The number of parameters of the used model
         split_origin: np.ndarray
-            Optional, if the data used for the predictions incorporates unseen test data.
-            These residuals can be marked explicitly in the plot. To do this attribute must have the same dimensionality
-            as the predictions and residuals array. Each entry in this array must be one of the strings ['train', 'test']
-            to denote from which split this data point originates.
+            Optional, if the data used for the predictions includes unseen test data.
+            These residuals can be marked explicitly in the plot. This attribute must have the same dimensionality
+            as the model_leverage and standardized_residuals array. Each entry in this array must be one of the
+            strings ['train', 'test'] to denote from which split this data point originates.
         """
         plot = self.__cooks_distance_plot(model_leverage, cooks_distances, standardized_residuals, n_model_params,
                                           split_origin)
@@ -229,6 +241,7 @@ class CooksDistanceWidget(BaseFigureWidget):
                 x=model_leverage[i],
                 y=standardized_residuals[i],
                 text=str(i + 1))
+
         fig.update_annotations(dict(
             xref="x",
             yref="y",
@@ -270,7 +283,9 @@ class CooksDistanceWidget(BaseFigureWidget):
 class TukeyAnscombeWidget(BaseFigureWidget):
     """
     The Tunkey Anscombe Plot compares the residuals $r_i=y_i-\hat y_i$ versus the predicted values $\hat y_i$.
-    Assuming that $Y=f(X)+\epsilon$ we can verify with this plot that $E[\epsilon]=0$
+    Assuming that $Y=f(X)+\epsilon$ we can verify with this plot that $E[\epsilon]=0$.
+    The fitted trend line should follow a straight line along the axis of predicted values at the position 0 on the
+    residual axis.
     """
 
     def __init__(self, predictions: np.ndarray, residuals: np.ndarray,
@@ -285,7 +300,7 @@ class TukeyAnscombeWidget(BaseFigureWidget):
         residuals: np.ndarray
             The residuals / error of the predictions when compared to the true value
         split_origin: np.ndarray
-            Optional, if the data used for the predictions incorporates unseen test data.
+            Optional, if the data used for the predictions includes unseen test data.
             These residuals can be marked explicitly in the plot. To do this attribute must have the same dimensionality
             as the predictions and residuals array. Each entry in this array must be one of the strings ['train', 'test']
             to denote from which split this data point originates.
