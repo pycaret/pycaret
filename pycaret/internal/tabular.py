@@ -5625,6 +5625,8 @@ def plot_model(
     plot : str, default = auc
         Enter abbreviation of type of plot. The current list of plots supported are (Plot - Name):
 
+
+        * 'residuals_interactive' - Interactive Residual plots
         * 'auc' - Area Under the Curve                 
         * 'threshold' - Discrimination Threshold           
         * 'pr' - Precision Recall Curve                  
@@ -5865,6 +5867,26 @@ def plot_model(
                 fit_kwargs = _get_pipeline_fit_kwargs(pipeline_with_model, fit_kwargs)
 
                 _base_dpi = 100
+
+                def residuals_interactive():
+                    from pycaret.internal.plots.residual_plots import InteractiveResidualsPlot
+                    resplots = InteractiveResidualsPlot(x=data_X, y=data_y, x_test=test_X, y_test=test_y,
+                                                        model=pipeline_with_model, display=display)
+
+                    display.clear_output()
+                    if system:
+                        resplots.show()
+
+                    plot_filename = f"{plot_name}.html"
+
+                    if save:
+                        resplots.write_html(plot_filename)
+                        logger.info(
+                            f"Saving '{plot_filename}' in current active directory"
+                        )
+
+                    logger.info("Visual Rendered Successfully")
+                    return plot_filename
 
                 def cluster():
                     logger.info(
