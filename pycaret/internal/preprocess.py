@@ -2779,6 +2779,7 @@ class Remove_100(BaseEstimator, TransformerMixin):
 
     def __init__(self, target):
         self.target = target
+        self.columns_to_drop = []
 
     def fit(self, data, y=None):
         self.fit_transform(data, y=y)
