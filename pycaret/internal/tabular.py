@@ -354,7 +354,7 @@ def setup(
     # ordinal features check
     if ordinal_features is not None:
         ordinal_features = ordinal_features.copy()
-        data_cols = data.columns.drop(target)
+        data_cols = data.columns.drop(target, errors="ignore")
         ord_keys = ordinal_features.keys()
 
         for i in ord_keys:
@@ -386,7 +386,7 @@ def setup(
             )
 
     if high_cardinality_features is not None:
-        data_cols = data.columns.drop(target)
+        data_cols = data.columns.drop(target, errors="ignore")
         for i in high_cardinality_features:
             if i not in data_cols:
                 raise ValueError(
@@ -2576,7 +2576,13 @@ def create_model_unsupervised(
         model.set_params(contamination=fraction)
 
     # workaround for an issue with set_params in cuML
-    model = clone(model)
+    try:
+        model = clone(model)
+    except:
+        logger.warning(
+            f"create_model_unsupervised() for {model} raised an exception when cloning:"
+        )
+        logger.warning(traceback.format_exc())
 
     logger.info(f"{full_name} Imported succesfully")
 
@@ -8360,6 +8366,7 @@ def predict_model(
             replace_lables_in_column(y_test_)
         X_test_ = pd.concat([X_test_, y_test_, label], axis=1)
     else:
+        X_test_ = data.copy()
         X_test_["Label"] = label["Label"].values
 
     if score is not None:
@@ -9117,7 +9124,7 @@ def models(
                 "ada",
             ],
         }
-        return df.loc[model_type[type]]
+        return df[df.index.isin(model_type[type])]
 
         # Check if type is valid
         if type not in list(model_type) + [None]:

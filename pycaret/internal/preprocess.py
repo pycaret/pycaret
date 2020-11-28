@@ -116,7 +116,7 @@ class DataTypes_Auto_infer(BaseEstimator, TransformerMixin):
   """
         self.target = target
         self.ml_usecase = ml_usecase
-        self.features_todrop = features_todrop
+        self.features_todrop = [str(x) for x in features_todrop]
         self.categorical_features = [
             x for x in categorical_features if x not in self.features_todrop
         ]
@@ -135,10 +135,14 @@ class DataTypes_Auto_infer(BaseEstimator, TransformerMixin):
       Panda Data Frame
     """
 
-        data = dataset
+        data = dataset.copy()
+
+        # also make sure that all the column names are string
+        data.columns = [str(i) for i in data.columns]
 
         # drop any columns that were asked to drop
         data.drop(columns=self.features_todrop, errors="ignore", inplace=True)
+
         # remove sepcial char from column names
         # data.columns= data.columns.str.replace('[,]','')
 
@@ -155,9 +159,6 @@ class DataTypes_Auto_infer(BaseEstimator, TransformerMixin):
 
         # if there are inf or -inf then replace them with NaN
         data.replace([np.inf, -np.inf], np.NaN, inplace=True)
-
-        # also make sure that all the column names are string
-        data.columns = [str(i) for i in data.columns]
 
         # we canc check if somehow everything is object, we can try converting them in float
         for i in data.select_dtypes(include=["object"]).columns:
@@ -252,7 +253,9 @@ class DataTypes_Auto_infer(BaseEstimator, TransformerMixin):
                     dataset[i], infer_datetime_format=True, utc=False, errors="raise"
                 )
 
-        for i in data.select_dtypes(include=["datetime64"]).columns:
+        for i in data.select_dtypes(
+            include=["datetime64", "datetime64[ns, UTC]"]
+        ).columns:
             data[i] = data[i].astype("datetime64[ns]")
 
         # table of learent types
@@ -348,7 +351,10 @@ class DataTypes_Auto_infer(BaseEstimator, TransformerMixin):
         Panda Data Frame
     """
 
-        data = dataset
+        data = dataset.copy()
+
+        # also make sure that all the column names are string
+        data.columns = [str(i) for i in data.columns]
 
         # drop any columns that were asked to drop
         data.drop(columns=self.features_todrop, errors="ignore", inplace=True)
@@ -402,9 +408,6 @@ class DataTypes_Auto_infer(BaseEstimator, TransformerMixin):
     def fit_transform(self, dataset, y=None):
 
         data = dataset
-
-        # drop any columns that were asked to drop
-        data.drop(columns=self.features_todrop, errors="ignore", inplace=True)
 
         # since this is for training , we dont nees any transformation since it has already been transformed in fit
         data = self.fit(data)
@@ -779,20 +782,22 @@ class Iterative_Imputer(_BaseImputer):
         )
         if is_classification:
             if column in self.classifiers_:
-                dummy, le, estimator = self.classifiers_[column]
+                time, dummy, le, estimator = self.classifiers_[column]
             elif not fit:
                 return X
             else:
                 estimator = clone(self._classifier)
+                time = Make_Time_Features()
                 dummy = Dummify(column)
                 le = LabelEncoder()
         else:
             if column in self.regressors_:
-                dummy, le, estimator = self.regressors_[column]
+                time, dummy, le, estimator = self.regressors_[column]
             elif not fit:
                 return X
             else:
                 estimator = clone(self._regressor)
+                time = Make_Time_Features()
                 dummy = Dummify(column)
                 le = None
 
@@ -802,6 +807,7 @@ class Iterative_Imputer(_BaseImputer):
             y_train = X_train[column]
             # catboost handles categoricals itself
             if "catboost" not in str(type(estimator)).lower():
+                X_train = time.fit_transform(X_train)
                 X_train = dummy.fit_transform(X_train)
                 X_train.drop(column, axis=1, inplace=True)
             else:
@@ -828,6 +834,7 @@ class Iterative_Imputer(_BaseImputer):
                 estimator.fit(X_train, y_train, **fit_kwargs)
 
         X_test = X.drop(column, axis=1)[X_na_mask[column]]
+        X_test = time.transform(X_test)
         # catboost handles categoricals itself
         if "catboost" not in str(type(estimator)).lower():
             X_test = dummy.transform(X_test)
@@ -842,9 +849,9 @@ class Iterative_Imputer(_BaseImputer):
             result = le.inverse_transform(result)
 
         if is_classification:
-            self.classifiers_[column] = (dummy, le, estimator)
+            self.classifiers_[column] = (time, dummy, le, estimator)
         else:
-            self.regressors_[column] = (dummy, le, estimator)
+            self.regressors_[column] = (time, dummy, le, estimator)
 
         X_test[column] = result
         X.update(X_test[column])
@@ -1399,19 +1406,19 @@ class Make_Time_Features(BaseEstimator, TransformerMixin):
 
     def __init__(
         self,
-        time_feature=[],
+        time_feature=None,
         list_of_features=["month", "weekday", "is_month_end", "is_month_start", "hour"],
     ):
         self.time_feature = time_feature
         self.list_of_features_o = set(list_of_features)
 
     def fit(self, data, y=None):
-        if not self.time_feature:
+        if self.time_feature is None:
             self.time_feature = data.select_dtypes(include=["datetime64[ns]"]).columns
         return self
 
     def transform(self, dataset, y=None):
-        data = dataset
+        data = dataset.copy()
 
         # run fit transform first
 
@@ -2772,6 +2779,7 @@ class Remove_100(BaseEstimator, TransformerMixin):
 
     def __init__(self, target):
         self.target = target
+        self.columns_to_drop = []
 
     def fit(self, data, y=None):
         self.fit_transform(data, y=y)
