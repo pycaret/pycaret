@@ -29,6 +29,7 @@ from pycaret.internal.utils import (
     true_warm_start,
     can_early_stop,
     infer_ml_usecase,
+    _get_columns_to_stratify_by,
 )
 import pycaret.internal.patches.sklearn
 import pycaret.internal.patches.yellowbrick
@@ -8874,8 +8875,7 @@ def save_model(model, model_name: str, model_only: bool = False, verbose: bool =
     Returns
     -------
     Success_Message
-    
-         
+
     """
 
     import pycaret.internal.persistence
@@ -9969,22 +9969,6 @@ def _mlflow_log_model(
         )
         del prep_pipe_temp
     gc.collect()
-
-
-def _get_columns_to_stratify_by(
-    X: pd.DataFrame, y: pd.DataFrame, stratify: Union[bool, List[str]], target: str
-) -> pd.DataFrame:
-    if not stratify:
-        stratify = None
-    else:
-        if isinstance(stratify, list):
-            data = pd.concat([X, y], axis=1)
-            if not all(col in data.columns for col in stratify):
-                raise ValueError("Column to stratify by does not exist in the dataset.")
-            stratify = data[stratify]
-        else:
-            stratify = y
-    return stratify
 
 
 def _get_cv_splitter(fold, ml_usecase: Optional[MLUsecase] = None):
