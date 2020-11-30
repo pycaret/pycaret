@@ -1415,12 +1415,11 @@ class Make_Time_Features(BaseEstimator, TransformerMixin):
     def fit(self, data, y=None):
         if self.time_feature is None:
             self.time_feature = data.select_dtypes(include=["datetime64[ns]"]).columns
-            self.has_hour_ = False
+            self.has_hour_ = set()
             for i in self.time_feature:
                 if "hour" in self.list_of_features_o:
                     if any(x.hour for x in data[i]):
-                        self.has_hour_ = True
-                        break
+                        self.has_hour_.add(i)
         return self
 
     def transform(self, dataset, y=None):
@@ -1459,10 +1458,10 @@ class Make_Time_Features(BaseEstimator, TransformerMixin):
                 data[i + k] = v
 
             # make hour column if choosen
-            if "hour" in self.list_of_features_o and self.has_hour_:
+            if "hour" in self.list_of_features_o and i in self.has_hour_:
                 h = [r.hour for r in data[i]]
-                data[i + "_hour"] = h
-                data[i + "_hour"] = data[i + "_hour"].apply(str)
+                data[f"{i}_hour"] = h
+                data[f"{i}_hour"] = data[f"{i}_hour"].apply(str)
 
         # we dont need time columns any more
         data.drop(self.time_feature, axis=1, inplace=True)
