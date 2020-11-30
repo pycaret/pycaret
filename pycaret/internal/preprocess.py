@@ -1415,35 +1415,35 @@ class Make_Time_Features(BaseEstimator, TransformerMixin):
     def fit(self, data, y=None):
         if self.time_feature is None:
             self.time_feature = data.select_dtypes(include=["datetime64[ns]"]).columns
+            self.has_hour_ = False
+            for i in self.time_feature:
+                if "hour" in self.list_of_features_o:
+                    if any(x.hour for x in data[i]):
+                        self.has_hour_ = True
+                        break
         return self
 
     def transform(self, dataset, y=None):
         data = dataset.copy()
-
         # run fit transform first
 
         def get_time_features(r):
             features = []
             if "month" in self.list_of_features_o:
-                features.append(("_month", str(datetime.date(r).month)))
+                features.append(("_month", str(r.month)))
             if "weekday" in self.list_of_features_o:
-                features.append(("_weekday", str(datetime.weekday(r))))
+                features.append(("_weekday", str(r.weekday())))
             if "is_month_end" in self.list_of_features_o:
                 features.append(
                     (
                         "_is_month_end",
                         "1"
-                        if calendar.monthrange(
-                            datetime.date(r).year, datetime.date(r).month
-                        )[1]
-                        == datetime.date(r).day
+                        if calendar.monthrange(r.year, r.month)[1] == r.day
                         else "0",
                     )
                 )
             if "is_month_start" in self.list_of_features_o:
-                features.append(
-                    ("_is_month_start", "1" if datetime.date(r).day == 1 else "0")
-                )
+                features.append(("_is_month_start", "1" if r.day == 1 else "0"))
             return tuple(features)
 
         # start making features for every column in the time list
@@ -1459,11 +1459,10 @@ class Make_Time_Features(BaseEstimator, TransformerMixin):
                 data[i + k] = v
 
             # make hour column if choosen
-            if "hour" in self.list_of_features_o:
-                h = [datetime.time(r).hour for r in data[i]]
-                if sum(h) > 0:
-                    data[i + "_hour"] = h
-                    data[i + "_hour"] = data[i + "_hour"].apply(str)
+            if "hour" in self.list_of_features_o and self.has_hour_:
+                h = [r.hour for r in data[i]]
+                data[i + "_hour"] = h
+                data[i + "_hour"] = data[i + "_hour"].apply(str)
 
         # we dont need time columns any more
         data.drop(self.time_feature, axis=1, inplace=True)
