@@ -334,7 +334,7 @@ def plot_model(
             hover_data=["antecedents", "consequents"],
         )
         
-    if display_format=="streamlit"
+    if display_format=="streamlit":
         st.write(fig)
     else:
         fig.show()
