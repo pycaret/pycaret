@@ -215,7 +215,7 @@ def create_model(metric="confidence", threshold=0.5, min_support=0.05, round=4):
 
 
 def plot_model(
-    model, plot="2d", scale=1,
+    model, plot="2d", scale=1, display_format=None
 ):
 
     """
@@ -247,6 +247,9 @@ def plot_model(
 
     scale: float, default = 1
         The resolution scale of the figure.
+        
+    display_format: str, default = None
+        To display plots in [Streamlit](https://www.streamlit.io/), set this to 'streamlit'.
 
     Returns:
         None
@@ -315,7 +318,6 @@ def plot_model(
             height=800 * scale, title_text="2D Plot of Support, Confidence and Lift"
         )
 
-        fig.show()
 
     if plot == "3d":
 
@@ -331,6 +333,10 @@ def plot_model(
             height=800 * scale,
             hover_data=["antecedents", "consequents"],
         )
+        
+    if display_format=="streamlit"
+        st.write(fig)
+    else:
         fig.show()
 
 
