@@ -9091,47 +9091,47 @@ def models(
 
     """
 
+    model_type = {
+        "linear": [
+            "lr",
+            "ridge",
+            "svm",
+            "lasso",
+            "en",
+            "lar",
+            "llar",
+            "omp",
+            "br",
+            "ard",
+            "par",
+            "ransac",
+            "tr",
+            "huber",
+            "kr",
+        ],
+        "tree": ["dt"],
+        "ensemble": [
+            "rf",
+            "et",
+            "gbc",
+            "gbr",
+            "xgboost",
+            "lightgbm",
+            "catboost",
+            "ada",
+        ],
+    }
+
     def filter_model_df_by_type(df):
         if not type:
             return df
-        model_type = {
-            "linear": [
-                "lr",
-                "ridge",
-                "svm",
-                "lasso",
-                "en",
-                "lar",
-                "llar",
-                "omp",
-                "br",
-                "ard",
-                "par",
-                "ransac",
-                "tr",
-                "huber",
-                "kr",
-            ],
-            "tree": ["dt"],
-            "ensemble": [
-                "rf",
-                "et",
-                "gbc",
-                "gbr",
-                "xgboost",
-                "lightgbm",
-                "catboost",
-                "ada",
-            ],
-        }
         return df[df.index.isin(model_type[type])]
 
-        # Check if type is valid
-        if type not in list(model_type) + [None]:
-            raise ValueError(
-                f"type param only accepts {', '.join(list(model_type) + str(None))}."
-            )
-        return df[df.index.isin(model_type.get(type, df.index))]
+    # Check if type is valid
+    if type not in list(model_type) + [None]:
+        raise ValueError(
+            f"type param only accepts {', '.join(list(model_type) + str(None))}."
+        )
 
     logger.info(f"gpu_param set to {gpu_param}")
 
