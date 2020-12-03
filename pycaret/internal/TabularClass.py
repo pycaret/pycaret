@@ -1970,6 +1970,8 @@ class _TabularExperiment(_PyCaretExperiment):
         )
         functions_ = functions.style.apply(highlight_max)
 
+        self.display_container.append(functions_)
+
         display.display(functions_, clear=True)
 
         if profile:
