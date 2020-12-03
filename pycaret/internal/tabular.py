@@ -1625,6 +1625,8 @@ def setup(
     )
     functions_ = functions.style.apply(highlight_max)
 
+    display_container.append(functions_)
+
     display.display(functions_, clear=True)
 
     if profile:
