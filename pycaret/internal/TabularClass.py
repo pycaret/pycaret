@@ -188,14 +188,73 @@ class _PyCaretExperiment:
     def setup(self) -> None:
         return
 
-    def deploy_model(self) -> None:
-        return
+    def deploy_model(
+        self,
+        model,
+        model_name: str,
+        authentication: dict,
+        platform: str = "aws",  # added gcp and azure support in pycaret==2.1
+    ):
+        return None
 
-    def save_model(self) -> None:
-        return
+    def save_model(
+        self, model, model_name: str, model_only: bool = False, verbose: bool = True
+    ):
+        return None
 
-    def load_model(self) -> None:
-        return
+    def load_model(
+        self,
+        model_name,
+        platform: Optional[str] = None,
+        authentication: Optional[Dict[str, str]] = None,
+        verbose: bool = True,
+    ):
+
+        """
+        This function loads a previously saved transformation pipeline and model 
+        from the current active directory into the current python environment. 
+        Load object must be a pickle file.
+        
+        Example
+        -------
+        >>> saved_lr = load_model('lr_model_23122019')
+        
+        This will load the previously saved model in saved_lr variable. The file 
+        must be in the current directory.
+
+        Parameters
+        ----------
+        model_name : str, default = none
+            Name of pickle file to be passed as a string.
+        
+        platform: str, default = None
+            Name of platform, if loading model from cloud. Current available options are:
+            'aws', 'gcp' and 'azure'.
+        
+        authentication : dict
+            dictionary of applicable authentication tokens.
+
+            When platform = 'aws':
+            {'bucket' : 'Name of Bucket on S3'}
+
+            When platform = 'gcp':
+            {'project': 'gcp_pycaret', 'bucket' : 'pycaret-test'}
+
+            When platform = 'azure':
+            {'container': 'pycaret-test'}
+        
+        verbose: bool, default = True
+            Success message is not printed when verbose is set to False.
+
+        Returns
+        -------
+        Model Object
+
+        """
+
+        return pycaret.internal.persistence.load_model(
+            model_name, platform, authentication, verbose
+        )
 
     def get_logs(self) -> None:
         return
@@ -335,12 +394,6 @@ class _TabularExperiment(_PyCaretExperiment):
             pass
 
         return metric
-
-    def _get_models(self) -> None:
-        self._all_models = {}
-        self._all_models_internal = {}
-        self._all_metrics = {}
-        return
 
     def _get_model_name(self, e, deep: bool = True, models=None) -> str:
         """
@@ -1702,7 +1755,8 @@ class _TabularExperiment(_PyCaretExperiment):
         else:
             target_type = "Binary"
 
-        self._get_models()
+        self._all_models, self._all_models_internal = self._get_models()
+        self._all_metrics = self._get_metrics()
 
         """
         Final display Starts
@@ -1967,7 +2021,7 @@ class _TabularExperiment(_PyCaretExperiment):
 
         return self
 
-    def create_model(self):
+    def create_model(self, *args, **kwargs):
         return
 
     def plot_model(
@@ -3730,11 +3784,261 @@ class _TabularExperiment(_PyCaretExperiment):
     def finalize_model(self) -> None:
         return
 
-    def automl(self) -> None:
-        return
+    def automl(self, optimize: str = "Accuracy", use_holdout: bool = False) -> Any:
 
-    def models(self) -> None:
-        return
+        """
+        This function returns the best model out of all models created in 
+        current active environment based on metric defined in optimize parameter. 
+
+        Parameters
+        ----------
+        optimize : str, default = 'Accuracy'
+            Other values you can pass in optimize param are 'AUC', 'Recall', 'Precision',
+            'F1', 'Kappa', and 'MCC'.
+
+        use_holdout: bool, default = False
+            When set to True, metrics are evaluated on holdout set instead of CV.
+
+        """
+
+        function_params_str = ", ".join([f"{k}={v}" for k, v in locals().items()])
+
+        logger.info("Initializing automl()")
+        logger.info(f"automl({function_params_str})")
+
+        # checking optimize parameter
+        optimize = self._get_metric_by_name_or_id(optimize)
+        if optimize is None:
+            raise ValueError(
+                f"Optimize method not supported. See docstring for list of available parameters."
+            )
+
+        # checking optimize parameter for multiclass
+        if self._is_multiclass():
+            if not optimize.is_multiclass:
+                raise TypeError(
+                    f"Optimization metric not supported for multiclass problems. See docstring for list of other optimization parameters."
+                )
+
+        compare_dimension = optimize.display_name
+        greater_is_better = optimize.greater_is_better
+        optimize = optimize.scorer
+
+        scorer = []
+
+        if use_holdout:
+            logger.info("Model Selection Basis : Holdout set")
+            for i in self.master_model_container:
+                try:
+                    pred_holdout = self.predict_model(i, verbose=False)  # type: ignore
+                except:
+                    logger.warning(f"Model {i} is not fitted, running create_model")
+                    i, _ = self.create_model(  # type: ignore
+                        estimator=i,
+                        system=False,
+                        verbose=False,
+                        cross_validation=False,
+                        predict=False,
+                        groups=self.fold_groups_param,
+                    )
+                    self.pull(pop=True)
+                    pred_holdout = self.predict_model(i, verbose=False)  # type: ignore
+
+                p = self.pull(pop=True)
+                p = p[compare_dimension][0]
+                scorer.append(p)
+
+        else:
+            logger.info("Model Selection Basis : CV Results on Training set")
+            for i in self.create_model_container:
+                r = i[compare_dimension][-2:][0]
+                scorer.append(r)
+
+        # returning better model
+        if greater_is_better:
+            index_scorer = scorer.index(max(scorer))
+        else:
+            index_scorer = scorer.index(min(scorer))
+
+        automl_result = self.master_model_container[index_scorer]
+
+        automl_model, _ = self.create_model(  # type: ignore
+            estimator=automl_result,
+            system=False,
+            verbose=False,
+            cross_validation=False,
+            predict=False,
+            groups=self.fold_groups_param,
+        )
+
+        logger.info(str(automl_model))
+        logger.info(
+            "automl() succesfully completed......................................"
+        )
+
+        return automl_model
+
+    def _get_models(self, raise_errors: bool = True) -> Tuple[dict, dict]:
+        return ({}, {})
+
+    def _get_metrics(self, raise_errors: bool = True) -> dict:
+        return {}
+
+    def models(
+        self,
+        type: Optional[str] = None,
+        internal: bool = False,
+        raise_errors: bool = True,
+    ) -> pd.DataFrame:
+
+        """
+        Returns table of models available in model library.
+
+        Example
+        -------
+        >>> _all_models = models()
+
+        This will return pandas dataframe with all available 
+        models and their metadata.
+
+        Parameters
+        ----------
+        type : str, default = None
+            - linear : filters and only return linear models
+            - tree : filters and only return tree based models
+            - ensemble : filters and only return ensemble models
+        
+        internal: bool, default = False
+            If True, will return extra columns and rows used internally.
+
+        raise_errors: bool, default = True
+            If False, will suppress all exceptions, ignoring models
+            that couldn't be created.
+
+        Returns
+        -------
+        pandas.DataFrame
+
+        """
+
+        logger.info(f"gpu_param set to {self.gpu_param}")
+
+        _, model_containers = self._get_models(raise_errors)
+
+        rows = [
+            v.get_dict(internal)
+            for k, v in model_containers.items()
+            if (internal or not v.is_special)
+        ]
+
+        df = pd.DataFrame(rows)
+        df.set_index("ID", inplace=True, drop=True)
+
+        return df
+
+    def deploy_model(
+        self,
+        model,
+        model_name: str,
+        authentication: dict,
+        platform: str = "aws",  # added gcp and azure support in pycaret==2.1
+    ):
+
+        """
+        (In Preview)
+
+        This function deploys the transformation pipeline and trained model object for
+        production use. The platform of deployment can be defined under the platform
+        param along with the applicable authentication tokens which are passed as a
+        dictionary to the authentication param.
+        
+        Example
+        -------
+        >>> from pycaret.datasets import get_data
+        >>> juice = get_data('juice')
+        >>> experiment_name = setup(data = juice,  target = 'Purchase')
+        >>> lr = create_model('lr')
+        >>> deploy_model(model = lr, model_name = 'deploy_lr', platform = 'aws', authentication = {'bucket' : 'pycaret-test'})
+        
+        This will deploy the model on an AWS S3 account under bucket 'pycaret-test'
+        
+        Notes
+        -----
+        For AWS users:
+        Before deploying a model to an AWS S3 ('aws'), environment variables must be 
+        configured using the command line interface. To configure AWS env. variables, 
+        type aws configure in your python command line. The following information is
+        required which can be generated using the Identity and Access Management (IAM) 
+        portal of your amazon console account:
+
+        - AWS Access Key ID
+        - AWS Secret Key Access
+        - Default Region Name (can be seen under Global settings on your AWS console)
+        - Default output format (must be left blank)
+
+        For GCP users:
+        --------------
+        Before deploying a model to Google Cloud Platform (GCP), project must be created 
+        either using command line or GCP console. Once project is created, you must create 
+        a service account and download the service account key as a JSON file, which is 
+        then used to set environment variable. 
+
+        https://cloud.google.com/docs/authentication/production
+
+        - Google Cloud Project
+        - Service Account Authetication
+
+        For Azure users:
+        ---------------
+        Before deploying a model to Microsoft's Azure (Azure), environment variables
+        for connection string must be set. In order to get connection string, user has
+        to create account of Azure. Once it is done, create a Storage account. In the settings
+        section of storage account, user can get the connection string.
+
+        Read below link for more details.
+        https://docs.microsoft.com/en-us/azure/storage/blobs/storage-quickstart-blobs-python?toc=%2Fpython%2Fazure%2FTOC.json
+
+        - Azure Storage Account
+
+        Parameters
+        ----------
+        model : object
+            A trained model object should be passed as an estimator. 
+        
+        model_name : str
+            Name of model to be passed as a str.
+        
+        authentication : dict
+            Dictionary of applicable authentication tokens.
+
+            When platform = 'aws':
+            {'bucket' : 'Name of Bucket on S3'}
+
+            When platform = 'gcp':
+            {'project': 'gcp_pycaret', 'bucket' : 'pycaret-test'}
+
+            When platform = 'azure':
+            {'container': 'pycaret-test'}
+        
+        platform: str, default = 'aws'
+            Name of platform for deployment. Current available options are: 'aws', 'gcp' and 'azure'
+
+        Returns
+        -------
+        Success_Message
+        
+        Warnings
+        --------
+        - This function uses file storage services to deploy the model on cloud platform. 
+        As such, this is efficient for batch-use. Where the production objective is to 
+        obtain prediction at an instance level, this may not be the efficient choice as 
+        it transmits the binary pickle file between your local python environment and
+        the platform. 
+        
+        """
+        return pycaret.internal.persistence.deploy_model(
+            model, model_name, authentication, platform, self.prep_pipe
+        )
 
     def save_model(
         self, model, model_name: str, model_only: bool = False, verbose: bool = True
@@ -3840,6 +4144,40 @@ class _SupervisedExperiment(_TabularExperiment):
             {"y", "X_train", "X_test", "y_train", "y_test",}
         )
         return
+
+    def _calculate_metrics(
+        self, y_test, pred, pred_prob, weights: Optional[list] = None,
+    ) -> dict:
+        """
+        Calculate all metrics in _all_metrics.
+        """
+        from pycaret.internal.utils import calculate_metrics
+
+        try:
+            return calculate_metrics(
+                metrics=self._all_metrics,
+                y_test=y_test,
+                pred=pred,
+                pred_proba=pred_prob,
+                weights=weights,
+            )
+        except:
+            ml_usecase = get_ml_task(y_test)
+            if ml_usecase == MLUsecase.CLASSIFICATION:
+                metrics = pycaret.containers.metrics.classification.get_all_metric_containers(
+                    self.variables, True
+                )
+            elif ml_usecase == MLUsecase.REGRESSION:
+                metrics = pycaret.containers.metrics.regression.get_all_metric_containers(
+                    self.variables, True
+                )
+            return calculate_metrics(
+                metrics=metrics,  # type: ignore
+                y_test=y_test,
+                pred=pred,
+                pred_proba=pred_prob,
+                weights=weights,
+            )
 
     def _is_unsupervised(self) -> bool:
         return False
@@ -7520,6 +7858,100 @@ class _SupervisedExperiment(_TabularExperiment):
         gc.collect()
         return shap_plot
 
+    def models(
+        self,
+        type: Optional[str] = None,
+        internal: bool = False,
+        raise_errors: bool = True,
+    ) -> pd.DataFrame:
+
+        """
+        Returns table of models available in model library.
+
+        Example
+        -------
+        >>> _all_models = models()
+
+        This will return pandas dataframe with all available 
+        models and their metadata.
+
+        Parameters
+        ----------
+        type : str, default = None
+            - linear : filters and only return linear models
+            - tree : filters and only return tree based models
+            - ensemble : filters and only return ensemble models
+        
+        internal: bool, default = False
+            If True, will return extra columns and rows used internally.
+
+        raise_errors: bool, default = True
+            If False, will suppress all exceptions, ignoring models
+            that couldn't be created.
+
+        Returns
+        -------
+        pandas.DataFrame
+
+        """
+
+        model_type = {
+            "linear": [
+                "lr",
+                "ridge",
+                "svm",
+                "lasso",
+                "en",
+                "lar",
+                "llar",
+                "omp",
+                "br",
+                "ard",
+                "par",
+                "ransac",
+                "tr",
+                "huber",
+                "kr",
+            ],
+            "tree": ["dt"],
+            "ensemble": [
+                "rf",
+                "et",
+                "gbc",
+                "gbr",
+                "xgboost",
+                "lightgbm",
+                "catboost",
+                "ada",
+            ],
+        }
+
+        def filter_model_df_by_type(df):
+            if not type:
+                return df
+            return df[df.index.isin(model_type[type])]
+
+        # Check if type is valid
+        if type not in list(model_type) + [None]:
+            raise ValueError(
+                f"type param only accepts {', '.join(list(model_type) + str(None))}."
+            )
+
+        logger.info(f"gpu_param set to {self.gpu_param}")
+
+        _, model_containers = self._get_models(raise_errors)
+
+        rows = [
+            v.get_dict(internal)
+            for k, v in model_containers.items()
+            if (internal or not v.is_special)
+        ]
+
+        df = pd.DataFrame(rows)
+        df.set_index("ID", inplace=True, drop=True)
+
+        return filter_model_df_by_type(df)
+
     def get_metrics(self) -> None:
         return
 
@@ -7529,39 +7961,142 @@ class _SupervisedExperiment(_TabularExperiment):
     def remove_metric(self) -> None:
         return
 
-    def _calculate_metrics(
-        self, y_test, pred, pred_prob, weights: Optional[list] = None,
-    ) -> dict:
-        """
-        Calculate all metrics in _all_metrics.
-        """
-        from pycaret.internal.utils import calculate_metrics
+    def finalize_model(
+        self,
+        estimator,
+        fit_kwargs: Optional[dict] = None,
+        groups: Optional[Union[str, Any]] = None,
+        model_only: bool = True,
+        display: Optional[Display] = None,
+    ) -> Any:  # added in pycaret==2.2.0
 
-        try:
-            return calculate_metrics(
-                metrics=self._all_metrics,
-                y_test=y_test,
-                pred=pred,
-                pred_proba=pred_prob,
-                weights=weights,
-            )
-        except:
-            ml_usecase = get_ml_task(y_test)
-            if ml_usecase == MLUsecase.CLASSIFICATION:
-                metrics = pycaret.containers.metrics.classification.get_all_metric_containers(
-                    self.variables, True
+        """
+        This function fits the estimator onto the complete dataset passed during the
+        setup() stage. The purpose of this function is to prepare for final model
+        deployment after experimentation. 
+        
+        Example
+        -------
+        >>> from pycaret.datasets import get_data
+        >>> juice = get_data('juice')
+        >>> experiment_name = setup(data = juice,  target = 'Purchase')
+        >>> lr = create_model('lr')
+        >>> final_lr = finalize_model(lr)
+        
+        This will return the final model object fitted to complete dataset. 
+
+        Parameters
+        ----------
+        estimator : object, default = none
+            A trained model object should be passed as an estimator. 
+
+        fit_kwargs: dict, default = {} (empty dict)
+            Dictionary of arguments passed to the fit method of the model.
+
+        groups: str or array-like, with shape (n_samples,), default = None
+            Optional Group labels for the samples used while splitting the dataset into train/test set.
+            If string is passed, will use the data column with that name as the groups.
+            Only used if a group based cross-validation generator is used (eg. GroupKFold).
+            If None, will use the value set in fold_groups param in setup().
+
+        model_only : bool, default = True
+            When set to True, only trained model object is saved and all the 
+            transformations are ignored.
+
+        Returns
+        -------
+        model
+            Trained model object fitted on complete dataset.
+
+        Warnings
+        --------
+        - If the model returned by finalize_model(), is used on predict_model() without 
+        passing a new unseen dataset, then the information grid printed is misleading 
+        as the model is trained on the complete dataset including test / hold-out sample. 
+        Once finalize_model() is used, the model is considered ready for deployment and
+        should be used on new unseens dataset only.
+        
+            
+        """
+
+        function_params_str = ", ".join([f"{k}={v}" for k, v in locals().items()])
+
+        logger.info("Initializing finalize_model()")
+        logger.info(f"finalize_model({function_params_str})")
+
+        # run_time
+        runtime_start = time.time()
+
+        if not fit_kwargs:
+            fit_kwargs = {}
+
+        groups = self._get_groups(groups)
+
+        if not display:
+            display = Display(verbose=False, html_param=self.html_param,)
+
+        np.random.seed(self.seed)
+
+        logger.info(f"Finalizing {estimator}")
+        display.clear_output()
+        model_final, model_fit_time = self.create_model(
+            estimator=estimator,
+            verbose=False,
+            system=False,
+            X_train_data=self.X,
+            y_train_data=self.y,
+            fit_kwargs=fit_kwargs,
+            groups=groups,
+        )
+        model_results = self.pull(pop=True)
+
+        # end runtime
+        runtime_end = time.time()
+        runtime = np.array(runtime_end - runtime_start).round(2)
+
+        # mlflow logging
+        if self.logging_param:
+
+            avgs_dict_log = {k: v for k, v in model_results.loc["Mean"].items()}
+
+            try:
+                self._mlflow_log_model(
+                    model=model_final,
+                    model_results=model_results,
+                    score_dict=avgs_dict_log,
+                    source="finalize_model",
+                    runtime=runtime,
+                    model_fit_time=model_fit_time,
+                    _prep_pipe=self.prep_pipe,
+                    log_plots=self.log_plots_param,
+                    display=display,
                 )
-            elif ml_usecase == MLUsecase.REGRESSION:
-                metrics = pycaret.containers.metrics.regression.get_all_metric_containers(
-                    self.variables, True
+            except:
+                logger.error(
+                    f"_mlflow_log_model() for {model_final} raised an exception:"
                 )
-            return calculate_metrics(
-                metrics=metrics,  # type: ignore
-                y_test=y_test,
-                pred=pred,
-                pred_proba=pred_prob,
-                weights=weights,
-            )
+                logger.error(traceback.format_exc())
+
+        model_results = color_df(model_results, "yellow", ["Mean"], axis=1)
+        model_results = model_results.set_precision(round)
+        display.display(model_results, clear=True)
+
+        logger.info(f"create_model_container: {len(self.create_model_container)}")
+        logger.info(f"master_model_container: {len(self.master_model_container)}")
+        logger.info(f"display_container: {len(self.display_container)}")
+
+        logger.info(str(model_final))
+        logger.info(
+            "finalize_model() succesfully completed......................................"
+        )
+
+        gc.collect()
+        if not model_only:
+            pipeline_final = deepcopy(self.prep_pipe)
+            pipeline_final.steps.append(["trained_model", model_final])
+            return pipeline_final
+
+        return model_final
 
     def predict_model(
         self,
@@ -8881,19 +9416,22 @@ class RegressionExperiment(_SupervisedExperiment):
         }
         return
 
-    def _get_models(self) -> None:
-        self._all_models = {
+    def _get_models(self, raise_errors: bool = True) -> Tuple[dict, dict]:
+        all_models = {
             k: v
             for k, v in pycaret.containers.models.regression.get_all_model_containers(
-                self.variables, raise_errors=True
+                self.variables, raise_errors=raise_errors
             ).items()
             if not v.is_special
         }
-        self._all_models_internal = pycaret.containers.models.regression.get_all_model_containers(
-            self.variables, raise_errors=True
+        all_models_internal = pycaret.containers.models.regression.get_all_model_containers(
+            self.variables, raise_errors=raise_errors
         )
-        self._all_metrics = pycaret.containers.metrics.regression.get_all_metric_containers(
-            self.variables, raise_errors=True
+        return all_models, all_models_internal
+
+    def _get_metrics(self, raise_errors: bool = True) -> dict:
+        return pycaret.containers.metrics.regression.get_all_metric_containers(
+            self.variables, raise_errors=raise_errors
         )
 
     def setup(
@@ -9536,19 +10074,22 @@ class ClassificationExperiment(_SupervisedExperiment):
         }
         return
 
-    def _get_models(self) -> None:
-        self._all_models = {
+    def _get_models(self, raise_errors: bool = True) -> Tuple[dict, dict]:
+        all_models = {
             k: v
             for k, v in pycaret.containers.models.classification.get_all_model_containers(
-                self.variables, raise_errors=True
+                self.variables, raise_errors=raise_errors
             ).items()
             if not v.is_special
         }
-        self._all_models_internal = pycaret.containers.models.classification.get_all_model_containers(
-            self.variables, raise_errors=True
+        all_models_internal = pycaret.containers.models.classification.get_all_model_containers(
+            self.variables, raise_errors=raise_errors
         )
-        self._all_metrics = pycaret.containers.metrics.classification.get_all_metric_containers(
-            self.variables, raise_errors=True
+        return all_models, all_models_internal
+
+    def _get_metrics(self, raise_errors: bool = True) -> dict:
+        return pycaret.containers.metrics.classification.get_all_metric_containers(
+            self.variables, raise_errors=raise_errors
         )
 
     def _is_multiclass(self) -> bool:
@@ -10670,19 +11211,22 @@ class AnomalyExperiment(_UnsupervisedExperiment):
         self.exp_name_log = "anomaly-default-name"
         return
 
-    def _get_models(self) -> None:
-        self._all_models = {
+    def _get_models(self, raise_errors: bool = True) -> Tuple[dict, dict]:
+        all_models = {
             k: v
             for k, v in pycaret.containers.models.anomaly.get_all_model_containers(
-                self.variables, raise_errors=True
+                self.variables, raise_errors=raise_errors
             ).items()
             if not v.is_special
         }
-        self._all_models_internal = pycaret.containers.models.anomaly.get_all_model_containers(
-            self.variables, raise_errors=True
+        all_models_internal = pycaret.containers.models.anomaly.get_all_model_containers(
+            self.variables, raise_errors=raise_errors
         )
-        self._all_metrics = pycaret.containers.metrics.anomaly.get_all_metric_containers(
-            self.variables, raise_errors=True
+        return all_models, all_models_internal
+
+    def _get_metrics(self, raise_errors: bool = True) -> dict:
+        return pycaret.containers.metrics.anomaly.get_all_metric_containers(
+            self.variables, raise_errors=raise_errors
         )
 
 
@@ -10693,19 +11237,22 @@ class ClusteringExperiment(_UnsupervisedExperiment):
         self.exp_name_log = "cluster-default-name"
         return
 
-    def _get_models(self) -> None:
-        self._all_models = {
+    def _get_models(self, raise_errors: bool = True) -> Tuple[dict, dict]:
+        all_models = {
             k: v
             for k, v in pycaret.containers.models.clustering.get_all_model_containers(
-                self.variables, raise_errors=True
+                self.variables, raise_errors=raise_errors
             ).items()
             if not v.is_special
         }
-        self._all_models_internal = pycaret.containers.models.clustering.get_all_model_containers(
-            self.variables, raise_errors=True
+        all_models_internal = pycaret.containers.models.clustering.get_all_model_containers(
+            self.variables, raise_errors=raise_errors
         )
-        self._all_metrics = pycaret.containers.metrics.clustering.get_all_metric_containers(
-            self.variables, raise_errors=True
+        return all_models, all_models_internal
+
+    def _get_metrics(self, raise_errors: bool = True) -> dict:
+        return pycaret.containers.metrics.clustering.get_all_metric_containers(
+            self.variables, raise_errors=raise_errors
         )
 
     def get_metrics(self) -> None:
