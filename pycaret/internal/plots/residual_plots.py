@@ -44,7 +44,7 @@ class QQPlotWidget(BaseFigureWidget):
             Optional, if the data used for the predictions includes unseen test data.
             These residuals can be marked explicitly in the plot. This attribute must have the same dimensionality
             as the predictions and expected array. Each entry in this array must be one of the strings ['train', 'test']
-            to denote from which split this data point originates.
+            to denote from which split this observation originates.
         """
 
         if expected is not None:
@@ -132,7 +132,7 @@ class QQPlotWidget(BaseFigureWidget):
             Optional, if the data used for the predictions includes unseen test data.
             These residuals can be marked explicitly in the plot. This attribute must have the same dimensionality
             as the predictions and expected array. Each entry in this array must be one of the strings ['train', 'test']
-            to denote from which split this data point originates.
+            to denote from which split this observation originates.
         """
         plot = self.__qq_plot(
             standardized_residuals=helper.calculate_standardized_residual(predicted, expected, featuresize),
@@ -165,7 +165,7 @@ class ScaleLocationWidget(BaseFigureWidget):
             Optional, if the data used for the predictions includes unseen test data.
             These residuals can be marked explicitly in the plot. This attribute must have the same dimensionality
             as the predictions and sqrt_abs_standardized_residuals array. Each entry in this array must be one of the strings ['train', 'test']
-            to denote from which split this data point originates.
+            to denote from which split this observation originates.
         """
         plot = self.__scale_location_plot(predictions, sqrt_abs_standardized_residuals, split_origin)
         super(ScaleLocationWidget, self).__init__(plot, **kwargs)
@@ -221,7 +221,7 @@ class ScaleLocationWidget(BaseFigureWidget):
             Optional, if the data used for the predictions includes unseen test data.
             These residuals can be marked explicitly in the plot. This attribute must have the same dimensionality
             as the predictions and sqrt_abs_standardized_residuals array. Each entry in this array must be one of the strings ['train', 'test']
-            to denote from which split this data point originates.
+            to denote from which split this observation originates.
         """
         plot = self.__scale_location_plot(predicted, sqrt_abs_standardized_residuals, split_origin)
         self.update({"data": plot.data}, overwrite=True)
@@ -230,7 +230,7 @@ class ScaleLocationWidget(BaseFigureWidget):
 
 class CooksDistanceWidget(BaseFigureWidget):
     """
-    This widget compares the standardized residuals $\tilde r_i$ versus the leverage $h_i$ of the corresponding data point $x_i$.
+    This widget compares the standardized residuals $\tilde r_i$ versus the leverage $h_i$ of the corresponding observation $x_i$.
     Assuming that $Y=f(X)+\epsilon$ we can verify with this plot that the error terms $\epsilon_i$ are independent.
     The cook's distance is a measure to which extent some points are high leverage points and/or outliers.
     Cook's distance (function of leverage and residual) is a measure of how influential a data point is.
@@ -248,23 +248,23 @@ class CooksDistanceWidget(BaseFigureWidget):
             **kwargs
     ):
         """
-        Instantiates the Cooks Distance widget
+        Instantiates the Cooks Distance widget w.r.t. some model and a dataset $X$ which has $n$ observations.
 
         Parameters
         ----------
         model_leverage: np.ndarray
-            The leverage of the data points
+            An array of length $n$, containing the leverage of the observations
         cooks_distances: np.ndarray
-            The cooks_distances of the data points
+            An array of length $n$, containing the cooks_distances of the observations
         standardized_residuals: np.ndarray
-            The standartized residuals
+            An array of length $n$, containing the standardized residuals
         n_model_params: int
             The number of parameters of the used model
         split_origin: np.ndarray
             Optional, if the data used for the predictions includes unseen test data.
             These residuals can be marked explicitly in the plot. This attribute must have the same dimensionality
             as the model_leverage and standardized_residuals array. Each entry in this array must be one of the
-            strings ['train', 'test'] to denote from which split this data point originates.
+            strings ['train', 'test'] to denote from which split this observation originates.
         """
         plot = self.__cooks_distance_plot(model_leverage, cooks_distances, standardized_residuals, n_model_params,
                                           split_origin)
@@ -336,18 +336,18 @@ class CooksDistanceWidget(BaseFigureWidget):
         Parameters
         ----------
         model_leverage: np.ndarray
-            The leverage of the data points
+            An array of length $n$, containing the leverage of the observations
         cooks_distances: np.ndarray
-            The cooks_distances of the data points
+            An array of length $n$, containing the cooks_distances of the observations
         standardized_residuals: np.ndarray
-            The standartized residuals
+            An array of length $n$, containing the standardized residuals
         n_model_params: int
             The number of parameters of the used model
         split_origin: np.ndarray
             Optional, if the data used for the predictions includes unseen test data.
             These residuals can be marked explicitly in the plot. This attribute must have the same dimensionality
             as the model_leverage and standardized_residuals array. Each entry in this array must be one of the
-            strings ['train', 'test'] to denote from which split this data point originates.
+            strings ['train', 'test'] to denote from which split this observation originates.
         """
         plot = self.__cooks_distance_plot(model_leverage, cooks_distances, standardized_residuals, n_model_params,
                                           split_origin=split_origin)
@@ -378,7 +378,7 @@ class TukeyAnscombeWidget(BaseFigureWidget):
             Optional, if the data used for the predictions includes unseen test data.
             These residuals can be marked explicitly in the plot. To do this attribute must have the same dimensionality
             as the predictions and residuals array. Each entry in this array must be one of the strings ['train', 'test']
-            to denote from which split this data point originates.
+            to denote from which split this observation originates.
         """
 
         plot = self.__tukey_anscombe_plot(predictions, residuals, split_origin)
@@ -438,7 +438,7 @@ class TukeyAnscombeWidget(BaseFigureWidget):
             Optional, if the data used for the predictions includes unseen test data.
             These residuals can be marked explicitly in the plot. To do this attribute must have the same dimensionality
             as the predictions and residuals array. Each entry in this array must be one of the strings ['train', 'test']
-            to denote from which split this data point originates.
+            to denote from which split this observation originates.
         """
         plot = self.__tukey_anscombe_plot(predictions, residuals, split_origin)
         self.update({"data": plot.data}, overwrite=True)
