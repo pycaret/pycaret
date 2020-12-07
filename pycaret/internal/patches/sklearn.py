@@ -3,7 +3,7 @@ from typing import Any
 from sklearn.utils import check_random_state
 import numpy as np
 
-# Monkey patching sklearn.model_selection._search to avoid overflows on windows. 
+# Monkey patching sklearn.model_selection._search to avoid overflows on windows.
 
 # adapted from https://github.com/scikit-learn/scikit-learn/blob/master/sklearn/utils/_random.pyx
 def _mp_sample_without_replacement(

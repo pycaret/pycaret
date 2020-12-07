@@ -5,8 +5,8 @@
 import numpy as np
 import pandas as pd
 
-version_ = "2.2.1"
-nightly_version_ = "2.2.1"
+version_ = "2.2.2"
+nightly_version_ = "2.2.2"
 
 __version__ = version_
 
@@ -129,4 +129,3 @@ def get_system_logs():
 
         columns = [col.strip() for col in line.split(":") if col]
         print(columns)
-

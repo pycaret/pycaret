@@ -44,7 +44,7 @@ class QQPlotWidget(BaseFigureWidget):
             Optional, if the data used for the predictions includes unseen test data.
             These residuals can be marked explicitly in the plot. This attribute must have the same dimensionality
             as the predictions and expected array. Each entry in this array must be one of the strings ['train', 'test']
-            to denote from which split this data point originates.
+            to denote from which split this observation originates.
         """
 
         if expected is not None:
@@ -60,28 +60,51 @@ class QQPlotWidget(BaseFigureWidget):
 
     @staticmethod
     def __get_qq(standardized_residuals: np.ndarray) -> np.ndarray:
+        """
+        Calculate the theoretical quantiles and the ordered response.
+
+        Parameters
+        ----------
+        standardized_residuals: np.array
+            the standardized residuals of a model for some specific dataset
+
+        Returns
+        -------
+            (osm, osr) tuple of nd.arrays
+                Tuple of theoretical quantiles (osm, or order statistic medians) and ordered responses (osr). osr is
+                simply the sorted standardized residuals.
+
+            (slope, intercept) tuple of floats
+                Tuple containing the result of the least-squares fit.
+
+        """
+
         qq = stats.probplot(standardized_residuals, dist='norm', sparams=(1))
-        return np.array([qq[0][0][0], qq[0][0][-1]]), qq
+        return qq[0], qq[1][:2]
 
     def __qq_plot(self, standardized_residuals: np.ndarray, split_origin: np.array = None) -> go.Figure:
-        x, qq = self.__get_qq(standardized_residuals=standardized_residuals)
+        (osm, osr), (slope, intercept) = self.__get_qq(standardized_residuals=standardized_residuals)
         fig = go.Figure()
 
         if split_origin is not None:
+            # calculate the sorted split origin list w.r.t to the standardized residuals
+            # with this list we know which (theoretical quantile | empirical quantile) point belongs to which origin
             sorted_split_origin = np.array(
-                [x[1] for x in sorted(enumerate(split_origin), key=lambda x: standardized_residuals[x[0]])])
+                [origin for (_, origin) in sorted(enumerate(split_origin),
+                                                  key=lambda idx_value: standardized_residuals[idx_value[0]])])
             colors = sorted_split_origin.copy()
             colors[sorted_split_origin == "train"] = "blue"
             colors[sorted_split_origin == "test"] = "green"
-            fig.add_scatter(x=qq[0][0], y=qq[0][1], mode='markers', name='quantiles',
+            fig.add_scatter(x=osm, y=osr, mode='markers', name='quantiles',
                             marker=dict(color=colors), customdata=sorted_split_origin,
                             hovertemplate="%{x},%{y} (%{customdata})",
                             opacity=0.7)
         else:
-            fig.add_scatter(x=qq[0][0], y=qq[0][1], mode='markers', name='quantiles',
+            fig.add_scatter(x=osm, y=osr, mode='markers', name='quantiles',
                             opacity=0.7)
 
-        fig.add_scatter(x=x, y=qq[1][1] + qq[1][0] * x, mode='lines', name='OLS')
+        x = np.array([osm[0], osm[-1]])
+        fig.add_scatter(x=x, y=intercept + slope * x, mode='lines', name='OLS')
         fig.layout.update(
             autosize=True,
             showlegend=False,
@@ -93,6 +116,24 @@ class QQPlotWidget(BaseFigureWidget):
 
     def update_values(self, predicted: np.ndarray, expected: np.ndarray = None, featuresize: int = None,
                       split_origin: np.ndarray = None):
+        """
+        Update the QQ plot values
+
+        Parameters
+        ----------
+        predicted: nd.array
+            The predicted values
+        expected: np.ndarray
+            Optional, the true values. If this attribute is None, the predicted array is assumed to contain the already
+            standardized residuals.
+        featuresize: int
+            number of features
+        split_origin: np.ndarray
+            Optional, if the data used for the predictions includes unseen test data.
+            These residuals can be marked explicitly in the plot. This attribute must have the same dimensionality
+            as the predictions and expected array. Each entry in this array must be one of the strings ['train', 'test']
+            to denote from which split this observation originates.
+        """
         plot = self.__qq_plot(
             standardized_residuals=helper.calculate_standardized_residual(predicted, expected, featuresize),
             split_origin=split_origin
@@ -124,7 +165,7 @@ class ScaleLocationWidget(BaseFigureWidget):
             Optional, if the data used for the predictions includes unseen test data.
             These residuals can be marked explicitly in the plot. This attribute must have the same dimensionality
             as the predictions and sqrt_abs_standardized_residuals array. Each entry in this array must be one of the strings ['train', 'test']
-            to denote from which split this data point originates.
+            to denote from which split this observation originates.
         """
         plot = self.__scale_location_plot(predictions, sqrt_abs_standardized_residuals, split_origin)
         super(ScaleLocationWidget, self).__init__(plot, **kwargs)
@@ -154,7 +195,7 @@ class ScaleLocationWidget(BaseFigureWidget):
             fig.add_annotation(
                 x=fitted[i],
                 y=sqrt_abs_standardized_residuals[i],
-                text=str(i + 1))
+                text=f"$\sqrt{{|\\tilde r_{{{i}}}|}}$")
         fig.update_annotations(dict(
             xref="x",
             yref="y",
@@ -167,6 +208,21 @@ class ScaleLocationWidget(BaseFigureWidget):
 
     def update_values(self, predicted: np.ndarray, sqrt_abs_standardized_residuals: np.ndarray,
                       split_origin: np.ndarray = None):
+        """
+        Update the Scale Location plot values
+
+        Parameters
+        ----------
+        predictions: np.ndarray
+            The predictions on the data
+        sqrt_abs_standardized_residuals: np.ndarray
+            The square root of the absolute value of the standardized residuals
+        split_origin: np.ndarray
+            Optional, if the data used for the predictions includes unseen test data.
+            These residuals can be marked explicitly in the plot. This attribute must have the same dimensionality
+            as the predictions and sqrt_abs_standardized_residuals array. Each entry in this array must be one of the strings ['train', 'test']
+            to denote from which split this observation originates.
+        """
         plot = self.__scale_location_plot(predicted, sqrt_abs_standardized_residuals, split_origin)
         self.update({"data": plot.data}, overwrite=True)
         self.update_layout()
@@ -174,7 +230,7 @@ class ScaleLocationWidget(BaseFigureWidget):
 
 class CooksDistanceWidget(BaseFigureWidget):
     """
-    This widget compares the standardized residuals $\tilde r_i$ versus the leverage $h_i$ of the corresponding data point $x_i$.
+    This widget compares the standardized residuals $\tilde r_i$ versus the leverage $h_i$ of the corresponding observation $x_i$.
     Assuming that $Y=f(X)+\epsilon$ we can verify with this plot that the error terms $\epsilon_i$ are independent.
     The cook's distance is a measure to which extent some points are high leverage points and/or outliers.
     Cook's distance (function of leverage and residual) is a measure of how influential a data point is.
@@ -192,23 +248,23 @@ class CooksDistanceWidget(BaseFigureWidget):
             **kwargs
     ):
         """
-        Instantiates the Cooks Distance widget
+        Instantiates the Cooks Distance widget w.r.t. some model and a dataset $X$ which has $n$ observations.
 
         Parameters
         ----------
         model_leverage: np.ndarray
-            The leverage of the data points
+            An array of length $n$, containing the leverage of the observations
         cooks_distances: np.ndarray
-            The cooks_distances of the data points
+            An array of length $n$, containing the cooks_distances of the observations
         standardized_residuals: np.ndarray
-            The standartized residuals
+            An array of length $n$, containing the standardized residuals
         n_model_params: int
             The number of parameters of the used model
         split_origin: np.ndarray
             Optional, if the data used for the predictions includes unseen test data.
             These residuals can be marked explicitly in the plot. This attribute must have the same dimensionality
             as the model_leverage and standardized_residuals array. Each entry in this array must be one of the
-            strings ['train', 'test'] to denote from which split this data point originates.
+            strings ['train', 'test'] to denote from which split this observation originates.
         """
         plot = self.__cooks_distance_plot(model_leverage, cooks_distances, standardized_residuals, n_model_params,
                                           split_origin)
@@ -234,13 +290,13 @@ class CooksDistanceWidget(BaseFigureWidget):
 
         maxmo = max(model_leverage) + 0.003
         fig.update_xaxes(range=[0, maxmo])
-        fig.update_yaxes(range=[-3, 5])
+        fig.update_yaxes(range=[min(standardized_residuals), max(standardized_residuals)])
         leverage_top_3 = cooks_distances.sort_values(ascending=False)[:3]
         for i in leverage_top_3.index:
             fig.add_annotation(
                 x=model_leverage[i],
                 y=standardized_residuals[i],
-                text=str(i + 1))
+                text=f"$\\tilde r_{{{i}}}$")
 
         fig.update_annotations(dict(
             xref="x",
@@ -274,6 +330,25 @@ class CooksDistanceWidget(BaseFigureWidget):
             n_model_params: int,
             split_origin: np.ndarray = None
     ):
+        """
+        Update the Cooks Distance widget values
+
+        Parameters
+        ----------
+        model_leverage: np.ndarray
+            An array of length $n$, containing the leverage of the observations
+        cooks_distances: np.ndarray
+            An array of length $n$, containing the cooks_distances of the observations
+        standardized_residuals: np.ndarray
+            An array of length $n$, containing the standardized residuals
+        n_model_params: int
+            The number of parameters of the used model
+        split_origin: np.ndarray
+            Optional, if the data used for the predictions includes unseen test data.
+            These residuals can be marked explicitly in the plot. This attribute must have the same dimensionality
+            as the model_leverage and standardized_residuals array. Each entry in this array must be one of the
+            strings ['train', 'test'] to denote from which split this observation originates.
+        """
         plot = self.__cooks_distance_plot(model_leverage, cooks_distances, standardized_residuals, n_model_params,
                                           split_origin=split_origin)
         self.update({"data": plot.data}, overwrite=True)
@@ -303,7 +378,7 @@ class TukeyAnscombeWidget(BaseFigureWidget):
             Optional, if the data used for the predictions includes unseen test data.
             These residuals can be marked explicitly in the plot. To do this attribute must have the same dimensionality
             as the predictions and residuals array. Each entry in this array must be one of the strings ['train', 'test']
-            to denote from which split this data point originates.
+            to denote from which split this observation originates.
         """
 
         plot = self.__tukey_anscombe_plot(predictions, residuals, split_origin)
@@ -338,7 +413,7 @@ class TukeyAnscombeWidget(BaseFigureWidget):
             fig.add_annotation(
                 x=predictions[i],
                 y=residuals[i],
-                text=str(i + 1))
+                text=f"$r_{{{i}}}$")
         fig.update_annotations(dict(
             xref="x",
             yref="y",
@@ -350,6 +425,21 @@ class TukeyAnscombeWidget(BaseFigureWidget):
         return fig
 
     def update_values(self, predictions: np.ndarray, residuals: np.ndarray, split_origin: np.ndarray = None):
+        """
+        Update the Tunkey Anscombe plot values
+
+        Parameters
+        ----------
+        predictions: np.ndarray
+            The prediction of a model on some data
+        residuals: np.ndarray
+            The residuals / error of the predictions when compared to the true value
+        split_origin: np.ndarray
+            Optional, if the data used for the predictions includes unseen test data.
+            These residuals can be marked explicitly in the plot. To do this attribute must have the same dimensionality
+            as the predictions and residuals array. Each entry in this array must be one of the strings ['train', 'test']
+            to denote from which split this observation originates.
+        """
         plot = self.__tukey_anscombe_plot(predictions, residuals, split_origin)
         self.update({"data": plot.data}, overwrite=True)
         self.update_layout()
@@ -396,9 +486,21 @@ class InteractiveResidualsPlot:
         self.plot = self.__create_resplots(model, x, y, x_test, y_test)
 
     def show(self):
+        """
+        Show the plots within the provided Display instance
+        """
         self.display.display(self.plot)
 
     def write_html(self, plot_filename):
+        """
+        Write the current plots to a file in HTML format.
+
+        Parameters
+        ----------
+        plot_filename: str
+            name of the file
+        """
+
         style = 'style="width: 50%; height: 50%; float:left;"'
         html = f'<div {style}>{self.figures[0].to_html()}</div><div {style}>{self.figures[1].to_html()}</div>' \
                f'<div {style}>{self.figures[2].to_html()}</div><div {style}>{self.figures[3].to_html()}</div>'
@@ -442,7 +544,7 @@ class InteractiveResidualsPlot:
         self.figures.append(tukey_anscombe_widget)
         self.display.move_progress()
 
-        qq_plot_widget = QQPlotWidget(predictions, y, split_origin=split_origin)
+        qq_plot_widget = QQPlotWidget(predictions, y, split_origin=split_origin, featuresize=x.shape[1])
         logger.info("Calculated Normal QQ Plot")
         self.figures.append(qq_plot_widget)
         self.display.move_progress()

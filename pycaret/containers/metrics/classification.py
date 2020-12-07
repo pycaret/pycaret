@@ -268,4 +268,3 @@ def get_all_metric_containers(
     return pycaret.containers.base_container.get_all_containers(
         globals(), globals_dict, ClassificationMetricContainer, raise_errors
     )
-

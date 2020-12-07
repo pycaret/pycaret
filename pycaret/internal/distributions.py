@@ -42,6 +42,7 @@ class UniformDistribution(Distribution):
     log: bool, default = False:
         If True, the distribution will be log-uniform.
     """
+
     def __init__(self, lower: float, upper: float, log: bool = False):
         self.lower = lower
         self.upper = upper
@@ -95,6 +96,7 @@ class IntUniformDistribution(Distribution):
     log: bool, default = False:
         If True, the distribution will be log-uniform.
     """
+
     def __init__(self, lower: int, upper: int, log: bool = False):
         self.lower = lower
         self.upper = upper
@@ -158,6 +160,7 @@ class DiscreteUniformDistribution(Distribution):
     - Due to scikit-optimize not supporting discrete distributions,
     `get_skopt()` will return a standard uniform distribution.
     """
+
     def __init__(self, lower: int, upper: int, q: Optional[float] = None):
         self.lower = lower
         self.upper = upper
@@ -205,6 +208,7 @@ class CategoricalDistribution(Distribution):
     --------
     - `None` is not supported  as a value for ConfigSpace.
     """
+
     def __init__(self, values):
         self.values = list(values)
 

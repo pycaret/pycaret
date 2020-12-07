@@ -3,6 +3,7 @@ from sklearn.preprocessing import PowerTransformer
 
 from pycaret.internal.utils import get_all_object_vars_and_properties, is_fit_var
 
+
 class PowerTransformedTargetRegressor(sklearn.compose.TransformedTargetRegressor):
     def __init__(
         self,
@@ -39,7 +40,9 @@ class PowerTransformedTargetRegressor(sklearn.compose.TransformedTargetRegressor
         vars_to_remove = []
         try:
             for var in self._fit_vars:
-                if all or var not in get_all_object_vars_and_properties(self.regressor_):
+                if all or var not in get_all_object_vars_and_properties(
+                    self.regressor_
+                ):
                     vars_to_remove.append(var)
             for var in vars_to_remove:
                 try:
@@ -71,6 +74,10 @@ class PowerTransformedTargetRegressor(sklearn.compose.TransformedTargetRegressor
         -------
         self : object
         """
+
+        # workaround - for some reason, if data is in float32, super().fit() will return an array of 0s
+        # this also happens in pure scikit-learn
+        y = y.astype('float64')
 
         r = super().fit(X, y, **fit_params)
         self._carry_over_regressor_fit_vars()

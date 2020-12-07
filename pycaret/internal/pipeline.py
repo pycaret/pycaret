@@ -96,7 +96,9 @@ class Pipeline(imblearn.pipeline.Pipeline):
                 new_final_estimator,
             )
         else:
-            self.steps.append((name if name else "actual_estimator", new_final_estimator))
+            self.steps.append(
+                (name if name else "actual_estimator", new_final_estimator)
+            )
         self._carry_over_final_estimator_fit_vars()
 
     def set_params(self, **kwargs):
@@ -216,6 +218,8 @@ def add_estimator_to_pipeline(pipeline: Pipeline, estimator, name="actual_estima
         pipeline.replace_final_estimator(estimator, name=name)
     except:
         pipeline.steps.append((name, estimator))
+        if hasattr(pipeline, "_carry_over_final_estimator_fit_vars"):
+            pipeline._carry_over_final_estimator_fit_vars()
 
 
 def merge_pipelines(pipeline_to_merge_to: Pipeline, pipeline_to_be_merged: Pipeline):

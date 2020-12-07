@@ -1,6 +1,15 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+#### Release: PyCaret 2.2.2 | Release Date: November 25, 2020 (SEVERAL BUGS FIX)
+- Fixed an issue with the `optimize_threshold` function the `pycaret.classification` module. It now returns a float instead of an array.
+- Fixed issue with the `predict_model` function. It now uses original data frame to append the predictions. As such any extra columns given at the time of inference are not removed when returning the predictions. Instead they are internally ignored at the time of predictions.
+- Fixed edge case exceptions for the `create_model` function in `pycaret.clustering`.
+- Fixed exceptions when column names are not string. 
+- Fixed exceptions in `pycaret.regression` when `transform_target` is True in the `setup` function.
+- Fixed an exception in the `models` function if the `type` parameter is specified. 
+<br/><br/><br/>
+
 #### Release: PyCaret 2.2.1 | Release Date: November 09, 2020 (SEVERAL BUGS FIX)
 Post-release `2.2`, the following issues have been fixed:
 - Fixed `plot_model = 'tree'` exceptions.

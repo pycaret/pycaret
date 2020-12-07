@@ -4,4 +4,3 @@ from pycaret.internal.distributions import (
     DiscreteUniformDistribution,
     CategoricalDistribution,
 )
-

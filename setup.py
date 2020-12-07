@@ -3,20 +3,22 @@
 
 from setuptools import setup, find_packages
 
+
 def readme():
-    with open('README.md') as f:
+    with open("README.md") as f:
         README = f.read()
     return README
 
-with open('requirements.txt') as f:
+
+with open("requirements.txt") as f:
     required = f.read().splitlines()
 
-with open('requirements-optional.txt') as f:
+with open("requirements-optional.txt") as f:
     optional_required = f.read().splitlines()
 
 setup(
     name="pycaret",
-    version="2.2.1",
+    version="2.2.2",
     description="PyCaret - An open source, low-code machine learning library in Python.",
     long_description=readme(),
     long_description_content_type="text/markdown",
@@ -33,7 +35,5 @@ setup(
     packages=find_packages(exclude=["*.tests", "*.tests.*", "tests.*", "tests"]),
     include_package_data=True,
     install_requires=required,
-    extras_require = {
-        "full": optional_required,
-    }
+    extras_require={"full": optional_required,},
 )
