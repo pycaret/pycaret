@@ -544,7 +544,7 @@ class InteractiveResidualsPlot:
         self.figures.append(tukey_anscombe_widget)
         self.display.move_progress()
 
-        qq_plot_widget = QQPlotWidget(predictions, y, split_origin=split_origin)
+        qq_plot_widget = QQPlotWidget(predictions, y, split_origin=split_origin, featuresize=x.shape[1])
         logger.info("Calculated Normal QQ Plot")
         self.figures.append(qq_plot_widget)
         self.display.move_progress()
