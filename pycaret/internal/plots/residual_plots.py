@@ -290,7 +290,7 @@ class CooksDistanceWidget(BaseFigureWidget):
 
         maxmo = max(model_leverage) + 0.003
         fig.update_xaxes(range=[0, maxmo])
-        fig.update_yaxes(range=[-3, 5])
+        fig.update_yaxes(range=[min(standardized_residuals), max(standardized_residuals)])
         leverage_top_3 = cooks_distances.sort_values(ascending=False)[:3]
         for i in leverage_top_3.index:
             fig.add_annotation(
