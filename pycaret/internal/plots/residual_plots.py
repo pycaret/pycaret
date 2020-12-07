@@ -195,7 +195,7 @@ class ScaleLocationWidget(BaseFigureWidget):
             fig.add_annotation(
                 x=fitted[i],
                 y=sqrt_abs_standardized_residuals[i],
-                text=str(i + 1))
+                text=f"$\sqrt{{|\\tilde r_{{{i}}}|}}$")
         fig.update_annotations(dict(
             xref="x",
             yref="y",
@@ -296,7 +296,7 @@ class CooksDistanceWidget(BaseFigureWidget):
             fig.add_annotation(
                 x=model_leverage[i],
                 y=standardized_residuals[i],
-                text=str(i + 1))
+                text=f"$\\tilde r_{{{i}}}$")
 
         fig.update_annotations(dict(
             xref="x",
@@ -413,7 +413,7 @@ class TukeyAnscombeWidget(BaseFigureWidget):
             fig.add_annotation(
                 x=predictions[i],
                 y=residuals[i],
-                text=str(i + 1))
+                text=f"$r_{{{i}}}$")
         fig.update_annotations(dict(
             xref="x",
             yref="y",
