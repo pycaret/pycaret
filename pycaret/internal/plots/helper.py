@@ -56,7 +56,7 @@ def calculate_standardized_residual(
     expected: np.array
         the expected values for the predictions (y_true)
     featuresize: int
-        number of features per observation
+        Optional, number of features per observation, If it is None, a featuresize of 1 is assumed
 
     Returns
     -------
