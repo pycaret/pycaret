@@ -60,28 +60,51 @@ class QQPlotWidget(BaseFigureWidget):
 
     @staticmethod
     def __get_qq(standardized_residuals: np.ndarray) -> np.ndarray:
+        """
+        Calculate the theoretical quantiles and the ordered response.
+
+        Parameters
+        ----------
+        standardized_residuals: np.array
+            the standardized residuals of a model for some specific dataset
+
+        Returns
+        -------
+            (osm, osr) tuple of nd.arrays
+                Tuple of theoretical quantiles (osm, or order statistic medians) and ordered responses (osr). osr is
+                simply the sorted standardized residuals.
+
+            (slope, intercept) tuple of floats
+                Tuple containing the result of the least-squares fit.
+
+        """
+
         qq = stats.probplot(standardized_residuals, dist='norm', sparams=(1))
-        return np.array([qq[0][0][0], qq[0][0][-1]]), qq
+        return qq[0], qq[1][:2]
 
     def __qq_plot(self, standardized_residuals: np.ndarray, split_origin: np.array = None) -> go.Figure:
-        x, qq = self.__get_qq(standardized_residuals=standardized_residuals)
+        (osm, osr), (slope, intercept) = self.__get_qq(standardized_residuals=standardized_residuals)
         fig = go.Figure()
 
         if split_origin is not None:
+            # calculate the sorted split origin list w.r.t to the standardized residuals
+            # with this list we know which (theoretical quantile | empirical quantile) point belongs to which origin
             sorted_split_origin = np.array(
-                [x[1] for x in sorted(enumerate(split_origin), key=lambda x: standardized_residuals[x[0]])])
+                [origin for (_, origin) in sorted(enumerate(split_origin),
+                                                  key=lambda idx_value: standardized_residuals[idx_value[0]])])
             colors = sorted_split_origin.copy()
             colors[sorted_split_origin == "train"] = "blue"
             colors[sorted_split_origin == "test"] = "green"
-            fig.add_scatter(x=qq[0][0], y=qq[0][1], mode='markers', name='quantiles',
+            fig.add_scatter(x=osm, y=osr, mode='markers', name='quantiles',
                             marker=dict(color=colors), customdata=sorted_split_origin,
                             hovertemplate="%{x},%{y} (%{customdata})",
                             opacity=0.7)
         else:
-            fig.add_scatter(x=qq[0][0], y=qq[0][1], mode='markers', name='quantiles',
+            fig.add_scatter(x=osm, y=osr, mode='markers', name='quantiles',
                             opacity=0.7)
 
-        fig.add_scatter(x=x, y=qq[1][1] + qq[1][0] * x, mode='lines', name='OLS')
+        x = np.array([osm[0], osm[-1]])
+        fig.add_scatter(x=x, y=intercept + slope * x, mode='lines', name='OLS')
         fig.layout.update(
             autosize=True,
             showlegend=False,

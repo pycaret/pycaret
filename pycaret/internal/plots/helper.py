@@ -5,7 +5,7 @@ This module contains methods that can be used in various plot modules and don't 
 import numpy as np
 
 
-def leverage_statistic(X: np.ndarray) -> nd.array:
+def leverage_statistic(X: np.ndarray) -> np.array:
     """
     Calculates the leverage statistic $h_i$ for all $n$ observations $x_i$ within $X$.
     $h_{i}=\frac{1}{n}+\frac{\left(x_{i}-\bar{x}\right)^{2}}{\sum_{i^{\prime}=1}^{n}\left(x_{i^{\prime}}-\bar{x}\right)^{2}}$
@@ -82,7 +82,7 @@ def calculate_standardized_residual(
     return standardized_residuals
 
 
-def cooks_distance(standardized_residuals: np.ndarray, leverage_statistic: np.ndarray) -> nd.array:
+def cooks_distance(standardized_residuals: np.ndarray, leverage_statistic: np.ndarray) -> np.array:
     """
     The Cook’s distance $d_i$ measures to which extent the predicted value $\hat y_i$ changes if the ith observation
     is removed. It can be efficiently calculated using the leverage statistics $h_i$ and the standardized
