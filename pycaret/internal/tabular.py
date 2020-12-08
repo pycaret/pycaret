@@ -5598,6 +5598,7 @@ def plot_model(
     verbose: bool = True,
     system: bool = True,
     display: Optional[Display] = None,  # added in pycaret==2.2.0
+    display_format=None
 ) -> str:
 
     """
@@ -5669,6 +5670,9 @@ def plot_model(
 
     system: bool, default = True
         Must remain True all times. Only to be changed by internal functions.
+        
+    display_format: str, default = None
+        To display plots in [Streamlit](https://www.streamlit.io/), set this to 'streamlit'.
 
     Returns
     -------
@@ -5955,7 +5959,10 @@ def plot_model(
                         )
 
                     elif system:
-                        fig.show()
+                        if display_format=="streamlit":
+                            st.write(fig)
+                        else:
+                            fig.show()
 
                     logger.info("Visual Rendered Successfully")
                     return plot_filename
@@ -6017,7 +6024,10 @@ def plot_model(
                             f"Saving '{plot_filename}' in current active directory"
                         )
                     elif system:
-                        fig.show()
+                        if display_format=="streamlit":
+                            st.write(fig)
+                        else:
+                            fig.show()
 
                     logger.info("Visual Rendered Successfully")
                     return plot_filename
@@ -6099,7 +6109,10 @@ def plot_model(
                             f"Saving '{plot_filename}' in current active directory"
                         )
                     elif system:
-                        fig.show()
+                        if display_format=="streamlit":
+                            st.write(fig)
+                        else:
+                            fig.show()
 
                     logger.info("Visual Rendered Successfully")
                     return plot_filename
@@ -6197,7 +6210,10 @@ def plot_model(
                             f"Saving '{plot_filename}' in current active directory"
                         )
                     elif system:
-                        fig.show()
+                        if display_format=="streamlit":
+                            st.write(fig)
+                        else:
+                            fig.show()
 
                     logger.info("Visual Rendered Successfully")
                     return plot_filename
