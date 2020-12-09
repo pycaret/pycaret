@@ -1098,6 +1098,9 @@ def setup(
 
     prep_pipe = pycaret.internal.preprocess.Preprocess_Path_One(
         train_data=train_data,
+        ml_usecase="classification"
+        if _ml_usecase == MLUsecase.CLASSIFICATION
+        else "regression",
         imputation_type=imputation_type,
         target_variable=target,
         imputation_regressor=imputation_regressor,
