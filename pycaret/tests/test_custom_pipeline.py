@@ -24,6 +24,7 @@ def test():
         html=False,
         custom_pipeline=[sklearn.decomposition.PCA()],
         session_id=123,
+        n_jobs=1,
     )
 
     clf1 = pycaret.classification.setup(
@@ -34,6 +35,7 @@ def test():
         html=False,
         custom_pipeline={"CUSTOM_PCA": sklearn.decomposition.PCA()},
         session_id=123,
+        n_jobs=1,
     )
 
     clf1 = pycaret.classification.setup(
@@ -46,6 +48,7 @@ def test():
             [("CUSTOM_PCA", sklearn.decomposition.PCA())]
         ),
         session_id=123,
+        n_jobs=1,
     )
 
     clf1 = pycaret.classification.setup(
@@ -56,6 +59,7 @@ def test():
         html=False,
         custom_pipeline=[("CUSTOM_PCA", sklearn.decomposition.PCA())],
         session_id=123,
+        n_jobs=1,
     )
 
     model = pycaret.classification.create_model("dt", fold=2)

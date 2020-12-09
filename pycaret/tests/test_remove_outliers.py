@@ -20,6 +20,7 @@ def test():
         html=False,
         remove_outliers=True,
         outliers_threshold=0.05,
+        n_jobs=1,
     )
     assert (
         pd.concat(

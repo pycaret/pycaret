@@ -15,7 +15,12 @@ def test():
 
     # categorical_feature = Recency
     clf1 = pycaret.classification.setup(
-        data, target="Class", silent=True, html=False, ignore_features=["Time"]
+        data,
+        target="Class",
+        silent=True,
+        html=False,
+        ignore_features=["Time"],
+        n_jobs=1,
     )
     assert "Time" not in list(pycaret.classification.get_config("X_train").columns)
 

@@ -22,6 +22,7 @@ def test():
         html=False,
         normalize=True,
         normalize_method="minmax",
+        n_jobs=1,
     )
     assert np.array(pycaret.classification.get_config("X_train")).min().round(2) >= 0
     assert np.array(pycaret.classification.get_config("X_train")).max().round(2) <= 1
@@ -34,6 +35,7 @@ def test():
         html=False,
         normalize=True,
         normalize_method="maxabs",
+        n_jobs=1,
     )
     assert np.array(pycaret.classification.get_config("X_train")).min().round(2) >= 0
     assert np.array(pycaret.classification.get_config("X_train")).max().round(2) <= 1
@@ -46,6 +48,7 @@ def test():
         html=False,
         normalize=True,
         normalize_method="zscore",
+        n_jobs=1,
     )
     assert np.array(pycaret.classification.get_config("X_train")).min().round(2) >= -10
     assert np.array(pycaret.classification.get_config("X_train")).max().round(2) <= 10
@@ -58,6 +61,7 @@ def test():
         html=False,
         normalize=True,
         normalize_method="robust",
+        n_jobs=1,
     )
     # to create assert later on
 

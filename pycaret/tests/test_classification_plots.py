@@ -22,6 +22,7 @@ def test():
         html=False,
         session_id=123,
         fold=2,
+        n_jobs=1,
     )
 
     model = pycaret.classification.create_model("lr")
