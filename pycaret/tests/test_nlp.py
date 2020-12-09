@@ -21,7 +21,6 @@ def test():
         log_experiment=True,
         html=False,
         session_id=123,
-        n_jobs=1,
     )
     assert isinstance(nlp1, tuple)
     assert isinstance(nlp1[0], list)
