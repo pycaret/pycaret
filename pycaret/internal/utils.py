@@ -541,7 +541,6 @@ class nullcontext(object):
 def get_groups(
     groups: Union[str, pd.DataFrame], X_train: pd.DataFrame, default: pd.DataFrame
 ):
-    logger = get_logger()
     if groups is None:
         return default
     if isinstance(groups, str):

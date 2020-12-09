@@ -28,7 +28,7 @@ from pycaret.internal.utils import (
 )
 import pycaret.internal.patches.sklearn
 import pycaret.internal.patches.yellowbrick
-from pycaret.internal.logging import get_logger
+from pycaret.internal.logging import get_logger, create_logger
 from pycaret.internal.plotting import show_yellowbrick_plot, MatplotlibDefaultDPI
 from pycaret.internal.Display import Display
 from pycaret.internal.distributions import *
@@ -69,7 +69,7 @@ import plotly.graph_objects as go
 import scikitplot as skplt
 
 warnings.filterwarnings("ignore")
-logger = get_logger()
+LOGGER = get_logger()
 
 
 class MLUsecase(Enum):
@@ -97,7 +97,15 @@ class _PyCaretExperiment:
         self.variable_keys = set()
         self._setup_ran = False
         self.display_container = []
+        self.exp_id = None
+        self.gpu_param = False
+        self.n_jobs_param = -1
+        self.logger = LOGGER
         return
+
+    @property
+    def _gpu_n_jobs_param(self) -> int:
+        return self.n_jobs_param if not self.gpu_param else 1
 
     @property
     def variables(self) -> dict:
@@ -113,77 +121,77 @@ class _PyCaretExperiment:
 
     def _check_enviroment(self) -> None:
         # logging environment and libraries
-        logger.info("Checking environment")
+        self.logger.info("Checking environment")
 
         from platform import python_version, platform, python_build, machine
 
-        logger.info(f"python_version: {python_version()}")
-        logger.info(f"python_build: {python_build()}")
-        logger.info(f"machine: {machine()}")
-        logger.info(f"platform: {platform()}")
+        self.logger.info(f"python_version: {python_version()}")
+        self.logger.info(f"python_build: {python_build()}")
+        self.logger.info(f"machine: {machine()}")
+        self.logger.info(f"platform: {platform()}")
 
         try:
             import psutil
 
-            logger.info(f"Memory: {psutil.virtual_memory()}")
-            logger.info(f"Physical Core: {psutil.cpu_count(logical=False)}")
-            logger.info(f"Logical Core: {psutil.cpu_count(logical=True)}")
+            self.logger.info(f"Memory: {psutil.virtual_memory()}")
+            self.logger.info(f"Physical Core: {psutil.cpu_count(logical=False)}")
+            self.logger.info(f"Logical Core: {psutil.cpu_count(logical=True)}")
         except:
-            logger.warning(
+            self.logger.warning(
                 "cannot find psutil installation. memory not traceable. Install psutil using pip to enable memory logging."
             )
 
-        logger.info("Checking libraries")
+        self.logger.info("Checking libraries")
 
         try:
             from pandas import __version__
 
-            logger.info(f"pd=={__version__}")
+            self.logger.info(f"pd=={__version__}")
         except:
-            logger.warning("pandas not found")
+            self.logger.warning("pandas not found")
 
         try:
             from numpy import __version__
 
-            logger.info(f"numpy=={__version__}")
+            self.logger.info(f"numpy=={__version__}")
         except:
-            logger.warning("numpy not found")
+            self.logger.warning("numpy not found")
 
         try:
             from sklearn import __version__
 
-            logger.info(f"sklearn=={__version__}")
+            self.logger.info(f"sklearn=={__version__}")
         except:
-            logger.warning("sklearn not found")
+            self.logger.warning("sklearn not found")
 
         try:
             from xgboost import __version__
 
-            logger.info(f"xgboost=={__version__}")
+            self.logger.info(f"xgboost=={__version__}")
         except:
-            logger.warning("xgboost not found")
+            self.logger.warning("xgboost not found")
 
         try:
             from lightgbm import __version__
 
-            logger.info(f"lightgbm=={__version__}")
+            self.logger.info(f"lightgbm=={__version__}")
         except:
-            logger.warning("lightgbm not found")
+            self.logger.warning("lightgbm not found")
 
         try:
             from catboost import __version__
 
-            logger.info(f"catboost=={__version__}")
+            self.logger.info(f"catboost=={__version__}")
         except:
-            logger.warning("catboost not found")
+            self.logger.warning("catboost not found")
 
         try:
             from mlflow.version import VERSION
 
             warnings.filterwarnings("ignore")
-            logger.info(f"mlflow=={VERSION}")
+            self.logger.info(f"mlflow=={VERSION}")
         except:
-            logger.warning("mlflow not found")
+            self.logger.warning("mlflow not found")
 
     def setup(self) -> None:
         return
@@ -256,13 +264,143 @@ class _PyCaretExperiment:
             model_name, platform, authentication, verbose
         )
 
-    def get_logs(self) -> None:
-        return
+    def get_logs(
+        self, experiment_name: Optional[str] = None, save: bool = False
+    ) -> pd.DataFrame:
 
-    def get_config(self) -> None:
-        return
+        """
+        Returns a table with experiment logs consisting
+        run details, parameter, metrics and tags. 
 
-    def set_config(self) -> None:
+        Example
+        -------
+        >>> logs = get_logs()
+
+        This will return pandas dataframe.
+
+        Parameters
+        ----------
+        experiment_name : str, default = None
+            When set to None current active run is used.
+
+        save : bool, default = False
+            When set to True, csv file is saved in current directory.
+
+        Returns
+        -------
+        pandas.DataFrame
+
+        """
+
+        import mlflow
+        from mlflow.tracking import MlflowClient
+
+        client = MlflowClient()
+
+        if experiment_name is None:
+            exp_id = self.exp_id
+            experiment = client.get_experiment(exp_id)
+            if experiment is None:
+                raise ValueError(
+                    "No active run found. Check logging parameter in setup or to get logs for inactive run pass experiment_name."
+                )
+
+            exp_name_log_ = experiment.name
+        else:
+            exp_name_log_ = experiment_name
+            experiment = client.get_experiment_by_name(exp_name_log_)
+            if experiment is None:
+                raise ValueError(
+                    "No active run found. Check logging parameter in setup or to get logs for inactive run pass experiment_name."
+                )
+
+            exp_id = client.get_experiment_by_name(exp_name_log_).experiment_id
+
+        runs = mlflow.search_runs(exp_id)
+
+        if save:
+            file_name = f"{exp_name_log_}_logs.csv"
+            runs.to_csv(file_name, index=False)
+
+        return runs
+
+    def get_config(self, variable: str) -> Any:
+        """
+        This function is used to access global environment variables.
+
+        Example
+        -------
+        >>> X_train = get_config('X_train') 
+
+        This will return X_train transformed dataset.
+
+        Returns
+        -------
+        variable
+
+        """
+
+        function_params_str = ", ".join(
+            [f"{k}={v}" for k, v in locals().items() if not k == "globals_d"]
+        )
+
+        self.logger.info("Initializing get_config()")
+        self.logger.info(f"get_config({function_params_str})")
+
+        if not variable in self.variables:
+            raise ValueError(
+                f"Variable {variable} not found. Possible variables are: {list(self.variables)}"
+            )
+        var = getattr(self, variable)
+
+        self.logger.info(f"Variable: {variable} returned as {var}")
+        self.logger.info(
+            "get_config() succesfully completed......................................"
+        )
+
+        return var
+
+    def set_config(
+        self, variable: Optional[str] = None, value: Optional[Any] = None, **kwargs
+    ) -> None:
+        """
+        This function is used to reset global environment variables.
+
+        Example
+        -------
+        >>> set_config('seed', 123) 
+
+        This will set the global seed to '123'.
+
+        """
+        function_params_str = ", ".join(
+            [f"{k}={v}" for k, v in locals().items() if not k == "globals_d"]
+        )
+
+        self.logger.info("Initializing set_config()")
+        self.logger.info(f"set_config({function_params_str})")
+
+        if kwargs and variable:
+            raise ValueError(
+                "variable parameter cannot be used together with keyword arguments."
+            )
+
+        variables = kwargs if kwargs else {variable: value}
+
+        for k, v in variables.items():
+            if k.startswith("_"):
+                raise ValueError(f"Variable {k} is read only ('_' prefix).")
+
+            if not k in self.variables:
+                raise ValueError(
+                    f"Variable {k} not found. Possible variables are: {list(self.variables)}"
+                )
+
+            setattr(self, k, v)
+            self.logger.info(f"Global variable: {k} updated to {v}")
+        self.logger.info(
+            "set_config() succesfully completed......................................"
+        )
         return
 
     def save_config(self) -> None:
@@ -312,6 +450,7 @@ class _TabularExperiment(_PyCaretExperiment):
                 "master_model_container",
                 "display_container",
                 "exp_name_log",
+                "exp_id",
                 "logging_param",
                 "log_plots_param",
                 "transform_target_param",
@@ -419,7 +558,7 @@ class _TabularExperiment(_PyCaretExperiment):
         URI=None,
         display: Optional[Display] = None,
     ):
-        logger.info("Creating MLFlow logs")
+        self.logger.info("Creating MLFlow logs")
 
         # Creating Logs message monitor
         if display:
@@ -433,7 +572,7 @@ class _TabularExperiment(_PyCaretExperiment):
         mlflow.set_experiment(self.exp_name_log)
 
         full_name = self._get_model_name(model)
-        logger.info(f"Model: {full_name}")
+        self.logger.info(f"Model: {full_name}")
 
         with mlflow.start_run(run_name=full_name) as run:
 
@@ -456,8 +595,8 @@ class _TabularExperiment(_PyCaretExperiment):
                 except:
                     params = params.get_params()
             except:
-                logger.warning("Couldn't get params for model. Exception:")
-                logger.warning(traceback.format_exc())
+                self.logger.warning("Couldn't get params for model. Exception:")
+                self.logger.warning(traceback.format_exc())
                 params = {}
 
             for i in list(params):
@@ -465,7 +604,7 @@ class _TabularExperiment(_PyCaretExperiment):
                 if len(str(v)) > 250:
                     params.pop(i)
 
-            logger.info(f"logged params: {params}")
+            self.logger.info(f"logged params: {params}")
             mlflow.log_params(params)
 
             # Log metrics
@@ -509,16 +648,16 @@ class _TabularExperiment(_PyCaretExperiment):
                         mlflow.log_artifact("Holdout.html")
                         os.remove("Holdout.html")
                     except:
-                        logger.warning(
+                        self.logger.warning(
                             "Couldn't create holdout prediction for model, exception below:"
                         )
-                        logger.warning(traceback.format_exc())
+                        self.logger.warning(traceback.format_exc())
 
             # Log AUC and Confusion Matrix plot
 
             if log_plots:
 
-                logger.info(
+                self.logger.info(
                     "SubProcess plot_model() called =================================="
                 )
 
@@ -530,12 +669,12 @@ class _TabularExperiment(_PyCaretExperiment):
                         mlflow.log_artifact(plot_name)
                         os.remove(plot_name)
                     except Exception as e:
-                        logger.warning(e)
+                        self.logger.warning(e)
 
                 for plot in log_plots:
                     _log_plot(plot)
 
-                logger.info(
+                self.logger.info(
                     "SubProcess plot_model() end =================================="
                 )
 
@@ -568,7 +707,7 @@ class _TabularExperiment(_PyCaretExperiment):
                     self.data_before_preprocess.drop([self.target_param], axis=1)
                 )
             except:
-                logger.warning("Couldn't infer MLFlow signature.")
+                self.logger.warning("Couldn't infer MLFlow signature.")
                 signature = None
             if not self._is_unsupervised():
                 input_example = (
@@ -727,18 +866,33 @@ class _TabularExperiment(_PyCaretExperiment):
 
         ver = __version__
 
-        logger.info("PyCaret Supervised Module")
-        logger.info(f"ML Usecase: {self._ml_usecase}")
-        logger.info(f"version {ver}")
-        logger.info("Initializing setup()")
-        logger.info(f"setup({function_params_str})")
+        # experiment_name
+        if experiment_name:
+            if type(experiment_name) is not str:
+                raise TypeError(
+                    "experiment_name parameter must be a non-empty str if not None."
+                )
+
+        if experiment_name:
+            self.exp_name_log = experiment_name
+            self.logger = create_logger(experiment_name)
+        else:
+            # create exp_name_log param incase logging is False
+            self.exp_name_log = "no_logging"
+
+        self.logger.info(f"PyCaret {type(self).__name__}")
+        self.logger.info(f"Logging name: {self.exp_name_log}")
+        self.logger.info(f"ML Usecase: {self._ml_usecase}")
+        self.logger.info(f"version {ver}")
+        self.logger.info("Initializing setup()")
+        self.logger.info(f"setup({function_params_str})")
 
         self._check_enviroment()
 
         # run_time
         runtime_start = time.time()
 
-        logger.info("Checking Exceptions")
+        self.logger.info("Checking Exceptions")
 
         # checking data type
         if hasattr(data, "shape") is False:
@@ -1093,11 +1247,6 @@ class _TabularExperiment(_PyCaretExperiment):
         if type(log_profile) is not bool:
             raise TypeError("log_profile parameter only accepts True or False.")
 
-        # experiment_name
-        if experiment_name is not None:
-            if type(experiment_name) is not str:
-                raise TypeError("experiment_name parameter must be str if not None.")
-
         # silent
         if type(silent) is not bool:
             raise TypeError("silent parameter only accepts True or False.")
@@ -1202,18 +1351,18 @@ class _TabularExperiment(_PyCaretExperiment):
         import secrets
 
         # declaring global variables to be accessed by other functions
-        logger.info("Declaring global variables")
+        self.logger.info("Declaring global variables")
         # global _ml_usecase, USI, html_param, X, y, X_train, X_test, y_train, y_test, seed, prep_pipe, experiment__, fold_shuffle_param, n_jobs_param, _gpu_n_jobs_param, create_model_container, master_model_container, display_container, exp_name_log, logging_param, log_plots_param, fix_imbalance_param, fix_imbalance_method_param, transform_target_param, transform_target_method_param, data_before_preprocess, target_param, gpu_param, _all_models, _all_models_internal, _all_metrics, _internal_pipeline, stratify_param, fold_generator, fold_param, fold_groups_param, imputation_regressor, imputation_classifier, iterative_imputation_iters_param
 
         self.USI = secrets.token_hex(nbytes=2)
-        logger.info(f"self.USI: {self.USI}")
+        self.logger.info(f"self.USI: {self.USI}")
 
-        logger.info(f"self.variable_keys: {self.variable_keys}")
+        self.logger.info(f"self.variable_keys: {self.variable_keys}")
 
         # create html_param
         self.html_param = html
 
-        logger.info("Preparing display monitor")
+        self.logger.info("Preparing display monitor")
 
         if not display:
             # progress bar
@@ -1239,7 +1388,7 @@ class _TabularExperiment(_PyCaretExperiment):
             display.display_progress()
             display.display_monitor()
 
-        logger.info("Importing libraries")
+        self.logger.info("Importing libraries")
 
         # setting sklearn config to print all parameters including default
         import sklearn
@@ -1251,7 +1400,7 @@ class _TabularExperiment(_PyCaretExperiment):
             is_max = s == True
             return ["background-color: lightgreen" if v else "" for v in is_max]
 
-        logger.info("Copying data for preprocessing")
+        self.logger.info("Copying data for preprocessing")
 
         # copy original data for pandas profiler
         self.data_before_preprocess = data.copy()
@@ -1272,7 +1421,7 @@ class _TabularExperiment(_PyCaretExperiment):
 
         # define parameters for preprocessor
 
-        logger.info("Declaring preprocessing parameters")
+        self.logger.info("Declaring preprocessing parameters")
 
         # categorical features
         cat_features_pass = categorical_features or []
@@ -1411,22 +1560,19 @@ class _TabularExperiment(_PyCaretExperiment):
                 from cuml import __version__
 
                 cuml_version = __version__
-                logger.info(f"cuml=={cuml_version}")
+                self.logger.info(f"cuml=={cuml_version}")
 
                 cuml_version = cuml_version.split(".")
                 cuml_version = (int(cuml_version[0]), int(cuml_version[1]))
             except:
-                logger.warning(f"cuML not found")
+                self.logger.warning(f"cuML not found")
 
             if cuml_version is None or not cuml_version >= (0, 15):
                 message = f"cuML is outdated or not found. Required version is >=0.15, got {__version__}"
                 if use_gpu == "force":
                     raise ImportError(message)
                 else:
-                    logger.warning(message)
-
-        # create _gpu_n_jobs_param
-        self._gpu_n_jobs_param = n_jobs if not use_gpu else 1
+                    self.logger.warning(message)
 
         # create gpu_param var
         self.gpu_param = use_gpu
@@ -1449,7 +1595,7 @@ class _TabularExperiment(_PyCaretExperiment):
         imputation_classifier_name = "Random Forest Classifier"
 
         if imputation_type == "iterative":
-            logger.info("Setting up iterative imputation")
+            self.logger.info("Setting up iterative imputation")
 
             iterative_imputer_models_globals = self.variables.copy()
             iterative_imputer_models_globals["y_train"] = y_before_preprocess
@@ -1514,7 +1660,7 @@ class _TabularExperiment(_PyCaretExperiment):
             else:
                 imputation_classifier_name = type(self.imputation_classifier).__name__
 
-        logger.info("Creating preprocessing pipeline")
+        self.logger.info("Creating preprocessing pipeline")
 
         self.prep_pipe = pycaret.internal.preprocess.Preprocess_Path_One(
             train_data=train_data,
@@ -1574,9 +1720,31 @@ class _TabularExperiment(_PyCaretExperiment):
         )
 
         dtypes = self.prep_pipe.named_steps["dtypes"]
+        try:
+            fix_perfect_removed_columns = (
+                self.prep_pipe.named_steps["fix_perfect"].columns_to_drop
+                if remove_perfect_collinearity
+                else []
+            )
+        except:
+            fix_perfect_removed_columns = []
+        try:
+            fix_multi_removed_columns = (
+                (
+                    self.prep_pipe.named_steps["fix_multi"].to_drop
+                    + self.prep_pipe.named_steps["fix_multi"].to_drop_taret_correlation
+                )
+                if remove_multicollinearity
+                else []
+            )
+        except:
+            fix_multi_removed_columns = []
+        multicollinearity_removed_columns = (
+            fix_perfect_removed_columns + fix_multi_removed_columns
+        )
 
         display.move_progress()
-        logger.info("Preprocessing pipeline created successfully")
+        self.logger.info("Preprocessing pipeline created successfully")
 
         try:
             res_type = [
@@ -1599,7 +1767,7 @@ class _TabularExperiment(_PyCaretExperiment):
                 )
 
         except:
-            logger.error(
+            self.logger.error(
                 "(Process Exit): setup has been interupted with user command 'quit'. setup must rerun."
             )
 
@@ -1614,7 +1782,7 @@ class _TabularExperiment(_PyCaretExperiment):
         pd.reset_option("display.max_rows")
         pd.reset_option("display.max_columns")
 
-        logger.info("Creating global containers")
+        self.logger.info("Creating global containers")
 
         # create an empty list for pickling later.
         self.experiment__ = []
@@ -1665,9 +1833,6 @@ class _TabularExperiment(_PyCaretExperiment):
         # create logging parameter
         self.logging_param = log_experiment
 
-        # create exp_name_log param incase logging is False
-        self.exp_name_log = "no_logging"
-
         # create an empty log_plots_param
         if not log_plots:
             self.log_plots_param = False
@@ -1707,7 +1872,7 @@ class _TabularExperiment(_PyCaretExperiment):
 
         self._internal_pipeline = make_internal_pipeline(self._internal_pipeline)
 
-        logger.info(f"Internal pipeline: {self._internal_pipeline}")
+        self.logger.info(f"Internal pipeline: {self._internal_pipeline}")
 
         # create target_param var
         self.target_param = target
@@ -1761,7 +1926,7 @@ class _TabularExperiment(_PyCaretExperiment):
         """
         Final display Starts
         """
-        logger.info("Creating grid variables")
+        self.logger.info("Creating grid variables")
 
         if hasattr(dtypes, "replacement"):
             label_encoded = dtypes.replacement
@@ -1850,9 +2015,6 @@ class _TabularExperiment(_PyCaretExperiment):
             if verbose:
                 print("Setup Succesfully Completed!")
 
-        if experiment_name is not None:
-            self.exp_name_log = experiment_name
-
         functions = pd.DataFrame(
             [["session_id", self.seed],]
             + ([["Target", target]] if not self._is_unsupervised() else [])
@@ -1932,8 +2094,13 @@ class _TabularExperiment(_PyCaretExperiment):
                     ["Numeric Binning", numeric_bin_grid],
                     ["Remove Outliers", remove_outliers],
                     ["Outliers Threshold", outliers_threshold_grid],
+                    ["Remove Perfect Collinearity", remove_perfect_collinearity],
                     ["Remove Multicollinearity", remove_multicollinearity],
                     ["Multicollinearity Threshold", multicollinearity_threshold_grid],
+                    [
+                        "Columns Removed Due to Multicollinearity",
+                        multicollinearity_removed_columns,
+                    ],
                     ["Clustering", create_clusters],
                     ["Clustering Iteration", cluster_iter_grid],
                     ["Polynomial Features", polynomial_features],
@@ -1986,7 +2153,7 @@ class _TabularExperiment(_PyCaretExperiment):
                 print(
                     "Data Profiler Failed. No output to show, please continue with Modeling."
                 )
-                logger.error(
+                self.logger.error(
                     "Data Profiler Failed. No output to show, please continue with Modeling."
                 )
 
@@ -2010,12 +2177,16 @@ class _TabularExperiment(_PyCaretExperiment):
 
         self._setup_ran = True
 
-        logger.info(f"self.create_model_container: {len(self.create_model_container)}")
-        logger.info(f"self.master_model_container: {len(self.master_model_container)}")
-        logger.info(f"self.display_container: {len(self.display_container)}")
+        self.logger.info(
+            f"self.create_model_container: {len(self.create_model_container)}"
+        )
+        self.logger.info(
+            f"self.master_model_container: {len(self.master_model_container)}"
+        )
+        self.logger.info(f"self.display_container: {len(self.display_container)}")
 
-        logger.info(str(self.prep_pipe))
-        logger.info(
+        self.logger.info(str(self.prep_pipe))
+        self.logger.info(
             "setup() succesfully completed......................................"
         )
 
@@ -2136,10 +2307,10 @@ class _TabularExperiment(_PyCaretExperiment):
 
         function_params_str = ", ".join([f"{k}={v}" for k, v in locals().items()])
 
-        logger.info("Initializing plot_model()")
-        logger.info(f"plot_model({function_params_str})")
+        self.logger.info("Initializing plot_model()")
+        self.logger.info(f"plot_model({function_params_str})")
 
-        logger.info("Checking exceptions")
+        self.logger.info("Checking exceptions")
 
         if not fit_kwargs:
             fit_kwargs = {}
@@ -2242,7 +2413,7 @@ class _TabularExperiment(_PyCaretExperiment):
             )
             display.display_progress()
 
-        logger.info("Preloading libraries")
+        self.logger.info("Preloading libraries")
         # pre-load libraries
         import matplotlib.pyplot as plt
 
@@ -2262,7 +2433,7 @@ class _TabularExperiment(_PyCaretExperiment):
         # plots used for logging (controlled through plots_log_param)
         # AUC, #Confusion Matrix and #Feature Importance
 
-        logger.info("Copying training dataset")
+        self.logger.info("Copying training dataset")
 
         # Storing X_train and y_train in data_X and data_y parameter
         data_X = self.X_train.copy()
@@ -2274,7 +2445,7 @@ class _TabularExperiment(_PyCaretExperiment):
         if not self._is_unsupervised():
             data_y.reset_index(drop=True, inplace=True)  # type: ignore
 
-            logger.info("Copying test dataset")
+            self.logger.info("Copying test dataset")
 
             # Storing X_train and y_train in data_X and data_y parameter
             test_X = self.X_train.copy() if use_train_data else self.X_test.copy()
@@ -2284,7 +2455,7 @@ class _TabularExperiment(_PyCaretExperiment):
             test_X.reset_index(drop=True, inplace=True)
             test_y.reset_index(drop=True, inplace=True)
 
-        logger.info(f"Plot type: {plot}")
+        self.logger.info(f"Plot type: {plot}")
         plot_name = self._available_plots[plot]
         display.move_progress()
 
@@ -2314,13 +2485,13 @@ class _TabularExperiment(_PyCaretExperiment):
                     _base_dpi = 100
 
                     def cluster():
-                        logger.info(
+                        self.logger.info(
                             "SubProcess assign_model() called =================================="
                         )
                         b = self.assign_model(  # type: ignore
                             pipeline_with_model, verbose=False, transformation=True
                         ).reset_index(drop=True)
-                        logger.info(
+                        self.logger.info(
                             "SubProcess assign_model() end =================================="
                         )
                         cluster = b["Cluster"].values
@@ -2330,7 +2501,7 @@ class _TabularExperiment(_PyCaretExperiment):
                         from sklearn.decomposition import PCA
 
                         pca = PCA(n_components=2, random_state=self.seed)
-                        logger.info("Fitting PCA()")
+                        self.logger.info("Fitting PCA()")
                         pca_ = pca.fit_transform(b)
                         pca_ = pd.DataFrame(pca_)
                         pca_ = pca_.rename(columns={0: "PCA1", 1: "PCA2"})
@@ -2350,7 +2521,7 @@ class _TabularExperiment(_PyCaretExperiment):
                         sorting
                         """
 
-                        logger.info("Sorting dataframe")
+                        self.logger.info("Sorting dataframe")
 
                         print(pca_["Cluster"])
 
@@ -2365,7 +2536,7 @@ class _TabularExperiment(_PyCaretExperiment):
 
                         display.clear_output()
 
-                        logger.info("Rendering Visual")
+                        self.logger.info("Rendering Visual")
 
                         if label:
                             fig = px.scatter(
@@ -2397,24 +2568,24 @@ class _TabularExperiment(_PyCaretExperiment):
 
                         if save:
                             fig.write_html(plot_filename)
-                            logger.info(
+                            self.logger.info(
                                 f"Saving '{plot_filename}' in current active directory"
                             )
 
                         elif system:
                             fig.show()
 
-                        logger.info("Visual Rendered Successfully")
+                        self.logger.info("Visual Rendered Successfully")
                         return plot_filename
 
                     def umap():
-                        logger.info(
+                        self.logger.info(
                             "SubProcess assign_model() called =================================="
                         )
                         b = self.assign_model(  # type: ignore
                             model, verbose=False, transformation=True, score=False
                         ).reset_index(drop=True)
-                        logger.info(
+                        self.logger.info(
                             "SubProcess assign_model() end =================================="
                         )
 
@@ -2425,7 +2596,7 @@ class _TabularExperiment(_PyCaretExperiment):
                         import umap
 
                         reducer = umap.UMAP()
-                        logger.info("Fitting UMAP()")
+                        self.logger.info("Fitting UMAP()")
                         embedding = reducer.fit_transform(b)
                         X = pd.DataFrame(embedding)
 
@@ -2443,7 +2614,7 @@ class _TabularExperiment(_PyCaretExperiment):
 
                         display.clear_output()
 
-                        logger.info("Rendering Visual")
+                        self.logger.info("Rendering Visual")
 
                         fig = px.scatter(
                             df,
@@ -2460,13 +2631,13 @@ class _TabularExperiment(_PyCaretExperiment):
 
                         if save:
                             fig.write_html(f"{plot_filename}")
-                            logger.info(
+                            self.logger.info(
                                 f"Saving '{plot_filename}' in current active directory"
                             )
                         elif system:
                             fig.show()
 
-                        logger.info("Visual Rendered Successfully")
+                        self.logger.info("Visual Rendered Successfully")
                         return plot_filename
 
                     def tsne():
@@ -2476,24 +2647,26 @@ class _TabularExperiment(_PyCaretExperiment):
                             return _tsne_anomaly()
 
                     def _tsne_anomaly():
-                        logger.info(
+                        self.logger.info(
                             "SubProcess assign_model() called =================================="
                         )
                         b = self.assign_model(  # type: ignore
                             model, verbose=False, transformation=True, score=False
                         ).reset_index(drop=True)
-                        logger.info(
+                        self.logger.info(
                             "SubProcess assign_model() end =================================="
                         )
                         cluster = b["Anomaly"].values
                         b.dropna(axis=0, inplace=True)  # droping rows with NA's
                         b.drop("Anomaly", axis=1, inplace=True)
 
-                        logger.info("Getting dummies to cast categorical variables")
+                        self.logger.info(
+                            "Getting dummies to cast categorical variables"
+                        )
 
                         from sklearn.manifold import TSNE
 
-                        logger.info("Fitting TSNE()")
+                        self.logger.info("Fitting TSNE()")
                         X_embedded = TSNE(n_components=3).fit_transform(b)
 
                         X = pd.DataFrame(X_embedded)
@@ -2509,7 +2682,7 @@ class _TabularExperiment(_PyCaretExperiment):
 
                         display.clear_output()
 
-                        logger.info("Rendering Visual")
+                        self.logger.info("Rendering Visual")
 
                         if label:
                             fig = px.scatter_3d(
@@ -2542,17 +2715,17 @@ class _TabularExperiment(_PyCaretExperiment):
 
                         if save:
                             fig.write_html(f"{plot_filename}")
-                            logger.info(
+                            self.logger.info(
                                 f"Saving '{plot_filename}' in current active directory"
                             )
                         elif system:
                             fig.show()
 
-                        logger.info("Visual Rendered Successfully")
+                        self.logger.info("Visual Rendered Successfully")
                         return plot_filename
 
                     def _tsne_clustering():
-                        logger.info(
+                        self.logger.info(
                             "SubProcess assign_model() called =================================="
                         )
                         b = self.assign_model(  # type: ignore
@@ -2561,7 +2734,7 @@ class _TabularExperiment(_PyCaretExperiment):
                             score=False,
                             transformation=True,
                         ).reset_index(drop=True)
-                        logger.info(
+                        self.logger.info(
                             "SubProcess assign_model() end =================================="
                         )
 
@@ -2570,7 +2743,7 @@ class _TabularExperiment(_PyCaretExperiment):
 
                         from sklearn.manifold import TSNE
 
-                        logger.info("Fitting TSNE()")
+                        self.logger.info("Fitting TSNE()")
                         X_embedded = TSNE(
                             n_components=3, random_state=self.seed
                         ).fit_transform(b)
@@ -2592,7 +2765,7 @@ class _TabularExperiment(_PyCaretExperiment):
                         """
                         sorting
                         """
-                        logger.info("Sorting dataframe")
+                        self.logger.info("Sorting dataframe")
 
                         clus_num = [int(i.split()[1]) for i in X_embedded["Cluster"]]
 
@@ -2607,7 +2780,7 @@ class _TabularExperiment(_PyCaretExperiment):
 
                         display.clear_output()
 
-                        logger.info("Rendering Visual")
+                        self.logger.info("Rendering Visual")
 
                         if label:
 
@@ -2642,30 +2815,30 @@ class _TabularExperiment(_PyCaretExperiment):
 
                         if save:
                             fig.write_html(f"{plot_filename}")
-                            logger.info(
+                            self.logger.info(
                                 f"Saving '{plot_filename}' in current active directory"
                             )
                         elif system:
                             fig.show()
 
-                        logger.info("Visual Rendered Successfully")
+                        self.logger.info("Visual Rendered Successfully")
                         return plot_filename
 
                     def distribution():
-                        logger.info(
+                        self.logger.info(
                             "SubProcess assign_model() called =================================="
                         )
                         d = self.assign_model(  # type: ignore
                             pipeline_with_model, verbose=False
                         ).reset_index(drop=True)
-                        logger.info(
+                        self.logger.info(
                             "SubProcess assign_model() end =================================="
                         )
 
                         """
                         sorting
                         """
-                        logger.info("Sorting dataframe")
+                        self.logger.info("Sorting dataframe")
 
                         clus_num = []
                         for i in d.Cluster:
@@ -2695,7 +2868,7 @@ class _TabularExperiment(_PyCaretExperiment):
 
                         display.clear_output()
 
-                        logger.info("Rendering Visual")
+                        self.logger.info("Rendering Visual")
 
                         fig = px.histogram(
                             d,
@@ -2712,13 +2885,13 @@ class _TabularExperiment(_PyCaretExperiment):
 
                         if save:
                             fig.write_html(f"{plot_filename}")
-                            logger.info(
+                            self.logger.info(
                                 f"Saving '{plot_filename}' in current active directory"
                             )
                         elif system:
                             fig.show()
 
-                        logger.info("Visual Rendered Successfully")
+                        self.logger.info("Visual Rendered Successfully")
                         return plot_filename
 
                     def elbow():
@@ -2744,8 +2917,8 @@ class _TabularExperiment(_PyCaretExperiment):
                             )
 
                         except:
-                            logger.error("Elbow plot failed. Exception:")
-                            logger.error(traceback.format_exc())
+                            self.logger.error("Elbow plot failed. Exception:")
+                            self.logger.error(traceback.format_exc())
                             raise TypeError("Plot Type not supported for this model.")
 
                     def silhouette():
@@ -2770,8 +2943,8 @@ class _TabularExperiment(_PyCaretExperiment):
                                 display=display,
                             )
                         except:
-                            logger.error("Silhouette plot failed. Exception:")
-                            logger.error(traceback.format_exc())
+                            self.logger.error("Silhouette plot failed. Exception:")
+                            self.logger.error(traceback.format_exc())
                             raise TypeError("Plot Type not supported for this model.")
 
                     def distance():
@@ -2794,8 +2967,8 @@ class _TabularExperiment(_PyCaretExperiment):
                                 display=display,
                             )
                         except:
-                            logger.error("Distance plot failed. Exception:")
-                            logger.error(traceback.format_exc())
+                            self.logger.error("Distance plot failed. Exception:")
+                            self.logger.error(traceback.format_exc())
                             raise TypeError("Plot Type not supported for this model.")
 
                     def residuals():
@@ -2981,7 +3154,7 @@ class _TabularExperiment(_PyCaretExperiment):
 
                         data_X_transformed = data_X.select_dtypes(include="float32")
                         test_X_transformed = test_X.select_dtypes(include="float32")
-                        logger.info("Fitting StandardScaler()")
+                        self.logger.info("Fitting StandardScaler()")
                         data_X_transformed = StandardScaler().fit_transform(
                             data_X_transformed
                         )
@@ -2989,7 +3162,7 @@ class _TabularExperiment(_PyCaretExperiment):
                             test_X_transformed
                         )
                         pca = PCA(n_components=2, random_state=self.seed)
-                        logger.info("Fitting PCA()")
+                        self.logger.info("Fitting PCA()")
                         data_X_transformed = pca.fit_transform(data_X_transformed)
                         test_X_transformed = pca.fit_transform(test_X_transformed)
 
@@ -3064,7 +3237,9 @@ class _TabularExperiment(_PyCaretExperiment):
                     def lift():
 
                         display.move_progress()
-                        logger.info("Generating predictions / predict_proba on X_test")
+                        self.logger.info(
+                            "Generating predictions / predict_proba on X_test"
+                        )
                         with fit_if_not_fitted(
                             pipeline_with_model,
                             data_X,
@@ -3086,7 +3261,7 @@ class _TabularExperiment(_PyCaretExperiment):
                                 y_test__, predict_proba__, figsize=(10, 6)
                             )
                             if save:
-                                logger.info(
+                                self.logger.info(
                                     f"Saving '{plot_name}.png' in current active directory"
                                 )
                                 plt.savefig(f"{plot_name}.png")
@@ -3094,12 +3269,14 @@ class _TabularExperiment(_PyCaretExperiment):
                                 plt.show()
                             plt.close()
 
-                        logger.info("Visual Rendered Successfully")
+                        self.logger.info("Visual Rendered Successfully")
 
                     def gain():
 
                         display.move_progress()
-                        logger.info("Generating predictions / predict_proba on X_test")
+                        self.logger.info(
+                            "Generating predictions / predict_proba on X_test"
+                        )
                         with fit_if_not_fitted(
                             pipeline_with_model,
                             data_X,
@@ -3121,7 +3298,7 @@ class _TabularExperiment(_PyCaretExperiment):
                                 y_test__, predict_proba__, figsize=(10, 6)
                             )
                             if save:
-                                logger.info(
+                                self.logger.info(
                                     f"Saving '{plot_name}.png' in current active directory"
                                 )
                                 plt.savefig(f"{plot_name}.png")
@@ -3129,7 +3306,7 @@ class _TabularExperiment(_PyCaretExperiment):
                                 plt.show()
                             plt.close()
 
-                        logger.info("Visual Rendered Successfully")
+                        self.logger.info("Visual Rendered Successfully")
 
                     def manifold():
 
@@ -3203,7 +3380,7 @@ class _TabularExperiment(_PyCaretExperiment):
                         fig.suptitle("Decision Trees")
 
                         display.move_progress()
-                        logger.info("Plotting decision trees")
+                        self.logger.info("Plotting decision trees")
                         with fit_if_not_fitted(
                             pipeline_with_model,
                             data_X,
@@ -3265,7 +3442,7 @@ class _TabularExperiment(_PyCaretExperiment):
                             if self._ml_usecase == MLUsecase.CLASSIFICATION:
                                 class_names = list(class_names.values())
                             for i, tree in enumerate(trees):
-                                logger.info(f"Plotting tree {i}")
+                                self.logger.info(f"Plotting tree {i}")
                                 plot_tree(
                                     tree,
                                     feature_names=feature_names,
@@ -3283,7 +3460,7 @@ class _TabularExperiment(_PyCaretExperiment):
                         display.move_progress()
                         display.clear_output()
                         if save:
-                            logger.info(
+                            self.logger.info(
                                 f"Saving '{plot_name}.png' in current active directory"
                             )
                             plt.savefig(f"{plot_name}.png", bbox_inches="tight")
@@ -3291,7 +3468,7 @@ class _TabularExperiment(_PyCaretExperiment):
                             plt.show()
                         plt.close()
 
-                        logger.info("Visual Rendered Successfully")
+                        self.logger.info("Visual Rendered Successfully")
 
                     def calibration():
 
@@ -3302,7 +3479,7 @@ class _TabularExperiment(_PyCaretExperiment):
 
                         ax1.plot([0, 1], [0, 1], "k:", label="Perfectly calibrated")
                         display.move_progress()
-                        logger.info("Scoring test/hold-out set")
+                        self.logger.info("Scoring test/hold-out set")
                         with fit_if_not_fitted(
                             pipeline_with_model,
                             data_X,
@@ -3338,7 +3515,7 @@ class _TabularExperiment(_PyCaretExperiment):
                         display.move_progress()
                         display.clear_output()
                         if save:
-                            logger.info(
+                            self.logger.info(
                                 f"Saving '{plot_name}.png' in current active directory"
                             )
                             plt.savefig(f"{plot_name}.png")
@@ -3346,11 +3523,11 @@ class _TabularExperiment(_PyCaretExperiment):
                             plt.show()
                         plt.close()
 
-                        logger.info("Visual Rendered Successfully")
+                        self.logger.info("Visual Rendered Successfully")
 
                     def vc():
 
-                        logger.info("Determining param_name")
+                        self.logger.info("Determining param_name")
 
                         actual_estimator_label = get_pipeline_estimator_label(
                             pipeline_with_model
@@ -3367,8 +3544,8 @@ class _TabularExperiment(_PyCaretExperiment):
                                 model_params = pipeline_with_model.get_params()
                         except:
                             display.clear_output()
-                            logger.error("VC plot failed. Exception:")
-                            logger.error(traceback.format_exc())
+                            self.logger.error("VC plot failed. Exception:")
+                            self.logger.error(traceback.format_exc())
                             raise TypeError(
                                 "Plot not supported for this estimator. Try different estimator."
                             )
@@ -3529,7 +3706,7 @@ class _TabularExperiment(_PyCaretExperiment):
                                     "Plot not supported for this estimator. Try different estimator."
                                 )
 
-                        logger.info(f"param_name: {param_name}")
+                        self.logger.info(f"param_name: {param_name}")
 
                         display.move_progress()
 
@@ -3566,7 +3743,7 @@ class _TabularExperiment(_PyCaretExperiment):
                         from sklearn.decomposition import PCA
 
                         data_X_transformed = data_X.select_dtypes(include="float32")
-                        logger.info("Fitting StandardScaler()")
+                        self.logger.info("Fitting StandardScaler()")
                         data_X_transformed = StandardScaler().fit_transform(
                             data_X_transformed
                         )
@@ -3576,7 +3753,7 @@ class _TabularExperiment(_PyCaretExperiment):
                         features = int(features)
 
                         pca = PCA(n_components=features, random_state=self.seed)
-                        logger.info("Fitting PCA()")
+                        self.logger.info("Fitting PCA()")
                         data_X_transformed = pca.fit_transform(data_X_transformed)
                         display.move_progress()
                         classes = data_y.unique().tolist()
@@ -3618,7 +3795,7 @@ class _TabularExperiment(_PyCaretExperiment):
                             except:
                                 pass
                         if variables is None:
-                            logger.warning(
+                            self.logger.warning(
                                 "No coef_ found. Trying feature_importances_"
                             )
                             variables = abs(temp_model.feature_importances_)
@@ -3645,7 +3822,7 @@ class _TabularExperiment(_PyCaretExperiment):
                         display.move_progress()
                         display.clear_output()
                         if save:
-                            logger.info(
+                            self.logger.info(
                                 f"Saving '{plot_name}.png' in current active directory"
                             )
                             plt.savefig(f"{plot_name}.png")
@@ -3653,7 +3830,7 @@ class _TabularExperiment(_PyCaretExperiment):
                             plt.show()
                         plt.close()
 
-                        logger.info("Visual Rendered Successfully")
+                        self.logger.info("Visual Rendered Successfully")
 
                     def parameter():
 
@@ -3668,7 +3845,7 @@ class _TabularExperiment(_PyCaretExperiment):
                             columns=["Parameters"],
                         )
                         display.display(param_df, clear=True)
-                        logger.info("Visual Rendered Successfully")
+                        self.logger.info("Visual Rendered Successfully")
 
                     # execute the plot method
                     ret = locals()[plot]()
@@ -3682,7 +3859,7 @@ class _TabularExperiment(_PyCaretExperiment):
 
         gc.collect()
 
-        logger.info(
+        self.logger.info(
             "plot_model() succesfully completed......................................"
         )
 
@@ -3742,8 +3919,8 @@ class _TabularExperiment(_PyCaretExperiment):
 
         function_params_str = ", ".join([f"{k}={v}" for k, v in locals().items()])
 
-        logger.info("Initializing evaluate_model()")
-        logger.info(f"evaluate_model({function_params_str})")
+        self.logger.info("Initializing evaluate_model()")
+        self.logger.info(f"evaluate_model({function_params_str})")
 
         from ipywidgets import widgets
         from ipywidgets.widgets import interact, fixed
@@ -3780,8 +3957,8 @@ class _TabularExperiment(_PyCaretExperiment):
             display=fixed(None),
         )
 
-    def predict_model(self, *args, **kwargs):
-        return
+    def predict_model(self, *args, **kwargs) -> pd.DataFrame:
+        return pd.DataFrame()
 
     def finalize_model(self) -> None:
         return
@@ -3805,8 +3982,8 @@ class _TabularExperiment(_PyCaretExperiment):
 
         function_params_str = ", ".join([f"{k}={v}" for k, v in locals().items()])
 
-        logger.info("Initializing automl()")
-        logger.info(f"automl({function_params_str})")
+        self.logger.info("Initializing automl()")
+        self.logger.info(f"automl({function_params_str})")
 
         # checking optimize parameter
         optimize = self._get_metric_by_name_or_id(optimize)
@@ -3829,12 +4006,14 @@ class _TabularExperiment(_PyCaretExperiment):
         scorer = []
 
         if use_holdout:
-            logger.info("Model Selection Basis : Holdout set")
+            self.logger.info("Model Selection Basis : Holdout set")
             for i in self.master_model_container:
                 try:
                     pred_holdout = self.predict_model(i, verbose=False)  # type: ignore
                 except:
-                    logger.warning(f"Model {i} is not fitted, running create_model")
+                    self.logger.warning(
+                        f"Model {i} is not fitted, running create_model"
+                    )
                     i, _ = self.create_model(  # type: ignore
                         estimator=i,
                         system=False,
@@ -3851,7 +4030,7 @@ class _TabularExperiment(_PyCaretExperiment):
                 scorer.append(p)
 
         else:
-            logger.info("Model Selection Basis : CV Results on Training set")
+            self.logger.info("Model Selection Basis : CV Results on Training set")
             for i in self.create_model_container:
                 r = i[compare_dimension][-2:][0]
                 scorer.append(r)
@@ -3873,8 +4052,8 @@ class _TabularExperiment(_PyCaretExperiment):
             groups=self.fold_groups_param,
         )
 
-        logger.info(str(automl_model))
-        logger.info(
+        self.logger.info(str(automl_model))
+        self.logger.info(
             "automl() succesfully completed......................................"
         )
 
@@ -3923,7 +4102,7 @@ class _TabularExperiment(_PyCaretExperiment):
 
         """
 
-        logger.info(f"gpu_param set to {self.gpu_param}")
+        self.logger.info(f"gpu_param set to {self.gpu_param}")
 
         _, model_containers = self._get_models(raise_errors)
 
@@ -4200,7 +4379,7 @@ class _SupervisedExperiment(_TabularExperiment):
         model performance is at least equivalent to what is seen in compare_models 
         """
 
-        logger.info("choose_better activated")
+        self.logger.info("choose_better activated")
         display.update_monitor(1, "Compiling Final Results")
         display.display_monitor()
 
@@ -4223,7 +4402,7 @@ class _SupervisedExperiment(_TabularExperiment):
             if result is not None and is_fitted(model):
                 result = result.loc["Mean"][compare_dimension]
             else:
-                logger.info(
+                self.logger.info(
                     "SubProcess create_model() called =================================="
                 )
                 model, _ = self.create_model(
@@ -4234,20 +4413,20 @@ class _SupervisedExperiment(_TabularExperiment):
                     fit_kwargs=fit_kwargs,
                     groups=groups,
                 )
-                logger.info(
+                self.logger.info(
                     "SubProcess create_model() end =================================="
                 )
                 result = self.pull(pop=True).loc["Mean"][compare_dimension]
-            logger.info(f"{model} result for {compare_dimension} is {result}")
+            self.logger.info(f"{model} result for {compare_dimension} is {result}")
             if not metric.greater_is_better:
                 result *= -1
             if best_result is None or best_result < result:
                 best_result = result
                 best_model = model
 
-        logger.info(f"{best_model} is best model")
+        self.logger.info(f"{best_model} is best model")
 
-        logger.info("choose_better completed")
+        self.logger.info("choose_better completed")
         return best_model
 
     def _get_cv_n_folds(self, fold, X, y=None, groups=None):
@@ -4327,15 +4506,16 @@ class _SupervisedExperiment(_TabularExperiment):
 
         if self.logging_param:
 
-            logger.info("Logging experiment in MLFlow")
+            self.logger.info("Logging experiment in MLFlow")
 
             import mlflow
 
             try:
-                mlflow.create_experiment(self.exp_name_log)
+                self.exp_id = mlflow.create_experiment(self.exp_name_log)
             except:
-                logger.warning("Couldn't create mlflow experiment. Exception:")
-                logger.warning(traceback.format_exc())
+                self.exp_id = None
+                self.logger.warning("Couldn't create mlflow experiment. Exception:")
+                self.logger.warning(traceback.format_exc())
 
             # mlflow logging
             mlflow.set_experiment(self.exp_name_log)
@@ -4365,13 +4545,13 @@ class _SupervisedExperiment(_TabularExperiment):
                 mlflow.set_tag("Run ID", RunID)
 
                 # Log the transformation pipeline
-                logger.info(
+                self.logger.info(
                     "SubProcess save_model() called =================================="
                 )
                 self.save_model(
                     self.prep_pipe, "Transformation Pipeline", verbose=False
                 )
-                logger.info(
+                self.logger.info(
                     "SubProcess save_model() end =================================="
                 )
                 mlflow.log_artifact("Transformation Pipeline.pkl")
@@ -4543,10 +4723,10 @@ class _SupervisedExperiment(_TabularExperiment):
 
         function_params_str = ", ".join([f"{k}={v}" for k, v in locals().items()])
 
-        logger.info("Initializing compare_models()")
-        logger.info(f"compare_models({function_params_str})")
+        self.logger.info("Initializing compare_models()")
+        self.logger.info(f"compare_models({function_params_str})")
 
-        logger.info("Checking exceptions")
+        self.logger.info("Checking exceptions")
 
         if not fit_kwargs:
             fit_kwargs = {}
@@ -4635,7 +4815,7 @@ class _SupervisedExperiment(_TabularExperiment):
 
         pd.set_option("display.max_columns", 500)
 
-        logger.info("Preparing display monitor")
+        self.logger.info("Preparing display monitor")
 
         len_mod = (
             len({k: v for k, v in self._all_models.items() if v.is_turbo})
@@ -4737,7 +4917,7 @@ class _SupervisedExperiment(_TabularExperiment):
         total_runtime = 0
         over_time_budget = False
         if budget_time and budget_time > 0:
-            logger.info(f"Time budget is {budget_time} minutes")
+            self.logger.info(f"Time budget is {budget_time} minutes")
 
         for i, model in enumerate(model_library):
 
@@ -4752,19 +4932,19 @@ class _SupervisedExperiment(_TabularExperiment):
             model_name = self._get_model_name(model)
 
             if isinstance(model, str):
-                logger.info(f"Initializing {model_name}")
+                self.logger.info(f"Initializing {model_name}")
             else:
-                logger.info(f"Initializing custom model {model_name}")
+                self.logger.info(f"Initializing custom model {model_name}")
 
             # run_time
             runtime_start = time.time()
             total_runtime += (runtime_start - total_runtime_start) / 60
-            logger.info(f"Total runtime is {total_runtime} minutes")
+            self.logger.info(f"Total runtime is {total_runtime} minutes")
             over_time_budget = (
                 budget_time and budget_time > 0 and total_runtime > budget_time
             )
             if over_time_budget:
-                logger.info(
+                self.logger.info(
                     f"Total runtime {total_runtime} is over time budget by {total_runtime - budget_time}, breaking loop"
                 )
                 break
@@ -4784,7 +4964,7 @@ class _SupervisedExperiment(_TabularExperiment):
             """
             display.replace_master_display(None)
 
-            logger.info(
+            self.logger.info(
                 "SubProcess create_model() called =================================="
             )
             if errors == "raise":
@@ -4818,10 +4998,10 @@ class _SupervisedExperiment(_TabularExperiment):
                     model_results = self.pull(pop=True)
                     assert np.sum(model_results.iloc[0]) != 0.0
                 except:
-                    logger.warning(
+                    self.logger.warning(
                         f"create_model() for {model} raised an exception or returned all 0.0, trying without fit_kwargs:"
                     )
-                    logger.warning(traceback.format_exc())
+                    self.logger.warning(traceback.format_exc())
                     try:
                         model, model_fit_time = self.create_model(
                             estimator=model,
@@ -4836,22 +5016,26 @@ class _SupervisedExperiment(_TabularExperiment):
                         )
                         model_results = self.pull(pop=True)
                     except:
-                        logger.error(f"create_model() for {model} raised an exception:")
-                        logger.error(traceback.format_exc())
+                        self.logger.error(
+                            f"create_model() for {model} raised an exception:"
+                        )
+                        self.logger.error(traceback.format_exc())
                         continue
-            logger.info(
+            self.logger.info(
                 "SubProcess create_model() end =================================="
             )
 
             if model is None:
                 over_time_budget = True
-                logger.info(f"Time budged exceeded in create_model(), breaking loop")
+                self.logger.info(
+                    f"Time budged exceeded in create_model(), breaking loop"
+                )
                 break
 
             runtime_end = time.time()
             runtime = np.array(runtime_end - runtime_start).round(2)
 
-            logger.info("Creating metrics dataframe")
+            self.logger.info("Creating metrics dataframe")
             if cross_validation:
                 compare_models_ = pd.DataFrame(model_results.loc["Mean"]).T
             else:
@@ -4984,10 +5168,10 @@ class _SupervisedExperiment(_TabularExperiment):
                             display=display,
                         )
                     except:
-                        logger.error(
+                        self.logger.error(
                             f"_mlflow_log_model() for {model} raised an exception:"
                         )
-                        logger.error(traceback.format_exc())
+                        self.logger.error(traceback.format_exc())
 
         if len(sorted_models) == 1:
             sorted_models = sorted_models[0]
@@ -4999,12 +5183,12 @@ class _SupervisedExperiment(_TabularExperiment):
         # store in display container
         self.display_container.append(compare_models_.data)
 
-        logger.info(f"create_model_container: {len(self.create_model_container)}")
-        logger.info(f"master_model_container: {len(self.master_model_container)}")
-        logger.info(f"display_container: {len(self.display_container)}")
+        self.logger.info(f"create_model_container: {len(self.create_model_container)}")
+        self.logger.info(f"master_model_container: {len(self.master_model_container)}")
+        self.logger.info(f"display_container: {len(self.display_container)}")
 
-        logger.info(str(sorted_models))
-        logger.info(
+        self.logger.info(str(sorted_models))
+        self.logger.info(
             "compare_models() succesfully completed......................................"
         )
 
@@ -5156,10 +5340,10 @@ class _SupervisedExperiment(_TabularExperiment):
             ]
         )
 
-        logger.info("Initializing create_model()")
-        logger.info(f"create_model({function_params_str})")
+        self.logger.info("Initializing create_model()")
+        self.logger.info(f"create_model({function_params_str})")
 
-        logger.info("Checking exceptions")
+        self.logger.info("Checking exceptions")
 
         # run_time
         runtime_start = time.time()
@@ -5246,13 +5430,13 @@ class _SupervisedExperiment(_TabularExperiment):
             display.display_monitor()
             display.display_master_display()
 
-        logger.info("Importing libraries")
+        self.logger.info("Importing libraries")
 
         # general dependencies
 
         np.random.seed(self.seed)
 
-        logger.info("Copying training dataset")
+        self.logger.info("Copying training dataset")
 
         # Storing X_train and y_train in data_X and data_y parameter
         data_X = self.X_train.copy() if X_train_data is None else X_train_data.copy()
@@ -5267,12 +5451,12 @@ class _SupervisedExperiment(_TabularExperiment):
 
         display.move_progress()
 
-        logger.info("Defining folds")
+        self.logger.info("Defining folds")
 
         # cross validation setup starts here
         cv = self._get_cv_splitter(fold)
 
-        logger.info("Declaring metric variables")
+        self.logger.info("Declaring metric variables")
 
         """
         MONITOR UPDATE STARTS
@@ -5283,7 +5467,7 @@ class _SupervisedExperiment(_TabularExperiment):
         MONITOR UPDATE ENDS
         """
 
-        logger.info("Importing untrained model")
+        self.logger.info("Importing untrained model")
 
         if isinstance(estimator, str) and estimator in available_estimators:
             model_definition = self._all_models_internal[estimator]
@@ -5292,7 +5476,7 @@ class _SupervisedExperiment(_TabularExperiment):
             model = model_definition.class_def(**model_args)
             full_name = model_definition.name
         else:
-            logger.info("Declaring custom model")
+            self.logger.info("Declaring custom model")
 
             model = clone(estimator)
             model.set_params(**kwargs)
@@ -5313,7 +5497,7 @@ class _SupervisedExperiment(_TabularExperiment):
                 power_transformer_method=self.transform_target_method_param,
             )
 
-        logger.info(f"{full_name} Imported succesfully")
+        self.logger.info(f"{full_name} Imported succesfully")
 
         display.move_progress()
 
@@ -5336,9 +5520,9 @@ class _SupervisedExperiment(_TabularExperiment):
                 self._internal_pipeline, model
             ) as pipeline_with_model:
                 fit_kwargs = get_pipeline_fit_kwargs(pipeline_with_model, fit_kwargs)
-                logger.info("Cross validation set to False")
+                self.logger.info("Cross validation set to False")
 
-                logger.info("Fitting Model")
+                self.logger.info("Fitting Model")
                 model_fit_start = time.time()
                 with io.capture_output():
                     pipeline_with_model.fit(data_X, data_y, **fit_kwargs)
@@ -5360,12 +5544,14 @@ class _SupervisedExperiment(_TabularExperiment):
                         override=False if not system else None,
                     )
 
-                    logger.info(f"display_container: {len(self.display_container)}")
+                    self.logger.info(
+                        f"display_container: {len(self.display_container)}"
+                    )
 
             display.move_progress()
 
-            logger.info(str(model))
-            logger.info(
+            self.logger.info(str(model))
+            self.logger.info(
                 "create_models() succesfully completed......................................"
             )
 
@@ -5391,7 +5577,7 @@ class _SupervisedExperiment(_TabularExperiment):
 
         metrics_dict = dict([(k, v.scorer) for k, v in metrics.items()])
 
-        logger.info("Starting cross validation")
+        self.logger.info("Starting cross validation")
 
         n_jobs = self._gpu_n_jobs_param
         from sklearn.gaussian_process import (
@@ -5405,7 +5591,7 @@ class _SupervisedExperiment(_TabularExperiment):
 
         with estimator_pipeline(self._internal_pipeline, model) as pipeline_with_model:
             fit_kwargs = get_pipeline_fit_kwargs(pipeline_with_model, fit_kwargs)
-            logger.info(f"Cross validating with {cv}, n_jobs={n_jobs}")
+            self.logger.info(f"Cross validating with {cv}, n_jobs={n_jobs}")
 
             model_fit_start = time.time()
             scores = cross_validate(
@@ -5428,13 +5614,13 @@ class _SupervisedExperiment(_TabularExperiment):
                 for k, v in metrics.items()
             }
 
-            logger.info("Calculating mean and std")
+            self.logger.info("Calculating mean and std")
 
             avgs_dict = {k: [np.mean(v), np.std(v)] for k, v in score_dict.items()}
 
             display.move_progress()
 
-            logger.info("Creating metrics dataframe")
+            self.logger.info("Creating metrics dataframe")
 
             model_results = pd.DataFrame(score_dict)
             model_avgs = pd.DataFrame(avgs_dict, index=["Mean", "SD"],)
@@ -5451,7 +5637,7 @@ class _SupervisedExperiment(_TabularExperiment):
                 display.update_monitor(1, "Finalizing Model")
                 display.display_monitor()
                 model_fit_start = time.time()
-                logger.info("Finalizing model")
+                self.logger.info("Finalizing model")
                 with io.capture_output():
                     pipeline_with_model.fit(data_X, data_y, **fit_kwargs)
                 model_fit_end = time.time()
@@ -5485,31 +5671,33 @@ class _SupervisedExperiment(_TabularExperiment):
                     display=display,
                 )
             except:
-                logger.error(f"_mlflow_log_model() for {model} raised an exception:")
-                logger.error(traceback.format_exc())
+                self.logger.error(
+                    f"_mlflow_log_model() for {model} raised an exception:"
+                )
+                self.logger.error(traceback.format_exc())
 
         display.move_progress()
 
-        logger.info("Uploading results into container")
+        self.logger.info("Uploading results into container")
 
         # storing results in create_model_container
         self.create_model_container.append(model_results.data)
         self.display_container.append(model_results.data)
 
         # storing results in master_model_container
-        logger.info("Uploading model into container now")
+        self.logger.info("Uploading model into container now")
         self.master_model_container.append(model)
 
         display.display(
             model_results, clear=system, override=False if not system else None
         )
 
-        logger.info(f"create_model_container: {len(self.create_model_container)}")
-        logger.info(f"master_model_container: {len(self.master_model_container)}")
-        logger.info(f"display_container: {len(self.display_container)}")
+        self.logger.info(f"create_model_container: {len(self.create_model_container)}")
+        self.logger.info(f"master_model_container: {len(self.master_model_container)}")
+        self.logger.info(f"display_container: {len(self.display_container)}")
 
-        logger.info(str(model))
-        logger.info(
+        self.logger.info(str(model))
+        self.logger.info(
             "create_model() succesfully completed......................................"
         )
         gc.collect()
@@ -5713,10 +5901,10 @@ class _SupervisedExperiment(_TabularExperiment):
         """
         function_params_str = ", ".join([f"{k}={v}" for k, v in locals().items()])
 
-        logger.info("Initializing tune_model()")
-        logger.info(f"tune_model({function_params_str})")
+        self.logger.info("Initializing tune_model()")
+        self.logger.info(f"tune_model({function_params_str})")
 
-        logger.info("Checking exceptions")
+        self.logger.info("Checking exceptions")
 
         # run_time
         runtime_start = time.time()
@@ -5896,7 +6084,7 @@ class _SupervisedExperiment(_TabularExperiment):
                         "Optimization metric not supported for multiclass problems. See docstring for list of other optimization parameters."
                     )
         else:
-            logger.info(f"optimize set to user defined function {optimize}")
+            self.logger.info(f"optimize set to user defined function {optimize}")
 
         # checking verbose parameter
         if type(verbose) is not bool:
@@ -5972,7 +6160,7 @@ class _SupervisedExperiment(_TabularExperiment):
 
         np.random.seed(self.seed)
 
-        logger.info("Copying training dataset")
+        self.logger.info("Copying training dataset")
         # Storing X_train and y_train in data_X and data_y parameter
         data_X = self.X_train.copy()
         data_y = self.y_train.copy()
@@ -5990,7 +6178,7 @@ class _SupervisedExperiment(_TabularExperiment):
 
         # convert trained estimator into string name for grids
 
-        logger.info("Checking base model")
+        self.logger.info("Checking base model")
 
         model = clone(estimator)
         is_stacked_model = False
@@ -5998,7 +6186,7 @@ class _SupervisedExperiment(_TabularExperiment):
         base_estimator = model
 
         if hasattr(base_estimator, "final_estimator"):
-            logger.info("Model is stacked, using the definition of the meta-model")
+            self.logger.info("Model is stacked, using the definition of the meta-model")
             is_stacked_model = True
             base_estimator = base_estimator.final_estimator
 
@@ -6006,14 +6194,14 @@ class _SupervisedExperiment(_TabularExperiment):
 
         estimator_definition = self._all_models_internal[estimator_id]
         estimator_name = estimator_definition.name
-        logger.info(f"Base model : {estimator_name}")
+        self.logger.info(f"Base model : {estimator_name}")
 
         display.update_monitor(2, estimator_name)
         display.display_monitor()
 
         display.move_progress()
 
-        logger.info("Declaring metric variables")
+        self.logger.info("Declaring metric variables")
 
         """
         MONITOR UPDATE STARTS
@@ -6026,7 +6214,7 @@ class _SupervisedExperiment(_TabularExperiment):
         MONITOR UPDATE ENDS
         """
 
-        logger.info("Defining Hyperparameters")
+        self.logger.info("Defining Hyperparameters")
 
         from pycaret.internal.tunable import VotingClassifier, VotingRegressor
 
@@ -6093,7 +6281,7 @@ class _SupervisedExperiment(_TabularExperiment):
             if search_algorithm != "grid":
                 tc = total_combintaions_in_grid(param_grid)
                 if tc <= n_iter:
-                    logger.info(
+                    self.logger.info(
                         f"{n_iter} is bigger than total combinations {tc}, setting search algorithm to grid"
                     )
                     search_algorithm = "grid"
@@ -6123,7 +6311,9 @@ class _SupervisedExperiment(_TabularExperiment):
         suffixes = []
 
         if is_stacked_model:
-            logger.info("Stacked model passed, will tune meta model hyperparameters")
+            self.logger.info(
+                "Stacked model passed, will tune meta model hyperparameters"
+            )
             suffixes.append("final_estimator")
 
         gc.collect()
@@ -6144,7 +6334,7 @@ class _SupervisedExperiment(_TabularExperiment):
             search_kwargs = {**estimator_definition.tune_args, **kwargs}
 
             if custom_grid is not None:
-                logger.info(f"custom_grid: {param_grid}")
+                self.logger.info(f"custom_grid: {param_grid}")
 
             n_jobs = (
                 self._gpu_n_jobs_param
@@ -6158,7 +6348,7 @@ class _SupervisedExperiment(_TabularExperiment):
             if isinstance(pipeline_with_model.steps[-1][1], GaussianProcessClassifier):
                 n_jobs = 1
 
-            logger.info(f"Tuning with n_jobs={n_jobs}")
+            self.logger.info(f"Tuning with n_jobs={n_jobs}")
 
             if search_library == "optuna":
                 # suppress output
@@ -6184,16 +6374,16 @@ class _SupervisedExperiment(_TabularExperiment):
                 try:
                     param_grid = get_optuna_distributions(param_grid)
                 except:
-                    logger.warning(
+                    self.logger.warning(
                         "Couldn't convert param_grid to specific library distributions. Exception:"
                     )
-                    logger.warning(traceback.format_exc())
+                    self.logger.warning(traceback.format_exc())
 
                 study = optuna.create_study(  # type: ignore
                     direction="maximize", sampler=sampler, pruner=pruner
                 )
 
-                logger.info("Initializing optuna.integration.OptunaSearchCV")
+                self.logger.info("Initializing optuna.integration.OptunaSearchCV")
                 model_grid = optuna.integration.OptunaSearchCV(  # type: ignore
                     estimator=pipeline_with_model,
                     param_distributions=param_grid,
@@ -6270,7 +6460,7 @@ class _SupervisedExperiment(_TabularExperiment):
                 ) if do_early_stop else nullcontext():
                     if search_algorithm == "grid":
 
-                        logger.info("Initializing tune_sklearn.TuneGridSearchCV")
+                        self.logger.info("Initializing tune_sklearn.TuneGridSearchCV")
                         model_grid = TuneGridSearchCV(
                             estimator=pipeline_with_model,
                             param_grid=param_grid,
@@ -6289,11 +6479,13 @@ class _SupervisedExperiment(_TabularExperiment):
                         try:
                             param_grid = get_hyperopt_distributions(param_grid)
                         except:
-                            logger.warning(
+                            self.logger.warning(
                                 "Couldn't convert param_grid to specific library distributions. Exception:"
                             )
-                            logger.warning(traceback.format_exc())
-                        logger.info("Initializing tune_sklearn.TuneSearchCV, hyperopt")
+                            self.logger.warning(traceback.format_exc())
+                        self.logger.info(
+                            "Initializing tune_sklearn.TuneSearchCV, hyperopt"
+                        )
                         model_grid = TuneSearchCV(
                             estimator=pipeline_with_model,
                             search_optimization="hyperopt",
@@ -6315,11 +6507,13 @@ class _SupervisedExperiment(_TabularExperiment):
                         try:
                             param_grid = get_skopt_distributions(param_grid)
                         except:
-                            logger.warning(
+                            self.logger.warning(
                                 "Couldn't convert param_grid to specific library distributions. Exception:"
                             )
-                            logger.warning(traceback.format_exc())
-                        logger.info("Initializing tune_sklearn.TuneSearchCV, bayesian")
+                            self.logger.warning(traceback.format_exc())
+                        self.logger.info(
+                            "Initializing tune_sklearn.TuneSearchCV, bayesian"
+                        )
                         model_grid = TuneSearchCV(
                             estimator=pipeline_with_model,
                             search_optimization="bayesian",
@@ -6341,11 +6535,11 @@ class _SupervisedExperiment(_TabularExperiment):
                         try:
                             param_grid = get_CS_distributions(param_grid)
                         except:
-                            logger.warning(
+                            self.logger.warning(
                                 "Couldn't convert param_grid to specific library distributions. Exception:"
                             )
-                            logger.warning(traceback.format_exc())
-                        logger.info("Initializing tune_sklearn.TuneSearchCV, bohb")
+                            self.logger.warning(traceback.format_exc())
+                        self.logger.info("Initializing tune_sklearn.TuneSearchCV, bohb")
                         model_grid = TuneSearchCV(
                             estimator=pipeline_with_model,
                             search_optimization="bohb",
@@ -6364,7 +6558,9 @@ class _SupervisedExperiment(_TabularExperiment):
                             **search_kwargs,
                         )
                     else:
-                        logger.info("Initializing tune_sklearn.TuneSearchCV, random")
+                        self.logger.info(
+                            "Initializing tune_sklearn.TuneSearchCV, random"
+                        )
                         model_grid = TuneSearchCV(
                             estimator=pipeline_with_model,
                             param_distributions=param_grid,
@@ -6388,12 +6584,12 @@ class _SupervisedExperiment(_TabularExperiment):
                 try:
                     param_grid = get_skopt_distributions(param_grid)
                 except:
-                    logger.warning(
+                    self.logger.warning(
                         "Couldn't convert param_grid to specific library distributions. Exception:"
                     )
-                    logger.warning(traceback.format_exc())
+                    self.logger.warning(traceback.format_exc())
 
-                logger.info("Initializing skopt.BayesSearchCV")
+                self.logger.info("Initializing skopt.BayesSearchCV")
                 model_grid = skopt.BayesSearchCV(
                     estimator=pipeline_with_model,
                     search_spaces=param_grid,
@@ -6411,7 +6607,7 @@ class _SupervisedExperiment(_TabularExperiment):
                 import sklearn.model_selection._search
 
                 if search_algorithm == "grid":
-                    logger.info("Initializing GridSearchCV")
+                    self.logger.info("Initializing GridSearchCV")
                     model_grid = sklearn.model_selection._search.GridSearchCV(
                         estimator=pipeline_with_model,
                         param_grid=param_grid,
@@ -6423,7 +6619,7 @@ class _SupervisedExperiment(_TabularExperiment):
                         **search_kwargs,
                     )
                 else:
-                    logger.info("Initializing RandomizedSearchCV")
+                    self.logger.info("Initializing RandomizedSearchCV")
                     model_grid = sklearn.model_selection._search.RandomizedSearchCV(
                         estimator=pipeline_with_model,
                         param_distributions=param_grid,
@@ -6452,7 +6648,7 @@ class _SupervisedExperiment(_TabularExperiment):
             else:
                 model_grid.fit(data_X, data_y, groups=groups, **fit_kwargs)
             best_params = model_grid.best_params_
-            logger.info(f"best_params: {best_params}")
+            self.logger.info(f"best_params: {best_params}")
             best_params = {**best_params, **extra_params}
             best_params = {
                 k.replace(f"{actual_estimator_label}__", ""): v
@@ -6462,14 +6658,16 @@ class _SupervisedExperiment(_TabularExperiment):
             try:
                 cv_results = model_grid.cv_results_
             except:
-                logger.warning("Couldn't get cv_results from model_grid. Exception:")
-                logger.warning(traceback.format_exc())
+                self.logger.warning(
+                    "Couldn't get cv_results from model_grid. Exception:"
+                )
+                self.logger.warning(traceback.format_exc())
 
         display.move_progress()
 
-        logger.info("Random search completed")
+        self.logger.info("Random search completed")
 
-        logger.info(
+        self.logger.info(
             "SubProcess create_model() called =================================="
         )
         best_model, model_fit_time = self.create_model(
@@ -6483,7 +6681,9 @@ class _SupervisedExperiment(_TabularExperiment):
             **best_params,
         )
         model_results = self.pull()
-        logger.info("SubProcess create_model() end ==================================")
+        self.logger.info(
+            "SubProcess create_model() end =================================="
+        )
 
         if choose_better:
             best_model = self._choose_better(
@@ -6518,21 +6718,21 @@ class _SupervisedExperiment(_TabularExperiment):
                     display=display,
                 )
             except:
-                logger.error(
+                self.logger.error(
                     f"_mlflow_log_model() for {best_model} raised an exception:"
                 )
-                logger.error(traceback.format_exc())
+                self.logger.error(traceback.format_exc())
 
         model_results = color_df(model_results, "yellow", ["Mean"], axis=1)
         model_results = model_results.set_precision(round)
         display.display(model_results, clear=True)
 
-        logger.info(f"create_model_container: {len(self.create_model_container)}")
-        logger.info(f"master_model_container: {len(self.master_model_container)}")
-        logger.info(f"display_container: {len(self.display_container)}")
+        self.logger.info(f"create_model_container: {len(self.create_model_container)}")
+        self.logger.info(f"master_model_container: {len(self.master_model_container)}")
+        self.logger.info(f"display_container: {len(self.display_container)}")
 
-        logger.info(str(best_model))
-        logger.info(
+        self.logger.info(str(best_model))
+        self.logger.info(
             "tune_model() succesfully completed......................................"
         )
 
@@ -6644,10 +6844,10 @@ class _SupervisedExperiment(_TabularExperiment):
 
         function_params_str = ", ".join([f"{k}={v}" for k, v in locals().items()])
 
-        logger.info("Initializing ensemble_model()")
-        logger.info(f"ensemble_model({function_params_str})")
+        self.logger.info("Initializing ensemble_model()")
+        self.logger.info(f"ensemble_model({function_params_str})")
 
-        logger.info("Checking exceptions")
+        self.logger.info("Checking exceptions")
 
         # run_time
         runtime_start = time.time()
@@ -6765,11 +6965,11 @@ class _SupervisedExperiment(_TabularExperiment):
             display.display_monitor()
             display.display_master_display()
 
-        logger.info("Importing libraries")
+        self.logger.info("Importing libraries")
 
         np.random.seed(self.seed)
 
-        logger.info("Copying training dataset")
+        self.logger.info("Copying training dataset")
 
         display.move_progress()
 
@@ -6778,7 +6978,7 @@ class _SupervisedExperiment(_TabularExperiment):
         compare_dimension = optimize.display_name
         optimize = optimize.scorer
 
-        logger.info("Checking base model")
+        self.logger.info("Checking base model")
 
         _estimator_ = estimator
 
@@ -6786,7 +6986,7 @@ class _SupervisedExperiment(_TabularExperiment):
 
         estimator_definition = self._all_models_internal[estimator_id]
         estimator_name = estimator_definition.name
-        logger.info(f"Base model : {estimator_name}")
+        self.logger.info(f"Base model : {estimator_name}")
 
         display.update_monitor(2, estimator_name)
         display.display_monitor()
@@ -6804,10 +7004,10 @@ class _SupervisedExperiment(_TabularExperiment):
 
         model = get_estimator_from_meta_estimator(_estimator_)
 
-        logger.info("Importing untrained ensembler")
+        self.logger.info("Importing untrained ensembler")
 
         if method == "Bagging":
-            logger.info("Ensemble method set to Bagging")
+            self.logger.info("Ensemble method set to Bagging")
             bagging_model_definition = self._all_models_internal["Bagging"]
 
             model = bagging_model_definition.class_def(
@@ -6818,7 +7018,7 @@ class _SupervisedExperiment(_TabularExperiment):
             )
 
         else:
-            logger.info("Ensemble method set to Boosting")
+            self.logger.info("Ensemble method set to Boosting")
             boosting_model_definition = self._all_models_internal["ada"]
             model = boosting_model_definition.class_def(
                 model, n_estimators=n_estimators, **boosting_model_definition.args
@@ -6826,7 +7026,7 @@ class _SupervisedExperiment(_TabularExperiment):
 
         display.move_progress()
 
-        logger.info(
+        self.logger.info(
             "SubProcess create_model() called =================================="
         )
         model, model_fit_time = self.create_model(
@@ -6840,7 +7040,9 @@ class _SupervisedExperiment(_TabularExperiment):
         )
         best_model = model
         model_results = self.pull()
-        logger.info("SubProcess create_model() end ==================================")
+        self.logger.info(
+            "SubProcess create_model() end =================================="
+        )
 
         # end runtime
         runtime_end = time.time()
@@ -6864,10 +7066,10 @@ class _SupervisedExperiment(_TabularExperiment):
                     display=display,
                 )
             except:
-                logger.error(
+                self.logger.error(
                     f"_mlflow_log_model() for {best_model} raised an exception:"
                 )
-                logger.error(traceback.format_exc())
+                self.logger.error(traceback.format_exc())
 
         if choose_better:
             model = self._choose_better(
@@ -6883,12 +7085,12 @@ class _SupervisedExperiment(_TabularExperiment):
         model_results = model_results.set_precision(round)
         display.display(model_results, clear=True)
 
-        logger.info(f"create_model_container: {len(self.create_model_container)}")
-        logger.info(f"master_model_container: {len(self.master_model_container)}")
-        logger.info(f"display_container: {len(self.display_container)}")
+        self.logger.info(f"create_model_container: {len(self.create_model_container)}")
+        self.logger.info(f"master_model_container: {len(self.master_model_container)}")
+        self.logger.info(f"display_container: {len(self.display_container)}")
 
-        logger.info(str(model))
-        logger.info(
+        self.logger.info(str(model))
+        self.logger.info(
             "ensemble_model() succesfully completed......................................"
         )
 
@@ -7005,12 +7207,10 @@ class _SupervisedExperiment(_TabularExperiment):
 
         function_params_str = ", ".join([f"{k}={v}" for k, v in locals().items()])
 
-        logger = get_logger()
+        self.logger.info("Initializing blend_models()")
+        self.logger.info(f"blend_models({function_params_str})")
 
-        logger.info("Initializing blend_models()")
-        logger.info(f"blend_models({function_params_str})")
-
-        logger.info("Checking exceptions")
+        self.logger.info("Checking exceptions")
 
         # run_time
         runtime_start = time.time()
@@ -7042,7 +7242,7 @@ class _SupervisedExperiment(_TabularExperiment):
                                     f"Estimator list contains estimator {i} that doesn't support probabilities and method is forced to 'soft'. Either change the method or drop the estimator."
                                 )
                             else:
-                                logger.info(
+                                self.logger.info(
                                     f"Estimator {i} doesn't support probabilities, falling back to 'hard'."
                                 )
                                 method = "hard"
@@ -7133,11 +7333,11 @@ class _SupervisedExperiment(_TabularExperiment):
             display.display_monitor()
             display.display_master_display()
 
-        logger.info("Importing libraries")
+        self.logger.info("Importing libraries")
 
         np.random.seed(self.seed)
 
-        logger.info("Copying training dataset")
+        self.logger.info("Copying training dataset")
 
         # setting optimize parameter
         compare_dimension = optimize.display_name
@@ -7156,7 +7356,7 @@ class _SupervisedExperiment(_TabularExperiment):
         MONITOR UPDATE ENDS
         """
 
-        logger.info("Getting model names")
+        self.logger.info("Getting model names")
         estimator_dict = {}
         for x in estimator_list:
             x = get_estimator_from_meta_estimator(x)
@@ -7185,7 +7385,7 @@ class _SupervisedExperiment(_TabularExperiment):
 
         display.move_progress()
 
-        logger.info(
+        self.logger.info(
             "SubProcess create_model() called =================================="
         )
         model, model_fit_time = self.create_model(
@@ -7198,7 +7398,9 @@ class _SupervisedExperiment(_TabularExperiment):
             groups=groups,
         )
         model_results = self.pull()
-        logger.info("SubProcess create_model() end ==================================")
+        self.logger.info(
+            "SubProcess create_model() end =================================="
+        )
 
         # end runtime
         runtime_end = time.time()
@@ -7222,8 +7424,10 @@ class _SupervisedExperiment(_TabularExperiment):
                     display=display,
                 )
             except:
-                logger.error(f"_mlflow_log_model() for {model} raised an exception:")
-                logger.error(traceback.format_exc())
+                self.logger.error(
+                    f"_mlflow_log_model() for {model} raised an exception:"
+                )
+                self.logger.error(traceback.format_exc())
 
         if choose_better:
             model = self._choose_better(
@@ -7239,12 +7443,12 @@ class _SupervisedExperiment(_TabularExperiment):
         model_results = model_results.set_precision(round)
         display.display(model_results, clear=True)
 
-        logger.info(f"create_model_container: {len(self.create_model_container)}")
-        logger.info(f"master_model_container: {len(self.master_model_container)}")
-        logger.info(f"display_container: {len(self.display_container)}")
+        self.logger.info(f"create_model_container: {len(self.create_model_container)}")
+        self.logger.info(f"master_model_container: {len(self.master_model_container)}")
+        self.logger.info(f"display_container: {len(self.display_container)}")
 
-        logger.info(str(model))
-        logger.info(
+        self.logger.info(str(model))
+        self.logger.info(
             "blend_models() succesfully completed......................................"
         )
 
@@ -7365,10 +7569,10 @@ class _SupervisedExperiment(_TabularExperiment):
 
         function_params_str = ", ".join([f"{k}={v}" for k, v in locals().items()])
 
-        logger.info("Initializing stack_models()")
-        logger.info(f"stack_models({function_params_str})")
+        self.logger.info("Initializing stack_models()")
+        self.logger.info(f"stack_models({function_params_str})")
 
-        logger.info("Checking exceptions")
+        self.logger.info("Checking exceptions")
 
         # run_time
         runtime_start = time.time()
@@ -7445,7 +7649,7 @@ class _SupervisedExperiment(_TabularExperiment):
 
         groups = self._get_groups(groups)
 
-        logger.info("Defining meta model")
+        self.logger.info("Defining meta model")
         if meta_model == None:
             estimator = "lr"
             meta_model_definition = self._all_models_internal[estimator]
@@ -7503,7 +7707,7 @@ class _SupervisedExperiment(_TabularExperiment):
         MONITOR UPDATE ENDS
         """
 
-        logger.info("Getting model names")
+        self.logger.info("Getting model names")
         estimator_dict = {}
         for x in estimator_list:
             x = get_estimator_from_meta_estimator(x)
@@ -7517,7 +7721,7 @@ class _SupervisedExperiment(_TabularExperiment):
 
         estimator_list = list(estimator_dict.items())
 
-        logger.info(estimator_list)
+        self.logger.info(estimator_list)
 
         stacking_model_definition = self._all_models_internal["Stacking"]
         if self._ml_usecase == MLUsecase.CLASSIFICATION:
@@ -7543,7 +7747,7 @@ class _SupervisedExperiment(_TabularExperiment):
 
         display.move_progress()
 
-        logger.info(
+        self.logger.info(
             "SubProcess create_model() called =================================="
         )
         model, model_fit_time = self.create_model(
@@ -7556,7 +7760,9 @@ class _SupervisedExperiment(_TabularExperiment):
             groups=groups,
         )
         model_results = self.pull()
-        logger.info("SubProcess create_model() end ==================================")
+        self.logger.info(
+            "SubProcess create_model() end =================================="
+        )
 
         # end runtime
         runtime_end = time.time()
@@ -7580,8 +7786,10 @@ class _SupervisedExperiment(_TabularExperiment):
                     display=display,
                 )
             except:
-                logger.error(f"_mlflow_log_model() for {model} raised an exception:")
-                logger.error(traceback.format_exc())
+                self.logger.error(
+                    f"_mlflow_log_model() for {model} raised an exception:"
+                )
+                self.logger.error(traceback.format_exc())
 
         if choose_better:
             model = self._choose_better(
@@ -7597,12 +7805,12 @@ class _SupervisedExperiment(_TabularExperiment):
         model_results = model_results.set_precision(round)
         display.display(model_results, clear=True)
 
-        logger.info(f"create_model_container: {len(self.create_model_container)}")
-        logger.info(f"master_model_container: {len(self.master_model_container)}")
-        logger.info(f"display_container: {len(self.display_container)}")
+        self.logger.info(f"create_model_container: {len(self.create_model_container)}")
+        self.logger.info(f"master_model_container: {len(self.master_model_container)}")
+        self.logger.info(f"display_container: {len(self.display_container)}")
 
-        logger.info(str(model))
-        logger.info(
+        self.logger.info(str(model))
+        self.logger.info(
             "stack_models() succesfully completed......................................"
         )
 
@@ -7676,16 +7884,16 @@ class _SupervisedExperiment(_TabularExperiment):
 
         function_params_str = ", ".join([f"{k}={v}" for k, v in locals().items()])
 
-        logger.info("Initializing interpret_model()")
-        logger.info(f"interpret_model({function_params_str})")
+        self.logger.info("Initializing interpret_model()")
+        self.logger.info(f"interpret_model({function_params_str})")
 
-        logger.info("Checking exceptions")
+        self.logger.info("Checking exceptions")
 
         # checking if shap available
         try:
             import shap
         except ImportError:
-            logger.error(
+            self.logger.error(
                 "shap library not found. pip install shap to use interpret_model function."
             )
             raise ImportError(
@@ -7730,15 +7938,15 @@ class _SupervisedExperiment(_TabularExperiment):
         shap_models_type1 = {k for k, v in shap_models.items() if v.shap == "type1"}
         shap_models_type2 = {k for k, v in shap_models.items() if v.shap == "type2"}
 
-        logger.info(f"plot type: {plot}")
+        self.logger.info(f"plot type: {plot}")
 
         shap_plot = None
 
         def summary():
 
-            logger.info("Creating TreeExplainer")
+            self.logger.info("Creating TreeExplainer")
             explainer = shap.TreeExplainer(model)
-            logger.info("Compiling shap values")
+            self.logger.info("Compiling shap values")
             shap_values = explainer.shap_values(test_X)
             shap_plot = shap.summary_plot(shap_values, test_X, **kwargs)
             return shap_plot
@@ -7747,42 +7955,42 @@ class _SupervisedExperiment(_TabularExperiment):
 
             if feature == None:
 
-                logger.warning(
+                self.logger.warning(
                     f"No feature passed. Default value of feature used for correlation plot: {test_X.columns[0]}"
                 )
                 dependence = test_X.columns[0]
 
             else:
 
-                logger.warning(
+                self.logger.warning(
                     f"feature value passed. Feature used for correlation plot: {test_X.columns[0]}"
                 )
                 dependence = feature
 
-            logger.info("Creating TreeExplainer")
+            self.logger.info("Creating TreeExplainer")
             explainer = shap.TreeExplainer(model)
-            logger.info("Compiling shap values")
+            self.logger.info("Compiling shap values")
             shap_values = explainer.shap_values(test_X)
 
             if model_id in shap_models_type1:
-                logger.info("model type detected: type 1")
+                self.logger.info("model type detected: type 1")
                 shap.dependence_plot(dependence, shap_values[1], test_X, **kwargs)
             elif model_id in shap_models_type2:
-                logger.info("model type detected: type 2")
+                self.logger.info("model type detected: type 2")
                 shap.dependence_plot(dependence, shap_values, test_X, **kwargs)
             return None
 
         def reason():
             shap_plot = None
             if model_id in shap_models_type1:
-                logger.info("model type detected: type 1")
+                self.logger.info("model type detected: type 1")
 
-                logger.info("Creating TreeExplainer")
+                self.logger.info("Creating TreeExplainer")
                 explainer = shap.TreeExplainer(model)
-                logger.info("Compiling shap values")
+                self.logger.info("Compiling shap values")
 
                 if observation is None:
-                    logger.warning(
+                    self.logger.warning(
                         "Observation set to None. Model agnostic plot will be rendered."
                     )
                     shap_values = explainer.shap_values(test_X)
@@ -7796,7 +8004,7 @@ class _SupervisedExperiment(_TabularExperiment):
                     data_for_prediction = test_X.iloc[row_to_show]
 
                     if model_id == "lightgbm":
-                        logger.info("model type detected: LGBMClassifier")
+                        self.logger.info("model type detected: LGBMClassifier")
                         shap_values = explainer.shap_values(test_X)
                         shap.initjs()
                         shap_plot = shap.force_plot(
@@ -7807,7 +8015,7 @@ class _SupervisedExperiment(_TabularExperiment):
                         )
 
                     else:
-                        logger.info("model type detected: Unknown")
+                        self.logger.info("model type detected: Unknown")
 
                         shap_values = explainer.shap_values(data_for_prediction)
                         shap.initjs()
@@ -7819,16 +8027,16 @@ class _SupervisedExperiment(_TabularExperiment):
                         )
 
             elif model_id in shap_models_type2:
-                logger.info("model type detected: type 2")
+                self.logger.info("model type detected: type 2")
 
-                logger.info("Creating TreeExplainer")
+                self.logger.info("Creating TreeExplainer")
                 explainer = shap.TreeExplainer(model)
-                logger.info("Compiling shap values")
+                self.logger.info("Compiling shap values")
                 shap_values = explainer.shap_values(test_X)
                 shap.initjs()
 
                 if observation is None:
-                    logger.warning(
+                    self.logger.warning(
                         "Observation set to None. Model agnostic plot will be rendered."
                     )
 
@@ -7851,9 +8059,9 @@ class _SupervisedExperiment(_TabularExperiment):
 
         shap_plot = locals()[plot]()
 
-        logger.info("Visual Rendered Successfully")
+        self.logger.info("Visual Rendered Successfully")
 
-        logger.info(
+        self.logger.info(
             "interpret_model() succesfully completed......................................"
         )
 
@@ -7939,7 +8147,7 @@ class _SupervisedExperiment(_TabularExperiment):
                 f"type param only accepts {', '.join(list(model_type) + str(None))}."
             )
 
-        logger.info(f"gpu_param set to {self.gpu_param}")
+        self.logger.info(f"gpu_param set to {self.gpu_param}")
 
         _, model_containers = self._get_models(raise_errors)
 
@@ -7954,14 +8162,173 @@ class _SupervisedExperiment(_TabularExperiment):
 
         return filter_model_df_by_type(df)
 
-    def get_metrics(self) -> None:
-        return
+    def get_metrics(
+        self,
+        reset: bool = False,
+        include_custom: bool = True,
+        raise_errors: bool = True,
+    ) -> pd.DataFrame:
+        """
+        Returns table of metrics available.
 
-    def add_metric(self) -> None:
-        return
+        Example
+        -------
+        >>> metrics = get_metrics()
 
-    def remove_metric(self) -> None:
-        return
+        This will return pandas dataframe with all available 
+        metrics and their metadata.
+
+        Parameters
+        ----------
+        reset: bool, default = False
+            If True, will reset all changes made using add_metric() and get_metric().
+        include_custom: bool, default = True
+            Whether to include user added (custom) metrics or not.
+        raise_errors: bool, default = True
+            If False, will suppress all exceptions, ignoring models
+            that couldn't be created.
+
+        Returns
+        -------
+        pandas.DataFrame
+
+        """
+
+        if reset and not self._setup_ran:
+            raise ValueError("setup() needs to be ran first.")
+
+        np.random.seed(self.seed)
+
+        if reset:
+            self._all_metrics = self._get_metrics(raise_errors=raise_errors)
+
+        metric_containers = self._all_metrics
+        rows = [v.get_dict() for k, v in metric_containers.items()]
+
+        df = pd.DataFrame(rows)
+        df.set_index("ID", inplace=True, drop=True)
+
+        if not include_custom:
+            df = df[df["Custom"] == False]
+
+        return df
+
+    def add_metric(
+        self,
+        id: str,
+        name: str,
+        score_func: type,
+        target: str = "pred",
+        greater_is_better: bool = True,
+        multiclass: bool = True,
+        **kwargs,
+    ) -> pd.Series:
+        """
+        Adds a custom metric to be used in all functions.
+
+        Parameters
+        ----------
+        id: str
+            Unique id for the metric.
+
+        name: str
+            Display name of the metric.
+
+        score_func: type
+            Score function (or loss function) with signature score_func(y, y_pred, **kwargs).
+
+        target: str, default = 'pred'
+            The target of the score function.
+            - 'pred' for the prediction table
+            - 'pred_proba' for pred_proba
+            - 'threshold' for decision_function or predict_proba
+
+        greater_is_better: bool, default = True
+            Whether score_func is a score function (default), meaning high is good,
+            or a loss function, meaning low is good. In the latter case, the
+            scorer object will sign-flip the outcome of the score_func.
+
+        multiclass: bool, default = True
+            Whether the metric supports multiclass problems.
+
+        **kwargs:
+            Arguments to be passed to score function.
+
+        Returns
+        -------
+        pandas.Series
+            The created row as Series.
+
+        """
+
+        if not self._setup_ran:
+            raise ValueError("setup() needs to be ran first.")
+
+        if id in self._all_metrics:
+            raise ValueError("id already present in metrics dataframe.")
+
+        if self._ml_usecase == MLUsecase.CLASSIFICATION:
+            new_metric = pycaret.containers.metrics.classification.ClassificationMetricContainer(
+                id=id,
+                name=name,
+                score_func=score_func,
+                target=target,
+                args=kwargs,
+                display_name=name,
+                greater_is_better=greater_is_better,
+                is_multiclass=bool(multiclass),
+                is_custom=True,
+            )
+        else:
+            new_metric = pycaret.containers.metrics.regression.RegressionMetricContainer(
+                id=id,
+                name=name,
+                score_func=score_func,
+                args=kwargs,
+                display_name=name,
+                greater_is_better=greater_is_better,
+                is_custom=True,
+            )
+
+        self._all_metrics[id] = new_metric
+
+        new_metric = new_metric.get_dict()
+
+        new_metric = pd.Series(new_metric, name=id.replace(" ", "_")).drop("ID")
+
+        return new_metric
+
+    def remove_metric(self, name_or_id: str):
+        """
+        Removes a metric used in all functions.
+
+        Parameters
+        ----------
+        name_or_id: str
+            Display name or ID of the metric.
+
+        """
+        if not self._setup_ran:
+            raise ValueError("setup() needs to be ran first.")
+
+        try:
+            self._all_metrics.pop(name_or_id)
+            return
+        except:
+            pass
+
+        try:
+            k_to_remove = next(
+                k for k, v in self._all_metrics.items() if v.name == name_or_id
+            )
+            self._all_metrics.pop(k_to_remove)
+            return
+        except:
+            pass
+
+        raise ValueError(
+            f"No metric 'Display Name' or 'ID' (index) {name_or_id} present in the metrics repository."
+        )
 
     def finalize_model(
         self,
@@ -8023,8 +8390,8 @@ class _SupervisedExperiment(_TabularExperiment):
 
         function_params_str = ", ".join([f"{k}={v}" for k, v in locals().items()])
 
-        logger.info("Initializing finalize_model()")
-        logger.info(f"finalize_model({function_params_str})")
+        self.logger.info("Initializing finalize_model()")
+        self.logger.info(f"finalize_model({function_params_str})")
 
         # run_time
         runtime_start = time.time()
@@ -8039,7 +8406,7 @@ class _SupervisedExperiment(_TabularExperiment):
 
         np.random.seed(self.seed)
 
-        logger.info(f"Finalizing {estimator}")
+        self.logger.info(f"Finalizing {estimator}")
         display.clear_output()
         model_final, model_fit_time = self.create_model(
             estimator=estimator,
@@ -8074,21 +8441,21 @@ class _SupervisedExperiment(_TabularExperiment):
                     display=display,
                 )
             except:
-                logger.error(
+                self.logger.error(
                     f"_mlflow_log_model() for {model_final} raised an exception:"
                 )
-                logger.error(traceback.format_exc())
+                self.logger.error(traceback.format_exc())
 
         model_results = color_df(model_results, "yellow", ["Mean"], axis=1)
         model_results = model_results.set_precision(round)
         display.display(model_results, clear=True)
 
-        logger.info(f"create_model_container: {len(self.create_model_container)}")
-        logger.info(f"master_model_container: {len(self.master_model_container)}")
-        logger.info(f"display_container: {len(self.display_container)}")
+        self.logger.info(f"create_model_container: {len(self.create_model_container)}")
+        self.logger.info(f"master_model_container: {len(self.master_model_container)}")
+        self.logger.info(f"display_container: {len(self.display_container)}")
 
-        logger.info(str(model_final))
-        logger.info(
+        self.logger.info(str(model_final))
+        self.logger.info(
             "finalize_model() succesfully completed......................................"
         )
 
@@ -8173,10 +8540,10 @@ class _SupervisedExperiment(_TabularExperiment):
             [f"{k}={v}" for k, v in locals().items() if k != "data"]
         )
 
-        logger.info("Initializing predict_model()")
-        logger.info(f"predict_model({function_params_str})")
+        self.logger.info("Initializing predict_model()")
+        self.logger.info(f"predict_model({function_params_str})")
 
-        logger.info("Checking exceptions")
+        self.logger.info("Checking exceptions")
 
         """
         exception checking starts here
@@ -8212,7 +8579,7 @@ class _SupervisedExperiment(_TabularExperiment):
         exception checking ends here
         """
 
-        logger.info("Preloading libraries")
+        self.logger.info("Preloading libraries")
 
         # general dependencies
         from sklearn import metrics
@@ -8262,8 +8629,8 @@ class _SupervisedExperiment(_TabularExperiment):
                     estimator = estimator_
 
                 except:
-                    logger.error("Pipeline not found. Exception:")
-                    logger.error(traceback.format_exc())
+                    self.logger.error("Pipeline not found. Exception:")
+                    self.logger.error(traceback.format_exc())
                     raise ValueError("Pipeline not found")
 
             X_test_ = data.copy()
@@ -8417,15 +8784,15 @@ class _UnsupervisedExperiment(_TabularExperiment):
 
         if self.logging_param:
 
-            logger.info("Logging experiment in MLFlow")
+            self.logger.info("Logging experiment in MLFlow")
 
             import mlflow
 
             try:
                 mlflow.create_experiment(self.exp_name_log)
             except:
-                logger.warning("Couldn't create mlflow experiment. Exception:")
-                logger.warning(traceback.format_exc())
+                self.logger.warning("Couldn't create mlflow experiment. Exception:")
+                self.logger.warning(traceback.format_exc())
 
             # mlflow logging
             mlflow.set_experiment(self.exp_name_log)
@@ -8455,13 +8822,13 @@ class _UnsupervisedExperiment(_TabularExperiment):
                 mlflow.set_tag("Run ID", RunID)
 
                 # Log the transformation pipeline
-                logger.info(
+                self.logger.info(
                     "SubProcess save_model() called =================================="
                 )
                 self.save_model(
                     self.prep_pipe, "Transformation Pipeline", verbose=False
                 )
-                logger.info(
+                self.logger.info(
                     "SubProcess save_model() end =================================="
                 )
                 mlflow.log_artifact("Transformation Pipeline.pkl")
@@ -8507,10 +8874,10 @@ class _UnsupervisedExperiment(_TabularExperiment):
 
         function_params_str = ", ".join([f"{k}={v}" for k, v in locals().items()])
 
-        logger.info("Initializing tune_model()")
-        logger.info(f"tune_model({function_params_str})")
+        self.logger.info("Initializing tune_model()")
+        self.logger.info(f"tune_model({function_params_str})")
 
-        logger.info("Checking exceptions")
+        self.logger.info("Checking exceptions")
 
         # run_time
         runtime_start = time.time()
@@ -8541,7 +8908,7 @@ class _UnsupervisedExperiment(_TabularExperiment):
 
         if supervised_type is None:
             supervised_type, _ = infer_ml_usecase(data_y)
-            logger.info(f"supervised_type inferred as {supervised_type}")
+            self.logger.info(f"supervised_type inferred as {supervised_type}")
 
         if supervised_type == "classification":
             metrics = pycaret.containers.metrics.classification.get_all_metric_containers(
@@ -8577,7 +8944,7 @@ class _UnsupervisedExperiment(_TabularExperiment):
                     f"Unknown supervised_estimator {supervised_estimator}."
                 )
         else:
-            logger.info("Declaring custom model")
+            self.logger.info("Declaring custom model")
 
             supervised_estimator = clone(supervised_estimator)
 
@@ -8663,7 +9030,7 @@ class _UnsupervisedExperiment(_TabularExperiment):
         unsupervised_models_results = {}
         unsupervised_grids = {0: data_X}
 
-        logger.info("Fitting unsupervised models")
+        self.logger.info("Fitting unsupervised models")
 
         for k in param_grid:
             if self._ml_usecase == MLUsecase.CLUSTERING:
@@ -8714,7 +9081,7 @@ class _UnsupervisedExperiment(_TabularExperiment):
 
         results = {}
 
-        logger.info("Fitting supervised estimator")
+        self.logger.info("Fitting supervised estimator")
 
         for k, v in unsupervised_grids.items():
             self.create_model(
@@ -8732,7 +9099,7 @@ class _UnsupervisedExperiment(_TabularExperiment):
             results[k] = self.pull(pop=True).loc["Mean"]
             display.move_progress()
 
-        logger.info("Compiling results")
+        self.logger.info("Compiling results")
 
         results = pd.DataFrame(results).T
 
@@ -8808,8 +9175,10 @@ class _UnsupervisedExperiment(_TabularExperiment):
                     display=display,
                 )
             except:
-                logger.error(f"_mlflow_log_model() for {model} raised an exception:")
-                logger.error(traceback.format_exc())
+                self.logger.error(
+                    f"_mlflow_log_model() for {model} raised an exception:"
+                )
+                self.logger.error(traceback.format_exc())
 
         results = results.set_precision(round)
         self.display_container.append(results)
@@ -8817,7 +9186,7 @@ class _UnsupervisedExperiment(_TabularExperiment):
         display.display(results, clear=True)
 
         if self.html_param and verbose:
-            logger.info("Rendering Visual")
+            self.logger.info("Rendering Visual")
             plot_df = results.data.drop(
                 [x for x in results.columns if x != optimize.display_name], axis=1
             )
@@ -8850,14 +9219,14 @@ class _UnsupervisedExperiment(_TabularExperiment):
                 yaxis_title=optimize.display_name,
             )
             fig.show()
-            logger.info("Visual Rendered Successfully")
+            self.logger.info("Visual Rendered Successfully")
 
-        logger.info(f"create_model_container: {len(self.create_model_container)}")
-        logger.info(f"master_model_container: {len(self.master_model_container)}")
-        logger.info(f"display_container: {len(self.display_container)}")
+        self.logger.info(f"create_model_container: {len(self.create_model_container)}")
+        self.logger.info(f"master_model_container: {len(self.master_model_container)}")
+        self.logger.info(f"display_container: {len(self.display_container)}")
 
-        logger.info(str(best_model))
-        logger.info(
+        self.logger.info(str(best_model))
+        self.logger.info(
             "tune_model() succesfully completed......................................"
         )
 
@@ -8910,10 +9279,10 @@ class _UnsupervisedExperiment(_TabularExperiment):
 
         function_params_str = ", ".join([f"{k}={v}" for k, v in locals().items()])
 
-        logger.info("Initializing assign_model()")
-        logger.info(f"assign_model({function_params_str})")
+        self.logger.info("Initializing assign_model()")
+        self.logger.info(f"assign_model({function_params_str})")
 
-        logger.info("Checking exceptions")
+        self.logger.info("Checking exceptions")
 
         # checking transformation parameter
         if type(transformation) is not bool:
@@ -8934,17 +9303,17 @@ class _UnsupervisedExperiment(_TabularExperiment):
         if is_sklearn_pipeline(model):
             model = model.steps[-1][1]
 
-        logger.info("Determining Trained Model")
+        self.logger.info("Determining Trained Model")
 
         name = self._get_model_name(model)
 
-        logger.info(f"Trained Model : {name}")
+        self.logger.info(f"Trained Model : {name}")
 
-        logger.info("Copying data")
+        self.logger.info("Copying data")
         # copy data_
         if transformation:
             data = self.X.copy()
-            logger.info(
+            self.logger.info(
                 "Transformation param set to True. Assigned clusters are attached on transformed dataset."
             )
         else:
@@ -8960,8 +9329,8 @@ class _UnsupervisedExperiment(_TabularExperiment):
             if score:
                 data["Anomaly_Score"] = model.decision_scores_
 
-        logger.info(data.shape)
-        logger.info(
+        self.logger.info(data.shape)
+        self.logger.info(
             "assign_model() succesfully completed......................................"
         )
 
@@ -8974,8 +9343,8 @@ class _UnsupervisedExperiment(_TabularExperiment):
             [f"{k}={v}" for k, v in locals().items() if k != "data"]
         )
 
-        logger.info("Initializing predict_model()")
-        logger.info(f"predict_model({function_params_str})")
+        self.logger.info("Initializing predict_model()")
+        self.logger.info(f"predict_model({function_params_str})")
 
         if ml_usecase is None:
             ml_usecase = self._ml_usecase
@@ -9122,10 +9491,10 @@ class _UnsupervisedExperiment(_TabularExperiment):
             [f"{k}={v}" for k, v in locals().items() if k not in ("X_data")]
         )
 
-        logger.info("Initializing create_model()")
-        logger.info(f"create_model({function_params_str})")
+        self.logger.info("Initializing create_model()")
+        self.logger.info(f"create_model({function_params_str})")
 
-        logger.info("Checking exceptions")
+        self.logger.info("Checking exceptions")
 
         # run_time
         runtime_start = time.time()
@@ -9215,7 +9584,7 @@ class _UnsupervisedExperiment(_TabularExperiment):
             display.display_monitor()
             display.display_master_display()
 
-        logger.info("Importing libraries")
+        self.logger.info("Importing libraries")
 
         # general dependencies
 
@@ -9233,7 +9602,7 @@ class _UnsupervisedExperiment(_TabularExperiment):
         MONITOR UPDATE ENDS
         """
 
-        logger.info("Importing untrained model")
+        self.logger.info("Importing untrained model")
 
         is_cblof = False
 
@@ -9245,7 +9614,7 @@ class _UnsupervisedExperiment(_TabularExperiment):
             model = model_definition.class_def(**model_args)
             full_name = model_definition.name
         else:
-            logger.info("Declaring custom model")
+            self.logger.info("Declaring custom model")
 
             model = clone(estimator)
             model.set_params(**kwargs)
@@ -9270,12 +9639,12 @@ class _UnsupervisedExperiment(_TabularExperiment):
         try:
             model = clone(model)
         except:
-            logger.warning(
+            self.logger.warning(
                 f"create_model_unsupervised() for {model} raised an exception when cloning:"
             )
-            logger.warning(traceback.format_exc())
+            self.logger.warning(traceback.format_exc())
 
-        logger.info(f"{full_name} Imported succesfully")
+        self.logger.info(f"{full_name} Imported succesfully")
 
         display.move_progress()
 
@@ -9294,7 +9663,7 @@ class _UnsupervisedExperiment(_TabularExperiment):
         with estimator_pipeline(self._internal_pipeline, model) as pipeline_with_model:
             fit_kwargs = get_pipeline_fit_kwargs(pipeline_with_model, fit_kwargs)
 
-            logger.info("Fitting Model")
+            self.logger.info("Fitting Model")
             model_fit_start = time.time()
             with io.capture_output():
                 if is_cblof and "n_clusters" not in kwargs:
@@ -9321,7 +9690,7 @@ class _UnsupervisedExperiment(_TabularExperiment):
 
         if ground_truth is not None:
 
-            logger.info(f"ground_truth parameter set to {ground_truth}")
+            self.logger.info(f"ground_truth parameter set to {ground_truth}")
 
             gt = np.array(self.data_before_preprocess[ground_truth])
         else:
@@ -9332,8 +9701,8 @@ class _UnsupervisedExperiment(_TabularExperiment):
         else:
             metrics = {}
 
-        logger.info(str(model))
-        logger.info(
+        self.logger.info(str(model))
+        self.logger.info(
             "create_models() succesfully completed......................................"
         )
 
@@ -9357,12 +9726,14 @@ class _UnsupervisedExperiment(_TabularExperiment):
                     display=display,
                 )
             except:
-                logger.error(f"_mlflow_log_model() for {model} raised an exception:")
-                logger.error(traceback.format_exc())
+                self.logger.error(
+                    f"_mlflow_log_model() for {model} raised an exception:"
+                )
+                self.logger.error(traceback.format_exc())
 
         display.move_progress()
 
-        logger.info("Uploading results into container")
+        self.logger.info("Uploading results into container")
 
         model_results = pd.DataFrame(metrics, index=[0])
         model_results = model_results.round(round)
@@ -9372,7 +9743,7 @@ class _UnsupervisedExperiment(_TabularExperiment):
         self.display_container.append(model_results)
 
         # storing results in master_model_container
-        logger.info("Uploading model into container now")
+        self.logger.info("Uploading model into container now")
         self.master_model_container.append(model)
 
         if self._ml_usecase == MLUsecase.CLUSTERING:
@@ -9382,12 +9753,12 @@ class _UnsupervisedExperiment(_TabularExperiment):
         elif system:
             display.clear_output()
 
-        logger.info(f"create_model_container: {len(self.create_model_container)}")
-        logger.info(f"master_model_container: {len(self.master_model_container)}")
-        logger.info(f"display_container: {len(self.display_container)}")
+        self.logger.info(f"create_model_container: {len(self.create_model_container)}")
+        self.logger.info(f"master_model_container: {len(self.master_model_container)}")
+        self.logger.info(f"display_container: {len(self.display_container)}")
 
-        logger.info(str(model))
-        logger.info(
+        self.logger.info(str(model))
+        self.logger.info(
             "create_model() succesfully completed......................................"
         )
         gc.collect()
@@ -10046,6 +10417,1532 @@ class RegressionExperiment(_SupervisedExperiment):
             profile=profile,
             profile_kwargs=profile_kwargs,
         )
+
+    def compare_models(
+        self,
+        include: Optional[List[Union[str, Any]]] = None,
+        exclude: Optional[List[str]] = None,
+        fold: Optional[Union[int, Any]] = None,
+        round: int = 4,
+        cross_validation: bool = True,
+        sort: str = "R2",
+        n_select: int = 1,
+        budget_time: Optional[float] = None,
+        turbo: bool = True,
+        errors: str = "ignore",
+        fit_kwargs: Optional[dict] = None,
+        groups: Optional[Union[str, Any]] = None,
+        verbose: bool = True,
+    ):
+
+        """
+        This function trains and evaluates performance of all estimators available in the 
+        model library using cross validation. The output of this function is a score grid 
+        with average cross validated scores. Metrics evaluated during CV can be accessed 
+        using the ``get_metrics`` function. Custom metrics can be added or removed using 
+        ``add_metric`` and ``remove_metric`` function.
+
+
+        Example
+        --------
+        >>> from pycaret.datasets import get_data
+        >>> boston = get_data('boston')
+        >>> from pycaret.regression import *
+        >>> exp_name = setup(data = boston,  target = 'medv')
+        >>> best_model = compare_models()
+
+
+        include: list of str or scikit-learn compatible object, default = None
+            To train and evaluate select models, list containing model ID or scikit-learn 
+            compatible object can be passed in include param. To see a list of all models 
+            available in the model library use the ``models`` function. 
+
+
+        exclude: list of str, default = None
+            To omit certain models from training and evaluation, pass a list containing 
+            model id in the exclude parameter. To see a list of all models available
+            in the model library use the ``models`` function. 
+
+
+        fold: int or scikit-learn compatible CV generator, default = None
+            Controls cross-validation. If None, the CV generator in the ``fold_strategy`` 
+            parameter of the ``setup`` function is used. When an integer is passed, 
+            it is interpreted as the 'n_splits' parameter of the CV generator in the 
+            ``setup`` function.
+
+
+        round: int, default = 4
+            Number of decimal places the metrics in the score grid will be rounded to.
+
+
+        cross_validation: bool, default = True
+            When set to False, metrics are evaluated on holdout set. ``fold`` param
+            is ignored when cross_validation is set to False.
+
+
+        sort: str, default = 'R2'
+            The sort order of the score grid. It also accepts custom metrics that are
+            added through the ``add_metric`` function.
+
+
+        n_select: int, default = 1
+            Number of top_n models to return. For example, to select top 3 models use
+            n_select = 3.
+
+
+        budget_time: int or float, default = None
+            If not None, will terminate execution of the function after budget_time 
+            minutes have passed and return results up to that point.
+
+
+        turbo: bool, default = True
+            When set to True, it excludes estimators with longer training times. To
+            see which algorithms are excluded use the ``models`` function.
+
+
+        errors: str, default = 'ignore'
+            When set to 'ignore', will skip the model with exceptions and continue.
+            If 'raise', will break the function when exceptions are raised.
+
+
+        fit_kwargs: dict, default = {} (empty dict)
+            Dictionary of arguments passed to the fit method of the model.
+
+
+        groups: str or array-like, with shape (n_samples,), default = None
+            Optional group labels when 'GroupKFold' is used for the cross validation.
+            It takes an array with shape (n_samples, ) where n_samples is the number
+            of rows in the training dataset. When string is passed, it is interpreted 
+            as the column name in the dataset containing group labels.
+
+
+        verbose: bool, default = True
+            Score grid is not printed when verbose is set to False.
+        
+        
+        Returns:
+            Trained model or list of trained models, depending on the ``n_select`` param.
+
+
+        Warnings
+        --------
+        - Changing turbo parameter to False may result in very high training times with 
+        datasets exceeding 10,000 rows.
+
+        - No models are logged in ``MLFlow`` when ``cross_validation`` parameter is False.
+
+        """
+
+        return super().compare_models(
+            include=include,
+            exclude=exclude,
+            fold=fold,
+            round=round,
+            cross_validation=cross_validation,
+            sort=sort,
+            n_select=n_select,
+            budget_time=budget_time,
+            turbo=turbo,
+            errors=errors,
+            fit_kwargs=fit_kwargs,
+            groups=groups,
+            verbose=verbose,
+        )
+
+    def create_model(
+        self,
+        estimator: Union[str, Any],
+        fold: Optional[Union[int, Any]] = None,
+        round: int = 4,
+        cross_validation: bool = True,
+        fit_kwargs: Optional[dict] = None,
+        groups: Optional[Union[str, Any]] = None,
+        verbose: bool = True,
+        **kwargs,
+    ):
+
+        """
+        This function trains and evaluates the performance of a given estimator 
+        using cross validation. The output of this function is a score grid with 
+        CV scores by fold. Metrics evaluated during CV can be accessed using the 
+        ``get_metrics`` function. Custom metrics can be added or removed using 
+        ``add_metric`` and ``remove_metric`` function. All the available models
+        can be accessed using the ``models`` function.
+
+
+        Example
+        -------
+        >>> from pycaret.datasets import get_data
+        >>> boston = get_data('boston')
+        >>> from pycaret.regression import *
+        >>> exp_name = setup(data = boston,  target = 'medv')
+        >>> lr = create_model('lr')
+        
+
+        estimator: str or scikit-learn compatible object
+            ID of an estimator available in model library or pass an untrained 
+            model object consistent with scikit-learn API. Estimators available  
+            in the model library (ID - Name):
+
+            * 'lr' - Linear Regression                   
+            * 'lasso' - Lasso Regression                
+            * 'ridge' - Ridge Regression                
+            * 'en' - Elastic Net                   
+            * 'lar' - Least Angle Regression                  
+            * 'llar' - Lasso Least Angle Regression                   
+            * 'omp' - Orthogonal Matching Pursuit                     
+            * 'br' - Bayesian Ridge                   
+            * 'ard' - Automatic Relevance Determination                  
+            * 'par' - Passive Aggressive Regressor                    
+            * 'ransac' - Random Sample Consensus       
+            * 'tr' - TheilSen Regressor                   
+            * 'huber' - Huber Regressor                               
+            * 'kr' - Kernel Ridge                                     
+            * 'svm' - Support Vector Regression                           
+            * 'knn' - K Neighbors Regressor                           
+            * 'dt' - Decision Tree Regressor                                   
+            * 'rf' - Random Forest Regressor                                   
+            * 'et' - Extra Trees Regressor                            
+            * 'ada' - AdaBoost Regressor                              
+            * 'gbr' - Gradient Boosting Regressor                               
+            * 'mlp' - MLP Regressor
+            * 'xgboost' - Extreme Gradient Boosting                   
+            * 'lightgbm' - Light Gradient Boosting Machine                    
+            * 'catboost' - CatBoost Regressor                         
+
+
+        fold: int or scikit-learn compatible CV generator, default = None
+            Controls cross-validation. If None, the CV generator in the ``fold_strategy`` 
+            parameter of the ``setup`` function is used. When an integer is passed, 
+            it is interpreted as the 'n_splits' parameter of the CV generator in the 
+            ``setup`` function.
+            
+
+        round: int, default = 4
+            Number of decimal places the metrics in the score grid will be rounded to. 
+
+
+        cross_validation: bool, default = True
+            When set to False, metrics are evaluated on holdout set. ``fold`` param
+            is ignored when cross_validation is set to False.
+
+
+        fit_kwargs: dict, default = {} (empty dict)
+            Dictionary of arguments passed to the fit method of the model.
+
+
+        groups: str or array-like, with shape (n_samples,), default = None
+            Optional group labels when GroupKFold is used for the cross validation.
+            It takes an array with shape (n_samples, ) where n_samples is the number
+            of rows in training dataset. When string is passed, it is interpreted as 
+            the column name in the dataset containing group labels.
+
+
+        verbose: bool, default = True
+            Score grid is not printed when verbose is set to False.
+
+
+        **kwargs: 
+            Additional keyword arguments to pass to the estimator.
+
+
+        Returns:
+            Trained Model
+
+
+        Warnings
+        --------
+        - Models are not logged on the ``MLFlow`` server when ``cross_validation`` param
+        is set to False.
+        
+        """
+
+        return super().create_model(
+            estimator=estimator,
+            fold=fold,
+            round=round,
+            cross_validation=cross_validation,
+            fit_kwargs=fit_kwargs,
+            groups=groups,
+            verbose=verbose,
+            **kwargs,
+        )
+
+    def tune_model(
+        self,
+        estimator,
+        fold: Optional[Union[int, Any]] = None,
+        round: int = 4,
+        n_iter: int = 10,
+        custom_grid: Optional[Union[Dict[str, list], Any]] = None,
+        optimize: str = "R2",
+        custom_scorer=None,
+        search_library: str = "scikit-learn",
+        search_algorithm: Optional[str] = None,
+        early_stopping: Any = False,
+        early_stopping_max_iters: int = 10,
+        choose_better: bool = False,
+        fit_kwargs: Optional[dict] = None,
+        groups: Optional[Union[str, Any]] = None,
+        return_tuner: bool = False,
+        verbose: bool = True,
+        tuner_verbose: Union[int, bool] = True,
+        **kwargs,
+    ):
+
+        """
+        This function tunes the hyperparameters of a given estimator. The output of
+        this function is a score grid with CV scores by fold of the best selected 
+        model based on ``optimize`` parameter. Metrics evaluated during CV can be 
+        accessed using the ``get_metrics`` function. Custom metrics can be added
+        or removed using ``add_metric`` and ``remove_metric`` function. 
+
+
+        Example
+        -------
+        >>> from pycaret.datasets import get_data
+        >>> boston = get_data('boston')
+        >>> from pycaret.regression import *
+        >>> exp_name = setup(data = boston,  target = 'medv')
+        >>> lr = create_model('lr')
+        >>> tuned_lr = tune_model(lr) 
+
+
+        estimator: scikit-learn compatible object
+            Trained model object
+
+
+        fold: int or scikit-learn compatible CV generator, default = None
+            Controls cross-validation. If None, the CV generator in the ``fold_strategy`` 
+            parameter of the ``setup`` function is used. When an integer is passed, 
+            it is interpreted as the 'n_splits' parameter of the CV generator in the 
+            ``setup`` function.
+            
+
+        round: int, default = 4
+            Number of decimal places the metrics in the score grid will be rounded to. 
+
+
+        n_iter: int, default = 10
+            Number of iterations in the grid search. Increasing 'n_iter' may improve 
+            model performance but also increases the training time.
+
+
+        custom_grid: dictionary, default = None
+            To define custom search space for hyperparameters, pass a dictionary with 
+            parameter name and values to be iterated. Custom grids must be in a format 
+            supported by the defined ``search_library``.
+
+
+        optimize: str, default = 'R2'
+            Metric name to be evaluated for hyperparameter tuning. It also accepts custom 
+            metrics that are added through the ``add_metric`` function.
+
+
+        custom_scorer: object, default = None
+            custom scoring strategy can be passed to tune hyperparameters of the model. 
+            It must be created using ``sklearn.make_scorer``. It is equivalent of adding
+            custom metric using the ``add_metric`` function and passing the name of the
+            custom metric in the ``optimize`` parameter. 
+            Will be deprecated in future.
+
+
+        search_library: str, default = 'scikit-learn'
+            The search library used for tuning hyperparameters. Possible values:
+
+            - 'scikit-learn' - default, requires no further installation
+                https://github.com/scikit-learn/scikit-learn
+
+            - 'scikit-optimize' - ``pip install scikit-optimize`` 
+                https://scikit-optimize.github.io/stable/
+
+            - 'tune-sklearn' - ``pip install tune-sklearn ray[tune]`` 
+                https://github.com/ray-project/tune-sklearn
+
+            - 'optuna' - ``pip install optuna`` 
+                https://optuna.org/
+
+
+        search_algorithm: str, default = None
+            The search algorithm depends on the ``search_library`` parameter.
+            Some search algorithms require additional libraries to be installed.
+            If None, will use search library-specific default algorithm.
+
+            - 'scikit-learn' possible values:
+                - 'random' : random grid search (default)
+                - 'grid' : grid search
+
+            - 'scikit-optimize' possible values:
+                - 'bayesian' : Bayesian search (default)
+
+            - 'tune-sklearn' possible values:
+                - 'random' : random grid search (default)
+                - 'grid' : grid search
+                - 'bayesian' : ``pip install scikit-optimize``
+                - 'hyperopt' : ``pip install hyperopt``
+                - 'bohb' : ``pip install hpbandster ConfigSpace``
+
+            - 'optuna' possible values:
+                - 'random' : randomized search
+                - 'tpe' : Tree-structured Parzen Estimator search (default)
+
+
+        early_stopping: bool or str or object, default = False
+            Use early stopping to stop fitting to a hyperparameter configuration 
+            if it performs poorly. Ignored when ``search_library`` is scikit-learn, 
+            or if the estimator does not have 'partial_fit' attribute. If False or 
+            None, early stopping will not be used. Can be either an object accepted 
+            by the search library or one of the following:
+
+            - 'asha' for Asynchronous Successive Halving Algorithm
+            - 'hyperband' for Hyperband
+            - 'median' for Median Stopping Rule
+            - If False or None, early stopping will not be used.
+
+
+        early_stopping_max_iters: int, default = 10
+            Maximum number of epochs to run for each sampled configuration.
+            Ignored if ``early_stopping`` is False or None.
+
+
+        choose_better: bool, default = False
+            When set to True, the returned object is always better performing. The
+            metric used for comparison is defined by the ``optimize`` parameter.  
+
+
+        fit_kwargs: dict, default = {} (empty dict)
+            Dictionary of arguments passed to the fit method of the tuner.
+
+
+        groups: str or array-like, with shape (n_samples,), default = None
+            Optional group labels when GroupKFold is used for the cross validation.
+            It takes an array with shape (n_samples, ) where n_samples is the number
+            of rows in training dataset. When string is passed, it is interpreted as 
+            the column name in the dataset containing group labels.
+
+
+        return_tuner: bool, default = False
+            When set to True, will return a tuple of (model, tuner_object). 
+
+
+        verbose: bool, default = True
+            Score grid is not printed when verbose is set to False.
+
+
+        tuner_verbose: bool or in, default = True
+            If True or above 0, will print messages from the tuner. Higher values
+            print more messages. Ignored when ``verbose`` param is False.
+
+
+        **kwargs: 
+            Additional keyword arguments to pass to the optimizer.
+
+
+        Returns:
+            Trained Model and Optional Tuner Object when ``return_tuner`` is True. 
+
+
+        Warnings
+        --------
+        - Using 'grid' as ``search_algorithm`` may result in very long computation.
+        Only recommended with smaller search spaces that can be defined in the
+        ``custom_grid`` parameter.
+
+        - ``search_library`` 'tune-sklearn' does not support GPU models.
+
+        """
+
+        return super().tune_model(
+            estimator=estimator,
+            fold=fold,
+            round=round,
+            n_iter=n_iter,
+            custom_grid=custom_grid,
+            optimize=optimize,
+            custom_scorer=custom_scorer,
+            search_library=search_library,
+            search_algorithm=search_algorithm,
+            early_stopping=early_stopping,
+            early_stopping_max_iters=early_stopping_max_iters,
+            choose_better=choose_better,
+            fit_kwargs=fit_kwargs,
+            groups=groups,
+            return_tuner=return_tuner,
+            verbose=verbose,
+            tuner_verbose=tuner_verbose,
+            **kwargs,
+        )
+
+    def ensemble_model(
+        self,
+        estimator,
+        method: str = "Bagging",
+        fold: Optional[Union[int, Any]] = None,
+        n_estimators: int = 10,
+        round: int = 4,
+        choose_better: bool = False,
+        optimize: str = "R2",
+        fit_kwargs: Optional[dict] = None,
+        groups: Optional[Union[str, Any]] = None,
+        verbose: bool = True,
+    ) -> Any:
+
+        """
+        This function ensembles a given estimator. The output of this function is 
+        a score grid with CV scores by fold. Metrics evaluated during CV can be 
+        accessed using the ``get_metrics`` function. Custom metrics can be added
+        or removed using ``add_metric`` and ``remove_metric`` function. 
+
+
+        Example
+        --------
+        >>> from pycaret.datasets import get_data
+        >>> boston = get_data('boston')
+        >>> from pycaret.regression import *
+        >>> exp_name = setup(data = boston,  target = 'medv')
+        >>> dt = create_model('dt')
+        >>> bagged_dt = ensemble_model(dt, method = 'Bagging')
+
+
+    estimator: scikit-learn compatible object
+            Trained model object
+
+
+        method: str, default = 'Bagging'
+            Method for ensembling base estimator. It can be 'Bagging' or 'Boosting'. 
+
+
+        fold: int or scikit-learn compatible CV generator, default = None
+            Controls cross-validation. If None, the CV generator in the ``fold_strategy`` 
+            parameter of the ``setup`` function is used. When an integer is passed, 
+            it is interpreted as the 'n_splits' parameter of the CV generator in the 
+            ``setup`` function.
+            
+
+        n_estimators: int, default = 10
+            The number of base estimators in the ensemble. In case of perfect fit, the 
+            learning procedure is stopped early.
+
+            
+        round: int, default = 4
+            Number of decimal places the metrics in the score grid will be rounded to. 
+
+
+        choose_better: bool, default = False
+            When set to True, the returned object is always better performing. The
+            metric used for comparison is defined by the ``optimize`` parameter. 
+
+
+        optimize: str, default = 'R2'
+            Metric to compare for model selection when ``choose_better`` is True.
+
+
+        fit_kwargs: dict, default = {} (empty dict)
+            Dictionary of arguments passed to the fit method of the model.
+
+
+        groups: str or array-like, with shape (n_samples,), default = None
+            Optional group labels when GroupKFold is used for the cross validation.
+            It takes an array with shape (n_samples, ) where n_samples is the number
+            of rows in training dataset. When string is passed, it is interpreted as 
+            the column name in the dataset containing group labels.
+
+
+        verbose: bool, default = True
+            Score grid is not printed when verbose is set to False.
+
+
+        Returns:
+            Trained Model
+        
+        """
+
+        return super().ensemble_model(
+            estimator=estimator,
+            method=method,
+            fold=fold,
+            n_estimators=n_estimators,
+            round=round,
+            choose_better=choose_better,
+            optimize=optimize,
+            fit_kwargs=fit_kwargs,
+            groups=groups,
+            verbose=verbose,
+        )
+
+    def blend_models(
+        self,
+        estimator_list: list,
+        fold: Optional[Union[int, Any]] = None,
+        round: int = 4,
+        choose_better: bool = False,
+        optimize: str = "R2",
+        weights: Optional[List[float]] = None,
+        fit_kwargs: Optional[dict] = None,
+        groups: Optional[Union[str, Any]] = None,
+        verbose: bool = True,
+    ):
+
+        """
+        This function trains a Voting Regressor for select models passed in the 
+        ``estimator_list`` param. The output of this function is a score grid with 
+        CV scores by fold. Metrics evaluated during CV can be accessed using the 
+        ``get_metrics`` function. Custom metrics can be added or removed using 
+        ``add_metric`` and ``remove_metric`` function.
+
+        
+        Example
+        --------
+        >>> from pycaret.datasets import get_data
+        >>> boston = get_data('boston')
+        >>> from pycaret.regression import *
+        >>> exp_name = setup(data = boston,  target = 'medv')
+        >>> top3 = compare_models(n_select = 3)
+        >>> blender = blend_models(top3)
+
+
+        estimator_list: list of scikit-learn compatible objects
+            List of trained model objects
+
+
+        fold: int or scikit-learn compatible CV generator, default = None
+            Controls cross-validation. If None, the CV generator in the ``fold_strategy`` 
+            parameter of the ``setup`` function is used. When an integer is passed, 
+            it is interpreted as the 'n_splits' parameter of the CV generator in the 
+            ``setup`` function.
+
+
+        round: int, default = 4
+            Number of decimal places the metrics in the score grid will be rounded to.
+
+
+        choose_better: bool, default = False
+            When set to True, the returned object is always better performing. The
+            metric used for comparison is defined by the ``optimize`` parameter. 
+
+
+        optimize: str, default = 'R2'
+            Metric to compare for model selection when ``choose_better`` is True.
+
+
+        weights: list, default = None
+            Sequence of weights (float or int) to weight the occurrences of predicted class 
+            labels (hard voting) or class probabilities before averaging (soft voting). Uses 
+            uniform weights when None.
+
+
+        fit_kwargs: dict, default = {} (empty dict)
+            Dictionary of arguments passed to the fit method of the model.
+
+
+        groups: str or array-like, with shape (n_samples,), default = None
+            Optional group labels when GroupKFold is used for the cross validation.
+            It takes an array with shape (n_samples, ) where n_samples is the number
+            of rows in training dataset. When string is passed, it is interpreted as 
+            the column name in the dataset containing group labels.
+
+
+        verbose: bool, default = True
+            Score grid is not printed when verbose is set to False.
+
+
+        Returns:
+            Trained Model
+        
+    
+        """
+
+        return super().blend_models(
+            estimator_list=estimator_list,
+            fold=fold,
+            round=round,
+            choose_better=choose_better,
+            optimize=optimize,
+            method="auto",
+            weights=weights,
+            fit_kwargs=fit_kwargs,
+            groups=groups,
+            verbose=verbose,
+        )
+
+    def stack_models(
+        self,
+        estimator_list: list,
+        meta_model=None,
+        fold: Optional[Union[int, Any]] = None,
+        round: int = 4,
+        restack: bool = True,
+        choose_better: bool = False,
+        optimize: str = "R2",
+        fit_kwargs: Optional[dict] = None,
+        groups: Optional[Union[str, Any]] = None,
+        verbose: bool = True,
+    ):
+
+        """
+        This function trains a meta model over select estimators passed in 
+        the ``estimator_list`` parameter. The output of this function is a 
+        score grid with CV scores by fold. Metrics evaluated during CV can 
+        be accessed using the ``get_metrics`` function. Custom metrics 
+        can be added or removed using ``add_metric`` and ``remove_metric`` 
+        function.
+
+
+        Example
+        --------
+        >>> from pycaret.datasets import get_data
+        >>> boston = get_data('boston')
+        >>> from pycaret.regression import *
+        >>> exp_name = setup(data = boston,  target = 'medv')
+        >>> top3 = compare_models(n_select = 3)
+        >>> stacker = stack_models(top3)
+
+
+        estimator_list: list of scikit-learn compatible objects
+            List of trained model objects
+
+
+        meta_model: scikit-learn compatible object, default = None
+            When None, Linear Regression is trained as a meta model.
+
+
+        fold: int or scikit-learn compatible CV generator, default = None
+            Controls cross-validation. If None, the CV generator in the ``fold_strategy`` 
+            parameter of the ``setup`` function is used. When an integer is passed, 
+            it is interpreted as the 'n_splits' parameter of the CV generator in the 
+            ``setup`` function.
+
+
+        round: int, default = 4
+            Number of decimal places the metrics in the score grid will be rounded to.
+
+
+        restack: bool, default = True
+            When set to False, only the predictions of estimators will be used as 
+            training data for the ``meta_model``.
+
+
+        choose_better: bool, default = False
+            When set to True, the returned object is always better performing. The
+            metric used for comparison is defined by the ``optimize`` parameter. 
+
+
+        optimize: str, default = 'R2'
+            Metric to compare for model selection when ``choose_better`` is True.
+
+
+        fit_kwargs: dict, default = {} (empty dict)
+            Dictionary of arguments passed to the fit method of the model.
+
+
+        groups: str or array-like, with shape (n_samples,), default = None
+            Optional group labels when GroupKFold is used for the cross validation.
+            It takes an array with shape (n_samples, ) where n_samples is the number
+            of rows in training dataset. When string is passed, it is interpreted as 
+            the column name in the dataset containing group labels.
+
+
+        verbose: bool, default = True
+            Score grid is not printed when verbose is set to False.
+
+
+        Returns:
+            Trained Model
+
+        """
+
+        return super().stack_models(
+            estimator_list=estimator_list,
+            meta_model=meta_model,
+            fold=fold,
+            round=round,
+            method="auto",
+            restack=restack,
+            choose_better=choose_better,
+            optimize=optimize,
+            fit_kwargs=fit_kwargs,
+            groups=groups,
+            verbose=verbose,
+        )
+
+    def plot_model(
+        self,
+        estimator,
+        plot: str = "residuals",
+        scale: float = 1,
+        save: bool = False,
+        fold: Optional[Union[int, Any]] = None,
+        fit_kwargs: Optional[dict] = None,
+        groups: Optional[Union[str, Any]] = None,
+        use_train_data: bool = False,
+        verbose: bool = True,
+    ) -> str:
+
+        """
+        This function analyzes the performance of a trained model on holdout set. 
+        It may require re-training the model in certain cases.
+
+
+        Example
+        --------
+        >>> from pycaret.datasets import get_data
+        >>> boston = get_data('boston')
+        >>> from pycaret.regression import *
+        >>> exp_name = setup(data = boston,  target = 'medv')
+        >>> lr = create_model('lr')
+        >>> plot_model(lr, plot = 'residual')
+
+
+        estimator: scikit-learn compatible object
+            Trained model object
+    
+
+        plot: str, default = 'residual'
+            List of available plots (ID - Name):
+
+            * 'residuals' - Residuals Plot
+            * 'error' - Prediction Error Plot
+            * 'cooks' - Cooks Distance Plot
+            * 'rfe' - Recursive Feat. Selection
+            * 'learning' - Learning Curve
+            * 'vc' - Validation Curve
+            * 'manifold' - Manifold Learning
+            * 'feature' - Feature Importance
+            * 'feature_all' - Feature Importance (All)
+            * 'parameter' - Model Hyperparameter
+            * 'tree' - Decision Tree
+
+
+        scale: float, default = 1
+            The resolution scale of the figure.
+
+
+        save: bool, default = False
+            When set to True, plot is saved in the current working directory.
+
+
+        fold: int or scikit-learn compatible CV generator, default = None
+            Controls cross-validation. If None, the CV generator in the ``fold_strategy`` 
+            parameter of the ``setup`` function is used. When an integer is passed, 
+            it is interpreted as the 'n_splits' parameter of the CV generator in the 
+            ``setup`` function.
+
+
+        fit_kwargs: dict, default = {} (empty dict)
+            Dictionary of arguments passed to the fit method of the model.
+
+
+        groups: str or array-like, with shape (n_samples,), default = None
+            Optional group labels when GroupKFold is used for the cross validation.
+            It takes an array with shape (n_samples, ) where n_samples is the number
+            of rows in training dataset. When string is passed, it is interpreted as 
+            the column name in the dataset containing group labels.
+
+
+        use_train_data: bool, default = False
+            When set to true, train data will be used for plots, instead
+            of test data.
+
+
+        verbose: bool, default = True
+            When set to False, progress bar is not displayed.
+
+
+        Returns:
+            None
+
+        """
+
+        return super().plot_model(
+            estimator=estimator,
+            plot=plot,
+            scale=scale,
+            save=save,
+            fold=fold,
+            fit_kwargs=fit_kwargs,
+            groups=groups,
+            verbose=verbose,
+            use_train_data=use_train_data,
+            system=True,
+        )
+
+    def evaluate_model(
+        self,
+        estimator,
+        fold: Optional[Union[int, Any]] = None,
+        fit_kwargs: Optional[dict] = None,
+        groups: Optional[Union[str, Any]] = None,
+        use_train_data: bool = False,
+    ):
+
+        """
+        This function displays a user interface for analyzing performance of a trained
+        model. It calls the ``plot_model`` function internally. 
+        
+        Example
+        --------
+        >>> from pycaret.datasets import get_data
+        >>> boston = get_data('boston')
+        >>> from pycaret.regression import *
+        >>> exp_name = setup(data = boston,  target = 'medv')
+        >>> lr = create_model('lr')
+        >>> evaluate_model(lr)
+        
+
+        estimator: scikit-learn compatible object
+            Trained model object
+
+
+        fold: int or scikit-learn compatible CV generator, default = None
+            Controls cross-validation. If None, the CV generator in the ``fold_strategy`` 
+            parameter of the ``setup`` function is used. When an integer is passed, 
+            it is interpreted as the 'n_splits' parameter of the CV generator in the 
+            ``setup`` function.
+
+
+        fit_kwargs: dict, default = {} (empty dict)
+            Dictionary of arguments passed to the fit method of the model.
+
+
+        groups: str or array-like, with shape (n_samples,), default = None
+            Optional group labels when GroupKFold is used for the cross validation.
+            It takes an array with shape (n_samples, ) where n_samples is the number
+            of rows in training dataset. When string is passed, it is interpreted as 
+            the column name in the dataset containing group labels.
+
+
+        use_train_data: bool, default = False
+            When set to true, train data will be used for plots, instead
+            of test data.
+
+
+        Returns:
+            None
+
+
+        Warnings
+        --------
+        -   This function only works in IPython enabled Notebook.
+
+        """
+
+        return super().evaluate_model(
+            estimator=estimator,
+            fold=fold,
+            fit_kwargs=fit_kwargs,
+            groups=groups,
+            use_train_data=use_train_data,
+        )
+
+    def interpret_model(
+        self,
+        estimator,
+        plot: str = "summary",
+        feature: Optional[str] = None,
+        observation: Optional[int] = None,
+        use_train_data: bool = False,
+        **kwargs,
+    ):
+
+        """
+        This function analyzes the predictions generated from a tree-based model. It is
+        implemented based on the SHAP (SHapley Additive exPlanations). For more info on
+        this, please see https://shap.readthedocs.io/en/latest/
+
+
+        Example
+        --------
+        >>> from pycaret.datasets import get_data
+        >>> boston = get_data('boston')
+        >>> from pycaret.regression import *
+        >>> exp = setup(data = boston,  target = 'medv')
+        >>> xgboost = create_model('xgboost')
+        >>> interpret_model(xgboost)
+
+    
+        estimator: scikit-learn compatible object
+            Trained model object
+
+
+        plot: str, default = 'summary'
+            Type of plot. Available options are: 'summary', 'correlation', and 'reason'.
+
+
+        feature: str, default = None
+            Feature to check correlation with. This parameter is only required when ``plot``
+            type is 'correlation'. When set to None, it uses the first column in the train
+            dataset.
+
+
+        observation: int, default = None
+            Observation index number in holdout set to explain. When ``plot`` is not
+            'reason', this parameter is ignored. 
+
+
+        use_train_data: bool, default = False
+            When set to true, train data will be used for plots, instead
+            of test data.
+
+
+        **kwargs:
+            Additional keyword arguments to pass to the plot.
+
+
+        Returns:
+            None
+
+        """
+
+        return super().interpret_model(
+            estimator=estimator,
+            plot=plot,
+            feature=feature,
+            observation=observation,
+            use_train_data=use_train_data,
+            **kwargs,
+        )
+
+    def predict_model(
+        self,
+        estimator,
+        data: Optional[pd.DataFrame] = None,
+        round: int = 4,
+        verbose: bool = True,
+    ) -> pd.DataFrame:
+
+        """
+        This function predicts ``Label`` using a trained model. When ``data`` is 
+        None, it predicts label on the holdout set.
+        
+
+        Example
+        -------
+        >>> from pycaret.datasets import get_data
+        >>> boston = get_data('boston')
+        >>> from pycaret.regression import *
+        >>> exp_name = setup(data = boston,  target = 'medv')
+        >>> lr = create_model('lr')
+        >>> pred_holdout = predict_model(lr)
+        >>> pred_unseen = predict_model(lr, data = unseen_dataframe)
+
+
+        estimator: scikit-learn compatible object
+            Trained model object
+
+
+        data : pandas.DataFrame
+            Shape (n_samples, n_features). All features used during training 
+            must be available in the unseen dataset.
+            
+        
+        round: int, default = 4
+            Number of decimal places to round predictions to.
+
+
+        verbose: bool, default = True
+            When set to False, holdout score grid is not printed.
+
+
+        Returns:
+            pandas.DataFrame
+
+
+        Warnings
+        --------
+        - The behavior of the ``predict_model`` is changed in version 2.1 without backward 
+        compatibility. As such, the pipelines trained using the version (<= 2.0), may not 
+        work for inference with version >= 2.1. You can either retrain your models with a 
+        newer version or downgrade the version for inference.
+        
+        
+        """
+
+        return super().predict_model(
+            estimator=estimator,
+            data=data,
+            probability_threshold=None,
+            encoded_labels=True,
+            round=round,
+            verbose=verbose,
+            ml_usecase=MLUsecase.REGRESSION,
+        )
+
+    def finalize_model(
+        self,
+        estimator,
+        fit_kwargs: Optional[dict] = None,
+        groups: Optional[Union[str, Any]] = None,
+        model_only: bool = True,
+    ) -> Any:
+
+        """
+        This function trains a given estimator on the entire dataset including the 
+        holdout set.
+
+        
+        Example
+        --------
+        >>> from pycaret.datasets import get_data
+        >>> boston = get_data('boston')
+        >>> from pycaret.regression import *
+        >>> exp_name = setup(data = boston,  target = 'medv')
+        >>> lr = create_model('lr')
+        >>> final_lr = finalize_model(lr)
+
+
+        estimator: scikit-learn compatible object
+            Trained model object
+
+
+        fit_kwargs: dict, default = {} (empty dict)
+            Dictionary of arguments passed to the fit method of the model.
+
+
+        groups: str or array-like, with shape (n_samples,), default = None
+            Optional group labels when GroupKFold is used for the cross validation.
+            It takes an array with shape (n_samples, ) where n_samples is the number
+            of rows in training dataset. When string is passed, it is interpreted as 
+            the column name in the dataset containing group labels.
+
+
+        model_only: bool, default = True
+            When set to False, only model object is re-trained and all the 
+            transformations in Pipeline are ignored.
+
+
+        Returns:
+            Trained Model
+        
+            
+        """
+
+        return super().finalize_model(
+            estimator=estimator,
+            fit_kwargs=fit_kwargs,
+            groups=groups,
+            model_only=model_only,
+        )
+
+    def deploy_model(
+        self, model, model_name: str, authentication: dict, platform: str = "aws",
+    ):
+
+        """
+        This function deploys the transformation pipeline and trained model on cloud.
+        
+        
+        Example
+        -------
+        >>> from pycaret.datasets import get_data
+        >>> boston = get_data('boston')
+        >>> from pycaret.regression import *
+        >>> exp_name = setup(data = boston,  target = 'medv')
+        >>> lr = create_model('lr')
+        >>> deploy_model(model = lr, model_name = 'lr-for-deployment', platform = 'aws', authentication = {'bucket' : 'S3-bucket-name'})
+            
+
+        Amazon Web Service (AWS) users:
+            To deploy a model on AWS S3 ('aws'), environment variables must be set in your
+            local environment. To configure AWS environment variables, type ``aws configure`` 
+            in the command line. Following information from the IAM portal of amazon console 
+            account is required:
+
+            - AWS Access Key ID
+            - AWS Secret Key Access
+            - Default Region Name (can be seen under Global settings on your AWS console)
+
+            More info: https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-envvars.html
+
+
+        Google Cloud Platform (GCP) users:
+            To deploy a model on Google Cloud Platform ('gcp'), project must be created 
+            using command line or GCP console. Once project is created, you must create 
+            a service account and download the service account key as a JSON file to set 
+            environment variables in your local environment. 
+
+            More info: https://cloud.google.com/docs/authentication/production
+
+        
+        Microsoft Azure (Azure) users:
+            To deploy a model on Microsoft Azure ('azure'), environment variables for connection
+            string must be set in your local environment. Go to settings of storage account on
+            Azure portal to access the connection string required. 
+
+            More info: https://docs.microsoft.com/en-us/azure/storage/blobs/storage-quickstart-blobs-python?toc=%2Fpython%2Fazure%2FTOC.json
+
+
+        model: scikit-learn compatible object
+            Trained model object
+        
+
+        model_name: str
+            Name of model.
+        
+
+        authentication: dict
+            Dictionary of applicable authentication tokens.
+
+            When platform = 'aws':
+            {'bucket' : 'S3-bucket-name'}
+
+            When platform = 'gcp':
+            {'project': 'gcp-project-name', 'bucket' : 'gcp-bucket-name'}
+
+            When platform = 'azure':
+            {'container': 'azure-container-name'}
+        
+
+        platform: str, default = 'aws'
+            Name of the platform. Currently supported platforms: 'aws', 'gcp' and 'azure'.
+        
+
+        Returns:
+            None
+        
+        """
+
+        return super().deploy_model(
+            model=model,
+            model_name=model_name,
+            authentication=authentication,
+            platform=platform,
+        )
+
+    def save_model(
+        self, model, model_name: str, model_only: bool = False, verbose: bool = True
+    ):
+
+        """
+        This function saves the transformation pipeline and trained model object 
+        into the current working directory as a pickle file for later use. 
+        
+        Example
+        -------
+        >>> from pycaret.datasets import get_data
+        >>> boston = get_data('boston')
+        >>> from pycaret.regression import *
+        >>> exp_name = setup(data = boston,  target = 'medv')
+        >>> lr = create_model('lr')
+        >>> save_model(lr, 'saved_lr_model')
+        
+
+        model: scikit-learn compatible object
+            Trained model object
+        
+
+        model_name: str
+            Name of the model.
+        
+
+        model_only: bool, default = False
+            When set to True, only trained model object is saved instead of the 
+            entire pipeline.
+
+
+        verbose: bool, default = True
+            Success message is not printed when verbose is set to False.
+
+
+        Returns:
+            Tuple of the model object and the filename.
+
+        """
+
+        return super().save_model(
+            model=model, model_name=model_name, model_only=model_only, verbose=verbose
+        )
+
+    def load_model(
+        self,
+        model_name,
+        platform: Optional[str] = None,
+        authentication: Optional[Dict[str, str]] = None,
+        verbose: bool = True,
+    ):
+
+        """
+        This function loads a previously saved pipeline.
+        
+        Example
+        -------
+        >>> from pycaret.regression import load_model
+        >>> saved_lr = load_model('saved_lr_model')
+        
+
+        model_name: str
+            Name of the model.
+        
+
+        platform: str, default = None
+            Name of the cloud platform. Currently supported platforms: 
+            'aws', 'gcp' and 'azure'.
+        
+
+        authentication: dict, default = None
+            dictionary of applicable authentication tokens.
+
+            when platform = 'aws':
+            {'bucket' : 'S3-bucket-name'}
+
+            when platform = 'gcp':
+            {'project': 'gcp-project-name', 'bucket' : 'gcp-bucket-name'}
+
+            when platform = 'azure':
+            {'container': 'azure-container-name'}
+        
+
+        verbose: bool, default = True
+            Success message is not printed when verbose is set to False.
+
+
+        Returns:
+            Trained Model
+
+        """
+
+        return super().load_model(
+            model_name=model_name,
+            platform=platform,
+            authentication=authentication,
+            verbose=verbose,
+        )
+
+    def automl(self, optimize: str = "R2", use_holdout: bool = False) -> Any:
+
+        """
+        This function returns the best model out of all trained models in
+        current session based on the ``optimize`` parameter. Metrics
+        evaluated can be accessed using the ``get_metrics`` function. 
+
+
+        Example
+        -------
+        >>> from pycaret.datasets import get_data
+        >>> boston = get_data('boston')
+        >>> from pycaret.regression import *
+        >>> exp_name = setup(data = boston,  target = 'medv')
+        >>> top3 = compare_models(n_select = 3)
+        >>> tuned_top3 = [tune_model(i) for i in top3]
+        >>> blender = blend_models(tuned_top3)
+        >>> stacker = stack_models(tuned_top3)
+        >>> best_mae_model = automl(optimize = 'MAE')
+
+
+        optimize: str, default = 'R2'
+            Metric to use for model selection. It also accepts custom metrics
+            added using the ``add_metric`` function. 
+
+
+        use_holdout: bool, default = False
+            When set to True, metrics are evaluated on holdout set instead of CV.
+        
+
+        Returns:
+            Trained Model
+
+
+        """
+
+        return super().automl(optimize=optimize, use_holdout=use_holdout)
+
+    def models(
+        self,
+        type: Optional[str] = None,
+        internal: bool = False,
+        raise_errors: bool = True,
+    ) -> pd.DataFrame:
+
+        """
+        Returns table of models available in the model library.
+
+        Example
+        -------
+        >>> from pycaret.datasets import get_data
+        >>> boston = get_data('boston')
+        >>> from pycaret.regression import *
+        >>> exp_name = setup(data = boston,  target = 'medv')    
+        >>> all_models = models()
+
+
+        type: str, default = None
+            - linear : filters and only return linear models
+            - tree : filters and only return tree based models
+            - ensemble : filters and only return ensemble models
+        
+
+        internal: bool, default = False
+            When True, will return extra columns and rows used internally.
+
+
+        raise_errors: bool, default = True
+            When False, will suppress all exceptions, ignoring models
+            that couldn't be created.
+
+
+        Returns:
+            pandas.DataFrame
+
+        """
+        return super().models(type=type, internal=internal, raise_errors=raise_errors)
+
+    def get_metrics(
+        self,
+        reset: bool = False,
+        include_custom: bool = True,
+        raise_errors: bool = True,
+    ) -> pd.DataFrame:
+
+        """
+        Returns table of available metrics used for CV.
+
+
+        Example
+        -------
+        >>> from pycaret.datasets import get_data
+        >>> boston = get_data('boston')
+        >>> from pycaret.regression import *
+        >>> exp_name = setup(data = boston,  target = 'medv')    
+        >>> all_metrics = get_metrics()
+
+
+        reset: bool, default = False
+            When True, will reset all changes made using the ``add_metric`` 
+            and ``remove_metric`` function.
+
+
+        include_custom: bool, default = True
+            Whether to include user added (custom) metrics or not.
+
+
+        raise_errors: bool, default = True
+            If False, will suppress all exceptions, ignoring models that
+            couldn't be created.
+
+
+        Returns:
+            pandas.DataFrame
+
+        """
+
+        return super().get_metrics(
+            reset=reset, include_custom=include_custom, raise_errors=raise_errors,
+        )
+
+    def add_metric(
+        self,
+        id: str,
+        name: str,
+        score_func: type,
+        greater_is_better: bool = True,
+        **kwargs,
+    ) -> pd.Series:
+
+        """
+        Adds a custom metric to be used for CV.
+
+
+        Example
+        -------
+        >>> from pycaret.datasets import get_data
+        >>> boston = get_data('boston')
+        >>> from pycaret.regression import *
+        >>> exp_name = setup(data = boston,  target = 'medv') 
+        >>> from sklearn.metrics import explained_variance_score
+        >>> add_metric('evs', 'EVS', explained_variance_score)
+
+
+        id: str
+            Unique id for the metric.
+
+
+        name: str
+            Display name of the metric.
+
+
+        score_func: type
+            Score function (or loss function) with signature ``score_func(y, y_pred, **kwargs)``.
+
+
+        greater_is_better: bool, default = True
+            Whether ``score_func`` is higher the better or not.
+
+
+        **kwargs:
+            Arguments to be passed to score function.
+
+
+        Returns:
+            pandas.Series
+
+        """
+
+        return super().add_metric(
+            id=id,
+            name=name,
+            score_func=score_func,
+            target="pred",
+            greater_is_better=greater_is_better,
+            **kwargs,
+        )
+
+    def remove_metric(self, name_or_id: str):
+
+        """
+        Removes a metric from CV.
+
+
+        Example
+        -------
+        >>> from pycaret.datasets import get_data
+        >>> boston = get_data('boston')
+        >>> from pycaret.regression import *
+        >>> exp_name = setup(data = boston,  target = 'mredv') 
+        >>> remove_metric('MAPE')
+
+
+        name_or_id: str
+            Display name or ID of the metric.
+
+        
+        Returns:
+            None
+
+        """
+        return super().remove_metric(name_or_id=name_or_id)
+
+    def get_logs(
+        self, experiment_name: Optional[str] = None, save: bool = False
+    ) -> pd.DataFrame:
+
+        """
+        Returns a table of experiment logs. Only works when ``log_experiment``
+        is True when initializing the ``setup`` function.
+
+
+        Example
+        -------
+        >>> from pycaret.datasets import get_data
+        >>> boston = get_data('boston')
+        >>> from pycaret.regression import *
+        >>> exp_name = setup(data = boston,  target = 'medv', log_experiment = True) 
+        >>> best = compare_models()
+        >>> exp_logs = get_logs()
+
+
+        experiment_name: str, default = None
+            When None current active run is used.
+
+
+        save: bool, default = False
+            When set to True, csv file is saved in current working directory.
+
+
+        Returns:
+            pandas.DataFrame
+
+        """
+
+        return super().get_logs(experiment_name=experiment_name, save=save)
 
 
 class ClassificationExperiment(_SupervisedExperiment):
@@ -10713,6 +12610,1029 @@ class ClassificationExperiment(_SupervisedExperiment):
             profile_kwargs=profile_kwargs,
         )
 
+    def compare_models(
+        self,
+        include: Optional[List[Union[str, Any]]] = None,
+        exclude: Optional[List[str]] = None,
+        fold: Optional[Union[int, Any]] = None,
+        round: int = 4,
+        cross_validation: bool = True,
+        sort: str = "Accuracy",
+        n_select: int = 1,
+        budget_time: Optional[float] = None,
+        turbo: bool = True,
+        errors: str = "ignore",
+        fit_kwargs: Optional[dict] = None,
+        groups: Optional[Union[str, Any]] = None,
+        verbose: bool = True,
+    ) -> Union[Any, List[Any]]:
+
+        """
+        This function trains and evaluates performance of all estimators available in the 
+        model library using cross validation. The output of this function is a score grid 
+        with average cross validated scores. Metrics evaluated during CV can be accessed 
+        using the ``get_metrics`` function. Custom metrics can be added or removed using 
+        ``add_metric`` and ``remove_metric`` function.
+
+        Example
+        -------
+        >>> from pycaret.datasets import get_data
+        >>> juice = get_data('juice')
+        >>> from pycaret.classification import *
+        >>> exp_name = setup(data = juice,  target = 'Purchase')
+        >>> best_model = compare_models() 
+
+
+        include: list of str or scikit-learn compatible object, default = None
+            To train and evaluate select models, list containing model ID or scikit-learn 
+            compatible object can be passed in include param. To see a list of all models 
+            available in the model library use the ``models`` function. 
+
+
+        exclude: list of str, default = None
+            To omit certain models from training and evaluation, pass a list containing 
+            model id in the exclude parameter. To see a list of all models available
+            in the model library use the ``models`` function. 
+
+
+        fold: int or scikit-learn compatible CV generator, default = None
+            Controls cross-validation. If None, the CV generator in the ``fold_strategy`` 
+            parameter of the ``setup`` function is used. When an integer is passed, 
+            it is interpreted as the 'n_splits' parameter of the CV generator in the 
+            ``setup`` function.
+
+
+        round: int, default = 4
+            Number of decimal places the metrics in the score grid will be rounded to.
+
+
+        cross_validation: bool, default = True
+            When set to False, metrics are evaluated on holdout set. ``fold`` param
+            is ignored when cross_validation is set to False.
+
+
+        sort: str, default = 'Accuracy'
+            The sort order of the score grid. It also accepts custom metrics that are
+            added through the ``add_metric`` function.
+
+
+        n_select: int, default = 1
+            Number of top_n models to return. For example, to select top 3 models use
+            n_select = 3.
+
+
+        budget_time: int or float, default = None
+            If not None, will terminate execution of the function after budget_time 
+            minutes have passed and return results up to that point.
+
+
+        turbo: bool, default = True
+            When set to True, it excludes estimators with longer training times. To
+            see which algorithms are excluded use the ``models`` function.
+
+
+        errors: str, default = 'ignore'
+            When set to 'ignore', will skip the model with exceptions and continue.
+            If 'raise', will break the function when exceptions are raised.
+
+
+        fit_kwargs: dict, default = {} (empty dict)
+            Dictionary of arguments passed to the fit method of the model.
+
+
+        groups: str or array-like, with shape (n_samples,), default = None
+            Optional group labels when 'GroupKFold' is used for the cross validation.
+            It takes an array with shape (n_samples, ) where n_samples is the number
+            of rows in the training dataset. When string is passed, it is interpreted 
+            as the column name in the dataset containing group labels.
+
+
+        verbose: bool, default = True
+            Score grid is not printed when verbose is set to False.
+        
+        
+        Returns:
+            Trained model or list of trained models, depending on the ``n_select`` param.
+
+        Warnings
+        --------
+        - Changing turbo parameter to False may result in very high training times with 
+        datasets exceeding 10,000 rows.
+
+        - AUC for estimators that does not support 'predict_proba' is shown as 0.0000. 
+
+        - No models are logged in ``MLFlow`` when ``cross_validation`` parameter is False.
+        """
+
+        return super().compare_models(
+            include=include,
+            exclude=exclude,
+            fold=fold,
+            round=round,
+            cross_validation=cross_validation,
+            sort=sort,
+            n_select=n_select,
+            budget_time=budget_time,
+            turbo=turbo,
+            errors=errors,
+            fit_kwargs=fit_kwargs,
+            groups=groups,
+            verbose=verbose,
+        )
+
+    def create_model(
+        self,
+        estimator: Union[str, Any],
+        fold: Optional[Union[int, Any]] = None,
+        round: int = 4,
+        cross_validation: bool = True,
+        fit_kwargs: Optional[dict] = None,
+        groups: Optional[Union[str, Any]] = None,
+        verbose: bool = True,
+        **kwargs,
+    ) -> Any:
+
+        """  
+        This function trains and evaluates the performance of a given estimator 
+        using cross validation. The output of this function is a score grid with 
+        CV scores by fold. Metrics evaluated during CV can be accessed using the 
+        ``get_metrics`` function. Custom metrics can be added or removed using 
+        ``add_metric`` and ``remove_metric`` function. All the available models
+        can be accessed using the ``models`` function.
+
+        Example
+        -------
+        >>> from pycaret.datasets import get_data
+        >>> juice = get_data('juice')
+        >>> from pycaret.classification import *
+        >>> exp_name = setup(data = juice,  target = 'Purchase')
+        >>> lr = create_model('lr')
+
+
+        estimator: str or scikit-learn compatible object
+            ID of an estimator available in model library or pass an untrained 
+            model object consistent with scikit-learn API. Estimators available  
+            in the model library (ID - Name):
+
+            * 'lr' - Logistic Regression             
+            * 'knn' - K Neighbors Classifier          
+            * 'nb' - Naive Bayes             
+            * 'dt' - Decision Tree Classifier                   
+            * 'svm' - SVM - Linear Kernel	            
+            * 'rbfsvm' - SVM - Radial Kernel               
+            * 'gpc' - Gaussian Process Classifier                  
+            * 'mlp' - MLP Classifier                  
+            * 'ridge' - Ridge Classifier                
+            * 'rf' - Random Forest Classifier                   
+            * 'qda' - Quadratic Discriminant Analysis                  
+            * 'ada' - Ada Boost Classifier                 
+            * 'gbc' - Gradient Boosting Classifier                  
+            * 'lda' - Linear Discriminant Analysis                  
+            * 'et' - Extra Trees Classifier                   
+            * 'xgboost' - Extreme Gradient Boosting              
+            * 'lightgbm' - Light Gradient Boosting Machine             
+            * 'catboost' - CatBoost Classifier       
+
+
+        fold: int or scikit-learn compatible CV generator, default = None
+            Controls cross-validation. If None, the CV generator in the ``fold_strategy`` 
+            parameter of the ``setup`` function is used. When an integer is passed, 
+            it is interpreted as the 'n_splits' parameter of the CV generator in the 
+            ``setup`` function.
+            
+
+        round: int, default = 4
+            Number of decimal places the metrics in the score grid will be rounded to. 
+
+
+        cross_validation: bool, default = True
+            When set to False, metrics are evaluated on holdout set. ``fold`` param
+            is ignored when cross_validation is set to False.
+
+
+        fit_kwargs: dict, default = {} (empty dict)
+            Dictionary of arguments passed to the fit method of the model.
+
+
+        groups: str or array-like, with shape (n_samples,), default = None
+            Optional group labels when GroupKFold is used for the cross validation.
+            It takes an array with shape (n_samples, ) where n_samples is the number
+            of rows in training dataset. When string is passed, it is interpreted as 
+            the column name in the dataset containing group labels.
+
+
+        verbose: bool, default = True
+            Score grid is not printed when verbose is set to False.
+
+
+        **kwargs: 
+            Additional keyword arguments to pass to the estimator.
+
+
+        Returns:
+            Trained Model
+
+
+        Warnings
+        --------
+        - AUC for estimators that does not support 'predict_proba' is shown as 0.0000.
+
+        - Models are not logged on the ``MLFlow`` server when ``cross_validation`` param
+        is set to False.
+
+        """
+
+        return super().create_model(
+            estimator=estimator,
+            fold=fold,
+            round=round,
+            cross_validation=cross_validation,
+            fit_kwargs=fit_kwargs,
+            groups=groups,
+            verbose=verbose,
+            **kwargs,
+        )
+
+    def tune_model(
+        self,
+        estimator,
+        fold: Optional[Union[int, Any]] = None,
+        round: int = 4,
+        n_iter: int = 10,
+        custom_grid: Optional[Union[Dict[str, list], Any]] = None,
+        optimize: str = "Accuracy",
+        custom_scorer=None,
+        search_library: str = "scikit-learn",
+        search_algorithm: Optional[str] = None,
+        early_stopping: Any = False,
+        early_stopping_max_iters: int = 10,
+        choose_better: bool = False,
+        fit_kwargs: Optional[dict] = None,
+        groups: Optional[Union[str, Any]] = None,
+        return_tuner: bool = False,
+        verbose: bool = True,
+        tuner_verbose: Union[int, bool] = True,
+        **kwargs,
+    ) -> Any:
+
+        """
+        This function tunes the hyperparameters of a given estimator. The output of
+        this function is a score grid with CV scores by fold of the best selected 
+        model based on ``optimize`` parameter. Metrics evaluated during CV can be 
+        accessed using the ``get_metrics`` function. Custom metrics can be added
+        or removed using ``add_metric`` and ``remove_metric`` function. 
+
+        Example
+        -------
+        >>> from pycaret.datasets import get_data
+        >>> juice = get_data('juice')
+        >>> from pycaret.classification import *
+        >>> exp_name = setup(data = juice,  target = 'Purchase')
+        >>> lr = create_model('lr')
+        >>> tuned_lr = tune_model(lr) 
+
+
+        estimator: scikit-learn compatible object
+            Trained model object
+
+
+        fold: int or scikit-learn compatible CV generator, default = None
+            Controls cross-validation. If None, the CV generator in the ``fold_strategy`` 
+            parameter of the ``setup`` function is used. When an integer is passed, 
+            it is interpreted as the 'n_splits' parameter of the CV generator in the 
+            ``setup`` function.
+            
+
+        round: int, default = 4
+            Number of decimal places the metrics in the score grid will be rounded to. 
+
+
+        n_iter: int, default = 10
+            Number of iterations in the grid search. Increasing 'n_iter' may improve 
+            model performance but also increases the training time.
+
+
+        custom_grid: dictionary, default = None
+            To define custom search space for hyperparameters, pass a dictionary with 
+            parameter name and values to be iterated. Custom grids must be in a format 
+            supported by the defined ``search_library``.
+
+
+        optimize: str, default = 'Accuracy'
+            Metric name to be evaluated for hyperparameter tuning. It also accepts custom 
+            metrics that are added through the ``add_metric`` function.
+
+
+        custom_scorer: object, default = None
+            custom scoring strategy can be passed to tune hyperparameters of the model. 
+            It must be created using ``sklearn.make_scorer``. It is equivalent of adding
+            custom metric using the ``add_metric`` function and passing the name of the
+            custom metric in the ``optimize`` parameter. 
+            Will be deprecated in future.
+
+
+        search_library: str, default = 'scikit-learn'
+            The search library used for tuning hyperparameters. Possible values:
+
+            - 'scikit-learn' - default, requires no further installation
+                https://github.com/scikit-learn/scikit-learn
+
+            - 'scikit-optimize' - ``pip install scikit-optimize`` 
+                https://scikit-optimize.github.io/stable/
+
+            - 'tune-sklearn' - ``pip install tune-sklearn ray[tune]`` 
+                https://github.com/ray-project/tune-sklearn
+
+            - 'optuna' - ``pip install optuna`` 
+                https://optuna.org/
+
+
+        search_algorithm: str, default = None
+            The search algorithm depends on the ``search_library`` parameter.
+            Some search algorithms require additional libraries to be installed.
+            If None, will use search library-specific default algorithm.
+
+            - 'scikit-learn' possible values:
+                - 'random' : random grid search (default)
+                - 'grid' : grid search
+
+            - 'scikit-optimize' possible values:
+                - 'bayesian' : Bayesian search (default)
+
+            - 'tune-sklearn' possible values:
+                - 'random' : random grid search (default)
+                - 'grid' : grid search
+                - 'bayesian' : ``pip install scikit-optimize``
+                - 'hyperopt' : ``pip install hyperopt``
+                - 'bohb' : ``pip install hpbandster ConfigSpace``
+
+            - 'optuna' possible values:
+                - 'random' : randomized search
+                - 'tpe' : Tree-structured Parzen Estimator search (default)
+
+
+        early_stopping: bool or str or object, default = False
+            Use early stopping to stop fitting to a hyperparameter configuration 
+            if it performs poorly. Ignored when ``search_library`` is scikit-learn, 
+            or if the estimator does not have 'partial_fit' attribute. If False or 
+            None, early stopping will not be used. Can be either an object accepted 
+            by the search library or one of the following:
+
+            - 'asha' for Asynchronous Successive Halving Algorithm
+            - 'hyperband' for Hyperband
+            - 'median' for Median Stopping Rule
+            - If False or None, early stopping will not be used.
+
+
+        early_stopping_max_iters: int, default = 10
+            Maximum number of epochs to run for each sampled configuration.
+            Ignored if ``early_stopping`` is False or None.
+
+
+        choose_better: bool, default = False
+            When set to True, the returned object is always better performing. The
+            metric used for comparison is defined by the ``optimize`` parameter.  
+
+
+        fit_kwargs: dict, default = {} (empty dict)
+            Dictionary of arguments passed to the fit method of the tuner.
+
+
+        groups: str or array-like, with shape (n_samples,), default = None
+            Optional group labels when GroupKFold is used for the cross validation.
+            It takes an array with shape (n_samples, ) where n_samples is the number
+            of rows in training dataset. When string is passed, it is interpreted as 
+            the column name in the dataset containing group labels.
+
+
+        return_tuner: bool, default = False
+            When set to True, will return a tuple of (model, tuner_object). 
+
+
+        verbose: bool, default = True
+            Score grid is not printed when verbose is set to False.
+
+
+        tuner_verbose: bool or in, default = True
+            If True or above 0, will print messages from the tuner. Higher values
+            print more messages. Ignored when ``verbose`` param is False.
+
+
+        **kwargs: 
+            Additional keyword arguments to pass to the optimizer.
+
+
+        Returns:
+            Trained Model and Optional Tuner Object when ``return_tuner`` is True. 
+
+
+        Warnings
+        --------
+        - Using 'grid' as ``search_algorithm`` may result in very long computation.
+        Only recommended with smaller search spaces that can be defined in the
+        ``custom_grid`` parameter.
+
+        - ``search_library`` 'tune-sklearn' does not support GPU models.
+
+        """
+
+        return super().tune_model(
+            estimator=estimator,
+            fold=fold,
+            round=round,
+            n_iter=n_iter,
+            custom_grid=custom_grid,
+            optimize=optimize,
+            custom_scorer=custom_scorer,
+            search_library=search_library,
+            search_algorithm=search_algorithm,
+            early_stopping=early_stopping,
+            early_stopping_max_iters=early_stopping_max_iters,
+            choose_better=choose_better,
+            fit_kwargs=fit_kwargs,
+            groups=groups,
+            return_tuner=return_tuner,
+            verbose=verbose,
+            tuner_verbose=tuner_verbose,
+            **kwargs,
+        )
+
+    def ensemble_model(
+        self,
+        estimator,
+        method: str = "Bagging",
+        fold: Optional[Union[int, Any]] = None,
+        n_estimators: int = 10,
+        round: int = 4,
+        choose_better: bool = False,
+        optimize: str = "Accuracy",
+        fit_kwargs: Optional[dict] = None,
+        groups: Optional[Union[str, Any]] = None,
+        verbose: bool = True,
+    ) -> Any:
+
+        """  
+        This function ensembles a given estimator. The output of this function is 
+        a score grid with CV scores by fold. Metrics evaluated during CV can be 
+        accessed using the ``get_metrics`` function. Custom metrics can be added
+        or removed using ``add_metric`` and ``remove_metric`` function. 
+
+
+        Example
+        -------
+        >>> from pycaret.datasets import get_data
+        >>> juice = get_data('juice')
+        >>> from pycaret.classification import *
+        >>> exp_name = setup(data = juice,  target = 'Purchase')
+        >>> dt = create_model('dt')
+        >>> bagged_dt = ensemble_model(dt, method = 'Bagging')
+        
+
+        estimator: scikit-learn compatible object
+            Trained model object
+
+
+        method: str, default = 'Bagging'
+            Method for ensembling base estimator. It can be 'Bagging' or 'Boosting'. 
+
+
+        fold: int or scikit-learn compatible CV generator, default = None
+            Controls cross-validation. If None, the CV generator in the ``fold_strategy`` 
+            parameter of the ``setup`` function is used. When an integer is passed, 
+            it is interpreted as the 'n_splits' parameter of the CV generator in the 
+            ``setup`` function.
+            
+
+        n_estimators: int, default = 10
+            The number of base estimators in the ensemble. In case of perfect fit, the 
+            learning procedure is stopped early.
+
+            
+        round: int, default = 4
+            Number of decimal places the metrics in the score grid will be rounded to. 
+
+
+        choose_better: bool, default = False
+            When set to True, the returned object is always better performing. The
+            metric used for comparison is defined by the ``optimize`` parameter. 
+
+
+        optimize: str, default = 'Accuracy'
+            Metric to compare for model selection when ``choose_better`` is True.
+
+
+        fit_kwargs: dict, default = {} (empty dict)
+            Dictionary of arguments passed to the fit method of the model.
+
+
+        groups: str or array-like, with shape (n_samples,), default = None
+            Optional group labels when GroupKFold is used for the cross validation.
+            It takes an array with shape (n_samples, ) where n_samples is the number
+            of rows in training dataset. When string is passed, it is interpreted as 
+            the column name in the dataset containing group labels.
+
+
+        verbose: bool, default = True
+            Score grid is not printed when verbose is set to False.
+
+
+        Returns:
+            Trained Model
+
+
+        Warnings
+        --------
+        - Method 'Boosting' is not supported for estimators that do not have 'class_weights' 
+        or 'predict_proba' attributes. 
+
+        """
+
+        return super().ensemble_model(
+            estimator=estimator,
+            method=method,
+            fold=fold,
+            n_estimators=n_estimators,
+            round=round,
+            choose_better=choose_better,
+            optimize=optimize,
+            fit_kwargs=fit_kwargs,
+            groups=groups,
+            verbose=verbose,
+        )
+
+    def blend_models(
+        self,
+        estimator_list: list,
+        fold: Optional[Union[int, Any]] = None,
+        round: int = 4,
+        choose_better: bool = False,
+        optimize: str = "Accuracy",
+        method: str = "auto",
+        weights: Optional[List[float]] = None,
+        fit_kwargs: Optional[dict] = None,
+        groups: Optional[Union[str, Any]] = None,
+        verbose: bool = True,
+    ) -> Any:
+
+        """
+        This function trains a Soft Voting / Majority Rule classifier for select
+        models passed in the ``estimator_list`` param. The output of this function 
+        is a score grid with CV scores by fold. Metrics evaluated during CV can be 
+        accessed using the ``get_metrics`` function. Custom metrics can be added
+        or removed using ``add_metric`` and ``remove_metric`` function.
+
+
+        Example
+        -------
+        >>> from pycaret.datasets import get_data
+        >>> juice = get_data('juice')
+        >>> from pycaret.classification import *
+        >>> exp_name = setup(data = juice,  target = 'Purchase')
+        >>> top3 = compare_models(n_select = 3)
+        >>> blender = blend_models(top3)
+
+
+        estimator_list: list of scikit-learn compatible objects
+            List of trained model objects
+
+
+        fold: int or scikit-learn compatible CV generator, default = None
+            Controls cross-validation. If None, the CV generator in the ``fold_strategy`` 
+            parameter of the ``setup`` function is used. When an integer is passed, 
+            it is interpreted as the 'n_splits' parameter of the CV generator in the 
+            ``setup`` function.
+
+
+        round: int, default = 4
+            Number of decimal places the metrics in the score grid will be rounded to.
+
+
+        choose_better: bool, default = False
+            When set to True, the returned object is always better performing. The
+            metric used for comparison is defined by the ``optimize`` parameter. 
+
+
+        optimize: str, default = 'Accuracy'
+            Metric to compare for model selection when ``choose_better`` is True.
+
+
+        method: str, default = 'auto'
+            'hard' uses predicted class labels for majority rule voting. 'soft', predicts 
+            the class label based on the argmax of the sums of the predicted probabilities, 
+            which is recommended for an ensemble of well-calibrated classifiers. Default 
+            value, 'auto', will try to use 'soft' and fall back to 'hard' if the former is 
+            not supported.
+
+
+        weights: list, default = None
+            Sequence of weights (float or int) to weight the occurrences of predicted class 
+            labels (hard voting) or class probabilities before averaging (soft voting). Uses 
+            uniform weights when None.
+
+
+        fit_kwargs: dict, default = {} (empty dict)
+            Dictionary of arguments passed to the fit method of the model.
+
+
+        groups: str or array-like, with shape (n_samples,), default = None
+            Optional group labels when GroupKFold is used for the cross validation.
+            It takes an array with shape (n_samples, ) where n_samples is the number
+            of rows in training dataset. When string is passed, it is interpreted as 
+            the column name in the dataset containing group labels.
+
+
+        verbose: bool, default = True
+            Score grid is not printed when verbose is set to False.
+
+
+        Returns:
+            Trained Model
+
+        """
+
+        return super().blend_models(
+            estimator_list=estimator_list,
+            fold=fold,
+            round=round,
+            choose_better=choose_better,
+            optimize=optimize,
+            method=method,
+            weights=weights,
+            fit_kwargs=fit_kwargs,
+            groups=groups,
+            verbose=verbose,
+        )
+
+    def stack_models(
+        self,
+        estimator_list: list,
+        meta_model=None,
+        fold: Optional[Union[int, Any]] = None,
+        round: int = 4,
+        method: str = "auto",
+        restack: bool = True,
+        choose_better: bool = False,
+        optimize: str = "Accuracy",
+        fit_kwargs: Optional[dict] = None,
+        groups: Optional[Union[str, Any]] = None,
+        verbose: bool = True,
+    ) -> Any:
+
+        """
+        This function trains a meta model over select estimators passed in 
+        the ``estimator_list`` parameter. The output of this function is a 
+        score grid with CV scores by fold. Metrics evaluated during CV can 
+        be accessed using the ``get_metrics`` function. Custom metrics 
+        can be added or removed using ``add_metric`` and ``remove_metric`` 
+        function.
+
+        
+        Example
+        -------
+        >>> from pycaret.datasets import get_data
+        >>> juice = get_data('juice')
+        >>> from pycaret.classification import *
+        >>> exp_name = setup(data = juice,  target = 'Purchase')
+        >>> top3 = compare_models(n_select = 3)
+        >>> stacker = stack_models(top3)
+
+
+        estimator_list: list of scikit-learn compatible objects
+            List of trained model objects
+
+
+        meta_model: scikit-learn compatible object, default = None
+            When None, Logistic Regression is trained as a meta model.
+
+
+        fold: int or scikit-learn compatible CV generator, default = None
+            Controls cross-validation. If None, the CV generator in the ``fold_strategy`` 
+            parameter of the ``setup`` function is used. When an integer is passed, 
+            it is interpreted as the 'n_splits' parameter of the CV generator in the 
+            ``setup`` function.
+
+
+        round: int, default = 4
+            Number of decimal places the metrics in the score grid will be rounded to.
+
+
+        method: str, default = 'auto'
+            When set to 'auto', it will invoke, for each estimator, 'predict_proba',
+            'decision_function' or 'predict' in that order. Other, manually pass one
+            of the value from 'predict_proba', 'decision_function' or 'predict'. 
+            
+            
+        restack: bool, default = True
+            When set to False, only the predictions of estimators will be used as 
+            training data for the ``meta_model``.
+
+
+        choose_better: bool, default = False
+            When set to True, the returned object is always better performing. The
+            metric used for comparison is defined by the ``optimize`` parameter. 
+
+
+        optimize: str, default = 'Accuracy'
+            Metric to compare for model selection when ``choose_better`` is True.
+
+
+        fit_kwargs: dict, default = {} (empty dict)
+            Dictionary of arguments passed to the fit method of the model.
+
+
+        groups: str or array-like, with shape (n_samples,), default = None
+            Optional group labels when GroupKFold is used for the cross validation.
+            It takes an array with shape (n_samples, ) where n_samples is the number
+            of rows in training dataset. When string is passed, it is interpreted as 
+            the column name in the dataset containing group labels.
+
+
+        verbose: bool, default = True
+            Score grid is not printed when verbose is set to False.
+
+
+        Returns:
+            Trained Model
+
+
+        Warnings
+        --------
+        - When ``method`` is not set to 'auto', it will check if the defined method
+        is available for all estimators passed in ``estimator_list``. If the method is 
+        not implemented by any estimator, it will raise an error.
+
+        """
+
+        return super().stack_models(
+            estimator_list=estimator_list,
+            meta_model=meta_model,
+            fold=fold,
+            round=round,
+            method=method,
+            restack=restack,
+            choose_better=choose_better,
+            optimize=optimize,
+            fit_kwargs=fit_kwargs,
+            groups=groups,
+            verbose=verbose,
+        )
+
+    def plot_model(
+        self,
+        estimator,
+        plot: str = "auc",
+        scale: float = 1,
+        save: bool = False,
+        fold: Optional[Union[int, Any]] = None,
+        fit_kwargs: Optional[dict] = None,
+        groups: Optional[Union[str, Any]] = None,
+        use_train_data: bool = False,
+        verbose: bool = True,
+    ) -> str:
+
+        """
+        This function analyzes the performance of a trained model on holdout set. 
+        It may require re-training the model in certain cases.
+
+        Example
+        -------
+        >>> from pycaret.datasets import get_data
+        >>> juice = get_data('juice')
+        >>> from pycaret.classification import *
+        >>> exp_name = setup(data = juice,  target = 'Purchase')
+        >>> lr = create_model('lr')
+        >>> plot_model(lr, plot = 'auc')
+
+
+        estimator: scikit-learn compatible object
+            Trained model object
+
+
+        plot: str, default = 'auc'
+            List of available plots (ID - Name):
+
+            * 'auc' - Area Under the Curve
+            * 'threshold' - Discrimination Threshold
+            * 'pr' - Precision Recall Curve
+            * 'confusion_matrix' - Confusion Matrix
+            * 'error' - Class Prediction Error
+            * 'class_report' - Classification Report
+            * 'boundary' - Decision Boundary
+            * 'rfe' - Recursive Feature Selection
+            * 'learning' - Learning Curve
+            * 'manifold' - Manifold Learning
+            * 'calibration' - Calibration Curve
+            * 'vc' - Validation Curve
+            * 'dimension' - Dimension Learning
+            * 'feature' - Feature Importance
+            * 'feature_all' - Feature Importance (All)
+            * 'parameter' - Model Hyperparameter
+            * 'lift' - Lift Curve
+            * 'gain' - Gain Chart
+            * 'tree' - Decision Tree
+
+
+        scale: float, default = 1
+            The resolution scale of the figure.
+
+
+        save: bool, default = False
+            When set to True, plot is saved in the current working directory.
+
+
+        fold: int or scikit-learn compatible CV generator, default = None
+            Controls cross-validation. If None, the CV generator in the ``fold_strategy`` 
+            parameter of the ``setup`` function is used. When an integer is passed, 
+            it is interpreted as the 'n_splits' parameter of the CV generator in the 
+            ``setup`` function.
+
+
+        fit_kwargs: dict, default = {} (empty dict)
+            Dictionary of arguments passed to the fit method of the model.
+
+
+        groups: str or array-like, with shape (n_samples,), default = None
+            Optional group labels when GroupKFold is used for the cross validation.
+            It takes an array with shape (n_samples, ) where n_samples is the number
+            of rows in training dataset. When string is passed, it is interpreted as 
+            the column name in the dataset containing group labels.
+
+
+        use_train_data: bool, default = False
+            When set to true, train data will be used for plots, instead
+            of test data.
+
+
+        verbose: bool, default = True
+            When set to False, progress bar is not displayed.
+
+
+        Returns:
+            None
+            
+
+        Warnings
+        --------
+        -   Estimators that does not support 'predict_proba' attribute cannot be used for
+            'AUC' and 'calibration' plots. 
+                
+        -   When the target is multiclass, 'calibration', 'threshold', 'manifold' and 'rfe' 
+            plots are not available.
+
+        -   When the 'max_features' parameter of a trained model object is not equal to 
+            the number of samples in training set, the 'rfe' plot is not available.
+
+        """
+
+        return super().plot_model(
+            estimator=estimator,
+            plot=plot,
+            scale=scale,
+            save=save,
+            fold=fold,
+            fit_kwargs=fit_kwargs,
+            groups=groups,
+            verbose=verbose,
+            use_train_data=use_train_data,
+            system=True,
+        )
+
+    def evaluate_model(
+        self,
+        estimator,
+        fold: Optional[Union[int, Any]] = None,
+        fit_kwargs: Optional[dict] = None,
+        groups: Optional[Union[str, Any]] = None,
+        use_train_data: bool = False,
+    ):
+
+        """
+        This function displays a user interface for analyzing performance of a trained
+        model. It calls the ``plot_model`` function internally. 
+        
+
+        Example
+        -------
+        >>> from pycaret.datasets import get_data
+        >>> juice = get_data('juice')
+        >>> from pycaret.classification import *
+        >>> exp_name = setup(data = juice,  target = 'Purchase')
+        >>> lr = create_model('lr')
+        >>> evaluate_model(lr)
+        
+
+        estimator: scikit-learn compatible object
+            Trained model object
+
+
+        fold: int or scikit-learn compatible CV generator, default = None
+            Controls cross-validation. If None, the CV generator in the ``fold_strategy`` 
+            parameter of the ``setup`` function is used. When an integer is passed, 
+            it is interpreted as the 'n_splits' parameter of the CV generator in the 
+            ``setup`` function.
+
+
+        fit_kwargs: dict, default = {} (empty dict)
+            Dictionary of arguments passed to the fit method of the model.
+
+
+        groups: str or array-like, with shape (n_samples,), default = None
+            Optional group labels when GroupKFold is used for the cross validation.
+            It takes an array with shape (n_samples, ) where n_samples is the number
+            of rows in training dataset. When string is passed, it is interpreted as 
+            the column name in the dataset containing group labels.
+
+
+        use_train_data: bool, default = False
+            When set to true, train data will be used for plots, instead
+            of test data.
+
+
+        Returns:
+            None
+
+
+        Warnings
+        --------
+        -   This function only works in IPython enabled Notebook.
+
+        """
+
+        return super().evaluate_model(
+            estimator=estimator,
+            fold=fold,
+            fit_kwargs=fit_kwargs,
+            groups=groups,
+            use_train_data=use_train_data,
+        )
+
+    def interpret_model(
+        self,
+        estimator,
+        plot: str = "summary",
+        feature: Optional[str] = None,
+        observation: Optional[int] = None,
+        use_train_data: bool = False,
+        **kwargs,
+    ):
+
+        """ 
+        This function analyzes the predictions generated from a tree-based model. It is
+        implemented based on the SHAP (SHapley Additive exPlanations). For more info on
+        this, please see https://shap.readthedocs.io/en/latest/
+
+        Example
+        -------
+        >>> from pycaret.datasets import get_data
+        >>> juice = get_data('juice')
+        >>> from pycaret.classification import *
+        >>> exp_name = setup(data = juice,  target = 'Purchase')
+        >>> xgboost = create_model('xgboost')
+        >>> interpret_model(xgboost)
+
+
+        estimator: scikit-learn compatible object
+            Trained model object
+
+
+        plot: str, default = 'summary'
+            Type of plot. Available options are: 'summary', 'correlation', and 'reason'.
+
+
+        feature: str, default = None
+            Feature to check correlation with. This parameter is only required when ``plot``
+            type is 'correlation'. When set to None, it uses the first column in the train
+            dataset.
+
+
+        observation: int, default = None
+            Observation index number in holdout set to explain. When ``plot`` is not
+            'reason', this parameter is ignored. 
+
+
+        use_train_data: bool, default = False
+            When set to true, train data will be used for plots, instead
+            of test data.
+
+
+        **kwargs:
+            Additional keyword arguments to pass to the plot.
+
+
+        Returns:
+            None
+
+        """
+
+        return super().interpret_model(
+            estimator=estimator,
+            plot=plot,
+            feature=feature,
+            observation=observation,
+            use_train_data=use_train_data,
+            **kwargs,
+        )
+
     def calibrate_model(
         self,
         estimator,
@@ -10798,10 +13718,10 @@ class ClassificationExperiment(_SupervisedExperiment):
 
         function_params_str = ", ".join([f"{k}={v}" for k, v in locals().items()])
 
-        logger.info("Initializing calibrate_model()")
-        logger.info(f"calibrate_model({function_params_str})")
+        self.logger.info("Initializing calibrate_model()")
+        self.logger.info(f"calibrate_model({function_params_str})")
 
-        logger.info("Checking exceptions")
+        self.logger.info("Checking exceptions")
 
         # run_time
         runtime_start = time.time()
@@ -10837,11 +13757,11 @@ class ClassificationExperiment(_SupervisedExperiment):
 
         groups = self._get_groups(groups)
 
-        logger.info("Preloading libraries")
+        self.logger.info("Preloading libraries")
 
         # pre-load libraries
 
-        logger.info("Preparing display monitor")
+        self.logger.info("Preparing display monitor")
 
         if not display:
             progress_args = {"max": 2 + 4}
@@ -10876,11 +13796,11 @@ class ClassificationExperiment(_SupervisedExperiment):
 
         np.random.seed(self.seed)
 
-        logger.info("Getting model name")
+        self.logger.info("Getting model name")
 
         full_name = self._get_model_name(estimator)
 
-        logger.info(f"Base model : {full_name}")
+        self.logger.info(f"Base model : {full_name}")
 
         display.update_monitor(2, full_name)
         display.display_monitor()
@@ -10898,7 +13818,7 @@ class ClassificationExperiment(_SupervisedExperiment):
 
         # calibrating estimator
 
-        logger.info("Importing untrained CalibratedClassifierCV")
+        self.logger.info("Importing untrained CalibratedClassifierCV")
 
         calibrated_model_definition = self._all_models_internal["CalibratedCV"]
         model = calibrated_model_definition.class_def(
@@ -10910,7 +13830,7 @@ class ClassificationExperiment(_SupervisedExperiment):
 
         display.move_progress()
 
-        logger.info(
+        self.logger.info(
             "SubProcess create_model() called =================================="
         )
         model, model_fit_time = self.create_model(
@@ -10923,7 +13843,9 @@ class ClassificationExperiment(_SupervisedExperiment):
             groups=groups,
         )
         model_results = self.pull()
-        logger.info("SubProcess create_model() end ==================================")
+        self.logger.info(
+            "SubProcess create_model() end =================================="
+        )
 
         model_results = model_results.round(round)
 
@@ -10951,19 +13873,21 @@ class ClassificationExperiment(_SupervisedExperiment):
                     display=display,
                 )
             except:
-                logger.error(f"_mlflow_log_model() for {model} raised an exception:")
-                logger.error(traceback.format_exc())
+                self.logger.error(
+                    f"_mlflow_log_model() for {model} raised an exception:"
+                )
+                self.logger.error(traceback.format_exc())
 
         model_results = color_df(model_results, "yellow", ["Mean"], axis=1)
         model_results = model_results.set_precision(round)
         display.display(model_results, clear=True)
 
-        logger.info(f"create_model_container: {len(self.create_model_container)}")
-        logger.info(f"master_model_container: {len(self.master_model_container)}")
-        logger.info(f"display_container: {len(self.display_container)}")
+        self.logger.info(f"create_model_container: {len(self.create_model_container)}")
+        self.logger.info(f"master_model_container: {len(self.master_model_container)}")
+        self.logger.info(f"display_container: {len(self.display_container)}")
 
-        logger.info(str(model))
-        logger.info(
+        self.logger.info(str(model))
+        self.logger.info(
             "calibrate_model() succesfully completed......................................"
         )
 
@@ -11029,10 +13953,10 @@ class ClassificationExperiment(_SupervisedExperiment):
 
         function_params_str = ", ".join([f"{k}={v}" for k, v in locals().items()])
 
-        logger.info("Initializing optimize_threshold()")
-        logger.info(f"optimize_threshold({function_params_str})")
+        self.logger.info("Initializing optimize_threshold()")
+        self.logger.info(f"optimize_threshold({function_params_str})")
 
-        logger.info("Importing libraries")
+        self.logger.info("Importing libraries")
 
         # import libraries
 
@@ -11042,7 +13966,7 @@ class ClassificationExperiment(_SupervisedExperiment):
         ERROR HANDLING STARTS HERE
         """
 
-        logger.info("Checking exceptions")
+        self.logger.info("Checking exceptions")
 
         # exception 1 for multi-class
         if self._is_multiclass():
@@ -11099,7 +14023,7 @@ class ClassificationExperiment(_SupervisedExperiment):
         internal function to calculate loss starts here
         """
 
-        logger.info("Defining loss function")
+        self.logger.info("Defining loss function")
 
         def calculate_loss(
             actual,
@@ -11147,7 +14071,7 @@ class ClassificationExperiment(_SupervisedExperiment):
         cost = []
         # global optimize_results
 
-        logger.info("Iteration starts at 0")
+        self.logger.info("Iteration starts at 0")
 
         for i in grid:
 
@@ -11196,14 +14120,599 @@ class ClassificationExperiment(_SupervisedExperiment):
                     "yanchor": "top",
                 }
             )
-            logger.info("Figure ready for render")
+            self.logger.info("Figure ready for render")
             fig.show()
         print(f"Optimized Probability Threshold: {t} | Optimized Cost Function: {y1}")
-        logger.info(
+        self.logger.info(
             "optimize_threshold() succesfully completed......................................"
         )
 
         return float(t)
+
+    def predict_model(
+        self,
+        estimator,
+        data: Optional[pd.DataFrame] = None,
+        probability_threshold: Optional[float] = None,
+        encoded_labels: bool = False,
+        round: int = 4,
+        verbose: bool = True,
+    ) -> pd.DataFrame:
+
+        """
+        This function predicts ``Label`` and ``Score`` (probability of predicted 
+        class) using a trained model. When ``data`` is None, it predicts label and 
+        score on the holdout set.
+        
+        
+        Example
+        -------
+        >>> from pycaret.datasets import get_data
+        >>> juice = get_data('juice')
+        >>> from pycaret.classification import *
+        >>> exp_name = setup(data = juice,  target = 'Purchase')
+        >>> lr = create_model('lr')
+        >>> pred_holdout = predict_model(lr)
+        >>> pred_unseen = predict_model(lr, data = unseen_dataframe)
+            
+
+        estimator: scikit-learn compatible object
+            Trained model object
+
+
+        data: pandas.DataFrame
+            Shape (n_samples, n_features). All features used during training 
+            must be available in the unseen dataset.
+        
+
+        probability_threshold: float, default = None
+            Threshold for converting predicted probability to class label.
+            It defaults to 0.5 for all classifiers unless explicitly defined 
+            in this parameter. 
+
+
+        encoded_labels: bool, default = False
+            When set to True, will return labels encoded as an integer.
+
+
+        round: int, default = 4
+            Number of decimal places the metrics in the score grid will be rounded to. 
+
+
+        verbose: bool, default = True
+            When set to False, holdout score grid is not printed.
+
+
+        Returns:
+            pandas.DataFrame
+
+
+        Warnings
+        --------
+        - The behavior of the ``predict_model`` is changed in version 2.1 without backward 
+        compatibility. As such, the pipelines trained using the version (<= 2.0), may not 
+        work for inference with version >= 2.1. You can either retrain your models with a 
+        newer version or downgrade the version for inference.
+
+        """
+
+        return super().predict_model(
+            estimator=estimator,
+            data=data,
+            probability_threshold=probability_threshold,
+            encoded_labels=encoded_labels,
+            round=round,
+            verbose=verbose,
+            ml_usecase=MLUsecase.CLASSIFICATION,
+        )
+
+    def finalize_model(
+        self,
+        estimator,
+        fit_kwargs: Optional[dict] = None,
+        groups: Optional[Union[str, Any]] = None,
+        model_only: bool = True,
+    ) -> Any:
+
+        """
+        This function trains a given estimator on the entire dataset including the 
+        holdout set. 
+        
+        
+        Example
+        -------
+        >>> from pycaret.datasets import get_data
+        >>> juice = get_data('juice')
+        >>> from pycaret.classification import *
+        >>> exp_name = setup(data = juice,  target = 'Purchase')
+        >>> lr = create_model('lr')
+        >>> final_lr = finalize_model(lr)
+        
+
+        estimator: scikit-learn compatible object
+            Trained model object
+
+
+        fit_kwargs: dict, default = {} (empty dict)
+            Dictionary of arguments passed to the fit method of the model.
+
+
+        groups: str or array-like, with shape (n_samples,), default = None
+            Optional group labels when GroupKFold is used for the cross validation.
+            It takes an array with shape (n_samples, ) where n_samples is the number
+            of rows in training dataset. When string is passed, it is interpreted as 
+            the column name in the dataset containing group labels.
+
+
+        model_only: bool, default = True
+            When set to False, only model object is re-trained and all the 
+            transformations in Pipeline are ignored.
+
+
+        Returns:
+            Trained Model
+        
+        """
+
+        return super().finalize_model(
+            estimator=estimator,
+            fit_kwargs=fit_kwargs,
+            groups=groups,
+            model_only=model_only,
+        )
+
+    def deploy_model(
+        self, model, model_name: str, authentication: dict, platform: str = "aws",
+    ):
+
+        """
+        This function deploys the transformation pipeline and trained model on cloud.
+        
+
+        Example
+        -------
+        >>> from pycaret.datasets import get_data
+        >>> juice = get_data('juice')
+        >>> from pycaret.classification import *
+        >>> exp_name = setup(data = juice,  target = 'Purchase')
+        >>> lr = create_model('lr')
+        >>> deploy_model(model = lr, model_name = 'lr-for-deployment', platform = 'aws', authentication = {'bucket' : 'S3-bucket-name'})
+            
+
+        Amazon Web Service (AWS) users:
+            To deploy a model on AWS S3 ('aws'), environment variables must be set in your
+            local environment. To configure AWS environment variables, type ``aws configure`` 
+            in the command line. Following information from the IAM portal of amazon console 
+            account is required:
+
+            - AWS Access Key ID
+            - AWS Secret Key Access
+            - Default Region Name (can be seen under Global settings on your AWS console)
+
+            More info: https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-envvars.html
+
+
+        Google Cloud Platform (GCP) users:
+            To deploy a model on Google Cloud Platform ('gcp'), project must be created 
+            using command line or GCP console. Once project is created, you must create 
+            a service account and download the service account key as a JSON file to set 
+            environment variables in your local environment. 
+
+            More info: https://cloud.google.com/docs/authentication/production
+
+        
+        Microsoft Azure (Azure) users:
+            To deploy a model on Microsoft Azure ('azure'), environment variables for connection
+            string must be set in your local environment. Go to settings of storage account on
+            Azure portal to access the connection string required. 
+
+            More info: https://docs.microsoft.com/en-us/azure/storage/blobs/storage-quickstart-blobs-python?toc=%2Fpython%2Fazure%2FTOC.json
+
+
+        model: scikit-learn compatible object
+            Trained model object
+        
+
+        model_name: str
+            Name of model.
+        
+
+        authentication: dict
+            Dictionary of applicable authentication tokens.
+
+            When platform = 'aws':
+            {'bucket' : 'S3-bucket-name'}
+
+            When platform = 'gcp':
+            {'project': 'gcp-project-name', 'bucket' : 'gcp-bucket-name'}
+
+            When platform = 'azure':
+            {'container': 'azure-container-name'}
+        
+
+        platform: str, default = 'aws'
+            Name of the cloud platform. Currently supported platforms: 'aws', 'gcp' and 'azure'.
+        
+
+        Returns:
+            None
+
+        """
+
+        return super().deploy_model(
+            model=model,
+            model_name=model_name,
+            authentication=authentication,
+            platform=platform,
+        )
+
+    def save_model(
+        self, model, model_name: str, model_only: bool = False, verbose: bool = True
+    ):
+
+        """
+        This function saves the transformation pipeline and trained model object 
+        into the current working directory as a pickle file for later use. 
+        
+        Example
+        -------
+        >>> from pycaret.datasets import get_data
+        >>> juice = get_data('juice')
+        >>> from pycaret.classification import *
+        >>> exp_name = setup(data = juice,  target = 'Purchase')
+        >>> lr = create_model('lr')
+        >>> save_model(lr, 'saved_lr_model')
+        
+
+        model: scikit-learn compatible object
+            Trained model object
+        
+
+        model_name: str
+            Name of the model.
+        
+
+        model_only: bool, default = False
+            When set to True, only trained model object is saved instead of the 
+            entire pipeline.
+
+
+        verbose: bool, default = True
+            Success message is not printed when verbose is set to False.
+
+
+        Returns:
+            Tuple of the model object and the filename.
+
+        """
+
+        return super().save_model(
+            model=model, model_name=model_name, model_only=model_only, verbose=verbose
+        )
+
+    def load_model(
+        self,
+        model_name,
+        platform: Optional[str] = None,
+        authentication: Optional[Dict[str, str]] = None,
+        verbose: bool = True,
+    ):
+
+        """
+        This function loads a previously saved pipeline.
+        
+
+        Example
+        -------
+        >>> from pycaret.classification import load_model
+        >>> saved_lr = load_model('saved_lr_model')
+
+
+        model_name: str
+            Name of the model.
+        
+
+        platform: str, default = None
+            Name of the cloud platform. Currently supported platforms: 
+            'aws', 'gcp' and 'azure'.
+        
+
+        authentication: dict, default = None
+            dictionary of applicable authentication tokens.
+
+            when platform = 'aws':
+            {'bucket' : 'S3-bucket-name'}
+
+            when platform = 'gcp':
+            {'project': 'gcp-project-name', 'bucket' : 'gcp-bucket-name'}
+
+            when platform = 'azure':
+            {'container': 'azure-container-name'}
+        
+
+        verbose: bool, default = True
+            Success message is not printed when verbose is set to False.
+
+
+        Returns:
+            Trained Model
+
+        """
+
+        return super().load_model(
+            model_name=model_name,
+            platform=platform,
+            authentication=authentication,
+            verbose=verbose,
+        )
+
+    def automl(self, optimize: str = "Accuracy", use_holdout: bool = False) -> Any:
+
+        """ 
+        This function returns the best model out of all trained models in
+        current session based on the ``optimize`` parameter. Metrics
+        evaluated can be accessed using the ``get_metrics`` function. 
+
+        
+        Example
+        -------
+        >>> from pycaret.datasets import get_data
+        >>> juice = get_data('juice')
+        >>> from pycaret.classification import *
+        >>> exp_name = setup(data = juice,  target = 'Purchase')
+        >>> top3 = compare_models(n_select = 3)
+        >>> tuned_top3 = [tune_model(i) for i in top3]
+        >>> blender = blend_models(tuned_top3)
+        >>> stacker = stack_models(tuned_top3)
+        >>> best_auc_model = automl(optimize = 'AUC')
+
+
+        optimize: str, default = 'Accuracy'
+            Metric to use for model selection. It also accepts custom metrics
+            added using the ``add_metric`` function. 
+
+
+        use_holdout: bool, default = False
+            When set to True, metrics are evaluated on holdout set instead of CV.
+        
+
+        Returns:
+            Trained Model
+
+        """
+        return super().automl(optimize=optimize, use_holdout=use_holdout)
+
+    def pull(self, pop: bool = False) -> pd.DataFrame:
+
+        """  
+        Returns last printed score grid. Use ``pull`` function after
+        any training function to store the score grid in pandas.DataFrame.
+
+
+        pop: bool, default = False
+            If True, will pop (remove) the returned dataframe from the
+            display container.
+
+
+        Returns:
+            pandas.DataFrame
+
+        """
+        return super().pull(pop=pop)
+
+    def models(
+        self,
+        type: Optional[str] = None,
+        internal: bool = False,
+        raise_errors: bool = True,
+    ) -> pd.DataFrame:
+
+        """
+        Returns table of models available in the model library.
+
+        Example
+        -------
+        >>> from pycaret.datasets import get_data
+        >>> juice = get_data('juice')
+        >>> from pycaret.classification import *
+        >>> exp_name = setup(data = juice,  target = 'Purchase')    
+        >>> all_models = models()
+
+
+        type: str, default = None
+            - linear : filters and only return linear models
+            - tree : filters and only return tree based models
+            - ensemble : filters and only return ensemble models
+        
+
+        internal: bool, default = False
+            When True, will return extra columns and rows used internally.
+
+
+        raise_errors: bool, default = True
+            When False, will suppress all exceptions, ignoring models
+            that couldn't be created.
+
+
+        Returns:
+            pandas.DataFrame
+
+        """
+        return super().models(type=type, internal=internal, raise_errors=raise_errors)
+
+    def get_metrics(
+        self,
+        reset: bool = False,
+        include_custom: bool = True,
+        raise_errors: bool = True,
+    ) -> pd.DataFrame:
+
+        """
+        Returns table of available metrics used for CV.
+
+
+        Example
+        -------
+        >>> from pycaret.datasets import get_data
+        >>> juice = get_data('juice')
+        >>> from pycaret.classification import *
+        >>> exp_name = setup(data = juice,  target = 'Purchase')    
+        >>> all_metrics = get_metrics()
+
+
+        reset: bool, default = False
+            When True, will reset all changes made using the ``add_metric`` 
+            and ``remove_metric`` function.
+
+
+        include_custom: bool, default = True
+            Whether to include user added (custom) metrics or not.
+
+
+        raise_errors: bool, default = True
+            If False, will suppress all exceptions, ignoring models that
+            couldn't be created.
+
+
+        Returns:
+            pandas.DataFrame
+
+        """
+
+        return super().get_metrics(
+            reset=reset, include_custom=include_custom, raise_errors=raise_errors,
+        )
+
+    def add_metric(
+        self,
+        id: str,
+        name: str,
+        score_func: type,
+        target: str = "pred",
+        greater_is_better: bool = True,
+        multiclass: bool = True,
+        **kwargs,
+    ) -> pd.Series:
+
+        """ 
+        Adds a custom metric to be used for CV.
+
+
+        Example
+        -------
+        >>> from pycaret.datasets import get_data
+        >>> juice = get_data('juice')
+        >>> from pycaret.classification import *
+        >>> exp_name = setup(data = juice,  target = 'Purchase') 
+        >>> from sklearn.metrics import log_loss
+        >>> add_metric('logloss', 'Log Loss', log_loss, greater_is_better = False)
+
+
+        id: str
+            Unique id for the metric.
+
+
+        name: str
+            Display name of the metric.
+
+
+        score_func: type
+            Score function (or loss function) with signature ``score_func(y, y_pred, **kwargs)``.
+
+
+        target: str, default = 'pred'
+            The target of the score function.
+
+            - 'pred' for the prediction table
+            - 'pred_proba' for pred_proba
+            - 'threshold' for decision_function or predict_proba
+
+
+        greater_is_better: bool, default = True
+            Whether ``score_func`` is higher the better or not.
+
+
+        multiclass: bool, default = True
+            Whether the metric supports multiclass target.
+
+
+        **kwargs:
+            Arguments to be passed to score function.
+
+
+        Returns:
+            pandas.Series
+
+        """
+
+        return super().add_metric(
+            id=id,
+            name=name,
+            score_func=score_func,
+            target=target,
+            greater_is_better=greater_is_better,
+            multiclass=multiclass,
+            **kwargs,
+        )
+
+    def remove_metric(self, name_or_id: str):
+
+        """  
+        Removes a metric from CV.
+
+
+        Example
+        -------
+        >>> from pycaret.datasets import get_data
+        >>> juice = get_data('juice')
+        >>> from pycaret.classification import *
+        >>> exp_name = setup(data = juice,  target = 'Purchase') 
+        >>> remove_metric('MCC')
+
+
+        name_or_id: str
+            Display name or ID of the metric.
+
+        
+        Returns:
+            None
+
+        """
+        return super().remove_metric(name_or_id=name_or_id)
+
+    def get_logs(
+        self, experiment_name: Optional[str] = None, save: bool = False
+    ) -> pd.DataFrame:
+
+        """
+        Returns a table of experiment logs. Only works when ``log_experiment``
+        is True when initializing the ``setup`` function.
+
+
+        Example
+        -------
+        >>> from pycaret.datasets import get_data
+        >>> juice = get_data('juice')
+        >>> from pycaret.classification import *
+        >>> exp_name = setup(data = juice,  target = 'Purchase', log_experiment = True) 
+        >>> best = compare_models()
+        >>> exp_logs = get_logs()
+
+
+        experiment_name: str, default = None
+            When None current active run is used.
+
+
+        save: bool, default = False
+            When set to True, csv file is saved in current working directory.
+
+
+        Returns:
+            pandas.DataFrame
+
+        """
+
+        return super().get_logs(experiment_name=experiment_name, save=save)
 
 
 class AnomalyExperiment(_UnsupervisedExperiment):
@@ -11257,11 +14766,162 @@ class ClusteringExperiment(_UnsupervisedExperiment):
             self.variables, raise_errors=raise_errors
         )
 
-    def get_metrics(self) -> None:
-        return
+    def get_metrics(
+        self,
+        reset: bool = False,
+        include_custom: bool = True,
+        raise_errors: bool = True,
+    ) -> pd.DataFrame:
+        """
+        Returns table of metrics available.
 
-    def add_metric(self) -> None:
-        return
+        Example
+        -------
+        >>> from pycaret.datasets import get_data
+        >>> jewellery = get_data('jewellery')
+        >>> from pycaret.clustering import *
+        >>> exp_name = setup(data = jewellery)
+        >>> all_metrics = get_metrics()
 
-    def remove_metric(self) -> None:
-        return
+        This will return pandas dataframe with all available 
+        metrics and their metadata.
+
+        Parameters
+        ----------
+        reset: bool, default = False
+            If True, will reset all changes made using add_metric() and get_metric().
+        include_custom: bool, default = True
+            Whether to include user added (custom) metrics or not.
+        raise_errors: bool, default = True
+            If False, will suppress all exceptions, ignoring models
+            that couldn't be created.
+
+        Returns
+        -------
+        pandas.DataFrame
+
+        """
+
+        if reset and not self._setup_ran:
+            raise ValueError("setup() needs to be ran first.")
+
+        np.random.seed(self.seed)
+
+        if reset:
+            self._all_metrics = self._get_metrics(raise_errors=raise_errors)
+
+        metric_containers = self._all_metrics
+        rows = [v.get_dict() for k, v in metric_containers.items()]
+
+        df = pd.DataFrame(rows)
+        df.set_index("ID", inplace=True, drop=True)
+
+        if not include_custom:
+            df = df[df["Custom"] == False]
+
+        return df
+
+    def add_metric(
+        self,
+        id: str,
+        name: str,
+        score_func: type,
+        target: str = "pred",
+        greater_is_better: bool = True,
+        needs_ground_truth: bool = False,
+        **kwargs,
+    ) -> pd.Series:
+        """
+        Adds a custom metric to be used in all functions.
+
+        Parameters
+        ----------
+        id: str
+            Unique id for the metric.
+
+        name: str
+            Display name of the metric.
+
+        score_func: type
+            Score function (or loss function) with signature score_func(y, y_pred, **kwargs).
+
+        target: str, default = 'pred'
+            The target of the score function.
+            - 'pred' for the prediction table
+            - 'pred_proba' for pred_proba
+            - 'threshold' for decision_function or predict_proba
+
+        greater_is_better: bool, default = True
+            Whether score_func is a score function (default), meaning high is good,
+            or a loss function, meaning low is good. In the latter case, the
+            scorer object will sign-flip the outcome of the score_func.
+
+        needs_ground_truth: bool, default = False
+            Whether the metric needs ground truth to be calculated.
+
+        **kwargs:
+            Arguments to be passed to score function.
+
+        Returns
+        -------
+        pandas.Series
+            The created row as Series.
+
+        """
+
+        if not self._setup_ran:
+            raise ValueError("setup() needs to be ran first.")
+
+        if id in self._all_metrics:
+            raise ValueError("id already present in metrics dataframe.")
+
+        new_metric = pycaret.containers.metrics.clustering.ClusterMetricContainer(
+            id=id,
+            name=name,
+            score_func=score_func,
+            args=kwargs,
+            display_name=name,
+            greater_is_better=greater_is_better,
+            needs_ground_truth=needs_ground_truth,
+            is_custom=True,
+        )
+
+        self._all_metrics[id] = new_metric
+
+        new_metric = new_metric.get_dict()
+
+        new_metric = pd.Series(new_metric, name=id.replace(" ", "_")).drop("ID")
+
+        return new_metric
+
+    def remove_metric(self, name_or_id: str):
+        """
+        Removes a metric used in all functions.
+
+        Parameters
+        ----------
+        name_or_id: str
+            Display name or ID of the metric.
+
+        """
+        if not self._setup_ran:
+            raise ValueError("setup() needs to be ran first.")
+
+        try:
+            self._all_metrics.pop(name_or_id)
+            return
+        except:
+            pass
+
+        try:
+            k_to_remove = next(
+                k for k, v in self._all_metrics.items() if v.name == name_or_id
+            )
+            self._all_metrics.pop(k_to_remove)
+            return
+        except:
+            pass
+
+        raise ValueError(
+            f"No metric 'Display Name' or 'ID' (index) {name_or_id} present in the metrics repository."
+        )
