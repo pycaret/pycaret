@@ -579,11 +579,6 @@ class InteractiveResidualsPlot:
 
         leverage = helper.leverage_statistic(np.array(x))
 
-        print(np.array(x).shape)
-        print(np.array(x).ndim)
-        print(leverage.min(), leverage.max())
-        raise ValueError()
-
         n_model_params = len(model.get_params())
         distance = helper.cooks_distance(standardized_residuals, leverage, n_model_params=n_model_params)
         cooks_distance_widget = CooksDistanceWidget(leverage, distance, standardized_residuals,
