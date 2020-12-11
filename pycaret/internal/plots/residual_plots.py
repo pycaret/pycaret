@@ -288,7 +288,7 @@ class CooksDistanceWidget(BaseFigureWidget):
             fig = px.scatter(dataframe, x="Leverage", y="Standardized Residuals", trendline="lowess",
                              title="Residuals vs Leverage", opacity=0.3)
 
-        maxmo = max(model_leverage) + 0.003
+        maxmo = max(model_leverage) * 1.05
         fig.update_xaxes(range=[0, maxmo])
         min_r = min(standardized_residuals)
         max_r = max(standardized_residuals)

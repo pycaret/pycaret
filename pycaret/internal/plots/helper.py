@@ -19,7 +19,7 @@ def leverage_statistic(X: np.ndarray) -> np.array:
 
     Returns
     -------
-        np.array: A array containing the leverage of each observation $x_i$, hence it has length $n$.
+        np.array: An array containing the leverage of each observation $x_i$, hence it has length $n$.
 
     """
 
@@ -45,7 +45,7 @@ def calculate_standardized_residual(
     """
     Calculates the standardized residuals $\tilde r_i$ of the predictions to the expectations.
     $\tilde{r}_{i}=\frac{r_{i}}{\widehat{\sigma} \sqrt{1-\left(\frac{1}{n}+\frac{\left(y_{i}-\bar{y}\right)^{2}}{\sum_{i}^{n}\left(y_{i}-\bar{y}\right)^{2}}\right)}}$
-    where $r_i= y_i - \hat y_i$ and $\hat \sigma$ denoting the estimated standard deviation of the error terms $\epsilon_i\approx r_i$.
+    where $r_i= y_i - \hat y_i$ and $\hat \sigma$ denote the estimated standard deviation of the error terms $\epsilon_i\approx r_i$.
     If the error terms $\epsilon_i$ are distributed according to a normal distribution, then for the distribution of the
     standardized residuals, we have $\tilde r_i \sim \mathcal N(0,1)$.
 
@@ -60,7 +60,7 @@ def calculate_standardized_residual(
 
     Returns
     -------
-        np.array: A array containing the standardized residuals of the predictions
+        np.array: An array containing the standardized residuals of the predictions
 
     """
     if expected is not None:
