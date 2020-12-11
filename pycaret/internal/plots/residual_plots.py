@@ -309,19 +309,36 @@ class CooksDistanceWidget(BaseFigureWidget):
             ay=-40
         ))
 
-        def graph(formula, x_range, label=None):
+        def graph(formula, x_range, label, c, text):
             x = x_range
             y = formula(x)
+
+            text_list = ["" for _ in range(x_range.shape[0])]
+            text_list[x_range.shape[0] // 4] = text
+            text_list[(x_range.shape[0] // 4) * 3] = text
+
             fig.add_trace(
                 go.Scatter(x=x, y=y, name=label,
-                           line=dict(color='firebrick', width=4, dash='dash'),
-                           showlegend=True
+                           line=dict(color=c, width=2, dash='dash'),
+                           mode="lines+text", textposition="bottom center",
+                           showlegend=True, text=text_list
+                           )
+            )
+
+            fig.add_trace(
+                go.Scatter(x=x, y=-y, name=label,
+                           line=dict(color=c, width=2, dash='dash'),
+                           mode="lines+text", textposition="top center",
+                           showlegend=True, text=text_list
                            )
             )
 
         p = n_model_params
-        graph(lambda x: np.sqrt(np.abs((0.5 * p * (1 - x)) / x)),
-              np.linspace(0.001, max(model_leverage), 50), 'Cook\'s distance')
+        graph(lambda x: np.sqrt(np.abs((0.5 * (p+1) * (1 - x)) / x)),
+              np.linspace(0.001, max(model_leverage), 50), 'Cook\'s distance = 0.5', 'coral', "0.5")
+
+        graph(lambda x: np.sqrt(np.abs((1 * (p+1) * (1 - x)) / x)),
+              np.linspace(0.001, max(model_leverage), 50), 'Cook\'s distance = 1', 'firebrick', "1")
         return fig
 
     def update_values(
@@ -561,8 +578,14 @@ class InteractiveResidualsPlot:
         self.display.move_progress()
 
         leverage = helper.leverage_statistic(np.array(x))
-        distance = helper.cooks_distance(standardized_residuals, leverage)
+
+        print(np.array(x).shape)
+        print(np.array(x).ndim)
+        print(leverage.min(), leverage.max())
+        raise ValueError()
+
         n_model_params = len(model.get_params())
+        distance = helper.cooks_distance(standardized_residuals, leverage, n_model_params=n_model_params)
         cooks_distance_widget = CooksDistanceWidget(leverage, distance, standardized_residuals,
                                                     n_model_params, split_origin=split_origin)
         logger.info("Calculated Residual vs Leverage Plot inc. Cook's distance")

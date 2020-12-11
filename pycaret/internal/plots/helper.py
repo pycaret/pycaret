@@ -82,12 +82,12 @@ def calculate_standardized_residual(
     return standardized_residuals
 
 
-def cooks_distance(standardized_residuals: np.ndarray, leverage_statistic: np.ndarray) -> np.array:
+def cooks_distance(standardized_residuals: np.ndarray, leverage_statistic: np.ndarray, n_model_params: int = None) -> np.array:
     """
     The Cook’s distance $d_i$ measures to which extent the predicted value $\hat y_i$ changes if the ith observation
-    is removed. It can be efficiently calculated using the leverage statistics $h_i$ and the standardized
-    residuals $\tilde r_i$.
-    $d_{i}=\widetilde{r}_{i}^{2} \frac{h_{i}}{2\left(1-h_{i}\right)}$
+    is removed. It can be efficiently calculated using the leverage statistics $h_i$, the standardized
+    residuals $\tilde r_i$ and the number of predictor variables $p$.
+    $d_{i}=\frac{h_{i}}{1-h_{i}} \frac{\widetilde{r}_{i}^{2}}{p+1}$
     The larger the value of Cook’s distance $d_i$ is, the higher is the influence of the corresponding observation on
     the estimation of the predicted value $\hat y_i$. In practice, we consider a value of Cook’s distance larger than 1
     as dangerously influential.
@@ -100,12 +100,18 @@ def cooks_distance(standardized_residuals: np.ndarray, leverage_statistic: np.nd
     leverage_statistic: np.array
         the leverage statistics for the same dataset $X$ used to calculate the standardized residuals
 
+    n_model_params: int, Optional
+        the number of parameters contained in the analysed model, used as a indicator for the number of predictor
+        variables $p$. If None, a linear model is assumed which has $p=1$.
+
+
     Returns
     -------
         np.array: A array containing the Cook's distance for each observation $x_i$ in the dataset $X$
 
     """
-    multiplier = [element / (2*(1-element)) for element in leverage_statistic]
-    distance = np.multiply(np.power(standardized_residuals, 2), multiplier)
+    p = n_model_params if n_model_params is not None and n_model_params >= 1 else 1
+    multiplier = [element / (1-element) for element in leverage_statistic]
+    distance = np.multiply(np.power(standardized_residuals, 2) / (p + 1), multiplier)
     return distance
 
