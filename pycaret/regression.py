@@ -563,6 +563,7 @@ def setup(
         "feature": "Feature Importance",
         "feature_all": "Feature Importance (All)",
         "tree": "Decision Tree",
+        "residuals_interactive": "Interactive Residuals",
     }
 
     if log_plots == True:
