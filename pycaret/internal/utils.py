@@ -669,3 +669,14 @@ def get_columns_to_stratify_by(
         else:
             stratify = y
     return stratify
+
+
+def check_if_global_is_not_none(globals_d: dict, global_names: dict):
+    def decorator(func):
+        def wrapper(*args, **kwargs):
+            for name, message in global_names.items():
+                if globals_d[name] is None:
+                    raise ValueError(message)
+            return func(*args, **kwargs)
+        return wrapper
+    return decorator

@@ -403,10 +403,62 @@ class _PyCaretExperiment:
         )
         return
 
-    def save_config(self) -> None:
+    def save_config(self, file_name: str) -> None:
+        function_params_str = ", ".join(
+            [f"{k}={v}" for k, v in locals().items() if not k == "globals_d"]
+        )
+
+        self.logger.info("Initializing save_config()")
+        self.logger.info(f"save_config({function_params_str})")
+
+        globals_to_ignore = {
+            "_all_models",
+            "_all_models_internal",
+            "_all_metrics",
+            "create_model_container",
+            "master_model_container",
+            "display_container",
+        }
+
+        globals_to_dump = {
+            k: v
+            for k, v in self.variables.items()
+            if k not in globals_to_ignore
+        }
+
+        import joblib
+
+        joblib.dump(globals_to_dump, file_name)
+
+        self.logger.info(f"Global variables dumped to {file_name}")
+        self.logger.info(
+            "save_config() succesfully completed......................................"
+        )
         return
 
-    def load_config(self) -> None:
+    def load_config(self, file_name: str) -> None:
+        function_params_str = ", ".join(
+            [f"{k}={v}" for k, v in locals().items() if not k == "globals_d"]
+        )
+
+        self.logger.info("Initializing load_config()")
+        self.logger.info(f"load_config({function_params_str})")
+
+        import joblib
+
+        loaded_globals = joblib.load(file_name)
+
+        self.logger.info(f"Global variables loaded from {file_name}")
+
+        for k, v in loaded_globals.items():
+            setattr(self, k, v)
+            self.logger.info(f"Global variable: {k} updated to {v}")
+
+        self.logger.info(f"Global variables set to match those in {file_name}")
+
+        self.logger.info(
+            "load_config() succesfully completed......................................"
+        )
         return
 
     def pull(self, pop=False) -> pd.DataFrame:  # added in pycaret==2.2.0
@@ -14928,3 +14980,13 @@ class ClusteringExperiment(_UnsupervisedExperiment):
         raise ValueError(
             f"No metric 'Display Name' or 'ID' (index) {name_or_id} present in the metrics repository."
         )
+
+
+def experiment_factory(usecase: MLUsecase):
+    switch = {
+        MLUsecase.CLASSIFICATION: ClassificationExperiment,
+        MLUsecase.REGRESSION: RegressionExperiment,
+        MLUsecase.CLUSTERING: ClusteringExperiment,
+        MLUsecase.ANOMALY: AnomalyExperiment
+    }
+    return switch[usecase]()
