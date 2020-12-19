@@ -4,12 +4,15 @@
 
 from typing import Dict, Hashable, Optional
 
+from ray.tune.sample import LogUniform
+
 try:
     from collections.abc import Hashable
 except:
     from collections import Hashable
 
 import numpy as np
+from copy import copy
 
 
 class Distribution:
@@ -26,6 +29,9 @@ class Distribution:
         raise NotImplementedError("This is an abstract class.")
 
     def get_CS(self, label):
+        raise NotImplementedError("This is an abstract class.")
+
+    def get_tune(self):
         raise NotImplementedError("This is an abstract class.")
 
 
@@ -78,6 +84,14 @@ class UniformDistribution(Distribution):
         return CSH.UniformFloatHyperparameter(
             name=label, lower=self.lower, upper=self.upper, log=self.log
         )
+
+    def get_tune(self):
+        from ray import tune
+
+        if self.log:
+            return tune.loguniform(lower=self.lower, upper=self.upper)
+        else:
+            return tune.uniform(lower=self.lower, upper=self.upper)
 
     def __repr__(self):
         return f"UniformDistribution(lower={self.lower}, upper={self.upper}, log={self.log})"
@@ -138,6 +152,49 @@ class IntUniformDistribution(Distribution):
             name=label, lower=self.lower, upper=self.upper, log=self.log
         )
 
+    def get_tune(self):
+        from ray import tune
+        from ray.tune.sample import Integer
+
+        class LogUniformInteger(Integer):
+            class _LogUniform(LogUniform):
+                def sample(self,
+                        domain: "Integer",
+                        spec = None,
+                        size: int = 1):
+                    assert domain.lower > 0, \
+                        "LogUniform needs a lower bound greater than 0"
+                    assert 0 < domain.upper < float("inf"), \
+                        "LogUniform needs a upper bound greater than 0"
+                    logmin = np.log(domain.lower) / np.log(self.base)
+                    logmax = np.log(domain.upper) / np.log(self.base)
+
+                    items = self.base**(np.random.uniform(logmin, logmax, size=size))
+                    items = np.round(items).astype(int)
+                    return items if len(items) > 1 else domain.cast(items[0])
+
+            def loguniform(self, base: float = 10):
+                if not self.lower > 0:
+                    raise ValueError(
+                        "LogUniform requires a lower bound greater than 0."
+                        f"Got: {self.lower}. Did you pass a variable that has "
+                        "been log-transformed? If so, pass the non-transformed value "
+                        "instead.")
+                if not 0 < self.upper < float("inf"):
+                    raise ValueError(
+                        "LogUniform requires a upper bound greater than 0. "
+                        f"Got: {self.lower}. Did you pass a variable that has "
+                        "been log-transformed? If so, pass the non-transformed value "
+                        "instead.")
+                new = copy(self)
+                new.set_sampler(self._LogUniform(base))
+                return new
+
+        if self.log:
+            return LogUniformInteger(self.lower, self.upper).loguniform(10)
+        else:
+            return Integer(self.lower, self.upper).uniform()
+
     def __repr__(self):
         return f"IntUniformDistribution(lower={self.lower}, upper={self.upper}, log={self.log})"
 
@@ -191,6 +248,11 @@ class DiscreteUniformDistribution(Distribution):
             name=label, lower=self.lower, upper=self.upper, q=self.q
         )
 
+    def get_tune(self):
+        from ray import tune
+
+        return tune.quniform(lower=self.lower, upper=self.upper, q=self.q)
+
     def __repr__(self):
         return f"DiscreteUniformDistribution(lower={self.lower}, upper={self.upper}, q={self.q})"
 
@@ -237,6 +299,11 @@ class CategoricalDistribution(Distribution):
             name=label, choices=[x for x in self.values if isinstance(x, Hashable)]
         )
 
+    def get_tune(self):
+        from ray import tune
+
+        return tune.choice(self.values)
+
     def __repr__(self):
         return f"CategoricalDistribution(values={self.values})"
 
@@ -255,6 +322,10 @@ def get_hyperopt_distributions(distributions: Dict[str, Distribution]) -> dict:
 
 def get_CS_distributions(distributions: Dict[str, Distribution]) -> dict:
     return {k: v.get_CS(k) for k, v in distributions.items()}
+
+
+def get_tune_distributions(distributions: Dict[str, Distribution]) -> dict:
+    return {k: v.get_tune() for k, v in distributions.items()}
 
 
 def get_min_max(o):
