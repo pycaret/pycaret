@@ -80,6 +80,7 @@ jobs:
         python -m pip install codecov
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
         if [ -f requirements-optional.txt ]; then pip install -r requirements-optional.txt; fi
+        python -m pip install hpbandster ConfigSpace
         python -m spacy download en
     - name: Remove tests
       run: |
