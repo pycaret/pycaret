@@ -4347,7 +4347,7 @@ def tune_model_supervised(
                         max_iters=early_stopping_max_iters,
                         n_jobs=n_jobs,
                         use_gpu=gpu_param,
-                        refit=False,
+                        refit=True,
                         verbose=tuner_verbose,
                         pipeline_auto_early_stop=True,
                         **search_kwargs,
