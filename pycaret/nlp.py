@@ -4253,6 +4253,7 @@ def evaluate_model(model):
         topic_num=b,
         save=fixed(False),
         system=fixed(True),
+        display_format=fixed(None),
     )
 
 

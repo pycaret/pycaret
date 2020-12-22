@@ -7291,6 +7291,7 @@ def evaluate_model(
         use_train_data=fixed(use_train_data),
         system=fixed(True),
         display=fixed(None),
+        display_format=fixed(None),
     )
 
 
