@@ -61,7 +61,7 @@ def str_if_not_null(x):
     return str(x)
 
 
-def find_id_columns(data, numerical_features):
+def find_id_columns(data, target, numerical_features):
     # some times we have id column in the data set, we will try to find it and then  will drop it if found
     len_samples = len(data)
     id_columns = []
@@ -69,7 +69,7 @@ def find_id_columns(data, numerical_features):
         include=["object", "int64", "float64", "float32"]
     ).columns:
         col = data[i]
-        if i not in numerical_features:
+        if i not in numerical_features and i != target:
             if sum(col.isnull()) == 0:
                 try:
                     col = col.astype("int64")
@@ -3375,7 +3375,9 @@ def Preprocess_Path_One(
         ml_usecase = "regression"
     else:
         # WE NEED TO AUTO INFER the ml use case
-        ml_usecase, subcase = infer_ml_usecase(train_data[target_variable])
+        inferred_ml_usecase, subcase = infer_ml_usecase(train_data[target_variable])
+        if ml_usecase is None:
+            ml_usecase = inferred_ml_usecase
 
     dtypes = DataTypes_Auto_infer(
         target=target_variable,
@@ -3385,7 +3387,9 @@ def Preprocess_Path_One(
         time_features=time_features,
         features_todrop=features_todrop,
         display_types=display_types,
-        id_columns=find_id_columns(train_data, numerical_features=numerical_features),
+        id_columns=find_id_columns(
+            train_data, target_variable, numerical_features=numerical_features
+        ),
     )
 
     # for imputation

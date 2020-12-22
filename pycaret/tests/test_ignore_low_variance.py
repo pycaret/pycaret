@@ -20,6 +20,7 @@ def test():
         html=False,
         ignore_low_variance=True,
         remove_perfect_collinearity=False,
+        n_jobs=1,
     )
     assert len(data.columns) - 1 - 1 == len(
         pycaret.classification.get_config("X").columns

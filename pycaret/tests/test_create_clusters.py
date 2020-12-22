@@ -19,6 +19,7 @@ def test():
         html=False,
         create_clusters=True,
         cluster_iter=10,
+        n_jobs=1,
     )
     assert len(pycaret.classification.get_config("X").columns) > len(data.columns)
 

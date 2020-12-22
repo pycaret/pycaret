@@ -22,6 +22,7 @@ def test():
         html=False,
         session_id=123,
         transform_target=True,
+        n_jobs=1,
     )
 
     # compare models

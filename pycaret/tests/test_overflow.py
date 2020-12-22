@@ -13,7 +13,7 @@ def test():
     data = get_data("boston")
     from pycaret.regression import setup, create_model, tune_model
 
-    s = setup(data, target="medv", silent=True, html=False, session_id=123)
+    s = setup(data, target="medv", silent=True, html=False, session_id=123, n_jobs=1,)
     gbr = create_model("gbr")
     tuned_gbr = tune_model(gbr)
     xgboost = create_model("xgboost")

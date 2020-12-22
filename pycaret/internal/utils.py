@@ -123,7 +123,14 @@ def save_config(file_name: str, globals_d: dict):
     logger.info("Initializing save_config()")
     logger.info(f"save_config({function_params_str})")
 
-    globals_to_ignore = {"_all_models", "_all_models_internal", "_all_metrics"}
+    globals_to_ignore = {
+        "_all_models",
+        "_all_models_internal",
+        "_all_metrics",
+        "create_model_container",
+        "master_model_container",
+        "display_container",
+    }
 
     globals_to_dump = {
         k: v

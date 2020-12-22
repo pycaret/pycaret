@@ -16,7 +16,12 @@ def test():
 
     # categorical_feature = Recency
     clf1 = pycaret.classification.setup(
-        data, target="Class", silent=True, html=False, categorical_features=["Recency"]
+        data,
+        target="Class",
+        silent=True,
+        html=False,
+        categorical_features=["Recency"],
+        n_jobs=1,
     )
     # X_train = pycaret.classification.get_config('X_train')
     # assert len([x for x in X_train.columns if 'Recency' in x]) == data.Recency.nunique()

@@ -10,18 +10,19 @@ import pycaret.datasets
 
 def test():
     # loading dataset
-    data = pycaret.datasets.get_data("juice")
+    data = pycaret.datasets.get_data("boston")
     assert isinstance(data, pd.core.frame.DataFrame)
 
     # init setup
     reg1 = pycaret.regression.setup(
         data,
-        target="Purchase",
+        target="medv",
         log_experiment=True,
         silent=True,
         html=False,
         session_id=123,
         fold=2,
+        n_jobs=1,
     )
 
     model = pycaret.regression.create_model("rf")

@@ -22,6 +22,7 @@ def test():
         html=False,
         numeric_imputation="mean",
         categorical_imputation="constant",
+        n_jobs=1,
     )
 
     X_train = pycaret.classification.get_config("X_train")
@@ -47,6 +48,7 @@ def test():
         html=False,
         numeric_imputation="median",
         categorical_imputation="mode",
+        n_jobs=1,
     )
 
     X_train = pycaret.classification.get_config("X_train")
@@ -66,7 +68,12 @@ def test():
 
     # numeric imputation = zero
     clf1 = pycaret.classification.setup(
-        data, target="Class", silent=True, html=False, numeric_imputation="zero"
+        data,
+        target="Class",
+        silent=True,
+        html=False,
+        numeric_imputation="zero",
+        n_jobs=1,
     )
 
     X_train = pycaret.classification.get_config("X_train")
