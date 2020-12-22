@@ -31,6 +31,7 @@ pip install pycaret[full]
 ```
 
 ### Minor Release
+- [December 22, 2020] `2.2.3` released fixing several bugs. Major compatibility issues of catboost, pyod (other impacts unknown as of now) with sklearn=0.24 (released on Dec 22, 2020). Temporary fix is requiring 0.23.2 specifically in the `requirements.txt`. [Click here](https://github.com/pycaret/pycaret/releases) to see release notes.
 - [November 25, 2020] `2.2.2` released fixing several bugs. [Click here](https://github.com/pycaret/pycaret/releases) to see release notes.
 - [November 9, 2020] `2.2.1` released fixing several bugs. [Click here](https://github.com/pycaret/pycaret/releases) to see release notes.
 
