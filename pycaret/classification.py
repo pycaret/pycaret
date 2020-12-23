@@ -7,14 +7,11 @@
 import pandas as pd
 import numpy as np
 
-from pycaret.internal.TabularClass import MLUsecase, ClassificationExperiment
+from pycaret.internal.TabularClass import ClassificationExperiment
 from pycaret.internal.utils import check_if_global_is_not_none
 
-from pycaret.internal.Display import Display, is_in_colab, enable_colab
 from typing import List, Tuple, Any, Union, Optional, Dict
 import warnings
-from IPython.utils import io
-import traceback
 
 warnings.filterwarnings("ignore")
 
