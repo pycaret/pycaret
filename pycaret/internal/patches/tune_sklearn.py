@@ -164,7 +164,7 @@ def get_tune_trainable():
 
 
 def get_early_stop():
-    from tune_sklearn._detect_xgboost import is_xgboost_model
+    from tune_sklearn._detect_booster import is_xgboost_model
     from tune_sklearn.utils import (
         check_warm_start_iter,
         check_warm_start_ensemble,
