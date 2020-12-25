@@ -255,6 +255,30 @@ def plot_model(
         None
         
     """
+    
+    
+    # error handling
+    
+    # check if model is a pandas dataframe
+    if isinstance(model, pd.DataFrame) == False:
+        raise TypeError("Model needs to be a pandas.DataFrame object.")
+        
+    # check plot parameter
+    plot_types = ["2d", "3d"]
+    
+    if plot not in plot_types:
+        raise ValueError("Plots can only be \"2d\" or \"3d\".")
+        
+    # checking display_format parameter
+    plot_formats = [None, "streamlit"]
+    
+    if display_format not in plot_formats:
+        raise ValueError("display_format can only be None or \"streamlit\".")
+        
+    """
+    error handling ends here
+    """
+   
 
     # loading libraries
     import numpy as np
