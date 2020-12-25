@@ -5790,6 +5790,12 @@ def plot_model(
         raise TypeError(
             "feature parameter must be string containing column name of dataset."
         )
+        
+    # checking display_format parameter
+    plot_formats = [None, "streamlit"]
+    
+    if display_format not in plot_formats:
+        raise ValueError("display_format can only be None or \"streamlit\".")
 
     """
     
