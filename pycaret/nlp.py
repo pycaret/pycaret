@@ -2043,6 +2043,12 @@ def plot_model(model=None, plot="frequency", topic_num=None, save=False, system=
                 "(Type Error): Model not supported for plot = topic_model. Please see docstring for list of available models supported for topic_model."
             )
 
+    # checking display_format parameter
+    plot_formats = [None, "streamlit"]
+    
+    if display_format not in plot_formats:
+        raise ValueError("display_format can only be None or \"streamlit\".")
+            
     """
     error handling ends here
     """
