@@ -421,9 +421,7 @@ class _PyCaretExperiment:
         }
 
         globals_to_dump = {
-            k: v
-            for k, v in self.variables.items()
-            if k not in globals_to_ignore
+            k: v for k, v in self.variables.items() if k not in globals_to_ignore
         }
 
         import joblib
@@ -1854,27 +1852,34 @@ class _TabularExperiment(_PyCaretExperiment):
                 raise ValueError(f"fold_groups cannot contain NaNs.")
         self.fold_shuffle_param = fold_shuffle
 
-        from sklearn.model_selection import (
-            StratifiedKFold,
-            KFold,
-            GroupKFold,
-            TimeSeriesSplit,
-        )
+        if not self._is_unsupervised():
+            from sklearn.model_selection import (
+                StratifiedKFold,
+                KFold,
+                GroupKFold,
+                TimeSeriesSplit,
+            )
 
-        if fold_strategy == "kfold":
-            self.fold_generator = KFold(
-                self.fold_param, random_state=self.seed, shuffle=self.fold_shuffle_param
-            )
-        elif fold_strategy == "stratifiedkfold":
-            self.fold_generator = StratifiedKFold(
-                self.fold_param, random_state=self.seed, shuffle=self.fold_shuffle_param
-            )
-        elif fold_strategy == "groupkfold":
-            self.fold_generator = GroupKFold(self.fold_param)
-        elif fold_strategy == "timeseries":
-            self.fold_generator = TimeSeriesSplit(self.fold_param)
-        else:
-            self.fold_generator = fold_strategy
+            fold_random_state = self.seed if self.fold_shuffle_param else None
+
+            if fold_strategy == "kfold":
+                self.fold_generator = KFold(
+                    self.fold_param,
+                    random_state=fold_random_state,
+                    shuffle=self.fold_shuffle_param,
+                )
+            elif fold_strategy == "stratifiedkfold":
+                self.fold_generator = StratifiedKFold(
+                    self.fold_param,
+                    random_state=fold_random_state,
+                    shuffle=self.fold_shuffle_param,
+                )
+            elif fold_strategy == "groupkfold":
+                self.fold_generator = GroupKFold(self.fold_param)
+            elif fold_strategy == "timeseries":
+                self.fold_generator = TimeSeriesSplit(self.fold_param)
+            else:
+                self.fold_generator = fold_strategy
 
         # create create_model_container
         self.create_model_container = []
@@ -15106,6 +15111,6 @@ def experiment_factory(usecase: MLUsecase):
         MLUsecase.CLASSIFICATION: ClassificationExperiment,
         MLUsecase.REGRESSION: RegressionExperiment,
         MLUsecase.CLUSTERING: ClusteringExperiment,
-        MLUsecase.ANOMALY: AnomalyExperiment
+        MLUsecase.ANOMALY: AnomalyExperiment,
     }
     return switch[usecase]()
