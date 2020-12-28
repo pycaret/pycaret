@@ -4,20 +4,24 @@
 # Release: PyCaret 2.2.0
 # Last modified : 25/10/2020
 
-import sys
-import datetime, time
-import warnings
-from pycaret.internal.logging import get_logger
-from pycaret.internal.Display import Display, is_in_colab, enable_colab
 import pandas as pd
 import numpy as np
-import ipywidgets as ipw
-from typing import List, Tuple, Any, Union, Optional, Dict
-import pycaret.internal.tabular
 
-from pycaret.internal.tabular import MLUsecase
+from pycaret.internal.TabularClass import ClusteringExperiment
+from pycaret.internal.utils import check_if_global_is_not_none
+
+from typing import List, Tuple, Any, Union, Optional, Dict
+import warnings
 
 warnings.filterwarnings("ignore")
+
+_CURRENT_EXPERIMENT = None
+_CURRENT_EXPERIMENT_EXCEPTION = (
+    "_CURRENT_EXPERIMENT global variable is not set. Please run setup() first."
+)
+_CURRENT_EXPERIMENT_DECORATOR_DICT = {
+    "_CURRENT_EXPERIMENT": _CURRENT_EXPERIMENT_EXCEPTION
+}
 
 
 def setup(
@@ -369,23 +373,10 @@ def setup(
     
     """
 
-    available_plots = {
-        "cluster": "Cluster PCA Plot (2d)",
-        "tsne": "Cluster TSnE (3d)",
-        "elbow": "Elbow",
-        "silhouette": "Silhouette",
-        "distance": "Distance",
-        "distribution": "Distribution",
-    }
-
-    if log_plots == True:
-        log_plots = ["cluster", "distribution", "elbow"]
-
-    return pycaret.internal.tabular.setup(
-        ml_usecase="clustering",
-        available_plots=available_plots,
+    exp = ClusteringExperiment()
+    set_current_experiment(exp)
+    return exp.setup(
         data=data,
-        target=None,
         preprocess=preprocess,
         imputation_type=imputation_type,
         iterative_imputation_iters=iterative_imputation_iters,
@@ -413,21 +404,11 @@ def setup(
         combine_rare_levels=combine_rare_levels,
         rare_level_threshold=rare_level_threshold,
         bin_numeric_features=bin_numeric_features,
-        remove_outliers=False,
         remove_multicollinearity=remove_multicollinearity,
         multicollinearity_threshold=multicollinearity_threshold,
         remove_perfect_collinearity=remove_perfect_collinearity,
-        create_clusters=False,
-        polynomial_features=False,
-        trigonometry_features=False,
         group_features=group_features,
         group_names=group_names,
-        feature_selection=False,
-        feature_interaction=False,
-        feature_ratio=False,
-        fix_imbalance=False,
-        data_split_shuffle=False,
-        data_split_stratify=False,
         n_jobs=n_jobs,
         use_gpu=use_gpu,
         custom_pipeline=custom_pipeline,
@@ -445,6 +426,7 @@ def setup(
     )
 
 
+@check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def create_model(
     model: Union[str, Any],
     num_clusters: int = 4,
@@ -452,7 +434,7 @@ def create_model(
     round: int = 4,
     fit_kwargs: Optional[dict] = None,
     verbose: bool = True,
-    **kwargs
+    **kwargs,
 ):
 
     """
@@ -536,7 +518,7 @@ def create_model(
        
     """
 
-    return pycaret.internal.tabular.create_model_unsupervised(
+    return _CURRENT_EXPERIMENT.create_model(
         estimator=model,
         num_clusters=num_clusters,
         ground_truth=ground_truth,
@@ -547,6 +529,7 @@ def create_model(
     )
 
 
+@check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def assign_model(
     model, transformation: bool = False, verbose: bool = True
 ) -> pd.DataFrame:
@@ -583,11 +566,12 @@ def assign_model(
   
     """
 
-    return pycaret.internal.tabular.assign_model(
+    return _CURRENT_EXPERIMENT.assign_model(
         model, transformation=transformation, verbose=verbose
     )
 
 
+@check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def plot_model(
     model,
     plot: str = "cluster",
@@ -651,11 +635,12 @@ def plot_model(
         None
 
     """
-    return pycaret.internal.tabular.plot_model(
+    return _CURRENT_EXPERIMENT.plot_model(
         model, plot=plot, feature_name=feature, label=label, scale=scale, save=save
     )
 
 
+@check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def evaluate_model(
     model, feature: Optional[str] = None, fit_kwargs: Optional[dict] = None,
 ):
@@ -700,11 +685,12 @@ def evaluate_model(
 
     """
 
-    return pycaret.internal.tabular.evaluate_model(
+    return _CURRENT_EXPERIMENT.evaluate_model(
         estimator=model, feature_name=feature, fit_kwargs=fit_kwargs
     )
 
 
+@check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def tune_model(
     model,
     supervised_target: str,
@@ -835,7 +821,7 @@ def tune_model(
 
           
     """
-    return pycaret.internal.tabular.tune_model_unsupervised(
+    return _CURRENT_EXPERIMENT.tune_model(
         model=model,
         supervised_target=supervised_target,
         supervised_type=supervised_type,
@@ -850,6 +836,7 @@ def tune_model(
     )
 
 
+@check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def predict_model(model, data: pd.DataFrame) -> pd.DataFrame:
 
     """
@@ -890,11 +877,10 @@ def predict_model(model, data: pd.DataFrame) -> pd.DataFrame:
 
     """
 
-    return pycaret.internal.tabular.predict_model_unsupervised(
-        estimator=model, data=data, ml_usecase=MLUsecase.CLUSTERING,
-    )
+    return _CURRENT_EXPERIMENT.predict_model(estimator=model, data=data,)
 
 
+@check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def deploy_model(
     model, model_name: str, authentication: dict, platform: str = "aws",
 ):
@@ -973,7 +959,7 @@ def deploy_model(
     
     """
 
-    return pycaret.internal.tabular.deploy_model(
+    return _CURRENT_EXPERIMENT.deploy_model(
         model=model,
         model_name=model_name,
         authentication=authentication,
@@ -981,6 +967,7 @@ def deploy_model(
     )
 
 
+@check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def save_model(model, model_name: str, model_only: bool = False, verbose: bool = True):
 
     """
@@ -1020,11 +1007,12 @@ def save_model(model, model_name: str, model_only: bool = False, verbose: bool =
 
     """
 
-    return pycaret.internal.tabular.save_model(
+    return _CURRENT_EXPERIMENT.save_model(
         model=model, model_name=model_name, model_only=model_only, verbose=verbose
     )
 
 
+@check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def load_model(
     model_name,
     platform: Optional[str] = None,
@@ -1073,7 +1061,7 @@ def load_model(
 
     """
 
-    return pycaret.internal.tabular.load_model(
+    return _CURRENT_EXPERIMENT.load_model(
         model_name=model_name,
         platform=platform,
         authentication=authentication,
@@ -1081,6 +1069,7 @@ def load_model(
     )
 
 
+@check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def pull(pop: bool = False) -> pd.DataFrame:
     """
     Returns last printed score grid. Use ``pull`` function after
@@ -1096,9 +1085,10 @@ def pull(pop: bool = False) -> pd.DataFrame:
         
 
     """
-    return pycaret.internal.tabular.pull(pop=pop)
+    return _CURRENT_EXPERIMENT.pull(pop=pop)
 
 
+@check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def models(internal: bool = False, raise_errors: bool = True) -> pd.DataFrame:
 
     """
@@ -1128,9 +1118,10 @@ def models(internal: bool = False, raise_errors: bool = True) -> pd.DataFrame:
 
     """
 
-    return pycaret.internal.tabular.models(internal=internal, raise_errors=raise_errors)
+    return _CURRENT_EXPERIMENT.models(internal=internal, raise_errors=raise_errors)
 
 
+@check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def get_metrics(
     reset: bool = False, include_custom: bool = True, raise_errors: bool = True,
 ) -> pd.DataFrame:
@@ -1166,11 +1157,12 @@ def get_metrics(
 
     """
 
-    return pycaret.internal.tabular.get_metrics(
+    return _CURRENT_EXPERIMENT.get_metrics(
         reset=reset, include_custom=include_custom, raise_errors=raise_errors,
     )
 
 
+@check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def add_metric(
     id: str,
     name: str,
@@ -1178,7 +1170,7 @@ def add_metric(
     target: str = "pred",
     greater_is_better: bool = True,
     multiclass: bool = True,
-    **kwargs
+    **kwargs,
 ) -> pd.Series:
     """
     Adds a custom metric to be used in all functions.
@@ -1222,7 +1214,7 @@ def add_metric(
 
     """
 
-    return pycaret.internal.tabular.add_metric(
+    return _CURRENT_EXPERIMENT.add_metric(
         id=id,
         name=name,
         score_func=score_func,
@@ -1233,6 +1225,7 @@ def add_metric(
     )
 
 
+@check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def remove_metric(name_or_id: str):
     """
     Removes a metric used for evaluation.
@@ -1255,9 +1248,10 @@ def remove_metric(name_or_id: str):
         None
 
     """
-    return pycaret.internal.tabular.remove_metric(name_or_id=name_or_id)
+    return _CURRENT_EXPERIMENT.remove_metric(name_or_id=name_or_id)
 
 
+@check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def get_logs(experiment_name: Optional[str] = None, save: bool = False) -> pd.DataFrame:
 
     """
@@ -1288,9 +1282,10 @@ def get_logs(experiment_name: Optional[str] = None, save: bool = False) -> pd.Da
 
     """
 
-    return pycaret.internal.tabular.get_logs(experiment_name=experiment_name, save=save)
+    return _CURRENT_EXPERIMENT.get_logs(experiment_name=experiment_name, save=save)
 
 
+@check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def get_config(variable: str):
 
     """
@@ -1328,9 +1323,10 @@ def get_config(variable: str):
 
     """
 
-    return pycaret.internal.tabular.get_config(variable=variable)
+    return _CURRENT_EXPERIMENT.get_config(variable=variable)
 
 
+@check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def set_config(variable: str, value):
 
     """
@@ -1367,9 +1363,10 @@ def set_config(variable: str, value):
 
     """
 
-    return pycaret.internal.tabular.set_config(variable=variable, value=value)
+    return _CURRENT_EXPERIMENT.set_config(variable=variable, value=value)
 
 
+@check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def save_config(file_name: str):
 
     """
@@ -1391,9 +1388,10 @@ def save_config(file_name: str):
 
     """
 
-    return pycaret.internal.tabular.save_config(file_name=file_name)
+    return _CURRENT_EXPERIMENT.save_config(file_name=file_name)
 
 
+@check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def load_config(file_name: str):
 
     """
@@ -1412,7 +1410,7 @@ def load_config(file_name: str):
 
     """
 
-    return pycaret.internal.tabular.load_config(file_name=file_name)
+    return _CURRENT_EXPERIMENT.load_config(file_name=file_name)
 
 
 def get_clusters(
@@ -1462,13 +1460,14 @@ def get_clusters(
     log_profile: bool = False,
     log_data: bool = False,
     profile: bool = False,
-    **kwargs
+    **kwargs,
 ) -> pd.DataFrame:
 
     """
     Callable from any external environment without requiring setup initialization.
     """
-    setup(
+    exp = ClusteringExperiment()
+    exp.setup(
         data=data,
         preprocess=preprocess,
         imputation_type=imputation_type,
@@ -1515,7 +1514,7 @@ def get_clusters(
         profile=profile,
     )
 
-    c = create_model(
+    c = exp.create_model(
         model=model,
         num_clusters=num_clusters,
         ground_truth=ground_truth,
@@ -1524,5 +1523,14 @@ def get_clusters(
         verbose=False,
         **kwargs,
     )
-    dataset = assign_model(c, verbose=False)
-    return dataset
+    return exp.assign_model(c, verbose=False)
+
+
+def set_current_experiment(experiment: ClusteringExperiment):
+    global _CURRENT_EXPERIMENT
+
+    if not isinstance(experiment, ClusteringExperiment):
+        raise TypeError(
+            f"experiment must be a PyCaret ClusteringExperiment object, got {type(experiment)}."
+        )
+    _CURRENT_EXPERIMENT = experiment
