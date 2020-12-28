@@ -477,17 +477,19 @@ class Simple_Imputer(_BaseImputer):
         self,
         numeric_strategy,
         categorical_strategy,
-        target_variable,
+        target,
         fill_value_numerical=0,
         fill_value_categorical="not_available",
     ):
         if numeric_strategy not in self._numeric_strategies:
             numeric_strategy = "zero"
         self.numeric_strategy = numeric_strategy
-        self.target = target_variable
+        self.target = target
         if categorical_strategy not in self._categorical_strategies:
             categorical_strategy = "most_frequent"
         self.categorical_strategy = categorical_strategy
+        self.fill_value_numerical = fill_value_numerical
+        self.fill_value_categorical = fill_value_categorical
         self.numeric_imputer = SimpleImputer(
             strategy=self._numeric_strategies[self.numeric_strategy],
             fill_value=fill_value_numerical,
@@ -589,9 +591,9 @@ class Surrogate_Imputer(_BaseImputer):
 
   """
 
-    def __init__(self, numeric_strategy, categorical_strategy, target_variable):
+    def __init__(self, numeric_strategy, categorical_strategy, target):
         self.numeric_strategy = numeric_strategy
-        self.target = target_variable
+        self.target = target
         self.categorical_strategy = categorical_strategy
 
     def fit(self, dataset, y=None):  #
@@ -764,7 +766,7 @@ class Iterative_Imputer(_BaseImputer):
     def _initial_imputation(self, X):
         if self.initial_imputer_ is None:
             self.initial_imputer_ = Simple_Imputer(
-                target_variable="__TARGET__",  # dummy value, we don't actually want to drop anything
+                target="__TARGET__",  # dummy value, we don't actually want to drop anything
                 numeric_strategy=self.initial_strategy_numeric,
                 categorical_strategy=self.initial_strategy_categorical,
             )
@@ -1711,8 +1713,8 @@ class Cluster_Entire_Data(BaseEstimator, TransformerMixin):
           check_clusters_upto: to determine optimum number of kmeans clusters, set the uppler limit of clusters
   """
 
-    def __init__(self, target_variable, check_clusters_upto=20, random_state=42):
-        self.target = target_variable
+    def __init__(self, target, check_clusters_upto=20, random_state=42):
+        self.target = target
         self.check_clusters = check_clusters_upto + 1
         self.random_state = random_state
 
@@ -1832,12 +1834,12 @@ class Reduce_Cardinality_with_Clustering(BaseEstimator, TransformerMixin):
 
     def __init__(
         self,
-        target_variable,
+        target,
         catagorical_feature=[],
         check_clusters_upto=30,
         random_state=42,
     ):
-        self.target = target_variable
+        self.target = target
         self.feature = catagorical_feature
         self.check_clusters = check_clusters_upto + 1
         self.random = random_state
@@ -3397,7 +3399,7 @@ def Preprocess_Path_One(
     if imputation_type == "simple":
         imputer = Simple_Imputer(
             numeric_strategy=numeric_imputation_strategy,
-            target_variable=target_variable,
+            target=target_variable,
             categorical_strategy=categorical_imputation_strategy,
         )
     # elif imputation_type == "surrogate imputer":
@@ -3451,7 +3453,7 @@ def Preprocess_Path_One(
     # cardinality:
     if apply_cardinality_reduction == True and cardinal_method == "cluster":
         cardinality = Reduce_Cardinality_with_Clustering(
-            target_variable=target_variable,
+            target=target_variable,
             catagorical_feature=cardinal_features,
             check_clusters_upto=50,
             random_state=random_state,
@@ -3545,7 +3547,7 @@ def Preprocess_Path_One(
     # cluster all data:
     if cluster_entire_data == True:
         cluster_all = Cluster_Entire_Data(
-            target_variable=target_variable,
+            target=target_variable,
             check_clusters_upto=range_of_clusters_to_try,
             random_state=random_state,
         )
