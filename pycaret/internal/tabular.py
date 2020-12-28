@@ -5702,6 +5702,7 @@ def interpret_model(
     feature: Optional[str] = None,
     observation: Optional[int] = None,
     use_train_data: bool = False,
+    save: bool = False,
     **kwargs,  # added in pycaret==2.1
 ):
 
@@ -5745,6 +5746,9 @@ def interpret_model(
         interactivity. For analysis at the sample level, an observation parameter must
         be passed with the index value of the observation in test / hold-out set. 
 
+    save: bool, default = False
+        When set to True, Plot is saved as a 'png' file in current working directory.
+
     **kwargs: 
         Additional keyword arguments to pass to the plot.
 
@@ -5768,6 +5772,8 @@ def interpret_model(
     logger.info(f"interpret_model({function_params_str})")
 
     logger.info("Checking exceptions")
+
+    import matplotlib.pyplot as plt
 
     # checking if shap available
     try:
@@ -5822,16 +5828,18 @@ def interpret_model(
 
     shap_plot = None
 
-    def summary():
+    def summary(show: bool = True):
 
         logger.info("Creating TreeExplainer")
         explainer = shap.TreeExplainer(model)
         logger.info("Compiling shap values")
         shap_values = explainer.shap_values(test_X)
-        shap_plot = shap.summary_plot(shap_values, test_X, **kwargs)
+        shap_plot = shap.summary_plot(shap_values, test_X, show=show, **kwargs)
+        if save:
+            plt.savefig(f"SHAP {plot}.png")
         return shap_plot
 
-    def correlation():
+    def correlation(show: bool = True):
 
         if feature == None:
 
@@ -5854,13 +5862,17 @@ def interpret_model(
 
         if model_id in shap_models_type1:
             logger.info("model type detected: type 1")
-            shap.dependence_plot(dependence, shap_values[1], test_X, **kwargs)
+            shap.dependence_plot(
+                dependence, shap_values[1], test_X, show=show, **kwargs
+            )
         elif model_id in shap_models_type2:
             logger.info("model type detected: type 2")
-            shap.dependence_plot(dependence, shap_values, test_X, **kwargs)
+            shap.dependence_plot(dependence, shap_values, test_X, show=show, **kwargs)
+        if save:
+            plt.savefig(f"SHAP {plot}.png")
         return None
 
-    def reason():
+    def reason(show: bool = True):
         shap_plot = None
         if model_id in shap_models_type1:
             logger.info("model type detected: type 1")
@@ -5876,7 +5888,11 @@ def interpret_model(
                 shap_values = explainer.shap_values(test_X)
                 shap.initjs()
                 shap_plot = shap.force_plot(
-                    explainer.expected_value[1], shap_values[1], test_X, **kwargs
+                    explainer.expected_value[1],
+                    shap_values[1],
+                    test_X,
+                    show=show,
+                    **kwargs,
                 )
 
             else:
@@ -5891,6 +5907,7 @@ def interpret_model(
                         explainer.expected_value[1],
                         shap_values[0][row_to_show],
                         data_for_prediction,
+                        show=show,
                         **kwargs,
                     )
 
@@ -5903,6 +5920,7 @@ def interpret_model(
                         explainer.expected_value[1],
                         shap_values[1],
                         data_for_prediction,
+                        show=show,
                         **kwargs,
                     )
 
@@ -5921,7 +5939,7 @@ def interpret_model(
                 )
 
                 shap_plot = shap.force_plot(
-                    explainer.expected_value, shap_values, test_X, **kwargs
+                    explainer.expected_value, shap_values, test_X, show=show, **kwargs
                 )
 
             else:
@@ -5933,11 +5951,14 @@ def interpret_model(
                     explainer.expected_value,
                     shap_values[row_to_show, :],
                     test_X.iloc[row_to_show, :],
+                    show=show,
                     **kwargs,
                 )
+        if save:
+            shap.save_html(f"SHAP {plot}.html", shap_plot)
         return shap_plot
 
-    shap_plot = locals()[plot]()
+    shap_plot = locals()[plot](show=not save)
 
     logger.info("Visual Rendered Successfully")
 

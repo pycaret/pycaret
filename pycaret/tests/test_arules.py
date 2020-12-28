@@ -18,7 +18,10 @@ def test():
 
     # init setup
     arul101 = pycaret.arules.setup(
-        data=data, transaction_id="InvoiceNo", item_id="Description", session_id=123
+        data=data,
+        transaction_id="InvoiceNo",
+        item_id="Description",
+        session_id=123,
     )
     assert isinstance(arul101, tuple)
     assert isinstance(arul101[0], pd.core.frame.DataFrame)

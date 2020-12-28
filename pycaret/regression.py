@@ -1567,6 +1567,7 @@ def interpret_model(
     feature: Optional[str] = None,
     observation: Optional[int] = None,
     use_train_data: bool = False,
+    save: bool = False,
     **kwargs,
 ):
 
@@ -1610,6 +1611,10 @@ def interpret_model(
         of test data.
 
 
+    save: bool, default = False
+        When set to True, Plot is saved as a 'png' file in current working directory.
+
+
     **kwargs:
         Additional keyword arguments to pass to the plot.
 
@@ -1625,6 +1630,7 @@ def interpret_model(
         feature=feature,
         observation=observation,
         use_train_data=use_train_data,
+        save=save,
         **kwargs,
     )
 

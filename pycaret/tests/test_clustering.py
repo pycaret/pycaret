@@ -21,6 +21,7 @@ def test():
         silent=True,
         html=False,
         session_id=123,
+        n_jobs=1,
     )
 
     # create model

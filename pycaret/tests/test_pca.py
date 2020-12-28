@@ -22,6 +22,7 @@ def test():
         pca=True,
         pca_method="linear",
         pca_components=5,
+        n_jobs=1,
     )
     assert len(pycaret.classification.get_config("X_train").columns) == 5
 
@@ -34,6 +35,7 @@ def test():
         pca=True,
         pca_method="kernel",
         pca_components=6,
+        n_jobs=1,
     )
     assert len(pycaret.classification.get_config("X_train").columns) == 6
 
@@ -46,6 +48,7 @@ def test():
         pca=True,
         pca_method="incremental",
         pca_components=7,
+        n_jobs=1,
     )
     assert len(pycaret.classification.get_config("X_train").columns) == 7
 
