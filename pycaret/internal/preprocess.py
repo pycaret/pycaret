@@ -52,6 +52,7 @@ pd.set_option("display.max_rows", 500)
 
 SKLEARN_EMPTY_STEP = "passthrough"
 
+
 # _____________________________________________________________________________________________________________________________
 
 
@@ -66,7 +67,7 @@ def find_id_columns(data, target, numerical_features):
     len_samples = len(data)
     id_columns = []
     for i in data.select_dtypes(
-        include=["object", "int64", "float64", "float32"]
+            include=["object", "int64", "float64", "float32"]
     ).columns:
         col = data[i]
         if i not in numerical_features and i != target:
@@ -94,15 +95,15 @@ class DataTypes_Auto_infer(BaseEstimator, TransformerMixin):
   """
 
     def __init__(
-        self,
-        target,
-        ml_usecase,
-        categorical_features=[],
-        numerical_features=[],
-        time_features=[],
-        features_todrop=[],
-        id_columns=[],
-        display_types=True,
+            self,
+            target,
+            ml_usecase,
+            categorical_features=[],
+            numerical_features=[],
+            time_features=[],
+            features_todrop=[],
+            id_columns=[],
+            display_types=True,
     ):  # nothing to define
         """
     User to define the target (y) variable
@@ -168,9 +169,9 @@ class DataTypes_Auto_infer(BaseEstimator, TransformerMixin):
                 None
 
         for i in (
-            data.select_dtypes(include=["object"])
-            .drop(self.target, axis=1, errors="ignore")
-            .columns
+                data.select_dtypes(include=["object"])
+                        .drop(self.target, axis=1, errors="ignore")
+                        .columns
         ):
             try:
                 data[i] = pd.to_datetime(
@@ -195,7 +196,7 @@ class DataTypes_Auto_infer(BaseEstimator, TransformerMixin):
             )
             # total decimiels digits
             count_float = (
-                count_float - na_count
+                    count_float - na_count
             )  # reducing it because we know NaN is counted as a float digit
             # now if there isnt any float digit , & unique levales are less than 20 and there are Na's then convert it to object
             if (count_float == 0) & (data[i].nunique() <= 20) & (na_count > 0):
@@ -254,7 +255,7 @@ class DataTypes_Auto_infer(BaseEstimator, TransformerMixin):
                 )
 
         for i in data.select_dtypes(
-            include=["datetime64", "datetime64[ns, UTC]"]
+                include=["datetime64", "datetime64[ns, UTC]"]
         ).columns:
             data[i] = data[i].astype("datetime64[ns]")
 
@@ -379,13 +380,13 @@ class DataTypes_Auto_infer(BaseEstimator, TransformerMixin):
 
         # just keep picking the data and keep applying to the test data set (be mindful of target variable)
         for (
-            i
+                i
         ) in (
-            data.columns
+                data.columns
         ):  # we are taking all the columns in test , so we dot have to worry about droping target column
             if i == self.target and (
-                (self.ml_usecase == "classification")
-                and (self.learned_dtypes[self.target] == "object")
+                    (self.ml_usecase == "classification")
+                    and (self.learned_dtypes[self.target] == "object")
             ):
                 data[i] = self.le.transform(data[i].apply(str).astype("object"))
                 data[i] = data[i].astype("int64")
@@ -415,7 +416,7 @@ class DataTypes_Auto_infer(BaseEstimator, TransformerMixin):
         # additionally we just need to treat the target variable
         # for ml use ase
         if (self.ml_usecase == "classification") & (
-            data[self.target].dtype == "object"
+                data[self.target].dtype == "object"
         ):
             self.le = LabelEncoder()
             data[self.target] = self.le.fit_transform(
@@ -448,64 +449,79 @@ class DataTypes_Auto_infer(BaseEstimator, TransformerMixin):
 class Simple_Imputer(_BaseImputer):
     """
     Imputes all type of data (numerical,categorical & Time).
-      Highly recommended to run Define_dataTypes class first
-      Numerical values can be imputed with mean or median or filled with zeros
-      categorical missing values will be replaced with "Other"
-      Time values are imputed with the most frequesnt value
-      Ignores target (y) variable    
-      Args: 
+    Highly recommended to run Define_dataTypes class first
+    Numerical values can be imputed with mean or median or filled with zeros
+    categorical missing values will be replaced with "Other"
+    Time values are imputed with the most frequesnt value
+    Ignores target (y) variable
+
+    Args:
         Numeric_strategy: string , all possible values {'mean','median','zero'}
         categorical_strategy: string , all possible values {'not_available','most frequent'}
         target: string , name of the target variable
-
-  """
+        fill_value_numerical: number, value for filling missing values of numeric columns
+        fill_value_categorical: string, value for filling missing values of categorical columns
+    """
 
     _numeric_strategies = {
         "mean": "mean",
         "median": "median",
         "most frequent": "most_frequent",
-        "most_frequent": "most_frequent",
         "zero": "constant",
     }
     _categorical_strategies = {
         "most frequent": "most_frequent",
-        "most_frequent": "most_frequent",
         "not_available": "constant",
     }
 
     def __init__(
-        self,
-        numeric_strategy,
-        categorical_strategy,
-        target_variable,
-        fill_value_numerical=0,
-        fill_value_categorical="not_available",
+            self,
+            numeric_strategy,
+            categorical_strategy,
+            target_variable,
+            fill_value_numerical=0,
+            fill_value_categorical="not_available",
     ):
+        # Set the target variable, which we don't want to impute
+        self.target = target_variable
+
         if numeric_strategy not in self._numeric_strategies:
             numeric_strategy = "zero"
         self.numeric_strategy = numeric_strategy
-        self.target = target_variable
+
         if categorical_strategy not in self._categorical_strategies:
             categorical_strategy = "most_frequent"
         self.categorical_strategy = categorical_strategy
+
         self.numeric_imputer = SimpleImputer(
             strategy=self._numeric_strategies[self.numeric_strategy],
             fill_value=fill_value_numerical,
         )
+
         self.categorical_imputer = SimpleImputer(
             strategy=self._categorical_strategies[self.categorical_strategy],
             fill_value=fill_value_categorical,
         )
-        self.most_frequent_time = []
 
-    def fit(self, dataset, y=None):  #
+    def fit(self, dataset, y=None):
+        """
+        Fit the imputer on dataset.
+
+        Args:
+            dataset : pd.DataFrame, the dataset to be imputed
+
+        Returns:
+            self : Simple_Imputer
+
+        """
         try:
             data = dataset.drop(self.target, axis=1)
         except:
             data = dataset
-        self.numeric_columns = data.select_dtypes(include=["float32", "int64"]).columns
-        self.categorical_columns = data.select_dtypes(include=["object"]).columns
-        self.time_columns = data.select_dtypes(include=["datetime64[ns]"]).columns
+
+        self.numeric_columns = data.select_dtypes(include=["float", "int"]).columns
+        self.categorical_columns = data.select_dtypes(include=["object", "bool", "string", "category"]).columns
+        self.time_columns = data.select_dtypes(include=["datetime", "timedelta"]).columns
 
         statistics = []
 
@@ -518,9 +534,7 @@ class Simple_Imputer(_BaseImputer):
                 (self.categorical_imputer.statistics_, self.categorical_columns)
             )
         if not self.time_columns.empty:
-            self.most_frequent_time = []
-            for col in self.time_columns:
-                self.most_frequent_time.append(data[col].mode()[0])
+            self.most_frequent_time = [data[col].mode()[0] for col in self.time_columns]
             statistics.append((self.most_frequent_time, self.time_columns))
 
         self.statistics_ = np.zeros(shape=len(data.columns), dtype=object)
@@ -529,9 +543,18 @@ class Simple_Imputer(_BaseImputer):
             for i, j in enumerate(index):
                 self.statistics_[columns.index(j)] = s[i]
 
-        return
+        return self
 
     def transform(self, dataset, y=None):
+        """
+        Impute all missing values in dataset.
+
+        Args:
+            dataset: pd.DataFrame, the dataset to be imputed
+
+        Returns:
+            data: pd.DataFrame, the imputed dataset
+        """
         data = dataset
         imputed_data = []
         if not self.numeric_columns.empty:
@@ -553,7 +576,7 @@ class Simple_Imputer(_BaseImputer):
         if not self.time_columns.empty:
             time_data = data[self.time_columns]
             for i, col in enumerate(time_data.columns):
-                time_data[col].fillna(self.most_frequent_time[i])
+                time_data[col].fillna(self.most_frequent_time[i], inplace=True)
             imputed_data.append(time_data)
 
         if imputed_data:
@@ -563,6 +586,16 @@ class Simple_Imputer(_BaseImputer):
         return data
 
     def fit_transform(self, dataset, y=None):
+        """
+        Fit and impute on dataset.
+
+        Args:
+            dataset: pd.DataFrame, the dataset to be fitted and imputed
+
+        Returns:
+            pd.DataFrame, the imputed dataset
+
+        """
         data = dataset
         self.fit(data)
         return self.transform(data)
@@ -580,8 +613,8 @@ class Surrogate_Imputer(_BaseImputer):
       - Numerical values can be imputed with mean or median or filled with zeros
       - categorical missing values will be replaced with "Other"
       - Time values are imputed with the most frequesnt value
-      - Ignores target (y) variable    
-      Args: 
+      - Ignores target (y) variable
+      Args:
         feature_name: string, provide features name
         feature_type: string , all possible values {'numeric','categorical','date'}
         strategy: string ,all possible values {'mean','median','zero','not_available','most frequent'}
@@ -603,26 +636,26 @@ class Surrogate_Imputer(_BaseImputer):
         if self.numeric_strategy == "mean":
             self.numeric_stats = (
                 data.drop(self.target, axis=1)
-                .select_dtypes(include=["float32", "int64"])
-                .apply(np.nanmean)
+                    .select_dtypes(include=["float32", "int64"])
+                    .apply(np.nanmean)
             )
         elif self.numeric_strategy == "median":
             self.numeric_stats = (
                 data.drop(self.target, axis=1)
-                .select_dtypes(include=["float32", "int64"])
-                .apply(np.nanmedian)
+                    .select_dtypes(include=["float32", "int64"])
+                    .apply(np.nanmedian)
             )
         else:
             self.numeric_stats = (
                 data.drop(self.target, axis=1)
-                .select_dtypes(include=["float32", "int64"])
-                .apply(zeros)
+                    .select_dtypes(include=["float32", "int64"])
+                    .apply(zeros)
             )
 
         self.numeric_columns = (
             data.drop(self.target, axis=1)
-            .select_dtypes(include=["float32", "int64"])
-            .columns
+                .select_dtypes(include=["float32", "int64"])
+                .columns
         )
         # also need to learn if any columns had NA in training
         self.numeric_na = pd.DataFrame(columns=self.numeric_columns)
@@ -655,14 +688,14 @@ class Surrogate_Imputer(_BaseImputer):
             )
             self.categorical_na = pd.DataFrame(columns=self.categorical_columns)
             self.categorical_na.loc[
-                0, :
+            0, :
             ] = False  # (in this situation we are not making any surrogate column)
 
         # for time, there is only one way, pick up the most frequent one
         self.time_columns = (
             data.drop(self.target, axis=1)
-            .select_dtypes(include=["datetime64[ns]"])
-            .columns
+                .select_dtypes(include=["datetime64[ns]"])
+                .columns
         )
         self.time_stats = pd.DataFrame(columns=self.time_columns)  # place holder
         self.time_na = pd.DataFrame(columns=self.time_columns)
@@ -728,21 +761,21 @@ class Surrogate_Imputer(_BaseImputer):
 
 class Iterative_Imputer(_BaseImputer):
     def __init__(
-        self,
-        regressor: BaseEstimator,
-        classifier: BaseEstimator,
-        *,
-        target=None,
-        missing_values=np.nan,
-        initial_strategy_numeric: str = "mean",
-        initial_strategy_categorical: str = "most_frequent",
-        ordinal_columns: Optional[list] = None,
-        max_iter: int = 10,
-        warm_start: bool = False,
-        imputation_order: str = "ascending",
-        verbose: int = 0,
-        random_state: int = None,
-        add_indicator: bool = False,
+            self,
+            regressor: BaseEstimator,
+            classifier: BaseEstimator,
+            *,
+            target=None,
+            missing_values=np.nan,
+            initial_strategy_numeric: str = "mean",
+            initial_strategy_categorical: str = "most_frequent",
+            ordinal_columns: Optional[list] = None,
+            max_iter: int = 10,
+            warm_start: bool = False,
+            imputation_order: str = "ascending",
+            verbose: int = 0,
+            random_state: int = None,
+            add_indicator: bool = False,
     ):
         super().__init__(missing_values=missing_values, add_indicator=add_indicator)
 
@@ -778,7 +811,7 @@ class Iterative_Imputer(_BaseImputer):
         if not fit:
             check_is_fitted(self)
         is_classification = (
-            X[column].dtype.name == "object" or column in self.ordinal_columns
+                X[column].dtype.name == "object" or column in self.ordinal_columns
         )
         if is_classification:
             if column in self.classifiers_:
@@ -881,7 +914,7 @@ class Iterative_Imputer(_BaseImputer):
 
         for i in range(self.max_iter):
             for feature in self.imputation_sequence_:
-                get_logger().info(f"Iterative Imputation: {i+1} cycle | {feature}")
+                get_logger().info(f"Iterative Imputation: {i + 1} cycle | {feature}")
                 X_imputed = self._impute_one_feature(X_imputed, feature, X_na_mask, fit)
 
         if target_column is not None:
@@ -931,15 +964,15 @@ class Zroe_NearZero_Variance(BaseEstimator, TransformerMixin):
     """
     - it eliminates the features having zero variance
     - it eliminates the features haveing near zero variance
-    - Near zero variance is determined by 
-      -1) Count of unique points divided by the total length of the feature has to be lower than a pre sepcified threshold 
+    - Near zero variance is determined by
+      -1) Count of unique points divided by the total length of the feature has to be lower than a pre sepcified threshold
       -2) Most common point(count) divided by the second most common point(count) in the feature is greater than a pre specified threshold
-      Once both conditions are met , the feature is dropped  
+      Once both conditions are met , the feature is dropped
     -Ignores target variable
-      
-      Args: 
-        threshold_1: float (between 0.0 to 1.0) , default is .10 
-        threshold_2: int (between 1 to 100), default is 20 
+
+      Args:
+        threshold_1: float (between 0.0 to 1.0) , default is .10
+        threshold_2: int (between 1 to 100), default is 20
         tatget variable : string, name of the target variable
 
   """
@@ -950,7 +983,7 @@ class Zroe_NearZero_Variance(BaseEstimator, TransformerMixin):
         self.target = target
 
     def fit(
-        self, dataset, y=None
+            self, dataset, y=None
     ):  # from training data set we are going to learn what columns to drop
         data = dataset
         self.to_drop = []
@@ -965,7 +998,7 @@ class Zroe_NearZero_Variance(BaseEstimator, TransformerMixin):
             first = len(u) / self.sampl_len
             # then check if most common divided by 2nd most common ratio is 20 or more
             if (
-                len(u[i]) == 1
+                    len(u[i]) == 1
             ):  # this means that if column is non variance , automatically make the number big to drop it
                 second = 100
             else:
@@ -978,7 +1011,7 @@ class Zroe_NearZero_Variance(BaseEstimator, TransformerMixin):
                 self.to_drop.append(i)
 
     def transform(
-        self, dataset, y=None
+            self, dataset, y=None
     ):  # since it is only for training data set , nothing here
         data = dataset.drop(self.to_drop, axis=1)
         return data
@@ -993,15 +1026,15 @@ class Zroe_NearZero_Variance(BaseEstimator, TransformerMixin):
 # rare catagorical variables
 class Catagorical_variables_With_Rare_levels(BaseEstimator, TransformerMixin):
     """
-    -Merges levels in catagorical features with more frequent level  if they appear less than a threshold count 
+    -Merges levels in catagorical features with more frequent level  if they appear less than a threshold count
       e.g. Col=[a,a,a,a,b,b,c,c]
       if threshold is set to 2 , then c will be mrged with b because both are below threshold
-      There has to be atleast two levels belwo threshold for this to work 
+      There has to be atleast two levels belwo threshold for this to work
       the process will keep going until all the levels have atleast 2(threshold) counts
     -Only handles catagorical features
     -It is recommended to run the Zroe_NearZero_Variance and Define_dataTypes first
-    -Ignores target variable 
-      Args: 
+    -Ignores target variable
+      Args:
         threshold: int , default 10
         target: string , name of the target variable
         new_level_name: string , name given to the new level generated, default 'others'
@@ -1014,7 +1047,7 @@ class Catagorical_variables_With_Rare_levels(BaseEstimator, TransformerMixin):
         self.new_level_name = new_level_name
 
     def fit(
-        self, dataset, y=None
+            self, dataset, y=None
     ):  # we will learn for what columnns what are the level to merge as others
         # every level of the catagorical feature has to be more than threshols, if not they will be clubed togather as "others"
         # in order to apply, there should be atleast two levels belwo the threshold !
@@ -1022,8 +1055,8 @@ class Catagorical_variables_With_Rare_levels(BaseEstimator, TransformerMixin):
         data = dataset
         self.ph = pd.DataFrame(
             columns=data.drop(self.target, axis=1)
-            .select_dtypes(include="object")
-            .columns
+                .select_dtypes(include="object")
+                .columns
         )
         # ph.columns = df.columns# catagorical only
         for i in data[self.ph.columns].columns:
@@ -1066,11 +1099,11 @@ class Catagorical_variables_With_Rare_levels(BaseEstimator, TransformerMixin):
 # new catagorical level in test
 class New_Catagorical_Levels_in_TestData(BaseEstimator, TransformerMixin):
     """
-    -This treats if a new level appears in the test dataset catagorical's feature (i.e a level on whihc model was not trained previously) 
+    -This treats if a new level appears in the test dataset catagorical's feature (i.e a level on whihc model was not trained previously)
     -It simply replaces the new level in test data set with the most frequent or least frequent level in the same feature in the training data set
     -It is recommended to run the Zroe_NearZero_Variance and Define_dataTypes first
-    -Ignores target variable 
-      Args: 
+    -Ignores target variable
+      Args:
         target: string , name of the target variable
         replacement_strategy:string , 'least frequent' or 'most frequent' (default 'most frequent' )
 
@@ -1084,8 +1117,8 @@ class New_Catagorical_Levels_in_TestData(BaseEstimator, TransformerMixin):
         # need to make a place holder that keep records of all the levels , and in case a new level appears in test we will change it to others
         self.ph_train_level = pd.DataFrame(
             columns=data.drop(self.target, axis=1)
-            .select_dtypes(include="object")
-            .columns
+                .select_dtypes(include="object")
+                .columns
         )
         for i in self.ph_train_level.columns:
             if self.replacement_strategy == "least frequent":
@@ -1100,8 +1133,8 @@ class New_Catagorical_Levels_in_TestData(BaseEstimator, TransformerMixin):
         # we need to learn the same for test data , and then we will compare to check what levels are new in there
         self.ph_test_level = pd.DataFrame(
             columns=data.drop(self.target, axis=1, errors="ignore")
-            .select_dtypes(include="object")
-            .columns
+                .select_dtypes(include="object")
+                .columns
         )
         for i in self.ph_test_level.columns:
             self.ph_test_level.loc[0, i] = list(
@@ -1120,7 +1153,7 @@ class New_Catagorical_Levels_in_TestData(BaseEstimator, TransformerMixin):
         return data
 
     def fit_transform(
-        self, data, y=None
+            self, data, y=None
     ):  # There is no transformation happening in training data set, its all about test
         self.fit(data)
         return data
@@ -1130,10 +1163,10 @@ class New_Catagorical_Levels_in_TestData(BaseEstimator, TransformerMixin):
 # Group akin features
 class Group_Similar_Features(BaseEstimator, TransformerMixin):
     """
-    - Given a list of features , it creates aggregate features 
+    - Given a list of features , it creates aggregate features
     - features created are Min, Max, Mean, Median, Mode & Std
     - Only works on numerical features
-      Args: 
+      Args:
         list_of_similar_features: list of list, string , e.g. [['col',col2],['col3','col4']]
         group_name: list, group name/names to be added as prefix to aggregate features, e.g ['gorup1','group2']
   """
@@ -1257,8 +1290,8 @@ class Scaling_and_Power_transformation(BaseEstimator, TransformerMixin):
     """
     -Given a data set, applies Min Max, Standar Scaler or Power Transformation (yeo-johnson)
     -it is recommended to run Define_dataTypes first
-    - ignores target variable 
-      Args: 
+    - ignores target variable
+      Args:
         target: string , name of the target variable
         function_to_apply: string , default 'zscore' (standard scaler), all other {'minmaxm','yj','quantile','robust','maxabs'} ( min max,yeo-johnson & quantile power transformation, robust and MaxAbs scaler )
 
@@ -1277,8 +1310,8 @@ class Scaling_and_Power_transformation(BaseEstimator, TransformerMixin):
         # we only want to apply if there are numeric columns
         self.numeric_features = (
             data.drop(self.target, axis=1, errors="ignore")
-            .select_dtypes(include=["float32", "int64"])
-            .columns
+                .select_dtypes(include=["float32", "int64"])
+                .columns
         )
         if len(self.numeric_features) > 0:
             if self.function_to_apply == "zscore":
@@ -1342,8 +1375,8 @@ class Target_Transformation(BaseEstimator, TransformerMixin):
     """
     - Applies Power Transformation (yeo-johnson , Box-Cox) to target variable (Applicable to Regression only)
       - 'bc' for Box_Coc & 'yj' for yeo-johnson, default is Box-Cox
-    - if target containes negtive / zero values , yeo-johnson is automatically selected 
-    
+    - if target containes negtive / zero values , yeo-johnson is automatically selected
+
   """
 
     def __init__(self, target, function_to_apply="bc"):
@@ -1405,9 +1438,9 @@ class Make_Time_Features(BaseEstimator, TransformerMixin):
   """
 
     def __init__(
-        self,
-        time_feature=None,
-        list_of_features=["month", "weekday", "is_month_end", "is_month_start", "hour"],
+            self,
+            time_feature=None,
+            list_of_features=["month", "weekday", "is_month_end", "is_month_start", "hour"],
     ):
         self.time_feature = time_feature
         self.list_of_features_o = set(list_of_features)
@@ -1424,6 +1457,7 @@ class Make_Time_Features(BaseEstimator, TransformerMixin):
 
     def transform(self, dataset, y=None):
         data = dataset.copy()
+
         # run fit transform first
 
         def get_time_features(r):
@@ -1621,7 +1655,7 @@ class Outlier(BaseEstimator, TransformerMixin):
   """
 
     def __init__(
-        self, target, contamination=0.20, random_state=42, methods=["knn", "iso", "pca"]
+            self, target, contamination=0.20, random_state=42, methods=["knn", "iso", "pca"]
     ):
         self.target = target
         self.contamination = contamination
@@ -1676,7 +1710,7 @@ class Outlier(BaseEstimator, TransformerMixin):
 
         self.outliers = data_without_target[
             data_without_target["vote_outlier"] == len(self.methods)
-        ].index
+            ].index
 
         return dataset[~dataset.index.isin(self.outliers)]
 
@@ -1831,11 +1865,11 @@ class Reduce_Cardinality_with_Clustering(BaseEstimator, TransformerMixin):
   """
 
     def __init__(
-        self,
-        target_variable,
-        catagorical_feature=[],
-        check_clusters_upto=30,
-        random_state=42,
+            self,
+            target_variable,
+            catagorical_feature=[],
+            check_clusters_upto=30,
+            random_state=42,
     ):
         self.target = target_variable
         self.feature = catagorical_feature
@@ -2026,14 +2060,14 @@ class Make_NonLiner_Features(BaseEstimator, TransformerMixin):
   """
 
     def __init__(
-        self,
-        target,
-        ml_usecase="classification",
-        Polynomial_degree=2,
-        other_nonliner_features=["sin", "cos", "tan"],
-        top_features_to_pick=0.20,
-        random_state=42,
-        subclass="ignore",
+            self,
+            target,
+            ml_usecase="classification",
+            Polynomial_degree=2,
+            other_nonliner_features=["sin", "cos", "tan"],
+            top_features_to_pick=0.20,
+            random_state=42,
+            subclass="ignore",
     ):
         self.target = target
         self.Polynomial_degree = Polynomial_degree
@@ -2052,8 +2086,8 @@ class Make_NonLiner_Features(BaseEstimator, TransformerMixin):
 
         self.numeric_columns = (
             data.drop(self.target, axis=1, errors="ignore")
-            .select_dtypes(include="float32")
-            .columns
+                .select_dtypes(include="float32")
+                .columns
         )
         if self.Polynomial_degree >= 2:  # dont run anything if powr is les than 2
             # self.numeric_columns = data.drop(self.target,axis=1,errors='ignore').select_dtypes(include="float32").columns
@@ -2119,8 +2153,8 @@ class Make_NonLiner_Features(BaseEstimator, TransformerMixin):
 
         self.numeric_columns = (
             data.drop(self.target, axis=1, errors="ignore")
-            .select_dtypes(include="float32")
-            .columns
+                .select_dtypes(include="float32")
+                .columns
         )
         if self.Polynomial_degree >= 2:  # dont run anything if powr is les than 2
             # self.numeric_columns = data.drop(self.target,axis=1,errors='ignore').select_dtypes(include="float32").columns
@@ -2199,12 +2233,12 @@ class Advanced_Feature_Selection_Classic(BaseEstimator, TransformerMixin):
   """
 
     def __init__(
-        self,
-        target,
-        ml_usecase="classification",
-        top_features_to_pick=0.10,
-        random_state=42,
-        subclass="ignore",
+            self,
+            target,
+            ml_usecase="classification",
+            top_features_to_pick=0.10,
+            random_state=42,
+            subclass="ignore",
     ):
         self.target = target
         self.ml_usecase = ml_usecase
@@ -2262,7 +2296,7 @@ class Advanced_Feature_Selection_Classic(BaseEstimator, TransformerMixin):
         self.fe_imp_table = self.fe_imp_table[
             self.fe_imp_table["Importance"]
             >= self.fe_imp_table.quantile(self.top_features_to_pick)[0]
-        ]
+            ]
         top = self.fe_imp_table.index
         dummy_all_columns_RF = dummy_all[top].columns
 
@@ -2299,7 +2333,7 @@ class Advanced_Feature_Selection_Classic(BaseEstimator, TransformerMixin):
         self.fe_imp_table = self.fe_imp_table[
             self.fe_imp_table["Importance"]
             >= self.fe_imp_table.quantile(self.top_features_to_pick)[0]
-        ]
+            ]
         top = self.fe_imp_table.index
         dummy_all_columns_LGBM = dummy_all[top].columns
 
@@ -2363,15 +2397,15 @@ class Boruta_Feature_Selection(BaseEstimator, TransformerMixin):
   """
 
     def __init__(
-        self,
-        target,
-        ml_usecase="classification",
-        top_features_to_pick=0.10,
-        max_iteration=25,
-        alpha=0.05,
-        percentile=65,
-        random_state=42,
-        subclass="ignore",
+            self,
+            target,
+            ml_usecase="classification",
+            top_features_to_pick=0.10,
+            max_iteration=25,
+            alpha=0.05,
+            percentile=65,
+            random_state=42,
+            subclass="ignore",
     ):
         self.target = target
         self.ml_usecase = ml_usecase
@@ -2501,7 +2535,7 @@ class Boruta_Feature_Selection(BaseEstimator, TransformerMixin):
         m.fit(X_boruta, y)
         ### store feature importance
         feat_imp_X = m.feature_importances_[: len(X.columns)]
-        feat_imp_shadow = m.feature_importances_[len(X.columns) :]
+        feat_imp_shadow = m.feature_importances_[len(X.columns):]
 
         return feat_imp_X, feat_imp_shadow
 
@@ -2545,11 +2579,11 @@ class Fix_multicollinearity(BaseEstimator, TransformerMixin):
     # mamke a constructer
 
     def __init__(
-        self,
-        threshold,
-        target_variable,
-        correlation_with_target_threshold=0.0,
-        correlation_with_target_preference=1.0,
+            self,
+            threshold,
+            target_variable,
+            correlation_with_target_threshold=0.0,
+            correlation_with_target_preference=1.0,
     ):
         self.threshold = threshold
         self.target_variable = target_variable
@@ -2607,8 +2641,8 @@ class Fix_multicollinearity(BaseEstimator, TransformerMixin):
         self.cols = self.corr_matrix.column
         self.melt = (
             self.corr_matrix.melt(id_vars=["column"], value_vars=self.cols)
-            .sort_values(by="value", ascending=False)
-            .dropna()
+                .sort_values(by="value", ascending=False)
+                .dropna()
         )
 
         # now bring in the avg correlation for first of the pair
@@ -2699,7 +2733,7 @@ class Fix_multicollinearity(BaseEstimator, TransformerMixin):
         ## now we are to treat where rank is not Zero and Value (correlation) is greater than a specific threshold
         self.non_zero = self.merge[
             (self.merge["rank_x"] != 0.0) & (self.merge["value"] >= self.threshold)
-        ]
+            ]
 
         # pick the column to delete
         self.non_zero_list = list(
@@ -2733,7 +2767,7 @@ class Fix_multicollinearity(BaseEstimator, TransformerMixin):
             # self.to_drop_taret_correlation = data.drop(self.to_drop,axis=1).corr()[self.target_variable].abs()
             self.to_drop_taret_correlation = self.to_drop_taret_correlation[
                 self.to_drop_taret_correlation < self.correlation_with_target_threshold
-            ]
+                ]
             self.to_drop_taret_correlation = list(self.to_drop_taret_correlation.index)
             # self.to_drop = self.corr + self.to_drop
             try:
@@ -2845,13 +2879,13 @@ class DFS_Classic(BaseEstimator, TransformerMixin):
   """
 
     def __init__(
-        self,
-        target,
-        ml_usecase="classification",
-        interactions=["multiply", "divide", "add", "subtract"],
-        top_features_to_pick_percentage=0.05,
-        random_state=42,
-        subclass="ignore",
+            self,
+            target,
+            ml_usecase="classification",
+            interactions=["multiply", "divide", "add", "subtract"],
+            top_features_to_pick_percentage=0.05,
+            random_state=42,
+            subclass="ignore",
     ):
         self.target = target
         self.interactions = interactions
@@ -2976,8 +3010,8 @@ class DFS_Classic(BaseEstimator, TransformerMixin):
             i
             for i in data.columns
             if data[i].nunique() == 2
-            and data[i].unique()[0] in [0, 1]
-            and data[i].unique()[1] in [0, 1]
+               and data[i].unique()[0] in [0, 1]
+               and data[i].unique()[1] in [0, 1]
         ]
         # self.ohe_columns = [i for i in self.ohe_columns if i is not None]
         self.numeric_columns = [
@@ -3137,8 +3171,8 @@ class DFS_Classic(BaseEstimator, TransformerMixin):
         )  # self.data_fe[self.corr]
         # # making sure no duplicated columns are there
         data_fe_final = data_fe_final.loc[
-            :, ~data_fe_final.columns.duplicated()
-        ]  # new added
+                        :, ~data_fe_final.columns.duplicated()
+                        ]  # new added
         # # remove thetarget column
         # # this is the final data we want that includes original , fe data plus impact of top n correlated
         self.columns_to_keep = data_fe_final.drop(self.target, axis=1).columns
@@ -3176,11 +3210,11 @@ class Reduce_Dimensions_For_Supervised_Path(BaseEstimator, TransformerMixin):
   """
 
     def __init__(
-        self,
-        target,
-        method="pca_liner",
-        variance_retained_or_number_of_components=0.99,
-        random_state=42,
+            self,
+            target,
+            method="pca_liner",
+            variance_retained_or_number_of_components=0.99,
+            random_state=42,
     ):
         self.target = target
         self.variance_retained = variance_retained_or_number_of_components
@@ -3279,68 +3313,67 @@ class Reduce_Dimensions_For_Supervised_Path(BaseEstimator, TransformerMixin):
 # ___________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________
 # preprocess_all_in_one
 def Preprocess_Path_One(
-    train_data,
-    target_variable,
-    ml_usecase=None,
-    test_data=None,
-    categorical_features=[],
-    numerical_features=[],
-    time_features=[],
-    features_todrop=[],
-    display_types=True,
-    imputation_type="simple",
-    numeric_imputation_strategy="mean",
-    categorical_imputation_strategy="not_available",
-    imputation_classifier=None,
-    imputation_regressor=None,
-    imputation_max_iter=10,
-    imputation_warm_start=False,
-    imputation_order="ascending",
-    apply_zero_nearZero_variance=False,
-    club_rare_levels=False,
-    rara_level_threshold_percentage=0.05,
-    apply_untrained_levels_treatment=False,
-    untrained_levels_treatment_method="least frequent",
-    apply_ordinal_encoding=False,
-    ordinal_columns_and_categories={},
-    apply_cardinality_reduction=False,
-    cardinal_method="cluster",
-    cardinal_features=[],
-    apply_binning=False,
-    features_to_binn=[],
-    apply_grouping=False,
-    group_name=[],
-    features_to_group_ListofList=[[]],
-    apply_polynomial_trigonometry_features=False,
-    max_polynomial=2,
-    trigonometry_calculations=["sin", "cos", "tan"],
-    top_poly_trig_features_to_select_percentage=0.20,
-    scale_data=False,
-    scaling_method="zscore",
-    Power_transform_data=False,
-    Power_transform_method="quantile",
-    remove_outliers=False,
-    outlier_contamination_percentage=0.01,
-    outlier_methods=["pca", "iso", "knn"],
-    dummify_categoricals=True,
-    apply_feature_selection=False,
-    feature_selection_top_features_percentage=0.80,
-    feature_selection_method="classic",
-    remove_multicollinearity=False,
-    maximum_correlation_between_features=0.90,
-    remove_perfect_collinearity=False,
-    apply_feature_interactions=False,
-    feature_interactions_to_apply=["multiply", "divide", "add", "subtract"],
-    feature_interactions_top_features_to_select_percentage=0.01,
-    cluster_entire_data=False,
-    range_of_clusters_to_try=20,
-    apply_pca=False,
-    pca_method="pca_liner",
-    pca_variance_retained_or_number_of_components=0.99,
-    random_state=42,
-    n_jobs=-1,
+        train_data,
+        target_variable,
+        ml_usecase=None,
+        test_data=None,
+        categorical_features=[],
+        numerical_features=[],
+        time_features=[],
+        features_todrop=[],
+        display_types=True,
+        imputation_type="simple",
+        numeric_imputation_strategy="mean",
+        categorical_imputation_strategy="not_available",
+        imputation_classifier=None,
+        imputation_regressor=None,
+        imputation_max_iter=10,
+        imputation_warm_start=False,
+        imputation_order="ascending",
+        apply_zero_nearZero_variance=False,
+        club_rare_levels=False,
+        rara_level_threshold_percentage=0.05,
+        apply_untrained_levels_treatment=False,
+        untrained_levels_treatment_method="least frequent",
+        apply_ordinal_encoding=False,
+        ordinal_columns_and_categories={},
+        apply_cardinality_reduction=False,
+        cardinal_method="cluster",
+        cardinal_features=[],
+        apply_binning=False,
+        features_to_binn=[],
+        apply_grouping=False,
+        group_name=[],
+        features_to_group_ListofList=[[]],
+        apply_polynomial_trigonometry_features=False,
+        max_polynomial=2,
+        trigonometry_calculations=["sin", "cos", "tan"],
+        top_poly_trig_features_to_select_percentage=0.20,
+        scale_data=False,
+        scaling_method="zscore",
+        Power_transform_data=False,
+        Power_transform_method="quantile",
+        remove_outliers=False,
+        outlier_contamination_percentage=0.01,
+        outlier_methods=["pca", "iso", "knn"],
+        dummify_categoricals=True,
+        apply_feature_selection=False,
+        feature_selection_top_features_percentage=0.80,
+        feature_selection_method="classic",
+        remove_multicollinearity=False,
+        maximum_correlation_between_features=0.90,
+        remove_perfect_collinearity=False,
+        apply_feature_interactions=False,
+        feature_interactions_to_apply=["multiply", "divide", "add", "subtract"],
+        feature_interactions_top_features_to_select_percentage=0.01,
+        cluster_entire_data=False,
+        range_of_clusters_to_try=20,
+        apply_pca=False,
+        pca_method="pca_liner",
+        pca_variance_retained_or_number_of_components=0.99,
+        random_state=42,
+        n_jobs=-1,
 ):
-
     """
     Follwoing preprocess steps are taken:
       - 1) Auto infer data types 
@@ -3629,7 +3662,8 @@ def Preprocess_Path_One(
             (
                 "new_levels1",
                 new_levels1,
-            ),  # specifically used for ordinal, so that if a new level comes in a feature that was marked ordinal can be handled
+            ),
+            # specifically used for ordinal, so that if a new level comes in a feature that was marked ordinal can be handled
             ("ordinal", ordinal),
             ("cardinality", cardinality),
             ("znz", znz),
@@ -3659,54 +3693,53 @@ def Preprocess_Path_One(
 # ______________________________________________________________________________________________________________________________________________________
 # preprocess_all_in_one_unsupervised
 def Preprocess_Path_Two(
-    train_data,
-    ml_usecase=None,
-    test_data=None,
-    categorical_features=[],
-    numerical_features=[],
-    time_features=[],
-    features_todrop=[],
-    display_types=False,
-    imputation_type="simple",
-    numeric_imputation_strategy="mean",
-    categorical_imputation_strategy="not_available",
-    imputation_classifier=None,
-    imputation_regressor=None,
-    imputation_max_iter=10,
-    imputation_warm_start=False,
-    imputation_order="ascending",
-    apply_zero_nearZero_variance=False,
-    club_rare_levels=False,
-    rara_level_threshold_percentage=0.05,
-    apply_untrained_levels_treatment=False,
-    untrained_levels_treatment_method="least frequent",
-    apply_cardinality_reduction=False,
-    cardinal_method="cluster",
-    cardinal_features=[],
-    apply_ordinal_encoding=False,
-    ordinal_columns_and_categories={},
-    apply_binning=False,
-    features_to_binn=[],
-    apply_grouping=False,
-    group_name=[],
-    features_to_group_ListofList=[[]],
-    scale_data=False,
-    scaling_method="zscore",
-    Power_transform_data=False,
-    Power_transform_method="quantile",
-    remove_outliers=False,
-    outlier_contamination_percentage=0.01,
-    outlier_methods=["pca", "iso", "knn"],
-    remove_multicollinearity=False,
-    maximum_correlation_between_features=0.90,
-    remove_perfect_collinearity=False,
-    apply_pca=False,
-    pca_method="pca_liner",
-    pca_variance_retained_or_number_of_components=0.99,
-    random_state=42,
-    n_jobs=-1,
+        train_data,
+        ml_usecase=None,
+        test_data=None,
+        categorical_features=[],
+        numerical_features=[],
+        time_features=[],
+        features_todrop=[],
+        display_types=False,
+        imputation_type="simple",
+        numeric_imputation_strategy="mean",
+        categorical_imputation_strategy="not_available",
+        imputation_classifier=None,
+        imputation_regressor=None,
+        imputation_max_iter=10,
+        imputation_warm_start=False,
+        imputation_order="ascending",
+        apply_zero_nearZero_variance=False,
+        club_rare_levels=False,
+        rara_level_threshold_percentage=0.05,
+        apply_untrained_levels_treatment=False,
+        untrained_levels_treatment_method="least frequent",
+        apply_cardinality_reduction=False,
+        cardinal_method="cluster",
+        cardinal_features=[],
+        apply_ordinal_encoding=False,
+        ordinal_columns_and_categories={},
+        apply_binning=False,
+        features_to_binn=[],
+        apply_grouping=False,
+        group_name=[],
+        features_to_group_ListofList=[[]],
+        scale_data=False,
+        scaling_method="zscore",
+        Power_transform_data=False,
+        Power_transform_method="quantile",
+        remove_outliers=False,
+        outlier_contamination_percentage=0.01,
+        outlier_methods=["pca", "iso", "knn"],
+        remove_multicollinearity=False,
+        maximum_correlation_between_features=0.90,
+        remove_perfect_collinearity=False,
+        apply_pca=False,
+        pca_method="pca_liner",
+        pca_variance_retained_or_number_of_components=0.99,
+        random_state=42,
+        n_jobs=-1,
 ):
-
     """
     Follwoing preprocess steps are taken:
       - THIS IS BUILt FOR UNSUPERVISED LEARNING
