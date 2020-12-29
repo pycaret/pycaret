@@ -7522,7 +7522,7 @@ class _SupervisedExperiment(_TabularExperiment):
         fold: Optional[Union[int, Any]] = None,
         round: int = 4,
         method: str = "auto",
-        restack: bool = True,
+        restack: bool = False,
         choose_better: bool = False,
         optimize: str = "Accuracy",
         fit_kwargs: Optional[dict] = None,
@@ -7580,7 +7580,7 @@ class _SupervisedExperiment(_TabularExperiment):
             - otherwise, one of 'predict_proba', 'decision_function' or 'predict'. 
             If the method is not implemented by the estimator, it will raise an error.
 
-        restack: bool, default = True
+        restack: bool, default = False
             When restack is set to True, raw data will be exposed to meta model when
             making predictions, otherwise when False, only the predicted label or
             probabilities is passed to meta model when making final predictions.
@@ -11250,7 +11250,7 @@ class RegressionExperiment(_SupervisedExperiment):
         meta_model=None,
         fold: Optional[Union[int, Any]] = None,
         round: int = 4,
-        restack: bool = True,
+        restack: bool = False,
         choose_better: bool = False,
         optimize: str = "R2",
         fit_kwargs: Optional[dict] = None,
@@ -11296,7 +11296,7 @@ class RegressionExperiment(_SupervisedExperiment):
             Number of decimal places the metrics in the score grid will be rounded to.
 
 
-        restack: bool, default = True
+        restack: bool, default = False
             When set to False, only the predictions of estimators will be used as 
             training data for the ``meta_model``.
 
@@ -13449,7 +13449,7 @@ class ClassificationExperiment(_SupervisedExperiment):
         fold: Optional[Union[int, Any]] = None,
         round: int = 4,
         method: str = "auto",
-        restack: bool = True,
+        restack: bool = False,
         choose_better: bool = False,
         optimize: str = "Accuracy",
         fit_kwargs: Optional[dict] = None,
@@ -13501,7 +13501,7 @@ class ClassificationExperiment(_SupervisedExperiment):
             of the value from 'predict_proba', 'decision_function' or 'predict'. 
             
             
-        restack: bool, default = True
+        restack: bool, default = False
             When set to False, only the predictions of estimators will be used as 
             training data for the ``meta_model``.
 
