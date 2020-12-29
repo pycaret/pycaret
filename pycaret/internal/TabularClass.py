@@ -7884,6 +7884,7 @@ class _SupervisedExperiment(_TabularExperiment):
         feature: Optional[str] = None,
         observation: Optional[int] = None,
         use_train_data: bool = False,
+        save: bool = False,
         **kwargs,  # added in pycaret==2.1
     ):
 
@@ -7927,7 +7928,10 @@ class _SupervisedExperiment(_TabularExperiment):
             interactivity. For analysis at the sample level, an observation parameter must
             be passed with the index value of the observation in test / hold-out set. 
 
-        **kwargs: 
+        save: bool, default = False
+            When set to True, Plot is saved as a 'png' file in current working directory.
+
+        **kwargs:
             Additional keyword arguments to pass to the plot.
 
         Returns
@@ -7959,6 +7963,8 @@ class _SupervisedExperiment(_TabularExperiment):
             raise ImportError(
                 "shap library not found. pip install shap to use interpret_model function."
             )
+
+        import matplotlib.pyplot as plt
 
         # get estimator from meta estimator
         estimator = get_estimator_from_meta_estimator(estimator)
@@ -8002,16 +8008,18 @@ class _SupervisedExperiment(_TabularExperiment):
 
         shap_plot = None
 
-        def summary():
+        def summary(show: bool = True):
 
             self.logger.info("Creating TreeExplainer")
             explainer = shap.TreeExplainer(model)
             self.logger.info("Compiling shap values")
             shap_values = explainer.shap_values(test_X)
-            shap_plot = shap.summary_plot(shap_values, test_X, **kwargs)
+            shap_plot = shap.summary_plot(shap_values, test_X, show=show, **kwargs)
+            if save:
+                plt.savefig(f"SHAP {plot}.png")
             return shap_plot
 
-        def correlation():
+        def correlation(show: bool = True):
 
             if feature == None:
 
@@ -8034,13 +8042,19 @@ class _SupervisedExperiment(_TabularExperiment):
 
             if model_id in shap_models_type1:
                 self.logger.info("model type detected: type 1")
-                shap.dependence_plot(dependence, shap_values[1], test_X, **kwargs)
+                shap.dependence_plot(
+                    dependence, shap_values[1], test_X, show=show, **kwargs
+                )
             elif model_id in shap_models_type2:
                 self.logger.info("model type detected: type 2")
-                shap.dependence_plot(dependence, shap_values, test_X, **kwargs)
+                shap.dependence_plot(
+                    dependence, shap_values, test_X, show=show, **kwargs
+                )
+            if save:
+                plt.savefig(f"SHAP {plot}.png")
             return None
 
-        def reason():
+        def reason(show: bool = True):
             shap_plot = None
             if model_id in shap_models_type1:
                 self.logger.info("model type detected: type 1")
@@ -8071,6 +8085,7 @@ class _SupervisedExperiment(_TabularExperiment):
                             explainer.expected_value[1],
                             shap_values[0][row_to_show],
                             data_for_prediction,
+                            show=show,
                             **kwargs,
                         )
 
@@ -8083,6 +8098,7 @@ class _SupervisedExperiment(_TabularExperiment):
                             explainer.expected_value[1],
                             shap_values[1],
                             data_for_prediction,
+                            show=show,
                             **kwargs,
                         )
 
@@ -8101,7 +8117,11 @@ class _SupervisedExperiment(_TabularExperiment):
                     )
 
                     shap_plot = shap.force_plot(
-                        explainer.expected_value, shap_values, test_X, **kwargs
+                        explainer.expected_value,
+                        shap_values,
+                        test_X,
+                        show=show,
+                        **kwargs,
                     )
 
                 else:
@@ -8113,11 +8133,14 @@ class _SupervisedExperiment(_TabularExperiment):
                         explainer.expected_value,
                         shap_values[row_to_show, :],
                         test_X.iloc[row_to_show, :],
+                        show=show,
                         **kwargs,
                     )
+            if save:
+                shap.save_html(f"SHAP {plot}.html", shap_plot)
             return shap_plot
 
-        shap_plot = locals()[plot]()
+        shap_plot = locals()[plot](show=not save)
 
         self.logger.info("Visual Rendered Successfully")
 
