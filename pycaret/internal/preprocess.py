@@ -1412,14 +1412,14 @@ class Make_Time_Features(BaseEstimator, TransformerMixin):
         list_of_features=["month", "weekday", "is_month_end", "is_month_start", "hour"],
     ):
         self.time_feature = time_feature
-        self.list_of_features_o = set(list_of_features)
+        self.list_of_features = set(list_of_features)
 
     def fit(self, data, y=None):
         if self.time_feature is None:
             self.time_feature = data.select_dtypes(include=["datetime64[ns]"]).columns
             self.has_hour_ = set()
             for i in self.time_feature:
-                if "hour" in self.list_of_features_o:
+                if "hour" in self.list_of_features:
                     if any(x.hour for x in data[i]):
                         self.has_hour_.add(i)
         return self
@@ -1430,11 +1430,11 @@ class Make_Time_Features(BaseEstimator, TransformerMixin):
 
         def get_time_features(r):
             features = []
-            if "month" in self.list_of_features_o:
+            if "month" in self.list_of_features:
                 features.append(("_month", str(r.month)))
-            if "weekday" in self.list_of_features_o:
+            if "weekday" in self.list_of_features:
                 features.append(("_weekday", str(r.weekday())))
-            if "is_month_end" in self.list_of_features_o:
+            if "is_month_end" in self.list_of_features:
                 features.append(
                     (
                         "_is_month_end",
@@ -1443,7 +1443,7 @@ class Make_Time_Features(BaseEstimator, TransformerMixin):
                         else "0",
                     )
                 )
-            if "is_month_start" in self.list_of_features_o:
+            if "is_month_start" in self.list_of_features:
                 features.append(("_is_month_start", "1" if r.day == 1 else "0"))
             return tuple(features)
 
@@ -1460,7 +1460,7 @@ class Make_Time_Features(BaseEstimator, TransformerMixin):
                 data[i + k] = v
 
             # make hour column if choosen
-            if "hour" in self.list_of_features_o and i in self.has_hour_:
+            if "hour" in self.list_of_features and i in self.has_hour_:
                 h = [r.hour for r in data[i]]
                 data[f"{i}_hour"] = h
                 data[f"{i}_hour"] = data[f"{i}_hour"].apply(str)
@@ -1713,9 +1713,9 @@ class Cluster_Entire_Data(BaseEstimator, TransformerMixin):
           check_clusters_upto: to determine optimum number of kmeans clusters, set the uppler limit of clusters
   """
 
-    def __init__(self, target, check_clusters_upto=20, random_state=42):
+    def __init__(self, target, check_clusters=20, random_state=42):
         self.target = target
-        self.check_clusters = check_clusters_upto + 1
+        self.check_clusters = check_clusters + 1
         self.random_state = random_state
 
     def fit(self, data, y=None):
@@ -1836,12 +1836,12 @@ class Reduce_Cardinality_with_Clustering(BaseEstimator, TransformerMixin):
         self,
         target,
         catagorical_feature=[],
-        check_clusters_upto=30,
+        check_clusters=30,
         random_state=42,
     ):
         self.target = target
-        self.feature = catagorical_feature
-        self.check_clusters = check_clusters_upto + 1
+        self.catagorical_feature = catagorical_feature
+        self.check_clusters = check_clusters + 1
         self.random = random_state
 
     def fit(self, data, y=None):
@@ -1851,7 +1851,7 @@ class Reduce_Cardinality_with_Clustering(BaseEstimator, TransformerMixin):
     def transform(self, dataset, y=None):
         data = dataset
         # we already know which leval belongs to whihc cluster , so all w need is to replace levels with clusters we already have from training data set
-        for i, z in zip(self.feature, self.ph_data):
+        for i, z in zip(self.catagorical_feature, self.ph_data):
             data[i] = data[i].replace(list(z["levels"]), z["cluster"])
         return data
 
@@ -1860,10 +1860,10 @@ class Reduce_Cardinality_with_Clustering(BaseEstimator, TransformerMixin):
         # first convert to dummy
         if len(data.select_dtypes(include="object").columns) > 0:
             self.dummy = Dummify(self.target)
-            data_t = self.dummy.fit_transform(data.drop(self.feature, axis=1))
+            data_t = self.dummy.fit_transform(data.drop(self.catagorical_feature, axis=1))
             # data_t1 = data_t1.drop(self.target,axis=1)
         else:
-            data_t = data.drop(self.feature, axis=1)
+            data_t = data.drop(self.catagorical_feature, axis=1)
 
         # now make PLS
         self.pls = PLSRegression(
@@ -1876,7 +1876,7 @@ class Reduce_Cardinality_with_Clustering(BaseEstimator, TransformerMixin):
         # # now we will take one component and then we calculate mean, median, min, max and sd of that one component grouped by the catagorical levels
         self.ph_data = []
         self.ph_clusters = []
-        for i in self.feature:
+        for i in self.catagorical_feature:
             data_t1 = pd.DataFrame(
                 dict(levels=data[i], comp1=data_pls[:, 0], comp2=data_pls[:, 1]),
                 index=data.index,
@@ -1975,7 +1975,7 @@ class Reduce_Cardinality_with_Counts(BaseEstimator, TransformerMixin):
   """
 
     def __init__(self, catagorical_feature=[]):
-        self.feature = catagorical_feature
+        self.catagorical_feature = catagorical_feature
 
     def fit(self, data, y=None):
         self.fit_transform(data, y=y)
@@ -1984,7 +1984,7 @@ class Reduce_Cardinality_with_Counts(BaseEstimator, TransformerMixin):
     def transform(self, dataset, y=None):
         data = dataset
         # we already know level counts
-        for i, z, k in zip(self.feature, self.ph_data, self.ph_u):
+        for i, z, k in zip(self.catagorical_feature, self.ph_data, self.ph_u):
             data[i] = data[i].replace(k, z["counts"])
             data[i] = data[i].astype("float32")
 
@@ -1995,7 +1995,7 @@ class Reduce_Cardinality_with_Counts(BaseEstimator, TransformerMixin):
         #
         self.ph_data = []
         self.ph_u = []
-        for i in self.feature:
+        for i in self.catagorical_feature:
             data_t1 = pd.DataFrame(
                 dict(
                     levels=data[i].groupby(data[i], sort=False).count().index,
@@ -2031,14 +2031,14 @@ class Make_NonLiner_Features(BaseEstimator, TransformerMixin):
         self,
         target,
         ml_usecase="classification",
-        Polynomial_degree=2,
+        polynomial_degree=2,
         other_nonliner_features=["sin", "cos", "tan"],
         top_features_to_pick=0.20,
         random_state=42,
         subclass="ignore",
     ):
         self.target = target
-        self.Polynomial_degree = Polynomial_degree
+        self.polynomial_degree = polynomial_degree
         self.ml_usecase = ml_usecase
         self.other_nonliner_features = other_nonliner_features
         self.top_features_to_pick = top_features_to_pick
@@ -2057,10 +2057,10 @@ class Make_NonLiner_Features(BaseEstimator, TransformerMixin):
             .select_dtypes(include="float32")
             .columns
         )
-        if self.Polynomial_degree >= 2:  # dont run anything if powr is les than 2
+        if self.polynomial_degree >= 2:  # dont run anything if powr is les than 2
             # self.numeric_columns = data.drop(self.target,axis=1,errors='ignore').select_dtypes(include="float32").columns
             # start taking powers
-            for i in range(2, self.Polynomial_degree + 1):
+            for i in range(2, self.polynomial_degree + 1):
                 ddc_power = np.power(data[self.numeric_columns], i)
                 ddc_col = list(ddc_power.columns)
                 ii = str(i)
@@ -2124,10 +2124,10 @@ class Make_NonLiner_Features(BaseEstimator, TransformerMixin):
             .select_dtypes(include="float32")
             .columns
         )
-        if self.Polynomial_degree >= 2:  # dont run anything if powr is les than 2
+        if self.polynomial_degree >= 2:  # dont run anything if powr is les than 2
             # self.numeric_columns = data.drop(self.target,axis=1,errors='ignore').select_dtypes(include="float32").columns
             # start taking powers
-            for i in range(2, self.Polynomial_degree + 1):
+            for i in range(2, self.polynomial_degree + 1):
                 ddc_power = np.power(data[self.numeric_columns], i)
                 ddc_col = list(ddc_power.columns)
                 ii = str(i)
@@ -2556,7 +2556,7 @@ class Fix_multicollinearity(BaseEstimator, TransformerMixin):
         self.threshold = threshold
         self.target_variable = target_variable
         self.correlation_with_target_threshold = correlation_with_target_threshold
-        self.target_corr_weight = correlation_with_target_preference
+        self.correlation_with_target_preference = correlation_with_target_preference
         self.multicol_weight = 1 - correlation_with_target_preference
 
     # Make fit method
@@ -2651,7 +2651,7 @@ class Fix_multicollinearity(BaseEstimator, TransformerMixin):
         # make a ranking column to eliminate features
         self.merge["rank_x"] = round(
             self.multicol_weight * (self.merge["avg_cor_y"] - self.merge["avg_cor_x"])
-            + self.target_corr_weight
+            + self.correlation_with_target_preference
             * (self.merge["target_variable_x"] - self.merge["target_variable_y"]),
             6,
         )  # round it to 6 digits
@@ -2851,13 +2851,13 @@ class DFS_Classic(BaseEstimator, TransformerMixin):
         target,
         ml_usecase="classification",
         interactions=["multiply", "divide", "add", "subtract"],
-        top_features_to_pick_percentage=0.05,
+        top_n_correlated=0.05,
         random_state=42,
         subclass="ignore",
     ):
         self.target = target
         self.interactions = interactions
-        self.top_n_correlated = top_features_to_pick_percentage  # (this will be 1- top_features , but handled in the Advance_feature_selection )
+        self.top_n_correlated = top_n_correlated  # (this will be 1- top_features , but handled in the Advance_feature_selection )
         self.ml_usecase = ml_usecase
         self.random_state = random_state
         self.subclass = subclass
@@ -3185,7 +3185,7 @@ class Reduce_Dimensions_For_Supervised_Path(BaseEstimator, TransformerMixin):
         random_state=42,
     ):
         self.target = target
-        self.variance_retained = variance_retained_or_number_of_components
+        self.variance_retained_or_number_of_components = variance_retained_or_number_of_components
         self.random_state = random_state
         self.method = method
 
@@ -3217,7 +3217,7 @@ class Reduce_Dimensions_For_Supervised_Path(BaseEstimator, TransformerMixin):
     def fit_transform(self, dataset, y=None):
         data = dataset
         if self.method == "pca_liner":
-            self.pca = PCA(self.variance_retained, random_state=self.random_state)
+            self.pca = PCA(self.variance_retained_or_number_of_components, random_state=self.random_state)
             # fit transform
             data_pca = self.pca.fit_transform(data.drop(self.target, axis=1))
             data_pca = pd.DataFrame(data_pca)
@@ -3229,7 +3229,7 @@ class Reduce_Dimensions_For_Supervised_Path(BaseEstimator, TransformerMixin):
             return data_pca
         elif self.method == "pca_kernal":  # take number of components only
             self.pca = KernelPCA(
-                self.variance_retained,
+                self.variance_retained_or_number_of_components,
                 kernel="rbf",
                 random_state=self.random_state,
                 n_jobs=-1,
@@ -3253,7 +3253,7 @@ class Reduce_Dimensions_For_Supervised_Path(BaseEstimator, TransformerMixin):
         #   data_pca[self.target] = data[self.target]
         #   return(data_pca)
         elif self.method == "tsne":  # take number of components only
-            self.pca = TSNE(self.variance_retained, random_state=self.random_state)
+            self.pca = TSNE(self.variance_retained_or_number_of_components, random_state=self.random_state)
             # fit transform
             data_pca = self.pca.fit_transform(data.drop(self.target, axis=1))
             data_pca = pd.DataFrame(data_pca)
@@ -3264,7 +3264,7 @@ class Reduce_Dimensions_For_Supervised_Path(BaseEstimator, TransformerMixin):
             data_pca[self.target] = data[self.target]
             return data_pca
         elif self.method == "incremental":  # take number of components only
-            self.pca = IncrementalPCA(self.variance_retained)
+            self.pca = IncrementalPCA(self.variance_retained_or_number_of_components)
             # fit transform
             data_pca = self.pca.fit_transform(data.drop(self.target, axis=1))
             data_pca = pd.DataFrame(data_pca)
@@ -3455,7 +3455,7 @@ def Preprocess_Path_One(
         cardinality = Reduce_Cardinality_with_Clustering(
             target=target_variable,
             catagorical_feature=cardinal_features,
-            check_clusters_upto=50,
+            check_clusters=50,
             random_state=random_state,
         )
     elif apply_cardinality_reduction == True and cardinal_method == "count":
@@ -3491,7 +3491,7 @@ def Preprocess_Path_One(
         nonliner = Make_NonLiner_Features(
             target=target_variable,
             ml_usecase=ml_usecase,
-            Polynomial_degree=max_polynomial,
+            polynomial_degree=max_polynomial,
             other_nonliner_features=trigonometry_calculations,
             top_features_to_pick=top_poly_trig_features_to_select_percentage,
             random_state=random_state,
@@ -3548,7 +3548,7 @@ def Preprocess_Path_One(
     if cluster_entire_data == True:
         cluster_all = Cluster_Entire_Data(
             target=target_variable,
-            check_clusters_upto=range_of_clusters_to_try,
+            check_clusters=range_of_clusters_to_try,
             random_state=random_state,
         )
     else:
@@ -3606,7 +3606,7 @@ def Preprocess_Path_One(
             target=target_variable,
             ml_usecase=ml_usecase,
             interactions=feature_interactions_to_apply,
-            top_features_to_pick_percentage=feature_interactions_top_features_to_select_percentage,
+            top_n_correlated=feature_interactions_top_features_to_select_percentage,
             random_state=random_state,
             subclass=subcase,
         )
