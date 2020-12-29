@@ -1280,7 +1280,6 @@ def blend_models(
         round=round,
         choose_better=choose_better,
         optimize=optimize,
-        method="auto",
         weights=weights,
         fit_kwargs=fit_kwargs,
         groups=groups,
@@ -1693,8 +1692,6 @@ def predict_model(
     return _CURRENT_EXPERIMENT.predict_model(
         estimator=estimator,
         data=data,
-        probability_threshold=None,
-        encoded_labels=True,
         round=round,
         verbose=verbose,
     )
