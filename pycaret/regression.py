@@ -1485,7 +1485,6 @@ def plot_model(
         groups=groups,
         verbose=verbose,
         use_train_data=use_train_data,
-        system=True,
     )
 
 
