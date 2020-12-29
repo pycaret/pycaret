@@ -283,8 +283,10 @@ def setup(
     logger.info("Checking Exceptions")
 
     # checking data type
-    if hasattr(data, "shape") is False:
-        raise TypeError("data passed must be of type pandas.DataFrame")
+    if not isinstance(data, pd.DataFrame):
+        raise TypeError(f"data passed must be of type pandas.DataFrame")
+    if data.shape[0] == 0:
+        raise ValueError(f"data passed must be a positive dataframe")
 
     # checking train size parameter
     if type(train_size) is not float:
