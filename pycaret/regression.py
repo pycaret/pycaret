@@ -1378,7 +1378,6 @@ def stack_models(
         meta_model=meta_model,
         fold=fold,
         round=round,
-        method="auto",
         restack=restack,
         choose_better=choose_better,
         optimize=optimize,
