@@ -541,7 +541,6 @@ class nullcontext(object):
 def get_groups(
     groups: Union[str, pd.DataFrame], X_train: pd.DataFrame, default: pd.DataFrame
 ):
-    logger = get_logger()
     if groups is None:
         return default
     if isinstance(groups, str):
@@ -654,3 +653,30 @@ def infer_ml_usecase(y: pd.Series) -> Tuple[str, str]:
     else:
         subcase = "binary"
     return ml_usecase, subcase
+
+
+def get_columns_to_stratify_by(
+    X: pd.DataFrame, y: pd.DataFrame, stratify: Union[bool, List[str]], target: str
+) -> pd.DataFrame:
+    if not stratify:
+        stratify = None
+    else:
+        if isinstance(stratify, list):
+            data = pd.concat([X, y], axis=1)
+            if not all(col in data.columns for col in stratify):
+                raise ValueError("Column to stratify by does not exist in the dataset.")
+            stratify = data[stratify]
+        else:
+            stratify = y
+    return stratify
+
+
+def check_if_global_is_not_none(globals_d: dict, global_names: dict):
+    def decorator(func):
+        def wrapper(*args, **kwargs):
+            for name, message in global_names.items():
+                if globals_d[name] is None:
+                    raise ValueError(message)
+            return func(*args, **kwargs)
+        return wrapper
+    return decorator
