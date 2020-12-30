@@ -291,6 +291,8 @@ def setup(
     # checking train size parameter
     if type(train_size) is not float:
         raise TypeError("train_size parameter only accepts float value.")
+    if train_size <= 0:
+        raise ValueError("train_size parameter has to be positive")
 
     possible_ml_usecases = ["classification", "regression", "clustering", "anomaly"]
     if ml_usecase not in possible_ml_usecases:
@@ -302,7 +304,9 @@ def setup(
 
     # checking target parameter
     if not _is_unsupervised(ml_usecase) and target not in data.columns:
-        raise ValueError("Target parameter doesnt exist in the data provided.")
+        raise ValueError(
+            f"Target parameter: {target} does not exist in the data" f" provided."
+        )
 
     # checking session_id
     if session_id is not None:
@@ -334,23 +338,28 @@ def setup(
     # checking imputation type
     allowed_imputation_type = ["simple", "iterative"]
     if imputation_type not in allowed_imputation_type:
-        raise ValueError("imputation_type param only accepts 'simple' or 'iterative'")
+        raise ValueError(
+            "imputation_type parameter only accepts 'simple' or " "'iterative'."
+        )
 
     if type(iterative_imputation_iters) is not int or iterative_imputation_iters <= 0:
-        raise TypeError("iterative_imputation_iters must be an integer greater than 0.")
+        raise TypeError(
+            "iterative_imputation_iters parameter must be an integer greater than 0."
+        )
 
     # checking categorical imputation
     allowed_categorical_imputation = ["constant", "mode"]
     if categorical_imputation not in allowed_categorical_imputation:
         raise ValueError(
-            "categorical_imputation param only accepts 'constant' or 'mode'"
+            f"categorical_imputation param only accepts {', '.join(allowed_categorical_imputation)}."
         )
 
     # ordinal_features
     if ordinal_features is not None:
         if type(ordinal_features) is not dict:
             raise TypeError(
-                "ordinal_features must be of type dictionary with column name as key and ordered values as list."
+                "ordinal_features must be of type dictionary with column name as key "
+                "and ordered values as list."
             )
 
     # ordinal features check
@@ -386,13 +395,12 @@ def setup(
             raise TypeError(
                 "high_cardinality_features param only accepts name of columns as a list."
             )
-
-    if high_cardinality_features is not None:
         data_cols = data.columns.drop(target, errors="ignore")
-        for i in high_cardinality_features:
-            if i not in data_cols:
+        for high_cardinality_feature in high_cardinality_features:
+            if high_cardinality_feature not in data_cols:
                 raise ValueError(
-                    "Column type forced is either target column or doesn't exist in the dataset."
+                    f"Item {high_cardinality_feature} in high_cardinality_features parameter is either target "
+                    f"column or doesn't exist in the dataset."
                 )
 
     # stratify
@@ -402,40 +410,40 @@ def setup(
             and type(data_split_stratify) is not bool
         ):
             raise TypeError(
-                "data_split_stratify param only accepts a bool or a list of strings."
+                "data_split_stratify parameter only accepts a bool or a list of strings."
             )
 
         if not data_split_shuffle:
             raise TypeError(
-                "data_split_stratify param requires data_split_shuffle to be set to True."
+                "data_split_stratify parameter requires data_split_shuffle to be set to True."
             )
 
     # high_cardinality_methods
     high_cardinality_allowed_methods = ["frequency", "clustering"]
     if high_cardinality_method not in high_cardinality_allowed_methods:
         raise ValueError(
-            "high_cardinality_method param only accepts 'frequency' or 'clustering'"
+            f"high_cardinality_method parameter only accepts {', '.join(high_cardinality_allowed_methods)}."
         )
 
     # checking numeric imputation
     allowed_numeric_imputation = ["mean", "median", "zero"]
     if numeric_imputation not in allowed_numeric_imputation:
         raise ValueError(
-            f"numeric_imputation param only accepts {', '.join(allowed_numeric_imputation)}."
+            f"numeric_imputation parameter only accepts {', '.join(allowed_numeric_imputation)}."
         )
 
     # checking normalize method
     allowed_normalize_method = ["zscore", "minmax", "maxabs", "robust"]
     if normalize_method not in allowed_normalize_method:
         raise ValueError(
-            f"normalize_method param only accepts {', '.join(allowed_normalize_method)}."
+            f"normalize_method parameter only accepts {', '.join(allowed_normalize_method)}."
         )
 
     # checking transformation method
     allowed_transformation_method = ["yeo-johnson", "quantile"]
     if transformation_method not in allowed_transformation_method:
         raise ValueError(
-            f"transformation_method param only accepts {', '.join(allowed_transformation_method)}."
+            f"transformation_method parameter only accepts {', '.join(allowed_transformation_method)}."
         )
 
     # handle unknown categorical
@@ -449,7 +457,7 @@ def setup(
 
     if unknown_categorical_method not in unknown_categorical_method_available:
         raise TypeError(
-            f"unknown_categorical_method only accepts {', '.join(unknown_categorical_method_available)}."
+            f"unknown_categorical_method parameter only accepts {', '.join(unknown_categorical_method_available)}."
         )
 
     # check pca
@@ -460,7 +468,7 @@ def setup(
     allowed_pca_methods = ["linear", "kernel", "incremental"]
     if pca_method not in allowed_pca_methods:
         raise ValueError(
-            f"pca method param only accepts {', '.join(allowed_pca_methods)}."
+            f"pca method parameter only accepts {', '.join(allowed_pca_methods)}."
         )
 
     # pca components check
@@ -501,14 +509,23 @@ def setup(
 
     # check rare_level_threshold
     if type(rare_level_threshold) is not float:
-        raise TypeError("rare_level_threshold must be a float between 0 and 1.")
+        raise TypeError("rare_level_threshold parameter must be a float")
+    if rare_level_threshold < 0 or rare_level_threshold > 1:
+        raise ValueError(
+            "rare_level_threshold parameter must be a float between 0 and 1."
+        )
 
     # bin numeric features
     if bin_numeric_features is not None:
-        for i in bin_numeric_features:
-            if i not in all_cols:
+        if type(bin_numeric_features) is not list:
+            raise TypeError("bin_numeric_features parameter must be a list.")
+        for bin_numeric_feature in bin_numeric_features:
+            if type(bin_numeric_feature) is not str:
+                raise TypeError("bin_numeric_features parameter item must be a string.")
+            if bin_numeric_feature not in all_cols:
                 raise ValueError(
-                    "Column type forced is either target column or doesn't exist in the dataset."
+                    f"bin_numeric_feature: {bin_numeric_feature} is either target column or "
+                    f"does not exist in the dataset."
                 )
 
     # remove_outliers
