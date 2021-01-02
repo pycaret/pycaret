@@ -7,7 +7,7 @@
 from enum import Enum, auto
 import math
 
-from pycaret.internal.TabularClass import MLUsecase, experiment_factory
+from pycaret.internal.PycaretExperiment import MLUsecase, experiment_factory
 
 from pycaret.internal.meta_estimators import (
     PowerTransformedTargetRegressor,

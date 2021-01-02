@@ -7,7 +7,7 @@
 import pandas as pd
 import numpy as np
 
-from pycaret.internal.TabularClass import RegressionExperiment
+from pycaret.internal.PycaretExperiment import RegressionExperiment
 from pycaret.internal.utils import check_if_global_is_not_none
 
 from typing import List, Tuple, Any, Union, Optional, Dict
