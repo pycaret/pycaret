@@ -273,7 +273,7 @@ def plot_model(
     plot_formats = [None, "streamlit"]
     
     if display_format not in plot_formats:
-        raise ValueError("display_format can only be None or \"streamlit\".")
+        raise ValueError("display_format can only be None or 'streamlit'.")
         
     """
     error handling ends here
