@@ -1,4 +1,5 @@
 pandas
+scipy==1.5.4
 numpy>=1.17
 seaborn
 matplotlib
