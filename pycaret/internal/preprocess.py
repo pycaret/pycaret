@@ -444,32 +444,31 @@ class DataTypes_Auto_infer(BaseEstimator, TransformerMixin):
 # _______________________________________________________________________________________________________________________
 # Imputation
 
-
 class Simple_Imputer(_BaseImputer):
     """
     Imputes all type of data (numerical,categorical & Time).
-      Highly recommended to run Define_dataTypes class first
-      Numerical values can be imputed with mean or median or filled with zeros
-      categorical missing values will be replaced with "Other"
-      Time values are imputed with the most frequesnt value
-      Ignores target (y) variable    
-      Args: 
+    Highly recommended to run Define_dataTypes class first
+    Numerical values can be imputed with mean or median or filled with zeros
+    categorical missing values will be replaced with "Other"
+    Time values are imputed with the most frequesnt value
+    Ignores target (y) variable
+
+    Args:
         Numeric_strategy: string , all possible values {'mean','median','zero'}
         categorical_strategy: string , all possible values {'not_available','most frequent'}
         target: string , name of the target variable
-
-  """
+        fill_value_numerical: number, value for filling missing values of numeric columns
+        fill_value_categorical: string, value for filling missing values of categorical columns
+    """
 
     _numeric_strategies = {
         "mean": "mean",
         "median": "median",
         "most frequent": "most_frequent",
-        "most_frequent": "most_frequent",
         "zero": "constant",
     }
     _categorical_strategies = {
         "most frequent": "most_frequent",
-        "most_frequent": "most_frequent",
         "not_available": "constant",
     }
 
@@ -481,33 +480,51 @@ class Simple_Imputer(_BaseImputer):
         fill_value_numerical=0,
         fill_value_categorical="not_available",
     ):
+        # Set the target variable, which we don't want to impute
+        self.target = target
+
         if numeric_strategy not in self._numeric_strategies:
             numeric_strategy = "zero"
         self.numeric_strategy = numeric_strategy
-        self.target = target
+
         if categorical_strategy not in self._categorical_strategies:
             categorical_strategy = "most_frequent"
         self.categorical_strategy = categorical_strategy
+
         self.fill_value_numerical = fill_value_numerical
         self.fill_value_categorical = fill_value_categorical
+
+        self.most_frequent_time = []
+
         self.numeric_imputer = SimpleImputer(
             strategy=self._numeric_strategies[self.numeric_strategy],
             fill_value=fill_value_numerical,
         )
+
         self.categorical_imputer = SimpleImputer(
             strategy=self._categorical_strategies[self.categorical_strategy],
             fill_value=fill_value_categorical,
         )
-        self.most_frequent_time = []
 
-    def fit(self, dataset, y=None):  #
+    def fit(self, dataset, y=None):
+        """
+        Fit the imputer on dataset.
+
+        Args:
+            dataset : pd.DataFrame, the dataset to be imputed
+
+        Returns:
+            self : Simple_Imputer
+
+        """
         try:
             data = dataset.drop(self.target, axis=1)
         except:
             data = dataset
-        self.numeric_columns = data.select_dtypes(include=["float32", "int64"]).columns
-        self.categorical_columns = data.select_dtypes(include=["object"]).columns
-        self.time_columns = data.select_dtypes(include=["datetime64[ns]"]).columns
+
+        self.numeric_columns = data.select_dtypes(include=["float32", "float64", "int32", "int64"]).columns
+        self.categorical_columns = data.select_dtypes(include=["object", "bool", "string", "category"]).columns
+        self.time_columns = data.select_dtypes(include=["datetime", "timedelta"]).columns
 
         statistics = []
 
@@ -520,9 +537,7 @@ class Simple_Imputer(_BaseImputer):
                 (self.categorical_imputer.statistics_, self.categorical_columns)
             )
         if not self.time_columns.empty:
-            self.most_frequent_time = []
-            for col in self.time_columns:
-                self.most_frequent_time.append(data[col].mode()[0])
+            self.most_frequent_time = [data[col].mode()[0] for col in self.time_columns]
             statistics.append((self.most_frequent_time, self.time_columns))
 
         self.statistics_ = np.zeros(shape=len(data.columns), dtype=object)
@@ -531,9 +546,18 @@ class Simple_Imputer(_BaseImputer):
             for i, j in enumerate(index):
                 self.statistics_[columns.index(j)] = s[i]
 
-        return
+        return self
 
     def transform(self, dataset, y=None):
+        """
+        Impute all missing values in dataset.
+
+        Args:
+            dataset: pd.DataFrame, the dataset to be imputed
+
+        Returns:
+            data: pd.DataFrame, the imputed dataset
+        """
         data = dataset
         imputed_data = []
         if not self.numeric_columns.empty:
@@ -555,7 +579,7 @@ class Simple_Imputer(_BaseImputer):
         if not self.time_columns.empty:
             time_data = data[self.time_columns]
             for i, col in enumerate(time_data.columns):
-                time_data[col].fillna(self.most_frequent_time[i])
+                time_data[col].fillna(self.most_frequent_time[i], inplace=True)
             imputed_data.append(time_data)
 
         if imputed_data:
@@ -565,6 +589,16 @@ class Simple_Imputer(_BaseImputer):
         return data
 
     def fit_transform(self, dataset, y=None):
+        """
+        Fit and impute on dataset.
+
+        Args:
+            dataset: pd.DataFrame, the dataset to be fitted and imputed
+
+        Returns:
+            pd.DataFrame, the imputed dataset
+
+        """
         data = dataset
         self.fit(data)
         return self.transform(data)
