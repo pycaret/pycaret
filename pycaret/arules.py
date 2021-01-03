@@ -267,7 +267,7 @@ def plot_model(
     plot_types = ["2d", "3d"]
     
     if plot not in plot_types:
-        raise ValueError("Plots can only be \"2d\" or \"3d\".")
+        raise ValueError("Plots can only be '2d' or '3d'.")
         
     # checking display_format parameter
     plot_formats = [None, "streamlit"]
