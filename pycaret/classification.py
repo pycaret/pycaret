@@ -1896,7 +1896,7 @@ def predict_model(
         probability_threshold=probability_threshold,
         encoded_labels=encoded_labels,
         round=round,
-        verbose=verbose
+        verbose=verbose,
     )
 
 
@@ -2145,7 +2145,9 @@ def load_model(
 
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
-def automl(optimize: str = "Accuracy", use_holdout: bool = False) -> Any:
+def automl(
+    optimize: str = "Accuracy", use_holdout: bool = False, turbo: bool = True
+) -> Any:
 
     """ 
     This function returns the best model out of all trained models in
@@ -2173,13 +2175,22 @@ def automl(optimize: str = "Accuracy", use_holdout: bool = False) -> Any:
 
     use_holdout: bool, default = False
         When set to True, metrics are evaluated on holdout set instead of CV.
-      
+
+
+    turbo: bool, default = True
+        When set to True and use_holdout is False, only models created with default fold
+        parameter will be considered. If set to False, models created with a non-default
+        fold parameter will be scored again using default fold settings, so that they can be
+        compared.
+
 
     Returns:
         Trained Model
 
     """
-    return _CURRENT_EXPERIMENT.automl(optimize=optimize, use_holdout=use_holdout)
+    return _CURRENT_EXPERIMENT.automl(
+        optimize=optimize, use_holdout=use_holdout, turbo=turbo
+    )
 
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)

@@ -415,7 +415,6 @@ class _PyCaretExperiment:
             "_all_models",
             "_all_models_internal",
             "_all_metrics",
-            "create_model_container",
             "master_model_container",
             "display_container",
         }
@@ -496,7 +495,6 @@ class _TabularExperiment(_PyCaretExperiment):
                 "experiment__",
                 "n_jobs_param",
                 "_gpu_n_jobs_param",
-                "create_model_container",
                 "master_model_container",
                 "display_container",
                 "exp_name_log",
@@ -1402,7 +1400,7 @@ class _TabularExperiment(_PyCaretExperiment):
 
         # declaring global variables to be accessed by other functions
         self.logger.info("Declaring global variables")
-        # global _ml_usecase, USI, html_param, X, y, X_train, X_test, y_train, y_test, seed, prep_pipe, experiment__, fold_shuffle_param, n_jobs_param, _gpu_n_jobs_param, create_model_container, master_model_container, display_container, exp_name_log, logging_param, log_plots_param, fix_imbalance_param, fix_imbalance_method_param, transform_target_param, transform_target_method_param, data_before_preprocess, target_param, gpu_param, _all_models, _all_models_internal, _all_metrics, _internal_pipeline, stratify_param, fold_generator, fold_param, fold_groups_param, imputation_regressor, imputation_classifier, iterative_imputation_iters_param
+        # global _ml_usecase, USI, html_param, X, y, X_train, X_test, y_train, y_test, seed, prep_pipe, experiment__, fold_shuffle_param, n_jobs_param, _gpu_n_jobs_param, master_model_container, display_container, exp_name_log, logging_param, log_plots_param, fix_imbalance_param, fix_imbalance_method_param, transform_target_param, transform_target_method_param, data_before_preprocess, target_param, gpu_param, _all_models, _all_models_internal, _all_metrics, _internal_pipeline, stratify_param, fold_generator, fold_param, fold_groups_param, imputation_regressor, imputation_classifier, iterative_imputation_iters_param
 
         self.USI = secrets.token_hex(nbytes=2)
         self.logger.info(f"self.USI: {self.USI}")
@@ -1881,9 +1879,6 @@ class _TabularExperiment(_PyCaretExperiment):
             else:
                 self.fold_generator = fold_strategy
 
-        # create create_model_container
-        self.create_model_container = []
-
         # create master_model_container
         self.master_model_container = []
 
@@ -2237,9 +2232,6 @@ class _TabularExperiment(_PyCaretExperiment):
 
         self._setup_ran = True
 
-        self.logger.info(
-            f"self.create_model_container: {len(self.create_model_container)}"
-        )
         self.logger.info(
             f"self.master_model_container: {len(self.master_model_container)}"
         )
@@ -4023,7 +4015,9 @@ class _TabularExperiment(_PyCaretExperiment):
     def finalize_model(self) -> None:
         return
 
-    def automl(self, optimize: str = "Accuracy", use_holdout: bool = False) -> Any:
+    def automl(
+        self, optimize: str = "Accuracy", use_holdout: bool = False, turbo: bool = True
+    ) -> Any:
 
         """
         This function returns the best model out of all models created in 
@@ -4038,6 +4032,11 @@ class _TabularExperiment(_PyCaretExperiment):
         use_holdout: bool, default = False
             When set to True, metrics are evaluated on holdout set instead of CV.
 
+        turbo: bool, default = True
+            When set to True and use_holdout is False, only models created with default fold
+            parameter will be considered. If set to False, models created with a non-default
+            fold parameter will be scored again using default fold settings, so that they can be
+            compared.
         """
 
         function_params_str = ", ".join([f"{k}={v}" for k, v in locals().items()])
@@ -4063,19 +4062,30 @@ class _TabularExperiment(_PyCaretExperiment):
         greater_is_better = optimize.greater_is_better
         optimize = optimize.scorer
 
-        scorer = []
+        best_model = None
+        best_score = None
+
+        def compare_score(new, best):
+            if not best:
+                return True
+            if greater_is_better:
+                return new > best
+            else:
+                return new < best
 
         if use_holdout:
             self.logger.info("Model Selection Basis : Holdout set")
             for i in self.master_model_container:
+                self.logger.info(f"Checking model {i}")
+                model = i["model"]
                 try:
-                    pred_holdout = self.predict_model(i, verbose=False)  # type: ignore
+                    pred_holdout = self.predict_model(model, verbose=False)  # type: ignore
                 except:
                     self.logger.warning(
-                        f"Model {i} is not fitted, running create_model"
+                        f"Model {model} is not fitted, running create_model"
                     )
-                    i, _ = self.create_model(  # type: ignore
-                        estimator=i,
+                    model, _ = self.create_model(  # type: ignore
+                        estimator=model,
                         system=False,
                         verbose=False,
                         cross_validation=False,
@@ -4083,34 +4093,50 @@ class _TabularExperiment(_PyCaretExperiment):
                         groups=self.fold_groups_param,
                     )
                     self.pull(pop=True)
-                    pred_holdout = self.predict_model(i, verbose=False)  # type: ignore
+                    pred_holdout = self.predict_model(model, verbose=False)  # type: ignore
 
                 p = self.pull(pop=True)
                 p = p[compare_dimension][0]
-                scorer.append(p)
+                if compare_score(p, best_score):
+                    best_model = model
+                    best_score = p
 
         else:
             self.logger.info("Model Selection Basis : CV Results on Training set")
-            for i in self.create_model_container:
-                r = i[compare_dimension][-2:][0]
-                scorer.append(r)
-
-        # returning better model
-        if greater_is_better:
-            index_scorer = scorer.index(max(scorer))
-        else:
-            index_scorer = scorer.index(min(scorer))
-
-        automl_result = self.master_model_container[index_scorer]
+            for i in range(len(self.master_model_container)):
+                model = self.master_model_container[i]
+                scores = None
+                if model["cv"] is not self.fold_generator:
+                    if turbo or self._is_unsupervised():
+                        continue
+                    self.create_model(  # type: ignore
+                        estimator=model["model"],
+                        system=False,
+                        verbose=False,
+                        cross_validation=True,
+                        predict=False,
+                        groups=self.fold_groups_param,
+                    )
+                    scores = self.pull(pop=True)
+                    self.master_model_container.pop()
+                self.logger.info(f"Checking model {i}")
+                if scores is None:
+                    scores = model["scores"]
+                r = scores[compare_dimension][-2:][0]
+                if compare_score(r, best_score):
+                    best_model = model["model"]
+                    best_score = r
 
         automl_model, _ = self.create_model(  # type: ignore
-            estimator=automl_result,
+            estimator=best_model,
             system=False,
             verbose=False,
             cross_validation=False,
             predict=False,
             groups=self.fold_groups_param,
         )
+
+        gc.collect()
 
         self.logger.info(str(automl_model))
         self.logger.info(
@@ -5243,7 +5269,6 @@ class _SupervisedExperiment(_TabularExperiment):
         # store in display container
         self.display_container.append(compare_models_.data)
 
-        self.logger.info(f"create_model_container: {len(self.create_model_container)}")
         self.logger.info(f"master_model_container: {len(self.master_model_container)}")
         self.logger.info(f"display_container: {len(self.display_container)}")
 
@@ -5740,19 +5765,18 @@ class _SupervisedExperiment(_TabularExperiment):
 
         self.logger.info("Uploading results into container")
 
-        # storing results in create_model_container
-        self.create_model_container.append(model_results.data)
         self.display_container.append(model_results.data)
 
         # storing results in master_model_container
         self.logger.info("Uploading model into container now")
-        self.master_model_container.append(model)
+        self.master_model_container.append(
+            {"model": model, "scores": model_results.data, "cv": cv}
+        )
 
         display.display(
             model_results, clear=system, override=False if not system else None
         )
 
-        self.logger.info(f"create_model_container: {len(self.create_model_container)}")
         self.logger.info(f"master_model_container: {len(self.master_model_container)}")
         self.logger.info(f"display_container: {len(self.display_container)}")
 
@@ -6787,7 +6811,6 @@ class _SupervisedExperiment(_TabularExperiment):
         model_results = model_results.set_precision(round)
         display.display(model_results, clear=True)
 
-        self.logger.info(f"create_model_container: {len(self.create_model_container)}")
         self.logger.info(f"master_model_container: {len(self.master_model_container)}")
         self.logger.info(f"display_container: {len(self.display_container)}")
 
@@ -7145,7 +7168,6 @@ class _SupervisedExperiment(_TabularExperiment):
         model_results = model_results.set_precision(round)
         display.display(model_results, clear=True)
 
-        self.logger.info(f"create_model_container: {len(self.create_model_container)}")
         self.logger.info(f"master_model_container: {len(self.master_model_container)}")
         self.logger.info(f"display_container: {len(self.display_container)}")
 
@@ -7503,7 +7525,6 @@ class _SupervisedExperiment(_TabularExperiment):
         model_results = model_results.set_precision(round)
         display.display(model_results, clear=True)
 
-        self.logger.info(f"create_model_container: {len(self.create_model_container)}")
         self.logger.info(f"master_model_container: {len(self.master_model_container)}")
         self.logger.info(f"display_container: {len(self.display_container)}")
 
@@ -7865,7 +7886,6 @@ class _SupervisedExperiment(_TabularExperiment):
         model_results = model_results.set_precision(round)
         display.display(model_results, clear=True)
 
-        self.logger.info(f"create_model_container: {len(self.create_model_container)}")
         self.logger.info(f"master_model_container: {len(self.master_model_container)}")
         self.logger.info(f"display_container: {len(self.display_container)}")
 
@@ -8533,7 +8553,6 @@ class _SupervisedExperiment(_TabularExperiment):
         model_results = model_results.set_precision(round)
         display.display(model_results, clear=True)
 
-        self.logger.info(f"create_model_container: {len(self.create_model_container)}")
         self.logger.info(f"master_model_container: {len(self.master_model_container)}")
         self.logger.info(f"display_container: {len(self.display_container)}")
 
@@ -9423,7 +9442,6 @@ class _UnsupervisedExperiment(_TabularExperiment):
             fig.show()
             self.logger.info("Visual Rendered Successfully")
 
-        self.logger.info(f"create_model_container: {len(self.create_model_container)}")
         self.logger.info(f"master_model_container: {len(self.master_model_container)}")
         self.logger.info(f"display_container: {len(self.display_container)}")
 
@@ -9842,7 +9860,7 @@ class _UnsupervisedExperiment(_TabularExperiment):
             model = clone(model)
         except:
             self.logger.warning(
-                f"create_model_unsupervised() for {model} raised an exception when cloning:"
+                f"create_model() for {model} raised an exception when cloning:"
             )
             self.logger.warning(traceback.format_exc())
 
@@ -9940,13 +9958,13 @@ class _UnsupervisedExperiment(_TabularExperiment):
         model_results = pd.DataFrame(metrics, index=[0])
         model_results = model_results.round(round)
 
-        # storing results in create_model_container
-        self.create_model_container.append(model_results)
         self.display_container.append(model_results)
 
         # storing results in master_model_container
         self.logger.info("Uploading model into container now")
-        self.master_model_container.append(model)
+        self.master_model_container.append(
+            {"model": model, "scores": model_results, "cv": None}
+        )
 
         if self._ml_usecase == MLUsecase.CLUSTERING:
             display.display(
@@ -9955,7 +9973,6 @@ class _UnsupervisedExperiment(_TabularExperiment):
         elif system:
             display.clear_output()
 
-        self.logger.info(f"create_model_container: {len(self.create_model_container)}")
         self.logger.info(f"master_model_container: {len(self.master_model_container)}")
         self.logger.info(f"display_container: {len(self.display_container)}")
 
@@ -11909,7 +11926,9 @@ class RegressionExperiment(_SupervisedExperiment):
             verbose=verbose,
         )
 
-    def automl(self, optimize: str = "R2", use_holdout: bool = False) -> Any:
+    def automl(
+        self, optimize: str = "R2", use_holdout: bool = False, turbo: bool = True
+    ) -> Any:
 
         """
         This function returns the best model out of all trained models in
@@ -11937,7 +11956,14 @@ class RegressionExperiment(_SupervisedExperiment):
 
         use_holdout: bool, default = False
             When set to True, metrics are evaluated on holdout set instead of CV.
-        
+
+
+        turbo: bool, default = True
+            When set to True and use_holdout is False, only models created with default fold
+            parameter will be considered. If set to False, models created with a non-default
+            fold parameter will be scored again using default fold settings, so that they can be
+            compared.
+
 
         Returns:
             Trained Model
@@ -11945,7 +11971,7 @@ class RegressionExperiment(_SupervisedExperiment):
 
         """
 
-        return super().automl(optimize=optimize, use_holdout=use_holdout)
+        return super().automl(optimize=optimize, use_holdout=use_holdout, turbo=turbo)
 
     def models(
         self,
@@ -14084,7 +14110,6 @@ class ClassificationExperiment(_SupervisedExperiment):
         model_results = model_results.set_precision(round)
         display.display(model_results, clear=True)
 
-        self.logger.info(f"create_model_container: {len(self.create_model_container)}")
         self.logger.info(f"master_model_container: {len(self.master_model_container)}")
         self.logger.info(f"display_container: {len(self.display_container)}")
 
@@ -14648,7 +14673,9 @@ class ClassificationExperiment(_SupervisedExperiment):
             verbose=verbose,
         )
 
-    def automl(self, optimize: str = "Accuracy", use_holdout: bool = False) -> Any:
+    def automl(
+        self, optimize: str = "Accuracy", use_holdout: bool = False, turbo: bool = True
+    ) -> Any:
 
         """ 
         This function returns the best model out of all trained models in
@@ -14676,13 +14703,20 @@ class ClassificationExperiment(_SupervisedExperiment):
 
         use_holdout: bool, default = False
             When set to True, metrics are evaluated on holdout set instead of CV.
-        
+
+
+        turbo: bool, default = True
+            When set to True and use_holdout is False, only models created with default fold
+            parameter will be considered. If set to False, models created with a non-default
+            fold parameter will be scored again using default fold settings, so that they can be
+            compared.
+
 
         Returns:
             Trained Model
 
         """
-        return super().automl(optimize=optimize, use_holdout=use_holdout)
+        return super().automl(optimize=optimize, use_holdout=use_holdout, turbo=turbo)
 
     def pull(self, pop: bool = False) -> pd.DataFrame:
 
