@@ -440,7 +440,7 @@ class TunableMLPClassifier(MLPClassifier):
         """
         return super().fit(X, y)
 
-    def _partial_fit(self, X, y, classes=None, *args, **fit_params):
+    def _partial_fit(self, X, y, *args, classes=None, **fit_params):
         return super()._partial_fit(X, y, classes=classes)
 
 
