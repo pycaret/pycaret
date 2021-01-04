@@ -5875,34 +5875,28 @@ class _SupervisedExperiment(_TabularExperiment):
             - 'optuna' - Optuna. ``pip install optuna`` https://optuna.org/
 
         search_algorithm: str, default = None
-            The search algorithm to be used for finding the best hyperparameters.
-            Selection of search algorithms depends on the search_library parameter.
+            The search algorithm depends on the ``search_library`` parameter.
             Some search algorithms require additional libraries to be installed.
-            If None, will use search library-specific default algorith.
-            'scikit-learn' possible values:
+            If None, will use search library-specific default algorithm.
 
-            - 'random' - random grid search (default)
-            - 'grid' - grid search
+            - 'scikit-learn' possible values:
+                - 'random' : random grid search (default)
+                - 'grid' : grid search
 
-            'scikit-optimize' possible values:
+            - 'scikit-optimize' possible values:
+                - 'bayesian' : Bayesian search (default)
 
-            - 'bayesian' - Bayesian search (default)
+            - 'tune-sklearn' possible values:
+                - 'random' : random grid search (default)
+                - 'grid' : grid search
+                - 'bayesian' : ``pip install scikit-optimize``
+                - 'hyperopt' : ``pip install hyperopt``
+                - 'optuna' : ``pip install optuna``
+                - 'bohb' : ``pip install hpbandster ConfigSpace``
 
-            'tune-sklearn' possible values:
-
-            - 'random' - random grid search (default)
-            - 'grid' - grid search
-            - 'bayesian' - Bayesian search using scikit-optimize
-            ``pip install scikit-optimize``
-            - 'hyperopt' - Tree-structured Parzen Estimator search using Hyperopt 
-            ``pip install hyperopt``
-            - 'bohb' - Bayesian search using HpBandSter 
-            ``pip install hpbandster ConfigSpace``
-
-            'optuna' possible values:
-
-            - 'random' - randomized search
-            - 'tpe' - Tree-structured Parzen Estimator search (default)
+            - 'optuna' possible values:
+                - 'random' : randomized search
+                - 'tpe' : Tree-structured Parzen Estimator search (default)
 
         early_stopping: bool or str or object, default = False
             Use early stopping to stop fitting to a hyperparameter configuration 
@@ -6086,6 +6080,7 @@ class _SupervisedExperiment(_TabularExperiment):
                 "grid",
                 "bayesian",
                 "hyperopt",
+                "optuna",
                 "bohb",
             ]
             if search_algorithm not in possible_search_algorithms:
@@ -6117,6 +6112,13 @@ class _SupervisedExperiment(_TabularExperiment):
                 except ImportError:
                     raise ImportError(
                         "It appears that scikit-optimize is not installed. Do: pip install scikit-optimize"
+                    )
+            elif search_algorithm == "optuna":
+                try:
+                    import optuna
+                except ImportError:
+                    raise ImportError(
+                        "'optuna' requires optuna package to be installed. Do: pip install optuna"
                     )
 
         elif search_library == "optuna":
@@ -6530,14 +6532,7 @@ class _SupervisedExperiment(_TabularExperiment):
                                 "Param grid cannot contain n_estimators or max_iter if early_stopping is True and the model is warm started. Use early_stopping_max_iters params to set the upper bound of n_estimators or max_iter."
                             )
 
-                if not do_early_stop:
-                    # enable ray local mode
-                    n_jobs = 1
-                elif n_jobs == -1:
-                    n_jobs = int(math.ceil(multiprocessing.cpu_count() / 2))
-
-                TuneSearchCV = get_tune_sklearn_tunesearchcv()
-                TuneGridSearchCV = get_tune_sklearn_tunegridsearchcv()
+                from tune_sklearn import TuneSearchCV, TuneGridSearchCV
 
                 with true_warm_start(
                     pipeline_with_model
@@ -6554,102 +6549,53 @@ class _SupervisedExperiment(_TabularExperiment):
                             max_iters=early_stopping_max_iters,
                             n_jobs=n_jobs,
                             use_gpu=self.gpu_param,
-                            refit=True,
+                            refit=False,
                             verbose=tuner_verbose,
-                            # pipeline_detection=False,
-                            **search_kwargs,
-                        )
-                    elif search_algorithm == "hyperopt":
-                        try:
-                            param_grid = get_hyperopt_distributions(param_grid)
-                        except:
-                            self.logger.warning(
-                                "Couldn't convert param_grid to specific library distributions. Exception:"
-                            )
-                            self.logger.warning(traceback.format_exc())
-                        self.logger.info(
-                            "Initializing tune_sklearn.TuneSearchCV, hyperopt"
-                        )
-                        model_grid = TuneSearchCV(
-                            estimator=pipeline_with_model,
-                            search_optimization="hyperopt",
-                            param_distributions=param_grid,
-                            n_trials=n_iter,
-                            early_stopping=do_early_stop,
-                            scoring=optimize,
-                            cv=fold,
-                            random_state=self.seed,
-                            max_iters=early_stopping_max_iters,
-                            n_jobs=n_jobs,
-                            use_gpu=self.gpu_param,
-                            refit=True,
-                            verbose=tuner_verbose,
-                            # pipeline_detection=False,
-                            **search_kwargs,
-                        )
-                    elif search_algorithm == "bayesian":
-                        try:
-                            param_grid = get_skopt_distributions(param_grid)
-                        except:
-                            self.logger.warning(
-                                "Couldn't convert param_grid to specific library distributions. Exception:"
-                            )
-                            self.logger.warning(traceback.format_exc())
-                        self.logger.info(
-                            "Initializing tune_sklearn.TuneSearchCV, bayesian"
-                        )
-                        model_grid = TuneSearchCV(
-                            estimator=pipeline_with_model,
-                            search_optimization="bayesian",
-                            param_distributions=param_grid,
-                            n_trials=n_iter,
-                            early_stopping=do_early_stop,
-                            scoring=optimize,
-                            cv=fold,
-                            random_state=self.seed,
-                            max_iters=early_stopping_max_iters,
-                            n_jobs=n_jobs,
-                            use_gpu=self.gpu_param,
-                            refit=True,
-                            verbose=tuner_verbose,
-                            # pipeline_detection=False,
-                            **search_kwargs,
-                        )
-                    elif search_algorithm == "bohb":
-                        try:
-                            param_grid = get_CS_distributions(param_grid)
-                        except:
-                            self.logger.warning(
-                                "Couldn't convert param_grid to specific library distributions. Exception:"
-                            )
-                            self.logger.warning(traceback.format_exc())
-                        self.logger.info("Initializing tune_sklearn.TuneSearchCV, bohb")
-                        model_grid = TuneSearchCV(
-                            estimator=pipeline_with_model,
-                            search_optimization="bohb",
-                            param_distributions=param_grid,
-                            n_trials=n_iter,
-                            early_stopping=do_early_stop,
-                            scoring=optimize,
-                            cv=fold,
-                            random_state=self.seed,
-                            max_iters=early_stopping_max_iters,
-                            n_jobs=n_jobs,
-                            use_gpu=self.gpu_param,
-                            refit=True,
-                            verbose=tuner_verbose,
-                            # pipeline_detection=False,
+                            pipeline_auto_early_stop=True,
                             **search_kwargs,
                         )
                     else:
+                        if search_algorithm == "hyperopt":
+                            try:
+                                param_grid = get_hyperopt_distributions(param_grid)
+                            except:
+                                self.logger.warning(
+                                    "Couldn't convert param_grid to specific library distributions. Exception:"
+                                )
+                                self.logger.warning(traceback.format_exc())
+                        elif search_algorithm == "bayesian":
+                            try:
+                                param_grid = get_skopt_distributions(param_grid)
+                            except:
+                                self.logger.warning(
+                                    "Couldn't convert param_grid to specific library distributions. Exception:"
+                                )
+                                self.logger.warning(traceback.format_exc())
+                        elif search_algorithm == "bohb":
+                            try:
+                                param_grid = get_CS_distributions(param_grid)
+                            except:
+                                self.logger.warning(
+                                    "Couldn't convert param_grid to specific library distributions. Exception:"
+                                )
+                                self.logger.warning(traceback.format_exc())
+                        elif search_algorithm != "random":
+                            try:
+                                param_grid = get_tune_distributions(param_grid)
+                            except:
+                                self.logger.warning(
+                                    "Couldn't convert param_grid to specific library distributions. Exception:"
+                                )
+                                self.logger.warning(traceback.format_exc())
                         self.logger.info(
-                            "Initializing tune_sklearn.TuneSearchCV, random"
+                            f"Initializing tune_sklearn.TuneSearchCV, {search_algorithm}"
                         )
                         model_grid = TuneSearchCV(
                             estimator=pipeline_with_model,
+                            search_optimization=search_algorithm,
                             param_distributions=param_grid,
-                            early_stopping=do_early_stop,
                             n_trials=n_iter,
+                            early_stopping=do_early_stop,
                             scoring=optimize,
                             cv=fold,
                             random_state=self.seed,
@@ -6658,7 +6604,7 @@ class _SupervisedExperiment(_TabularExperiment):
                             use_gpu=self.gpu_param,
                             refit=True,
                             verbose=tuner_verbose,
-                            # pipeline_detection=False,
+                            pipeline_auto_early_stop=True,
                             **search_kwargs,
                         )
 

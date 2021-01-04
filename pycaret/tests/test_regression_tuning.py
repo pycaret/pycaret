@@ -69,6 +69,14 @@ def test():
             model,
             fold=2,
             n_iter=2,
+            search_library="tune-sklearn",
+            search_algorithm="optuna",
+            early_stopping=False,
+        )
+        pycaret.regression.tune_model(
+            model,
+            fold=2,
+            n_iter=2,
             search_library="optuna",
             search_algorithm="tpe",
             early_stopping="asha",

@@ -1000,6 +1000,7 @@ def tune_model(
             - 'grid' : grid search
             - 'bayesian' : ``pip install scikit-optimize``
             - 'hyperopt' : ``pip install hyperopt``
+            - 'optuna' : ``pip install optuna``
             - 'bohb' : ``pip install hpbandster ConfigSpace``
 
         - 'optuna' possible values:
