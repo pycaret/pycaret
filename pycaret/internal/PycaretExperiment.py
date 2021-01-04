@@ -4,10 +4,6 @@ from pycaret.internal.meta_estimators import (
     PowerTransformedTargetRegressor,
     get_estimator_from_meta_estimator,
 )
-from pycaret.internal.patches.tune_sklearn import (
-    get_tune_sklearn_tunegridsearchcv,
-    get_tune_sklearn_tunesearchcv,
-)
 from pycaret.internal.pipeline import (
     add_estimator_to_pipeline,
     get_pipeline_estimator_label,
