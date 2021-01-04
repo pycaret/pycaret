@@ -3654,7 +3654,7 @@ def tune_model_supervised(
         - 'hyperopt' - Tree-structured Parzen Estimator search using Hyperopt 
           ``pip install hyperopt``
         - 'optuna' - Tree-structured Parzen Estimator search using Optuina 
-          ``pip install hyperopt``
+          ``pip install optuna``
         - 'bohb' - Bayesian search using HpBandSter 
           ``pip install hpbandster ConfigSpace``
 
