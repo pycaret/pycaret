@@ -472,10 +472,17 @@ class Simple_Imputer(_BaseImputer):
         "not_available": "constant",
     }
 
+    _time_strategies = {
+        "mean": "mean",
+        "median": "median",
+        "most frequent": "most_frequent"
+    }
+
     def __init__(
         self,
         numeric_strategy,
         categorical_strategy,
+        time_strategy,
         target,
         fill_value_numerical=0,
         fill_value_categorical="not_available",
@@ -488,13 +495,17 @@ class Simple_Imputer(_BaseImputer):
         self.numeric_strategy = numeric_strategy
 
         if categorical_strategy not in self._categorical_strategies:
-            categorical_strategy = "most_frequent"
+            categorical_strategy = "most frequent"
         self.categorical_strategy = categorical_strategy
+
+        if time_strategy not in self._time_strategies:
+            time_strategy = "most frequent"
+        self.time_strategy = time_strategy
 
         self.fill_value_numerical = fill_value_numerical
         self.fill_value_categorical = fill_value_categorical
 
-        self.most_frequent_time = []
+        # self.most_frequent_time = []
 
         self.numeric_imputer = SimpleImputer(
             strategy=self._numeric_strategies[self.numeric_strategy],
@@ -504,6 +515,10 @@ class Simple_Imputer(_BaseImputer):
         self.categorical_imputer = SimpleImputer(
             strategy=self._categorical_strategies[self.categorical_strategy],
             fill_value=fill_value_categorical,
+        )
+
+        self.time_imputer = SimpleImputer(
+            strategy=self._time_strategies[self.time_strategy],
         )
 
     def fit(self, dataset, y=None):
@@ -524,7 +539,7 @@ class Simple_Imputer(_BaseImputer):
 
         self.numeric_columns = data.select_dtypes(include=["float32", "float64", "int32", "int64"]).columns
         self.categorical_columns = data.select_dtypes(include=["object", "bool", "string", "category"]).columns
-        self.time_columns = data.select_dtypes(include=["datetime", "timedelta"]).columns
+        self.time_columns = data.select_dtypes(include=["datetime64[ns]", "timedelta64[ns]"]).columns
 
         statistics = []
 
@@ -537,8 +552,12 @@ class Simple_Imputer(_BaseImputer):
                 (self.categorical_imputer.statistics_, self.categorical_columns)
             )
         if not self.time_columns.empty:
-            self.most_frequent_time = [data[col].mode()[0] for col in self.time_columns]
-            statistics.append((self.most_frequent_time, self.time_columns))
+            for col in self.time_columns:
+                data[col] = data[col][data[col].notnull()].astype(np.int64)
+            self.time_imputer.fit(data[self.time_columns])
+            statistics.append(
+                (self.time_imputer.statistics_, self.time_columns)
+            )
 
         self.statistics_ = np.zeros(shape=len(data.columns), dtype=object)
         columns = list(data.columns)
@@ -577,9 +596,27 @@ class Simple_Imputer(_BaseImputer):
                 categorical_data[col] = categorical_data[col].apply(str)
             imputed_data.append(categorical_data)
         if not self.time_columns.empty:
-            time_data = data[self.time_columns]
-            for i, col in enumerate(time_data.columns):
-                time_data[col].fillna(self.most_frequent_time[i], inplace=True)
+            datetime_columns = data.select_dtypes(include=["datetime"]).columns
+            timedelta_columns = data.select_dtypes(include=["timedelta"]).columns
+
+            timedata_copy = data[self.time_columns].copy()
+
+            for col in self.time_columns:
+                timedata_copy[col] = timedata_copy[col][timedata_copy[col].notnull()].astype(np.int64)
+
+            time_data = pd.DataFrame(
+                self.time_imputer.transform(timedata_copy),
+                columns=self.time_columns,
+                index=data.index,
+            )
+
+            for col in datetime_columns:
+                time_data[col][data[col].notnull()] = data[col][data[col].notnull()]
+                time_data[col] = time_data[col].apply(pd.Timestamp)
+            for col in timedelta_columns:
+                time_data[col][data[col].notnull()] = data[col][data[col].notnull()]
+                time_data[col] = time_data[col].apply(pd.Timedelta)
+
             imputed_data.append(time_data)
 
         if imputed_data:
@@ -3327,6 +3364,7 @@ def Preprocess_Path_One(
     imputation_type="simple",
     numeric_imputation_strategy="mean",
     categorical_imputation_strategy="not_available",
+    time_imputation_strategy="most_frequent",
     imputation_classifier=None,
     imputation_regressor=None,
     imputation_max_iter=10,
@@ -3435,6 +3473,7 @@ def Preprocess_Path_One(
             numeric_strategy=numeric_imputation_strategy,
             target=target_variable,
             categorical_strategy=categorical_imputation_strategy,
+            time_strategy=time_imputation_strategy
         )
     # elif imputation_type == "surrogate imputer":
     #  imputer = Surrogate_Imputer(numeric_strategy=numeric_imputation_strategy,categorical_strategy=categorical_imputation_strategy,target_variable=target_variable)
