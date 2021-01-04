@@ -10,10 +10,6 @@ from pycaret.internal.meta_estimators import (
     PowerTransformedTargetRegressor,
     get_estimator_from_meta_estimator,
 )
-from pycaret.internal.patches.tune_sklearn import (
-    get_tune_sklearn_tunegridsearchcv,
-    get_tune_sklearn_tunesearchcv,
-)
 from pycaret.internal.pipeline import (
     add_estimator_to_pipeline,
     get_pipeline_estimator_label,
@@ -3657,6 +3653,8 @@ def tune_model_supervised(
           ``pip install scikit-optimize``
         - 'hyperopt' - Tree-structured Parzen Estimator search using Hyperopt 
           ``pip install hyperopt``
+        - 'optuna' - Tree-structured Parzen Estimator search using Optuina 
+          ``pip install hyperopt``
         - 'bohb' - Bayesian search using HpBandSter 
           ``pip install hpbandster ConfigSpace``
 
@@ -3842,7 +3840,14 @@ def tune_model_supervised(
         if not search_algorithm:
             search_algorithm = "random"
 
-        possible_search_algorithms = ["random", "grid", "bayesian", "hyperopt", "bohb"]
+        possible_search_algorithms = [
+            "random",
+            "grid",
+            "bayesian",
+            "hyperopt",
+            "bohb",
+            "optuna",
+        ]
         if search_algorithm not in possible_search_algorithms:
             raise ValueError(
                 f"For 'tune-sklearn' search_algorithm parameter must be one of {', '.join(possible_search_algorithms)}"
@@ -3872,6 +3877,13 @@ def tune_model_supervised(
             except ImportError:
                 raise ImportError(
                     "It appears that scikit-optimize is not installed. Do: pip install scikit-optimize"
+                )
+        elif search_algorithm == "optuna":
+            try:
+                import optuna
+            except ImportError:
+                raise ImportError(
+                    "'optuna' requires optuna package to be installed. Do: pip install optuna"
                 )
 
     elif search_library == "optuna":
@@ -4265,14 +4277,7 @@ def tune_model_supervised(
                             "Param grid cannot contain n_estimators or max_iter if early_stopping is True and the model is warm started. Use early_stopping_max_iters params to set the upper bound of n_estimators or max_iter."
                         )
 
-            if not do_early_stop:
-                # enable ray local mode
-                n_jobs = 1
-            elif n_jobs == -1:
-                n_jobs = int(math.ceil(multiprocessing.cpu_count() / 2))
-
-            TuneSearchCV = get_tune_sklearn_tunesearchcv()
-            TuneGridSearchCV = get_tune_sklearn_tunegridsearchcv()
+            from tune_sklearn import TuneSearchCV, TuneGridSearchCV
 
             with true_warm_start(
                 pipeline_with_model
@@ -4289,96 +4294,53 @@ def tune_model_supervised(
                         max_iters=early_stopping_max_iters,
                         n_jobs=n_jobs,
                         use_gpu=gpu_param,
-                        refit=True,
+                        refit=False,
                         verbose=tuner_verbose,
-                        # pipeline_detection=False,
-                        **search_kwargs,
-                    )
-                elif search_algorithm == "hyperopt":
-                    try:
-                        param_grid = get_hyperopt_distributions(param_grid)
-                    except:
-                        logger.warning(
-                            "Couldn't convert param_grid to specific library distributions. Exception:"
-                        )
-                        logger.warning(traceback.format_exc())
-                    logger.info("Initializing tune_sklearn.TuneSearchCV, hyperopt")
-                    model_grid = TuneSearchCV(
-                        estimator=pipeline_with_model,
-                        search_optimization="hyperopt",
-                        param_distributions=param_grid,
-                        n_trials=n_iter,
-                        early_stopping=do_early_stop,
-                        scoring=optimize,
-                        cv=fold,
-                        random_state=seed,
-                        max_iters=early_stopping_max_iters,
-                        n_jobs=n_jobs,
-                        use_gpu=gpu_param,
-                        refit=True,
-                        verbose=tuner_verbose,
-                        # pipeline_detection=False,
-                        **search_kwargs,
-                    )
-                elif search_algorithm == "bayesian":
-                    try:
-                        param_grid = get_skopt_distributions(param_grid)
-                    except:
-                        logger.warning(
-                            "Couldn't convert param_grid to specific library distributions. Exception:"
-                        )
-                        logger.warning(traceback.format_exc())
-                    logger.info("Initializing tune_sklearn.TuneSearchCV, bayesian")
-                    model_grid = TuneSearchCV(
-                        estimator=pipeline_with_model,
-                        search_optimization="bayesian",
-                        param_distributions=param_grid,
-                        n_trials=n_iter,
-                        early_stopping=do_early_stop,
-                        scoring=optimize,
-                        cv=fold,
-                        random_state=seed,
-                        max_iters=early_stopping_max_iters,
-                        n_jobs=n_jobs,
-                        use_gpu=gpu_param,
-                        refit=True,
-                        verbose=tuner_verbose,
-                        # pipeline_detection=False,
-                        **search_kwargs,
-                    )
-                elif search_algorithm == "bohb":
-                    try:
-                        param_grid = get_CS_distributions(param_grid)
-                    except:
-                        logger.warning(
-                            "Couldn't convert param_grid to specific library distributions. Exception:"
-                        )
-                        logger.warning(traceback.format_exc())
-                    logger.info("Initializing tune_sklearn.TuneSearchCV, bohb")
-                    model_grid = TuneSearchCV(
-                        estimator=pipeline_with_model,
-                        search_optimization="bohb",
-                        param_distributions=param_grid,
-                        n_trials=n_iter,
-                        early_stopping=do_early_stop,
-                        scoring=optimize,
-                        cv=fold,
-                        random_state=seed,
-                        max_iters=early_stopping_max_iters,
-                        n_jobs=n_jobs,
-                        use_gpu=gpu_param,
-                        refit=True,
-                        verbose=tuner_verbose,
-                        # pipeline_detection=False,
+                        pipeline_auto_early_stop=True,
                         **search_kwargs,
                     )
                 else:
-                    logger.info("Initializing tune_sklearn.TuneSearchCV, random")
+                    if search_algorithm == "hyperopt":
+                        try:
+                            param_grid = get_hyperopt_distributions(param_grid)
+                        except:
+                            logger.warning(
+                                "Couldn't convert param_grid to specific library distributions. Exception:"
+                            )
+                            logger.warning(traceback.format_exc())
+                    elif search_algorithm == "bayesian":
+                        try:
+                            param_grid = get_skopt_distributions(param_grid)
+                        except:
+                            logger.warning(
+                                "Couldn't convert param_grid to specific library distributions. Exception:"
+                            )
+                            logger.warning(traceback.format_exc())
+                    elif search_algorithm == "bohb":
+                        try:
+                            param_grid = get_CS_distributions(param_grid)
+                        except:
+                            logger.warning(
+                                "Couldn't convert param_grid to specific library distributions. Exception:"
+                            )
+                            logger.warning(traceback.format_exc())
+                    elif search_algorithm != "random":
+                        try:
+                            param_grid = get_tune_distributions(param_grid)
+                        except:
+                            logger.warning(
+                                "Couldn't convert param_grid to specific library distributions. Exception:"
+                            )
+                            logger.warning(traceback.format_exc())
+                    logger.info(
+                        f"Initializing tune_sklearn.TuneSearchCV, {search_algorithm}"
+                    )
                     model_grid = TuneSearchCV(
                         estimator=pipeline_with_model,
+                        search_optimization=search_algorithm,
                         param_distributions=param_grid,
-                        early_stopping=do_early_stop,
                         n_trials=n_iter,
+                        early_stopping=do_early_stop,
                         scoring=optimize,
                         cv=fold,
                         random_state=seed,
@@ -4387,10 +4349,9 @@ def tune_model_supervised(
                         use_gpu=gpu_param,
                         refit=True,
                         verbose=tuner_verbose,
-                        # pipeline_detection=False,
+                        pipeline_auto_early_stop=True,
                         **search_kwargs,
                     )
-
         elif search_library == "scikit-optimize":
             import skopt
 
