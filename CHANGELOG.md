@@ -1,6 +1,19 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+#### Release: PyCaret 2.2.3 | Release Date: December 22, 2020 (SEVERAL BUGS FIX | CRITICAL COMPATIBILITY FIX)
+
+- Fixed exceptions with the `predict_model` function when data columns had non-string characters.
+- Fixed a rare exception with the `remove_multicollinearity` parameter in the `setup` function`. 
+- Improved performance and robustness of conversion of date features to categoricals.
+- Fixed an exception with the `models` function when the `type` parameter was passed.
+- The data frame displayed after setup can now be accessed with the `pull` function.
+- Fixed an exception with save_config
+- Fixed a rare case where the target column would be treated as an ID column and thus dropped.
+- SHAP plots can now be saved (pass save parameter as True)
+- **| CRITICAL |** Compatibility broke for catboost, pyod (other impacts unknown as of now) with sklearn=0.24 (released on Dec 22, 2020). A temporary fix is requiring 0.23.2 specifically in the `requirements.txt`.
+<br/><br/><br/>
+
 #### Release: PyCaret 2.2.2 | Release Date: November 25, 2020 (SEVERAL BUGS FIX)
 - Fixed an issue with the `optimize_threshold` function the `pycaret.classification` module. It now returns a float instead of an array.
 - Fixed issue with the `predict_model` function. It now uses original data frame to append the predictions. As such any extra columns given at the time of inference are not removed when returning the predictions. Instead they are internally ignored at the time of predictions.

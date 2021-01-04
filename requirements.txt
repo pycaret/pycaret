@@ -1,10 +1,11 @@
 pandas
+scipy==1.5.4
 numpy>=1.17
 seaborn
 matplotlib
 IPython
 joblib
-scikit-learn>=0.23.2
+scikit-learn==0.23.2
 ipywidgets
 yellowbrick>=1.0.1
 xgboost>=1.1.0
