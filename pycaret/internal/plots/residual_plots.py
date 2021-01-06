@@ -321,7 +321,7 @@ class CooksDistanceWidget(BaseFigureWidget):
                 go.Scatter(x=x, y=y, name=label,
                            line=dict(color=c, width=2, dash='dash'),
                            mode="lines+text", textposition="bottom center",
-                           showlegend=True, text=text_list
+                           showlegend=False, text=text_list
                            )
             )
 
@@ -329,7 +329,7 @@ class CooksDistanceWidget(BaseFigureWidget):
                 go.Scatter(x=x, y=-y, name=label,
                            line=dict(color=c, width=2, dash='dash'),
                            mode="lines+text", textposition="top center",
-                           showlegend=True, text=text_list
+                           showlegend=False, text=text_list
                            )
             )
 

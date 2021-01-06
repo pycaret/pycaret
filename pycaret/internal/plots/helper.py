@@ -5,10 +5,10 @@ This module contains methods that can be used in various plot modules and don't 
 import numpy as np
 
 
-def leverage_statistic(X: np.ndarray) -> np.array:
+def leverage_statistic(x: np.ndarray):
     """
     Calculates the leverage statistic $h_i$ for all $n$ observations $x_i$ within $X$.
-    $h_{i}=\frac{1}{n}+\frac{\left(x_{i}-\bar{x}\right)^{2}}{\sum_{i^{\prime}=1}^{n}\left(x_{i^{\prime}}-\bar{x}\right)^{2}}$
+    $h=\text{diag} \left(X\left(X^{\top} X\right)^{-1} X^{\top}\right)$
     Observations with high leverage have an unusual value for $x_i$.
 
     Parameters
@@ -22,19 +22,13 @@ def leverage_statistic(X: np.ndarray) -> np.array:
         np.array: An array containing the leverage of each observation $x_i$, hence it has length $n$.
 
     """
+    if x.ndim == 1:
+        x = x.reshape(x.shape[0], 1)
 
-    if X.ndim > 1:
-        x_mean = np.mean(X, axis=0)
-        divider = np.sum([np.power(np.subtract(element, x_mean), 2) for element in X], axis=0)
-        leverage = np.array(
-            [1 / X.shape[0] + np.divide(np.power(np.subtract(element, x_mean), 2), divider) for element in X])
-        return np.sum(leverage, axis=1)
-    else:
-        x_mean = np.mean(X)
-        divider = np.sum([np.power(np.subtract(element, x_mean), 2) for element in X])
-        leverage = np.array(
-            [1 / X.shape[0] + np.divide(np.power(np.subtract(element, x_mean), 2), divider) for element in X])
-        return leverage
+    cov_mat_inv = np.linalg.inv(x.T.dot(x))
+    H = x.dot(cov_mat_inv.dot(x.T))
+    leverage = H.diagonal()
+    return leverage
 
 
 def calculate_standardized_residual(
