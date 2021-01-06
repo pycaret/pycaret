@@ -4292,7 +4292,7 @@ def tune_model_supervised(
                         scoring=optimize,
                         cv=fold,
                         max_iters=early_stopping_max_iters,
-                        n_jobs=n_jobs,
+                        n_jobs=1, #inteded
                         use_gpu=gpu_param,
                         refit=False,
                         verbose=tuner_verbose,
@@ -4345,7 +4345,7 @@ def tune_model_supervised(
                         cv=fold,
                         random_state=seed,
                         max_iters=early_stopping_max_iters,
-                        n_jobs=n_jobs,
+                        n_jobs=1, #inteded
                         use_gpu=gpu_param,
                         refit=True,
                         verbose=tuner_verbose,
