@@ -8338,7 +8338,6 @@ def predict_model(
             label_column.replace(replacement_mapper, inplace=True)
 
     # prediction starts here
-
     pred = np.nan_to_num(estimator.predict(X_test_))
 
     try:
