@@ -1914,9 +1914,11 @@ def plot_model(model=None, plot="frequency", topic_num=None, save=False, system=
 
     system: bool, default = True
         Must remain True all times. Only to be changed by internal functions.
-        
+
+
     display_format: str, default = None
         To display plots in [Streamlit](https://www.streamlit.io/), set this to 'streamlit'.
+        Currently, not all plots are supported.
 
 
     Returns:

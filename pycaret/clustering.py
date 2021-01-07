@@ -646,9 +646,11 @@ def plot_model(
 
     save: bool, default = False
         When set to True, plot is saved in the current working directory.
-        
+
+
     display_format: str, default = None
         To display plots in [Streamlit](https://www.streamlit.io/), set this to 'streamlit'.
+        Currently, not all plots are supported.
 
 
     Returns:

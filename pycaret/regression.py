@@ -1475,9 +1475,11 @@ def plot_model(
 
     verbose: bool, default = True
         When set to False, progress bar is not displayed.
-        
+
+
     display_format: str, default = None
         To display plots in [Streamlit](https://www.streamlit.io/), set this to 'streamlit'.
+        Currently, not all plots are supported.
 
 
     Returns:

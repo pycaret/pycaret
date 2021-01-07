@@ -504,9 +504,14 @@ def setup(
         raise TypeError("combine_rare_levels parameter only accepts True or False.")
 
     # check rare_level_threshold
-    if type(rare_level_threshold) is not float and \
-            rare_level_threshold < 0 or rare_level_threshold > 1:
-        raise TypeError("rare_level_threshold parameter must be a float between 0 and 1.")
+    if (
+        type(rare_level_threshold) is not float
+        and rare_level_threshold < 0
+        or rare_level_threshold > 1
+    ):
+        raise TypeError(
+            "rare_level_threshold parameter must be a float between 0 and 1."
+        )
 
     # bin numeric features
     if bin_numeric_features is not None:
@@ -4308,7 +4313,7 @@ def tune_model_supervised(
                         scoring=optimize,
                         cv=fold,
                         max_iters=early_stopping_max_iters,
-                        n_jobs=1, #inteded
+                        n_jobs=1,  # inteded
                         use_gpu=gpu_param,
                         refit=False,
                         verbose=tuner_verbose,
@@ -4361,7 +4366,7 @@ def tune_model_supervised(
                         cv=fold,
                         random_state=seed,
                         max_iters=early_stopping_max_iters,
-                        n_jobs=1, #inteded
+                        n_jobs=1,  # inteded
                         use_gpu=gpu_param,
                         refit=True,
                         verbose=tuner_verbose,
@@ -5580,7 +5585,7 @@ def plot_model(
     verbose: bool = True,
     system: bool = True,
     display: Optional[Display] = None,  # added in pycaret==2.2.0
-    display_format=None
+    display_format=None,
 ) -> str:
 
     """
@@ -5652,9 +5657,11 @@ def plot_model(
 
     system: bool, default = True
         Must remain True all times. Only to be changed by internal functions.
-        
+
+
     display_format: str, default = None
         To display plots in [Streamlit](https://www.streamlit.io/), set this to 'streamlit'.
+        Currently, not all plots are supported.
 
     Returns
     -------
@@ -5767,10 +5774,10 @@ def plot_model(
         raise TypeError(
             "feature parameter must be string containing column name of dataset."
         )
-        
+
     # checking display_format parameter
     plot_formats = [None, "streamlit"]
-    
+
     if display_format not in plot_formats:
         raise ValueError("display_format can only be None or 'streamlit'.")
 
@@ -5947,7 +5954,7 @@ def plot_model(
                         )
 
                     elif system:
-                        if display_format=="streamlit":
+                        if display_format == "streamlit":
                             st.write(fig)
                         else:
                             fig.show()
@@ -6012,7 +6019,7 @@ def plot_model(
                             f"Saving '{plot_filename}' in current active directory"
                         )
                     elif system:
-                        if display_format=="streamlit":
+                        if display_format == "streamlit":
                             st.write(fig)
                         else:
                             fig.show()
@@ -6097,7 +6104,7 @@ def plot_model(
                             f"Saving '{plot_filename}' in current active directory"
                         )
                     elif system:
-                        if display_format=="streamlit":
+                        if display_format == "streamlit":
                             st.write(fig)
                         else:
                             fig.show()
@@ -6198,7 +6205,7 @@ def plot_model(
                             f"Saving '{plot_filename}' in current active directory"
                         )
                     elif system:
-                        if display_format=="streamlit":
+                        if display_format == "streamlit":
                             st.write(fig)
                         else:
                             fig.show()
